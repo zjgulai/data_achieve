@@ -10,6 +10,7 @@ import {
   Radar,
   ShieldCheck,
 } from "lucide-react";
+import { Suspense } from "react";
 
 import { LoginPanel } from "@/components/auth/login-panel";
 
@@ -106,7 +107,9 @@ export default function LoginPage() {
         </div>
 
         <div className="flex min-w-0 items-center bg-white p-5 sm:p-8 lg:p-10">
-          <LoginPanel />
+          <Suspense fallback={<div className="h-[420px] w-full rounded-2xl bg-[#FFF8F4]" />}>
+            <LoginPanel />
+          </Suspense>
         </div>
       </section>
     </main>

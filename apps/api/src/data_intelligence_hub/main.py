@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api/auth")
     app.include_router(dashboard_router, prefix="/api/dashboard")
     app.include_router(collectors_router, prefix="/api/collectors")

@@ -18,6 +18,7 @@ node_modules/
 out/
 dist/
 coverage/
+*.tsbuildinfo
 apps/web/test-results/
 apps/web/playwright-report/
 

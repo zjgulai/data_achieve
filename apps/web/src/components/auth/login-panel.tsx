@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import {
   ArrowRight,
   CheckCircle2,
@@ -10,7 +11,7 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { login, register } from "@/lib/api/auth";
@@ -20,10 +21,11 @@ type Mode = "login" | "register";
 
 export function LoginPanel() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("owner@example.com");
   const [name, setName] = useState("Owner");
-  const [password, setPassword] = useState("strong-password");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -37,7 +39,7 @@ export function LoginPanel() {
       } else {
         await login({ email, password });
       }
-      router.push("/dashboard");
+      router.push(getSafeNextPath(searchParams.get("next")) as Route);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Authentication failed");
@@ -138,7 +140,7 @@ export function LoginPanel() {
             id="auth-password"
             name="password"
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="strong-password"
+            placeholder="输入密码"
             type={passwordVisible ? "text" : "password"}
             value={password}
           />
@@ -170,7 +172,7 @@ export function LoginPanel() {
             </p>
             <p className="mt-1 text-xs leading-5 text-[#7A625A]">
               {mode === "login"
-                ? "默认账号已预填，可直接进入 Dashboard。"
+                ? "使用部署时配置的演示账号，或切换到注册创建新 Workspace。"
                 : "注册后进入同一个情报工作流入口。"}
             </p>
           </div>
@@ -191,6 +193,13 @@ export function LoginPanel() {
       </p>
     </form>
   );
+}
+
+function getSafeNextPath(next: string | null) {
+  if (next && next.startsWith("/") && !next.startsWith("//") && next !== "/login") {
+    return next;
+  }
+  return "/dashboard";
 }
 
 function Field({

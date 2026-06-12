@@ -1,5 +1,24 @@
 import { expect, test } from "@playwright/test";
 
+const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
+
+test.beforeEach(async ({ page }) => {
+  if (!realApiMode) {
+    return;
+  }
+  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!password) {
+    throw new Error("SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true");
+  }
+
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill(password);
+  await page.locator('button[type="submit"]').click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
 test.describe("MVP workspace routes", () => {
   test("renders dashboard and intelligence evidence flow", async ({ page }) => {
     await page.goto("/dashboard");
@@ -9,14 +28,22 @@ test.describe("MVP workspace routes", () => {
     await page.goto("/intelligence");
     await expect(page.getByRole("heading", { name: "情报中心", exact: true })).toBeVisible();
     await expect(page.getByText("Intelligence 列表")).toBeVisible();
-    await expect(page.getByText("openai/codex is showing accelerated traction").first()).toBeVisible();
+    if (realApiMode) {
+      await expect(page.getByText("竞品价格 20% 下探").first()).toBeVisible();
+    } else {
+      await expect(page.getByText("openai/codex is showing accelerated traction").first()).toBeVisible();
+    }
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
   });
 
   test("generates and sends a report", async ({ page }) => {
     await page.goto("/reports");
     await expect(page.getByRole("heading", { name: "报告中心" })).toBeVisible();
-    await expect(page.getByRole("button", { name: /AI Scrapy Tools 日报/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: realApiMode ? /Data Achieve 每日情报摘要/ : /AI Scrapy Tools 日报/,
+      }),
+    ).toBeVisible();
     await expect(page.getByText("证据引用").first()).toBeVisible();
 
     await page.getByRole("button", { name: "生成日报", exact: true }).click();
@@ -31,30 +58,32 @@ test.describe("MVP workspace routes", () => {
   test("creates alert rule and displays alert events", async ({ page }) => {
     await page.goto("/alerts");
     await expect(page.getByRole("heading", { name: "预警中心" })).toBeVisible();
-    await expect(page.locator("article").filter({ hasText: "High severity signal" })).toHaveCount(
-      1,
-    );
-    await expect(page.getByRole("heading", { name: "page_changed" })).toBeVisible();
+    await expect(page.getByText("预警事件流")).toBeVisible();
+    const ruleCards = page.locator("article").filter({ hasText: "High severity signal" });
+    if (!realApiMode) {
+      await expect(ruleCards).toHaveCount(1);
+      await expect(page.getByRole("heading", { name: "page_changed" })).toBeVisible();
+    }
 
+    const ruleCountBefore = await ruleCards.count();
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.locator("article").filter({ hasText: "High severity signal" })).toHaveCount(
-      2,
-    );
+    await expect(ruleCards).toHaveCount(ruleCountBefore + 1);
   });
 
   test("marks unread notifications as read", async ({ page }) => {
     await page.goto("/notifications");
     await expect(page.getByRole("heading", { name: "站内通知收件箱", exact: true })).toBeVisible();
 
-    const notificationCard = page
-      .locator("article")
-      .filter({ hasText: "Data quality anomaly watch" })
-      .first();
+    const notificationCard = realApiMode
+      ? page.locator("article").filter({ hasText: /日报已生成|价格告警已触发/ }).first()
+      : page.locator("article").filter({ hasText: "Data quality anomaly watch" }).first();
     await expect(notificationCard).toBeVisible();
 
     await notificationCard.getByRole("button", { name: "Read", exact: true }).click();
-    await expect(page.getByText(/Data quality anomaly watch: marked read/)).toBeVisible();
-    await expect(page.locator("article").filter({ hasText: "Data quality anomaly watch" })).toHaveCount(0);
+    await expect(page.getByText(/marked read/)).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.locator("article").filter({ hasText: "Data quality anomaly watch" })).toHaveCount(0);
+    }
   });
 });
 
