@@ -2,6 +2,10 @@ FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=120 \
+    PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple \
+    PIP_RETRIES=10 \
+    UV_DEFAULT_INDEX=https://mirrors.cloud.tencent.com/pypi/simple \
     UV_LINK_MODE=copy \
     PATH="/app/.venv/bin:${PATH}"
 
