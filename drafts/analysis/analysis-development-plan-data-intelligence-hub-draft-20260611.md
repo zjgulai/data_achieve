@@ -1158,6 +1158,7 @@ Sprint 10 目标：
 | 文档收敛 | complete | README 和本地开发流程已补当前 MVP 能力、完整质量检查命令、E2E 和 Docker daemon 前置说明 |
 | MVP 验证脚本 | complete | 已新增并验证 `bash scripts/verify-mvp.sh`；默认 API/Web 全质量线通过，`--with-db` 在 Docker daemon 阶段明确失败 |
 | Dev DB 脚本收敛 | complete | `bash scripts/dev-start.sh`、`CONFIRM_RESET=1 bash scripts/dev-reset-db.sh` 已接入 Docker daemon 检查、PostgreSQL ready 等待和可选 `--migrate` |
+| GitHub Actions CI | complete | 已新增 `.github/workflows/ci.yml`，在 push / pull request 到 `main` 时运行 API 与 Web 质量门；CI 不启动 Docker，PostgreSQL 实库 migration 仍由交付前本地验证承担 |
 
 本阶段关键取舍：
 
@@ -1166,6 +1167,7 @@ Sprint 10 目标：
 - 移动端项目固定使用 Chromium 小屏视口；避免引入 WebKit 下载依赖，同时保持布局断言稳定。
 - `bash scripts/verify-mvp.sh` 默认不依赖 Docker；`--with-db` 用于 Docker 可用后的交付前实库复验。
 - 本地 DB 操作统一走 `bash scripts/dev-start.sh` / `bash scripts/dev-reset-db.sh`；不再要求用户手写 `docker compose up -d db` 后猜测 ready 时机。
+- GitHub Actions CI 只覆盖不依赖 Docker 的自动质量门；原因是当前迁移实测需要可控 PostgreSQL 环境，不能把 Docker daemon 阻塞伪装成远端已完成。
 
 进入交付前仍需执行：
 

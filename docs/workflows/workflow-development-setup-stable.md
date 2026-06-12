@@ -149,3 +149,35 @@ pnpm test:e2e
 ```
 
 `pnpm test:e2e` 使用 `NEXT_PUBLIC_MOCK_API=true` 在 `3100` 端口启动独立 Next.js dev server，覆盖 Dashboard、Intelligence、Reports、Alerts、Notifications 主路径和移动端横向溢出检查。
+
+## 7. 远端 CI
+
+`.github/workflows/ci.yml` 在 push / pull request 到 `main` 时运行。
+
+API job：
+
+```bash
+cd apps/api
+uv sync --locked --dev
+uv run ruff check .
+uv run mypy src tests
+uv run pytest
+uv run alembic heads
+```
+
+Web job：
+
+```bash
+pnpm install --frozen-lockfile
+pnpm -C apps/web lint
+pnpm -C apps/web test
+pnpm -C apps/web build
+pnpm -C apps/web exec playwright install --with-deps chromium
+pnpm -C apps/web test:e2e
+```
+
+CI 不启动 Docker，不执行 PostgreSQL 实库 migration。交付前仍需在 Docker daemon 可用后运行：
+
+```bash
+bash scripts/dev-start.sh --migrate
+```

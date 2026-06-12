@@ -111,3 +111,10 @@ pnpm test
 pnpm build
 pnpm test:e2e
 ```
+
+远端 CI：
+
+- `.github/workflows/ci.yml` 在 push / pull request 到 `main` 时运行。
+- API job 执行 `ruff`、`mypy`、`pytest`、`alembic heads`。
+- Web job 执行 `lint`、`test`、`build`、`test:e2e`。
+- CI 不启动 Docker；PostgreSQL 实库 migration 使用 `bash scripts/verify-mvp.sh --with-db` 或 `bash scripts/dev-start.sh --migrate` 单独验证。
