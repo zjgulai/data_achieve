@@ -11,6 +11,7 @@ import {
   SplitSquareHorizontal,
   XCircle,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -21,6 +22,7 @@ import {
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
 import { getSignalSnapshotCompare } from "@/lib/api/signals";
+import { cn } from "@/lib/utils";
 import type {
   Evidence,
   FeedbackType,
@@ -30,19 +32,19 @@ import type {
 import type { SignalSnapshotCompare } from "@/types/signal";
 
 const statusClass: Record<string, string> = {
-  new: "bg-[#ecfeff] text-[#0e7490]",
-  reviewed: "bg-[#eef2ff] text-[#4338ca]",
-  following: "bg-[#ecfdf5] text-[#047857]",
-  dismissed: "bg-[#f1f5f9] text-[#475569]",
-  converted: "bg-[#fef3c7] text-[#92400e]",
+  new: "bg-[#FCEBF0] text-[#C25B6E]",
+  reviewed: "bg-[#F5F0FF] text-[#6E5CF6]",
+  following: "bg-[#EAF8EE] text-[#2EBA62]",
+  dismissed: "bg-[#FBF8F5] text-[#86868B]",
+  converted: "bg-[#FFF4DE] text-[#FF9800]",
 };
 
 const typeClass: Record<string, string> = {
-  trend: "bg-[#ecfdf5] text-[#047857]",
-  risk: "bg-[#fee2e2] text-[#b91c1c]",
-  competitor: "bg-[#eff6ff] text-[#1d4ed8]",
-  opportunity: "bg-[#fef3c7] text-[#92400e]",
-  anomaly: "bg-[#f1f5f9] text-[#475569]",
+  trend: "bg-[#EAF8EE] text-[#2EBA62]",
+  risk: "bg-[#FFE5E2] text-[#FF3B30]",
+  competitor: "bg-[#FCEBF0] text-[#C25B6E]",
+  opportunity: "bg-[#FFF4DE] text-[#FF9800]",
+  anomaly: "bg-[#FBF8F5] text-[#86868B]",
 };
 
 export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId: string }) {
@@ -132,23 +134,23 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
   }
 
   if (loading) {
-    return <p className="text-sm text-[#6b7280]">加载情报中</p>;
+    return <p className="text-sm text-[#86868B]">加载情报中</p>;
   }
 
   if (error || !item) {
     return (
-      <div className="rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-2 text-sm text-[#be123c]">
+      <div className="rounded-2xl border border-[#FFD7DF] bg-[#FFF7F8] px-3 py-2 text-sm text-[#C25B6E]">
         {error ?? "Intelligence item not found"}
       </div>
     );
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
+    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_430px]">
       <section className="grid gap-5">
-        <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+        <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <Link
-            className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0f766e]"
+            className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#C25B6E]"
             href="/intelligence"
           >
             <ArrowLeft size={16} aria-hidden="true" />
@@ -156,13 +158,13 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
           </Link>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <h2 className="text-xl font-semibold leading-8">{item.title}</h2>
+              <h2 className="text-xl font-semibold leading-8 text-[#1D1D1F]">{item.title}</h2>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Tag className={typeClass[item.intelligenceType]} label={item.intelligenceType} />
                 <Tag className={statusClass[item.status]} label={item.status} />
-                <Tag className="bg-[#f1f5f9] text-[#475569]" label={item.domain} />
+                <Tag className="bg-[#FBF8F5] text-[#86868B]" label={item.domain} />
                 <Tag
-                  className="bg-[#f7f8fa] text-[#374151]"
+                  className="bg-[#FBF8F5] text-[#5F5757]"
                   label={`${item.evidenceCount} evidences`}
                 />
               </div>
@@ -177,10 +179,10 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
           </div>
         </div>
 
-        <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+        <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold">AI Summary</h2>
-            <FileSearch size={18} className="text-[#6b7280]" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-[#1D1D1F]">AI Summary</h2>
+            <FileSearch size={18} className="text-[#86868B]" aria-hidden="true" />
           </div>
           <div className="grid gap-2">
             {summaryClaims(item.summary).map((claim, index) => {
@@ -188,11 +190,12 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
               const selected = evidence?.id === selectedEvidenceId;
               return (
                 <button
-                  className={`rounded-md border px-3 py-3 text-left text-sm leading-6 transition ${
+                  className={cn(
+                    "rounded-xl border px-3 py-3 text-left text-sm leading-6 transition-colors",
                     selected
-                      ? "border-[#0f766e] bg-[#ecfdf5] text-[#064e3b]"
-                      : "border-[#dfe3ea] bg-white text-[#374151] hover:border-[#94a3b8]"
-                  }`}
+                      ? "border-[#C25B6E] bg-[#FFF7F8] text-[#7A3D49]"
+                      : "border-[#EDE6DF] bg-[#FBF8F5] text-[#5F5757] hover:border-[#C25B6E]",
+                  )}
                   disabled={!evidence}
                   key={claim}
                   onClick={() => evidence && setSelectedEvidenceId(evidence.id)}
@@ -205,16 +208,16 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
           </div>
         </div>
 
-        <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+        <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold">Snapshot Compare</h2>
-            <SplitSquareHorizontal size={18} className="text-[#6b7280]" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-[#1D1D1F]">Snapshot Compare</h2>
+            <SplitSquareHorizontal size={18} className="text-[#86868B]" aria-hidden="true" />
           </div>
-          {compareLoading ? <p className="text-sm text-[#6b7280]">加载对比中</p> : null}
+          {compareLoading ? <p className="text-sm text-[#86868B]">加载对比中</p> : null}
           {snapshotCompare ? (
             <SnapshotComparePanel compare={snapshotCompare} />
           ) : (
-            <div className="rounded-md border border-dashed border-[#dfe3ea] p-5 text-sm text-[#6b7280]">
+            <div className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-5 text-sm text-[#86868B]">
               当前证据暂无快照对比
             </div>
           )}
@@ -222,34 +225,35 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
       </section>
 
       <aside className="grid gap-5">
-        <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+        <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold">Evidence Timeline</h2>
-            <RadioTower size={18} className="text-[#6b7280]" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-[#1D1D1F]">Evidence Timeline</h2>
+            <RadioTower size={18} className="text-[#86868B]" aria-hidden="true" />
           </div>
           <div className="grid gap-2">
             {evidences.map((evidence) => (
               <button
-                className={`rounded-md border px-3 py-3 text-left transition ${
+                className={cn(
+                  "rounded-xl border px-3 py-3 text-left transition-colors",
                   evidence.id === selectedEvidenceId
-                    ? "border-[#0f766e] bg-[#ecfdf5]"
-                    : "border-[#dfe3ea] bg-white hover:border-[#94a3b8]"
-                }`}
+                    ? "border-[#C25B6E] bg-[#FFF7F8]"
+                    : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
+                )}
                 key={evidence.id}
                 onClick={() => setSelectedEvidenceId(evidence.id)}
                 type="button"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold">{evidence.title}</p>
-                    <p className="mt-1 text-xs text-[#6b7280]">{evidence.evidenceType}</p>
+                    <p className="text-sm font-semibold text-[#1D1D1F]">{evidence.title}</p>
+                    <p className="mt-1 text-xs text-[#86868B]">{evidence.evidenceType}</p>
                   </div>
-                  <span className="text-xs text-[#6b7280]">
+                  <span className="text-xs text-[#86868B]">
                     {new Date(evidence.createdAt).toLocaleString()}
                   </span>
                 </div>
                 {evidence.excerpt ? (
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6b7280]">
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
                     {evidence.excerpt}
                   </p>
                 ) : null}
@@ -260,20 +264,21 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
 
         <AuditDrawer evidence={selectedEvidence} />
 
-        <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+        <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold">状态与反馈</h2>
-            <ShieldCheck size={18} className="text-[#6b7280]" aria-hidden="true" />
+            <h2 className="text-base font-semibold text-[#1D1D1F]">状态与反馈</h2>
+            <ShieldCheck size={18} className="text-[#86868B]" aria-hidden="true" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["reviewed", "following", "dismissed", "converted"] as IntelligenceStatus[]).map(
               (status) => (
                 <button
-                  className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-xs font-semibold transition-colors",
                     item.status === status
-                      ? "border-[#0f766e] bg-[#ecfdf5] text-[#047857]"
-                      : "border-[#dfe3ea] bg-white text-[#374151] hover:border-[#94a3b8]"
-                  }`}
+                      ? "border-[#C25B6E] bg-[#FFF7F8] text-[#C25B6E]"
+                      : "border-[#EDE6DF] bg-[#FBF8F5] text-[#5F5757] hover:border-[#C25B6E]",
+                  )}
                   key={status}
                   onClick={() => void handleStatusChange(status)}
                   type="button"
@@ -301,7 +306,7 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
             />
           </div>
           {feedbackState ? (
-            <p className="mt-3 rounded-md bg-[#f7f8fa] px-3 py-2 text-xs text-[#475569]">
+            <p className="mt-3 rounded-xl bg-[#FBF8F5] px-3 py-2 text-xs text-[#86868B]">
               已提交：{feedbackState}
             </p>
           ) : null}
@@ -326,8 +331,8 @@ function SnapshotComparePanel({ compare }: { compare: SignalSnapshotCompare }) {
         <SnapshotBox label="Old Snapshot" value={compare.previousSnapshot} />
         <SnapshotBox label="New Snapshot" value={compare.currentSnapshot} />
       </div>
-      <div className="overflow-hidden rounded-md border border-[#dfe3ea]">
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-[#f7f8fa] px-3 py-2 text-xs font-semibold text-[#475569]">
+      <div className="overflow-hidden rounded-2xl border border-[#EDE6DF]">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-[#FBF8F5] px-3 py-2 text-xs font-semibold text-[#86868B]">
           <span>Metric</span>
           <span>Old</span>
           <span>New</span>
@@ -335,12 +340,12 @@ function SnapshotComparePanel({ compare }: { compare: SignalSnapshotCompare }) {
         </div>
         {compare.metricsDiff.map((item) => (
           <div
-            className="grid grid-cols-[1fr_1fr_1fr_1fr] border-t border-[#edf0f4] px-3 py-2 text-xs"
+            className="grid grid-cols-[1fr_1fr_1fr_1fr] border-t border-[#EDE6DF] px-3 py-2 text-xs"
             key={item.metric}
           >
-            <span className="font-semibold">{item.metric}</span>
-            <span className="break-all text-[#6b7280]">{formatValue(item.previousValue)}</span>
-            <span className="break-all text-[#111827]">{formatValue(item.currentValue)}</span>
+            <span className="font-semibold text-[#1D1D1F]">{item.metric}</span>
+            <span className="break-all text-[#86868B]">{formatValue(item.previousValue)}</span>
+            <span className="break-all text-[#1D1D1F]">{formatValue(item.currentValue)}</span>
             <span>{item.delta === null ? "n/a" : item.delta.toFixed(2)}</span>
           </div>
         ))}
@@ -357,11 +362,11 @@ function SnapshotBox({
   value: SignalSnapshotCompare["previousSnapshot"];
 }) {
   return (
-    <div className="rounded-md border border-[#dfe3ea] p-4">
-      <p className="text-xs font-semibold uppercase text-[#6b7280]">{label}</p>
-      <p className="mt-2 break-all text-sm font-semibold">{value.id}</p>
-      <p className="mt-1 text-xs text-[#6b7280]">{new Date(value.capturedAt).toLocaleString()}</p>
-      <pre className="mt-3 max-h-52 overflow-auto rounded-md bg-[#111827] p-3 text-xs leading-5 text-[#e5e7eb]">
+    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <p className="text-xs font-semibold uppercase text-[#86868B]">{label}</p>
+      <p className="mt-2 break-all text-sm font-semibold text-[#1D1D1F]">{value.id}</p>
+      <p className="mt-1 text-xs text-[#86868B]">{new Date(value.capturedAt).toLocaleString()}</p>
+      <pre className="mt-3 max-h-52 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
         {JSON.stringify(value.metrics, null, 2)}
       </pre>
     </div>
@@ -370,10 +375,10 @@ function SnapshotBox({
 
 function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
   return (
-    <div className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+    <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-semibold">审计抽屉</h2>
-        <FileSearch size={18} className="text-[#6b7280]" aria-hidden="true" />
+        <h2 className="text-base font-semibold text-[#1D1D1F]">审计抽屉</h2>
+        <FileSearch size={18} className="text-[#86868B]" aria-hidden="true" />
       </div>
       {evidence ? (
         <div className="grid gap-3">
@@ -384,7 +389,7 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.url ? (
             <a
-              className="inline-flex items-center gap-2 break-all rounded-md border border-[#dfe3ea] px-3 py-2 text-sm text-[#0f766e]"
+              className="inline-flex items-center gap-2 break-all rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm text-[#C25B6E]"
               href={evidence.url}
               rel="noreferrer"
               target="_blank"
@@ -394,18 +399,22 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
             </a>
           ) : null}
           {evidence.screenshotUrl ? (
-            <img
+            <Image
               alt={evidence.title}
-              className="max-h-64 w-full rounded-md border border-[#dfe3ea] object-cover"
+              className="max-h-64 w-full rounded-xl border border-[#EDE6DF] object-cover"
+              height={520}
+              priority
               src={evidence.screenshotUrl}
+              unoptimized
+              width={900}
             />
           ) : null}
-          <pre className="max-h-72 overflow-auto rounded-md bg-[#111827] p-3 text-xs leading-5 text-[#e5e7eb]">
+          <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
             {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
           </pre>
         </div>
       ) : (
-        <p className="rounded-md border border-dashed border-[#dfe3ea] p-5 text-sm text-[#6b7280]">
+        <p className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-5 text-sm text-[#86868B]">
           暂无选中证据
         </p>
       )}
@@ -415,9 +424,9 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
 
 function ScoreBadge({ score }: { score: number }) {
   return (
-    <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-md bg-[#111827] text-white">
+    <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-[#FCEBF0] text-[#C25B6E]">
       <span className="text-lg font-semibold">{score.toFixed(0)}</span>
-      <span className="text-[10px] uppercase text-[#d1d5db]">score</span>
+      <span className="text-[10px] uppercase">score</span>
     </div>
   );
 }
@@ -426,12 +435,12 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-semibold text-[#374151]">{label}</span>
-        <span className="text-[#6b7280]">{value.toFixed(1)}</span>
+        <span className="font-semibold text-[#5F5757]">{label}</span>
+        <span className="text-[#86868B]">{value.toFixed(1)}</span>
       </div>
-      <div className="h-2 rounded-full bg-[#e5e7eb]">
+      <div className="h-2 rounded-full bg-[#F5EDE8]">
         <div
-          className="h-2 rounded-full bg-[#0f766e]"
+          className="h-2 rounded-full bg-[#C25B6E]"
           style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
         />
       </div>
@@ -441,9 +450,9 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[#f7f8fa] px-3 py-2 text-sm">
-      <span className="text-[#6b7280]">{label}</span>
-      <p className="mt-1 break-all font-medium">{value}</p>
+    <div className="rounded-xl bg-[#FBF8F5] px-3 py-2 text-sm">
+      <span className="text-[#86868B]">{label}</span>
+      <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
     </div>
   );
 }
@@ -459,7 +468,7 @@ function FeedbackButton({
 }) {
   return (
     <button
-      className="flex items-center justify-center gap-2 rounded-md border border-[#dfe3ea] px-3 py-2 text-xs font-semibold text-[#374151] hover:border-[#94a3b8]"
+      className="flex items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
       onClick={onClick}
       type="button"
     >
@@ -471,7 +480,7 @@ function FeedbackButton({
 
 function Tag({ className, label }: { className?: string; label: string }) {
   return (
-    <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${className ?? ""}`}>
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${className ?? ""}`}>
       {label}
     </span>
   );

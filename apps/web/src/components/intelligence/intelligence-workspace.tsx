@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   XCircle,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -18,6 +19,7 @@ import {
   submitFeedback,
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
+import { cn } from "@/lib/utils";
 import type {
   Evidence,
   FeedbackType,
@@ -44,19 +46,19 @@ const statusOptions = [
 ];
 
 const statusClass: Record<string, string> = {
-  new: "bg-[#ecfeff] text-[#0e7490]",
-  reviewed: "bg-[#eef2ff] text-[#4338ca]",
-  following: "bg-[#ecfdf5] text-[#047857]",
-  dismissed: "bg-[#f1f5f9] text-[#475569]",
-  converted: "bg-[#fef3c7] text-[#92400e]",
+  new: "bg-[#FCEBF0] text-[#C25B6E]",
+  reviewed: "bg-[#F5F0FF] text-[#6E5CF6]",
+  following: "bg-[#EAF8EE] text-[#2EBA62]",
+  dismissed: "bg-[#FBF8F5] text-[#86868B]",
+  converted: "bg-[#FFF4DE] text-[#FF9800]",
 };
 
 const typeClass: Record<string, string> = {
-  trend: "bg-[#ecfdf5] text-[#047857]",
-  risk: "bg-[#fee2e2] text-[#b91c1c]",
-  competitor: "bg-[#eff6ff] text-[#1d4ed8]",
-  opportunity: "bg-[#fef3c7] text-[#92400e]",
-  anomaly: "bg-[#f1f5f9] text-[#475569]",
+  trend: "bg-[#EAF8EE] text-[#2EBA62]",
+  risk: "bg-[#FFE5E2] text-[#FF3B30]",
+  competitor: "bg-[#FCEBF0] text-[#C25B6E]",
+  opportunity: "bg-[#FFF4DE] text-[#FF9800]",
+  anomaly: "bg-[#FBF8F5] text-[#86868B]",
 };
 
 export function IntelligenceWorkspace() {
@@ -147,6 +149,17 @@ export function IntelligenceWorkspace() {
     return evidences.find((item) => item.id === selectedEvidenceId) ?? null;
   }, [evidences, selectedEvidenceId]);
 
+  const summary = useMemo(() => {
+    const reviewedCount = items.filter((item) => item.status === "reviewed").length;
+    const followingCount = items.filter((item) => item.status === "following").length;
+    const evidenceCount = items.reduce((sum, item) => sum + item.evidenceCount, 0);
+    const averageScore =
+      items.length > 0
+        ? items.reduce((sum, item) => sum + item.finalScore, 0) / items.length
+        : 0;
+    return { averageScore, evidenceCount, followingCount, reviewedCount };
+  }, [items]);
+
   async function handleStatusChange(status: IntelligenceStatus) {
     if (!selectedItem) {
       return;
@@ -166,12 +179,34 @@ export function IntelligenceWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
-      <section className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+    <div className="grid min-w-0 gap-5">
+      <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <Tag className="bg-[#FCEBF0] text-[#C25B6E]" label="Evidence-backed" />
+              <Tag className="bg-[#FBF8F5] text-[#86868B]" label="final_score 排序" />
+              <Tag className="bg-[#EAF8EE] text-[#2EBA62]" label={`${summary.evidenceCount} evidence refs`} />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">情报判读工作台</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">
+              用评分、证据链和人工反馈闭合从信号到情报的判断过程。
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+            <SummaryTile label="平均分" value={summary.averageScore.toFixed(1)} />
+            <SummaryTile label="已复核" value={summary.reviewedCount} />
+            <SummaryTile label="跟进中" value={summary.followingCount} />
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
+      <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <h2 className="text-base font-semibold">Intelligence 列表</h2>
-            <p className="mt-1 text-sm text-[#6b7280]">规则评分、证据数量和处理状态</p>
+            <h2 className="text-base font-semibold text-[#1D1D1F]">Intelligence 列表</h2>
+            <p className="mt-1 text-sm text-[#86868B]">规则评分、证据数量和处理状态</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <FilterSelect
@@ -189,9 +224,9 @@ export function IntelligenceWorkspace() {
           </div>
         </div>
 
-        {loading ? <p className="text-sm text-[#6b7280]">加载情报中</p> : null}
+        {loading ? <p className="text-sm text-[#86868B]">加载情报中</p> : null}
         {error ? (
-          <p className="mb-4 rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-2 text-sm text-[#be123c]">
+          <p className="mb-4 rounded-xl border border-[#FFD7DF] bg-[#FFF7F8] px-3 py-2 text-sm text-[#C25B6E]">
             {error}
           </p>
         ) : null}
@@ -199,19 +234,20 @@ export function IntelligenceWorkspace() {
         <div className="grid gap-3">
           {items.map((item) => (
             <button
-              className={`rounded-md border p-4 text-left transition ${
+              className={cn(
+                "rounded-2xl border p-4 text-left transition-colors",
                 item.id === selectedId
-                  ? "border-[#0f766e] bg-[#ecfdf5]"
-                  : "border-[#dfe3ea] bg-white hover:border-[#94a3b8]"
-              }`}
+                  ? "border-[#C25B6E] bg-[#FFF7F8]"
+                  : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
+              )}
               key={item.id}
               onClick={() => setSelectedId(item.id)}
               type="button"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold leading-6">{item.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6b7280]">
+                  <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{item.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
                     {item.summary}
                   </p>
                 </div>
@@ -220,9 +256,9 @@ export function IntelligenceWorkspace() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Tag className={typeClass[item.intelligenceType]} label={item.intelligenceType} />
                 <Tag className={statusClass[item.status]} label={item.status} />
-                <Tag className="bg-[#f1f5f9] text-[#475569]" label={item.domain} />
+                <Tag className="bg-white text-[#86868B]" label={item.domain} />
                 <Tag
-                  className="bg-[#f7f8fa] text-[#374151]"
+                  className="bg-white text-[#5F5757]"
                   label={`${item.evidenceCount} evidences`}
                 />
               </div>
@@ -235,31 +271,31 @@ export function IntelligenceWorkspace() {
             </button>
           ))}
           {!loading && items.length === 0 ? (
-            <div className="rounded-md border border-dashed border-[#dfe3ea] p-8 text-sm text-[#6b7280]">
+            <div className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-8 text-sm text-[#86868B]">
               暂无情报
             </div>
           ) : null}
         </div>
       </section>
 
-      <aside className="rounded-lg border border-[#dfe3ea] bg-white p-5">
+      <aside className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold">情报详情</h2>
-            <p className="mt-1 text-sm text-[#6b7280]">摘要、证据链和人工反馈</p>
+            <h2 className="text-base font-semibold text-[#1D1D1F]">情报详情</h2>
+            <p className="mt-1 text-sm text-[#86868B]">摘要、证据链和人工反馈</p>
           </div>
-          <FileSearch size={20} className="text-[#6b7280]" aria-hidden="true" />
+          <FileSearch size={20} className="text-[#86868B]" aria-hidden="true" />
         </div>
 
         {selectedItem ? (
           <div className="grid gap-5">
-            <div className="rounded-md border border-[#dfe3ea] p-4">
+            <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold leading-6">{selectedItem.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[#4b5563]">{selectedItem.summary}</p>
+                  <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{selectedItem.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#5F5757]">{selectedItem.summary}</p>
                   <Link
-                    className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#0f766e]"
+                    className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#C25B6E]"
                     href={`/intelligence/${selectedItem.id}`}
                   >
                     打开详情页
@@ -275,20 +311,21 @@ export function IntelligenceWorkspace() {
               </div>
             </div>
 
-            <div className="rounded-md border border-[#dfe3ea] p-4">
+            <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">状态</h3>
-                <ShieldCheck size={17} className="text-[#6b7280]" aria-hidden="true" />
+                <h3 className="text-sm font-semibold text-[#1D1D1F]">状态</h3>
+                <ShieldCheck size={17} className="text-[#86868B]" aria-hidden="true" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {(["reviewed", "following", "dismissed", "converted"] as IntelligenceStatus[]).map(
                   (status) => (
                     <button
-                      className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-xs font-semibold transition-colors",
                         selectedItem.status === status
-                          ? "border-[#0f766e] bg-[#ecfdf5] text-[#047857]"
-                          : "border-[#dfe3ea] bg-white text-[#374151] hover:border-[#94a3b8]"
-                      }`}
+                          ? "border-[#C25B6E] bg-[#FFF7F8] text-[#C25B6E]"
+                          : "border-[#EDE6DF] bg-white text-[#5F5757] hover:border-[#C25B6E]",
+                      )}
                       key={status}
                       onClick={() => void handleStatusChange(status)}
                       type="button"
@@ -300,42 +337,43 @@ export function IntelligenceWorkspace() {
               </div>
             </div>
 
-            <div className="rounded-md border border-[#dfe3ea] p-4">
+            <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Evidence Timeline</h3>
-                <RadioTower size={17} className="text-[#6b7280]" aria-hidden="true" />
+                <h3 className="text-sm font-semibold text-[#1D1D1F]">Evidence Timeline</h3>
+                <RadioTower size={17} className="text-[#86868B]" aria-hidden="true" />
               </div>
-              {evidenceLoading ? <p className="text-sm text-[#6b7280]">加载证据中</p> : null}
+              {evidenceLoading ? <p className="text-sm text-[#86868B]">加载证据中</p> : null}
               <div className="grid gap-2">
                 {evidences.map((evidence) => (
                   <button
-                    className={`rounded-md border px-3 py-3 text-left text-sm transition ${
+                    className={cn(
+                      "rounded-xl border px-3 py-3 text-left text-sm transition-colors",
                       evidence.id === selectedEvidenceId
-                        ? "border-[#0f766e] bg-[#ecfdf5]"
-                        : "border-[#dfe3ea] bg-white hover:border-[#94a3b8]"
-                    }`}
+                        ? "border-[#C25B6E] bg-[#FFF7F8]"
+                        : "border-[#EDE6DF] bg-white hover:border-[#C25B6E]",
+                    )}
                     key={evidence.id}
                     onClick={() => setSelectedEvidenceId(evidence.id)}
                     type="button"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold">{evidence.title}</p>
-                        <p className="mt-1 text-xs text-[#6b7280]">{evidence.evidenceType}</p>
+                        <p className="font-semibold text-[#1D1D1F]">{evidence.title}</p>
+                        <p className="mt-1 text-xs text-[#86868B]">{evidence.evidenceType}</p>
                       </div>
-                      <span className="text-xs text-[#6b7280]">
+                      <span className="text-xs text-[#86868B]">
                         {new Date(evidence.createdAt).toLocaleString()}
                       </span>
                     </div>
                     {evidence.excerpt ? (
-                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#6b7280]">
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
                         {evidence.excerpt}
                       </p>
                     ) : null}
                   </button>
                 ))}
                 {!evidenceLoading && evidences.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-[#dfe3ea] p-5 text-sm text-[#6b7280]">
+                  <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-5 text-sm text-[#86868B]">
                     暂无证据
                   </p>
                 ) : null}
@@ -344,10 +382,10 @@ export function IntelligenceWorkspace() {
 
             <AuditPanel evidence={selectedEvidence} />
 
-            <div className="rounded-md border border-[#dfe3ea] p-4">
+            <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Feedback</h3>
-                <MessageSquare size={17} className="text-[#6b7280]" aria-hidden="true" />
+                <h3 className="text-sm font-semibold text-[#1D1D1F]">Feedback</h3>
+                <MessageSquare size={17} className="text-[#86868B]" aria-hidden="true" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <FeedbackButton
@@ -367,18 +405,19 @@ export function IntelligenceWorkspace() {
                 />
               </div>
               {feedbackState ? (
-                <p className="mt-3 rounded-md bg-[#f7f8fa] px-3 py-2 text-xs text-[#475569]">
+                <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-[#86868B]">
                   已提交：{feedbackState}
                 </p>
               ) : null}
             </div>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-[#dfe3ea] p-8 text-sm text-[#6b7280]">
+          <div className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-8 text-sm text-[#86868B]">
             选择一条情报查看证据
           </div>
         )}
       </aside>
+      </div>
     </div>
   );
 }
@@ -395,10 +434,10 @@ function FilterSelect({
   value: string;
 }) {
   return (
-    <label className="grid gap-1 text-xs font-semibold text-[#6b7280]">
+    <label className="grid gap-1 text-xs font-semibold text-[#86868B]">
       {label}
       <select
-        className="h-9 rounded-md border border-[#dfe3ea] bg-white px-2 text-sm font-normal text-[#111827]"
+        className="h-9 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-2 text-sm font-normal text-[#1D1D1F] outline-none"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -412,18 +451,27 @@ function FilterSelect({
   );
 }
 
+function SummaryTile({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] px-4 py-3">
+      <p className="text-xs font-medium text-[#86868B]">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-[#1D1D1F]">{value}</p>
+    </div>
+  );
+}
+
 function ScoreBadge({ score }: { score: number }) {
   return (
-    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-md bg-[#111827] text-white">
+    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-[#FCEBF0] text-[#C25B6E]">
       <span className="text-base font-semibold">{score.toFixed(0)}</span>
-      <span className="text-[10px] uppercase text-[#d1d5db]">score</span>
+      <span className="text-[10px] uppercase">score</span>
     </div>
   );
 }
 
 function Tag({ className, label }: { className?: string; label: string }) {
   return (
-    <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${className ?? ""}`}>
+    <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${className ?? ""}`}>
       {label}
     </span>
   );
@@ -431,9 +479,9 @@ function Tag({ className, label }: { className?: string; label: string }) {
 
 function MiniScore({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md bg-[#f7f8fa] px-3 py-2 text-xs">
-      <span className="text-[#6b7280]">{label}</span>
-      <p className="mt-1 font-semibold">{value.toFixed(1)}</p>
+    <div className="rounded-xl bg-white px-3 py-2 text-xs">
+      <span className="text-[#86868B]">{label}</span>
+      <p className="mt-1 font-semibold text-[#1D1D1F]">{value.toFixed(1)}</p>
     </div>
   );
 }
@@ -442,12 +490,12 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-semibold text-[#374151]">{label}</span>
-        <span className="text-[#6b7280]">{value.toFixed(1)}</span>
+        <span className="font-semibold text-[#5F5757]">{label}</span>
+        <span className="text-[#86868B]">{value.toFixed(1)}</span>
       </div>
-      <div className="h-2 rounded-full bg-[#e5e7eb]">
+      <div className="h-2 rounded-full bg-[#F5EDE8]">
         <div
-          className="h-2 rounded-full bg-[#0f766e]"
+          className="h-2 rounded-full bg-[#C25B6E]"
           style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
         />
       </div>
@@ -457,10 +505,10 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 
 function AuditPanel({ evidence }: { evidence: Evidence | null }) {
   return (
-    <div className="rounded-md border border-[#dfe3ea] p-4">
+    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">审计抽屉</h3>
-        <FileSearch size={17} className="text-[#6b7280]" aria-hidden="true" />
+        <h3 className="text-sm font-semibold text-[#1D1D1F]">审计抽屉</h3>
+        <FileSearch size={17} className="text-[#86868B]" aria-hidden="true" />
       </div>
       {evidence ? (
         <div className="grid gap-3">
@@ -471,7 +519,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.url ? (
             <a
-              className="break-all rounded-md border border-[#dfe3ea] px-3 py-2 text-sm text-[#0f766e]"
+              className="break-all rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-sm text-[#C25B6E]"
               href={evidence.url}
               rel="noreferrer"
               target="_blank"
@@ -480,18 +528,22 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
             </a>
           ) : null}
           {evidence.screenshotUrl ? (
-            <img
+            <Image
               alt={evidence.title}
-              className="max-h-56 w-full rounded-md border border-[#dfe3ea] object-cover"
+              className="max-h-56 w-full rounded-xl border border-[#EDE6DF] object-cover"
+              height={520}
+              priority
               src={evidence.screenshotUrl}
+              unoptimized
+              width={900}
             />
           ) : null}
-          <pre className="max-h-64 overflow-auto rounded-md bg-[#111827] p-3 text-xs leading-5 text-[#e5e7eb]">
+          <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
             {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
           </pre>
         </div>
       ) : (
-        <p className="rounded-md border border-dashed border-[#dfe3ea] p-5 text-sm text-[#6b7280]">
+        <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-5 text-sm text-[#86868B]">
           暂无选中证据
         </p>
       )}
@@ -501,9 +553,9 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[#f7f8fa] px-3 py-2 text-sm">
-      <span className="text-[#6b7280]">{label}</span>
-      <p className="mt-1 break-all font-medium">{value}</p>
+    <div className="rounded-xl bg-white px-3 py-2 text-sm">
+      <span className="text-[#86868B]">{label}</span>
+      <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
     </div>
   );
 }
@@ -519,7 +571,7 @@ function FeedbackButton({
 }) {
   return (
     <button
-      className="flex items-center justify-center gap-2 rounded-md border border-[#dfe3ea] px-3 py-2 text-xs font-semibold text-[#374151] hover:border-[#94a3b8]"
+      className="flex items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
       onClick={onClick}
       type="button"
     >

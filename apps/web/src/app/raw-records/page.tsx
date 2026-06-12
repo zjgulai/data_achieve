@@ -3,7 +3,7 @@ import { RawRecordsWorkspace } from "@/components/raw-records/raw-records-worksp
 
 export default function RawRecordsPage() {
   return (
-    <AppShell title="原始数据" description="RawRecord 列表、内容哈希、采集来源">
+    <AppShell title="原始数据" description="原始事实、内容哈希、采集证据审计">
       <RawRecordsWorkspace />
     </AppShell>
   );

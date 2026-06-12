@@ -3,7 +3,7 @@ import { SourcesWorkspace } from "@/components/sources/sources-workspace";
 
 export default function SourcesPage() {
   return (
-    <AppShell title="数据源" description="Source 管理、Collector 配置、测试采集">
+    <AppShell title="数据源" description="Collector 配置、接入测试、调度启用">
       <SourcesWorkspace />
     </AppShell>
   );

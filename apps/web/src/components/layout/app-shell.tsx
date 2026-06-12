@@ -9,7 +9,7 @@ type AppShellProps = {
 
 export function AppShell({ title, description, children }: AppShellProps) {
   return (
-    <div className="min-h-screen bg-[#f7f8fa] text-[#111827]">
+    <div className="min-h-screen bg-[#F7F0EB] text-[#231A1A]">
       <Sidebar />
       <div className="min-h-screen pl-0 lg:pl-72">
         <TopBar title={title} description={description} />

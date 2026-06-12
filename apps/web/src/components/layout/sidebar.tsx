@@ -55,14 +55,14 @@ const engineItems = [
 
 export function Sidebar() {
   return (
-    <aside className="hidden min-h-screen w-72 border-r border-[#dfe3ea] bg-white px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
+    <aside className="hidden min-h-screen w-72 border-r border-[#E9E5E2] bg-white px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
       <Link className="mb-7 flex items-center gap-3 px-2" href="/dashboard">
-        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[#0f766e] text-white">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C25B6E] text-white">
           <ChartNoAxesCombined size={20} aria-hidden="true" />
         </span>
         <span>
-          <span className="block text-sm font-semibold">Data Intelligence</span>
-          <span className="block text-xs text-[#6b7280]">Hub</span>
+          <span className="block text-sm font-semibold text-[#1D1D1F]">Data Intelligence</span>
+          <span className="block text-xs text-[#86868B]">Hub</span>
         </span>
       </Link>
 
@@ -76,7 +76,7 @@ export function Sidebar() {
 function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
   return (
     <nav className="mb-6">
-      <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
+      <p className="mb-2 px-2 text-xs font-semibold uppercase text-[#86868B]">
         {label}
       </p>
       <div className="grid gap-1">
@@ -84,11 +84,11 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
           const Icon = item.icon;
           return (
             <Link
-              className="flex items-center gap-3 rounded-md px-2 py-2 text-sm text-[#374151] hover:bg-[#f1f5f9]"
+              className="flex items-center gap-3 rounded-xl px-2 py-2 text-sm font-medium text-[#5F5757] transition-colors hover:bg-[#FBF8F5] hover:text-[#1D1D1F]"
               href={item.href}
               key={item.href}
             >
-              <Icon size={17} className="text-[#6b7280]" aria-hidden="true" />
+              <Icon size={17} className="text-[#86868B]" aria-hidden="true" />
               {item.label}
             </Link>
           );

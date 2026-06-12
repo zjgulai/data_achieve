@@ -1,6 +1,19 @@
 "use client";
 
-import { CheckCircle2, FlaskConical, Link2, PlayCircle, Plus } from "lucide-react";
+import {
+  CheckCircle2,
+  Clock3,
+  Database,
+  FlaskConical,
+  Github,
+  Globe2,
+  Link2,
+  PlayCircle,
+  Plus,
+  ShieldCheck,
+  UploadCloud,
+  Zap,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { listProjects } from "@/lib/api/projects";
@@ -11,6 +24,7 @@ import {
   listSources,
   testSource,
 } from "@/lib/api/sources";
+import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 import type { Collector, CollectorType, Source } from "@/types/source-task";
 
@@ -19,6 +33,67 @@ const collectorTypeLabels: Record<CollectorType, string> = {
   github_topic: "GitHub Topic",
   generic_web: "Generic Web",
   manual_json: "Manual JSON",
+};
+
+const collectorShortLabels: Record<CollectorType, string> = {
+  github_repo: "Repo",
+  github_topic: "Topic",
+  generic_web: "Web",
+  manual_json: "JSON",
+};
+
+const collectorVisuals: Record<
+  CollectorType,
+  {
+    icon: typeof Github;
+    eyebrow: string;
+    tone: string;
+    accent: string;
+    text: string;
+  }
+> = {
+  github_repo: {
+    icon: Github,
+    eyebrow: "持续仓库监控",
+    tone: "border-[#E8D4CB] bg-[#FFF7F2]",
+    accent: "bg-[#C96F5C]",
+    text: "text-[#9E4F41]",
+  },
+  github_topic: {
+    icon: Zap,
+    eyebrow: "Topic 发现",
+    tone: "border-[#E7D8B8] bg-[#FFF9E9]",
+    accent: "bg-[#D5A642]",
+    text: "text-[#8C6824]",
+  },
+  generic_web: {
+    icon: Globe2,
+    eyebrow: "页面变更监控",
+    tone: "border-[#D9E2CC] bg-[#F7FBF1]",
+    accent: "bg-[#7D9A68]",
+    text: "text-[#536B40]",
+  },
+  manual_json: {
+    icon: UploadCloud,
+    eyebrow: "结构化导入",
+    tone: "border-[#DFD5E8] bg-[#FAF6FF]",
+    accent: "bg-[#8D75A8]",
+    text: "text-[#6B5685]",
+  },
+};
+
+const domainLabels: Record<string, string> = {
+  osint: "开源雷达",
+  ecommerce: "电商风向",
+  social: "社媒脉搏",
+  competitor: "竞品守望",
+  mixed: "混合项目",
+};
+
+const cadenceLabels: Record<string, string> = {
+  "0 8 * * *": "每天 08:00",
+  "*/30 * * * *": "每 30 分钟",
+  "0 */1 * * *": "每小时",
 };
 
 export function SourcesWorkspace() {
@@ -69,6 +144,33 @@ export function SourcesWorkspace() {
   const projectById = useMemo(() => {
     return new Map(projects.map((project) => [project.id, project]));
   }, [projects]);
+
+  const selectedCollector = collectors.find((collector) => collector.type === collectorType);
+
+  const enabledCount = sources.filter((source) => source.enabled).length;
+  const configuredProjectCount = new Set(sources.map((source) => source.projectId)).size;
+  const sourceTypeCounts = useMemo(() => {
+    return sources.reduce<Record<CollectorType, number>>(
+      (counts, source) => {
+        counts[source.type] += 1;
+        return counts;
+      },
+      {
+        github_repo: 0,
+        github_topic: 0,
+        generic_web: 0,
+        manual_json: 0,
+      },
+    );
+  }, [sources]);
+
+  const configPreview = (() => {
+    try {
+      return JSON.stringify(buildConfig(), null, 2);
+    } catch {
+      return "Manual JSON must be valid JSON";
+    }
+  })();
 
   async function submitSource() {
     setError(null);
@@ -136,162 +238,188 @@ export function SourcesWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-      <section className="rounded-lg border border-[#dfe3ea] bg-white p-5">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold">数据源列表</h2>
-            <p className="mt-1 text-sm text-[#6b7280]">配置校验先行，任务运行写入 RawRecord</p>
-          </div>
-          <Link2 size={20} className="text-[#6b7280]" aria-hidden="true" />
-        </div>
-
-        {loading ? <p className="text-sm text-[#6b7280]">加载数据源中</p> : null}
-        {message ? (
-          <p className="mb-4 rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-sm text-[#166534]">
-            {message}
-          </p>
-        ) : null}
-        {error ? (
-          <p className="mb-4 rounded-md border border-[#fecdd3] bg-[#fff1f2] px-3 py-2 text-sm text-[#be123c]">
-            {error}
-          </p>
-        ) : null}
-
-        <div className="grid gap-3">
-          {sources.map((source) => (
-            <article className="rounded-md border border-[#dfe3ea] p-4" key={source.id}>
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold">{source.name}</h3>
-                  <p className="mt-2 text-sm text-[#6b7280]">
-                    {collectorTypeLabels[source.type]} ·{" "}
-                    {projectById.get(source.projectId)?.name ?? "Unknown project"}
-                  </p>
-                  <p className="mt-2 break-all text-xs text-[#6b7280]">{source.url ?? "No URL"}</p>
-                </div>
-                <span className="rounded-md bg-[#f1f5f9] px-2.5 py-1 text-xs font-semibold">
-                  {source.enabled ? "enabled" : "disabled"}
-                </span>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  className="inline-flex items-center gap-2 rounded-md border border-[#dfe3ea] px-3 py-2 text-sm"
-                  onClick={() => void testExistingSource(source)}
-                  type="button"
-                >
-                  <FlaskConical size={16} aria-hidden="true" />
-                  测试配置
-                </button>
-                <button
-                  className="inline-flex items-center gap-2 rounded-md bg-[#0f766e] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                  disabled={source.enabled}
-                  onClick={() => void enableExistingSource(source)}
-                  type="button"
-                >
-                  <CheckCircle2 size={16} aria-hidden="true" />
-                  启用
-                </button>
-              </div>
-            </article>
-          ))}
-          {!loading && sources.length === 0 ? (
-            <div className="rounded-md border border-dashed border-[#dfe3ea] p-8 text-sm text-[#6b7280]">
-              暂无数据源
+    <div className="grid min-w-0 gap-5">
+      <section className="overflow-hidden rounded-2xl border border-[#EDDCD3] bg-[#FFF8F4] shadow-[0_18px_60px_rgba(115,70,58,0.08)]">
+        <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-white/75 px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
+              <Database size={14} aria-hidden="true" />
+              Collector Intake
             </div>
-          ) : null}
+            <h2 className="mt-4 text-2xl font-semibold tracking-normal text-[#2E201C] sm:text-3xl">
+              数据源接入工作台
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
+              先验证配置，再启用调度任务；所有采集结果进入 RawRecord，后续再生成实体快照、信号和情报。
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <MetricPill icon={Link2} label="数据源" value={String(sources.length)} />
+              <MetricPill icon={ShieldCheck} label="已启用" value={`${enabledCount}/${sources.length}`} />
+              <MetricPill icon={Clock3} label="覆盖项目" value={String(configuredProjectCount)} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">Collector Mix</p>
+                <h3 className="mt-1 text-base font-semibold text-[#2E201C]">当前采集覆盖</h3>
+              </div>
+              <span className="rounded-full bg-[#C96F5C] px-3 py-1 text-xs font-semibold text-white">
+                {collectors.length} types
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {(Object.keys(collectorTypeLabels) as CollectorType[]).map((type) => {
+                const visual = collectorVisuals[type];
+                const Icon = visual.icon;
+                return (
+                  <div
+                    className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2"
+                    key={type}
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-2 text-sm font-medium text-[#3B2924]">
+                      <span
+                        className={cn(
+                          "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white",
+                          visual.accent,
+                        )}
+                      >
+                        <Icon size={15} aria-hidden="true" />
+                      </span>
+                      <span className="truncate">{collectorTypeLabels[type]}</span>
+                    </span>
+                    <span className="text-sm font-semibold text-[#8C6257]">
+                      {sourceTypeCounts[type]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
 
-      <form
-        className="rounded-lg border border-[#dfe3ea] bg-white p-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submitSource();
-        }}
-      >
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold">新增 Source</h2>
-            <p className="mt-1 text-sm text-[#6b7280]">{collectors.length} collectors available</p>
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="min-w-0 rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">Source Assets</p>
+              <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">数据源资产池</h2>
+              <p className="mt-1 text-sm text-[#7A625A]">按 Collector、项目和启用状态快速判断采集入口是否健康。</p>
+            </div>
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#E8D4CB] bg-[#FFF7F2] px-3 py-1.5 text-xs font-semibold text-[#9E5C4D]">
+              <CheckCircle2 size={14} aria-hidden="true" />
+              Config first
+            </span>
           </div>
-          <Plus size={20} className="text-[#6b7280]" aria-hidden="true" />
-        </div>
 
-        <div className="grid gap-4">
-          <label className="grid gap-2 text-sm font-medium">
-            Project
-            <select
-              className="rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
-              onChange={(event) => setSelectedProjectId(event.target.value)}
-              value={selectedProjectId}
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {loading ? (
+            <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
+              加载数据源中
+            </div>
+          ) : null}
+          <StatusNotice error={error} message={message} />
 
-          <label className="grid gap-2 text-sm font-medium">
-            Collector
-            <select
-              className="rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
-              onChange={(event) => setCollectorType(event.target.value as CollectorType)}
-              value={collectorType}
-            >
-              {collectors.map((collector) => (
-                <option key={collector.type} value={collector.type}>
-                  {collector.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-3">
+            {sources.map((source) => (
+              <SourceAssetCard
+                key={source.id}
+                onEnable={() => void enableExistingSource(source)}
+                onTest={() => void testExistingSource(source)}
+                project={projectById.get(source.projectId)}
+                source={source}
+              />
+            ))}
+            {!loading && sources.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
+                暂无数据源。先从右侧创建一个 Collector 配置。
+              </div>
+            ) : null}
+          </div>
+        </section>
 
-          <label className="grid gap-2 text-sm font-medium">
-            名称
-            <input
-              className="rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
-              onChange={(event) => setName(event.target.value)}
-              value={name}
+        <form
+          className="rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitSource();
+          }}
+        >
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">New Source</p>
+              <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">新增采集入口</h2>
+              <p className="mt-1 text-sm text-[#7A625A]">
+                {selectedCollector?.description ?? "选择 Collector 后补齐必要配置。"}
+              </p>
+            </div>
+            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C96F5C] text-white">
+              <Plus size={18} aria-hidden="true" />
+            </span>
+          </div>
+
+          <div className="grid gap-4">
+            <FieldLabel label="Project">
+              <select
+                className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                onChange={(event) => setSelectedProjectId(event.target.value)}
+                value={selectedProjectId}
+              >
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </FieldLabel>
+
+            <div className="grid gap-2">
+              <span className="text-sm font-semibold text-[#3B2924]">Collector</span>
+              <div className="grid grid-cols-2 gap-2">
+                {collectors.map((collector) => (
+                  <CollectorOption
+                    collector={collector}
+                    key={collector.type}
+                    onSelect={() => setCollectorType(collector.type)}
+                    selected={collectorType === collector.type}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <TextField label="名称" onChange={setName} value={name} />
+
+            <DynamicConfigFields
+              collectorType={collectorType}
+              entityType={entityType}
+              jsonText={jsonText}
+              owner={owner}
+              repo={repo}
+              setEntityType={setEntityType}
+              setJsonText={setJsonText}
+              setOwner={setOwner}
+              setRepo={setRepo}
+              setTopic={setTopic}
+              setUrl={setUrl}
+              topic={topic}
+              url={url}
             />
-          </label>
 
-          <DynamicConfigFields
-            collectorType={collectorType}
-            entityType={entityType}
-            jsonText={jsonText}
-            owner={owner}
-            repo={repo}
-            setEntityType={setEntityType}
-            setJsonText={setJsonText}
-            setOwner={setOwner}
-            setRepo={setRepo}
-            setTopic={setTopic}
-            setUrl={setUrl}
-            topic={topic}
-            url={url}
-          />
+            <TextField label="Cron" onChange={setScheduleCron} value={scheduleCron} />
+            <ConfigPreviewPanel collectorType={collectorType} configPreview={configPreview} />
 
-          <label className="grid gap-2 text-sm font-medium">
-            Cron
-            <input
-              className="rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
-              onChange={(event) => setScheduleCron(event.target.value)}
-              value={scheduleCron}
-            />
-          </label>
-
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-[#0f766e] px-4 py-2.5 text-sm font-semibold text-white"
-            type="submit"
-          >
-            <PlayCircle size={16} aria-hidden="true" />
-            创建 Source
-          </button>
-        </div>
-      </form>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(201,111,92,0.24)] transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!selectedProjectId}
+              type="submit"
+            >
+              <PlayCircle size={16} aria-hidden="true" />
+              创建 Source
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -315,7 +443,7 @@ type DynamicConfigFieldsProps = {
 function DynamicConfigFields(props: DynamicConfigFieldsProps) {
   if (props.collectorType === "github_repo") {
     return (
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <TextField label="Owner" onChange={props.setOwner} value={props.owner} />
         <TextField label="Repo" onChange={props.setRepo} value={props.repo} />
       </div>
@@ -330,15 +458,200 @@ function DynamicConfigFields(props: DynamicConfigFieldsProps) {
   return (
     <div className="grid gap-3">
       <TextField label="Entity Type" onChange={props.setEntityType} value={props.entityType} />
-      <label className="grid gap-2 text-sm font-medium">
-        JSON
+      <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+        <span>JSON</span>
         <textarea
-          className="min-h-28 resize-none rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
+          className="min-h-28 resize-none rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 py-2 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
           onChange={(event) => props.setJsonText(event.target.value)}
           value={props.jsonText}
         />
       </label>
     </div>
+  );
+}
+
+function MetricPill({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Database;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
+        <Icon size={14} aria-hidden="true" />
+        {label}
+      </div>
+      <p className="mt-2 text-2xl font-semibold text-[#2E201C]">{value}</p>
+    </div>
+  );
+}
+
+function CollectorOption({
+  collector,
+  selected,
+  onSelect,
+}: {
+  collector: Collector;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const visual = collectorVisuals[collector.type];
+  const Icon = visual.icon;
+  return (
+    <button
+      className={cn(
+        "min-h-24 rounded-2xl border p-3 text-left transition",
+        selected
+          ? "border-[#C96F5C] bg-[#FFF7F2] shadow-[0_10px_24px_rgba(201,111,92,0.16)]"
+          : "border-[#E8D4CB] bg-[#FFFDFC] hover:border-[#D9B8AD]",
+      )}
+      onClick={onSelect}
+      type="button"
+    >
+      <span
+        className={cn(
+          "inline-flex h-9 w-9 items-center justify-center rounded-full text-white",
+          visual.accent,
+        )}
+      >
+        <Icon size={16} aria-hidden="true" />
+      </span>
+      <span className="mt-3 block text-sm font-semibold text-[#2E201C]">{collector.name}</span>
+      <span className={cn("mt-1 block text-xs font-medium", visual.text)}>{visual.eyebrow}</span>
+    </button>
+  );
+}
+
+function SourceAssetCard({
+  source,
+  project,
+  onTest,
+  onEnable,
+}: {
+  source: Source;
+  project: Project | undefined;
+  onTest: () => void;
+  onEnable: () => void;
+}) {
+  const visual = collectorVisuals[source.type];
+  const Icon = visual.icon;
+  const domainLabel = domainLabels[project?.domain ?? "mixed"] ?? "未知域";
+
+  return (
+    <article
+      className={cn(
+        "rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(72,45,38,0.1)]",
+        visual.tone,
+      )}
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              className={cn(
+                "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white",
+                visual.accent,
+              )}
+            >
+              <Icon size={18} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="truncate text-base font-semibold text-[#2E201C]">{source.name}</h3>
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs font-semibold",
+                    source.enabled
+                      ? "bg-[#ECF7EA] text-[#4E7C45]"
+                      : "bg-[#F6ECE8] text-[#9E5C4D]",
+                  )}
+                >
+                  {source.enabled ? "enabled" : "disabled"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-[#7A625A]">
+                {collectorTypeLabels[source.type]} · {project?.name ?? "Unknown project"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <SourceFact label="业务域" value={domainLabel} />
+            <SourceFact
+              label="调度"
+              value={source.scheduleCron ? cadenceLabels[source.scheduleCron] ?? source.scheduleCron : "手动"}
+            />
+            <SourceFact label="配置摘要" value={getSourceConfigSummary(source)} />
+          </div>
+
+          <p className="mt-3 break-all rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-[#7A625A]">
+            {source.url ?? getSourceEndpointLabel(source)}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F]"
+            onClick={onTest}
+            type="button"
+          >
+            <FlaskConical size={16} aria-hidden="true" />
+            测试配置
+          </button>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#C96F5C] px-3 text-sm font-semibold text-white transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
+            disabled={source.enabled}
+            onClick={onEnable}
+            type="button"
+          >
+            <CheckCircle2 size={16} aria-hidden="true" />
+            启用
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function SourceFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/80 bg-white/70 px-3 py-2">
+      <p className="text-xs font-semibold text-[#B47767]">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#3B2924]">{value}</p>
+    </div>
+  );
+}
+
+function StatusNotice({ message, error }: { message: string | null; error: string | null }) {
+  if (!message && !error) {
+    return null;
+  }
+  return (
+    <div className="mb-4 grid gap-2">
+      {message ? (
+        <p className="rounded-xl border border-[#CDE6C4] bg-[#F3FAEF] px-3 py-2 text-sm font-medium text-[#4E7C45]">
+          {message}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-medium text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -352,13 +665,71 @@ function TextField({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
-      {label}
+    <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+      <span>{label}</span>
       <input
-        className="rounded-md border border-[#dfe3ea] px-3 py-2 outline-none"
+        className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       />
     </label>
   );
+}
+
+function ConfigPreviewPanel({
+  collectorType,
+  configPreview,
+}: {
+  collectorType: CollectorType;
+  configPreview: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase text-[#B47767]">Config Preview</p>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
+          {collectorShortLabels[collectorType]}
+        </span>
+      </div>
+      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-3 text-xs leading-5 text-[#FFF8F4]">
+        {configPreview}
+      </pre>
+    </div>
+  );
+}
+
+function getSourceConfigSummary(source: Source): string {
+  if (source.type === "github_repo") {
+    return `${formatConfigValue(source.config.owner)}/${formatConfigValue(source.config.repo)}`;
+  }
+  if (source.type === "github_topic") {
+    return `topic:${formatConfigValue(source.config.topic)}`;
+  }
+  if (source.type === "generic_web") {
+    return formatConfigValue(source.config.extract_mode) || "main_content";
+  }
+  const jsonData = source.config.json_data;
+  if (jsonData && typeof jsonData === "object" && !Array.isArray(jsonData)) {
+    return `${formatConfigValue(source.config.entity_type) || "entity"} · ${
+      Object.keys(jsonData).length
+    } fields`;
+  }
+  return formatConfigValue(source.config.entity_type) || "manual";
+}
+
+function getSourceEndpointLabel(source: Source): string {
+  if (source.type === "github_repo") {
+    return `github.com/${formatConfigValue(source.config.owner)}/${formatConfigValue(source.config.repo)}`;
+  }
+  if (source.type === "github_topic") {
+    return `github topic: ${formatConfigValue(source.config.topic)}`;
+  }
+  if (source.type === "manual_json") {
+    return "manual-json payload";
+  }
+  return "No URL";
+}
+
+function formatConfigValue(value: unknown): string {
+  return typeof value === "string" || typeof value === "number" ? String(value) : "";
 }

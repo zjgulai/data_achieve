@@ -3,7 +3,7 @@ import { NotificationsWorkspace } from "@/components/notifications/notifications
 
 export default function NotificationsPage() {
   return (
-    <AppShell title="站内通知" description="报告、预警、任务异常通知">
+    <AppShell title="站内通知" description="交付收件箱、已读状态、关联跳转">
       <NotificationsWorkspace />
     </AppShell>
   );
