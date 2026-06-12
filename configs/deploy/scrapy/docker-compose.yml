@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
-    image: postgres:16-alpine
+    image: postgres:16
     restart: unless-stopped
     volumes:
       - scrapy_postgres_data:/var/lib/postgresql/data
