@@ -1,0 +1,62 @@
+name: data_achieve_scrapy
+
+services:
+  web:
+    build:
+      context: ../../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://scrapy.lute-tlz-dddd.top
+        NEXT_PUBLIC_MOCK_API: "true"
+    container_name: data_achieve_scrapy_web
+    image: data_achieve_scrapy_web:latest
+    restart: unless-stopped
+    environment:
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/tasks').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - scrapy_internal
+
+  edge:
+    container_name: data_achieve_scrapy_edge
+    depends_on:
+      web:
+        condition: service_healthy
+    expose:
+      - "8080"
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./edge-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/tasks >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      scrapy_internal:
+      lighthouse_ai_video_net:
+        aliases:
+          - data_achieve_scrapy_proxy
+
+networks:
+  scrapy_internal:
+    name: data_achieve_scrapy_internal
+    driver: bridge
+  lighthouse_ai_video_net:
+    external: true

@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const port = 3100;
+const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
+const localBaseUrl = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -10,15 +12,19 @@ export default defineConfig({
     timeout: 8_000,
   },
   use: {
-    baseURL: `http://127.0.0.1:${port}`,
+    baseURL: externalBaseUrl ?? localBaseUrl,
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: `NEXT_PUBLIC_MOCK_API=true pnpm exec next dev --port ${port}`,
-    url: `http://127.0.0.1:${port}`,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  ...(externalBaseUrl
+    ? {}
+    : {
+        webServer: {
+          command: `NEXT_PUBLIC_MOCK_API=true pnpm exec next dev --port ${port}`,
+          url: localBaseUrl,
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+      }),
   projects: [
     {
       name: "desktop",
