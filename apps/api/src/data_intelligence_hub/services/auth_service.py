@@ -1,0 +1,103 @@
+from __future__ import annotations
+
+import re
+import uuid
+from dataclasses import dataclass
+
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from data_intelligence_hub.core.security import create_access_token, hash_password, verify_password
+from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
+from data_intelligence_hub.repositories.users import get_user_by_email
+from data_intelligence_hub.repositories.workspaces import (
+    get_default_workspace_for_user,
+    get_workspace_by_slug,
+)
+from data_intelligence_hub.schemas.auth import LoginRequest, RegisterRequest
+from data_intelligence_hub.services.exceptions import (
+    DuplicateEmailError,
+    InvalidCredentialsError,
+    WorkspaceNotFoundError,
+)
+
+
+@dataclass(frozen=True)
+class AuthSession:
+    user: User
+    workspace: Workspace
+    access_token: str
+
+
+async def register_user(session: AsyncSession, payload: RegisterRequest) -> AuthSession:
+    existing_user = await get_user_by_email(session, str(payload.email))
+    if existing_user is not None:
+        raise DuplicateEmailError
+
+    user = User(
+        email=str(payload.email).lower(),
+        password_hash=hash_password(payload.password),
+        name=payload.name.strip(),
+        status="active",
+    )
+    session.add(user)
+    await session.flush()
+
+    workspace = Workspace(
+        name=f"{user.name}'s Workspace",
+        slug=await _create_unique_workspace_slug(session, user.email),
+        owner_id=user.id,
+    )
+    session.add(workspace)
+    await session.flush()
+
+    session.add(WorkspaceMember(workspace_id=workspace.id, user_id=user.id, role="owner"))
+
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise DuplicateEmailError from exc
+
+    await session.refresh(user)
+    await session.refresh(workspace)
+    return AuthSession(user=user, workspace=workspace, access_token=create_access_token(user.id))
+
+
+async def login_user(session: AsyncSession, payload: LoginRequest) -> AuthSession:
+    user = await get_user_by_email(session, str(payload.email))
+    if user is None or user.status != "active":
+        raise InvalidCredentialsError
+    if not verify_password(payload.password, user.password_hash):
+        raise InvalidCredentialsError
+
+    workspace = await get_default_workspace_for_user(session, user.id)
+    if workspace is None:
+        raise WorkspaceNotFoundError
+
+    return AuthSession(user=user, workspace=workspace, access_token=create_access_token(user.id))
+
+
+async def get_session_for_user(session: AsyncSession, user: User) -> AuthSession:
+    workspace = await get_default_workspace_for_user(session, user.id)
+    if workspace is None:
+        raise WorkspaceNotFoundError
+    return AuthSession(user=user, workspace=workspace, access_token=create_access_token(user.id))
+
+
+async def _create_unique_workspace_slug(session: AsyncSession, email: str) -> str:
+    base = _slugify(email.split("@", maxsplit=1)[0]) or "workspace"
+    candidate = base
+    if await get_workspace_by_slug(session, candidate) is None:
+        return candidate
+
+    while True:
+        candidate = f"{base}-{uuid.uuid4().hex[:8]}"
+        if await get_workspace_by_slug(session, candidate) is None:
+            return candidate
+
+
+def _slugify(value: str) -> str:
+    normalized = re.sub(r"[^a-zA-Z0-9]+", "-", value.lower()).strip("-")
+    return normalized[:80]

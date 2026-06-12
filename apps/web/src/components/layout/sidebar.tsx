@@ -1,0 +1,99 @@
+import {
+  Activity,
+  Bell,
+  Boxes,
+  ChartNoAxesCombined,
+  Database,
+  FileText,
+  FolderKanban,
+  Gauge,
+  Github,
+  Globe2,
+  type LucideIcon,
+  Megaphone,
+  Radio,
+  ShieldAlert,
+  ShoppingCart,
+  SquareStack,
+} from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
+
+type NavItem = {
+  href: Route;
+  label: string;
+  icon: LucideIcon;
+};
+
+function route(href: string): Route {
+  return href as Route;
+}
+
+const scopeItems = [
+  { href: route("/domain/osint"), label: "开源雷达", icon: Github },
+  { href: route("/domain/ecommerce"), label: "电商风向", icon: ShoppingCart },
+  { href: route("/domain/social"), label: "社媒脉搏", icon: Radio },
+  { href: route("/domain/competitor"), label: "竞品守望", icon: Globe2 },
+] satisfies NavItem[];
+
+const generalItems = [
+  { href: route("/dashboard"), label: "全局仪表盘", icon: Gauge },
+  { href: route("/projects"), label: "项目", icon: FolderKanban },
+  { href: route("/signals"), label: "信号中心", icon: Activity },
+  { href: route("/intelligence"), label: "情报中心", icon: ChartNoAxesCombined },
+  { href: route("/reports"), label: "报告中心", icon: FileText },
+  { href: route("/alerts"), label: "预警中心", icon: ShieldAlert },
+  { href: route("/notifications"), label: "站内通知", icon: Bell },
+] satisfies NavItem[];
+
+const engineItems = [
+  { href: route("/tasks"), label: "采集任务", icon: SquareStack },
+  { href: route("/sources"), label: "数据源", icon: Boxes },
+  { href: route("/raw-records"), label: "原始数据", icon: Database },
+  { href: route("/entities"), label: "实体库", icon: Megaphone },
+] satisfies NavItem[];
+
+export function Sidebar() {
+  return (
+    <aside className="hidden min-h-screen w-72 border-r border-[#dfe3ea] bg-white px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
+      <Link className="mb-7 flex items-center gap-3 px-2" href="/dashboard">
+        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-[#0f766e] text-white">
+          <ChartNoAxesCombined size={20} aria-hidden="true" />
+        </span>
+        <span>
+          <span className="block text-sm font-semibold">Data Intelligence</span>
+          <span className="block text-xs text-[#6b7280]">Hub</span>
+        </span>
+      </Link>
+
+      <NavGroup label="业务域" items={scopeItems} />
+      <NavGroup label="全局中心" items={generalItems} />
+      <NavGroup label="工程中心" items={engineItems} />
+    </aside>
+  );
+}
+
+function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
+  return (
+    <nav className="mb-6">
+      <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#6b7280]">
+        {label}
+      </p>
+      <div className="grid gap-1">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              className="flex items-center gap-3 rounded-md px-2 py-2 text-sm text-[#374151] hover:bg-[#f1f5f9]"
+              href={item.href}
+              key={item.href}
+            >
+              <Icon size={17} className="text-[#6b7280]" aria-hidden="true" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

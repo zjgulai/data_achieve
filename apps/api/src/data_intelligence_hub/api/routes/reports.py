@@ -1,0 +1,71 @@
+from __future__ import annotations
+
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.schemas.report import ReportGenerateRequest, ReportResponse
+from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
+from data_intelligence_hub.services.report_service import (
+    generate_report,
+    get_report_or_raise,
+    get_reports,
+    send_report,
+)
+
+router = APIRouter(tags=["reports"])
+
+
+@router.get("", response_model=list[ReportResponse])
+async def list_report_items(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> list[ReportResponse]:
+    reports = await get_reports(session, context.workspace, project_id=project_id)
+    return [ReportResponse.from_model(report) for report in reports]
+
+
+@router.post(
+    "/generate",
+    response_model=ReportResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def generate_report_item(
+    payload: ReportGenerateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportResponse:
+    try:
+        report = await generate_report(session, context.workspace, payload)
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportResponse.from_model(report)
+
+
+@router.get("/{report_id}", response_model=ReportResponse)
+async def get_report_item(
+    report_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportResponse:
+    try:
+        report = await get_report_or_raise(session, context.workspace, report_id)
+    except ReportNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportResponse.from_model(report)
+
+
+@router.post("/{report_id}/send", response_model=ReportResponse)
+async def send_report_item(
+    report_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportResponse:
+    try:
+        report = await send_report(session, context.workspace, context.user, report_id)
+    except ReportNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportResponse.from_model(report)

@@ -1,0 +1,10 @@
+{
+  "name": "data-intelligence-hub",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev:web": "pnpm --dir apps/web dev",
+    "lint:web": "pnpm --dir apps/web lint",
+    "test:web": "pnpm --dir apps/web test"
+  }
+}

@@ -1,0 +1,50 @@
+import { apiFetch, mockApiEnabled } from "@/lib/api/client";
+import { getMockProjects } from "@/lib/api/mock";
+import type { Project, ProjectCreateInput } from "@/types/project";
+
+type ProjectResponse = {
+  id: string;
+  name: string;
+  description: string | null;
+  domain: Project["domain"];
+  status: Project["status"];
+};
+
+export async function listProjects(): Promise<Project[]> {
+  if (mockApiEnabled) {
+    return getMockProjects();
+  }
+  const response = await apiFetch<ProjectResponse[]>("/api/projects");
+  return response.map(mapProject);
+}
+
+export async function createProject(payload: ProjectCreateInput): Promise<Project> {
+  if (mockApiEnabled) {
+    return {
+      id: `project_${Date.now()}`,
+      name: payload.name,
+      description: payload.description ?? null,
+      domain: payload.domain,
+      status: "active",
+      intelligenceCount: 0,
+      sourceCount: 0,
+    };
+  }
+  const response = await apiFetch<ProjectResponse>("/api/projects", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return mapProject(response);
+}
+
+function mapProject(response: ProjectResponse): Project {
+  return {
+    id: response.id,
+    name: response.name,
+    description: response.description,
+    domain: response.domain,
+    status: response.status,
+    intelligenceCount: 0,
+    sourceCount: 0,
+  };
+}
