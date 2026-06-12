@@ -5,7 +5,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DEFAULT_TIMEOUT=120 \
     PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple \
     PIP_RETRIES=10 \
-    UV_DEFAULT_INDEX=https://mirrors.cloud.tencent.com/pypi/simple \
     UV_LINK_MODE=copy \
     PATH="/app/.venv/bin:${PATH}"
 
