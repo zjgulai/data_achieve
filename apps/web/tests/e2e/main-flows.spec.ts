@@ -7,9 +7,9 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("情报总量")).toBeVisible();
 
     await page.goto("/intelligence");
-    await expect(page.getByRole("heading", { name: "情报中心" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "情报中心", exact: true })).toBeVisible();
     await expect(page.getByText("Intelligence 列表")).toBeVisible();
-    await expect(page.getByRole("button", { name: /example\/repo is showing/ })).toBeVisible();
+    await expect(page.getByText("openai/codex is showing accelerated traction").first()).toBeVisible();
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
   });
 
@@ -17,13 +17,15 @@ test.describe("MVP workspace routes", () => {
     await page.goto("/reports");
     await expect(page.getByRole("heading", { name: "报告中心" })).toBeVisible();
     await expect(page.getByRole("button", { name: /AI Scrapy Tools 日报/ })).toBeVisible();
-    await expect(page.getByText("证据数").first()).toBeVisible();
+    await expect(page.getByText("证据引用").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Generate", exact: true }).click();
-    await expect(page.getByText("## 核心发现")).toBeVisible();
+    await page.getByRole("button", { name: "生成日报", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "核心发现", exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "Send", exact: true }).click();
-    await expect(page.getByText("sent").first()).toBeVisible();
+    const reportDetail = page.locator("section").filter({ hasText: "派发状态" });
+    await reportDetail.getByRole("button", { name: "发送报告", exact: true }).click();
+    await expect(reportDetail.getByRole("button", { name: "已发送", exact: true })).toBeDisabled();
+    await expect(reportDetail.getByText("报告已进入通知链路")).toBeVisible();
   });
 
   test("creates alert rule and displays alert events", async ({ page }) => {
@@ -42,11 +44,17 @@ test.describe("MVP workspace routes", () => {
 
   test("marks unread notifications as read", async ({ page }) => {
     await page.goto("/notifications");
-    await expect(page.getByRole("heading", { name: "站内通知" })).toBeVisible();
-    await expect(page.getByText("预警命中：High severity signal")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "站内通知收件箱", exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "Read", exact: true }).click();
-    await expect(page.getByText("暂无通知")).toBeVisible();
+    const notificationCard = page
+      .locator("article")
+      .filter({ hasText: "Data quality anomaly watch" })
+      .first();
+    await expect(notificationCard).toBeVisible();
+
+    await notificationCard.getByRole("button", { name: "Read", exact: true }).click();
+    await expect(page.getByText(/Data quality anomaly watch: marked read/)).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: "Data quality anomaly watch" })).toHaveCount(0);
   });
 });
 
