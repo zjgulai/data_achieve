@@ -37,7 +37,7 @@ services:
     environment:
       APP_ENV: production
       AUTH_COOKIE_SECURE: ${SCRAPY_AUTH_COOKIE_SECURE:-true}
-      CORS_ORIGINS: https://scrapy.lute-tlz-dddd.top
+      CORS_ORIGINS: '["https://scrapy.lute-tlz-dddd.top"]'
       DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:-data_intel}:${SCRAPY_POSTGRES_PASSWORD:-change-me-local-only}@db:5432/${SCRAPY_POSTGRES_DB:-data_intel}
       JWT_SECRET: ${SCRAPY_JWT_SECRET:-change-me-change-me-local-only}
       LLM_PROVIDER: mock
