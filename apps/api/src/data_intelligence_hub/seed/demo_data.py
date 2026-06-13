@@ -175,6 +175,7 @@ async def seed_demo_data() -> None:
     now = _now()
 
     async with async_session_factory() as session:
+        await _delete_legacy_demo_records(session)
         await _merge_identity(session, context, email, password, name, now)
         await _merge_projects(session, context, now)
         await _merge_collection_layer(session, context, now)
@@ -184,6 +185,48 @@ async def seed_demo_data() -> None:
         await session.commit()
 
     print(f"Seeded demo workspace for {email}")
+
+
+async def _delete_legacy_demo_records(session: AsyncSession) -> None:
+    legacy_records: tuple[tuple[type[Any], tuple[str, ...]], ...] = (
+        (Notification, ("notification-task-failed",)),
+        (AlertEvent, ("alert-event-traffic",)),
+        (Evidence, ("evidence-tiktok-views", "evidence-github-stars")),
+        (
+            IntelligenceItem,
+            ("intel-tiktok-demand-window", "intel-github-open-source-momentum"),
+        ),
+        (Signal, ("signal-tiktok-views-spike", "signal-github-stars-surge")),
+        (
+            EntitySnapshot,
+            (
+                "snapshot-tiktok-prev",
+                "snapshot-tiktok-current",
+                "snapshot-github-prev",
+                "snapshot-github-current",
+            ),
+        ),
+        (
+            RawRecord,
+            (
+                "raw-tiktok-prev",
+                "raw-tiktok-current",
+                "raw-github-prev",
+                "raw-github-current",
+            ),
+        ),
+        (Entity, ("entity-tiktok-creator", "entity-github-repo")),
+        (TaskRun, ("run-tiktok-success", "run-github-failed")),
+        (CollectionTask, ("task-tiktok", "task-github")),
+        (Source, ("source-tiktok", "source-github")),
+        (Project, ("project-content", "project-technology")),
+    )
+    for model, keys in legacy_records:
+        for key in keys:
+            item = await session.get(model, _id(key))
+            if item is not None:
+                await session.delete(item)
+    await session.flush()
 
 
 async def _merge_identity(
