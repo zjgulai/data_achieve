@@ -11,6 +11,7 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { generateReport, listReports, sendReport } from "@/lib/api/reports";
@@ -442,6 +443,33 @@ function Tag({ children }: { children: ReactNode }) {
 }
 
 function renderInline(line: string) {
+  const directIntelligenceId = line.match(/^情报 ID：([a-zA-Z0-9_-]+)$/);
+  if (directIntelligenceId) {
+    const intelligenceId = directIntelligenceId[1];
+    return (
+      <span>
+        情报 ID：
+        <Link className="font-semibold text-[#C25B6E]" href={`/intelligence/${intelligenceId}`}>
+          {intelligenceId}
+        </Link>
+      </span>
+    );
+  }
+  const inlineIntelligenceId = line.match(/intelligence_id=([a-zA-Z0-9_-]+)/);
+  if (inlineIntelligenceId) {
+    const intelligenceId = inlineIntelligenceId[1];
+    const [before, after = ""] = line.split(`intelligence_id=${intelligenceId}`);
+    return (
+      <span>
+        {before}
+        intelligence_id=
+        <Link className="font-semibold text-[#C25B6E]" href={`/intelligence/${intelligenceId}`}>
+          {intelligenceId}
+        </Link>
+        {after}
+      </span>
+    );
+  }
   const parts = line.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {

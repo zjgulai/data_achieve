@@ -801,7 +801,7 @@ export function getMockIntelligence(): IntelligenceItem[] {
 export function getMockEvidences(intelligenceId: string): Evidence[] {
   if (intelligenceId === "intel_page_changed") {
     return [
-      {
+      withEvidenceTrace({
         id: "evidence_page_signal",
         intelligenceId,
         signalId: "signal_page_changed",
@@ -814,8 +814,8 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
         highlightedText: "previous_snapshot=snapshot_old; current_snapshot=snapshot_new",
         screenshotUrl: "https://dummyimage.com/900x520/e5e7eb/111827&text=Pricing+Snapshot",
         createdAt: "2026-06-11T07:20:00.000Z",
-      },
-      {
+      }),
+      withEvidenceTrace({
         id: "evidence_page_raw",
         intelligenceId,
         signalId: "signal_page_changed",
@@ -828,11 +828,11 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
         highlightedText: '{"headline":"New annual plan","pricing":"Team plan changed"}',
         screenshotUrl: "https://dummyimage.com/900x520/e5e7eb/111827&text=Pricing+Snapshot",
         createdAt: "2026-06-11T07:20:01.000Z",
-      },
+      }),
     ];
   }
   return [
-    {
+    withEvidenceTrace({
       id: "evidence_signal_star",
       intelligenceId,
       signalId: "signal_star_growth",
@@ -846,8 +846,8 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
         "confidence=90; delta_ratio=1.6; previous_snapshot=snapshot_codex_repo_prev; current_snapshot=snapshot_codex_repo",
       screenshotUrl: null,
       createdAt: "2026-06-11T08:05:00.000Z",
-    },
-    {
+    }),
+    withEvidenceTrace({
       id: "evidence_snapshot_star",
       intelligenceId,
       signalId: "signal_star_growth",
@@ -860,8 +860,8 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
       highlightedText: '{"stars":260}',
       screenshotUrl: null,
       createdAt: "2026-06-11T08:05:01.000Z",
-    },
-    {
+    }),
+    withEvidenceTrace({
       id: "evidence_raw_star",
       intelligenceId,
       signalId: "signal_star_growth",
@@ -874,8 +874,83 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
       highlightedText: '{"full_name":"openai/codex","stars":260}',
       screenshotUrl: null,
       createdAt: "2026-06-11T08:05:02.000Z",
-    },
+    }),
   ];
+}
+
+function withEvidenceTrace(
+  evidence: Omit<Evidence, "entity" | "rawRecord" | "signal" | "source" | "taskRun">,
+): Evidence {
+  const signal = getMockSignals().find((item) => item.id === evidence.signalId) ?? null;
+  const entity = getMockEntities().find((item) => item.id === evidence.entityId) ?? null;
+  const rawRecord = getMockRawRecords().find((item) => item.id === evidence.rawRecordId) ?? null;
+  const source = getMockSources().find((item) => item.id === rawRecord?.sourceId) ?? null;
+  const task = getMockTasks().find((item) => item.sourceId === rawRecord?.sourceId) ?? null;
+  return {
+    ...evidence,
+    signal: signal
+      ? {
+          id: signal.id,
+          signalType: signal.signalType,
+          severity: signal.severity,
+          previousSnapshotId: signal.previousSnapshotId,
+          currentSnapshotId: signal.currentSnapshotId,
+          currentValue: signal.currentValue,
+          previousValue: signal.previousValue,
+          delta: signal.delta,
+          deltaRatio: signal.deltaRatio,
+          confidence: signal.confidence,
+          metadata: signal.metadata,
+          detectedAt: signal.detectedAt,
+        }
+      : null,
+    entity: entity
+      ? {
+          id: entity.id,
+          entityType: entity.entityType,
+          externalId: entity.externalId,
+          canonicalUrl: entity.canonicalUrl,
+          name: entity.name,
+          domain: entity.domain,
+          latestSnapshotId: entity.latestSnapshotId,
+        }
+      : null,
+    rawRecord: rawRecord
+      ? {
+          id: rawRecord.id,
+          sourceId: rawRecord.sourceId,
+          taskRunId: rawRecord.taskRunId,
+          recordType: rawRecord.recordType,
+          sourceUrl: rawRecord.sourceUrl,
+          contentHash: rawRecord.contentHash,
+          screenshotUrl: rawRecord.screenshotUrl,
+          contentPreview: rawRecord.content,
+          collectedAt: rawRecord.collectedAt,
+          createdAt: rawRecord.createdAt,
+        }
+      : null,
+    taskRun: rawRecord
+      ? {
+          id: rawRecord.taskRunId,
+          taskId: task?.id ?? "task_unknown",
+          status: "success",
+          startedAt: rawRecord.collectedAt,
+          finishedAt: rawRecord.createdAt,
+          recordsCount: 1,
+          entitiesCount: 1,
+          errorMessage: null,
+        }
+      : null,
+    source: source
+      ? {
+          id: source.id,
+          name: source.name,
+          type: source.type,
+          url: source.url,
+          enabled: source.enabled,
+        }
+      : null,
+  };
 }
 
 export function getMockReports(): Report[] {

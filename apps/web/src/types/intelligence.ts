@@ -24,6 +24,63 @@ export type IntelligenceItem = {
   updatedAt: string;
 };
 
+export type EvidenceSignalContext = {
+  id: string;
+  signalType: string;
+  severity: string;
+  previousSnapshotId: string;
+  currentSnapshotId: string;
+  currentValue: number | null;
+  previousValue: number | null;
+  delta: number | null;
+  deltaRatio: number | null;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  detectedAt: string;
+};
+
+export type EvidenceEntityContext = {
+  id: string;
+  entityType: string;
+  externalId: string;
+  canonicalUrl: string | null;
+  name: string;
+  domain: string;
+  latestSnapshotId: string | null;
+};
+
+export type EvidenceRawRecordContext = {
+  id: string;
+  sourceId: string;
+  taskRunId: string;
+  recordType: string;
+  sourceUrl: string | null;
+  contentHash: string;
+  screenshotUrl: string | null;
+  contentPreview: Record<string, unknown> | unknown[] | string;
+  collectedAt: string;
+  createdAt: string;
+};
+
+export type EvidenceTaskRunContext = {
+  id: string;
+  taskId: string;
+  status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  recordsCount: number;
+  entitiesCount: number;
+  errorMessage: string | null;
+};
+
+export type EvidenceSourceContext = {
+  id: string;
+  name: string;
+  type: string;
+  url: string | null;
+  enabled: boolean;
+};
+
 export type Evidence = {
   id: string;
   intelligenceId: string;
@@ -36,6 +93,11 @@ export type Evidence = {
   excerpt: string | null;
   highlightedText: string | null;
   screenshotUrl: string | null;
+  signal: EvidenceSignalContext | null;
+  entity: EvidenceEntityContext | null;
+  rawRecord: EvidenceRawRecordContext | null;
+  taskRun: EvidenceTaskRunContext | null;
+  source: EvidenceSourceContext | null;
   createdAt: string;
 };
 

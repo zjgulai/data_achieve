@@ -6,17 +6,26 @@ from typing import NamedTuple
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from data_intelligence_hub.models.entity import Entity
 from data_intelligence_hub.models.intelligence import (
     Evidence,
     IntelligenceFeedback,
     IntelligenceItem,
 )
 from data_intelligence_hub.models.raw_record import RawRecord
+from data_intelligence_hub.models.signal import Signal
+from data_intelligence_hub.models.source import Source
+from data_intelligence_hub.models.task import TaskRun
 
 
-class EvidenceWithAsset(NamedTuple):
+class EvidenceWithTrace(NamedTuple):
     evidence: Evidence
     screenshot_url: str | None
+    signal: Signal | None
+    entity: Entity | None
+    raw_record: RawRecord | None
+    task_run: TaskRun | None
+    source: Source | None
 
 
 async def list_intelligence_items(
@@ -95,19 +104,31 @@ async def list_evidences(
     return list(result.scalars().all())
 
 
-async def list_evidences_with_assets(
+async def list_evidences_with_trace(
     session: AsyncSession,
     intelligence_id: uuid.UUID,
-) -> list[EvidenceWithAsset]:
+) -> list[EvidenceWithTrace]:
     result = await session.execute(
-        select(Evidence, RawRecord.screenshot_url)
+        select(Evidence, RawRecord.screenshot_url, Signal, Entity, RawRecord, TaskRun, Source)
         .outerjoin(RawRecord, Evidence.raw_record_id == RawRecord.id)
+        .outerjoin(Signal, Evidence.signal_id == Signal.id)
+        .outerjoin(Entity, Evidence.entity_id == Entity.id)
+        .outerjoin(TaskRun, RawRecord.task_run_id == TaskRun.id)
+        .outerjoin(Source, RawRecord.source_id == Source.id)
         .where(Evidence.intelligence_id == intelligence_id)
         .order_by(Evidence.created_at.asc())
     )
     return [
-        EvidenceWithAsset(evidence=evidence, screenshot_url=screenshot_url)
-        for evidence, screenshot_url in result.all()
+        EvidenceWithTrace(
+            evidence=evidence,
+            screenshot_url=screenshot_url,
+            signal=signal,
+            entity=entity,
+            raw_record=raw_record,
+            task_run=task_run,
+            source=source,
+        )
+        for evidence, screenshot_url, signal, entity, raw_record, task_run, source in result.all()
     ]
 
 

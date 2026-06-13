@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   getIntelligence,
@@ -383,19 +383,76 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
       {evidence ? (
         <div className="grid gap-3">
           <DetailRow label="Evidence ID" value={evidence.id} />
-          {evidence.signalId ? <DetailRow label="Signal ID" value={evidence.signalId} /> : null}
-          {evidence.rawRecordId ? (
+          {evidence.entity ? (
+            <TraceSection title="Entity">
+              <DetailRow label="Name" value={evidence.entity.name} />
+              <DetailRow label="Type" value={evidence.entity.entityType} />
+              <DetailRow label="External ID" value={evidence.entity.externalId} />
+              <DetailRow label="Domain" value={evidence.entity.domain} />
+            </TraceSection>
+          ) : null}
+          {evidence.signal ? (
+            <TraceSection title="Signal">
+              <DetailRow label="Type" value={evidence.signal.signalType} />
+              <DetailRow label="Severity" value={evidence.signal.severity} />
+              <DetailRow label="Previous" value={formatValue(evidence.signal.previousValue)} />
+              <DetailRow label="Current" value={formatValue(evidence.signal.currentValue)} />
+              <DetailRow label="Delta" value={formatValue(evidence.signal.delta)} />
+              <DetailRow label="Confidence" value={formatValue(evidence.signal.confidence)} />
+            </TraceSection>
+          ) : evidence.signalId ? (
+            <DetailRow label="Signal ID" value={evidence.signalId} />
+          ) : null}
+          {evidence.source ? (
+            <TraceSection title="Source">
+              <DetailRow label="Name" value={evidence.source.name} />
+              <DetailRow label="Collector" value={evidence.source.type} />
+              <DetailRow label="Enabled" value={evidence.source.enabled ? "true" : "false"} />
+            </TraceSection>
+          ) : null}
+          {evidence.taskRun ? (
+            <TraceSection title="Task Run">
+              <DetailRow label="Run ID" value={evidence.taskRun.id} />
+              <DetailRow label="Task ID" value={evidence.taskRun.taskId} />
+              <DetailRow label="Status" value={evidence.taskRun.status} />
+              <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
+              <DetailRow label="Entities" value={String(evidence.taskRun.entitiesCount)} />
+              {evidence.taskRun.startedAt ? (
+                <DetailRow label="Started" value={formatDateTime(evidence.taskRun.startedAt)} />
+              ) : null}
+              <Link
+                className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
+                href={`/tasks?run=${evidence.taskRun.id}`}
+              >
+                打开采集任务
+              </Link>
+            </TraceSection>
+          ) : null}
+          {evidence.rawRecord ? (
+            <TraceSection title="Raw Record">
+              <DetailRow label="RawRecord ID" value={evidence.rawRecord.id} />
+              <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
+              <DetailRow label="Content Hash" value={evidence.rawRecord.contentHash} />
+              <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
+              <Link
+                className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
+                href={`/raw-records?record=${evidence.rawRecord.id}`}
+              >
+                查看原始数据
+              </Link>
+            </TraceSection>
+          ) : evidence.rawRecordId ? (
             <DetailRow label="RawRecord ID" value={evidence.rawRecordId} />
           ) : null}
-          {evidence.url ? (
+          {evidenceExternalUrl(evidence) ? (
             <a
               className="inline-flex items-center gap-2 break-all rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm text-[#C25B6E]"
-              href={evidence.url}
+              href={evidenceExternalUrl(evidence) ?? undefined}
               rel="noreferrer"
               target="_blank"
             >
               <ExternalLink size={15} aria-hidden="true" />
-              {evidence.url}
+              {evidenceExternalUrl(evidence)}
             </a>
           ) : null}
           {evidence.screenshotUrl ? (
@@ -412,12 +469,26 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
           <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
             {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
           </pre>
+          {evidence.rawRecord ? (
+            <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
+              {formatJsonPreview(evidence.rawRecord.contentPreview)}
+            </pre>
+          ) : null}
         </div>
       ) : (
         <p className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-5 text-sm text-[#86868B]">
           暂无选中证据
         </p>
       )}
+    </div>
+  );
+}
+
+function TraceSection({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <div className="grid gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+      <p className="text-xs font-semibold uppercase text-[#86868B]">{title}</p>
+      <div className="grid gap-2">{children}</div>
     </div>
   );
 }
@@ -455,6 +526,24 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
     </div>
   );
+}
+
+function evidenceExternalUrl(evidence: Evidence) {
+  return (
+    evidence.url ??
+    evidence.rawRecord?.sourceUrl ??
+    evidence.entity?.canonicalUrl ??
+    evidence.source?.url ??
+    null
+  );
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN");
+}
+
+function formatJsonPreview(value: Record<string, unknown> | unknown[] | string) {
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 function FeedbackButton({

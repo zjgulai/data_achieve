@@ -313,6 +313,18 @@ async def test_star_growth_signal_is_created_from_snapshot_delta(client: AsyncCl
     assert {"signal", "snapshot", "raw_record"} <= evidence_types
     assert any(evidence["signal_id"] == signal["id"] for evidence in evidences)
     assert all("screenshot_url" in evidence for evidence in evidences)
+    signal_evidence = next(evidence for evidence in evidences if evidence["signal"] is not None)
+    assert signal_evidence["signal"]["id"] == signal["id"]
+    assert signal_evidence["signal"]["current_value"] == 260
+    assert signal_evidence["entity"]["name"] == "example/repo"
+    raw_evidence = next(
+        evidence for evidence in evidences if evidence["evidence_type"] == "raw_record"
+    )
+    assert raw_evidence["raw_record"]["task_run_id"] == second_run["id"]
+    assert raw_evidence["raw_record"]["content_preview"]["payload"]["stars"] == 260
+    assert raw_evidence["task_run"]["id"] == second_run["id"]
+    assert raw_evidence["task_run"]["status"] == "success"
+    assert raw_evidence["source"]["name"] == "Manual Repo Metrics"
 
     status_response = await client.patch(
         f"/api/intelligence/{intelligence['id']}/status",

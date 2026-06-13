@@ -2,6 +2,7 @@
 
 import {
   CheckCircle2,
+  ExternalLink,
   FileSearch,
   ListFilter,
   MessageSquare,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   listEvidences,
@@ -513,18 +514,66 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
       {evidence ? (
         <div className="grid gap-3">
           <DetailRow label="Evidence ID" value={evidence.id} />
-          {evidence.signalId ? <DetailRow label="Signal ID" value={evidence.signalId} /> : null}
-          {evidence.rawRecordId ? (
+          {evidence.signal ? (
+            <TraceSection title="Signal">
+              <DetailRow label="Type" value={evidence.signal.signalType} />
+              <DetailRow label="Severity" value={evidence.signal.severity} />
+              <DetailRow label="Delta" value={formatTraceValue(evidence.signal.delta)} />
+              <DetailRow label="Confidence" value={formatTraceValue(evidence.signal.confidence)} />
+            </TraceSection>
+          ) : evidence.signalId ? (
+            <DetailRow label="Signal ID" value={evidence.signalId} />
+          ) : null}
+          {evidence.entity ? (
+            <TraceSection title="Entity">
+              <DetailRow label="Name" value={evidence.entity.name} />
+              <DetailRow label="Type" value={evidence.entity.entityType} />
+              <DetailRow label="External ID" value={evidence.entity.externalId} />
+            </TraceSection>
+          ) : null}
+          {evidence.source ? (
+            <TraceSection title="Source">
+              <DetailRow label="Name" value={evidence.source.name} />
+              <DetailRow label="Collector" value={evidence.source.type} />
+            </TraceSection>
+          ) : null}
+          {evidence.taskRun ? (
+            <TraceSection title="Task Run">
+              <DetailRow label="Run ID" value={evidence.taskRun.id} />
+              <DetailRow label="Status" value={evidence.taskRun.status} />
+              <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
+              <Link
+                className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
+                href={`/tasks?run=${evidence.taskRun.id}`}
+              >
+                打开采集任务
+              </Link>
+            </TraceSection>
+          ) : null}
+          {evidence.rawRecord ? (
+            <TraceSection title="Raw Record">
+              <DetailRow label="RawRecord ID" value={evidence.rawRecord.id} />
+              <DetailRow label="Content Hash" value={evidence.rawRecord.contentHash} />
+              <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
+              <Link
+                className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
+                href={`/raw-records?record=${evidence.rawRecord.id}`}
+              >
+                查看原始数据
+              </Link>
+            </TraceSection>
+          ) : evidence.rawRecordId ? (
             <DetailRow label="RawRecord ID" value={evidence.rawRecordId} />
           ) : null}
-          {evidence.url ? (
+          {evidenceExternalUrl(evidence) ? (
             <a
-              className="break-all rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-sm text-[#C25B6E]"
-              href={evidence.url}
+              className="inline-flex items-center gap-2 break-all rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-sm text-[#C25B6E]"
+              href={evidenceExternalUrl(evidence) ?? undefined}
               rel="noreferrer"
               target="_blank"
             >
-              {evidence.url}
+              <ExternalLink size={15} aria-hidden="true" />
+              {evidenceExternalUrl(evidence)}
             </a>
           ) : null}
           {evidence.screenshotUrl ? (
@@ -541,12 +590,26 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
           <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
             {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
           </pre>
+          {evidence.rawRecord ? (
+            <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
+              {formatJsonPreview(evidence.rawRecord.contentPreview)}
+            </pre>
+          ) : null}
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-5 text-sm text-[#86868B]">
           暂无选中证据
         </p>
       )}
+    </div>
+  );
+}
+
+function TraceSection({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <div className="grid gap-2 rounded-xl border border-[#EDE6DF] bg-white p-3">
+      <p className="text-xs font-semibold uppercase text-[#86868B]">{title}</p>
+      <div className="grid gap-2">{children}</div>
     </div>
   );
 }
@@ -558,6 +621,31 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
     </div>
   );
+}
+
+function evidenceExternalUrl(evidence: Evidence) {
+  return (
+    evidence.url ??
+    evidence.rawRecord?.sourceUrl ??
+    evidence.entity?.canonicalUrl ??
+    evidence.source?.url ??
+    null
+  );
+}
+
+function formatTraceValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return "n/a";
+  }
+  return typeof value === "number" ? value.toFixed(2) : String(value);
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN");
+}
+
+function formatJsonPreview(value: Record<string, unknown> | unknown[] | string) {
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 function FeedbackButton({

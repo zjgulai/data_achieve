@@ -14,13 +14,13 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.entities import get_entity, get_entity_snapshot
 from data_intelligence_hub.repositories.intelligence import (
-    EvidenceWithAsset,
+    EvidenceWithTrace,
     count_evidences,
     count_evidences_for_items,
     create_feedback,
     get_intelligence_item,
     get_intelligence_item_for_signal,
-    list_evidences_with_assets,
+    list_evidences_with_trace,
     list_intelligence_items,
 )
 from data_intelligence_hub.repositories.projects import get_project
@@ -85,9 +85,9 @@ async def get_evidences_for_intelligence(
     session: AsyncSession,
     workspace: Workspace,
     intelligence_id: uuid.UUID,
-) -> list[EvidenceWithAsset]:
+) -> list[EvidenceWithTrace]:
     await get_intelligence_or_raise(session, workspace, intelligence_id)
-    return await list_evidences_with_assets(session, intelligence_id)
+    return await list_evidences_with_trace(session, intelligence_id)
 
 
 async def update_intelligence_status(

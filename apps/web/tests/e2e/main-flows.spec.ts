@@ -34,6 +34,12 @@ test.describe("MVP workspace routes", () => {
       await expect(page.getByText("openai/codex is showing accelerated traction").first()).toBeVisible();
     }
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
+    await expect(page.getByText("Task Run").first()).toBeVisible();
+    await expect(page.getByText("Raw Record").first()).toBeVisible();
+    await page.getByRole("link", { name: "打开详情页" }).click();
+    await expect(page).toHaveURL(/\/intelligence\/.+/);
+    await expect(page.getByText("Content Hash").first()).toBeVisible();
+    await expect(page.getByText("查看原始数据").first()).toBeVisible();
   });
 
   test("generates and sends a report", async ({ page }) => {
@@ -45,6 +51,7 @@ test.describe("MVP workspace routes", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText("证据引用").first()).toBeVisible();
+    await expect(page.locator('a[href^="/intelligence/"]').first()).toBeVisible();
 
     await page.getByRole("button", { name: "生成日报", exact: true }).click();
     await expect(page.getByRole("heading", { name: "核心发现", exact: true })).toBeVisible();

@@ -41,7 +41,69 @@ type EvidenceResponse = {
   excerpt: string | null;
   highlighted_text: string | null;
   screenshot_url: string | null;
+  signal: EvidenceSignalResponse | null;
+  entity: EvidenceEntityResponse | null;
+  raw_record: EvidenceRawRecordResponse | null;
+  task_run: EvidenceTaskRunResponse | null;
+  source: EvidenceSourceResponse | null;
   created_at: string;
+};
+
+type EvidenceSignalResponse = {
+  id: string;
+  signal_type: string;
+  severity: string;
+  previous_snapshot_id: string;
+  current_snapshot_id: string;
+  current_value: number | null;
+  previous_value: number | null;
+  delta: number | null;
+  delta_ratio: number | null;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  detected_at: string;
+};
+
+type EvidenceEntityResponse = {
+  id: string;
+  entity_type: string;
+  external_id: string;
+  canonical_url: string | null;
+  name: string;
+  domain: string;
+  latest_snapshot_id: string | null;
+};
+
+type EvidenceRawRecordResponse = {
+  id: string;
+  source_id: string;
+  task_run_id: string;
+  record_type: string;
+  source_url: string | null;
+  content_hash: string;
+  screenshot_url: string | null;
+  content_preview: Record<string, unknown> | unknown[] | string;
+  collected_at: string;
+  created_at: string;
+};
+
+type EvidenceTaskRunResponse = {
+  id: string;
+  task_id: string;
+  status: string;
+  started_at: string | null;
+  finished_at: string | null;
+  records_count: number;
+  entities_count: number;
+  error_message: string | null;
+};
+
+type EvidenceSourceResponse = {
+  id: string;
+  name: string;
+  type: string;
+  url: string | null;
+  enabled: boolean;
 };
 
 type FeedbackResponse = {
@@ -193,6 +255,68 @@ function mapEvidence(response: EvidenceResponse): Evidence {
     excerpt: response.excerpt,
     highlightedText: response.highlighted_text,
     screenshotUrl: response.screenshot_url,
+    signal: response.signal
+      ? {
+          id: response.signal.id,
+          signalType: response.signal.signal_type,
+          severity: response.signal.severity,
+          previousSnapshotId: response.signal.previous_snapshot_id,
+          currentSnapshotId: response.signal.current_snapshot_id,
+          currentValue: response.signal.current_value,
+          previousValue: response.signal.previous_value,
+          delta: response.signal.delta,
+          deltaRatio: response.signal.delta_ratio,
+          confidence: response.signal.confidence,
+          metadata: response.signal.metadata,
+          detectedAt: response.signal.detected_at,
+        }
+      : null,
+    entity: response.entity
+      ? {
+          id: response.entity.id,
+          entityType: response.entity.entity_type,
+          externalId: response.entity.external_id,
+          canonicalUrl: response.entity.canonical_url,
+          name: response.entity.name,
+          domain: response.entity.domain,
+          latestSnapshotId: response.entity.latest_snapshot_id,
+        }
+      : null,
+    rawRecord: response.raw_record
+      ? {
+          id: response.raw_record.id,
+          sourceId: response.raw_record.source_id,
+          taskRunId: response.raw_record.task_run_id,
+          recordType: response.raw_record.record_type,
+          sourceUrl: response.raw_record.source_url,
+          contentHash: response.raw_record.content_hash,
+          screenshotUrl: response.raw_record.screenshot_url,
+          contentPreview: response.raw_record.content_preview,
+          collectedAt: response.raw_record.collected_at,
+          createdAt: response.raw_record.created_at,
+        }
+      : null,
+    taskRun: response.task_run
+      ? {
+          id: response.task_run.id,
+          taskId: response.task_run.task_id,
+          status: response.task_run.status,
+          startedAt: response.task_run.started_at,
+          finishedAt: response.task_run.finished_at,
+          recordsCount: response.task_run.records_count,
+          entitiesCount: response.task_run.entities_count,
+          errorMessage: response.task_run.error_message,
+        }
+      : null,
+    source: response.source
+      ? {
+          id: response.source.id,
+          name: response.source.name,
+          type: response.source.type,
+          url: response.source.url,
+          enabled: response.source.enabled,
+        }
+      : null,
     createdAt: response.created_at,
   };
 }

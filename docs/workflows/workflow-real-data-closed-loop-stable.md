@@ -38,7 +38,8 @@ source: human+ai
 2. 线上前端已切换为 `NEXT_PUBLIC_MOCK_API=false`，主要业务页读取真实 FastAPI。
 3. 后端 FastAPI、PostgreSQL、Web、Edge 已纳入独立 Docker Compose 编排。
 4. Alembic 迁移和演示种子数据已在线上执行通过。
-5. 线上 API smoke 和真实 API E2E 已通过，调度闭环进入 P0 修复阶段。
+5. 线上 API smoke 和真实 API E2E 已通过，调度闭环已补轻量调度骨架。
+6. 证据闭环已补审计上下文：Evidence API 返回 Signal、Entity、RawRecord、TaskRun、Source 追溯信息，前端审计抽屉和报告情报链接已接入。
 
 ## 闭环路径
 
@@ -168,8 +169,8 @@ uv run python -m data_intelligence_hub.seed.demo_data
 优先级：
 
 1. P0：调度闭环。实现采集任务触发、状态流转、失败记录和重试边界。当前已补进程内轻量调度骨架，受 `SCHEDULER_ENABLED` 控制；生产默认关闭，待真实数据源确认后开启。
-2. P0：证据闭环。情报卡片点击结论后定位证据、原始记录和实体快照差异。
-3. P1：报告交互。报告章节展开、证据引用、导出入口真实可用。
+2. P0：证据闭环。已实现情报详情/列表审计抽屉中的 Signal、Entity、RawRecord、TaskRun、Source 追溯；报告正文中的情报 ID 可跳转情报详情。精确 claim span 仍等待 LLM 输出 schema。
+3. P1：报告交互。报告章节展开、证据引用详情、导出入口真实可用。
 4. P1：告警处置。告警事件支持确认、静默、关联任务。
 5. P1：通知偏好。通知渠道和已读状态真实持久化。
 6. P2：邮件发送。接入 SMTP 或第三方邮件服务，并保留本地假发送器。

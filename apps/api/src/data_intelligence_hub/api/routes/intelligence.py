@@ -97,7 +97,15 @@ async def list_intelligence_evidences(
     except IntelligenceNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return [
-        EvidenceResponse.from_model(evidence.evidence, screenshot_url=evidence.screenshot_url)
+        EvidenceResponse.from_model(
+            evidence.evidence,
+            screenshot_url=evidence.screenshot_url,
+            signal=evidence.signal,
+            entity=evidence.entity,
+            raw_record=evidence.raw_record,
+            task_run=evidence.task_run,
+            source=evidence.source,
+        )
         for evidence in evidences
     ]
 
