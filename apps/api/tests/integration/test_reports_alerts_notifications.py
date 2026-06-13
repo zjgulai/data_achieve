@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -240,3 +241,39 @@ async def test_report_includes_alert_events_from_same_period(client: AsyncClient
     assert "High growth signal" in content
     assert "star_growth" in content
     assert "severity=high" in content
+
+
+@pytest.mark.asyncio
+async def test_report_generation_respects_custom_period(client: AsyncClient) -> None:
+    project_id = await register_and_create_project(client)
+    await trigger_star_growth_intelligence(client, project_id)
+
+    now = datetime.now(UTC)
+    empty_period_start = now - timedelta(days=3)
+    empty_period_end = now - timedelta(days=2)
+    report_response = await client.post(
+        "/api/reports/generate",
+        json={
+            "project_id": project_id,
+            "report_type": "daily",
+            "period_start": empty_period_start.isoformat(),
+            "period_end": empty_period_end.isoformat(),
+        },
+    )
+    assert report_response.status_code == 201
+    report = report_response.json()
+    assert report["project_id"] == project_id
+    assert report["period_start"] == empty_period_start.replace(tzinfo=None).isoformat()
+    assert report["period_end"] == empty_period_end.replace(tzinfo=None).isoformat()
+    assert "当前周期没有新增情报" in report["content"]
+
+    invalid_response = await client.post(
+        "/api/reports/generate",
+        json={
+            "project_id": project_id,
+            "report_type": "daily",
+            "period_start": now.isoformat(),
+            "period_end": (now - timedelta(hours=1)).isoformat(),
+        },
+    )
+    assert invalid_response.status_code == 422

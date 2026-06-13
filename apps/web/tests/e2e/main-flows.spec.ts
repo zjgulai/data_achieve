@@ -50,6 +50,9 @@ test.describe("MVP workspace routes", () => {
         name: realApiMode ? /Data Achieve 每日情报摘要/ : /AI Scrapy Tools 日报/,
       }),
     ).toBeVisible();
+    await expect(page.getByLabel("生成项目")).toBeVisible();
+    await expect(page.getByLabel("报告筛选项目")).toBeVisible();
+    await page.getByLabel("生成周期").selectOption("24h");
     await expect(page.getByText("证据引用").first()).toBeVisible();
     await expect(page.getByText("证据引用详情").first()).toBeVisible();
     const reportIntelligenceLink = page.locator('a[href^="/intelligence/"]').first();
@@ -65,6 +68,13 @@ test.describe("MVP workspace routes", () => {
     } else {
       await expect(reportIntelligenceLink).toBeVisible();
     }
+
+    await page.getByRole("link", { name: "打开详情页" }).first().click();
+    await expect(page).toHaveURL(/\/reports\/.+/);
+    await expect(page.getByRole("heading", { name: "报告详情" })).toBeVisible();
+    await expect(page.getByText("证据引用详情").first()).toBeVisible();
+    await page.getByRole("link", { name: "返回报告中心" }).click();
+    await expect(page).toHaveURL(/\/reports$/);
 
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("button", { name: "下载 Markdown", exact: true }).click();

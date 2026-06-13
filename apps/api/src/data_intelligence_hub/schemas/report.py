@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from data_intelligence_hub.models.report import Report
 from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
@@ -17,6 +17,17 @@ class ReportGenerateRequest(BaseModel):
     report_type: ReportType = "daily"
     period_start: datetime | None = None
     period_end: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_period(self) -> ReportGenerateRequest:
+        if (
+            self.period_start is not None
+            and self.period_end is not None
+            and self.period_end <= self.period_start
+        ):
+            msg = "period_end must be later than period_start"
+            raise ValueError(msg)
+        return self
 
 
 class ReportResponse(BaseModel):

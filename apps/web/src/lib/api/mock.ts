@@ -5,7 +5,7 @@ import type { AlertEvent, AlertRule } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { AuthSession, Project } from "@/types/project";
 import type { RawRecord } from "@/types/raw-record";
-import type { Report, ReportEvidenceReference } from "@/types/report";
+import type { Report, ReportEvidenceReference, ReportGenerateInput } from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
 
@@ -989,6 +989,26 @@ export function getMockReports(): Report[] {
       createdAt: "2026-06-11T08:30:00.000Z",
     },
   ];
+}
+
+export function createMockGeneratedReport(input: ReportGenerateInput): Report {
+  const base = getMockReports()[0];
+  const project = input.projectId
+    ? getMockProjects().find((item) => item.id === input.projectId)
+    : null;
+  const periodEnd = input.periodEnd ?? new Date().toISOString();
+  const periodStart = input.periodStart ?? base.periodStart;
+  const titlePrefix = project?.name ?? "全局";
+  return {
+    ...base,
+    id: `report_daily_${Date.now()}`,
+    projectId: input.projectId ?? null,
+    status: "generated",
+    title: `${titlePrefix} 日报 — ${new Date(periodEnd).toISOString().slice(0, 10)}`,
+    periodEnd,
+    periodStart,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export function getMockReportEvidenceReferences(reportId: string): ReportEvidenceReference[] {

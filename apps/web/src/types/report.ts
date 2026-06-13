@@ -14,6 +14,8 @@ export type Report = {
 };
 
 export type ReportGenerateInput = {
+  periodEnd?: string;
+  periodStart?: string;
   projectId?: string;
   reportType?: "daily";
 };

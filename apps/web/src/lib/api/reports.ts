@@ -5,7 +5,11 @@ import {
   type EvidenceResponse,
   type IntelligenceResponse,
 } from "@/lib/api/intelligence";
-import { getMockReportEvidenceReferences, getMockReports } from "@/lib/api/mock";
+import {
+  createMockGeneratedReport,
+  getMockReportEvidenceReferences,
+  getMockReports,
+} from "@/lib/api/mock";
 import type { Report, ReportEvidenceReference, ReportGenerateInput } from "@/types/report";
 
 type ReportResponse = {
@@ -39,13 +43,27 @@ export async function listReports(projectId?: string): Promise<Report[]> {
   return response.map(mapReport);
 }
 
+export async function getReport(reportId: string): Promise<Report> {
+  if (mockApiEnabled) {
+    const report = getMockReports().find((item) => item.id === reportId);
+    if (!report) {
+      throw new Error("Report not found");
+    }
+    return report;
+  }
+  const response = await apiFetch<ReportResponse>(`/api/reports/${reportId}`);
+  return mapReport(response);
+}
+
 export async function generateReport(input: ReportGenerateInput = {}): Promise<Report> {
   if (mockApiEnabled) {
-    return getMockReports()[0];
+    return createMockGeneratedReport(input);
   }
   const response = await apiFetch<ReportResponse>("/api/reports/generate", {
     method: "POST",
     body: JSON.stringify({
+      period_end: input.periodEnd ?? null,
+      period_start: input.periodStart ?? null,
       project_id: input.projectId ?? null,
       report_type: input.reportType ?? "daily",
     }),
