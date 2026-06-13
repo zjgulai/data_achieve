@@ -10,7 +10,12 @@ from data_intelligence_hub.models.intelligence import (
 from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.raw_record import RawRecord
-from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
+from data_intelligence_hub.models.report import (
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
+    ReportSubscriptionRun,
+)
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -34,6 +39,7 @@ __all__ = [
     "Report",
     "ReportAuditEvent",
     "ReportSubscription",
+    "ReportSubscriptionRun",
     "Signal",
     "Source",
     "TaskRun",

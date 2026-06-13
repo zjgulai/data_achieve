@@ -8,7 +8,12 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
+from data_intelligence_hub.models.report import (
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
+    ReportSubscriptionRun,
+)
 from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
 
 ReportType = Literal["daily"]
@@ -139,6 +144,36 @@ class ReportSubscriptionUpsertRequest(BaseModel):
         return channels
 
 
+class ReportSubscriptionRunResponse(BaseModel):
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    subscription_id: uuid.UUID
+    report_id: uuid.UUID | None
+    trigger_type: str
+    status: str
+    delivered_channels: list[str]
+    skipped_channels: dict[str, str]
+    error_message: str | None
+    started_at: datetime
+    finished_at: datetime | None
+
+    @classmethod
+    def from_model(cls, run: ReportSubscriptionRun) -> ReportSubscriptionRunResponse:
+        return cls(
+            id=run.id,
+            workspace_id=run.workspace_id,
+            subscription_id=run.subscription_id,
+            report_id=run.report_id,
+            trigger_type=run.trigger_type,
+            status=run.status,
+            delivered_channels=list(run.delivered_channels),
+            skipped_channels={str(key): str(value) for key, value in run.skipped_channels.items()},
+            error_message=run.error_message,
+            started_at=run.started_at,
+            finished_at=run.finished_at,
+        )
+
+
 class ReportSubscriptionResponse(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
@@ -151,11 +186,16 @@ class ReportSubscriptionResponse(BaseModel):
     enabled: bool
     next_run_at: datetime | None
     last_sent_at: datetime | None
+    latest_run: ReportSubscriptionRunResponse | None = None
     created_at: datetime
     updated_at: datetime
 
     @classmethod
-    def from_model(cls, subscription: ReportSubscription) -> ReportSubscriptionResponse:
+    def from_model(
+        cls,
+        subscription: ReportSubscription,
+        latest_run: ReportSubscriptionRun | None = None,
+    ) -> ReportSubscriptionResponse:
         return cls(
             id=subscription.id,
             workspace_id=subscription.workspace_id,
@@ -168,6 +208,11 @@ class ReportSubscriptionResponse(BaseModel):
             enabled=subscription.enabled,
             next_run_at=subscription.next_run_at,
             last_sent_at=subscription.last_sent_at,
+            latest_run=(
+                ReportSubscriptionRunResponse.from_model(latest_run)
+                if latest_run is not None
+                else None
+            ),
             created_at=subscription.created_at,
             updated_at=subscription.updated_at,
         )

@@ -16,6 +16,7 @@ from data_intelligence_hub.models import (
     Report,
     ReportAuditEvent,
     ReportSubscription,
+    ReportSubscriptionRun,
     Source,
     TaskRun,
     User,
@@ -143,9 +144,18 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
                 select(ReportSubscription).where(ReportSubscription.id == subscription_id)
             )
         ).scalar_one()
+        subscription_runs = list(
+            (await session.execute(select(ReportSubscriptionRun))).scalars().all()
+        )
 
     assert len(reports) == 1
     assert reports[0].status == "sent"
+    assert len(subscription_runs) == 1
+    assert subscription_runs[0].trigger_type == "scheduled"
+    assert subscription_runs[0].status == "partial_success"
+    assert subscription_runs[0].report_id == reports[0].id
+    assert subscription_runs[0].delivered_channels == ["in_app"]
+    assert subscription_runs[0].skipped_channels == {"email": "smtp_not_configured"}
     assert len(notifications) == 1
     assert notifications[0].notification_type == "report_ready"
     assert [event.event_type for event in audit_events] == [

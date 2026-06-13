@@ -61,6 +61,10 @@ class ReportNotFoundError(ServiceError):
     message = "Report not found"
 
 
+class ReportSubscriptionNotFoundError(ServiceError):
+    message = "Report subscription not found"
+
+
 class AlertRuleNotFoundError(ServiceError):
     message = "Alert rule not found"
 

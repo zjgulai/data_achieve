@@ -6,6 +6,7 @@ import {
   Clock3,
   FileText,
   MailCheck,
+  PlayCircle,
   PlusCircle,
   Save,
   Search,
@@ -20,6 +21,7 @@ import {
   generateReport,
   listReports,
   listReportSubscriptions,
+  runReportSubscription,
   sendReport,
   upsertReportSubscription,
 } from "@/lib/api/reports";
@@ -46,6 +48,7 @@ export function ReportsWorkspace() {
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
   const [busy, setBusy] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+  const [runningSubscriptionId, setRunningSubscriptionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [projectFilter, setProjectFilter] = useState("all");
@@ -243,6 +246,26 @@ export function ReportsWorkspace() {
       setError(caught instanceof Error ? caught.message : "Report subscription save failed");
     } finally {
       setSubscriptionBusy(false);
+    }
+  }
+
+  async function handleRunSubscription(subscriptionId: string) {
+    setRunningSubscriptionId(subscriptionId);
+    setSubscriptionNotice(null);
+    setError(null);
+    try {
+      const executed = await runReportSubscription(subscriptionId);
+      setSubscriptions((current) =>
+        current.map((item) => (item.id === executed.id ? executed : item)),
+      );
+      const refreshedReports = await listReports(projectFilter === "all" ? undefined : projectFilter);
+      setReports(refreshedReports);
+      setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
+      setSubscriptionNotice("订阅已手动执行");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Report subscription run failed");
+    } finally {
+      setRunningSubscriptionId(null);
     }
   }
 
@@ -455,6 +478,36 @@ export function ReportsWorkspace() {
                   </div>
                   <StatusPill status={subscription.enabled ? "enabled" : "paused"} />
                 </div>
+                <div className="mt-3 grid gap-2 rounded-xl bg-[#FBF8F5] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-[#86868B]">最近执行</p>
+                    <StatusPill status={subscription.latestRun?.status ?? "not_run"} />
+                  </div>
+                  <p className="text-xs leading-5 text-[#86868B]">
+                    {subscription.latestRun
+                      ? `${triggerLabel(subscription.latestRun.triggerType)} · ${formatDate(subscription.latestRun.startedAt)}`
+                      : "暂无执行记录"}
+                  </p>
+                  {subscription.latestRun?.errorMessage ? (
+                    <p className="text-xs leading-5 text-[#C25B6E]">
+                      {runIssueSummary(subscription.latestRun.errorMessage)}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-[#86868B]">
+                      {subscription.lastSentAt ? `上次 ${formatDate(subscription.lastSentAt)}` : "尚未成功发送"}
+                    </p>
+                    <button
+                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={runningSubscriptionId === subscription.id}
+                      onClick={() => void handleRunSubscription(subscription.id)}
+                      type="button"
+                    >
+                      <PlayCircle size={14} aria-hidden="true" />
+                      {runningSubscriptionId === subscription.id ? "执行中" : "立即执行"}
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -646,9 +699,14 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 function StatusPill({ status }: { status: string }) {
   const statusMeta: Record<string, { className: string; label: string }> = {
     enabled: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "启用" },
+    failed: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "失败" },
     generated: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "待发送" },
+    not_run: { className: "bg-[#FBF8F5] text-[#86868B]", label: "未执行" },
+    partial_success: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "部分成功" },
     paused: { className: "bg-[#FBF8F5] text-[#86868B]", label: "暂停" },
+    running: { className: "bg-[#F5F0FF] text-[#6E5CF6]", label: "执行中" },
     sent: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "已发送" },
+    success: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "成功" },
   };
   const meta = statusMeta[status] ?? {
     className: "bg-[#FBF8F5] text-[#86868B]",
@@ -740,6 +798,14 @@ function countEvidenceMentions(content: string) {
 
 function channelLabel(channel: ReportDeliveryChannel) {
   return channel === "email" ? "邮件" : "站内通知";
+}
+
+function triggerLabel(triggerType: string) {
+  return triggerType === "manual" ? "手动触发" : "自动调度";
+}
+
+function runIssueSummary(errorMessage: string) {
+  return errorMessage.replaceAll("smtp_not_configured", "SMTP 未配置");
 }
 
 function formatDate(value: string) {

@@ -266,6 +266,24 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
     assert created["enabled"] is True
     assert created["next_run_at"] is not None
     assert created["last_sent_at"] is None
+    assert created["latest_run"] is None
+
+    run_response = await client.post(f"/api/reports/subscriptions/{created['id']}/run")
+    assert run_response.status_code == 200
+    executed = run_response.json()
+    assert executed["id"] == created["id"]
+    assert executed["last_sent_at"] is not None
+    assert executed["latest_run"]["trigger_type"] == "manual"
+    assert executed["latest_run"]["status"] == "partial_success"
+    assert executed["latest_run"]["delivered_channels"] == ["in_app"]
+    assert executed["latest_run"]["skipped_channels"] == {"email": "smtp_not_configured"}
+    assert executed["latest_run"]["report_id"] is not None
+
+    reports_response = await client.get(f"/api/reports?project_id={project_id}")
+    assert reports_response.status_code == 200
+    reports = reports_response.json()
+    assert len(reports) == 1
+    assert reports[0]["id"] == executed["latest_run"]["report_id"]
 
     update_response = await client.put(
         "/api/reports/subscriptions",
@@ -291,6 +309,7 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
     subscriptions = list_response.json()
     assert len(subscriptions) == 1
     assert subscriptions[0]["id"] == created["id"]
+    assert subscriptions[0]["latest_run"]["id"] == executed["latest_run"]["id"]
 
     invalid_project_response = await client.put(
         "/api/reports/subscriptions",
@@ -304,6 +323,11 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
         },
     )
     assert invalid_project_response.status_code == 404
+
+    invalid_run_response = await client.post(
+        "/api/reports/subscriptions/00000000-0000-0000-0000-000000000000/run"
+    )
+    assert invalid_run_response.status_code == 404
 
 
 @pytest.mark.asyncio

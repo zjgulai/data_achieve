@@ -82,3 +82,25 @@ class ReportSubscription(UUIDPrimaryKeyMixin, Base):
     workspace: Mapped[Workspace] = relationship()
     user: Mapped[User] = relationship()
     project: Mapped[Project | None] = relationship()
+
+
+class ReportSubscriptionRun(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "report_subscription_runs"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
+    subscription_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("report_subscriptions.id"),
+        nullable=False,
+    )
+    report_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("reports.id"))
+    trigger_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    delivered_channels: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    skipped_channels: Mapped[dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    workspace: Mapped[Workspace] = relationship()
+    subscription: Mapped[ReportSubscription] = relationship()
+    report: Mapped[Report | None] = relationship()

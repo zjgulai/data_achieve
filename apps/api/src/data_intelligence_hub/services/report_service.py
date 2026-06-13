@@ -10,7 +10,12 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
+from data_intelligence_hub.models.report import (
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
+    ReportSubscriptionRun,
+)
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.intelligence import (
@@ -24,10 +29,13 @@ from data_intelligence_hub.repositories.reports import (
     create_report,
     create_report_audit_event,
     create_report_subscription,
+    create_report_subscription_run,
     get_report,
+    get_report_subscription,
     get_report_subscription_by_scope,
     list_alert_events_for_report,
     list_intelligence_for_report,
+    list_latest_report_subscription_runs,
     list_report_audit_events,
     list_report_subscriptions,
     list_reports,
@@ -36,7 +44,11 @@ from data_intelligence_hub.schemas.report import (
     ReportGenerateRequest,
     ReportSubscriptionUpsertRequest,
 )
-from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
+from data_intelligence_hub.services.exceptions import (
+    ProjectNotFoundError,
+    ReportNotFoundError,
+    ReportSubscriptionNotFoundError,
+)
 from data_intelligence_hub.services.notification_service import (
     create_in_app_notification,
     send_email_notification,
@@ -57,9 +69,17 @@ class ReportDispatchResult:
 
 @dataclass(frozen=True)
 class ReportSubscriptionExecutionResult:
-    report: Report
+    report: Report | None
+    run: ReportSubscriptionRun
+    status: str
     delivered_channels: list[str]
     skipped_channels: dict[str, str]
+
+
+@dataclass(frozen=True)
+class ReportSubscriptionWithLatestRun:
+    subscription: ReportSubscription
+    latest_run: ReportSubscriptionRun | None
 
 
 async def get_reports(
@@ -114,8 +134,20 @@ async def get_report_subscriptions(
     session: AsyncSession,
     workspace: Workspace,
     user: User,
-) -> list[ReportSubscription]:
-    return await list_report_subscriptions(session, workspace.id, user.id)
+) -> list[ReportSubscriptionWithLatestRun]:
+    subscriptions = await list_report_subscriptions(session, workspace.id, user.id)
+    latest_runs = await list_latest_report_subscription_runs(
+        session,
+        workspace.id,
+        [subscription.id for subscription in subscriptions],
+    )
+    return [
+        ReportSubscriptionWithLatestRun(
+            subscription=subscription,
+            latest_run=latest_runs.get(subscription.id),
+        )
+        for subscription in subscriptions
+    ]
 
 
 async def upsert_report_subscription(
@@ -123,7 +155,7 @@ async def upsert_report_subscription(
     workspace: Workspace,
     user: User,
     payload: ReportSubscriptionUpsertRequest,
-) -> ReportSubscription:
+) -> ReportSubscriptionWithLatestRun:
     if payload.project_id is not None:
         project = await get_project(session, workspace.id, payload.project_id)
         if project is None:
@@ -164,7 +196,34 @@ async def upsert_report_subscription(
 
     await session.commit()
     await session.refresh(subscription)
-    return subscription
+    latest_runs = await list_latest_report_subscription_runs(
+        session,
+        workspace.id,
+        [subscription.id],
+    )
+    return ReportSubscriptionWithLatestRun(
+        subscription=subscription,
+        latest_run=latest_runs.get(subscription.id),
+    )
+
+
+async def run_report_subscription_now(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    subscription_id: uuid.UUID,
+) -> ReportSubscriptionWithLatestRun:
+    subscription = await get_report_subscription(session, workspace.id, user.id, subscription_id)
+    if subscription is None:
+        raise ReportSubscriptionNotFoundError
+    result = await execute_report_subscription(
+        session=session,
+        subscription=subscription,
+        workspace=workspace,
+        user=user,
+        trigger_type="manual",
+    )
+    return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
 
 
 async def execute_report_subscription(
@@ -173,60 +232,103 @@ async def execute_report_subscription(
     workspace: Workspace,
     user: User,
     now: datetime | None = None,
+    trigger_type: str = "scheduled",
 ) -> ReportSubscriptionExecutionResult:
     current_time = _aware(now or datetime.now(UTC))
+    run = await create_report_subscription_run(
+        session,
+        ReportSubscriptionRun(
+            workspace_id=workspace.id,
+            subscription_id=subscription.id,
+            report_id=None,
+            trigger_type=trigger_type,
+            status="running",
+            delivered_channels=[],
+            skipped_channels={},
+            error_message=None,
+            started_at=current_time,
+            finished_at=None,
+        ),
+    )
+    await session.commit()
+
     period_start = subscription.last_sent_at or _subscription_period_start(
         subscription,
         current_time,
     )
-    report = await generate_report(
-        session=session,
-        workspace=workspace,
-        user=user,
-        payload=ReportGenerateRequest(
-            project_id=subscription.project_id,
-            report_type="daily",
-            period_start=period_start,
-            period_end=current_time,
-        ),
-    )
-    generated_status = report.status
-    dispatch_result = await dispatch_report(
-        session=session,
-        workspace=workspace,
-        user=user,
-        report_id=report.id,
-        channels=subscription.channels,
-    )
-    if dispatch_result.delivered_channels:
-        subscription.last_sent_at = current_time
+    report: Report | None = None
+    delivered_channels: list[str] = []
+    skipped_channels: dict[str, str] = {}
+    status = "failed"
+    try:
+        report = await generate_report(
+            session=session,
+            workspace=workspace,
+            user=user,
+            payload=ReportGenerateRequest(
+                project_id=subscription.project_id,
+                report_type="daily",
+                period_start=period_start,
+                period_end=current_time,
+            ),
+        )
+        generated_status = report.status
+        dispatch_result = await dispatch_report(
+            session=session,
+            workspace=workspace,
+            user=user,
+            report_id=report.id,
+            channels=subscription.channels,
+        )
+        delivered_channels = dispatch_result.delivered_channels
+        skipped_channels = dispatch_result.skipped_channels
+        report = dispatch_result.report
+        status = _subscription_run_status(delivered_channels, skipped_channels)
+        if delivered_channels:
+            subscription.last_sent_at = current_time
+        await _create_report_audit_event(
+            session=session,
+            workspace_id=workspace.id,
+            report_id=report.id,
+            actor_id=user.id,
+            event_type="subscription_executed",
+            from_status=generated_status,
+            to_status=report.status,
+            metadata={
+                "delivered_channels": ",".join(delivered_channels),
+                "skipped_channels": ",".join(skipped_channels.keys()),
+                "subscription_id": str(subscription.id),
+            },
+        )
+        run.report_id = report.id
+        run.error_message = _subscription_run_error_message(status, skipped_channels)
+    except Exception as exc:
+        await session.rollback()
+        session.add(run)
+        session.add(subscription)
+        status = "failed"
+        run.error_message = str(exc)[:500] or exc.__class__.__name__
+    run.status = status
+    run.delivered_channels = delivered_channels
+    run.skipped_channels = skipped_channels
+    run.finished_at = datetime.now(UTC)
     subscription.next_run_at = _compute_next_run_at(
         subscription.schedule_time,
         subscription.timezone,
         current_time,
     )
-    subscription.updated_at = current_time
-    await _create_report_audit_event(
-        session=session,
-        workspace_id=workspace.id,
-        report_id=report.id,
-        actor_id=user.id,
-        event_type="subscription_executed",
-        from_status=generated_status,
-        to_status=dispatch_result.report.status,
-        metadata={
-            "delivered_channels": ",".join(dispatch_result.delivered_channels),
-            "skipped_channels": ",".join(dispatch_result.skipped_channels.keys()),
-            "subscription_id": str(subscription.id),
-        },
-    )
+    subscription.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(subscription)
-    await session.refresh(dispatch_result.report)
+    await session.refresh(run)
+    if report is not None:
+        await session.refresh(report)
     return ReportSubscriptionExecutionResult(
-        report=dispatch_result.report,
-        delivered_channels=dispatch_result.delivered_channels,
-        skipped_channels=dispatch_result.skipped_channels,
+        report=report,
+        run=run,
+        status=status,
+        delivered_channels=delivered_channels,
+        skipped_channels=skipped_channels,
     )
 
 
@@ -449,6 +551,27 @@ def _subscription_period_start(subscription: ReportSubscription, now: datetime) 
     local_now = _aware(now).astimezone(timezone)
     local_start = datetime.combine(local_now.date(), time.min, tzinfo=timezone)
     return local_start.astimezone(UTC)
+
+
+def _subscription_run_status(
+    delivered_channels: list[str],
+    skipped_channels: dict[str, str],
+) -> str:
+    if delivered_channels and skipped_channels:
+        return "partial_success"
+    if delivered_channels:
+        return "success"
+    return "failed"
+
+
+def _subscription_run_error_message(status: str, skipped_channels: dict[str, str]) -> str | None:
+    if status == "success":
+        return None
+    if not skipped_channels:
+        return "No delivery channel completed."
+    return "; ".join(
+        f"{channel}: {reason}" for channel, reason in sorted(skipped_channels.items())
+    )
 
 
 def _aware(value: datetime) -> datetime:

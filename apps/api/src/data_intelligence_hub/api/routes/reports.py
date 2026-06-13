@@ -16,7 +16,11 @@ from data_intelligence_hub.schemas.report import (
     ReportSubscriptionResponse,
     ReportSubscriptionUpsertRequest,
 )
-from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
+from data_intelligence_hub.services.exceptions import (
+    ProjectNotFoundError,
+    ReportNotFoundError,
+    ReportSubscriptionNotFoundError,
+)
 from data_intelligence_hub.services.report_service import (
     generate_report,
     get_report_audit_events,
@@ -25,6 +29,7 @@ from data_intelligence_hub.services.report_service import (
     get_report_subscriptions,
     get_reports,
     record_report_share_event,
+    run_report_subscription_now,
     send_report,
     upsert_report_subscription,
 )
@@ -65,7 +70,10 @@ async def list_report_subscription_items(
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> list[ReportSubscriptionResponse]:
     subscriptions = await get_report_subscriptions(session, context.workspace, context.user)
-    return [ReportSubscriptionResponse.from_model(subscription) for subscription in subscriptions]
+    return [
+        ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
+        for item in subscriptions
+    ]
 
 
 @router.put("/subscriptions", response_model=ReportSubscriptionResponse)
@@ -75,7 +83,7 @@ async def upsert_report_subscription_item(
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> ReportSubscriptionResponse:
     try:
-        subscription = await upsert_report_subscription(
+        item = await upsert_report_subscription(
             session=session,
             workspace=context.workspace,
             user=context.user,
@@ -83,7 +91,25 @@ async def upsert_report_subscription_item(
         )
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return ReportSubscriptionResponse.from_model(subscription)
+    return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
+
+
+@router.post("/subscriptions/{subscription_id}/run", response_model=ReportSubscriptionResponse)
+async def run_report_subscription_item(
+    subscription_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportSubscriptionResponse:
+    try:
+        item = await run_report_subscription_now(
+            session=session,
+            workspace=context.workspace,
+            user=context.user,
+            subscription_id=subscription_id,
+        )
+    except ReportSubscriptionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
 
 
 @router.get(

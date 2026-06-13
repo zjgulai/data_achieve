@@ -1025,6 +1025,7 @@ const mockReportSubscriptions: ReportSubscription[] = [
     enabled: true,
     nextRunAt: nextMockRunAt("09:00", "Asia/Shanghai"),
     lastSentAt: null,
+    latestRun: null,
     createdAt: "2026-06-11T08:00:00.000Z",
     updatedAt: "2026-06-11T08:00:00.000Z",
   },
@@ -1147,10 +1148,38 @@ export function upsertMockReportSubscription(
     enabled: input.enabled,
     nextRunAt: input.enabled ? nextMockRunAt(input.scheduleTime, input.timezone) : null,
     lastSentAt: null,
+    latestRun: null,
     createdAt: now,
     updatedAt: now,
   };
   mockReportSubscriptions.push(subscription);
+  return subscription;
+}
+
+export function runMockReportSubscription(subscriptionId: string): ReportSubscription {
+  const subscription = mockReportSubscriptions.find((item) => item.id === subscriptionId);
+  if (!subscription) {
+    throw new Error("Report subscription not found");
+  }
+  const now = new Date().toISOString();
+  subscription.lastSentAt = now;
+  subscription.nextRunAt = subscription.enabled
+    ? nextMockRunAt(subscription.scheduleTime, subscription.timezone)
+    : null;
+  subscription.latestRun = {
+    id: `subscription_run_${Date.now()}`,
+    workspaceId: subscription.workspaceId,
+    subscriptionId: subscription.id,
+    reportId: "report_daily_20260611",
+    triggerType: "manual",
+    status: "partial_success",
+    deliveredChannels: ["in_app"],
+    skippedChannels: { email: "smtp_not_configured" },
+    errorMessage: "email: smtp_not_configured",
+    startedAt: now,
+    finishedAt: now,
+  };
+  subscription.updatedAt = now;
   return subscription;
 }
 

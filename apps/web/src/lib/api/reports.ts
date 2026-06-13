@@ -12,6 +12,7 @@ import {
   getMockReportAuditEvents,
   getMockReportEvidenceReferences,
   getMockReports,
+  runMockReportSubscription,
   upsertMockReportSubscription,
 } from "@/lib/api/mock";
 import type {
@@ -21,6 +22,7 @@ import type {
   ReportGenerateInput,
   ReportSubscription,
   ReportSubscriptionInput,
+  ReportSubscriptionRun,
 } from "@/types/report";
 
 type ReportResponse = {
@@ -65,8 +67,23 @@ type ReportSubscriptionResponse = {
   enabled: boolean;
   next_run_at: string | null;
   last_sent_at: string | null;
+  latest_run: ReportSubscriptionRunResponse | null;
   created_at: string;
   updated_at: string;
+};
+
+type ReportSubscriptionRunResponse = {
+  id: string;
+  workspace_id: string;
+  subscription_id: string;
+  report_id: string | null;
+  trigger_type: string;
+  status: string;
+  delivered_channels: Array<"in_app" | "email">;
+  skipped_channels: Record<string, string>;
+  error_message: string | null;
+  started_at: string;
+  finished_at: string | null;
 };
 
 export async function listReports(projectId?: string): Promise<Report[]> {
@@ -193,6 +210,17 @@ export async function upsertReportSubscription(
   return mapReportSubscription(response);
 }
 
+export async function runReportSubscription(subscriptionId: string): Promise<ReportSubscription> {
+  if (mockApiEnabled) {
+    return runMockReportSubscription(subscriptionId);
+  }
+  const response = await apiFetch<ReportSubscriptionResponse>(
+    `/api/reports/subscriptions/${subscriptionId}/run`,
+    { method: "POST" },
+  );
+  return mapReportSubscription(response);
+}
+
 function mapReport(response: ReportResponse): Report {
   return {
     id: response.id,
@@ -235,7 +263,24 @@ function mapReportSubscription(response: ReportSubscriptionResponse): ReportSubs
     enabled: response.enabled,
     nextRunAt: response.next_run_at,
     lastSentAt: response.last_sent_at,
+    latestRun: response.latest_run ? mapReportSubscriptionRun(response.latest_run) : null,
     createdAt: response.created_at,
     updatedAt: response.updated_at,
+  };
+}
+
+function mapReportSubscriptionRun(response: ReportSubscriptionRunResponse): ReportSubscriptionRun {
+  return {
+    id: response.id,
+    workspaceId: response.workspace_id,
+    subscriptionId: response.subscription_id,
+    reportId: response.report_id,
+    triggerType: response.trigger_type,
+    status: response.status,
+    deliveredChannels: response.delivered_channels,
+    skippedChannels: response.skipped_channels,
+    errorMessage: response.error_message,
+    startedAt: response.started_at,
+    finishedAt: response.finished_at,
   };
 }

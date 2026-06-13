@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
-from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
+from data_intelligence_hub.models.report import (
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
+    ReportSubscriptionRun,
+)
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
@@ -126,6 +131,22 @@ async def get_report_subscription_by_scope(
     return result.scalar_one_or_none()
 
 
+async def get_report_subscription(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    subscription_id: uuid.UUID,
+) -> ReportSubscription | None:
+    result = await session.execute(
+        select(ReportSubscription).where(
+            ReportSubscription.workspace_id == workspace_id,
+            ReportSubscription.user_id == user_id,
+            ReportSubscription.id == subscription_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_report_subscription(
     session: AsyncSession,
     subscription: ReportSubscription,
@@ -133,6 +154,36 @@ async def create_report_subscription(
     session.add(subscription)
     await session.flush()
     return subscription
+
+
+async def create_report_subscription_run(
+    session: AsyncSession,
+    run: ReportSubscriptionRun,
+) -> ReportSubscriptionRun:
+    session.add(run)
+    await session.flush()
+    return run
+
+
+async def list_latest_report_subscription_runs(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    subscription_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, ReportSubscriptionRun]:
+    if not subscription_ids:
+        return {}
+    result = await session.execute(
+        select(ReportSubscriptionRun)
+        .where(
+            ReportSubscriptionRun.workspace_id == workspace_id,
+            ReportSubscriptionRun.subscription_id.in_(subscription_ids),
+        )
+        .order_by(ReportSubscriptionRun.started_at.desc(), ReportSubscriptionRun.id.desc())
+    )
+    latest: dict[uuid.UUID, ReportSubscriptionRun] = {}
+    for run in result.scalars().all():
+        latest.setdefault(run.subscription_id, run)
+    return latest
 
 
 async def list_due_report_subscriptions(

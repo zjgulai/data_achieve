@@ -58,8 +58,23 @@ export type ReportSubscription = {
   enabled: boolean;
   nextRunAt: string | null;
   lastSentAt: string | null;
+  latestRun: ReportSubscriptionRun | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ReportSubscriptionRun = {
+  id: string;
+  workspaceId: string;
+  subscriptionId: string;
+  reportId: string | null;
+  triggerType: "manual" | "scheduled" | string;
+  status: "running" | "success" | "partial_success" | "failed" | string;
+  deliveredChannels: ReportDeliveryChannel[];
+  skippedChannels: Record<string, string>;
+  errorMessage: string | null;
+  startedAt: string;
+  finishedAt: string | null;
 };
 
 export type ReportSubscriptionInput = {
