@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
 
     scheduler_enabled: bool = False
+    scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
     cors_origins: list[str] = ["http://localhost:3000"]
 
     @field_validator("cors_origins", mode="before")

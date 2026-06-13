@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,6 +24,24 @@ from data_intelligence_hub.api.routes.signals import router as signals_router
 from data_intelligence_hub.api.routes.sources import router as sources_router
 from data_intelligence_hub.api.routes.tasks import router as tasks_router
 from data_intelligence_hub.core.config import get_settings
+from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.scheduler import CollectionScheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    scheduler: CollectionScheduler | None = None
+    if settings.scheduler_enabled:
+        scheduler = CollectionScheduler(
+            session_factory=async_session_factory,
+            poll_interval_seconds=settings.scheduler_poll_interval_seconds,
+        )
+        app.state.collection_scheduler = scheduler
+        scheduler.start()
+    yield
+    if scheduler is not None:
+        await scheduler.stop()
 
 
 def create_app() -> FastAPI:
@@ -31,6 +52,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
+        lifespan=lifespan,
     )
 
     app.add_middleware(

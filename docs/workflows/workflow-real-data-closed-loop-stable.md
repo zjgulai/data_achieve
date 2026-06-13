@@ -5,7 +5,7 @@ module: engineering
 topic: real-data-closed-loop
 status: stable
 created: 2026-06-12
-updated: 2026-06-12
+updated: 2026-06-13
 owner: self
 source: human+ai
 ---
@@ -35,10 +35,10 @@ source: human+ai
 ## 当前事实
 
 1. 线上域名 `https://scrapy.lute-tlz-dddd.top` 已部署可访问。
-2. 当前线上前端构建参数仍为 `NEXT_PUBLIC_MOCK_API=true`。
-3. 后端 FastAPI、SQLAlchemy 模型、Alembic 迁移和主要 REST 路由已经存在，但尚未纳入线上 Docker 编排。
-4. `scheduler` 目录目前只有任务 ID 辅助函数，不具备实际调度能力。
-5. 现有 E2E 主要验证 mock 前端页面渲染，不能证明真实 API 闭环已经成立。
+2. 线上前端已切换为 `NEXT_PUBLIC_MOCK_API=false`，主要业务页读取真实 FastAPI。
+3. 后端 FastAPI、PostgreSQL、Web、Edge 已纳入独立 Docker Compose 编排。
+4. Alembic 迁移和演示种子数据已在线上执行通过。
+5. 线上 API smoke 和真实 API E2E 已通过，调度闭环进入 P0 修复阶段。
 
 ## 闭环路径
 
@@ -167,7 +167,7 @@ uv run python -m data_intelligence_hub.seed.demo_data
 
 优先级：
 
-1. P0：调度闭环。实现采集任务触发、状态流转、失败记录和重试边界。
+1. P0：调度闭环。实现采集任务触发、状态流转、失败记录和重试边界。当前已补进程内轻量调度骨架，受 `SCHEDULER_ENABLED` 控制；生产默认关闭，待真实数据源确认后开启。
 2. P0：证据闭环。情报卡片点击结论后定位证据、原始记录和实体快照差异。
 3. P1：报告交互。报告章节展开、证据引用、导出入口真实可用。
 4. P1：告警处置。告警事件支持确认、静默、关联任务。
