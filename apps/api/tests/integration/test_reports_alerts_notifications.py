@@ -173,6 +173,22 @@ async def test_report_generation_send_and_notification_read_flow(
     assert list_response.status_code == 200
     assert [item["id"] for item in list_response.json()] == [report["id"]]
 
+    references_response = await client.get(f"/api/reports/{report['id']}/evidence-references")
+    assert references_response.status_code == 200
+    references = references_response.json()
+    assert [item["intelligence"]["id"] for item in references] == [intelligence_id]
+    assert references[0]["intelligence"]["evidence_count"] >= 3
+    evidence_types = {evidence["evidence_type"] for evidence in references[0]["evidences"]}
+    assert {"signal", "snapshot", "raw_record"} <= evidence_types
+    raw_evidence = next(
+        evidence
+        for evidence in references[0]["evidences"]
+        if evidence["evidence_type"] == "raw_record"
+    )
+    assert raw_evidence["raw_record"]["content_preview"]["payload"]["stars"] == 360
+    assert raw_evidence["task_run"]["status"] == "success"
+    assert raw_evidence["source"]["name"] == "Manual Repo Metrics"
+
     send_response = await client.post(f"/api/reports/{report['id']}/send")
     assert send_response.status_code == 200
     sent_report = send_response.json()

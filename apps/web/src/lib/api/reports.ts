@@ -1,6 +1,12 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
-import { getMockReports } from "@/lib/api/mock";
-import type { Report, ReportGenerateInput } from "@/types/report";
+import {
+  mapEvidence,
+  mapIntelligence,
+  type EvidenceResponse,
+  type IntelligenceResponse,
+} from "@/lib/api/intelligence";
+import { getMockReportEvidenceReferences, getMockReports } from "@/lib/api/mock";
+import type { Report, ReportEvidenceReference, ReportGenerateInput } from "@/types/report";
 
 type ReportResponse = {
   id: string;
@@ -13,6 +19,11 @@ type ReportResponse = {
   period_start: string;
   period_end: string;
   created_at: string;
+};
+
+type ReportEvidenceReferenceResponse = {
+  intelligence: IntelligenceResponse;
+  evidences: EvidenceResponse[];
 };
 
 export async function listReports(projectId?: string): Promise<Report[]> {
@@ -51,6 +62,21 @@ export async function sendReport(reportId: string): Promise<Report> {
     method: "POST",
   });
   return mapReport(response);
+}
+
+export async function listReportEvidenceReferences(
+  reportId: string,
+): Promise<ReportEvidenceReference[]> {
+  if (mockApiEnabled) {
+    return getMockReportEvidenceReferences(reportId);
+  }
+  const response = await apiFetch<ReportEvidenceReferenceResponse[]>(
+    `/api/reports/${reportId}/evidence-references`,
+  );
+  return response.map((item) => ({
+    intelligence: mapIntelligence(item.intelligence),
+    evidences: item.evidences.map(mapEvidence),
+  }));
 }
 
 function mapReport(response: ReportResponse): Report {

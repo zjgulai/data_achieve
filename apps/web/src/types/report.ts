@@ -1,3 +1,5 @@
+import type { Evidence, IntelligenceItem } from "@/types/intelligence";
+
 export type Report = {
   id: string;
   workspaceId: string;
@@ -14,4 +16,9 @@ export type Report = {
 export type ReportGenerateInput = {
   projectId?: string;
   reportType?: "daily";
+};
+
+export type ReportEvidenceReference = {
+  intelligence: IntelligenceItem;
+  evidences: Evidence[];
 };

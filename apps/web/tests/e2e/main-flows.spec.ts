@@ -51,6 +51,7 @@ test.describe("MVP workspace routes", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText("证据引用").first()).toBeVisible();
+    await expect(page.getByText("证据引用详情").first()).toBeVisible();
     const reportIntelligenceLink = page.locator('a[href^="/intelligence/"]').first();
     if (realApiMode) {
       const evidenceBackedReport = page
@@ -64,6 +65,11 @@ test.describe("MVP workspace routes", () => {
     } else {
       await expect(reportIntelligenceLink).toBeVisible();
     }
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "下载 Markdown", exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.md$/);
 
     await page.getByRole("button", { name: "生成日报", exact: true }).click();
     await expect(page.getByRole("heading", { name: "核心发现", exact: true })).toBeVisible();

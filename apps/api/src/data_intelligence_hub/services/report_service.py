@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, time
+from typing import NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.report import Report
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.intelligence import (
+    EvidenceWithTrace,
+    list_evidences_with_trace,
+)
 from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.reports import (
     ReportAlertEvent,
@@ -21,6 +26,11 @@ from data_intelligence_hub.repositories.reports import (
 from data_intelligence_hub.schemas.report import ReportGenerateRequest
 from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
 from data_intelligence_hub.services.notification_service import create_in_app_notification
+
+
+class ReportEvidenceReference(NamedTuple):
+    intelligence: ReportIntelligence
+    evidences: list[EvidenceWithTrace]
 
 
 async def get_reports(
@@ -40,6 +50,26 @@ async def get_report_or_raise(
     if report is None:
         raise ReportNotFoundError
     return report
+
+
+async def get_report_evidence_references(
+    session: AsyncSession,
+    workspace: Workspace,
+    report_id: uuid.UUID,
+) -> list[ReportEvidenceReference]:
+    report = await get_report_or_raise(session, workspace, report_id)
+    intelligence_items = await list_intelligence_for_report(
+        session=session,
+        workspace_id=workspace.id,
+        project_id=report.project_id,
+        period_start=report.period_start,
+        period_end=report.period_end,
+    )
+    references: list[ReportEvidenceReference] = []
+    for intelligence in intelligence_items:
+        evidences = await list_evidences_with_trace(session, intelligence.item.id)
+        references.append(ReportEvidenceReference(intelligence=intelligence, evidences=evidences))
+    return references
 
 
 async def generate_report(

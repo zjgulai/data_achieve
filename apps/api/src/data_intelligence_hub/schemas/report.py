@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from data_intelligence_hub.models.report import Report
+from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
 
 ReportType = Literal["daily"]
 
@@ -35,3 +36,8 @@ class ReportResponse(BaseModel):
     @classmethod
     def from_model(cls, report: Report) -> ReportResponse:
         return cls.model_validate(report)
+
+
+class ReportEvidenceReferenceResponse(BaseModel):
+    intelligence: IntelligenceResponse
+    evidences: list[EvidenceResponse]

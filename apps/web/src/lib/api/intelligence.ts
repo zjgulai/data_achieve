@@ -9,7 +9,7 @@ import type {
   IntelligenceStatus,
 } from "@/types/intelligence";
 
-type IntelligenceResponse = {
+export type IntelligenceResponse = {
   id: string;
   workspace_id: string;
   project_id: string;
@@ -29,7 +29,7 @@ type IntelligenceResponse = {
   updated_at: string;
 };
 
-type EvidenceResponse = {
+export type EvidenceResponse = {
   id: string;
   intelligence_id: string;
   signal_id: string | null;
@@ -220,7 +220,7 @@ export async function submitFeedback(
   return mapFeedback(response);
 }
 
-function mapIntelligence(response: IntelligenceResponse): IntelligenceItem {
+export function mapIntelligence(response: IntelligenceResponse): IntelligenceItem {
   return {
     id: response.id,
     workspaceId: response.workspace_id,
@@ -242,7 +242,7 @@ function mapIntelligence(response: IntelligenceResponse): IntelligenceItem {
   };
 }
 
-function mapEvidence(response: EvidenceResponse): Evidence {
+export function mapEvidence(response: EvidenceResponse): Evidence {
   return {
     id: response.id,
     intelligenceId: response.intelligence_id,

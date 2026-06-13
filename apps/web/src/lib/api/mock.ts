@@ -5,7 +5,7 @@ import type { AlertEvent, AlertRule } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { AuthSession, Project } from "@/types/project";
 import type { RawRecord } from "@/types/raw-record";
-import type { Report } from "@/types/report";
+import type { Report, ReportEvidenceReference } from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
 
@@ -989,6 +989,24 @@ export function getMockReports(): Report[] {
       createdAt: "2026-06-11T08:30:00.000Z",
     },
   ];
+}
+
+export function getMockReportEvidenceReferences(reportId: string): ReportEvidenceReference[] {
+  const report = getMockReports().find((item) => item.id === reportId);
+  if (!report) {
+    return [];
+  }
+  const intelligenceIds = new Set(
+    [...report.content.matchAll(/(?:情报 ID：|intelligence_id=)([a-zA-Z0-9_-]+)/g)].map(
+      (match) => match[1],
+    ),
+  );
+  return getMockIntelligence()
+    .filter((intelligence) => intelligenceIds.has(intelligence.id))
+    .map((intelligence) => ({
+      intelligence,
+      evidences: getMockEvidences(intelligence.id),
+    }));
 }
 
 export function getMockAlertRules(): AlertRule[] {

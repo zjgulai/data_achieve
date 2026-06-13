@@ -6,10 +6,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
-from data_intelligence_hub.schemas.report import ReportGenerateRequest, ReportResponse
+from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
+from data_intelligence_hub.schemas.report import (
+    ReportEvidenceReferenceResponse,
+    ReportGenerateRequest,
+    ReportResponse,
+)
 from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
 from data_intelligence_hub.services.report_service import (
     generate_report,
+    get_report_evidence_references,
     get_report_or_raise,
     get_reports,
     send_report,
@@ -43,6 +49,43 @@ async def generate_report_item(
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return ReportResponse.from_model(report)
+
+
+@router.get(
+    "/{report_id}/evidence-references",
+    response_model=list[ReportEvidenceReferenceResponse],
+)
+async def list_report_evidence_references(
+    report_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> list[ReportEvidenceReferenceResponse]:
+    try:
+        references = await get_report_evidence_references(session, context.workspace, report_id)
+    except ReportNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+    return [
+        ReportEvidenceReferenceResponse(
+            intelligence=IntelligenceResponse.from_model(
+                reference.intelligence.item,
+                reference.intelligence.evidence_count,
+            ),
+            evidences=[
+                EvidenceResponse.from_model(
+                    evidence=trace.evidence,
+                    screenshot_url=trace.screenshot_url,
+                    signal=trace.signal,
+                    entity=trace.entity,
+                    raw_record=trace.raw_record,
+                    task_run=trace.task_run,
+                    source=trace.source,
+                )
+                for trace in reference.evidences
+            ],
+        )
+        for reference in references
+    ]
 
 
 @router.get("/{report_id}", response_model=ReportResponse)
