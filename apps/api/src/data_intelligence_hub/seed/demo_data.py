@@ -226,7 +226,7 @@ async def _delete_legacy_demo_records(session: AsyncSession) -> None:
             item = await session.get(model, _id(key))
             if item is not None:
                 await session.delete(item)
-    await session.flush()
+        await session.flush()
 
 
 async def _merge_identity(
