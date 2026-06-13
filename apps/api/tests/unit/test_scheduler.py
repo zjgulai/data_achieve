@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.models import (
@@ -133,7 +133,15 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
 
     async with session_factory() as session:
         reports = list((await session.execute(select(Report))).scalars().all())
-        notifications = list((await session.execute(select(Notification))).scalars().all())
+        notifications = list(
+            (
+                await session.execute(
+                    select(Notification).order_by(Notification.created_at, Notification.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
         audit_events = list(
             (await session.execute(select(ReportAuditEvent).order_by(ReportAuditEvent.created_at)))
             .scalars()
@@ -156,8 +164,11 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
     assert subscription_runs[0].report_id == reports[0].id
     assert subscription_runs[0].delivered_channels == ["in_app"]
     assert subscription_runs[0].skipped_channels == {"email": "smtp_not_configured"}
-    assert len(notifications) == 1
-    assert notifications[0].notification_type == "report_ready"
+    notifications_by_type = {
+        notification.notification_type: notification for notification in notifications
+    }
+    assert set(notifications_by_type) == {"report_ready", "task_failed"}
+    assert "smtp_not_configured" in notifications_by_type["task_failed"].body
     assert [event.event_type for event in audit_events] == [
         "generated",
         "sent",
@@ -180,7 +191,7 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
     assert next_run_at > now
 
 
-async def _create_session_factory() -> async_sessionmaker:
+async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -192,7 +203,7 @@ async def _create_session_factory() -> async_sessionmaker:
 
 
 async def _create_collection_task(
-    session,
+    session: AsyncSession,
     schedule_cron: str,
 ) -> CollectionTask:
     now = datetime.now(UTC)
@@ -280,7 +291,7 @@ async def _create_collection_task(
 
 
 async def _create_report_subscription(
-    session,
+    session: AsyncSession,
     next_run_at: datetime,
 ) -> uuid.UUID:
     current_time = datetime(2026, 6, 13, 8, 0, tzinfo=UTC)

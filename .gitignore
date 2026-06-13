@@ -31,3 +31,7 @@ tmp/**
 *.sqlite
 *.sqlite3
 *.pem
+
+# Local autonomous loop control
+.Codex/
+TODO.md

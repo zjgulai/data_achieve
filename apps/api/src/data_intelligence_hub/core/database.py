@@ -4,7 +4,6 @@ import asyncio
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -45,6 +44,6 @@ async def check_database() -> str:
                 await connection.execute(text("SELECT 1"))
     except TimeoutError:
         return "timeout"
-    except (OSError, SQLAlchemyError):
+    except Exception:
         return "unavailable"
     return "connected"
