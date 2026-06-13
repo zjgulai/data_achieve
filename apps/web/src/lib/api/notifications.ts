@@ -1,6 +1,14 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
-import { getMockNotifications } from "@/lib/api/mock";
-import type { NotificationItem } from "@/types/notification";
+import {
+  getMockEmailChannelStatus,
+  getMockNotifications,
+  testMockEmailChannel,
+} from "@/lib/api/mock";
+import type {
+  EmailChannelStatus,
+  EmailChannelTestResult,
+  NotificationItem,
+} from "@/types/notification";
 
 type NotificationResponse = {
   id: string;
@@ -12,6 +20,26 @@ type NotificationResponse = {
   reference_id: string;
   is_read: boolean;
   created_at: string;
+};
+
+type EmailChannelStatusResponse = {
+  status: string;
+  configured: boolean;
+  missing_settings: string[];
+  host_configured: boolean;
+  port: number;
+  sender_configured: boolean;
+  auth_configured: boolean;
+  tls_mode: string;
+  reason: string | null;
+};
+
+type EmailChannelTestResponse = {
+  delivered: boolean;
+  recipient_email: string;
+  status: EmailChannelStatusResponse;
+  reason: string | null;
+  tested_at: string;
 };
 
 export async function listNotifications(isRead?: boolean): Promise<NotificationItem[]> {
@@ -51,6 +79,25 @@ export async function markAllNotificationsRead(): Promise<number> {
   return response.updated_count;
 }
 
+export async function getEmailChannelStatus(): Promise<EmailChannelStatus> {
+  if (mockApiEnabled) {
+    return getMockEmailChannelStatus();
+  }
+  const response = await apiFetch<EmailChannelStatusResponse>("/api/notifications/email-channel");
+  return mapEmailChannelStatus(response);
+}
+
+export async function testEmailChannel(): Promise<EmailChannelTestResult> {
+  if (mockApiEnabled) {
+    return testMockEmailChannel();
+  }
+  const response = await apiFetch<EmailChannelTestResponse>(
+    "/api/notifications/email-channel/test",
+    { method: "POST" },
+  );
+  return mapEmailChannelTestResult(response);
+}
+
 function mapNotification(response: NotificationResponse): NotificationItem {
   return {
     id: response.id,
@@ -62,5 +109,29 @@ function mapNotification(response: NotificationResponse): NotificationItem {
     referenceId: response.reference_id,
     isRead: response.is_read,
     createdAt: response.created_at,
+  };
+}
+
+function mapEmailChannelStatus(response: EmailChannelStatusResponse): EmailChannelStatus {
+  return {
+    status: response.status,
+    configured: response.configured,
+    missingSettings: response.missing_settings,
+    hostConfigured: response.host_configured,
+    port: response.port,
+    senderConfigured: response.sender_configured,
+    authConfigured: response.auth_configured,
+    tlsMode: response.tls_mode,
+    reason: response.reason,
+  };
+}
+
+function mapEmailChannelTestResult(response: EmailChannelTestResponse): EmailChannelTestResult {
+  return {
+    delivered: response.delivered,
+    recipientEmail: response.recipient_email,
+    status: mapEmailChannelStatus(response.status),
+    reason: response.reason,
+    testedAt: response.tested_at,
   };
 }

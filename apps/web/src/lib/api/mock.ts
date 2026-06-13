@@ -2,7 +2,11 @@ import type { DashboardSummary } from "@/types/dashboard";
 import type { Entity, EntitySnapshot } from "@/types/entity";
 import type { Evidence, IntelligenceItem } from "@/types/intelligence";
 import type { AlertEvent, AlertRule } from "@/types/alert";
-import type { NotificationItem } from "@/types/notification";
+import type {
+  EmailChannelStatus,
+  EmailChannelTestResult,
+  NotificationItem,
+} from "@/types/notification";
 import type { AuthSession, Project } from "@/types/project";
 import type { RawRecord } from "@/types/raw-record";
 import type {
@@ -1406,6 +1410,30 @@ export function getMockNotifications(): NotificationItem[] {
       createdAt: "2026-06-11T08:31:00.000Z",
     },
   ];
+}
+
+export function getMockEmailChannelStatus(): EmailChannelStatus {
+  return {
+    status: "not_configured",
+    configured: false,
+    missingSettings: ["SMTP_HOST", "SMTP_FROM"],
+    hostConfigured: false,
+    port: 587,
+    senderConfigured: false,
+    authConfigured: false,
+    tlsMode: "starttls",
+    reason: "smtp_not_configured",
+  };
+}
+
+export function testMockEmailChannel(): EmailChannelTestResult {
+  return {
+    delivered: false,
+    recipientEmail: "demo@example.com",
+    status: getMockEmailChannelStatus(),
+    reason: "smtp_not_configured",
+    testedAt: new Date().toISOString(),
+  };
 }
 
 export function getMockSignalSnapshotCompare(signalId: string): SignalSnapshotCompare {

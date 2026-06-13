@@ -4,6 +4,7 @@ import asyncio
 import smtplib
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from email.message import EmailMessage
 
 import structlog
@@ -26,6 +27,28 @@ logger = structlog.get_logger(__name__)
 class EmailDeliveryResult:
     delivered: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class EmailChannelStatus:
+    status: str
+    configured: bool
+    missing_settings: list[str]
+    host_configured: bool
+    port: int
+    sender_configured: bool
+    auth_configured: bool
+    tls_mode: str
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class EmailChannelTestResult:
+    delivered: bool
+    recipient_email: str
+    status: EmailChannelStatus
+    reason: str | None
+    tested_at: datetime
 
 
 async def create_in_app_notification(
@@ -81,15 +104,42 @@ async def mark_all_notifications_read(session: AsyncSession, user: User) -> int:
     return len(notifications)
 
 
+def get_email_channel_status() -> EmailChannelStatus:
+    settings = get_settings()
+    return _build_email_channel_status(settings)
+
+
+async def test_email_channel(user: User) -> EmailChannelTestResult:
+    status = get_email_channel_status()
+    result = await send_email_notification(
+        recipient_email=user.email,
+        subject="Data Achieve 邮件通道测试",
+        body=(
+            "这是一封 Data Achieve 邮件通道测试邮件。"
+            "如果你收到它，说明当前 SMTP 配置可以完成基础投递。"
+        ),
+    )
+    return EmailChannelTestResult(
+        delivered=result.delivered,
+        recipient_email=user.email,
+        status=status,
+        reason=result.reason,
+        tested_at=datetime.now(UTC),
+    )
+
+
 async def send_email_notification(
     recipient_email: str,
     subject: str,
     body: str,
 ) -> EmailDeliveryResult:
     settings = get_settings()
+    channel_status = _build_email_channel_status(settings)
+    if not channel_status.configured:
+        return EmailDeliveryResult(delivered=False, reason=channel_status.reason)
     smtp_host = settings.smtp_host
     sender = settings.smtp_from or settings.smtp_user
-    if not smtp_host or not sender:
+    if smtp_host is None or sender is None:
         return EmailDeliveryResult(delivered=False, reason="smtp_not_configured")
 
     try:
@@ -137,3 +187,41 @@ def _send_email_sync(
 def _login_if_configured(smtp: smtplib.SMTP, settings: Settings) -> None:
     if settings.smtp_user and settings.smtp_password:
         smtp.login(settings.smtp_user, settings.smtp_password)
+
+
+def _build_email_channel_status(settings: Settings) -> EmailChannelStatus:
+    missing_settings: list[str] = []
+    sender = settings.smtp_from or settings.smtp_user
+    if not settings.smtp_host:
+        missing_settings.append("SMTP_HOST")
+    if not sender:
+        missing_settings.append("SMTP_FROM")
+
+    auth_partial = bool(settings.smtp_user) != bool(settings.smtp_password)
+    if auth_partial:
+        if not settings.smtp_user:
+            missing_settings.append("SMTP_USER")
+        if not settings.smtp_password:
+            missing_settings.append("SMTP_PASSWORD")
+
+    if not settings.smtp_host or not sender:
+        reason = "smtp_not_configured"
+        status = "not_configured"
+    elif auth_partial:
+        reason = "smtp_auth_incomplete"
+        status = "misconfigured"
+    else:
+        reason = None
+        status = "ready"
+
+    return EmailChannelStatus(
+        status=status,
+        configured=reason is None,
+        missing_settings=missing_settings,
+        host_configured=bool(settings.smtp_host),
+        port=settings.smtp_port,
+        sender_configured=bool(sender),
+        auth_configured=bool(settings.smtp_user and settings.smtp_password),
+        tls_mode="ssl" if settings.smtp_port == 465 else "starttls",
+        reason=reason,
+    )

@@ -240,6 +240,28 @@ async def test_report_generation_send_and_notification_read_flow(
 
 
 @pytest.mark.asyncio
+async def test_email_channel_status_and_test_flow(client: AsyncClient) -> None:
+    await register_and_create_project(client)
+
+    status_response = await client.get("/api/notifications/email-channel")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["status"] == "not_configured"
+    assert status_payload["configured"] is False
+    assert status_payload["reason"] == "smtp_not_configured"
+    assert "SMTP_HOST" in status_payload["missing_settings"]
+    assert status_payload["tls_mode"] == "starttls"
+
+    test_response = await client.post("/api/notifications/email-channel/test")
+    assert test_response.status_code == 200
+    test_payload = test_response.json()
+    assert test_payload["delivered"] is False
+    assert test_payload["recipient_email"] == "owner@example.com"
+    assert test_payload["reason"] == "smtp_not_configured"
+    assert test_payload["status"]["configured"] is False
+
+
+@pytest.mark.asyncio
 async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 

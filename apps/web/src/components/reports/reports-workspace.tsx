@@ -11,6 +11,7 @@ import {
   PlusCircle,
   RotateCcw,
   Save,
+  Send,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import type { Route } from "next";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { listProjects } from "@/lib/api/projects";
+import { getEmailChannelStatus, testEmailChannel } from "@/lib/api/notifications";
 import {
   generateReport,
   listReportSubscriptionRuns,
@@ -32,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ReportDetailPanel } from "@/components/reports/report-detail-panel";
 import type { Project } from "@/types/project";
+import type { EmailChannelStatus } from "@/types/notification";
 import type {
   Report,
   ReportDeliveryChannel,
@@ -51,8 +54,10 @@ export function ReportsWorkspace() {
   const [loadingReports, setLoadingReports] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
+  const [loadingEmailChannel, setLoadingEmailChannel] = useState(true);
   const [busy, setBusy] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
+  const [emailTestBusy, setEmailTestBusy] = useState(false);
   const [runningSubscriptionId, setRunningSubscriptionId] = useState<string | null>(null);
   const [expandedRunSubscriptionId, setExpandedRunSubscriptionId] = useState<string | null>(null);
   const [loadingRunHistoryId, setLoadingRunHistoryId] = useState<string | null>(null);
@@ -60,6 +65,7 @@ export function ReportsWorkspace() {
   const [subscriptionRuns, setSubscriptionRuns] = useState<Record<string, ReportSubscriptionRun[]>>(
     {},
   );
+  const [emailChannel, setEmailChannel] = useState<EmailChannelStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [projectFilter, setProjectFilter] = useState("all");
@@ -73,6 +79,7 @@ export function ReportsWorkspace() {
   ]);
   const [subscriptionEnabled, setSubscriptionEnabled] = useState(true);
   const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
+  const [emailChannelNotice, setEmailChannelNotice] = useState<string | null>(null);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("today");
   const [customStart, setCustomStart] = useState(() => toDatetimeLocalValue(startOfToday()));
   const [customEnd, setCustomEnd] = useState(() => toDatetimeLocalValue(new Date()));
@@ -125,6 +132,29 @@ export function ReportsWorkspace() {
       .finally(() => {
         if (mounted) {
           setLoadingSubscriptions(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    getEmailChannelStatus()
+      .then((status) => {
+        if (mounted) {
+          setEmailChannel(status);
+        }
+      })
+      .catch((caught) => {
+        if (mounted) {
+          setError(caught instanceof Error ? caught.message : "Failed to load email channel");
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoadingEmailChannel(false);
         }
       });
     return () => {
@@ -327,6 +357,25 @@ export function ReportsWorkspace() {
     }
   }
 
+  async function handleTestEmailChannel() {
+    setEmailTestBusy(true);
+    setEmailChannelNotice(null);
+    setError(null);
+    try {
+      const result = await testEmailChannel();
+      setEmailChannel(result.status);
+      setEmailChannelNotice(
+        result.delivered
+          ? `测试邮件已发送至 ${result.recipientEmail}`
+          : `测试未发送：${emailReasonLabel(result.reason)}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Email channel test failed");
+    } finally {
+      setEmailTestBusy(false);
+    }
+  }
+
   function toggleSubscriptionChannel(channel: ReportDeliveryChannel) {
     setSubscriptionChannels((current) =>
       current.includes(channel)
@@ -505,6 +554,50 @@ export function ReportsWorkspace() {
               保存订阅
             </button>
             {subscriptionNotice ? <span className="text-sm font-medium text-[#2EBA62]">{subscriptionNotice}</span> : null}
+          </div>
+
+          <div className="mt-3 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#C25B6E]">
+                    <MailCheck size={15} aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#1D1D1F]">邮件通道诊断</p>
+                  <StatusPill status={emailChannel?.status ?? "checking"} />
+                </div>
+                <p className="mt-2 text-xs leading-5 text-[#86868B]">
+                  {loadingEmailChannel ? "正在读取 SMTP 配置状态" : emailChannelDescription(emailChannel)}
+                </p>
+              </div>
+              <button
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={emailTestBusy || loadingEmailChannel}
+                onClick={() => void handleTestEmailChannel()}
+                type="button"
+              >
+                <Send size={14} aria-hidden="true" />
+                {emailTestBusy ? "测试中" : "测试邮件"}
+              </button>
+            </div>
+            {emailChannel ? (
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
+                <Tag>{emailChannel.hostConfigured ? "SMTP host 已配置" : "缺少 SMTP host"}</Tag>
+                <Tag>{emailChannel.senderConfigured ? "发件人已配置" : "缺少发件人"}</Tag>
+                <Tag>{emailChannel.authConfigured ? "认证已配置" : "未启用认证"}</Tag>
+                <Tag>{emailChannel.tlsMode.toUpperCase()} · {emailChannel.port}</Tag>
+              </div>
+            ) : null}
+            {emailChannelNotice ? (
+              <p
+                className={cn(
+                  "mt-2 text-xs font-medium",
+                  emailChannel?.configured ? "text-[#2EBA62]" : "text-[#C25B6E]",
+                )}
+              >
+                {emailChannelNotice}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -814,12 +907,16 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 
 function StatusPill({ status }: { status: string }) {
   const statusMeta: Record<string, { className: string; label: string }> = {
+    checking: { className: "bg-[#FBF8F5] text-[#86868B]", label: "检查中" },
     enabled: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "启用" },
     failed: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "失败" },
     generated: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "待发送" },
+    misconfigured: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "配置不完整" },
     not_run: { className: "bg-[#FBF8F5] text-[#86868B]", label: "未执行" },
+    not_configured: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "未配置" },
     partial_success: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "部分成功" },
     paused: { className: "bg-[#FBF8F5] text-[#86868B]", label: "暂停" },
+    ready: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "可测试" },
     running: { className: "bg-[#F5F0FF] text-[#6E5CF6]", label: "执行中" },
     sent: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "已发送" },
     success: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "成功" },
@@ -927,11 +1024,37 @@ function triggerLabel(triggerType: string) {
 }
 
 function runIssueSummary(errorMessage: string) {
-  return errorMessage.replaceAll("smtp_not_configured", "SMTP 未配置");
+  return errorMessage
+    .replaceAll("smtp_auth_incomplete", "SMTP 认证配置不完整")
+    .replaceAll("smtp_not_configured", "SMTP 未配置");
 }
 
 function canRetryRun(status: string) {
   return status === "failed" || status === "partial_success";
+}
+
+function emailChannelDescription(status: EmailChannelStatus | null) {
+  if (!status) {
+    return "邮件通道状态暂不可用";
+  }
+  if (status.configured) {
+    return `SMTP 配置完整，当前使用 ${status.tlsMode.toUpperCase()}，端口 ${status.port}。`;
+  }
+  const missing = status.missingSettings.length > 0 ? status.missingSettings.join("、") : "必要配置";
+  return `${emailReasonLabel(status.reason)}：${missing}。邮件订阅会继续发送站内通知，并跳过邮件渠道。`;
+}
+
+function emailReasonLabel(reason: string | null) {
+  if (reason === "smtp_auth_incomplete") {
+    return "SMTP 认证配置不完整";
+  }
+  if (reason === "smtp_not_configured") {
+    return "SMTP 未配置";
+  }
+  if (!reason) {
+    return "无错误";
+  }
+  return reason;
 }
 
 function runDeliverySummary(run: ReportSubscriptionRun) {

@@ -53,6 +53,11 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
     await expect(page.getByRole("heading", { name: "自动分发", exact: true })).toBeVisible();
+    await expect(page.getByText("邮件通道诊断")).toBeVisible();
+    if (!realApiMode) {
+      await page.getByRole("button", { name: "测试邮件" }).click();
+      await expect(page.getByText(/测试未发送|测试邮件已发送/)).toBeVisible();
+    }
     await page.getByLabel("发送时间").fill("09:30");
     await page.getByLabel("站内通知").check();
     await page.getByLabel("邮件").check();
