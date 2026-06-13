@@ -156,6 +156,10 @@ uv run python -m data_intelligence_hub.seed.demo_data
 10. 执行线上 E2E。
 11. 回归检查既有域名 `video.lute-tlz-dddd.top`、`mkt.lute-tlz-dddd.top`、`voc.lute-tlz-dddd.top`。
 
+> 说明：生产 compose 运行与重建需显式加载 `.env.production`，否则数据库口令会回退默认值。  
+> 推荐在 `app` 目录下执行：  
+> `docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d --force-recreate`
+
 验收：
 
 1. `https://scrapy.lute-tlz-dddd.top/api/health` 返回健康状态。
