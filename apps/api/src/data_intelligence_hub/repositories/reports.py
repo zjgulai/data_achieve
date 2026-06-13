@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
-from data_intelligence_hub.models.report import Report, ReportAuditEvent
+from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
 from data_intelligence_hub.models.signal import Signal
 
 
@@ -76,6 +76,55 @@ async def list_report_audit_events(
         .order_by(ReportAuditEvent.created_at.asc(), ReportAuditEvent.id.asc())
     )
     return list(result.scalars().all())
+
+
+async def list_report_subscriptions(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> list[ReportSubscription]:
+    result = await session.execute(
+        select(ReportSubscription)
+        .where(
+            ReportSubscription.workspace_id == workspace_id,
+            ReportSubscription.user_id == user_id,
+        )
+        .order_by(
+            ReportSubscription.enabled.desc(),
+            ReportSubscription.created_at.desc(),
+            ReportSubscription.id.asc(),
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def get_report_subscription_by_scope(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID | None,
+    report_type: str,
+) -> ReportSubscription | None:
+    statement = select(ReportSubscription).where(
+        ReportSubscription.workspace_id == workspace_id,
+        ReportSubscription.user_id == user_id,
+        ReportSubscription.report_type == report_type,
+    )
+    if project_id is None:
+        statement = statement.where(ReportSubscription.project_id.is_(None))
+    else:
+        statement = statement.where(ReportSubscription.project_id == project_id)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none()
+
+
+async def create_report_subscription(
+    session: AsyncSession,
+    subscription: ReportSubscription,
+) -> ReportSubscription:
+    session.add(subscription)
+    await session.flush()
+    return subscription
 
 
 async def list_intelligence_for_report(

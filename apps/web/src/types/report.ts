@@ -36,3 +36,30 @@ export type ReportAuditEvent = {
   metadata: Record<string, string>;
   createdAt: string;
 };
+
+export type ReportDeliveryChannel = "in_app" | "email";
+
+export type ReportSubscription = {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  projectId: string | null;
+  reportType: "daily" | string;
+  scheduleTime: string;
+  timezone: string;
+  channels: ReportDeliveryChannel[];
+  enabled: boolean;
+  nextRunAt: string | null;
+  lastSentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReportSubscriptionInput = {
+  channels: ReportDeliveryChannel[];
+  enabled: boolean;
+  projectId?: string;
+  reportType?: "daily";
+  scheduleTime: string;
+  timezone: string;
+};

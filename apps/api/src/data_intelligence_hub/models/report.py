@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from data_intelligence_hub.models.base import Base, UUIDPrimaryKeyMixin
@@ -52,3 +52,33 @@ class ReportAuditEvent(UUIDPrimaryKeyMixin, Base):
     workspace: Mapped[Workspace] = relationship()
     report: Mapped[Report] = relationship()
     actor: Mapped[User | None] = relationship()
+
+
+class ReportSubscription(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "report_subscriptions"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"))
+    report_type: Mapped[str] = mapped_column(String(20), default="daily", nullable=False)
+    schedule_time: Mapped[str] = mapped_column(String(5), default="09:00", nullable=False)
+    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Shanghai", nullable=False)
+    channels: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    workspace: Mapped[Workspace] = relationship()
+    user: Mapped[User] = relationship()
+    project: Mapped[Project | None] = relationship()

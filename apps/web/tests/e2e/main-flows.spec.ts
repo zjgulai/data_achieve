@@ -52,6 +52,12 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
+    await expect(page.getByText("自动分发")).toBeVisible();
+    await page.getByLabel("发送时间").fill("09:30");
+    await page.getByLabel("邮件").check();
+    await page.getByRole("button", { name: "保存订阅", exact: true }).click();
+    await expect(page.getByText("订阅已保存")).toBeVisible();
+    await expect(page.getByText(/09:30/).first()).toBeVisible();
     await page.getByLabel("生成周期").selectOption("24h");
     await expect(page.getByText("证据引用").first()).toBeVisible();
     await expect(page.getByText("证据引用详情").first()).toBeVisible();

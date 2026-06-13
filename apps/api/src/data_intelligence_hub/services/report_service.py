@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
 from typing import NamedTuple
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.models.report import Report, ReportAuditEvent
+from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.intelligence import (
@@ -20,13 +21,19 @@ from data_intelligence_hub.repositories.reports import (
     ReportIntelligence,
     create_report,
     create_report_audit_event,
+    create_report_subscription,
     get_report,
+    get_report_subscription_by_scope,
     list_alert_events_for_report,
     list_intelligence_for_report,
     list_report_audit_events,
+    list_report_subscriptions,
     list_reports,
 )
-from data_intelligence_hub.schemas.report import ReportGenerateRequest
+from data_intelligence_hub.schemas.report import (
+    ReportGenerateRequest,
+    ReportSubscriptionUpsertRequest,
+)
 from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
 from data_intelligence_hub.services.notification_service import create_in_app_notification
 
@@ -82,6 +89,63 @@ async def get_report_audit_events(
 ) -> list[ReportAuditEvent]:
     await get_report_or_raise(session, workspace, report_id)
     return await list_report_audit_events(session, workspace.id, report_id)
+
+
+async def get_report_subscriptions(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+) -> list[ReportSubscription]:
+    return await list_report_subscriptions(session, workspace.id, user.id)
+
+
+async def upsert_report_subscription(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: ReportSubscriptionUpsertRequest,
+) -> ReportSubscription:
+    if payload.project_id is not None:
+        project = await get_project(session, workspace.id, payload.project_id)
+        if project is None:
+            raise ProjectNotFoundError
+
+    now = datetime.now(UTC)
+    next_run_at = _compute_next_run_at(payload.schedule_time, payload.timezone, now)
+    subscription = await get_report_subscription_by_scope(
+        session=session,
+        workspace_id=workspace.id,
+        user_id=user.id,
+        project_id=payload.project_id,
+        report_type=payload.report_type,
+    )
+    if subscription is None:
+        subscription = await create_report_subscription(
+            session,
+            ReportSubscription(
+                workspace_id=workspace.id,
+                user_id=user.id,
+                project_id=payload.project_id,
+                report_type=payload.report_type,
+                schedule_time=payload.schedule_time,
+                timezone=payload.timezone,
+                channels=list(payload.channels),
+                enabled=payload.enabled,
+                next_run_at=next_run_at if payload.enabled else None,
+                updated_at=now,
+            ),
+        )
+    else:
+        subscription.schedule_time = payload.schedule_time
+        subscription.timezone = payload.timezone
+        subscription.channels = list(payload.channels)
+        subscription.enabled = payload.enabled
+        subscription.next_run_at = next_run_at if payload.enabled else None
+        subscription.updated_at = now
+
+    await session.commit()
+    await session.refresh(subscription)
+    return subscription
 
 
 async def generate_report(
@@ -227,6 +291,21 @@ async def _create_report_audit_event(
         created_at=datetime.now(UTC),
     )
     return await create_report_audit_event(session, event)
+
+
+def _compute_next_run_at(schedule_time: str, timezone_name: str, now: datetime) -> datetime:
+    timezone = ZoneInfo(timezone_name)
+    hour_text, minute_text = schedule_time.split(":")
+    local_now = now.astimezone(timezone)
+    candidate = local_now.replace(
+        hour=int(hour_text),
+        minute=int(minute_text),
+        second=0,
+        microsecond=0,
+    )
+    if candidate <= local_now:
+        candidate += timedelta(days=1)
+    return candidate.astimezone(UTC)
 
 
 def _render_daily_report(

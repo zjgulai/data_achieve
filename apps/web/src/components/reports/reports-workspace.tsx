@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  BellRing,
   CalendarDays,
   Clock3,
   FileText,
   MailCheck,
   PlusCircle,
+  Save,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
@@ -14,11 +16,22 @@ import type { Route } from "next";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { listProjects } from "@/lib/api/projects";
-import { generateReport, listReports, sendReport } from "@/lib/api/reports";
+import {
+  generateReport,
+  listReports,
+  listReportSubscriptions,
+  sendReport,
+  upsertReportSubscription,
+} from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
 import { ReportDetailPanel } from "@/components/reports/report-detail-panel";
 import type { Project } from "@/types/project";
-import type { Report, ReportGenerateInput } from "@/types/report";
+import type {
+  Report,
+  ReportDeliveryChannel,
+  ReportGenerateInput,
+  ReportSubscription,
+} from "@/types/report";
 
 type StatusFilter = "all" | "generated" | "sent";
 type PeriodPreset = "today" | "24h" | "7d" | "custom";
@@ -26,14 +39,26 @@ type PeriodPreset = "today" | "24h" | "7d" | "custom";
 export function ReportsWorkspace() {
   const [reports, setReports] = useState<Report[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [subscriptions, setSubscriptions] = useState<ReportSubscription[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingReports, setLoadingReports] = useState(true);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingSubscriptions, setLoadingSubscriptions] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [projectFilter, setProjectFilter] = useState("all");
   const [generateProjectId, setGenerateProjectId] = useState("all");
+  const [subscriptionProjectId, setSubscriptionProjectId] = useState("all");
+  const [subscriptionTime, setSubscriptionTime] = useState("09:00");
+  const [subscriptionTimezone, setSubscriptionTimezone] = useState("Asia/Shanghai");
+  const [subscriptionChannels, setSubscriptionChannels] = useState<ReportDeliveryChannel[]>([
+    "in_app",
+    "email",
+  ]);
+  const [subscriptionEnabled, setSubscriptionEnabled] = useState(true);
+  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("today");
   const [customStart, setCustomStart] = useState(() => toDatetimeLocalValue(startOfToday()));
   const [customEnd, setCustomEnd] = useState(() => toDatetimeLocalValue(new Date()));
@@ -55,6 +80,37 @@ export function ReportsWorkspace() {
       .finally(() => {
         if (mounted) {
           setLoadingProjects(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    listReportSubscriptions()
+      .then((items) => {
+        if (mounted) {
+          setSubscriptions(items);
+          const primary = items[0];
+          if (primary) {
+            setSubscriptionProjectId(primary.projectId ?? "all");
+            setSubscriptionTime(primary.scheduleTime);
+            setSubscriptionTimezone(primary.timezone);
+            setSubscriptionChannels(primary.channels);
+            setSubscriptionEnabled(primary.enabled);
+          }
+        }
+      })
+      .catch((caught) => {
+        if (mounted) {
+          setError(caught instanceof Error ? caught.message : "Failed to load report subscriptions");
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoadingSubscriptions(false);
         }
       });
     return () => {
@@ -161,6 +217,43 @@ export function ReportsWorkspace() {
     }
   }
 
+  async function handleSaveSubscription() {
+    if (subscriptionChannels.length === 0) {
+      setError("至少选择一个发送渠道");
+      return;
+    }
+    setSubscriptionBusy(true);
+    setSubscriptionNotice(null);
+    setError(null);
+    try {
+      const saved = await upsertReportSubscription({
+        channels: subscriptionChannels,
+        enabled: subscriptionEnabled,
+        projectId: subscriptionProjectId === "all" ? undefined : subscriptionProjectId,
+        reportType: "daily",
+        scheduleTime: subscriptionTime,
+        timezone: subscriptionTimezone,
+      });
+      setSubscriptions((current) => {
+        const withoutSaved = current.filter((item) => item.id !== saved.id);
+        return [saved, ...withoutSaved];
+      });
+      setSubscriptionNotice("订阅已保存");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Report subscription save failed");
+    } finally {
+      setSubscriptionBusy(false);
+    }
+  }
+
+  function toggleSubscriptionChannel(channel: ReportDeliveryChannel) {
+    setSubscriptionChannels((current) =>
+      current.includes(channel)
+        ? current.filter((item) => item !== channel)
+        : [...current, channel],
+    );
+  }
+
   return (
     <div className="grid min-w-0 gap-5">
       <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
@@ -242,6 +335,128 @@ export function ReportsWorkspace() {
               <PlusCircle size={17} aria-hidden="true" />
               生成日报
             </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 rounded-2xl border border-[#E9E5E2] bg-white p-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FCEBF0] text-[#C25B6E]">
+              <BellRing size={17} aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-[#1D1D1F]">自动分发</h2>
+              <p className="mt-1 text-sm text-[#86868B]">配置每日生成后的触达时间和渠道偏好</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="订阅项目">
+              <select
+                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                disabled={loadingProjects}
+                onChange={(event) => setSubscriptionProjectId(event.target.value)}
+                value={subscriptionProjectId}
+              >
+                <option value="all">全局</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="发送时间">
+              <input
+                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                onChange={(event) => setSubscriptionTime(event.target.value)}
+                type="time"
+                value={subscriptionTime}
+              />
+            </Field>
+            <Field label="时区">
+              <select
+                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                onChange={(event) => setSubscriptionTimezone(event.target.value)}
+                value={subscriptionTimezone}
+              >
+                <option value="Asia/Shanghai">Asia/Shanghai</option>
+                <option value="UTC">UTC</option>
+                <option value="America/Los_Angeles">America/Los_Angeles</option>
+              </select>
+            </Field>
+            <Field label="状态">
+              <select
+                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                onChange={(event) => setSubscriptionEnabled(event.target.value === "enabled")}
+                value={subscriptionEnabled ? "enabled" : "disabled"}
+              >
+                <option value="enabled">启用</option>
+                <option value="disabled">暂停</option>
+              </select>
+            </Field>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {(["in_app", "email"] as const).map((channel) => (
+              <label
+                className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm font-medium text-[#1D1D1F]"
+                key={channel}
+              >
+                <input
+                  aria-label={channel === "in_app" ? "站内通知" : "邮件"}
+                  checked={subscriptionChannels.includes(channel)}
+                  className="h-4 w-4 accent-[#C25B6E]"
+                  onChange={() => toggleSubscriptionChannel(channel)}
+                  type="checkbox"
+                />
+                {channelLabel(channel)}
+              </label>
+            ))}
+            <button
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#1D1D1F] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#3A3A3C] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={subscriptionBusy || loadingSubscriptions}
+              onClick={() => void handleSaveSubscription()}
+              type="button"
+            >
+              <Save size={16} aria-hidden="true" />
+              保存订阅
+            </button>
+            {subscriptionNotice ? <span className="text-sm font-medium text-[#2EBA62]">{subscriptionNotice}</span> : null}
+          </div>
+        </div>
+
+        <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-[#1D1D1F]">已配置订阅</p>
+            <Pill tone={subscriptions.some((item) => item.enabled) ? "green" : "neutral"}>
+              {subscriptions.filter((item) => item.enabled).length} 个启用
+            </Pill>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {loadingSubscriptions ? <p className="text-sm text-[#86868B]">加载订阅中</p> : null}
+            {!loadingSubscriptions && subscriptions.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-3 text-sm text-[#86868B]">
+                暂无自动分发订阅
+              </p>
+            ) : null}
+            {subscriptions.slice(0, 3).map((subscription) => (
+              <div className="rounded-xl bg-white p-3" key={subscription.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#1D1D1F]">
+                      {projectName(projects, subscription.projectId)} · {subscription.scheduleTime}
+                    </p>
+                    <p className="mt-1 text-xs text-[#86868B]">
+                      {subscription.channels.map(channelLabel).join(" + ")}
+                      {subscription.nextRunAt ? ` · 下次 ${formatDate(subscription.nextRunAt)}` : " · 已暂停"}
+                    </p>
+                  </div>
+                  <StatusPill status={subscription.enabled ? "enabled" : "paused"} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -429,14 +644,17 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
 }
 
 function StatusPill({ status }: { status: string }) {
-  const className =
-    status === "sent"
-      ? "bg-[#EAF8EE] text-[#2EBA62]"
-      : status === "generated"
-        ? "bg-[#FFF4DE] text-[#FF9800]"
-        : "bg-[#FBF8F5] text-[#86868B]";
-  const label = status === "sent" ? "已发送" : status === "generated" ? "待发送" : status;
-  return <span className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", className)}>{label}</span>;
+  const statusMeta: Record<string, { className: string; label: string }> = {
+    enabled: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "启用" },
+    generated: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "待发送" },
+    paused: { className: "bg-[#FBF8F5] text-[#86868B]", label: "暂停" },
+    sent: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "已发送" },
+  };
+  const meta = statusMeta[status] ?? {
+    className: "bg-[#FBF8F5] text-[#86868B]",
+    label: status,
+  };
+  return <span className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", meta.className)}>{meta.label}</span>;
 }
 
 function Pill({ children, tone }: { children: ReactNode; tone: "amber" | "green" | "neutral" | "rose" }) {
@@ -518,6 +736,10 @@ function estimateReadingMinutes(content: string) {
 function countEvidenceMentions(content: string) {
   const matches = content.match(/证据数|evidence/gi);
   return matches?.length ?? 0;
+}
+
+function channelLabel(channel: ReportDeliveryChannel) {
+  return channel === "email" ? "邮件" : "站内通知";
 }
 
 function formatDate(value: string) {

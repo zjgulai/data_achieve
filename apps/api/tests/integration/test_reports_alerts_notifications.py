@@ -240,6 +240,73 @@ async def test_report_generation_send_and_notification_read_flow(
 
 
 @pytest.mark.asyncio
+async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
+    project_id = await register_and_create_project(client)
+
+    empty_response = await client.get("/api/reports/subscriptions")
+    assert empty_response.status_code == 200
+    assert empty_response.json() == []
+
+    create_response = await client.put(
+        "/api/reports/subscriptions",
+        json={
+            "project_id": project_id,
+            "report_type": "daily",
+            "schedule_time": "09:00",
+            "timezone": "Asia/Shanghai",
+            "channels": ["in_app", "email"],
+            "enabled": True,
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert created["project_id"] == project_id
+    assert created["schedule_time"] == "09:00"
+    assert created["channels"] == ["in_app", "email"]
+    assert created["enabled"] is True
+    assert created["next_run_at"] is not None
+    assert created["last_sent_at"] is None
+
+    update_response = await client.put(
+        "/api/reports/subscriptions",
+        json={
+            "project_id": project_id,
+            "report_type": "daily",
+            "schedule_time": "10:30",
+            "timezone": "Asia/Shanghai",
+            "channels": ["email"],
+            "enabled": False,
+        },
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["id"] == created["id"]
+    assert updated["schedule_time"] == "10:30"
+    assert updated["channels"] == ["email"]
+    assert updated["enabled"] is False
+    assert updated["next_run_at"] is None
+
+    list_response = await client.get("/api/reports/subscriptions")
+    assert list_response.status_code == 200
+    subscriptions = list_response.json()
+    assert len(subscriptions) == 1
+    assert subscriptions[0]["id"] == created["id"]
+
+    invalid_project_response = await client.put(
+        "/api/reports/subscriptions",
+        json={
+            "project_id": "00000000-0000-0000-0000-000000000000",
+            "report_type": "daily",
+            "schedule_time": "09:00",
+            "timezone": "Asia/Shanghai",
+            "channels": ["in_app"],
+            "enabled": True,
+        },
+    )
+    assert invalid_project_response.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_report_includes_alert_events_from_same_period(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 

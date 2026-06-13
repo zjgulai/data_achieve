@@ -10,6 +10,8 @@ import type {
   ReportAuditEvent,
   ReportEvidenceReference,
   ReportGenerateInput,
+  ReportSubscription,
+  ReportSubscriptionInput,
 } from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
@@ -1010,6 +1012,24 @@ const mockReportAuditEvents: ReportAuditEvent[] = [
   },
 ];
 
+const mockReportSubscriptions: ReportSubscription[] = [
+  {
+    id: "subscription_daily_osint",
+    workspaceId: "workspace_mock",
+    userId: "user_mock",
+    projectId: "project_osint",
+    reportType: "daily",
+    scheduleTime: "09:00",
+    timezone: "Asia/Shanghai",
+    channels: ["in_app", "email"],
+    enabled: true,
+    nextRunAt: nextMockRunAt("09:00", "Asia/Shanghai"),
+    lastSentAt: null,
+    createdAt: "2026-06-11T08:00:00.000Z",
+    updatedAt: "2026-06-11T08:00:00.000Z",
+  },
+];
+
 export function createMockGeneratedReport(input: ReportGenerateInput): Report {
   const base = getMockReports()[0];
   const project = input.projectId
@@ -1085,6 +1105,67 @@ export function createMockReportAuditEvent(
   };
   mockReportAuditEvents.push(event);
   return event;
+}
+
+export function getMockReportSubscriptions(): ReportSubscription[] {
+  return [...mockReportSubscriptions].sort((left, right) => {
+    if (left.enabled !== right.enabled) {
+      return left.enabled ? -1 : 1;
+    }
+    return right.createdAt.localeCompare(left.createdAt);
+  });
+}
+
+export function upsertMockReportSubscription(
+  input: ReportSubscriptionInput,
+): ReportSubscription {
+  const now = new Date().toISOString();
+  const projectId = input.projectId ?? null;
+  const reportType = input.reportType ?? "daily";
+  const existing = mockReportSubscriptions.find(
+    (item) => item.projectId === projectId && item.reportType === reportType,
+  );
+  if (existing) {
+    existing.scheduleTime = input.scheduleTime;
+    existing.timezone = input.timezone;
+    existing.channels = input.channels;
+    existing.enabled = input.enabled;
+    existing.nextRunAt = input.enabled ? nextMockRunAt(input.scheduleTime, input.timezone) : null;
+    existing.updatedAt = now;
+    return existing;
+  }
+
+  const subscription: ReportSubscription = {
+    id: `subscription_${Date.now()}`,
+    workspaceId: "workspace_mock",
+    userId: "user_mock",
+    projectId,
+    reportType,
+    scheduleTime: input.scheduleTime,
+    timezone: input.timezone,
+    channels: input.channels,
+    enabled: input.enabled,
+    nextRunAt: input.enabled ? nextMockRunAt(input.scheduleTime, input.timezone) : null,
+    lastSentAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  mockReportSubscriptions.push(subscription);
+  return subscription;
+}
+
+function nextMockRunAt(scheduleTime: string, timezone: string) {
+  const [hourText, minuteText] = scheduleTime.split(":");
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(Number(hourText), Number(minuteText), 0, 0);
+  if (next <= now) {
+    next.setDate(next.getDate() + 1);
+  }
+  if (timezone === "UTC") {
+    return new Date(Date.UTC(next.getFullYear(), next.getMonth(), next.getDate(), Number(hourText), Number(minuteText))).toISOString();
+  }
+  return next.toISOString();
 }
 
 export function getMockAlertRules(): AlertRule[] {

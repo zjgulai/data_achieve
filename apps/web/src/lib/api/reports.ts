@@ -8,15 +8,19 @@ import {
 import {
   createMockGeneratedReport,
   createMockReportAuditEvent,
+  getMockReportSubscriptions,
   getMockReportAuditEvents,
   getMockReportEvidenceReferences,
   getMockReports,
+  upsertMockReportSubscription,
 } from "@/lib/api/mock";
 import type {
   Report,
   ReportAuditEvent,
   ReportEvidenceReference,
   ReportGenerateInput,
+  ReportSubscription,
+  ReportSubscriptionInput,
 } from "@/types/report";
 
 type ReportResponse = {
@@ -47,6 +51,22 @@ type ReportAuditEventResponse = {
   to_status: string | null;
   metadata: Record<string, string>;
   created_at: string;
+};
+
+type ReportSubscriptionResponse = {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  project_id: string | null;
+  report_type: string;
+  schedule_time: string;
+  timezone: string;
+  channels: Array<"in_app" | "email">;
+  enabled: boolean;
+  next_run_at: string | null;
+  last_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export async function listReports(projectId?: string): Promise<Report[]> {
@@ -145,6 +165,34 @@ export async function createReportAuditEvent(
   return mapReportAuditEvent(response);
 }
 
+export async function listReportSubscriptions(): Promise<ReportSubscription[]> {
+  if (mockApiEnabled) {
+    return getMockReportSubscriptions();
+  }
+  const response = await apiFetch<ReportSubscriptionResponse[]>("/api/reports/subscriptions");
+  return response.map(mapReportSubscription);
+}
+
+export async function upsertReportSubscription(
+  input: ReportSubscriptionInput,
+): Promise<ReportSubscription> {
+  if (mockApiEnabled) {
+    return upsertMockReportSubscription(input);
+  }
+  const response = await apiFetch<ReportSubscriptionResponse>("/api/reports/subscriptions", {
+    method: "PUT",
+    body: JSON.stringify({
+      channels: input.channels,
+      enabled: input.enabled,
+      project_id: input.projectId ?? null,
+      report_type: input.reportType ?? "daily",
+      schedule_time: input.scheduleTime,
+      timezone: input.timezone,
+    }),
+  });
+  return mapReportSubscription(response);
+}
+
 function mapReport(response: ReportResponse): Report {
   return {
     id: response.id,
@@ -171,5 +219,23 @@ function mapReportAuditEvent(response: ReportAuditEventResponse): ReportAuditEve
     toStatus: response.to_status,
     metadata: response.metadata,
     createdAt: response.created_at,
+  };
+}
+
+function mapReportSubscription(response: ReportSubscriptionResponse): ReportSubscription {
+  return {
+    id: response.id,
+    workspaceId: response.workspace_id,
+    userId: response.user_id,
+    projectId: response.project_id,
+    reportType: response.report_type,
+    scheduleTime: response.schedule_time,
+    timezone: response.timezone,
+    channels: response.channels,
+    enabled: response.enabled,
+    nextRunAt: response.next_run_at,
+    lastSentAt: response.last_sent_at,
+    createdAt: response.created_at,
+    updatedAt: response.updated_at,
   };
 }
