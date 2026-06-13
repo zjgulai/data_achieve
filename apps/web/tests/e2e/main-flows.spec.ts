@@ -55,7 +55,7 @@ test.describe("MVP workspace routes", () => {
     await expect(reportDetail.getByText("报告已进入通知链路")).toBeVisible();
   });
 
-  test("creates alert rule and displays alert events", async ({ page }) => {
+  test("creates alert rule and displays alert events", async ({ page }, testInfo) => {
     await page.goto("/alerts");
     await expect(page.getByRole("heading", { name: "预警中心" })).toBeVisible();
     await expect(page.getByText("预警事件流")).toBeVisible();
@@ -65,9 +65,11 @@ test.describe("MVP workspace routes", () => {
       await expect(page.getByRole("heading", { name: "page_changed" })).toBeVisible();
     }
 
-    const ruleCountBefore = await ruleCards.count();
+    const ruleName = `High severity signal ${testInfo.project.name} ${Date.now()}`;
+    await page.getByLabel("规则名称").fill(ruleName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(ruleCards).toHaveCount(ruleCountBefore + 1);
+    await expect(page.getByText(`${ruleName}: rule created`)).toBeVisible();
+    await expect(page.locator("article").filter({ hasText: ruleName })).toHaveCount(1);
   });
 
   test("marks unread notifications as read", async ({ page }) => {
