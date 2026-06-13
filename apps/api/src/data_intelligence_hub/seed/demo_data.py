@@ -7,18 +7,22 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.core.security import hash_password
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
-from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
+from data_intelligence_hub.models.intelligence import (
+    Evidence,
+    IntelligenceFeedback,
+    IntelligenceItem,
+)
 from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.raw_record import RawRecord
-from data_intelligence_hub.models.report import Report
+from data_intelligence_hub.models.report import Report, ReportSubscription
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -189,72 +193,160 @@ async def seed_demo_data() -> None:
 
 
 async def _delete_legacy_demo_records(session: AsyncSession) -> None:
-    legacy_snapshot_ids = [
-        _id(key)
-        for key in (
-            "snapshot-tiktok-prev",
-            "snapshot-tiktok-current",
-            "snapshot-github-prev",
-            "snapshot-github-current",
+    legacy_project_ids = [_id("project-content"), _id("project-technology")]
+    legacy_source_ids = _unique_ids(
+        [_id("source-tiktok"), _id("source-github")]
+        + await _fetch_ids(
+            session, select(Source.id).where(Source.project_id.in_(legacy_project_ids))
         )
-    ]
-    legacy_signal_ids = list(
-        (
-            await session.execute(
-                select(Signal.id).where(
-                    or_(
-                        Signal.previous_snapshot_id.in_(legacy_snapshot_ids),
-                        Signal.current_snapshot_id.in_(legacy_snapshot_ids),
-                    )
+    )
+    legacy_task_ids = _unique_ids(
+        [_id("task-tiktok"), _id("task-github")]
+        + await _fetch_ids(
+            session,
+            select(CollectionTask.id).where(
+                or_(
+                    CollectionTask.project_id.in_(legacy_project_ids),
+                    CollectionTask.source_id.in_(legacy_source_ids),
                 )
+            ),
+        )
+    )
+    legacy_run_ids = [
+        _id("run-tiktok-success"),
+        _id("run-github-failed"),
+    ] + await _fetch_ids(session, select(TaskRun.id).where(TaskRun.task_id.in_(legacy_task_ids)))
+    legacy_raw_record_ids = [
+        _id("raw-tiktok-prev"),
+        _id("raw-tiktok-current"),
+        _id("raw-github-prev"),
+        _id("raw-github-current"),
+    ] + await _fetch_ids(
+        session,
+        select(RawRecord.id).where(
+            or_(
+                RawRecord.project_id.in_(legacy_project_ids),
+                RawRecord.source_id.in_(legacy_source_ids),
+                RawRecord.task_run_id.in_(legacy_run_ids),
             )
-        ).scalars()
+        ),
     )
-    if legacy_signal_ids:
-        await session.execute(delete(AlertEvent).where(AlertEvent.signal_id.in_(legacy_signal_ids)))
-        await session.execute(delete(Evidence).where(Evidence.signal_id.in_(legacy_signal_ids)))
-        await session.execute(delete(Signal).where(Signal.id.in_(legacy_signal_ids)))
-        await session.flush()
+    legacy_entity_ids = [
+        _id("entity-tiktok-creator"),
+        _id("entity-github-repo"),
+    ] + await _fetch_ids(
+        session, select(Entity.id).where(Entity.project_id.in_(legacy_project_ids))
+    )
+    legacy_snapshot_ids = [
+        _id("snapshot-tiktok-prev"),
+        _id("snapshot-tiktok-current"),
+        _id("snapshot-github-prev"),
+        _id("snapshot-github-current"),
+    ] + await _fetch_ids(
+        session,
+        select(EntitySnapshot.id).where(
+            or_(
+                EntitySnapshot.entity_id.in_(legacy_entity_ids),
+                EntitySnapshot.raw_record_id.in_(legacy_raw_record_ids),
+            )
+        ),
+    )
+    legacy_signal_ids = [
+        _id("signal-tiktok-views-spike"),
+        _id("signal-github-stars-surge"),
+    ] + await _fetch_ids(
+        session,
+        select(Signal.id).where(
+            or_(
+                Signal.project_id.in_(legacy_project_ids),
+                Signal.entity_id.in_(legacy_entity_ids),
+                Signal.previous_snapshot_id.in_(legacy_snapshot_ids),
+                Signal.current_snapshot_id.in_(legacy_snapshot_ids),
+            )
+        ),
+    )
+    legacy_intelligence_ids = [
+        _id("intel-tiktok-demand-window"),
+        _id("intel-github-open-source-momentum"),
+    ] + await _fetch_ids(
+        session,
+        select(IntelligenceItem.id).where(IntelligenceItem.project_id.in_(legacy_project_ids)),
+    )
 
-    legacy_records: tuple[tuple[type[Any], tuple[str, ...]], ...] = (
-        (Notification, ("notification-task-failed",)),
-        (AlertEvent, ("alert-event-traffic",)),
-        (Evidence, ("evidence-tiktok-views", "evidence-github-stars")),
-        (
-            IntelligenceItem,
-            ("intel-tiktok-demand-window", "intel-github-open-source-momentum"),
-        ),
-        (Signal, ("signal-tiktok-views-spike", "signal-github-stars-surge")),
-        (
-            EntitySnapshot,
-            (
-                "snapshot-tiktok-prev",
-                "snapshot-tiktok-current",
-                "snapshot-github-prev",
-                "snapshot-github-current",
-            ),
-        ),
-        (
-            RawRecord,
-            (
-                "raw-tiktok-prev",
-                "raw-tiktok-current",
-                "raw-github-prev",
-                "raw-github-current",
-            ),
-        ),
-        (Entity, ("entity-tiktok-creator", "entity-github-repo")),
-        (TaskRun, ("run-tiktok-success", "run-github-failed")),
-        (CollectionTask, ("task-tiktok", "task-github")),
-        (Source, ("source-tiktok", "source-github")),
-        (Project, ("project-content", "project-technology")),
+    legacy_run_ids = _unique_ids(legacy_run_ids)
+    legacy_raw_record_ids = _unique_ids(legacy_raw_record_ids)
+    legacy_entity_ids = _unique_ids(legacy_entity_ids)
+    legacy_snapshot_ids = _unique_ids(legacy_snapshot_ids)
+    legacy_signal_ids = _unique_ids(legacy_signal_ids)
+    legacy_intelligence_ids = _unique_ids(legacy_intelligence_ids)
+
+    await session.execute(
+        update(Entity)
+        .where(Entity.latest_snapshot_id.in_(legacy_snapshot_ids))
+        .values(latest_snapshot_id=None)
     )
-    for model, keys in legacy_records:
-        for key in keys:
-            item = await session.get(model, _id(key))
-            if item is not None:
-                await session.delete(item)
-        await session.flush()
+    await session.execute(
+        update(AlertRule)
+        .where(AlertRule.project_id.in_(legacy_project_ids))
+        .values(project_id=None)
+    )
+    await session.execute(
+        update(Report).where(Report.project_id.in_(legacy_project_ids)).values(project_id=None)
+    )
+    await session.execute(
+        update(ReportSubscription)
+        .where(ReportSubscription.project_id.in_(legacy_project_ids))
+        .values(project_id=None)
+    )
+    await session.flush()
+
+    await session.execute(
+        delete(Notification).where(Notification.id.in_([_id("notification-task-failed")]))
+    )
+    await session.execute(
+        delete(AlertEvent).where(
+            or_(
+                AlertEvent.id.in_([_id("alert-event-traffic")]),
+                AlertEvent.signal_id.in_(legacy_signal_ids),
+            )
+        )
+    )
+    await session.execute(
+        delete(IntelligenceFeedback).where(
+            IntelligenceFeedback.intelligence_id.in_(legacy_intelligence_ids)
+        )
+    )
+    await session.execute(
+        delete(Evidence).where(
+            or_(
+                Evidence.id.in_([_id("evidence-tiktok-views"), _id("evidence-github-stars")]),
+                Evidence.intelligence_id.in_(legacy_intelligence_ids),
+                Evidence.signal_id.in_(legacy_signal_ids),
+                Evidence.entity_id.in_(legacy_entity_ids),
+                Evidence.raw_record_id.in_(legacy_raw_record_ids),
+            )
+        )
+    )
+    await session.execute(
+        delete(IntelligenceItem).where(IntelligenceItem.id.in_(legacy_intelligence_ids))
+    )
+    await session.execute(delete(Signal).where(Signal.id.in_(legacy_signal_ids)))
+    await session.execute(delete(EntitySnapshot).where(EntitySnapshot.id.in_(legacy_snapshot_ids)))
+    await session.execute(delete(RawRecord).where(RawRecord.id.in_(legacy_raw_record_ids)))
+    await session.execute(delete(Entity).where(Entity.id.in_(legacy_entity_ids)))
+    await session.execute(delete(TaskRun).where(TaskRun.id.in_(legacy_run_ids)))
+    await session.execute(delete(CollectionTask).where(CollectionTask.id.in_(legacy_task_ids)))
+    await session.execute(delete(Source).where(Source.id.in_(legacy_source_ids)))
+    await session.execute(delete(Project).where(Project.id.in_(legacy_project_ids)))
+    await session.flush()
+
+
+async def _fetch_ids(session: AsyncSession, statement: Any) -> list[uuid.UUID]:
+    return list((await session.execute(statement)).scalars())
+
+
+def _unique_ids(ids: list[uuid.UUID]) -> list[uuid.UUID]:
+    return list(dict.fromkeys(ids))
 
 
 async def _merge_identity(
