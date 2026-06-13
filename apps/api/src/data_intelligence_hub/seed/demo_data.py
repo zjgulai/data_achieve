@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.core.database import async_session_factory
@@ -188,6 +189,33 @@ async def seed_demo_data() -> None:
 
 
 async def _delete_legacy_demo_records(session: AsyncSession) -> None:
+    legacy_snapshot_ids = [
+        _id(key)
+        for key in (
+            "snapshot-tiktok-prev",
+            "snapshot-tiktok-current",
+            "snapshot-github-prev",
+            "snapshot-github-current",
+        )
+    ]
+    legacy_signal_ids = list(
+        (
+            await session.execute(
+                select(Signal.id).where(
+                    or_(
+                        Signal.previous_snapshot_id.in_(legacy_snapshot_ids),
+                        Signal.current_snapshot_id.in_(legacy_snapshot_ids),
+                    )
+                )
+            )
+        ).scalars()
+    )
+    if legacy_signal_ids:
+        await session.execute(delete(AlertEvent).where(AlertEvent.signal_id.in_(legacy_signal_ids)))
+        await session.execute(delete(Evidence).where(Evidence.signal_id.in_(legacy_signal_ids)))
+        await session.execute(delete(Signal).where(Signal.id.in_(legacy_signal_ids)))
+        await session.flush()
+
     legacy_records: tuple[tuple[type[Any], tuple[str, ...]], ...] = (
         (Notification, ("notification-task-failed",)),
         (AlertEvent, ("alert-event-traffic",)),
