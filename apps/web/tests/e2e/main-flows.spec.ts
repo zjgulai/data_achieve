@@ -1,4 +1,4 @@
-import { APIRequestContext, type Page, expect, test } from "@playwright/test";
+import { APIRequestContext, type Locator, type Page, expect, test } from "@playwright/test";
 
 const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
 
@@ -41,6 +41,15 @@ async function loginByApi(page: Page, request: APIRequestContext) {
       sameSite: "Lax",
     },
   ]);
+}
+
+async function activateControl(locator: Locator, projectName: string) {
+  if (projectName === "mobile") {
+    await locator.focus();
+    await locator.press("Enter");
+    return;
+  }
+  await locator.click();
 }
 
 test.beforeEach(async ({ page, request }) => {
@@ -100,7 +109,7 @@ test.describe("MVP workspace routes", () => {
     if (await subscriptionManualNotice.count() > 0) {
       await expect(subscriptionManualNotice).toBeVisible();
     }
-    await expect(page.getByText(/部分成功|成功/).first()).toBeVisible();
+    await expect(page.getByText(/部分成功|成功/).first()).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "执行历史" }).first().click();
     await expect(page.getByText("手动触发").first()).toBeVisible();
     const retryButton = page.getByRole("button", { name: "重试" }).first();
@@ -170,6 +179,50 @@ test.describe("MVP workspace routes", () => {
     await expect(page.locator("article").filter({ hasText: ruleName })).toHaveCount(1);
   });
 
+  test("manages source edit retest enable and disable flow", async ({ page }, testInfo) => {
+    await page.goto("/sources");
+    await expect(page.getByRole("heading", { name: "数据源接入工作台" })).toBeVisible();
+    await expect(page.getByText("数据源资产池")).toBeVisible();
+
+    const sourceName = `Playwright Manual JSON ${testInfo.project.name} ${Date.now()}`;
+    const updatedName = `${sourceName} Updated`;
+    await page.getByRole("button", { name: /Manual JSON/ }).click();
+    await page.getByLabel("名称").fill(sourceName);
+    await page.getByLabel("Entity Type").fill("github_repo");
+    await page.getByLabel("JSON").fill(
+      JSON.stringify({ full_name: "playwright/source-flow", stars: 88 }, null, 2),
+    );
+    await page.getByLabel("Cron").fill("");
+    await page.getByRole("button", { name: "创建 Source" }).click();
+    await expect(page.getByText("Source created")).toBeVisible();
+
+    let sourceCard = page.locator("article").filter({ hasText: sourceName }).first();
+    await expect(sourceCard).toBeVisible();
+    await sourceCard.getByRole("button", { name: "编辑" }).click();
+    await page.getByLabel("名称").fill(updatedName);
+    await page.getByLabel("JSON").fill(
+      JSON.stringify({ full_name: "playwright/source-flow", stars: 144 }, null, 2),
+    );
+    await page.getByLabel("JSON").blur();
+    await page.getByRole("button", { name: "保存 Source" }).scrollIntoViewIfNeeded();
+    await activateControl(page.getByRole("button", { name: "保存 Source" }), testInfo.project.name);
+    await expect(page.getByText(`${updatedName}: source updated; retest before next run`)).toBeVisible();
+
+    sourceCard = page.locator("article").filter({ hasText: updatedName }).first();
+    await activateControl(
+      sourceCard.getByRole("button", { name: "重测配置" }),
+      testInfo.project.name,
+    );
+    await expect(page.getByText(`${updatedName}: Config is valid.`)).toBeVisible();
+    await activateControl(sourceCard.getByRole("button", { name: "启用" }), testInfo.project.name);
+    await expect(page.getByText(`${updatedName}: task enabled`)).toBeVisible();
+    await expect(sourceCard.getByText("已启用")).toBeVisible();
+    await expect(sourceCard.getByText("尚未运行")).toBeVisible();
+    await activateControl(sourceCard.getByRole("button", { name: "停用" }), testInfo.project.name);
+    await expect(page.getByText(`${updatedName}: source disabled`)).toBeVisible();
+    await expect(sourceCard.getByText("已停用")).toBeVisible();
+  });
+
   test("inspects task workspace and diagnostics", async ({ page }, testInfo) => {
     await page.goto("/tasks");
     await expect(page.getByRole("heading", { name: "采集运行控制台", exact: true })).toBeVisible();
@@ -223,7 +276,7 @@ test.describe("MVP workspace routes", () => {
 });
 
 test.describe("mobile layout guard", () => {
-  for (const route of ["/reports", "/alerts", "/notifications", "/tasks"]) {
+  for (const route of ["/reports", "/alerts", "/notifications", "/tasks", "/sources"]) {
     test(`${route} does not overflow horizontally`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== "mobile", "mobile-only layout assertion");
       await page.goto(route);

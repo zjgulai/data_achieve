@@ -88,6 +88,55 @@ async def test_source_rejects_invalid_config(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_source_update_syncs_derived_url_and_task_config(client: AsyncClient) -> None:
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "OpenAI Codex",
+            "type": "github_repo",
+            "config": {"owner": "openai", "repo": "codex"},
+            "schedule_cron": "0 8 * * *",
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    update_response = await client.patch(
+        f"/api/sources/{source['id']}",
+        json={
+            "name": "MCP Python SDK",
+            "config": {"owner": "modelcontextprotocol", "repo": "python-sdk"},
+            "schedule_cron": "0 */1 * * *",
+        },
+    )
+    assert update_response.status_code == 200
+    updated_source = update_response.json()
+    assert updated_source["name"] == "MCP Python SDK"
+    assert updated_source["url"] == "https://github.com/modelcontextprotocol/python-sdk"
+    assert updated_source["config"] == {
+        "owner": "modelcontextprotocol",
+        "repo": "python-sdk",
+    }
+
+    task_response = await client.get(f"/api/tasks/{task['id']}")
+    assert task_response.status_code == 200
+    updated_task = task_response.json()
+    assert updated_task["name"] == "MCP Python SDK"
+    assert updated_task["schedule_cron"] == "0 */1 * * *"
+    assert updated_task["config"] == {
+        "owner": "modelcontextprotocol",
+        "repo": "python-sdk",
+    }
+
+
+@pytest.mark.asyncio
 async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     client: AsyncClient,
 ) -> None:

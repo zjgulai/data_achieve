@@ -31,6 +31,13 @@ export type SourceCreateInput = {
   scheduleCron?: string;
 };
 
+export type SourceUpdateInput = {
+  name?: string;
+  url?: string | null;
+  config?: Record<string, unknown>;
+  scheduleCron?: string | null;
+};
+
 export type SourceTestResult = {
   status: "config_valid";
   collectorType: CollectorType;

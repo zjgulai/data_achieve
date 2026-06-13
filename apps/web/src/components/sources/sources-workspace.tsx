@@ -3,30 +3,37 @@
 import {
   CheckCircle2,
   Clock3,
+  Activity,
   Database,
-  FlaskConical,
   Github,
   Globe2,
   Link2,
+  Pencil,
   PlayCircle,
   Plus,
+  Power,
+  RotateCcw,
   ShieldCheck,
   UploadCloud,
+  XCircle,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { listProjects } from "@/lib/api/projects";
+import { listTasks } from "@/lib/api/tasks";
 import {
   createSource,
+  disableSource,
   enableSource,
   listCollectors,
   listSources,
   testSource,
+  updateSource,
 } from "@/lib/api/sources";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
-import type { Collector, CollectorType, Source } from "@/types/source-task";
+import type { CollectionTask, Collector, CollectorType, Source } from "@/types/source-task";
 
 const collectorTypeLabels: Record<CollectorType, string> = {
   github_repo: "GitHub Repo",
@@ -100,6 +107,7 @@ export function SourcesWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [collectors, setCollectors] = useState<Collector[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
+  const [tasks, setTasks] = useState<CollectionTask[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [collectorType, setCollectorType] = useState<CollectorType>("github_repo");
   const [name, setName] = useState("OpenAI Codex");
@@ -113,17 +121,21 @@ export function SourcesWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const sourceFormRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([listProjects(), listCollectors(), listSources()])
-      .then(([projectItems, collectorItems, sourceItems]) => {
+    Promise.all([listProjects(), listCollectors(), listSources(), listTasks()])
+      .then(([projectItems, collectorItems, sourceItems, taskItems]) => {
         if (!mounted) {
           return;
         }
         setProjects(projectItems);
         setCollectors(collectorItems);
         setSources(sourceItems);
+        setTasks(taskItems);
         setSelectedProjectId(projectItems[0]?.id ?? "");
       })
       .catch((caught) => {
@@ -145,7 +157,12 @@ export function SourcesWorkspace() {
     return new Map(projects.map((project) => [project.id, project]));
   }, [projects]);
 
+  const taskBySourceId = useMemo(() => {
+    return new Map(tasks.map((task) => [task.sourceId, task]));
+  }, [tasks]);
+
   const selectedCollector = collectors.find((collector) => collector.type === collectorType);
+  const editingSource = sources.find((source) => source.id === editingSourceId);
 
   const enabledCount = sources.filter((source) => source.enabled).length;
   const configuredProjectCount = new Set(sources.map((source) => source.projectId)).size;
@@ -180,13 +197,36 @@ export function SourcesWorkspace() {
         setError("Project is required");
         return;
       }
+      if (editingSourceId) {
+        const source = await updateSource(editingSourceId, {
+          name,
+          url: collectorType === "generic_web" ? url : undefined,
+          config: buildConfig(),
+          scheduleCron: normalizeScheduleCron(scheduleCron) ?? null,
+        });
+        setSources((current) => current.map((item) => (item.id === source.id ? source : item)));
+        setTasks((current) =>
+          current.map((task) =>
+            task.sourceId === source.id
+              ? {
+                  ...task,
+                  name: source.name,
+                  scheduleCron: source.scheduleCron,
+                }
+              : task,
+          ),
+        );
+        setEditingSourceId(null);
+        setMessage(`${source.name}: source updated; retest before next run`);
+        return;
+      }
       const source = await createSource({
         projectId: selectedProjectId,
         name,
         type: collectorType,
         url: collectorType === "generic_web" ? url : undefined,
         config: buildConfig(),
-        scheduleCron,
+        scheduleCron: normalizeScheduleCron(scheduleCron),
       });
       setSources((current) => [source, ...current]);
       setMessage("Source created");
@@ -198,26 +238,77 @@ export function SourcesWorkspace() {
   async function testExistingSource(source: Source) {
     setError(null);
     setMessage(null);
+    setBusySourceId(source.id);
     try {
       const result = await testSource(source.id);
       setMessage(`${source.name}: ${result.message}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Source test failed");
+    } finally {
+      setBusySourceId(null);
     }
   }
 
   async function enableExistingSource(source: Source) {
     setError(null);
     setMessage(null);
+    setBusySourceId(source.id);
     try {
-      await enableSource(source.id);
+      const task = await enableSource(source.id);
       setSources((current) =>
         current.map((item) => (item.id === source.id ? { ...item, enabled: true } : item)),
       );
+      setTasks((current) => upsertTask(current, task));
       setMessage(`${source.name}: task enabled`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Failed to enable source");
+    } finally {
+      setBusySourceId(null);
     }
+  }
+
+  async function disableExistingSource(source: Source) {
+    setError(null);
+    setMessage(null);
+    setBusySourceId(source.id);
+    try {
+      const disabledSource = await disableSource(source.id);
+      setSources((current) =>
+        current.map((item) =>
+          item.id === disabledSource.id ? { ...item, enabled: disabledSource.enabled } : item,
+        ),
+      );
+      setTasks((current) =>
+        current.map((task) =>
+          task.sourceId === disabledSource.id ? { ...task, status: "disabled" } : task,
+        ),
+      );
+      setMessage(`${source.name}: source disabled`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to disable source");
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  function startEditingSource(source: Source) {
+    setEditingSourceId(source.id);
+    setSelectedProjectId(source.projectId);
+    setCollectorType(source.type);
+    setName(source.name);
+    setScheduleCron(source.scheduleCron ?? "");
+    hydrateConfigFields(source);
+    setError(null);
+    setMessage(`${source.name}: editing`);
+    window.requestAnimationFrame(() => {
+      sourceFormRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }
+
+  function cancelEditingSource() {
+    setEditingSourceId(null);
+    setError(null);
+    setMessage(null);
   }
 
   function buildConfig(): Record<string, unknown> {
@@ -235,6 +326,24 @@ export function SourcesWorkspace() {
     } catch {
       throw new Error("Manual JSON must be valid JSON");
     }
+  }
+
+  function hydrateConfigFields(source: Source) {
+    if (source.type === "github_repo") {
+      setOwner(formatConfigValue(source.config.owner) || "openai");
+      setRepo(formatConfigValue(source.config.repo) || "codex");
+      return;
+    }
+    if (source.type === "github_topic") {
+      setTopic(formatConfigValue(source.config.topic) || "web-scraping");
+      return;
+    }
+    if (source.type === "generic_web") {
+      setUrl(source.url ?? (formatConfigValue(source.config.url) || "https://example.com"));
+      return;
+    }
+    setEntityType(formatConfigValue(source.config.entity_type) || "product");
+    setJsonText(JSON.stringify(source.config.json_data ?? {}, null, 2));
   }
 
   return (
@@ -324,11 +433,15 @@ export function SourcesWorkspace() {
           <div className="grid gap-3">
             {sources.map((source) => (
               <SourceAssetCard
+                busy={busySourceId === source.id}
                 key={source.id}
+                onDisable={() => void disableExistingSource(source)}
+                onEdit={() => startEditingSource(source)}
                 onEnable={() => void enableExistingSource(source)}
                 onTest={() => void testExistingSource(source)}
                 project={projectById.get(source.projectId)}
                 source={source}
+                task={taskBySourceId.get(source.id)}
               />
             ))}
             {!loading && sources.length === 0 ? (
@@ -340,6 +453,7 @@ export function SourcesWorkspace() {
         </section>
 
         <form
+          ref={sourceFormRef}
           className="rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5"
           onSubmit={(event) => {
             event.preventDefault();
@@ -348,8 +462,12 @@ export function SourcesWorkspace() {
         >
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#B47767]">New Source</p>
-              <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">新增采集入口</h2>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">
+                {editingSource ? "Edit Source" : "New Source"}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">
+                {editingSource ? "编辑采集入口" : "新增采集入口"}
+              </h2>
               <p className="mt-1 text-sm text-[#7A625A]">
                 {selectedCollector?.description ?? "选择 Collector 后补齐必要配置。"}
               </p>
@@ -358,11 +476,36 @@ export function SourcesWorkspace() {
               <Plus size={18} aria-hidden="true" />
             </span>
           </div>
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row">
+            <button
+              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(201,111,92,0.24)] transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!selectedProjectId}
+              type="submit"
+            >
+              {editingSource ? (
+                <CheckCircle2 size={16} aria-hidden="true" />
+              ) : (
+                <PlayCircle size={16} aria-hidden="true" />
+              )}
+              {editingSource ? "保存 Source" : "创建 Source"}
+            </button>
+            {editingSource ? (
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-4 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F]"
+                onClick={cancelEditingSource}
+                type="button"
+              >
+                <XCircle size={16} aria-hidden="true" />
+                取消
+              </button>
+            ) : null}
+          </div>
 
           <div className="grid gap-4">
             <FieldLabel label="Project">
               <select
                 className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                disabled={Boolean(editingSource)}
                 onChange={(event) => setSelectedProjectId(event.target.value)}
                 value={selectedProjectId}
               >
@@ -380,8 +523,13 @@ export function SourcesWorkspace() {
                 {collectors.map((collector) => (
                   <CollectorOption
                     collector={collector}
+                    disabled={Boolean(editingSource)}
                     key={collector.type}
-                    onSelect={() => setCollectorType(collector.type)}
+                    onSelect={() => {
+                      if (!editingSource) {
+                        setCollectorType(collector.type);
+                      }
+                    }}
                     selected={collectorType === collector.type}
                   />
                 ))}
@@ -409,14 +557,6 @@ export function SourcesWorkspace() {
             <TextField label="Cron" onChange={setScheduleCron} value={scheduleCron} />
             <ConfigPreviewPanel collectorType={collectorType} configPreview={configPreview} />
 
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(201,111,92,0.24)] transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={!selectedProjectId}
-              type="submit"
-            >
-              <PlayCircle size={16} aria-hidden="true" />
-              创建 Source
-            </button>
           </div>
         </form>
       </div>
@@ -493,10 +633,12 @@ function MetricPill({
 function CollectorOption({
   collector,
   selected,
+  disabled,
   onSelect,
 }: {
   collector: Collector;
   selected: boolean;
+  disabled: boolean;
   onSelect: () => void;
 }) {
   const visual = collectorVisuals[collector.type];
@@ -504,11 +646,12 @@ function CollectorOption({
   return (
     <button
       className={cn(
-        "min-h-24 rounded-2xl border p-3 text-left transition",
+        "min-h-24 rounded-2xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-70",
         selected
           ? "border-[#C96F5C] bg-[#FFF7F2] shadow-[0_10px_24px_rgba(201,111,92,0.16)]"
           : "border-[#E8D4CB] bg-[#FFFDFC] hover:border-[#D9B8AD]",
       )}
+      disabled={disabled}
       onClick={onSelect}
       type="button"
     >
@@ -529,13 +672,21 @@ function CollectorOption({
 function SourceAssetCard({
   source,
   project,
+  task,
+  busy,
   onTest,
+  onEdit,
   onEnable,
+  onDisable,
 }: {
   source: Source;
   project: Project | undefined;
+  task: CollectionTask | undefined;
+  busy: boolean;
   onTest: () => void;
+  onEdit: () => void;
   onEnable: () => void;
+  onDisable: () => void;
 }) {
   const visual = collectorVisuals[source.type];
   const Icon = visual.icon;
@@ -579,37 +730,65 @@ function SourceAssetCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <SourceFact label="业务域" value={domainLabel} />
             <SourceFact
               label="调度"
               value={source.scheduleCron ? cadenceLabels[source.scheduleCron] ?? source.scheduleCron : "手动"}
             />
+            <SourceFact label="任务状态" value={task ? formatTaskStatus(task.status) : "未启用"} />
+            <SourceFact label="最近运行" value={formatLatestRun(task?.lastRunAt)} />
             <SourceFact label="配置摘要" value={getSourceConfigSummary(source)} />
           </div>
+          {task ? (
+            <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs font-semibold text-[#7A625A]">
+              <Activity size={14} aria-hidden="true" />
+              <span>success {task.successCount}</span>
+              <span>failure {task.failureCount}</span>
+            </div>
+          ) : null}
 
           <p className="mt-3 break-all rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-[#7A625A]">
             {source.url ?? getSourceEndpointLabel(source)}
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
           <button
-            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F]"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={busy}
+            onClick={onEdit}
+            type="button"
+          >
+            <Pencil size={16} aria-hidden="true" />
+            编辑
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={busy}
             onClick={onTest}
             type="button"
           >
-            <FlaskConical size={16} aria-hidden="true" />
-            测试配置
+            <RotateCcw size={16} aria-hidden="true" />
+            重测配置
           </button>
           <button
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#C96F5C] px-3 text-sm font-semibold text-white transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
-            disabled={source.enabled}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-3 text-sm font-semibold text-white transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
+            disabled={source.enabled || busy}
             onClick={onEnable}
             type="button"
           >
             <CheckCircle2 size={16} aria-hidden="true" />
             启用
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={!source.enabled || busy}
+            onClick={onDisable}
+            type="button"
+          >
+            <Power size={16} aria-hidden="true" />
+            停用
           </button>
         </div>
       </div>
@@ -684,14 +863,14 @@ function ConfigPreviewPanel({
   configPreview: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
+    <div className="hidden rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3 sm:block">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase text-[#B47767]">Config Preview</p>
         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
           {collectorShortLabels[collectorType]}
         </span>
       </div>
-      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-3 text-xs leading-5 text-[#FFF8F4]">
+      <pre className="pointer-events-none mt-3 max-h-32 overflow-hidden whitespace-pre-wrap rounded-xl bg-[#2E201C] p-3 text-xs leading-5 text-[#FFF8F4] sm:max-h-48 sm:overflow-auto">
         {configPreview}
       </pre>
     </div>
@@ -732,4 +911,40 @@ function getSourceEndpointLabel(source: Source): string {
 
 function formatConfigValue(value: unknown): string {
   return typeof value === "string" || typeof value === "number" ? String(value) : "";
+}
+
+function formatTaskStatus(status: CollectionTask["status"]): string {
+  const labels: Record<CollectionTask["status"], string> = {
+    draft: "草稿",
+    enabled: "已启用",
+    running: "运行中",
+    paused: "已暂停",
+    disabled: "已停用",
+  };
+  return labels[status];
+}
+
+function formatLatestRun(value: string | null | undefined): string {
+  if (!value) {
+    return "尚未运行";
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function normalizeScheduleCron(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function upsertTask(tasks: CollectionTask[], task: CollectionTask): CollectionTask[] {
+  const exists = tasks.some((item) => item.id === task.id);
+  if (!exists) {
+    return [task, ...tasks];
+  }
+  return tasks.map((item) => (item.id === task.id ? task : item));
 }

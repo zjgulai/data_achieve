@@ -78,8 +78,12 @@ async def update_source(
 ) -> Source:
     source = await get_source_or_raise(session, workspace, source_id)
     updates = payload.model_dump(exclude_unset=True)
-    if "config" in updates and updates["config"] is not None:
+    config_changed = "config" in updates and updates["config"] is not None
+    url_was_provided = "url" in updates
+    if config_changed:
         updates["config"] = validate_collector_config(source.type, updates["config"])
+        if not url_was_provided:
+            updates["url"] = _source_url_from_config(source.type, updates["config"])
     if "name" in updates and isinstance(updates["name"], str):
         updates["name"] = updates["name"].strip()
 
