@@ -4,12 +4,14 @@ import asyncio
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from data_intelligence_hub.models.scheduler import SchedulerLease
 from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
@@ -18,10 +20,12 @@ from data_intelligence_hub.services.collector_service import execute_collection_
 from data_intelligence_hub.services.report_service import execute_report_subscription
 
 logger = structlog.get_logger(__name__)
+SCHEDULER_LEASE_NAME = "collection_scheduler_tick"
 
 
 @dataclass(frozen=True)
 class SchedulerTickResult:
+    lock_acquired: bool
     scanned: int
     due: int
     started: int
@@ -43,6 +47,8 @@ class CollectionScheduler:
         self._session_factory = session_factory
         self._poll_interval_seconds = poll_interval_seconds
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._owner_id = str(uuid.uuid4())
+        self._lease_ttl_seconds = max(int(poll_interval_seconds * 3), 300)
         self._loop_task: asyncio.Task[None] | None = None
         self._running_task_ids: set[uuid.UUID] = set()
         self._running_report_subscription_ids: set[uuid.UUID] = set()
@@ -72,7 +78,7 @@ class CollectionScheduler:
             self._loop_task = None
 
     async def tick(self, now: datetime | None = None) -> SchedulerTickResult:
-        current_time = now or self._clock()
+        current_time = _as_utc(now or self._clock())
         scanned = 0
         due = 0
         started = 0
@@ -84,6 +90,20 @@ class CollectionScheduler:
         report_subscriptions_skipped_running = 0
 
         async with self._session_factory() as session:
+            lock_acquired = await _acquire_scheduler_lease(
+                session=session,
+                lease_name=SCHEDULER_LEASE_NAME,
+                owner_id=self._owner_id,
+                now=current_time,
+                ttl_seconds=self._lease_ttl_seconds,
+            )
+            if not lock_acquired:
+                logger.info(
+                    "collection_scheduler_tick_skipped_locked",
+                    lease_name=SCHEDULER_LEASE_NAME,
+                )
+                return _empty_tick_result(lock_acquired=False)
+
             candidates = await _list_scheduled_tasks(session)
             scanned = len(candidates)
             for task, workspace in candidates:
@@ -150,6 +170,7 @@ class CollectionScheduler:
                     self._running_report_subscription_ids.discard(subscription.id)
 
         return SchedulerTickResult(
+            lock_acquired=True,
             scanned=scanned,
             due=due,
             started=started,
@@ -167,6 +188,7 @@ class CollectionScheduler:
                 result = await self.tick()
                 logger.info(
                     "collection_scheduler_tick_completed",
+                    lock_acquired=result.lock_acquired,
                     scanned=result.scanned,
                     due=result.due,
                     started=result.started,
@@ -200,3 +222,61 @@ async def _list_scheduled_tasks(
     )
     result = await session.execute(statement)
     return [(task, workspace) for task, workspace in result.all()]
+
+
+async def _acquire_scheduler_lease(
+    session: AsyncSession,
+    lease_name: str,
+    owner_id: str,
+    now: datetime,
+    ttl_seconds: int,
+) -> bool:
+    expires_at = now + timedelta(seconds=ttl_seconds)
+    statement = select(SchedulerLease).where(SchedulerLease.name == lease_name).with_for_update()
+    result = await session.execute(statement)
+    lease = result.scalar_one_or_none()
+    if lease is None:
+        session.add(
+            SchedulerLease(
+                name=lease_name,
+                owner_id=owner_id,
+                expires_at=expires_at,
+                updated_at=now,
+            )
+        )
+    else:
+        lease_expires_at = _as_utc(lease.expires_at)
+        if lease.owner_id != owner_id and lease_expires_at > now:
+            await session.rollback()
+            return False
+        lease.owner_id = owner_id
+        lease.expires_at = expires_at
+        lease.updated_at = now
+
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        return False
+    return True
+
+
+def _empty_tick_result(lock_acquired: bool) -> SchedulerTickResult:
+    return SchedulerTickResult(
+        lock_acquired=lock_acquired,
+        scanned=0,
+        due=0,
+        started=0,
+        skipped_running=0,
+        skipped_invalid_schedule=0,
+        report_subscriptions_scanned=0,
+        report_subscriptions_due=0,
+        report_subscriptions_started=0,
+        report_subscriptions_skipped_running=0,
+    )
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

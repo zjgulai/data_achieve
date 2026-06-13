@@ -3,7 +3,11 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from data_intelligence_hub.collectors.base import HTTP_TIMEOUT_SECONDS, HTTP_USER_AGENT
+from data_intelligence_hub.collectors.base import (
+    HTTP_TIMEOUT_SECONDS,
+    HTTP_USER_AGENT,
+    CollectorError,
+)
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
@@ -73,6 +77,36 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
 
 
 @pytest.mark.asyncio
+async def test_github_repo_collector_retries_transient_upstream_failure() -> None:
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        assert_request_policy(request)
+        if request_count == 1:
+            return httpx.Response(502, json={"message": "bad gateway"})
+        return httpx.Response(
+            200,
+            json={
+                "name": "codex",
+                "full_name": "openai/codex",
+                "html_url": "https://github.com/openai/codex",
+                "owner": {"login": "openai"},
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = GitHubRepoCollector({"owner": "openai", "repo": "codex"}, client)
+        collect_result = await collector.collect()
+
+    assert request_count == 2
+    content = collect_result.raw_records[0].content
+    assert isinstance(content, dict)
+    assert content["full_name"] == "openai/codex"
+
+
+@pytest.mark.asyncio
 async def test_github_topic_collector_collects_repository_search_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
@@ -130,3 +164,26 @@ async def test_generic_web_collector_collects_html_snapshot() -> None:
     assert content["title"] == "Demo"
     assert "Hello" in content["text_content"]
     assert collector.normalize(raw_record) == []
+
+
+@pytest.mark.asyncio
+async def test_github_topic_collector_classifies_rate_limit_failure() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(429, headers={"retry-after": "60"}, json={"message": "rate limit"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = GitHubTopicCollector({"topic": "web-scraping", "max_results": 10}, client)
+        with pytest.raises(CollectorError, match="http_rate_limited"):
+            await collector.collect()
+
+
+@pytest.mark.asyncio
+async def test_generic_web_collector_classifies_connection_failure() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = GenericWebCollector({"url": "https://example.com"}, client)
+        with pytest.raises(CollectorError, match="http_connection_failed"):
+            await collector.collect()

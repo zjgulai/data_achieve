@@ -8,6 +8,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.collectors import registry as collector_registry
+from data_intelligence_hub.collectors.base import CollectionResult, CollectorError
+from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
@@ -162,6 +165,12 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     assert duplicate_run["records_count"] == 0
     assert duplicate_run["entities_count"] == 0
     assert "raw_record_deduplicated" in {log["step"] for log in duplicate_run["logs"]}
+    assert "task_status_running" in {log["step"] for log in duplicate_run["logs"]}
+    assert "task_status_restored" in {log["step"] for log in duplicate_run["logs"]}
+
+    task_response = await client.get(f"/api/tasks/{task['id']}")
+    assert task_response.status_code == 200
+    assert task_response.json()["status"] == "enabled"
 
     runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
     assert runs_response.status_code == 200
@@ -169,6 +178,18 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
         duplicate_run["id"],
         run["id"],
     ]
+
+    pause_response = await client.post(f"/api/tasks/{task['id']}/pause")
+    assert pause_response.status_code == 200
+    assert pause_response.json()["status"] == "paused"
+
+    blocked_run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert blocked_run_response.status_code == 409
+    assert blocked_run_response.json()["detail"] == "Task is not enabled"
+
+    resume_response = await client.post(f"/api/tasks/{task['id']}/resume")
+    assert resume_response.status_code == 200
+    assert resume_response.json()["status"] == "enabled"
 
     disable_response = await client.post(f"/api/sources/{source['id']}/disable")
     assert disable_response.status_code == 200
@@ -180,16 +201,28 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
 
 
 @pytest.mark.asyncio
-async def test_collector_exception_persists_failed_task_run(client: AsyncClient) -> None:
+async def test_collector_exception_persists_failed_task_run(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FailingManualJsonCollector(ManualJsonCollector):
+        async def collect(self) -> CollectionResult:
+            raise CollectorError("fixture_collector_failure")
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "manual_json",
+        FailingManualJsonCollector,
+    )
     project_id = await register_and_create_project(client)
 
     source_response = await client.post(
         "/api/sources",
         json={
             "project_id": project_id,
-            "name": "Unreachable Web Page",
-            "type": "generic_web",
-            "config": {"url": "http://127.0.0.1:1/unreachable"},
+            "name": "Failing Manual JSON",
+            "type": "manual_json",
+            "config": {"entity_type": "product", "json_data": {"name": "Demo"}},
             "schedule_cron": None,
         },
     )
@@ -204,7 +237,7 @@ async def test_collector_exception_persists_failed_task_run(client: AsyncClient)
     assert run_response.status_code == 201
     run = run_response.json()
     assert run["status"] == "failed"
-    assert run["error_message"]
+    assert run["error_message"] == "fixture_collector_failure"
     assert "collector_failed" in {log["step"] for log in run["logs"]}
 
     runs_response = await client.get(f"/api/tasks/{task['id']}/runs")

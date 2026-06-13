@@ -29,10 +29,13 @@ async def execute_collection_task(
     task: CollectionTask,
 ) -> TaskRun:
     started_at = datetime.now(UTC)
+    previous_task_status = task.status
     logs = [
         collector_log("task_run_created", "Manual run requested."),
         collector_log("collector_execution_started", f"Starting collector {task.collector_type}."),
+        collector_log("task_status_running", "Task status changed to running."),
     ]
+    task.status = "running"
     run = TaskRun(
         task_id=task.id,
         workspace_id=workspace.id,
@@ -48,6 +51,7 @@ async def execute_collection_task(
     )
     session.add(run)
     await session.flush()
+    await session.commit()
 
     records_count = 0
     entities_count = 0
@@ -93,6 +97,8 @@ async def execute_collection_task(
         task.failure_count += 1
     else:
         task.success_count += 1
+    task.status = previous_task_status
+    logs.append(collector_log("task_status_restored", f"Task status restored to {task.status}."))
     await session.flush()
     quality_signal = await detect_data_quality_anomaly(session, workspace, task, run)
     if quality_signal is not None:

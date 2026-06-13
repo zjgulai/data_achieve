@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
-from data_intelligence_hub.services.exceptions import TaskNotFoundError
+from data_intelligence_hub.services.exceptions import (
+    TaskAlreadyRunningError,
+    TaskNotFoundError,
+    TaskNotRunnableError,
+)
 from data_intelligence_hub.services.task_service import (
     get_collection_tasks,
     get_task_or_raise,
@@ -54,6 +58,8 @@ async def run_task_item(
         run = await run_task_now(session, context.workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except (TaskAlreadyRunningError, TaskNotRunnableError) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     return TaskRunResponse.model_validate(run)
 
 

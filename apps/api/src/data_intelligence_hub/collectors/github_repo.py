@@ -5,12 +5,13 @@ from typing import Any, cast
 import httpx
 
 from data_intelligence_hub.collectors.base import (
-    HTTP_HEADERS,
-    HTTP_TIMEOUT_SECONDS,
     BaseCollector,
     CollectionResult,
+    CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
+    collector_get_with_retry,
+    collector_http_error_message,
     collector_log,
     require_text,
 )
@@ -60,11 +61,15 @@ class GitHubRepoCollector(BaseCollector):
 
 
 async def _fetch_json(client: httpx.AsyncClient, url: str) -> dict[str, Any]:
-    response = await client.get(url, headers=HTTP_HEADERS, timeout=HTTP_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    data = response.json()
+    try:
+        response = await collector_get_with_retry(client, url)
+        data = response.json()
+    except httpx.HTTPError as exc:
+        raise CollectorError(collector_http_error_message(exc)) from exc
+    except ValueError as exc:
+        raise CollectorError("http_invalid_json: upstream response is not valid JSON") from exc
     if not isinstance(data, dict):
-        raise ValueError("GitHub response must be a JSON object")
+        raise CollectorError("http_invalid_json: upstream response must be a JSON object")
     return cast(dict[str, Any], data)
 
 

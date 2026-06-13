@@ -7,13 +7,13 @@ from urllib.parse import urlparse
 import httpx
 
 from data_intelligence_hub.collectors.base import (
-    HTTP_HEADERS,
-    HTTP_TIMEOUT_SECONDS,
     BaseCollector,
     CollectionResult,
     CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
+    collector_get_with_retry,
+    collector_http_error_message,
     collector_log,
     require_text,
 )
@@ -79,8 +79,10 @@ class GenericWebCollector(BaseCollector):
 
 
 async def _fetch_html(client: httpx.AsyncClient, url: str) -> str:
-    response = await client.get(url, headers=HTTP_HEADERS, timeout=HTTP_TIMEOUT_SECONDS)
-    response.raise_for_status()
+    try:
+        response = await collector_get_with_retry(client, url)
+    except httpx.HTTPError as exc:
+        raise CollectorError(collector_http_error_message(exc)) from exc
     return response.text
 
 

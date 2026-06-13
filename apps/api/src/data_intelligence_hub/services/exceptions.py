@@ -37,6 +37,14 @@ class TaskNotFoundError(ServiceError):
     message = "Task not found"
 
 
+class TaskAlreadyRunningError(ServiceError):
+    message = "Task is already running"
+
+
+class TaskNotRunnableError(ServiceError):
+    message = "Task is not enabled"
+
+
 class RawRecordNotFoundError(ServiceError):
     message = "Raw record not found"
 

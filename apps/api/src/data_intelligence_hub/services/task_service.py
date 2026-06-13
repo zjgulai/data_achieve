@@ -8,7 +8,11 @@ from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.tasks import get_task, list_task_runs, list_tasks
 from data_intelligence_hub.services.collector_service import execute_collection_task
-from data_intelligence_hub.services.exceptions import TaskNotFoundError
+from data_intelligence_hub.services.exceptions import (
+    TaskAlreadyRunningError,
+    TaskNotFoundError,
+    TaskNotRunnableError,
+)
 
 
 async def get_collection_tasks(
@@ -61,6 +65,10 @@ async def run_task_now(
     task_id: uuid.UUID,
 ) -> TaskRun:
     task = await get_task_or_raise(session, workspace, task_id)
+    if task.status == "running":
+        raise TaskAlreadyRunningError
+    if task.status != "enabled":
+        raise TaskNotRunnableError
     return await execute_collection_task(session, workspace, task)
 
 

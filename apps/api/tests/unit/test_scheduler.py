@@ -17,6 +17,7 @@ from data_intelligence_hub.models import (
     ReportAuditEvent,
     ReportSubscription,
     ReportSubscriptionRun,
+    SchedulerLease,
     Source,
     TaskRun,
     User,
@@ -68,6 +69,7 @@ async def test_scheduler_tick_runs_due_collection_task() -> None:
     )
     result = await scheduler.tick()
 
+    assert result.lock_acquired is True
     assert result.scanned == 1
     assert result.due == 1
     assert result.started == 1
@@ -98,6 +100,7 @@ async def test_scheduler_tick_skips_invalid_schedule() -> None:
     )
     result = await scheduler.tick()
 
+    assert result.lock_acquired is True
     assert result.scanned == 1
     assert result.started == 0
     assert result.skipped_invalid_schedule == 1
@@ -126,6 +129,7 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
     )
     result = await scheduler.tick()
 
+    assert result.lock_acquired is True
     assert result.report_subscriptions_scanned == 1
     assert result.report_subscriptions_due == 1
     assert result.report_subscriptions_started == 1
@@ -189,6 +193,41 @@ async def test_scheduler_tick_runs_due_report_subscription() -> None:
     if next_run_at.tzinfo is None:
         next_run_at = next_run_at.replace(tzinfo=UTC)
     assert next_run_at > now
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_skips_when_another_owner_holds_lease() -> None:
+    now = datetime(2026, 6, 13, 10, 0, tzinfo=UTC)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(session, schedule_cron="* * * * *")
+        await session.commit()
+
+    first_scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    second_scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+
+    first_result = await first_scheduler.tick()
+    second_result = await second_scheduler.tick()
+
+    assert first_result.lock_acquired is True
+    assert second_result.lock_acquired is False
+    assert second_result.scanned == 0
+    assert second_result.started == 0
+
+    async with session_factory() as session:
+        leases = list((await session.execute(select(SchedulerLease))).scalars().all())
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+
+    assert len(leases) == 1
+    assert len(runs) == 1
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
