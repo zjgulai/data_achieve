@@ -587,6 +587,13 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
               width={900}
             />
           ) : null}
+          {evidence.referenceMetadata ? (
+            <TraceSection title="Reference Metadata">
+              <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
+                {formatJsonPreview(evidence.referenceMetadata)}
+              </pre>
+            </TraceSection>
+          ) : null}
           <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
             {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
           </pre>

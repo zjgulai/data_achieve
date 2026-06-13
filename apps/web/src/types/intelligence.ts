@@ -92,6 +92,7 @@ export type Evidence = {
   url: string | null;
   excerpt: string | null;
   highlightedText: string | null;
+  referenceMetadata: Record<string, unknown> | null;
   screenshotUrl: string | null;
   signal: EvidenceSignalContext | null;
   entity: EvidenceEntityContext | null;

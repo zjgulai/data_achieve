@@ -892,7 +892,10 @@ export function getMockEvidences(intelligenceId: string): Evidence[] {
 }
 
 function withEvidenceTrace(
-  evidence: Omit<Evidence, "entity" | "rawRecord" | "signal" | "source" | "taskRun">,
+  evidence: Omit<
+    Evidence,
+    "entity" | "rawRecord" | "referenceMetadata" | "signal" | "source" | "taskRun"
+  >,
 ): Evidence {
   const signal = getMockSignals().find((item) => item.id === evidence.signalId) ?? null;
   const entity = getMockEntities().find((item) => item.id === evidence.entityId) ?? null;
@@ -901,6 +904,11 @@ function withEvidenceTrace(
   const task = getMockTasks().find((item) => item.sourceId === rawRecord?.sourceId) ?? null;
   return {
     ...evidence,
+    referenceMetadata: {
+      claim_type: evidence.evidenceType,
+      json_paths: evidence.rawRecordId ? ["$.content"] : ["$.signal"],
+      source_layer: evidence.rawRecordId ? "raw_record" : "signal",
+    },
     signal: signal
       ? {
           id: signal.id,

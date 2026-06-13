@@ -199,6 +199,7 @@ class EvidenceResponse(BaseModel):
     url: str | None
     excerpt: str | None
     highlighted_text: str | None
+    reference_metadata: dict[str, Any] | None
     screenshot_url: str | None
     signal: EvidenceSignalContext | None
     entity: EvidenceEntityContext | None
@@ -229,6 +230,7 @@ class EvidenceResponse(BaseModel):
             url=evidence.url,
             excerpt=evidence.excerpt,
             highlighted_text=evidence.highlighted_text,
+            reference_metadata=evidence.reference_metadata,
             screenshot_url=screenshot_url,
             signal=EvidenceSignalContext.from_model(signal) if signal is not None else None,
             entity=EvidenceEntityContext.from_model(entity) if entity is not None else None,

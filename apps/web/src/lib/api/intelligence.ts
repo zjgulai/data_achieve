@@ -40,6 +40,7 @@ export type EvidenceResponse = {
   url: string | null;
   excerpt: string | null;
   highlighted_text: string | null;
+  reference_metadata: Record<string, unknown> | null;
   screenshot_url: string | null;
   signal: EvidenceSignalResponse | null;
   entity: EvidenceEntityResponse | null;
@@ -254,6 +255,7 @@ export function mapEvidence(response: EvidenceResponse): Evidence {
     url: response.url,
     excerpt: response.excerpt,
     highlightedText: response.highlighted_text,
+    referenceMetadata: response.reference_metadata,
     screenshotUrl: response.screenshot_url,
     signal: response.signal
       ? {

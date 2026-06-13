@@ -355,6 +355,11 @@ async def test_star_growth_signal_is_created_from_snapshot_delta(client: AsyncCl
     )
     assert raw_evidence["raw_record"]["task_run_id"] == second_run["id"]
     assert raw_evidence["raw_record"]["content_preview"]["payload"]["stars"] == 260
+    reference_metadata = raw_evidence["reference_metadata"]
+    assert reference_metadata["content_hash"] == raw_evidence["raw_record"]["content_hash"]
+    assert "$.content.payload.full_name" in raw_evidence["reference_metadata"]["json_paths"]
+    assert reference_metadata["text_reference"]["path"] == "$.content.payload.full_name"
+    assert reference_metadata["text_reference"]["quote"] == "example/repo"
     assert raw_evidence["task_run"]["id"] == second_run["id"]
     assert raw_evidence["task_run"]["status"] == "success"
     assert raw_evidence["source"]["name"] == "Manual Repo Metrics"
