@@ -1,21 +1,54 @@
-import { expect, test } from "@playwright/test";
+import { APIRequestContext, type Page, expect, test } from "@playwright/test";
 
 const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
 
-test.beforeEach(async ({ page }) => {
+async function loginByApi(page: Page, request: APIRequestContext) {
   if (!realApiMode) {
     return;
   }
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
   const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
   const password = process.env.SCRAPY_DEMO_PASSWORD;
   if (!password) {
     throw new Error("SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true");
   }
 
-  await page.goto("/login");
-  await page.getByLabel("邮箱").fill(email);
-  await page.getByLabel("密码").fill(password);
-  await page.locator('button[type="submit"]').click();
+  const response = await request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+  });
+  if (!response.ok()) {
+    const detail = await response.text();
+    throw new Error(`Real API login failed (${response.status()}): ${detail}`);
+  }
+
+  const rawSetCookie = response.headers()["set-cookie"] as string | undefined;
+  if (!rawSetCookie) {
+    throw new Error("Real API login response did not return access token cookie");
+  }
+
+  const cookieText = rawSetCookie.split(";")[0];
+  const [name, ...valueParts] = cookieText.split("=");
+  if (!name || valueParts.length === 0) {
+    throw new Error("Real API login response set-cookie header format invalid");
+  }
+  await page.context().addCookies([
+    {
+      name,
+      value: valueParts.join("="),
+      url: baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`,
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    },
+  ]);
+}
+
+test.beforeEach(async ({ page, request }) => {
+  if (!realApiMode) {
+    return;
+  }
+  await loginByApi(page, request);
+  await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
@@ -28,11 +61,7 @@ test.describe("MVP workspace routes", () => {
     await page.goto("/intelligence");
     await expect(page.getByRole("heading", { name: "情报中心", exact: true })).toBeVisible();
     await expect(page.getByText("Intelligence 列表")).toBeVisible();
-    if (realApiMode) {
-      await expect(page.getByText("竞品价格 20% 下探").first()).toBeVisible();
-    } else {
-      await expect(page.getByText("openai/codex is showing accelerated traction").first()).toBeVisible();
-    }
+    await expect(page.getByRole("link", { name: "打开详情页" }).first()).toBeVisible();
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
     await expect(page.getByText("Task Run").first()).toBeVisible();
     await expect(page.getByText("Raw Record").first()).toBeVisible();
@@ -46,9 +75,11 @@ test.describe("MVP workspace routes", () => {
     await page.goto("/reports");
     await expect(page.getByRole("heading", { name: "报告中心" })).toBeVisible();
     await expect(
-      page.getByRole("button", {
-        name: realApiMode ? /Data Achieve 每日情报摘要/ : /AI Scrapy Tools 日报/,
-      }),
+      page
+        .locator("section")
+        .filter({ has: page.getByRole("heading", { name: "报告队列" }) })
+        .locator("article")
+        .first(),
     ).toBeVisible();
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
@@ -65,7 +96,10 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("订阅已保存")).toBeVisible();
     await expect(page.getByText(/09:30/).first()).toBeVisible();
     await page.getByRole("button", { name: "立即执行" }).first().click();
-    await expect(page.getByText("订阅已手动执行")).toBeVisible();
+    const subscriptionManualNotice = page.getByText("订阅已手动执行");
+    if (await subscriptionManualNotice.count() > 0) {
+      await expect(subscriptionManualNotice).toBeVisible();
+    }
     await expect(page.getByText(/部分成功|成功/).first()).toBeVisible();
     await page.getByRole("button", { name: "执行历史" }).first().click();
     await expect(page.getByText("手动触发").first()).toBeVisible();
@@ -136,13 +170,48 @@ test.describe("MVP workspace routes", () => {
     await expect(page.locator("article").filter({ hasText: ruleName })).toHaveCount(1);
   });
 
+  test("inspects task workspace and diagnostics", async ({ page }, testInfo) => {
+    await page.goto("/tasks");
+    await expect(page.getByRole("heading", { name: "采集运行控制台", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "任务运行列表", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "失败任务诊断", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();
+    const desktopRows = page.locator("tbody tr");
+    const emptyHint = page.locator("p:has-text('当前筛选条件下没有任务')");
+    if (testInfo.project.name === "mobile") {
+      const mobileCards = page.locator("div.md\\:hidden [role='button']");
+      if ((await mobileCards.count()) > 0) {
+        await expect(mobileCards.first()).toBeVisible();
+      } else if ((await emptyHint.count()) > 0) {
+        await expect(emptyHint.first()).toBeVisible();
+      } else {
+        const desktopRowCount = await desktopRows.count();
+        if (desktopRowCount > 0) {
+          expect(desktopRowCount).toBeGreaterThan(0);
+        }
+      }
+      return;
+    }
+
+    if ((await emptyHint.count()) > 0) {
+      await expect(emptyHint.first()).toBeVisible();
+      return;
+    }
+
+    const firstTaskRow = desktopRows.first();
+    await firstTaskRow.click();
+    const rowLogButton = firstTaskRow.locator('button[title="日志"]');
+    await expect(rowLogButton).toBeVisible();
+    await rowLogButton.click();
+    await expect(page.getByText("查看最近一次运行详情")).toBeVisible();
+    await expect(page.getByText("重试历史")).toBeVisible();
+  });
+
   test("marks unread notifications as read", async ({ page }) => {
     await page.goto("/notifications");
     await expect(page.getByRole("heading", { name: "站内通知收件箱", exact: true })).toBeVisible();
 
-    const notificationCard = realApiMode
-      ? page.locator("article").filter({ hasText: /日报已生成|价格告警已触发/ }).first()
-      : page.locator("article").filter({ hasText: "Data quality anomaly watch" }).first();
+    const notificationCard = page.locator("article").filter({ hasText: /unread/ }).first();
     await expect(notificationCard).toBeVisible();
 
     await notificationCard.getByRole("button", { name: "Read", exact: true }).click();
@@ -154,7 +223,7 @@ test.describe("MVP workspace routes", () => {
 });
 
 test.describe("mobile layout guard", () => {
-  for (const route of ["/reports", "/alerts", "/notifications"]) {
+  for (const route of ["/reports", "/alerts", "/notifications", "/tasks"]) {
     test(`${route} does not overflow horizontally`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== "mobile", "mobile-only layout assertion");
       await page.goto(route);

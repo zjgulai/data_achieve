@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:real": "PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL:-https://scrapy.lute-tlz-dddd.top} PLAYWRIGHT_REAL_API=true pnpm exec playwright test",
     "test:watch": "vitest"
   },
   "dependencies": {

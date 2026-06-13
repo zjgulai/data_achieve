@@ -146,9 +146,12 @@ pnpm lint
 pnpm test
 pnpm build
 pnpm test:e2e
+SCRAPY_DEMO_PASSWORD=... pnpm test:e2e:real
 ```
 
 `pnpm test:e2e` 使用 `NEXT_PUBLIC_MOCK_API=true` 在 `3100` 端口启动独立 Next.js dev server，覆盖 Dashboard、Intelligence、Reports、Alerts、Notifications 主路径和移动端横向溢出检查。
+
+`pnpm test:e2e:real` 使用 `PLAYWRIGHT_BASE_URL`（默认 `https://scrapy.lute-tlz-dddd.top`）和 `PLAYWRIGHT_REAL_API=true`，执行同一套 E2E 场景但走真实 API。至少需要设置 `SCRAPY_DEMO_PASSWORD`（例如：`SCRAPY_DEMO_PASSWORD=... pnpm test:e2e:real`）。
 
 ## 7. 远端 CI
 
@@ -175,6 +178,8 @@ pnpm -C apps/web build
 pnpm -C apps/web exec playwright install --with-deps chromium
 pnpm -C apps/web test:e2e
 ```
+
+可选（手动部署验收）：触发 `.github/workflows/ci.yml` 的 `workflow_dispatch`，并可传入 `base_url`（默认 `https://scrapy.lute-tlz-dddd.top`）。GitHub Secrets 需配置 `SCRAPY_DEMO_PASSWORD`（可选 `SCRAPY_DEMO_EMAIL`），执行 `apps/web test:e2e:real` 完成真实 API 回归。
 
 CI 不启动 Docker，不执行 PostgreSQL 实库 migration。交付前仍需在 Docker daemon 可用后运行：
 
