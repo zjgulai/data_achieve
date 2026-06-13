@@ -11,8 +11,12 @@ RawRecord -> EntitySnapshot -> Signal -> Intelligence -> Evidence -> Report / Al
 ## 文档入口
 
 - 产品 PRD：[docs/product/product-prd-data-intelligence-hub-stable.md](docs/product/product-prd-data-intelligence-hub-stable.md)
+- 技术架构：[docs/architecture/architecture-data-intelligence-hub-stable.md](docs/architecture/architecture-data-intelligence-hub-stable.md)
+- API 合同：[docs/api/api-contract-data-intelligence-hub-stable.md](docs/api/api-contract-data-intelligence-hub-stable.md)
 - 开发计划草案：[drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md](drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md)
 - 本地开发流程：[docs/workflows/workflow-development-setup-stable.md](docs/workflows/workflow-development-setup-stable.md)
+- 真实 API E2E 策略：[docs/workflows/workflow-real-e2e-strategy-stable.md](docs/workflows/workflow-real-e2e-strategy-stable.md)
+- 发布与回滚清单：[docs/workflows/workflow-release-rollback-stable.md](docs/workflows/workflow-release-rollback-stable.md)
 
 ## 本地开发
 
