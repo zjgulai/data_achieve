@@ -4,9 +4,9 @@ services:
   db:
     container_name: data_achieve_scrapy_db
     environment:
-      POSTGRES_DB: ${SCRAPY_POSTGRES_DB:-data_intel}
-      POSTGRES_PASSWORD: ${SCRAPY_POSTGRES_PASSWORD:-change-me-local-only}
-      POSTGRES_USER: ${SCRAPY_POSTGRES_USER:-data_intel}
+      POSTGRES_DB: ${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
+      POSTGRES_PASSWORD: ${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}
+      POSTGRES_USER: ${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}
     expose:
       - "5432"
     healthcheck:
@@ -38,11 +38,11 @@ services:
       APP_ENV: production
       AUTH_COOKIE_SECURE: ${SCRAPY_AUTH_COOKIE_SECURE:-true}
       CORS_ORIGINS: '["https://scrapy.lute-tlz-dddd.top"]'
-      DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:-data_intel}:${SCRAPY_POSTGRES_PASSWORD:-change-me-local-only}@db:5432/${SCRAPY_POSTGRES_DB:-data_intel}
-      JWT_SECRET: ${SCRAPY_JWT_SECRET:-change-me-change-me-local-only}
+      DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
+      JWT_SECRET: ${SCRAPY_JWT_SECRET:?SCRAPY_JWT_SECRET is required}
       LLM_PROVIDER: mock
       LOG_LEVEL: INFO
-      SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-true}
+      SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-false}
       SCHEDULER_POLL_INTERVAL_SECONDS: ${SCRAPY_SCHEDULER_POLL_INTERVAL_SECONDS:-60}
       SMTP_FROM: ${SCRAPY_SMTP_FROM:-}
       SMTP_HOST: ${SCRAPY_SMTP_HOST:-}

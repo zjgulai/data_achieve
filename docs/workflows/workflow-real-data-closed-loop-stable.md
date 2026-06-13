@@ -147,18 +147,27 @@ uv run python -m data_intelligence_hub.seed.demo_data
 1. 在服务器 `/opt/data-achieve-scrapy` 备份当前部署文件。
 2. 同步代码到服务器。
 3. 生成服务器私有 `.env.production`。
-4. 构建新镜像。
-5. 启动 PostgreSQL 和 API。
-6. 执行 Alembic 迁移。
-7. 执行演示数据种子。
-8. 启动 web 和 edge。
-9. 执行 API smoke。
-10. 执行线上 E2E。
-11. 回归检查既有域名 `video.lute-tlz-dddd.top`、`mkt.lute-tlz-dddd.top`、`voc.lute-tlz-dddd.top`。
+4. 执行生产部署 preflight。
+5. 构建新镜像。
+6. 启动 PostgreSQL 和 API。
+7. 执行 Alembic 迁移。
+8. 执行演示数据种子。
+9. 启动 web 和 edge。
+10. 执行 API smoke。
+11. 执行线上 E2E。
+12. 回归检查既有域名 `video.lute-tlz-dddd.top`、`mkt.lute-tlz-dddd.top`、`voc.lute-tlz-dddd.top`。
 
 > 说明：生产 compose 运行与重建需显式加载 `.env.production`，否则数据库口令会回退默认值。  
 > 推荐在 `app` 目录下执行：  
 > `docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d --force-recreate`
+
+部署前必须先运行：
+
+```bash
+bash scripts/deploy-preflight-scrapy.sh \
+  --env-file /opt/data-achieve-scrapy/.env.production \
+  --compose-file configs/deploy/scrapy/docker-compose.yml
+```
 
 验收：
 
@@ -172,7 +181,7 @@ uv run python -m data_intelligence_hub.seed.demo_data
 
 优先级：
 
-1. P0：调度闭环。实现采集任务触发、状态流转、失败记录和重试边界。当前已补进程内轻量调度骨架，受 `SCHEDULER_ENABLED` 控制；生产默认关闭，待真实数据源确认后开启。
+1. P0：调度闭环。实现采集任务触发、状态流转、失败记录和重试边界。当前已补进程内轻量调度骨架，受 `SCHEDULER_ENABLED` 控制；生产 compose 默认关闭，待真实数据源和单 owner 机制确认后开启。
 2. P0：证据闭环。已实现情报详情/列表审计抽屉中的 Signal、Entity、RawRecord、TaskRun、Source 追溯；报告正文中的情报 ID 可跳转情报详情。精确 claim span 仍等待 LLM 输出 schema。
 3. P1：报告交互。报告章节展开、证据引用详情、导出入口真实可用。
 4. P1：告警处置。告警事件支持确认、静默、关联任务。
