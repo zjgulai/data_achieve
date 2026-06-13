@@ -11,6 +11,8 @@ from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
 from data_intelligence_hub.models.report import Report, ReportAuditEvent, ReportSubscription
 from data_intelligence_hub.models.signal import Signal
+from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workspace import Workspace
 
 
 class ReportIntelligence(NamedTuple):
@@ -21,6 +23,12 @@ class ReportIntelligence(NamedTuple):
 class ReportAlertEvent(NamedTuple):
     event: AlertEvent
     rule_name: str
+
+
+class DueReportSubscription(NamedTuple):
+    subscription: ReportSubscription
+    workspace: Workspace
+    user: User
 
 
 async def list_reports(
@@ -125,6 +133,27 @@ async def create_report_subscription(
     session.add(subscription)
     await session.flush()
     return subscription
+
+
+async def list_due_report_subscriptions(
+    session: AsyncSession,
+    now: datetime,
+) -> list[DueReportSubscription]:
+    result = await session.execute(
+        select(ReportSubscription, Workspace, User)
+        .join(Workspace, ReportSubscription.workspace_id == Workspace.id)
+        .join(User, ReportSubscription.user_id == User.id)
+        .where(
+            ReportSubscription.enabled.is_(True),
+            ReportSubscription.next_run_at.is_not(None),
+            ReportSubscription.next_run_at <= now,
+        )
+        .order_by(ReportSubscription.next_run_at.asc(), ReportSubscription.created_at.asc())
+    )
+    return [
+        DueReportSubscription(subscription=subscription, workspace=workspace, user=user)
+        for subscription, workspace, user in result.all()
+    ]
 
 
 async def list_intelligence_for_report(

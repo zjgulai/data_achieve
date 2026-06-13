@@ -11,7 +11,11 @@ from sqlalchemy.pool import StaticPool
 from data_intelligence_hub.models import (
     Base,
     CollectionTask,
+    Notification,
     Project,
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
     Source,
     TaskRun,
     User,
@@ -101,6 +105,69 @@ async def test_scheduler_tick_skips_invalid_schedule() -> None:
         runs = list((await session.execute(select(TaskRun))).scalars().all())
 
     assert runs == []
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_runs_due_report_subscription() -> None:
+    now = datetime(2026, 6, 13, 9, 0, tzinfo=UTC)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        subscription_id = await _create_report_subscription(
+            session,
+            next_run_at=now - timedelta(minutes=1),
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    result = await scheduler.tick()
+
+    assert result.report_subscriptions_scanned == 1
+    assert result.report_subscriptions_due == 1
+    assert result.report_subscriptions_started == 1
+    assert result.report_subscriptions_skipped_running == 0
+
+    async with session_factory() as session:
+        reports = list((await session.execute(select(Report))).scalars().all())
+        notifications = list((await session.execute(select(Notification))).scalars().all())
+        audit_events = list(
+            (await session.execute(select(ReportAuditEvent).order_by(ReportAuditEvent.created_at)))
+            .scalars()
+            .all()
+        )
+        subscription = (
+            await session.execute(
+                select(ReportSubscription).where(ReportSubscription.id == subscription_id)
+            )
+        ).scalar_one()
+
+    assert len(reports) == 1
+    assert reports[0].status == "sent"
+    assert len(notifications) == 1
+    assert notifications[0].notification_type == "report_ready"
+    assert [event.event_type for event in audit_events] == [
+        "generated",
+        "sent",
+        "send_skipped",
+        "subscription_executed",
+    ]
+    assert audit_events[1].metadata_json is not None
+    assert '"channel": "in_app"' in audit_events[1].metadata_json
+    assert audit_events[2].metadata_json is not None
+    assert "smtp_not_configured" in audit_events[2].metadata_json
+    assert subscription.last_sent_at is not None
+    last_sent_at = subscription.last_sent_at
+    if last_sent_at.tzinfo is None:
+        last_sent_at = last_sent_at.replace(tzinfo=UTC)
+    assert last_sent_at == now
+    assert subscription.next_run_at is not None
+    next_run_at = subscription.next_run_at
+    if next_run_at.tzinfo is None:
+        next_run_at = next_run_at.replace(tzinfo=UTC)
+    assert next_run_at > now
 
 
 async def _create_session_factory() -> async_sessionmaker:
@@ -200,3 +267,62 @@ async def _create_collection_task(
     )
     await session.flush()
     return task
+
+
+async def _create_report_subscription(
+    session,
+    next_run_at: datetime,
+) -> uuid.UUID:
+    current_time = datetime(2026, 6, 13, 8, 0, tzinfo=UTC)
+    user_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    subscription_id = uuid.uuid4()
+
+    user = User(
+        id=user_id,
+        email=f"{user_id}@example.com",
+        password_hash="hash",
+        name="Owner",
+        status="active",
+        created_at=current_time,
+        updated_at=current_time,
+    )
+    workspace = Workspace(
+        id=workspace_id,
+        name="Report Scheduler Workspace",
+        slug=f"report-scheduler-{workspace_id}",
+        owner_id=user_id,
+        created_at=current_time,
+        updated_at=current_time,
+    )
+    subscription = ReportSubscription(
+        id=subscription_id,
+        workspace_id=workspace_id,
+        user_id=user_id,
+        project_id=None,
+        report_type="daily",
+        schedule_time="09:00",
+        timezone="UTC",
+        channels=["in_app", "email"],
+        enabled=True,
+        next_run_at=next_run_at,
+        last_sent_at=None,
+        created_at=current_time,
+        updated_at=current_time,
+    )
+    session.add_all(
+        [
+            user,
+            workspace,
+            WorkspaceMember(
+                workspace_id=workspace_id,
+                user_id=user_id,
+                role="owner",
+                created_at=current_time,
+                updated_at=current_time,
+            ),
+            subscription,
+        ]
+    )
+    await session.flush()
+    return subscription_id

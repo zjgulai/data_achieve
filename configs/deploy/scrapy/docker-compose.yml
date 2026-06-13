@@ -42,7 +42,8 @@ services:
       JWT_SECRET: ${SCRAPY_JWT_SECRET:-change-me-change-me-local-only}
       LLM_PROVIDER: mock
       LOG_LEVEL: INFO
-      SCHEDULER_ENABLED: "false"
+      SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-true}
+      SCHEDULER_POLL_INTERVAL_SECONDS: ${SCRAPY_SCHEDULER_POLL_INTERVAL_SECONDS:-60}
     expose:
       - "8000"
     healthcheck:

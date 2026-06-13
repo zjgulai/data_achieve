@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, is_schedule_due
 from data_intelligence_hub.services.collector_service import execute_collection_task
+from data_intelligence_hub.services.report_service import execute_report_subscription
 
 logger = structlog.get_logger(__name__)
 
@@ -25,6 +27,10 @@ class SchedulerTickResult:
     started: int
     skipped_running: int
     skipped_invalid_schedule: int
+    report_subscriptions_scanned: int
+    report_subscriptions_due: int
+    report_subscriptions_started: int
+    report_subscriptions_skipped_running: int
 
 
 class CollectionScheduler:
@@ -39,6 +45,7 @@ class CollectionScheduler:
         self._clock = clock or (lambda: datetime.now(UTC))
         self._loop_task: asyncio.Task[None] | None = None
         self._running_task_ids: set[uuid.UUID] = set()
+        self._running_report_subscription_ids: set[uuid.UUID] = set()
 
     @property
     def running(self) -> bool:
@@ -71,6 +78,10 @@ class CollectionScheduler:
         started = 0
         skipped_running = 0
         skipped_invalid_schedule = 0
+        report_subscriptions_scanned = 0
+        report_subscriptions_due = 0
+        report_subscriptions_started = 0
+        report_subscriptions_skipped_running = 0
 
         async with self._session_factory() as session:
             candidates = await _list_scheduled_tasks(session)
@@ -109,12 +120,45 @@ class CollectionScheduler:
                 finally:
                     self._running_task_ids.discard(task.id)
 
+            report_subscription_candidates = await list_due_report_subscriptions(
+                session,
+                current_time,
+            )
+            report_subscriptions_scanned = len(report_subscription_candidates)
+            for subscription, workspace, user in report_subscription_candidates:
+                if subscription.id in self._running_report_subscription_ids:
+                    report_subscriptions_skipped_running += 1
+                    continue
+
+                report_subscriptions_due += 1
+                self._running_report_subscription_ids.add(subscription.id)
+                try:
+                    await execute_report_subscription(
+                        session=session,
+                        subscription=subscription,
+                        workspace=workspace,
+                        user=user,
+                        now=current_time,
+                    )
+                    report_subscriptions_started += 1
+                except Exception:
+                    logger.exception(
+                        "report_subscription_scheduler_failed",
+                        subscription_id=str(subscription.id),
+                    )
+                finally:
+                    self._running_report_subscription_ids.discard(subscription.id)
+
         return SchedulerTickResult(
             scanned=scanned,
             due=due,
             started=started,
             skipped_running=skipped_running,
             skipped_invalid_schedule=skipped_invalid_schedule,
+            report_subscriptions_scanned=report_subscriptions_scanned,
+            report_subscriptions_due=report_subscriptions_due,
+            report_subscriptions_started=report_subscriptions_started,
+            report_subscriptions_skipped_running=report_subscriptions_skipped_running,
         )
 
     async def _run_forever(self) -> None:
@@ -128,6 +172,12 @@ class CollectionScheduler:
                     started=result.started,
                     skipped_running=result.skipped_running,
                     skipped_invalid_schedule=result.skipped_invalid_schedule,
+                    report_subscriptions_scanned=result.report_subscriptions_scanned,
+                    report_subscriptions_due=result.report_subscriptions_due,
+                    report_subscriptions_started=result.report_subscriptions_started,
+                    report_subscriptions_skipped_running=(
+                        result.report_subscriptions_skipped_running
+                    ),
                 )
             except asyncio.CancelledError:
                 raise

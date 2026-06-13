@@ -671,9 +671,11 @@ function formatShortDateTime(value: string) {
 function auditEventLabel(eventType: string) {
   const labels: Record<string, string> = {
     generated: "报告生成",
+    send_skipped: "渠道跳过",
     sent: "报告发送",
     share_link_copied: "复制链接",
     share_sheet_opened: "系统分享",
+    subscription_executed: "订阅自动派发",
   };
   return labels[eventType] ?? eventType;
 }

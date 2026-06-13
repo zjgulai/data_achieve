@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from typing import NamedTuple
 from zoneinfo import ZoneInfo
@@ -35,12 +37,29 @@ from data_intelligence_hub.schemas.report import (
     ReportSubscriptionUpsertRequest,
 )
 from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
-from data_intelligence_hub.services.notification_service import create_in_app_notification
+from data_intelligence_hub.services.notification_service import (
+    create_in_app_notification,
+    send_email_notification,
+)
 
 
 class ReportEvidenceReference(NamedTuple):
     intelligence: ReportIntelligence
     evidences: list[EvidenceWithTrace]
+
+
+@dataclass(frozen=True)
+class ReportDispatchResult:
+    report: Report
+    delivered_channels: list[str]
+    skipped_channels: dict[str, str]
+
+
+@dataclass(frozen=True)
+class ReportSubscriptionExecutionResult:
+    report: Report
+    delivered_channels: list[str]
+    skipped_channels: dict[str, str]
 
 
 async def get_reports(
@@ -148,6 +167,69 @@ async def upsert_report_subscription(
     return subscription
 
 
+async def execute_report_subscription(
+    session: AsyncSession,
+    subscription: ReportSubscription,
+    workspace: Workspace,
+    user: User,
+    now: datetime | None = None,
+) -> ReportSubscriptionExecutionResult:
+    current_time = _aware(now or datetime.now(UTC))
+    period_start = subscription.last_sent_at or _subscription_period_start(
+        subscription,
+        current_time,
+    )
+    report = await generate_report(
+        session=session,
+        workspace=workspace,
+        user=user,
+        payload=ReportGenerateRequest(
+            project_id=subscription.project_id,
+            report_type="daily",
+            period_start=period_start,
+            period_end=current_time,
+        ),
+    )
+    generated_status = report.status
+    dispatch_result = await dispatch_report(
+        session=session,
+        workspace=workspace,
+        user=user,
+        report_id=report.id,
+        channels=subscription.channels,
+    )
+    if dispatch_result.delivered_channels:
+        subscription.last_sent_at = current_time
+    subscription.next_run_at = _compute_next_run_at(
+        subscription.schedule_time,
+        subscription.timezone,
+        current_time,
+    )
+    subscription.updated_at = current_time
+    await _create_report_audit_event(
+        session=session,
+        workspace_id=workspace.id,
+        report_id=report.id,
+        actor_id=user.id,
+        event_type="subscription_executed",
+        from_status=generated_status,
+        to_status=dispatch_result.report.status,
+        metadata={
+            "delivered_channels": ",".join(dispatch_result.delivered_channels),
+            "skipped_channels": ",".join(dispatch_result.skipped_channels.keys()),
+            "subscription_id": str(subscription.id),
+        },
+    )
+    await session.commit()
+    await session.refresh(subscription)
+    await session.refresh(dispatch_result.report)
+    return ReportSubscriptionExecutionResult(
+        report=dispatch_result.report,
+        delivered_channels=dispatch_result.delivered_channels,
+        skipped_channels=dispatch_result.skipped_channels,
+    )
+
+
 async def generate_report(
     session: AsyncSession,
     workspace: Workspace,
@@ -219,31 +301,85 @@ async def send_report(
     user: User,
     report_id: uuid.UUID,
 ) -> Report:
+    dispatch_result = await dispatch_report(
+        session=session,
+        workspace=workspace,
+        user=user,
+        report_id=report_id,
+        channels=["in_app"],
+    )
+    return dispatch_result.report
+
+
+async def dispatch_report(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    report_id: uuid.UUID,
+    channels: Sequence[str],
+) -> ReportDispatchResult:
     report = await get_report_or_raise(session, workspace, report_id)
     previous_status = report.status
-    report.status = "sent"
-    await create_in_app_notification(
-        session=session,
-        user_id=user.id,
-        title=f"日报已生成：{report.title}",
-        body="报告已进入站内通知中心，可从报告中心查看完整内容。",
-        notification_type="report_ready",
-        reference_type="report",
-        reference_id=report.id,
-    )
-    await _create_report_audit_event(
-        session=session,
-        workspace_id=workspace.id,
-        report_id=report.id,
-        actor_id=user.id,
-        event_type="sent",
-        from_status=previous_status,
-        to_status=report.status,
-        metadata={"channel": "in_app"},
-    )
+    delivered_channels: list[str] = []
+    skipped_channels: dict[str, str] = {}
+    unique_channels = list(dict.fromkeys(channels))
+
+    if "in_app" in unique_channels:
+        await create_in_app_notification(
+            session=session,
+            user_id=user.id,
+            title=f"日报已生成：{report.title}",
+            body="报告已进入站内通知中心，可从报告中心查看完整内容。",
+            notification_type="report_ready",
+            reference_type="report",
+            reference_id=report.id,
+        )
+        delivered_channels.append("in_app")
+
+    if "email" in unique_channels:
+        email_result = await send_email_notification(
+            recipient_email=user.email,
+            subject=f"日报已生成：{report.title}",
+            body=report.content,
+        )
+        if email_result.delivered:
+            delivered_channels.append("email")
+        else:
+            skipped_channels["email"] = email_result.reason or "unknown"
+
+    if delivered_channels:
+        report.status = "sent"
+        for channel in delivered_channels:
+            await _create_report_audit_event(
+                session=session,
+                workspace_id=workspace.id,
+                report_id=report.id,
+                actor_id=user.id,
+                event_type="sent",
+                from_status=previous_status,
+                to_status=report.status,
+                metadata={"channel": channel},
+            )
+
+    for channel, reason in skipped_channels.items():
+        await _create_report_audit_event(
+            session=session,
+            workspace_id=workspace.id,
+            report_id=report.id,
+            actor_id=user.id,
+            event_type="send_skipped",
+            from_status=previous_status,
+            to_status=report.status,
+            metadata={"channel": channel, "reason": reason},
+        )
+
     await session.commit()
     await session.refresh(report)
-    return report
+    return ReportDispatchResult(
+        report=report,
+        delivered_channels=delivered_channels,
+        skipped_channels=skipped_channels,
+    )
 
 
 async def record_report_share_event(
@@ -296,7 +432,7 @@ async def _create_report_audit_event(
 def _compute_next_run_at(schedule_time: str, timezone_name: str, now: datetime) -> datetime:
     timezone = ZoneInfo(timezone_name)
     hour_text, minute_text = schedule_time.split(":")
-    local_now = now.astimezone(timezone)
+    local_now = _aware(now).astimezone(timezone)
     candidate = local_now.replace(
         hour=int(hour_text),
         minute=int(minute_text),
@@ -306,6 +442,19 @@ def _compute_next_run_at(schedule_time: str, timezone_name: str, now: datetime) 
     if candidate <= local_now:
         candidate += timedelta(days=1)
     return candidate.astimezone(UTC)
+
+
+def _subscription_period_start(subscription: ReportSubscription, now: datetime) -> datetime:
+    timezone = ZoneInfo(subscription.timezone)
+    local_now = _aware(now).astimezone(timezone)
+    local_start = datetime.combine(local_now.date(), time.min, tzinfo=timezone)
+    return local_start.astimezone(UTC)
+
+
+def _aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value
 
 
 def _render_daily_report(

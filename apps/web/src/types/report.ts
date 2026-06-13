@@ -30,7 +30,14 @@ export type ReportAuditEvent = {
   workspaceId: string;
   reportId: string;
   actorId: string | null;
-  eventType: "generated" | "sent" | "share_link_copied" | "share_sheet_opened" | string;
+  eventType:
+    | "generated"
+    | "send_skipped"
+    | "sent"
+    | "share_link_copied"
+    | "share_sheet_opened"
+    | "subscription_executed"
+    | string;
   fromStatus: string | null;
   toStatus: string | null;
   metadata: Record<string, string>;
