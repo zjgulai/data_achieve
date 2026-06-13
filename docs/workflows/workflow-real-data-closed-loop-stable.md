@@ -173,7 +173,7 @@ uv run python -m data_intelligence_hub.seed.demo_data
 3. P1：报告交互。报告章节展开、证据引用详情、导出入口真实可用。
 4. P1：告警处置。告警事件支持确认、静默、关联任务。
 5. P1：通知偏好。通知渠道和已读状态真实持久化。
-6. P2：邮件发送。接入 SMTP 或第三方邮件服务，并保留本地假发送器。
+6. P2：邮件发送。接入 SMTP 或第三方邮件服务，并保留本地假发送器。生产环境在 `/opt/data-achieve-scrapy/.env.production` 使用 `SCRAPY_SMTP_HOST`、`SCRAPY_SMTP_PORT`、`SCRAPY_SMTP_USER`、`SCRAPY_SMTP_PASSWORD`、`SCRAPY_SMTP_FROM`，由 `configs/deploy/scrapy/docker-compose.yml` 映射到 API 容器内的 `SMTP_*` 配置。
 7. P2：LLM 增强。把规则生成的情报升级为可配置 LLM 解释层。
 
 ## 回滚策略
