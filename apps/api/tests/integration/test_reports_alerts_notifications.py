@@ -279,11 +279,39 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
     assert executed["latest_run"]["skipped_channels"] == {"email": "smtp_not_configured"}
     assert executed["latest_run"]["report_id"] is not None
 
+    history_response = await client.get(f"/api/reports/subscriptions/{created['id']}/runs")
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert len(history) == 1
+    assert history[0]["id"] == executed["latest_run"]["id"]
+
     reports_response = await client.get(f"/api/reports?project_id={project_id}")
     assert reports_response.status_code == 200
     reports = reports_response.json()
     assert len(reports) == 1
     assert reports[0]["id"] == executed["latest_run"]["report_id"]
+
+    retry_response = await client.post(
+        f"/api/reports/subscriptions/{created['id']}/runs/{executed['latest_run']['id']}/retry"
+    )
+    assert retry_response.status_code == 200
+    retried = retry_response.json()
+    assert retried["latest_run"]["id"] != executed["latest_run"]["id"]
+    assert retried["latest_run"]["trigger_type"] == "retry"
+    assert retried["latest_run"]["status"] == "failed"
+    assert retried["latest_run"]["delivered_channels"] == []
+    assert retried["latest_run"]["skipped_channels"] == {"email": "smtp_not_configured"}
+    assert retried["latest_run"]["report_id"] == executed["latest_run"]["report_id"]
+
+    history_after_retry_response = await client.get(
+        f"/api/reports/subscriptions/{created['id']}/runs?limit=2"
+    )
+    assert history_after_retry_response.status_code == 200
+    history_after_retry = history_after_retry_response.json()
+    assert [item["id"] for item in history_after_retry] == [
+        retried["latest_run"]["id"],
+        executed["latest_run"]["id"],
+    ]
 
     update_response = await client.put(
         "/api/reports/subscriptions",
@@ -309,7 +337,31 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
     subscriptions = list_response.json()
     assert len(subscriptions) == 1
     assert subscriptions[0]["id"] == created["id"]
-    assert subscriptions[0]["latest_run"]["id"] == executed["latest_run"]["id"]
+    assert subscriptions[0]["latest_run"]["id"] == retried["latest_run"]["id"]
+
+    success_subscription_response = await client.put(
+        "/api/reports/subscriptions",
+        json={
+            "project_id": None,
+            "report_type": "daily",
+            "schedule_time": "08:15",
+            "timezone": "Asia/Shanghai",
+            "channels": ["in_app"],
+            "enabled": True,
+        },
+    )
+    assert success_subscription_response.status_code == 200
+    success_subscription = success_subscription_response.json()
+    success_run_response = await client.post(
+        f"/api/reports/subscriptions/{success_subscription['id']}/run"
+    )
+    assert success_run_response.status_code == 200
+    success_run = success_run_response.json()["latest_run"]
+    assert success_run["status"] == "success"
+    retry_success_response = await client.post(
+        f"/api/reports/subscriptions/{success_subscription['id']}/runs/{success_run['id']}/retry"
+    )
+    assert retry_success_response.status_code == 409
 
     invalid_project_response = await client.put(
         "/api/reports/subscriptions",
@@ -328,6 +380,17 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
         "/api/reports/subscriptions/00000000-0000-0000-0000-000000000000/run"
     )
     assert invalid_run_response.status_code == 404
+
+    missing_history_response = await client.get(
+        "/api/reports/subscriptions/00000000-0000-0000-0000-000000000000/runs"
+    )
+    assert missing_history_response.status_code == 404
+
+    missing_retry_response = await client.post(
+        f"/api/reports/subscriptions/{created['id']}/runs/"
+        "00000000-0000-0000-0000-000000000000/retry"
+    )
+    assert missing_retry_response.status_code == 404
 
 
 @pytest.mark.asyncio

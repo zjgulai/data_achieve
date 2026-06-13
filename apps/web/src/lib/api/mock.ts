@@ -8,10 +8,12 @@ import type { RawRecord } from "@/types/raw-record";
 import type {
   Report,
   ReportAuditEvent,
+  ReportDeliveryChannel,
   ReportEvidenceReference,
   ReportGenerateInput,
   ReportSubscription,
   ReportSubscriptionInput,
+  ReportSubscriptionRun,
 } from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
@@ -1031,6 +1033,8 @@ const mockReportSubscriptions: ReportSubscription[] = [
   },
 ];
 
+const mockReportSubscriptionRuns: ReportSubscriptionRun[] = [];
+
 export function createMockGeneratedReport(input: ReportGenerateInput): Report {
   const base = getMockReports()[0];
   const project = input.projectId
@@ -1117,6 +1121,12 @@ export function getMockReportSubscriptions(): ReportSubscription[] {
   });
 }
 
+export function getMockReportSubscriptionRuns(subscriptionId: string): ReportSubscriptionRun[] {
+  return mockReportSubscriptionRuns
+    .filter((run) => run.subscriptionId === subscriptionId)
+    .sort((left, right) => right.startedAt.localeCompare(left.startedAt));
+}
+
 export function upsertMockReportSubscription(
   input: ReportSubscriptionInput,
 ): ReportSubscription {
@@ -1161,24 +1171,78 @@ export function runMockReportSubscription(subscriptionId: string): ReportSubscri
   if (!subscription) {
     throw new Error("Report subscription not found");
   }
+  return executeMockReportSubscription(subscription, "manual");
+}
+
+export function retryMockReportSubscriptionRun(
+  subscriptionId: string,
+  runId: string,
+): ReportSubscription {
+  const subscription = mockReportSubscriptions.find((item) => item.id === subscriptionId);
+  if (!subscription) {
+    throw new Error("Report subscription not found");
+  }
+  const run = mockReportSubscriptionRuns.find(
+    (item) => item.subscriptionId === subscriptionId && item.id === runId,
+  );
+  if (!run) {
+    throw new Error("Report subscription run not found");
+  }
+  if (run.status !== "failed" && run.status !== "partial_success") {
+    throw new Error("Only failed or partially successful report subscription runs can be retried");
+  }
+  const retryChannels = Object.keys(run.skippedChannels) as ReportDeliveryChannel[];
+  return executeMockReportSubscription(
+    subscription,
+    "retry",
+    retryChannels.length > 0 ? retryChannels : subscription.channels,
+    run.reportId ?? "report_daily_20260611",
+  );
+}
+
+function executeMockReportSubscription(
+  subscription: ReportSubscription,
+  triggerType: "manual" | "retry",
+  channels: ReportDeliveryChannel[] = subscription.channels,
+  reportId = "report_daily_20260611",
+): ReportSubscription {
   const now = new Date().toISOString();
-  subscription.lastSentAt = now;
+  const deliveredChannels = channels.includes("in_app") ? ["in_app" as const] : [];
+  const skippedChannels: Record<string, string> = channels.includes("email")
+    ? { email: "smtp_not_configured" }
+    : {};
+  const status =
+    deliveredChannels.length > 0 && Object.keys(skippedChannels).length > 0
+      ? "partial_success"
+      : deliveredChannels.length > 0
+        ? "success"
+        : "failed";
+  if (deliveredChannels.length > 0) {
+    subscription.lastSentAt = now;
+  }
   subscription.nextRunAt = subscription.enabled
     ? nextMockRunAt(subscription.scheduleTime, subscription.timezone)
     : null;
-  subscription.latestRun = {
-    id: `subscription_run_${Date.now()}`,
+  const run: ReportSubscriptionRun = {
+    id: `subscription_run_${Date.now()}_${mockReportSubscriptionRuns.length}`,
     workspaceId: subscription.workspaceId,
     subscriptionId: subscription.id,
-    reportId: "report_daily_20260611",
-    triggerType: "manual",
-    status: "partial_success",
-    deliveredChannels: ["in_app"],
-    skippedChannels: { email: "smtp_not_configured" },
-    errorMessage: "email: smtp_not_configured",
+    reportId,
+    triggerType,
+    status,
+    deliveredChannels,
+    skippedChannels,
+    errorMessage:
+      status === "success"
+        ? null
+        : Object.keys(skippedChannels).length > 0
+          ? "email: smtp_not_configured"
+          : "No delivery channel completed.",
     startedAt: now,
     finishedAt: now,
   };
+  mockReportSubscriptionRuns.push(run);
+  subscription.latestRun = run;
   subscription.updatedAt = now;
   return subscription;
 }

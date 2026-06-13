@@ -68,7 +68,7 @@ export type ReportSubscriptionRun = {
   workspaceId: string;
   subscriptionId: string;
   reportId: string | null;
-  triggerType: "manual" | "scheduled" | string;
+  triggerType: "manual" | "retry" | "scheduled" | string;
   status: "running" | "success" | "partial_success" | "failed" | string;
   deliveredChannels: ReportDeliveryChannel[];
   skippedChannels: Record<string, string>;

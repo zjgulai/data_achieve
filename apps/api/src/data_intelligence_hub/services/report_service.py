@@ -33,10 +33,12 @@ from data_intelligence_hub.repositories.reports import (
     get_report,
     get_report_subscription,
     get_report_subscription_by_scope,
+    get_report_subscription_run,
     list_alert_events_for_report,
     list_intelligence_for_report,
     list_latest_report_subscription_runs,
     list_report_audit_events,
+    list_report_subscription_runs,
     list_report_subscriptions,
     list_reports,
 )
@@ -48,6 +50,8 @@ from data_intelligence_hub.services.exceptions import (
     ProjectNotFoundError,
     ReportNotFoundError,
     ReportSubscriptionNotFoundError,
+    ReportSubscriptionRunNotFoundError,
+    ReportSubscriptionRunRetryNotAllowedError,
 )
 from data_intelligence_hub.services.notification_service import (
     create_in_app_notification,
@@ -226,6 +230,153 @@ async def run_report_subscription_now(
     return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
 
 
+async def get_report_subscription_run_history(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    subscription_id: uuid.UUID,
+    limit: int = 10,
+) -> list[ReportSubscriptionRun]:
+    subscription = await get_report_subscription(session, workspace.id, user.id, subscription_id)
+    if subscription is None:
+        raise ReportSubscriptionNotFoundError
+    return await list_report_subscription_runs(
+        session=session,
+        workspace_id=workspace.id,
+        subscription_id=subscription.id,
+        limit=limit,
+    )
+
+
+async def retry_report_subscription_run(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    subscription_id: uuid.UUID,
+    run_id: uuid.UUID,
+) -> ReportSubscriptionWithLatestRun:
+    subscription = await get_report_subscription(session, workspace.id, user.id, subscription_id)
+    if subscription is None:
+        raise ReportSubscriptionNotFoundError
+    run = await get_report_subscription_run(session, workspace.id, subscription.id, run_id)
+    if run is None:
+        raise ReportSubscriptionRunNotFoundError
+    if not _can_retry_subscription_run(run.status):
+        raise ReportSubscriptionRunRetryNotAllowedError
+    if run.report_id is not None and run.skipped_channels:
+        result = await retry_report_subscription_delivery(
+            session=session,
+            subscription=subscription,
+            workspace=workspace,
+            user=user,
+            original_run=run,
+        )
+        return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
+    result = await execute_report_subscription(
+        session=session,
+        subscription=subscription,
+        workspace=workspace,
+        user=user,
+        trigger_type="retry",
+    )
+    return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
+
+
+async def retry_report_subscription_delivery(
+    session: AsyncSession,
+    subscription: ReportSubscription,
+    workspace: Workspace,
+    user: User,
+    original_run: ReportSubscriptionRun,
+) -> ReportSubscriptionExecutionResult:
+    if original_run.report_id is None:
+        raise ReportNotFoundError
+    report_id = original_run.report_id
+    current_time = datetime.now(UTC)
+    retry_channels = list(original_run.skipped_channels.keys()) or list(subscription.channels)
+    run = await create_report_subscription_run(
+        session,
+        ReportSubscriptionRun(
+            workspace_id=workspace.id,
+            subscription_id=subscription.id,
+            report_id=report_id,
+            trigger_type="retry",
+            status="running",
+            delivered_channels=[],
+            skipped_channels={},
+            error_message=None,
+            started_at=current_time,
+            finished_at=None,
+        ),
+    )
+    await session.commit()
+
+    report: Report | None = None
+    delivered_channels: list[str] = []
+    skipped_channels: dict[str, str] = {}
+    status = "failed"
+    try:
+        report_before_retry = await get_report_or_raise(session, workspace, report_id)
+        previous_status = report_before_retry.status
+        dispatch_result = await dispatch_report(
+            session=session,
+            workspace=workspace,
+            user=user,
+            report_id=report_id,
+            channels=retry_channels,
+        )
+        delivered_channels = dispatch_result.delivered_channels
+        skipped_channels = dispatch_result.skipped_channels
+        report = dispatch_result.report
+        status = _subscription_run_status(delivered_channels, skipped_channels)
+        if delivered_channels:
+            subscription.last_sent_at = current_time
+        await _create_report_audit_event(
+            session=session,
+            workspace_id=workspace.id,
+            report_id=report.id,
+            actor_id=user.id,
+            event_type="subscription_executed",
+            from_status=previous_status,
+            to_status=report.status,
+            metadata={
+                "delivered_channels": ",".join(delivered_channels),
+                "retry_of_run_id": str(original_run.id),
+                "skipped_channels": ",".join(skipped_channels.keys()),
+                "subscription_id": str(subscription.id),
+            },
+        )
+        run.error_message = _subscription_run_error_message(status, skipped_channels)
+    except Exception as exc:
+        await session.rollback()
+        session.add(run)
+        session.add(subscription)
+        status = "failed"
+        run.error_message = str(exc)[:500] or exc.__class__.__name__
+    run.status = status
+    run.delivered_channels = delivered_channels
+    run.skipped_channels = skipped_channels
+    run.finished_at = datetime.now(UTC)
+    subscription.next_run_at = _compute_next_run_at(
+        subscription.schedule_time,
+        subscription.timezone,
+        current_time,
+    )
+    subscription.updated_at = datetime.now(UTC)
+    await session.commit()
+    await session.refresh(subscription)
+    await session.refresh(run)
+    if report is not None:
+        await session.refresh(report)
+    return ReportSubscriptionExecutionResult(
+        report=report,
+        run=run,
+        status=status,
+        delivered_channels=delivered_channels,
+        skipped_channels=skipped_channels,
+    )
+
+
 async def execute_report_subscription(
     session: AsyncSession,
     subscription: ReportSubscription,
@@ -252,10 +403,7 @@ async def execute_report_subscription(
     )
     await session.commit()
 
-    period_start = subscription.last_sent_at or _subscription_period_start(
-        subscription,
-        current_time,
-    )
+    period_start = _subscription_execution_period_start(subscription, current_time)
     report: Report | None = None
     delivered_channels: list[str] = []
     skipped_channels: dict[str, str] = {}
@@ -553,6 +701,17 @@ def _subscription_period_start(subscription: ReportSubscription, now: datetime) 
     return local_start.astimezone(UTC)
 
 
+def _subscription_execution_period_start(
+    subscription: ReportSubscription,
+    current_time: datetime,
+) -> datetime:
+    if subscription.last_sent_at is not None:
+        last_sent_at = _aware(subscription.last_sent_at)
+        if last_sent_at < current_time:
+            return last_sent_at
+    return _subscription_period_start(subscription, current_time)
+
+
 def _subscription_run_status(
     delivered_channels: list[str],
     skipped_channels: dict[str, str],
@@ -572,6 +731,10 @@ def _subscription_run_error_message(status: str, skipped_channels: dict[str, str
     return "; ".join(
         f"{channel}: {reason}" for channel, reason in sorted(skipped_channels.items())
     )
+
+
+def _can_retry_subscription_run(status: str) -> bool:
+    return status in {"failed", "partial_success"}
 
 
 def _aware(value: datetime) -> datetime:

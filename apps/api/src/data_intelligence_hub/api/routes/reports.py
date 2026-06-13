@@ -14,21 +14,26 @@ from data_intelligence_hub.schemas.report import (
     ReportGenerateRequest,
     ReportResponse,
     ReportSubscriptionResponse,
+    ReportSubscriptionRunResponse,
     ReportSubscriptionUpsertRequest,
 )
 from data_intelligence_hub.services.exceptions import (
     ProjectNotFoundError,
     ReportNotFoundError,
     ReportSubscriptionNotFoundError,
+    ReportSubscriptionRunNotFoundError,
+    ReportSubscriptionRunRetryNotAllowedError,
 )
 from data_intelligence_hub.services.report_service import (
     generate_report,
     get_report_audit_events,
     get_report_evidence_references,
     get_report_or_raise,
+    get_report_subscription_run_history,
     get_report_subscriptions,
     get_reports,
     record_report_share_event,
+    retry_report_subscription_run,
     run_report_subscription_now,
     send_report,
     upsert_report_subscription,
@@ -109,6 +114,58 @@ async def run_report_subscription_item(
         )
     except ReportSubscriptionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
+
+
+@router.get(
+    "/subscriptions/{subscription_id}/runs",
+    response_model=list[ReportSubscriptionRunResponse],
+)
+async def list_report_subscription_run_items(
+    subscription_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: Annotated[int, Query(ge=1, le=20)] = 10,
+) -> list[ReportSubscriptionRunResponse]:
+    try:
+        runs = await get_report_subscription_run_history(
+            session=session,
+            workspace=context.workspace,
+            user=context.user,
+            subscription_id=subscription_id,
+            limit=limit,
+        )
+    except ReportSubscriptionNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return [ReportSubscriptionRunResponse.from_model(run) for run in runs]
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/runs/{run_id}/retry",
+    response_model=ReportSubscriptionResponse,
+)
+async def retry_report_subscription_run_item(
+    subscription_id: uuid.UUID,
+    run_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportSubscriptionResponse:
+    try:
+        item = await retry_report_subscription_run(
+            session=session,
+            workspace=context.workspace,
+            user=context.user,
+            subscription_id=subscription_id,
+            run_id=run_id,
+        )
+    except (
+        ReportNotFoundError,
+        ReportSubscriptionNotFoundError,
+        ReportSubscriptionRunNotFoundError,
+    ) as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except ReportSubscriptionRunRetryNotAllowedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
     return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
 
 

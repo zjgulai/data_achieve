@@ -5,9 +5,11 @@ import {
   CalendarDays,
   Clock3,
   FileText,
+  History,
   MailCheck,
   PlayCircle,
   PlusCircle,
+  RotateCcw,
   Save,
   Search,
   SlidersHorizontal,
@@ -19,8 +21,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { listProjects } from "@/lib/api/projects";
 import {
   generateReport,
+  listReportSubscriptionRuns,
   listReports,
   listReportSubscriptions,
+  retryReportSubscriptionRun,
   runReportSubscription,
   sendReport,
   upsertReportSubscription,
@@ -33,6 +37,7 @@ import type {
   ReportDeliveryChannel,
   ReportGenerateInput,
   ReportSubscription,
+  ReportSubscriptionRun,
 } from "@/types/report";
 
 type StatusFilter = "all" | "generated" | "sent";
@@ -49,6 +54,12 @@ export function ReportsWorkspace() {
   const [busy, setBusy] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [runningSubscriptionId, setRunningSubscriptionId] = useState<string | null>(null);
+  const [expandedRunSubscriptionId, setExpandedRunSubscriptionId] = useState<string | null>(null);
+  const [loadingRunHistoryId, setLoadingRunHistoryId] = useState<string | null>(null);
+  const [retryingRunId, setRetryingRunId] = useState<string | null>(null);
+  const [subscriptionRuns, setSubscriptionRuns] = useState<Record<string, ReportSubscriptionRun[]>>(
+    {},
+  );
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [projectFilter, setProjectFilter] = useState("all");
@@ -258,6 +269,9 @@ export function ReportsWorkspace() {
       setSubscriptions((current) =>
         current.map((item) => (item.id === executed.id ? executed : item)),
       );
+      if (expandedRunSubscriptionId === subscriptionId) {
+        await refreshSubscriptionRunHistory(subscriptionId);
+      }
       const refreshedReports = await listReports(projectFilter === "all" ? undefined : projectFilter);
       setReports(refreshedReports);
       setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
@@ -266,6 +280,50 @@ export function ReportsWorkspace() {
       setError(caught instanceof Error ? caught.message : "Report subscription run failed");
     } finally {
       setRunningSubscriptionId(null);
+    }
+  }
+
+  async function refreshSubscriptionRunHistory(subscriptionId: string) {
+    const runs = await listReportSubscriptionRuns(subscriptionId);
+    setSubscriptionRuns((current) => ({ ...current, [subscriptionId]: runs }));
+    return runs;
+  }
+
+  async function handleToggleRunHistory(subscriptionId: string) {
+    if (expandedRunSubscriptionId === subscriptionId) {
+      setExpandedRunSubscriptionId(null);
+      return;
+    }
+    setExpandedRunSubscriptionId(subscriptionId);
+    setLoadingRunHistoryId(subscriptionId);
+    setError(null);
+    try {
+      await refreshSubscriptionRunHistory(subscriptionId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Report subscription history failed");
+    } finally {
+      setLoadingRunHistoryId(null);
+    }
+  }
+
+  async function handleRetrySubscriptionRun(subscriptionId: string, runId: string) {
+    setRetryingRunId(runId);
+    setSubscriptionNotice(null);
+    setError(null);
+    try {
+      const retried = await retryReportSubscriptionRun(subscriptionId, runId);
+      setSubscriptions((current) =>
+        current.map((item) => (item.id === retried.id ? retried : item)),
+      );
+      await refreshSubscriptionRunHistory(subscriptionId);
+      const refreshedReports = await listReports(projectFilter === "all" ? undefined : projectFilter);
+      setReports(refreshedReports);
+      setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
+      setSubscriptionNotice("订阅已重试");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Report subscription retry failed");
+    } finally {
+      setRetryingRunId(null);
     }
   }
 
@@ -497,16 +555,74 @@ export function ReportsWorkspace() {
                     <p className="text-xs text-[#86868B]">
                       {subscription.lastSentAt ? `上次 ${formatDate(subscription.lastSentAt)}` : "尚未成功发送"}
                     </p>
-                    <button
-                      className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={runningSubscriptionId === subscription.id}
-                      onClick={() => void handleRunSubscription(subscription.id)}
-                      type="button"
-                    >
-                      <PlayCircle size={14} aria-hidden="true" />
-                      {runningSubscriptionId === subscription.id ? "执行中" : "立即执行"}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={loadingRunHistoryId === subscription.id}
+                        onClick={() => void handleToggleRunHistory(subscription.id)}
+                        type="button"
+                      >
+                        <History size={14} aria-hidden="true" />
+                        {expandedRunSubscriptionId === subscription.id ? "收起历史" : "执行历史"}
+                      </button>
+                      <button
+                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={runningSubscriptionId === subscription.id}
+                        onClick={() => void handleRunSubscription(subscription.id)}
+                        type="button"
+                      >
+                        <PlayCircle size={14} aria-hidden="true" />
+                        {runningSubscriptionId === subscription.id ? "执行中" : "立即执行"}
+                      </button>
+                    </div>
                   </div>
+                  {expandedRunSubscriptionId === subscription.id ? (
+                    <div className="grid gap-2 border-t border-[#EDE6DF] pt-2">
+                      {loadingRunHistoryId === subscription.id ? (
+                        <p className="text-xs text-[#86868B]">加载执行历史</p>
+                      ) : null}
+                      {loadingRunHistoryId !== subscription.id &&
+                      (subscriptionRuns[subscription.id] ?? []).length === 0 ? (
+                        <p className="text-xs text-[#86868B]">暂无执行历史</p>
+                      ) : null}
+                      {(subscriptionRuns[subscription.id] ?? []).map((run) => (
+                        <div className="rounded-lg border border-[#EDE6DF] bg-white p-2" key={run.id}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-[#1D1D1F]">
+                                {triggerLabel(run.triggerType)} · {formatDate(run.startedAt)}
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-[#86868B]">
+                                {runDeliverySummary(run)}
+                              </p>
+                            </div>
+                            <StatusPill status={run.status} />
+                          </div>
+                          {run.errorMessage ? (
+                            <p className="mt-1 text-xs leading-5 text-[#C25B6E]">
+                              {runIssueSummary(run.errorMessage)}
+                            </p>
+                          ) : null}
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs text-[#86868B]">
+                              {run.finishedAt ? `完成 ${formatDate(run.finishedAt)}` : "仍在执行"}
+                            </p>
+                            {canRetryRun(run.status) ? (
+                              <button
+                                className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-[#F1D5DA] bg-[#FFF7F8] px-2.5 text-xs font-semibold text-[#C25B6E] transition-colors hover:bg-[#FCEBF0] disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={retryingRunId === run.id}
+                                onClick={() => void handleRetrySubscriptionRun(subscription.id, run.id)}
+                                type="button"
+                              >
+                                <RotateCcw size={13} aria-hidden="true" />
+                                {retryingRunId === run.id ? "重试中" : "重试"}
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -797,15 +913,35 @@ function countEvidenceMentions(content: string) {
 }
 
 function channelLabel(channel: ReportDeliveryChannel) {
-  return channel === "email" ? "邮件" : "站内通知";
+  return channelText(channel);
 }
 
 function triggerLabel(triggerType: string) {
-  return triggerType === "manual" ? "手动触发" : "自动调度";
+  if (triggerType === "manual") {
+    return "手动触发";
+  }
+  if (triggerType === "retry") {
+    return "失败重试";
+  }
+  return "自动调度";
 }
 
 function runIssueSummary(errorMessage: string) {
   return errorMessage.replaceAll("smtp_not_configured", "SMTP 未配置");
+}
+
+function canRetryRun(status: string) {
+  return status === "failed" || status === "partial_success";
+}
+
+function runDeliverySummary(run: ReportSubscriptionRun) {
+  const delivered = run.deliveredChannels.map(channelText).join("、") || "无";
+  const skipped = Object.keys(run.skippedChannels).map(channelText).join("、");
+  return skipped ? `已送达 ${delivered} · 未送达 ${skipped}` : `已送达 ${delivered}`;
+}
+
+function channelText(channel: string) {
+  return channel === "email" ? "邮件" : "站内通知";
 }
 
 function formatDate(value: string) {

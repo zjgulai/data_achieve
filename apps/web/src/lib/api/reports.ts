@@ -9,9 +9,11 @@ import {
   createMockGeneratedReport,
   createMockReportAuditEvent,
   getMockReportSubscriptions,
+  getMockReportSubscriptionRuns,
   getMockReportAuditEvents,
   getMockReportEvidenceReferences,
   getMockReports,
+  retryMockReportSubscriptionRun,
   runMockReportSubscription,
   upsertMockReportSubscription,
 } from "@/lib/api/mock";
@@ -216,6 +218,32 @@ export async function runReportSubscription(subscriptionId: string): Promise<Rep
   }
   const response = await apiFetch<ReportSubscriptionResponse>(
     `/api/reports/subscriptions/${subscriptionId}/run`,
+    { method: "POST" },
+  );
+  return mapReportSubscription(response);
+}
+
+export async function listReportSubscriptionRuns(
+  subscriptionId: string,
+): Promise<ReportSubscriptionRun[]> {
+  if (mockApiEnabled) {
+    return getMockReportSubscriptionRuns(subscriptionId);
+  }
+  const response = await apiFetch<ReportSubscriptionRunResponse[]>(
+    `/api/reports/subscriptions/${subscriptionId}/runs`,
+  );
+  return response.map(mapReportSubscriptionRun);
+}
+
+export async function retryReportSubscriptionRun(
+  subscriptionId: string,
+  runId: string,
+): Promise<ReportSubscription> {
+  if (mockApiEnabled) {
+    return retryMockReportSubscriptionRun(subscriptionId, runId);
+  }
+  const response = await apiFetch<ReportSubscriptionResponse>(
+    `/api/reports/subscriptions/${subscriptionId}/runs/${runId}/retry`,
     { method: "POST" },
   );
   return mapReportSubscription(response);

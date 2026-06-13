@@ -186,6 +186,40 @@ async def list_latest_report_subscription_runs(
     return latest
 
 
+async def list_report_subscription_runs(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    subscription_id: uuid.UUID,
+    limit: int,
+) -> list[ReportSubscriptionRun]:
+    result = await session.execute(
+        select(ReportSubscriptionRun)
+        .where(
+            ReportSubscriptionRun.workspace_id == workspace_id,
+            ReportSubscriptionRun.subscription_id == subscription_id,
+        )
+        .order_by(ReportSubscriptionRun.started_at.desc(), ReportSubscriptionRun.id.desc())
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def get_report_subscription_run(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    subscription_id: uuid.UUID,
+    run_id: uuid.UUID,
+) -> ReportSubscriptionRun | None:
+    result = await session.execute(
+        select(ReportSubscriptionRun).where(
+            ReportSubscriptionRun.workspace_id == workspace_id,
+            ReportSubscriptionRun.subscription_id == subscription_id,
+            ReportSubscriptionRun.id == run_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_due_report_subscriptions(
     session: AsyncSession,
     now: datetime,

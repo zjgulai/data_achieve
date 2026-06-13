@@ -65,6 +65,14 @@ class ReportSubscriptionNotFoundError(ServiceError):
     message = "Report subscription not found"
 
 
+class ReportSubscriptionRunNotFoundError(ServiceError):
+    message = "Report subscription run not found"
+
+
+class ReportSubscriptionRunRetryNotAllowedError(ServiceError):
+    message = "Only failed or partially successful report subscription runs can be retried"
+
+
 class AlertRuleNotFoundError(ServiceError):
     message = "Alert rule not found"
 
