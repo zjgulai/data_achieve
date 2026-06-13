@@ -52,6 +52,51 @@ async function activateControl(locator: Locator, projectName: string) {
   await locator.click();
 }
 
+async function createTaskFlowFixture(request: APIRequestContext, suffix: string) {
+  if (!realApiMode) {
+    return null;
+  }
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!password) {
+    throw new Error("SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true");
+  }
+  await request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+  });
+  const projectsResponse = await request.get(`${baseUrl}/api/projects`);
+  if (!projectsResponse.ok()) {
+    throw new Error(`Project fixture lookup failed: ${await projectsResponse.text()}`);
+  }
+  const projects = (await projectsResponse.json()) as Array<{ id: string }>;
+  if (projects.length === 0) {
+    throw new Error("Task fixture requires at least one project");
+  }
+  const taskName = `Playwright Task Flow ${suffix} ${Date.now()}`;
+  const sourceResponse = await request.post(`${baseUrl}/api/sources`, {
+    data: {
+      project_id: projects[0].id,
+      name: taskName,
+      type: "manual_json",
+      config: {
+        entity_type: "github_repo",
+        json_data: { full_name: "playwright/task-flow", stars: 233 },
+      },
+      schedule_cron: null,
+    },
+  });
+  if (!sourceResponse.ok()) {
+    throw new Error(`Task fixture source create failed: ${await sourceResponse.text()}`);
+  }
+  const source = (await sourceResponse.json()) as { id: string };
+  const enableResponse = await request.post(`${baseUrl}/api/sources/${source.id}/enable`);
+  if (!enableResponse.ok()) {
+    throw new Error(`Task fixture enable failed: ${await enableResponse.text()}`);
+  }
+  return taskName;
+}
+
 test.beforeEach(async ({ page, request }) => {
   if (!realApiMode) {
     return;
@@ -223,12 +268,21 @@ test.describe("MVP workspace routes", () => {
     await expect(sourceCard.getByText("已停用")).toBeVisible();
   });
 
-  test("inspects task workspace and diagnostics", async ({ page }, testInfo) => {
+  test("inspects task workspace and diagnostics", async ({ page, request }, testInfo) => {
+    const fixtureTaskName = await createTaskFlowFixture(request, testInfo.project.name);
     await page.goto("/tasks");
     await expect(page.getByRole("heading", { name: "采集运行控制台", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "任务运行列表", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "失败任务诊断", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();
+    if (fixtureTaskName) {
+      await page.getByPlaceholder("搜索任务名称或数据源...").fill(fixtureTaskName);
+      if (testInfo.project.name === "mobile") {
+        await expect(page.locator("div.md\\:hidden").getByText(fixtureTaskName).first()).toBeVisible();
+      } else {
+        await expect(page.locator("tbody").getByText(fixtureTaskName).first()).toBeVisible();
+      }
+    }
     const desktopRows = page.locator("tbody tr");
     const emptyHint = page.locator("p:has-text('当前筛选条件下没有任务')");
     if (testInfo.project.name === "mobile") {
@@ -253,10 +307,21 @@ test.describe("MVP workspace routes", () => {
 
     const firstTaskRow = desktopRows.first();
     await firstTaskRow.click();
+    const pauseButton = firstTaskRow.locator('button[title="暂停"]');
+    if ((await pauseButton.count()) > 0) {
+      await pauseButton.click();
+      await expect(page.getByText(/paused/)).toBeVisible();
+    }
+    const resumeButton = firstTaskRow.locator('button[title="恢复"]');
+    if ((await resumeButton.count()) > 0) {
+      await resumeButton.click();
+      await expect(page.getByText(/resumed/)).toBeVisible();
+    }
     const rowLogButton = firstTaskRow.locator('button[title="日志"]');
     await expect(rowLogButton).toBeVisible();
     await rowLogButton.click();
     await expect(page.getByText("查看最近一次运行详情")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "运行历史" })).toBeVisible();
     await expect(page.getByText("重试历史")).toBeVisible();
   });
 

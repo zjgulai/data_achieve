@@ -45,6 +45,22 @@ export async function runTask(taskId: string): Promise<TaskRun> {
   return mapTaskRun(response);
 }
 
+export async function listTaskRuns(taskId: string): Promise<TaskRun[]> {
+  if (mockApiEnabled) {
+    return [
+      getMockTaskRun(taskId),
+      {
+        ...getMockTaskRun(taskId),
+        id: `run_previous_${taskId}`,
+        startedAt: "2026-06-11T16:10:00.000Z",
+        finishedAt: "2026-06-11T16:10:06.000Z",
+      },
+    ];
+  }
+  const response = await apiFetch<TaskRunResponse[]>(`/api/tasks/${taskId}/runs`);
+  return response.map(mapTaskRun);
+}
+
 export async function pauseTask(taskId: string): Promise<CollectionTask> {
   if (mockApiEnabled) {
     const task = getMockTasks().find((item) => item.id === taskId) ?? getMockTasks()[0];

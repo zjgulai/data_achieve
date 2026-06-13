@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { listTasks, pauseTask, resumeTask, runTask } from "@/lib/api/tasks";
+import { listTaskRuns, listTasks, pauseTask, resumeTask, runTask } from "@/lib/api/tasks";
 import { cn } from "@/lib/utils";
 import type { CollectionTask, CollectorType, TaskRun } from "@/types/source-task";
 
@@ -207,9 +207,12 @@ const sourceHealthRows = [
 export function TasksWorkspace() {
   const [tasks, setTasks] = useState<CollectionTask[]>([]);
   const [latestRun, setLatestRun] = useState<TaskRun | null>(null);
+  const [taskRuns, setTaskRuns] = useState<TaskRun[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [runLoading, setRunLoading] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [domainFilter, setDomainFilter] = useState<DomainFilter>("all");
@@ -262,6 +265,25 @@ export function TasksWorkspace() {
     tasks.find((task) => task.id === selectedTaskId) ?? filteredTasks[0] ?? tasks[0] ?? null;
   const selectedProfile = selectedTask ? getTaskProfile(selectedTask) : null;
   const selectedHealth = selectedTask ? getTaskHealth(selectedTask) : null;
+  const selectedTaskRunId = selectedTask?.id ?? null;
+  const selectedTaskRuns = useMemo(() => {
+    if (!selectedTask) {
+      return [];
+    }
+    const history = taskRuns.filter((runItem) => runItem.taskId === selectedTask.id);
+    if (latestRun?.taskId === selectedTask.id && !history.some((item) => item.id === latestRun.id)) {
+      return [latestRun, ...history];
+    }
+    return history;
+  }, [latestRun, selectedTask, taskRuns]);
+  const activeRun = selectedTaskRuns[0] ?? null;
+
+  useEffect(() => {
+    if (!runLogOpen || !selectedTaskRunId) {
+      return;
+    }
+    void loadTaskRuns(selectedTaskRunId);
+  }, [runLogOpen, selectedTaskRunId]);
 
   const summary = useMemo(() => {
     const totalRuns = tasks.reduce((sum, task) => sum + task.successCount + task.failureCount, 0);
@@ -279,13 +301,20 @@ export function TasksWorkspace() {
 
   async function run(task: CollectionTask) {
     setError(null);
+    setNotice(null);
+    if (task.status !== "enabled") {
+      setError("Task must be enabled before manual run");
+      return;
+    }
     setRunningTaskId(task.id);
     setSelectedTaskId(task.id);
     try {
       const taskRun = await runTask(task.id);
       setLatestRun(taskRun);
+      setTaskRuns((current) => [taskRun, ...current.filter((item) => item.id !== taskRun.id)]);
       setRunLogOpen(true);
       setIncidentSuppressed(false);
+      setNotice(`${task.name}: run ${taskRun.status}`);
       setTasks((current) =>
         current.map((item) => {
           if (item.id !== task.id) {
@@ -297,7 +326,7 @@ export function TasksWorkspace() {
               taskRun.status === "failed" ? item.failureCount + 1 : Math.max(item.failureCount - 1, 0),
             successCount:
               taskRun.status === "failed" ? item.successCount : item.successCount + 1,
-            lastRunAt: taskRun.finishedAt,
+            lastRunAt: taskRun.finishedAt ?? taskRun.startedAt,
           };
         }),
       );
@@ -310,13 +339,33 @@ export function TasksWorkspace() {
 
   async function updateTaskStatus(task: CollectionTask, next: "paused" | "enabled") {
     setError(null);
+    setNotice(null);
     setSelectedTaskId(task.id);
     try {
       const updated = next === "paused" ? await pauseTask(task.id) : await resumeTask(task.id);
       setTasks((current) => current.map((item) => (item.id === task.id ? updated : item)));
+      setNotice(`${task.name}: ${next === "paused" ? "paused" : "resumed"}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Task update failed");
     }
+  }
+
+  async function loadTaskRuns(taskId: string) {
+    setRunLoading(true);
+    try {
+      const runs = await listTaskRuns(taskId);
+      setTaskRuns(runs);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to load task runs");
+    } finally {
+      setRunLoading(false);
+    }
+  }
+
+  function openRunLog(task: CollectionTask) {
+    setSelectedTaskId(task.id);
+    setRunLogOpen(true);
+    void loadTaskRuns(task.id);
   }
 
   return (
@@ -365,6 +414,11 @@ export function TasksWorkspace() {
         {error ? (
           <p className="rounded-xl border border-[#FFD7DF] bg-[#FFF7F8] px-3 py-2 text-sm text-[#C25B6E]">
             {error}
+          </p>
+        ) : null}
+        {notice ? (
+          <p className="rounded-xl border border-[#BEEBD0] bg-[#EAF8EE] px-3 py-2 text-sm text-[#247A45]">
+            {notice}
           </p>
         ) : null}
 
@@ -514,6 +568,7 @@ export function TasksWorkspace() {
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-1.5">
                           <IconButton
+                            disabled={task.status !== "enabled" || runningTaskId === task.id}
                             label="立即运行"
                             onClick={() => void run(task)}
                             pressed={runningTaskId === task.id}
@@ -521,6 +576,7 @@ export function TasksWorkspace() {
                             <PlayCircle size={16} aria-hidden="true" />
                           </IconButton>
                           <IconButton
+                            disabled={runningTaskId === task.id}
                             label={task.status === "paused" || task.status === "disabled" ? "恢复" : "暂停"}
                             onClick={() =>
                               void updateTaskStatus(
@@ -539,10 +595,7 @@ export function TasksWorkspace() {
                           </IconButton>
                           <IconButton
                             label="日志"
-                            onClick={() => {
-                              setSelectedTaskId(task.id);
-                              setRunLogOpen(true);
-                            }}
+                            onClick={() => openRunLog(task)}
                           >
                             <TerminalSquare size={16} aria-hidden="true" />
                           </IconButton>
@@ -604,6 +657,7 @@ export function TasksWorkspace() {
                     <span className="text-xs text-[#86868B]">最近运行 {formatTime(task.lastRunAt)}</span>
                     <span className="flex gap-1.5">
                       <IconButton
+                        disabled={task.status !== "enabled" || runningTaskId === task.id}
                         label="立即运行"
                         onClick={() => void run(task)}
                         pressed={runningTaskId === task.id}
@@ -611,11 +665,26 @@ export function TasksWorkspace() {
                         <PlayCircle size={16} aria-hidden="true" />
                       </IconButton>
                       <IconButton
+                        disabled={runningTaskId === task.id}
+                        label={task.status === "paused" || task.status === "disabled" ? "恢复" : "暂停"}
+                        onClick={() =>
+                          void updateTaskStatus(
+                            task,
+                            task.status === "paused" || task.status === "disabled"
+                              ? "enabled"
+                              : "paused",
+                          )
+                        }
+                      >
+                        {task.status === "paused" || task.status === "disabled" ? (
+                          <RotateCcw size={16} aria-hidden="true" />
+                        ) : (
+                          <PauseCircle size={16} aria-hidden="true" />
+                        )}
+                      </IconButton>
+                      <IconButton
                         label="日志"
-                        onClick={() => {
-                          setSelectedTaskId(task.id);
-                          setRunLogOpen(true);
-                        }}
+                        onClick={() => openRunLog(task)}
                       >
                         <TerminalSquare size={16} aria-hidden="true" />
                       </IconButton>
@@ -823,12 +892,23 @@ export function TasksWorkspace() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C25B6E] text-sm font-semibold text-white transition-colors hover:bg-[#A8495B]"
-                  onClick={() => void run(selectedTask)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C25B6E] text-sm font-semibold text-white transition-colors hover:bg-[#A8495B] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={runningTaskId === selectedTask.id}
+                  onClick={() =>
+                    void (selectedTask.status === "paused" || selectedTask.status === "disabled"
+                      ? updateTaskStatus(selectedTask, "enabled")
+                      : run(selectedTask))
+                  }
                   type="button"
                 >
-                  <PlayCircle size={16} aria-hidden="true" />
-                  立即重试
+                  {selectedTask.status === "paused" || selectedTask.status === "disabled" ? (
+                    <RotateCcw size={16} aria-hidden="true" />
+                  ) : (
+                    <PlayCircle size={16} aria-hidden="true" />
+                  )}
+                  {selectedTask.status === "paused" || selectedTask.status === "disabled"
+                    ? "恢复任务"
+                    : "立即重试"}
                 </button>
                 <button
                   className="inline-flex h-10 items-center justify-center rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
@@ -863,7 +943,40 @@ export function TasksWorkspace() {
           </div>
           {runLogOpen ? (
             <div className="grid gap-2 px-5 py-4">
-              {(latestRun?.logs ?? defaultLogs(selectedTask)).map((log, index) => (
+              {runLoading ? (
+                <p className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs text-[#86868B]">
+                  正在加载运行历史...
+                </p>
+              ) : null}
+              {activeRun ? (
+                <div className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-[#1D1D1F]">最近一次运行详情</span>
+                    <span
+                      className={cn(
+                        "rounded-lg px-2 py-1 font-semibold",
+                        activeRun.status === "failed"
+                          ? "bg-[#FFE5E2] text-[#FF3B30]"
+                          : "bg-[#EAF8EE] text-[#2EBA62]",
+                      )}
+                    >
+                      {activeRun.status}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <RunFact label="Records" value={String(activeRun.recordsCount)} />
+                    <RunFact label="Entities" value={String(activeRun.entitiesCount)} />
+                    <RunFact label="Started" value={formatTime(activeRun.startedAt)} />
+                    <RunFact label="Finished" value={formatTime(activeRun.finishedAt)} />
+                  </div>
+                  {activeRun.errorMessage ? (
+                    <p className="mt-3 rounded-lg bg-[#FFF7F8] px-2 py-1 text-[#C25B6E]">
+                      {activeRun.errorMessage}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              {(activeRun?.logs ?? defaultLogs(selectedTask)).map((log, index) => (
                 <div
                   className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs"
                   key={`${log.step}-${index}`}
@@ -875,6 +988,37 @@ export function TasksWorkspace() {
                   <p className="mt-1 leading-5 text-[#5F5757]">{log.message}</p>
                 </div>
               ))}
+              <div>
+                <h3 className="mb-2 mt-2 text-sm font-semibold text-[#1D1D1F]">运行历史</h3>
+                <div className="grid gap-2">
+                  {selectedTaskRuns.length > 0 ? (
+                    selectedTaskRuns.slice(0, 5).map((runItem) => (
+                      <div
+                        className="grid grid-cols-[1fr_auto] gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs"
+                        key={runItem.id}
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold text-[#1D1D1F]">
+                            {runItem.id}
+                          </span>
+                          <span className="mt-1 block text-[#86868B]">
+                            {formatTime(runItem.startedAt)} 至 {formatTime(runItem.finishedAt)}
+                          </span>
+                        </span>
+                        <span className="text-right text-[#5F5757]">
+                          {runItem.status}
+                          <br />
+                          {runItem.recordsCount} records
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs text-[#86868B]">
+                      暂无运行历史
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="px-5 py-6 text-sm text-[#86868B]">
@@ -957,11 +1101,13 @@ function SelectField({
 
 function IconButton({
   children,
+  disabled = false,
   label,
   onClick,
   pressed = false,
 }: {
   children: React.ReactNode;
+  disabled?: boolean;
   label: string;
   onClick: () => void;
   pressed?: boolean;
@@ -970,10 +1116,15 @@ function IconButton({
     <button
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#EDE6DF] bg-white text-[#86868B] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]",
+        disabled ? "cursor-not-allowed opacity-45 hover:border-[#EDE6DF] hover:text-[#86868B]" : null,
         pressed ? "border-[#C25B6E] bg-[#FCEBF0] text-[#C25B6E]" : null,
       )}
+      disabled={disabled}
       onClick={(event) => {
         event.stopPropagation();
+        if (disabled) {
+          return;
+        }
         onClick();
       }}
       title={label}
@@ -1076,6 +1227,15 @@ function TrendStat({
   );
 }
 
+function RunFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white px-2 py-1">
+      <p className="text-[10px] font-semibold uppercase text-[#86868B]">{label}</p>
+      <p className="mt-1 break-words text-xs font-semibold text-[#1D1D1F]">{value}</p>
+    </div>
+  );
+}
+
 function getTaskProfile(task: CollectionTask): TaskProfile {
   return (
     taskProfiles[task.id] ?? {
@@ -1112,7 +1272,7 @@ function successRate(task: CollectionTask) {
   return (task.successCount / total) * 100;
 }
 
-function formatTime(value: string | null) {
+function formatTime(value: string | null | undefined) {
   if (!value) {
     return "从未运行";
   }
