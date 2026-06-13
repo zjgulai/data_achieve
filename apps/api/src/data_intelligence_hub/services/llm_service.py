@@ -6,8 +6,7 @@ from typing import Any, Protocol
 
 
 class BaseLLMAdapter(Protocol):
-    async def generate(self, system_prompt: str, user_prompt: str, **kwargs: object) -> str:
-        ...
+    async def generate(self, system_prompt: str, user_prompt: str, **kwargs: object) -> str: ...
 
 
 class MockLLMAdapter:
@@ -39,9 +38,14 @@ class LLMService:
             user_prompt="Summarize the signal and evidence without inventing facts.",
             context=context,
         )
-        decoded = json.loads(payload)
-        title = decoded["title"]
-        summary = decoded["summary"]
+        try:
+            decoded = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise TypeError("LLM adapter returned invalid intelligence copy") from exc
+        if not isinstance(decoded, dict):
+            raise TypeError("LLM adapter returned invalid intelligence copy")
+        title = decoded.get("title")
+        summary = decoded.get("summary")
         if not isinstance(title, str) or not isinstance(summary, str):
             raise TypeError("LLM adapter returned invalid intelligence copy")
         return IntelligenceCopy(title=title, summary=summary)
