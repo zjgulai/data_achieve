@@ -42,3 +42,19 @@ async def get_notification(
         )
     )
     return result.scalar_one_or_none()
+
+
+async def list_notifications_by_ids(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    notification_ids: list[uuid.UUID],
+) -> list[Notification]:
+    if not notification_ids:
+        return []
+    result = await session.execute(
+        select(Notification).where(
+            Notification.user_id == user_id,
+            Notification.id.in_(notification_ids),
+        )
+    )
+    return list(result.scalars().all())

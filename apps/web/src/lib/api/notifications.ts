@@ -42,20 +42,28 @@ type EmailChannelTestResponse = {
   tested_at: string;
 };
 
-export async function listNotifications(isRead?: boolean): Promise<NotificationItem[]> {
+export async function listNotifications(
+  isRead?: boolean,
+): Promise<NotificationItem[]> {
   if (mockApiEnabled) {
-    return getMockNotifications().filter((item) => isRead === undefined || item.isRead === isRead);
+    return getMockNotifications().filter(
+      (item) => isRead === undefined || item.isRead === isRead,
+    );
   }
   const query = new URLSearchParams();
   if (isRead !== undefined) {
     query.set("is_read", String(isRead));
   }
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
-  const response = await apiFetch<NotificationResponse[]>(`/api/notifications${suffix}`);
+  const response = await apiFetch<NotificationResponse[]>(
+    `/api/notifications${suffix}`,
+  );
   return response.map(mapNotification);
 }
 
-export async function markNotificationRead(notificationId: string): Promise<NotificationItem> {
+export async function markNotificationRead(
+  notificationId: string,
+): Promise<NotificationItem> {
   if (mockApiEnabled) {
     const notification =
       getMockNotifications().find((item) => item.id === notificationId) ??
@@ -73,9 +81,31 @@ export async function markAllNotificationsRead(): Promise<number> {
   if (mockApiEnabled) {
     return getMockNotifications().filter((item) => !item.isRead).length;
   }
-  const response = await apiFetch<{ updated_count: number }>("/api/notifications/read-all", {
-    method: "POST",
-  });
+  const response = await apiFetch<{ updated_count: number }>(
+    "/api/notifications/read-all",
+    {
+      method: "POST",
+    },
+  );
+  return response.updated_count;
+}
+
+export async function markNotificationsRead(
+  notificationIds: string[],
+): Promise<number> {
+  if (mockApiEnabled) {
+    const idSet = new Set(notificationIds);
+    return getMockNotifications().filter(
+      (item) => idSet.has(item.id) && !item.isRead,
+    ).length;
+  }
+  const response = await apiFetch<{ updated_count: number }>(
+    "/api/notifications/read-bulk",
+    {
+      method: "POST",
+      body: JSON.stringify({ notification_ids: notificationIds }),
+    },
+  );
   return response.updated_count;
 }
 
@@ -83,7 +113,9 @@ export async function getEmailChannelStatus(): Promise<EmailChannelStatus> {
   if (mockApiEnabled) {
     return getMockEmailChannelStatus();
   }
-  const response = await apiFetch<EmailChannelStatusResponse>("/api/notifications/email-channel");
+  const response = await apiFetch<EmailChannelStatusResponse>(
+    "/api/notifications/email-channel",
+  );
   return mapEmailChannelStatus(response);
 }
 
@@ -112,7 +144,9 @@ function mapNotification(response: NotificationResponse): NotificationItem {
   };
 }
 
-function mapEmailChannelStatus(response: EmailChannelStatusResponse): EmailChannelStatus {
+function mapEmailChannelStatus(
+  response: EmailChannelStatusResponse,
+): EmailChannelStatus {
   return {
     status: response.status,
     configured: response.configured,
@@ -126,7 +160,9 @@ function mapEmailChannelStatus(response: EmailChannelStatusResponse): EmailChann
   };
 }
 
-function mapEmailChannelTestResult(response: EmailChannelTestResponse): EmailChannelTestResult {
+function mapEmailChannelTestResult(
+  response: EmailChannelTestResponse,
+): EmailChannelTestResult {
   return {
     delivered: response.delivered,
     recipientEmail: response.recipient_email,

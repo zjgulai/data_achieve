@@ -17,6 +17,7 @@ from data_intelligence_hub.repositories.notifications import (
     create_notification,
     get_notification,
     list_notifications,
+    list_notifications_by_ids,
 )
 from data_intelligence_hub.services.exceptions import NotificationNotFoundError
 
@@ -102,6 +103,26 @@ async def mark_all_notifications_read(session: AsyncSession, user: User) -> int:
         notification.is_read = True
     await session.commit()
     return len(notifications)
+
+
+async def mark_notifications_read(
+    session: AsyncSession,
+    user: User,
+    notification_ids: list[uuid.UUID],
+) -> int:
+    notifications = await list_notifications_by_ids(
+        session=session,
+        user_id=user.id,
+        notification_ids=list(dict.fromkeys(notification_ids)),
+    )
+    updated_count = 0
+    for notification in notifications:
+        if notification.is_read:
+            continue
+        notification.is_read = True
+        updated_count += 1
+    await session.commit()
+    return updated_count
 
 
 def get_email_channel_status() -> EmailChannelStatus:

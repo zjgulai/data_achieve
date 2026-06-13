@@ -248,9 +248,24 @@ async def test_report_generation_send_and_notification_read_flow(
     assert notifications[0]["reference_type"] == "report"
     assert notifications[0]["reference_id"] == report["id"]
 
+    second_send_response = await client.post(f"/api/reports/{report['id']}/send")
+    assert second_send_response.status_code == 200
+
+    notifications_response = await client.get("/api/notifications?is_read=false")
+    assert notifications_response.status_code == 200
+    notifications = notifications_response.json()
+    assert len(notifications) == 2
+
     read_response = await client.patch(f"/api/notifications/{notifications[0]['id']}/read")
     assert read_response.status_code == 200
     assert read_response.json()["is_read"] is True
+
+    read_bulk_response = await client.post(
+        "/api/notifications/read-bulk",
+        json={"notification_ids": [notification["id"] for notification in notifications]},
+    )
+    assert read_bulk_response.status_code == 200
+    assert read_bulk_response.json()["updated_count"] == 1
 
     read_all_response = await client.post("/api/notifications/read-all")
     assert read_all_response.status_code == 200

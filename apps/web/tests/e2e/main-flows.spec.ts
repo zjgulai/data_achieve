@@ -1,4 +1,10 @@
-import { APIRequestContext, type Locator, type Page, expect, test } from "@playwright/test";
+import {
+  APIRequestContext,
+  type Locator,
+  type Page,
+  expect,
+  test,
+} from "@playwright/test";
 
 const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
 
@@ -6,11 +12,14 @@ async function loginByApi(page: Page, request: APIRequestContext) {
   if (!realApiMode) {
     return;
   }
-  const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
   const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
   const password = process.env.SCRAPY_DEMO_PASSWORD;
   if (!password) {
-    throw new Error("SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true");
+    throw new Error(
+      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
+    );
   }
 
   const response = await request.post(`${baseUrl}/api/auth/login`, {
@@ -23,7 +32,9 @@ async function loginByApi(page: Page, request: APIRequestContext) {
 
   const rawSetCookie = response.headers()["set-cookie"] as string | undefined;
   if (!rawSetCookie) {
-    throw new Error("Real API login response did not return access token cookie");
+    throw new Error(
+      "Real API login response did not return access token cookie",
+    );
   }
 
   const cookieText = rawSetCookie.split(";")[0];
@@ -52,22 +63,30 @@ async function activateControl(locator: Locator, projectName: string) {
   await locator.click();
 }
 
-async function createTaskFlowFixture(request: APIRequestContext, suffix: string) {
+async function createTaskFlowFixture(
+  request: APIRequestContext,
+  suffix: string,
+) {
   if (!realApiMode) {
     return null;
   }
-  const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
   const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
   const password = process.env.SCRAPY_DEMO_PASSWORD;
   if (!password) {
-    throw new Error("SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true");
+    throw new Error(
+      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
+    );
   }
   await request.post(`${baseUrl}/api/auth/login`, {
     data: { email, password },
   });
   const projectsResponse = await request.get(`${baseUrl}/api/projects`);
   if (!projectsResponse.ok()) {
-    throw new Error(`Project fixture lookup failed: ${await projectsResponse.text()}`);
+    throw new Error(
+      `Project fixture lookup failed: ${await projectsResponse.text()}`,
+    );
   }
   const projects = (await projectsResponse.json()) as Array<{ id: string }>;
   if (projects.length === 0) {
@@ -87,14 +106,65 @@ async function createTaskFlowFixture(request: APIRequestContext, suffix: string)
     },
   });
   if (!sourceResponse.ok()) {
-    throw new Error(`Task fixture source create failed: ${await sourceResponse.text()}`);
+    throw new Error(
+      `Task fixture source create failed: ${await sourceResponse.text()}`,
+    );
   }
   const source = (await sourceResponse.json()) as { id: string };
-  const enableResponse = await request.post(`${baseUrl}/api/sources/${source.id}/enable`);
+  const enableResponse = await request.post(
+    `${baseUrl}/api/sources/${source.id}/enable`,
+  );
   if (!enableResponse.ok()) {
-    throw new Error(`Task fixture enable failed: ${await enableResponse.text()}`);
+    throw new Error(
+      `Task fixture enable failed: ${await enableResponse.text()}`,
+    );
   }
   return taskName;
+}
+
+async function createNotificationFixture(request: APIRequestContext) {
+  if (!realApiMode) {
+    return;
+  }
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!password) {
+    throw new Error(
+      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
+    );
+  }
+  await request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+  });
+  const projectsResponse = await request.get(`${baseUrl}/api/projects`);
+  if (!projectsResponse.ok()) {
+    throw new Error(
+      `Project fixture lookup failed: ${await projectsResponse.text()}`,
+    );
+  }
+  const projects = (await projectsResponse.json()) as Array<{ id: string }>;
+  if (projects.length === 0) {
+    throw new Error("Notification fixture requires at least one project");
+  }
+  const reportResponse = await request.post(`${baseUrl}/api/reports/generate`, {
+    data: { project_id: projects[0].id, report_type: "daily" },
+  });
+  if (!reportResponse.ok()) {
+    throw new Error(
+      `Notification fixture report create failed: ${await reportResponse.text()}`,
+    );
+  }
+  const report = (await reportResponse.json()) as { id: string };
+  const sendResponse = await request.post(
+    `${baseUrl}/api/reports/${report.id}/send`,
+  );
+  if (!sendResponse.ok()) {
+    throw new Error(
+      `Notification fixture report send failed: ${await sendResponse.text()}`,
+    );
+  }
 }
 
 test.beforeEach(async ({ page, request }) => {
@@ -109,13 +179,19 @@ test.beforeEach(async ({ page, request }) => {
 test.describe("MVP workspace routes", () => {
   test("renders dashboard and intelligence evidence flow", async ({ page }) => {
     await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "全局仪表盘" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "全局仪表盘" }),
+    ).toBeVisible();
     await expect(page.getByText("情报总量")).toBeVisible();
 
     await page.goto("/intelligence");
-    await expect(page.getByRole("heading", { name: "情报中心", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "情报中心", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Intelligence 列表")).toBeVisible();
-    await expect(page.getByRole("link", { name: "打开详情页" }).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "打开详情页" }).first(),
+    ).toBeVisible();
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
     await expect(page.getByText("Task Run").first()).toBeVisible();
     await expect(page.getByText("Raw Record").first()).toBeVisible();
@@ -137,7 +213,9 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "自动分发", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "自动分发", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("邮件通道诊断")).toBeVisible();
     if (!realApiMode) {
       await page.getByRole("button", { name: "测试邮件" }).click();
@@ -151,10 +229,12 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText(/09:30/).first()).toBeVisible();
     await page.getByRole("button", { name: "立即执行" }).first().click();
     const subscriptionManualNotice = page.getByText("订阅已手动执行");
-    if (await subscriptionManualNotice.count() > 0) {
+    if ((await subscriptionManualNotice.count()) > 0) {
       await expect(subscriptionManualNotice).toBeVisible();
     }
-    await expect(page.getByText(/部分成功|成功/).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/部分成功|成功/).first()).toBeVisible({
+      timeout: 30_000,
+    });
     await page.getByRole("button", { name: "执行历史" }).first().click();
     await expect(page.getByText("手动触发").first()).toBeVisible();
     const retryButton = page.getByRole("button", { name: "重试" }).first();
@@ -167,7 +247,9 @@ test.describe("MVP workspace routes", () => {
     await page.getByLabel("生成周期").selectOption("24h");
     await expect(page.getByText("证据引用").first()).toBeVisible();
     await expect(page.getByText("证据引用详情").first()).toBeVisible();
-    const reportIntelligenceLink = page.locator('a[href^="/intelligence/"]').first();
+    const reportIntelligenceLink = page
+      .locator('a[href^="/intelligence/"]')
+      .first();
     if (realApiMode) {
       const evidenceBackedReport = page
         .getByRole("button")
@@ -193,40 +275,62 @@ test.describe("MVP workspace routes", () => {
     await expect(page).toHaveURL(/\/reports$/);
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "下载 Markdown", exact: true }).click();
+    await page
+      .getByRole("button", { name: "下载 Markdown", exact: true })
+      .click();
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.md$/);
 
     await page.getByRole("button", { name: "生成日报", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "核心发现", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "核心发现", exact: true }),
+    ).toBeVisible();
 
-    const reportDetail = page.locator("section").filter({ hasText: "派发状态" });
-    await reportDetail.getByRole("button", { name: "发送报告", exact: true }).click();
-    await expect(reportDetail.getByRole("button", { name: "已发送", exact: true })).toBeDisabled();
+    const reportDetail = page
+      .locator("section")
+      .filter({ hasText: "派发状态" });
+    await reportDetail
+      .getByRole("button", { name: "发送报告", exact: true })
+      .click();
+    await expect(
+      reportDetail.getByRole("button", { name: "已发送", exact: true }),
+    ).toBeDisabled();
     await expect(reportDetail.getByText("报告已进入通知链路")).toBeVisible();
     await expect(reportDetail.getByText("报告发送").first()).toBeVisible();
   });
 
-  test("creates alert rule and displays alert events", async ({ page }, testInfo) => {
+  test("creates alert rule and displays alert events", async ({
+    page,
+  }, testInfo) => {
     await page.goto("/alerts");
     await expect(page.getByRole("heading", { name: "预警中心" })).toBeVisible();
     await expect(page.getByText("预警事件流")).toBeVisible();
-    const ruleCards = page.locator("article").filter({ hasText: "High severity signal" });
+    const ruleCards = page
+      .locator("article")
+      .filter({ hasText: "High severity signal" });
     if (!realApiMode) {
       await expect(ruleCards).toHaveCount(1);
-      await expect(page.getByRole("heading", { name: "page_changed" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "page_changed" }),
+      ).toBeVisible();
     }
 
     const ruleName = `High severity signal ${testInfo.project.name} ${Date.now()}`;
     await page.getByLabel("规则名称").fill(ruleName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByText(`${ruleName}: rule created`)).toBeVisible();
-    await expect(page.locator("article").filter({ hasText: ruleName })).toHaveCount(1);
+    await expect(
+      page.locator("article").filter({ hasText: ruleName }),
+    ).toHaveCount(1);
   });
 
-  test("manages source edit retest enable and disable flow", async ({ page }, testInfo) => {
+  test("manages source edit retest enable and disable flow", async ({
+    page,
+  }, testInfo) => {
     await page.goto("/sources");
-    await expect(page.getByRole("heading", { name: "数据源接入工作台" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "数据源接入工作台" }),
+    ).toBeVisible();
     await expect(page.getByText("数据源资产池")).toBeVisible();
 
     const sourceName = `Playwright Manual JSON ${testInfo.project.name} ${Date.now()}`;
@@ -234,53 +338,108 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: /Manual JSON/ }).click();
     await page.getByLabel("名称").fill(sourceName);
     await page.getByLabel("Entity Type").fill("github_repo");
-    await page.getByLabel("JSON").fill(
-      JSON.stringify({ full_name: "playwright/source-flow", stars: 88 }, null, 2),
-    );
+    await page
+      .getByLabel("JSON")
+      .fill(
+        JSON.stringify(
+          { full_name: "playwright/source-flow", stars: 88 },
+          null,
+          2,
+        ),
+      );
     await page.getByLabel("Cron").fill("");
     await page.getByRole("button", { name: "创建 Source" }).click();
     await expect(page.getByText("Source created")).toBeVisible();
 
-    let sourceCard = page.locator("article").filter({ hasText: sourceName }).first();
+    let sourceCard = page
+      .locator("article")
+      .filter({ hasText: sourceName })
+      .first();
     await expect(sourceCard).toBeVisible();
     await sourceCard.getByRole("button", { name: "编辑" }).click();
     await page.getByLabel("名称").fill(updatedName);
-    await page.getByLabel("JSON").fill(
-      JSON.stringify({ full_name: "playwright/source-flow", stars: 144 }, null, 2),
-    );
+    await page
+      .getByLabel("JSON")
+      .fill(
+        JSON.stringify(
+          { full_name: "playwright/source-flow", stars: 144 },
+          null,
+          2,
+        ),
+      );
     await page.getByLabel("JSON").blur();
-    await page.getByRole("button", { name: "保存 Source" }).scrollIntoViewIfNeeded();
-    await activateControl(page.getByRole("button", { name: "保存 Source" }), testInfo.project.name);
-    await expect(page.getByText(`${updatedName}: source updated; retest before next run`)).toBeVisible();
+    await page
+      .getByRole("button", { name: "保存 Source" })
+      .scrollIntoViewIfNeeded();
+    await activateControl(
+      page.getByRole("button", { name: "保存 Source" }),
+      testInfo.project.name,
+    );
+    await expect(
+      page.getByText(`${updatedName}: source updated; retest before next run`),
+    ).toBeVisible();
 
-    sourceCard = page.locator("article").filter({ hasText: updatedName }).first();
+    sourceCard = page
+      .locator("article")
+      .filter({ hasText: updatedName })
+      .first();
     await activateControl(
       sourceCard.getByRole("button", { name: "重测配置" }),
       testInfo.project.name,
     );
-    await expect(page.getByText(`${updatedName}: Config is valid.`)).toBeVisible();
-    await activateControl(sourceCard.getByRole("button", { name: "启用" }), testInfo.project.name);
+    await expect(
+      page.getByText(`${updatedName}: Config is valid.`),
+    ).toBeVisible();
+    await activateControl(
+      sourceCard.getByRole("button", { name: "启用" }),
+      testInfo.project.name,
+    );
     await expect(page.getByText(`${updatedName}: task enabled`)).toBeVisible();
     await expect(sourceCard.getByText("已启用")).toBeVisible();
     await expect(sourceCard.getByText("尚未运行")).toBeVisible();
-    await activateControl(sourceCard.getByRole("button", { name: "停用" }), testInfo.project.name);
-    await expect(page.getByText(`${updatedName}: source disabled`)).toBeVisible();
+    await activateControl(
+      sourceCard.getByRole("button", { name: "停用" }),
+      testInfo.project.name,
+    );
+    await expect(
+      page.getByText(`${updatedName}: source disabled`),
+    ).toBeVisible();
     await expect(sourceCard.getByText("已停用")).toBeVisible();
   });
 
-  test("inspects task workspace and diagnostics", async ({ page, request }, testInfo) => {
-    const fixtureTaskName = await createTaskFlowFixture(request, testInfo.project.name);
+  test("inspects task workspace and diagnostics", async ({
+    page,
+    request,
+  }, testInfo) => {
+    const fixtureTaskName = await createTaskFlowFixture(
+      request,
+      testInfo.project.name,
+    );
     await page.goto("/tasks");
-    await expect(page.getByRole("heading", { name: "采集运行控制台", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "任务运行列表", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "失败任务诊断", exact: true })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "运行日志", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "采集运行控制台", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "任务运行列表", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "失败任务诊断", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "运行日志", exact: true }),
+    ).toBeVisible();
     if (fixtureTaskName) {
-      await page.getByPlaceholder("搜索任务名称或数据源...").fill(fixtureTaskName);
+      await page
+        .getByPlaceholder("搜索任务名称或数据源...")
+        .fill(fixtureTaskName);
       if (testInfo.project.name === "mobile") {
-        await expect(page.locator("div.md\\:hidden").getByText(fixtureTaskName).first()).toBeVisible();
+        await expect(
+          page.locator("div.md\\:hidden").getByText(fixtureTaskName).first(),
+        ).toBeVisible();
       } else {
-        await expect(page.locator("tbody").getByText(fixtureTaskName).first()).toBeVisible();
+        await expect(
+          page.locator("tbody").getByText(fixtureTaskName).first(),
+        ).toBeVisible();
       }
     }
     const desktopRows = page.locator("tbody tr");
@@ -325,28 +484,64 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("重试历史")).toBeVisible();
   });
 
-  test("marks unread notifications as read", async ({ page }) => {
+  test("handles notification bulk read and preferences", async ({
+    page,
+    request,
+  }) => {
+    await createNotificationFixture(request);
     await page.goto("/notifications");
-    await expect(page.getByRole("heading", { name: "站内通知收件箱", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "站内通知收件箱", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "通知偏好" })).toBeVisible();
 
-    const notificationCard = page.locator("article").filter({ hasText: /unread/ }).first();
+    await page.getByLabel("报告 站内通知").click();
+    await page.getByRole("button", { name: "保存偏好" }).click();
+    await expect(page.getByText("通知偏好已保存")).toBeVisible();
+
+    const notificationCard = page
+      .locator("article")
+      .filter({ hasText: /unread/ })
+      .first();
     await expect(notificationCard).toBeVisible();
 
-    await notificationCard.getByRole("button", { name: "Read", exact: true }).click();
-    await expect(page.getByText(/marked read/)).toBeVisible();
+    await notificationCard.getByLabel(/选择通知/).check({ force: true });
+    await expect(page.getByText(/已选 1 条/)).toBeVisible();
+    await page.getByRole("button", { name: "批量标记已读" }).click();
+    await expect(
+      page.getByText(/selected notifications marked read/),
+    ).toBeVisible();
     if (!realApiMode) {
-      await expect(page.locator("article").filter({ hasText: "Data quality anomaly watch" })).toHaveCount(0);
+      await expect(
+        page
+          .locator("article")
+          .filter({ hasText: "Data quality anomaly watch" }),
+      ).toHaveCount(0);
     }
   });
 });
 
 test.describe("mobile layout guard", () => {
-  for (const route of ["/reports", "/alerts", "/notifications", "/tasks", "/sources"]) {
-    test(`${route} does not overflow horizontally`, async ({ page }, testInfo) => {
-      test.skip(testInfo.project.name !== "mobile", "mobile-only layout assertion");
+  for (const route of [
+    "/reports",
+    "/alerts",
+    "/notifications",
+    "/tasks",
+    "/sources",
+  ]) {
+    test(`${route} does not overflow horizontally`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name !== "mobile",
+        "mobile-only layout assertion",
+      );
       await page.goto(route);
       const overflow = await page.evaluate(() => {
-        return document.documentElement.scrollWidth - document.documentElement.clientWidth;
+        return (
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth
+        );
       });
       expect(overflow).toBeLessThanOrEqual(1);
     });

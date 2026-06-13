@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.services.notification_service import (
@@ -32,6 +32,10 @@ class NotificationResponse(BaseModel):
 
 class NotificationReadAllResponse(BaseModel):
     updated_count: int
+
+
+class NotificationReadBulkRequest(BaseModel):
+    notification_ids: list[uuid.UUID] = Field(min_length=1)
 
 
 class EmailChannelStatusResponse(BaseModel):

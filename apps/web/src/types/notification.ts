@@ -29,3 +29,15 @@ export type EmailChannelTestResult = {
   reason: string | null;
   testedAt: string;
 };
+
+export type NotificationDeliveryPreference = {
+  inApp: boolean;
+  email: boolean;
+};
+
+export type NotificationPreferenceState = {
+  delivery: Record<string, NotificationDeliveryPreference>;
+  quietHoursEnabled: boolean;
+  digestTime: string;
+  updatedAt: string | null;
+};

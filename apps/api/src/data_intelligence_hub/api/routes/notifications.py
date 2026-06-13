@@ -10,6 +10,7 @@ from data_intelligence_hub.schemas.notification import (
     EmailChannelStatusResponse,
     EmailChannelTestResponse,
     NotificationReadAllResponse,
+    NotificationReadBulkRequest,
     NotificationResponse,
 )
 from data_intelligence_hub.services.exceptions import NotificationNotFoundError
@@ -18,6 +19,7 @@ from data_intelligence_hub.services.notification_service import (
     get_user_notifications,
     mark_all_notifications_read,
     mark_notification_read,
+    mark_notifications_read,
     test_email_channel,
 )
 
@@ -69,4 +71,18 @@ async def mark_all_notification_items_read(
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> NotificationReadAllResponse:
     updated_count = await mark_all_notifications_read(session, context.user)
+    return NotificationReadAllResponse(updated_count=updated_count)
+
+
+@router.post("/read-bulk", response_model=NotificationReadAllResponse)
+async def mark_notification_items_read(
+    payload: NotificationReadBulkRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> NotificationReadAllResponse:
+    updated_count = await mark_notifications_read(
+        session=session,
+        user=context.user,
+        notification_ids=payload.notification_ids,
+    )
     return NotificationReadAllResponse(updated_count=updated_count)
