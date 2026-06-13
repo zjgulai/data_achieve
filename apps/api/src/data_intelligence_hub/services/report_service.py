@@ -357,6 +357,14 @@ async def retry_report_subscription_delivery(
     run.delivered_channels = delivered_channels
     run.skipped_channels = skipped_channels
     run.finished_at = datetime.now(UTC)
+    await _emit_email_delivery_failure_alert(
+        session=session,
+        user_id=user.id,
+        run_id=run.id,
+        skipped_channels=skipped_channels,
+        delivered_channels=delivered_channels,
+        operation="retry",
+    )
     subscription.next_run_at = _compute_next_run_at(
         subscription.schedule_time,
         subscription.timezone,
@@ -460,6 +468,14 @@ async def execute_report_subscription(
     run.delivered_channels = delivered_channels
     run.skipped_channels = skipped_channels
     run.finished_at = datetime.now(UTC)
+    await _emit_email_delivery_failure_alert(
+        session=session,
+        user_id=user.id,
+        run_id=run.id,
+        skipped_channels=skipped_channels,
+        delivered_channels=delivered_channels,
+        operation=trigger_type,
+    )
     subscription.next_run_at = _compute_next_run_at(
         subscription.schedule_time,
         subscription.timezone,
@@ -730,6 +746,42 @@ def _subscription_run_error_message(status: str, skipped_channels: dict[str, str
         return "No delivery channel completed."
     return "; ".join(
         f"{channel}: {reason}" for channel, reason in sorted(skipped_channels.items())
+    )
+
+
+async def _emit_email_delivery_failure_alert(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    run_id: uuid.UUID,
+    skipped_channels: dict[str, str],
+    delivered_channels: list[str],
+    operation: str,
+) -> None:
+    email_reason = skipped_channels.get("email")
+    if email_reason is None:
+        return
+
+    if delivered_channels:
+        title = "报告邮件发送部分失败"
+        details = (
+            "报告已完成部分投递，邮件通道未送达，"
+            "请修复邮件配置后重试。"
+        )
+    else:
+        title = "报告邮件发送失败"
+        details = (
+            "报告发送失败，未能通过邮件通道送达，"
+            "请修复邮件配置后重试。"
+        )
+
+    await create_in_app_notification(
+        session=session,
+        user_id=user_id,
+        title=title,
+        body=f"[{operation}] {details}（原因：{email_reason}）",
+        notification_type="task_failed",
+        reference_type="task_run",
+        reference_id=run_id,
     )
 
 
