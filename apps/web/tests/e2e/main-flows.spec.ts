@@ -51,7 +51,19 @@ test.describe("MVP workspace routes", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText("证据引用").first()).toBeVisible();
-    await expect(page.locator('a[href^="/intelligence/"]').first()).toBeVisible();
+    const reportIntelligenceLink = page.locator('a[href^="/intelligence/"]').first();
+    if (realApiMode) {
+      const evidenceBackedReport = page
+        .getByRole("button")
+        .filter({ hasText: /[1-9]\d* evidence refs/ })
+        .first();
+      if ((await evidenceBackedReport.count()) > 0) {
+        await evidenceBackedReport.click();
+        await expect(reportIntelligenceLink).toBeVisible();
+      }
+    } else {
+      await expect(reportIntelligenceLink).toBeVisible();
+    }
 
     await page.getByRole("button", { name: "生成日报", exact: true }).click();
     await expect(page.getByRole("heading", { name: "核心发现", exact: true })).toBeVisible();
