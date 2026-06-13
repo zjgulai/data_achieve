@@ -122,6 +122,124 @@ async function createTaskFlowFixture(
   return taskName;
 }
 
+async function createIntelligenceFixture(
+  request: APIRequestContext,
+  suffix: string,
+) {
+  if (!realApiMode) {
+    return;
+  }
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!password) {
+    throw new Error(
+      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
+    );
+  }
+  await request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+  });
+  const projectsResponse = await request.get(`${baseUrl}/api/projects`);
+  if (!projectsResponse.ok()) {
+    throw new Error(
+      `Project fixture lookup failed: ${await projectsResponse.text()}`,
+    );
+  }
+  const projects = (await projectsResponse.json()) as Array<{ id: string }>;
+  if (projects.length === 0) {
+    throw new Error("Intelligence fixture requires at least one project");
+  }
+  const sourceName = `Playwright Intelligence ${suffix} ${Date.now()}`;
+  const sourceResponse = await request.post(`${baseUrl}/api/sources`, {
+    data: {
+      project_id: projects[0].id,
+      name: sourceName,
+      type: "manual_json",
+      config: {
+        entity_type: "github_repo",
+        json_data: { full_name: "playwright/intelligence-flow", stars: 100 },
+      },
+      schedule_cron: null,
+    },
+  });
+  if (!sourceResponse.ok()) {
+    throw new Error(
+      `Intelligence fixture source create failed: ${await sourceResponse.text()}`,
+    );
+  }
+  const source = (await sourceResponse.json()) as { id: string };
+  const enableResponse = await request.post(
+    `${baseUrl}/api/sources/${source.id}/enable`,
+  );
+  if (!enableResponse.ok()) {
+    throw new Error(
+      `Intelligence fixture enable failed: ${await enableResponse.text()}`,
+    );
+  }
+  const task = (await enableResponse.json()) as { id: string };
+  const firstRunResponse = await request.post(
+    `${baseUrl}/api/tasks/${task.id}/run`,
+  );
+  if (!firstRunResponse.ok()) {
+    throw new Error(
+      `Intelligence fixture first run failed: ${await firstRunResponse.text()}`,
+    );
+  }
+  const updateResponse = await request.patch(
+    `${baseUrl}/api/sources/${source.id}`,
+    {
+      data: {
+        config: {
+          entity_type: "github_repo",
+          json_data: { full_name: "playwright/intelligence-flow", stars: 360 },
+        },
+      },
+    },
+  );
+  if (!updateResponse.ok()) {
+    throw new Error(
+      `Intelligence fixture source update failed: ${await updateResponse.text()}`,
+    );
+  }
+  const secondRunResponse = await request.post(
+    `${baseUrl}/api/tasks/${task.id}/run`,
+  );
+  if (!secondRunResponse.ok()) {
+    throw new Error(
+      `Intelligence fixture second run failed: ${await secondRunResponse.text()}`,
+    );
+  }
+}
+
+async function createReportFixture(request: APIRequestContext, suffix: string) {
+  if (!realApiMode) {
+    return;
+  }
+  await createIntelligenceFixture(request, `report-${suffix}`);
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const projectsResponse = await request.get(`${baseUrl}/api/projects`);
+  if (!projectsResponse.ok()) {
+    throw new Error(
+      `Project fixture lookup failed: ${await projectsResponse.text()}`,
+    );
+  }
+  const projects = (await projectsResponse.json()) as Array<{ id: string }>;
+  if (projects.length === 0) {
+    throw new Error("Report fixture requires at least one project");
+  }
+  const reportResponse = await request.post(`${baseUrl}/api/reports/generate`, {
+    data: { project_id: projects[0].id, report_type: "daily" },
+  });
+  if (!reportResponse.ok()) {
+    throw new Error(
+      `Report fixture create failed: ${await reportResponse.text()}`,
+    );
+  }
+}
+
 async function createNotificationFixture(request: APIRequestContext) {
   if (!realApiMode) {
     return;
@@ -177,7 +295,11 @@ test.beforeEach(async ({ page, request }) => {
 });
 
 test.describe("MVP workspace routes", () => {
-  test("renders dashboard and intelligence evidence flow", async ({ page }) => {
+  test("renders dashboard and intelligence evidence flow", async ({
+    page,
+    request,
+  }, testInfo) => {
+    await createIntelligenceFixture(request, testInfo.project.name);
     await page.goto("/dashboard");
     await expect(
       page.getByRole("heading", { name: "全局仪表盘" }),
@@ -201,7 +323,8 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("查看原始数据").first()).toBeVisible();
   });
 
-  test("generates and sends a report", async ({ page }) => {
+  test("generates and sends a report", async ({ page, request }, testInfo) => {
+    await createReportFixture(request, testInfo.project.name);
     await page.goto("/reports");
     await expect(page.getByRole("heading", { name: "报告中心" })).toBeVisible();
     await expect(
