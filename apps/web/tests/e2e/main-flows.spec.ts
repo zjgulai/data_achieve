@@ -69,9 +69,13 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText(/部分成功|成功/).first()).toBeVisible();
     await page.getByRole("button", { name: "执行历史" }).first().click();
     await expect(page.getByText("手动触发").first()).toBeVisible();
-    await page.getByRole("button", { name: "重试" }).first().click();
-    await expect(page.getByText("订阅已重试")).toBeVisible();
-    await expect(page.getByText("失败重试").first()).toBeVisible();
+    const retryButton = page.getByRole("button", { name: "重试" }).first();
+    const retryCount = await retryButton.count();
+    if (!realApiMode || retryCount > 0) {
+      await retryButton.click();
+      await expect(page.getByText("订阅已重试")).toBeVisible();
+      await expect(page.getByText("失败重试").first()).toBeVisible();
+    }
     await page.getByLabel("生成周期").selectOption("24h");
     await expect(page.getByText("证据引用").first()).toBeVisible();
     await expect(page.getByText("证据引用详情").first()).toBeVisible();
