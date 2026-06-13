@@ -2,6 +2,8 @@ import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import { getMockAlertEvents, getMockAlertRules } from "@/lib/api/mock";
 import type { AlertEvent, AlertRule, AlertRuleCreateInput } from "@/types/alert";
 
+export type AlertEventStatus = "triggered" | "sent" | "acknowledged" | "muted" | "resolved";
+
 type AlertRuleResponse = {
   id: string;
   workspace_id: string;
@@ -82,6 +84,21 @@ export async function listAlertEvents(filters: {
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   const response = await apiFetch<AlertEventResponse[]>(`/api/alert-events${suffix}`);
   return response.map(mapAlertEvent);
+}
+
+export async function updateAlertEventStatus(
+  eventId: string,
+  status: AlertEventStatus,
+): Promise<AlertEvent> {
+  if (mockApiEnabled) {
+    const event = getMockAlertEvents().find((item) => item.id === eventId);
+    return { ...(event ?? getMockAlertEvents()[0]), status };
+  }
+  const response = await apiFetch<AlertEventResponse>(`/api/alert-events/${eventId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  return mapAlertEvent(response);
 }
 
 function mapAlertRule(response: AlertRuleResponse): AlertRule {

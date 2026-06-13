@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 
 AlertChannel = Literal["email", "in_app", "both"]
+AlertEventStatus = Literal["triggered", "sent", "acknowledged", "muted", "resolved"]
 
 
 class AlertRuleCreateRequest(BaseModel):
@@ -27,6 +28,10 @@ class AlertRuleUpdateRequest(BaseModel):
     condition: dict[str, Any] | None = None
     channel: AlertChannel | None = None
     enabled: bool | None = None
+
+
+class AlertEventStatusUpdateRequest(BaseModel):
+    status: AlertEventStatus
 
 
 class AlertRuleResponse(BaseModel):

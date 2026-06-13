@@ -13,6 +13,7 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.alerts import (
     create_alert_event,
+    get_alert_event,
     get_alert_event_for_rule_signal,
     get_alert_rule,
     list_alert_events,
@@ -24,6 +25,7 @@ from data_intelligence_hub.repositories.alerts import (
 from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.schemas.alert import AlertRuleCreateRequest, AlertRuleUpdateRequest
 from data_intelligence_hub.services.exceptions import (
+    AlertEventNotFoundError,
     AlertRuleNotFoundError,
     ProjectNotFoundError,
 )
@@ -111,6 +113,21 @@ async def get_alert_events(
         rule_id=rule_id,
         status=status,
     )
+
+
+async def update_alert_event_status(
+    session: AsyncSession,
+    workspace: Workspace,
+    event_id: uuid.UUID,
+    status: str,
+) -> AlertEvent:
+    event = await get_alert_event(session, workspace.id, event_id)
+    if event is None:
+        raise AlertEventNotFoundError
+    event.status = status
+    await session.commit()
+    await session.refresh(event)
+    return event
 
 
 async def match_alert_rules_for_signal(

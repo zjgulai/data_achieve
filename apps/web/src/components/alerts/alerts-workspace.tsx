@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BellOff,
   BellRing,
   Braces,
   CheckCircle2,
@@ -18,7 +19,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { createAlertRule, listAlertEvents, listAlertRules } from "@/lib/api/alerts";
+import {
+  createAlertRule,
+  listAlertEvents,
+  listAlertRules,
+  updateAlertEventStatus,
+  type AlertEventStatus,
+} from "@/lib/api/alerts";
 import { cn } from "@/lib/utils";
 import type { AlertChannel, AlertEvent, AlertRule } from "@/types/alert";
 
@@ -62,6 +69,7 @@ const statusTone: Record<string, string> = {
   triggered: "bg-[#FFF3D5] text-[#8C6824]",
   sent: "bg-[#ECF7EA] text-[#4E7C45]",
   acknowledged: "bg-[#F1EEF8] text-[#6B5685]",
+  muted: "bg-[#F6ECE8] text-[#9E5C4D]",
   resolved: "bg-[#EFF7EC] text-[#5D7B4E]",
 };
 
@@ -162,6 +170,19 @@ export function AlertsWorkspace() {
       setMessage(`${rule.name}: rule created`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Alert rule create failed");
+    }
+  }
+
+  async function handleUpdateEventStatus(eventId: string, nextStatus: AlertEventStatus) {
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await updateAlertEventStatus(eventId, nextStatus);
+      setEvents((current) => current.map((event) => (event.id === updated.id ? updated : event)));
+      setSelectedEventId(updated.id);
+      setMessage(`AlertEvent ${updated.id.slice(0, 8)}: ${updated.status}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Alert event update failed");
     }
   }
 
@@ -368,7 +389,14 @@ export function AlertsWorkspace() {
             ) : null}
           </div>
 
-          {selectedEvent ? <EventPayload event={selectedEvent} /> : null}
+          {selectedEvent ? (
+            <EventPayload
+              event={selectedEvent}
+              onUpdateStatus={(nextStatus) => {
+                void handleUpdateEventStatus(selectedEvent.id, nextStatus);
+              }}
+            />
+          ) : null}
         </aside>
       </div>
     </div>
@@ -461,7 +489,13 @@ function EventCard({
   );
 }
 
-function EventPayload({ event }: { event: AlertEvent }) {
+function EventPayload({
+  event,
+  onUpdateStatus,
+}: {
+  event: AlertEvent;
+  onUpdateStatus: (status: AlertEventStatus) => void;
+}) {
   return (
     <div className="mt-4 rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -471,10 +505,59 @@ function EventPayload({ event }: { event: AlertEvent }) {
           {event.id}
         </span>
       </div>
+      <div className="mb-3 grid grid-cols-3 gap-2">
+        <EventActionButton
+          disabled={event.status === "acknowledged"}
+          icon={CheckCircle2}
+          label="确认"
+          onClick={() => onUpdateStatus("acknowledged")}
+        />
+        <EventActionButton
+          disabled={event.status === "muted"}
+          icon={BellOff}
+          label="静默"
+          onClick={() => onUpdateStatus("muted")}
+        />
+        <EventActionButton
+          disabled={event.status === "resolved"}
+          icon={CheckCircle2}
+          label="解决"
+          onClick={() => onUpdateStatus("resolved")}
+        />
+      </div>
       <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-4 text-xs leading-5 text-[#FFF8F4]">
         {JSON.stringify(event.payload, null, 2)}
       </pre>
     </div>
+  );
+}
+
+function EventActionButton({
+  disabled,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  disabled: boolean;
+  icon: typeof CheckCircle2;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className={cn(
+        "h-9 rounded-xl border px-2 text-xs font-semibold transition",
+        disabled
+          ? "border-[#E8D4CB] bg-white/50 text-[#B49A91]"
+          : "border-[#C96F5C] bg-white text-[#B85F4F] hover:bg-[#FFFDFC]",
+      )}
+      disabled={disabled}
+      onClick={onClick}
+      type="button"
+    >
+      <Icon className="inline-block" size={13} aria-hidden="true" />{" "}
+      {label}
+    </button>
   );
 }
 

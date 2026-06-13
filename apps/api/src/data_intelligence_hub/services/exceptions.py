@@ -85,5 +85,9 @@ class AlertRuleNotFoundError(ServiceError):
     message = "Alert rule not found"
 
 
+class AlertEventNotFoundError(ServiceError):
+    message = "Alert event not found"
+
+
 class NotificationNotFoundError(ServiceError):
     message = "Notification not found"

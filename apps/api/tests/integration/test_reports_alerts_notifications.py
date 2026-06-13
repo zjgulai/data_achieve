@@ -146,6 +146,24 @@ async def test_alert_rule_matches_signal_and_creates_notification(
     assert dashboard_response.status_code == 200
     assert dashboard_response.json()["active_alerts"] == 1
 
+    acknowledge_response = await client.patch(
+        f"/api/alert-events/{events[0]['id']}/status",
+        json={"status": "acknowledged"},
+    )
+    assert acknowledge_response.status_code == 200
+    assert acknowledge_response.json()["status"] == "acknowledged"
+
+    resolve_response = await client.patch(
+        f"/api/alert-events/{events[0]['id']}/status",
+        json={"status": "resolved"},
+    )
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()["status"] == "resolved"
+
+    resolved_events_response = await client.get("/api/alert-events?status=resolved")
+    assert resolved_events_response.status_code == 200
+    assert [event["id"] for event in resolved_events_response.json()] == [events[0]["id"]]
+
     intelligence_detail_response = await client.get(f"/api/intelligence/{intelligence_id}")
     assert intelligence_detail_response.status_code == 200
 

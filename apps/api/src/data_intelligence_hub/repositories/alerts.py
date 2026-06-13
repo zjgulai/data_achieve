@@ -52,6 +52,19 @@ async def get_alert_event_for_rule_signal(
     return result.scalar_one_or_none()
 
 
+async def get_alert_event(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    event_id: uuid.UUID,
+) -> AlertEvent | None:
+    result = await session.execute(
+        select(AlertEvent)
+        .join(AlertRule, AlertEvent.rule_id == AlertRule.id)
+        .where(AlertRule.workspace_id == workspace_id, AlertEvent.id == event_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_alert_event(session: AsyncSession, event: AlertEvent) -> AlertEvent:
     session.add(event)
     await session.flush()

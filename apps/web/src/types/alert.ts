@@ -25,7 +25,7 @@ export type AlertEvent = {
   id: string;
   ruleId: string;
   signalId: string;
-  status: "triggered" | "sent" | "acknowledged" | "resolved" | string;
+  status: "triggered" | "sent" | "acknowledged" | "muted" | "resolved" | string;
   payload: Record<string, unknown>;
   triggeredAt: string;
   sentAt: string | null;
