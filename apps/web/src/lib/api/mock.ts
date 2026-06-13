@@ -5,7 +5,12 @@ import type { AlertEvent, AlertRule } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { AuthSession, Project } from "@/types/project";
 import type { RawRecord } from "@/types/raw-record";
-import type { Report, ReportEvidenceReference, ReportGenerateInput } from "@/types/report";
+import type {
+  Report,
+  ReportAuditEvent,
+  ReportEvidenceReference,
+  ReportGenerateInput,
+} from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
 
@@ -991,6 +996,20 @@ export function getMockReports(): Report[] {
   ];
 }
 
+const mockReportAuditEvents: ReportAuditEvent[] = [
+  {
+    id: "audit_report_generated",
+    workspaceId: "workspace_mock",
+    reportId: "report_daily_20260611",
+    actorId: "user_mock",
+    eventType: "generated",
+    fromStatus: null,
+    toStatus: "generated",
+    metadata: { project_id: "project_osint" },
+    createdAt: "2026-06-11T08:30:00.000Z",
+  },
+];
+
 export function createMockGeneratedReport(input: ReportGenerateInput): Report {
   const base = getMockReports()[0];
   const project = input.projectId
@@ -999,7 +1018,7 @@ export function createMockGeneratedReport(input: ReportGenerateInput): Report {
   const periodEnd = input.periodEnd ?? new Date().toISOString();
   const periodStart = input.periodStart ?? base.periodStart;
   const titlePrefix = project?.name ?? "全局";
-  return {
+  const report = {
     ...base,
     id: `report_daily_${Date.now()}`,
     projectId: input.projectId ?? null,
@@ -1009,6 +1028,18 @@ export function createMockGeneratedReport(input: ReportGenerateInput): Report {
     periodStart,
     createdAt: new Date().toISOString(),
   };
+  mockReportAuditEvents.push({
+    id: `audit_${report.id}_generated`,
+    workspaceId: report.workspaceId,
+    reportId: report.id,
+    actorId: "user_mock",
+    eventType: "generated",
+    fromStatus: null,
+    toStatus: "generated",
+    metadata: { project_id: report.projectId ?? "global" },
+    createdAt: report.createdAt,
+  });
+  return report;
 }
 
 export function getMockReportEvidenceReferences(reportId: string): ReportEvidenceReference[] {
@@ -1027,6 +1058,33 @@ export function getMockReportEvidenceReferences(reportId: string): ReportEvidenc
       intelligence,
       evidences: getMockEvidences(intelligence.id),
     }));
+}
+
+export function getMockReportAuditEvents(reportId: string): ReportAuditEvent[] {
+  return mockReportAuditEvents
+    .filter((event) => event.reportId === reportId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+}
+
+export function createMockReportAuditEvent(
+  reportId: string,
+  eventType: "share_link_copied" | "share_sheet_opened" | "sent",
+  metadata: Record<string, string> = {},
+): ReportAuditEvent {
+  const report = getMockReports().find((item) => item.id === reportId);
+  const event: ReportAuditEvent = {
+    id: `audit_${reportId}_${eventType}_${Date.now()}`,
+    workspaceId: report?.workspaceId ?? "workspace_mock",
+    reportId,
+    actorId: "user_mock",
+    eventType,
+    fromStatus: report?.status ?? null,
+    toStatus: eventType === "sent" ? "sent" : (report?.status ?? null),
+    metadata,
+    createdAt: new Date().toISOString(),
+  };
+  mockReportAuditEvents.push(event);
+  return event;
 }
 
 export function getMockAlertRules(): AlertRule[] {

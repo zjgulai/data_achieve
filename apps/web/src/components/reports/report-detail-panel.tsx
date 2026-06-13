@@ -4,21 +4,28 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
+  Copy,
   Download,
   ExternalLink,
   FileText,
+  History,
   Link2,
   Send,
+  Share2,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { listReportEvidenceReferences } from "@/lib/api/reports";
+import {
+  createReportAuditEvent,
+  listReportAuditEvents,
+  listReportEvidenceReferences,
+} from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
 import type { Evidence } from "@/types/intelligence";
-import type { Report, ReportEvidenceReference } from "@/types/report";
+import type { Report, ReportAuditEvent, ReportEvidenceReference } from "@/types/report";
 
 type ReportSection = {
   id: string;
@@ -42,7 +49,28 @@ export function ReportDetailPanel({
 }: ReportDetailPanelProps) {
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [evidenceReferences, setEvidenceReferences] = useState<ReportEvidenceReference[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditEvents, setAuditEvents] = useState<ReportAuditEvent[]>([]);
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+
+  const reportUrl = useMemo(() => {
+    if (typeof window === "undefined") {
+      return `/reports/${report.id}`;
+    }
+    return new URL(`/reports/${report.id}`, window.location.origin).toString();
+  }, [report.id]);
+
+  const loadAuditEvents = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      setAuditEvents(await listReportAuditEvents(report.id));
+    } catch {
+      setAuditEvents([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [report.id]);
 
   useEffect(() => {
     const sections = parseReportSections(report.content);
@@ -72,6 +100,10 @@ export function ReportDetailPanel({
     };
   }, [report.content, report.id]);
 
+  useEffect(() => {
+    void loadAuditEvents();
+  }, [loadAuditEvents]);
+
   const reportSections = useMemo(() => parseReportSections(report.content), [report.content]);
   const evidenceReferenceCount = useMemo(
     () => evidenceReferences.reduce((total, reference) => total + reference.evidences.length, 0),
@@ -88,6 +120,33 @@ export function ReportDetailPanel({
       }
       return next;
     });
+  }
+
+  async function handleCopyLink() {
+    setShareNotice(null);
+    await copyTextToClipboard(reportUrl);
+    await createReportAuditEvent(report.id, "share_link_copied", { url: reportUrl });
+    await loadAuditEvents();
+    setShareNotice("链接已复制");
+  }
+
+  async function handleShareLink() {
+    setShareNotice(null);
+    if (navigator.share) {
+      await navigator.share({ title: report.title, url: reportUrl });
+      await createReportAuditEvent(report.id, "share_sheet_opened", { url: reportUrl });
+      setShareNotice("分享面板已打开");
+    } else {
+      await copyTextToClipboard(reportUrl);
+      await createReportAuditEvent(report.id, "share_link_copied", { fallback: "web_share_unavailable", url: reportUrl });
+      setShareNotice("链接已复制");
+    }
+    await loadAuditEvents();
+  }
+
+  async function handleSendClick() {
+    await onSend(report);
+    await loadAuditEvents();
   }
 
   return (
@@ -117,6 +176,22 @@ export function ReportDetailPanel({
             ) : null}
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+              onClick={() => void handleCopyLink()}
+              type="button"
+            >
+              <Copy size={16} aria-hidden="true" />
+              复制链接
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+              onClick={() => void handleShareLink()}
+              type="button"
+            >
+              <Share2 size={16} aria-hidden="true" />
+              分享
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
               onClick={() => downloadReportMarkdown(report)}
               type="button"
             >
@@ -126,7 +201,7 @@ export function ReportDetailPanel({
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={busy || report.status === "sent"}
-              onClick={() => void onSend(report)}
+              onClick={() => void handleSendClick()}
               type="button"
             >
               {report.status === "sent" ? (
@@ -138,6 +213,12 @@ export function ReportDetailPanel({
             </button>
           </div>
         </div>
+        {shareNotice ? (
+          <p className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#EAF8EE] px-3 py-2 text-xs font-semibold text-[#2EBA62]">
+            <CheckCircle2 size={14} aria-hidden="true" />
+            {shareNotice}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -161,10 +242,47 @@ export function ReportDetailPanel({
                 : "报告已生成，发送后会同步生成站内通知。"}
             </p>
           </div>
+          <ReportAuditTimeline events={auditEvents} loading={auditLoading} />
           <EvidenceReferencesPanel loading={evidenceLoading} references={evidenceReferences} />
         </aside>
       </div>
     </section>
+  );
+}
+
+function ReportAuditTimeline({
+  events,
+  loading,
+}: {
+  events: ReportAuditEvent[];
+  loading: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[#1D1D1F]">审计记录</p>
+        <History size={16} className="text-[#C25B6E]" aria-hidden="true" />
+      </div>
+      {loading ? <p className="text-sm text-[#86868B]">加载审计记录中</p> : null}
+      {!loading && events.length === 0 ? (
+        <p className="text-sm leading-6 text-[#86868B]">暂无审计记录</p>
+      ) : null}
+      <div className="grid gap-2">
+        {events.map((event) => (
+          <div className="rounded-xl bg-white px-3 py-2" key={event.id}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-[#1D1D1F]">{auditEventLabel(event.eventType)}</p>
+              <span className="text-[11px] text-[#86868B]">{formatShortDateTime(event.createdAt)}</span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#86868B]">
+              {event.fromStatus && event.toStatus && event.fromStatus !== event.toStatus
+                ? `${statusLabel(event.fromStatus)} → ${statusLabel(event.toStatus)}`
+                : statusLabel(event.toStatus ?? event.fromStatus ?? "generated")}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -539,4 +657,51 @@ function formatShortDate(value: string) {
     month: "2-digit",
     day: "2-digit",
   });
+}
+
+function formatShortDateTime(value: string) {
+  return new Date(value).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function auditEventLabel(eventType: string) {
+  const labels: Record<string, string> = {
+    generated: "报告生成",
+    sent: "报告发送",
+    share_link_copied: "复制链接",
+    share_sheet_opened: "系统分享",
+  };
+  return labels[eventType] ?? eventType;
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    generated: "待发送",
+    sent: "已发送",
+  };
+  return labels[status] ?? status;
+}
+
+async function copyTextToClipboard(value: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall through to the legacy copy path when browser permissions block Clipboard API.
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
 }

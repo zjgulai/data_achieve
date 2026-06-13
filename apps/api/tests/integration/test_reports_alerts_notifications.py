@@ -174,6 +174,14 @@ async def test_report_generation_send_and_notification_read_flow(
     assert list_response.status_code == 200
     assert [item["id"] for item in list_response.json()] == [report["id"]]
 
+    audit_response = await client.get(f"/api/reports/{report['id']}/audit-events")
+    assert audit_response.status_code == 200
+    audit_events = audit_response.json()
+    assert [event["event_type"] for event in audit_events] == ["generated"]
+    assert audit_events[0]["from_status"] is None
+    assert audit_events[0]["to_status"] == "generated"
+    assert audit_events[0]["metadata"]["project_id"] == project_id
+
     references_response = await client.get(f"/api/reports/{report['id']}/evidence-references")
     assert references_response.status_code == 200
     references = references_response.json()
@@ -194,6 +202,25 @@ async def test_report_generation_send_and_notification_read_flow(
     assert send_response.status_code == 200
     sent_report = send_response.json()
     assert sent_report["status"] == "sent"
+
+    share_response = await client.post(
+        f"/api/reports/{report['id']}/audit-events",
+        json={"event_type": "share_link_copied", "metadata": {"origin": "test"}},
+    )
+    assert share_response.status_code == 201
+    assert share_response.json()["event_type"] == "share_link_copied"
+
+    audit_after_send_response = await client.get(f"/api/reports/{report['id']}/audit-events")
+    assert audit_after_send_response.status_code == 200
+    audit_after_send = audit_after_send_response.json()
+    assert [event["event_type"] for event in audit_after_send] == [
+        "generated",
+        "sent",
+        "share_link_copied",
+    ]
+    sent_event = audit_after_send[1]
+    assert sent_event["from_status"] == "generated"
+    assert sent_event["to_status"] == "sent"
 
     notifications_response = await client.get("/api/notifications?is_read=false")
     assert notifications_response.status_code == 200

@@ -7,10 +7,17 @@ import {
 } from "@/lib/api/intelligence";
 import {
   createMockGeneratedReport,
+  createMockReportAuditEvent,
+  getMockReportAuditEvents,
   getMockReportEvidenceReferences,
   getMockReports,
 } from "@/lib/api/mock";
-import type { Report, ReportEvidenceReference, ReportGenerateInput } from "@/types/report";
+import type {
+  Report,
+  ReportAuditEvent,
+  ReportEvidenceReference,
+  ReportGenerateInput,
+} from "@/types/report";
 
 type ReportResponse = {
   id: string;
@@ -28,6 +35,18 @@ type ReportResponse = {
 type ReportEvidenceReferenceResponse = {
   intelligence: IntelligenceResponse;
   evidences: EvidenceResponse[];
+};
+
+type ReportAuditEventResponse = {
+  id: string;
+  workspace_id: string;
+  report_id: string;
+  actor_id: string | null;
+  event_type: string;
+  from_status: string | null;
+  to_status: string | null;
+  metadata: Record<string, string>;
+  created_at: string;
 };
 
 export async function listReports(projectId?: string): Promise<Report[]> {
@@ -74,6 +93,7 @@ export async function generateReport(input: ReportGenerateInput = {}): Promise<R
 export async function sendReport(reportId: string): Promise<Report> {
   if (mockApiEnabled) {
     const report = getMockReports().find((item) => item.id === reportId) ?? getMockReports()[0];
+    createMockReportAuditEvent(reportId, "sent", { channel: "in_app" });
     return { ...report, status: "sent" };
   }
   const response = await apiFetch<ReportResponse>(`/api/reports/${reportId}/send`, {
@@ -97,6 +117,34 @@ export async function listReportEvidenceReferences(
   }));
 }
 
+export async function listReportAuditEvents(reportId: string): Promise<ReportAuditEvent[]> {
+  if (mockApiEnabled) {
+    return getMockReportAuditEvents(reportId);
+  }
+  const response = await apiFetch<ReportAuditEventResponse[]>(
+    `/api/reports/${reportId}/audit-events`,
+  );
+  return response.map(mapReportAuditEvent);
+}
+
+export async function createReportAuditEvent(
+  reportId: string,
+  eventType: "share_link_copied" | "share_sheet_opened",
+  metadata: Record<string, string> = {},
+): Promise<ReportAuditEvent> {
+  if (mockApiEnabled) {
+    return createMockReportAuditEvent(reportId, eventType, metadata);
+  }
+  const response = await apiFetch<ReportAuditEventResponse>(
+    `/api/reports/${reportId}/audit-events`,
+    {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType, metadata }),
+    },
+  );
+  return mapReportAuditEvent(response);
+}
+
 function mapReport(response: ReportResponse): Report {
   return {
     id: response.id,
@@ -108,6 +156,20 @@ function mapReport(response: ReportResponse): Report {
     status: response.status,
     periodStart: response.period_start,
     periodEnd: response.period_end,
+    createdAt: response.created_at,
+  };
+}
+
+function mapReportAuditEvent(response: ReportAuditEventResponse): ReportAuditEvent {
+  return {
+    id: response.id,
+    workspaceId: response.workspace_id,
+    reportId: response.report_id,
+    actorId: response.actor_id,
+    eventType: response.event_type,
+    fromStatus: response.from_status,
+    toStatus: response.to_status,
+    metadata: response.metadata,
     createdAt: response.created_at,
   };
 }

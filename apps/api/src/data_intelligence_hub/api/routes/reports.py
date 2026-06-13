@@ -8,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
 from data_intelligence_hub.schemas.report import (
+    ReportAuditEventCreateRequest,
+    ReportAuditEventResponse,
     ReportEvidenceReferenceResponse,
     ReportGenerateRequest,
     ReportResponse,
@@ -15,9 +17,11 @@ from data_intelligence_hub.schemas.report import (
 from data_intelligence_hub.services.exceptions import ProjectNotFoundError, ReportNotFoundError
 from data_intelligence_hub.services.report_service import (
     generate_report,
+    get_report_audit_events,
     get_report_evidence_references,
     get_report_or_raise,
     get_reports,
+    record_report_share_event,
     send_report,
 )
 
@@ -45,7 +49,7 @@ async def generate_report_item(
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> ReportResponse:
     try:
-        report = await generate_report(session, context.workspace, payload)
+        report = await generate_report(session, context.workspace, context.user, payload)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return ReportResponse.from_model(report)
@@ -86,6 +90,44 @@ async def list_report_evidence_references(
         )
         for reference in references
     ]
+
+
+@router.get("/{report_id}/audit-events", response_model=list[ReportAuditEventResponse])
+async def list_report_audit_event_items(
+    report_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> list[ReportAuditEventResponse]:
+    try:
+        events = await get_report_audit_events(session, context.workspace, report_id)
+    except ReportNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return [ReportAuditEventResponse.from_model(event) for event in events]
+
+
+@router.post(
+    "/{report_id}/audit-events",
+    response_model=ReportAuditEventResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_report_audit_event_item(
+    report_id: uuid.UUID,
+    payload: ReportAuditEventCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> ReportAuditEventResponse:
+    try:
+        event = await record_report_share_event(
+            session=session,
+            workspace=context.workspace,
+            user=context.user,
+            report_id=report_id,
+            event_type=payload.event_type,
+            metadata=payload.metadata,
+        )
+    except ReportNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    return ReportAuditEventResponse.from_model(event)
 
 
 @router.get("/{report_id}", response_model=ReportResponse)

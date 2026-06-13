@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
-from data_intelligence_hub.models.report import Report
+from data_intelligence_hub.models.report import Report, ReportAuditEvent
 from data_intelligence_hub.models.signal import Signal
 
 
@@ -51,6 +51,31 @@ async def create_report(session: AsyncSession, report: Report) -> Report:
     session.add(report)
     await session.flush()
     return report
+
+
+async def create_report_audit_event(
+    session: AsyncSession,
+    event: ReportAuditEvent,
+) -> ReportAuditEvent:
+    session.add(event)
+    await session.flush()
+    return event
+
+
+async def list_report_audit_events(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    report_id: uuid.UUID,
+) -> list[ReportAuditEvent]:
+    result = await session.execute(
+        select(ReportAuditEvent)
+        .where(
+            ReportAuditEvent.workspace_id == workspace_id,
+            ReportAuditEvent.report_id == report_id,
+        )
+        .order_by(ReportAuditEvent.created_at.asc(), ReportAuditEvent.id.asc())
+    )
+    return list(result.scalars().all())
 
 
 async def list_intelligence_for_report(

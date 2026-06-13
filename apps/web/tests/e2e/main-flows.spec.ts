@@ -72,7 +72,11 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("link", { name: "打开详情页" }).first().click();
     await expect(page).toHaveURL(/\/reports\/.+/);
     await expect(page.getByRole("heading", { name: "报告详情" })).toBeVisible();
+    await expect(page.getByText("审计记录").first()).toBeVisible();
     await expect(page.getByText("证据引用详情").first()).toBeVisible();
+    await page.getByRole("button", { name: "复制链接", exact: true }).click();
+    await expect(page.getByText("链接已复制").first()).toBeVisible();
+    await expect(page.getByText("复制链接").first()).toBeVisible();
     await page.getByRole("link", { name: "返回报告中心" }).click();
     await expect(page).toHaveURL(/\/reports$/);
 
@@ -88,6 +92,7 @@ test.describe("MVP workspace routes", () => {
     await reportDetail.getByRole("button", { name: "发送报告", exact: true }).click();
     await expect(reportDetail.getByRole("button", { name: "已发送", exact: true })).toBeDisabled();
     await expect(reportDetail.getByText("报告已进入通知链路")).toBeVisible();
+    await expect(reportDetail.getByText("报告发送").first()).toBeVisible();
   });
 
   test("creates alert rule and displays alert events", async ({ page }, testInfo) => {

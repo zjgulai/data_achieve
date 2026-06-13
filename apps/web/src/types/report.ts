@@ -24,3 +24,15 @@ export type ReportEvidenceReference = {
   intelligence: IntelligenceItem;
   evidences: Evidence[];
 };
+
+export type ReportAuditEvent = {
+  id: string;
+  workspaceId: string;
+  reportId: string;
+  actorId: string | null;
+  eventType: "generated" | "sent" | "share_link_copied" | "share_sheet_opened" | string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  metadata: Record<string, string>;
+  createdAt: string;
+};

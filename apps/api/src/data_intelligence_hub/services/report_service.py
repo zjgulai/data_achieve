@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime, time
 from typing import NamedTuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.models.report import Report
+from data_intelligence_hub.models.report import Report, ReportAuditEvent
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.intelligence import (
@@ -18,9 +19,11 @@ from data_intelligence_hub.repositories.reports import (
     ReportAlertEvent,
     ReportIntelligence,
     create_report,
+    create_report_audit_event,
     get_report,
     list_alert_events_for_report,
     list_intelligence_for_report,
+    list_report_audit_events,
     list_reports,
 )
 from data_intelligence_hub.schemas.report import ReportGenerateRequest
@@ -72,9 +75,19 @@ async def get_report_evidence_references(
     return references
 
 
+async def get_report_audit_events(
+    session: AsyncSession,
+    workspace: Workspace,
+    report_id: uuid.UUID,
+) -> list[ReportAuditEvent]:
+    await get_report_or_raise(session, workspace, report_id)
+    return await list_report_audit_events(session, workspace.id, report_id)
+
+
 async def generate_report(
     session: AsyncSession,
     workspace: Workspace,
+    user: User,
     payload: ReportGenerateRequest,
 ) -> Report:
     project = None
@@ -117,6 +130,20 @@ async def generate_report(
         period_end=period_end,
     )
     await create_report(session, report)
+    await _create_report_audit_event(
+        session=session,
+        workspace_id=workspace.id,
+        report_id=report.id,
+        actor_id=user.id,
+        event_type="generated",
+        from_status=None,
+        to_status=report.status,
+        metadata={
+            "project_id": str(payload.project_id) if payload.project_id is not None else "global",
+            "period_end": period_end.isoformat(),
+            "period_start": period_start.isoformat(),
+        },
+    )
     await session.commit()
     await session.refresh(report)
     return report
@@ -129,6 +156,7 @@ async def send_report(
     report_id: uuid.UUID,
 ) -> Report:
     report = await get_report_or_raise(session, workspace, report_id)
+    previous_status = report.status
     report.status = "sent"
     await create_in_app_notification(
         session=session,
@@ -139,9 +167,66 @@ async def send_report(
         reference_type="report",
         reference_id=report.id,
     )
+    await _create_report_audit_event(
+        session=session,
+        workspace_id=workspace.id,
+        report_id=report.id,
+        actor_id=user.id,
+        event_type="sent",
+        from_status=previous_status,
+        to_status=report.status,
+        metadata={"channel": "in_app"},
+    )
     await session.commit()
     await session.refresh(report)
     return report
+
+
+async def record_report_share_event(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    report_id: uuid.UUID,
+    event_type: str,
+    metadata: dict[str, str],
+) -> ReportAuditEvent:
+    report = await get_report_or_raise(session, workspace, report_id)
+    event = await _create_report_audit_event(
+        session=session,
+        workspace_id=workspace.id,
+        report_id=report.id,
+        actor_id=user.id,
+        event_type=event_type,
+        from_status=report.status,
+        to_status=report.status,
+        metadata=metadata,
+    )
+    await session.commit()
+    await session.refresh(event)
+    return event
+
+
+async def _create_report_audit_event(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    report_id: uuid.UUID,
+    actor_id: uuid.UUID | None,
+    event_type: str,
+    from_status: str | None,
+    to_status: str | None,
+    metadata: dict[str, str],
+) -> ReportAuditEvent:
+    event = ReportAuditEvent(
+        workspace_id=workspace_id,
+        report_id=report_id,
+        actor_id=actor_id,
+        event_type=event_type,
+        from_status=from_status,
+        to_status=to_status,
+        metadata_json=json.dumps(metadata, ensure_ascii=False),
+        created_at=datetime.now(UTC),
+    )
+    return await create_report_audit_event(session, event)
 
 
 def _render_daily_report(
