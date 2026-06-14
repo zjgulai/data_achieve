@@ -6,6 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.core.config import get_settings
+from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
+from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
 from data_intelligence_hub.services.exceptions import (
     TaskAlreadyRunningError,
@@ -43,6 +46,18 @@ async def list_task_items(
         )
         for task in tasks
     ]
+
+
+@router.get("/scheduler/overview", response_model=SchedulerOverviewResponse)
+async def get_scheduler_overview_item(
+    session: SessionDep,
+    _context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> SchedulerOverviewResponse:
+    latest_tick = await get_latest_scheduler_tick(session)
+    return SchedulerOverviewResponse.from_tick(
+        enabled=get_settings().scheduler_enabled,
+        latest_tick=latest_tick,
+    )
 
 
 @router.get("/{task_id}", response_model=CollectionTaskResponse)

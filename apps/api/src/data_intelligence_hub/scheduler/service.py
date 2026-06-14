@@ -11,10 +11,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from data_intelligence_hub.models.scheduler import SchedulerLease
+from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
+from data_intelligence_hub.repositories.scheduler import create_scheduler_tick
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, is_schedule_due
 from data_intelligence_hub.services.collector_service import execute_collection_task
 from data_intelligence_hub.services.report_service import execute_report_subscription
@@ -27,15 +28,21 @@ SCHEDULER_LEASE_NAME = "collection_scheduler_tick"
 @dataclass(frozen=True)
 class SchedulerTickResult:
     lock_acquired: bool
+    status: str
+    started_at: datetime
+    finished_at: datetime
     scanned: int
     due: int
     started: int
     skipped_running: int
     skipped_invalid_schedule: int
+    task_errors: int
     report_subscriptions_scanned: int
     report_subscriptions_due: int
     report_subscriptions_started: int
     report_subscriptions_skipped_running: int
+    report_subscription_errors: int
+    error_message: str | None
 
 
 class CollectionScheduler:
@@ -80,15 +87,18 @@ class CollectionScheduler:
 
     async def tick(self, now: datetime | None = None) -> SchedulerTickResult:
         current_time = _as_utc(now or self._clock())
+        tick_started_at = current_time
         scanned = 0
         due = 0
         started = 0
         skipped_running = 0
         skipped_invalid_schedule = 0
+        task_errors = 0
         report_subscriptions_scanned = 0
         report_subscriptions_due = 0
         report_subscriptions_started = 0
         report_subscriptions_skipped_running = 0
+        report_subscription_errors = 0
 
         async with self._session_factory() as session:
             lock_acquired = await _acquire_scheduler_lease(
@@ -103,7 +113,13 @@ class CollectionScheduler:
                     "collection_scheduler_tick_skipped_locked",
                     lease_name=SCHEDULER_LEASE_NAME,
                 )
-                return _empty_tick_result(lock_acquired=False)
+                result = _empty_tick_result(
+                    lock_acquired=False,
+                    started_at=tick_started_at,
+                    status="skipped_locked",
+                )
+                await _record_scheduler_tick(session, self._owner_id, result)
+                return result
 
             candidates = await _list_scheduled_tasks(session)
             scanned = len(candidates)
@@ -140,6 +156,7 @@ class CollectionScheduler:
                     await execute_collection_task(session, workspace, task)
                     started += 1
                 except Exception:
+                    task_errors += 1
                     logger.exception("collection_scheduler_task_failed", task_id=str(task.id))
                 finally:
                     self._running_task_ids.discard(task.id)
@@ -166,6 +183,7 @@ class CollectionScheduler:
                     )
                     report_subscriptions_started += 1
                 except Exception:
+                    report_subscription_errors += 1
                     logger.exception(
                         "report_subscription_scheduler_failed",
                         subscription_id=str(subscription.id),
@@ -173,18 +191,27 @@ class CollectionScheduler:
                 finally:
                     self._running_report_subscription_ids.discard(subscription.id)
 
-        return SchedulerTickResult(
+        result = SchedulerTickResult(
             lock_acquired=True,
+            status="completed",
+            started_at=tick_started_at,
+            finished_at=datetime.now(UTC),
             scanned=scanned,
             due=due,
             started=started,
             skipped_running=skipped_running,
             skipped_invalid_schedule=skipped_invalid_schedule,
+            task_errors=task_errors,
             report_subscriptions_scanned=report_subscriptions_scanned,
             report_subscriptions_due=report_subscriptions_due,
             report_subscriptions_started=report_subscriptions_started,
             report_subscriptions_skipped_running=report_subscriptions_skipped_running,
+            report_subscription_errors=report_subscription_errors,
+            error_message=None,
         )
+        async with self._session_factory() as record_session:
+            await _record_scheduler_tick(record_session, self._owner_id, result)
+        return result
 
     async def _run_forever(self) -> None:
         while True:
@@ -193,17 +220,20 @@ class CollectionScheduler:
                 logger.info(
                     "collection_scheduler_tick_completed",
                     lock_acquired=result.lock_acquired,
+                    status=result.status,
                     scanned=result.scanned,
                     due=result.due,
                     started=result.started,
                     skipped_running=result.skipped_running,
                     skipped_invalid_schedule=result.skipped_invalid_schedule,
+                    task_errors=result.task_errors,
                     report_subscriptions_scanned=result.report_subscriptions_scanned,
                     report_subscriptions_due=result.report_subscriptions_due,
                     report_subscriptions_started=result.report_subscriptions_started,
                     report_subscriptions_skipped_running=(
                         result.report_subscriptions_skipped_running
                     ),
+                    report_subscription_errors=result.report_subscription_errors,
                 )
             except asyncio.CancelledError:
                 raise
@@ -240,6 +270,36 @@ async def _list_scheduled_tasks(
     )
     result = await session.execute(statement)
     return [(task, workspace, latest_run) for task, workspace, latest_run in result.all()]
+
+
+async def _record_scheduler_tick(
+    session: AsyncSession,
+    owner_id: str,
+    result: SchedulerTickResult,
+) -> None:
+    await create_scheduler_tick(
+        session,
+        SchedulerTick(
+            lease_name=SCHEDULER_LEASE_NAME,
+            owner_id=owner_id,
+            status=result.status,
+            lock_acquired=result.lock_acquired,
+            started_at=result.started_at,
+            finished_at=result.finished_at,
+            scanned=result.scanned,
+            due=result.due,
+            started=result.started,
+            skipped_running=result.skipped_running,
+            skipped_invalid_schedule=result.skipped_invalid_schedule,
+            task_errors=result.task_errors,
+            report_subscriptions_scanned=result.report_subscriptions_scanned,
+            report_subscriptions_due=result.report_subscriptions_due,
+            report_subscriptions_started=result.report_subscriptions_started,
+            report_subscriptions_skipped_running=result.report_subscriptions_skipped_running,
+            report_subscription_errors=result.report_subscription_errors,
+            error_message=result.error_message,
+        ),
+    )
 
 
 async def _acquire_scheduler_lease(
@@ -279,18 +339,29 @@ async def _acquire_scheduler_lease(
     return True
 
 
-def _empty_tick_result(lock_acquired: bool) -> SchedulerTickResult:
+def _empty_tick_result(
+    *,
+    lock_acquired: bool,
+    started_at: datetime,
+    status: str,
+) -> SchedulerTickResult:
     return SchedulerTickResult(
         lock_acquired=lock_acquired,
+        status=status,
+        started_at=started_at,
+        finished_at=datetime.now(UTC),
         scanned=0,
         due=0,
         started=0,
         skipped_running=0,
         skipped_invalid_schedule=0,
+        task_errors=0,
         report_subscriptions_scanned=0,
         report_subscriptions_due=0,
         report_subscriptions_started=0,
         report_subscriptions_skipped_running=0,
+        report_subscription_errors=0,
+        error_message=None,
     )
 
 

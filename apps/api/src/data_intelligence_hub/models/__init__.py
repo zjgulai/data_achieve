@@ -16,7 +16,7 @@ from data_intelligence_hub.models.report import (
     ReportSubscription,
     ReportSubscriptionRun,
 )
-from data_intelligence_hub.models.scheduler import SchedulerLease
+from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -42,6 +42,7 @@ __all__ = [
     "ReportSubscription",
     "ReportSubscriptionRun",
     "SchedulerLease",
+    "SchedulerTick",
     "Signal",
     "Source",
     "TaskRun",

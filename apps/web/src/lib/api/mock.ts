@@ -20,7 +20,13 @@ import type {
   ReportSubscriptionRun,
 } from "@/types/report";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
-import type { CollectionTask, Collector, Source, TaskRun } from "@/types/source-task";
+import type {
+  CollectionTask,
+  Collector,
+  SchedulerOverview,
+  Source,
+  TaskRun,
+} from "@/types/source-task";
 
 export function getMockDashboard(domain?: string): DashboardSummary {
   const allTop = getMockIntelligence().map((item) => ({
@@ -369,6 +375,34 @@ export function getMockTasks(): CollectionTask[] {
     },
   ];
   return tasks.map(withMockTaskFreshness);
+}
+
+export function getMockSchedulerOverview(): SchedulerOverview {
+  const finishedAt = new Date().toISOString();
+  return {
+    enabled: true,
+    latestTick: {
+      id: "scheduler_tick_mock_latest",
+      leaseName: "collection_scheduler_tick",
+      ownerId: "mock-scheduler",
+      status: "completed",
+      lockAcquired: true,
+      startedAt: new Date(Date.now() - 950).toISOString(),
+      finishedAt,
+      scanned: 10,
+      due: 2,
+      started: 2,
+      skippedRunning: 0,
+      skippedInvalidSchedule: 0,
+      taskErrors: 0,
+      reportSubscriptionsScanned: 1,
+      reportSubscriptionsDue: 0,
+      reportSubscriptionsStarted: 0,
+      reportSubscriptionsSkippedRunning: 0,
+      reportSubscriptionErrors: 0,
+      errorMessage: null,
+    },
+  };
 }
 
 type MockTaskSeed = Omit<

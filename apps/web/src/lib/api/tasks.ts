@@ -1,6 +1,12 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
-import { getMockTaskRun, getMockTasks } from "@/lib/api/mock";
-import type { CollectionTask, CollectorType, TaskRun } from "@/types/source-task";
+import { getMockSchedulerOverview, getMockTaskRun, getMockTasks } from "@/lib/api/mock";
+import type {
+  CollectionTask,
+  CollectorType,
+  SchedulerOverview,
+  SchedulerTick,
+  TaskRun,
+} from "@/types/source-task";
 
 type CollectionTaskResponse = {
   id: string;
@@ -46,12 +52,47 @@ type TaskRunResponse = {
   created_at: string;
 };
 
+type SchedulerTickResponse = {
+  id: string;
+  lease_name: string;
+  owner_id: string;
+  status: string;
+  lock_acquired: boolean;
+  started_at: string;
+  finished_at: string;
+  scanned: number;
+  due: number;
+  started: number;
+  skipped_running: number;
+  skipped_invalid_schedule: number;
+  task_errors: number;
+  report_subscriptions_scanned: number;
+  report_subscriptions_due: number;
+  report_subscriptions_started: number;
+  report_subscriptions_skipped_running: number;
+  report_subscription_errors: number;
+  error_message: string | null;
+};
+
+type SchedulerOverviewResponse = {
+  enabled: boolean;
+  latest_tick: SchedulerTickResponse | null;
+};
+
 export async function listTasks(): Promise<CollectionTask[]> {
   if (mockApiEnabled) {
     return getMockTasks();
   }
   const response = await apiFetch<CollectionTaskResponse[]>("/api/tasks");
   return response.map(mapTask);
+}
+
+export async function getSchedulerOverview(): Promise<SchedulerOverview> {
+  if (mockApiEnabled) {
+    return getMockSchedulerOverview();
+  }
+  const response = await apiFetch<SchedulerOverviewResponse>("/api/tasks/scheduler/overview");
+  return mapSchedulerOverview(response);
 }
 
 export async function runTask(taskId: string): Promise<TaskRun> {
@@ -147,5 +188,36 @@ function mapTaskRun(response: TaskRunResponse): TaskRun {
     errorMessage: response.error_message,
     logs: response.logs,
     createdAt: response.created_at,
+  };
+}
+
+function mapSchedulerOverview(response: SchedulerOverviewResponse): SchedulerOverview {
+  return {
+    enabled: response.enabled,
+    latestTick: response.latest_tick ? mapSchedulerTick(response.latest_tick) : null,
+  };
+}
+
+function mapSchedulerTick(response: SchedulerTickResponse): SchedulerTick {
+  return {
+    id: response.id,
+    leaseName: response.lease_name,
+    ownerId: response.owner_id,
+    status: response.status,
+    lockAcquired: response.lock_acquired,
+    startedAt: response.started_at,
+    finishedAt: response.finished_at,
+    scanned: response.scanned,
+    due: response.due,
+    started: response.started,
+    skippedRunning: response.skipped_running,
+    skippedInvalidSchedule: response.skipped_invalid_schedule,
+    taskErrors: response.task_errors,
+    reportSubscriptionsScanned: response.report_subscriptions_scanned,
+    reportSubscriptionsDue: response.report_subscriptions_due,
+    reportSubscriptionsStarted: response.report_subscriptions_started,
+    reportSubscriptionsSkippedRunning: response.report_subscriptions_skipped_running,
+    reportSubscriptionErrors: response.report_subscription_errors,
+    errorMessage: response.error_message,
   };
 }

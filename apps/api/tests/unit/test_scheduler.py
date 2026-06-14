@@ -18,6 +18,7 @@ from data_intelligence_hub.models import (
     ReportSubscription,
     ReportSubscriptionRun,
     SchedulerLease,
+    SchedulerTick,
     Source,
     TaskRun,
     User,
@@ -84,6 +85,16 @@ async def test_scheduler_tick_runs_due_collection_task() -> None:
     assert runs[0].records_count == 1
     assert task.last_run_at is not None
     assert task.success_count == 1
+
+    async with session_factory() as session:
+        tick = (await session.execute(select(SchedulerTick))).scalar_one()
+
+    assert tick.status == "completed"
+    assert tick.lock_acquired is True
+    assert tick.scanned == 1
+    assert tick.due == 1
+    assert tick.started == 1
+    assert tick.task_errors == 0
 
 
 @pytest.mark.asyncio
@@ -373,9 +384,15 @@ async def test_scheduler_tick_skips_when_another_owner_holds_lease() -> None:
     async with session_factory() as session:
         leases = list((await session.execute(select(SchedulerLease))).scalars().all())
         runs = list((await session.execute(select(TaskRun))).scalars().all())
+        ticks = list(
+            (await session.execute(select(SchedulerTick).order_by(SchedulerTick.finished_at)))
+            .scalars()
+            .all()
+        )
 
     assert len(leases) == 1
     assert len(runs) == 1
+    assert [tick.status for tick in ticks] == ["completed", "skipped_locked"]
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:

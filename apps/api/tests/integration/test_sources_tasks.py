@@ -251,6 +251,12 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
         run["id"],
     ]
 
+    scheduler_response = await client.get("/api/tasks/scheduler/overview")
+    assert scheduler_response.status_code == 200
+    scheduler_overview = scheduler_response.json()
+    assert scheduler_overview["enabled"] is False
+    assert scheduler_overview["latest_tick"] is None
+
     pause_response = await client.post(f"/api/tasks/{task['id']}/pause")
     assert pause_response.status_code == 200
     assert pause_response.json()["status"] == "paused"

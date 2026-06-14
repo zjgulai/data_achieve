@@ -100,6 +100,33 @@ export type TaskRun = {
   createdAt: string;
 };
 
+export type SchedulerTick = {
+  id: string;
+  leaseName: string;
+  ownerId: string;
+  status: string;
+  lockAcquired: boolean;
+  startedAt: string;
+  finishedAt: string;
+  scanned: number;
+  due: number;
+  started: number;
+  skippedRunning: number;
+  skippedInvalidSchedule: number;
+  taskErrors: number;
+  reportSubscriptionsScanned: number;
+  reportSubscriptionsDue: number;
+  reportSubscriptionsStarted: number;
+  reportSubscriptionsSkippedRunning: number;
+  reportSubscriptionErrors: number;
+  errorMessage: string | null;
+};
+
+export type SchedulerOverview = {
+  enabled: boolean;
+  latestTick: SchedulerTick | null;
+};
+
 export const sourceDomainDefaults: Record<CollectorType, ProjectDomain> = {
   github_repo: "osint",
   github_topic: "osint",

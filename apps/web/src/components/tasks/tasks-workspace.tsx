@@ -11,6 +11,7 @@ import {
   ListFilter,
   PauseCircle,
   PlayCircle,
+  RadioTower,
   RefreshCw,
   RotateCcw,
   Search,
@@ -21,9 +22,21 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { listTaskRuns, listTasks, pauseTask, resumeTask, runTask } from "@/lib/api/tasks";
+import {
+  getSchedulerOverview,
+  listTaskRuns,
+  listTasks,
+  pauseTask,
+  resumeTask,
+  runTask,
+} from "@/lib/api/tasks";
 import { cn } from "@/lib/utils";
-import type { CollectionTask, CollectorType, TaskRun } from "@/types/source-task";
+import type {
+  CollectionTask,
+  CollectorType,
+  SchedulerOverview,
+  TaskRun,
+} from "@/types/source-task";
 
 type DomainKey = "osint" | "ecommerce" | "social" | "competitor";
 type DomainFilter = DomainKey | "all";
@@ -56,6 +69,7 @@ const collectorLabels: Record<CollectorType, string> = {
 
 export function TasksWorkspace() {
   const [tasks, setTasks] = useState<CollectionTask[]>([]);
+  const [schedulerOverview, setSchedulerOverview] = useState<SchedulerOverview | null>(null);
   const [latestRun, setLatestRun] = useState<TaskRun | null>(null);
   const [taskRuns, setTaskRuns] = useState<TaskRun[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -72,10 +86,11 @@ export function TasksWorkspace() {
 
   useEffect(() => {
     let mounted = true;
-    listTasks()
-      .then((items) => {
+    Promise.all([listTasks(), getSchedulerOverview()])
+      .then(([items, scheduler]) => {
         if (mounted) {
           setTasks(items);
+          setSchedulerOverview(scheduler);
           setSelectedTaskId(
             items.find((item) => item.failureCount >= 10)?.id ?? items[0]?.id ?? null,
           );
@@ -277,6 +292,7 @@ export function TasksWorkspace() {
               value={summary.latestRecords.toString()}
             />
           </div>
+          <SchedulerObservationPanel overview={schedulerOverview} />
         </div>
 
         {error ? (
@@ -938,6 +954,93 @@ function MetricTile({
   );
 }
 
+function SchedulerObservationPanel({ overview }: { overview: SchedulerOverview | null }) {
+  const latestTick = overview?.latestTick ?? null;
+  const statusTone =
+    !overview?.enabled || !latestTick
+      ? "text-[#86868B]"
+      : latestTick.status === "completed" && latestTick.taskErrors + latestTick.reportSubscriptionErrors === 0
+        ? "text-[#2EBA62]"
+        : "text-[#FF9800]";
+  return (
+    <div className="mt-4 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#C25B6E]">
+            <RadioTower size={18} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-[#1D1D1F]">自动调度观测</h3>
+              <span className={cn("text-xs font-semibold", statusTone)}>
+                {schedulerStatusLabel(overview)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-[#86868B]">
+              {latestTick
+                ? `最近 tick ${formatDateTime(latestTick.finishedAt)} · lease ${
+                    latestTick.lockAcquired ? "已获取" : "被占用"
+                  }`
+                : "等待 scheduler 产生首次 tick 记录"}
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[520px]">
+          <SchedulerFact
+            label="扫描 / 到期"
+            value={latestTick ? `${latestTick.scanned} / ${latestTick.due}` : "0 / 0"}
+          />
+          <SchedulerFact
+            label="启动 / 异常"
+            tone={latestTick && latestTick.taskErrors > 0 ? "red" : "default"}
+            value={
+              latestTick
+                ? `${latestTick.started} / ${latestTick.taskErrors}`
+                : "0 / 0"
+            }
+          />
+          <SchedulerFact
+            label="跳过调度"
+            value={
+              latestTick
+                ? `${latestTick.skippedRunning + latestTick.skippedInvalidSchedule}`
+                : "0"
+            }
+          />
+          <SchedulerFact
+            label="报告队列"
+            tone={latestTick && latestTick.reportSubscriptionErrors > 0 ? "red" : "default"}
+            value={
+              latestTick
+                ? `${latestTick.reportSubscriptionsStarted} / ${latestTick.reportSubscriptionErrors}`
+                : "0 / 0"
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SchedulerFact({
+  label,
+  tone = "default",
+  value,
+}: {
+  label: string;
+  tone?: "default" | "red";
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg bg-white px-2 py-2">
+      <p className="text-[10px] font-semibold uppercase text-[#86868B]">{label}</p>
+      <p className={cn("mt-1 text-sm font-semibold", tone === "red" ? "text-[#FF3B30]" : "text-[#1D1D1F]")}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function SelectField({
   label,
   onChange,
@@ -1225,6 +1328,24 @@ function schedulePlanValue(task: CollectionTask) {
     ? `重试 ${formatDateTime(task.retryAfterAt)}`
     : `失败 ${task.retryDelayMinutes} 分钟后重试`;
   return `${nextRun} · ${retry}`;
+}
+
+function schedulerStatusLabel(overview: SchedulerOverview | null) {
+  if (!overview?.enabled) {
+    return "scheduler 未启用";
+  }
+  const latestTick = overview.latestTick;
+  if (!latestTick) {
+    return "等待首次 tick";
+  }
+  const errors = latestTick.taskErrors + latestTick.reportSubscriptionErrors;
+  if (errors > 0) {
+    return `${errors} 个调度异常`;
+  }
+  if (!latestTick.lockAcquired) {
+    return "lease 被占用";
+  }
+  return latestTick.status === "completed" ? "调度正常" : latestTick.status;
 }
 
 function nextRunAfterManualRun(task: CollectionTask, taskRun: TaskRun) {
