@@ -152,7 +152,7 @@ export function RawRecordsWorkspace() {
               原始事实层审计台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              每条 RawRecord 都保留来源、采集时间和可校验指纹，用于回看 Entity、Signal、Evidence 的事实出处。
+              每条原始事实都保留来源、采集时间和可校验指纹，用于回看 Entity、Signal、Evidence 的事实出处。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <MetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
@@ -173,8 +173,8 @@ export function RawRecordsWorkspace() {
               </span>
             </div>
             <div className="mt-4 grid gap-2">
-              <IntegrityRow label="Hash 覆盖" value={`${rawRecords.length}/${rawRecords.length}`} />
-              <IntegrityRow label="可追溯 TaskRun" value={`${rawRecords.length}/${rawRecords.length}`} />
+              <IntegrityRow label="校验覆盖" value={`${rawRecords.length}/${rawRecords.length}`} />
+              <IntegrityRow label="可追溯采集" value={`${rawRecords.length}/${rawRecords.length}`} />
               <IntegrityRow label="可回看来源" value={`${rawRecords.filter((record) => record.sourceUrl).length}`} />
             </div>
           </div>
@@ -185,7 +185,7 @@ export function RawRecordsWorkspace() {
         <section className="min-w-0 rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#B47767]">Raw Records</p>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">Fact Records</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">采集原始记录</h2>
               <p className="mt-1 text-sm text-[#7A625A]">按类型、hash、来源和采集时间定位可审计事实。</p>
             </div>
@@ -247,7 +247,7 @@ export function RawRecordsWorkspace() {
             ))}
             {!loading && filteredRecords.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-                没有匹配的 RawRecord。
+                没有匹配的原始事实。
               </div>
             ) : null}
           </div>

@@ -571,7 +571,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
             </TraceSection>
           ) : null}
           {evidence.taskRun ? (
-            <TraceSection title="Task Run">
+            <TraceSection title="采集运行">
               <DetailRow label="Status" value={evidence.taskRun.status} />
               <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
               <Link
@@ -583,7 +583,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
             </TraceSection>
           ) : null}
           {evidence.rawRecord ? (
-            <TraceSection title="Raw Record">
+            <TraceSection title="原始事实">
               <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
               <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link

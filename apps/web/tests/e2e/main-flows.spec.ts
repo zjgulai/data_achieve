@@ -321,8 +321,8 @@ test.describe("MVP workspace routes", () => {
       page.getByRole("link", { name: "打开详情页" }).first(),
     ).toBeVisible();
     await expect(page.getByText("Evidence Timeline")).toBeVisible();
-    await expect(page.getByText("Task Run").first()).toBeVisible();
-    await expect(page.getByText("Raw Record").first()).toBeVisible();
+    await expect(page.getByText("采集运行").first()).toBeVisible();
+    await expect(page.getByText("原始事实").first()).toBeVisible();
     await page.getByRole("link", { name: "打开详情页" }).click();
     await expect(page).toHaveURL(/\/intelligence\/.+/);
     await expect(page.getByText("原始内容摘要").first()).toBeVisible();
