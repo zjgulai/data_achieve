@@ -87,6 +87,41 @@ async def test_scheduler_tick_runs_due_collection_task() -> None:
 
 
 @pytest.mark.asyncio
+async def test_scheduler_tick_merges_source_payload_with_task_metadata() -> None:
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(
+            session,
+            schedule_cron="* * * * *",
+            task_config={
+                "freshness_target_hours": 6,
+                "schedule_policy": "manual_refresh_only",
+            },
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.started == 1
+
+    async with session_factory() as session:
+        run = (await session.execute(select(TaskRun))).scalar_one()
+        task = (await session.execute(select(CollectionTask))).scalar_one()
+
+    assert run.status == "success"
+    assert run.records_count == 1
+    assert run.entities_count == 1
+    assert run.error_message is None
+    assert task.success_count == 1
+    assert task.failure_count == 0
+
+
+@pytest.mark.asyncio
 async def test_scheduler_tick_skips_invalid_schedule() -> None:
     session_factory = await _create_session_factory()
     async with session_factory() as session:
@@ -244,6 +279,7 @@ async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
 async def _create_collection_task(
     session: AsyncSession,
     schedule_cron: str,
+    task_config: dict[str, object] | None = None,
 ) -> CollectionTask:
     now = datetime.now(UTC)
     user_id = uuid.uuid4()
@@ -302,7 +338,8 @@ async def _create_collection_task(
         name="Manual JSON Task",
         schedule_cron=schedule_cron,
         status="enabled",
-        config={"entity_type": "product", "json_data": {"name": "Demo", "price": 12}},
+        config=task_config
+        or {"entity_type": "product", "json_data": {"name": "Demo", "price": 12}},
         success_count=0,
         failure_count=0,
         last_run_at=None,

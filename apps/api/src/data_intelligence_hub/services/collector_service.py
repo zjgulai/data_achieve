@@ -4,6 +4,7 @@ import hashlib
 import json
 import traceback
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -63,7 +64,7 @@ async def execute_collection_task(
 
     try:
         source = await _get_task_source_or_raise(session, workspace, task)
-        collector = build_collector(task.collector_type, task.config or source.config)
+        collector = build_collector(task.collector_type, _collector_config(source, task))
         collector.validate_config()
         logs.append(collector_log("collector_config_valid", "Collector config validated."))
         result = await collector.collect()
@@ -200,6 +201,13 @@ def raw_record_content_hash(raw_record: CollectorRawRecord) -> str:
     }
     encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def _collector_config(source: Source, task: CollectionTask) -> dict[str, Any]:
+    config = dict(source.config)
+    if task.config:
+        config.update(task.config)
+    return config
 
 
 def _run_status(result_errors: list[str], created_records: int) -> str:
