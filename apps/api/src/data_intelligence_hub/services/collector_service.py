@@ -29,6 +29,7 @@ async def execute_collection_task(
     task: CollectionTask,
 ) -> TaskRun:
     started_at = datetime.now(UTC)
+    workspace_id = workspace.id
     previous_task_status = task.status
     logs = [
         collector_log("task_run_created", "Manual run requested."),
@@ -51,6 +52,8 @@ async def execute_collection_task(
     )
     session.add(run)
     await session.flush()
+    task_id = task.id
+    run_id = run.id
     await session.commit()
 
     records_count = 0
@@ -80,6 +83,15 @@ async def execute_collection_task(
             logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
         status = _run_status(result_errors=result.errors, created_records=records_count)
     except Exception as exc:
+        await session.rollback()
+        refreshed_workspace = await session.get(Workspace, workspace_id)
+        refreshed_task = await session.get(CollectionTask, task_id)
+        refreshed_run = await session.get(TaskRun, run_id)
+        if refreshed_workspace is None or refreshed_task is None or refreshed_run is None:
+            raise
+        workspace = refreshed_workspace
+        task = refreshed_task
+        run = refreshed_run
         status = "failed"
         error_message = str(exc) or exc.__class__.__name__
         error_traceback = traceback.format_exc()

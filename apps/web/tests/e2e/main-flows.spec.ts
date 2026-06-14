@@ -93,6 +93,9 @@ async function createTaskFlowFixture(
     throw new Error("Task fixture requires at least one project");
   }
   const taskName = `Playwright Task Flow ${suffix} ${Date.now()}`;
+  const taskExternalId = `playwright/task-flow-${suffix}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
   const sourceResponse = await request.post(`${baseUrl}/api/sources`, {
     data: {
       project_id: projects[0].id,
@@ -100,7 +103,7 @@ async function createTaskFlowFixture(
       type: "manual_json",
       config: {
         entity_type: "github_repo",
-        json_data: { full_name: "playwright/task-flow", stars: 233 },
+        json_data: { full_name: taskExternalId, stars: 233 },
       },
       schedule_cron: null,
     },
@@ -152,6 +155,9 @@ async function createIntelligenceFixture(
     throw new Error("Intelligence fixture requires at least one project");
   }
   const sourceName = `Playwright Intelligence ${suffix} ${Date.now()}`;
+  const intelligenceExternalId = `playwright/intelligence-flow-${suffix}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
   const sourceResponse = await request.post(`${baseUrl}/api/sources`, {
     data: {
       project_id: projects[0].id,
@@ -159,7 +165,7 @@ async function createIntelligenceFixture(
       type: "manual_json",
       config: {
         entity_type: "github_repo",
-        json_data: { full_name: "playwright/intelligence-flow", stars: 100 },
+        json_data: { full_name: intelligenceExternalId, stars: 100 },
       },
       schedule_cron: null,
     },
@@ -193,7 +199,7 @@ async function createIntelligenceFixture(
       data: {
         config: {
           entity_type: "github_repo",
-          json_data: { full_name: "playwright/intelligence-flow", stars: 360 },
+          json_data: { full_name: intelligenceExternalId, stars: 360 },
         },
       },
     },

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
@@ -107,8 +108,19 @@ async def _upsert_entity(
         first_seen_at=draft.captured_at,
         last_seen_at=draft.captured_at,
     )
-    session.add(entity)
-    await session.flush()
+    try:
+        async with session.begin_nested():
+            session.add(entity)
+            await session.flush()
+    except IntegrityError:
+        entity = await get_entity_by_external_id(
+            session,
+            workspace.id,
+            draft.entity_type,
+            draft.external_id,
+        )
+        if entity is None:
+            raise
     return entity
 
 

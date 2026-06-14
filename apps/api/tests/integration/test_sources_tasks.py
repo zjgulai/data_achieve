@@ -304,6 +304,51 @@ async def test_collector_exception_persists_failed_task_run(
 
 
 @pytest.mark.asyncio
+async def test_multiple_sources_reuse_existing_entity_by_external_id(
+    client: AsyncClient,
+) -> None:
+    project_id = await register_and_create_project(client)
+
+    source_ids: list[str] = []
+    for index, price in enumerate((99, 120), start=1):
+        source_response = await client.post(
+            "/api/sources",
+            json={
+                "project_id": project_id,
+                "name": f"Duplicate Entity Source {index}",
+                "type": "manual_json",
+                "config": {
+                    "entity_type": "product",
+                    "json_data": {"name": "Shared Product", "price": price},
+                },
+                "schedule_cron": None,
+            },
+        )
+        assert source_response.status_code == 201
+        source_ids.append(source_response.json()["id"])
+
+    for source_id in source_ids:
+        enable_response = await client.post(f"/api/sources/{source_id}/enable")
+        assert enable_response.status_code == 200
+        task = enable_response.json()
+        run_response = await client.post(f"/api/tasks/{task['id']}/run")
+        assert run_response.status_code == 201
+        assert run_response.json()["status"] == "success"
+
+    entities_response = await client.get("/api/entities")
+    assert entities_response.status_code == 200
+    entities = entities_response.json()
+    assert len(entities) == 1
+    assert entities[0]["external_id"] == "Shared Product"
+
+    snapshots_response = await client.get(f"/api/entities/{entities[0]['id']}/snapshots")
+    assert snapshots_response.status_code == 200
+    snapshots = snapshots_response.json()
+    assert len(snapshots) == 2
+    assert {snapshot["metrics"]["price"] for snapshot in snapshots} == {99, 120}
+
+
+@pytest.mark.asyncio
 async def test_star_growth_signal_is_created_from_snapshot_delta(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 
