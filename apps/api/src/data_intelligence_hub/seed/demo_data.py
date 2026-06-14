@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
+import json
 import os
 import uuid
 from dataclasses import dataclass
@@ -22,7 +24,12 @@ from data_intelligence_hub.models.intelligence import (
 from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.raw_record import RawRecord
-from data_intelligence_hub.models.report import Report, ReportSubscription
+from data_intelligence_hub.models.report import (
+    Report,
+    ReportAuditEvent,
+    ReportSubscription,
+    ReportSubscriptionRun,
+)
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -31,6 +38,7 @@ from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 
 NAMESPACE = uuid.UUID("2df8a496-5ea6-49c3-8aef-9604ac8e6238")
 DEFAULT_EMAIL = "owner@example.com"
+DEMO_SEED_VERSION = "2026-06-14-curated-v2"
 
 DOMAIN_FRESHNESS_TARGETS: dict[str, dict[str, Any]] = {
     "osint": {
@@ -76,12 +84,40 @@ class DemoContext:
     alert_rule_ids: dict[str, uuid.UUID]
 
 
+@dataclass(frozen=True)
+class DemoCleanupReport:
+    dry_run: bool
+    workspace_id: uuid.UUID | None
+    counts: dict[str, int]
+    samples: dict[str, list[str]]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "dry_run": self.dry_run,
+            "workspace_id": str(self.workspace_id) if self.workspace_id is not None else None,
+            "counts": self.counts,
+            "samples": self.samples,
+        }
+
+
 def _id(key: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, f"data-achieve-demo:{key}")
 
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(microsecond=0)
+
+
+def _provenance(layer: str, domain: str | None = None) -> dict[str, str]:
+    value = {
+        "data_layer": layer,
+        "dataset": "curated_demo",
+        "seed_version": DEMO_SEED_VERSION,
+        "source": "data_intelligence_hub.seed.demo_data",
+    }
+    if domain is not None:
+        value["domain"] = domain
+    return value
 
 
 async def _merge_all(session: AsyncSession, items: list[Any]) -> None:
@@ -181,6 +217,7 @@ async def seed_demo_data() -> None:
 
     async with async_session_factory() as session:
         await _delete_legacy_demo_records(session)
+        await cleanup_demo_noise(session, dry_run=False)
         await _merge_identity(session, context, email, password, name, now)
         await _merge_projects(session, context, now)
         await _merge_collection_layer(session, context, now)
@@ -341,8 +378,397 @@ async def _delete_legacy_demo_records(session: AsyncSession) -> None:
     await session.flush()
 
 
+async def cleanup_demo_noise(session: AsyncSession, dry_run: bool = True) -> DemoCleanupReport:
+    context = _build_context()
+    workspace = await session.get(Workspace, context.workspace_id)
+    if workspace is None:
+        return DemoCleanupReport(dry_run=dry_run, workspace_id=None, counts={}, samples={})
+
+    curated = _curated_demo_ids(context)
+    workspace_id = context.workspace_id
+
+    noise_project_ids = await _fetch_ids(
+        session,
+        select(Project.id).where(
+            Project.workspace_id == workspace_id,
+            ~Project.id.in_(curated["projects"]),
+        ),
+    )
+    noise_source_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Source.id).where(
+                Source.workspace_id == workspace_id,
+                or_(
+                    ~Source.id.in_(curated["sources"]),
+                    Source.project_id.in_(noise_project_ids),
+                ),
+            ),
+        )
+    )
+    noise_task_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(CollectionTask.id).where(
+                CollectionTask.workspace_id == workspace_id,
+                or_(
+                    ~CollectionTask.id.in_(curated["tasks"]),
+                    CollectionTask.project_id.in_(noise_project_ids),
+                    CollectionTask.source_id.in_(noise_source_ids),
+                ),
+            ),
+        )
+    )
+    noise_run_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(TaskRun.id).where(
+                TaskRun.workspace_id == workspace_id,
+                or_(
+                    ~TaskRun.id.in_(curated["task_runs"]),
+                    TaskRun.task_id.in_(noise_task_ids),
+                ),
+            ),
+        )
+    )
+    noise_raw_record_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(RawRecord.id).where(
+                RawRecord.workspace_id == workspace_id,
+                or_(
+                    ~RawRecord.id.in_(curated["raw_records"]),
+                    RawRecord.project_id.in_(noise_project_ids),
+                    RawRecord.source_id.in_(noise_source_ids),
+                    RawRecord.task_run_id.in_(noise_run_ids),
+                ),
+            ),
+        )
+    )
+    noise_entity_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Entity.id).where(
+                Entity.workspace_id == workspace_id,
+                or_(
+                    ~Entity.id.in_(curated["entities"]),
+                    Entity.project_id.in_(noise_project_ids),
+                ),
+            ),
+        )
+    )
+    noise_snapshot_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(EntitySnapshot.id)
+            .join(Entity, EntitySnapshot.entity_id == Entity.id)
+            .where(
+                Entity.workspace_id == workspace_id,
+                or_(
+                    ~EntitySnapshot.id.in_(curated["snapshots"]),
+                    EntitySnapshot.entity_id.in_(noise_entity_ids),
+                    EntitySnapshot.raw_record_id.in_(noise_raw_record_ids),
+                ),
+            ),
+        )
+    )
+    noise_signal_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Signal.id).where(
+                Signal.workspace_id == workspace_id,
+                or_(
+                    ~Signal.id.in_(curated["signals"]),
+                    Signal.project_id.in_(noise_project_ids),
+                    Signal.entity_id.in_(noise_entity_ids),
+                    Signal.previous_snapshot_id.in_(noise_snapshot_ids),
+                    Signal.current_snapshot_id.in_(noise_snapshot_ids),
+                ),
+            ),
+        )
+    )
+    noise_intelligence_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(IntelligenceItem.id).where(
+                IntelligenceItem.workspace_id == workspace_id,
+                or_(
+                    ~IntelligenceItem.id.in_(curated["intelligence"]),
+                    IntelligenceItem.project_id.in_(noise_project_ids),
+                ),
+            ),
+        )
+    )
+    noise_evidence_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Evidence.id)
+            .join(IntelligenceItem, Evidence.intelligence_id == IntelligenceItem.id)
+            .where(
+                IntelligenceItem.workspace_id == workspace_id,
+                or_(
+                    ~Evidence.id.in_(curated["evidence"]),
+                    Evidence.intelligence_id.in_(noise_intelligence_ids),
+                    Evidence.signal_id.in_(noise_signal_ids),
+                    Evidence.entity_id.in_(noise_entity_ids),
+                    Evidence.raw_record_id.in_(noise_raw_record_ids),
+                ),
+            ),
+        )
+    )
+    noise_report_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Report.id).where(
+                Report.workspace_id == workspace_id,
+                or_(
+                    ~Report.id.in_(curated["reports"]),
+                    Report.project_id.in_(noise_project_ids),
+                ),
+            ),
+        )
+    )
+    noise_report_subscription_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(ReportSubscription.id).where(ReportSubscription.workspace_id == workspace_id),
+        )
+    )
+    noise_report_subscription_run_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(ReportSubscriptionRun.id).where(
+                ReportSubscriptionRun.workspace_id == workspace_id,
+            ),
+        )
+    )
+    noise_report_audit_event_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(ReportAuditEvent.id).where(
+                ReportAuditEvent.workspace_id == workspace_id,
+                ReportAuditEvent.report_id.in_(noise_report_ids),
+            ),
+        )
+    )
+    noise_alert_rule_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(AlertRule.id).where(
+                AlertRule.workspace_id == workspace_id,
+                or_(
+                    ~AlertRule.id.in_(curated["alert_rules"]),
+                    AlertRule.project_id.in_(noise_project_ids),
+                ),
+            ),
+        )
+    )
+    noise_alert_event_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(AlertEvent.id)
+            .join(AlertRule, AlertEvent.rule_id == AlertRule.id)
+            .where(
+                AlertRule.workspace_id == workspace_id,
+                or_(
+                    ~AlertEvent.id.in_(curated["alert_events"]),
+                    AlertEvent.rule_id.in_(noise_alert_rule_ids),
+                    AlertEvent.signal_id.in_(noise_signal_ids),
+                ),
+            ),
+        )
+    )
+    noise_notification_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Notification.id).where(
+                Notification.user_id == context.user_id,
+                ~Notification.id.in_(curated["notifications"]),
+            ),
+        )
+    )
+
+    counts = {
+        "projects": len(noise_project_ids),
+        "sources": len(noise_source_ids),
+        "collection_tasks": len(noise_task_ids),
+        "task_runs": len(noise_run_ids),
+        "raw_records": len(noise_raw_record_ids),
+        "entities": len(noise_entity_ids),
+        "entity_snapshots": len(noise_snapshot_ids),
+        "signals": len(noise_signal_ids),
+        "intelligence_items": len(noise_intelligence_ids),
+        "evidences": len(noise_evidence_ids),
+        "reports": len(noise_report_ids),
+        "report_subscriptions": len(noise_report_subscription_ids),
+        "report_subscription_runs": len(noise_report_subscription_run_ids),
+        "report_audit_events": len(noise_report_audit_event_ids),
+        "alert_rules": len(noise_alert_rule_ids),
+        "alert_events": len(noise_alert_event_ids),
+        "notifications": len(noise_notification_ids),
+    }
+    samples = {
+        "intelligence_items": await _fetch_strings(
+            session,
+            select(IntelligenceItem.title)
+            .where(IntelligenceItem.id.in_(noise_intelligence_ids))
+            .order_by(IntelligenceItem.final_score.desc(), IntelligenceItem.created_at.desc())
+            .limit(10),
+        ),
+        "reports": await _fetch_strings(
+            session,
+            select(Report.title)
+            .where(Report.id.in_(noise_report_ids))
+            .order_by(Report.created_at.desc())
+            .limit(10),
+        ),
+    }
+    report = DemoCleanupReport(
+        dry_run=dry_run,
+        workspace_id=workspace_id,
+        counts=counts,
+        samples=samples,
+    )
+    if dry_run:
+        return report
+
+    await _apply_demo_noise_cleanup(
+        session=session,
+        context=context,
+        noise_project_ids=noise_project_ids,
+        noise_source_ids=noise_source_ids,
+        noise_task_ids=noise_task_ids,
+        noise_run_ids=noise_run_ids,
+        noise_raw_record_ids=noise_raw_record_ids,
+        noise_entity_ids=noise_entity_ids,
+        noise_snapshot_ids=noise_snapshot_ids,
+        noise_signal_ids=noise_signal_ids,
+        noise_intelligence_ids=noise_intelligence_ids,
+        noise_evidence_ids=noise_evidence_ids,
+        noise_report_ids=noise_report_ids,
+        noise_report_subscription_ids=noise_report_subscription_ids,
+        noise_report_subscription_run_ids=noise_report_subscription_run_ids,
+        noise_report_audit_event_ids=noise_report_audit_event_ids,
+        noise_alert_rule_ids=noise_alert_rule_ids,
+        noise_alert_event_ids=noise_alert_event_ids,
+        noise_notification_ids=noise_notification_ids,
+    )
+    return report
+
+
+async def _apply_demo_noise_cleanup(
+    *,
+    session: AsyncSession,
+    context: DemoContext,
+    noise_project_ids: list[uuid.UUID],
+    noise_source_ids: list[uuid.UUID],
+    noise_task_ids: list[uuid.UUID],
+    noise_run_ids: list[uuid.UUID],
+    noise_raw_record_ids: list[uuid.UUID],
+    noise_entity_ids: list[uuid.UUID],
+    noise_snapshot_ids: list[uuid.UUID],
+    noise_signal_ids: list[uuid.UUID],
+    noise_intelligence_ids: list[uuid.UUID],
+    noise_evidence_ids: list[uuid.UUID],
+    noise_report_ids: list[uuid.UUID],
+    noise_report_subscription_ids: list[uuid.UUID],
+    noise_report_subscription_run_ids: list[uuid.UUID],
+    noise_report_audit_event_ids: list[uuid.UUID],
+    noise_alert_rule_ids: list[uuid.UUID],
+    noise_alert_event_ids: list[uuid.UUID],
+    noise_notification_ids: list[uuid.UUID],
+) -> None:
+    if noise_snapshot_ids:
+        await session.execute(
+            update(Entity)
+            .where(Entity.latest_snapshot_id.in_(noise_snapshot_ids))
+            .values(latest_snapshot_id=None)
+        )
+    for entity_key, snapshot_key in {
+        "osint-repo": "osint-current",
+        "amazon-product": "amazon-current",
+        "social-topic": "social-current",
+        "competitor-page": "competitor-current",
+    }.items():
+        snapshot_id = context.snapshot_ids[snapshot_key]
+        if await session.get(EntitySnapshot, snapshot_id) is not None:
+            await session.execute(
+                update(Entity)
+                .where(Entity.id == context.entity_ids[entity_key])
+                .values(latest_snapshot_id=snapshot_id)
+            )
+    await session.flush()
+
+    await _delete_ids(session, Notification, noise_notification_ids)
+    await _delete_ids(session, ReportSubscriptionRun, noise_report_subscription_run_ids)
+    await _delete_ids(session, ReportAuditEvent, noise_report_audit_event_ids)
+    await _delete_ids(session, AlertEvent, noise_alert_event_ids)
+    if noise_intelligence_ids:
+        await session.execute(
+            delete(IntelligenceFeedback).where(
+                IntelligenceFeedback.intelligence_id.in_(noise_intelligence_ids)
+            )
+        )
+    await _delete_ids(session, Evidence, noise_evidence_ids)
+    await _delete_ids(session, ReportSubscription, noise_report_subscription_ids)
+    await _delete_ids(session, Report, noise_report_ids)
+    await _delete_ids(session, IntelligenceItem, noise_intelligence_ids)
+    await _delete_ids(session, Signal, noise_signal_ids)
+    await _delete_ids(session, EntitySnapshot, noise_snapshot_ids)
+    await _delete_ids(session, RawRecord, noise_raw_record_ids)
+    await _delete_ids(session, Entity, noise_entity_ids)
+    await _delete_ids(session, TaskRun, noise_run_ids)
+    await _delete_ids(session, CollectionTask, noise_task_ids)
+    await _delete_ids(session, Source, noise_source_ids)
+    await _delete_ids(session, AlertRule, noise_alert_rule_ids)
+    await _delete_ids(session, Project, noise_project_ids)
+    await session.flush()
+
+
+async def _delete_ids(session: AsyncSession, model: type[Any], ids: list[uuid.UUID]) -> None:
+    if ids:
+        await session.execute(delete(model).where(model.id.in_(ids)))
+
+
+def _curated_demo_ids(context: DemoContext) -> dict[str, list[uuid.UUID]]:
+    return {
+        "projects": list(context.project_ids.values()),
+        "sources": list(context.source_ids.values()),
+        "tasks": list(context.task_ids.values()),
+        "task_runs": list(context.run_ids.values()),
+        "raw_records": list(context.raw_record_ids.values()),
+        "entities": list(context.entity_ids.values()),
+        "snapshots": list(context.snapshot_ids.values()),
+        "signals": list(context.signal_ids.values()),
+        "intelligence": list(context.intelligence_ids.values()),
+        "evidence": [
+            _id("evidence-osint-stars"),
+            _id("evidence-amazon-price"),
+            _id("evidence-social-mentions"),
+            _id("evidence-competitor-page"),
+        ],
+        "reports": [_id("report-daily")],
+        "alert_rules": list(context.alert_rule_ids.values()),
+        "alert_events": [
+            _id("alert-event-price"),
+            _id("alert-event-traffic"),
+            _id("alert-event-competitor"),
+        ],
+        "notifications": [
+            _id("notification-report"),
+            _id("notification-alert"),
+            _id("notification-task-failed"),
+            _id("notification-competitor-alert"),
+        ],
+    }
+
+
 async def _fetch_ids(session: AsyncSession, statement: Any) -> list[uuid.UUID]:
     return list((await session.execute(statement)).scalars())
+
+
+async def _fetch_strings(session: AsyncSession, statement: Any) -> list[str]:
+    return [str(item) for item in (await session.execute(statement)).scalars()]
 
 
 def _unique_ids(ids: list[uuid.UUID]) -> list[uuid.UUID]:
@@ -458,13 +884,15 @@ async def _merge_collection_layer(
                 "owner": "scrapy",
                 "repo": "scrapy",
                 "freshness_target_hours": DOMAIN_FRESHNESS_TARGETS["osint"]["target_hours"],
+                "provenance": _provenance("source", "osint"),
+                "schedule_policy": "manual_refresh_only",
                 "method": {
                     "platform": "GitHub REST API",
                     "fields": ["stargazers_count", "forks_count", "open_issues_count", "pushed_at"],
                     "use_case": "开源采集框架社区动量监控",
                 },
             },
-            schedule_cron="0 */6 * * *",
+            schedule_cron=None,
             enabled=True,
             created_at=now - timedelta(days=14),
             updated_at=now,
@@ -478,6 +906,8 @@ async def _merge_collection_layer(
             url="https://www.amazon.com/Best-Sellers/zgbs",
             config={
                 "entity_type": "product_method",
+                "provenance": _provenance("source", "ecommerce"),
+                "schedule_policy": "manual_refresh_only",
                 "json_data": {
                     "id": "amazon-bsr-keepa-air-filter",
                     "title": "Amazon BSR + Keepa price/rank sample",
@@ -493,7 +923,7 @@ async def _merge_collection_layer(
                     ],
                 },
             },
-            schedule_cron="*/30 * * * *",
+            schedule_cron=None,
             enabled=True,
             created_at=now - timedelta(days=13),
             updated_at=now,
@@ -507,6 +937,8 @@ async def _merge_collection_layer(
             url=None,
             config={
                 "entity_type": "social_topic",
+                "provenance": _provenance("source", "social"),
+                "schedule_policy": "manual_refresh_only",
                 "json_data": {
                     "id": "ai-scraping-methods-social",
                     "name": "AI scraping methods",
@@ -522,7 +954,7 @@ async def _merge_collection_layer(
                     ],
                 },
             },
-            schedule_cron="0 */6 * * *",
+            schedule_cron=None,
             enabled=True,
             created_at=now - timedelta(days=12),
             updated_at=now,
@@ -538,13 +970,15 @@ async def _merge_collection_layer(
                 "url": "https://www.scrapingbee.com/",
                 "extract_mode": "main_content",
                 "freshness_target_hours": DOMAIN_FRESHNESS_TARGETS["competitor"]["target_hours"],
+                "provenance": _provenance("source", "competitor"),
+                "schedule_policy": "manual_refresh_only",
                 "method": {
                     "platform": "public web",
                     "fields": ["title", "text_content", "html_content"],
                     "use_case": "竞品定位、定价和反爬能力页面变化监控",
                 },
             },
-            schedule_cron="0 8 * * *",
+            schedule_cron=None,
             enabled=True,
             created_at=now - timedelta(days=11),
             updated_at=now,
@@ -560,9 +994,15 @@ async def _merge_collection_layer(
             source_id=context.source_ids["osint"],
             collector_type="github_repo",
             name="Scrapy GitHub 指标采集",
-            schedule_cron="0 */6 * * *",
+            schedule_cron=None,
             status="enabled",
-            config={"owner": "scrapy", "repo": "scrapy", "freshness_target_hours": 6},
+            config={
+                "owner": "scrapy",
+                "repo": "scrapy",
+                "freshness_target_hours": 6,
+                "provenance": _provenance("collection_task", "osint"),
+                "schedule_policy": "manual_refresh_only",
+            },
             success_count=96,
             failure_count=1,
             last_run_at=now - timedelta(minutes=28),
@@ -576,9 +1016,14 @@ async def _merge_collection_layer(
             source_id=context.source_ids["amazon"],
             collector_type="manual_json",
             name="Amazon BSR / Keepa 指标导入",
-            schedule_cron="*/30 * * * *",
+            schedule_cron=None,
             status="enabled",
-            config={"schema": "product_method_snapshot", "freshness_target_hours": 12},
+            config={
+                "schema": "product_method_snapshot",
+                "freshness_target_hours": 12,
+                "provenance": _provenance("collection_task", "ecommerce"),
+                "schedule_policy": "manual_refresh_only",
+            },
             success_count=128,
             failure_count=2,
             last_run_at=now - timedelta(minutes=18),
@@ -592,9 +1037,14 @@ async def _merge_collection_layer(
             source_id=context.source_ids["social"],
             collector_type="manual_json",
             name="社媒热点方法样本导入",
-            schedule_cron="0 */6 * * *",
+            schedule_cron=None,
             status="enabled",
-            config={"schema": "social_method_snapshot", "freshness_target_hours": 6},
+            config={
+                "schema": "social_method_snapshot",
+                "freshness_target_hours": 6,
+                "provenance": _provenance("collection_task", "social"),
+                "schedule_policy": "manual_refresh_only",
+            },
             success_count=64,
             failure_count=0,
             last_run_at=now - timedelta(hours=1),
@@ -608,9 +1058,14 @@ async def _merge_collection_layer(
             source_id=context.source_ids["competitor"],
             collector_type="generic_web",
             name="竞品公开页面快照采集",
-            schedule_cron="0 8 * * *",
+            schedule_cron=None,
             status="enabled",
-            config={"url": "https://www.scrapingbee.com/", "freshness_target_hours": 24},
+            config={
+                "url": "https://www.scrapingbee.com/",
+                "freshness_target_hours": 24,
+                "provenance": _provenance("collection_task", "competitor"),
+                "schedule_policy": "manual_refresh_only",
+            },
             success_count=44,
             failure_count=1,
             last_run_at=now - timedelta(minutes=42),
@@ -861,6 +1316,7 @@ def _raw_record(
     content: dict[str, Any],
     collected_at: datetime,
 ) -> RawRecord:
+    domain = _domain_for_demo_key(key)
     return RawRecord(
         id=context.raw_record_ids[key],
         workspace_id=context.workspace_id,
@@ -869,12 +1325,24 @@ def _raw_record(
         task_run_id=task_run_id,
         record_type="metric_snapshot",
         source_url=source_url,
-        content=content,
+        content={**content, "provenance": _provenance("raw_record", domain)},
         content_hash=str(context.raw_record_ids[key]).replace("-", ""),
         screenshot_url=None,
         collected_at=collected_at,
         created_at=collected_at,
     )
+
+
+def _domain_for_demo_key(key: str) -> str:
+    if key.startswith("amazon"):
+        return "ecommerce"
+    if key.startswith("osint"):
+        return "osint"
+    if key.startswith("social"):
+        return "social"
+    if key.startswith("competitor"):
+        return "competitor"
+    return "mixed"
 
 
 async def _merge_entity_layer(
@@ -1061,6 +1529,7 @@ async def _merge_entity_layer(
                     "metric": "stars",
                     "window": "72h",
                     "freshness_target_hours": 6,
+                    "provenance": _provenance("signal", "osint"),
                 },
                 detected_at=now - timedelta(minutes=27),
             ),
@@ -1083,6 +1552,7 @@ async def _merge_entity_layer(
                     "threshold": 0.15,
                     "currency": "USD",
                     "freshness_target_hours": 12,
+                    "provenance": _provenance("signal", "ecommerce"),
                 },
                 detected_at=now - timedelta(minutes=18),
             ),
@@ -1104,6 +1574,7 @@ async def _merge_entity_layer(
                     "metric": "mentions_24h",
                     "threshold": 1.5,
                     "freshness_target_hours": 6,
+                    "provenance": _provenance("signal", "social"),
                 },
                 detected_at=now - timedelta(hours=1),
             ),
@@ -1125,6 +1596,7 @@ async def _merge_entity_layer(
                     "metric": "content_hash",
                     "change_ratio": 0.21,
                     "freshness_target_hours": 24,
+                    "provenance": _provenance("signal", "competitor"),
                 },
                 detected_at=now - timedelta(minutes=44),
             ),
@@ -1139,11 +1611,16 @@ def _snapshot(
     metrics: dict[str, Any],
     captured_at: datetime,
 ) -> EntitySnapshot:
+    domain = _domain_for_demo_key(snapshot_key)
     return EntitySnapshot(
         id=context.snapshot_ids[snapshot_key],
         entity_id=context.entity_ids[entity_key],
         raw_record_id=context.raw_record_ids[snapshot_key],
-        snapshot_data={"metrics": metrics, "source": "demo_seed"},
+        snapshot_data={
+            "metrics": metrics,
+            "source": "demo_seed",
+            "provenance": _provenance("entity_snapshot", domain),
+        },
         metrics=metrics,
         captured_at=captured_at,
         created_at=captured_at,
@@ -1260,6 +1737,7 @@ async def _merge_intelligence_layer(
                 url="https://github.com/scrapy/scrapy",
                 excerpt="stars: 54280, forks: 11020, open_issues: 618",
                 highlighted_text="GitHub REST API repo metrics, freshness target 6h",
+                reference_metadata=_provenance("evidence", "osint"),
                 created_at=now - timedelta(minutes=26),
             ),
             Evidence(
@@ -1273,6 +1751,7 @@ async def _merge_intelligence_layer(
                 url="https://www.amazon.com/Best-Sellers/zgbs",
                 excerpt="price: 39.9, rank: 6, review_count: 1840",
                 highlighted_text="price drop -20.0%, BSR rank improved to 6",
+                reference_metadata=_provenance("evidence", "ecommerce"),
                 created_at=now - timedelta(minutes=16),
             ),
             Evidence(
@@ -1286,6 +1765,7 @@ async def _merge_intelligence_layer(
                 url="https://www.tiktok.com/business/creativecenter/",
                 excerpt="mentions_24h: 690000, engagement_rate: 0.093",
                 highlighted_text="Creative Center + Reddit API trend watch, traffic spike +228.6%",
+                reference_metadata=_provenance("evidence", "social"),
                 created_at=now - timedelta(hours=1),
             ),
             Evidence(
@@ -1299,6 +1779,7 @@ async def _merge_intelligence_layer(
                 url="https://www.scrapingbee.com/",
                 excerpt="text_length: 21400, html_length: 96700",
                 highlighted_text="page_changed change_ratio=0.21",
+                reference_metadata=_provenance("evidence", "competitor"),
                 created_at=now - timedelta(minutes=43),
             ),
         ],
@@ -1374,7 +1855,11 @@ async def _merge_reports_alerts_notifications(
                 rule_id=context.alert_rule_ids["price"],
                 signal_id=context.signal_ids["amazon-price-drop"],
                 status="sent",
-                payload={"title": "价格跌幅超过 15%", "delta_ratio": -0.2004},
+                payload={
+                    "title": "价格跌幅超过 15%",
+                    "delta_ratio": -0.2004,
+                    "provenance": _provenance("alert_event", "ecommerce"),
+                },
                 triggered_at=now - timedelta(minutes=15),
                 sent_at=now - timedelta(minutes=14),
             ),
@@ -1383,7 +1868,11 @@ async def _merge_reports_alerts_notifications(
                 rule_id=context.alert_rule_ids["traffic"],
                 signal_id=context.signal_ids["social-mentions-spike"],
                 status="triggered",
-                payload={"title": "流量增长超过 150%", "delta_ratio": 2.2857},
+                payload={
+                    "title": "流量增长超过 150%",
+                    "delta_ratio": 2.2857,
+                    "provenance": _provenance("alert_event", "social"),
+                },
                 triggered_at=now - timedelta(hours=1),
                 sent_at=None,
             ),
@@ -1392,7 +1881,11 @@ async def _merge_reports_alerts_notifications(
                 rule_id=context.alert_rule_ids["competitor"],
                 signal_id=context.signal_ids["competitor-page-change"],
                 status="sent",
-                payload={"title": "竞品页面发生中等以上变化", "delta_ratio": 0.21},
+                payload={
+                    "title": "竞品页面发生中等以上变化",
+                    "delta_ratio": 0.21,
+                    "provenance": _provenance("alert_event", "competitor"),
+                },
                 triggered_at=now - timedelta(minutes=43),
                 sent_at=now - timedelta(minutes=42),
             ),
@@ -1444,7 +1937,30 @@ async def _merge_reports_alerts_notifications(
     )
 
 
+async def _run_cleanup_command(dry_run: bool) -> None:
+    async with async_session_factory() as session:
+        report = await cleanup_demo_noise(session, dry_run=dry_run)
+        if not dry_run:
+            await session.commit()
+    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2, sort_keys=True))
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Seed and maintain curated demo data.")
+    parser.add_argument(
+        "--cleanup-demo-noise",
+        action="store_true",
+        help="Audit or remove non-curated runtime data from the demo workspace.",
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Execute cleanup. Without this flag cleanup runs in dry-run mode.",
+    )
+    args = parser.parse_args()
+    if args.cleanup_demo_noise:
+        asyncio.run(_run_cleanup_command(dry_run=not args.execute))
+        return
     asyncio.run(seed_demo_data())
 
 

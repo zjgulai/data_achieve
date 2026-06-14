@@ -45,7 +45,7 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 
 ## 测试账号策略
 
-推荐使用一次性账号，而不是 demo 账号。
+必须使用一次性账号，禁止使用 demo 账号。
 
 执行前置：
 
@@ -55,7 +55,7 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 4. 使用注册返回 cookie 调用 `/api/projects` 创建 `osint` 项目。
 5. 把一次性 email/password 传给 Playwright。
 
-这样可以隔离测试产生的 source、task、report、notification，避免污染演示账号最新情报排序。
+这样可以隔离测试产生的 source、task、report、notification，避免污染演示账号最新情报排序。GitHub Actions 的 `web-real-e2e` job 已按此策略执行。
 
 ## 覆盖范围
 
@@ -77,7 +77,7 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 夜间执行建议：
 
 1. 在 GitHub Actions 增加 `schedule`，频率不高于每日一次。
-2. 使用单独的 `E2E_BASE_URL`、`E2E_EMAIL_PREFIX`、`E2E_PASSWORD_SEED` 或动态注册策略。
+2. 使用动态注册策略创建 `e2e-` 一次性用户。
 3. 夜间只跑真实 API E2E，不执行部署。
 4. 失败时保留 Playwright trace。
 5. 连续失败 2 次再升级为发布阻塞，避免短时网络抖动误报。

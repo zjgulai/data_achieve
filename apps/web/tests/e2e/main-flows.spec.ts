@@ -351,13 +351,12 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("订阅已保存")).toBeVisible();
     await expect(page.getByText(/09:30/).first()).toBeVisible();
     await page.getByRole("button", { name: "立即执行" }).first().click();
-    const subscriptionManualNotice = page.getByText("订阅已手动执行");
-    if ((await subscriptionManualNotice.count()) > 0) {
-      await expect(subscriptionManualNotice).toBeVisible();
-    }
-    await expect(page.getByText(/部分成功|成功/).first()).toBeVisible({
+    await expect(page.getByText("订阅已手动执行")).toBeVisible({
       timeout: 30_000,
     });
+    await expect(
+      page.getByRole("button", { name: "立即执行" }).first(),
+    ).toBeEnabled();
     await page.getByRole("button", { name: "执行历史" }).first().click();
     await expect(page.getByText("手动触发").first()).toBeVisible();
     const retryButton = page.getByRole("button", { name: "重试" }).first();
