@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
+import ipaddress
+import socket
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -17,6 +20,10 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+
+HTTP_REDIRECT_STATUS_CODES = {301, 302, 303, 307, 308}
+MAX_REDIRECTS = 3
+IpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
 
 class GenericWebCollector(BaseCollector):
@@ -79,11 +86,86 @@ class GenericWebCollector(BaseCollector):
 
 
 async def _fetch_html(client: httpx.AsyncClient, url: str) -> str:
+    current_url = url
+    for redirect_count in range(MAX_REDIRECTS + 1):
+        await _assert_public_http_url(current_url)
+        try:
+            response = await collector_get_with_retry(client, current_url)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in HTTP_REDIRECT_STATUS_CODES:
+                raise CollectorError(collector_http_error_message(exc)) from exc
+            if redirect_count == MAX_REDIRECTS:
+                raise CollectorError("http_redirect_limit_exceeded") from exc
+            location = exc.response.headers.get("location")
+            if location is None or location.strip() == "":
+                raise CollectorError("http_redirect_invalid: missing location header") from exc
+            current_url = urljoin(str(exc.request.url), location)
+            continue
+        except httpx.HTTPError as exc:
+            raise CollectorError(collector_http_error_message(exc)) from exc
+        return response.text
+    raise CollectorError("http_redirect_limit_exceeded")
+
+
+async def _assert_public_http_url(url: str) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
+        raise CollectorError("url must be an absolute HTTP or HTTPS URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise CollectorError("url_userinfo_not_allowed: credentials are not allowed in URLs")
+    hostname = parsed.hostname.rstrip(".").lower()
+    if hostname in {"localhost", "localhost.localdomain"}:
+        raise CollectorError("url_host_not_public: host must resolve only to public addresses")
+    addresses = _parse_ip_literal(hostname)
+    if addresses is None:
+        addresses = await _resolve_host_ips(hostname)
+    if any(not _is_public_address(address) for address in addresses):
+        raise CollectorError("url_host_not_public: host must resolve only to public addresses")
+
+
+def _parse_ip_literal(hostname: str) -> list[IpAddress] | None:
     try:
-        response = await collector_get_with_retry(client, url)
-    except httpx.HTTPError as exc:
-        raise CollectorError(collector_http_error_message(exc)) from exc
-    return response.text
+        return [ipaddress.ip_address(hostname)]
+    except ValueError:
+        return None
+
+
+async def _resolve_host_ips(hostname: str) -> list[IpAddress]:
+    loop = asyncio.get_running_loop()
+    try:
+        address_info = await loop.run_in_executor(
+            None,
+            socket.getaddrinfo,
+            hostname,
+            None,
+            socket.AF_UNSPEC,
+            socket.SOCK_STREAM,
+        )
+    except socket.gaierror as exc:
+        raise CollectorError("url_host_unresolvable: host could not be resolved") from exc
+    addresses: list[IpAddress] = []
+    for entry in address_info:
+        sockaddr = entry[4]
+        ip_text = str(sockaddr[0])
+        try:
+            addresses.append(ipaddress.ip_address(ip_text))
+        except ValueError as exc:
+            raise CollectorError("url_host_invalid: resolved address is invalid") from exc
+    if not addresses:
+        raise CollectorError("url_host_unresolvable: host could not be resolved")
+    return addresses
+
+
+def _is_public_address(address: IpAddress) -> bool:
+    return (
+        address.is_global
+        and not address.is_loopback
+        and not address.is_link_local
+        and not address.is_multicast
+        and not address.is_private
+        and not address.is_reserved
+        and not address.is_unspecified
+    )
 
 
 class ExtractedHtml:

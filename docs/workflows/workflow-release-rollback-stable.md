@@ -70,7 +70,7 @@ ssh -i /Users/pray/project/data_scrapy/ai_video.pem ubuntu@101.34.52.232 \
 3. 同步代码到服务器 `/opt/data-achieve-scrapy/app`。
 4. 在服务器运行 compose config 或 preflight。
 5. 构建镜像。
-6. 启动服务。
+6. 启动数据库。
 7. 执行 Alembic 迁移。
 8. 必要时执行 demo seed。
 9. 运行 API smoke。
@@ -82,7 +82,7 @@ ssh -i /Users/pray/project/data_scrapy/ai_video.pem ubuntu@101.34.52.232 \
 ```bash
 cd /opt/data-achieve-scrapy/app
 docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml build
-docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d db
 ```
 
 迁移：
@@ -90,6 +90,12 @@ docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-com
 ```bash
 docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml \
   run --rm api alembic upgrade head
+```
+
+启动 API/Web/Edge：
+
+```bash
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d api web edge
 ```
 
 demo seed：
@@ -121,7 +127,7 @@ bash scripts/smoke-api-scrapy.sh
 
 发布完成必须满足：
 
-1. `curl -ks https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`。
+1. `curl -ks https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`、`database=connected`、`schema=current`。
 2. `docker compose ps` 显示 api、db、edge、web healthy。
 3. 主要页面返回 200：`/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`。
 4. 演示账号数据域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
@@ -148,7 +154,10 @@ cd /opt/data-achieve-scrapy/app
 git log --oneline -5
 git revert <bad_commit>
 docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml build
-docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d db
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml \
+  run --rm api alembic upgrade head
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d api web edge
 ```
 
 如果服务器目录不是 git 工作区，使用上一版 rsync 备份目录恢复，再重建容器。

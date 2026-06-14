@@ -96,6 +96,12 @@ jobs:
       - name: Next.js build
         run: pnpm -C apps/web build
 
+      - name: Next.js production API build guard
+        env:
+          NEXT_PUBLIC_API_URL: "https://scrapy.lute-tlz-dddd.top"
+          NEXT_PUBLIC_MOCK_API: "false"
+        run: pnpm -C apps/web build
+
       - name: Install Playwright Chromium
         run: pnpm -C apps/web exec playwright install --with-deps chromium
 

@@ -1,5 +1,5 @@
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-export const mockApiEnabled = process.env.NEXT_PUBLIC_MOCK_API !== "false";
+export const mockApiEnabled = process.env.NEXT_PUBLIC_MOCK_API === "true";
 
 export class ApiRequestError extends Error {
   status: number;

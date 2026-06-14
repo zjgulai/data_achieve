@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import ipaddress
+
 import httpx
 import pytest
 
+from data_intelligence_hub.collectors import generic_web as generic_web_module
 from data_intelligence_hub.collectors.base import (
     HTTP_TIMEOUT_SECONDS,
     HTTP_USER_AGENT,
@@ -13,12 +16,19 @@ from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 
+TestIpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
+
 
 def assert_request_policy(request: httpx.Request) -> None:
     assert request.headers["user-agent"] == HTTP_USER_AGENT
     timeout = request.extensions.get("timeout")
     assert isinstance(timeout, dict)
     assert timeout["connect"] == HTTP_TIMEOUT_SECONDS
+
+
+async def resolve_as_public_host(hostname: str) -> list[TestIpAddress]:
+    del hostname
+    return [ipaddress.IPv4Address("93.184.216.34")]
 
 
 @pytest.mark.asyncio
@@ -143,7 +153,11 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
 
 
 @pytest.mark.asyncio
-async def test_generic_web_collector_collects_html_snapshot() -> None:
+async def test_generic_web_collector_collects_html_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
         return httpx.Response(
@@ -167,6 +181,40 @@ async def test_generic_web_collector_collects_html_snapshot() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generic_web_collector_rejects_private_network_hosts() -> None:
+    for unsafe_url in [
+        "http://127.0.0.1/admin",
+        "http://10.0.0.1/admin",
+        "http://169.254.169.254/latest/meta-data",
+        "http://[::1]/admin",
+        "http://localhost/admin",
+    ]:
+        collector = GenericWebCollector({"url": unsafe_url})
+        with pytest.raises(CollectorError, match="url_host_not_public"):
+            await collector.test()
+
+
+@pytest.mark.asyncio
+async def test_generic_web_collector_revalidates_redirect_targets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+    requested_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        assert_request_policy(request)
+        return httpx.Response(302, headers={"location": "http://127.0.0.1/admin"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = GenericWebCollector({"url": "https://example.com"}, client)
+        with pytest.raises(CollectorError, match="url_host_not_public"):
+            await collector.collect()
+
+    assert requested_urls == ["https://example.com"]
+
+
+@pytest.mark.asyncio
 async def test_github_topic_collector_classifies_rate_limit_failure() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
@@ -179,7 +227,11 @@ async def test_github_topic_collector_classifies_rate_limit_failure() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generic_web_collector_classifies_connection_failure() -> None:
+async def test_generic_web_collector_classifies_connection_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
