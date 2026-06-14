@@ -44,6 +44,13 @@ type CollectionTaskResponse = {
   name: string;
   schedule_cron: string | null;
   status: CollectionTask["status"];
+  project_name?: string | null;
+  project_domain?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  freshness_target_hours?: number;
+  freshness_status?: CollectionTask["freshnessStatus"];
+  stale_hours?: number | null;
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
@@ -51,7 +58,9 @@ type CollectionTaskResponse = {
   latest_run_error_message?: string | null;
   latest_run_records_count?: number | null;
   latest_run_entities_count?: number | null;
+  latest_run_started_at?: string | null;
   latest_run_finished_at?: string | null;
+  latest_run_created_at?: string | null;
 };
 
 export async function listCollectors(): Promise<Collector[]> {
@@ -160,6 +169,13 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
       name: task?.name ?? "Demo Task",
       scheduleCron: task?.scheduleCron ?? null,
       status: "enabled",
+      projectName: null,
+      projectDomain: null,
+      sourceName: task?.name ?? null,
+      sourceUrl: null,
+      freshnessTargetHours: 24,
+      freshnessStatus: "never_run",
+      staleHours: null,
       successCount: 0,
       failureCount: 0,
       lastRunAt: null,
@@ -167,7 +183,9 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
       latestRunErrorMessage: null,
       latestRunRecordsCount: null,
       latestRunEntitiesCount: null,
+      latestRunStartedAt: null,
       latestRunFinishedAt: null,
+      latestRunCreatedAt: null,
     };
   }
   const response = await apiFetch<CollectionTaskResponse>(`/api/sources/${sourceId}/enable`, {
@@ -231,6 +249,13 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     name: response.name,
     scheduleCron: response.schedule_cron,
     status: response.status,
+    projectName: response.project_name ?? null,
+    projectDomain: response.project_domain ?? null,
+    sourceName: response.source_name ?? null,
+    sourceUrl: response.source_url ?? null,
+    freshnessTargetHours: response.freshness_target_hours ?? 24,
+    freshnessStatus: response.freshness_status ?? "unknown",
+    staleHours: response.stale_hours ?? null,
     successCount: response.success_count,
     failureCount: response.failure_count,
     lastRunAt: response.last_run_at,
@@ -238,6 +263,8 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     latestRunErrorMessage: response.latest_run_error_message ?? null,
     latestRunRecordsCount: response.latest_run_records_count ?? null,
     latestRunEntitiesCount: response.latest_run_entities_count ?? null,
+    latestRunStartedAt: response.latest_run_started_at ?? null,
     latestRunFinishedAt: response.latest_run_finished_at ?? null,
+    latestRunCreatedAt: response.latest_run_created_at ?? null,
   };
 }

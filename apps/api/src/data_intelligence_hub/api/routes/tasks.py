@@ -33,7 +33,14 @@ async def list_task_items(
 ) -> list[CollectionTaskResponse]:
     tasks = await get_collection_tasks(session, context.workspace, project_id, status_filter)
     return [
-        CollectionTaskResponse.from_task(task.task, latest_run=task.latest_run)
+        CollectionTaskResponse.from_task(
+            task.task,
+            latest_run=task.latest_run,
+            project_name=task.project_name,
+            project_domain=task.project_domain,
+            source_name=task.source_name,
+            source_url=task.source_url,
+        )
         for task in tasks
     ]
 

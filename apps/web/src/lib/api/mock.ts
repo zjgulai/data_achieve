@@ -246,7 +246,9 @@ export function getMockSources(): Source[] {
 }
 
 export function getMockTasks(): CollectionTask[] {
-  return [
+  const tasks: Array<
+    Omit<CollectionTask, "freshnessStatus" | "freshnessTargetHours" | "staleHours">
+  > = [
     {
       id: "task_twitter_keywords",
       projectId: "project_osint",
@@ -368,6 +370,34 @@ export function getMockTasks(): CollectionTask[] {
       lastRunAt: "2026-06-11T16:12:08.000Z",
     },
   ];
+  return tasks.map(withMockTaskFreshness);
+}
+
+function withMockTaskFreshness(task: Omit<CollectionTask, "freshnessStatus" | "freshnessTargetHours" | "staleHours">): CollectionTask {
+  const freshnessStatus =
+    task.status === "paused" || task.status === "disabled"
+      ? task.status
+      : task.failureCount >= 10
+        ? "failed"
+        : "fresh";
+  return {
+    ...task,
+    projectName: "AI Scrapy Tools",
+    projectDomain: "osint",
+    sourceName: task.name,
+    sourceUrl: null,
+    freshnessTargetHours: 24,
+    freshnessStatus,
+    staleHours: 0,
+    latestRunStatus: freshnessStatus === "failed" ? "failed" : "success",
+    latestRunErrorMessage:
+      freshnessStatus === "failed" ? "Mock task reached failure threshold." : null,
+    latestRunRecordsCount: Math.max(task.successCount, 0),
+    latestRunEntitiesCount: Math.max(Math.round(task.successCount / 10), 0),
+    latestRunStartedAt: task.lastRunAt,
+    latestRunFinishedAt: task.lastRunAt,
+    latestRunCreatedAt: task.lastRunAt,
+  };
 }
 
 export function getMockTaskRun(taskId: string): TaskRun {
@@ -381,6 +411,7 @@ export function getMockTaskRun(taskId: string): TaskRun {
       recordsCount: 42,
       entitiesCount: 12,
       errorMessage: null,
+      createdAt: new Date().toISOString(),
       logs: [
         { step: "task_run_created", message: "Manual retry requested for LinkedIn company feed." },
         { step: "rate_limit_window_checked", message: "Previous 429 window has expired." },
@@ -399,6 +430,7 @@ export function getMockTaskRun(taskId: string): TaskRun {
     recordsCount: 1,
     entitiesCount: 1,
     errorMessage: null,
+    createdAt: new Date().toISOString(),
     logs: [
       { step: "task_run_created", message: "Manual run requested." },
       { step: "manual_json_collected", message: "Collected manual JSON payload." },

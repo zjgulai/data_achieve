@@ -6,12 +6,18 @@ from typing import NamedTuple
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 
 
 class TaskWithLatestRun(NamedTuple):
     task: CollectionTask
     latest_run: TaskRun | None
+    project_name: str
+    project_domain: str
+    source_name: str
+    source_url: str | None
 
 
 async def get_task_by_source(
@@ -54,7 +60,9 @@ async def list_tasks_with_latest_run(
         .subquery()
     )
     statement = (
-        select(CollectionTask, TaskRun)
+        select(CollectionTask, TaskRun, Project.name, Project.domain, Source.name, Source.url)
+        .join(Project, CollectionTask.project_id == Project.id)
+        .join(Source, CollectionTask.source_id == Source.id)
         .outerjoin(latest_runs, CollectionTask.id == latest_runs.c.task_id)
         .outerjoin(
             TaskRun,
@@ -73,8 +81,15 @@ async def list_tasks_with_latest_run(
         statement = statement.where(CollectionTask.status == status)
     result = await session.execute(statement)
     return [
-        TaskWithLatestRun(task=task, latest_run=latest_run)
-        for task, latest_run in result.all()
+        TaskWithLatestRun(
+            task=task,
+            latest_run=latest_run,
+            project_name=project_name,
+            project_domain=project_domain,
+            source_name=source_name,
+            source_url=source_url,
+        )
+        for task, latest_run, project_name, project_domain, source_name, source_url in result.all()
     ]
 
 

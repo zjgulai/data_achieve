@@ -225,11 +225,20 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     assert tasks_response.status_code == 200
     listed_task = tasks_response.json()[0]
     assert listed_task["id"] == task["id"]
+    assert listed_task["project_name"] == "AI Scrapy Tools"
+    assert listed_task["project_domain"] == "osint"
+    assert listed_task["source_name"] == "Manual Product JSON"
+    assert listed_task["source_url"] is None
+    assert listed_task["freshness_target_hours"] == 24
+    assert listed_task["freshness_status"] == "fresh"
+    assert listed_task["stale_hours"] == 0
     assert listed_task["latest_run_status"] == duplicate_run["status"]
     assert listed_task["latest_run_error_message"] is None
     assert listed_task["latest_run_records_count"] == duplicate_run["records_count"]
     assert listed_task["latest_run_entities_count"] == duplicate_run["entities_count"]
+    assert listed_task["latest_run_started_at"] == duplicate_run["started_at"]
     assert listed_task["latest_run_finished_at"] == duplicate_run["finished_at"]
+    assert listed_task["latest_run_created_at"] == duplicate_run["created_at"]
 
     runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
     assert runs_response.status_code == 200

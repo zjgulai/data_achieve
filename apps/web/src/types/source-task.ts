@@ -46,6 +46,16 @@ export type SourceTestResult = {
 
 export type CollectionTaskStatus = "draft" | "enabled" | "running" | "paused" | "disabled";
 
+export type CollectionTaskFreshnessStatus =
+  | "disabled"
+  | "failed"
+  | "fresh"
+  | "never_run"
+  | "paused"
+  | "running"
+  | "stale"
+  | "unknown";
+
 export type CollectionTask = {
   id: string;
   projectId: string;
@@ -54,6 +64,13 @@ export type CollectionTask = {
   name: string;
   scheduleCron: string | null;
   status: CollectionTaskStatus;
+  projectName?: string | null;
+  projectDomain?: string | null;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  freshnessTargetHours: number;
+  freshnessStatus: CollectionTaskFreshnessStatus;
+  staleHours: number | null;
   successCount: number;
   failureCount: number;
   lastRunAt: string | null;
@@ -61,7 +78,9 @@ export type CollectionTask = {
   latestRunErrorMessage?: string | null;
   latestRunRecordsCount?: number | null;
   latestRunEntitiesCount?: number | null;
+  latestRunStartedAt?: string | null;
   latestRunFinishedAt?: string | null;
+  latestRunCreatedAt?: string | null;
 };
 
 export type TaskRun = {
@@ -74,6 +93,7 @@ export type TaskRun = {
   entitiesCount: number;
   errorMessage: string | null;
   logs: Array<{ step: string; message: string; timestamp?: string }>;
+  createdAt: string;
 };
 
 export const sourceDomainDefaults: Record<CollectorType, ProjectDomain> = {
