@@ -181,6 +181,13 @@ pnpm -C apps/web test:e2e
 
 可选（手动部署验收）：触发 `.github/workflows/ci.yml` 的 `workflow_dispatch`，并可传入 `base_url`（默认 `https://scrapy.lute-tlz-dddd.top`）。CI 会先注册一次性 `e2e-` 用户并创建隔离项目，再执行 `apps/web test:e2e:real` 完成真实 API 回归。
 
+真实 API E2E 后清理 fixture：
+
+```bash
+SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh
+SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh --execute
+```
+
 CI 不启动 Docker，不执行 PostgreSQL 实库 migration。交付前仍需在 Docker daemon 可用后运行：
 
 ```bash

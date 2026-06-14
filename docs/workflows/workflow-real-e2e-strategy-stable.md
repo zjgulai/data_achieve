@@ -100,9 +100,22 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 
 中期：
 
-1. 新增 admin-only cleanup script。
-2. 删除超过 7 天的 `e2e-` 用户 workspace。
-3. cleanup script 先 dry-run 输出数量，再执行。
+1. 已新增服务器侧 cleanup script：`scripts/cleanup-e2e-fixtures.sh`。
+2. 默认只审计或删除超过 7 天的 `e2e-*@example.com` 用户及其 workspace 全链路数据。
+3. cleanup script 默认 dry-run，只有显式 `--execute` 才写库。
+
+执行方式：
+
+```bash
+# dry-run
+SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh
+
+# 清理超过 7 天的 E2E fixture
+SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh --execute
+
+# 部署验收后立即清理本轮 E2E fixture
+SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh --older-than-hours 0 --execute
+```
 
 ## 通过标准
 
