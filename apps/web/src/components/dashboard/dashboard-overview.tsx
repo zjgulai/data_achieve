@@ -88,6 +88,9 @@ export function DashboardOverview({ domain }: { domain?: string }) {
   }
 
   const primaryIntelligence = dashboard.topIntelligence[0] ?? null;
+  const latestCollectionLabel = dashboard.freshness.latestCollectionAt
+    ? `最近采集 ${formatRelativeTime(dashboard.freshness.latestCollectionAt)}`
+    : "尚无采集记录";
 
   return (
     <div className="grid min-w-0 gap-5">
@@ -95,8 +98,16 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Pill tone="rose">半月数据周期 2026-06-H1</Pill>
-              <Pill tone="neutral">生成 2026/6/12 10:23</Pill>
+              <Pill tone="rose">实时概览</Pill>
+              <Pill tone="neutral">生成 {formatDateTime(dashboard.freshness.generatedAt)}</Pill>
+              <Pill tone={dashboard.freshness.latestCollectionAt ? "green" : "red"}>
+                {latestCollectionLabel}
+              </Pill>
+              <Pill tone={dashboard.freshness.staleEnabledTasks > 0 ? "red" : "green"}>
+                {dashboard.freshness.staleEnabledTasks > 0
+                  ? `${dashboard.freshness.staleEnabledTasks} 个启用任务过期`
+                  : "启用任务新鲜度正常"}
+              </Pill>
               <Pill tone={dashboard.activeAlerts > 0 ? "red" : "green"}>
                 {dashboard.activeAlerts > 0 ? `${dashboard.activeAlerts} 条活跃预警` : "暂无活跃预警"}
               </Pill>
@@ -118,6 +129,9 @@ export function DashboardOverview({ domain }: { domain?: string }) {
                   <p className="mt-1 line-clamp-2 text-sm font-semibold text-[#1D1D1F]">
                     {primaryIntelligence.title}
                   </p>
+                  <p className="mt-2 text-xs font-medium text-[#9E6A76]">
+                    更新 {formatRelativeTime(primaryIntelligence.updatedAt)}
+                  </p>
                   <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#C25B6E]">
                     查看详情
                     <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -131,7 +145,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
-          delta={`${dashboard.recentRuns} recent runs`}
+          delta={latestCollectionLabel}
           icon={RadioTower}
           label="情报总量"
           tone="rose"
@@ -206,6 +220,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
                   <Tag>{item.type}</Tag>
                   <Tag>{item.status}</Tag>
                   <Tag>{item.evidenceCount} evidence</Tag>
+                  <Tag>更新 {formatRelativeTime(item.updatedAt)}</Tag>
                 </div>
               </Link>
             ))}
@@ -240,9 +255,32 @@ export function DashboardOverview({ domain }: { domain?: string }) {
               <StatusRow label="任务总数" value={dashboard.taskHealth.totalTasks} />
               <StatusRow label="启用任务" value={dashboard.taskHealth.enabledTasks} />
               <StatusRow label="失败任务" tone={dashboard.taskHealth.failedTasks > 0 ? "red" : "green"} value={dashboard.taskHealth.failedTasks} />
+              <StatusRow
+                label="过期启用任务"
+                tone={dashboard.freshness.staleEnabledTasks > 0 ? "red" : "green"}
+                value={dashboard.freshness.staleEnabledTasks}
+              />
               <StatusRow label="最近运行记录" value={dashboard.taskHealth.recentRuns} />
               <StatusRow label="数据源数量" value={dashboard.sourceCount} />
+              <StatusRow label="最近采集" value={latestCollectionLabel} />
             </div>
+            {dashboard.freshness.staleTasks.length > 0 ? (
+              <div className="mt-4 grid gap-2">
+                {dashboard.freshness.staleTasks.map((task) => (
+                  <div className="rounded-xl border border-[#FFD7DF] bg-[#FFF7F8] p-3 text-xs" key={task.taskId}>
+                    <p className="font-semibold text-[#C25B6E]">{task.taskName}</p>
+                    <p className="mt-1 leading-5 text-[#7A3D49]">
+                      {task.lastRunAt
+                        ? `上次运行 ${formatRelativeTime(task.lastRunAt)}，过期 ${formatStaleHours(task.staleHours)}`
+                        : "启用后尚未产生采集运行"}
+                    </p>
+                    <p className="mt-1 text-[#9E6A76]">
+                      {task.collectorType} · 目标 {task.freshnessTargetHours}h
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {dashboard.taskHealth.recentFailures.length > 0 ? (
               <div className="mt-4 grid gap-2">
                 {dashboard.taskHealth.recentFailures.map((failure) => (
@@ -504,4 +542,53 @@ function clampPercent(value: number) {
 
 function formatNumber(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "无记录";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "时间无效";
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatRelativeTime(value: string | null | undefined) {
+  if (!value) {
+    return "无记录";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "时间无效";
+  }
+  const diffMs = Math.max(Date.now() - date.getTime(), 0);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) {
+    return "刚刚";
+  }
+  if (minutes < 60) {
+    return `${minutes} 分钟前`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} 小时前`;
+  }
+  return `${Math.floor(hours / 24)} 天前`;
+}
+
+function formatStaleHours(value: number | null) {
+  if (value === null) {
+    return "未计时";
+  }
+  if (value < 1) {
+    return `${Math.round(value * 60)} 分钟`;
+  }
+  return `${formatNumber(value)} 小时`;
 }

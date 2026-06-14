@@ -32,7 +32,10 @@ async def list_task_items(
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[CollectionTaskResponse]:
     tasks = await get_collection_tasks(session, context.workspace, project_id, status_filter)
-    return [CollectionTaskResponse.model_validate(task) for task in tasks]
+    return [
+        CollectionTaskResponse.from_task(task.task, latest_run=task.latest_run)
+        for task in tasks
+    ]
 
 
 @router.get("/{task_id}", response_model=CollectionTaskResponse)
@@ -45,7 +48,7 @@ async def get_task_item(
         task = await get_task_or_raise(session, context.workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return CollectionTaskResponse.model_validate(task)
+    return CollectionTaskResponse.from_task(task)
 
 
 @router.post("/{task_id}/run", response_model=TaskRunResponse, status_code=status.HTTP_201_CREATED)
@@ -73,7 +76,7 @@ async def pause_task_item(
         task = await pause_task(session, context.workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return CollectionTaskResponse.model_validate(task)
+    return CollectionTaskResponse.from_task(task)
 
 
 @router.post("/{task_id}/resume", response_model=CollectionTaskResponse)
@@ -86,7 +89,7 @@ async def resume_task_item(
         task = await resume_task(session, context.workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return CollectionTaskResponse.model_validate(task)
+    return CollectionTaskResponse.from_task(task)
 
 
 @router.get("/{task_id}/runs", response_model=list[TaskRunResponse])

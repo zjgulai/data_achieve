@@ -2,10 +2,12 @@ import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import { getMockDashboard } from "@/lib/api/mock";
 import type {
   DashboardFilters,
+  DashboardFreshness,
   DashboardSummary,
   DomainBreakdownItem,
   IntelligenceSummaryItem,
   RecentFailureItem,
+  DashboardStaleTaskItem,
   TypeBreakdownItem,
 } from "@/types/dashboard";
 
@@ -21,6 +23,7 @@ type DashboardResponse = {
   domain_breakdown: DomainBreakdownResponse[];
   top_intelligence: TopIntelligenceResponse[];
   task_health: TaskHealthResponse;
+  freshness: DashboardFreshnessResponse;
 };
 
 type TypeBreakdownResponse = {
@@ -46,6 +49,7 @@ type TopIntelligenceResponse = {
   final_score: number;
   status: string;
   created_at: string;
+  updated_at: string;
 };
 
 type TaskHealthResponse = {
@@ -62,6 +66,23 @@ type RecentFailureResponse = {
   status: string;
   error_message: string | null;
   created_at: string;
+};
+
+type DashboardFreshnessResponse = {
+  generated_at: string;
+  latest_collection_at: string | null;
+  stale_enabled_tasks: number;
+  stale_tasks: DashboardStaleTaskResponse[];
+};
+
+type DashboardStaleTaskResponse = {
+  task_id: string;
+  task_name: string;
+  collector_type: string;
+  status: string;
+  last_run_at: string | null;
+  freshness_target_hours: number;
+  stale_hours: number | null;
 };
 
 export async function getDashboardOverview(
@@ -110,6 +131,7 @@ function mapDashboard(response: DashboardResponse): DashboardSummary {
       recentRuns: response.task_health.recent_runs,
       recentFailures: response.task_health.recent_failures.map(mapRecentFailure),
     },
+    freshness: mapFreshness(response.freshness),
   };
 }
 
@@ -141,6 +163,7 @@ function mapTopIntelligence(response: TopIntelligenceResponse): IntelligenceSumm
     finalScore: response.final_score,
     status: response.status,
     createdAt: response.created_at,
+    updatedAt: response.updated_at,
   };
 }
 
@@ -151,5 +174,26 @@ function mapRecentFailure(response: RecentFailureResponse): RecentFailureItem {
     status: response.status,
     errorMessage: response.error_message,
     createdAt: response.created_at,
+  };
+}
+
+function mapFreshness(response: DashboardFreshnessResponse): DashboardFreshness {
+  return {
+    generatedAt: response.generated_at,
+    latestCollectionAt: response.latest_collection_at,
+    staleEnabledTasks: response.stale_enabled_tasks,
+    staleTasks: response.stale_tasks.map(mapStaleTask),
+  };
+}
+
+function mapStaleTask(response: DashboardStaleTaskResponse): DashboardStaleTaskItem {
+  return {
+    taskId: response.task_id,
+    taskName: response.task_name,
+    collectorType: response.collector_type,
+    status: response.status,
+    lastRunAt: response.last_run_at,
+    freshnessTargetHours: response.freshness_target_hours,
+    staleHours: response.stale_hours,
   };
 }

@@ -57,6 +57,11 @@ export type CollectionTask = {
   successCount: number;
   failureCount: number;
   lastRunAt: string | null;
+  latestRunStatus?: string | null;
+  latestRunErrorMessage?: string | null;
+  latestRunRecordsCount?: number | null;
+  latestRunEntitiesCount?: number | null;
+  latestRunFinishedAt?: string | null;
 };
 
 export type TaskRun = {

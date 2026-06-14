@@ -47,6 +47,11 @@ type CollectionTaskResponse = {
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
+  latest_run_status?: string | null;
+  latest_run_error_message?: string | null;
+  latest_run_records_count?: number | null;
+  latest_run_entities_count?: number | null;
+  latest_run_finished_at?: string | null;
 };
 
 export async function listCollectors(): Promise<Collector[]> {
@@ -158,6 +163,11 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
       successCount: 0,
       failureCount: 0,
       lastRunAt: null,
+      latestRunStatus: null,
+      latestRunErrorMessage: null,
+      latestRunRecordsCount: null,
+      latestRunEntitiesCount: null,
+      latestRunFinishedAt: null,
     };
   }
   const response = await apiFetch<CollectionTaskResponse>(`/api/sources/${sourceId}/enable`, {
@@ -224,5 +234,10 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     successCount: response.success_count,
     failureCount: response.failure_count,
     lastRunAt: response.last_run_at,
+    latestRunStatus: response.latest_run_status ?? null,
+    latestRunErrorMessage: response.latest_run_error_message ?? null,
+    latestRunRecordsCount: response.latest_run_records_count ?? null,
+    latestRunEntitiesCount: response.latest_run_entities_count ?? null,
+    latestRunFinishedAt: response.latest_run_finished_at ?? null,
   };
 }

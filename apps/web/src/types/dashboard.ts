@@ -10,6 +10,7 @@ export type DashboardSummary = {
   domainBreakdown: DomainBreakdownItem[];
   topIntelligence: IntelligenceSummaryItem[];
   taskHealth: TaskHealth;
+  freshness: DashboardFreshness;
 };
 
 export type TypeBreakdownItem = {
@@ -28,6 +29,7 @@ export type IntelligenceSummaryItem = {
   finalScore: number;
   status: string;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type DomainBreakdownItem = {
@@ -43,6 +45,23 @@ export type TaskHealth = {
   failedTasks: number;
   recentRuns: number;
   recentFailures: RecentFailureItem[];
+};
+
+export type DashboardFreshness = {
+  generatedAt: string;
+  latestCollectionAt: string | null;
+  staleEnabledTasks: number;
+  staleTasks: DashboardStaleTaskItem[];
+};
+
+export type DashboardStaleTaskItem = {
+  taskId: string;
+  taskName: string;
+  collectorType: string;
+  status: string;
+  lastRunAt: string | null;
+  freshnessTargetHours: number;
+  staleHours: number | null;
 };
 
 export type RecentFailureItem = {

@@ -180,6 +180,14 @@ export function SourcesWorkspace() {
       },
     );
   }, [sources]);
+  const latestTaskRunAt = useMemo(() => {
+    return latestTimestamp(
+      tasks
+        .map((task) => task.latestRunFinishedAt ?? task.lastRunAt)
+        .filter((value): value is string => Boolean(value)),
+    );
+  }, [tasks]);
+  const latestFailedRunCount = tasks.filter((task) => task.latestRunStatus === "failed").length;
 
   const configPreview = (() => {
     try {
@@ -361,11 +369,21 @@ export function SourcesWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               先验证配置，再启用调度任务；所有采集结果进入 RawRecord，后续再生成实体快照、信号和情报。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MetricPill icon={Link2} label="数据源" value={String(sources.length)} />
               <MetricPill icon={ShieldCheck} label="已启用" value={`${enabledCount}/${sources.length}`} />
               <MetricPill icon={Clock3} label="覆盖项目" value={String(configuredProjectCount)} />
+              <MetricPill
+                icon={Activity}
+                label="最近采集"
+                value={latestTaskRunAt ? formatRelativeTime(latestTaskRunAt) : "无"}
+              />
             </div>
+            {latestFailedRunCount > 0 ? (
+              <p className="mt-3 inline-flex rounded-full border border-[#F0C8C0] bg-white/75 px-3 py-1 text-xs font-semibold text-[#B85F4F]">
+                {latestFailedRunCount} 个任务最近一次运行失败
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
@@ -730,14 +748,18 @@ function SourceAssetCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
             <SourceFact label="业务域" value={domainLabel} />
             <SourceFact
               label="调度"
               value={source.scheduleCron ? cadenceLabels[source.scheduleCron] ?? source.scheduleCron : "手动"}
             />
             <SourceFact label="任务状态" value={task ? formatTaskStatus(task.status) : "未启用"} />
-            <SourceFact label="最近运行" value={formatLatestRun(task?.lastRunAt)} />
+            <SourceFact
+              label="最近运行"
+              value={formatLatestRun(task?.latestRunFinishedAt ?? task?.lastRunAt)}
+            />
+            <SourceFact label="最近结果" value={formatLatestRunOutcome(task)} />
             <SourceFact label="配置摘要" value={getSourceConfigSummary(source)} />
           </div>
           {task ? (
@@ -745,7 +767,19 @@ function SourceAssetCard({
               <Activity size={14} aria-hidden="true" />
               <span>success {task.successCount}</span>
               <span>failure {task.failureCount}</span>
+              {task.latestRunStatus ? <span>latest {formatRunStatus(task.latestRunStatus)}</span> : null}
+              {task.latestRunRecordsCount !== null && task.latestRunRecordsCount !== undefined ? (
+                <span>{task.latestRunRecordsCount} records</span>
+              ) : null}
+              {task.latestRunEntitiesCount !== null && task.latestRunEntitiesCount !== undefined ? (
+                <span>{task.latestRunEntitiesCount} entities</span>
+              ) : null}
             </div>
+          ) : null}
+          {task?.latestRunErrorMessage ? (
+            <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-white/80 px-3 py-2 text-xs leading-5 text-[#B85F4F]">
+              最近失败原因：{formatTaskErrorMessage(task.latestRunErrorMessage)}
+            </p>
           ) : null}
 
           <p className="mt-3 break-all rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs text-[#7A625A]">
@@ -924,6 +958,28 @@ function formatTaskStatus(status: CollectionTask["status"]): string {
   return labels[status];
 }
 
+function formatRunStatus(status: string): string {
+  const labels: Record<string, string> = {
+    failed: "失败",
+    partial_success: "部分成功",
+    running: "运行中",
+    success: "成功",
+  };
+  return labels[status] ?? status;
+}
+
+function formatLatestRunOutcome(task: CollectionTask | undefined): string {
+  if (!task) {
+    return "未启用";
+  }
+  if (!task.latestRunStatus) {
+    return "无运行记录";
+  }
+  const records = task.latestRunRecordsCount ?? 0;
+  const entities = task.latestRunEntitiesCount ?? 0;
+  return `${formatRunStatus(task.latestRunStatus)} · ${records} records · ${entities} entities`;
+}
+
 function formatLatestRun(value: string | null | undefined): string {
   if (!value) {
     return "尚未运行";
@@ -934,6 +990,40 @@ function formatLatestRun(value: string | null | undefined): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatRelativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "时间无效";
+  }
+  const diffMs = Math.max(Date.now() - date.getTime(), 0);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) {
+    return "刚刚";
+  }
+  if (minutes < 60) {
+    return `${minutes} 分钟前`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} 小时前`;
+  }
+  return `${Math.floor(hours / 24)} 天前`;
+}
+
+function latestTimestamp(values: string[]) {
+  const timestamps = values
+    .map((value) => new Date(value).getTime())
+    .filter((value) => Number.isFinite(value));
+  if (timestamps.length === 0) {
+    return null;
+  }
+  return new Date(Math.max(...timestamps)).toISOString();
+}
+
+function formatTaskErrorMessage(value: string) {
+  return value.length > 180 ? `${value.slice(0, 180)}...` : value;
 }
 
 function normalizeScheduleCron(value: string): string | undefined {

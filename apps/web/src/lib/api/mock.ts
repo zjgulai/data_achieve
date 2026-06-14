@@ -33,6 +33,7 @@ export function getMockDashboard(domain?: string): DashboardSummary {
     finalScore: item.finalScore,
     status: item.status,
     createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
   }));
   const topIntelligence = domain ? allTop.filter((item) => item.domain === domain) : allTop;
   const typeCounts = topIntelligence.reduce<Record<string, number>>((accumulator, item) => {
@@ -73,6 +74,12 @@ export function getMockDashboard(domain?: string): DashboardSummary {
       failedTasks: 0,
       recentRuns: topIntelligence.length > 0 ? 2 : 0,
       recentFailures: [],
+    },
+    freshness: {
+      generatedAt: new Date().toISOString(),
+      latestCollectionAt: "2026-06-11T16:25:02.000Z",
+      staleEnabledTasks: 0,
+      staleTasks: [],
     },
   };
 }

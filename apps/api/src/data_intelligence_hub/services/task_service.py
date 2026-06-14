@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
-from data_intelligence_hub.repositories.tasks import get_task, list_task_runs, list_tasks
+from data_intelligence_hub.repositories.tasks import (
+    TaskWithLatestRun,
+    get_task,
+    list_task_runs,
+    list_tasks_with_latest_run,
+)
 from data_intelligence_hub.services.collector_service import execute_collection_task
 from data_intelligence_hub.services.exceptions import (
     TaskAlreadyRunningError,
@@ -20,8 +25,13 @@ async def get_collection_tasks(
     workspace: Workspace,
     project_id: uuid.UUID | None,
     status: str | None,
-) -> list[CollectionTask]:
-    return await list_tasks(session, workspace.id, project_id=project_id, status=status)
+) -> list[TaskWithLatestRun]:
+    return await list_tasks_with_latest_run(
+        session,
+        workspace.id,
+        project_id=project_id,
+        status=status,
+    )
 
 
 async def get_task_or_raise(

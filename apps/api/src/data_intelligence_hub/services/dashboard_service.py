@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.dashboard import (
+    TaskFreshnessRow,
     count_active_alerts,
     count_intelligence,
     count_intelligence_by_domain,
@@ -16,6 +17,8 @@ from data_intelligence_hub.repositories.dashboard import (
     count_signals_by_domain,
     count_sources,
     count_tasks,
+    get_latest_task_run_at,
+    list_enabled_task_freshness,
     list_recent_failures,
     list_snapshot_metrics,
     list_top_intelligence,
@@ -23,8 +26,10 @@ from data_intelligence_hub.repositories.dashboard import (
 )
 from data_intelligence_hub.schemas.dashboard import (
     DashboardDomainBreakdownItem,
+    DashboardFreshness,
     DashboardOverviewResponse,
     DashboardRecentFailureItem,
+    DashboardStaleTaskItem,
     DashboardTaskHealth,
     DashboardTopIntelligenceItem,
     DashboardTypeBreakdownItem,
@@ -40,6 +45,7 @@ async def get_dashboard_overview(
     to_time: datetime | None,
     limit: int,
 ) -> DashboardOverviewResponse:
+    generated_at = datetime.now(UTC)
     intelligence_count = await count_intelligence(
         session,
         workspace.id,
@@ -108,6 +114,21 @@ async def get_dashboard_overview(
         domain=domain,
         limit=200,
     )
+    latest_collection_at = await get_latest_task_run_at(
+        session,
+        workspace.id,
+        project_id=project_id,
+        domain=domain,
+        from_time=from_time,
+        to_time=to_time,
+    )
+    freshness_rows = await list_enabled_task_freshness(
+        session,
+        workspace.id,
+        project_id=project_id,
+        domain=domain,
+    )
+    stale_tasks = _stale_task_items(freshness_rows, generated_at)
 
     return DashboardOverviewResponse(
         intelligence_count=intelligence_count,
@@ -136,6 +157,7 @@ async def get_dashboard_overview(
                 final_score=row.item.final_score,
                 status=row.item.status,
                 created_at=row.item.created_at,
+                updated_at=row.item.updated_at,
             )
             for row in top_items
         ],
@@ -154,6 +176,12 @@ async def get_dashboard_overview(
                 )
                 for row in recent_failures
             ],
+        ),
+        freshness=DashboardFreshness(
+            generated_at=generated_at,
+            latest_collection_at=latest_collection_at,
+            stale_enabled_tasks=len(stale_tasks),
+            stale_tasks=stale_tasks[:10],
         ),
     )
 
@@ -225,3 +253,49 @@ def _field_completeness(metrics_items: list[dict[str, object]]) -> float:
     if total_fields == 0:
         return 0.0
     return round((filled_fields / total_fields) * 100, 2)
+
+
+def _stale_task_items(
+    freshness_rows: list[TaskFreshnessRow],
+    generated_at: datetime,
+) -> list[DashboardStaleTaskItem]:
+    stale_items: list[DashboardStaleTaskItem] = []
+    for row in freshness_rows:
+        target_hours = _freshness_target_hours(row.config)
+        last_run_at = row.last_run_at
+        stale_hours: float | None = None
+        is_stale = last_run_at is None
+        if last_run_at is not None:
+            age_hours = (
+                generated_at - _ensure_aware(last_run_at)
+            ).total_seconds() / 3600
+            stale_hours = round(max(age_hours - target_hours, 0.0), 2)
+            is_stale = age_hours > target_hours
+        if is_stale:
+            stale_items.append(
+                DashboardStaleTaskItem(
+                    task_id=row.task_id,
+                    task_name=row.task_name,
+                    collector_type=row.collector_type,
+                    status=row.status,
+                    last_run_at=last_run_at,
+                    freshness_target_hours=target_hours,
+                    stale_hours=stale_hours,
+                )
+            )
+    return stale_items
+
+
+def _freshness_target_hours(config: dict[str, object] | None) -> int:
+    if config is None:
+        return 24
+    value = config.get("freshness_target_hours")
+    if isinstance(value, int | float) and value > 0:
+        return int(value)
+    return 24
+
+
+def _ensure_aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value

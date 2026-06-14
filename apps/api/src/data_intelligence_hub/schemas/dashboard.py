@@ -29,6 +29,7 @@ class DashboardTopIntelligenceItem(BaseModel):
     final_score: float
     status: str
     created_at: datetime
+    updated_at: datetime
 
 
 class DashboardRecentFailureItem(BaseModel):
@@ -47,6 +48,23 @@ class DashboardTaskHealth(BaseModel):
     recent_failures: list[DashboardRecentFailureItem]
 
 
+class DashboardStaleTaskItem(BaseModel):
+    task_id: uuid.UUID
+    task_name: str
+    collector_type: str
+    status: str
+    last_run_at: datetime | None
+    freshness_target_hours: int
+    stale_hours: float | None
+
+
+class DashboardFreshness(BaseModel):
+    generated_at: datetime
+    latest_collection_at: datetime | None
+    stale_enabled_tasks: int
+    stale_tasks: list[DashboardStaleTaskItem]
+
+
 class DashboardOverviewResponse(BaseModel):
     intelligence_count: int
     task_success_rate: float
@@ -59,3 +77,4 @@ class DashboardOverviewResponse(BaseModel):
     domain_breakdown: list[DashboardDomainBreakdownItem]
     top_intelligence: list[DashboardTopIntelligenceItem]
     task_health: DashboardTaskHealth
+    freshness: DashboardFreshness

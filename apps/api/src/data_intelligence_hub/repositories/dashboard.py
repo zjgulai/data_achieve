@@ -29,6 +29,15 @@ class RecentFailureRow(NamedTuple):
     created_at: datetime
 
 
+class TaskFreshnessRow(NamedTuple):
+    task_id: uuid.UUID
+    task_name: str
+    collector_type: str
+    status: str
+    last_run_at: datetime | None
+    config: dict[str, Any] | None
+
+
 async def count_sources(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -192,14 +201,68 @@ async def task_run_status_counts(
     return {row[0]: int(row[1]) for row in result.all()}
 
 
+async def get_latest_task_run_at(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID | None,
+    domain: str | None,
+    from_time: datetime | None,
+    to_time: datetime | None,
+) -> datetime | None:
+    statement = (
+        select(func.max(func.coalesce(TaskRun.finished_at, TaskRun.created_at)))
+        .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
+        .join(Project, CollectionTask.project_id == Project.id)
+        .where(TaskRun.workspace_id == workspace_id)
+    )
+    statement = _apply_task_run_filters(statement, Project, project_id, domain, from_time, to_time)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none()
+
+
+async def list_enabled_task_freshness(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID | None,
+    domain: str | None,
+) -> list[TaskFreshnessRow]:
+    statement = (
+        select(
+            CollectionTask.id,
+            CollectionTask.name,
+            CollectionTask.collector_type,
+            CollectionTask.status,
+            CollectionTask.last_run_at,
+            CollectionTask.config,
+        )
+        .join(Project, CollectionTask.project_id == Project.id)
+        .where(CollectionTask.workspace_id == workspace_id, CollectionTask.status == "enabled")
+        .order_by(CollectionTask.last_run_at.asc().nullsfirst(), CollectionTask.created_at.asc())
+    )
+    statement = _apply_project_filters(statement, Project, project_id, domain)
+    result = await session.execute(statement)
+    return [
+        TaskFreshnessRow(
+            task_id=task_id,
+            task_name=task_name,
+            collector_type=collector_type,
+            status=status,
+            last_run_at=last_run_at,
+            config=config,
+        )
+        for task_id, task_name, collector_type, status, last_run_at, config in result.all()
+    ]
+
+
 async def count_latest_failed_tasks(
     session: AsyncSession,
     workspace_id: uuid.UUID,
     project_id: uuid.UUID | None,
     domain: str | None,
 ) -> int:
+    run_completed_at = func.coalesce(TaskRun.finished_at, TaskRun.created_at)
     latest_runs = (
-        select(TaskRun.task_id, func.max(TaskRun.created_at).label("latest_created_at"))
+        select(TaskRun.task_id, func.max(run_completed_at).label("latest_completed_at"))
         .where(TaskRun.workspace_id == workspace_id)
         .group_by(TaskRun.task_id)
         .subquery()
@@ -209,7 +272,10 @@ async def count_latest_failed_tasks(
         .join(
             latest_runs,
             (TaskRun.task_id == latest_runs.c.task_id)
-            & (TaskRun.created_at == latest_runs.c.latest_created_at),
+            & (
+                func.coalesce(TaskRun.finished_at, TaskRun.created_at)
+                == latest_runs.c.latest_completed_at
+            ),
         )
         .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
         .join(Project, CollectionTask.project_id == Project.id)

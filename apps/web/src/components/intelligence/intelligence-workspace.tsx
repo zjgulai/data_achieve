@@ -158,7 +158,9 @@ export function IntelligenceWorkspace() {
       items.length > 0
         ? items.reduce((sum, item) => sum + item.finalScore, 0) / items.length
         : 0;
-    return { averageScore, evidenceCount, followingCount, reviewedCount };
+    const latestUpdatedAt = latestTimestamp(items.map((item) => item.updatedAt));
+    const latestCreatedAt = latestTimestamp(items.map((item) => item.createdAt));
+    return { averageScore, evidenceCount, followingCount, latestCreatedAt, latestUpdatedAt, reviewedCount };
   }, [items]);
 
   async function handleStatusChange(status: IntelligenceStatus) {
@@ -188,16 +190,28 @@ export function IntelligenceWorkspace() {
               <Tag className="bg-[#FCEBF0] text-[#C25B6E]" label="Evidence-backed" />
               <Tag className="bg-[#FBF8F5] text-[#86868B]" label="final_score 排序" />
               <Tag className="bg-[#EAF8EE] text-[#2EBA62]" label={`${summary.evidenceCount} evidence refs`} />
+              <Tag
+                className="bg-[#FFF4DE] text-[#FF9800]"
+                label={
+                  summary.latestUpdatedAt
+                    ? `最新更新 ${formatRelativeTime(summary.latestUpdatedAt)}`
+                    : "暂无更新"
+                }
+              />
             </div>
             <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">情报判读工作台</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">
               用评分、证据链和人工反馈闭合从信号到情报的判断过程。
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
+          <div className="grid grid-cols-2 gap-2 sm:min-w-[480px] sm:grid-cols-4">
             <SummaryTile label="平均分" value={summary.averageScore.toFixed(1)} />
             <SummaryTile label="已复核" value={summary.reviewedCount} />
             <SummaryTile label="跟进中" value={summary.followingCount} />
+            <SummaryTile
+              label="最新情报"
+              value={summary.latestCreatedAt ? formatRelativeTime(summary.latestCreatedAt) : "无"}
+            />
           </div>
         </div>
       </section>
@@ -262,6 +276,10 @@ export function IntelligenceWorkspace() {
                   className="bg-white text-[#5F5757]"
                   label={`${item.evidenceCount} evidences`}
                 />
+                <Tag
+                  className="bg-white text-[#86868B]"
+                  label={`更新 ${formatRelativeTime(item.updatedAt)}`}
+                />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                 <MiniScore label="impact" value={item.impactScore} />
@@ -309,6 +327,10 @@ export function IntelligenceWorkspace() {
                 <ScoreBar label="Confidence" value={selectedItem.confidenceScore} />
                 <ScoreBar label="Novelty" value={selectedItem.noveltyScore} />
                 <ScoreBar label="Urgency" value={selectedItem.urgencyScore} />
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <DetailRow label="Created" value={formatDateTime(selectedItem.createdAt)} />
+                <DetailRow label="Updated" value={formatDateTime(selectedItem.updatedAt)} />
               </div>
             </div>
 
@@ -363,9 +385,14 @@ export function IntelligenceWorkspace() {
                         <p className="mt-1 text-xs text-[#86868B]">{evidence.evidenceType}</p>
                       </div>
                       <span className="text-xs text-[#86868B]">
-                        {new Date(evidence.createdAt).toLocaleString()}
+                        {formatDateTime(evidence.createdAt)}
                       </span>
                     </div>
+                    {evidence.rawRecord ? (
+                      <p className="mt-1 text-xs text-[#9E6A76]">
+                        原始采集 {formatRelativeTime(evidence.rawRecord.collectedAt)}
+                      </p>
+                    ) : null}
                     {evidence.excerpt ? (
                       <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
                         {evidence.excerpt}
@@ -648,7 +675,46 @@ function formatTraceValue(value: unknown) {
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("zh-CN");
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "时间无效";
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatRelativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "时间无效";
+  }
+  const diffMs = Math.max(Date.now() - date.getTime(), 0);
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) {
+    return "刚刚";
+  }
+  if (minutes < 60) {
+    return `${minutes} 分钟前`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours} 小时前`;
+  }
+  return `${Math.floor(hours / 24)} 天前`;
+}
+
+function latestTimestamp(values: string[]) {
+  const timestamps = values
+    .map((value) => new Date(value).getTime())
+    .filter((value) => Number.isFinite(value));
+  if (timestamps.length === 0) {
+    return null;
+  }
+  return new Date(Math.max(...timestamps)).toISOString();
 }
 
 function formatJsonPreview(value: Record<string, unknown> | unknown[] | string) {

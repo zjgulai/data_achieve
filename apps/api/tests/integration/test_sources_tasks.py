@@ -221,6 +221,16 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     assert task_response.status_code == 200
     assert task_response.json()["status"] == "enabled"
 
+    tasks_response = await client.get("/api/tasks?status=enabled")
+    assert tasks_response.status_code == 200
+    listed_task = tasks_response.json()[0]
+    assert listed_task["id"] == task["id"]
+    assert listed_task["latest_run_status"] == duplicate_run["status"]
+    assert listed_task["latest_run_error_message"] is None
+    assert listed_task["latest_run_records_count"] == duplicate_run["records_count"]
+    assert listed_task["latest_run_entities_count"] == duplicate_run["entities_count"]
+    assert listed_task["latest_run_finished_at"] == duplicate_run["finished_at"]
+
     runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
     assert runs_response.status_code == 200
     assert [item["id"] for item in runs_response.json()] == [
@@ -301,6 +311,9 @@ async def test_collector_exception_persists_failed_task_run(
     assert dashboard["task_success_rate"] == 0
     assert dashboard["failed_tasks"] == 1
     assert dashboard["task_health"]["recent_failures"][0]["task_id"] == task["id"]
+    assert dashboard["freshness"]["generated_at"] is not None
+    assert dashboard["freshness"]["latest_collection_at"] == run["finished_at"]
+    assert dashboard["freshness"]["stale_enabled_tasks"] == 0
 
 
 @pytest.mark.asyncio
@@ -487,3 +500,7 @@ async def test_star_growth_signal_is_created_from_snapshot_delta(client: AsyncCl
     assert dashboard["domain_breakdown"][0]["intelligence_count"] == 1
     assert dashboard["domain_breakdown"][0]["signal_count"] == 1
     assert dashboard["top_intelligence"][0]["id"] == intelligence["id"]
+    assert dashboard["top_intelligence"][0]["updated_at"] is not None
+    assert dashboard["freshness"]["generated_at"] is not None
+    assert dashboard["freshness"]["latest_collection_at"] == second_run["finished_at"]
+    assert dashboard["freshness"]["stale_enabled_tasks"] == 0
