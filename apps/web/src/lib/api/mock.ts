@@ -246,9 +246,7 @@ export function getMockSources(): Source[] {
 }
 
 export function getMockTasks(): CollectionTask[] {
-  const tasks: Array<
-    Omit<CollectionTask, "freshnessStatus" | "freshnessTargetHours" | "staleHours">
-  > = [
+  const tasks: Array<MockTaskSeed> = [
     {
       id: "task_twitter_keywords",
       projectId: "project_osint",
@@ -373,21 +371,44 @@ export function getMockTasks(): CollectionTask[] {
   return tasks.map(withMockTaskFreshness);
 }
 
-function withMockTaskFreshness(task: Omit<CollectionTask, "freshnessStatus" | "freshnessTargetHours" | "staleHours">): CollectionTask {
+type MockTaskSeed = Omit<
+  CollectionTask,
+  | "freshnessStatus"
+  | "freshnessTargetHours"
+  | "nextRunAt"
+  | "retryAfterAt"
+  | "retryDelayMinutes"
+  | "schedulePolicy"
+  | "staleHours"
+>;
+
+function withMockTaskFreshness(task: MockTaskSeed): CollectionTask {
   const freshnessStatus =
     task.status === "paused" || task.status === "disabled"
       ? task.status
       : task.failureCount >= 10
         ? "failed"
         : "fresh";
+  const retryAfterAt =
+    freshnessStatus === "failed" && task.lastRunAt
+      ? new Date(new Date(task.lastRunAt).getTime() + 15 * 60_000).toISOString()
+      : null;
+  const nextRunAt =
+    task.status === "paused" || task.status === "disabled"
+      ? null
+      : retryAfterAt ?? mockNextRunAt(task.lastRunAt, 24);
   return {
     ...task,
     projectName: "AI Scrapy Tools",
     projectDomain: "osint",
     sourceName: task.name,
     sourceUrl: null,
+    schedulePolicy: task.scheduleCron ? "manual_refresh_only" : "auto_freshness",
     freshnessTargetHours: 24,
     freshnessStatus,
+    nextRunAt,
+    retryAfterAt,
+    retryDelayMinutes: 15,
     staleHours: 0,
     latestRunStatus: freshnessStatus === "failed" ? "failed" : "success",
     latestRunErrorMessage:
@@ -398,6 +419,13 @@ function withMockTaskFreshness(task: Omit<CollectionTask, "freshnessStatus" | "f
     latestRunFinishedAt: task.lastRunAt,
     latestRunCreatedAt: task.lastRunAt,
   };
+}
+
+function mockNextRunAt(lastRunAt: string | null, targetHours: number) {
+  if (!lastRunAt) {
+    return new Date().toISOString();
+  }
+  return new Date(new Date(lastRunAt).getTime() + targetHours * 60 * 60_000).toISOString();
 }
 
 export function getMockTaskRun(taskId: string): TaskRun {

@@ -122,6 +122,119 @@ async def test_scheduler_tick_merges_source_payload_with_task_metadata() -> None
 
 
 @pytest.mark.asyncio
+async def test_scheduler_tick_runs_due_auto_freshness_task_without_cron() -> None:
+    now = datetime(2026, 6, 14, 10, 0, tzinfo=UTC)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(
+            session,
+            schedule_cron=None,
+            last_run_at=now - timedelta(hours=7),
+            task_config={
+                "freshness_target_hours": 6,
+                "schedule_policy": "auto_freshness",
+            },
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    result = await scheduler.tick()
+
+    assert result.scanned == 1
+    assert result.due == 1
+    assert result.started == 1
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_skips_manual_refresh_task_without_cron() -> None:
+    now = datetime(2026, 6, 14, 10, 0, tzinfo=UTC)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(
+            session,
+            schedule_cron=None,
+            last_run_at=now - timedelta(hours=7),
+            task_config={
+                "freshness_target_hours": 6,
+                "schedule_policy": "manual_refresh_only",
+            },
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    result = await scheduler.tick()
+
+    assert result.scanned == 1
+    assert result.due == 0
+    assert result.started == 0
+
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+
+    assert runs == []
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_retries_failed_auto_freshness_task_after_delay() -> None:
+    now = datetime(2026, 6, 14, 10, 0, tzinfo=UTC)
+    failed_at = now - timedelta(minutes=20)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        task = await _create_collection_task(
+            session,
+            schedule_cron=None,
+            last_run_at=failed_at,
+            task_config={
+                "freshness_target_hours": 6,
+                "retry_delay_minutes": 15,
+                "schedule_policy": "auto_freshness",
+            },
+        )
+        session.add(
+            TaskRun(
+                task_id=task.id,
+                workspace_id=task.workspace_id,
+                status="failed",
+                started_at=failed_at - timedelta(seconds=3),
+                finished_at=failed_at,
+                records_count=0,
+                entities_count=0,
+                error_message="upstream failed",
+                error_traceback=None,
+                logs=[],
+                created_at=failed_at,
+            )
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    result = await scheduler.tick()
+
+    assert result.due == 1
+    assert result.started == 1
+
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+        task = (await session.execute(select(CollectionTask))).scalar_one()
+
+    assert len(runs) == 2
+    assert {run.status for run in runs} == {"failed", "success"}
+    assert task.success_count == 1
+
+
+@pytest.mark.asyncio
 async def test_scheduler_tick_skips_invalid_schedule() -> None:
     session_factory = await _create_session_factory()
     async with session_factory() as session:
@@ -278,7 +391,8 @@ async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def _create_collection_task(
     session: AsyncSession,
-    schedule_cron: str,
+    schedule_cron: str | None,
+    last_run_at: datetime | None = None,
     task_config: dict[str, object] | None = None,
 ) -> CollectionTask:
     now = datetime.now(UTC)
@@ -342,7 +456,7 @@ async def _create_collection_task(
         or {"entity_type": "product", "json_data": {"name": "Demo", "price": 12}},
         success_count=0,
         failure_count=0,
-        last_run_at=None,
+        last_run_at=last_run_at,
         created_at=now,
         updated_at=now,
     )

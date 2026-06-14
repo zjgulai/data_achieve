@@ -48,9 +48,13 @@ type CollectionTaskResponse = {
   project_domain?: string | null;
   source_name?: string | null;
   source_url?: string | null;
+  schedule_policy?: CollectionTask["schedulePolicy"];
   freshness_target_hours?: number;
   freshness_status?: CollectionTask["freshnessStatus"];
   stale_hours?: number | null;
+  next_run_at?: string | null;
+  retry_after_at?: string | null;
+  retry_delay_minutes?: number;
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
@@ -173,9 +177,13 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
       projectDomain: null,
       sourceName: task?.name ?? null,
       sourceUrl: null,
+      schedulePolicy: "manual_refresh_only",
       freshnessTargetHours: 24,
       freshnessStatus: "never_run",
       staleHours: null,
+      nextRunAt: task?.scheduleCron ? new Date().toISOString() : null,
+      retryAfterAt: null,
+      retryDelayMinutes: 15,
       successCount: 0,
       failureCount: 0,
       lastRunAt: null,
@@ -253,9 +261,13 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     projectDomain: response.project_domain ?? null,
     sourceName: response.source_name ?? null,
     sourceUrl: response.source_url ?? null,
+    schedulePolicy: response.schedule_policy ?? "manual_refresh_only",
     freshnessTargetHours: response.freshness_target_hours ?? 24,
     freshnessStatus: response.freshness_status ?? "unknown",
     staleHours: response.stale_hours ?? null,
+    nextRunAt: response.next_run_at ?? null,
+    retryAfterAt: response.retry_after_at ?? null,
+    retryDelayMinutes: response.retry_delay_minutes ?? 15,
     successCount: response.success_count,
     failureCount: response.failure_count,
     lastRunAt: response.last_run_at,

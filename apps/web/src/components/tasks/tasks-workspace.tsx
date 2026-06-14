@@ -185,6 +185,8 @@ export function TasksWorkspace() {
               taskRun.status === "failed" ? item.successCount : item.successCount + 1,
             lastRunAt: taskRun.finishedAt ?? taskRun.startedAt,
             freshnessStatus: taskRun.status === "failed" ? "failed" : "fresh",
+            nextRunAt: nextRunAfterManualRun(item, taskRun),
+            retryAfterAt: retryAfterManualRun(item, taskRun),
             staleHours: taskRun.status === "failed" ? item.staleHours : 0,
             latestRunStatus: taskRun.status,
             latestRunErrorMessage: taskRun.errorMessage,
@@ -749,6 +751,12 @@ export function TasksWorkspace() {
                 value={`目标 ${selectedTask.freshnessTargetHours}h · 过期 ${formatStaleHours(selectedTask.staleHours)}`}
               />
               <DiagnosticBlock
+                icon={Clock3}
+                label="执行计划"
+                title={schedulePolicyLabel(selectedTask)}
+                value={schedulePlanValue(selectedTask)}
+              />
+              <DiagnosticBlock
                 icon={AlertTriangle}
                 label="最近运行输出"
                 title={selectedTask.latestRunStatus ? runStatusLabel(selectedTask.latestRunStatus) : "无运行记录"}
@@ -1106,8 +1114,8 @@ function getTaskProfile(task: CollectionTask): TaskProfile {
     domain: normalizeDomain(task.projectDomain),
     sourceType: collectorLabels[task.collectorType],
     sourceName: task.sourceName ?? task.name,
-    schedule: formatSchedule(task.scheduleCron),
-    nextRun: formatFreshnessTarget(task),
+    schedule: formatSchedule(task),
+    nextRun: formatNextRun(task),
     latencyMinutes: taskLatencyMinutes(task),
     records24h: task.latestRunRecordsCount ?? 0,
     trend: buildTaskTrend(task),
@@ -1150,6 +1158,19 @@ function formatTime(value: string | null | undefined) {
   }).format(date);
 }
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
 function normalizeDomain(value: string | null | undefined): DomainKey {
   if (value === "ecommerce" || value === "social" || value === "competitor") {
     return value;
@@ -1157,21 +1178,27 @@ function normalizeDomain(value: string | null | undefined): DomainKey {
   return "osint";
 }
 
-function formatSchedule(value: string | null) {
-  if (!value) {
-    return "手动";
+function formatSchedule(task: CollectionTask) {
+  if (!task.scheduleCron) {
+    return task.schedulePolicy === "auto_freshness" ? "自动保鲜" : "手动";
   }
   const labels: Record<string, string> = {
     "0 8 * * *": "每天 08:00",
     "0 */1 * * *": "每小时",
     "*/30 * * * *": "每 30 分钟",
   };
-  return labels[value] ?? value;
+  return labels[task.scheduleCron] ?? task.scheduleCron;
 }
 
-function formatFreshnessTarget(task: CollectionTask) {
+function formatNextRun(task: CollectionTask) {
   if (task.status === "paused" || task.status === "disabled") {
     return "已暂停";
+  }
+  if (task.retryAfterAt) {
+    return `重试 ${formatDateTime(task.retryAfterAt)}`;
+  }
+  if (task.nextRunAt) {
+    return `下次 ${formatDateTime(task.nextRunAt)}`;
   }
   if (task.freshnessStatus === "never_run") {
     return `首次运行 · ${task.freshnessTargetHours}h`;
@@ -1180,6 +1207,43 @@ function formatFreshnessTarget(task: CollectionTask) {
     return `过期 ${formatStaleHours(task.staleHours)}`;
   }
   return `目标 ${task.freshnessTargetHours}h`;
+}
+
+function schedulePolicyLabel(task: CollectionTask) {
+  if (task.scheduleCron) {
+    return "Cron 调度";
+  }
+  if (task.schedulePolicy === "auto_freshness") {
+    return "自动保鲜";
+  }
+  return "手动刷新";
+}
+
+function schedulePlanValue(task: CollectionTask) {
+  const nextRun = task.nextRunAt ? formatDateTime(task.nextRunAt) : "无自动计划";
+  const retry = task.retryAfterAt
+    ? `重试 ${formatDateTime(task.retryAfterAt)}`
+    : `失败 ${task.retryDelayMinutes} 分钟后重试`;
+  return `${nextRun} · ${retry}`;
+}
+
+function nextRunAfterManualRun(task: CollectionTask, taskRun: TaskRun) {
+  if (taskRun.status === "failed") {
+    return task.nextRunAt;
+  }
+  if (task.scheduleCron || task.schedulePolicy !== "auto_freshness") {
+    return task.nextRunAt;
+  }
+  const base = taskRun.finishedAt ?? taskRun.startedAt ?? taskRun.createdAt;
+  return new Date(new Date(base).getTime() + task.freshnessTargetHours * 60 * 60_000).toISOString();
+}
+
+function retryAfterManualRun(task: CollectionTask, taskRun: TaskRun) {
+  if (taskRun.status !== "failed") {
+    return null;
+  }
+  const base = taskRun.finishedAt ?? taskRun.startedAt ?? taskRun.createdAt;
+  return new Date(new Date(base).getTime() + task.retryDelayMinutes * 60_000).toISOString();
 }
 
 function taskLatencyMinutes(task: CollectionTask) {

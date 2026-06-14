@@ -7,17 +7,18 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from data_intelligence_hub.models.scheduler import SchedulerLease
-from data_intelligence_hub.models.task import CollectionTask
+from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, is_schedule_due
 from data_intelligence_hub.services.collector_service import execute_collection_task
 from data_intelligence_hub.services.report_service import execute_report_subscription
+from data_intelligence_hub.services.task_schedule_policy import is_task_due
 
 logger = structlog.get_logger(__name__)
 SCHEDULER_LEASE_NAME = "collection_scheduler_tick"
@@ -106,17 +107,20 @@ class CollectionScheduler:
 
             candidates = await _list_scheduled_tasks(session)
             scanned = len(candidates)
-            for task, workspace in candidates:
+            for task, workspace, latest_run in candidates:
                 if task.id in self._running_task_ids:
                     skipped_running += 1
                     continue
 
                 try:
-                    task_is_due = is_schedule_due(
-                        task.schedule_cron,
-                        task.last_run_at,
-                        current_time,
-                    )
+                    if task.schedule_cron:
+                        task_is_due = is_schedule_due(
+                            task.schedule_cron,
+                            task.last_run_at,
+                            current_time,
+                        )
+                    else:
+                        task_is_due = is_task_due(task, latest_run, current_time)
                 except UnsupportedCronExpression as exc:
                     skipped_invalid_schedule += 1
                     logger.warning(
@@ -210,18 +214,32 @@ class CollectionScheduler:
 
 async def _list_scheduled_tasks(
     session: AsyncSession,
-) -> list[tuple[CollectionTask, Workspace]]:
+) -> list[tuple[CollectionTask, Workspace, TaskRun | None]]:
+    run_completed_at = func.coalesce(TaskRun.finished_at, TaskRun.created_at)
+    latest_runs = (
+        select(TaskRun.task_id, func.max(run_completed_at).label("latest_completed_at"))
+        .group_by(TaskRun.task_id)
+        .subquery()
+    )
     statement = (
-        select(CollectionTask, Workspace)
+        select(CollectionTask, Workspace, TaskRun)
         .join(Workspace, CollectionTask.workspace_id == Workspace.id)
+        .outerjoin(latest_runs, CollectionTask.id == latest_runs.c.task_id)
+        .outerjoin(
+            TaskRun,
+            (TaskRun.task_id == CollectionTask.id)
+            & (
+                func.coalesce(TaskRun.finished_at, TaskRun.created_at)
+                == latest_runs.c.latest_completed_at
+            ),
+        )
         .where(
             CollectionTask.status == "enabled",
-            CollectionTask.schedule_cron.is_not(None),
         )
         .order_by(CollectionTask.last_run_at.asc().nullsfirst(), CollectionTask.created_at.asc())
     )
     result = await session.execute(statement)
-    return [(task, workspace) for task, workspace in result.all()]
+    return [(task, workspace, latest_run) for task, workspace, latest_run in result.all()]
 
 
 async def _acquire_scheduler_lease(

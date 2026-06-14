@@ -68,9 +68,13 @@ export type CollectionTask = {
   projectDomain?: string | null;
   sourceName?: string | null;
   sourceUrl?: string | null;
+  schedulePolicy: "auto_freshness" | "manual_refresh_only" | string;
   freshnessTargetHours: number;
   freshnessStatus: CollectionTaskFreshnessStatus;
   staleHours: number | null;
+  nextRunAt: string | null;
+  retryAfterAt: string | null;
+  retryDelayMinutes: number;
   successCount: number;
   failureCount: number;
   lastRunAt: string | null;

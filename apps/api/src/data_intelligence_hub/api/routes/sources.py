@@ -119,7 +119,7 @@ async def enable_source_item(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     except (CollectorNotFoundError, CollectorConfigError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
-    return CollectionTaskResponse.model_validate(task)
+    return CollectionTaskResponse.from_task(task)
 
 
 @router.post("/{source_id}/disable", response_model=SourceResponse)

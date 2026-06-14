@@ -885,7 +885,7 @@ async def _merge_collection_layer(
                 "repo": "scrapy",
                 "freshness_target_hours": DOMAIN_FRESHNESS_TARGETS["osint"]["target_hours"],
                 "provenance": _provenance("source", "osint"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
                 "method": {
                     "platform": "GitHub REST API",
                     "fields": ["stargazers_count", "forks_count", "open_issues_count", "pushed_at"],
@@ -907,7 +907,7 @@ async def _merge_collection_layer(
             config={
                 "entity_type": "product_method",
                 "provenance": _provenance("source", "ecommerce"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
                 "json_data": {
                     "id": "amazon-bsr-keepa-air-filter",
                     "title": "Amazon BSR + Keepa price/rank sample",
@@ -938,7 +938,7 @@ async def _merge_collection_layer(
             config={
                 "entity_type": "social_topic",
                 "provenance": _provenance("source", "social"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
                 "json_data": {
                     "id": "ai-scraping-methods-social",
                     "name": "AI scraping methods",
@@ -971,7 +971,7 @@ async def _merge_collection_layer(
                 "extract_mode": "main_content",
                 "freshness_target_hours": DOMAIN_FRESHNESS_TARGETS["competitor"]["target_hours"],
                 "provenance": _provenance("source", "competitor"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
                 "method": {
                     "platform": "public web",
                     "fields": ["title", "text_content", "html_content"],
@@ -1001,7 +1001,7 @@ async def _merge_collection_layer(
                 "repo": "scrapy",
                 "freshness_target_hours": 6,
                 "provenance": _provenance("collection_task", "osint"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
             },
             success_count=96,
             failure_count=1,
@@ -1022,7 +1022,7 @@ async def _merge_collection_layer(
                 "schema": "product_method_snapshot",
                 "freshness_target_hours": 12,
                 "provenance": _provenance("collection_task", "ecommerce"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
             },
             success_count=128,
             failure_count=2,
@@ -1043,7 +1043,7 @@ async def _merge_collection_layer(
                 "schema": "social_method_snapshot",
                 "freshness_target_hours": 6,
                 "provenance": _provenance("collection_task", "social"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
             },
             success_count=64,
             failure_count=0,
@@ -1064,7 +1064,7 @@ async def _merge_collection_layer(
                 "url": "https://www.scrapingbee.com/",
                 "freshness_target_hours": 24,
                 "provenance": _provenance("collection_task", "competitor"),
-                "schedule_policy": "manual_refresh_only",
+                "schedule_policy": "auto_freshness",
             },
             success_count=44,
             failure_count=1,

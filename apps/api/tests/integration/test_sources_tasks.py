@@ -229,9 +229,13 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     assert listed_task["project_domain"] == "osint"
     assert listed_task["source_name"] == "Manual Product JSON"
     assert listed_task["source_url"] is None
+    assert listed_task["schedule_policy"] == "manual_refresh_only"
     assert listed_task["freshness_target_hours"] == 24
     assert listed_task["freshness_status"] == "fresh"
     assert listed_task["stale_hours"] == 0
+    assert listed_task["next_run_at"] is not None
+    assert listed_task["retry_after_at"] is None
+    assert listed_task["retry_delay_minutes"] == 15
     assert listed_task["latest_run_status"] == duplicate_run["status"]
     assert listed_task["latest_run_error_message"] is None
     assert listed_task["latest_run_records_count"] == duplicate_run["records_count"]

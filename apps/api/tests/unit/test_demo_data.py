@@ -73,6 +73,37 @@ def test_demo_freshness_targets_are_collector_backed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_demo_collection_tasks_use_auto_freshness_policy() -> None:
+    context = _build_context()
+    now = datetime.now(UTC)
+    session_factory = await _create_demo_cleanup_session_factory()
+    async with session_factory() as session:
+        await _merge_identity(
+            session,
+            context,
+            "owner@example.com",
+            "strong-password",
+            "Owner",
+            now,
+        )
+        await _merge_projects(session, context, now)
+        await _merge_collection_layer(session, context, now)
+        await session.commit()
+
+    async with session_factory() as session:
+        tasks = [
+            task
+            for task_id in context.task_ids.values()
+            if (task := await session.get(CollectionTask, task_id)) is not None
+        ]
+
+    assert len(tasks) == 4
+    assert {task.config["schedule_policy"] for task in tasks if task.config is not None} == {
+        "auto_freshness"
+    }
+
+
+@pytest.mark.asyncio
 async def test_legacy_demo_cleanup_clears_latest_snapshot_reference() -> None:
     session_factory = await _create_demo_cleanup_session_factory()
     async with session_factory() as session:

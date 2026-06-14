@@ -7,6 +7,13 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict
 
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
+from data_intelligence_hub.services.task_schedule_policy import (
+    freshness_target_hours,
+    next_run_at,
+    retry_after_at,
+    retry_delay_minutes,
+    task_schedule_policy,
+)
 
 
 class CollectionTaskResponse(BaseModel):
@@ -25,9 +32,13 @@ class CollectionTaskResponse(BaseModel):
     project_domain: str | None = None
     source_name: str | None = None
     source_url: str | None = None
+    schedule_policy: str = "manual_refresh_only"
     freshness_target_hours: int = 24
     freshness_status: str = "unknown"
     stale_hours: float | None = None
+    next_run_at: datetime | None = None
+    retry_after_at: datetime | None = None
+    retry_delay_minutes: int = 15
     success_count: int
     failure_count: int
     last_run_at: datetime | None
@@ -53,21 +64,26 @@ class CollectionTaskResponse(BaseModel):
         now: datetime | None = None,
     ) -> CollectionTaskResponse:
         response = cls.model_validate(task)
-        freshness_target_hours = _freshness_target_hours(task.config)
+        current_time = now or datetime.now(UTC)
+        target_hours = freshness_target_hours(task.config)
         freshness_status, stale_hours = _freshness_state(
             task=task,
             latest_run=latest_run,
-            freshness_target_hours=freshness_target_hours,
-            now=now or datetime.now(UTC),
+            freshness_target_hours=target_hours,
+            now=current_time,
         )
         updates: dict[str, Any] = {
             "project_name": project_name,
             "project_domain": project_domain,
             "source_name": source_name,
             "source_url": source_url,
-            "freshness_target_hours": freshness_target_hours,
+            "schedule_policy": task_schedule_policy(task.config),
+            "freshness_target_hours": target_hours,
             "freshness_status": freshness_status,
             "stale_hours": stale_hours,
+            "next_run_at": next_run_at(task, latest_run, current_time),
+            "retry_after_at": retry_after_at(task, latest_run),
+            "retry_delay_minutes": retry_delay_minutes(task.config),
         }
         if latest_run is None:
             return response.model_copy(update=updates)
@@ -102,15 +118,6 @@ class TaskRunResponse(BaseModel):
     error_traceback: str | None
     logs: list[dict[str, Any]]
     created_at: datetime
-
-
-def _freshness_target_hours(config: dict[str, Any] | None) -> int:
-    if config is None:
-        return 24
-    value = config.get("freshness_target_hours")
-    if isinstance(value, int | float) and value > 0:
-        return int(value)
-    return 24
 
 
 def _freshness_state(
