@@ -22,6 +22,7 @@ import {
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
 import { getSignalSnapshotCompare } from "@/lib/api/signals";
+import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type {
   Evidence,
@@ -374,6 +375,13 @@ function SnapshotBox({
 }
 
 function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
+  const referenceFacts = evidence?.referenceMetadata
+    ? buildAuditFacts(evidence.referenceMetadata, 6)
+    : [];
+  const rawContentFacts = evidence?.rawRecord
+    ? buildAuditFacts(evidence.rawRecord.contentPreview, 10)
+    : [];
+
   return (
     <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -382,7 +390,7 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
       </div>
       {evidence ? (
         <div className="grid gap-3">
-          <DetailRow label="Evidence ID" value={evidence.id} />
+          <DetailRow label="证据类型" value={evidence.evidenceType} />
           {evidence.entity ? (
             <TraceSection title="Entity">
               <DetailRow label="Name" value={evidence.entity.name} />
@@ -400,20 +408,16 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
               <DetailRow label="Delta" value={formatValue(evidence.signal.delta)} />
               <DetailRow label="Confidence" value={formatValue(evidence.signal.confidence)} />
             </TraceSection>
-          ) : evidence.signalId ? (
-            <DetailRow label="Signal ID" value={evidence.signalId} />
           ) : null}
           {evidence.source ? (
             <TraceSection title="Source">
               <DetailRow label="Name" value={evidence.source.name} />
               <DetailRow label="Collector" value={evidence.source.type} />
-              <DetailRow label="Enabled" value={evidence.source.enabled ? "true" : "false"} />
+              <DetailRow label="Enabled" value={evidence.source.enabled ? "是" : "否"} />
             </TraceSection>
           ) : null}
           {evidence.taskRun ? (
             <TraceSection title="Task Run">
-              <DetailRow label="Run ID" value={evidence.taskRun.id} />
-              <DetailRow label="Task ID" value={evidence.taskRun.taskId} />
               <DetailRow label="Status" value={evidence.taskRun.status} />
               <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
               <DetailRow label="Entities" value={String(evidence.taskRun.entitiesCount)} />
@@ -430,9 +434,7 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.rawRecord ? (
             <TraceSection title="Raw Record">
-              <DetailRow label="RawRecord ID" value={evidence.rawRecord.id} />
               <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
-              <DetailRow label="Content Hash" value={evidence.rawRecord.contentHash} />
               <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
@@ -441,8 +443,6 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
                 查看原始数据
               </Link>
             </TraceSection>
-          ) : evidence.rawRecordId ? (
-            <DetailRow label="RawRecord ID" value={evidence.rawRecordId} />
           ) : null}
           {evidenceExternalUrl(evidence) ? (
             <a
@@ -466,20 +466,16 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
               width={900}
             />
           ) : null}
-          {evidence.referenceMetadata ? (
-            <TraceSection title="Reference Metadata">
-              <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-                {formatJsonPreview(evidence.referenceMetadata)}
-              </pre>
-            </TraceSection>
+          {referenceFacts.length > 0 ? (
+            <AuditFactSection facts={referenceFacts} title="证据定位" />
           ) : null}
-          <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-            {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
-          </pre>
-          {evidence.rawRecord ? (
-            <pre className="max-h-72 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-              {formatJsonPreview(evidence.rawRecord.contentPreview)}
-            </pre>
+          <TraceSection title="证据摘录">
+            <p className="rounded-xl bg-[#FBF8F5] px-3 py-2 text-sm leading-6 text-[#1D1D1F]">
+              {evidence.highlightedText ?? evidence.excerpt ?? "暂无证据摘录"}
+            </p>
+          </TraceSection>
+          {rawContentFacts.length > 0 ? (
+            <AuditFactSection facts={rawContentFacts} title="原始内容摘要" />
           ) : null}
         </div>
       ) : (
@@ -488,6 +484,18 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
         </p>
       )}
     </div>
+  );
+}
+
+function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string }) {
+  return (
+    <TraceSection title={title}>
+      <div className="grid gap-2">
+        {facts.map((fact) => (
+          <DetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+        ))}
+      </div>
+    </TraceSection>
   );
 }
 
@@ -547,10 +555,6 @@ function evidenceExternalUrl(evidence: Evidence) {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("zh-CN");
-}
-
-function formatJsonPreview(value: Record<string, unknown> | unknown[] | string) {
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 function FeedbackButton({

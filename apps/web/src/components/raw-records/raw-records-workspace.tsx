@@ -18,6 +18,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { listRawRecords } from "@/lib/api/raw-records";
+import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type { RawRecord } from "@/types/raw-record";
 
@@ -151,7 +152,7 @@ export function RawRecordsWorkspace() {
               原始事实层审计台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              每条 RawRecord 都保留来源、采集时间、content hash 和原始 JSON，用于回看 Entity、Signal、Evidence 的事实出处。
+              每条 RawRecord 都保留来源、采集时间和可校验指纹，用于回看 Entity、Signal、Evidence 的事实出处。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <MetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
@@ -198,7 +199,7 @@ export function RawRecordsWorkspace() {
                 <input
                   className="h-10 w-full rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] pl-9 pr-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE] sm:w-64"
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="搜索 raw id、source、hash"
+                  placeholder="搜索标题、来源、字段"
                   value={searchTerm}
                 />
               </label>
@@ -257,7 +258,7 @@ export function RawRecordsWorkspace() {
             <div>
               <p className="text-xs font-semibold uppercase text-[#B47767]">Record Detail</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">记录详情</h2>
-              <p className="mt-1 text-sm text-[#7A625A]">RawRecord content JSON</p>
+              <p className="mt-1 text-sm text-[#7A625A]">事实字段、来源和校验摘要</p>
             </div>
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C96F5C] text-white">
               <Braces size={18} aria-hidden="true" />
@@ -317,7 +318,7 @@ function RawRecordCard({
 
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <RecordFact label="采集时间" value={formatDate(rawRecord.collectedAt)} />
-            <RecordFact label="字段数" value={`${getContentFieldCount(rawRecord.content)} fields`} />
+            <RecordFact label="事实字段" value={`${getAuditFactCount(rawRecord.content)} fields`} />
             <RecordFact label="内容大小" value={`${getContentSize(rawRecord.content)} chars`} />
           </div>
         </div>
@@ -325,11 +326,11 @@ function RawRecordCard({
         <div className="flex shrink-0 flex-col gap-2 lg:w-52">
           <span className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-3 py-2 text-xs font-semibold text-[#7D4F43]">
             <Hash size={14} aria-hidden="true" />
-            {rawRecord.contentHash.slice(0, 18)}
+            校验已记录
           </span>
           <span className="inline-flex items-center gap-2 rounded-xl border border-white/80 bg-white/80 px-3 py-2 text-xs font-semibold text-[#7D4F43]">
             <Fingerprint size={14} aria-hidden="true" />
-            {rawRecord.taskRunId}
+            可追溯采集
           </span>
         </div>
       </div>
@@ -339,7 +340,8 @@ function RawRecordCard({
 
 function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
   const tone = getRecordTone(rawRecord.recordType);
-  const jsonText = JSON.stringify(rawRecord.content, null, 2);
+  const facts = buildAuditFacts(rawRecord.content, 14);
+  const contentSize = getContentSize(rawRecord.content);
 
   return (
     <div className="grid gap-4">
@@ -361,10 +363,10 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="ID" value={rawRecord.id} />
-          <DetailRow label="Source" value={rawRecord.sourceId} />
-          <DetailRow label="TaskRun" value={rawRecord.taskRunId} />
-          <DetailRow label="Hash" value={rawRecord.contentHash} />
+          <DetailRow label="采集类型" value={tone.label} />
+          <DetailRow label="采集时间" value={formatDate(rawRecord.collectedAt)} />
+          <DetailRow label="事实字段" value={`${facts.length} fields`} />
+          <DetailRow label="内容大小" value={`${contentSize} chars`} />
         </div>
       </div>
 
@@ -396,15 +398,31 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
 
       <div className="rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase text-[#B47767]">Content JSON</p>
+          <p className="text-xs font-semibold uppercase text-[#B47767]">关键事实字段</p>
           <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
-            {jsonText.length} chars
+            {facts.length} fields
           </span>
         </div>
-        <pre className="max-h-[560px] overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-4 text-xs leading-5 text-[#FFF8F4]">
-          {jsonText}
-        </pre>
+        {facts.length > 0 ? <FactGrid facts={facts} /> : <EmptyFacts />}
       </div>
+    </div>
+  );
+}
+
+function FactGrid({ facts }: { facts: AuditFact[] }) {
+  return (
+    <div className="grid gap-2">
+      {facts.map((fact) => (
+        <DetailRow key={`${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+      ))}
+    </div>
+  );
+}
+
+function EmptyFacts() {
+  return (
+    <div className="rounded-xl border border-dashed border-[#E8D4CB] bg-[#FFFDFC] px-3 py-4 text-sm text-[#7A625A]">
+      暂无可读事实字段。
     </div>
   );
 }
@@ -494,13 +512,6 @@ function getSourceLabel(record: RawRecord): string {
   const content = asRecord(record.content);
   const payload = asRecord(content.payload);
   return getString(content.full_name) || getString(payload.name) || "manual-json payload";
-}
-
-function getContentFieldCount(content: RawRecord["content"]): number {
-  if (Array.isArray(content)) {
-    return content.length;
-  }
-  return Object.keys(content).length;
 }
 
 function getContentSize(content: RawRecord["content"]): number {

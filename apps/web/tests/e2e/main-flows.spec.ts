@@ -325,8 +325,12 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("Raw Record").first()).toBeVisible();
     await page.getByRole("link", { name: "打开详情页" }).click();
     await expect(page).toHaveURL(/\/intelligence\/.+/);
-    await expect(page.getByText("Content Hash").first()).toBeVisible();
+    await expect(page.getByText("原始内容摘要").first()).toBeVisible();
+    await expect(page.getByText("证据摘录").first()).toBeVisible();
     await expect(page.getByText("查看原始数据").first()).toBeVisible();
+    await expect(page.getByText("Content Hash")).toHaveCount(0);
+    await expect(page.getByText("Reference Metadata")).toHaveCount(0);
+    await expect(page.getByText("RawRecord ID")).toHaveCount(0);
   });
 
   test("generates and sends a report", async ({ page, request }, testInfo) => {

@@ -20,6 +20,7 @@ import {
   submitFeedback,
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
+import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type {
   Evidence,
@@ -532,6 +533,13 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 function AuditPanel({ evidence }: { evidence: Evidence | null }) {
+  const referenceFacts = evidence?.referenceMetadata
+    ? buildAuditFacts(evidence.referenceMetadata, 6)
+    : [];
+  const rawContentFacts = evidence?.rawRecord
+    ? buildAuditFacts(evidence.rawRecord.contentPreview, 10)
+    : [];
+
   return (
     <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -540,7 +548,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
       </div>
       {evidence ? (
         <div className="grid gap-3">
-          <DetailRow label="Evidence ID" value={evidence.id} />
+          <DetailRow label="证据类型" value={evidence.evidenceType} />
           {evidence.signal ? (
             <TraceSection title="Signal">
               <DetailRow label="Type" value={evidence.signal.signalType} />
@@ -548,8 +556,6 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
               <DetailRow label="Delta" value={formatTraceValue(evidence.signal.delta)} />
               <DetailRow label="Confidence" value={formatTraceValue(evidence.signal.confidence)} />
             </TraceSection>
-          ) : evidence.signalId ? (
-            <DetailRow label="Signal ID" value={evidence.signalId} />
           ) : null}
           {evidence.entity ? (
             <TraceSection title="Entity">
@@ -566,7 +572,6 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.taskRun ? (
             <TraceSection title="Task Run">
-              <DetailRow label="Run ID" value={evidence.taskRun.id} />
               <DetailRow label="Status" value={evidence.taskRun.status} />
               <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
               <Link
@@ -579,8 +584,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.rawRecord ? (
             <TraceSection title="Raw Record">
-              <DetailRow label="RawRecord ID" value={evidence.rawRecord.id} />
-              <DetailRow label="Content Hash" value={evidence.rawRecord.contentHash} />
+              <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
               <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
@@ -589,8 +593,6 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
                 查看原始数据
               </Link>
             </TraceSection>
-          ) : evidence.rawRecordId ? (
-            <DetailRow label="RawRecord ID" value={evidence.rawRecordId} />
           ) : null}
           {evidenceExternalUrl(evidence) ? (
             <a
@@ -614,20 +616,16 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
               width={900}
             />
           ) : null}
-          {evidence.referenceMetadata ? (
-            <TraceSection title="Reference Metadata">
-              <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-                {formatJsonPreview(evidence.referenceMetadata)}
-              </pre>
-            </TraceSection>
+          {referenceFacts.length > 0 ? (
+            <AuditFactSection facts={referenceFacts} title="证据定位" />
           ) : null}
-          <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-            {evidence.highlightedText ?? evidence.excerpt ?? "No highlighted text"}
-          </pre>
-          {evidence.rawRecord ? (
-            <pre className="max-h-64 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-              {formatJsonPreview(evidence.rawRecord.contentPreview)}
-            </pre>
+          <TraceSection title="证据摘录">
+            <p className="rounded-xl bg-white px-3 py-2 text-sm leading-6 text-[#1D1D1F]">
+              {evidence.highlightedText ?? evidence.excerpt ?? "暂无证据摘录"}
+            </p>
+          </TraceSection>
+          {rawContentFacts.length > 0 ? (
+            <AuditFactSection facts={rawContentFacts} title="原始内容摘要" />
           ) : null}
         </div>
       ) : (
@@ -636,6 +634,18 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
         </p>
       )}
     </div>
+  );
+}
+
+function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string }) {
+  return (
+    <TraceSection title={title}>
+      <div className="grid gap-2">
+        {facts.map((fact) => (
+          <DetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+        ))}
+      </div>
+    </TraceSection>
   );
 }
 
@@ -715,10 +725,6 @@ function latestTimestamp(values: string[]) {
     return null;
   }
   return new Date(Math.max(...timestamps)).toISOString();
-}
-
-function formatJsonPreview(value: Record<string, unknown> | unknown[] | string) {
-  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 function FeedbackButton({
