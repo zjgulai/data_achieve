@@ -901,7 +901,7 @@ async def _merge_collection_layer(
             id=context.source_ids["amazon"],
             workspace_id=context.workspace_id,
             project_id=context.project_ids["ecommerce"],
-            name="Amazon BSR 与 Keepa 价格样本",
+            name="Amazon BSR 与 Keepa 价格雷达",
             type="manual_json",
             url="https://www.amazon.com/Best-Sellers/zgbs",
             config={
@@ -910,7 +910,7 @@ async def _merge_collection_layer(
                 "schedule_policy": "auto_freshness",
                 "json_data": {
                     "id": "amazon-bsr-keepa-air-filter",
-                    "title": "Amazon BSR + Keepa price/rank sample",
+                    "title": "Amazon BSR + Keepa 价格排名雷达",
                     "url": "https://www.amazon.com/Best-Sellers/zgbs",
                     "price": 39.9,
                     "rank": 6,
@@ -932,7 +932,7 @@ async def _merge_collection_layer(
             id=context.source_ids["social"],
             workspace_id=context.workspace_id,
             project_id=context.project_ids["social"],
-            name="TikTok / Reddit 热点方法样本",
+            name="TikTok / Reddit 热点方法雷达",
             type="manual_json",
             url=None,
             config={
@@ -941,7 +941,7 @@ async def _merge_collection_layer(
                 "schedule_policy": "auto_freshness",
                 "json_data": {
                     "id": "ai-scraping-methods-social",
-                    "name": "AI scraping methods",
+                    "name": "AI 数据采集方法",
                     "url": "https://www.tiktok.com/business/creativecenter/",
                     "mentions_24h": 690000,
                     "engagement_rate": 0.093,
@@ -1036,7 +1036,7 @@ async def _merge_collection_layer(
             project_id=context.project_ids["social"],
             source_id=context.source_ids["social"],
             collector_type="manual_json",
-            name="社媒热点方法样本导入",
+            name="社媒热点方法雷达导入",
             schedule_cron=None,
             status="enabled",
             config={
@@ -1191,10 +1191,10 @@ async def _merge_collection_layer(
                 context.project_ids["ecommerce"],
                 context.source_ids["amazon"],
                 context.run_ids["amazon-success"],
-                "https://www.amazon.com/dp/demo-air-filter",
+                "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
                 {
                     "id": "amazon-bsr-keepa-air-filter",
-                    "title": "Amazon BSR + Keepa price/rank sample",
+                    "title": "Amazon BSR + Keepa 价格排名雷达",
                     "price": 49.9,
                     "rank": 18,
                     "review_count": 1760,
@@ -1212,10 +1212,10 @@ async def _merge_collection_layer(
                 context.project_ids["ecommerce"],
                 context.source_ids["amazon"],
                 context.run_ids["amazon-success"],
-                "https://www.amazon.com/dp/demo-air-filter",
+                "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
                 {
                     "id": "amazon-bsr-keepa-air-filter",
-                    "title": "Amazon BSR + Keepa price/rank sample",
+                    "title": "Amazon BSR + Keepa 价格排名雷达",
                     "price": 39.9,
                     "rank": 6,
                     "review_count": 1840,
@@ -1237,7 +1237,7 @@ async def _merge_collection_layer(
                 "https://www.tiktok.com/business/creativecenter/",
                 {
                     "id": "ai-scraping-methods-social",
-                    "name": "AI scraping methods",
+                    "name": "AI 数据采集方法",
                     "mentions_24h": 210000,
                     "engagement_rate": 0.061,
                     "method_quality": 78,
@@ -1254,7 +1254,7 @@ async def _merge_collection_layer(
                 "https://www.tiktok.com/business/creativecenter/",
                 {
                     "id": "ai-scraping-methods-social",
-                    "name": "AI scraping methods",
+                    "name": "AI 数据采集方法",
                     "mentions_24h": 690000,
                     "engagement_rate": 0.093,
                     "method_quality": 86,
@@ -1375,7 +1375,7 @@ async def _merge_entity_layer(
                 entity_type="product_method",
                 external_id="amazon-bsr-keepa-air-filter",
                 canonical_url="https://www.amazon.com/Best-Sellers/zgbs",
-                name="Amazon BSR + Keepa price/rank sample",
+                name="Amazon BSR + Keepa 价格排名雷达",
                 domain="ecommerce",
                 latest_snapshot_id=None,
                 first_seen_at=now - timedelta(days=2),
@@ -1390,7 +1390,7 @@ async def _merge_entity_layer(
                 entity_type="social_topic",
                 external_id="ai-scraping-methods-social",
                 canonical_url="https://www.tiktok.com/business/creativecenter/",
-                name="AI scraping methods",
+                name="AI 数据采集方法",
                 domain="social",
                 latest_snapshot_id=None,
                 first_seen_at=now - timedelta(days=1),
@@ -1661,9 +1661,9 @@ async def _merge_intelligence_layer(
                 id=context.intelligence_ids["amazon-margin-risk"],
                 workspace_id=context.workspace_id,
                 project_id=context.project_ids["ecommerce"],
-                title="Amazon BSR + Keepa 样本显示价格下探 20%，排名同步抬升",
+                title="Amazon BSR + Keepa 雷达显示价格下探 20%，排名同步抬升",
                 summary=(
-                    "电商采集样本显示目标商品价格从 49.9 降至 39.9，BSR 排名从 18 升至 6；"
+                    "电商价格雷达显示目标商品价格从 49.9 降至 39.9，BSR 排名从 18 升至 6；"
                     "Keepa 价格历史与公开榜单组合适合承载价格/排名双指标监控。"
                 ),
                 intelligence_type="risk",
@@ -1682,9 +1682,9 @@ async def _merge_intelligence_layer(
                 id=context.intelligence_ids["social-method-window"],
                 workspace_id=context.workspace_id,
                 project_id=context.project_ids["social"],
-                title="TikTok / Reddit 方法样本 24h 提及量放大 3.3 倍",
+                title="TikTok / Reddit 方法雷达 24h 提及量放大 3.3 倍",
                 summary=(
-                    "社媒采集样本显示 AI scraping methods 主题提及量从 21 万提升至 69 万，"
+                    "社媒热点雷达显示 AI 数据采集方法主题提及量从 21 万提升至 69 万，"
                     "互动率同步升至 9.3%；Creative Center + Reddit API 可形成早期趋势雷达。"
                 ),
                 intelligence_type="opportunity",
@@ -1761,7 +1761,7 @@ async def _merge_intelligence_layer(
                 entity_id=context.entity_ids["social-topic"],
                 raw_record_id=context.raw_record_ids["social-current"],
                 evidence_type="signal",
-                title="AI scraping methods 主题提及量 24h 提升至 69 万",
+                title="AI 数据采集方法主题提及量 24h 提升至 69 万",
                 url="https://www.tiktok.com/business/creativecenter/",
                 excerpt="mentions_24h: 690000, engagement_rate: 0.093",
                 highlighted_text="Creative Center + Reddit API trend watch, traffic spike +228.6%",
@@ -1803,8 +1803,8 @@ async def _merge_reports_alerts_notifications(
                 title="Data Achieve 每日情报摘要",
                 content=(
                     "今日共识别 4 条高价值情报：Scrapy 开源仓库热度回升、Amazon/Keepa "
-                    "价格排名样本变化、社媒采集主题热度放大、竞品公开页面发生中等变化。"
-                    "建议优先复核电商价格风险和竞品页面更新，同时把社媒方法样本纳入日采集。"
+                    "价格排名信号变化、社媒采集主题热度放大、竞品公开页面发生中等变化。"
+                    "建议优先复核电商价格风险和竞品页面更新，同时把社媒方法雷达纳入日采集。"
                 ),
                 status="generated",
                 period_start=now - timedelta(days=1),

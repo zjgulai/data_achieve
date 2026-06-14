@@ -77,6 +77,7 @@ Demo workspace 不是 E2E 沙箱，也不是生产用户工作区。任何测试
 3. 真实 API E2E 必须使用一次性用户，不使用 demo 账号。
 4. Demo cleanup 默认 dry-run，只有显式 `--execute` 才写库。
 5. Demo seed 每次执行前先清理 runtime noise，再写入 curated demo 数据。
+6. 用户可见字段不得出现 `sample`、`demo-`、`demo_`、`placeholder`、`示例`、`样本` 等演示腔文案；内部 provenance 可继续使用 `curated_demo` 支撑 cleanup 白名单。
 
 ## 操作命令
 
@@ -120,3 +121,4 @@ bash scripts/cleanup-demo-noise.sh --execute
 4. 最新列表前四条分别覆盖开源、电商、社媒、竞品。
 5. 生产真实 API E2E 仍通过。
 6. 非 demo workspace 不受影响。
+7. source、task、entity、intelligence、report、notification 等用户可见字段不含演示腔文案。

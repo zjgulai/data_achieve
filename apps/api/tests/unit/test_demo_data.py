@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -101,6 +102,24 @@ async def test_demo_collection_tasks_use_auto_freshness_policy() -> None:
     assert {task.config["schedule_policy"] for task in tasks if task.config is not None} == {
         "auto_freshness"
     }
+
+
+@pytest.mark.asyncio
+async def test_curated_demo_visible_copy_is_not_demo_or_sample_copy() -> None:
+    session_factory = await _create_demo_cleanup_session_factory()
+    now = datetime(2026, 6, 14, 10, 0, tzinfo=UTC)
+    async with session_factory() as session:
+        await _seed_curated_demo(session, now)
+        visible_texts = await _curated_demo_visible_texts(session)
+
+    forbidden_terms = ("sample", "demo-", "demo_", "placeholder", "示例", "样本")
+    offenders = [
+        text
+        for text in visible_texts
+        if any(term in text.lower() for term in forbidden_terms)
+    ]
+
+    assert offenders == []
 
 
 @pytest.mark.asyncio
@@ -204,6 +223,55 @@ async def _seed_curated_demo(session: AsyncSession, now: datetime) -> None:
     await _merge_entity_layer(session, context, now)
     await _merge_intelligence_layer(session, context, now)
     await _merge_reports_alerts_notifications(session, context, now)
+
+
+async def _curated_demo_visible_texts(session: AsyncSession) -> list[str]:
+    visible_texts: list[str] = []
+
+    for model, fields in (
+        (Source, ("name", "url")),
+        (CollectionTask, ("name", "collector_type", "status")),
+        (Entity, ("name", "canonical_url", "external_id", "entity_type")),
+        (IntelligenceItem, ("title", "summary", "intelligence_type", "domain")),
+        (Evidence, ("title", "url", "excerpt", "highlighted_text")),
+        (Report, ("title", "content", "report_type", "status")),
+        (AlertRule, ("name", "signal_type", "channel")),
+        (Notification, ("title", "body", "notification_type", "reference_type")),
+    ):
+        rows = (await session.scalars(select(model))).all()
+        for row in rows:
+            for field in fields:
+                value = getattr(row, field)
+                if value:
+                    visible_texts.append(str(value))
+
+    raw_records = (await session.scalars(select(RawRecord))).all()
+    for raw_record in raw_records:
+        if raw_record.source_url:
+            visible_texts.append(raw_record.source_url)
+        visible_texts.append(
+            json.dumps(_without_provenance(raw_record.content), ensure_ascii=False)
+        )
+
+    alert_events = (await session.scalars(select(AlertEvent))).all()
+    for alert_event in alert_events:
+        visible_texts.append(
+            json.dumps(_without_provenance(alert_event.payload), ensure_ascii=False)
+        )
+
+    return visible_texts
+
+
+def _without_provenance(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _without_provenance(item)
+            for key, item in value.items()
+            if key != "provenance"
+        }
+    if isinstance(value, list):
+        return [_without_provenance(item) for item in value]
+    return value
 
 
 async def _create_runtime_noise(session: AsyncSession, now: datetime) -> None:
