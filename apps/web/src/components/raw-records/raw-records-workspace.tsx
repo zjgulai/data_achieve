@@ -146,7 +146,7 @@ export function RawRecordsWorkspace() {
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-white/75 px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
               <Database size={14} aria-hidden="true" />
-              Raw Evidence Layer
+              事实证据层
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-normal text-[#2E201C] sm:text-3xl">
               原始事实层审计台
