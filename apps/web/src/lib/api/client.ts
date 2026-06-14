@@ -22,14 +22,48 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
+    const message = await readApiErrorMessage(response);
+    if (response.status === 401 && shouldRedirectForUnauthorized(path)) {
       redirectToLogin();
-      throw new ApiRequestError(401, "Authentication required");
     }
-    throw new ApiRequestError(response.status, `API request failed: ${response.status}`);
+    throw new ApiRequestError(response.status, message);
   }
 
   return response.json() as Promise<T>;
+}
+
+async function readApiErrorMessage(response: Response): Promise<string> {
+  const fallback = `API request failed: ${response.status}`;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return fallback;
+  }
+
+  try {
+    const body = (await response.json()) as {
+      detail?: string | Array<{ msg?: string }>;
+      message?: string;
+    };
+    if (typeof body.detail === "string" && body.detail.trim().length > 0) {
+      return body.detail;
+    }
+    if (Array.isArray(body.detail) && body.detail.length > 0) {
+      return body.detail
+        .map((item) => item.msg)
+        .filter((message): message is string => Boolean(message))
+        .join("; ");
+    }
+    if (typeof body.message === "string" && body.message.trim().length > 0) {
+      return body.message;
+    }
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
+function shouldRedirectForUnauthorized(path: string) {
+  return path !== "/api/auth/login" && path !== "/api/auth/register";
 }
 
 function redirectToLogin() {

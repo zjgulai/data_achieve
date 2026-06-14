@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { login, register } from "@/lib/api/auth";
+import { ApiRequestError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 type Mode = "login" | "register";
@@ -23,26 +24,34 @@ export function LoginPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("owner@example.com");
-  const [name, setName] = useState("Owner");
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
 
   async function submit() {
+    const normalizedEmail = email.trim().toLowerCase();
+    const trimmedName = name.trim();
+    const validationError = validateAuthInput(mode, normalizedEmail, trimmedName, password);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
       if (mode === "register") {
-        await register({ email, name, password });
+        await register({ email: normalizedEmail, name: trimmedName, password });
       } else {
-        await login({ email, password });
+        await login({ email: normalizedEmail, password });
       }
       router.push(getSafeNextPath(searchParams.get("next")) as Route);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Authentication failed");
+      setError(getAuthErrorMessage(caught, mode));
     } finally {
       setSubmitting(false);
     }
@@ -51,6 +60,7 @@ export function LoginPanel() {
   return (
     <form
       className="w-full"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         void submit();
@@ -66,7 +76,7 @@ export function LoginPanel() {
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#7A625A]">
           {mode === "login"
-            ? "使用邮箱和密码进入情报工作台。"
+            ? "输入已注册账号进入情报工作台。"
             : "新账号会自动创建默认 Workspace。"}
         </p>
       </div>
@@ -114,7 +124,8 @@ export function LoginPanel() {
               id="auth-name"
               name="name"
               onChange={(event) => setName(event.target.value)}
-              placeholder="Owner"
+              placeholder="你的名称"
+              required
               value={name}
             />
           </Field>
@@ -127,7 +138,8 @@ export function LoginPanel() {
             id="auth-email"
             name="email"
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="owner@example.com"
+            placeholder="you@example.com"
+            required
             type="email"
             value={email}
           />
@@ -141,6 +153,8 @@ export function LoginPanel() {
             name="password"
             onChange={(event) => setPassword(event.target.value)}
             placeholder="输入密码"
+            minLength={8}
+            required
             type={passwordVisible ? "text" : "password"}
             value={password}
           />
@@ -168,12 +182,12 @@ export function LoginPanel() {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#2E201C]">
-              {mode === "login" ? "Demo session ready" : "Default workspace will be created"}
+              {mode === "login" ? "账号验证" : "Workspace 自动创建"}
             </p>
             <p className="mt-1 text-xs leading-5 text-[#7A625A]">
               {mode === "login"
-                ? "使用部署时配置的演示账号，或切换到注册创建新 Workspace。"
-                : "注册后进入同一个情报工作流入口。"}
+                ? "使用已有邮箱和密码登录；没有账号时切换到注册。"
+                : "注册成功后会直接进入同一套情报工作流。"}
             </p>
           </div>
         </div>
@@ -200,6 +214,47 @@ function getSafeNextPath(next: string | null) {
     return next;
   }
   return "/dashboard";
+}
+
+function validateAuthInput(mode: Mode, email: string, name: string, password: string) {
+  if (!email) {
+    return "请输入邮箱。";
+  }
+  if (!email.includes("@")) {
+    return "请输入有效邮箱。";
+  }
+  if (mode === "register" && !name) {
+    return "请输入名称。";
+  }
+  if (!password) {
+    return "请输入密码。";
+  }
+  if (password.length < 8) {
+    return "密码至少 8 位。";
+  }
+  return null;
+}
+
+function getAuthErrorMessage(caught: unknown, mode: Mode) {
+  if (caught instanceof ApiRequestError) {
+    if (caught.status === 401) {
+      return "邮箱或密码不正确。";
+    }
+    if (caught.status === 409) {
+      return "该邮箱已注册，请切换到登录。";
+    }
+    if (caught.status === 422) {
+      return mode === "register" ? "请检查邮箱、名称和密码格式。" : "请检查邮箱和密码格式。";
+    }
+    if (caught.status >= 500) {
+      return "认证服务暂时不可用，请稍后重试。";
+    }
+    return caught.message;
+  }
+  if (caught instanceof TypeError && caught.message === "Failed to fetch") {
+    return "无法连接认证服务，请确认 API 服务和网络可用。";
+  }
+  return caught instanceof Error ? caught.message : "认证失败，请重试。";
 }
 
 function Field({
