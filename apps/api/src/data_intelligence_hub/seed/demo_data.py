@@ -113,7 +113,7 @@ def _provenance(layer: str, domain: str | None = None) -> dict[str, str]:
         "data_layer": layer,
         "dataset": "curated_demo",
         "seed_version": DEMO_SEED_VERSION,
-        "source": "data_intelligence_hub.seed.demo_data",
+        "source": "data_intelligence_hub.curated_intelligence",
     }
     if domain is not None:
         value["domain"] = domain

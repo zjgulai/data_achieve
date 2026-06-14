@@ -250,27 +250,27 @@ async def _curated_demo_visible_texts(session: AsyncSession) -> list[str]:
         if raw_record.source_url:
             visible_texts.append(raw_record.source_url)
         visible_texts.append(
-            json.dumps(_without_provenance(raw_record.content), ensure_ascii=False)
+            json.dumps(_without_internal_dataset_marker(raw_record.content), ensure_ascii=False)
         )
 
     alert_events = (await session.scalars(select(AlertEvent))).all()
     for alert_event in alert_events:
         visible_texts.append(
-            json.dumps(_without_provenance(alert_event.payload), ensure_ascii=False)
+            json.dumps(_without_internal_dataset_marker(alert_event.payload), ensure_ascii=False)
         )
 
     return visible_texts
 
 
-def _without_provenance(value: Any) -> Any:
+def _without_internal_dataset_marker(value: Any) -> Any:
     if isinstance(value, dict):
         return {
-            key: _without_provenance(item)
+            key: _without_internal_dataset_marker(item)
             for key, item in value.items()
-            if key != "provenance"
+            if key != "dataset"
         }
     if isinstance(value, list):
-        return [_without_provenance(item) for item in value]
+        return [_without_internal_dataset_marker(item) for item in value]
     return value
 
 
