@@ -63,6 +63,10 @@ async function activateControl(locator: Locator, projectName: string) {
   await locator.click();
 }
 
+function visibleArticleByText(page: Page, text: string) {
+  return page.locator("article").filter({ hasText: text }).filter({ visible: true }).first();
+}
+
 async function createTaskFlowFixture(
   request: APIRequestContext,
   suffix: string,
@@ -483,10 +487,7 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: "创建 Source" }).click();
     await expect(page.getByText("Source created")).toBeVisible();
 
-    let sourceCard = page
-      .locator("article")
-      .filter({ hasText: sourceName })
-      .first();
+    let sourceCard = visibleArticleByText(page, sourceName);
     await expect(sourceCard).toBeVisible();
     await sourceCard.getByRole("button", { name: "编辑" }).click();
     await page.getByLabel("名称").fill(updatedName);
@@ -511,10 +512,7 @@ test.describe("MVP workspace routes", () => {
       page.getByText(`${updatedName}: source updated; retest before next run`),
     ).toBeVisible();
 
-    sourceCard = page
-      .locator("article")
-      .filter({ hasText: updatedName })
-      .first();
+    sourceCard = visibleArticleByText(page, updatedName);
     await activateControl(
       sourceCard.getByRole("button", { name: "重测配置" }),
       testInfo.project.name,
@@ -527,8 +525,9 @@ test.describe("MVP workspace routes", () => {
       testInfo.project.name,
     );
     await expect(page.getByText(`${updatedName}: task enabled`)).toBeVisible();
-    await expect(sourceCard.getByText("已启用")).toBeVisible();
-    await expect(sourceCard.getByText("尚未运行")).toBeVisible();
+    sourceCard = visibleArticleByText(page, updatedName);
+    await expect(sourceCard).toContainText("已启用");
+    await expect(sourceCard).toContainText("尚未运行");
     await activateControl(
       sourceCard.getByRole("button", { name: "停用" }),
       testInfo.project.name,
@@ -536,7 +535,8 @@ test.describe("MVP workspace routes", () => {
     await expect(
       page.getByText(`${updatedName}: source disabled`),
     ).toBeVisible();
-    await expect(sourceCard.getByText("已停用")).toBeVisible();
+    sourceCard = visibleArticleByText(page, updatedName);
+    await expect(sourceCard).toContainText("已停用");
   });
 
   test("inspects task workspace and diagnostics", async ({
