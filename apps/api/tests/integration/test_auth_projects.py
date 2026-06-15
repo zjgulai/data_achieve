@@ -135,6 +135,15 @@ async def test_register_defaults_to_demo_workspace_when_available(
         "Training Intelligence Corpus"
     ]
 
+    notifications_response = await demo_client.get("/api/notifications")
+    assert notifications_response.status_code == 200
+    notification_types = [
+        notification["notification_type"] for notification in notifications_response.json()
+    ]
+    assert notification_types == [
+        "training_workspace_ready"
+    ]
+
 
 @pytest.mark.asyncio
 async def test_login_rejects_invalid_password(client: AsyncClient) -> None:
