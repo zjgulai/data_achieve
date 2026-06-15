@@ -731,7 +731,7 @@ async def _delete_ids(session: AsyncSession, model: type[Any], ids: list[uuid.UU
 
 
 def _curated_demo_ids(context: DemoContext) -> dict[str, list[uuid.UUID]]:
-    return {
+    curated = {
         "projects": list(context.project_ids.values()),
         "sources": list(context.source_ids.values()),
         "tasks": list(context.task_ids.values()),
@@ -761,6 +761,13 @@ def _curated_demo_ids(context: DemoContext) -> dict[str, list[uuid.UUID]]:
             _id("notification-competitor-alert"),
         ],
     }
+    try:
+        from data_intelligence_hub.seed.training_content import curated_training_ids
+    except ImportError:
+        return curated
+    for key, ids in curated_training_ids().items():
+        curated.setdefault(key, []).extend(ids)
+    return curated
 
 
 async def _fetch_ids(session: AsyncSession, statement: Any) -> list[uuid.UUID]:
