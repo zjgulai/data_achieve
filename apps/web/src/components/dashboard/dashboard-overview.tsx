@@ -104,7 +104,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
     : "尚无采集记录";
 
   return (
-    <div className="grid min-w-0 gap-5">
+    <div className="grid min-w-0 grid-cols-1 gap-5">
       <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
@@ -160,7 +160,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         overview={trainingOverview.overview}
       />
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           delta={latestCollectionLabel}
           icon={RadioTower}
@@ -198,7 +198,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         />
       </section>
 
-      <section className="grid gap-5 2xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+      <section className="grid min-w-0 grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
         <Panel
           action={
             <Link className="text-xs font-semibold text-[#C25B6E]" href="/intelligence">
@@ -209,7 +209,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
           subtitle="按 final score 排序，优先处理有证据链的信号"
           title="Top Intelligence"
         >
-          <div className="grid gap-3">
+          <div className="grid min-w-0 grid-cols-1 gap-3">
             {dashboard.topIntelligence.map((item, index) => (
               <Link
                 className="group rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4 transition-colors hover:border-[#C25B6E] hover:bg-[#FFF7F8]"
@@ -249,9 +249,9 @@ export function DashboardOverview({ domain }: { domain?: string }) {
           </div>
         </Panel>
 
-        <div className="grid gap-5">
+        <div className="grid min-w-0 grid-cols-1 gap-5">
           <Panel icon={RadioTower} subtitle="类型占比与当前情报结构" title="情报类型">
-            <div className="grid gap-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4">
               {dashboard.typeBreakdown.map((item) => (
                 <DistributionRow
                   key={item.type}
@@ -268,7 +268,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
           </Panel>
 
           <Panel icon={ShieldAlert} subtitle="任务可用性与数据源覆盖" title="任务健康">
-            <div className="grid gap-2 text-sm">
+            <div className="grid min-w-0 grid-cols-1 gap-2 text-sm">
               <StatusRow label="任务总数" value={dashboard.taskHealth.totalTasks} />
               <StatusRow label="启用任务" value={dashboard.taskHealth.enabledTasks} />
               <StatusRow label="失败任务" tone={dashboard.taskHealth.failedTasks > 0 ? "red" : "green"} value={dashboard.taskHealth.failedTasks} />
@@ -282,7 +282,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
               <StatusRow label="最近采集" value={latestCollectionLabel} />
             </div>
             {dashboard.freshness.staleTasks.length > 0 ? (
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4 grid min-w-0 grid-cols-1 gap-2">
                 {dashboard.freshness.staleTasks.map((task) => (
                   <div className="rounded-xl border border-[#FFD7DF] bg-[#FFF7F8] p-3 text-xs" key={task.taskId}>
                     <p className="font-semibold text-[#C25B6E]">{task.taskName}</p>
@@ -299,7 +299,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
               </div>
             ) : null}
             {dashboard.taskHealth.recentFailures.length > 0 ? (
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4 grid min-w-0 grid-cols-1 gap-2">
                 {dashboard.taskHealth.recentFailures.map((failure) => (
                   <div className="rounded-xl border border-[#FFD7DF] bg-[#FFF7F8] p-3 text-xs" key={failure.taskId}>
                     <p className="font-semibold text-[#C25B6E]">{failure.taskName}</p>
@@ -312,9 +312,9 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <section className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <Panel icon={ChartNoAxesCombined} subtitle="四域情报、信号与项目分布" title="业务域拆解">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
             {dashboard.domainBreakdown.map((item) => (
               <DomainCard
                 intelligenceCount={item.intelligenceCount}
@@ -331,7 +331,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         </Panel>
 
         <Panel icon={Gauge} subtitle="从采集到报告的闭环状态" title="闭环进度">
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-4">
             <WorkflowStep label="采集" tone="green" value={`${dashboard.taskHealth.enabledTasks} 个启用任务`} />
             <WorkflowStep label="信号" tone="rose" value={`${dashboard.domainBreakdown.reduce((sum, item) => sum + item.signalCount, 0)} 条信号`} />
             <WorkflowStep label="情报" tone="violet" value={`${dashboard.intelligenceCount} 条情报`} />
@@ -377,7 +377,7 @@ function TrainingOverviewPanel({
           <TrainingMetric label="证据" value={loading ? "..." : metrics?.evidenceCount ?? 0} />
         </div>
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-4">
         <TrainingLink href="/toolkit" label="打开工具库" />
         <TrainingLink href="/sources" label="查看培训源" />
         <TrainingLink href="/raw-records" label="查看证据" />
@@ -503,7 +503,7 @@ function DistributionRow({
 }) {
   const barColor = tone === "rose" ? "bg-[#C25B6E]" : "bg-[#C25B6E]";
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-1 gap-2">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-[#5F5757]">{label}</span>
         <span className="font-semibold text-[#1D1D1F]">{value}</span>
