@@ -228,7 +228,7 @@ export function IntelligenceWorkspace() {
   }
 
   return (
-    <div className="grid min-w-0 max-w-full gap-5 overflow-hidden">
+    <div className="grid min-w-0 max-w-full grid-cols-1 gap-5 overflow-hidden">
       <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="flex min-w-0 max-w-full flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0 max-w-full">
@@ -263,7 +263,7 @@ export function IntelligenceWorkspace() {
         </div>
       </section>
 
-      <div className="grid min-w-0 max-w-full gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
+      <div className="grid min-w-0 max-w-full grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
       <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -311,7 +311,7 @@ export function IntelligenceWorkspace() {
           </p>
         ) : null}
 
-        <div className="grid gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-3">
           {visibleItems.map((item) => {
             const trainingTalkTrack = getTrainingSummaryLine(item.summary);
             return (
@@ -398,13 +398,13 @@ export function IntelligenceWorkspace() {
                 </div>
                 <ScoreBadge score={selectedItem.finalScore} />
               </div>
-              <div className="mt-4 grid gap-2">
+              <div className="mt-4 grid min-w-0 grid-cols-1 gap-2">
                 <ScoreBar label="Impact" value={selectedItem.impactScore} />
                 <ScoreBar label="Confidence" value={selectedItem.confidenceScore} />
                 <ScoreBar label="Novelty" value={selectedItem.noveltyScore} />
                 <ScoreBar label="Urgency" value={selectedItem.urgencyScore} />
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                 <DetailRow label="Created" value={formatDateTime(selectedItem.createdAt)} />
                 <DetailRow label="Updated" value={formatDateTime(selectedItem.updatedAt)} />
               </div>
@@ -442,7 +442,7 @@ export function IntelligenceWorkspace() {
                 <RadioTower size={17} className="text-[#86868B]" aria-hidden="true" />
               </div>
               {evidenceLoading ? <p className="text-sm text-[#86868B]">加载证据中</p> : null}
-              <div className="grid gap-2">
+              <div className="grid min-w-0 grid-cols-1 gap-2">
                 {evidences.map((evidence) => (
                   <button
                     className={cn(
@@ -622,7 +622,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
         <FileSearch size={17} className="text-[#86868B]" aria-hidden="true" />
       </div>
       {evidence ? (
-        <div className="grid gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-3">
           <DetailRow label="证据类型" value={evidence.evidenceType} />
           {evidence.signal ? (
             <TraceSection title="Signal">
@@ -715,7 +715,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
 function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string }) {
   return (
     <TraceSection title={title}>
-      <div className="grid gap-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2">
         {facts.map((fact) => (
           <DetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
         ))}
@@ -726,9 +726,9 @@ function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string 
 
 function TraceSection({ children, title }: { children: ReactNode; title: string }) {
   return (
-    <div className="grid gap-2 rounded-xl border border-[#EDE6DF] bg-white p-3">
+    <div className="grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-[#EDE6DF] bg-white p-3">
       <p className="text-xs font-semibold uppercase text-[#86868B]">{title}</p>
-      <div className="grid gap-2">{children}</div>
+      <div className="grid min-w-0 grid-cols-1 gap-2">{children}</div>
     </div>
   );
 }
