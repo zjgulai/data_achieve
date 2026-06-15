@@ -378,7 +378,7 @@ export function IntelligenceWorkspace() {
         </div>
 
         {selectedItem ? (
-          <div className="grid gap-5">
+          <div className="grid min-w-0 grid-cols-1 gap-5">
             <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
