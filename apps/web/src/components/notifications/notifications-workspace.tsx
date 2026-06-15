@@ -3,6 +3,7 @@
 import {
   Bell,
   BellRing,
+  BookOpenCheck,
   CheckCheck,
   CheckSquare,
   ExternalLink,
@@ -30,6 +31,8 @@ import {
   markNotificationRead,
   markNotificationsRead,
 } from "@/lib/api/notifications";
+import { isTrainingNotification } from "@/lib/training-data";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type {
   EmailChannelStatus,
@@ -39,15 +42,18 @@ import type {
 
 type ReadFilter = "unread" | "all";
 type TypeFilter = "all" | string;
+type NotificationScope = "all" | "training";
 
 const notificationPreferenceStorageKey =
   "data-achieve-notification-preferences-v1";
-const preferenceTypes = ["alert", "report_ready", "task_failed"];
+const preferenceTypes = ["alert", "report_ready", "task_failed", "alerts_ready", "evidence_ready"];
 const defaultPreferences: NotificationPreferenceState = {
   delivery: {
     alert: { inApp: true, email: true },
     report_ready: { inApp: true, email: true },
     task_failed: { inApp: true, email: true },
+    alerts_ready: { inApp: true, email: true },
+    evidence_ready: { inApp: true, email: true },
   },
   quietHoursEnabled: true,
   digestTime: "09:00",
@@ -85,12 +91,27 @@ const notificationTone: Record<
     surface: "border-[#DFD5E8] bg-[#FAF6FF]",
     text: "text-[#6B5685]",
   },
+  alerts_ready: {
+    label: "培训告警",
+    icon: BookOpenCheck,
+    accent: "bg-[#7D9A68]",
+    surface: "border-[#D9E2CC] bg-[#F7FBF1]",
+    text: "text-[#536B40]",
+  },
+  evidence_ready: {
+    label: "培训证据",
+    icon: BookOpenCheck,
+    accent: "bg-[#B88A4B]",
+    surface: "border-[#E4D8C8] bg-[#FFF9EF]",
+    text: "text-[#7B5A31]",
+  },
 };
 
 export function NotificationsWorkspace() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [filter, setFilter] = useState<ReadFilter>("unread");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [notificationScope, setNotificationScope] = useState<NotificationScope>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -105,6 +126,7 @@ export function NotificationsWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -181,9 +203,11 @@ export function NotificationsWorkspace() {
   const filteredNotifications = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return notifications.filter((notification) => {
+      const matchesScope =
+        notificationScope === "all" || isTrainingNotification(notification);
       const matchesType =
         typeFilter === "all" || notification.notificationType === typeFilter;
-      if (!matchesType) {
+      if (!matchesScope || !matchesType) {
         return false;
       }
       if (!term) {
@@ -200,7 +224,7 @@ export function NotificationsWorkspace() {
         .toLowerCase()
         .includes(term);
     });
-  }, [notifications, searchTerm, typeFilter]);
+  }, [notificationScope, notifications, searchTerm, typeFilter]);
 
   const selectedNotification = useMemo(() => {
     return (
@@ -231,11 +255,13 @@ export function NotificationsWorkspace() {
     const taskCount = notifications.filter(
       (item) => item.notificationType === "task_failed",
     ).length;
+    const trainingCount = notifications.filter((item) => isTrainingNotification(item)).length;
     return {
       total: notifications.length,
       unreadCount,
       alertCount,
       taskCount,
+      trainingCount,
     };
   }, [notifications]);
 
@@ -383,6 +409,21 @@ export function NotificationsWorkspace() {
     }
   }
 
+  function applyTrainingDeliveryTemplate() {
+    setPreferences((current) => ({
+      ...current,
+      delivery: {
+        ...current.delivery,
+        report_ready: { inApp: true, email: true },
+        alerts_ready: { inApp: true, email: true },
+        evidence_ready: { inApp: true, email: true },
+      },
+      quietHoursEnabled: false,
+      digestTime: "09:00",
+    }));
+    setMessage("已套用培训通知模板：报告、告警和证据链均开启站内与邮件交付。");
+  }
+
   return (
     <div className="grid min-w-0 gap-5">
       <section className="overflow-hidden rounded-2xl border border-[#EDDCD3] bg-[#FFF8F4] shadow-[0_18px_60px_rgba(115,70,58,0.08)]">
@@ -398,7 +439,7 @@ export function NotificationsWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               汇总预警、日报和任务异常通知，保留关联对象入口，让团队能从消息直接回到证据链。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill
                 icon={Bell}
                 label="通知数"
@@ -418,6 +459,11 @@ export function NotificationsWorkspace() {
                 icon={Megaphone}
                 label="任务异常"
                 value={String(stats.taskCount)}
+              />
+              <MetricPill
+                icon={BookOpenCheck}
+                label="培训通知"
+                value={String(stats.trainingCount)}
               />
             </div>
           </div>
@@ -449,6 +495,10 @@ export function NotificationsWorkspace() {
                 label="当前选中"
                 value={selectedNotification?.referenceType ?? "—"}
               />
+              <InboxRow
+                label="培训证据"
+                value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)}
+              />
             </div>
           </div>
         </div>
@@ -469,6 +519,22 @@ export function NotificationsWorkspace() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              {(["all", "training"] as const).map((scope) => (
+                <button
+                  className={cn(
+                    "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition",
+                    notificationScope === scope
+                      ? "border-[#C96F5C] bg-[#C96F5C] text-white"
+                      : "border-[#E8D4CB] bg-[#FFFDFC] text-[#7D4F43] hover:border-[#C96F5C]",
+                  )}
+                  key={scope}
+                  onClick={() => setNotificationScope(scope)}
+                  type="button"
+                >
+                  {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+                  {scope === "training" ? `培训通知 ${stats.trainingCount}` : "全部通知"}
+                </button>
+              ))}
               <button
                 className={cn(
                   "h-10 rounded-xl px-3 text-sm font-semibold transition",
@@ -500,6 +566,14 @@ export function NotificationsWorkspace() {
               >
                 <CheckCheck size={16} aria-hidden="true" />
                 Read All
+              </button>
+              <button
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 text-sm font-semibold text-[#8C6824] transition hover:border-[#C96F5C]"
+                onClick={applyTrainingDeliveryTemplate}
+                type="button"
+              >
+                <BookOpenCheck size={16} aria-hidden="true" />
+                培训通知模板
               </button>
             </div>
           </div>
@@ -678,6 +752,7 @@ function NotificationCard({
 }) {
   const tone = getNotificationTone(notification.notificationType);
   const Icon = notification.isRead ? MailOpen : tone.icon;
+  const training = isTrainingNotification(notification);
   return (
     <article
       className={cn(
@@ -724,6 +799,11 @@ function NotificationCard({
                   <p className="mt-1 text-xs text-[#7A625A]">
                     {tone.label} · {formatDate(notification.createdAt)}
                   </p>
+                  {training ? (
+                    <span className="mt-2 inline-flex rounded-full bg-[#FFF9E9] px-2.5 py-1 text-xs font-semibold text-[#8C6824]">
+                      培训通知
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <p className="mt-3 text-sm leading-6 text-[#5F4A43]">
@@ -933,8 +1013,17 @@ function NotificationDetail({
 }) {
   const tone = getNotificationTone(notification.notificationType);
   const Icon = notification.isRead ? MailOpen : tone.icon;
+  const training = isTrainingNotification(notification);
   return (
     <div className="grid gap-4">
+      {training ? (
+        <div className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
+          <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Notification</p>
+          <p className="mt-1 text-sm leading-6 text-[#87611B]">
+            该通知用于演示培训交付链路：报告、告警和证据准备状态会进入站内收件箱，并可进一步连接邮件通道。
+          </p>
+        </div>
+      ) : null}
       <div className={cn("rounded-2xl border p-4", tone.surface)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -5,6 +5,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   BellRing,
+  BookOpenCheck,
   Braces,
   Filter,
   Gauge,
@@ -20,11 +21,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listSignals } from "@/lib/api/signals";
 import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
+import { isTrainingSignal } from "@/lib/training-data";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type { Signal } from "@/types/signal";
 
 type SeverityFilter = "all" | string;
 type TypeFilter = "all" | string;
+type SignalScope = "all" | "training";
 
 const severityTone: Record<
   string,
@@ -80,6 +84,8 @@ export function SignalsWorkspace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [signalScope, setSignalScope] = useState<SignalScope>("all");
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -106,10 +112,6 @@ export function SignalsWorkspace() {
     };
   }, []);
 
-  const selectedSignal = useMemo(() => {
-    return signals.find((item) => item.id === selectedId) ?? null;
-  }, [signals, selectedId]);
-
   const signalTypes = useMemo(() => {
     return Array.from(new Set(signals.map((signal) => signal.signalType)));
   }, [signals]);
@@ -121,9 +123,10 @@ export function SignalsWorkspace() {
   const filteredSignals = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return signals.filter((signal) => {
+      const matchesScope = signalScope === "all" || isTrainingSignal(signal);
       const matchesSeverity = severityFilter === "all" || signal.severity === severityFilter;
       const matchesType = typeFilter === "all" || signal.signalType === typeFilter;
-      if (!matchesSeverity || !matchesType) {
+      if (!matchesScope || !matchesSeverity || !matchesType) {
         return false;
       }
       if (!term) {
@@ -141,7 +144,20 @@ export function SignalsWorkspace() {
         .toLowerCase()
         .includes(term);
     });
-  }, [searchTerm, severityFilter, signals, typeFilter]);
+  }, [searchTerm, severityFilter, signalScope, signals, typeFilter]);
+
+  useEffect(() => {
+    if (filteredSignals.length === 0) {
+      return;
+    }
+    if (!filteredSignals.some((signal) => signal.id === selectedId)) {
+      setSelectedId(filteredSignals[0].id);
+    }
+  }, [filteredSignals, selectedId]);
+
+  const selectedSignal = useMemo(() => {
+    return filteredSignals.find((item) => item.id === selectedId) ?? filteredSignals[0] ?? null;
+  }, [filteredSignals, selectedId]);
 
   const stats = useMemo(() => {
     const highRisk = signals.filter((signal) =>
@@ -152,11 +168,13 @@ export function SignalsWorkspace() {
         ? 0
         : Math.round(signals.reduce((sum, signal) => sum + signal.confidence, 0) / signals.length);
     const uniqueEntities = new Set(signals.map((signal) => signal.entityId)).size;
+    const trainingSignals = signals.filter((signal) => isTrainingSignal(signal)).length;
     return {
       total: signals.length,
       highRisk,
       averageConfidence,
       uniqueEntities,
+      trainingSignals,
     };
   }, [signals]);
 
@@ -175,11 +193,12 @@ export function SignalsWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               把实体快照差异转成确定性信号，保留触发规则、严重度、置信度和前后快照绑定。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill icon={Activity} label="信号数" value={String(stats.total)} />
               <MetricPill icon={ShieldAlert} label="高风险" value={String(stats.highRisk)} />
               <MetricPill icon={Gauge} label="平均置信" value={`${stats.averageConfidence}`} />
               <MetricPill icon={Target} label="影响实体" value={String(stats.uniqueEntities)} />
+              <MetricPill icon={BookOpenCheck} label="培训信号" value={String(stats.trainingSignals)} />
             </div>
           </div>
 
@@ -202,6 +221,38 @@ export function SignalsWorkspace() {
                 />
               ))}
             </div>
+            <p className="mt-3 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-2 text-xs leading-5 text-[#87611B]">
+              培训证据 {trainingOverview.overview?.metrics.evidenceCount ?? 0} 条；信号页用于讲清 previous/current、delta、confidence 和 severity 如何进入情报判读。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Signal Path</p>
+            <p className="mt-1 text-sm leading-6 text-[#87611B]">
+              从采集事实到信号的课堂讲法：先解释快照字段，再解释差值和严重度，最后连接到情报、预警和报告。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["all", "training"] as const).map((scope) => (
+              <button
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors",
+                  signalScope === scope
+                    ? "border-[#C96F5C] bg-[#C96F5C] text-white"
+                    : "border-[#F1D9A8] bg-white text-[#8C6824] hover:border-[#C96F5C]",
+                )}
+                key={scope}
+                onClick={() => setSignalScope(scope)}
+                type="button"
+              >
+                {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+                {scope === "training" ? `培训信号 ${stats.trainingSignals}` : "全部信号"}
+              </button>
+            ))}
           </div>
         </div>
       </section>
@@ -326,6 +377,7 @@ function SignalCard({
   onSelect: () => void;
 }) {
   const tone = getSeverityTone(signal.severity);
+  const training = isTrainingSignal(signal);
   return (
     <button
       className={cn(
@@ -355,6 +407,11 @@ function SignalCard({
                 <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", tone.pill)}>
                   {tone.label}
                 </span>
+                {training ? (
+                  <span className="rounded-full bg-[#FFF9E9] px-2.5 py-1 text-xs font-semibold text-[#8C6824]">
+                    培训信号
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 break-all text-sm text-[#7A625A]">{signal.entityId}</p>
             </div>
@@ -387,8 +444,17 @@ function SignalDetail({ signal }: { signal: Signal }) {
   const tone = getSeverityTone(signal.severity);
   const ruleFacts = buildAuditFacts(signal.metadata, 8);
   const ruleFactCount = getAuditFactCount(signal.metadata);
+  const training = isTrainingSignal(signal);
   return (
     <div className="grid gap-4">
+      {training ? (
+        <div className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
+          <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Signal</p>
+          <p className="mt-1 text-sm leading-6 text-[#87611B]">
+            该信号来自 curated_training 数据集，适合演示工具热度、平台方法覆盖或合规边界如何从快照变化转成可解释的判断依据。
+          </p>
+        </div>
+      ) : null}
       <div className={cn("rounded-2xl border p-4", tone.surface)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

@@ -1,6 +1,8 @@
 import type { RawRecord } from "@/types/raw-record";
 import type { Entity } from "@/types/entity";
+import type { NotificationItem } from "@/types/notification";
 import type { ProjectDomain } from "@/types/project";
+import type { Signal } from "@/types/signal";
 import type { CollectionTask } from "@/types/source-task";
 import type { Source } from "@/types/source-task";
 
@@ -76,6 +78,27 @@ export function isTrainingEntity(entity: Entity): boolean {
 
 export function isTrainingProjectDomain(domain: ProjectDomain): boolean {
   return domain === "agent" || domain === "platform" || domain === "governance";
+}
+
+export function isTrainingSignal(signal: Signal): boolean {
+  return getDataset(signal.metadata) === TRAINING_DATASET;
+}
+
+export function isTrainingNotification(notification: NotificationItem): boolean {
+  const content = [
+    notification.title,
+    notification.body,
+    notification.notificationType,
+    notification.referenceType,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return (
+    content.includes("培训") ||
+    content.includes("training") ||
+    notification.notificationType === "alerts_ready" ||
+    notification.notificationType === "evidence_ready"
+  );
 }
 
 export function getTrainingSummaryLine(summary: string): string {
