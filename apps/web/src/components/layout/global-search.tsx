@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { listEntities } from "@/lib/api/entities";
 import { listIntelligence } from "@/lib/api/intelligence";
@@ -25,6 +25,7 @@ export function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   const normalizedQuery = query.trim().toLowerCase();
   const groupedResults = useMemo(() => {
@@ -59,9 +60,26 @@ export function GlobalSearch() {
     setLoading(true);
     setError(null);
     const timer = window.setTimeout(() => {
-      Promise.all([listProjects(), listEntities(), listIntelligence()])
-        .then(([projects, entities, intelligence]) => {
+      Promise.allSettled([listProjects(), listEntities(), listIntelligence()])
+        .then(([projectsResult, entitiesResult, intelligenceResult]) => {
           if (cancelled) {
+            return;
+          }
+          const projects =
+            projectsResult.status === "fulfilled" ? projectsResult.value : [];
+          const entities =
+            entitiesResult.status === "fulfilled" ? entitiesResult.value : [];
+          const intelligence =
+            intelligenceResult.status === "fulfilled"
+              ? intelligenceResult.value
+              : [];
+          if (
+            projectsResult.status === "rejected" &&
+            entitiesResult.status === "rejected" &&
+            intelligenceResult.status === "rejected"
+          ) {
+            setResults([]);
+            setError("搜索暂不可用");
             return;
           }
           const nextResults: SearchResult[] = [
@@ -119,6 +137,7 @@ export function GlobalSearch() {
               })),
           ];
           setResults(nextResults);
+          setError(null);
         })
         .catch(() => {
           if (!cancelled) {
@@ -139,16 +158,38 @@ export function GlobalSearch() {
     };
   }, [normalizedQuery]);
 
-  function openResult(result: SearchResult) {
-    setOpen(false);
-    setQuery("");
-    router.push(result.href);
-  }
+  const openResult = useCallback(
+    (result: SearchResult) => {
+      setOpen(false);
+      setQuery("");
+      router.push(result.href);
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    if (pendingSubmit && !loading && results[0]) {
+      openResult(results[0]);
+      setPendingSubmit(false);
+    }
+    if (
+      pendingSubmit &&
+      !loading &&
+      normalizedQuery.length >= 2 &&
+      results.length === 0
+    ) {
+      setPendingSubmit(false);
+    }
+  }, [loading, normalizedQuery.length, openResult, pendingSubmit, results]);
 
   function handleSubmit() {
     const firstResult = results[0];
     if (firstResult) {
       openResult(firstResult);
+      return;
+    }
+    if (normalizedQuery.length >= 2 && loading) {
+      setPendingSubmit(true);
     }
   }
 
@@ -181,17 +222,30 @@ export function GlobalSearch() {
       {open && query.trim().length > 0 ? (
         <div className="absolute right-0 z-30 mt-2 max-h-[420px] w-full overflow-y-auto rounded-2xl border border-[#E9E5E2] bg-white p-2 shadow-[0_18px_44px_rgba(35,26,26,0.12)]">
           {normalizedQuery.length < 2 ? (
-            <p className="px-3 py-2 text-xs text-[#86868B]">继续输入至少 2 个字符</p>
+            <p className="px-3 py-2 text-xs text-[#86868B]">
+              继续输入至少 2 个字符
+            </p>
           ) : null}
-          {loading ? <p className="px-3 py-2 text-xs text-[#86868B]">搜索中</p> : null}
-          {error ? <p className="px-3 py-2 text-xs font-semibold text-[#C25B6E]">{error}</p> : null}
-          {!loading && !error && normalizedQuery.length >= 2 && results.length === 0 ? (
+          {loading ? (
+            <p className="px-3 py-2 text-xs text-[#86868B]">搜索中</p>
+          ) : null}
+          {error ? (
+            <p className="px-3 py-2 text-xs font-semibold text-[#C25B6E]">
+              {error}
+            </p>
+          ) : null}
+          {!loading &&
+          !error &&
+          normalizedQuery.length >= 2 &&
+          results.length === 0 ? (
             <p className="px-3 py-2 text-xs text-[#86868B]">没有匹配结果</p>
           ) : null}
           {(["项目", "实体", "情报"] as const).map((group) =>
             groupedResults[group].length > 0 ? (
               <section className="py-1" key={group}>
-                <p className="px-3 py-1 text-[11px] font-semibold uppercase text-[#B47767]">{group}</p>
+                <p className="px-3 py-1 text-[11px] font-semibold uppercase text-[#B47767]">
+                  {group}
+                </p>
                 <div className="grid gap-1">
                   {groupedResults[group].map((result) => (
                     <button
@@ -218,7 +272,10 @@ export function GlobalSearch() {
   );
 }
 
-function matchesSearch(query: string, values: Array<string | null | undefined>) {
+function matchesSearch(
+  query: string,
+  values: Array<string | null | undefined>,
+) {
   return values.some((value) => value?.toLowerCase().includes(query));
 }
 
