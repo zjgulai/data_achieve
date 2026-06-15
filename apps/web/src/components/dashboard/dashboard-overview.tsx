@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  BookOpenCheck,
   ChartNoAxesCombined,
   CheckCircle2,
   Database,
@@ -14,12 +15,15 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getDashboardOverview } from "@/lib/api/dashboard";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type { DashboardSummary } from "@/types/dashboard";
+import type { ToolkitOverview } from "@/types/toolkit";
 
 type MetricTone = "amber" | "green" | "red" | "rose" | "violet";
 
@@ -47,6 +51,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -148,6 +153,12 @@ export function DashboardOverview({ domain }: { domain?: string }) {
           ) : null}
         </div>
       </section>
+
+      <TrainingOverviewPanel
+        error={trainingOverview.error}
+        loading={trainingOverview.loading}
+        overview={trainingOverview.overview}
+      />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
@@ -329,6 +340,70 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         </Panel>
       </section>
     </div>
+  );
+}
+
+function TrainingOverviewPanel({
+  error,
+  loading,
+  overview,
+}: {
+  error: string | null;
+  loading: boolean;
+  overview: ToolkitOverview | null;
+}) {
+  const metrics = overview?.metrics;
+  return (
+    <section className="min-w-0 rounded-2xl border border-[#E9E5E2] bg-white p-5">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="min-w-0">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF4DE] px-3 py-1 text-xs font-semibold text-[#8C6824]">
+            <BookOpenCheck size={14} aria-hidden="true" />
+            培训内容资产
+          </div>
+          <h2 className="text-base font-semibold text-[#1D1D1F]">当下数据采集工具与平台方法库</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-[#5F5757]">
+            面向培训场景，把 AI 采集工具、Agent/Skill/MCP、爬虫框架、平台采集 SOP、合规边界和证据链集中成可讲解资产。
+          </p>
+          {error ? (
+            <p className="mt-2 text-xs font-semibold text-[#C25B6E]">{error}</p>
+          ) : null}
+        </div>
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-5 xl:min-w-[520px]">
+          <TrainingMetric label="源" value={loading ? "..." : metrics?.sourceCount ?? 0} />
+          <TrainingMetric label="工具" value={loading ? "..." : metrics?.toolCount ?? 0} />
+          <TrainingMetric label="方法" value={loading ? "..." : metrics?.methodCount ?? 0} />
+          <TrainingMetric label="情报" value={loading ? "..." : metrics?.intelligenceCount ?? 0} />
+          <TrainingMetric label="证据" value={loading ? "..." : metrics?.evidenceCount ?? 0} />
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        <TrainingLink href="/toolkit" label="打开工具库" />
+        <TrainingLink href="/sources" label="查看培训源" />
+        <TrainingLink href="/raw-records" label="查看证据" />
+        <TrainingLink href="/reports" label="查看培训报告" />
+      </div>
+    </section>
+  );
+}
+
+function TrainingMetric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2">
+      <p className="text-xs font-semibold text-[#86868B]">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-[#1D1D1F]">{value}</p>
+    </div>
+  );
+}
+
+function TrainingLink({ href, label }: { href: Route; label: string }) {
+  return (
+    <Link
+      className="inline-flex h-10 items-center justify-center rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+      href={href}
+    >
+      {label}
+    </Link>
   );
 }
 

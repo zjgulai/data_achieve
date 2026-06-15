@@ -1,4 +1,7 @@
 import type { RawRecord } from "@/types/raw-record";
+import type { Entity } from "@/types/entity";
+import type { ProjectDomain } from "@/types/project";
+import type { CollectionTask } from "@/types/source-task";
 import type { Source } from "@/types/source-task";
 
 export const TRAINING_DATASET = "curated_training";
@@ -59,6 +62,20 @@ export function trainingRiskLabel(value: string): string {
 
 export function isTrainingReportType(reportType: string): boolean {
   return reportType === "weekly_training";
+}
+
+export function isTrainingTask(task: CollectionTask): boolean {
+  return [task.name, task.sourceName ?? ""].some((value) =>
+    value.toLowerCase().includes("training"),
+  );
+}
+
+export function isTrainingEntity(entity: Entity): boolean {
+  return entity.externalId.startsWith("training-content:");
+}
+
+export function isTrainingProjectDomain(domain: ProjectDomain): boolean {
+  return domain === "agent" || domain === "platform" || domain === "governance";
 }
 
 export function getTrainingSummaryLine(summary: string): string {

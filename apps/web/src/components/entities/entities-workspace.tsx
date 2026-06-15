@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  BookOpenCheck,
   Boxes,
   ExternalLink,
   Filter,
@@ -19,11 +20,14 @@ import { useEffect, useMemo, useState } from "react";
 import { listEntities, listEntitySnapshots } from "@/lib/api/entities";
 import { listEntitySignals } from "@/lib/api/signals";
 import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
+import { isTrainingEntity } from "@/lib/training-data";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type { Entity, EntitySnapshot } from "@/types/entity";
 import type { Signal } from "@/types/signal";
 
 type DomainFilter = "all" | string;
+type EntityScope = "all" | "training";
 
 const domainTone: Record<
   string,
@@ -83,6 +87,8 @@ export function EntitiesWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [domainFilter, setDomainFilter] = useState<DomainFilter>("all");
+  const [entityScope, setEntityScope] = useState<EntityScope>("all");
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -150,8 +156,9 @@ export function EntitiesWorkspace() {
   const filteredEntities = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return entities.filter((entity) => {
+      const matchesScope = entityScope === "all" || isTrainingEntity(entity);
       const matchesDomain = domainFilter === "all" || entity.domain === domainFilter;
-      if (!matchesDomain) {
+      if (!matchesScope || !matchesDomain) {
         return false;
       }
       if (!term) {
@@ -162,17 +169,19 @@ export function EntitiesWorkspace() {
         .toLowerCase()
         .includes(term);
     });
-  }, [domainFilter, entities, searchTerm]);
+  }, [domainFilter, entities, entityScope, searchTerm]);
 
   const stats = useMemo(() => {
     const typedEntities = new Set(entities.map((entity) => entity.entityType)).size;
     const linkedEntities = entities.filter((entity) => Boolean(entity.canonicalUrl)).length;
     const activeDomains = new Set(entities.map((entity) => entity.domain)).size;
+    const trainingEntities = entities.filter((entity) => isTrainingEntity(entity)).length;
     return {
       total: entities.length,
       typedEntities,
       linkedEntities,
       activeDomains,
+      trainingEntities,
     };
   }, [entities]);
 
@@ -193,11 +202,12 @@ export function EntitiesWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               把采集事实标准化为可持续追踪的实体画像，保留快照指标、来源批次和触发信号。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill icon={PackageSearch} label="实体数" value={String(stats.total)} />
               <MetricPill icon={Layers3} label="类型数" value={String(stats.typedEntities)} />
               <MetricPill icon={Globe2} label="链接实体" value={String(stats.linkedEntities)} />
               <MetricPill icon={Radar} label="覆盖域" value={String(stats.activeDomains)} />
+              <MetricPill icon={BookOpenCheck} label="培训实体" value={String(stats.trainingEntities)} />
             </div>
           </div>
 
@@ -216,6 +226,7 @@ export function EntitiesWorkspace() {
             <div className="mt-4 grid gap-2">
               <IntegrityRow label="快照数" value={String(snapshots.length)} />
               <IntegrityRow label="关联信号" value={String(signals.length)} />
+              <IntegrityRow label="培训证据" value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)} />
               <IntegrityRow
                 label="最新采集"
                 value={latestSnapshot ? formatDate(latestSnapshot.capturedAt) : "—"}
@@ -234,6 +245,24 @@ export function EntitiesWorkspace() {
               <p className="mt-1 text-sm text-[#7A625A]">按业务域、类型和外部 ID 定位持续追踪对象。</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-wrap gap-2">
+                {(["all", "training"] as const).map((scope) => (
+                  <button
+                    className={cn(
+                      "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition",
+                      entityScope === scope
+                        ? "border-[#C96F5C] bg-[#FFF1EB] text-[#9E4F41]"
+                        : "border-[#E8D4CB] bg-[#FFFDFC] text-[#7D4F43] hover:border-[#C96F5C]",
+                    )}
+                    key={scope}
+                    onClick={() => setEntityScope(scope)}
+                    type="button"
+                  >
+                    {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+                    {scope === "training" ? `培训实体 ${stats.trainingEntities}` : "全部实体"}
+                  </button>
+                ))}
+              </div>
               <label className="relative block">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#B49A91]"
@@ -335,6 +364,7 @@ function EntityCard({
   onSelect: () => void;
 }) {
   const tone = getDomainTone(entity.domain);
+  const training = isTrainingEntity(entity);
   return (
     <button
       className={cn(
@@ -362,6 +392,11 @@ function EntityCard({
                 <span className={cn("rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold", tone.text)}>
                   {tone.label}
                 </span>
+                {training ? (
+                  <span className="rounded-full bg-[#FFF9E9] px-2.5 py-1 text-xs font-semibold text-[#8C6824]">
+                    培训实体
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 break-all text-sm text-[#7A625A]">{entity.externalId}</p>
             </div>
@@ -401,8 +436,17 @@ function EntityDetail({
   snapshotsLoading: boolean;
 }) {
   const tone = getDomainTone(entity.domain);
+  const training = isTrainingEntity(entity);
   return (
     <div className="grid gap-4">
+      {training ? (
+        <div className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
+          <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Entity</p>
+          <p className="mt-1 text-sm leading-6 text-[#87611B]">
+            该实体来自 curated_training 数据集，可用于讲解工具仓库、平台方法或合规边界如何从原始记录沉淀为可追踪对象。
+          </p>
+        </div>
+      ) : null}
       <div className={cn("rounded-2xl border p-4", tone.surface)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

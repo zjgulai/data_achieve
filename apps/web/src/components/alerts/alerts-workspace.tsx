@@ -3,6 +3,7 @@
 import {
   BellOff,
   BellRing,
+  BookOpenCheck,
   Braces,
   CheckCircle2,
   Filter,
@@ -27,6 +28,7 @@ import {
   type AlertEventStatus,
 } from "@/lib/api/alerts";
 import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type { AlertChannel, AlertEvent, AlertRule } from "@/types/alert";
 
@@ -90,6 +92,7 @@ export function AlertsWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -187,6 +190,17 @@ export function AlertsWorkspace() {
     }
   }
 
+  function applyTrainingRuleTemplate() {
+    setName("Training high-risk intelligence");
+    setSignalType("*");
+    setField("final_score");
+    setOperator("gte");
+    setValue("80");
+    setChannel("both");
+    setEnabled(true);
+    setMessage("已套用培训预警模板：final_score >= 80，双通道交付。");
+  }
+
   return (
     <div className="grid min-w-0 gap-5">
       <section className="overflow-hidden rounded-2xl border border-[#EDDCD3] bg-[#FFF8F4] shadow-[0_18px_60px_rgba(115,70,58,0.08)]">
@@ -202,11 +216,16 @@ export function AlertsWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               当 Signal 命中规则后生成 AlertEvent，并按站内、邮件或双通道推送给团队。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill icon={SlidersHorizontal} label="规则数" value={String(stats.rules)} />
               <MetricPill icon={CheckCircle2} label="启用规则" value={`${stats.enabledRules}/${stats.rules}`} />
               <MetricPill icon={BellRing} label="事件数" value={String(stats.events)} />
               <MetricPill icon={Send} label="已发送" value={String(stats.sentEvents)} />
+              <MetricPill
+                icon={BookOpenCheck}
+                label="培训证据"
+                value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)}
+              />
             </div>
           </div>
 
@@ -268,6 +287,21 @@ export function AlertsWorkspace() {
                 <PlusCircle size={16} aria-hidden="true" />
                 Create
               </button>
+            </div>
+            <div className="mb-4 rounded-xl border border-[#F1D9A8] bg-white/80 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-[#87611B]">
+                  培训模板用于演示：当高分情报或高风险信号出现时，同时推送站内和邮件，方便讲解从 Signal 到 AlertEvent 的交付链路。
+                </p>
+                <button
+                  className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 text-xs font-semibold text-[#8C6824] transition hover:border-[#C96F5C]"
+                  onClick={applyTrainingRuleTemplate}
+                  type="button"
+                >
+                  <BookOpenCheck size={14} aria-hidden="true" />
+                  套用培训模板
+                </button>
+              </div>
             </div>
             <div className="grid gap-3">
               <TextField label="规则名称" onChange={setName} value={name} />

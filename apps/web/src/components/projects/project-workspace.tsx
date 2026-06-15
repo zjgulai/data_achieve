@@ -4,6 +4,7 @@ import {
   Archive,
   ArrowUpRight,
   BarChart3,
+  BookOpenCheck,
   Bot,
   Boxes,
   CheckCircle2,
@@ -26,11 +27,14 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { createProject, listProjects } from "@/lib/api/projects";
+import { isTrainingProjectDomain } from "@/lib/training-data";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type { Project, ProjectDomain, ProjectStatus } from "@/types/project";
 
 type DomainFilter = ProjectDomain | "all";
 type StatusFilter = ProjectStatus | "all";
+type PortfolioScope = "all" | "training";
 
 const domains: Array<{ label: string; value: DomainFilter }> = [
   { label: "全部域", value: "all" },
@@ -165,6 +169,7 @@ export function ProjectWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [domain, setDomain] = useState<DomainFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [portfolioScope, setPortfolioScope] = useState<PortfolioScope>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -175,6 +180,7 @@ export function ProjectWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -235,6 +241,7 @@ export function ProjectWorkspace() {
   const filteredProjects = useMemo(() => {
     const term = query.trim().toLowerCase();
     return projects.filter((project) => {
+      const matchesScope = portfolioScope === "all" || isTrainingProjectDomain(project.domain);
       const matchesDomain = domain === "all" || project.domain === domain;
       const matchesStatus = statusFilter === "all" || project.status === statusFilter;
       const matchesQuery =
@@ -249,9 +256,9 @@ export function ProjectWorkspace() {
           .join(" ")
           .toLowerCase()
           .includes(term);
-      return matchesDomain && matchesStatus && matchesQuery;
+      return matchesScope && matchesDomain && matchesStatus && matchesQuery;
     });
-  }, [domain, projects, query, statusFilter]);
+  }, [domain, portfolioScope, projects, query, statusFilter]);
 
   const selectedProject = useMemo(() => {
     return filteredProjects.find((project) => project.id === selectedId) ?? filteredProjects[0] ?? null;
@@ -262,11 +269,13 @@ export function ProjectWorkspace() {
     const archived = projects.filter((project) => project.status === "archived").length;
     const sources = projects.reduce((total, project) => total + project.sourceCount, 0);
     const intelligence = projects.reduce((total, project) => total + project.intelligenceCount, 0);
+    const trainingProjects = projects.filter((project) => isTrainingProjectDomain(project.domain)).length;
     return {
       active,
       archived,
       sources,
       intelligence,
+      trainingProjects,
       total: projects.length,
     };
   }, [projects]);
@@ -312,11 +321,12 @@ export function ProjectWorkspace() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
               按业务域组织监控主题，把数据源、采集任务、信号和情报回收到同一个项目语境。
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill icon={FolderKanban} label="项目数" value={String(stats.total)} />
               <MetricPill icon={CheckCircle2} label="Active" value={String(stats.active)} />
               <MetricPill icon={Archive} label="Archived" value={String(stats.archived)} />
               <MetricPill icon={Sparkles} label="情报数" value={String(stats.intelligence)} />
+              <MetricPill icon={BookOpenCheck} label="培训域" value={String(stats.trainingProjects)} />
             </div>
           </div>
 
@@ -334,6 +344,7 @@ export function ProjectWorkspace() {
               <StateRow label="Domain" value={domain === "all" ? "all" : domainProfiles[domain].label} />
               <StateRow label="Status" value={statusFilter} />
               <StateRow label="Sources" value={String(stats.sources)} />
+              <StateRow label="Training evidence" value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)} />
             </div>
           </div>
         </div>
@@ -361,6 +372,24 @@ export function ProjectWorkspace() {
             </div>
 
             <div className="grid gap-3">
+              <div className="flex flex-wrap gap-2">
+                {(["all", "training"] as const).map((scope) => (
+                  <button
+                    className={cn(
+                      "inline-flex h-10 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition",
+                      portfolioScope === scope
+                        ? "border-[#C96F5C] bg-[#FFF1EB] text-[#9E4F41]"
+                        : "border-[#E8D4CB] bg-[#FFFDFC] text-[#7D4F43] hover:border-[#C96F5C]",
+                    )}
+                    key={scope}
+                    onClick={() => setPortfolioScope(scope)}
+                    type="button"
+                  >
+                    {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+                    {scope === "training" ? `培训域 ${stats.trainingProjects}` : "全部项目"}
+                  </button>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {domains.map((item) => {
                   const count = item.value === "all" ? projects.length : domainCounts[item.value];
@@ -669,8 +698,17 @@ function ProjectDetail({ project }: { project: Project }) {
   const DomainIcon = domain.icon;
   const StatusIcon = status.icon;
   const health = getProjectHealth(project);
+  const trainingDomain = isTrainingProjectDomain(project.domain);
   return (
     <div className="grid gap-4">
+      {trainingDomain ? (
+        <div className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
+          <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Domain</p>
+          <p className="mt-1 text-sm leading-6 text-[#87611B]">
+            该项目属于培训域，适合组织 AI 采集工具、平台采集 SOP、Agent/Skill/MCP 能力和合规边界讲解。
+          </p>
+        </div>
+      ) : null}
       <div className={cn("rounded-2xl border p-4", domain.tone)}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

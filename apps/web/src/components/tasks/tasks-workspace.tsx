@@ -3,6 +3,7 @@
 import {
   Activity,
   AlertTriangle,
+  BookOpenCheck,
   CheckCircle2,
   ChevronDown,
   Clock3,
@@ -30,6 +31,8 @@ import {
   resumeTask,
   runTask,
 } from "@/lib/api/tasks";
+import { isTrainingTask } from "@/lib/training-data";
+import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
 import type {
   CollectionTask,
@@ -48,6 +51,7 @@ type DomainKey =
   | "governance";
 type DomainFilter = DomainKey | "all";
 type StatusFilter = "all" | "healthy" | "warning" | "failed" | "paused";
+type TaskScope = "all" | "training";
 
 type TaskProfile = {
   domain: DomainKey;
@@ -91,8 +95,10 @@ export function TasksWorkspace() {
   const [searchTerm, setSearchTerm] = useState("");
   const [domainFilter, setDomainFilter] = useState<DomainFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [taskScope, setTaskScope] = useState<TaskScope>("all");
   const [runLogOpen, setRunLogOpen] = useState(false);
   const [incidentSuppressed, setIncidentSuppressed] = useState(false);
+  const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
@@ -126,15 +132,16 @@ export function TasksWorkspace() {
     return tasks.filter((task) => {
       const profile = getTaskProfile(task);
       const health = getTaskHealth(task);
+      const matchesScope = taskScope === "all" || isTrainingTask(task);
       const matchesSearch =
         normalizedSearch.length === 0 ||
         task.name.toLowerCase().includes(normalizedSearch) ||
         profile.sourceName.toLowerCase().includes(normalizedSearch);
       const matchesDomain = domainFilter === "all" || profile.domain === domainFilter;
       const matchesStatus = statusFilter === "all" || health === statusFilter;
-      return matchesSearch && matchesDomain && matchesStatus;
+      return matchesScope && matchesSearch && matchesDomain && matchesStatus;
     });
-  }, [domainFilter, searchTerm, statusFilter, tasks]);
+  }, [domainFilter, searchTerm, statusFilter, taskScope, tasks]);
 
   const selectedTask =
     tasks.find((task) => task.id === selectedTaskId) ?? filteredTasks[0] ?? tasks[0] ?? null;
@@ -178,6 +185,7 @@ export function TasksWorkspace() {
     );
     return { enabledCount, failedCount, latestRecords, maxLatency, staleCount, successRate };
   }, [tasks]);
+  const trainingTasks = useMemo(() => tasks.filter((task) => isTrainingTask(task)), [tasks]);
   const sourceHealthRows = useMemo(() => buildSourceHealthRows(tasks), [tasks]);
   const ingestionTimeline = useMemo(() => buildIngestionTimeline(tasks), [tasks]);
 
@@ -265,7 +273,7 @@ export function TasksWorkspace() {
     <div className="grid w-full min-w-0 max-w-full gap-5 overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <section className="grid min-w-0 max-w-full gap-5 overflow-hidden">
         <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white px-5 py-4">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricTile
               caption={`${tasks.length || 0} 个总任务`}
               icon={SquareStack}
@@ -301,8 +309,19 @@ export function TasksWorkspace() {
               tone="amber"
               value={summary.latestRecords.toString()}
             />
+            <MetricTile
+              caption={`${trainingOverview.overview?.metrics.evidenceCount ?? 0} 条证据`}
+              icon={BookOpenCheck}
+              label="培训任务"
+              tone="rose"
+              value={trainingTasks.length.toString()}
+            />
           </div>
           <SchedulerObservationPanel overview={schedulerOverview} />
+          <p className="mt-3 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-2 text-xs leading-5 text-[#87611B]">
+            培训闭环：训练任务负责刷新工具、平台方法和风险边界，输出进入数据源、原始证据、情报和培训报告。
+            {trainingOverview.loading ? " 正在同步培训资产指标。" : null}
+          </p>
         </div>
 
         {error ? (
@@ -329,6 +348,7 @@ export function TasksWorkspace() {
               onClick={() => {
                 setDomainFilter("all");
                 setStatusFilter("all");
+                setTaskScope("all");
                 setSearchTerm("");
               }}
               type="button"
@@ -336,6 +356,25 @@ export function TasksWorkspace() {
               <RefreshCw size={16} aria-hidden="true" />
               刷新视图
             </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 border-b border-[#EDE6DF] px-5 py-3">
+            {(["all", "training"] as const).map((scope) => (
+              <button
+                className={cn(
+                  "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors",
+                  taskScope === scope
+                    ? "border-[#C25B6E] bg-[#C25B6E] text-white"
+                    : "border-[#EDE6DF] bg-[#FBF8F5] text-[#5F5757] hover:border-[#C25B6E]",
+                )}
+                key={scope}
+                onClick={() => setTaskScope(scope)}
+                type="button"
+              >
+                {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+                {scope === "training" ? `培训任务 ${trainingTasks.length}` : "全部任务"}
+              </button>
+            ))}
           </div>
 
           <div className="grid gap-3 border-b border-[#EDE6DF] px-5 py-4 lg:grid-cols-[150px_150px_1fr_120px]">
