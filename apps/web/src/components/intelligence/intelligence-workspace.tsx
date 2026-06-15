@@ -228,10 +228,10 @@ export function IntelligenceWorkspace() {
   }
 
   return (
-    <div className="grid min-w-0 gap-5">
-      <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="min-w-0">
+    <div className="grid min-w-0 max-w-full gap-5 overflow-hidden">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
+        <div className="flex min-w-0 max-w-full flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0 max-w-full">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Tag className="bg-[#FCEBF0] text-[#C25B6E]" label="Evidence-backed" />
               <Tag className="bg-[#FBF8F5] text-[#86868B]" label="final_score 排序" />
@@ -251,7 +251,7 @@ export function IntelligenceWorkspace() {
               用评分、证据链和人工反馈闭合从信号到情报的判断过程；培训情报会额外保留讲解口径，便于课堂直接使用。
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:min-w-[480px] sm:grid-cols-4">
+          <div className="grid min-w-0 max-w-full grid-cols-2 gap-2 sm:grid-cols-4">
             <SummaryTile label="平均分" value={summary.averageScore.toFixed(1)} />
             <SummaryTile label="已复核" value={summary.reviewedCount} />
             <SummaryTile label="跟进中" value={summary.followingCount} />
@@ -263,8 +263,8 @@ export function IntelligenceWorkspace() {
         </div>
       </section>
 
-      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
-      <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
+      <div className="grid min-w-0 max-w-full gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
+      <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-base font-semibold text-[#1D1D1F]">Intelligence 列表</h2>
@@ -368,7 +368,7 @@ export function IntelligenceWorkspace() {
         </div>
       </section>
 
-      <aside className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
+      <aside className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="text-base font-semibold text-[#1D1D1F]">情报详情</h2>
