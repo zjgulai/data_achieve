@@ -13,7 +13,15 @@ export type AuthSession = {
   };
 };
 
-export type ProjectDomain = "osint" | "ecommerce" | "social" | "competitor" | "mixed";
+export type ProjectDomain =
+  | "osint"
+  | "ecommerce"
+  | "social"
+  | "competitor"
+  | "agent"
+  | "platform"
+  | "governance"
+  | "mixed";
 export type ProjectStatus = "active" | "archived";
 
 export type Project = {

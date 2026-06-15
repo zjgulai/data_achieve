@@ -20,6 +20,18 @@ const domainCopy = {
     title: "竞品守望",
     description: "官网变化、页面快照、策略动态",
   },
+  agent: {
+    title: "Agent 生态",
+    description: "AI Agent、Skills、MCP 和采集编排工具",
+  },
+  platform: {
+    title: "平台采集",
+    description: "电商、社媒、视频和内容平台的数据采集方法",
+  },
+  governance: {
+    title: "合规边界",
+    description: "授权范围、频控策略、禁止项和风险提示",
+  },
 } as const;
 
 type DomainKey = keyof typeof domainCopy;

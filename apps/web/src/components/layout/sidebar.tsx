@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Bot,
   Boxes,
   ChartNoAxesCombined,
   Database,
@@ -13,6 +14,7 @@ import {
   Megaphone,
   Radio,
   ShieldAlert,
+  ShieldCheck,
   ShoppingCart,
   SquareStack,
 } from "lucide-react";
@@ -34,6 +36,9 @@ const scopeItems = [
   { href: route("/domain/ecommerce"), label: "电商风向", icon: ShoppingCart },
   { href: route("/domain/social"), label: "社媒脉搏", icon: Radio },
   { href: route("/domain/competitor"), label: "竞品守望", icon: Globe2 },
+  { href: route("/domain/agent"), label: "Agent 生态", icon: Bot },
+  { href: route("/domain/platform"), label: "平台采集", icon: Boxes },
+  { href: route("/domain/governance"), label: "合规边界", icon: ShieldCheck },
 ] satisfies NavItem[];
 
 const generalItems = [

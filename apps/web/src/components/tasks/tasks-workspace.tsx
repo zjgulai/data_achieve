@@ -38,7 +38,14 @@ import type {
   TaskRun,
 } from "@/types/source-task";
 
-type DomainKey = "osint" | "ecommerce" | "social" | "competitor";
+type DomainKey =
+  | "osint"
+  | "ecommerce"
+  | "social"
+  | "competitor"
+  | "agent"
+  | "platform"
+  | "governance";
 type DomainFilter = DomainKey | "all";
 type StatusFilter = "all" | "healthy" | "warning" | "failed" | "paused";
 
@@ -58,6 +65,9 @@ const domainLabels: Record<DomainKey, string> = {
   ecommerce: "电商风向",
   social: "社媒脉搏",
   competitor: "竞品守望",
+  agent: "Agent 生态",
+  platform: "平台采集",
+  governance: "合规边界",
 };
 
 const collectorLabels: Record<CollectorType, string> = {
@@ -338,6 +348,9 @@ export function TasksWorkspace() {
                 { label: "电商风向", value: "ecommerce" },
                 { label: "社媒脉搏", value: "social" },
                 { label: "竞品守望", value: "competitor" },
+                { label: "Agent 生态", value: "agent" },
+                { label: "平台采集", value: "platform" },
+                { label: "合规边界", value: "governance" },
               ]}
               value={domainFilter}
             />
@@ -605,6 +618,9 @@ export function TasksWorkspace() {
                     <th className="py-2">电商风向</th>
                     <th className="py-2">社媒脉搏</th>
                     <th className="py-2">竞品守望</th>
+                    <th className="py-2">Agent</th>
+                    <th className="py-2">平台</th>
+                    <th className="py-2">合规</th>
                     <th className="py-2 text-right">总体健康</th>
                   </tr>
                 </thead>
@@ -616,6 +632,9 @@ export function TasksWorkspace() {
                       <HealthCell value={row.ecommerce} />
                       <HealthCell value={row.social} />
                       <HealthCell value={row.competitor} />
+                      <HealthCell value={row.agent} />
+                      <HealthCell value={row.platform} />
+                      <HealthCell value={row.governance} />
                       <td className="py-3 text-right">
                         <span className="rounded-lg bg-[#EAF8EE] px-2 py-1 text-xs font-semibold text-[#2EBA62]">
                           {row.health}
@@ -1275,7 +1294,14 @@ function formatDateTime(value: string) {
 }
 
 function normalizeDomain(value: string | null | undefined): DomainKey {
-  if (value === "ecommerce" || value === "social" || value === "competitor") {
+  if (
+    value === "ecommerce" ||
+    value === "social" ||
+    value === "competitor" ||
+    value === "agent" ||
+    value === "platform" ||
+    value === "governance"
+  ) {
     return value;
   }
   return "osint";
@@ -1462,8 +1488,11 @@ function buildSourceHealthRows(tasks: CollectionTask[]) {
     {
       competitor: number | null;
       ecommerce: number | null;
+      agent: number | null;
+      governance: number | null;
       health: string;
       osint: number | null;
+      platform: number | null;
       social: number | null;
       type: string;
     }
@@ -1476,8 +1505,11 @@ function buildSourceHealthRows(tasks: CollectionTask[]) {
       {
         competitor: null,
         ecommerce: null,
+        agent: null,
+        governance: null,
         health: "0 / 0",
         osint: null,
+        platform: null,
         social: null,
         type,
       };

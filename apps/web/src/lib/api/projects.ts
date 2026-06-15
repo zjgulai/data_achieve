@@ -20,6 +20,9 @@ const projectDomains = new Set<ProjectDomain>([
   "ecommerce",
   "social",
   "competitor",
+  "agent",
+  "platform",
+  "governance",
   "mixed",
 ]);
 

@@ -94,6 +94,9 @@ const domainLabels: Record<string, string> = {
   ecommerce: "电商风向",
   social: "社媒脉搏",
   competitor: "竞品守望",
+  agent: "Agent 生态",
+  platform: "平台采集",
+  governance: "合规边界",
   mixed: "混合项目",
 };
 

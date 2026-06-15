@@ -28,6 +28,9 @@ const domainLabels: Record<string, string> = {
   ecommerce: "电商风向",
   osint: "开源雷达",
   social: "社媒脉搏",
+  agent: "Agent 生态",
+  platform: "平台采集",
+  governance: "合规边界",
 };
 
 const domainDescriptions: Record<string, string> = {
@@ -35,6 +38,9 @@ const domainDescriptions: Record<string, string> = {
   ecommerce: "价格排名、商品信号、渠道趋势",
   osint: "GitHub 趋势、开源项目、技术信号",
   social: "内容热度、用户讨论、导入信号",
+  agent: "AI Agent、Skills、MCP、采集编排工具",
+  platform: "平台公开数据、方法边界、采集入口",
+  governance: "授权、频控、禁止项、风险边界",
 };
 
 export function DashboardOverview({ domain }: { domain?: string }) {
