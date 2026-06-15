@@ -29,6 +29,7 @@ from data_intelligence_hub.seed.training_content import (
     curated_training_ids,
     seed_training_content,
 )
+from data_intelligence_hub.services.toolkit_service import get_toolkit_overview
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
 CURATION_PATH = ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260615.json"
@@ -115,6 +116,34 @@ async def test_demo_noise_cleanup_preserves_curated_training(
         report = await cleanup_demo_noise(session, dry_run=True)
 
     assert all(count == 0 for count in report.counts.values())
+
+
+@pytest.mark.asyncio
+async def test_toolkit_overview_reads_curated_training(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = await _create_session_factory()
+    monkeypatch.setattr(training_content, "async_session_factory", session_factory)
+    await _create_demo_identity(session_factory)
+    await seed_training_content(
+        curation_path=CURATION_PATH,
+        snapshot_path=SNAPSHOT_PATH,
+        execute=True,
+    )
+
+    async with session_factory() as session:
+        overview = await get_toolkit_overview(session, _demo_id("workspace-main"))
+
+    assert overview.dataset == "curated_training"
+    assert overview.metrics.source_count == 44
+    assert overview.metrics.tool_count >= 10
+    assert overview.metrics.method_count >= 8
+    assert overview.metrics.intelligence_count == 14
+    assert overview.metrics.evidence_count == 40
+    assert overview.tools[0].stars is not None
+    assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
+    assert any(method.platform == "GitHub" for method in overview.methods)
+    assert all(item.evidence_count > 0 for item in overview.intelligence_items)
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:

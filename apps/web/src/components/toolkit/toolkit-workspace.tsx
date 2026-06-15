@@ -22,9 +22,11 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { getToolkitOverview } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
+import type { ToolkitOverview, ToolkitTool } from "@/types/toolkit";
 
 type CategoryKey =
   | "ai_extraction"
@@ -406,6 +408,19 @@ const tools: ToolItem[] = [
   },
 ];
 
+const repoNameByToolId: Record<string, string> = {
+  "agent-browser": "vercel-labs/agent-browser",
+  "browser-use": "browser-use/browser-use",
+  crawlee: "apify/crawlee",
+  crawl4ai: "unclecode/crawl4ai",
+  firecrawl: "firecrawl/firecrawl",
+  "firecrawl-mcp": "firecrawl/firecrawl-mcp-server",
+  "mcp-servers": "modelcontextprotocol/servers",
+  "openai-agents-sdk": "openai/openai-agents-python",
+  playwright: "microsoft/playwright",
+  scrapy: "scrapy/scrapy",
+};
+
 const platformMethods: PlatformMethod[] = [
   {
     id: "github-intelligence",
@@ -544,8 +559,42 @@ export function ToolkitWorkspace() {
   const [selectedToolId, setSelectedToolId] = useState(tools[0]?.id ?? "");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyError, setCopyError] = useState<string | null>(null);
+  const [toolkitOverview, setToolkitOverview] = useState<ToolkitOverview | null>(null);
+  const [toolkitError, setToolkitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getToolkitOverview()
+      .then((overview) => {
+        if (mounted) {
+          setToolkitOverview(overview);
+          setToolkitError(null);
+        }
+      })
+      .catch((caught) => {
+        if (mounted) {
+          setToolkitOverview(null);
+          setToolkitError(caught instanceof Error ? caught.message : "工具库 API 暂不可用");
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const normalizedQuery = query.trim().toLowerCase();
+  const dynamicToolByStaticId = useMemo(() => {
+    const byName = new Map(toolkitOverview?.tools.map((tool) => [tool.name, tool]) ?? []);
+    return new Map(
+      Object.entries(repoNameByToolId)
+        .map(([toolId, repoName]) => [toolId, byName.get(repoName)] as const)
+        .filter((entry): entry is readonly [string, ToolkitTool] => Boolean(entry[1])),
+    );
+  }, [toolkitOverview?.tools]);
+  const visibleMethods = useMemo(
+    () => buildVisibleMethods(toolkitOverview),
+    [toolkitOverview],
+  );
   const filteredTools = useMemo(
     () =>
       tools.filter((tool) => {
@@ -579,29 +628,11 @@ export function ToolkitWorkspace() {
     filteredTools.find((tool) => tool.id === selectedToolId) ??
     filteredTools[0] ??
     tools[0];
+  const selectedDynamicTool = dynamicToolByStaticId.get(selectedTool.id);
   const SelectedCategoryIcon = categoryIcons[selectedTool.category];
-  const filteredMethods = platformMethods.filter((method) => {
-    if (categoryFilter !== "all" && method.category !== categoryFilter) {
-      return false;
-    }
-    if (riskFilter !== "all" && method.risk !== riskFilter) {
-      return false;
-    }
-    if (normalizedQuery.length === 0) {
-      return true;
-    }
-    return [
-      method.title,
-      method.goal,
-      method.collector,
-      method.boundary,
-      ...method.sources,
-      ...method.fieldContract,
-    ]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalizedQuery);
-  });
+  const filteredMethods = visibleMethods.filter((method) =>
+    methodMatchesFilters(method, categoryFilter, riskFilter, normalizedQuery),
+  );
 
   async function copyCommands(id: string, commands: string[]) {
     setCopyError(null);
@@ -629,10 +660,12 @@ export function ToolkitWorkspace() {
             <div className="min-w-0">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-[#E6D3CE] bg-[#FFF8F6] px-3 py-1 text-xs font-semibold text-[#A24D61]">
-                  2026-06-15 核验
+                  {toolkitOverview?.generatedAt
+                    ? `${formatDate(toolkitOverview.generatedAt)} 核验`
+                    : "2026-06-15 核验"}
                 </span>
                 <span className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-1 text-xs font-semibold text-[#7A625A]">
-                  curated_training
+                  {toolkitOverview ? "API 已接入" : "本地兜底"}
                 </span>
               </div>
               <h2 className="text-2xl font-semibold tracking-normal text-[#1D1D1F]">
@@ -643,12 +676,29 @@ export function ToolkitWorkspace() {
               </p>
             </div>
             <div className="grid min-w-[220px] grid-cols-2 gap-2 text-sm">
-              <Metric label="重点工具" value={tools.length.toString()} />
-              <Metric label="方法卡" value={platformMethods.length.toString()} />
-              <Metric label="SOP 命令" value={`${tools.length} 套`} />
-              <Metric label="来源链接" value={sourceIndex.length.toString()} />
+              <Metric
+                label="训练源"
+                value={formatInteger(toolkitOverview?.metrics.sourceCount ?? sourceIndex.length)}
+              />
+              <Metric
+                label="GitHub 工具"
+                value={formatInteger(toolkitOverview?.metrics.toolCount ?? tools.length)}
+              />
+              <Metric
+                label="方法卡"
+                value={formatInteger(toolkitOverview?.metrics.methodCount ?? platformMethods.length)}
+              />
+              <Metric
+                label="情报证据"
+                value={formatInteger(toolkitOverview?.metrics.evidenceCount ?? sourceIndex.length)}
+              />
             </div>
           </div>
+          {toolkitError ? (
+            <p className="mt-4 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-2 text-xs font-semibold text-[#87611B]">
+              {toolkitError}。当前显示已内置的培训 SOP 兜底内容。
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-2xl border border-[#E9E5E2] bg-[#FFFDFC] p-5">
@@ -775,8 +825,8 @@ export function ToolkitWorkspace() {
                         </span>
                         <span className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#86868B]">
                           <span>{categoryLabels[tool.category]}</span>
-                          <span>{tool.stars} stars</span>
-                          <span>{tool.license}</span>
+                          <span>{toolDisplayStars(tool, dynamicToolByStaticId.get(tool.id))} stars</span>
+                          <span>{dynamicToolByStaticId.get(tool.id)?.license ?? tool.license}</span>
                         </span>
                       </span>
                     </div>
@@ -813,10 +863,14 @@ export function ToolkitWorkspace() {
               </div>
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-2 text-xs">
-              <Metric label="Stars" value={selectedTool.stars} compact />
-              <Metric label="License" value={selectedTool.license} compact />
-              <Metric label="Language" value={selectedTool.language} compact />
-              <Metric label="Updated" value={selectedTool.updatedAt} compact />
+              <Metric label="Stars" value={toolDisplayStars(selectedTool, selectedDynamicTool)} compact />
+              <Metric label="License" value={selectedDynamicTool?.license ?? selectedTool.license} compact />
+              <Metric label="Language" value={selectedDynamicTool?.language ?? selectedTool.language} compact />
+              <Metric
+                label="Updated"
+                value={formatDate(selectedDynamicTool?.updatedAt ?? selectedTool.updatedAt)}
+                compact
+              />
             </div>
           </div>
 
@@ -952,6 +1006,38 @@ export function ToolkitWorkspace() {
         </div>
 
         <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles size={18} className="text-[#C25B6E]" aria-hidden="true" />
+            <h3 className="text-lg font-semibold text-[#1D1D1F]">后端情报摘要</h3>
+          </div>
+          <div className="mb-5 grid gap-3">
+            {(toolkitOverview?.intelligenceItems ?? []).slice(0, 4).map((item) => (
+              <a
+                className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-3 transition hover:border-[#C25B6E]"
+                href={`/intelligence/${item.id}`}
+                key={item.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold leading-5 text-[#1D1D1F]">{item.title}</p>
+                  <span className="shrink-0 rounded-full border border-[#EDE6DF] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#7A625A]">
+                    {Math.round(item.finalScore)}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
+                  {extractSummaryLine(item.summary)}
+                </p>
+                <p className="mt-2 text-[11px] font-semibold text-[#86868B]">
+                  {item.evidenceCount} 条证据 · {item.domain}
+                </p>
+              </a>
+            ))}
+            {toolkitOverview?.intelligenceItems.length === 0 || !toolkitOverview ? (
+              <p className="rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+                API 情报摘要加载后会显示在这里。
+              </p>
+            ) : null}
+          </div>
+
           <div className="mb-4 flex items-center gap-2">
             <ExternalLink size={18} className="text-[#C25B6E]" aria-hidden="true" />
             <h3 className="text-lg font-semibold text-[#1D1D1F]">来源索引</h3>
@@ -1130,4 +1216,90 @@ function SourceAnchor({ source, wide = false }: { source: SourceLink; wide?: boo
       )}
     </a>
   );
+}
+
+function buildVisibleMethods(overview: ToolkitOverview | null): PlatformMethod[] {
+  if (!overview) {
+    return platformMethods;
+  }
+  return overview.methods.map((method) => ({
+    id: method.id,
+    title: method.platform ? `${method.platform} 采集方法` : method.title,
+    category: parseCategory(method.category),
+    risk: parseRisk(method.riskLevel),
+    collector: method.recommendedCollector ?? method.collectorType,
+    goal:
+      method.trainingTakeaway ??
+      "沉淀公开来源、字段契约、风险边界和复核口径。",
+    sources: method.sourceUrl ? [method.sourceUrl] : [method.collectorType],
+    fieldContract:
+      method.dataTypes.length > 0
+        ? method.dataTypes
+        : [method.collectorType, method.category],
+    boundary: method.boundary ?? "必须先确认平台公开来源、访问控制和数据敏感度。",
+  }));
+}
+
+function methodMatchesFilters(
+  method: PlatformMethod,
+  categoryFilter: CategoryFilter,
+  riskFilter: RiskFilter,
+  normalizedQuery: string,
+) {
+  if (categoryFilter !== "all" && method.category !== categoryFilter) {
+    return false;
+  }
+  if (riskFilter !== "all" && method.risk !== riskFilter) {
+    return false;
+  }
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+  return [
+    method.title,
+    method.goal,
+    method.collector,
+    method.boundary,
+    ...method.sources,
+    ...method.fieldContract,
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
+function parseCategory(value: string): CategoryKey {
+  return value in categoryLabels ? (value as CategoryKey) : "platform_method";
+}
+
+function parseRisk(value: string): RiskLevel {
+  return value === "low" || value === "medium" || value === "high" ? value : "medium";
+}
+
+function toolDisplayStars(tool: ToolItem, dynamicTool: ToolkitTool | undefined): string {
+  return dynamicTool?.stars != null ? formatInteger(dynamicTool.stars) : tool.stars;
+}
+
+function formatInteger(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) {
+    return "未核验";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value.slice(0, 10);
+  }
+  return parsed.toISOString().slice(0, 10);
+}
+
+function extractSummaryLine(summary: string): string {
+  return (
+    summary
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.startsWith("结论：")) ?? summary
+  ).replace(/^结论：/, "");
 }

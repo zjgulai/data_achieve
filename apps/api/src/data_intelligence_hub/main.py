@@ -23,6 +23,7 @@ from data_intelligence_hub.api.routes.reports import router as reports_router
 from data_intelligence_hub.api.routes.signals import router as signals_router
 from data_intelligence_hub.api.routes.sources import router as sources_router
 from data_intelligence_hub.api.routes.tasks import router as tasks_router
+from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.scheduler import CollectionScheduler
@@ -75,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(entities_router, prefix="/api/entities")
     app.include_router(signals_router, prefix="/api/signals")
     app.include_router(intelligence_router, prefix="/api/intelligence")
+    app.include_router(toolkit_router, prefix="/api/toolkit")
     app.include_router(reports_router, prefix="/api/reports")
     app.include_router(alert_rules_router, prefix="/api/alert-rules")
     app.include_router(alert_events_router, prefix="/api/alert-events")
