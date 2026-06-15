@@ -379,9 +379,9 @@ export function IntelligenceWorkspace() {
 
         {selectedItem ? (
           <div className="grid gap-5">
-            <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
                   <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{selectedItem.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-[#5F5757]">{selectedItem.summary}</p>
                   {getTrainingSummaryLine(selectedItem.summary) ? (
