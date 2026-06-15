@@ -789,7 +789,7 @@ function SourceAssetCard({
             </div>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             <SourceFact label="业务域" value={domainLabel} />
             {training ? <SourceFact label="训练分类" value={trainingCategory} /> : null}
             {training ? <SourceFact label="风险边界" value={trainingRisk} /> : null}
