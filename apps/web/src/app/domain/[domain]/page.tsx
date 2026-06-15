@@ -42,10 +42,10 @@ const domainCopy = {
   },
   platform: {
     title: "平台采集",
-    description: "电商、社媒、视频和内容平台的数据采集方法",
+    description: "GitHub、跨境电商、社媒、视频与内容平台的数据采集方法",
     brief:
-      "平台采集沉淀不同平台的数据入口、授权边界、频控策略和采集方法，避免只停留在演示数据。",
-    signals: ["平台入口", "频控策略", "采集方法"],
+      "平台采集沉淀 GitHub、跨境电商、社媒、视频与内容平台的数据入口、授权边界、频控策略和采集方法，避免只停留在演示数据。",
+    signals: ["平台入口", "跨境电商", "频控策略"],
   },
   governance: {
     title: "合规边界",
@@ -68,8 +68,8 @@ const trainingDomainCopy: Partial<
   },
   platform: {
     title: "平台采集培训路径",
-    body: "围绕 GitHub、电商、社媒、视频和内容平台，讲清官方 API、公开页面、频控策略、禁止项和证据留痕。",
-    tags: ["GitHub API", "电商采集", "社媒采集", "平台限制"],
+    body: "围绕 GitHub、跨境电商、社媒、视频与内容平台，讲清官方 API、公开页面、频控策略、禁止项和证据留痕。",
+    tags: ["GitHub API", "跨境电商", "社媒采集", "平台限制"],
   },
   governance: {
     title: "合规边界培训路径",
