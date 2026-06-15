@@ -16,6 +16,7 @@ from data_intelligence_hub.models import (
     IntelligenceItem,
     Project,
     RawRecord,
+    Report,
     Source,
     User,
     Workspace,
@@ -79,6 +80,22 @@ async def test_training_content_seed_execute_is_idempotent(
         assert await _count(session, RawRecord) == 44
         assert await _count(session, Entity) == 45
         assert await _count(session, IntelligenceItem) == 14
+        weekly_report = await session.scalar(
+            select(Report).where(Report.report_type == "weekly_training")
+        )
+        assert weekly_report is not None
+        included_intelligence = int(
+            await session.scalar(
+                select(func.count())
+                .select_from(IntelligenceItem)
+                .where(
+                    IntelligenceItem.created_at >= weekly_report.period_start,
+                    IntelligenceItem.created_at <= weekly_report.period_end,
+                )
+            )
+            or 0
+        )
+        assert included_intelligence == 14
 
 
 @pytest.mark.asyncio

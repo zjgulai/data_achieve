@@ -613,6 +613,8 @@ async def _merge_report_alert_notification_layer(
     report = context.report
     report_uuid = _id(f"report:{report['id']}")
     report_content = _report_content(report, context.intelligence_items)
+    period_start = _parse_date_as_datetime(str(report["period_start"]))
+    period_end = max(_parse_date_as_datetime(str(report["period_end"])), context.generated_at)
     await _merge_all(
         session,
         [
@@ -624,8 +626,8 @@ async def _merge_report_alert_notification_layer(
                 title=str(report["title"]),
                 content=report_content,
                 status=str(report["status"]),
-                period_start=_parse_date_as_datetime(str(report["period_start"])),
-                period_end=_parse_date_as_datetime(str(report["period_end"])),
+                period_start=period_start,
+                period_end=period_end,
                 created_at=context.generated_at,
             )
         ],
