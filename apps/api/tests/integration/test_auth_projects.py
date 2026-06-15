@@ -1,20 +1,37 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.core.security import hash_password
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
+from data_intelligence_hub.repositories.workspaces import DEMO_WORKSPACE_SLUG
 
 
 @pytest_asyncio.fixture()
 async def client() -> AsyncIterator[AsyncClient]:
+    async for async_client in _build_client():
+        yield async_client
+
+
+@pytest_asyncio.fixture()
+async def demo_client() -> AsyncIterator[AsyncClient]:
+    async for async_client in _build_client(seed_demo=True):
+        yield async_client
+
+
+async def _build_client(*, seed_demo: bool = False) -> AsyncIterator[AsyncClient]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -24,8 +41,10 @@ async def client() -> AsyncIterator[AsyncClient]:
         await connection.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    if seed_demo:
+        await _seed_demo_workspace(session_factory)
 
-    async def override_session() -> AsyncGenerator[object, None]:
+    async def override_session() -> AsyncGenerator[AsyncSession, None]:
         async with session_factory() as session:
             yield session
 
@@ -37,6 +56,41 @@ async def client() -> AsyncIterator[AsyncClient]:
 
     app.dependency_overrides.clear()
     await engine.dispose()
+
+
+async def _seed_demo_workspace(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    owner_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    async with session_factory() as session:
+        session.add_all(
+            [
+                User(
+                    id=owner_id,
+                    email="demo-owner@example.com",
+                    password_hash=hash_password("strong-password"),
+                    name="Demo Owner",
+                    status="active",
+                ),
+                Workspace(
+                    id=workspace_id,
+                    name="Data Achieve Intelligence Hub",
+                    slug=DEMO_WORKSPACE_SLUG,
+                    owner_id=owner_id,
+                ),
+                WorkspaceMember(workspace_id=workspace_id, user_id=owner_id, role="owner"),
+                Project(
+                    workspace_id=workspace_id,
+                    owner_id=owner_id,
+                    name="Training Intelligence Corpus",
+                    description=(
+                        "Seeded project proving registered users do not see an empty shell."
+                    ),
+                    domain="osint",
+                    status="active",
+                ),
+            ]
+        )
+        await session.commit()
 
 
 @pytest.mark.asyncio
@@ -56,6 +110,30 @@ async def test_register_creates_user_workspace_and_cookie(client: AsyncClient) -
 
     assert me_response.status_code == 200
     assert me_response.json()["workspace"]["id"] == payload["workspace"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_register_defaults_to_demo_workspace_when_available(
+    demo_client: AsyncClient,
+) -> None:
+    response = await demo_client.post(
+        "/api/auth/register",
+        json={"email": "new-user@example.com", "password": "strong-password", "name": "New User"},
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["workspace"]["slug"] == DEMO_WORKSPACE_SLUG
+
+    me_response = await demo_client.get("/api/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["workspace"]["slug"] == DEMO_WORKSPACE_SLUG
+
+    projects_response = await demo_client.get("/api/projects")
+    assert projects_response.status_code == 200
+    assert [project["name"] for project in projects_response.json()] == [
+        "Training Intelligence Corpus"
+    ]
 
 
 @pytest.mark.asyncio

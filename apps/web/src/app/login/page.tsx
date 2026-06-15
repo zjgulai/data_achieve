@@ -101,7 +101,7 @@ export default function LoginPage() {
 
           <div className="grid gap-3 text-sm text-[#5F4A43] sm:grid-cols-3">
             <Footnote title="MVP Auth" value="邮箱 + 密码" />
-            <Footnote title="Workspace" value="注册自动创建" />
+            <Footnote title="Workspace" value="默认进入培训库" />
             <Footnote title="Session" value="Cookie 保持登录态" />
           </div>
         </div>

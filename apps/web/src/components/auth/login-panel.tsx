@@ -72,12 +72,12 @@ export function LoginPanel() {
           Secure Access
         </p>
         <h2 className="mt-4 text-2xl font-semibold tracking-normal text-[#2E201C]">
-          {mode === "login" ? "登录 Workspace" : "创建 Workspace"}
+          {mode === "login" ? "登录情报工作台" : "创建账号"}
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#7A625A]">
           {mode === "login"
-            ? "输入已注册账号进入情报工作台。"
-            : "新账号会自动创建默认 Workspace。"}
+            ? "输入已注册账号进入已填充的情报工作台。"
+            : "新账号注册后直接进入培训情报工作台，不再看到空白骨架。"}
         </p>
       </div>
 
@@ -182,12 +182,12 @@ export function LoginPanel() {
           </span>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#2E201C]">
-              {mode === "login" ? "账号验证" : "Workspace 自动创建"}
+              {mode === "login" ? "账号验证" : "自动接入训练数据"}
             </p>
             <p className="mt-1 text-xs leading-5 text-[#7A625A]">
               {mode === "login"
                 ? "使用已有邮箱和密码登录；没有账号时切换到注册。"
-                : "注册成功后会直接进入同一套情报工作流。"}
+                : "注册成功后进入同一套项目、采集源、任务、信号、情报和报告。"}
             </p>
           </div>
         </div>
@@ -203,7 +203,7 @@ export function LoginPanel() {
       </button>
 
       <p className="mt-4 text-center text-xs leading-5 text-[#8B6D63]">
-        访问即进入当前 Workspace 范围，后续数据按 Workspace 隔离。
+        注册和登录默认进入 Data Achieve 培训情报工作台。
       </p>
     </form>
   );
