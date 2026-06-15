@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
+from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.main import app
 from data_intelligence_hub.models import (
     Base,
     CollectionTask,
@@ -144,6 +149,48 @@ async def test_toolkit_overview_reads_curated_training(
     assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
+
+
+@pytest.mark.asyncio
+async def test_toolkit_route_uses_authenticated_workspace_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = await _create_session_factory()
+    monkeypatch.setattr(training_content, "async_session_factory", session_factory)
+    await _create_demo_identity(session_factory)
+    await seed_training_content(
+        curation_path=CURATION_PATH,
+        snapshot_path=SNAPSHOT_PATH,
+        execute=True,
+    )
+
+    async def override_session() -> AsyncIterator[AsyncSession]:
+        async with session_factory() as session:
+            yield session
+
+    async def override_auth_context() -> AuthContext:
+        async with session_factory() as session:
+            user = await session.get(User, _demo_id("user-owner"))
+            workspace = await session.get(Workspace, _demo_id("workspace-main"))
+            assert user is not None
+            assert workspace is not None
+            return AuthContext(user=user, workspace=workspace)
+
+    app.dependency_overrides[get_session] = override_session
+    app.dependency_overrides[get_auth_context] = override_auth_context
+    transport = ASGITransport(app=app)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/api/toolkit")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dataset"] == "curated_training"
+    assert body["metrics"]["source_count"] == 44
+    assert body["metrics"]["evidence_count"] == 40
+    assert len(body["intelligence_items"]) == 14
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:

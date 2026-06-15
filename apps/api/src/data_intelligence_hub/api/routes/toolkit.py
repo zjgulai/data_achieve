@@ -16,4 +16,4 @@ async def get_toolkit(
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> ToolkitOverviewResponse:
-    return await get_toolkit_overview(session, context.workspace)
+    return await get_toolkit_overview(session, context.workspace.id)
