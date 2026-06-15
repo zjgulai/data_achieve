@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,7 @@ async def test_training_content_seed_execute_is_idempotent(
     session_factory = await _create_session_factory()
     monkeypatch.setattr(training_content, "async_session_factory", session_factory)
     await _create_demo_identity(session_factory)
+    await _create_existing_demo_entity(session_factory)
 
     first_report = await seed_training_content(
         curation_path=CURATION_PATH,
@@ -71,11 +73,11 @@ async def test_training_content_seed_execute_is_idempotent(
 
     assert first_report.counts == second_report.counts
     async with session_factory() as session:
-        assert await _count(session, Project) == 4
+        assert await _count(session, Project) == 5
         assert await _count(session, Source) == 44
         assert await _count(session, CollectionTask) == 44
         assert await _count(session, RawRecord) == 44
-        assert await _count(session, Entity) == 44
+        assert await _count(session, Entity) == 45
         assert await _count(session, IntelligenceItem) == 14
 
 
@@ -138,6 +140,35 @@ async def _create_demo_identity(session_factory: async_sessionmaker[AsyncSession
             role="owner",
         )
         session.add_all([user, workspace, member])
+        await session.commit()
+
+
+async def _create_existing_demo_entity(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    now = datetime.now(UTC)
+    async with session_factory() as session:
+        project = Project(
+            id=_demo_id("project-osint"),
+            workspace_id=_demo_id("workspace-main"),
+            name="开源采集工具雷达",
+            description="Existing curated demo project.",
+            domain="osint",
+            status="active",
+            owner_id=_demo_id("user-owner"),
+        )
+        entity = Entity(
+            id=_demo_id("entity-osint-repo"),
+            workspace_id=_demo_id("workspace-main"),
+            project_id=project.id,
+            entity_type="github_repo",
+            external_id="scrapy/scrapy",
+            canonical_url="https://github.com/scrapy/scrapy",
+            name="scrapy/scrapy",
+            domain="osint",
+            latest_snapshot_id=None,
+            first_seen_at=now,
+            last_seen_at=now,
+        )
+        session.add_all([project, entity])
         await session.commit()
 
 

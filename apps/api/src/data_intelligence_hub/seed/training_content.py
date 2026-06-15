@@ -464,7 +464,7 @@ async def _merge_entity_layer(session: AsyncSession, context: TrainingContext) -
                 workspace_id=_demo_id("workspace-main"),
                 project_id=_id(f"project:{entity['project_key']}"),
                 entity_type=str(entity["entity_type"]),
-                external_id=str(entity["external_id"]),
+                external_id=_training_external_id(entity),
                 canonical_url=_optional_text(entity.get("canonical_url")),
                 name=str(entity["name"]),
                 domain=str(entity["domain"]),
@@ -736,6 +736,10 @@ def _raw_content(record: dict[str, Any]) -> dict[str, Any]:
 def _metrics(entity: dict[str, Any]) -> dict[str, Any]:
     metrics = entity.get("metrics")
     return metrics if isinstance(metrics, dict) else {}
+
+
+def _training_external_id(entity: dict[str, Any]) -> str:
+    return f"training-content:{entity['external_id']}"
 
 
 def _intelligence_summary(item: dict[str, Any]) -> str:
