@@ -19,6 +19,7 @@ const internalKeys = new Set([
   "rawrecordid",
   "screenshoturl",
   "seedversion",
+  "signalid",
   "snapshotid",
   "snapshotids",
   "snapshotstrategy",

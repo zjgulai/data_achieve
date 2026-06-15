@@ -474,7 +474,7 @@ function EventCard({
             {String(event.payload.signal_type ?? "signal")}
           </h3>
           <p className="mt-1 break-all text-xs text-[#7A625A]">
-            {formatDate(event.triggeredAt)} · {event.signalId}
+            {formatDate(event.triggeredAt)} · 信号批次 {formatShortTraceId(event.signalId)}
           </p>
         </div>
         <span

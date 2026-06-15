@@ -1,14 +1,29 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import { getMockProjects } from "@/lib/api/mock";
-import type { Project, ProjectCreateInput } from "@/types/project";
+import type {
+  Project,
+  ProjectCreateInput,
+  ProjectDomain,
+  ProjectStatus,
+} from "@/types/project";
 
 type ProjectResponse = {
   id: string;
   name: string;
   description: string | null;
-  domain: Project["domain"];
-  status: Project["status"];
+  domain: string;
+  status: string;
 };
+
+const projectDomains = new Set<ProjectDomain>([
+  "osint",
+  "ecommerce",
+  "social",
+  "competitor",
+  "mixed",
+]);
+
+const projectStatuses = new Set<ProjectStatus>(["active", "archived"]);
 
 export async function listProjects(): Promise<Project[]> {
   if (mockApiEnabled) {
@@ -42,9 +57,21 @@ function mapProject(response: ProjectResponse): Project {
     id: response.id,
     name: response.name,
     description: response.description,
-    domain: response.domain,
-    status: response.status,
+    domain: normalizeProjectDomain(response.domain),
+    status: normalizeProjectStatus(response.status),
     intelligenceCount: 0,
     sourceCount: 0,
   };
+}
+
+function normalizeProjectDomain(value: string): ProjectDomain {
+  return projectDomains.has(value as ProjectDomain)
+    ? (value as ProjectDomain)
+    : "mixed";
+}
+
+function normalizeProjectStatus(value: string): ProjectStatus {
+  return projectStatuses.has(value as ProjectStatus)
+    ? (value as ProjectStatus)
+    : "active";
 }
