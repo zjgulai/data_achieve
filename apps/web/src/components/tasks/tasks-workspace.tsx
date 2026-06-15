@@ -144,7 +144,7 @@ export function TasksWorkspace() {
   }, [domainFilter, searchTerm, statusFilter, taskScope, tasks]);
 
   const selectedTask =
-    tasks.find((task) => task.id === selectedTaskId) ?? filteredTasks[0] ?? tasks[0] ?? null;
+    filteredTasks.find((task) => task.id === selectedTaskId) ?? filteredTasks[0] ?? tasks[0] ?? null;
   const selectedProfile = selectedTask ? getTaskProfile(selectedTask) : null;
   const selectedHealth = selectedTask ? getTaskHealth(selectedTask) : null;
   const selectedIssue = selectedTask ? getTaskIssue(selectedTask) : null;

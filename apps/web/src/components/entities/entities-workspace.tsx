@@ -145,10 +145,6 @@ export function EntitiesWorkspace() {
     };
   }, [selectedId]);
 
-  const selectedEntity = useMemo(() => {
-    return entities.find((item) => item.id === selectedId) ?? null;
-  }, [entities, selectedId]);
-
   const domains = useMemo(() => {
     return Array.from(new Set(entities.map((entity) => entity.domain)));
   }, [entities]);
@@ -170,6 +166,19 @@ export function EntitiesWorkspace() {
         .includes(term);
     });
   }, [domainFilter, entities, entityScope, searchTerm]);
+
+  useEffect(() => {
+    if (filteredEntities.length === 0) {
+      return;
+    }
+    if (!filteredEntities.some((entity) => entity.id === selectedId)) {
+      setSelectedId(filteredEntities[0].id);
+    }
+  }, [filteredEntities, selectedId]);
+
+  const selectedEntity = useMemo(() => {
+    return filteredEntities.find((item) => item.id === selectedId) ?? filteredEntities[0] ?? null;
+  }, [filteredEntities, selectedId]);
 
   const stats = useMemo(() => {
     const typedEntities = new Set(entities.map((entity) => entity.entityType)).size;
