@@ -1,8 +1,8 @@
 "use client";
 
 import {
+  BookOpenCheck,
   Braces,
-  Camera,
   Clock3,
   Database,
   FileJson2,
@@ -19,10 +19,19 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listRawRecords } from "@/lib/api/raw-records";
 import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
+import {
+  getTrainingCategory,
+  getTrainingRiskLevel,
+  getTrainingSourceId,
+  isTrainingRawRecord,
+  trainingCategoryLabel,
+  trainingRiskLabel,
+} from "@/lib/training-data";
 import { cn } from "@/lib/utils";
 import type { RawRecord } from "@/types/raw-record";
 
 type RecordFilter = "all" | string;
+type RecordScope = "all" | "training";
 
 const recordTypeTone: Record<
   string,
@@ -66,6 +75,7 @@ export function RawRecordsWorkspace() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
+  const [recordScope, setRecordScope] = useState<RecordScope>("all");
 
   useEffect(() => {
     let mounted = true;
@@ -103,6 +113,10 @@ export function RawRecordsWorkspace() {
   const filteredRecords = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return rawRecords.filter((record) => {
+      const matchesScope = recordScope === "all" || isTrainingRawRecord(record);
+      if (!matchesScope) {
+        return false;
+      }
       const matchesType = recordFilter === "all" || record.recordType === recordFilter;
       if (!matchesType) {
         return false;
@@ -117,24 +131,35 @@ export function RawRecordsWorkspace() {
         record.taskRunId,
         record.sourceUrl ?? "",
         record.contentHash,
+        getTrainingSourceId(record.content),
         JSON.stringify(record.content),
       ]
         .join(" ")
         .toLowerCase()
         .includes(term);
-    });
-  }, [rawRecords, recordFilter, searchTerm]);
+      });
+  }, [rawRecords, recordFilter, recordScope, searchTerm]);
+
+  useEffect(() => {
+    if (filteredRecords.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !filteredRecords.some((record) => record.id === selectedId)) {
+      setSelectedId(filteredRecords[0].id);
+    }
+  }, [filteredRecords, selectedId]);
 
   const stats = useMemo(() => {
     const uniqueSources = new Set(rawRecords.map((record) => record.sourceId)).size;
-    const withScreenshots = rawRecords.filter((record) => Boolean(record.screenshotUrl)).length;
+    const trainingRecords = rawRecords.filter((record) => isTrainingRawRecord(record)).length;
     const latest = rawRecords
       .map((record) => new Date(record.collectedAt).getTime())
       .sort((a, b) => b - a)[0];
     return {
       total: rawRecords.length,
       uniqueSources,
-      withScreenshots,
+      trainingRecords,
       latest: latest ? formatDate(new Date(latest).toISOString()) : "—",
     };
   }, [rawRecords]);
@@ -156,8 +181,8 @@ export function RawRecordsWorkspace() {
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <MetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
+              <MetricPill icon={BookOpenCheck} label="培训证据" value={`${stats.trainingRecords}/${stats.total}`} />
               <MetricPill icon={Globe2} label="来源数" value={String(stats.uniqueSources)} />
-              <MetricPill icon={Camera} label="截图" value={String(stats.withScreenshots)} />
               <MetricPill icon={Clock3} label="最近采集" value={stats.latest} />
             </div>
           </div>
@@ -190,6 +215,23 @@ export function RawRecordsWorkspace() {
               <p className="mt-1 text-sm text-[#7A625A]">按类型、校验指纹、来源和采集时间定位可审计事实。</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex h-10 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1">
+                {(["all", "training"] as const).map((scope) => (
+                  <button
+                    className={cn(
+                      "rounded-lg px-3 text-xs font-semibold transition",
+                      recordScope === scope
+                        ? "bg-white text-[#C96F5C] shadow-sm"
+                        : "text-[#7A625A] hover:text-[#3B2924]",
+                    )}
+                    key={scope}
+                    onClick={() => setRecordScope(scope)}
+                    type="button"
+                  >
+                    {scope === "training" ? "培训证据" : "全部"}
+                  </button>
+                ))}
+              </div>
               <label className="relative block">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#B49A91]"
@@ -282,6 +324,7 @@ function RawRecordCard({
   onSelect: () => void;
 }) {
   const tone = getRecordTone(rawRecord.recordType);
+  const training = isTrainingRawRecord(rawRecord);
   return (
     <button
       className={cn(
@@ -311,6 +354,11 @@ function RawRecordCard({
                 <span className={cn("rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold", tone.text)}>
                   {tone.label}
                 </span>
+                {training ? (
+                  <span className="rounded-full border border-white/80 bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#9E5C4D]">
+                    培训证据
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 break-all text-sm text-[#7A625A]">{getSourceLabel(rawRecord)}</p>
             </div>
@@ -319,7 +367,14 @@ function RawRecordCard({
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <RecordFact label="采集时间" value={formatDate(rawRecord.collectedAt)} />
             <RecordFact label="事实字段" value={`${getAuditFactCount(rawRecord.content)} fields`} />
-            <RecordFact label="内容大小" value={`${getContentSize(rawRecord.content)} chars`} />
+            <RecordFact
+              label={training ? "训练分类" : "内容大小"}
+              value={
+                training
+                  ? trainingCategoryLabel(getTrainingCategory(rawRecord.content))
+                  : `${getContentSize(rawRecord.content)} chars`
+              }
+            />
           </div>
         </div>
 
@@ -342,6 +397,7 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
   const tone = getRecordTone(rawRecord.recordType);
   const facts = buildAuditFacts(rawRecord.content, 14);
   const contentSize = getContentSize(rawRecord.content);
+  const training = isTrainingRawRecord(rawRecord);
 
   return (
     <div className="grid gap-4">
@@ -367,6 +423,13 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
           <DetailRow label="采集时间" value={formatDate(rawRecord.collectedAt)} />
           <DetailRow label="事实字段" value={`${facts.length} fields`} />
           <DetailRow label="内容大小" value={`${contentSize} chars`} />
+          {training ? (
+            <>
+              <DetailRow label="训练源 ID" value={getTrainingSourceId(rawRecord.content)} />
+              <DetailRow label="训练分类" value={trainingCategoryLabel(getTrainingCategory(rawRecord.content))} />
+              <DetailRow label="风险边界" value={trainingRiskLabel(getTrainingRiskLevel(rawRecord.content))} />
+            </>
+          ) : null}
         </div>
       </div>
 

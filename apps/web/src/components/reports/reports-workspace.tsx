@@ -2,6 +2,7 @@
 
 import {
   BellRing,
+  BookOpenCheck,
   CalendarDays,
   ChevronDown,
   Clock3,
@@ -35,6 +36,7 @@ import {
   sendReport,
   upsertReportSubscription,
 } from "@/lib/api/reports";
+import { isTrainingReportType } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
 import { ReportDetailPanel } from "@/components/reports/report-detail-panel";
 import type { Project } from "@/types/project";
@@ -49,6 +51,7 @@ import type {
 
 type StatusFilter = "all" | "generated" | "sent";
 type PeriodPreset = "today" | "24h" | "7d" | "custom";
+type ReportScope = "all" | "training";
 
 export function ReportsWorkspace() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -80,6 +83,7 @@ export function ReportsWorkspace() {
   );
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [reportScope, setReportScope] = useState<ReportScope>("all");
   const [projectFilter, setProjectFilter] = useState("all");
   const [generateProjectId, setGenerateProjectId] = useState("all");
   const [subscriptionProjectId, setSubscriptionProjectId] = useState("all");
@@ -230,6 +234,8 @@ export function ReportsWorkspace() {
   const filteredReports = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     return reports.filter((report) => {
+      const matchesScope =
+        reportScope === "all" || isTrainingReportType(report.reportType);
       const matchesStatus =
         statusFilter === "all" || report.status === statusFilter;
       const matchesSearch =
@@ -240,16 +246,16 @@ export function ReportsWorkspace() {
         projectName(projects, report.projectId)
           .toLowerCase()
           .includes(normalizedSearch);
-      return matchesStatus && matchesSearch;
+      return matchesScope && matchesStatus && matchesSearch;
     });
-  }, [projects, reports, searchTerm, statusFilter]);
+  }, [projects, reportScope, reports, searchTerm, statusFilter]);
 
   const selectedReport = useMemo(
     () =>
-      reports.find((report) => report.id === selectedId) ??
+      filteredReports.find((report) => report.id === selectedId) ??
       filteredReports[0] ??
       null,
-    [filteredReports, reports, selectedId],
+    [filteredReports, selectedId],
   );
 
   const summary = useMemo(() => {
@@ -264,6 +270,7 @@ export function ReportsWorkspace() {
       generatedCount,
       latestReport,
       sentCount,
+      trainingCount: reports.filter((report) => isTrainingReportType(report.reportType)).length,
       totalCount: reports.length,
     };
   }, [reports]);
@@ -463,7 +470,7 @@ export function ReportsWorkspace() {
 
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <SummaryCard
           icon={FileText}
           label="报告总数"
@@ -491,6 +498,12 @@ export function ReportsWorkspace() {
               ? formatShortDate(summary.latestReport.createdAt)
               : "-"
           }
+        />
+        <SummaryCard
+          icon={BookOpenCheck}
+          label="培训报告"
+          tone="amber"
+          value={summary.trainingCount}
         />
       </section>
 
@@ -1032,6 +1045,26 @@ export function ReportsWorkspace() {
                   </button>
                 ))}
               </div>
+              <div className="flex rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-1">
+                {[
+                  { label: "全部报告", value: "all" },
+                  { label: "培训报告", value: "training" },
+                ].map((item) => (
+                  <button
+                    className={cn(
+                      "h-8 flex-1 rounded-lg text-xs font-semibold transition-colors",
+                      reportScope === item.value
+                        ? "bg-white text-[#C25B6E]"
+                        : "text-[#86868B] hover:text-[#1D1D1F]",
+                    )}
+                    key={item.value}
+                    onClick={() => setReportScope(item.value as ReportScope)}
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
               <label className="flex h-10 items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm text-[#86868B]">
                 <Search size={16} aria-hidden="true" />
                 <input
@@ -1079,6 +1112,7 @@ export function ReportsWorkspace() {
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
                     <Tag>{projectName(projects, report.projectId)}</Tag>
                     <Tag>{report.reportType}</Tag>
+                    {isTrainingReportType(report.reportType) ? <Tag>培训周报</Tag> : null}
                     <Tag>{estimateReadingMinutes(report.content)} min read</Tag>
                     <Tag>
                       {countEvidenceMentions(report.content)} evidence refs

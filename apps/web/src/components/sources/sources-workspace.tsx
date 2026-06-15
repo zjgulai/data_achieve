@@ -1,8 +1,8 @@
 "use client";
 
 import {
+  BookOpenCheck,
   CheckCircle2,
-  Clock3,
   Activity,
   Database,
   Github,
@@ -31,6 +31,13 @@ import {
   testSource,
   updateSource,
 } from "@/lib/api/sources";
+import {
+  getTrainingCategory,
+  getTrainingRiskLevel,
+  isTrainingSource,
+  trainingCategoryLabel,
+  trainingRiskLabel,
+} from "@/lib/training-data";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Collector, CollectorType, Source } from "@/types/source-task";
@@ -106,6 +113,8 @@ const cadenceLabels: Record<string, string> = {
   "0 */1 * * *": "每小时",
 };
 
+type SourceScope = "all" | "training";
+
 export function SourcesWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [collectors, setCollectors] = useState<Collector[]>([]);
@@ -126,6 +135,7 @@ export function SourcesWorkspace() {
   const [loading, setLoading] = useState(true);
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const [sourceScope, setSourceScope] = useState<SourceScope>("all");
   const sourceFormRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
@@ -168,7 +178,6 @@ export function SourcesWorkspace() {
   const editingSource = sources.find((source) => source.id === editingSourceId);
 
   const enabledCount = sources.filter((source) => source.enabled).length;
-  const configuredProjectCount = new Set(sources.map((source) => source.projectId)).size;
   const sourceTypeCounts = useMemo(() => {
     return sources.reduce<Record<CollectorType, number>>(
       (counts, source) => {
@@ -191,6 +200,11 @@ export function SourcesWorkspace() {
     );
   }, [tasks]);
   const latestFailedRunCount = tasks.filter((task) => task.latestRunStatus === "failed").length;
+  const trainingSources = useMemo(
+    () => sources.filter((source) => isTrainingSource(source)),
+    [sources],
+  );
+  const visibleSources = sourceScope === "training" ? trainingSources : sources;
 
   const configPreview = (() => {
     try {
@@ -375,7 +389,7 @@ export function SourcesWorkspace() {
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MetricPill icon={Link2} label="数据源" value={String(sources.length)} />
               <MetricPill icon={ShieldCheck} label="已启用" value={`${enabledCount}/${sources.length}`} />
-              <MetricPill icon={Clock3} label="覆盖项目" value={String(configuredProjectCount)} />
+              <MetricPill icon={BookOpenCheck} label="培训源" value={`${trainingSources.length}/${sources.length}`} />
               <MetricPill
                 icon={Activity}
                 label="最近采集"
@@ -438,10 +452,24 @@ export function SourcesWorkspace() {
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">数据源资产池</h2>
               <p className="mt-1 text-sm text-[#7A625A]">按 Collector、项目和启用状态快速判断采集入口是否健康。</p>
             </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#E8D4CB] bg-[#FFF7F2] px-3 py-1.5 text-xs font-semibold text-[#9E5C4D]">
-              <CheckCircle2 size={14} aria-hidden="true" />
-              Config first
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {(["all", "training"] as const).map((scope) => (
+                <button
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition",
+                    sourceScope === scope
+                      ? "border-[#C96F5C] bg-[#C96F5C] text-white"
+                      : "border-[#E8D4CB] bg-[#FFF7F2] text-[#9E5C4D] hover:border-[#C96F5C]",
+                  )}
+                  key={scope}
+                  onClick={() => setSourceScope(scope)}
+                  type="button"
+                >
+                  {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : <CheckCircle2 size={14} aria-hidden="true" />}
+                  {scope === "training" ? `培训数据 ${trainingSources.length}` : "全部数据源"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
@@ -452,7 +480,7 @@ export function SourcesWorkspace() {
           <StatusNotice error={error} message={message} />
 
           <div className="grid gap-3">
-            {sources.map((source) => (
+            {visibleSources.map((source) => (
               <SourceAssetCard
                 busy={busySourceId === source.id}
                 key={source.id}
@@ -465,9 +493,11 @@ export function SourcesWorkspace() {
                 task={taskBySourceId.get(source.id)}
               />
             ))}
-            {!loading && sources.length === 0 ? (
+            {!loading && visibleSources.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-                暂无数据源。先从右侧创建一个 Collector 配置。
+                {sourceScope === "training"
+                  ? "暂无培训数据源。先执行 curated_training 种子或切回全部数据源。"
+                  : "暂无数据源。先从右侧创建一个 Collector 配置。"}
               </div>
             ) : null}
           </div>
@@ -712,6 +742,9 @@ function SourceAssetCard({
   const visual = collectorVisuals[source.type];
   const Icon = visual.icon;
   const domainLabel = domainLabels[project?.domain ?? "mixed"] ?? "未知域";
+  const training = isTrainingSource(source);
+  const trainingCategory = trainingCategoryLabel(getTrainingCategory(source.config));
+  const trainingRisk = trainingRiskLabel(getTrainingRiskLevel(source.config));
 
   return (
     <article
@@ -744,6 +777,11 @@ function SourceAssetCard({
                 >
                   {source.enabled ? "enabled" : "disabled"}
                 </span>
+                {training ? (
+                  <span className="rounded-full border border-[#E8D4CB] bg-white/80 px-2.5 py-1 text-xs font-semibold text-[#9E5C4D]">
+                    培训数据
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-sm text-[#7A625A]">
                 {collectorTypeLabels[source.type]} · {project?.name ?? "Unknown project"}
@@ -753,6 +791,8 @@ function SourceAssetCard({
 
           <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
             <SourceFact label="业务域" value={domainLabel} />
+            {training ? <SourceFact label="训练分类" value={trainingCategory} /> : null}
+            {training ? <SourceFact label="风险边界" value={trainingRisk} /> : null}
             <SourceFact
               label="调度"
               value={source.scheduleCron ? cadenceLabels[source.scheduleCron] ?? source.scheduleCron : "手动"}

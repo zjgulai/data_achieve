@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpenCheck,
   CheckCircle2,
   ExternalLink,
   FileSearch,
@@ -21,6 +22,8 @@ import {
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
+import { getToolkitOverview } from "@/lib/api/toolkit";
+import { getTrainingSummaryLine } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
 import type {
   Evidence,
@@ -63,6 +66,8 @@ const typeClass: Record<string, string> = {
   anomaly: "bg-[#FBF8F5] text-[#86868B]",
 };
 
+type IntelligenceScope = "all" | "training";
+
 export function IntelligenceWorkspace() {
   const [items, setItems] = useState<IntelligenceItem[]>([]);
   const [evidences, setEvidences] = useState<Evidence[]>([]);
@@ -70,10 +75,12 @@ export function IntelligenceWorkspace() {
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [intelligenceScope, setIntelligenceScope] = useState<IntelligenceScope>("all");
   const [loading, setLoading] = useState(true);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedbackState, setFeedbackState] = useState<string | null>(null);
+  const [toolkitTrainingIds, setToolkitTrainingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let mounted = true;
@@ -112,6 +119,24 @@ export function IntelligenceWorkspace() {
   }, [statusFilter, typeFilter]);
 
   useEffect(() => {
+    let mounted = true;
+    getToolkitOverview()
+      .then((overview) => {
+        if (mounted) {
+          setToolkitTrainingIds(new Set(overview.intelligenceItems.map((item) => item.id)));
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setToolkitTrainingIds(new Set());
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedId) {
       setEvidences([]);
       setSelectedEvidenceId(null);
@@ -147,22 +172,42 @@ export function IntelligenceWorkspace() {
     return items.find((item) => item.id === selectedId) ?? null;
   }, [items, selectedId]);
 
+  const trainingItems = useMemo(
+    () =>
+      items.filter(
+        (item) => toolkitTrainingIds.has(item.id) || getTrainingSummaryLine(item.summary).length > 0,
+      ),
+    [items, toolkitTrainingIds],
+  );
+
+  const visibleItems = intelligenceScope === "training" ? trainingItems : items;
+
+  useEffect(() => {
+    if (visibleItems.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !visibleItems.some((item) => item.id === selectedId)) {
+      setSelectedId(visibleItems[0].id);
+    }
+  }, [selectedId, visibleItems]);
+
   const selectedEvidence = useMemo(() => {
     return evidences.find((item) => item.id === selectedEvidenceId) ?? null;
   }, [evidences, selectedEvidenceId]);
 
   const summary = useMemo(() => {
-    const reviewedCount = items.filter((item) => item.status === "reviewed").length;
-    const followingCount = items.filter((item) => item.status === "following").length;
-    const evidenceCount = items.reduce((sum, item) => sum + item.evidenceCount, 0);
+    const reviewedCount = visibleItems.filter((item) => item.status === "reviewed").length;
+    const followingCount = visibleItems.filter((item) => item.status === "following").length;
+    const evidenceCount = visibleItems.reduce((sum, item) => sum + item.evidenceCount, 0);
     const averageScore =
-      items.length > 0
-        ? items.reduce((sum, item) => sum + item.finalScore, 0) / items.length
+      visibleItems.length > 0
+        ? visibleItems.reduce((sum, item) => sum + item.finalScore, 0) / visibleItems.length
         : 0;
-    const latestUpdatedAt = latestTimestamp(items.map((item) => item.updatedAt));
-    const latestCreatedAt = latestTimestamp(items.map((item) => item.createdAt));
+    const latestUpdatedAt = latestTimestamp(visibleItems.map((item) => item.updatedAt));
+    const latestCreatedAt = latestTimestamp(visibleItems.map((item) => item.createdAt));
     return { averageScore, evidenceCount, followingCount, latestCreatedAt, latestUpdatedAt, reviewedCount };
-  }, [items]);
+  }, [visibleItems]);
 
   async function handleStatusChange(status: IntelligenceStatus) {
     if (!selectedItem) {
@@ -190,6 +235,7 @@ export function IntelligenceWorkspace() {
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Tag className="bg-[#FCEBF0] text-[#C25B6E]" label="Evidence-backed" />
               <Tag className="bg-[#FBF8F5] text-[#86868B]" label="final_score 排序" />
+              <Tag className="bg-[#FFF4DE] text-[#FF9800]" label={`培训情报 ${trainingItems.length}/${items.length}`} />
               <Tag className="bg-[#EAF8EE] text-[#2EBA62]" label={`${summary.evidenceCount} evidence refs`} />
               <Tag
                 className="bg-[#FFF4DE] text-[#FF9800]"
@@ -202,7 +248,7 @@ export function IntelligenceWorkspace() {
             </div>
             <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">情报判读工作台</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">
-              用评分、证据链和人工反馈闭合从信号到情报的判断过程。
+              用评分、证据链和人工反馈闭合从信号到情报的判断过程；培训情报会额外保留讲解口径，便于课堂直接使用。
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:min-w-[480px] sm:grid-cols-4">
@@ -239,6 +285,24 @@ export function IntelligenceWorkspace() {
             />
           </div>
         </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(["all", "training"] as const).map((scope) => (
+            <button
+              className={cn(
+                "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors",
+                intelligenceScope === scope
+                  ? "border-[#C25B6E] bg-[#C25B6E] text-white"
+                  : "border-[#EDE6DF] bg-[#FBF8F5] text-[#5F5757] hover:border-[#C25B6E]",
+              )}
+              key={scope}
+              onClick={() => setIntelligenceScope(scope)}
+              type="button"
+            >
+              {scope === "training" ? <BookOpenCheck size={14} aria-hidden="true" /> : null}
+              {scope === "training" ? `培训情报 ${trainingItems.length}` : "全部情报"}
+            </button>
+          ))}
+        </div>
 
         {loading ? <p className="text-sm text-[#86868B]">加载情报中</p> : null}
         {error ? (
@@ -248,51 +312,57 @@ export function IntelligenceWorkspace() {
         ) : null}
 
         <div className="grid gap-3">
-          {items.map((item) => (
-            <button
-              className={cn(
-                "rounded-2xl border p-4 text-left transition-colors",
-                item.id === selectedId
-                  ? "border-[#C25B6E] bg-[#FFF7F8]"
-                  : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
-              )}
-              key={item.id}
-              onClick={() => setSelectedId(item.id)}
-              type="button"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{item.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
-                    {item.summary}
-                  </p>
+          {visibleItems.map((item) => {
+            const trainingTalkTrack = getTrainingSummaryLine(item.summary);
+            return (
+              <button
+                className={cn(
+                  "rounded-2xl border p-4 text-left transition-colors",
+                  item.id === selectedId
+                    ? "border-[#C25B6E] bg-[#FFF7F8]"
+                    : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
+                )}
+                key={item.id}
+                onClick={() => setSelectedId(item.id)}
+                type="button"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{item.title}</h3>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#5F5757]">
+                      {item.summary}
+                    </p>
+                  </div>
+                  <ScoreBadge score={item.finalScore} />
                 </div>
-                <ScoreBadge score={item.finalScore} />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Tag className={typeClass[item.intelligenceType]} label={item.intelligenceType} />
-                <Tag className={statusClass[item.status]} label={item.status} />
-                <Tag className="bg-white text-[#86868B]" label={item.domain} />
-                <Tag
-                  className="bg-white text-[#5F5757]"
-                  label={`${item.evidenceCount} evidences`}
-                />
-                <Tag
-                  className="bg-white text-[#86868B]"
-                  label={`更新 ${formatRelativeTime(item.updatedAt)}`}
-                />
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
-                <MiniScore label="impact" value={item.impactScore} />
-                <MiniScore label="confidence" value={item.confidenceScore} />
-                <MiniScore label="novelty" value={item.noveltyScore} />
-                <MiniScore label="urgency" value={item.urgencyScore} />
-              </div>
-            </button>
-          ))}
-          {!loading && items.length === 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Tag className={typeClass[item.intelligenceType]} label={item.intelligenceType} />
+                  <Tag className={statusClass[item.status]} label={item.status} />
+                  <Tag className="bg-white text-[#86868B]" label={item.domain} />
+                  {trainingTalkTrack ? (
+                    <Tag className="bg-white text-[#9E5C4D]" label="培训讲解" />
+                  ) : null}
+                  <Tag
+                    className="bg-white text-[#5F5757]"
+                    label={`${item.evidenceCount} evidences`}
+                  />
+                  <Tag
+                    className="bg-white text-[#86868B]"
+                    label={`更新 ${formatRelativeTime(item.updatedAt)}`}
+                  />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <MiniScore label="impact" value={item.impactScore} />
+                  <MiniScore label="confidence" value={item.confidenceScore} />
+                  <MiniScore label="novelty" value={item.noveltyScore} />
+                  <MiniScore label="urgency" value={item.urgencyScore} />
+                </div>
+              </button>
+            );
+          })}
+          {!loading && visibleItems.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#EDE6DF] bg-[#FBF8F5] p-8 text-sm text-[#86868B]">
-              暂无情报
+              {intelligenceScope === "training" ? "暂无匹配的培训情报" : "暂无情报"}
             </div>
           ) : null}
         </div>
@@ -314,6 +384,11 @@ export function IntelligenceWorkspace() {
                 <div>
                   <h3 className="text-sm font-semibold leading-6 text-[#1D1D1F]">{selectedItem.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-[#5F5757]">{selectedItem.summary}</p>
+                  {getTrainingSummaryLine(selectedItem.summary) ? (
+                    <p className="mt-3 rounded-xl border border-[#F1D9A8] bg-white px-3 py-2 text-xs leading-5 text-[#87611B]">
+                      培训讲解：{getTrainingSummaryLine(selectedItem.summary)}
+                    </p>
+                  ) : null}
                   <Link
                     className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#C25B6E]"
                     href={`/intelligence/${selectedItem.id}`}
