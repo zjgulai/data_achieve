@@ -749,13 +749,13 @@ function SourceAssetCard({
   return (
     <article
       className={cn(
-        "rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(72,45,38,0.1)]",
+        "min-w-0 max-w-full overflow-hidden rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(72,45,38,0.1)]",
         visual.tone,
       )}
     >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex min-w-0 max-w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 max-w-full items-center gap-3">
             <span
               className={cn(
                 "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white",
@@ -766,7 +766,7 @@ function SourceAssetCard({
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="truncate text-base font-semibold text-[#2E201C]">{source.name}</h3>
+                <h3 className="min-w-0 max-w-full truncate text-base font-semibold text-[#2E201C]">{source.name}</h3>
                 <span
                   className={cn(
                     "rounded-full px-2.5 py-1 text-xs font-semibold",
@@ -830,9 +830,9 @@ function SourceAssetCard({
           </p>
         </div>
 
-        <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:justify-end">
+        <div className="grid w-full min-w-0 max-w-full shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap lg:w-auto lg:justify-end">
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-2 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={busy}
             onClick={onEdit}
             type="button"
@@ -841,7 +841,7 @@ function SourceAssetCard({
             编辑
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-2 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={busy}
             onClick={onTest}
             type="button"
@@ -850,7 +850,7 @@ function SourceAssetCard({
             重测配置
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-3 text-sm font-semibold text-white transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-2 text-sm font-semibold text-white transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
             disabled={source.enabled || busy}
             onClick={onEnable}
             type="button"
@@ -859,7 +859,7 @@ function SourceAssetCard({
             启用
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-3 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#DDBEAF] bg-white px-2 text-sm font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
             disabled={!source.enabled || busy}
             onClick={onDisable}
             type="button"
