@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { listSignals } from "@/lib/api/signals";
+import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type { Signal } from "@/types/signal";
 
@@ -384,7 +385,8 @@ function SignalCard({
 
 function SignalDetail({ signal }: { signal: Signal }) {
   const tone = getSeverityTone(signal.severity);
-  const metadataText = JSON.stringify(signal.metadata, null, 2);
+  const ruleFacts = buildAuditFacts(signal.metadata, 8);
+  const ruleFactCount = getAuditFactCount(signal.metadata);
   return (
     <div className="grid gap-4">
       <div className={cn("rounded-2xl border p-4", tone.surface)}>
@@ -408,9 +410,9 @@ function SignalDetail({ signal }: { signal: Signal }) {
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="Signal ID" value={signal.id} />
-          <DetailRow label="Entity ID" value={signal.entityId} />
-          <DetailRow label="Project" value={signal.projectId} />
+          <DetailRow label="关联实体" value={formatShortTraceId(signal.entityId)} />
+          <DetailRow label="所属项目" value={formatShortTraceId(signal.projectId)} />
+          <DetailRow label="检测批次" value={formatShortTraceId(signal.id)} />
         </div>
       </div>
 
@@ -422,8 +424,8 @@ function SignalDetail({ signal }: { signal: Signal }) {
           </span>
         </div>
         <div className="grid gap-2">
-          <CompareRow label="Previous" value={signal.previousSnapshotId} />
-          <CompareRow label="Current" value={signal.currentSnapshotId} />
+          <CompareRow label="前次快照" value={formatShortTraceId(signal.previousSnapshotId)} />
+          <CompareRow label="当前快照" value={formatShortTraceId(signal.currentSnapshotId)} />
         </div>
       </section>
 
@@ -436,14 +438,12 @@ function SignalDetail({ signal }: { signal: Signal }) {
 
       <div className="rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase text-[#B47767]">Rule Metadata</p>
+          <p className="text-xs font-semibold uppercase text-[#B47767]">检测规则事实</p>
           <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
-            {metadataText.length} chars
+            {ruleFactCount} facts
           </span>
         </div>
-        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-4 text-xs leading-5 text-[#FFF8F4]">
-          {metadataText}
-        </pre>
+        <FactGrid facts={ruleFacts} emptyText="没有可展示的业务规则字段。" />
       </div>
     </div>
   );
@@ -511,6 +511,35 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-sm">
       <span className="text-xs font-semibold uppercase text-[#B47767]">{label}</span>
       <p className="mt-1 break-all font-semibold text-[#3B2924]">{value}</p>
+    </div>
+  );
+}
+
+function FactGrid({
+  facts,
+  emptyText,
+}: {
+  facts: AuditFact[];
+  emptyText: string;
+}) {
+  if (facts.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-[#E8D4CB] bg-white/70 px-3 py-3 text-sm text-[#7A625A]">
+        {emptyText}
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-2">
+      {facts.map((fact) => (
+        <div
+          className="rounded-xl border border-[#F0E1D9] bg-white/80 px-3 py-2 text-sm"
+          key={`${fact.label}-${fact.value}`}
+        >
+          <p className="text-xs font-semibold uppercase text-[#B47767]">{fact.label}</p>
+          <p className="mt-1 break-words font-semibold text-[#3B2924]">{fact.value}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -585,4 +614,11 @@ function formatDate(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatShortTraceId(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
 }

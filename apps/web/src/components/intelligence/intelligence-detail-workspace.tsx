@@ -329,8 +329,8 @@ function SnapshotComparePanel({ compare }: { compare: SignalSnapshotCompare }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <SnapshotBox label="Old Snapshot" value={compare.previousSnapshot} />
-        <SnapshotBox label="New Snapshot" value={compare.currentSnapshot} />
+        <SnapshotBox label="前次快照" value={compare.previousSnapshot} />
+        <SnapshotBox label="当前快照" value={compare.currentSnapshot} />
       </div>
       <div className="overflow-hidden rounded-2xl border border-[#EDE6DF]">
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr] bg-[#FBF8F5] px-3 py-2 text-xs font-semibold text-[#86868B]">
@@ -362,14 +362,19 @@ function SnapshotBox({
   label: string;
   value: SignalSnapshotCompare["previousSnapshot"];
 }) {
+  const metricFacts = buildAuditFacts(value.metrics, 8);
   return (
     <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
       <p className="text-xs font-semibold uppercase text-[#86868B]">{label}</p>
-      <p className="mt-2 break-all text-sm font-semibold text-[#1D1D1F]">{value.id}</p>
+      <p className="mt-2 break-all text-sm font-semibold text-[#1D1D1F]">
+        快照批次 {formatShortTraceId(value.id)}
+      </p>
       <p className="mt-1 text-xs text-[#86868B]">{new Date(value.capturedAt).toLocaleString()}</p>
-      <pre className="mt-3 max-h-52 overflow-auto rounded-xl bg-[#231A1A] p-3 text-xs leading-5 text-[#FBF8F5]">
-        {JSON.stringify(value.metrics, null, 2)}
-      </pre>
+      {metricFacts.length > 0 ? (
+        <div className="mt-3">
+          <AuditFactSection facts={metricFacts} title="指标摘要" />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -555,6 +560,13 @@ function evidenceExternalUrl(evidence: Evidence) {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("zh-CN");
+}
+
+function formatShortTraceId(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
 }
 
 function FeedbackButton({

@@ -152,7 +152,7 @@ export function RawRecordsWorkspace() {
               原始事实层审计台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              每条原始事实都保留来源、采集时间和可校验指纹，用于回看 Entity、Signal、Evidence 的事实出处。
+              每条原始事实都保留来源、采集时间和可校验指纹，用于回看实体、信号、证据的事实出处。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <MetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
@@ -187,7 +187,7 @@ export function RawRecordsWorkspace() {
             <div>
               <p className="text-xs font-semibold uppercase text-[#B47767]">Fact Records</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">采集原始记录</h2>
-              <p className="mt-1 text-sm text-[#7A625A]">按类型、hash、来源和采集时间定位可审计事实。</p>
+              <p className="mt-1 text-sm text-[#7A625A]">按类型、校验指纹、来源和采集时间定位可审计事实。</p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <label className="relative block">
@@ -511,7 +511,7 @@ function getSourceLabel(record: RawRecord): string {
   }
   const content = asRecord(record.content);
   const payload = asRecord(content.payload);
-  return getString(content.full_name) || getString(payload.name) || "manual-json payload";
+  return getString(content.full_name) || getString(payload.name) || "手动录入事实";
 }
 
 function getContentSize(content: RawRecord["content"]): number {

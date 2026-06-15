@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { listEntities, listEntitySnapshots } from "@/lib/api/entities";
 import { listEntitySignals } from "@/lib/api/signals";
+import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type { Entity, EntitySnapshot } from "@/types/entity";
 import type { Signal } from "@/types/signal";
@@ -190,7 +191,7 @@ export function EntitiesWorkspace() {
               实体快照工作台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              把 RawRecord 标准化为可持续追踪的实体画像，保留快照指标、RawRecord 来源和触发信号。
+              把采集事实标准化为可持续追踪的实体画像，保留快照指标、来源批次和触发信号。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
               <MetricPill icon={PackageSearch} label="实体数" value={String(stats.total)} />
@@ -301,7 +302,7 @@ export function EntitiesWorkspace() {
             <div>
               <p className="text-xs font-semibold uppercase text-[#B47767]">Snapshot Timeline</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">快照时间线</h2>
-              <p className="mt-1 text-sm text-[#7A625A]">指标、RawRecord 来源和关联信号。</p>
+              <p className="mt-1 text-sm text-[#7A625A]">指标、采集来源和关联信号。</p>
             </div>
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C96F5C] text-white">
               <Layers3 size={18} aria-hidden="true" />
@@ -419,9 +420,9 @@ function EntityDetail({
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="Entity ID" value={entity.id} />
-          <DetailRow label="Project" value={entity.projectId} />
-          <DetailRow label="Latest Snapshot" value={entity.latestSnapshotId ?? "—"} />
+          <DetailRow label="实体批次" value={formatShortTraceId(entity.id)} />
+          <DetailRow label="所属项目" value={formatShortTraceId(entity.projectId)} />
+          <DetailRow label="最新快照" value={formatShortTraceId(entity.latestSnapshotId)} />
         </div>
       </div>
 
@@ -507,6 +508,8 @@ function SignalRow({ signal }: { signal: Signal }) {
 }
 
 function SnapshotCard({ snapshot, latest }: { snapshot: EntitySnapshot; latest: boolean }) {
+  const snapshotFacts = buildAuditFacts(snapshot.snapshotData, 8);
+  const factCount = getAuditFactCount(snapshot.snapshotData);
   return (
     <article className="rounded-2xl border border-[#E8D4CB] bg-[#FFFDFC] p-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -519,17 +522,17 @@ function SnapshotCard({ snapshot, latest }: { snapshot: EntitySnapshot; latest: 
               </span>
             ) : null}
           </div>
-          <p className="mt-1 break-all text-xs text-[#7A625A]">RawRecord {snapshot.rawRecordId}</p>
+          <p className="mt-1 break-all text-xs text-[#7A625A]">
+            来源批次 {formatShortTraceId(snapshot.rawRecordId)}
+          </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-xl bg-[#FFF7F2] px-3 py-2 text-xs font-semibold text-[#9E5C4D]">
           <Activity size={14} aria-hidden="true" />
-          {Object.keys(snapshot.metrics).length} metrics
+          {Object.keys(snapshot.metrics).length} metrics / {factCount} facts
         </span>
       </div>
       <MetricGrid metrics={snapshot.metrics} />
-      <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-3 text-xs leading-5 text-[#FFF8F4]">
-        {JSON.stringify(snapshot.snapshotData, null, 2)}
-      </pre>
+      <FactGrid facts={snapshotFacts} emptyText="没有可展示的业务快照字段。" />
     </article>
   );
 }
@@ -598,6 +601,35 @@ function MetricGrid({ metrics }: { metrics: Record<string, unknown> }) {
   );
 }
 
+function FactGrid({
+  facts,
+  emptyText,
+}: {
+  facts: AuditFact[];
+  emptyText: string;
+}) {
+  if (facts.length === 0) {
+    return (
+      <p className="mt-3 rounded-xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] px-3 py-3 text-sm text-[#7A625A]">
+        {emptyText}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      {facts.map((fact) => (
+        <div
+          className="rounded-xl border border-[#F0E1D9] bg-[#FFF8F4] px-3 py-2 text-xs"
+          key={`${fact.label}-${fact.value}`}
+        >
+          <span className="text-[#B47767]">{fact.label}</span>
+          <p className="mt-1 break-words font-semibold text-[#3B2924]">{fact.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MiniFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-[#FFF8F4] px-2 py-1.5">
@@ -640,4 +672,11 @@ function formatDate(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatShortTraceId(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
 }

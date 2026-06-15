@@ -26,6 +26,7 @@ import {
   updateAlertEventStatus,
   type AlertEventStatus,
 } from "@/lib/api/alerts";
+import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
 import type { AlertChannel, AlertEvent, AlertRule } from "@/types/alert";
 
@@ -307,9 +308,7 @@ export function AlertsWorkspace() {
                   {enabled ? <ToggleRight size={20} aria-hidden="true" /> : <ToggleLeft size={20} aria-hidden="true" />}
                   {enabled ? "enabled" : "disabled"}
                 </button>
-                <code className="break-all rounded-lg bg-[#2E201C] px-3 py-2 text-xs text-[#FFF8F4]">
-                  {JSON.stringify(buildCondition(field, operator, value))}
-                </code>
+                <RuleConditionSummary condition={buildCondition(field, operator, value)} />
               </div>
             </div>
           </div>
@@ -331,7 +330,7 @@ export function AlertsWorkspace() {
             <div>
               <p className="text-xs font-semibold uppercase text-[#B47767]">Alert Events</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">预警事件流</h2>
-              <p className="mt-1 text-sm text-[#7A625A]">事件状态、触发信号和 payload 审计。</p>
+              <p className="mt-1 text-sm text-[#7A625A]">事件状态、触发信号和交付事实。</p>
             </div>
             <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C96F5C] text-white">
               <Megaphone size={18} aria-hidden="true" />
@@ -406,6 +405,8 @@ export function AlertsWorkspace() {
 function RuleCard({ rule }: { rule: AlertRule }) {
   const tone = getChannelTone(rule.channel);
   const Icon = tone.icon;
+  const conditionFacts = buildAuditFacts(rule.condition, 6);
+  const conditionCount = getAuditFactCount(rule.condition);
   return (
     <article className={cn("rounded-2xl border p-4", tone.surface)}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -436,9 +437,15 @@ function RuleCard({ rule }: { rule: AlertRule }) {
           {rule.enabled ? "enabled" : "disabled"}
         </span>
       </div>
-      <pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-xl bg-white/75 px-3 py-2 text-xs leading-5 text-[#3B2924]">
-        {JSON.stringify(rule.condition, null, 2)}
-      </pre>
+      <div className="mt-4 rounded-xl border border-white/80 bg-white/75 p-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase text-[#B47767]">触发条件</p>
+          <span className="rounded-full bg-[#FFF8F4] px-2 py-0.5 text-xs font-semibold text-[#7D4F43]">
+            {conditionCount} facts
+          </span>
+        </div>
+        <FactGrid facts={conditionFacts} emptyText="没有额外触发条件。" />
+      </div>
     </article>
   );
 }
@@ -499,10 +506,10 @@ function EventPayload({
   return (
     <div className="mt-4 rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase text-[#B47767]">Payload Audit</p>
+        <p className="text-xs font-semibold uppercase text-[#B47767]">事件事实</p>
         <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
           <Braces size={13} aria-hidden="true" />
-          {event.id}
+          {formatShortTraceId(event.id)}
         </span>
       </div>
       <div className="mb-3 grid grid-cols-3 gap-2">
@@ -525,9 +532,10 @@ function EventPayload({
           onClick={() => onUpdateStatus("resolved")}
         />
       </div>
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-xl bg-[#2E201C] p-4 text-xs leading-5 text-[#FFF8F4]">
-        {JSON.stringify(event.payload, null, 2)}
-      </pre>
+      <FactGrid
+        facts={buildAuditFacts(event.payload, 8)}
+        emptyText="没有可展示的事件事实字段。"
+      />
     </div>
   );
 }
@@ -672,6 +680,51 @@ function SelectField({
   );
 }
 
+function RuleConditionSummary({ condition }: { condition: Record<string, unknown> }) {
+  const facts = buildAuditFacts(condition, 3);
+  if (facts.length === 0) {
+    return (
+      <span className="break-words rounded-lg bg-[#FFF8F4] px-3 py-2 text-xs font-semibold text-[#7D4F43]">
+        无额外条件
+      </span>
+    );
+  }
+  return (
+    <span className="break-words rounded-lg bg-[#FFF8F4] px-3 py-2 text-xs font-semibold text-[#7D4F43]">
+      {facts.map((fact) => `${fact.label}: ${fact.value}`).join(" / ")}
+    </span>
+  );
+}
+
+function FactGrid({
+  facts,
+  emptyText,
+}: {
+  facts: AuditFact[];
+  emptyText: string;
+}) {
+  if (facts.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-[#E8D4CB] bg-white/70 px-3 py-3 text-sm text-[#7A625A]">
+        {emptyText}
+      </p>
+    );
+  }
+  return (
+    <div className="grid gap-2">
+      {facts.map((fact) => (
+        <div
+          className="rounded-xl border border-[#F0E1D9] bg-white/80 px-3 py-2 text-sm"
+          key={`${fact.label}-${fact.value}`}
+        >
+          <p className="text-xs font-semibold uppercase text-[#B47767]">{fact.label}</p>
+          <p className="mt-1 break-words font-semibold text-[#3B2924]">{fact.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function buildCondition(field: string, operator: string, rawValue: string): Record<string, unknown> {
   if (operator === "in") {
     return {
@@ -713,4 +766,11 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatShortTraceId(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  return value.length > 12 ? `${value.slice(0, 8)}...` : value;
 }

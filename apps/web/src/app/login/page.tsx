@@ -48,9 +48,9 @@ export default function LoginPage() {
                 采集、快照、信号、证据和报告都围绕 Workspace 组织，团队从同一条链路判断事实，不让 AI 改写原始证据。
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <SignalBadge icon={Database} label="RawRecord" value="保留原文" />
-                <SignalBadge icon={GitBranch} label="Signal" value="规则触发" />
-                <SignalBadge icon={FileText} label="Evidence" value="可回溯" />
+                <SignalBadge icon={Database} label="原始事实" value="保留原文" />
+                <SignalBadge icon={GitBranch} label="变化信号" value="规则触发" />
+                <SignalBadge icon={FileText} label="证据链路" value="可回溯" />
               </div>
             </div>
 
@@ -68,20 +68,20 @@ export default function LoginPage() {
                 <PreviewRow
                   icon={Database}
                   label="采集完成"
-                  title="source_competitor_homepage"
-                  value="HTML snapshot retained"
+                  title="竞品首页监控"
+                  value="页面快照已留存"
                 />
                 <PreviewRow
                   icon={BellRing}
                   label="信号触发"
-                  title="page_changed · high"
-                  value="New product line section"
+                  title="页面变化 · 高"
+                  value="新增产品线区块"
                 />
                 <PreviewRow
                   icon={ShieldCheck}
                   label="证据绑定"
-                  title="Evidence pack ready"
-                  value="Snapshot + raw record + URL"
+                  title="证据包已就绪"
+                  value="快照 + 原文 + URL"
                 />
               </div>
               <div className="mt-4 rounded-2xl border border-[#F0E1D9] bg-[#FFF8F4] p-4">

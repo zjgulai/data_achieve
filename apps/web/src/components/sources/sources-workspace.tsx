@@ -367,7 +367,7 @@ export function SourcesWorkspace() {
               数据源接入工作台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              先验证配置，再启用调度任务；所有采集结果进入 RawRecord，后续再生成实体快照、信号和情报。
+              先验证配置，再启用调度任务；所有采集结果进入原始事实层，后续再生成实体快照、信号和情报。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <MetricPill icon={Link2} label="数据源" value={String(sources.length)} />
@@ -938,7 +938,7 @@ function getSourceEndpointLabel(source: Source): string {
     return `github topic: ${formatConfigValue(source.config.topic)}`;
   }
   if (source.type === "manual_json") {
-    return "manual-json payload";
+    return "手动录入事实";
   }
   return "No URL";
 }

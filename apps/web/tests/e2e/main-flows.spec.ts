@@ -67,6 +67,26 @@ function visibleArticleByText(page: Page, text: string) {
   return page.locator("article").filter({ hasText: text }).filter({ visible: true }).first();
 }
 
+async function expectNoVisibleTechnicalNoise(page: Page) {
+  for (const text of [
+    "RawRecord",
+    "Content Hash",
+    "Reference Metadata",
+    "RawRecord ID",
+    "Rule Metadata",
+    "Payload Audit",
+    "manual-json payload",
+    "source_competitor_homepage",
+    "HTML snapshot retained",
+    "Entity ID",
+    "Signal ID",
+    "Latest Snapshot",
+    "payload 审计",
+  ]) {
+    await expect(page.getByText(text)).toHaveCount(0);
+  }
+}
+
 async function createTaskFlowFixture(
   request: APIRequestContext,
   suffix: string,
@@ -305,6 +325,42 @@ test.beforeEach(async ({ page, request }) => {
 });
 
 test.describe("MVP workspace routes", () => {
+  test("registers and logs in through the auth UI", async ({
+    page,
+  }, testInfo) => {
+    await page.context().clearCookies();
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const email = `e2e-${testInfo.project.name}-${stamp}@example.com`;
+    const password = `E2ePass-${stamp}`;
+
+    await page.goto("/login");
+    await expect(
+      page.getByRole("heading", { name: "登录到可追溯的情报工作台" }),
+    ).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+
+    await page.getByRole("button", { name: "注册" }).click();
+    await page.getByRole("button", { name: "创建账号" }).click();
+    await expect(page.getByText("请输入邮箱。")).toBeVisible();
+    await page.getByLabel("名称").fill("E2E Workspace Owner");
+    await page.getByLabel("邮箱").fill(email);
+    await page.getByLabel("密码").fill(password);
+    await page.getByLabel("Show password").click();
+    await expect(page.locator("#auth-password")).toHaveAttribute("type", "text");
+    await page.getByRole("button", { name: "创建账号" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
+
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await page.getByLabel("邮箱").fill(email);
+    await page.getByLabel("密码").fill(password);
+    await page.getByRole("button", { name: "登录", exact: true }).last().click();
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("heading", { name: "全局仪表盘" }),
+    ).toBeVisible();
+  });
+
   test("renders dashboard and intelligence evidence flow", async ({
     page,
     request,
@@ -335,6 +391,7 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("Content Hash")).toHaveCount(0);
     await expect(page.getByText("Reference Metadata")).toHaveCount(0);
     await expect(page.getByText("RawRecord ID")).toHaveCount(0);
+    await expectNoVisibleTechnicalNoise(page);
   });
 
   test("generates and sends a report", async ({ page, request }, testInfo) => {
@@ -458,6 +515,85 @@ test.describe("MVP workspace routes", () => {
     await expect(
       page.locator("article").filter({ hasText: ruleName }),
     ).toHaveCount(1);
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
+  test("creates project and opens domain workspace", async ({
+    page,
+  }, testInfo) => {
+    await page.goto("/projects");
+    await expect(page.getByRole("heading", { name: "项目组合控制台" })).toBeVisible();
+
+    const projectName = `Playwright Project ${testInfo.project.name} ${Date.now()}`;
+    await page.getByRole("button", { name: "New Project" }).click();
+    await expect(page.getByRole("dialog", { name: "创建项目" })).toBeVisible();
+    await page.getByLabel("Name").fill(projectName);
+    await page.getByLabel("Domain").selectOption("competitor");
+    await page.getByLabel("Owner").fill("e2e");
+    await page
+      .getByLabel("Description")
+      .fill("生产 E2E 创建的竞品采集项目，用于验证项目页、筛选和业务域跳转。");
+    await page.getByRole("button", { name: "创建" }).click();
+    await expect(page.getByText(`${projectName} created for e2e`)).toBeVisible();
+    await page.getByPlaceholder("搜索项目、域、状态").fill(projectName);
+    const projectCard = visibleArticleByText(page, projectName);
+    await expect(projectCard).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目作战室" })).toBeVisible();
+    await projectCard.getByRole("link", { name: "Domain" }).click();
+    await expect(page).toHaveURL(/\/domain\/competitor$/);
+    await expect(
+      page.getByRole("heading", { name: "竞品守望", exact: true }),
+    ).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
+  test("covers signals entities raw records and domain pages", async ({
+    page,
+    request,
+  }, testInfo) => {
+    await createIntelligenceFixture(request, `coverage-${testInfo.project.name}`);
+
+    await page.goto("/signals");
+    await expect(page.getByRole("heading", { name: "信号检测控制台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "信号详情" })).toBeVisible();
+    await expect(page.getByText("检测规则事实")).toBeVisible();
+    await expect(
+      page.locator("button").filter({ hasText: /Star Growth|Page Changed|Data Quality/ }).first(),
+    ).toBeVisible();
+    await page.getByPlaceholder("搜索信号、实体、规则").fill("not-a-real-signal");
+    await expect(page.getByText("没有匹配的信号。")).toBeVisible();
+    await page.getByPlaceholder("搜索信号、实体、规则").fill("");
+    await expectNoVisibleTechnicalNoise(page);
+
+    await page.goto("/entities");
+    await expect(page.getByRole("heading", { name: "实体快照工作台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "快照时间线" })).toBeVisible();
+    await expect(page.getByText("来源批次").first()).toBeVisible();
+    await page.getByPlaceholder("搜索实体、外部 ID").fill("playwright");
+    await expect(page.getByText(/Playwright|没有匹配的实体/i).first()).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+
+    await page.goto("/raw-records");
+    await expect(page.getByRole("heading", { name: "原始事实层审计台" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "记录详情" })).toBeVisible();
+    await expect(page.getByText("关键事实字段").first()).toBeVisible();
+    await page.getByPlaceholder("搜索标题、来源、字段").fill("playwright");
+    await expect(page.getByText(/playwright|没有匹配的原始事实/i).first()).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+
+    for (const [route, heading] of [
+      ["/domain/osint", "开源雷达"],
+      ["/domain/ecommerce", "电商风向"],
+      ["/domain/social", "社媒脉搏"],
+      ["/domain/competitor", "竞品守望"],
+    ] as const) {
+      await page.goto(route);
+      await expect(
+        page.getByRole("heading", { name: heading, exact: true }),
+      ).toBeVisible();
+      await expect(page.getByText("情报总量")).toBeVisible();
+      await expectNoVisibleTechnicalNoise(page);
+    }
   });
 
   test("manages source edit retest enable and disable flow", async ({
