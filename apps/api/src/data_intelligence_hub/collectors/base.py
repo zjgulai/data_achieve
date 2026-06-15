@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 import httpx
 
@@ -120,7 +122,7 @@ async def collector_get_with_retry(
             response = await client.get(
                 url,
                 params=params,
-                headers=HTTP_HEADERS,
+                headers=_headers_for_url(url),
                 timeout=HTTP_TIMEOUT_SECONDS,
             )
             response.raise_for_status()
@@ -139,3 +141,13 @@ def _is_retryable_http_error(exc: httpx.HTTPError) -> bool:
         status_code = exc.response.status_code
         return status_code == 429 or status_code >= 500
     return False
+
+
+def _headers_for_url(url: str) -> dict[str, str]:
+    headers = dict(HTTP_HEADERS)
+    if urlparse(url).hostname == "api.github.com":
+        token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+            headers["X-GitHub-Api-Version"] = "2022-11-28"
+    return headers

@@ -117,6 +117,32 @@ async def test_github_repo_collector_retries_transient_upstream_failure() -> Non
 
 
 @pytest.mark.asyncio
+async def test_github_repo_collector_uses_github_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "test-token")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == "Bearer test-token"
+        assert request.headers["x-github-api-version"] == "2022-11-28"
+        return httpx.Response(
+            200,
+            json={
+                "name": "codex",
+                "full_name": "openai/codex",
+                "html_url": "https://github.com/openai/codex",
+                "owner": {"login": "openai"},
+            },
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = GitHubRepoCollector({"owner": "openai", "repo": "codex"}, client)
+        collect_result = await collector.collect()
+
+    assert collect_result.raw_records[0].source_url == "https://github.com/openai/codex"
+
+
+@pytest.mark.asyncio
 async def test_github_topic_collector_collects_repository_search_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)

@@ -14,7 +14,7 @@ source: human+ai
 
 ## 摘要
 
-- source snapshot: `tmp/outputs/training-content-snapshot-20260615.json`
+- source snapshot: `../../tmp/outputs/training-content-snapshot-20260615.json`
 - raw records: 44
 - entities: 44
 - signals: 13
