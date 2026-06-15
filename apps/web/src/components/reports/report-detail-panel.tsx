@@ -16,7 +16,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import {
   createReportAuditEvent,
@@ -25,7 +31,11 @@ import {
 } from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
 import type { Evidence } from "@/types/intelligence";
-import type { Report, ReportAuditEvent, ReportEvidenceReference } from "@/types/report";
+import type {
+  Report,
+  ReportAuditEvent,
+  ReportEvidenceReference,
+} from "@/types/report";
 
 type ReportSection = {
   id: string;
@@ -48,7 +58,9 @@ export function ReportDetailPanel({
   showOpenLink = false,
 }: ReportDetailPanelProps) {
   const [evidenceLoading, setEvidenceLoading] = useState(false);
-  const [evidenceReferences, setEvidenceReferences] = useState<ReportEvidenceReference[]>([]);
+  const [evidenceReferences, setEvidenceReferences] = useState<
+    ReportEvidenceReference[]
+  >([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditEvents, setAuditEvents] = useState<ReportAuditEvent[]>([]);
   const [openSectionIds, setOpenSectionIds] = useState<Set<string>>(new Set());
@@ -104,9 +116,16 @@ export function ReportDetailPanel({
     void loadAuditEvents();
   }, [loadAuditEvents]);
 
-  const reportSections = useMemo(() => parseReportSections(report.content), [report.content]);
+  const reportSections = useMemo(
+    () => parseReportSections(report.content),
+    [report.content],
+  );
   const evidenceReferenceCount = useMemo(
-    () => evidenceReferences.reduce((total, reference) => total + reference.evidences.length, 0),
+    () =>
+      evidenceReferences.reduce(
+        (total, reference) => total + reference.evidences.length,
+        0,
+      ),
     [evidenceReferences],
   );
 
@@ -125,7 +144,9 @@ export function ReportDetailPanel({
   async function handleCopyLink() {
     setShareNotice(null);
     await copyTextToClipboard(reportUrl);
-    await createReportAuditEvent(report.id, "share_link_copied", { url: reportUrl });
+    await createReportAuditEvent(report.id, "share_link_copied", {
+      url: reportUrl,
+    });
     await loadAuditEvents();
     setShareNotice("链接已复制");
   }
@@ -134,11 +155,16 @@ export function ReportDetailPanel({
     setShareNotice(null);
     if (navigator.share) {
       await navigator.share({ title: report.title, url: reportUrl });
-      await createReportAuditEvent(report.id, "share_sheet_opened", { url: reportUrl });
+      await createReportAuditEvent(report.id, "share_sheet_opened", {
+        url: reportUrl,
+      });
       setShareNotice("分享面板已打开");
     } else {
       await copyTextToClipboard(reportUrl);
-      await createReportAuditEvent(report.id, "share_link_copied", { fallback: "web_share_unavailable", url: reportUrl });
+      await createReportAuditEvent(report.id, "share_link_copied", {
+        fallback: "web_share_unavailable",
+        url: reportUrl,
+      });
       setShareNotice("链接已复制");
     }
     await loadAuditEvents();
@@ -150,24 +176,28 @@ export function ReportDetailPanel({
   }
 
   return (
-    <section className="min-w-0 rounded-2xl border border-[#E9E5E2] bg-white">
+    <section className="min-w-0 overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white">
       <div className="border-b border-[#EDE6DF] p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <StatusPill status={report.status} />
               <Pill tone="neutral">{report.reportType}</Pill>
-              <Pill tone="rose">{estimateReadingMinutes(report.content)} min read</Pill>
+              <Pill tone="rose">
+                {estimateReadingMinutes(report.content)} min read
+              </Pill>
             </div>
-            <h2 className="text-xl font-semibold tracking-tight text-[#1D1D1F]">{report.title}</h2>
+            <h2 className="break-words text-xl font-semibold tracking-tight text-[#1D1D1F] [overflow-wrap:anywhere]">
+              {report.title}
+            </h2>
             <p className="mt-2 text-sm text-[#86868B]">
               {formatDate(report.periodStart)} 至 {formatDate(report.periodEnd)}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             {showOpenLink ? (
               <Link
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] sm:w-auto"
                 href={`/reports/${report.id}` as Route}
               >
                 <FileText size={16} aria-hidden="true" />
@@ -175,7 +205,7 @@ export function ReportDetailPanel({
               </Link>
             ) : null}
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] sm:w-auto"
               onClick={() => void handleCopyLink()}
               type="button"
             >
@@ -183,7 +213,7 @@ export function ReportDetailPanel({
               复制链接
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] sm:w-auto"
               onClick={() => void handleShareLink()}
               type="button"
             >
@@ -191,7 +221,7 @@ export function ReportDetailPanel({
               分享
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E]"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] sm:w-auto"
               onClick={() => downloadReportMarkdown(report)}
               type="button"
             >
@@ -199,7 +229,7 @@ export function ReportDetailPanel({
               下载 Markdown
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-4 text-sm font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               disabled={busy || report.status === "sent"}
               onClick={() => void handleSendClick()}
               type="button"
@@ -221,8 +251,8 @@ export function ReportDetailPanel({
         ) : null}
       </div>
 
-      <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <div className="grid min-w-0 gap-5 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <article className="min-w-0 overflow-hidden rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
           <SectionedReportMarkdown
             onToggle={toggleSection}
             openSectionIds={openSectionIds}
@@ -230,10 +260,22 @@ export function ReportDetailPanel({
           />
         </article>
 
-        <aside className="grid h-fit gap-3">
-          <SideFact icon={Sparkles} label="证据引用" value={evidenceReferenceCount} />
-          <SideFact icon={FileText} label="正文行数" value={report.content.split("\n").length} />
-          <SideFact icon={CalendarDays} label="创建时间" value={formatShortDate(report.createdAt)} />
+        <aside className="grid min-w-0 gap-3 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto xl:pr-1">
+          <SideFact
+            icon={Sparkles}
+            label="证据引用"
+            value={evidenceReferenceCount}
+          />
+          <SideFact
+            icon={FileText}
+            label="正文行数"
+            value={report.content.split("\n").length}
+          />
+          <SideFact
+            icon={CalendarDays}
+            label="创建时间"
+            value={formatShortDate(report.createdAt)}
+          />
           <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
             <p className="text-sm font-semibold text-[#1D1D1F]">派发状态</p>
             <p className="mt-2 text-sm leading-6 text-[#86868B]">
@@ -243,7 +285,10 @@ export function ReportDetailPanel({
             </p>
           </div>
           <ReportAuditTimeline events={auditEvents} loading={auditLoading} />
-          <EvidenceReferencesPanel loading={evidenceLoading} references={evidenceReferences} />
+          <EvidenceReferencesPanel
+            loading={evidenceLoading}
+            references={evidenceReferences}
+          />
         </aside>
       </div>
     </section>
@@ -258,26 +303,36 @@ function ReportAuditTimeline({
   loading: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
         <p className="text-sm font-semibold text-[#1D1D1F]">审计记录</p>
         <History size={16} className="text-[#C25B6E]" aria-hidden="true" />
       </div>
-      {loading ? <p className="text-sm text-[#86868B]">加载审计记录中</p> : null}
+      {loading ? (
+        <p className="text-sm text-[#86868B]">加载审计记录中</p>
+      ) : null}
       {!loading && events.length === 0 ? (
         <p className="text-sm leading-6 text-[#86868B]">暂无审计记录</p>
       ) : null}
       <div className="grid gap-2">
         {events.map((event) => (
-          <div className="rounded-xl bg-white px-3 py-2" key={event.id}>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-[#1D1D1F]">{auditEventLabel(event.eventType)}</p>
-              <span className="text-[11px] text-[#86868B]">{formatShortDateTime(event.createdAt)}</span>
+          <div className="min-w-0 rounded-xl bg-white px-3 py-2" key={event.id}>
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <p className="min-w-0 break-words text-xs font-semibold text-[#1D1D1F] [overflow-wrap:anywhere]">
+                {auditEventLabel(event.eventType)}
+              </p>
+              <span className="text-[11px] text-[#86868B]">
+                {formatShortDateTime(event.createdAt)}
+              </span>
             </div>
             <p className="mt-1 text-xs leading-5 text-[#86868B]">
-              {event.fromStatus && event.toStatus && event.fromStatus !== event.toStatus
+              {event.fromStatus &&
+              event.toStatus &&
+              event.fromStatus !== event.toStatus
                 ? `${statusLabel(event.fromStatus)} → ${statusLabel(event.toStatus)}`
-                : statusLabel(event.toStatus ?? event.fromStatus ?? "generated")}
+                : statusLabel(
+                    event.toStatus ?? event.fromStatus ?? "generated",
+                  )}
             </p>
           </div>
         ))}
@@ -296,15 +351,18 @@ function SectionedReportMarkdown({
   sections: ReportSection[];
 }) {
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 gap-3">
       {sections.map((section) => {
         const open = openSectionIds.has(section.id);
         return (
-          <section className="overflow-hidden rounded-xl border border-[#EDE6DF] bg-white" key={section.id}>
+          <section
+            className="min-w-0 overflow-hidden rounded-xl border border-[#EDE6DF] bg-white"
+            key={section.id}
+          >
             <button
               aria-expanded={open}
               aria-label={open ? "收起章节" : "展开章节"}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FFF7F8]"
+              className="flex w-full min-w-0 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[#FFF7F8]"
               onClick={() => onToggle(section.id)}
               type="button"
             >
@@ -313,26 +371,33 @@ function SectionedReportMarkdown({
                   role="heading"
                   aria-level={section.level}
                   className={cn(
-                    "block font-semibold tracking-tight text-[#1D1D1F]",
+                    "block break-words font-semibold tracking-tight text-[#1D1D1F] [overflow-wrap:anywhere]",
                     section.level === 1 ? "text-lg" : "text-base",
                   )}
                 >
                   {section.title}
                 </span>
                 <span className="mt-1 block text-xs text-[#86868B]">
-                  {section.lines.filter((line) => line.trim().length > 0).length} 行
+                  {
+                    section.lines.filter((line) => line.trim().length > 0)
+                      .length
+                  }{" "}
+                  行
                 </span>
               </span>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FBF8F5] text-[#C25B6E]">
                 <ChevronDown
-                  className={cn("transition-transform", open ? "rotate-180" : "rotate-0")}
+                  className={cn(
+                    "transition-transform",
+                    open ? "rotate-180" : "rotate-0",
+                  )}
                   size={16}
                   aria-hidden="true"
                 />
               </span>
             </button>
             {open ? (
-              <div className="border-t border-[#EDE6DF] bg-[#FBF8F5] px-4 py-4">
+              <div className="min-w-0 border-t border-[#EDE6DF] bg-[#FBF8F5] px-4 py-4">
                 <ReportMarkdownLines lines={section.lines} />
               </div>
             ) : null}
@@ -345,18 +410,24 @@ function SectionedReportMarkdown({
 
 function ReportMarkdownLines({ lines }: { lines: string[] }) {
   return (
-    <div className="grid gap-3 text-sm leading-7 text-[#5F5757]">
+    <div className="grid min-w-0 gap-3 text-sm leading-7 text-[#5F5757]">
       {lines.map((line, index) => {
         if (line.startsWith("# ")) {
           return (
-            <h1 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]" key={`${line}-${index}`}>
+            <h1
+              className="break-words text-2xl font-semibold tracking-tight text-[#1D1D1F] [overflow-wrap:anywhere]"
+              key={`${line}-${index}`}
+            >
               {line.slice(2)}
             </h1>
           );
         }
         if (line.startsWith("## ")) {
           return (
-            <h2 className="mt-4 text-base font-semibold text-[#1D1D1F]" key={`${line}-${index}`}>
+            <h2
+              className="mt-4 break-words text-base font-semibold text-[#1D1D1F] [overflow-wrap:anywhere]"
+              key={`${line}-${index}`}
+            >
               {line.slice(3)}
             </h2>
           );
@@ -364,7 +435,7 @@ function ReportMarkdownLines({ lines }: { lines: string[] }) {
         if (line.startsWith("### ")) {
           return (
             <h3
-              className="mt-2 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-[#C25B6E]"
+              className="mt-2 min-w-0 break-words rounded-xl bg-white px-3 py-2 text-sm font-semibold text-[#C25B6E] [overflow-wrap:anywhere]"
               key={`${line}-${index}`}
             >
               {line.slice(4)}
@@ -373,7 +444,10 @@ function ReportMarkdownLines({ lines }: { lines: string[] }) {
         }
         if (line.startsWith("- ")) {
           return (
-            <p className="rounded-xl bg-white px-3 py-2" key={`${line}-${index}`}>
+            <p
+              className="min-w-0 break-words rounded-xl bg-white px-3 py-2 [overflow-wrap:anywhere]"
+              key={`${line}-${index}`}
+            >
               {line.slice(2)}
             </p>
           );
@@ -381,7 +455,7 @@ function ReportMarkdownLines({ lines }: { lines: string[] }) {
         if (/^\d+\.\s/.test(line.trim())) {
           return (
             <p
-              className="rounded-xl border border-[#F4D9DF] bg-[#FFF7F8] px-3 py-2"
+              className="min-w-0 break-words rounded-xl border border-[#F4D9DF] bg-[#FFF7F8] px-3 py-2 [overflow-wrap:anywhere]"
               key={`${line}-${index}`}
             >
               {renderInline(line.trim())}
@@ -392,7 +466,10 @@ function ReportMarkdownLines({ lines }: { lines: string[] }) {
           return <div className="h-1" key={`blank-${index}`} />;
         }
         return (
-          <p className="px-1" key={`${line}-${index}`}>
+          <p
+            className="min-w-0 break-words px-1 [overflow-wrap:anywhere]"
+            key={`${line}-${index}`}
+          >
             {renderInline(line.trim())}
           </p>
         );
@@ -409,21 +486,30 @@ function EvidenceReferencesPanel({
   references: ReportEvidenceReference[];
 }) {
   return (
-    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-[#1D1D1F]">证据引用详情</p>
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+        <p className="min-w-0 break-words text-sm font-semibold text-[#1D1D1F] [overflow-wrap:anywhere]">
+          证据引用详情
+        </p>
         <Link2 size={16} className="text-[#C25B6E]" aria-hidden="true" />
       </div>
-      {loading ? <p className="text-sm text-[#86868B]">加载证据引用中</p> : null}
-      {!loading && references.length === 0 ? (
-        <p className="text-sm leading-6 text-[#86868B]">当前报告周期没有可追溯情报</p>
+      {loading ? (
+        <p className="text-sm text-[#86868B]">加载证据引用中</p>
       ) : null}
-      <div className="grid gap-3">
+      {!loading && references.length === 0 ? (
+        <p className="text-sm leading-6 text-[#86868B]">
+          当前报告周期没有可追溯情报
+        </p>
+      ) : null}
+      <div className="grid min-w-0 gap-3">
         {references.map((reference) => (
-          <div className="rounded-xl border border-[#EDE6DF] bg-white p-3" key={reference.intelligence.id}>
-            <div className="flex items-start justify-between gap-3">
+          <div
+            className="min-w-0 overflow-hidden rounded-xl border border-[#EDE6DF] bg-white p-3"
+            key={reference.intelligence.id}
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
               <Link
-                className="min-w-0 text-sm font-semibold leading-5 text-[#1D1D1F] transition-colors hover:text-[#C25B6E]"
+                className="min-w-0 break-words text-sm font-semibold leading-5 text-[#1D1D1F] transition-colors [overflow-wrap:anywhere] hover:text-[#C25B6E]"
                 href={`/intelligence/${reference.intelligence.id}`}
               >
                 {reference.intelligence.title}
@@ -432,10 +518,11 @@ function EvidenceReferencesPanel({
                 {reference.evidences.length}
               </span>
             </div>
-            <p className="mt-1 text-xs text-[#86868B]">
-              {reference.intelligence.domain} · Score {reference.intelligence.finalScore.toFixed(1)}
+            <p className="mt-1 break-words text-xs text-[#86868B] [overflow-wrap:anywhere]">
+              {reference.intelligence.domain} · Score{" "}
+              {reference.intelligence.finalScore.toFixed(1)}
             </p>
-            <div className="mt-3 grid gap-2">
+            <div className="mt-3 grid min-w-0 gap-2">
               {reference.evidences.slice(0, 3).map((evidence) => (
                 <EvidenceReferenceRow evidence={evidence} key={evidence.id} />
               ))}
@@ -453,30 +540,43 @@ function EvidenceReferencesPanel({
 }
 
 function EvidenceReferenceRow({ evidence }: { evidence: Evidence }) {
-  const sourceName = evidence.source?.name ?? evidence.entity?.name ?? evidence.evidenceType;
+  const sourceName =
+    evidence.source?.name ?? evidence.entity?.name ?? evidence.evidenceType;
   return (
-    <div className="rounded-lg bg-[#FBF8F5] px-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-xs font-semibold text-[#5F5757]">{evidence.title}</p>
+    <div className="min-w-0 overflow-hidden rounded-lg bg-[#FBF8F5] px-3 py-2">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 break-words text-xs font-semibold text-[#5F5757] [overflow-wrap:anywhere]">
+          {evidence.title}
+        </p>
         <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[11px] font-semibold text-[#86868B]">
           {evidence.evidenceType}
         </span>
       </div>
-      <p className="mt-1 truncate text-xs text-[#86868B]">{sourceName}</p>
+      <p className="mt-1 min-w-0 break-words text-xs text-[#86868B] [overflow-wrap:anywhere]">
+        {sourceName}
+      </p>
       {evidence.rawRecord ? (
-        <p className="mt-1 truncate text-[11px] text-[#86868B]">
-          Raw {shortId(evidence.rawRecord.id)} · {evidence.rawRecord.contentHash.slice(0, 10)}
+        <p className="mt-1 min-w-0 break-words text-[11px] text-[#86868B] [overflow-wrap:anywhere]">
+          Raw {shortId(evidence.rawRecord.id)} ·{" "}
+          {evidence.rawRecord.contentHash.slice(0, 10)}
         </p>
       ) : null}
-      {evidence.url ?? evidence.rawRecord?.sourceUrl ?? evidence.source?.url ? (
+      {(evidence.url ??
+      evidence.rawRecord?.sourceUrl ??
+      evidence.source?.url) ? (
         <a
-          className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-xs font-semibold text-[#C25B6E]"
-          href={evidence.url ?? evidence.rawRecord?.sourceUrl ?? evidence.source?.url ?? undefined}
+          className="mt-2 inline-flex max-w-full min-w-0 items-center gap-1 break-words text-xs font-semibold text-[#C25B6E] [overflow-wrap:anywhere]"
+          href={
+            evidence.url ??
+            evidence.rawRecord?.sourceUrl ??
+            evidence.source?.url ??
+            undefined
+          }
           rel="noreferrer"
           target="_blank"
         >
           <ExternalLink size={12} aria-hidden="true" />
-          <span className="truncate">打开来源</span>
+          <span className="min-w-0">打开来源</span>
         </a>
       ) : null}
     </div>
@@ -493,12 +593,16 @@ function SideFact({
   value: string | number;
 }) {
   return (
-    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold text-[#86868B]">{label}</p>
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <p className="min-w-0 break-words text-xs font-semibold text-[#86868B] [overflow-wrap:anywhere]">
+          {label}
+        </p>
         <Icon size={16} className="text-[#C25B6E]" aria-hidden="true" />
       </div>
-      <p className="mt-2 text-lg font-semibold text-[#1D1D1F]">{value}</p>
+      <p className="mt-2 break-words text-lg font-semibold text-[#1D1D1F] [overflow-wrap:anywhere]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -510,16 +614,38 @@ function StatusPill({ status }: { status: string }) {
       : status === "generated"
         ? "bg-[#FFF4DE] text-[#FF9800]"
         : "bg-[#FBF8F5] text-[#86868B]";
-  const label = status === "sent" ? "已发送" : status === "generated" ? "待发送" : status;
-  return <span className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", className)}>{label}</span>;
+  const label =
+    status === "sent" ? "已发送" : status === "generated" ? "待发送" : status;
+  return (
+    <span
+      className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", className)}
+    >
+      {label}
+    </span>
+  );
 }
 
-function Pill({ children, tone }: { children: ReactNode; tone: "neutral" | "rose" }) {
+function Pill({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "neutral" | "rose";
+}) {
   const toneClasses = {
     neutral: "bg-[#FBF8F5] text-[#86868B]",
     rose: "bg-[#FCEBF0] text-[#C25B6E]",
   };
-  return <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", toneClasses[tone])}>{children}</span>;
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-semibold",
+        toneClasses[tone],
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
 function parseReportSections(content: string): ReportSection[] {
@@ -566,7 +692,9 @@ function parseReportSections(content: string): ReportSection[] {
 }
 
 function downloadReportMarkdown(report: Report) {
-  const blob = new Blob([report.content], { type: "text/markdown;charset=utf-8" });
+  const blob = new Blob([report.content], {
+    type: "text/markdown;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -600,7 +728,10 @@ function renderInline(line: string) {
     return (
       <span>
         情报 ID：
-        <Link className="font-semibold text-[#C25B6E]" href={`/intelligence/${intelligenceId}`}>
+        <Link
+          className="break-all font-semibold text-[#C25B6E]"
+          href={`/intelligence/${intelligenceId}`}
+        >
           {intelligenceId}
         </Link>
       </span>
@@ -609,12 +740,17 @@ function renderInline(line: string) {
   const inlineIntelligenceId = line.match(/intelligence_id=([a-zA-Z0-9_-]+)/);
   if (inlineIntelligenceId) {
     const intelligenceId = inlineIntelligenceId[1];
-    const [before, after = ""] = line.split(`intelligence_id=${intelligenceId}`);
+    const [before, after = ""] = line.split(
+      `intelligence_id=${intelligenceId}`,
+    );
     return (
       <span>
         {before}
         intelligence_id=
-        <Link className="font-semibold text-[#C25B6E]" href={`/intelligence/${intelligenceId}`}>
+        <Link
+          className="break-all font-semibold text-[#C25B6E]"
+          href={`/intelligence/${intelligenceId}`}
+        >
           {intelligenceId}
         </Link>
         {after}
@@ -625,7 +761,10 @@ function renderInline(line: string) {
   return parts.map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong className="font-semibold text-[#1D1D1F]" key={`${part}-${index}`}>
+        <strong
+          className="font-semibold text-[#1D1D1F]"
+          key={`${part}-${index}`}
+        >
           {part.slice(2, -2)}
         </strong>
       );

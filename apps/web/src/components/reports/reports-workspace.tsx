@@ -3,6 +3,7 @@
 import {
   BellRing,
   CalendarDays,
+  ChevronDown,
   Clock3,
   FileText,
   History,
@@ -20,7 +21,10 @@ import type { Route } from "next";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { listProjects } from "@/lib/api/projects";
-import { getEmailChannelStatus, testEmailChannel } from "@/lib/api/notifications";
+import {
+  getEmailChannelStatus,
+  testEmailChannel,
+} from "@/lib/api/notifications";
 import {
   generateReport,
   listReportSubscriptionRuns,
@@ -58,31 +62,47 @@ export function ReportsWorkspace() {
   const [busy, setBusy] = useState(false);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
   const [emailTestBusy, setEmailTestBusy] = useState(false);
-  const [runningSubscriptionId, setRunningSubscriptionId] = useState<string | null>(null);
-  const [expandedRunSubscriptionId, setExpandedRunSubscriptionId] = useState<string | null>(null);
-  const [loadingRunHistoryId, setLoadingRunHistoryId] = useState<string | null>(null);
-  const [retryingRunId, setRetryingRunId] = useState<string | null>(null);
-  const [subscriptionRuns, setSubscriptionRuns] = useState<Record<string, ReportSubscriptionRun[]>>(
-    {},
+  const [runningSubscriptionId, setRunningSubscriptionId] = useState<
+    string | null
+  >(null);
+  const [expandedRunSubscriptionId, setExpandedRunSubscriptionId] = useState<
+    string | null
+  >(null);
+  const [loadingRunHistoryId, setLoadingRunHistoryId] = useState<string | null>(
+    null,
   );
-  const [emailChannel, setEmailChannel] = useState<EmailChannelStatus | null>(null);
+  const [retryingRunId, setRetryingRunId] = useState<string | null>(null);
+  const [subscriptionRuns, setSubscriptionRuns] = useState<
+    Record<string, ReportSubscriptionRun[]>
+  >({});
+  const [emailChannel, setEmailChannel] = useState<EmailChannelStatus | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [projectFilter, setProjectFilter] = useState("all");
   const [generateProjectId, setGenerateProjectId] = useState("all");
   const [subscriptionProjectId, setSubscriptionProjectId] = useState("all");
   const [subscriptionTime, setSubscriptionTime] = useState("09:00");
-  const [subscriptionTimezone, setSubscriptionTimezone] = useState("Asia/Shanghai");
-  const [subscriptionChannels, setSubscriptionChannels] = useState<ReportDeliveryChannel[]>([
-    "in_app",
-    "email",
-  ]);
+  const [subscriptionTimezone, setSubscriptionTimezone] =
+    useState("Asia/Shanghai");
+  const [subscriptionChannels, setSubscriptionChannels] = useState<
+    ReportDeliveryChannel[]
+  >(["in_app", "email"]);
   const [subscriptionEnabled, setSubscriptionEnabled] = useState(true);
-  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(null);
-  const [emailChannelNotice, setEmailChannelNotice] = useState<string | null>(null);
+  const [subscriptionNotice, setSubscriptionNotice] = useState<string | null>(
+    null,
+  );
+  const [emailChannelNotice, setEmailChannelNotice] = useState<string | null>(
+    null,
+  );
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("today");
-  const [customStart, setCustomStart] = useState(() => toDatetimeLocalValue(startOfToday()));
-  const [customEnd, setCustomEnd] = useState(() => toDatetimeLocalValue(new Date()));
+  const [customStart, setCustomStart] = useState(() =>
+    toDatetimeLocalValue(startOfToday()),
+  );
+  const [customEnd, setCustomEnd] = useState(() =>
+    toDatetimeLocalValue(new Date()),
+  );
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -95,7 +115,11 @@ export function ReportsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load projects");
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load projects",
+          );
         }
       })
       .finally(() => {
@@ -126,7 +150,11 @@ export function ReportsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load report subscriptions");
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load report subscriptions",
+          );
         }
       })
       .finally(() => {
@@ -149,7 +177,11 @@ export function ReportsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load email channel");
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : "Failed to load email channel",
+          );
         }
       })
       .finally(() => {
@@ -180,7 +212,9 @@ export function ReportsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load reports");
+          setError(
+            caught instanceof Error ? caught.message : "Failed to load reports",
+          );
         }
       })
       .finally(() => {
@@ -196,25 +230,35 @@ export function ReportsWorkspace() {
   const filteredReports = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     return reports.filter((report) => {
-      const matchesStatus = statusFilter === "all" || report.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" || report.status === statusFilter;
       const matchesSearch =
         normalizedSearch.length === 0 ||
         report.title.toLowerCase().includes(normalizedSearch) ||
         report.reportType.toLowerCase().includes(normalizedSearch) ||
         report.content.toLowerCase().includes(normalizedSearch) ||
-        projectName(projects, report.projectId).toLowerCase().includes(normalizedSearch);
+        projectName(projects, report.projectId)
+          .toLowerCase()
+          .includes(normalizedSearch);
       return matchesStatus && matchesSearch;
     });
   }, [projects, reports, searchTerm, statusFilter]);
 
   const selectedReport = useMemo(
-    () => reports.find((report) => report.id === selectedId) ?? filteredReports[0] ?? null,
+    () =>
+      reports.find((report) => report.id === selectedId) ??
+      filteredReports[0] ??
+      null,
     [filteredReports, reports, selectedId],
   );
 
   const summary = useMemo(() => {
-    const generatedCount = reports.filter((report) => report.status === "generated").length;
-    const sentCount = reports.filter((report) => report.status === "sent").length;
+    const generatedCount = reports.filter(
+      (report) => report.status === "generated",
+    ).length;
+    const sentCount = reports.filter(
+      (report) => report.status === "sent",
+    ).length;
     const latestReport = reports[0] ?? null;
     return {
       generatedCount,
@@ -237,11 +281,16 @@ export function ReportsWorkspace() {
       const report = await generateReport(payload);
       const nextFilter = report.projectId ?? "all";
       setProjectFilter(nextFilter);
-      setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+      setReports((current) => [
+        report,
+        ...current.filter((item) => item.id !== report.id),
+      ]);
       setSelectedId(report.id);
       setStatusFilter("all");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Report generation failed");
+      setError(
+        caught instanceof Error ? caught.message : "Report generation failed",
+      );
     } finally {
       setBusy(false);
     }
@@ -252,7 +301,9 @@ export function ReportsWorkspace() {
     setError(null);
     try {
       const sent = await sendReport(report.id);
-      setReports((current) => current.map((item) => (item.id === sent.id ? sent : item)));
+      setReports((current) =>
+        current.map((item) => (item.id === sent.id ? sent : item)),
+      );
       setSelectedId(sent.id);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Report send failed");
@@ -273,7 +324,8 @@ export function ReportsWorkspace() {
       const saved = await upsertReportSubscription({
         channels: subscriptionChannels,
         enabled: subscriptionEnabled,
-        projectId: subscriptionProjectId === "all" ? undefined : subscriptionProjectId,
+        projectId:
+          subscriptionProjectId === "all" ? undefined : subscriptionProjectId,
         reportType: "daily",
         scheduleTime: subscriptionTime,
         timezone: subscriptionTimezone,
@@ -284,7 +336,11 @@ export function ReportsWorkspace() {
       });
       setSubscriptionNotice("订阅已保存");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Report subscription save failed");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Report subscription save failed",
+      );
     } finally {
       setSubscriptionBusy(false);
     }
@@ -302,12 +358,18 @@ export function ReportsWorkspace() {
       if (expandedRunSubscriptionId === subscriptionId) {
         await refreshSubscriptionRunHistory(subscriptionId);
       }
-      const refreshedReports = await listReports(projectFilter === "all" ? undefined : projectFilter);
+      const refreshedReports = await listReports(
+        projectFilter === "all" ? undefined : projectFilter,
+      );
       setReports(refreshedReports);
       setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
       setSubscriptionNotice("订阅已手动执行");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Report subscription run failed");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Report subscription run failed",
+      );
     } finally {
       setRunningSubscriptionId(null);
     }
@@ -330,13 +392,20 @@ export function ReportsWorkspace() {
     try {
       await refreshSubscriptionRunHistory(subscriptionId);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Report subscription history failed");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Report subscription history failed",
+      );
     } finally {
       setLoadingRunHistoryId(null);
     }
   }
 
-  async function handleRetrySubscriptionRun(subscriptionId: string, runId: string) {
+  async function handleRetrySubscriptionRun(
+    subscriptionId: string,
+    runId: string,
+  ) {
     setRetryingRunId(runId);
     setSubscriptionNotice(null);
     setError(null);
@@ -346,12 +415,18 @@ export function ReportsWorkspace() {
         current.map((item) => (item.id === retried.id ? retried : item)),
       );
       await refreshSubscriptionRunHistory(subscriptionId);
-      const refreshedReports = await listReports(projectFilter === "all" ? undefined : projectFilter);
+      const refreshedReports = await listReports(
+        projectFilter === "all" ? undefined : projectFilter,
+      );
       setReports(refreshedReports);
       setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
       setSubscriptionNotice("订阅已重试");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Report subscription retry failed");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Report subscription retry failed",
+      );
     } finally {
       setRetryingRunId(null);
     }
@@ -370,7 +445,9 @@ export function ReportsWorkspace() {
           : `测试未发送：${emailReasonLabel(result.reason)}`,
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Email channel test failed");
+      setError(
+        caught instanceof Error ? caught.message : "Email channel test failed",
+      );
     } finally {
       setEmailTestBusy(false);
     }
@@ -386,8 +463,39 @@ export function ReportsWorkspace() {
 
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          icon={FileText}
+          label="报告总数"
+          tone="rose"
+          value={summary.totalCount}
+        />
+        <SummaryCard
+          icon={Clock3}
+          label="待发送"
+          tone="amber"
+          value={summary.generatedCount}
+        />
+        <SummaryCard
+          icon={MailCheck}
+          label="已发送"
+          tone="green"
+          value={summary.sentCount}
+        />
+        <SummaryCard
+          icon={CalendarDays}
+          label="最新生成"
+          tone="violet"
+          value={
+            summary.latestReport
+              ? formatShortDate(summary.latestReport.createdAt)
+              : "-"
+          }
+        />
+      </section>
+
+      <details className="group rounded-2xl border border-[#E9E5E2] bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Pill tone="rose">Daily Report</Pill>
@@ -397,23 +505,164 @@ export function ReportsWorkspace() {
                   : "暂无周期"}
               </Pill>
               <Pill tone={summary.generatedCount > 0 ? "amber" : "green"}>
-                {summary.generatedCount > 0 ? `${summary.generatedCount} 份待发送` : "发送队列清爽"}
+                {summary.generatedCount > 0
+                  ? `${summary.generatedCount} 份待发送`
+                  : "发送队列清爽"}
               </Pill>
             </div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">报告阅读工作台</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">
-              汇总日报、保留情报 ID 与证据数量，并支持按项目和周期生成报告。
+            <h2 className="text-base font-semibold text-[#1D1D1F]">报告生成</h2>
+            <p className="mt-1 text-sm leading-6 text-[#86868B]">
+              按项目和周期生成新的日报，正文与证据引用会进入下方报告队列。
             </p>
           </div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FBF8F5] text-[#C25B6E]">
+            <ChevronDown
+              className="transition-transform group-open:rotate-180"
+              size={17}
+              aria-hidden="true"
+            />
+          </span>
+        </summary>
+        <div className="border-t border-[#EDE6DF] p-5">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
+            <div className="min-w-0">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <Pill tone="rose">Daily Report</Pill>
+                <Pill tone="neutral">
+                  {summary.latestReport
+                    ? `${formatDate(summary.latestReport.periodStart)} 至 ${formatDate(summary.latestReport.periodEnd)}`
+                    : "暂无周期"}
+                </Pill>
+                <Pill tone={summary.generatedCount > 0 ? "amber" : "green"}>
+                  {summary.generatedCount > 0
+                    ? `${summary.generatedCount} 份待发送`
+                    : "发送队列清爽"}
+                </Pill>
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
+                报告阅读工作台
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">
+                汇总日报、保留情报 ID 与证据数量，并支持按项目和周期生成报告。
+              </p>
+            </div>
 
-          <div className="grid gap-3 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="生成项目">
+            <div className="grid gap-3 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="生成项目">
+                  <select
+                    className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
+                    disabled={loadingProjects}
+                    onChange={(event) =>
+                      setGenerateProjectId(event.target.value)
+                    }
+                    value={generateProjectId}
+                  >
+                    <option value="all">全局</option>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="生成周期">
+                  <select
+                    className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
+                    onChange={(event) =>
+                      setPeriodPreset(event.target.value as PeriodPreset)
+                    }
+                    value={periodPreset}
+                  >
+                    <option value="today">今天</option>
+                    <option value="24h">过去 24 小时</option>
+                    <option value="7d">过去 7 天</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </Field>
+              </div>
+              {periodPreset === "custom" ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="周期开始">
+                    <input
+                      className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
+                      onChange={(event) => setCustomStart(event.target.value)}
+                      type="datetime-local"
+                      value={customStart}
+                    />
+                  </Field>
+                  <Field label="周期结束">
+                    <input
+                      className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
+                      onChange={(event) => setCustomEnd(event.target.value)}
+                      type="datetime-local"
+                      value={customEnd}
+                    />
+                  </Field>
+                </div>
+              ) : null}
+              <button
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C25B6E] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#A8495B] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={busy}
+                onClick={() => void handleGenerate()}
+                type="button"
+              >
+                <PlusCircle size={17} aria-hidden="true" />
+                生成日报
+              </button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details className="group rounded-2xl border border-[#E9E5E2] bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FCEBF0] text-[#C25B6E]">
+              <BellRing size={17} aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-[#1D1D1F]">
+                自动分发
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-[#86868B]">
+                配置日报发送时间、站内通知和邮件通道。
+              </p>
+            </div>
+          </div>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FBF8F5] text-[#C25B6E]">
+            <ChevronDown
+              className="transition-transform group-open:rotate-180"
+              size={17}
+              aria-hidden="true"
+            />
+          </span>
+        </summary>
+        <div className="grid gap-4 border-t border-[#EDE6DF] p-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FCEBF0] text-[#C25B6E]">
+                <BellRing size={17} aria-hidden="true" />
+              </span>
+              <div>
+                <h2 className="text-base font-semibold text-[#1D1D1F]">
+                  自动分发
+                </h2>
+                <p className="mt-1 text-sm text-[#86868B]">
+                  配置每日生成后的触达时间和渠道偏好
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-4">
+              <Field label="订阅项目">
                 <select
-                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
+                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
                   disabled={loadingProjects}
-                  onChange={(event) => setGenerateProjectId(event.target.value)}
-                  value={generateProjectId}
+                  onChange={(event) =>
+                    setSubscriptionProjectId(event.target.value)
+                  }
+                  value={subscriptionProjectId}
                 >
                   <option value="all">全局</option>
                   {projects.map((project) => (
@@ -423,317 +672,303 @@ export function ReportsWorkspace() {
                   ))}
                 </select>
               </Field>
-              <Field label="生成周期">
+              <Field label="发送时间">
+                <input
+                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                  onChange={(event) => setSubscriptionTime(event.target.value)}
+                  type="time"
+                  value={subscriptionTime}
+                />
+              </Field>
+              <Field label="时区">
                 <select
-                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
-                  onChange={(event) => setPeriodPreset(event.target.value as PeriodPreset)}
-                  value={periodPreset}
+                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                  onChange={(event) =>
+                    setSubscriptionTimezone(event.target.value)
+                  }
+                  value={subscriptionTimezone}
                 >
-                  <option value="today">今天</option>
-                  <option value="24h">过去 24 小时</option>
-                  <option value="7d">过去 7 天</option>
-                  <option value="custom">自定义</option>
+                  <option value="Asia/Shanghai">Asia/Shanghai</option>
+                  <option value="UTC">UTC</option>
+                  <option value="America/Los_Angeles">
+                    America/Los_Angeles
+                  </option>
+                </select>
+              </Field>
+              <Field label="状态">
+                <select
+                  className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
+                  onChange={(event) =>
+                    setSubscriptionEnabled(event.target.value === "enabled")
+                  }
+                  value={subscriptionEnabled ? "enabled" : "disabled"}
+                >
+                  <option value="enabled">启用</option>
+                  <option value="disabled">暂停</option>
                 </select>
               </Field>
             </div>
-            {periodPreset === "custom" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="周期开始">
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              {(["in_app", "email"] as const).map((channel) => (
+                <label
+                  className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm font-medium text-[#1D1D1F]"
+                  key={channel}
+                >
                   <input
-                    className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
-                    onChange={(event) => setCustomStart(event.target.value)}
-                    type="datetime-local"
-                    value={customStart}
+                    aria-label={channel === "in_app" ? "站内通知" : "邮件"}
+                    checked={subscriptionChannels.includes(channel)}
+                    className="h-4 w-4 accent-[#C25B6E]"
+                    onChange={() => toggleSubscriptionChannel(channel)}
+                    type="checkbox"
                   />
-                </Field>
-                <Field label="周期结束">
-                  <input
-                    className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm outline-none"
-                    onChange={(event) => setCustomEnd(event.target.value)}
-                    type="datetime-local"
-                    value={customEnd}
-                  />
-                </Field>
-              </div>
-            ) : null}
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C25B6E] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#A8495B] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={busy}
-              onClick={() => void handleGenerate()}
-              type="button"
-            >
-              <PlusCircle size={17} aria-hidden="true" />
-              生成日报
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 rounded-2xl border border-[#E9E5E2] bg-white p-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
-        <div className="min-w-0">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FCEBF0] text-[#C25B6E]">
-              <BellRing size={17} aria-hidden="true" />
-            </span>
-            <div>
-              <h2 className="text-base font-semibold text-[#1D1D1F]">自动分发</h2>
-              <p className="mt-1 text-sm text-[#86868B]">配置每日生成后的触达时间和渠道偏好</p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-4">
-            <Field label="订阅项目">
-              <select
-                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
-                disabled={loadingProjects}
-                onChange={(event) => setSubscriptionProjectId(event.target.value)}
-                value={subscriptionProjectId}
-              >
-                <option value="all">全局</option>
-                {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="发送时间">
-              <input
-                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
-                onChange={(event) => setSubscriptionTime(event.target.value)}
-                type="time"
-                value={subscriptionTime}
-              />
-            </Field>
-            <Field label="时区">
-              <select
-                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
-                onChange={(event) => setSubscriptionTimezone(event.target.value)}
-                value={subscriptionTimezone}
-              >
-                <option value="Asia/Shanghai">Asia/Shanghai</option>
-                <option value="UTC">UTC</option>
-                <option value="America/Los_Angeles">America/Los_Angeles</option>
-              </select>
-            </Field>
-            <Field label="状态">
-              <select
-                className="h-10 w-full rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm outline-none"
-                onChange={(event) => setSubscriptionEnabled(event.target.value === "enabled")}
-                value={subscriptionEnabled ? "enabled" : "disabled"}
-              >
-                <option value="enabled">启用</option>
-                <option value="disabled">暂停</option>
-              </select>
-            </Field>
-          </div>
-
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {(["in_app", "email"] as const).map((channel) => (
-              <label
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 text-sm font-medium text-[#1D1D1F]"
-                key={channel}
-              >
-                <input
-                  aria-label={channel === "in_app" ? "站内通知" : "邮件"}
-                  checked={subscriptionChannels.includes(channel)}
-                  className="h-4 w-4 accent-[#C25B6E]"
-                  onChange={() => toggleSubscriptionChannel(channel)}
-                  type="checkbox"
-                />
-                {channelLabel(channel)}
-              </label>
-            ))}
-            <button
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#1D1D1F] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#3A3A3C] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={subscriptionBusy || loadingSubscriptions}
-              onClick={() => void handleSaveSubscription()}
-              type="button"
-            >
-              <Save size={16} aria-hidden="true" />
-              保存订阅
-            </button>
-            {subscriptionNotice ? <span className="text-sm font-medium text-[#2EBA62]">{subscriptionNotice}</span> : null}
-          </div>
-
-          <div className="mt-3 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#C25B6E]">
-                    <MailCheck size={15} aria-hidden="true" />
-                  </span>
-                  <p className="text-sm font-semibold text-[#1D1D1F]">邮件通道诊断</p>
-                  <StatusPill status={emailChannel?.status ?? "checking"} />
-                </div>
-                <p className="mt-2 text-xs leading-5 text-[#86868B]">
-                  {loadingEmailChannel ? "正在读取 SMTP 配置状态" : emailChannelDescription(emailChannel)}
-                </p>
-              </div>
+                  {channelLabel(channel)}
+                </label>
+              ))}
               <button
-                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={emailTestBusy || loadingEmailChannel}
-                onClick={() => void handleTestEmailChannel()}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#1D1D1F] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#3A3A3C] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={subscriptionBusy || loadingSubscriptions}
+                onClick={() => void handleSaveSubscription()}
                 type="button"
               >
-                <Send size={14} aria-hidden="true" />
-                {emailTestBusy ? "测试中" : "测试邮件"}
+                <Save size={16} aria-hidden="true" />
+                保存订阅
               </button>
+              {subscriptionNotice ? (
+                <span className="text-sm font-medium text-[#2EBA62]">
+                  {subscriptionNotice}
+                </span>
+              ) : null}
             </div>
-            {emailChannel ? (
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
-                <Tag>{emailChannel.hostConfigured ? "SMTP host 已配置" : "缺少 SMTP host"}</Tag>
-                <Tag>{emailChannel.senderConfigured ? "发件人已配置" : "缺少发件人"}</Tag>
-                <Tag>{emailChannel.authConfigured ? "认证已配置" : "未启用认证"}</Tag>
-                <Tag>{emailChannel.tlsMode.toUpperCase()} · {emailChannel.port}</Tag>
-              </div>
-            ) : null}
-            {emailChannelNotice ? (
-              <p
-                className={cn(
-                  "mt-2 text-xs font-medium",
-                  emailChannel?.configured ? "text-[#2EBA62]" : "text-[#C25B6E]",
-                )}
-              >
-                {emailChannelNotice}
-              </p>
-            ) : null}
-          </div>
-        </div>
 
-        <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-[#1D1D1F]">已配置订阅</p>
-            <Pill tone={subscriptions.some((item) => item.enabled) ? "green" : "neutral"}>
-              {subscriptions.filter((item) => item.enabled).length} 个启用
-            </Pill>
-          </div>
-          <div className="mt-3 grid gap-2">
-            {loadingSubscriptions ? <p className="text-sm text-[#86868B]">加载订阅中</p> : null}
-            {!loadingSubscriptions && subscriptions.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-3 text-sm text-[#86868B]">
-                暂无自动分发订阅
-              </p>
-            ) : null}
-            {subscriptions.slice(0, 3).map((subscription) => (
-              <div className="rounded-xl bg-white p-3" key={subscription.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#1D1D1F]">
-                      {projectName(projects, subscription.projectId)} · {subscription.scheduleTime}
+            <div className="mt-3 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#C25B6E]">
+                      <MailCheck size={15} aria-hidden="true" />
+                    </span>
+                    <p className="text-sm font-semibold text-[#1D1D1F]">
+                      邮件通道诊断
                     </p>
-                    <p className="mt-1 text-xs text-[#86868B]">
-                      {subscription.channels.map(channelLabel).join(" + ")}
-                      {subscription.nextRunAt ? ` · 下次 ${formatDate(subscription.nextRunAt)}` : " · 已暂停"}
-                    </p>
+                    <StatusPill status={emailChannel?.status ?? "checking"} />
                   </div>
-                  <StatusPill status={subscription.enabled ? "enabled" : "paused"} />
-                </div>
-                <div className="mt-3 grid gap-2 rounded-xl bg-[#FBF8F5] p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold text-[#86868B]">最近执行</p>
-                    <StatusPill status={subscription.latestRun?.status ?? "not_run"} />
-                  </div>
-                  <p className="text-xs leading-5 text-[#86868B]">
-                    {subscription.latestRun
-                      ? `${triggerLabel(subscription.latestRun.triggerType)} · ${formatDate(subscription.latestRun.startedAt)}`
-                      : "暂无执行记录"}
+                  <p className="mt-2 text-xs leading-5 text-[#86868B]">
+                    {loadingEmailChannel
+                      ? "正在读取 SMTP 配置状态"
+                      : emailChannelDescription(emailChannel)}
                   </p>
-                  {subscription.latestRun?.errorMessage ? (
-                    <p className="text-xs leading-5 text-[#C25B6E]">
-                      {runIssueSummary(subscription.latestRun.errorMessage)}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-[#86868B]">
-                      {subscription.lastSentAt ? `上次 ${formatDate(subscription.lastSentAt)}` : "尚未成功发送"}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={loadingRunHistoryId === subscription.id}
-                        onClick={() => void handleToggleRunHistory(subscription.id)}
-                        type="button"
-                      >
-                        <History size={14} aria-hidden="true" />
-                        {expandedRunSubscriptionId === subscription.id ? "收起历史" : "执行历史"}
-                      </button>
-                      <button
-                        className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled={runningSubscriptionId === subscription.id}
-                        onClick={() => void handleRunSubscription(subscription.id)}
-                        type="button"
-                      >
-                        <PlayCircle size={14} aria-hidden="true" />
-                        {runningSubscriptionId === subscription.id ? "执行中" : "立即执行"}
-                      </button>
-                    </div>
-                  </div>
-                  {expandedRunSubscriptionId === subscription.id ? (
-                    <div className="grid gap-2 border-t border-[#EDE6DF] pt-2">
-                      {loadingRunHistoryId === subscription.id ? (
-                        <p className="text-xs text-[#86868B]">加载执行历史</p>
-                      ) : null}
-                      {loadingRunHistoryId !== subscription.id &&
-                      (subscriptionRuns[subscription.id] ?? []).length === 0 ? (
-                        <p className="text-xs text-[#86868B]">暂无执行历史</p>
-                      ) : null}
-                      {(subscriptionRuns[subscription.id] ?? []).map((run) => (
-                        <div className="rounded-lg border border-[#EDE6DF] bg-white p-2" key={run.id}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-[#1D1D1F]">
-                                {triggerLabel(run.triggerType)} · {formatDate(run.startedAt)}
-                              </p>
-                              <p className="mt-1 text-xs leading-5 text-[#86868B]">
-                                {runDeliverySummary(run)}
-                              </p>
-                            </div>
-                            <StatusPill status={run.status} />
-                          </div>
-                          {run.errorMessage ? (
-                            <p className="mt-1 text-xs leading-5 text-[#C25B6E]">
-                              {runIssueSummary(run.errorMessage)}
-                            </p>
-                          ) : null}
-                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-xs text-[#86868B]">
-                              {run.finishedAt ? `完成 ${formatDate(run.finishedAt)}` : "仍在执行"}
-                            </p>
-                            {canRetryRun(run.status) ? (
-                              <button
-                                className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-[#F1D5DA] bg-[#FFF7F8] px-2.5 text-xs font-semibold text-[#C25B6E] transition-colors hover:bg-[#FCEBF0] disabled:cursor-not-allowed disabled:opacity-60"
-                                disabled={retryingRunId === run.id}
-                                onClick={() => void handleRetrySubscriptionRun(subscription.id, run.id)}
-                                type="button"
-                              >
-                                <RotateCcw size={13} aria-hidden="true" />
-                                {retryingRunId === run.id ? "重试中" : "重试"}
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
+                <button
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={emailTestBusy || loadingEmailChannel}
+                  onClick={() => void handleTestEmailChannel()}
+                  type="button"
+                >
+                  <Send size={14} aria-hidden="true" />
+                  {emailTestBusy ? "测试中" : "测试邮件"}
+                </button>
               </div>
-            ))}
+              {emailChannel ? (
+                <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
+                  <Tag>
+                    {emailChannel.hostConfigured
+                      ? "SMTP host 已配置"
+                      : "缺少 SMTP host"}
+                  </Tag>
+                  <Tag>
+                    {emailChannel.senderConfigured
+                      ? "发件人已配置"
+                      : "缺少发件人"}
+                  </Tag>
+                  <Tag>
+                    {emailChannel.authConfigured ? "认证已配置" : "未启用认证"}
+                  </Tag>
+                  <Tag>
+                    {emailChannel.tlsMode.toUpperCase()} · {emailChannel.port}
+                  </Tag>
+                </div>
+              ) : null}
+              {emailChannelNotice ? (
+                <p
+                  className={cn(
+                    "mt-2 text-xs font-medium",
+                    emailChannel?.configured
+                      ? "text-[#2EBA62]"
+                      : "text-[#C25B6E]",
+                  )}
+                >
+                  {emailChannelNotice}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[#1D1D1F]">已配置订阅</p>
+              <Pill
+                tone={
+                  subscriptions.some((item) => item.enabled)
+                    ? "green"
+                    : "neutral"
+                }
+              >
+                {subscriptions.filter((item) => item.enabled).length} 个启用
+              </Pill>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {loadingSubscriptions ? (
+                <p className="text-sm text-[#86868B]">加载订阅中</p>
+              ) : null}
+              {!loadingSubscriptions && subscriptions.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-[#EDE6DF] bg-white p-3 text-sm text-[#86868B]">
+                  暂无自动分发订阅
+                </p>
+              ) : null}
+              {subscriptions.slice(0, 3).map((subscription) => (
+                <div className="rounded-xl bg-white p-3" key={subscription.id}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#1D1D1F]">
+                        {projectName(projects, subscription.projectId)} ·{" "}
+                        {subscription.scheduleTime}
+                      </p>
+                      <p className="mt-1 text-xs text-[#86868B]">
+                        {subscription.channels.map(channelLabel).join(" + ")}
+                        {subscription.nextRunAt
+                          ? ` · 下次 ${formatDate(subscription.nextRunAt)}`
+                          : " · 已暂停"}
+                      </p>
+                    </div>
+                    <StatusPill
+                      status={subscription.enabled ? "enabled" : "paused"}
+                    />
+                  </div>
+                  <div className="mt-3 grid gap-2 rounded-xl bg-[#FBF8F5] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-[#86868B]">
+                        最近执行
+                      </p>
+                      <StatusPill
+                        status={subscription.latestRun?.status ?? "not_run"}
+                      />
+                    </div>
+                    <p className="text-xs leading-5 text-[#86868B]">
+                      {subscription.latestRun
+                        ? `${triggerLabel(subscription.latestRun.triggerType)} · ${formatDate(subscription.latestRun.startedAt)}`
+                        : "暂无执行记录"}
+                    </p>
+                    {subscription.latestRun?.errorMessage ? (
+                      <p className="text-xs leading-5 text-[#C25B6E]">
+                        {runIssueSummary(subscription.latestRun.errorMessage)}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-[#86868B]">
+                        {subscription.lastSentAt
+                          ? `上次 ${formatDate(subscription.lastSentAt)}`
+                          : "尚未成功发送"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={loadingRunHistoryId === subscription.id}
+                          onClick={() =>
+                            void handleToggleRunHistory(subscription.id)
+                          }
+                          type="button"
+                        >
+                          <History size={14} aria-hidden="true" />
+                          {expandedRunSubscriptionId === subscription.id
+                            ? "收起历史"
+                            : "执行历史"}
+                        </button>
+                        <button
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#5F5757] transition-colors hover:border-[#C25B6E] hover:text-[#C25B6E] disabled:cursor-not-allowed disabled:opacity-60"
+                          disabled={runningSubscriptionId === subscription.id}
+                          onClick={() =>
+                            void handleRunSubscription(subscription.id)
+                          }
+                          type="button"
+                        >
+                          <PlayCircle size={14} aria-hidden="true" />
+                          {runningSubscriptionId === subscription.id
+                            ? "执行中"
+                            : "立即执行"}
+                        </button>
+                      </div>
+                    </div>
+                    {expandedRunSubscriptionId === subscription.id ? (
+                      <div className="grid gap-2 border-t border-[#EDE6DF] pt-2">
+                        {loadingRunHistoryId === subscription.id ? (
+                          <p className="text-xs text-[#86868B]">加载执行历史</p>
+                        ) : null}
+                        {loadingRunHistoryId !== subscription.id &&
+                        (subscriptionRuns[subscription.id] ?? []).length ===
+                          0 ? (
+                          <p className="text-xs text-[#86868B]">暂无执行历史</p>
+                        ) : null}
+                        {(subscriptionRuns[subscription.id] ?? []).map(
+                          (run) => (
+                            <div
+                              className="rounded-lg border border-[#EDE6DF] bg-white p-2"
+                              key={run.id}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-[#1D1D1F]">
+                                    {triggerLabel(run.triggerType)} ·{" "}
+                                    {formatDate(run.startedAt)}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-[#86868B]">
+                                    {runDeliverySummary(run)}
+                                  </p>
+                                </div>
+                                <StatusPill status={run.status} />
+                              </div>
+                              {run.errorMessage ? (
+                                <p className="mt-1 text-xs leading-5 text-[#C25B6E]">
+                                  {runIssueSummary(run.errorMessage)}
+                                </p>
+                              ) : null}
+                              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-xs text-[#86868B]">
+                                  {run.finishedAt
+                                    ? `完成 ${formatDate(run.finishedAt)}`
+                                    : "仍在执行"}
+                                </p>
+                                {canRetryRun(run.status) ? (
+                                  <button
+                                    className="inline-flex h-7 items-center justify-center gap-1.5 rounded-lg border border-[#F1D5DA] bg-[#FFF7F8] px-2.5 text-xs font-semibold text-[#C25B6E] transition-colors hover:bg-[#FCEBF0] disabled:cursor-not-allowed disabled:opacity-60"
+                                    disabled={retryingRunId === run.id}
+                                    onClick={() =>
+                                      void handleRetrySubscriptionRun(
+                                        subscription.id,
+                                        run.id,
+                                      )
+                                    }
+                                    type="button"
+                                  >
+                                    <RotateCcw size={13} aria-hidden="true" />
+                                    {retryingRunId === run.id
+                                      ? "重试中"
+                                      : "重试"}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard icon={FileText} label="报告总数" tone="rose" value={summary.totalCount} />
-        <SummaryCard icon={Clock3} label="待发送" tone="amber" value={summary.generatedCount} />
-        <SummaryCard icon={MailCheck} label="已发送" tone="green" value={summary.sentCount} />
-        <SummaryCard
-          icon={CalendarDays}
-          label="最新生成"
-          tone="violet"
-          value={summary.latestReport ? formatShortDate(summary.latestReport.createdAt) : "-"}
-        />
-      </section>
+      </details>
 
       {error ? (
         <p className="rounded-2xl border border-[#FFD7DF] bg-[#FFF7F8] px-4 py-3 text-sm text-[#C25B6E]">
@@ -746,10 +981,18 @@ export function ReportsWorkspace() {
           <div className="border-b border-[#EDE6DF] p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-[#1D1D1F]">报告队列</h2>
-                <p className="mt-1 text-sm text-[#86868B]">按项目、状态、关键字定位日报</p>
+                <h2 className="text-base font-semibold text-[#1D1D1F]">
+                  报告队列
+                </h2>
+                <p className="mt-1 text-sm text-[#86868B]">
+                  按项目、状态、关键字定位日报
+                </p>
               </div>
-              <SlidersHorizontal size={18} className="text-[#86868B]" aria-hidden="true" />
+              <SlidersHorizontal
+                size={18}
+                className="text-[#86868B]"
+                aria-hidden="true"
+              />
             </div>
 
             <div className="mt-4 grid gap-3">
@@ -803,7 +1046,9 @@ export function ReportsWorkspace() {
           </div>
 
           <div className="grid gap-3 p-4">
-            {loadingReports ? <p className="px-1 py-4 text-sm text-[#86868B]">加载报告中</p> : null}
+            {loadingReports ? (
+              <p className="px-1 py-4 text-sm text-[#86868B]">加载报告中</p>
+            ) : null}
             {filteredReports.map((report) => (
               <article
                 className={cn(
@@ -814,14 +1059,19 @@ export function ReportsWorkspace() {
                 )}
                 key={report.id}
               >
-                <button className="w-full text-left" onClick={() => setSelectedId(report.id)} type="button">
+                <button
+                  className="w-full text-left"
+                  onClick={() => setSelectedId(report.id)}
+                  type="button"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="line-clamp-2 text-sm font-semibold leading-6 text-[#1D1D1F]">
                         {report.title}
                       </h3>
                       <p className="mt-1 text-xs leading-5 text-[#86868B]">
-                        {formatDate(report.periodStart)} 至 {formatDate(report.periodEnd)}
+                        {formatDate(report.periodStart)} 至{" "}
+                        {formatDate(report.periodEnd)}
                       </p>
                     </div>
                     <StatusPill status={report.status} />
@@ -830,7 +1080,9 @@ export function ReportsWorkspace() {
                     <Tag>{projectName(projects, report.projectId)}</Tag>
                     <Tag>{report.reportType}</Tag>
                     <Tag>{estimateReadingMinutes(report.content)} min read</Tag>
-                    <Tag>{countEvidenceMentions(report.content)} evidence refs</Tag>
+                    <Tag>
+                      {countEvidenceMentions(report.content)} evidence refs
+                    </Tag>
                   </div>
                 </button>
                 <Link
@@ -887,11 +1139,18 @@ function SummaryCard({
     <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
       <div className="mb-5 flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-[#86868B]">{label}</p>
-        <span className={cn("flex h-10 w-10 items-center justify-center rounded-full", toneClasses[tone])}>
+        <span
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full",
+            toneClasses[tone],
+          )}
+        >
           <Icon size={18} aria-hidden="true" />
         </span>
       </div>
-      <p className="text-3xl font-semibold tracking-tight text-[#1D1D1F]">{value}</p>
+      <p className="text-3xl font-semibold tracking-tight text-[#1D1D1F]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -911,10 +1170,19 @@ function StatusPill({ status }: { status: string }) {
     enabled: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "启用" },
     failed: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "失败" },
     generated: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "待发送" },
-    misconfigured: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "配置不完整" },
+    misconfigured: {
+      className: "bg-[#FFF4DE] text-[#FF9800]",
+      label: "配置不完整",
+    },
     not_run: { className: "bg-[#FBF8F5] text-[#86868B]", label: "未执行" },
-    not_configured: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "未配置" },
-    partial_success: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "部分成功" },
+    not_configured: {
+      className: "bg-[#FFF7F8] text-[#C25B6E]",
+      label: "未配置",
+    },
+    partial_success: {
+      className: "bg-[#FFF4DE] text-[#FF9800]",
+      label: "部分成功",
+    },
     paused: { className: "bg-[#FBF8F5] text-[#86868B]", label: "暂停" },
     ready: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "可测试" },
     running: { className: "bg-[#F5F0FF] text-[#6E5CF6]", label: "执行中" },
@@ -925,17 +1193,41 @@ function StatusPill({ status }: { status: string }) {
     className: "bg-[#FBF8F5] text-[#86868B]",
     label: status,
   };
-  return <span className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", meta.className)}>{meta.label}</span>;
+  return (
+    <span
+      className={cn(
+        "rounded-lg px-2.5 py-1 text-xs font-semibold",
+        meta.className,
+      )}
+    >
+      {meta.label}
+    </span>
+  );
 }
 
-function Pill({ children, tone }: { children: ReactNode; tone: "amber" | "green" | "neutral" | "rose" }) {
+function Pill({
+  children,
+  tone,
+}: {
+  children: ReactNode;
+  tone: "amber" | "green" | "neutral" | "rose";
+}) {
   const toneClasses = {
     amber: "bg-[#FFF4DE] text-[#FF9800]",
     green: "bg-[#EAF8EE] text-[#2EBA62]",
     neutral: "bg-[#FBF8F5] text-[#86868B]",
     rose: "bg-[#FCEBF0] text-[#C25B6E]",
   };
-  return <span className={cn("rounded-full px-3 py-1 text-xs font-semibold", toneClasses[tone])}>{children}</span>;
+  return (
+    <span
+      className={cn(
+        "rounded-full px-3 py-1 text-xs font-semibold",
+        toneClasses[tone],
+      )}
+    >
+      {children}
+    </span>
+  );
 }
 
 function Tag({ children }: { children: ReactNode }) {
@@ -968,7 +1260,11 @@ function buildGeneratePayload({
     end = new Date(customEnd);
   }
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime()) ||
+    end <= start
+  ) {
     throw new Error("报告周期不合法");
   }
 
@@ -996,7 +1292,9 @@ function projectName(projects: Project[], projectId: string | null) {
   if (!projectId) {
     return "全局";
   }
-  return projects.find((project) => project.id === projectId)?.name ?? "未知项目";
+  return (
+    projects.find((project) => project.id === projectId)?.name ?? "未知项目"
+  );
 }
 
 function estimateReadingMinutes(content: string) {
@@ -1040,7 +1338,10 @@ function emailChannelDescription(status: EmailChannelStatus | null) {
   if (status.configured) {
     return `SMTP 配置完整，当前使用 ${status.tlsMode.toUpperCase()}，端口 ${status.port}。`;
   }
-  const missing = status.missingSettings.length > 0 ? status.missingSettings.join("、") : "必要配置";
+  const missing =
+    status.missingSettings.length > 0
+      ? status.missingSettings.join("、")
+      : "必要配置";
   return `${emailReasonLabel(status.reason)}：${missing}。邮件订阅会继续发送站内通知，并跳过邮件渠道。`;
 }
 
@@ -1060,7 +1361,9 @@ function emailReasonLabel(reason: string | null) {
 function runDeliverySummary(run: ReportSubscriptionRun) {
   const delivered = run.deliveredChannels.map(channelText).join("、") || "无";
   const skipped = Object.keys(run.skippedChannels).map(channelText).join("、");
-  return skipped ? `已送达 ${delivered} · 未送达 ${skipped}` : `已送达 ${delivered}`;
+  return skipped
+    ? `已送达 ${delivered} · 未送达 ${skipped}`
+    : `已送达 ${delivered}`;
 }
 
 function channelText(channel: string) {
