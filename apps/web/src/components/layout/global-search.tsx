@@ -14,8 +14,59 @@ type SearchResult = {
   title: string;
   subtitle: string;
   href: Route;
-  group: "项目" | "实体" | "情报";
+  group: "工具库" | "项目" | "实体" | "情报";
 };
+
+const toolkitSearchIndex = [
+  {
+    id: "toolkit-home",
+    title: "采集工具库",
+    subtitle: "AI 采集工具、平台方法、安装 SOP、风险边界",
+    href: "/toolkit" as Route,
+    keywords: ["toolkit", "工具", "采集", "SOP", "培训", "方法", "安装", "爬虫"],
+  },
+  {
+    id: "toolkit-firecrawl",
+    title: "Firecrawl / Firecrawl MCP",
+    subtitle: "网页搜索、抓取、交互、Agent MCP 工具",
+    href: "/toolkit" as Route,
+    keywords: ["firecrawl", "mcp", "agent", "web scraping", "网页", "markdown"],
+  },
+  {
+    id: "toolkit-crawl4ai",
+    title: "Crawl4AI",
+    subtitle: "LLM-ready Markdown、CSS/LLM 抽取、Python SOP",
+    href: "/toolkit" as Route,
+    keywords: ["crawl4ai", "llm", "markdown", "python", "抽取"],
+  },
+  {
+    id: "toolkit-browser-agent",
+    title: "browser-use / agent-browser",
+    subtitle: "AI 浏览器任务、命令行浏览器、交互采集",
+    href: "/toolkit" as Route,
+    keywords: ["browser-use", "agent-browser", "browser", "agent", "浏览器"],
+  },
+  {
+    id: "toolkit-frameworks",
+    title: "Scrapy / Crawlee / Playwright",
+    subtitle: "生产爬虫框架、动态页面采集、E2E 验收",
+    href: "/toolkit" as Route,
+    keywords: ["scrapy", "crawlee", "playwright", "puppeteer", "selenium", "crawler"],
+  },
+  {
+    id: "toolkit-platform-methods",
+    title: "平台采集方法卡",
+    subtitle: "GitHub、电商、社媒、竞品站点与合规边界",
+    href: "/toolkit" as Route,
+    keywords: ["github", "shopify", "amazon", "tiktok", "youtube", "reddit", "竞品", "合规"],
+  },
+] satisfies Array<{
+  id: string;
+  title: string;
+  subtitle: string;
+  href: Route;
+  keywords: string[];
+}>;
 
 export function GlobalSearch() {
   const router = useRouter();
@@ -34,7 +85,7 @@ export function GlobalSearch() {
         groups[result.group].push(result);
         return groups;
       },
-      { 项目: [], 实体: [], 情报: [] },
+      { 工具库: [], 项目: [], 实体: [], 情报: [] },
     );
   }, [results]);
 
@@ -51,6 +102,14 @@ export function GlobalSearch() {
   useEffect(() => {
     if (normalizedQuery.length < 2) {
       setResults([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const toolkitResults = buildToolkitResults(normalizedQuery);
+    if (toolkitResults.length > 0) {
+      setResults(toolkitResults);
       setLoading(false);
       setError(null);
       return;
@@ -214,7 +273,7 @@ export function GlobalSearch() {
               setOpen(false);
             }
           }}
-          placeholder="搜索项目、实体、情报"
+          placeholder="搜索项目、实体、情报、工具"
           type="search"
           value={query}
         />
@@ -240,7 +299,7 @@ export function GlobalSearch() {
           results.length === 0 ? (
             <p className="px-3 py-2 text-xs text-[#86868B]">没有匹配结果</p>
           ) : null}
-          {(["项目", "实体", "情报"] as const).map((group) =>
+          {(["工具库", "项目", "实体", "情报"] as const).map((group) =>
             groupedResults[group].length > 0 ? (
               <section className="py-1" key={group}>
                 <p className="px-3 py-1 text-[11px] font-semibold uppercase text-[#B47767]">
@@ -277,6 +336,26 @@ function matchesSearch(
   values: Array<string | null | undefined>,
 ) {
   return values.some((value) => value?.toLowerCase().includes(query));
+}
+
+function buildToolkitResults(query: string): SearchResult[] {
+  return toolkitSearchIndex
+    .filter((item) =>
+      matchesSearch(query, [
+        item.title,
+        item.subtitle,
+        item.href,
+        ...item.keywords,
+      ]),
+    )
+    .slice(0, 5)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle,
+      href: item.href,
+      group: "工具库" as const,
+    }));
 }
 
 function domainLabel(domain: string) {
