@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
+  ToolkitImageAnchorDiagnostic,
   ToolkitIntelligence,
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
@@ -15,6 +16,7 @@ type ToolkitOverviewResponse = {
   metrics: ToolkitMetricsResponse;
   learning_paths: ToolkitLearningPathResponse[];
   lecture_playbooks: ToolkitLecturePlaybookResponse[];
+  image_anchor_diagnostics: ToolkitImageAnchorDiagnosticResponse[];
   tools: ToolkitToolResponse[];
   methods: ToolkitMethodResponse[];
   intelligence_items: ToolkitIntelligenceResponse[];
@@ -107,6 +109,22 @@ type ToolkitLecturePlaybookResponse = {
   final_score: number;
 };
 
+type ToolkitImageAnchorDiagnosticResponse = {
+  id: string;
+  image_label: string;
+  extracted_claim: string;
+  source_title: string;
+  source_url: string;
+  source_type: string;
+  classification: string;
+  risk_level: string;
+  value_judgement: string;
+  collection_use: string;
+  training_takeaway: string;
+  related_tools: string[];
+  evidence_urls: string[];
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
@@ -115,6 +133,9 @@ export async function getToolkitOverview(): Promise<ToolkitOverview> {
     metrics: mapMetrics(response.metrics),
     learningPaths: response.learning_paths.map(mapLearningPath),
     lecturePlaybooks: response.lecture_playbooks.map(mapLecturePlaybook),
+    imageAnchorDiagnostics: response.image_anchor_diagnostics.map(
+      mapImageAnchorDiagnostic,
+    ),
     tools: response.tools.map(mapTool),
     methods: response.methods.map(mapMethod),
     intelligenceItems: response.intelligence_items.map(mapIntelligence),
@@ -219,5 +240,25 @@ function mapLecturePlaybook(
     evidenceUrls: response.evidence_urls,
     evidenceCount: response.evidence_count,
     finalScore: response.final_score,
+  };
+}
+
+function mapImageAnchorDiagnostic(
+  response: ToolkitImageAnchorDiagnosticResponse,
+): ToolkitImageAnchorDiagnostic {
+  return {
+    id: response.id,
+    imageLabel: response.image_label,
+    extractedClaim: response.extracted_claim,
+    sourceTitle: response.source_title,
+    sourceUrl: response.source_url,
+    sourceType: response.source_type,
+    classification: response.classification,
+    riskLevel: response.risk_level,
+    valueJudgement: response.value_judgement,
+    collectionUse: response.collection_use,
+    trainingTakeaway: response.training_takeaway,
+    relatedTools: response.related_tools,
+    evidenceUrls: response.evidence_urls,
   };
 }

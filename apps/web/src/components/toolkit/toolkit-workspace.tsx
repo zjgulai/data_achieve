@@ -27,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import type {
+  ToolkitImageAnchorDiagnostic,
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
   ToolkitOverview,
@@ -649,6 +650,10 @@ export function ToolkitWorkspace() {
     () => toolkitOverview?.lecturePlaybooks ?? [],
     [toolkitOverview?.lecturePlaybooks],
   );
+  const imageAnchorDiagnostics = useMemo(
+    () => toolkitOverview?.imageAnchorDiagnostics ?? [],
+    [toolkitOverview?.imageAnchorDiagnostics],
+  );
   const filteredTools = useMemo(
     () =>
       tools.filter((tool) => {
@@ -875,6 +880,41 @@ export function ToolkitWorkspace() {
             onChange={setStageFilter}
           />
         </div>
+      </section>
+
+      <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <ShieldAlert size={18} className="text-[#C25B6E]" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">
+                附件寻源诊断
+              </h3>
+            </div>
+            <p className="max-w-4xl text-sm leading-6 text-[#5F5757]">
+              6 张附件图片只作为线索锚点；页面展示的是回到 GitHub、官网和文档后的核验结果。
+              高风险反检测工具只进入浏览器解析、站点预检和合规边界训练，不提供绕过访问控制的操作步骤。
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-[#86868B]">
+            当前显示 {imageAnchorDiagnostics.length} / 6
+          </span>
+        </div>
+
+        {imageAnchorDiagnostics.length > 0 ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {imageAnchorDiagnostics.map((diagnostic) => (
+              <ImageAnchorDiagnosticCard
+                diagnostic={diagnostic}
+                key={diagnostic.id}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+            API 寻源诊断加载后会显示在这里。
+          </p>
+        )}
       </section>
 
       <section className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1429,6 +1469,82 @@ function CommandPanel({
   );
 }
 
+function ImageAnchorDiagnosticCard({
+  diagnostic,
+}: {
+  diagnostic: ToolkitImageAnchorDiagnostic;
+}) {
+  const risk = parseRisk(diagnostic.riskLevel);
+  return (
+    <article className="min-w-0 rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                riskTone[risk],
+              )}
+            >
+              {riskLabels[risk]}
+            </span>
+            <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+              {formatClassification(diagnostic.classification)}
+            </span>
+          </div>
+          <h4 className="text-sm font-semibold leading-5 text-[#1D1D1F]">
+            {diagnostic.imageLabel}
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-[#5F5757]">
+            {diagnostic.extractedClaim}
+          </p>
+        </div>
+        <a
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 text-xs font-semibold text-[#7A625A] transition hover:border-[#C25B6E] hover:text-[#A24D61]"
+          href={diagnostic.sourceUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          源头
+          <ExternalLink size={13} aria-hidden="true" />
+        </a>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-xs leading-5 text-[#5F5757]">
+        <LabeledText label="核验来源" value={`${diagnostic.sourceTitle} / ${diagnostic.sourceType}`} />
+        <LabeledText label="价值判断" value={diagnostic.valueJudgement} />
+        <LabeledText label="归类用途" value={diagnostic.collectionUse} />
+        <LabeledText label="培训结论" value={diagnostic.trainingTakeaway} />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {diagnostic.relatedTools.slice(0, 8).map((tool) => (
+          <span
+            className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]"
+            key={`${diagnostic.id}-${tool}`}
+          >
+            {tool}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-4 border-t border-[#EDE6DF] pt-3">
+        <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">
+          证据链
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {diagnostic.evidenceUrls.slice(0, 4).map((url, index) => (
+            <SourceAnchor
+              key={url}
+              source={{ label: `证据 ${index + 1}`, url }}
+            />
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function LabeledText({ label, value }: { label: string; value: string }) {
   return (
     <p className="leading-5">
@@ -1611,4 +1727,8 @@ function extractSummaryLine(summary: string): string {
       .map((line) => line.trim())
       .find((line) => line.startsWith("结论：")) ?? summary
   ).replace(/^结论：/, "");
+}
+
+function formatClassification(value: string): string {
+  return value.replaceAll("_", " ");
 }

@@ -150,6 +150,15 @@ async def test_toolkit_overview_reads_curated_training(
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
     assert len(overview.lecture_playbooks) == 14
+    assert len(overview.image_anchor_diagnostics) == 6
+    assert any(
+        diagnostic.source_title == "lissy93/web-check"
+        for diagnostic in overview.image_anchor_diagnostics
+    )
+    assert all(
+        diagnostic.evidence_urls
+        for diagnostic in overview.image_anchor_diagnostics
+    )
     assert all(playbook.audience for playbook in overview.lecture_playbooks)
     assert all(playbook.hands_on_steps for playbook in overview.lecture_playbooks)
     assert all(playbook.verification_steps for playbook in overview.lecture_playbooks)
@@ -207,6 +216,8 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert body["metrics"]["evidence_count"] == 40
     assert len(body["learning_paths"]) == 5
     assert len(body["lecture_playbooks"]) == 14
+    assert len(body["image_anchor_diagnostics"]) == 6
+    assert body["image_anchor_diagnostics"][0]["evidence_urls"]
     assert body["lecture_playbooks"][0]["hands_on_steps"]
     assert body["learning_paths"][0]["acceptance_criteria"]
     assert len(body["intelligence_items"]) == 14

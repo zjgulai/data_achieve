@@ -13,7 +13,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { getToolkitOverview } from "@/lib/api/toolkit";
-import type { ToolkitLecturePlaybook, ToolkitOverview } from "@/types/toolkit";
+import type {
+  ToolkitImageAnchorDiagnostic,
+  ToolkitLecturePlaybook,
+  ToolkitOverview,
+} from "@/types/toolkit";
 
 export function ToolkitCoursePackPage() {
   const [overview, setOverview] = useState<ToolkitOverview | null>(null);
@@ -44,6 +48,10 @@ export function ToolkitCoursePackPage() {
   const playbooks = useMemo(
     () => overview?.lecturePlaybooks ?? [],
     [overview?.lecturePlaybooks],
+  );
+  const imageAnchorDiagnostics = useMemo(
+    () => overview?.imageAnchorDiagnostics ?? [],
+    [overview?.imageAnchorDiagnostics],
   );
   const totalMinutes = useMemo(
     () => playbooks.reduce((sum, playbook) => sum + playbook.durationMinutes, 0),
@@ -145,7 +153,7 @@ export function ToolkitCoursePackPage() {
             <CourseMetric label="讲义" value={`${playbooks.length} 张`} />
             <CourseMetric label="课时" value={`${totalMinutes} 分钟`} />
             <CourseMetric label="证据" value={`${totalEvidence} 条`} />
-            <CourseMetric label="来源" value={`${overview.metrics.sourceCount} 个`} />
+            <CourseMetric label="锚点" value={`${imageAnchorDiagnostics.length} 张图`} />
           </div>
         </div>
       </header>
@@ -170,6 +178,27 @@ export function ToolkitCoursePackPage() {
             </p>
           </div>
         ))}
+      </section>
+
+      <section className="mt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertCircle size={18} className="text-[#C25B6E] print:hidden" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-[#1D1D1F] print:text-black">
+            附件寻源诊断
+          </h3>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
+          附件图片用于发现候选工具和传播线索；课程包只采用回到官方 GitHub、官网或文档后的核验结论。
+          反检测与站点侦察类工具只作为浏览器解析、公开暴露面和合规边界训练对象。
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2 print:grid-cols-1">
+          {imageAnchorDiagnostics.map((diagnostic) => (
+            <CourseAnchorDiagnostic
+              diagnostic={diagnostic}
+              key={diagnostic.id}
+            />
+          ))}
+        </div>
       </section>
 
       <section className="mt-6">
@@ -224,6 +253,37 @@ export function ToolkitCoursePackPage() {
           ))}
         </div>
       </section>
+    </article>
+  );
+}
+
+function CourseAnchorDiagnostic({
+  diagnostic,
+}: {
+  diagnostic: ToolkitImageAnchorDiagnostic;
+}) {
+  return (
+    <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4 print:border-[#D6D6D6] print:bg-white">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-[#F0C9C2] bg-[#FFF5F2] px-2.5 py-1 text-[11px] font-semibold text-[#A04437] print:border-[#D6D6D6] print:bg-white print:text-black">
+          {diagnostic.riskLevel === "high" ? "高风险" : "中风险"}
+        </span>
+        <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A] print:border-[#D6D6D6] print:text-black">
+          {diagnostic.classification.replaceAll("_", " ")}
+        </span>
+      </div>
+      <h4 className="text-sm font-semibold text-[#1D1D1F] print:text-black">
+        {diagnostic.imageLabel}
+      </h4>
+      <p className="mt-2 text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
+        {diagnostic.valueJudgement}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[#86868B] print:text-black">
+        来源：{diagnostic.sourceTitle} / {diagnostic.sourceUrl}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[#7A625A] print:text-black">
+        培训结论：{diagnostic.trainingTakeaway}
+      </p>
     </article>
   );
 }

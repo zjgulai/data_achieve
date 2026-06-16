@@ -93,12 +93,29 @@ class ToolkitLecturePlaybookResponse(BaseModel):
     final_score: float
 
 
+class ToolkitImageAnchorDiagnosticResponse(BaseModel):
+    id: str
+    image_label: str
+    extracted_claim: str
+    source_title: str
+    source_url: str
+    source_type: str
+    classification: str
+    risk_level: str
+    value_judgement: str
+    collection_use: str
+    training_takeaway: str
+    related_tools: list[str]
+    evidence_urls: list[str]
+
+
 class ToolkitOverviewResponse(BaseModel):
     dataset: str
     generated_at: datetime | None
     metrics: ToolkitMetricsResponse
     learning_paths: list[ToolkitLearningPathResponse]
     lecture_playbooks: list[ToolkitLecturePlaybookResponse]
+    image_anchor_diagnostics: list[ToolkitImageAnchorDiagnosticResponse]
     tools: list[ToolkitToolResponse]
     methods: list[ToolkitMethodResponse]
     intelligence_items: list[ToolkitIntelligenceResponse]

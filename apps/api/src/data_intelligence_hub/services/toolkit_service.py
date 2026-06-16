@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.schemas.toolkit import (
+    ToolkitImageAnchorDiagnosticResponse,
     ToolkitIntelligenceResponse,
     ToolkitLearningPathResponse,
     ToolkitLecturePlaybookResponse,
@@ -22,6 +23,213 @@ from data_intelligence_hub.schemas.toolkit import (
 
 DATASET = "curated_training"
 TRAINING_SUMMARY_MARKER = "培训讲解："
+
+IMAGE_ANCHOR_DIAGNOSTICS = (
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-invisible-playwright",
+        image_label="附件 1：invisible_playwright",
+        extracted_claim=(
+            "截图声称 invisible_playwright 是兼容 Playwright 的 AI 反检测浏览器，"
+            "可自动随机固定指纹并通过反爬检测。"
+        ),
+        source_title="feder-cr/invisible_playwright",
+        source_url="https://github.com/feder-cr/invisible_playwright",
+        source_type="GitHub repo",
+        classification="browser_fingerprint_diagnostics",
+        risk_level="high",
+        value_judgement=(
+            "适合作为浏览器指纹面、自动化可检测性和合规红线的反面教材；"
+            "不适合作为绕过 Cloudflare、验证码或访问控制的 SOP。"
+        ),
+        collection_use=(
+            "纳入浏览器解析训练：解释 WebDriver 暴露面、指纹一致性、"
+            "截图证据和自有站点 QA 的合法测试边界。"
+        ),
+        training_takeaway=(
+            "凡是以 anti-detect 为核心卖点的工具，只能用于授权测试和风险识别；"
+            "培训页必须把它标为高风险。"
+        ),
+        related_tools=["Playwright", "Firefox", "browser fingerprinting"],
+        evidence_urls=[
+            "https://github.com/feder-cr/invisible_playwright",
+            "https://github.com/feder-cr/invisible_playwright/blob/main/README.md",
+        ],
+    ),
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-cloakbrowser",
+        image_label="附件 2：CloakBrowser",
+        extracted_claim=(
+            "截图声称 CloakBrowser 是通过 30 项反爬检测的隐形 Chromium，"
+            "可作为 Playwright 替代浏览器。"
+        ),
+        source_title="CloakHQ/CloakBrowser",
+        source_url="https://github.com/CloakHQ/CloakBrowser",
+        source_type="GitHub repo",
+        classification="stealth_browser_runtime",
+        risk_level="high",
+        value_judgement=(
+            "价值在于提醒采集工程不能只懂 DOM 和 selector，还必须理解浏览器运行时、"
+            "TLS/Canvas/WebGL/Client Hints 等检测面。"
+        ),
+        collection_use=(
+            "仅放入“浏览器解析与风控边界”课程，用于讲授权压测、内部风控验证、"
+            "可检测性对比和禁止绕过策略。"
+        ),
+        training_takeaway=(
+            "截图中的通过率不是业务许可；来源诊断必须同时记录 license、维护活跃度、"
+            "issue 风险和平台 ToS。"
+        ),
+        related_tools=["Chromium", "Playwright", "Puppeteer"],
+        evidence_urls=[
+            "https://github.com/CloakHQ/CloakBrowser",
+            "https://cloakbrowser.dev/",
+        ],
+    ),
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-nanobrowser",
+        image_label="附件 3：Nanobrowser",
+        extracted_claim=(
+            "截图将 Nanobrowser 描述为 Chrome 扩展形态的 AI Web Agent，"
+            "强调本地运行、多 Agent 协作和网页任务自动化。"
+        ),
+        source_title="nanobrowser/nanobrowser",
+        source_url="https://github.com/nanobrowser/nanobrowser",
+        source_type="GitHub repo / official docs",
+        classification="ai_browser_agent",
+        risk_level="medium",
+        value_judgement=(
+            "适合培训 Agent 浏览器的交互模型：规划、导航、校验、人工接管；"
+            "风险集中在浏览器权限、凭据暴露、任务越界和结果审计。"
+        ),
+        collection_use=(
+            "归入 Agent / MCP 采集编排：用于讲 Chrome 扩展权限、"
+            "本地 LLM/API key、任务轨迹和人工复核。"
+        ),
+        training_takeaway=(
+            "Agent 浏览器不是万能爬虫，必须绑定公开来源、任务预算、"
+            "域名白名单和可回放轨迹。"
+        ),
+        related_tools=["browser-use", "LangChain", "Chrome extension"],
+        evidence_urls=[
+            "https://github.com/nanobrowser/nanobrowser",
+            "https://nanobrowser.ai/docs",
+            "https://chromewebstore.google.com/detail/nanobrowser-ai-web-agent/imbddededgmcgfhfpcjmijokokekbkal",
+        ],
+    ),
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-agent-reach",
+        image_label="附件 4：Agent Reach",
+        extracted_claim=(
+            "截图声称 Agent Reach 能让 AI Agent 一键获得全网搜索能力，"
+            "覆盖 Twitter、Reddit、YouTube、GitHub 等平台且零 API 费用。"
+        ),
+        source_title="Panniantong/Agent-Reach",
+        source_url="https://github.com/Panniantong/Agent-Reach",
+        source_type="GitHub repo / skill docs",
+        classification="agent_cross_platform_search",
+        risk_level="high",
+        value_judgement=(
+            "训练价值在于多平台 source adapter 与工具健康检查；"
+            "高风险点在于平台 ToS、登录态、个人数据和非官方访问路径。"
+        ),
+        collection_use=(
+            "归入 Agent / MCP 与平台 SOP 课程：只讲公开搜索、字段契约、"
+            "来源标注和平台政策复核，不讲绕过 API 或访问控制。"
+        ),
+        training_takeaway=(
+            "零 API 费用不等于零合规成本；跨平台 Agent 工具必须先写明授权路径和禁止项。"
+        ),
+        related_tools=["AI agent skill", "cross-platform search", "GitHub"],
+        evidence_urls=[
+            "https://github.com/Panniantong/Agent-Reach",
+            "https://github.com/Panniantong/Agent-Reach/blob/main/docs/README_en.md",
+            "https://allclaw.org/entry/agent-reach",
+        ],
+    ),
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-github-tool-map",
+        image_label="附件 5：20 个 GitHub 开源工具合集",
+        extracted_claim=(
+            "截图把采集生态分成 AI 原生、反检测、生产级和专业工具四组，"
+            "列出 Firecrawl、Crawl4AI、Stagehand、Hyperbrowser、Scrapling、"
+            "Katana、Browserless、Maxun、Heritrix 等候选。"
+        ),
+        source_title="DamiDefi X article and verified GitHub repositories",
+        source_url="https://x.com/DamiDefi/article/2061398246673547296",
+        source_type="secondary curation + GitHub repos",
+        classification="tool_radar_taxonomy",
+        risk_level="medium",
+        value_judgement=(
+            "二次整理图适合做候选雷达，不适合直接入库为事实；"
+            "每个工具必须回到 GitHub、官网或文档做维护度、license、风险和适用场景复核。"
+        ),
+        collection_use=(
+            "归入 GitHub 工具雷达课程：把截图当发现入口，"
+            "再用 GitHub API 验证 stars、forks、issues、language、license、updated_at。"
+        ),
+        training_takeaway=(
+            "截图提供 taxonomy，GitHub API 提供事实；课程要训练学员从传播材料回到一手源。"
+        ),
+        related_tools=[
+            "Firecrawl",
+            "Crawl4AI",
+            "Stagehand",
+            "Skyvern",
+            "ScrapeGraphAI",
+            "AgentQL",
+            "Hyperbrowser",
+            "Scrapling",
+            "Steel",
+            "Katana",
+            "Browserless",
+            "Maxun",
+            "Heritrix",
+        ],
+        evidence_urls=[
+            "https://x.com/DamiDefi/article/2061398246673547296",
+            "https://github.com/browserbase/stagehand",
+            "https://github.com/Skyvern-AI/skyvern",
+            "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+            "https://github.com/tinyfish-io/agentql",
+            "https://github.com/steel-dev/steel-browser",
+            "https://github.com/getmaxun/maxun",
+            "https://github.com/projectdiscovery/katana",
+            "https://github.com/browserless/browserless",
+            "https://github.com/internetarchive/heritrix3",
+        ],
+    ),
+    ToolkitImageAnchorDiagnosticResponse(
+        id="anchor-web-check",
+        image_label="附件 6：Web-Check",
+        extracted_claim=(
+            "截图把 Web-Check 描述为能暴露 DNS、服务器架构、技术栈、开放端口、"
+            "历史存档和子域名的网站 X-Ray 工具。"
+        ),
+        source_title="lissy93/web-check",
+        source_url="https://github.com/lissy93/web-check",
+        source_type="GitHub repo / hosted app",
+        classification="osint_site_reconnaissance",
+        risk_level="high",
+        value_judgement=(
+            "对采集工作台很有价值：它不是内容采集器，而是采集前的站点画像、"
+            "公开攻击面和合规边界诊断器。"
+        ),
+        collection_use=(
+            "归入公开站点预检课程：只对自有、授权或明确允许分析的网站使用，"
+            "输出 DNS、headers、robots、tech stack、security.txt 和公开页面结构。"
+        ),
+        training_takeaway=(
+            "浏览器采集前必须先理解目标站点公开暴露面；"
+            "Web-Check 适合做预检，不适合做未授权探测。"
+        ),
+        related_tools=["OSINT", "DNS", "tech stack detection", "robots.txt"],
+        evidence_urls=[
+            "https://web-check.xyz/",
+            "https://github.com/lissy93/web-check",
+            "https://github.com/xray-web/web-check-api",
+        ],
+    ),
+)
 
 
 async def get_toolkit_overview(
@@ -62,6 +270,7 @@ async def get_toolkit_overview(
         ),
         learning_paths=learning_paths,
         lecture_playbooks=lecture_playbooks,
+        image_anchor_diagnostics=list(IMAGE_ANCHOR_DIAGNOSTICS),
         tools=tools,
         methods=methods,
         intelligence_items=[

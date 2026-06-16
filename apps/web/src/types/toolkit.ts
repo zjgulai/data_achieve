@@ -85,12 +85,29 @@ export type ToolkitLecturePlaybook = {
   finalScore: number;
 };
 
+export type ToolkitImageAnchorDiagnostic = {
+  id: string;
+  imageLabel: string;
+  extractedClaim: string;
+  sourceTitle: string;
+  sourceUrl: string;
+  sourceType: string;
+  classification: string;
+  riskLevel: string;
+  valueJudgement: string;
+  collectionUse: string;
+  trainingTakeaway: string;
+  relatedTools: string[];
+  evidenceUrls: string[];
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;
   metrics: ToolkitMetrics;
   learningPaths: ToolkitLearningPath[];
   lecturePlaybooks: ToolkitLecturePlaybook[];
+  imageAnchorDiagnostics: ToolkitImageAnchorDiagnostic[];
   tools: ToolkitTool[];
   methods: ToolkitMethod[];
   intelligenceItems: ToolkitIntelligence[];
