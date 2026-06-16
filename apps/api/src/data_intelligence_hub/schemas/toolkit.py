@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ToolkitMetricsResponse(BaseModel):
@@ -202,6 +203,33 @@ class ToolkitPreflightReportResponse(BaseModel):
     network: ToolkitPreflightNetworkResponse
     authorization_gate: ToolkitPreflightAuthorizationGateResponse
     recommendations: list[str]
+
+
+class ToolkitMethodCardDraftRequest(BaseModel):
+    preflight_report: ToolkitPreflightReportResponse
+    status: Literal["draft", "review"] = "draft"
+    review_note: str | None = Field(default=None, max_length=1_000)
+
+
+class ToolkitMethodCardDraftResponse(BaseModel):
+    id: uuid.UUID
+    title: str
+    method_id: str
+    source_url: str
+    status: Literal["draft", "review"]
+    manual_confirm_state: Literal["draft", "review"]
+    risk_level: str
+    recommended_collector: str
+    data_types: list[str]
+    boundary: str
+    training_takeaway: str
+    review_note: str | None
+    created_at: datetime
+    last_saved_at: datetime
+
+
+class ToolkitMethodCardDraftListResponse(BaseModel):
+    drafts: list[ToolkitMethodCardDraftResponse]
 
 
 class ToolkitOverviewResponse(BaseModel):

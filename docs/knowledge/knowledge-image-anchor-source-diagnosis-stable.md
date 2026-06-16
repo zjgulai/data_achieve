@@ -22,6 +22,7 @@ source: human+ai
 - `/api/toolkit.authorization_checklists`：授权采集检查清单。
 - `/api/toolkit.tools[].source_credibility_*`：工具来源可信度评分。
 - `/api/toolkit/preflight`：授权 URL 预检向导。
+- `/api/toolkit/method-card-drafts`：授权预检生成的方法卡草稿箱。
 
 以上内容已同步到 `/toolkit` 和 `/toolkit/course-pack`。
 
@@ -89,7 +90,7 @@ source: human+ai
 1. 用户必须确认 URL 属于自有、客户授权、公开许可或明确允许分析的范围。
 2. 只允许 HTTP/HTTPS 绝对 URL。
 3. 禁止 localhost、私网、link-local、metadata、保留地址和带用户名密码的 URL。
-4. 预检报告不持久化保存，只作为当前页面的采集前判断。
+4. 预检报告可以保存为方法卡草稿，但不会进入正式方法卡列表或培训 SOP。
 
 输出字段：
 
@@ -107,9 +108,32 @@ source: human+ai
 - 当前实现使用服务端 HTTP 预检和 HTMLParser，不执行页面 JS。
 - 动态页面、登录态页面和含表单页面必须进入人工复核或浏览器采集实验。
 - 预检不能替代平台 ToS、业务授权或法律判断。
+- 保存草稿只表示候选方法卡已沉淀；状态限定为 `draft` 或 `review`，人工确认前不得转为正式 SOP。
+
+## 方法卡草稿箱
+
+方法卡草稿箱用于承接一次性预检报告，避免页面刷新后丢失判断过程，同时防止未经确认的内容混入正式方法库。
+
+草稿字段：
+
+| 字段 | 说明 |
+|---|---|
+| title | 根据页面 title 或域名生成的草稿标题 |
+| method_id | 按 final URL 域名生成的稳定方法卡 ID |
+| status | `draft` 或 `review` |
+| recommended_collector | 基于 content-type、表单、脚本数量、sitemap 和同域链接推断的采集器建议 |
+| boundary | 阻断原因或授权采集边界 |
+| training_takeaway | 面向培训的使用提示 |
+| review_note | 人工复核备注 |
+
+治理规则：
+
+1. 同一个 final URL 只保留一张草稿，重复保存会更新现有记录。
+2. 草稿数据写入 `toolkit_method_card_drafts` 数据集，不纳入 `curated_training` 统计。
+3. 正式方法卡仍由 curated training seed 控制，不能由预检草稿自动升级。
 
 ## 页面同步
 
-1. `/toolkit`：显示附件寻源诊断、浏览器解析实验室、授权采集检查清单、工具来源可信度评分和授权 URL 预检向导。
+1. `/toolkit`：显示附件寻源诊断、浏览器解析实验室、授权采集检查清单、工具来源可信度评分、授权 URL 预检向导和方法卡草稿箱。
 2. `/toolkit/course-pack`：课程包打印页同步显示图片锚点诊断、实验室和授权清单，作为培训开场的“如何从传播材料回到一手源”案例。
 3. 后续新增截图或社媒材料时，先补充 `image_anchor_diagnostics`，再决定是否升格为正式 source 或 intelligence。

@@ -191,6 +191,25 @@ export type ToolkitPreflightReport = {
   recommendations: string[];
 };
 
+export type ToolkitMethodCardDraftStatus = "draft" | "review";
+
+export type ToolkitMethodCardDraft = {
+  id: string;
+  title: string;
+  methodId: string;
+  sourceUrl: string;
+  status: ToolkitMethodCardDraftStatus;
+  manualConfirmState: ToolkitMethodCardDraftStatus;
+  riskLevel: string;
+  recommendedCollector: string;
+  dataTypes: string[];
+  boundary: string;
+  trainingTakeaway: string;
+  reviewNote: string | null;
+  createdAt: string;
+  lastSavedAt: string;
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;

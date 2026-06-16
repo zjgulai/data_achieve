@@ -6,6 +6,8 @@ import type {
   ToolkitIntelligence,
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
+  ToolkitMethodCardDraft,
+  ToolkitMethodCardDraftStatus,
   ToolkitMethod,
   ToolkitMetrics,
   ToolkitOverview,
@@ -220,6 +222,27 @@ type ToolkitPreflightReportResponse = {
   recommendations: string[];
 };
 
+type ToolkitMethodCardDraftResponse = {
+  id: string;
+  title: string;
+  method_id: string;
+  source_url: string;
+  status: ToolkitMethodCardDraftStatus;
+  manual_confirm_state: ToolkitMethodCardDraftStatus;
+  risk_level: string;
+  recommended_collector: string;
+  data_types: string[];
+  boundary: string;
+  training_takeaway: string;
+  review_note: string | null;
+  created_at: string;
+  last_saved_at: string;
+};
+
+type ToolkitMethodCardDraftListResponse = {
+  drafts: ToolkitMethodCardDraftResponse[];
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
@@ -250,6 +273,32 @@ export async function runToolkitPreflight(
     body: JSON.stringify({ url, authorized }),
   });
   return mapPreflightReport(response);
+}
+
+export async function getToolkitMethodCardDrafts(): Promise<ToolkitMethodCardDraft[]> {
+  const response = await apiFetch<ToolkitMethodCardDraftListResponse>(
+    "/api/toolkit/method-card-drafts",
+  );
+  return response.drafts.map(mapMethodCardDraft);
+}
+
+export async function saveToolkitMethodCardDraft(
+  report: ToolkitPreflightReport,
+  status: ToolkitMethodCardDraftStatus,
+  reviewNote: string,
+): Promise<ToolkitMethodCardDraft> {
+  const response = await apiFetch<ToolkitMethodCardDraftResponse>(
+    "/api/toolkit/method-card-drafts",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        preflight_report: toPreflightReportRequest(report),
+        status,
+        review_note: reviewNote.trim() || null,
+      }),
+    },
+  );
+  return mapMethodCardDraft(response);
 }
 
 function mapMetrics(response: ToolkitMetricsResponse): ToolkitMetrics {
@@ -456,6 +505,27 @@ function mapPreflightReport(
   };
 }
 
+function mapMethodCardDraft(
+  response: ToolkitMethodCardDraftResponse,
+): ToolkitMethodCardDraft {
+  return {
+    id: response.id,
+    title: response.title,
+    methodId: response.method_id,
+    sourceUrl: response.source_url,
+    status: response.status,
+    manualConfirmState: response.manual_confirm_state,
+    riskLevel: response.risk_level,
+    recommendedCollector: response.recommended_collector,
+    dataTypes: response.data_types,
+    boundary: response.boundary,
+    trainingTakeaway: response.training_takeaway,
+    reviewNote: response.review_note,
+    createdAt: response.created_at,
+    lastSavedAt: response.last_saved_at,
+  };
+}
+
 function mapPreflightHttpResource(
   response: ToolkitPreflightHttpResourceResponse,
 ) {
@@ -466,5 +536,70 @@ function mapPreflightHttpResource(
     contentLength: response.content_length,
     available: response.available,
     summary: response.summary,
+  };
+}
+
+function toPreflightReportRequest(
+  report: ToolkitPreflightReport,
+): ToolkitPreflightReportResponse {
+  return {
+    requested_url: report.requestedUrl,
+    final_url: report.finalUrl,
+    checked_at: report.checkedAt,
+    authorization_confirmed: report.authorizationConfirmed,
+    headers: report.headers,
+    redirects: report.redirects.map((redirect) => ({
+      url: redirect.url,
+      status_code: redirect.statusCode,
+      location: redirect.location,
+    })),
+    robots: toPreflightHttpResourceRequest(report.robots),
+    sitemap: toPreflightHttpResourceRequest(report.sitemap),
+    security_txt: toPreflightHttpResourceRequest(report.securityTxt),
+    dom: {
+      title: report.dom.title,
+      description: report.dom.description,
+      canonical_url: report.dom.canonicalUrl,
+      meta_robots: report.dom.metaRobots,
+      headings: report.dom.headings,
+      link_count: report.dom.linkCount,
+      script_count: report.dom.scriptCount,
+      stylesheet_count: report.dom.stylesheetCount,
+      image_count: report.dom.imageCount,
+      form_count: report.dom.formCount,
+      text_sample: report.dom.textSample,
+    },
+    network: {
+      request_method: report.network.requestMethod,
+      final_status_code: report.network.finalStatusCode,
+      final_content_type: report.network.finalContentType,
+      redirect_count: report.network.redirectCount,
+      same_origin_links: report.network.sameOriginLinks,
+      external_links: report.network.externalLinks,
+      script_count: report.network.scriptCount,
+      stylesheet_count: report.network.stylesheetCount,
+      image_count: report.network.imageCount,
+      form_count: report.network.formCount,
+    },
+    authorization_gate: {
+      allowed_to_continue: report.authorizationGate.allowedToContinue,
+      risk_level: report.authorizationGate.riskLevel,
+      blocked_reasons: report.authorizationGate.blockedReasons,
+      required_next_actions: report.authorizationGate.requiredNextActions,
+    },
+    recommendations: report.recommendations,
+  };
+}
+
+function toPreflightHttpResourceRequest(
+  resource: ToolkitPreflightReport["robots"],
+): ToolkitPreflightHttpResourceResponse {
+  return {
+    url: resource.url,
+    status_code: resource.statusCode,
+    content_type: resource.contentType,
+    content_length: resource.contentLength,
+    available: resource.available,
+    summary: resource.summary,
   };
 }

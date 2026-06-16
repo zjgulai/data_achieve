@@ -25,7 +25,12 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
-import { getToolkitOverview, runToolkitPreflight } from "@/lib/api/toolkit";
+import {
+  getToolkitMethodCardDrafts,
+  getToolkitOverview,
+  runToolkitPreflight,
+  saveToolkitMethodCardDraft,
+} from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import type {
   ToolkitAuthorizationChecklist,
@@ -33,6 +38,8 @@ import type {
   ToolkitImageAnchorDiagnostic,
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
+  ToolkitMethodCardDraft,
+  ToolkitMethodCardDraftStatus,
   ToolkitOverview,
   ToolkitPreflightReport,
   ToolkitTool,
@@ -617,6 +624,12 @@ export function ToolkitWorkspace() {
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightError, setPreflightError] = useState<string | null>(null);
   const [preflightReport, setPreflightReport] = useState<ToolkitPreflightReport | null>(null);
+  const [methodDrafts, setMethodDrafts] = useState<ToolkitMethodCardDraft[]>([]);
+  const [methodDraftsError, setMethodDraftsError] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<ToolkitMethodCardDraftStatus>("draft");
+  const [draftReviewNote, setDraftReviewNote] = useState("");
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSaveMessage, setDraftSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -631,6 +644,28 @@ export function ToolkitWorkspace() {
         if (mounted) {
           setToolkitOverview(null);
           setToolkitError(caught instanceof Error ? caught.message : "工具库 API 暂不可用");
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    getToolkitMethodCardDrafts()
+      .then((drafts) => {
+        if (mounted) {
+          setMethodDrafts(drafts);
+          setMethodDraftsError(null);
+        }
+      })
+      .catch((caught) => {
+        if (mounted) {
+          setMethodDrafts([]);
+          setMethodDraftsError(
+            caught instanceof Error ? caught.message : "方法卡草稿箱暂不可用",
+          );
         }
       });
     return () => {
@@ -777,6 +812,7 @@ export function ToolkitWorkspace() {
     try {
       const report = await runToolkitPreflight(targetUrl, true);
       setPreflightReport(report);
+      setDraftSaveMessage(null);
     } catch (caught) {
       setPreflightReport(null);
       setPreflightError(
@@ -784,6 +820,37 @@ export function ToolkitWorkspace() {
       );
     } finally {
       setPreflightLoading(false);
+    }
+  }
+
+  async function savePreflightAsDraft() {
+    if (preflightReport === null) {
+      return;
+    }
+    setDraftSaving(true);
+    setDraftSaveMessage(null);
+    setMethodDraftsError(null);
+    try {
+      const saved = await saveToolkitMethodCardDraft(
+        preflightReport,
+        draftStatus,
+        draftReviewNote,
+      );
+      setMethodDrafts((current) => [
+        saved,
+        ...current.filter((draft) => draft.id !== saved.id),
+      ]);
+      setDraftSaveMessage(
+        saved.status === "review"
+          ? "已保存为待复核方法卡草稿。"
+          : "已保存为方法卡草稿。",
+      );
+    } catch (caught) {
+      setMethodDraftsError(
+        caught instanceof Error ? caught.message : "方法卡草稿保存失败",
+      );
+    } finally {
+      setDraftSaving(false);
     }
   }
 
@@ -892,7 +959,7 @@ export function ToolkitWorkspace() {
             </p>
           </div>
           <span className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-1 text-xs font-semibold text-[#7A625A]">
-            不保存报告
+            草稿需人工确认
           </span>
         </div>
 
@@ -942,12 +1009,25 @@ export function ToolkitWorkspace() {
         ) : null}
 
         {preflightReport ? (
-          <PreflightReportCard report={preflightReport} />
+          <>
+            <PreflightReportCard report={preflightReport} />
+            <MethodCardDraftComposer
+              note={draftReviewNote}
+              onNoteChange={setDraftReviewNote}
+              onSave={() => void savePreflightAsDraft()}
+              onStatusChange={setDraftStatus}
+              saving={draftSaving}
+              saveMessage={draftSaveMessage}
+              status={draftStatus}
+            />
+          </>
         ) : (
           <p className="mt-4 rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
             预检报告会显示主文档状态、授权门禁、公开声明、DOM 字段线索、network 摘要和下一步动作。
           </p>
         )}
+
+        <MethodCardDraftList drafts={methodDrafts} error={methodDraftsError} />
       </section>
 
       <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-4">
@@ -1660,6 +1740,182 @@ function CommandPanel({
       <pre className="max-h-56 overflow-x-auto whitespace-pre-wrap break-words text-xs leading-6 text-[#F7E5DC]">
         {commands.join("\n")}
       </pre>
+    </div>
+  );
+}
+
+function MethodCardDraftComposer({
+  note,
+  onNoteChange,
+  onSave,
+  onStatusChange,
+  saving,
+  saveMessage,
+  status,
+}: {
+  note: string;
+  onNoteChange: (value: string) => void;
+  onSave: () => void;
+  onStatusChange: (value: ToolkitMethodCardDraftStatus) => void;
+  saving: boolean;
+  saveMessage: string | null;
+  status: ToolkitMethodCardDraftStatus;
+}) {
+  const options: Array<{ label: string; value: ToolkitMethodCardDraftStatus }> = [
+    { label: "草稿", value: "draft" },
+    { label: "待复核", value: "review" },
+  ];
+  return (
+    <div className="mt-4 rounded-2xl border border-[#E9E5E2] bg-white p-4">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <Clipboard size={17} className="text-[#C25B6E]" aria-hidden="true" />
+            <h4 className="text-sm font-semibold text-[#1D1D1F]">保存为方法卡草稿</h4>
+          </div>
+          <p className="max-w-3xl text-xs leading-5 text-[#5F5757]">
+            预检报告只证明目标已完成基础安全检查；保存后仍是草稿，必须人工复核后才能进入正式培训 SOP。
+          </p>
+        </div>
+        <div className="flex shrink-0 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-1">
+          {options.map((option) => (
+            <button
+              aria-pressed={status === option.value}
+              className={cn(
+                "h-8 rounded-lg px-3 text-xs font-semibold transition",
+                status === option.value
+                  ? "bg-[#C25B6E] text-white"
+                  : "text-[#7A625A] hover:bg-white",
+              )}
+              key={option.value}
+              onClick={() => onStatusChange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <label className="mt-3 block">
+        <span className="text-xs font-semibold text-[#7A625A]">人工复核备注</span>
+        <textarea
+          className="mt-2 min-h-24 w-full resize-y rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] px-3 py-2 text-sm leading-6 text-[#1D1D1F] outline-none transition focus:border-[#C25B6E]"
+          maxLength={1000}
+          onChange={(event) => onNoteChange(event.target.value)}
+          placeholder="记录授权依据、禁止项、字段边界、培训使用场景或待确认问题。"
+          value={note}
+        />
+      </label>
+
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-[#86868B]">
+          保存后进入草稿箱；同一 final URL 会更新现有草稿，避免重复噪音。
+        </p>
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#C25B6E] bg-[#C25B6E] px-4 text-sm font-semibold text-white transition hover:bg-[#A24D61] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={saving}
+          onClick={onSave}
+          type="button"
+        >
+          {saving ? (
+            <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <CheckCircle2 size={16} aria-hidden="true" />
+          )}
+          保存草稿
+        </button>
+      </div>
+      {saveMessage ? (
+        <p className="mt-3 rounded-xl border border-[#CDE4C6] bg-[#F2FAEF] px-3 py-2 text-sm font-semibold text-[#4E7C45]">
+          {saveMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function MethodCardDraftList({
+  drafts,
+  error,
+}: {
+  drafts: ToolkitMethodCardDraft[];
+  error: string | null;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-[#E9E5E2] bg-[#FFFDFC] p-4">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <BookOpenCheck size={17} className="text-[#C25B6E]" aria-hidden="true" />
+            <h4 className="text-sm font-semibold text-[#1D1D1F]">方法卡草稿箱</h4>
+          </div>
+          <p className="max-w-3xl text-xs leading-5 text-[#5F5757]">
+            这里保存由授权预检生成的候选方法卡；它们不计入正式方法卡，直到人工转正。
+          </p>
+        </div>
+        <span className="text-xs font-semibold text-[#86868B]">{drafts.length} 条草稿</span>
+      </div>
+
+      {error ? (
+        <p className="rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-2 text-sm font-semibold text-[#87611B]">
+          {error}
+        </p>
+      ) : null}
+
+      {drafts.length === 0 && !error ? (
+        <p className="rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+          暂无方法卡草稿。先完成一次授权 URL 预检，再保存为草稿。
+        </p>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {drafts.map((draft) => {
+            const risk = parseRisk(draft.riskLevel);
+            return (
+              <article
+                className="min-w-0 rounded-xl border border-[#EDE6DF] bg-white p-4"
+                key={draft.id}
+              >
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                      riskTone[risk],
+                    )}
+                  >
+                    {riskLabels[risk]}
+                  </span>
+                  <span className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+                    {draft.status === "review" ? "待复核" : "草稿"}
+                  </span>
+                  <span className="text-[11px] font-semibold text-[#86868B]">
+                    {formatDate(draft.lastSavedAt)}
+                  </span>
+                </div>
+                <h5 className="break-words text-sm font-semibold text-[#1D1D1F]">
+                  {draft.title}
+                </h5>
+                <p className="mt-2 break-words text-xs leading-5 text-[#86868B]">
+                  {draft.sourceUrl}
+                </p>
+                <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                  <PreflightMetric label="Collector" value={draft.recommendedCollector} />
+                  <PreflightMetric label="Method ID" value={draft.methodId} />
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[#5F5757]">{draft.boundary}</p>
+                <p className="mt-2 text-xs leading-5 text-[#86868B]">
+                  {draft.trainingTakeaway}
+                </p>
+                {draft.reviewNote ? (
+                  <p className="mt-3 rounded-lg border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs leading-5 text-[#5F5757]">
+                    {draft.reviewNote}
+                  </p>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
