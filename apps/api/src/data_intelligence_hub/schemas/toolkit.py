@@ -134,6 +134,76 @@ class ToolkitAuthorizationChecklistResponse(BaseModel):
     approval_rule: str
 
 
+class ToolkitPreflightRequest(BaseModel):
+    url: str
+    authorized: bool
+
+
+class ToolkitPreflightHttpResourceResponse(BaseModel):
+    url: str
+    status_code: int | None
+    content_type: str | None
+    content_length: int | None
+    available: bool
+    summary: str
+
+
+class ToolkitPreflightRedirectResponse(BaseModel):
+    url: str
+    status_code: int
+    location: str | None
+
+
+class ToolkitPreflightDomResponse(BaseModel):
+    title: str | None
+    description: str | None
+    canonical_url: str | None
+    meta_robots: str | None
+    headings: list[str]
+    link_count: int
+    script_count: int
+    stylesheet_count: int
+    image_count: int
+    form_count: int
+    text_sample: str
+
+
+class ToolkitPreflightNetworkResponse(BaseModel):
+    request_method: str
+    final_status_code: int
+    final_content_type: str | None
+    redirect_count: int
+    same_origin_links: int
+    external_links: int
+    script_count: int
+    stylesheet_count: int
+    image_count: int
+    form_count: int
+
+
+class ToolkitPreflightAuthorizationGateResponse(BaseModel):
+    allowed_to_continue: bool
+    risk_level: str
+    blocked_reasons: list[str]
+    required_next_actions: list[str]
+
+
+class ToolkitPreflightReportResponse(BaseModel):
+    requested_url: str
+    final_url: str
+    checked_at: datetime
+    authorization_confirmed: bool
+    headers: dict[str, str]
+    redirects: list[ToolkitPreflightRedirectResponse]
+    robots: ToolkitPreflightHttpResourceResponse
+    sitemap: ToolkitPreflightHttpResourceResponse
+    security_txt: ToolkitPreflightHttpResourceResponse
+    dom: ToolkitPreflightDomResponse
+    network: ToolkitPreflightNetworkResponse
+    authorization_gate: ToolkitPreflightAuthorizationGateResponse
+    recommendations: list[str]
+
+
 class ToolkitOverviewResponse(BaseModel):
     dataset: str
     generated_at: datetime | None

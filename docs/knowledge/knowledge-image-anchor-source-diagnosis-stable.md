@@ -21,6 +21,7 @@ source: human+ai
 - `/api/toolkit.browser_labs`：浏览器解析实验室。
 - `/api/toolkit.authorization_checklists`：授权采集检查清单。
 - `/api/toolkit.tools[].source_credibility_*`：工具来源可信度评分。
+- `/api/toolkit/preflight`：授权 URL 预检向导。
 
 以上内容已同步到 `/toolkit` 和 `/toolkit/course-pack`。
 
@@ -79,8 +80,36 @@ source: human+ai
 | 账号态或登录态采集检查 | 业务授权下的自有账号、导出、后台数据 | 个人账号、未授权登录态、token 外泄、绕过限制 |
 | 平台政策与 ToS 检查 | 社媒、电商、视频、内容平台 | 以绕过限制为目标、政策禁止、再使用权不明 |
 
+## 授权 URL 预检向导
+
+预检向导用于把“浏览器解析实验室”从课程卡升级为可执行检查。
+
+输入条件：
+
+1. 用户必须确认 URL 属于自有、客户授权、公开许可或明确允许分析的范围。
+2. 只允许 HTTP/HTTPS 绝对 URL。
+3. 禁止 localhost、私网、link-local、metadata、保留地址和带用户名密码的 URL。
+4. 预检报告不持久化保存，只作为当前页面的采集前判断。
+
+输出字段：
+
+| 模块 | 字段 |
+|---|---|
+| 主文档 | requested_url、final_url、status、redirects、content-type |
+| 公开声明 | robots.txt、sitemap.xml、security.txt 可读性和摘要 |
+| Headers | CSP、HSTS、X-Robots-Tag、Server、Cache-Control 等白名单字段 |
+| DOM | title、description、canonical、meta robots、headings、links、scripts、forms、text sample |
+| Network 摘要 | redirect_count、same_origin_links、external_links、script_count、stylesheet_count、image_count、form_count |
+| 授权门禁 | risk_level、allowed_to_continue、blocked_reasons、required_next_actions |
+
+边界：
+
+- 当前实现使用服务端 HTTP 预检和 HTMLParser，不执行页面 JS。
+- 动态页面、登录态页面和含表单页面必须进入人工复核或浏览器采集实验。
+- 预检不能替代平台 ToS、业务授权或法律判断。
+
 ## 页面同步
 
-1. `/toolkit`：显示附件寻源诊断、浏览器解析实验室、授权采集检查清单、工具来源可信度评分。
+1. `/toolkit`：显示附件寻源诊断、浏览器解析实验室、授权采集检查清单、工具来源可信度评分和授权 URL 预检向导。
 2. `/toolkit/course-pack`：课程包打印页同步显示图片锚点诊断、实验室和授权清单，作为培训开场的“如何从传播材料回到一手源”案例。
 3. 后续新增截图或社媒材料时，先补充 `image_anchor_diagnostics`，再决定是否升格为正式 source 或 intelligence。

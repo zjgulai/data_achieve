@@ -12,6 +12,7 @@ import {
   Filter,
   Globe2,
   Layers3,
+  Loader2,
   PlayCircle,
   Search,
   ShieldAlert,
@@ -22,9 +23,9 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
-import { getToolkitOverview } from "@/lib/api/toolkit";
+import { getToolkitOverview, runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import type {
   ToolkitAuthorizationChecklist,
@@ -33,6 +34,7 @@ import type {
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
   ToolkitOverview,
+  ToolkitPreflightReport,
   ToolkitTool,
 } from "@/types/toolkit";
 
@@ -610,6 +612,11 @@ export function ToolkitWorkspace() {
   const [copyError, setCopyError] = useState<string | null>(null);
   const [toolkitOverview, setToolkitOverview] = useState<ToolkitOverview | null>(null);
   const [toolkitError, setToolkitError] = useState<string | null>(null);
+  const [preflightUrl, setPreflightUrl] = useState("");
+  const [preflightAuthorized, setPreflightAuthorized] = useState(false);
+  const [preflightLoading, setPreflightLoading] = useState(false);
+  const [preflightError, setPreflightError] = useState<string | null>(null);
+  const [preflightReport, setPreflightReport] = useState<ToolkitPreflightReport | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -754,6 +761,32 @@ export function ToolkitWorkspace() {
     setStageFilter("all");
   }
 
+  async function submitPreflight(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const targetUrl = preflightUrl.trim();
+    if (targetUrl.length === 0) {
+      setPreflightError("请输入需要预检的授权 URL。");
+      return;
+    }
+    if (!preflightAuthorized) {
+      setPreflightError("必须先确认该 URL 属于自有、授权或明确允许分析的目标。");
+      return;
+    }
+    setPreflightLoading(true);
+    setPreflightError(null);
+    try {
+      const report = await runToolkitPreflight(targetUrl, true);
+      setPreflightReport(report);
+    } catch (caught) {
+      setPreflightReport(null);
+      setPreflightError(
+        caught instanceof Error ? caught.message : "URL 预检失败，请检查目标和授权边界。",
+      );
+    } finally {
+      setPreflightLoading(false);
+    }
+  }
+
   function selectLecture(playbookId: string) {
     setSelectedLectureId(playbookId);
     if (typeof window === "undefined") {
@@ -842,6 +875,79 @@ export function ToolkitWorkspace() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
+        <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Globe2 size={18} className="text-[#C25B6E]" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">
+                授权 URL 预检向导
+              </h3>
+            </div>
+            <p className="max-w-4xl text-sm leading-6 text-[#5F5757]">
+              输入自有、授权或明确允许分析的公开 URL，生成 robots、headers、DOM 和 network 预检报告。
+              系统会拒绝 localhost、私网、metadata 和带凭据的 URL。
+            </p>
+          </div>
+          <span className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-1 text-xs font-semibold text-[#7A625A]">
+            不保存报告
+          </span>
+        </div>
+
+        <form
+          className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto]"
+          onSubmit={(event) => void submitPreflight(event)}
+        >
+          <label className="flex min-w-0 items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm text-[#86868B]">
+            <Globe2 size={17} aria-hidden="true" />
+            <input
+              className="w-full border-0 bg-transparent outline-none"
+              onChange={(event) => setPreflightUrl(event.target.value)}
+              placeholder="https://example.com"
+              type="url"
+              value={preflightUrl}
+            />
+          </label>
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#C25B6E] bg-[#C25B6E] px-4 text-sm font-semibold text-white transition hover:bg-[#A24D61] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={preflightLoading}
+            type="submit"
+          >
+            {preflightLoading ? (
+              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+            ) : (
+              <PlayCircle size={16} aria-hidden="true" />
+            )}
+            生成预检报告
+          </button>
+          <label className="flex min-w-0 items-start gap-2 rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] px-3 py-3 text-xs leading-5 text-[#5F5757] lg:col-span-2">
+            <input
+              checked={preflightAuthorized}
+              className="mt-1 h-4 w-4 shrink-0 accent-[#C25B6E]"
+              onChange={(event) => setPreflightAuthorized(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              我确认该 URL 属于自有、客户授权、公开许可或明确允许分析的范围；不会用于绕过登录、验证码、风控、限流或访问控制。
+            </span>
+          </label>
+        </form>
+
+        {preflightError ? (
+          <p className="mt-3 rounded-xl border border-[#F0C9C2] bg-[#FFF5F2] px-3 py-2 text-sm font-semibold text-[#A04437]">
+            {preflightError}
+          </p>
+        ) : null}
+
+        {preflightReport ? (
+          <PreflightReportCard report={preflightReport} />
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+            预检报告会显示主文档状态、授权门禁、公开声明、DOM 字段线索、network 摘要和下一步动作。
+          </p>
+        )}
       </section>
 
       <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-4">
@@ -1558,6 +1664,189 @@ function CommandPanel({
   );
 }
 
+function PreflightReportCard({ report }: { report: ToolkitPreflightReport }) {
+  const risk = parseRisk(report.authorizationGate.riskLevel);
+  const headerEntries = Object.entries(report.headers);
+  return (
+    <article className="mt-4 rounded-2xl border border-[#E9E5E2] bg-[#FFFDFC] p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                riskTone[risk],
+              )}
+            >
+              {riskLabels[risk]}
+            </span>
+            <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+              {report.authorizationGate.allowedToContinue ? "可进入下一步" : "需要阻断"}
+            </span>
+            <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+              {formatDate(report.checkedAt)} 预检
+            </span>
+          </div>
+          <h4 className="break-words text-sm font-semibold text-[#1D1D1F]">
+            {report.dom.title ?? report.finalUrl}
+          </h4>
+          <p className="mt-2 break-words text-xs leading-5 text-[#86868B]">
+            请求：{report.requestedUrl}
+          </p>
+          <p className="mt-1 break-words text-xs leading-5 text-[#86868B]">
+            最终：{report.finalUrl}
+          </p>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <PreflightMetric label="状态" value={String(report.network.finalStatusCode)} />
+          <PreflightMetric label="跳转" value={String(report.network.redirectCount)} />
+          <PreflightMetric label="同域链接" value={String(report.network.sameOriginLinks)} />
+          <PreflightMetric label="表单" value={String(report.network.formCount)} />
+        </div>
+      </div>
+
+      {report.authorizationGate.blockedReasons.length > 0 ? (
+        <div className="mt-4 rounded-xl border border-[#F0C9C2] bg-[#FFF5F2] p-3">
+          <p className="mb-2 text-xs font-semibold uppercase text-[#A04437]">阻断原因</p>
+          <ul className="grid gap-1.5 text-xs leading-5 text-[#A04437]">
+            {report.authorizationGate.blockedReasons.map((reason) => (
+              <li className="flex gap-2" key={reason}>
+                <ShieldAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>{reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-3">
+        <PreflightResourceCard title="robots.txt" resource={report.robots} />
+        <PreflightResourceCard title="sitemap.xml" resource={report.sitemap} />
+        <PreflightResourceCard title="security.txt" resource={report.securityTxt} />
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-xl border border-[#EDE6DF] bg-white p-4">
+          <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">DOM 摘要</p>
+          <div className="grid gap-2 text-xs leading-5 text-[#5F5757]">
+            <LabeledText label="Description" value={report.dom.description ?? "未发现"} />
+            <LabeledText label="Canonical" value={report.dom.canonicalUrl ?? "未发现"} />
+            <LabeledText label="Meta Robots" value={report.dom.metaRobots ?? "未发现"} />
+            <LabeledText
+              label="资源"
+              value={`links ${report.dom.linkCount} / scripts ${report.dom.scriptCount} / styles ${report.dom.stylesheetCount} / images ${report.dom.imageCount}`}
+            />
+          </div>
+          {report.dom.headings.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {report.dom.headings.map((heading) => (
+                <span
+                  className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]"
+                  key={heading}
+                >
+                  {heading}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {report.dom.textSample ? (
+            <p className="mt-3 text-xs leading-5 text-[#86868B]">{report.dom.textSample}</p>
+          ) : null}
+        </div>
+
+        <div className="rounded-xl border border-[#EDE6DF] bg-white p-4">
+          <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">Network 摘要</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <PreflightMetric label="Content-Type" value={report.network.finalContentType ?? "unknown"} />
+            <PreflightMetric label="External" value={String(report.network.externalLinks)} />
+            <PreflightMetric label="Scripts" value={String(report.network.scriptCount)} />
+            <PreflightMetric label="Images" value={String(report.network.imageCount)} />
+          </div>
+          {report.redirects.length > 0 ? (
+            <div className="mt-3">
+              <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">Redirects</p>
+              <ul className="grid gap-1.5 text-xs leading-5 text-[#5F5757]">
+                {report.redirects.map((redirect) => (
+                  <li className="break-words" key={`${redirect.statusCode}-${redirect.url}`}>
+                    {redirect.statusCode} · {redirect.url} → {redirect.location ?? "missing location"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <CompactList
+          title="下一步动作"
+          items={report.authorizationGate.requiredNextActions}
+          warning={!report.authorizationGate.allowedToContinue}
+        />
+        <CompactList title="建议" items={report.recommendations.length > 0 ? report.recommendations : ["未生成额外建议。"]} />
+      </div>
+
+      {headerEntries.length > 0 ? (
+        <div className="mt-4 rounded-xl border border-[#EDE6DF] bg-white p-4">
+          <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">Headers</p>
+          <dl className="grid gap-2 text-xs leading-5 text-[#5F5757] md:grid-cols-2">
+            {headerEntries.map(([key, value]) => (
+              <div className="min-w-0" key={key}>
+                <dt className="font-semibold text-[#1D1D1F]">{key}</dt>
+                <dd className="break-words text-[#86868B]">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function PreflightResourceCard({
+  title,
+  resource,
+}: {
+  title: string;
+  resource: ToolkitPreflightReport["robots"];
+}) {
+  return (
+    <div className="rounded-xl border border-[#EDE6DF] bg-white p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <p className="text-sm font-semibold text-[#1D1D1F]">{title}</p>
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+            resource.available
+              ? "border-[#CDE4C6] bg-[#F2FAEF] text-[#4E7C45]"
+              : "border-[#F1D9A8] bg-[#FFF9E9] text-[#87611B]",
+          )}
+        >
+          {resource.available ? "可读取" : "需复核"}
+        </span>
+      </div>
+      <p className="break-words text-xs leading-5 text-[#86868B]">{resource.url}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <PreflightMetric label="Status" value={resource.statusCode?.toString() ?? "n/a"} />
+        <PreflightMetric
+          label="Length"
+          value={resource.contentLength == null ? "n/a" : formatBytes(resource.contentLength)}
+        />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#5F5757]">{resource.summary}</p>
+    </div>
+  );
+}
+
+function PreflightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-[#EDE6DF] bg-[#FBF8F5] px-2 py-1.5">
+      <p className="text-[10px] font-semibold uppercase text-[#B47767]">{label}</p>
+      <p className="mt-0.5 truncate text-xs font-semibold text-[#1D1D1F]">{value}</p>
+    </div>
+  );
+}
+
 function ImageAnchorDiagnosticCard({
   diagnostic,
 }: {
@@ -1896,6 +2185,16 @@ function formatCredibilityLevel(value: string): string {
     return "中可信";
   }
   return "需复核";
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${Math.round(value / 1024)} KB`;
+  }
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function formatInteger(value: number): string {

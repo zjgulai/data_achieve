@@ -126,6 +126,71 @@ export type ToolkitAuthorizationChecklist = {
   approvalRule: string;
 };
 
+export type ToolkitPreflightHttpResource = {
+  url: string;
+  statusCode: number | null;
+  contentType: string | null;
+  contentLength: number | null;
+  available: boolean;
+  summary: string;
+};
+
+export type ToolkitPreflightRedirect = {
+  url: string;
+  statusCode: number;
+  location: string | null;
+};
+
+export type ToolkitPreflightDom = {
+  title: string | null;
+  description: string | null;
+  canonicalUrl: string | null;
+  metaRobots: string | null;
+  headings: string[];
+  linkCount: number;
+  scriptCount: number;
+  stylesheetCount: number;
+  imageCount: number;
+  formCount: number;
+  textSample: string;
+};
+
+export type ToolkitPreflightNetwork = {
+  requestMethod: string;
+  finalStatusCode: number;
+  finalContentType: string | null;
+  redirectCount: number;
+  sameOriginLinks: number;
+  externalLinks: number;
+  scriptCount: number;
+  stylesheetCount: number;
+  imageCount: number;
+  formCount: number;
+};
+
+export type ToolkitPreflightAuthorizationGate = {
+  allowedToContinue: boolean;
+  riskLevel: string;
+  blockedReasons: string[];
+  requiredNextActions: string[];
+};
+
+export type ToolkitPreflightReport = {
+  requestedUrl: string;
+  finalUrl: string;
+  checkedAt: string;
+  authorizationConfirmed: boolean;
+  headers: Record<string, string>;
+  redirects: ToolkitPreflightRedirect[];
+  robots: ToolkitPreflightHttpResource;
+  sitemap: ToolkitPreflightHttpResource;
+  securityTxt: ToolkitPreflightHttpResource;
+  dom: ToolkitPreflightDom;
+  network: ToolkitPreflightNetwork;
+  authorizationGate: ToolkitPreflightAuthorizationGate;
+  recommendations: string[];
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;

@@ -9,6 +9,7 @@ import type {
   ToolkitMethod,
   ToolkitMetrics,
   ToolkitOverview,
+  ToolkitPreflightReport,
   ToolkitTool,
 } from "@/types/toolkit";
 
@@ -154,6 +155,71 @@ type ToolkitAuthorizationChecklistResponse = {
   approval_rule: string;
 };
 
+type ToolkitPreflightHttpResourceResponse = {
+  url: string;
+  status_code: number | null;
+  content_type: string | null;
+  content_length: number | null;
+  available: boolean;
+  summary: string;
+};
+
+type ToolkitPreflightRedirectResponse = {
+  url: string;
+  status_code: number;
+  location: string | null;
+};
+
+type ToolkitPreflightDomResponse = {
+  title: string | null;
+  description: string | null;
+  canonical_url: string | null;
+  meta_robots: string | null;
+  headings: string[];
+  link_count: number;
+  script_count: number;
+  stylesheet_count: number;
+  image_count: number;
+  form_count: number;
+  text_sample: string;
+};
+
+type ToolkitPreflightNetworkResponse = {
+  request_method: string;
+  final_status_code: number;
+  final_content_type: string | null;
+  redirect_count: number;
+  same_origin_links: number;
+  external_links: number;
+  script_count: number;
+  stylesheet_count: number;
+  image_count: number;
+  form_count: number;
+};
+
+type ToolkitPreflightAuthorizationGateResponse = {
+  allowed_to_continue: boolean;
+  risk_level: string;
+  blocked_reasons: string[];
+  required_next_actions: string[];
+};
+
+type ToolkitPreflightReportResponse = {
+  requested_url: string;
+  final_url: string;
+  checked_at: string;
+  authorization_confirmed: boolean;
+  headers: Record<string, string>;
+  redirects: ToolkitPreflightRedirectResponse[];
+  robots: ToolkitPreflightHttpResourceResponse;
+  sitemap: ToolkitPreflightHttpResourceResponse;
+  security_txt: ToolkitPreflightHttpResourceResponse;
+  dom: ToolkitPreflightDomResponse;
+  network: ToolkitPreflightNetworkResponse;
+  authorization_gate: ToolkitPreflightAuthorizationGateResponse;
+  recommendations: string[];
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
@@ -173,6 +239,17 @@ export async function getToolkitOverview(): Promise<ToolkitOverview> {
     methods: response.methods.map(mapMethod),
     intelligenceItems: response.intelligence_items.map(mapIntelligence),
   };
+}
+
+export async function runToolkitPreflight(
+  url: string,
+  authorized: boolean,
+): Promise<ToolkitPreflightReport> {
+  const response = await apiFetch<ToolkitPreflightReportResponse>("/api/toolkit/preflight", {
+    method: "POST",
+    body: JSON.stringify({ url, authorized }),
+  });
+  return mapPreflightReport(response);
 }
 
 function mapMetrics(response: ToolkitMetricsResponse): ToolkitMetrics {
@@ -324,5 +401,70 @@ function mapAuthorizationChecklist(
     blockedConditions: response.blocked_conditions,
     evidenceRequired: response.evidence_required,
     approvalRule: response.approval_rule,
+  };
+}
+
+function mapPreflightReport(
+  response: ToolkitPreflightReportResponse,
+): ToolkitPreflightReport {
+  return {
+    requestedUrl: response.requested_url,
+    finalUrl: response.final_url,
+    checkedAt: response.checked_at,
+    authorizationConfirmed: response.authorization_confirmed,
+    headers: response.headers,
+    redirects: response.redirects.map((redirect) => ({
+      url: redirect.url,
+      statusCode: redirect.status_code,
+      location: redirect.location,
+    })),
+    robots: mapPreflightHttpResource(response.robots),
+    sitemap: mapPreflightHttpResource(response.sitemap),
+    securityTxt: mapPreflightHttpResource(response.security_txt),
+    dom: {
+      title: response.dom.title,
+      description: response.dom.description,
+      canonicalUrl: response.dom.canonical_url,
+      metaRobots: response.dom.meta_robots,
+      headings: response.dom.headings,
+      linkCount: response.dom.link_count,
+      scriptCount: response.dom.script_count,
+      stylesheetCount: response.dom.stylesheet_count,
+      imageCount: response.dom.image_count,
+      formCount: response.dom.form_count,
+      textSample: response.dom.text_sample,
+    },
+    network: {
+      requestMethod: response.network.request_method,
+      finalStatusCode: response.network.final_status_code,
+      finalContentType: response.network.final_content_type,
+      redirectCount: response.network.redirect_count,
+      sameOriginLinks: response.network.same_origin_links,
+      externalLinks: response.network.external_links,
+      scriptCount: response.network.script_count,
+      stylesheetCount: response.network.stylesheet_count,
+      imageCount: response.network.image_count,
+      formCount: response.network.form_count,
+    },
+    authorizationGate: {
+      allowedToContinue: response.authorization_gate.allowed_to_continue,
+      riskLevel: response.authorization_gate.risk_level,
+      blockedReasons: response.authorization_gate.blocked_reasons,
+      requiredNextActions: response.authorization_gate.required_next_actions,
+    },
+    recommendations: response.recommendations,
+  };
+}
+
+function mapPreflightHttpResource(
+  response: ToolkitPreflightHttpResourceResponse,
+) {
+  return {
+    url: response.url,
+    statusCode: response.status_code,
+    contentType: response.content_type,
+    contentLength: response.content_length,
+    available: response.available,
+    summary: response.summary,
   };
 }
