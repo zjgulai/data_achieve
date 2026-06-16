@@ -93,7 +93,7 @@ async def collect_snapshot(catalog: dict[str, Any], config_path: Path) -> dict[s
     successful_records = [record for record in records if record["status"] == "ok"]
     failed_records = [record for record in records if record["status"] != "ok"]
     return {
-        "snapshot_version": "2026-06-15",
+        "snapshot_version": now.date().isoformat(),
         "dataset": catalog.get("dataset"),
         "generated_at": now.isoformat(),
         "config_path": str(config_path),

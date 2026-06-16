@@ -611,13 +611,14 @@ def build_report(intelligence_items: list[dict[str, Any]], last_checked_at: str)
         key=lambda item: item["scores"]["final"],
         reverse=True,
     )[:6]
+    report_date = last_checked_at[:10]
     return {
         "id": "report-training-intelligence-weekly-20260615",
         "title": "数据采集培训情报周报",
         "report_type": "weekly_training",
         "status": "published",
-        "period_start": "2026-06-15",
-        "period_end": "2026-06-15",
+        "period_start": report_date,
+        "period_end": report_date,
         "last_checked_at": last_checked_at,
         "summary": "本周培训内容聚焦 GitHub API、开源爬虫框架、浏览器自动化、AI agent 采集生态和跨平台合规边界。",
         "sections": [
@@ -711,6 +712,7 @@ def build_notifications(report: dict[str, Any], alerts: list[dict[str, Any]]) ->
 
 
 def write_markdown(curation: dict[str, Any], path: Path) -> None:
+    document_date = str(curation["generated_at"])[:10]
     lines = [
         "---",
         "title: 培训内容情报萃取草稿",
@@ -718,8 +720,8 @@ def write_markdown(curation: dict[str, Any], path: Path) -> None:
         "module: operations",
         "topic: training-content-curation",
         "status: draft",
-        "created: 2026-06-15",
-        "updated: 2026-06-15",
+        f"created: {document_date}",
+        f"updated: {document_date}",
         "owner: self",
         "source: human+ai",
         "---",
