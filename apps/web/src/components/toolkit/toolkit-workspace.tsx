@@ -26,7 +26,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
-import type { ToolkitOverview, ToolkitTool } from "@/types/toolkit";
+import type { ToolkitLearningPath, ToolkitOverview, ToolkitTool } from "@/types/toolkit";
 
 type CategoryKey =
   | "ai_extraction"
@@ -77,13 +77,6 @@ type PlatformMethod = {
   sources: string[];
   fieldContract: string[];
   boundary: string;
-};
-
-type LessonStep = {
-  title: string;
-  focus: string;
-  tools: string[];
-  acceptance: string;
 };
 
 const categoryLabels: Record<CategoryKey, string> = {
@@ -479,36 +472,81 @@ const platformMethods: PlatformMethod[] = [
   },
 ];
 
-const lessonSteps: LessonStep[] = [
+const fallbackLearningPaths: ToolkitLearningPath[] = [
   {
+    id: "fallback-ecosystem-boundary",
     title: "生态地图与合规边界",
+    stage: "starter",
     focus: "先识别工具类别、可采范围、数据敏感度和风险等级。",
+    riskLevel: "medium",
+    toolCount: 2,
+    methodCount: 1,
+    intelligenceCount: 0,
+    evidenceCount: 0,
     tools: ["GitHub 工具雷达", "MCP Servers", "合规方法卡"],
-    acceptance: "学员能判断一个采集需求应该用 API、爬虫、浏览器还是 Agent。",
+    methods: ["公开来源识别"],
+    acceptanceCriteria: ["学员能判断一个采集需求应该用 API、爬虫、浏览器还是 Agent。"],
+    sourceUrls: [],
   },
   {
+    id: "fallback-ai-extraction",
     title: "网页到 Markdown/JSON",
+    stage: "production",
     focus: "用 Crawl4AI 和 Firecrawl 完成公开网页结构化抽取。",
+    riskLevel: "medium",
+    toolCount: 2,
+    methodCount: 1,
+    intelligenceCount: 0,
+    evidenceCount: 0,
     tools: ["Crawl4AI", "Firecrawl"],
-    acceptance: "输出包含来源 URL、采集时间、正文摘要和字段化结果。",
+    methods: ["官方文档监控"],
+    acceptanceCriteria: ["输出包含来源 URL、采集时间、正文摘要和字段化结果。"],
+    sourceUrls: [],
   },
   {
+    id: "fallback-browser-automation",
     title: "动态页面和浏览器采集",
+    stage: "production",
     focus: "用 Playwright、Crawlee、agent-browser 处理 JS 渲染与交互。",
+    riskLevel: "medium",
+    toolCount: 3,
+    methodCount: 1,
+    intelligenceCount: 0,
+    evidenceCount: 0,
     tools: ["Playwright", "Crawlee", "agent-browser"],
-    acceptance: "保留截图、selector、等待条件和失败原因。",
+    methods: ["公开页面变更监控"],
+    acceptanceCriteria: ["保留截图、selector、等待条件和失败原因。"],
+    sourceUrls: [],
   },
   {
+    id: "fallback-agent-mcp",
     title: "Agent 化采集工作流",
+    stage: "agent",
     focus: "把采集工具接入 browser-use、OpenAI Agents SDK 和 MCP。",
+    riskLevel: "medium",
+    toolCount: 3,
+    methodCount: 1,
+    intelligenceCount: 0,
+    evidenceCount: 0,
     tools: ["browser-use", "OpenAI Agents SDK", "Firecrawl MCP"],
-    acceptance: "Agent 输出必须有工具调用轨迹、预算限制和人工复核节点。",
+    methods: ["MCP 工具接入"],
+    acceptanceCriteria: ["Agent 输出必须有工具调用轨迹、预算限制和人工复核节点。"],
+    sourceUrls: [],
   },
   {
+    id: "fallback-platform-sop",
     title: "平台方法库沉淀",
+    stage: "starter",
     focus: "把 GitHub、电商、社媒、竞品站点抽象成可复用方法卡。",
+    riskLevel: "high",
+    toolCount: 1,
+    methodCount: 4,
+    intelligenceCount: 0,
+    evidenceCount: 0,
     tools: ["manual_json", "generic_web", "approved_api"],
-    acceptance: "每张方法卡说明来源、字段、限制、禁止项和培训话术。",
+    methods: ["GitHub", "跨境电商", "社媒", "竞品站点"],
+    acceptanceCriteria: ["每张方法卡说明来源、字段、限制、禁止项和培训话术。"],
+    sourceUrls: [],
   },
 ];
 
@@ -595,6 +633,10 @@ export function ToolkitWorkspace() {
     () => buildVisibleMethods(toolkitOverview),
     [toolkitOverview],
   );
+  const learningPaths = useMemo(
+    () => toolkitOverview?.learningPaths ?? fallbackLearningPaths,
+    [toolkitOverview?.learningPaths],
+  );
   const filteredTools = useMemo(
     () =>
       tools.filter((tool) => {
@@ -632,6 +674,9 @@ export function ToolkitWorkspace() {
   const SelectedCategoryIcon = categoryIcons[selectedTool.category];
   const filteredMethods = visibleMethods.filter((method) =>
     methodMatchesFilters(method, categoryFilter, riskFilter, normalizedQuery),
+  );
+  const filteredLearningPaths = learningPaths.filter((path) =>
+    learningPathMatchesFilters(path, stageFilter, riskFilter, normalizedQuery),
   );
 
   async function copyCommands(id: string, commands: string[]) {
@@ -971,37 +1016,84 @@ export function ToolkitWorkspace() {
 
       <section className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <Zap size={18} className="text-[#C25B6E]" aria-hidden="true" />
-            <h3 className="text-lg font-semibold text-[#1D1D1F]">培训闭环路径</h3>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Zap size={18} className="text-[#C25B6E]" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-[#1D1D1F]">培训课程路径</h3>
+            </div>
+            <span className="text-xs font-semibold text-[#86868B]">
+              当前显示 {filteredLearningPaths.length} / {learningPaths.length}
+            </span>
           </div>
           <div className="grid gap-3">
-            {lessonSteps.map((step, index) => (
-              <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4" key={step.title}>
-                <div className="flex gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FBF8F5] text-sm font-semibold text-[#C25B6E]">
-                    {index + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <h4 className="text-sm font-semibold text-[#1D1D1F]">{step.title}</h4>
-                    <p className="mt-1 text-sm leading-6 text-[#5F5757]">{step.focus}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {step.tools.map((tool) => (
-                        <span
-                          className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]"
-                          key={tool}
-                        >
-                          {tool}
+            {filteredLearningPaths.map((path, index) => {
+              const pathRisk = parseRisk(path.riskLevel);
+              const pathStage = parseStage(path.stage);
+              return (
+                <article
+                  className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4"
+                  key={path.id}
+                >
+                  <div className="flex gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FBF8F5] text-sm font-semibold text-[#C25B6E]">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-sm font-semibold text-[#1D1D1F]">
+                          {path.title}
+                        </h4>
+                        <span className="rounded-full border border-[#EDE6DF] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#7A625A]">
+                          {stageLabels[pathStage]}
                         </span>
-                      ))}
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+                            riskTone[pathRisk],
+                          )}
+                        >
+                          {riskLabels[pathRisk]}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-[#5F5757]">{path.focus}</p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                        <MiniMetric label="工具" value={path.toolCount} />
+                        <MiniMetric label="方法" value={path.methodCount} />
+                        <MiniMetric label="情报" value={path.intelligenceCount} />
+                        <MiniMetric label="证据" value={path.evidenceCount} />
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {[...path.tools, ...path.methods].slice(0, 8).map((item) => (
+                          <span
+                            className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]"
+                            key={`${path.id}-${item}`}
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                      <ul className="mt-3 grid gap-1.5 text-xs leading-5 text-[#86868B]">
+                        {path.acceptanceCriteria.map((criterion) => (
+                          <li className="flex gap-2" key={criterion}>
+                            <CheckCircle2
+                              size={14}
+                              className="mt-0.5 shrink-0 text-[#6B8E5A]"
+                              aria-hidden="true"
+                            />
+                            <span>{criterion}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-[#86868B]">
-                      验收：{step.acceptance}
-                    </p>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
+            {filteredLearningPaths.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+                没有匹配课程路径，放宽阶段、风险或关键词筛选。
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -1074,6 +1166,17 @@ function Metric({
     >
       <p className="text-[11px] font-semibold uppercase text-[#B47767]">{label}</p>
       <p className="mt-1 truncate text-sm font-semibold text-[#1D1D1F]">{value}</p>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-[#EDE6DF] bg-white px-2 py-1.5">
+      <p className="text-[10px] font-semibold uppercase text-[#B47767]">{label}</p>
+      <p className="mt-0.5 text-xs font-semibold text-[#1D1D1F]">
+        {formatInteger(value)}
+      </p>
     </div>
   );
 }
@@ -1268,8 +1371,45 @@ function methodMatchesFilters(
     .includes(normalizedQuery);
 }
 
+function learningPathMatchesFilters(
+  path: ToolkitLearningPath,
+  stageFilter: StageFilter,
+  riskFilter: RiskFilter,
+  normalizedQuery: string,
+) {
+  if (stageFilter !== "all" && path.stage !== stageFilter) {
+    return false;
+  }
+  const pathRisk = parseRisk(path.riskLevel);
+  if (riskFilter !== "all" && pathRisk !== riskFilter) {
+    return false;
+  }
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+  return [
+    path.title,
+    path.focus,
+    path.stage,
+    path.riskLevel,
+    ...path.tools,
+    ...path.methods,
+    ...path.acceptanceCriteria,
+    ...path.sourceUrls,
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
 function parseCategory(value: string): CategoryKey {
   return value in categoryLabels ? (value as CategoryKey) : "platform_method";
+}
+
+function parseStage(value: string): StageKey {
+  return value === "starter" || value === "production" || value === "agent"
+    ? value
+    : "starter";
 }
 
 function parseRisk(value: string): RiskLevel {

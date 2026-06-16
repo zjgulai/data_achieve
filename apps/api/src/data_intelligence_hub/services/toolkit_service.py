@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -11,6 +12,7 @@ from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.schemas.toolkit import (
     ToolkitIntelligenceResponse,
+    ToolkitLearningPathResponse,
     ToolkitMethodResponse,
     ToolkitMetricsResponse,
     ToolkitOverviewResponse,
@@ -30,6 +32,11 @@ async def get_toolkit_overview(
     evidence_count = await _count_training_evidence(session, intelligence_items)
     tools = _build_tools(records)
     methods = _build_methods(records)
+    learning_paths = _build_learning_paths(
+        tools=tools,
+        methods=methods,
+        intelligence_items=intelligence_items,
+    )
     last_collected_at = max((record.collected_at for record in records), default=None)
     latest_intelligence_at = max(
         (item.updated_at for item in intelligence_items),
@@ -51,6 +58,7 @@ async def get_toolkit_overview(
             evidence_count=evidence_count,
             last_collected_at=last_collected_at,
         ),
+        learning_paths=learning_paths,
         tools=tools,
         methods=methods,
         intelligence_items=[
@@ -201,6 +209,265 @@ def _build_methods(records: list[RawRecord]) -> list[ToolkitMethodResponse]:
         )
     risk_order = {"low": 0, "medium": 1, "high": 2}
     return sorted(methods, key=lambda method: (risk_order.get(method.risk_level, 9), method.title))
+
+
+@dataclass(frozen=True)
+class _LearningPathSpec:
+    id: str
+    title: str
+    stage: str
+    focus: str
+    risk_level: str
+    tool_keywords: tuple[str, ...]
+    tool_categories: tuple[str, ...]
+    method_keywords: tuple[str, ...]
+    intelligence_domains: tuple[str, ...]
+    intelligence_keywords: tuple[str, ...]
+    acceptance_criteria: tuple[str, ...]
+
+
+LEARNING_PATH_SPECS = (
+    _LearningPathSpec(
+        id="github-api-baseline",
+        title="GitHub API 公开工具雷达",
+        stage="starter",
+        focus=(
+            "用 GitHub topic、repo API 和公开文档训练低风险采集、"
+            "分页、rate limit、字段归一化和证据追溯。"
+        ),
+        risk_level="low",
+        tool_keywords=("github", "scrapy", "crawlee", "crawler", "scraping"),
+        tool_categories=("github_intelligence", "crawler_framework"),
+        method_keywords=("github", "repo", "topic", "api"),
+        intelligence_domains=("osint",),
+        intelligence_keywords=("github", "repo", "topic", "star", "release"),
+        acceptance_criteria=(
+            "能说明公开 repo 元数据和 README 的可采边界。",
+            "能输出 repo、stars、forks、license、language、updated_at 字段。",
+            "能保留来源 URL、采集时间和证据链接。",
+        ),
+    ),
+    _LearningPathSpec(
+        id="ai-extraction-workflow",
+        title="AI 抽取与 LLM-ready 内容流",
+        stage="production",
+        focus=(
+            "用 Firecrawl、Crawl4AI、官方文档和 llms.txt 把公开网页转成 "
+            "Markdown、JSON 和可复核摘要。"
+        ),
+        risk_level="medium",
+        tool_keywords=("firecrawl", "crawl4ai", "extraction", "markdown", "llm"),
+        tool_categories=("ai_extraction",),
+        method_keywords=("docs", "llms", "documentation", "官方文档", "文档"),
+        intelligence_domains=("osint", "agent"),
+        intelligence_keywords=("firecrawl", "crawl4ai", "markdown", "llm", "抽取"),
+        acceptance_criteria=(
+            "能跑通单页抽取并说明 Markdown 与结构化 JSON 的区别。",
+            "能标注 API key、成本、许可和自托管边界。",
+            "能把抽取结果关联到原始证据和后续报告。",
+        ),
+    ),
+    _LearningPathSpec(
+        id="browser-automation-dynamic-pages",
+        title="动态页面与浏览器自动化采集",
+        stage="production",
+        focus=(
+            "用 Playwright、Crawlee、agent-browser 和 browser-use 处理 "
+            "JS 渲染、点击、等待、截图和失败轨迹。"
+        ),
+        risk_level="medium",
+        tool_keywords=(
+            "playwright",
+            "browser",
+            "crawlee",
+            "puppeteer",
+            "agent-browser",
+            "browser-use",
+        ),
+        tool_categories=("browser_automation",),
+        method_keywords=("playwright", "generic_web", "sitemap", "变化", "dynamic"),
+        intelligence_domains=("osint", "platform"),
+        intelligence_keywords=("browser", "playwright", "动态", "网页", "采集"),
+        acceptance_criteria=(
+            "能解释 selector、等待条件、截图证据和网络响应监听。",
+            "能区分公开页面采集和登录态/验证码/访问控制禁止项。",
+            "能为失败重试保留可审计轨迹。",
+        ),
+    ),
+    _LearningPathSpec(
+        id="agent-mcp-orchestration",
+        title="Agent / MCP 采集编排",
+        stage="agent",
+        focus=(
+            "把浏览器、网页抽取、GitHub API 和报告生成封装成 "
+            "Agent 可调用、可授权、可审计的工具链。"
+        ),
+        risk_level="medium",
+        tool_keywords=("agent", "mcp", "browser-use", "openai", "firecrawl"),
+        tool_categories=("ai_agent_collection", "agent_mcp"),
+        method_keywords=("agent", "mcp", "tool", "server"),
+        intelligence_domains=("agent",),
+        intelligence_keywords=("agent", "mcp", "tool", "browser-use", "编排"),
+        acceptance_criteria=(
+            "能说明 MCP server、Agent tool 和普通脚本的关系。",
+            "能设置域名白名单、步数预算、费用预算和人工复核节点。",
+            "能输出工具调用轨迹和结构化采集报告。",
+        ),
+    ),
+    _LearningPathSpec(
+        id="platform-sop-governance",
+        title="平台 SOP 与合规边界",
+        stage="starter",
+        focus=(
+            "把 GitHub、跨境电商、社媒、视频、内容平台和竞品站点"
+            "沉淀成方法卡，先定授权边界再定采集路径。"
+        ),
+        risk_level="high",
+        tool_keywords=("robots", "policy", "tos"),
+        tool_categories=("governance",),
+        method_keywords=(
+            "amazon",
+            "shopify",
+            "youtube",
+            "reddit",
+            "tiktok",
+            "github",
+            "competitor",
+            "platform",
+            "公开",
+            "平台",
+        ),
+        intelligence_domains=("platform", "governance"),
+        intelligence_keywords=("平台", "合规", "robots", "账号", "公开", "边界"),
+        acceptance_criteria=(
+            "每张方法卡必须写明来源、字段、限制、禁止项和推荐采集器。",
+            "高风险平台只能讲官方 API、公开页面和政策边界，不提供规避步骤。",
+            "报告中必须保留审计留痕和证据 URL。",
+        ),
+    ),
+)
+
+
+def _build_learning_paths(
+    *,
+    tools: list[ToolkitToolResponse],
+    methods: list[ToolkitMethodResponse],
+    intelligence_items: list[_TrainingIntelligence],
+) -> list[ToolkitLearningPathResponse]:
+    paths: list[ToolkitLearningPathResponse] = []
+    for spec in LEARNING_PATH_SPECS:
+        matched_tools = [
+            tool
+            for tool in tools
+            if _matches_tool_path(tool, spec)
+        ]
+        matched_methods = [
+            method
+            for method in methods
+            if _matches_method_path(method, spec)
+        ]
+        matched_intelligence = [
+            item
+            for item in intelligence_items
+            if _matches_intelligence_path(item, spec)
+        ]
+        source_urls = _unique_strings(
+            [
+                *(tool.source_url for tool in matched_tools),
+                *(method.source_url for method in matched_methods),
+            ],
+        )[:8]
+
+        paths.append(
+            ToolkitLearningPathResponse(
+                id=spec.id,
+                title=spec.title,
+                stage=spec.stage,
+                focus=spec.focus,
+                risk_level=spec.risk_level,
+                tool_count=len(matched_tools),
+                method_count=len(matched_methods),
+                intelligence_count=len(matched_intelligence),
+                evidence_count=sum(item.evidence_count for item in matched_intelligence),
+                tools=[tool.name for tool in matched_tools[:6]],
+                methods=[
+                    method.platform or method.title
+                    for method in matched_methods[:6]
+                ],
+                acceptance_criteria=list(spec.acceptance_criteria),
+                source_urls=source_urls,
+            )
+        )
+    return paths
+
+
+def _matches_tool_path(tool: ToolkitToolResponse, spec: _LearningPathSpec) -> bool:
+    if tool.category in spec.tool_categories:
+        return True
+    return _contains_keyword(
+        [
+            tool.id,
+            tool.name,
+            tool.category,
+            tool.collector_type,
+            tool.source_title,
+            tool.source_url,
+            tool.description,
+            tool.language,
+        ],
+        spec.tool_keywords,
+    )
+
+
+def _matches_method_path(method: ToolkitMethodResponse, spec: _LearningPathSpec) -> bool:
+    return _contains_keyword(
+        [
+            method.id,
+            method.title,
+            method.category,
+            method.collector_type,
+            method.source_url,
+            method.platform,
+            method.recommended_collector,
+            method.boundary,
+            method.training_takeaway,
+            " ".join(method.data_types),
+        ],
+        spec.method_keywords,
+    )
+
+
+def _matches_intelligence_path(
+    item: _TrainingIntelligence,
+    spec: _LearningPathSpec,
+) -> bool:
+    if item.domain in spec.intelligence_domains:
+        return True
+    return _contains_keyword(
+        [
+            item.title,
+            item.summary,
+            item.domain,
+            item.intelligence_type,
+        ],
+        spec.intelligence_keywords,
+    )
+
+
+def _contains_keyword(values: list[str | None], keywords: tuple[str, ...]) -> bool:
+    haystack = " ".join(value for value in values if value).lower()
+    return any(keyword.lower() in haystack for keyword in keywords)
+
+
+def _unique_strings(values: list[str | None]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for value in values:
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        output.append(value)
+    return output
 
 
 def _is_training_record(value: dict[str, Any] | list[Any]) -> bool:

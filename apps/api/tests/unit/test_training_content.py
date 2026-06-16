@@ -149,6 +149,14 @@ async def test_toolkit_overview_reads_curated_training(
     assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
+    assert len(overview.learning_paths) == 5
+    path_by_id = {path.id: path for path in overview.learning_paths}
+    assert path_by_id["github-api-baseline"].tool_count > 0
+    assert path_by_id["github-api-baseline"].method_count > 0
+    assert path_by_id["github-api-baseline"].evidence_count > 0
+    assert path_by_id["agent-mcp-orchestration"].tool_count > 0
+    assert path_by_id["platform-sop-governance"].method_count > 0
+    assert path_by_id["platform-sop-governance"].risk_level == "high"
 
 
 @pytest.mark.asyncio
@@ -190,6 +198,8 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert body["dataset"] == "curated_training"
     assert body["metrics"]["source_count"] == 44
     assert body["metrics"]["evidence_count"] == 40
+    assert len(body["learning_paths"]) == 5
+    assert body["learning_paths"][0]["acceptance_criteria"]
     assert len(body["intelligence_items"]) == 14
 
 

@@ -51,10 +51,27 @@ export type ToolkitIntelligence = {
   updatedAt: string;
 };
 
+export type ToolkitLearningPath = {
+  id: string;
+  title: string;
+  stage: string;
+  focus: string;
+  riskLevel: string;
+  toolCount: number;
+  methodCount: number;
+  intelligenceCount: number;
+  evidenceCount: number;
+  tools: string[];
+  methods: string[];
+  acceptanceCriteria: string[];
+  sourceUrls: string[];
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;
   metrics: ToolkitMetrics;
+  learningPaths: ToolkitLearningPath[];
   tools: ToolkitTool[];
   methods: ToolkitMethod[];
   intelligenceItems: ToolkitIntelligence[];

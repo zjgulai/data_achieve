@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   ToolkitIntelligence,
+  ToolkitLearningPath,
   ToolkitMethod,
   ToolkitMetrics,
   ToolkitOverview,
@@ -11,6 +12,7 @@ type ToolkitOverviewResponse = {
   dataset: string;
   generated_at: string | null;
   metrics: ToolkitMetricsResponse;
+  learning_paths: ToolkitLearningPathResponse[];
   tools: ToolkitToolResponse[];
   methods: ToolkitMethodResponse[];
   intelligence_items: ToolkitIntelligenceResponse[];
@@ -69,12 +71,29 @@ type ToolkitIntelligenceResponse = {
   updated_at: string;
 };
 
+type ToolkitLearningPathResponse = {
+  id: string;
+  title: string;
+  stage: string;
+  focus: string;
+  risk_level: string;
+  tool_count: number;
+  method_count: number;
+  intelligence_count: number;
+  evidence_count: number;
+  tools: string[];
+  methods: string[];
+  acceptance_criteria: string[];
+  source_urls: string[];
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
     dataset: response.dataset,
     generatedAt: response.generated_at,
     metrics: mapMetrics(response.metrics),
+    learningPaths: response.learning_paths.map(mapLearningPath),
     tools: response.tools.map(mapTool),
     methods: response.methods.map(mapMethod),
     intelligenceItems: response.intelligence_items.map(mapIntelligence),
@@ -139,5 +158,23 @@ function mapIntelligence(response: ToolkitIntelligenceResponse): ToolkitIntellig
     finalScore: response.final_score,
     evidenceCount: response.evidence_count,
     updatedAt: response.updated_at,
+  };
+}
+
+function mapLearningPath(response: ToolkitLearningPathResponse): ToolkitLearningPath {
+  return {
+    id: response.id,
+    title: response.title,
+    stage: response.stage,
+    focus: response.focus,
+    riskLevel: response.risk_level,
+    toolCount: response.tool_count,
+    methodCount: response.method_count,
+    intelligenceCount: response.intelligence_count,
+    evidenceCount: response.evidence_count,
+    tools: response.tools,
+    methods: response.methods,
+    acceptanceCriteria: response.acceptance_criteria,
+    sourceUrls: response.source_urls,
   };
 }

@@ -59,10 +59,27 @@ class ToolkitIntelligenceResponse(BaseModel):
     updated_at: datetime
 
 
+class ToolkitLearningPathResponse(BaseModel):
+    id: str
+    title: str
+    stage: str
+    focus: str
+    risk_level: str
+    tool_count: int
+    method_count: int
+    intelligence_count: int
+    evidence_count: int
+    tools: list[str]
+    methods: list[str]
+    acceptance_criteria: list[str]
+    source_urls: list[str]
+
+
 class ToolkitOverviewResponse(BaseModel):
     dataset: str
     generated_at: datetime | None
     metrics: ToolkitMetricsResponse
+    learning_paths: list[ToolkitLearningPathResponse]
     tools: list[ToolkitToolResponse]
     methods: list[ToolkitMethodResponse]
     intelligence_items: list[ToolkitIntelligenceResponse]
