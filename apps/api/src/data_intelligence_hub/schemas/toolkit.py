@@ -75,11 +75,30 @@ class ToolkitLearningPathResponse(BaseModel):
     source_urls: list[str]
 
 
+class ToolkitLecturePlaybookResponse(BaseModel):
+    id: str
+    intelligence_id: uuid.UUID
+    title: str
+    audience: str
+    level: str
+    duration_minutes: int
+    claim: str
+    teaching_sequence: list[str]
+    hands_on_steps: list[str]
+    verification_steps: list[str]
+    risk_boundaries: list[str]
+    classroom_exercise: str
+    evidence_urls: list[str]
+    evidence_count: int
+    final_score: float
+
+
 class ToolkitOverviewResponse(BaseModel):
     dataset: str
     generated_at: datetime | None
     metrics: ToolkitMetricsResponse
     learning_paths: list[ToolkitLearningPathResponse]
+    lecture_playbooks: list[ToolkitLecturePlaybookResponse]
     tools: list[ToolkitToolResponse]
     methods: list[ToolkitMethodResponse]
     intelligence_items: list[ToolkitIntelligenceResponse]

@@ -149,6 +149,12 @@ async def test_toolkit_overview_reads_curated_training(
     assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
+    assert len(overview.lecture_playbooks) == 14
+    assert all(playbook.audience for playbook in overview.lecture_playbooks)
+    assert all(playbook.hands_on_steps for playbook in overview.lecture_playbooks)
+    assert all(playbook.verification_steps for playbook in overview.lecture_playbooks)
+    assert all(playbook.risk_boundaries for playbook in overview.lecture_playbooks)
+    assert all(playbook.evidence_urls for playbook in overview.lecture_playbooks)
     assert len(overview.learning_paths) == 5
     path_by_id = {path.id: path for path in overview.learning_paths}
     assert path_by_id["github-api-baseline"].tool_count > 0
@@ -200,6 +206,8 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert body["metrics"]["source_count"] == 44
     assert body["metrics"]["evidence_count"] == 40
     assert len(body["learning_paths"]) == 5
+    assert len(body["lecture_playbooks"]) == 14
+    assert body["lecture_playbooks"][0]["hands_on_steps"]
     assert body["learning_paths"][0]["acceptance_criteria"]
     assert len(body["intelligence_items"]) == 14
 

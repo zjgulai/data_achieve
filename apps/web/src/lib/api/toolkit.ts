@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   ToolkitIntelligence,
+  ToolkitLecturePlaybook,
   ToolkitLearningPath,
   ToolkitMethod,
   ToolkitMetrics,
@@ -13,6 +14,7 @@ type ToolkitOverviewResponse = {
   generated_at: string | null;
   metrics: ToolkitMetricsResponse;
   learning_paths: ToolkitLearningPathResponse[];
+  lecture_playbooks: ToolkitLecturePlaybookResponse[];
   tools: ToolkitToolResponse[];
   methods: ToolkitMethodResponse[];
   intelligence_items: ToolkitIntelligenceResponse[];
@@ -87,6 +89,24 @@ type ToolkitLearningPathResponse = {
   source_urls: string[];
 };
 
+type ToolkitLecturePlaybookResponse = {
+  id: string;
+  intelligence_id: string;
+  title: string;
+  audience: string;
+  level: string;
+  duration_minutes: number;
+  claim: string;
+  teaching_sequence: string[];
+  hands_on_steps: string[];
+  verification_steps: string[];
+  risk_boundaries: string[];
+  classroom_exercise: string;
+  evidence_urls: string[];
+  evidence_count: number;
+  final_score: number;
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
@@ -94,6 +114,7 @@ export async function getToolkitOverview(): Promise<ToolkitOverview> {
     generatedAt: response.generated_at,
     metrics: mapMetrics(response.metrics),
     learningPaths: response.learning_paths.map(mapLearningPath),
+    lecturePlaybooks: response.lecture_playbooks.map(mapLecturePlaybook),
     tools: response.tools.map(mapTool),
     methods: response.methods.map(mapMethod),
     intelligenceItems: response.intelligence_items.map(mapIntelligence),
@@ -176,5 +197,27 @@ function mapLearningPath(response: ToolkitLearningPathResponse): ToolkitLearning
     methods: response.methods,
     acceptanceCriteria: response.acceptance_criteria,
     sourceUrls: response.source_urls,
+  };
+}
+
+function mapLecturePlaybook(
+  response: ToolkitLecturePlaybookResponse,
+): ToolkitLecturePlaybook {
+  return {
+    id: response.id,
+    intelligenceId: response.intelligence_id,
+    title: response.title,
+    audience: response.audience,
+    level: response.level,
+    durationMinutes: response.duration_minutes,
+    claim: response.claim,
+    teachingSequence: response.teaching_sequence,
+    handsOnSteps: response.hands_on_steps,
+    verificationSteps: response.verification_steps,
+    riskBoundaries: response.risk_boundaries,
+    classroomExercise: response.classroom_exercise,
+    evidenceUrls: response.evidence_urls,
+    evidenceCount: response.evidence_count,
+    finalScore: response.final_score,
   };
 }

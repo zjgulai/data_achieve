@@ -13,6 +13,7 @@ from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.schemas.toolkit import (
     ToolkitIntelligenceResponse,
     ToolkitLearningPathResponse,
+    ToolkitLecturePlaybookResponse,
     ToolkitMethodResponse,
     ToolkitMetricsResponse,
     ToolkitOverviewResponse,
@@ -37,6 +38,7 @@ async def get_toolkit_overview(
         methods=methods,
         intelligence_items=intelligence_items,
     )
+    lecture_playbooks = _build_lecture_playbooks(intelligence_items)
     last_collected_at = max((record.collected_at for record in records), default=None)
     latest_intelligence_at = max(
         (item.updated_at for item in intelligence_items),
@@ -59,6 +61,7 @@ async def get_toolkit_overview(
             last_collected_at=last_collected_at,
         ),
         learning_paths=learning_paths,
+        lecture_playbooks=lecture_playbooks,
         tools=tools,
         methods=methods,
         intelligence_items=[
@@ -407,6 +410,304 @@ def _build_learning_paths(
             )
         )
     return paths
+
+
+def _build_lecture_playbooks(
+    intelligence_items: list[_TrainingIntelligence],
+) -> list[ToolkitLecturePlaybookResponse]:
+    return [
+        _build_lecture_playbook(item)
+        for item in sorted(
+            intelligence_items,
+            key=lambda intelligence: intelligence.final_score,
+            reverse=True,
+        )
+    ]
+
+
+def _build_lecture_playbook(item: _TrainingIntelligence) -> ToolkitLecturePlaybookResponse:
+    template = _lecture_template(item)
+    claim = _summary_value(item.summary, "结论") or item.title
+    impact = _summary_value(item.summary, "影响")
+    action = _summary_value(item.summary, "建议动作")
+    evidence_urls = _source_urls_from_summary(item.summary)
+    duration = 25 if item.evidence_count >= 3 else 18
+    if template["level"] == "边界":
+        duration = max(duration, 20)
+    return ToolkitLecturePlaybookResponse(
+        id=f"lecture-{item.id}",
+        intelligence_id=item.id,
+        title=item.title,
+        audience=str(template["audience"]),
+        level=str(template["level"]),
+        duration_minutes=duration,
+        claim=claim,
+        teaching_sequence=[
+            f"问题定位：{claim}",
+            f"业务价值：{impact or '把该情报转成培训中的决策判断。'}",
+            f"操作主线：{action or '按证据来源完成采集、复核和报告。'}",
+            f"证据回溯：现场打开 {item.evidence_count} 条来源，说明原始记录如何进入情报层。",
+        ],
+        hands_on_steps=list(template["hands_on_steps"]),
+        verification_steps=[
+            "确认输出包含 source_url、collected_at、raw_record、evidence_url。",
+            "确认字段结果能回溯到至少 1 条原始证据。",
+            "确认学员能口头说明工具适用场景、失败条件和替代方案。",
+        ],
+        risk_boundaries=list(template["risk_boundaries"]),
+        classroom_exercise=str(template["classroom_exercise"]),
+        evidence_urls=evidence_urls,
+        evidence_count=item.evidence_count,
+        final_score=item.final_score,
+    )
+
+
+def _lecture_template(item: _TrainingIntelligence) -> dict[str, object]:
+    text = f"{item.title}\n{item.summary}\n{item.domain}".lower()
+    if _has_any(text, ("firecrawl", "crawl4ai", "ai-ready", "markdown")):
+        return {
+            "audience": "希望把公开网页转成 Markdown/JSON 的 AI 应用与数据采集学员",
+            "level": "进阶",
+            "hands_on_steps": [
+                "选 1 个公开文档页，先用普通 HTTP 抽取正文。",
+                "再用 Firecrawl 或 Crawl4AI 输出 Markdown/JSON。",
+                "比较标题、正文、链接、字段化结果和失败日志。",
+                "把结果登记为 raw record，并关联 evidence URL。",
+            ],
+            "risk_boundaries": [
+                "只处理公开网页和官方文档。",
+                "API key、费用和自托管许可必须先确认。",
+                "不得绕过登录、验证码或访问控制。",
+            ],
+            "classroom_exercise": (
+                "让学员把同一 URL 分别转成 Markdown 和字段 JSON，"
+                "说明哪种结果更适合 RAG 或报告。"
+            ),
+        }
+    if _has_any(text, ("playwright", "browser", "puppeteer", "selenium", "动态页面")):
+        return {
+            "audience": "需要处理 JS 渲染、点击和页面状态验证的数据采集学员",
+            "level": "进阶",
+            "hands_on_steps": [
+                "用 Playwright 打开公开页面并等待关键元素。",
+                "记录 selector、network response、screenshot 和 DOM 字段。",
+                "故意制造一次等待失败，复盘 timeout、重试和证据保留。",
+                "把浏览器采集和 E2E 测试的边界讲清楚。",
+            ],
+            "risk_boundaries": [
+                "不得模拟恶意流量、绕过验证码或绕过登录限制。",
+                "必须设置访问频率、超时和失败预算。",
+                "截图证据不得包含敏感个人信息。",
+            ],
+            "classroom_exercise": (
+                "让学员写一个只采公开字段的 Playwright 采集片段，"
+                "并提交截图证据。"
+            ),
+        }
+    if _has_any(text, ("scrapy", "python 爬虫", "爬虫工程")):
+        return {
+            "audience": "需要建立爬虫工程基本功的 Python 学员",
+            "level": "入门",
+            "hands_on_steps": [
+                "创建 Scrapy 项目并定义 spider。",
+                "抽取标题、URL、时间等最小字段契约。",
+                "通过 pipeline 输出 JSONL。",
+                "解释 scheduler、middleware、pipeline 的职责边界。",
+            ],
+            "risk_boundaries": [
+                "必须尊重 robots、限频和公开访问边界。",
+                "动态页面不要强行用静态解析硬抓。",
+                "不要采集账号态和个人敏感数据。",
+            ],
+            "classroom_exercise": (
+                "让学员用 Scrapy 抽取一个公开列表页，"
+                "并画出 spider 到 item pipeline 的流程。"
+            ),
+        }
+    if _has_any(text, ("crawlee", "队列", "状态管理", "生产化")):
+        return {
+            "audience": "想把单脚本采集升级为任务平台的工程学员",
+            "level": "进阶",
+            "hands_on_steps": [
+                "创建 Crawlee 项目并运行基础 crawler。",
+                "加入 request queue、dataset 和失败重试。",
+                "对比 CheerioCrawler 与 PlaywrightCrawler 的使用边界。",
+                "把运行结果转成可复核的数据集。",
+            ],
+            "risk_boundaries": [
+                "代理、并发和重试必须有成本上限。",
+                "不要把平台反爬当成可绕过目标。",
+                "任务日志必须保留失败原因。",
+            ],
+            "classroom_exercise": (
+                "让学员把 3 个公开 URL 放入队列，"
+                "输出统一字段并解释失败重试策略。"
+            ),
+        }
+    if _has_any(text, ("agent", "mcp", "tool", "browser-use", "工具边界")):
+        return {
+            "audience": "希望把采集工具接入 AI Agent、Skills 或 MCP 的学员",
+            "level": "高阶",
+            "hands_on_steps": [
+                "先定义一个最小采集工具输入 schema。",
+                "设置域名白名单、步数预算和人工复核节点。",
+                "让 Agent 调用工具完成公开页面读取或 GitHub API 查询。",
+                "导出 tool call trace、结果 JSON 和风险复核记录。",
+            ],
+            "risk_boundaries": [
+                "不要让模型自行决定合规边界。",
+                "生产密钥不得暴露给前端或共享配置。",
+                "Agent 只能调用白名单工具和白名单域名。",
+            ],
+            "classroom_exercise": (
+                "让学员设计一个 MCP tool schema，"
+                "并说明输入校验、输出字段和审计日志。"
+            ),
+        }
+    if _has_any(text, ("github", "topic", "api-first", "repo", "star")):
+        return {
+            "audience": "需要低风险公开 API 采集样板的数据分析和工程学员",
+            "level": "入门",
+            "hands_on_steps": [
+                "用 GitHub topic 或 repo API 获取公开仓库元数据。",
+                "处理分页、rate limit、stars、forks、license、updated_at 字段。",
+                "把 repo 元数据写入 raw record。",
+                "用 evidence URL 说明每个结论来自哪里。",
+            ],
+            "risk_boundaries": [
+                "只采公开仓库和公开 README。",
+                "不采私有仓库、个人邮箱或账号画像。",
+                "遵守 GitHub API rate limit。",
+            ],
+            "classroom_exercise": (
+                "让学员用 GitHub API 找出 3 个公开采集工具，"
+                "并按 stars 与更新时间排序。"
+            ),
+        }
+    if _has_any(text, ("官方文档", "parser", "release notes", "版本线索")):
+        return {
+            "audience": "需要把官方文档变成培训材料和监控信号的学员",
+            "level": "入门",
+            "hands_on_steps": [
+                "采集一个官方文档页并保留标题、正文和链接。",
+                "拆分 headings、install commands、changelog 线索。",
+                "标注 breaking change、版本号或能力变化。",
+                "把文档证据挂到对应工具或方法卡。",
+            ],
+            "risk_boundaries": [
+                "只抽取公开文档，不抓账号后台或付费内容。",
+                "不要把文档摘要当成法律许可结论。",
+                "版本判断必须保留原文链接。",
+            ],
+            "classroom_exercise": "让学员把一页官方安装文档改写成 SOP，并列出验收命令。",
+        }
+    if _has_any(text, ("电商", "amazon", "shopify")):
+        return {
+            "audience": "需要讲跨境电商公开数据采集边界的运营和工程学员",
+            "level": "边界",
+            "hands_on_steps": [
+                "先列出官方 API、自有导出和公开页面三类路径。",
+                "定义商品、价格、评论、榜单的字段契约。",
+                "标注禁止项：登录态、验证码、批量账号和个人数据。",
+                "把合规边界写入方法卡后再讨论采集实现。",
+            ],
+            "risk_boundaries": [
+                "优先官方 API 和自有数据导出。",
+                "不提供绕过反爬、验证码和访问控制的步骤。",
+                "评论和用户相关数据必须做敏感度评估。",
+            ],
+            "classroom_exercise": (
+                "让学员为 Amazon 或 Shopify 写一张方法卡，"
+                "明确字段、来源、限制和禁止项。"
+            ),
+        }
+    if _has_any(text, ("社媒", "youtube", "reddit", "tiktok", "个人级数据")):
+        return {
+            "audience": "需要讲社媒和内容平台公开趋势采集边界的学员",
+            "level": "边界",
+            "hands_on_steps": [
+                "读取平台官方 API 或开发者政策。",
+                "区分聚合趋势、公开视频元数据和个人级数据。",
+                "只设计趋势级字段，不设计用户画像字段。",
+                "把限制和复核要求写入方法卡。",
+            ],
+            "risk_boundaries": [
+                "不采集个人级画像、私信、登录态内容。",
+                "不讲批量账号、绕限流或规避审核。",
+                "平台 ToS 和开发者政策必须作为第一证据。",
+            ],
+            "classroom_exercise": "让学员把一个社媒需求改写成聚合趋势需求，并删除所有个人级字段。",
+        }
+    if _has_any(text, ("竞品", "公开页面变化", "public site")):
+        return {
+            "audience": "需要做竞品官网、价格页和文档变更监控的学员",
+            "level": "入门",
+            "hands_on_steps": [
+                "检查 robots.txt、sitemap 和公开页面类型。",
+                "采集页面标题、正文摘要、hash 和截图证据。",
+                "对比两次快照并生成 diff summary。",
+                "把变化挂到竞品实体和报告章节。",
+            ],
+            "risk_boundaries": [
+                "只监控公开页面，不抓账号后台。",
+                "必须限速、缓存并记录访问时间。",
+                "不要采集未公开接口或受控资源。",
+            ],
+            "classroom_exercise": "让学员为一个公开价格页设计变更监控字段，并说明告警阈值。",
+        }
+    if _has_any(text, ("合规", "边界", "禁止项", "审计")):
+        return {
+            "audience": "需要为采集项目建立授权、频控和审计边界的负责人",
+            "level": "边界",
+            "hands_on_steps": [
+                "为采集需求填写授权范围、公开来源和禁止项。",
+                "设置频率限制、数据最小化和审计留痕字段。",
+                "把风险边界接入告警和报告。",
+                "用一条高风险需求演示如何降级为方法卡。",
+            ],
+            "risk_boundaries": [
+                "没有授权边界就不进入采集实现。",
+                "敏感数据、账号态和绕过访问控制默认禁止。",
+                "审计记录必须能还原来源、时间和动作。",
+            ],
+            "classroom_exercise": "让学员审查一条采集需求，标出红线、可采范围和人工审批点。",
+        }
+    return {
+        "audience": "需要理解数据采集工作台证据链的培训学员",
+        "level": "入门",
+        "hands_on_steps": [
+            "阅读情报结论、影响和建议动作。",
+            "打开证据 URL 并定位原始事实。",
+            "把事实映射到 raw record、entity、signal、intelligence。",
+            "复述该情报如何支撑培训决策。",
+        ],
+        "risk_boundaries": [
+            "所有结论必须可回溯到公开证据。",
+            "不要把推断包装为事实。",
+            "高风险平台只讲方法边界。",
+        ],
+        "classroom_exercise": "让学员选 1 条情报，画出从原始记录到报告的证据链。",
+    }
+
+
+def _summary_value(summary: str, label: str) -> str | None:
+    prefix = f"{label}："
+    for line in summary.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            return stripped.removeprefix(prefix).strip()
+    return None
+
+
+def _source_urls_from_summary(summary: str) -> list[str]:
+    value = _summary_value(summary, "来源")
+    if value is None:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _has_any(text: str, keywords: tuple[str, ...]) -> bool:
+    return any(keyword.lower() in text for keyword in keywords)
 
 
 def _matches_tool_path(tool: ToolkitToolResponse, spec: _LearningPathSpec) -> bool:

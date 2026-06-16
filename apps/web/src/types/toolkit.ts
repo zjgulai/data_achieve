@@ -67,11 +67,30 @@ export type ToolkitLearningPath = {
   sourceUrls: string[];
 };
 
+export type ToolkitLecturePlaybook = {
+  id: string;
+  intelligenceId: string;
+  title: string;
+  audience: string;
+  level: string;
+  durationMinutes: number;
+  claim: string;
+  teachingSequence: string[];
+  handsOnSteps: string[];
+  verificationSteps: string[];
+  riskBoundaries: string[];
+  classroomExercise: string;
+  evidenceUrls: string[];
+  evidenceCount: number;
+  finalScore: number;
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;
   metrics: ToolkitMetrics;
   learningPaths: ToolkitLearningPath[];
+  lecturePlaybooks: ToolkitLecturePlaybook[];
   tools: ToolkitTool[];
   methods: ToolkitMethod[];
   intelligenceItems: ToolkitIntelligence[];
