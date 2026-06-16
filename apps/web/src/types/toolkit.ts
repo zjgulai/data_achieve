@@ -23,6 +23,9 @@ export type ToolkitTool = {
   openIssues: number | null;
   updatedAt: string | null;
   collectedAt: string;
+  sourceCredibilityScore: number;
+  sourceCredibilityLevel: string;
+  sourceCredibilityFactors: string[];
 };
 
 export type ToolkitMethod = {
@@ -101,6 +104,28 @@ export type ToolkitImageAnchorDiagnostic = {
   evidenceUrls: string[];
 };
 
+export type ToolkitBrowserLab = {
+  id: string;
+  title: string;
+  focus: string;
+  riskLevel: string;
+  inspectionTargets: string[];
+  playwrightChecks: string[];
+  evidenceOutputs: string[];
+  trainingTask: string;
+  acceptanceCriteria: string[];
+};
+
+export type ToolkitAuthorizationChecklist = {
+  id: string;
+  title: string;
+  riskLevel: string;
+  requiredChecks: string[];
+  blockedConditions: string[];
+  evidenceRequired: string[];
+  approvalRule: string;
+};
+
 export type ToolkitOverview = {
   dataset: string;
   generatedAt: string | null;
@@ -108,6 +133,8 @@ export type ToolkitOverview = {
   learningPaths: ToolkitLearningPath[];
   lecturePlaybooks: ToolkitLecturePlaybook[];
   imageAnchorDiagnostics: ToolkitImageAnchorDiagnostic[];
+  browserLabs: ToolkitBrowserLab[];
+  authorizationChecklists: ToolkitAuthorizationChecklist[];
   tools: ToolkitTool[];
   methods: ToolkitMethod[];
   intelligenceItems: ToolkitIntelligence[];

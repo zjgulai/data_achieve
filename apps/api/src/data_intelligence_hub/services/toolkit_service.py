@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.schemas.toolkit import (
+    ToolkitAuthorizationChecklistResponse,
+    ToolkitBrowserLabResponse,
     ToolkitImageAnchorDiagnosticResponse,
     ToolkitIntelligenceResponse,
     ToolkitLearningPathResponse,
@@ -231,6 +233,244 @@ IMAGE_ANCHOR_DIAGNOSTICS = (
     ),
 )
 
+BROWSER_LABS = (
+    ToolkitBrowserLabResponse(
+        id="browser-public-surface-preflight",
+        title="公开暴露面预检",
+        focus=(
+            "在采集前先确认目标站点公开暴露面：robots、sitemap、security.txt、"
+            "headers、DNS 和基础技术栈。"
+        ),
+        risk_level="medium",
+        inspection_targets=[
+            "robots.txt、sitemap.xml、security.txt",
+            "response headers、status code、canonical URL",
+            "公开 DNS、证书、重定向链和技术栈线索",
+        ],
+        playwright_checks=[
+            "打开目标首页并记录最终 URL、标题、主要导航和响应状态。",
+            "请求 robots.txt 与 sitemap.xml，只记录公开可访问结果。",
+            "保存 headers、截图和控制台错误，不做端口扫描或暴力枚举。",
+        ],
+        evidence_outputs=[
+            "preflight JSON",
+            "首页截图",
+            "headers 快照",
+            "robots/sitemap 访问结果",
+        ],
+        training_task=(
+            "选择一个自有或明确授权的网站，完成采集前预检，判断是否进入下一步内容采集。"
+        ),
+        acceptance_criteria=[
+            "能说明目标是否公开可采、是否需要降级为人工复核。",
+            "输出包含 URL、时间、headers、robots/sitemap 结论和截图证据。",
+            "没有授权时只允许做公开页面读取，不做探测扩展。",
+        ],
+    ),
+    ToolkitBrowserLabResponse(
+        id="browser-dom-selector-contract",
+        title="DOM 与选择器契约",
+        focus=(
+            "把网页结构从肉眼浏览转成稳定字段契约，训练 selector、可访问性树、"
+            "文本抽取和页面变化监控。"
+        ),
+        risk_level="low",
+        inspection_targets=[
+            "标题、主内容、列表项、分页、详情链接",
+            "aria role、label、data attribute 和语义化标签",
+            "页面 hash、关键字段和空态/异常态",
+        ],
+        playwright_checks=[
+            "用 role/label 优先定位元素，避免脆弱 XPath。",
+            "截图并导出最小 DOM 摘要。",
+            "模拟一次字段缺失，记录失败原因和替代 selector。",
+        ],
+        evidence_outputs=[
+            "selector contract",
+            "字段样例 JSON",
+            "DOM 摘要",
+            "失败轨迹截图",
+        ],
+        training_task=(
+            "为一个公开列表页写出字段契约，并说明哪些 selector 可长期维护。"
+        ),
+        acceptance_criteria=[
+            "字段能回溯到页面可见内容。",
+            "selector 失败时有截图和错误信息。",
+            "不依赖登录态、验证码或隐藏接口。",
+        ],
+    ),
+    ToolkitBrowserLabResponse(
+        id="browser-network-api-observation",
+        title="Network 与公开接口观察",
+        focus=(
+            "观察浏览器请求、响应、分页和缓存，判断是否存在官方或公开接口优先路径。"
+        ),
+        risk_level="medium",
+        inspection_targets=[
+            "document、xhr/fetch、图片和静态资源",
+            "分页参数、rate limit header、cache header",
+            "公开 API 文档与页面请求之间的字段对应关系",
+        ],
+        playwright_checks=[
+            "监听 response，记录同域公开请求和状态码。",
+            "只复核浏览器自然加载产生的请求，不构造隐藏参数枚举。",
+            "优先查找官方 API 或导出路径，降低页面抓取成本。",
+        ],
+        evidence_outputs=[
+            "network log",
+            "response schema sample",
+            "API-first 判断记录",
+            "限频与缓存建议",
+        ],
+        training_task=(
+            "打开一个公开文档或 GitHub 页面，找出页面字段和公开 API 字段的对应关系。"
+        ),
+        acceptance_criteria=[
+            "能说明何时优先官方 API，何时才使用浏览器采集。",
+            "没有复用未授权 token、cookie 或内部接口。",
+            "输出保留 request URL、status、content-type 和字段样例。",
+        ],
+    ),
+    ToolkitBrowserLabResponse(
+        id="browser-session-privacy-audit",
+        title="会话、Cookie 与隐私审计",
+        focus=(
+            "理解登录态、Cookie、localStorage、截图和采集结果中的敏感信息风险。"
+        ),
+        risk_level="high",
+        inspection_targets=[
+            "Cookie、localStorage、sessionStorage",
+            "登录态页面与公开页面的边界",
+            "截图中的姓名、邮箱、头像、订单号和 token",
+        ],
+        playwright_checks=[
+            "对公开页面和登录态页面分别记录 storage state 范围。",
+            "截图前检查敏感信息，必要时脱敏或只保留结构证据。",
+            "不把生产账号态 storage state 作为课程共享素材。",
+        ],
+        evidence_outputs=[
+            "sensitive-field checklist",
+            "redacted screenshot",
+            "storage scope note",
+            "manual review decision",
+        ],
+        training_task=(
+            "把一段登录态采集需求降级为可培训的公开页面或官方导出方案。"
+        ),
+        acceptance_criteria=[
+            "能明确哪些字段禁止进入训练材料。",
+            "账号态采集必须有业务授权和人工复核。",
+            "任何截图和 JSON 输出都不包含 token、邮箱或个人级数据。",
+        ],
+    ),
+    ToolkitBrowserLabResponse(
+        id="browser-fingerprint-risk-diagnostics",
+        title="浏览器指纹与反检测风险诊断",
+        focus=(
+            "用 invisible_playwright、CloakBrowser 等附件锚点解释浏览器指纹、"
+            "自动化检测面和合规红线。"
+        ),
+        risk_level="high",
+        inspection_targets=[
+            "navigator.webdriver、userAgent、viewport、timezone、locale",
+            "Canvas/WebGL/Client Hints/TLS 指纹一致性",
+            "反检测工具的 license、维护度、用途声明和风险边界",
+        ],
+        playwright_checks=[
+            "只在自有测试页或授权检测页对比普通浏览器与自动化浏览器差异。",
+            "记录检测项名称和差异，不输出绕过配置。",
+            "把检测结果归入风险教育，不归入生产采集 SOP。",
+        ],
+        evidence_outputs=[
+            "fingerprint-diff note",
+            "risk review",
+            "authorized-target proof",
+            "do-not-use SOP boundary",
+        ],
+        training_task=(
+            "用附件 1 和附件 2 解释为什么浏览器采集必须理解检测面，但不能把绕过作为课程能力。"
+        ),
+        acceptance_criteria=[
+            "能区分浏览器解析能力、质量验收能力和规避能力。",
+            "不提供绕过 Cloudflare、验证码、风控或访问控制的步骤。",
+            "高风险工具只能进入授权测试和风险识别课程。",
+        ],
+    ),
+)
+
+AUTHORIZATION_CHECKLISTS = (
+    ToolkitAuthorizationChecklistResponse(
+        id="auth-public-source",
+        title="公开来源采集前检查",
+        risk_level="low",
+        required_checks=[
+            "目标 URL 可匿名访问，内容无需登录或付费。",
+            "robots、官方文档或页面声明未禁止目标用途。",
+            "字段只包含组织、产品、公开页面内容和公开指标。",
+            "已设置频率、缓存、重试和失败预算。",
+        ],
+        blocked_conditions=[
+            "页面要求登录、验证码或绕过访问限制。",
+            "字段包含个人邮箱、手机号、私信、订单或账号画像。",
+            "采集目的无法落到培训、研究或业务授权场景。",
+        ],
+        evidence_required=[
+            "source_url",
+            "collected_at",
+            "robots/sitemap 或官方来源说明",
+            "截图或原始响应摘要",
+        ],
+        approval_rule="满足全部必查项且无阻断条件时，可进入低风险采集 SOP。",
+    ),
+    ToolkitAuthorizationChecklistResponse(
+        id="auth-account-session",
+        title="账号态或登录态采集检查",
+        risk_level="high",
+        required_checks=[
+            "业务负责人书面确认账号、范围、字段和用途。",
+            "优先使用官方 API、自有导出或平台允许的批量导出。",
+            "storage state、Cookie、token 不进入代码仓库、截图或培训材料。",
+            "结果字段完成数据最小化和敏感信息脱敏。",
+        ],
+        blocked_conditions=[
+            "借用个人账号、批量账号或未授权登录态。",
+            "采集私信、订单、支付、个人画像或受保护内容。",
+            "需要绕过验证码、风控、速率限制或访问控制。",
+        ],
+        evidence_required=[
+            "授权记录",
+            "字段白名单",
+            "脱敏样例",
+            "人工复核记录",
+        ],
+        approval_rule="账号态任务默认高风险；缺少授权记录时不得进入实现。",
+    ),
+    ToolkitAuthorizationChecklistResponse(
+        id="auth-platform-policy",
+        title="平台政策与 ToS 检查",
+        risk_level="high",
+        required_checks=[
+            "查阅平台开发者政策、API 文档、robots 和 ToS。",
+            "区分公开聚合趋势、公开内容元数据和个人级数据。",
+            "记录禁止项：绕限流、批量账号、规避审核、二次分发限制。",
+            "为课程输出保留政策链接和字段降级说明。",
+        ],
+        blocked_conditions=[
+            "需求以绕过 API 费用、限制或审核为目标。",
+            "无法确认数据再使用权或培训展示权。",
+            "平台政策明确禁止自动化访问或二次使用。",
+        ],
+        evidence_required=[
+            "policy_url",
+            "api_docs_url",
+            "blocked_fields",
+            "approved_field_contract",
+        ],
+        approval_rule="平台任务先做政策检查；无法证明允许时，只能讲方法边界，不做采集。",
+    ),
+)
+
 
 async def get_toolkit_overview(
     session: AsyncSession,
@@ -271,6 +511,8 @@ async def get_toolkit_overview(
         learning_paths=learning_paths,
         lecture_playbooks=lecture_playbooks,
         image_anchor_diagnostics=list(IMAGE_ANCHOR_DIAGNOSTICS),
+        browser_labs=list(BROWSER_LABS),
+        authorization_checklists=list(AUTHORIZATION_CHECKLISTS),
         tools=tools,
         methods=methods,
         intelligence_items=[
@@ -368,6 +610,11 @@ def _build_tools(records: list[RawRecord]) -> list[ToolkitToolResponse]:
         )
         if full_name is None:
             continue
+        source_score = _score_tool_source(
+            content=content,
+            wrapper=wrapper,
+            collected_at=record.collected_at,
+        )
         tools.append(
             ToolkitToolResponse(
                 id=str(wrapper["source_id"]),
@@ -386,9 +633,83 @@ def _build_tools(records: list[RawRecord]) -> list[ToolkitToolResponse]:
                 open_issues=_optional_int(content.get("open_issues_count")),
                 updated_at=_optional_datetime(content.get("updated_at")),
                 collected_at=record.collected_at,
+                source_credibility_score=source_score.score,
+                source_credibility_level=source_score.level,
+                source_credibility_factors=source_score.factors,
             )
         )
     return sorted(tools, key=lambda tool: tool.stars or 0, reverse=True)
+
+
+@dataclass(frozen=True)
+class _SourceCredibilityScore:
+    score: int
+    level: str
+    factors: list[str]
+
+
+def _score_tool_source(
+    *,
+    content: dict[str, Any],
+    wrapper: dict[str, Any],
+    collected_at: datetime,
+) -> _SourceCredibilityScore:
+    score = 35
+    factors: list[str] = ["GitHub API 元数据已采集"]
+    source_url = _optional_text(wrapper.get("source_url")) or _optional_text(
+        content.get("html_url"),
+    )
+    if source_url and "github.com/" in source_url:
+        score += 15
+        factors.append("来源指向官方 GitHub 仓库")
+
+    stars = _optional_int(content.get("stargazers_count")) or 0
+    if stars >= 50_000:
+        score += 15
+        factors.append("社区采用度极高")
+    elif stars >= 10_000:
+        score += 12
+        factors.append("社区采用度高")
+    elif stars >= 1_000:
+        score += 8
+        factors.append("社区采用度可验证")
+
+    if _optional_text(content.get("license")):
+        score += 10
+        factors.append("license 字段已声明")
+    else:
+        factors.append("license 字段缺失，培训前需复核")
+
+    updated_at = _optional_datetime(content.get("updated_at"))
+    if updated_at is not None:
+        age_days = abs((collected_at.replace(tzinfo=None) - updated_at.replace(tzinfo=None)).days)
+        if age_days <= 90:
+            score += 15
+            factors.append("近 90 天仍有更新")
+        elif age_days <= 365:
+            score += 8
+            factors.append("近 1 年仍有更新")
+        else:
+            factors.append("更新间隔较长，进入课程前需复核维护状态")
+
+    open_issues = _optional_int(content.get("open_issues_count"))
+    if open_issues is not None and stars > 0:
+        issue_ratio = open_issues / max(stars, 1)
+        if issue_ratio <= 0.01:
+            score += 5
+            factors.append("issue 数量相对社区规模可控")
+        elif issue_ratio >= 0.08:
+            score -= 5
+            factors.append("issue 比例偏高，课程中需标注维护风险")
+
+    score = max(0, min(score, 100))
+    if score >= 80:
+        level = "high"
+    elif score >= 60:
+        level = "medium"
+    else:
+        level = "review"
+    return _SourceCredibilityScore(score=score, level=level, factors=factors[:5])
 
 
 def _build_methods(records: list[RawRecord]) -> list[ToolkitMethodResponse]:

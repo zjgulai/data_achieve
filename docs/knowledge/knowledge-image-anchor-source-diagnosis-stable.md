@@ -16,7 +16,13 @@ source: human+ai
 
 6 张附件图片不能直接作为事实源。它们的正确用途是发现候选工具、传播话术和培训切入点，然后回到官方 GitHub、官网或文档核验。
 
-本轮将 6 张图归入 `/api/toolkit.image_anchor_diagnostics`，并同步到 `/toolkit` 和 `/toolkit/course-pack`。
+本轮将 6 张图归入 `/api/toolkit.image_anchor_diagnostics`，并继续补充：
+
+- `/api/toolkit.browser_labs`：浏览器解析实验室。
+- `/api/toolkit.authorization_checklists`：授权采集检查清单。
+- `/api/toolkit.tools[].source_credibility_*`：工具来源可信度评分。
+
+以上内容已同步到 `/toolkit` 和 `/toolkit/course-pack`。
 
 ## 锚点归类
 
@@ -36,8 +42,45 @@ source: human+ai
 3. 社媒和跨平台 Agent 搜索必须先确认官方 API、公开来源、平台 ToS 和个人数据边界。
 4. 二次整理图只保留发现价值；stars、license、language、updated_at 必须从 GitHub API 或官方页面核验。
 
+## 浏览器解析实验室
+
+| 实验 | 目标 | 风险 | 产出 |
+|---|---|---|---|
+| 公开暴露面预检 | 读取 robots、sitemap、headers、DNS 和技术栈线索 | medium | preflight JSON、截图、headers 快照 |
+| DOM 与选择器契约 | 把页面结构转成稳定字段契约 | low | selector contract、字段样例、失败轨迹 |
+| Network 与公开接口观察 | 判断是否存在官方 API 或公开接口优先路径 | medium | network log、response schema、API-first 判断 |
+| 会话、Cookie 与隐私审计 | 识别登录态、storage state 和截图敏感信息 | high | 脱敏截图、storage scope、人工复核记录 |
+| 浏览器指纹与反检测风险诊断 | 理解自动化检测面和高风险工具边界 | high | fingerprint diff、风险复核、禁止项说明 |
+
+## 来源可信度评分
+
+评分只判断来源事实是否可复核，不判断工具是否合规可用。
+
+评分因子：
+
+1. 来源是否指向官方 GitHub 仓库。
+2. GitHub API 元数据是否完整。
+3. stars 是否达到可验证社区采用度。
+4. license 是否声明。
+5. updated_at 与采集时间的距离。
+6. issue 比例是否需要维护风险提示。
+
+评分等级：
+
+- `high`：可作为培训重点源，但仍需讲风险边界。
+- `medium`：可进入工具雷达，课程中保留复核提示。
+- `review`：只能作为候选，不直接进入 SOP。
+
+## 授权采集检查清单
+
+| 清单 | 用途 | 阻断条件 |
+|---|---|---|
+| 公开来源采集前检查 | 匿名公开页面、官方文档、公开 API | 登录、验证码、个人级字段、目的不清 |
+| 账号态或登录态采集检查 | 业务授权下的自有账号、导出、后台数据 | 个人账号、未授权登录态、token 外泄、绕过限制 |
+| 平台政策与 ToS 检查 | 社媒、电商、视频、内容平台 | 以绕过限制为目标、政策禁止、再使用权不明 |
+
 ## 页面同步
 
-1. `/toolkit`：新增“附件寻源诊断”模块，展示 6 张图片的提取主张、核验来源、风险等级、价值判断、归类用途和证据链。
-2. `/toolkit/course-pack`：课程包打印页同步显示图片锚点诊断，作为培训开场的“如何从传播材料回到一手源”案例。
+1. `/toolkit`：显示附件寻源诊断、浏览器解析实验室、授权采集检查清单、工具来源可信度评分。
+2. `/toolkit/course-pack`：课程包打印页同步显示图片锚点诊断、实验室和授权清单，作为培训开场的“如何从传播材料回到一手源”案例。
 3. 后续新增截图或社媒材料时，先补充 `image_anchor_diagnostics`，再决定是否升格为正式 source 或 intelligence。

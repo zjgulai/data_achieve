@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
+  ToolkitAuthorizationChecklist,
+  ToolkitBrowserLab,
   ToolkitImageAnchorDiagnostic,
   ToolkitIntelligence,
   ToolkitLecturePlaybook,
@@ -17,6 +19,8 @@ type ToolkitOverviewResponse = {
   learning_paths: ToolkitLearningPathResponse[];
   lecture_playbooks: ToolkitLecturePlaybookResponse[];
   image_anchor_diagnostics: ToolkitImageAnchorDiagnosticResponse[];
+  browser_labs: ToolkitBrowserLabResponse[];
+  authorization_checklists: ToolkitAuthorizationChecklistResponse[];
   tools: ToolkitToolResponse[];
   methods: ToolkitMethodResponse[];
   intelligence_items: ToolkitIntelligenceResponse[];
@@ -47,6 +51,9 @@ type ToolkitToolResponse = {
   open_issues: number | null;
   updated_at: string | null;
   collected_at: string;
+  source_credibility_score: number;
+  source_credibility_level: string;
+  source_credibility_factors: string[];
 };
 
 type ToolkitMethodResponse = {
@@ -125,6 +132,28 @@ type ToolkitImageAnchorDiagnosticResponse = {
   evidence_urls: string[];
 };
 
+type ToolkitBrowserLabResponse = {
+  id: string;
+  title: string;
+  focus: string;
+  risk_level: string;
+  inspection_targets: string[];
+  playwright_checks: string[];
+  evidence_outputs: string[];
+  training_task: string;
+  acceptance_criteria: string[];
+};
+
+type ToolkitAuthorizationChecklistResponse = {
+  id: string;
+  title: string;
+  risk_level: string;
+  required_checks: string[];
+  blocked_conditions: string[];
+  evidence_required: string[];
+  approval_rule: string;
+};
+
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
@@ -135,6 +164,10 @@ export async function getToolkitOverview(): Promise<ToolkitOverview> {
     lecturePlaybooks: response.lecture_playbooks.map(mapLecturePlaybook),
     imageAnchorDiagnostics: response.image_anchor_diagnostics.map(
       mapImageAnchorDiagnostic,
+    ),
+    browserLabs: response.browser_labs.map(mapBrowserLab),
+    authorizationChecklists: response.authorization_checklists.map(
+      mapAuthorizationChecklist,
     ),
     tools: response.tools.map(mapTool),
     methods: response.methods.map(mapMethod),
@@ -170,6 +203,9 @@ function mapTool(response: ToolkitToolResponse): ToolkitTool {
     openIssues: response.open_issues,
     updatedAt: response.updated_at,
     collectedAt: response.collected_at,
+    sourceCredibilityScore: response.source_credibility_score,
+    sourceCredibilityLevel: response.source_credibility_level,
+    sourceCredibilityFactors: response.source_credibility_factors,
   };
 }
 
@@ -260,5 +296,33 @@ function mapImageAnchorDiagnostic(
     trainingTakeaway: response.training_takeaway,
     relatedTools: response.related_tools,
     evidenceUrls: response.evidence_urls,
+  };
+}
+
+function mapBrowserLab(response: ToolkitBrowserLabResponse): ToolkitBrowserLab {
+  return {
+    id: response.id,
+    title: response.title,
+    focus: response.focus,
+    riskLevel: response.risk_level,
+    inspectionTargets: response.inspection_targets,
+    playwrightChecks: response.playwright_checks,
+    evidenceOutputs: response.evidence_outputs,
+    trainingTask: response.training_task,
+    acceptanceCriteria: response.acceptance_criteria,
+  };
+}
+
+function mapAuthorizationChecklist(
+  response: ToolkitAuthorizationChecklistResponse,
+): ToolkitAuthorizationChecklist {
+  return {
+    id: response.id,
+    title: response.title,
+    riskLevel: response.risk_level,
+    requiredChecks: response.required_checks,
+    blockedConditions: response.blocked_conditions,
+    evidenceRequired: response.evidence_required,
+    approvalRule: response.approval_rule,
   };
 }

@@ -14,6 +14,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import type {
+  ToolkitAuthorizationChecklist,
+  ToolkitBrowserLab,
   ToolkitImageAnchorDiagnostic,
   ToolkitLecturePlaybook,
   ToolkitOverview,
@@ -52,6 +54,14 @@ export function ToolkitCoursePackPage() {
   const imageAnchorDiagnostics = useMemo(
     () => overview?.imageAnchorDiagnostics ?? [],
     [overview?.imageAnchorDiagnostics],
+  );
+  const browserLabs = useMemo(
+    () => overview?.browserLabs ?? [],
+    [overview?.browserLabs],
+  );
+  const authorizationChecklists = useMemo(
+    () => overview?.authorizationChecklists ?? [],
+    [overview?.authorizationChecklists],
   );
   const totalMinutes = useMemo(
     () => playbooks.reduce((sum, playbook) => sum + playbook.durationMinutes, 0),
@@ -154,6 +164,8 @@ export function ToolkitCoursePackPage() {
             <CourseMetric label="课时" value={`${totalMinutes} 分钟`} />
             <CourseMetric label="证据" value={`${totalEvidence} 条`} />
             <CourseMetric label="锚点" value={`${imageAnchorDiagnostics.length} 张图`} />
+            <CourseMetric label="实验" value={`${browserLabs.length} 个`} />
+            <CourseMetric label="清单" value={`${authorizationChecklists.length} 张`} />
           </div>
         </div>
       </header>
@@ -178,6 +190,40 @@ export function ToolkitCoursePackPage() {
             </p>
           </div>
         ))}
+      </section>
+
+      <section className="mt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <BookOpenCheck size={18} className="text-[#C25B6E] print:hidden" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-[#1D1D1F] print:text-black">
+            浏览器解析实验室
+          </h3>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
+          每个实验都要求先观察浏览器真实状态，再决定使用 API、浏览器自动化、Agent 或人工复核；反检测内容只用于授权风险诊断。
+        </p>
+        <div className="grid gap-3 lg:grid-cols-2 print:grid-cols-1">
+          {browserLabs.map((lab) => (
+            <CourseBrowserLab lab={lab} key={lab.id} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <div className="mb-4 flex items-center gap-2">
+          <AlertCircle size={18} className="text-[#C25B6E] print:hidden" aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-[#1D1D1F] print:text-black">
+            授权采集检查清单
+          </h3>
+        </div>
+        <p className="mb-4 text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
+          课程演示前先跑清单：目标、字段、账号态、平台政策和证据留存都通过，才进入采集实现。
+        </p>
+        <div className="grid gap-3 lg:grid-cols-3 print:grid-cols-1">
+          {authorizationChecklists.map((checklist) => (
+            <CourseAuthorizationChecklist checklist={checklist} key={checklist.id} />
+          ))}
+        </div>
       </section>
 
       <section className="mt-6">
@@ -285,6 +331,83 @@ function CourseAnchorDiagnostic({
         培训结论：{diagnostic.trainingTakeaway}
       </p>
     </article>
+  );
+}
+
+function CourseBrowserLab({ lab }: { lab: ToolkitBrowserLab }) {
+  return (
+    <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4 print:border-[#D6D6D6] print:bg-white">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A] print:border-[#D6D6D6] print:text-black">
+          {lab.riskLevel === "high" ? "高风险" : lab.riskLevel === "low" ? "低风险" : "中风险"}
+        </span>
+        <span className="rounded-full border border-[#F1D9A8] bg-[#FFF9E9] px-2.5 py-1 text-[11px] font-semibold text-[#87611B] print:border-[#D6D6D6] print:bg-white print:text-black">
+          浏览器实验
+        </span>
+      </div>
+      <h4 className="text-sm font-semibold text-[#1D1D1F] print:text-black">
+        {lab.title}
+      </h4>
+      <p className="mt-2 text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
+        {lab.focus}
+      </p>
+      <div className="mt-3 grid gap-3">
+        <CourseMiniList title="观察对象" items={lab.inspectionTargets} />
+        <CourseMiniList title="浏览器检查" items={lab.playwrightChecks} />
+        <CourseMiniList title="验收标准" items={lab.acceptanceCriteria} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#7A625A] print:text-black">
+        课堂任务：{lab.trainingTask}
+      </p>
+    </article>
+  );
+}
+
+function CourseAuthorizationChecklist({
+  checklist,
+}: {
+  checklist: ToolkitAuthorizationChecklist;
+}) {
+  return (
+    <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4 print:border-[#D6D6D6] print:bg-white">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="rounded-full border border-[#F0C9C2] bg-[#FFF5F2] px-2.5 py-1 text-[11px] font-semibold text-[#A04437] print:border-[#D6D6D6] print:bg-white print:text-black">
+          {checklist.riskLevel === "high" ? "高风险" : "低风险"}
+        </span>
+        <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A] print:border-[#D6D6D6] print:text-black">
+          门禁清单
+        </span>
+      </div>
+      <h4 className="text-sm font-semibold text-[#1D1D1F] print:text-black">
+        {checklist.title}
+      </h4>
+      <div className="mt-3 grid gap-3">
+        <CourseMiniList title="必查项" items={checklist.requiredChecks} />
+        <CourseMiniList title="阻断条件" items={checklist.blockedConditions} />
+        <CourseMiniList title="留存证据" items={checklist.evidenceRequired} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-[#7A625A] print:text-black">
+        审批规则：{checklist.approvalRule}
+      </p>
+    </article>
+  );
+}
+
+function CourseMiniList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold uppercase text-[#B47767] print:text-black">
+        {title}
+      </p>
+      <ul className="grid gap-1 text-xs leading-5 text-[#5F5757] print:text-black">
+        {items.map((item) => (
+          <li className="flex gap-2" key={item}>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#C25B6E] print:bg-black" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

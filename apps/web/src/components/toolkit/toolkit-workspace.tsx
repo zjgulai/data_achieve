@@ -27,6 +27,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import type {
+  ToolkitAuthorizationChecklist,
+  ToolkitBrowserLab,
   ToolkitImageAnchorDiagnostic,
   ToolkitLecturePlaybook,
   ToolkitLearningPath,
@@ -654,6 +656,14 @@ export function ToolkitWorkspace() {
     () => toolkitOverview?.imageAnchorDiagnostics ?? [],
     [toolkitOverview?.imageAnchorDiagnostics],
   );
+  const browserLabs = useMemo(
+    () => toolkitOverview?.browserLabs ?? [],
+    [toolkitOverview?.browserLabs],
+  );
+  const authorizationChecklists = useMemo(
+    () => toolkitOverview?.authorizationChecklists ?? [],
+    [toolkitOverview?.authorizationChecklists],
+  );
   const filteredTools = useMemo(
     () =>
       tools.filter((tool) => {
@@ -917,6 +927,56 @@ export function ToolkitWorkspace() {
         )}
       </section>
 
+      <section className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <Globe2 size={18} className="text-[#C25B6E]" aria-hidden="true" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">
+                  浏览器解析实验室
+                </h3>
+              </div>
+              <p className="max-w-3xl text-sm leading-6 text-[#5F5757]">
+                训练学员先读懂浏览器看到的页面、网络、存储和指纹面，再决定采集器；反检测内容只做风险诊断。
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-[#86868B]">
+              {browserLabs.length} 个实验
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {browserLabs.map((lab) => (
+              <BrowserLabCard key={lab.id} lab={lab} />
+            ))}
+          </div>
+        </div>
+
+        <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <ShieldAlert size={18} className="text-[#C25B6E]" aria-hidden="true" />
+                <h3 className="text-lg font-semibold text-[#1D1D1F]">
+                  授权采集检查清单
+                </h3>
+              </div>
+              <p className="max-w-3xl text-sm leading-6 text-[#5F5757]">
+                任何采集任务先判断授权、字段、禁止项和证据要求；没有授权记录时，不进入实现。
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-[#86868B]">
+              {authorizationChecklists.length} 张清单
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {authorizationChecklists.map((checklist) => (
+              <AuthorizationChecklistCard checklist={checklist} key={checklist.id} />
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid min-w-0 max-w-full gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -1020,6 +1080,15 @@ export function ToolkitWorkspace() {
               <Metric label="License" value={selectedDynamicTool?.license ?? selectedTool.license} compact />
               <Metric label="Language" value={selectedDynamicTool?.language ?? selectedTool.language} compact />
               <Metric
+                label="Source Score"
+                value={
+                  selectedDynamicTool
+                    ? `${selectedDynamicTool.sourceCredibilityScore}/100`
+                    : "API 待加载"
+                }
+                compact
+              />
+              <Metric
                 label="Updated"
                 value={formatDate(selectedDynamicTool?.updatedAt ?? selectedTool.updatedAt)}
                 compact
@@ -1037,6 +1106,26 @@ export function ToolkitWorkspace() {
             <InfoBlock title="输出形态" icon={FileCode2} items={selectedTool.outputs} />
             <InfoBlock title="边界限制" icon={ShieldAlert} items={selectedTool.constraints} />
           </div>
+
+          {selectedDynamicTool ? (
+            <div className="mt-5 rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-[#1D1D1F]">来源可信度评分</p>
+                <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+                  {selectedDynamicTool.sourceCredibilityScore}/100 ·{" "}
+                  {formatCredibilityLevel(selectedDynamicTool.sourceCredibilityLevel)}
+                </span>
+              </div>
+              <ul className="grid gap-1.5 text-sm leading-6 text-[#5F5757] sm:grid-cols-2">
+                {selectedDynamicTool.sourceCredibilityFactors.map((factor) => (
+                  <li className="flex gap-2" key={factor}>
+                    <CheckCircle2 size={15} className="mt-1 shrink-0 text-[#6B8E5A]" aria-hidden="true" />
+                    <span>{factor}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
             <CommandPanel
@@ -1545,6 +1634,100 @@ function ImageAnchorDiagnosticCard({
   );
 }
 
+function BrowserLabCard({ lab }: { lab: ToolkitBrowserLab }) {
+  const risk = parseRisk(lab.riskLevel);
+  return (
+    <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+            riskTone[risk],
+          )}
+        >
+          {riskLabels[risk]}
+        </span>
+        <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+          Playwright 验证
+        </span>
+      </div>
+      <h4 className="text-sm font-semibold text-[#1D1D1F]">{lab.title}</h4>
+      <p className="mt-2 text-sm leading-6 text-[#5F5757]">{lab.focus}</p>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        <CompactList title="观察对象" items={lab.inspectionTargets} />
+        <CompactList title="浏览器检查" items={lab.playwrightChecks} />
+        <CompactList title="证据输出" items={lab.evidenceOutputs} />
+        <CompactList title="验收标准" items={lab.acceptanceCriteria} />
+      </div>
+      <p className="mt-4 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-2 text-xs leading-5 text-[#87611B]">
+        课堂任务：{lab.trainingTask}
+      </p>
+    </article>
+  );
+}
+
+function AuthorizationChecklistCard({
+  checklist,
+}: {
+  checklist: ToolkitAuthorizationChecklist;
+}) {
+  const risk = parseRisk(checklist.riskLevel);
+  return (
+    <article className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+            riskTone[risk],
+          )}
+        >
+          {riskLabels[risk]}
+        </span>
+        <span className="rounded-full border border-[#EDE6DF] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+          采集前置门禁
+        </span>
+      </div>
+      <h4 className="text-sm font-semibold text-[#1D1D1F]">{checklist.title}</h4>
+      <div className="mt-4 grid gap-3">
+        <CompactList title="必查项" items={checklist.requiredChecks} />
+        <CompactList title="阻断条件" items={checklist.blockedConditions} warning />
+        <CompactList title="留存证据" items={checklist.evidenceRequired} />
+      </div>
+      <p className="mt-4 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs leading-5 text-[#5F5757]">
+        审批规则：{checklist.approvalRule}
+      </p>
+    </article>
+  );
+}
+
+function CompactList({
+  title,
+  items,
+  warning = false,
+}: {
+  title: string;
+  items: string[];
+  warning?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-[#EDE6DF] bg-white p-3">
+      <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">{title}</p>
+      <ul className="grid gap-1.5 text-xs leading-5 text-[#5F5757]">
+        {items.map((item) => (
+          <li className="flex gap-2" key={item}>
+            {warning ? (
+              <ShieldAlert size={14} className="mt-0.5 shrink-0 text-[#A04437]" aria-hidden="true" />
+            ) : (
+              <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#6B8E5A]" aria-hidden="true" />
+            )}
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function LabeledText({ label, value }: { label: string; value: string }) {
   return (
     <p className="leading-5">
@@ -1703,6 +1886,16 @@ function parseRisk(value: string): RiskLevel {
 
 function toolDisplayStars(tool: ToolItem, dynamicTool: ToolkitTool | undefined): string {
   return dynamicTool?.stars != null ? formatInteger(dynamicTool.stars) : tool.stars;
+}
+
+function formatCredibilityLevel(value: string): string {
+  if (value === "high") {
+    return "高可信";
+  }
+  if (value === "medium") {
+    return "中可信";
+  }
+  return "需复核";
 }
 
 function formatInteger(value: number): string {

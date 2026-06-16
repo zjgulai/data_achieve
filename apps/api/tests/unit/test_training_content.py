@@ -146,15 +146,23 @@ async def test_toolkit_overview_reads_curated_training(
     assert overview.metrics.intelligence_count == 14
     assert overview.metrics.evidence_count == 40
     assert overview.tools[0].stars is not None
+    assert overview.tools[0].source_credibility_score >= 60
+    assert overview.tools[0].source_credibility_level in {"high", "medium", "review"}
+    assert overview.tools[0].source_credibility_factors
     assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
     assert len(overview.lecture_playbooks) == 14
     assert len(overview.image_anchor_diagnostics) == 6
+    assert len(overview.browser_labs) == 5
+    assert len(overview.authorization_checklists) == 3
     assert any(
         diagnostic.source_title == "lissy93/web-check"
         for diagnostic in overview.image_anchor_diagnostics
     )
+    assert any(lab.id == "browser-fingerprint-risk-diagnostics" for lab in overview.browser_labs)
+    assert all(lab.acceptance_criteria for lab in overview.browser_labs)
+    assert all(checklist.blocked_conditions for checklist in overview.authorization_checklists)
     assert all(
         diagnostic.evidence_urls
         for diagnostic in overview.image_anchor_diagnostics
@@ -217,7 +225,13 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert len(body["learning_paths"]) == 5
     assert len(body["lecture_playbooks"]) == 14
     assert len(body["image_anchor_diagnostics"]) == 6
+    assert len(body["browser_labs"]) == 5
+    assert len(body["authorization_checklists"]) == 3
+    assert body["tools"][0]["source_credibility_score"] >= 60
+    assert body["tools"][0]["source_credibility_factors"]
     assert body["image_anchor_diagnostics"][0]["evidence_urls"]
+    assert body["browser_labs"][0]["playwright_checks"]
+    assert body["authorization_checklists"][0]["required_checks"]
     assert body["lecture_playbooks"][0]["hands_on_steps"]
     assert body["learning_paths"][0]["acceptance_criteria"]
     assert len(body["intelligence_items"]) == 14

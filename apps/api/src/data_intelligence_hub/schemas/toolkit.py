@@ -31,6 +31,9 @@ class ToolkitToolResponse(BaseModel):
     open_issues: int | None
     updated_at: datetime | None
     collected_at: datetime
+    source_credibility_score: int
+    source_credibility_level: str
+    source_credibility_factors: list[str]
 
 
 class ToolkitMethodResponse(BaseModel):
@@ -109,6 +112,28 @@ class ToolkitImageAnchorDiagnosticResponse(BaseModel):
     evidence_urls: list[str]
 
 
+class ToolkitBrowserLabResponse(BaseModel):
+    id: str
+    title: str
+    focus: str
+    risk_level: str
+    inspection_targets: list[str]
+    playwright_checks: list[str]
+    evidence_outputs: list[str]
+    training_task: str
+    acceptance_criteria: list[str]
+
+
+class ToolkitAuthorizationChecklistResponse(BaseModel):
+    id: str
+    title: str
+    risk_level: str
+    required_checks: list[str]
+    blocked_conditions: list[str]
+    evidence_required: list[str]
+    approval_rule: str
+
+
 class ToolkitOverviewResponse(BaseModel):
     dataset: str
     generated_at: datetime | None
@@ -116,6 +141,8 @@ class ToolkitOverviewResponse(BaseModel):
     learning_paths: list[ToolkitLearningPathResponse]
     lecture_playbooks: list[ToolkitLecturePlaybookResponse]
     image_anchor_diagnostics: list[ToolkitImageAnchorDiagnosticResponse]
+    browser_labs: list[ToolkitBrowserLabResponse]
+    authorization_checklists: list[ToolkitAuthorizationChecklistResponse]
     tools: list[ToolkitToolResponse]
     methods: list[ToolkitMethodResponse]
     intelligence_items: list[ToolkitIntelligenceResponse]
