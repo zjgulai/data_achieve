@@ -305,7 +305,15 @@ LEARNING_PATH_SPECS = (
         risk_level="medium",
         tool_keywords=("agent", "mcp", "browser-use", "openai", "firecrawl"),
         tool_categories=("ai_agent_collection", "agent_mcp"),
-        method_keywords=("agent", "mcp", "tool", "server"),
+        method_keywords=(
+            "agent",
+            "mcp",
+            "tool",
+            "server",
+            "github",
+            "cross-platform",
+            "compliance",
+        ),
         intelligence_domains=("agent",),
         intelligence_keywords=("agent", "mcp", "tool", "browser-use", "编排"),
         acceptance_criteria=(

@@ -155,6 +155,7 @@ async def test_toolkit_overview_reads_curated_training(
     assert path_by_id["github-api-baseline"].method_count > 0
     assert path_by_id["github-api-baseline"].evidence_count > 0
     assert path_by_id["agent-mcp-orchestration"].tool_count > 0
+    assert path_by_id["agent-mcp-orchestration"].method_count > 0
     assert path_by_id["platform-sop-governance"].method_count > 0
     assert path_by_id["platform-sop-governance"].risk_level == "high"
 
