@@ -33,6 +33,8 @@ import type {
   ToolkitTool,
 } from "@/types/toolkit";
 
+import { LecturePlaybookDetail } from "./lecture-playbook-detail";
+
 type CategoryKey =
   | "ai_extraction"
   | "browser_automation"
@@ -709,6 +711,16 @@ export function ToolkitWorkspace() {
     }
   }, [filteredLecturePlaybooks, selectedLectureId]);
 
+  useEffect(() => {
+    if (lecturePlaybooks.length === 0 || typeof window === "undefined") {
+      return;
+    }
+    const lectureId = new URL(window.location.href).searchParams.get("lecture");
+    if (lectureId && lecturePlaybooks.some((playbook) => playbook.id === lectureId)) {
+      setSelectedLectureId(lectureId);
+    }
+  }, [lecturePlaybooks]);
+
   async function copyCommands(id: string, commands: string[]) {
     setCopyError(null);
     try {
@@ -725,6 +737,16 @@ export function ToolkitWorkspace() {
     setCategoryFilter("all");
     setRiskFilter("all");
     setStageFilter("all");
+  }
+
+  function selectLecture(playbookId: string) {
+    setSelectedLectureId(playbookId);
+    if (typeof window === "undefined") {
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("lecture", playbookId);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
   }
 
   return (
@@ -1024,7 +1046,7 @@ export function ToolkitWorkspace() {
                         : "border-[#EDE6DF] bg-white hover:bg-[#FBF8F5]",
                     )}
                     key={playbook.id}
-                    onClick={() => setSelectedLectureId(playbook.id)}
+                    onClick={() => selectLecture(playbook.id)}
                     type="button"
                   >
                     <span className="flex min-w-0 items-start justify-between gap-3">
@@ -1051,7 +1073,11 @@ export function ToolkitWorkspace() {
 
         <div className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
           {selectedLecture ? (
-            <LecturePlaybookDetail playbook={selectedLecture} />
+            <LecturePlaybookDetail
+              detailHref={`/toolkit/playbooks/${selectedLecture.id}`}
+              playbook={selectedLecture}
+              snapshotLabel={`${formatDate(toolkitOverview?.metrics.lastCollectedAt)} 快照`}
+            />
           ) : (
             <p className="rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
               API 讲义卡加载后会显示在这里。
@@ -1383,96 +1409,6 @@ function CommandPanel({
       <pre className="max-h-56 overflow-x-auto whitespace-pre-wrap break-words text-xs leading-6 text-[#F7E5DC]">
         {commands.join("\n")}
       </pre>
-    </div>
-  );
-}
-
-function LecturePlaybookDetail({ playbook }: { playbook: ToolkitLecturePlaybook }) {
-  return (
-    <div className="min-w-0">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
-              {playbook.level}
-            </span>
-            <span className="rounded-full border border-[#F1D9A8] bg-[#FFF9E9] px-2.5 py-1 text-[11px] font-semibold text-[#87611B]">
-              {playbook.durationMinutes} 分钟
-            </span>
-            <span className="rounded-full border border-[#E6D3CE] bg-[#FFF8F6] px-2.5 py-1 text-[11px] font-semibold text-[#A24D61]">
-              {playbook.evidenceCount} 条证据
-            </span>
-          </div>
-          <h3 className="text-xl font-semibold leading-7 text-[#1D1D1F]">
-            {playbook.title}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-[#5F5757]">{playbook.claim}</p>
-          <p className="mt-3 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-xs leading-5 text-[#7A625A]">
-            适用人群：{playbook.audience}
-          </p>
-        </div>
-        <a
-          className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-[#EDE6DF] bg-white px-3 text-sm font-semibold text-[#7A625A] transition hover:border-[#C25B6E] hover:text-[#A24D61]"
-          href={`/intelligence/${playbook.intelligenceId}`}
-        >
-          打开情报
-        </a>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <PlaybookList title="讲解顺序" items={playbook.teachingSequence} />
-        <PlaybookList title="实操步骤" items={playbook.handsOnSteps} />
-        <PlaybookList title="验收步骤" items={playbook.verificationSteps} />
-        <PlaybookList title="风险边界" items={playbook.riskBoundaries} warning />
-      </div>
-
-      <div className="mt-5 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
-        <p className="text-xs font-semibold uppercase text-[#8C6824]">课堂练习</p>
-        <p className="mt-2 text-sm leading-6 text-[#87611B]">{playbook.classroomExercise}</p>
-      </div>
-
-      <div className="mt-5 border-t border-[#EDE6DF] pt-4">
-        <p className="mb-2 text-xs font-semibold uppercase text-[#B47767]">讲义证据</p>
-        <div className="flex flex-wrap gap-2">
-          {playbook.evidenceUrls.slice(0, 5).map((url, index) => (
-            <SourceAnchor
-              key={url}
-              source={{ label: `证据 ${index + 1}`, url }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlaybookList({
-  title,
-  items,
-  warning = false,
-}: {
-  title: string;
-  items: string[];
-  warning?: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-[#EDE6DF] bg-[#FFFDFC] p-4">
-      <p className="mb-2 text-sm font-semibold text-[#1D1D1F]">{title}</p>
-      <ol className="grid gap-2 text-sm leading-6 text-[#5F5757]">
-        {items.map((item, index) => (
-          <li className="flex gap-2" key={item}>
-            <span
-              className={cn(
-                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
-                warning ? "bg-[#FFF5F2] text-[#A04437]" : "bg-[#F5FBF3] text-[#44743E]",
-              )}
-            >
-              {index + 1}
-            </span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }
