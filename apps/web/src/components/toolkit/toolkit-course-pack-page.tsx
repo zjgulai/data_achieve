@@ -156,7 +156,7 @@ export function ToolkitCoursePackPage() {
               数据采集工具与平台方法培训课程包
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F5757] print:text-[13px] print:text-black">
-              这份课程包把 14 张讲义按培训交付形态串起来，覆盖 AI 原生采集工具、浏览器自动化、Agent/MCP、GitHub API、平台方法和合规边界。
+              这份课程包把 {playbooks.length} 张讲义按培训交付形态串起来，覆盖 AI 原生采集工具、浏览器自动化、Agent/MCP、GitHub API、平台方法和合规边界。
             </p>
           </div>
           <div className="grid min-w-[260px] grid-cols-2 gap-2 text-sm print:grid-cols-4">
