@@ -659,7 +659,7 @@ export function ReportsWorkspace() {
               </span>
               <div>
                 <h2 className="text-base font-semibold text-[#1D1D1F]">
-                  自动分发
+                  订阅规则
                 </h2>
                 <p className="mt-1 text-sm text-[#86868B]">
                   配置每日生成后的触达时间和渠道偏好

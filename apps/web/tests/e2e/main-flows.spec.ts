@@ -420,8 +420,9 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
+    await expect(page.getByText("自动分发", { exact: true }).first()).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "自动分发", exact: true }),
+      page.getByRole("heading", { name: "订阅规则", exact: true }),
     ).toBeVisible();
     await expect(page.getByText("邮件通道诊断")).toBeVisible();
     if (!realApiMode) {
