@@ -96,6 +96,27 @@
       background: #f3e8e2;
       text-decoration: none;
     }
+    .return-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      border: 1px solid #ead1ca;
+      border-radius: 10px;
+      background: #fff8f5;
+      padding: 9px 11px;
+      color: var(--brand-dark);
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .return-link:hover {
+      background: #f3e8e2;
+      text-decoration: none;
+    }
+    .button-row .return-link {
+      width: auto;
+    }
     .hero {
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -356,7 +377,7 @@
     }
     @media print {
       body { background: white; }
-      aside, button.print { display: none; }
+      aside, .return-link, button.print { display: none; }
       .layout { display: block; }
       main { padding: 0; }
       .section, .hero, .module, .card {
@@ -377,6 +398,7 @@
           <span>网站使用 SOP Playbook</span>
         </div>
       </div>
+      <a class="return-link" href="/toolkit" data-return-link>← 返回上一层</a>
       <nav>
         <h3>开始</h3>
         <a href="#overview">网站定位</a>
@@ -421,6 +443,7 @@
           <span class="pill">适用对象：讲师、学员、采集执行者、管理员</span>
         </div>
         <div class="button-row">
+          <a class="return-link" href="/toolkit" data-return-link>← 返回上一层</a>
           <button class="print" type="button" onclick="window.print()">打印 / 导出 PDF</button>
         </div>
       </section>
@@ -1059,5 +1082,16 @@
       </footer>
     </main>
   </div>
+  <script>
+    document.querySelectorAll("[data-return-link]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const referrer = document.referrer ? new URL(document.referrer) : null;
+        if (referrer && referrer.origin === window.location.origin && window.history.length > 1) {
+          event.preventDefault();
+          window.history.back();
+        }
+      });
+    });
+  </script>
 </body>
 </html>
