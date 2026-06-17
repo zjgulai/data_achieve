@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Achieve 数据采集工作台使用 SOP Playbook</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #221917;
+      --muted: #6f625d;
+      --soft: #f7f1ec;
+      --paper: #fffdfb;
+      --line: #e7d8cf;
+      --brand: #c25b6e;
+      --brand-dark: #9f4557;
+      --green: #2f8f5b;
+      --amber: #a36a00;
+      --red: #b43d35;
+      --blue: #326fa8;
+      --shadow: 0 18px 52px rgba(75, 44, 35, 0.08);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: #fbf7f3;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      line-height: 1.7;
+    }
+    a { color: var(--brand-dark); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff8f5;
+      padding: 0.1rem 0.35rem;
+      color: #88404f;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.92em;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid var(--line);
+      background: #fffaf7;
+      padding: 24px 18px;
+    }
+    main {
+      min-width: 0;
+      padding: 28px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--brand);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+    }
+    .brand strong { display: block; font-size: 15px; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; }
+    nav h3 {
+      margin: 18px 0 8px;
+      color: #a47b70;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    nav a {
+      display: block;
+      border-radius: 8px;
+      padding: 7px 9px;
+      color: #4f3b35;
+      font-size: 14px;
+    }
+    nav a:hover {
+      background: #f3e8e2;
+      text-decoration: none;
+    }
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background:
+        linear-gradient(135deg, rgba(194, 91, 110, 0.13), rgba(255, 255, 255, 0.4)),
+        var(--paper);
+      box-shadow: var(--shadow);
+      padding: 34px;
+      overflow: hidden;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #ead1ca;
+      border-radius: 999px;
+      background: #fff8f5;
+      padding: 5px 10px;
+      color: var(--brand-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    h1 {
+      margin: 16px 0 10px;
+      max-width: 900px;
+      font-size: 38px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 25px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+    h4 {
+      margin: 14px 0 6px;
+      font-size: 15px;
+    }
+    p { margin: 0 0 10px; }
+    .lead {
+      max-width: 960px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: white;
+      padding: 6px 10px;
+      color: #5f504b;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .section {
+      margin-top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .section > p {
+      color: var(--muted);
+      max-width: 960px;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: white;
+      padding: 16px;
+    }
+    .card.soft { background: #fff8f5; }
+    .card.green { border-color: #cde8d7; background: #f3fbf6; }
+    .card.amber { border-color: #efd9a6; background: #fff8e8; }
+    .card.red { border-color: #efc6c0; background: #fff4f1; }
+    .kicker {
+      color: #a47b70;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .path {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 0;
+    }
+    .path span {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff8f5;
+      padding: 7px 9px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .path span::after {
+      content: " →";
+      color: var(--brand);
+    }
+    .path span:last-child::after { content: ""; }
+    ol, ul {
+      margin: 8px 0 0;
+      padding-left: 1.25rem;
+    }
+    li { margin: 5px 0; }
+    .module {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: white;
+      padding: 20px;
+      margin-top: 14px;
+    }
+    .module-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .module-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .badge {
+      display: inline-flex;
+      border-radius: 999px;
+      background: #f2e6e0;
+      padding: 4px 8px;
+      color: #7a5148;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .url {
+      color: var(--brand-dark);
+      font-size: 13px;
+      font-weight: 800;
+      word-break: break-all;
+    }
+    .module-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+      gap: 14px;
+    }
+    .steps {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+    }
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      margin: 10px 0;
+      padding-left: 36px;
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: var(--brand);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .checklist li::marker { color: var(--green); }
+    .warning li::marker { color: var(--red); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th {
+      background: #f7eee8;
+      color: #5d4038;
+    }
+    .callout {
+      border-left: 4px solid var(--brand);
+      border-radius: 10px;
+      background: #fff8f5;
+      padding: 12px 14px;
+      color: #5b413b;
+    }
+    .callout.green { border-left-color: var(--green); background: #f3fbf6; }
+    .callout.amber { border-left-color: var(--amber); background: #fff8e8; }
+    .callout.red { border-left-color: var(--red); background: #fff4f1; }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    button.print {
+      border: 0;
+      border-radius: 10px;
+      background: var(--brand);
+      color: white;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 800;
+    }
+    .small { color: var(--muted); font-size: 13px; }
+    footer {
+      margin: 26px 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media (max-width: 1080px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; }
+      main { padding: 18px; }
+      .grid.two, .grid.three, .grid.four, .module-body { grid-template-columns: 1fr; }
+      .module-head { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: white; }
+      aside, button.print { display: none; }
+      .layout { display: block; }
+      main { padding: 0; }
+      .section, .hero, .module, .card {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+      a { color: black; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside>
+      <div class="brand">
+        <div class="brand-mark">D</div>
+        <div>
+          <strong>Data Achieve</strong>
+          <span>网站使用 SOP Playbook</span>
+        </div>
+      </div>
+      <nav>
+        <h3>开始</h3>
+        <a href="#overview">网站定位</a>
+        <a href="#quickstart">快速上手</a>
+        <a href="#closed-loop">业务闭环</a>
+        <h3>模块</h3>
+        <a href="#module-login">登录</a>
+        <a href="#module-dashboard">全局仪表盘</a>
+        <a href="#module-toolkit">采集工具库</a>
+        <a href="#module-course-pack">培训课程包</a>
+        <a href="#module-projects">项目</a>
+        <a href="#module-sources">数据源</a>
+        <a href="#module-tasks">采集任务</a>
+        <a href="#module-raw-records">原始数据</a>
+        <a href="#module-entities">实体库</a>
+        <a href="#module-signals">信号中心</a>
+        <a href="#module-intelligence">情报中心</a>
+        <a href="#module-reports">报告中心</a>
+        <a href="#module-alerts">预警中心</a>
+        <a href="#module-notifications">站内通知</a>
+        <a href="#module-domain">业务域页面</a>
+        <h3>培训</h3>
+        <a href="#training-routes">培训路线</a>
+        <a href="#tool-taxonomy">工具分类</a>
+        <a href="#risk">合规边界</a>
+        <a href="#troubleshooting">故障排查</a>
+        <a href="#checklists">检查清单</a>
+      </nav>
+    </aside>
+
+    <main>
+      <section class="hero" id="overview">
+        <span class="eyebrow">Stable Playbook · 2026-06-17</span>
+        <h1>Data Achieve 数据采集工作台使用操作手册</h1>
+        <p class="lead">
+          这份手册面向培训和日常使用。它把网站每个页面讲成一套清楚的操作 SOP：
+          先看工具和方法，再建项目、接数据源、跑任务、看原始证据、产出情报，最后生成报告、预警和通知。
+        </p>
+        <div class="meta-row">
+          <span class="pill">生产站点：<a href="https://scrapy.lute-tlz-dddd.top">scrapy.lute-tlz-dddd.top</a></span>
+          <span class="pill">核心目标：数据采集培训 + 情报闭环</span>
+          <span class="pill">适用对象：讲师、学员、采集执行者、管理员</span>
+        </div>
+        <div class="button-row">
+          <button class="print" type="button" onclick="window.print()">打印 / 导出 PDF</button>
+        </div>
+      </section>
+
+      <section class="section" id="quickstart">
+        <h2>快速上手</h2>
+        <p>不要把这个网站当成普通内容站。它的正确打开方式是：先确认数据链路是否有内容，再围绕一个采集主题完成从工具学习到报告交付的闭环。</p>
+        <div class="grid three">
+          <div class="card">
+            <div class="kicker">Step 1</div>
+            <h3>登录系统</h3>
+            <p>进入 <code>/login</code>，使用管理员或培训账号登录。账号由管理员提供，不在手册中写入密码。</p>
+          </div>
+          <div class="card">
+            <div class="kicker">Step 2</div>
+            <h3>先看仪表盘</h3>
+            <p>进入 <code>/dashboard</code>，确认任务、数据源、信号、情报、报告都有数据。这里是判断系统是否正常的第一站。</p>
+          </div>
+          <div class="card">
+            <div class="kicker">Step 3</div>
+            <h3>按链路演示</h3>
+            <p>按“工具库 → 项目 → 数据源 → 任务 → 原始数据 → 情报 → 报告”的顺序演示，学员最容易理解。</p>
+          </div>
+        </div>
+        <div class="callout amber">
+          <strong>培训提醒：</strong>如果某个页面为空，不要直接跳过。先去项目、数据源、任务三个页面确认是否有启用的数据链路。
+        </div>
+      </section>
+
+      <section class="section" id="closed-loop">
+        <h2>业务闭环总图</h2>
+        <p>网站的价值不是单个页面，而是这些页面连起来形成一条可追溯的数据采集工作流。</p>
+        <div class="grid two">
+          <div class="card soft">
+            <h3>工具学习闭环</h3>
+            <div class="path">
+              <span>采集工具库</span><span>课程包</span><span>讲义</span><span>授权预检</span><span>方法卡</span>
+            </div>
+            <p class="small">用来培训“该选什么工具、怎么安装、怎么验收、哪里不能做”。</p>
+          </div>
+          <div class="card soft">
+            <h3>采集执行闭环</h3>
+            <div class="path">
+              <span>项目</span><span>数据源</span><span>采集任务</span><span>原始数据</span><span>实体快照</span>
+            </div>
+            <p class="small">用来把一个采集主题变成可以持续运行的数据链路。</p>
+          </div>
+          <div class="card soft">
+            <h3>情报生产闭环</h3>
+            <div class="path">
+              <span>原始数据</span><span>实体库</span><span>信号中心</span><span>情报中心</span><span>情报详情</span>
+            </div>
+            <p class="small">用来解释“为什么这条变化值得关注”，并保留证据。</p>
+          </div>
+          <div class="card soft">
+            <h3>交付闭环</h3>
+            <div class="path">
+              <span>情报</span><span>报告中心</span><span>预警中心</span><span>站内通知</span><span>复盘</span>
+            </div>
+            <p class="small">用来把结论送到人手里，并留下阅读、发送和预警记录。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="modules">
+        <h2>分模块 SOP</h2>
+        <p>下面每个模块都按同一套方式说明：这个页面解决什么问题、怎么操作、验收什么结果。</p>
+
+        <article class="module" id="module-login">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>登录</h3><span class="badge">账号入口</span></div>
+              <p>登录后才能看到真实项目、任务、报告和通知。没有登录时不要判断页面是否为空。</p>
+            </div>
+            <div class="url">/login</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>打开登录页。</li>
+                <li>输入管理员或培训账号邮箱。</li>
+                <li>输入密码并提交。</li>
+                <li>登录成功后进入仪表盘。</li>
+              </ol>
+            </div>
+            <div class="card green">
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>页面跳转到 <code>/dashboard</code>。</li>
+                <li>左侧导航显示业务域、全局中心、工程中心。</li>
+                <li>仪表盘可以看到采集、情报或报告数据。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-dashboard">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>全局仪表盘</h3><span class="badge">总览页</span></div>
+              <p>用于快速判断整套系统是否稳定：有没有任务、有没有新鲜数据、有没有情报和报告。</p>
+            </div>
+            <div class="url">/dashboard</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>查看顶部摘要，确认项目、数据源、情报、报告不是 0。</li>
+                <li>查看 Top Intelligence，优先点击分数高、证据多的情报。</li>
+                <li>查看任务健康，定位失败任务和过期任务。</li>
+                <li>查看业务域拆解，判断当前数据覆盖哪些训练方向。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>培训讲法</h4>
+              <p>告诉学员：仪表盘不是结论本身，而是“今天先看哪里”的导航盘。看到异常后，要继续进入任务、信号或情报详情。</p>
+              <div class="callout green">看板通过：有启用任务、有数据源、有情报、有最近采集记录。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-toolkit">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>采集工具库</h3><span class="badge">培训主入口</span></div>
+              <p>集中展示 AI 采集工具、Agent 浏览器、爬虫框架、RPA、平台采集方法和风险边界。</p>
+            </div>
+            <div class="url">/toolkit</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>先看“训练源、GitHub 工具、方法卡、情报证据”四个指标。</li>
+                <li>使用搜索框查工具名，例如 Firecrawl、Crawl4AI、Browser Use、Playwright、影刀 RPA。</li>
+                <li>按分类、风险、阶段筛选工具。</li>
+                <li>点击工具卡，阅读适用场景、安装 SOP、验收命令、输出形态和边界限制。</li>
+                <li>使用授权 URL 预检向导，只检查自有、授权或明确允许分析的公开 URL。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>重点区域</h4>
+              <ul>
+                <li>工具雷达：看工具价值和适用场景。</li>
+                <li>授权 URL 预检：看 robots、headers、DOM、network 和授权门禁。</li>
+                <li>附件寻源诊断：用图片线索回到真实信息源。</li>
+                <li>浏览器解析实验室：学习页面、网络、存储和指纹面。</li>
+                <li>授权采集检查清单：判断能不能采、采什么、留什么证据。</li>
+              </ul>
+              <div class="callout red">禁止把反检测工具当作绕过风控教程。这里只用于浏览器解析、风险识别和合规边界训练。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-course-pack">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>培训课程包</h3><span class="badge">讲师材料</span></div>
+              <p>把工具雷达、平台方法、风险边界和课堂讲义组织成一套可交付课程。</p>
+            </div>
+            <div class="url">/toolkit/course-pack</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>打开课程目录，确认当前课程包含工具、方法、边界和实操。</li>
+                <li>选择一张讲义，进入讲义详情。</li>
+                <li>按讲义中的讲解顺序、实操步骤、验收步骤开展培训。</li>
+                <li>需要离线交付时，用浏览器打印导出 PDF。</li>
+              </ol>
+            </div>
+            <div class="card amber">
+              <h4>适合场景</h4>
+              <ul>
+                <li>培训开场：先讲工具分类。</li>
+                <li>课堂实操：按讲义完成安装和验收。</li>
+                <li>课后复盘：让学员解释工具边界和证据链。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-projects">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>项目</h3><span class="badge">组织边界</span></div>
+              <p>项目定义了要长期跟踪的主题，例如开源工具雷达、竞品网站采集、平台方法库。</p>
+            </div>
+            <div class="url">/projects</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>按业务域筛选项目：开源、电商、社媒、竞品、Agent、平台、合规。</li>
+                <li>查看项目下的数据源数量和情报数量。</li>
+                <li>需要新增主题时点击 New Project。</li>
+                <li>填写项目名称、说明和业务域。</li>
+                <li>保存后继续去数据源页面接入来源。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>项目名称清楚表达采集主题。</li>
+                <li>业务域选择正确。</li>
+                <li>项目能关联数据源、任务、信号和情报。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-sources">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>数据源</h3><span class="badge">入口配置</span></div>
+              <p>数据源记录不同平台和采集方法的接入配置。没有数据源，就不会有任务和原始数据。</p>
+            </div>
+            <div class="url">/sources</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>按项目或业务域筛选数据源。</li>
+                <li>查看数据源类型，例如 GitHub repo、GitHub topic、Generic web、Manual JSON。</li>
+                <li>检查 Collector 配置和授权说明。</li>
+                <li>需要修改时编辑数据源配置。</li>
+                <li>修改后重新测试或等待任务调度。</li>
+              </ol>
+            </div>
+            <div class="card amber">
+              <h4>常见误区</h4>
+              <ul class="warning">
+                <li>只添加 URL，不说明授权边界。</li>
+                <li>字段配置不稳定，导致后续实体识别失败。</li>
+                <li>把临时实验源混入正式项目。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-tasks">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>采集任务</h3><span class="badge">运行控制台</span></div>
+              <p>采集任务展示每个数据源的调度状态、最近运行、失败原因和新鲜度。</p>
+            </div>
+            <div class="url">/tasks</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>先看任务状态：新鲜、需刷新、失败、已暂停。</li>
+                <li>按业务域或关键字筛选任务。</li>
+                <li>点击任务查看运行历史、失败诊断和最新记录数量。</li>
+                <li>如果任务失败，先看错误信息，再回到数据源检查配置。</li>
+                <li>如果任务过期，确认调度器是否开启、数据源是否启用。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>培训讲法</h4>
+              <p>任务页负责回答“数据为什么没进来”。它不是情报页，而是运行排障页。</p>
+              <div class="callout green">好任务的标准：启用、最近运行成功、有 records 和 entities。</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-raw-records">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>原始数据</h3><span class="badge">证据底座</span></div>
+              <p>保留采集返回的事实、来源 URL、内容哈希和时间戳。后续实体、信号和报告都要能追到这里。</p>
+            </div>
+            <div class="url">/raw-records</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>按记录类型筛选，例如 GitHub Repo、GitHub Topic、Generic Web、Manual JSON。</li>
+                <li>点击记录查看来源、字段摘要、采集时间和校验信息。</li>
+                <li>确认记录能解释后续实体和信号。</li>
+                <li>培训时选择一条记录，讲清“这是系统看到的第一手事实”。</li>
+              </ol>
+            </div>
+            <div class="card red">
+              <h4>注意</h4>
+              <p>不要把原始数据直接当最终结论。它只是证据，需要经过实体标准化、信号检测和情报判断。</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-entities">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>实体库</h3><span class="badge">对象管理</span></div>
+              <p>实体是持续追踪的对象，例如一个 GitHub 仓库、一个品牌、一个商品、一个网站。</p>
+            </div>
+            <div class="url">/entities</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>按业务域、类型或外部 ID 搜索实体。</li>
+                <li>点击实体查看快照时间线。</li>
+                <li>比较不同时间点的指标变化。</li>
+                <li>查看关联信号，判断哪些变化已经进入情报层。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>实体能对应到明确外部对象。</li>
+                <li>实体有最新快照。</li>
+                <li>快照能连接到原始数据和信号。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-signals">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>信号中心</h3><span class="badge">变化检测</span></div>
+              <p>信号由快照变化、指标阈值或规则匹配触发，用来筛选值得进入情报层的变化。</p>
+            </div>
+            <div class="url">/signals</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>按信号类型、严重度、实体关键字筛选。</li>
+                <li>点击信号查看规则元数据、快照绑定和检测值。</li>
+                <li>重点看 previous/current、delta、confidence、severity。</li>
+                <li>确认它是否已经生成情报或预警。</li>
+              </ol>
+            </div>
+            <div class="card amber">
+              <h4>培训讲法</h4>
+              <p>信号页讲的是“变化发生了”。情报页讲的是“这个变化意味着什么”。</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-intelligence">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>情报中心与情报详情</h3><span class="badge">判断结论</span></div>
+              <p>情报把信号转化为可阅读的判断，并保留证据数量、业务域、状态和可追溯来源。</p>
+            </div>
+            <div class="url">/intelligence · /intelligence/[id]</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>在情报中心按类型、状态、关键词筛选。</li>
+                <li>优先打开分数高、证据数量多的情报。</li>
+                <li>进入详情后查看结论摘要、证据链、快照对比和来源信息。</li>
+                <li>根据处理结果修改状态，例如 reviewed、following、dismissed。</li>
+                <li>提交反馈，帮助后续培训复盘。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>每条重要情报都有证据。</li>
+                <li>能追到信号、实体、数据源和原始事实。</li>
+                <li>状态能反映处理进度。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-reports">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>报告中心与报告详情</h3><span class="badge">交付材料</span></div>
+              <p>报告中心把情报、证据引用和派发状态整理成可培训、可分发、可审计的日报和周报。</p>
+            </div>
+            <div class="url">/reports · /reports/[id]</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>在报告生成区选择生成项目和生成周期。</li>
+                <li>点击“生成日报”。</li>
+                <li>在报告队列按项目、状态、关键字筛选报告。</li>
+                <li>打开报告详情，核对正文分段、证据引用和派发状态。</li>
+                <li>需要培训材料时，下载 Markdown 或复制链接。</li>
+                <li>在自动分发区配置订阅规则、发送时间、站内通知和邮件。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>“生成项目”字段可见。</li>
+                <li>报告队列有日报或培训报告。</li>
+                <li>报告详情能看到证据引用。</li>
+                <li>自动分发只保留清楚的一套订阅规则说明。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-alerts">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>预警中心</h3><span class="badge">主动提醒</span></div>
+              <p>预警中心展示信号规则、触发事件和交付状态，用于追踪哪些变化需要主动提醒。</p>
+            </div>
+            <div class="url">/alerts</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>查看现有规则和预警事件流。</li>
+                <li>创建规则时填写规则名称、Signal Type、Channel、Field、Op、Value。</li>
+                <li>培训时可套用培训模板，演示高风险信号如何触发通知。</li>
+                <li>查看事件状态、触发信号和交付事实。</li>
+              </ol>
+            </div>
+            <div class="card green">
+              <h4>验收标准</h4>
+              <ul class="checklist">
+                <li>页面展示规则配置和事件流。</li>
+                <li>事件说明面向业务，不暴露技术 ID 噪音。</li>
+                <li>能说明预警来自哪类信号。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-notifications">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>站内通知</h3><span class="badge">消息收件箱</span></div>
+              <p>站内通知收敛报告派发、预警触达和训练工作台状态，帮助确认系统消息是否送达。</p>
+            </div>
+            <div class="url">/notifications</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>用 All / Unread 查看全部或未读消息。</li>
+                <li>按消息类型或关键词筛选。</li>
+                <li>打开通知查看关联对象。</li>
+                <li>处理完后标记已读，或批量 Read All。</li>
+                <li>检查偏好设置，确认报告和预警通知是否开启。</li>
+              </ol>
+            </div>
+            <div class="card amber">
+              <h4>使用建议</h4>
+              <p>每天培训或运营开始前先清一遍通知，确认昨天的报告、预警和任务状态是否已送达。</p>
+            </div>
+          </div>
+        </article>
+
+        <article class="module" id="module-domain">
+          <div class="module-head">
+            <div>
+              <div class="module-title"><h3>业务域页面</h3><span class="badge">主题入口</span></div>
+              <p>业务域页面把不同采集场景聚合起来，适合培训时按主题讲解。</p>
+            </div>
+            <div class="url">/domain/osint · /domain/ecommerce · /domain/social · /domain/competitor · /domain/agent · /domain/platform · /domain/governance</div>
+          </div>
+          <div class="module-body">
+            <div>
+              <h4>标准操作</h4>
+              <ol class="steps">
+                <li>选择一个业务域，例如开源雷达或 Agent 生态。</li>
+                <li>查看该域下的项目、数据源、信号和报告入口。</li>
+                <li>用该页面串起一套完整案例。</li>
+                <li>回到工具库补充该业务域适合使用的采集工具。</li>
+              </ol>
+            </div>
+            <div>
+              <h4>七个业务域</h4>
+              <ul>
+                <li>开源雷达：GitHub、开源工具、社区趋势。</li>
+                <li>电商风向：商品、店铺、价格、评价。</li>
+                <li>社媒脉搏：公开话题、传播线索、内容趋势。</li>
+                <li>竞品守望：官网、产品页、定价、发布节奏。</li>
+                <li>Agent 生态：AI Agent、Skill、MCP、浏览器工具。</li>
+                <li>平台采集：不同平台的数据接入方法。</li>
+                <li>合规边界：授权、禁止项、证据留存。</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="section" id="training-routes">
+        <h2>培训路线</h2>
+        <div class="grid three">
+          <div class="card">
+            <h3>30 分钟演示</h3>
+            <ol>
+              <li>登录并打开仪表盘。</li>
+              <li>展示采集工具库和课程包。</li>
+              <li>打开一个项目和数据源。</li>
+              <li>查看任务运行状态。</li>
+              <li>打开一条情报和报告。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>60 分钟实操</h3>
+            <ol>
+              <li>讲解工具分类和授权边界。</li>
+              <li>学员选择一个采集主题。</li>
+              <li>创建项目并查看数据源。</li>
+              <li>运行或观察采集任务。</li>
+              <li>从原始数据追到情报和报告。</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>半天工作坊</h3>
+            <ol>
+              <li>先讲数据采集方法论。</li>
+              <li>分组选择业务域。</li>
+              <li>完成工具选择、URL 预检、项目配置。</li>
+              <li>解释证据链、信号和情报。</li>
+              <li>每组提交一份报告并复盘风险边界。</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="tool-taxonomy">
+        <h2>数据采集工具分类</h2>
+        <p>培训时不要只背工具名。先判断场景，再选工具。</p>
+        <table>
+          <thead>
+            <tr><th>类别</th><th>适合场景</th><th>网站里怎么看</th><th>边界</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>AI 原生采集</td><td>把网页转成 Markdown、JSON、结构化信息。</td><td>工具库搜索 Firecrawl、Crawl4AI、ScrapeGraph AI、AgentQL。</td><td>先确认授权和字段契约。</td></tr>
+            <tr><td>浏览器自动化</td><td>需要真实浏览器执行 JS、点击、滚动、截图。</td><td>工具库查看 Playwright、Puppeteer、Browser Use、Stagehand。</td><td>不要绕过登录墙、验证码和风控。</td></tr>
+            <tr><td>Agent 浏览器</td><td>让 AI 执行网页任务、拆解流程、辅助调研。</td><td>工具库查看 Nanobrowser、Browser Use、Skyvern 等。</td><td>必须限制任务范围和数据输出。</td></tr>
+            <tr><td>RPA / no-code</td><td>业务人员录制流程、处理重复网页操作。</td><td>工具库查看影刀 RPA、Power Automate 等类别。</td><td>适合稳定流程，不适合复杂反复变化页面。</td></tr>
+            <tr><td>专业爬虫框架</td><td>长期生产采集、队列、重试、导出。</td><td>工具库查看 Scrapy、Colly、Katana、Heritrix。</td><td>需要工程维护和合规审查。</td></tr>
+            <tr><td>网站侦察与预检</td><td>采集前看 DNS、技术栈、robots、安全声明、页面结构。</td><td>工具库查看 Web-Check、授权 URL 预检、浏览器实验室。</td><td>只做公开信息诊断，不做攻击。</td></tr>
+            <tr><td>MCP / Agent 接入</td><td>把数据源或工具接到 AI 助手和 Agent 工作流。</td><td>工具库查看 MCP、Agent skill、工具标准化内容。</td><td>注意凭据、权限和审计日志。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="risk">
+        <h2>合规与风险边界</h2>
+        <div class="grid two">
+          <div class="card green">
+            <h3>允许讲</h3>
+            <ul class="checklist">
+              <li>公开页面的信息结构分析。</li>
+              <li>自有或客户授权网站的数据采集。</li>
+              <li>robots、sitemap、security.txt、headers、DOM、network 的预检。</li>
+              <li>工具安装、字段映射、数据质量验收。</li>
+              <li>证据链留存和报告复盘。</li>
+            </ul>
+          </div>
+          <div class="card red">
+            <h3>不允许讲成操作步骤</h3>
+            <ul class="warning">
+              <li>绕过 Cloudflare、DataDome、Kasada、验证码、登录墙。</li>
+              <li>规避平台风控、限流和访问控制。</li>
+              <li>采集未授权的个人敏感信息。</li>
+              <li>隐藏身份进行滥用式抓取。</li>
+              <li>把反检测工具包装成通用突破方案。</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="troubleshooting">
+        <h2>故障排查</h2>
+        <table>
+          <thead>
+            <tr><th>现象</th><th>先检查</th><th>下一步</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>登录失败</td><td>账号、密码、网络、Cookie。</td><td>联系管理员重置账号，不在群里公开密码。</td></tr>
+            <tr><td>页面看起来为空</td><td>是否已登录；项目、数据源、任务是否有数据。</td><td>进入仪表盘看全局指标，再去任务页查运行状态。</td></tr>
+            <tr><td>任务不运行</td><td>数据源是否启用；任务是否暂停；最近错误。</td><td>修数据源配置，或检查调度器状态。</td></tr>
+            <tr><td>没有原始数据</td><td>任务是否有成功运行；数据源类型是否正确。</td><td>从任务详情回溯到数据源。</td></tr>
+            <tr><td>没有情报</td><td>是否有实体和信号；信号严重度是否达到规则。</td><td>检查信号中心，再看情报生成逻辑。</td></tr>
+            <tr><td>报告未生成</td><td>报告中心生成项目、周期、报告队列状态。</td><td>手动生成日报，再检查报告详情。</td></tr>
+            <tr><td>邮件未发送</td><td>报告中心邮件通道诊断和订阅规则。</td><td>先确认站内通知是否送达，再查 SMTP 配置。</td></tr>
+            <tr><td>预警没有触发</td><td>规则条件、Signal Type、Field、Op、Value。</td><td>用培训模板测试一条高风险信号。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section" id="checklists">
+        <h2>培训前检查清单</h2>
+        <div class="grid two">
+          <div class="card">
+            <h3>讲师开课前</h3>
+            <ul class="checklist">
+              <li>能登录生产站点。</li>
+              <li>仪表盘有数据。</li>
+              <li>采集工具库有工具、方法、证据和讲义。</li>
+              <li>项目、数据源、任务、原始数据都能打开。</li>
+              <li>报告中心能看到报告队列。</li>
+              <li>预警中心和通知中心有可演示数据。</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>学员完成标准</h3>
+            <ul class="checklist">
+              <li>能解释一个采集工具适合什么场景。</li>
+              <li>能说清一个 URL 采集前要检查什么。</li>
+              <li>能从项目追到数据源、任务、原始数据。</li>
+              <li>能从原始数据追到实体、信号、情报。</li>
+              <li>能生成或阅读一份报告。</li>
+              <li>能指出至少三条合规边界。</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout green">
+          <strong>最终判断：</strong>如果学员能用自己的话讲清“工具选择 → 授权预检 → 数据入库 → 证据追溯 → 情报报告”，这次培训就是闭环的。
+        </div>
+      </section>
+
+      <footer>
+        Data Achieve Playbook · docs/workflows/workflow-site-user-playbook-stable.html · 由当前产品形态和生产验收结果整理
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

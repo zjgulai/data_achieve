@@ -2,6 +2,7 @@ import {
   Activity,
   Bell,
   Bot,
+  BookOpenCheck,
   Boxes,
   ChartNoAxesCombined,
   Database,
@@ -45,6 +46,7 @@ const scopeItems = [
 const generalItems = [
   { href: route("/dashboard"), label: "全局仪表盘", icon: Gauge },
   { href: route("/toolkit"), label: "采集工具库", icon: Wrench },
+  { href: route("/playbooks/site-user-playbook.html"), label: "使用手册", icon: BookOpenCheck },
   { href: route("/projects"), label: "项目", icon: FolderKanban },
   { href: route("/signals"), label: "信号中心", icon: Activity },
   { href: route("/intelligence"), label: "情报中心", icon: ChartNoAxesCombined },
