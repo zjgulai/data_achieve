@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 USE_DOCKER="${SCRAPY_TRAINING_USE_DOCKER:-0}"
 ENV_FILE="${ENV_FILE:-../.env.production}"
 COMPOSE_FILE="${COMPOSE_FILE:-configs/deploy/scrapy/docker-compose.yml}"
-CURATION_PATH="${SCRAPY_TRAINING_CURATION_PATH:-tmp/outputs/training-content-curation-20260615.json}"
-SNAPSHOT_PATH="${SCRAPY_TRAINING_SNAPSHOT_PATH:-tmp/outputs/training-content-snapshot-20260615.json}"
+CURATION_PATH="${SCRAPY_TRAINING_CURATION_PATH:-tmp/outputs/training-content-curation-20260617.json}"
+SNAPSHOT_PATH="${SCRAPY_TRAINING_SNAPSHOT_PATH:-tmp/outputs/training-content-snapshot-20260617.json}"
 
 resolve_path() {
   case "$1" in

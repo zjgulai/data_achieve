@@ -5,7 +5,7 @@ module: operations
 topic: training-source-catalog
 status: stable
 created: 2026-06-15
-updated: 2026-06-15
+updated: 2026-06-17
 owner: self
 source: human+ai
 ---
@@ -32,11 +32,11 @@ source: human+ai
 | 类型 | 数量 | 用途 |
 |---|---:|---|
 | GitHub topic | 10 | 发现生态趋势和候选项目 |
-| GitHub repo | 16 | 跟踪重点工具仓库的 stars、forks、issues、更新时间 |
-| 官方文档 | 10 | 支撑方法、版本和能力解释 |
-| 平台方法卡 | 8 | 补足高风险平台的合规采集边界 |
+| GitHub repo | 27 | 跟踪重点工具仓库的 stars、forks、issues、更新时间 |
+| 官方文档 | 17 | 支撑方法、版本、产品能力和安装路径解释 |
+| 平台方法卡 | 18 | 补足平台、RPA、no-code、预检和风险边界 SOP |
 
-总 sources 为 44，满足上线前不少于 20 个 source 的门槛。
+总配置 sources 为 72；2026-06-17 快照成功采集 69 条记录，3 条 GitHub topic 因上游 403 未进入本轮 seed。
 
 ## 字段契约
 
@@ -77,8 +77,8 @@ source: human+ai
 | 风险 | 定义 | 本轮处理 |
 |---|---|---|
 | `low` | 官方 API、GitHub metadata、公开文档 | 可直接采集 |
-| `medium` | 平台公开页面、社媒/电商趋势、竞品公开页 | 只写方法卡和边界，不做绕过式抓取 |
-| `high` | 合规边界、个人信息、登录态、访问控制 | 只写治理情报和禁止项 |
+| `medium` | 平台公开页面、社媒/电商趋势、竞品公开页、RPA/no-code 产品 | 只写方法卡和边界，不做绕过式抓取 |
+| `high` | 合规边界、个人信息、登录态、访问控制、浏览器指纹和安全预检工具 | 只写治理情报、授权前提和禁止项 |
 
 ## 页面覆盖要求
 
@@ -104,11 +104,11 @@ source: human+ai
 
 上线前必须满足：
 
-1. source 不少于 20。
-2. raw record 不少于 40。
-3. entity 不少于 30。
+1. source 不少于 60。
+2. raw record 不少于 60。
+3. entity 不少于 60。
 4. signal 不少于 12。
-5. intelligence item 不少于 12。
+5. intelligence item 不少于 16。
 6. report 不少于 1。
 7. 用户可见内容不得出现 `sample`、`placeholder`、`demo-`、`demo_`、`example only`、`示例`、`样本`。
 
@@ -117,5 +117,5 @@ source: human+ai
 1. 所有“最新”判断必须来自 Phase 2 执行时快照。
 2. `curated_training` 不得被 E2E 测试写入。
 3. 生产无 GitHub token 时，topic search 必须小批量执行。
-4. 中间快照进入 `tmp/outputs/`，不提交为正式资产。
+4. 中间快照进入 `tmp/outputs/`；单元测试依赖的稳定快照进入 `apps/api/tests/fixtures/training_content/`。
 5. 高风险平台只沉淀方法、边界和风险，不提供绕过限制的操作细节。

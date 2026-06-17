@@ -1,0 +1,2492 @@
+{
+  "dataset": "curated_training",
+  "generated_at": "2026-06-16T16:55:03+00:00",
+  "source_snapshot": "tmp/outputs/training-content-snapshot-20260617.json",
+  "snapshot_generated_at": "2026-06-16T16:39:38+00:00",
+  "summary": {
+    "source_count": 72,
+    "raw_record_count": 69,
+    "entity_count": 69,
+    "signal_count": 13,
+    "intelligence_item_count": 20,
+    "report_count": 1,
+    "alert_count": 3,
+    "notification_count": 3
+  },
+  "projects": [
+    {
+      "key": "open-source-collection",
+      "name": "Open Source Collection Radar",
+      "domain": "osint",
+      "description": "Track public crawler, scraping, browser automation, and extraction tools."
+    },
+    {
+      "key": "platform-methods",
+      "name": "Platform Collection Methods",
+      "domain": "platform",
+      "description": "Maintain training cards for public and compliant collection methods across major platforms."
+    },
+    {
+      "key": "agent-collection-ecosystem",
+      "name": "Agent Collection Ecosystem",
+      "domain": "agent",
+      "description": "Track AI agent, tool-use, MCP, and browser-agent collection capabilities."
+    },
+    {
+      "key": "compliance-boundary",
+      "name": "Compliance Boundary Radar",
+      "domain": "governance",
+      "description": "Surface data minimization, robots, platform policy, and personal data boundaries."
+    },
+    {
+      "key": "rpa-no-code-collection",
+      "name": "RPA and No-code Collection Methods",
+      "domain": "rpa",
+      "description": "Track business-facing RPA, no-code scraping, and workflow automation products for training SOPs."
+    },
+    {
+      "key": "browser-preflight-risk",
+      "name": "Browser Preflight and Risk Diagnostics",
+      "domain": "browser",
+      "description": "Track browser inspection, site preflight, OSINT, and fingerprint-risk tools with strict authorization boundaries."
+    }
+  ],
+  "entities": [
+    {
+      "id": "entity-github-topic-web-scraping",
+      "source_id": "github-topic-web-scraping",
+      "raw_record_source_id": "github-topic-web-scraping",
+      "project_key": "open-source-collection",
+      "category": "github_intelligence",
+      "domain": "osint",
+      "entity_type": "github_topic",
+      "external_id": "web-scraping",
+      "name": "GitHub topic: web-scraping",
+      "canonical_url": "https://github.com/topics/web-scraping",
+      "summary": "GitHub topic search with 14969 public repositories.",
+      "metrics": {
+        "total_count": 14969,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-crawler",
+      "source_id": "github-topic-crawler",
+      "raw_record_source_id": "github-topic-crawler",
+      "project_key": "open-source-collection",
+      "category": "github_intelligence",
+      "domain": "osint",
+      "entity_type": "github_topic",
+      "external_id": "crawler",
+      "name": "GitHub topic: crawler",
+      "canonical_url": "https://github.com/topics/crawler",
+      "summary": "GitHub topic search with 8312 public repositories.",
+      "metrics": {
+        "total_count": 8312,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-data-extraction",
+      "source_id": "github-topic-data-extraction",
+      "raw_record_source_id": "github-topic-data-extraction",
+      "project_key": "open-source-collection",
+      "category": "github_intelligence",
+      "domain": "osint",
+      "entity_type": "github_topic",
+      "external_id": "data-extraction",
+      "name": "GitHub topic: data-extraction",
+      "canonical_url": "https://github.com/topics/data-extraction",
+      "summary": "GitHub topic search with 2649 public repositories.",
+      "metrics": {
+        "total_count": 2649,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-browser-automation",
+      "source_id": "github-topic-browser-automation",
+      "raw_record_source_id": "github-topic-browser-automation",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "github_topic",
+      "external_id": "browser-automation",
+      "name": "GitHub topic: browser-automation",
+      "canonical_url": "https://github.com/topics/browser-automation",
+      "summary": "GitHub topic search with 2254 public repositories.",
+      "metrics": {
+        "total_count": 2254,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-ai-agent",
+      "source_id": "github-topic-ai-agent",
+      "raw_record_source_id": "github-topic-ai-agent",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_topic",
+      "external_id": "ai-agent",
+      "name": "GitHub topic: ai-agent",
+      "canonical_url": "https://github.com/topics/ai-agent",
+      "summary": "GitHub topic search with 17037 public repositories.",
+      "metrics": {
+        "total_count": 17037,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-mcp-server",
+      "source_id": "github-topic-mcp-server",
+      "raw_record_source_id": "github-topic-mcp-server",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_topic",
+      "external_id": "mcp-server",
+      "name": "GitHub topic: mcp-server",
+      "canonical_url": "https://github.com/topics/mcp-server",
+      "summary": "GitHub topic search with 18054 public repositories.",
+      "metrics": {
+        "total_count": 18054,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-topic-agent-framework",
+      "source_id": "github-topic-agent-framework",
+      "raw_record_source_id": "github-topic-agent-framework",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_topic",
+      "external_id": "agent-framework",
+      "name": "GitHub topic: agent-framework",
+      "canonical_url": "https://github.com/topics/agent-framework",
+      "summary": "GitHub topic search with 1604 public repositories.",
+      "metrics": {
+        "total_count": 1604,
+        "top_repository_count": 10
+      }
+    },
+    {
+      "id": "entity-github-repo-scrapy",
+      "source_id": "github-repo-scrapy",
+      "raw_record_source_id": "github-repo-scrapy",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "scrapy/scrapy",
+      "name": "scrapy/scrapy",
+      "canonical_url": "https://github.com/scrapy/scrapy",
+      "summary": "Scrapy, a fast high-level web crawling & scraping framework for Python.",
+      "metrics": {
+        "stars": 62275,
+        "forks": 11652,
+        "open_issues": 618,
+        "updated_at": "2026-06-16T15:45:56Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-playwright",
+      "source_id": "github-repo-playwright",
+      "raw_record_source_id": "github-repo-playwright",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "microsoft/playwright",
+      "name": "microsoft/playwright",
+      "canonical_url": "https://github.com/microsoft/playwright",
+      "summary": "Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API. ",
+      "metrics": {
+        "stars": 91080,
+        "forks": 5926,
+        "open_issues": 167,
+        "updated_at": "2026-06-16T16:20:22Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-puppeteer",
+      "source_id": "github-repo-puppeteer",
+      "raw_record_source_id": "github-repo-puppeteer",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "puppeteer/puppeteer",
+      "name": "puppeteer/puppeteer",
+      "canonical_url": "https://github.com/puppeteer/puppeteer",
+      "summary": "JavaScript API for Chrome and Firefox",
+      "metrics": {
+        "stars": 94826,
+        "forks": 9447,
+        "open_issues": 265,
+        "updated_at": "2026-06-16T16:38:35Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-selenium",
+      "source_id": "github-repo-selenium",
+      "raw_record_source_id": "github-repo-selenium",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "SeleniumHQ/selenium",
+      "name": "SeleniumHQ/selenium",
+      "canonical_url": "https://github.com/SeleniumHQ/selenium",
+      "summary": "A browser automation framework and ecosystem.",
+      "metrics": {
+        "stars": 34203,
+        "forks": 8685,
+        "open_issues": 197,
+        "updated_at": "2026-06-16T16:32:55Z",
+        "language": "Java"
+      }
+    },
+    {
+      "id": "entity-github-repo-crawlee",
+      "source_id": "github-repo-crawlee",
+      "raw_record_source_id": "github-repo-crawlee",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "apify/crawlee",
+      "name": "apify/crawlee",
+      "canonical_url": "https://github.com/apify/crawlee",
+      "summary": "Crawlee—A web scraping and browser automation library for Node.js to build reliable crawlers. In JavaScript and TypeScript. Extract data for AI, LLMs, RAG, or GPTs. Download HTML, PDF, JPG, PNG, and other files from websites. Works with Puppeteer, Playwright, Cheerio, JSDOM, and raw HTTP. Both headful and headless mode. With proxy rotation.",
+      "metrics": {
+        "stars": 23788,
+        "forks": 1431,
+        "open_issues": 175,
+        "updated_at": "2026-06-16T15:10:44Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-crawlee-python",
+      "source_id": "github-repo-crawlee-python",
+      "raw_record_source_id": "github-repo-crawlee-python",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "apify/crawlee-python",
+      "name": "apify/crawlee-python",
+      "canonical_url": "https://github.com/apify/crawlee-python",
+      "summary": "Crawlee—A web scraping and browser automation library for Python to build reliable crawlers. Extract data for AI, LLMs, RAG, or GPTs. Download HTML, PDF, JPG, PNG, and other files from websites. Works with Parsel, BeautifulSoup, Playwright, and raw HTTP. Both headful and headless mode. With proxy rotation.",
+      "metrics": {
+        "stars": 9201,
+        "forks": 755,
+        "open_issues": 82,
+        "updated_at": "2026-06-16T12:25:22Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-crawl4ai",
+      "source_id": "github-repo-crawl4ai",
+      "raw_record_source_id": "github-repo-crawl4ai",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "unclecode/crawl4ai",
+      "name": "unclecode/crawl4ai",
+      "canonical_url": "https://github.com/unclecode/crawl4ai",
+      "summary": "🚀🤖 Crawl4AI: Open-source LLM Friendly Web Crawler & Scraper. Don't be shy, join here: https://discord.gg/jP8KfhDhyN",
+      "metrics": {
+        "stars": 68656,
+        "forks": 7007,
+        "open_issues": 100,
+        "updated_at": "2026-06-16T16:06:50Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-firecrawl",
+      "source_id": "github-repo-firecrawl",
+      "raw_record_source_id": "github-repo-firecrawl",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "firecrawl/firecrawl",
+      "name": "firecrawl/firecrawl",
+      "canonical_url": "https://github.com/firecrawl/firecrawl",
+      "summary": "The API to search, scrape, and interact with the web at scale. 🔥",
+      "metrics": {
+        "stars": 133531,
+        "forks": 7820,
+        "open_issues": 386,
+        "updated_at": "2026-06-16T16:38:49Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-browser-use",
+      "source_id": "github-repo-browser-use",
+      "raw_record_source_id": "github-repo-browser-use",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "browser-use/browser-use",
+      "name": "browser-use/browser-use",
+      "canonical_url": "https://github.com/browser-use/browser-use",
+      "summary": "🌐 Make websites accessible for AI agents. Automate tasks online with ease.",
+      "metrics": {
+        "stars": 99127,
+        "forks": 11064,
+        "open_issues": 303,
+        "updated_at": "2026-06-16T16:30:03Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-openai-agents-python",
+      "source_id": "github-repo-openai-agents-python",
+      "raw_record_source_id": "github-repo-openai-agents-python",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "openai/openai-agents-python",
+      "name": "openai/openai-agents-python",
+      "canonical_url": "https://github.com/openai/openai-agents-python",
+      "summary": "A lightweight, powerful framework for multi-agent workflows",
+      "metrics": {
+        "stars": 27193,
+        "forks": 4193,
+        "open_issues": 154,
+        "updated_at": "2026-06-16T15:07:38Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-openai-agents-js",
+      "source_id": "github-repo-openai-agents-js",
+      "raw_record_source_id": "github-repo-openai-agents-js",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "openai/openai-agents-js",
+      "name": "openai/openai-agents-js",
+      "canonical_url": "https://github.com/openai/openai-agents-js",
+      "summary": "A lightweight, powerful framework for multi-agent workflows and voice agents",
+      "metrics": {
+        "stars": 3228,
+        "forks": 823,
+        "open_issues": 72,
+        "updated_at": "2026-06-16T10:58:07Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-crewai",
+      "source_id": "github-repo-crewai",
+      "raw_record_source_id": "github-repo-crewai",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "crewAIInc/crewAI",
+      "name": "crewAIInc/crewAI",
+      "canonical_url": "https://github.com/crewAIInc/crewAI",
+      "summary": "Framework for orchestrating role-playing, autonomous AI agents. By fostering collaborative intelligence, CrewAI empowers agents to work together seamlessly, tackling complex tasks.",
+      "metrics": {
+        "stars": 53701,
+        "forks": 7514,
+        "open_issues": 462,
+        "updated_at": "2026-06-16T16:17:21Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-crewai-tools",
+      "source_id": "github-repo-crewai-tools",
+      "raw_record_source_id": "github-repo-crewai-tools",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "crewAIInc/crewAI-tools",
+      "name": "crewAIInc/crewAI-tools",
+      "canonical_url": "https://github.com/crewAIInc/crewAI-tools",
+      "summary": "Extend the capabilities of your CrewAI agents with Tools",
+      "metrics": {
+        "stars": 1440,
+        "forks": 532,
+        "open_issues": 143,
+        "updated_at": "2026-06-16T03:13:19Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-mcp-servers",
+      "source_id": "github-repo-mcp-servers",
+      "raw_record_source_id": "github-repo-mcp-servers",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "modelcontextprotocol/servers",
+      "name": "modelcontextprotocol/servers",
+      "canonical_url": "https://github.com/modelcontextprotocol/servers",
+      "summary": "Model Context Protocol Servers",
+      "metrics": {
+        "stars": 87323,
+        "forks": 11013,
+        "open_issues": 579,
+        "updated_at": "2026-06-16T16:01:37Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-stagehand",
+      "source_id": "github-repo-stagehand",
+      "raw_record_source_id": "github-repo-stagehand",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "browserbase/stagehand",
+      "name": "browserbase/stagehand",
+      "canonical_url": "https://github.com/browserbase/stagehand",
+      "summary": "The SDK For Browser Agents",
+      "metrics": {
+        "stars": 23129,
+        "forks": 1576,
+        "open_issues": 247,
+        "updated_at": "2026-06-16T16:36:50Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-langchain",
+      "source_id": "github-repo-langchain",
+      "raw_record_source_id": "github-repo-langchain",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "langchain-ai/langchain",
+      "name": "langchain-ai/langchain",
+      "canonical_url": "https://github.com/langchain-ai/langchain",
+      "summary": "The agent engineering platform.",
+      "metrics": {
+        "stars": 139471,
+        "forks": 23114,
+        "open_issues": 414,
+        "updated_at": "2026-06-16T16:27:08Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-docs-github-rest",
+      "source_id": "docs-github-rest",
+      "raw_record_source_id": "docs-github-rest",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "official_doc",
+      "external_id": "docs-github-rest",
+      "name": "GitHub REST API documentation - GitHub Docs",
+      "canonical_url": "https://docs.github.com/en/rest",
+      "summary": "GitHub REST API documentation - GitHub Docs Skip to main content GitHub Docs Version: Free, Pro, & Team Search or ask Copilot Search or ask Copilot Select language: current language is English Search or ask Copilot Search or ask Copilot Open menu Open Sidebar REST API Home REST API API Version: 2026",
+      "metrics": {
+        "text_length": 5895,
+        "title": "GitHub REST API documentation - GitHub Docs"
+      }
+    },
+    {
+      "id": "entity-docs-github-repos",
+      "source_id": "docs-github-repos",
+      "raw_record_source_id": "docs-github-repos",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "official_doc",
+      "external_id": "docs-github-repos",
+      "name": "REST API endpoints for repositories - GitHub Docs",
+      "canonical_url": "https://docs.github.com/rest/repos/repos",
+      "summary": "REST API endpoints for repositories - GitHub Docs Skip to main content GitHub Docs Version: Free, Pro, & Team Search or ask Copilot Search or ask Copilot Select language: current language is English Search or ask Copilot Search or ask Copilot Open menu Open Sidebar REST API / Repositories / Reposito",
+      "metrics": {
+        "text_length": 238101,
+        "title": "REST API endpoints for repositories - GitHub Docs"
+      }
+    },
+    {
+      "id": "entity-docs-scrapy-news",
+      "source_id": "docs-scrapy-news",
+      "raw_record_source_id": "docs-scrapy-news",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "official_doc",
+      "external_id": "docs-scrapy-news",
+      "name": "Release notes — Scrapy 2.16.0 documentation",
+      "canonical_url": "https://docs.scrapy.org/en/latest/news.html",
+      "summary": "Release notes — Scrapy 2.16.0 documentation scrapy.org / docs First steps Scrapy at a glance Installation guide Scrapy Tutorial Examples Basic concepts Command line tool Spiders Selectors Items Item Loaders Scrapy shell Item Pipeline Feed exports Requests and Responses Link Extractors Settings Excep",
+      "metrics": {
+        "text_length": 284401,
+        "title": "Release notes — Scrapy 2.16.0 documentation"
+      }
+    },
+    {
+      "id": "entity-docs-playwright",
+      "source_id": "docs-playwright",
+      "raw_record_source_id": "docs-playwright",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "official_doc",
+      "external_id": "docs-playwright",
+      "name": "Fast and reliable end-to-end testing for modern web apps | Playwright",
+      "canonical_url": "https://playwright.dev/",
+      "summary": "Fast and reliable end-to-end testing for modern web apps | Playwright Skip to main content Playwright Docs MCP CLI API Node.js Node.js Python Java .NET Search Playwright enables reliable web automation for testing, scripting, and AI agents. One API to drive Chromium, Firefox, and WebKit — in your te",
+      "metrics": {
+        "text_length": 3454,
+        "title": "Fast and reliable end-to-end testing for modern web apps | Playwright"
+      }
+    },
+    {
+      "id": "entity-docs-crawlee",
+      "source_id": "docs-crawlee",
+      "raw_record_source_id": "docs-crawlee",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "official_doc",
+      "external_id": "docs-crawlee",
+      "name": "Crawlee · Build reliable crawlers. Fast.",
+      "canonical_url": "https://crawlee.dev/",
+      "summary": "Crawlee · Build reliable crawlers. Fast. Skip to main content JavaScript Python Blog Build reliable web scrapers. Fast. Crawlee is a web scraping library for JavaScript and Python. It handles blocking, crawling, proxies, and browsers for you. Learn more Star npx crawlee create my-crawler Learn more ",
+      "metrics": {
+        "text_length": 2051,
+        "title": "Crawlee · Build reliable crawlers. Fast."
+      }
+    },
+    {
+      "id": "entity-docs-crawl4ai",
+      "source_id": "docs-crawl4ai",
+      "raw_record_source_id": "docs-crawl4ai",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "official_doc",
+      "external_id": "docs-crawl4ai",
+      "name": "Home - Crawl4AI Documentation (v0.8.x)",
+      "canonical_url": "https://docs.crawl4ai.com/",
+      "summary": "Home - Crawl4AI Documentation (v0.8.x) Crawl4AI Documentation (v0.8.x) Home Growth Ask AI Quick Start Code Examples Brand Book Search Home Growth Ask AI Quick Start Code Examples Apps Demo Apps C4A-Script Editor LLM Context Builder Marketplace Marketplace Admin Setup & Installation Installation Self",
+      "metrics": {
+        "text_length": 6255,
+        "title": "Home - Crawl4AI Documentation (v0.8.x)"
+      }
+    },
+    {
+      "id": "entity-docs-firecrawl",
+      "source_id": "docs-firecrawl",
+      "raw_record_source_id": "docs-firecrawl",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "official_doc",
+      "external_id": "docs-firecrawl",
+      "name": "Introduction - Firecrawl Docs",
+      "canonical_url": "https://docs.firecrawl.dev/api-reference/v2-introduction",
+      "summary": "Introduction - Firecrawl Docs Documentation Index Fetch the complete documentation index at: /llms.txt Use this file to discover all available pages before exploring further. Skip to main content Firecrawl Docs home page v2 English Search... ⌘ K Status Support Sign Up firecrawl/firecrawl firecrawl/f",
+      "metrics": {
+        "text_length": 3770,
+        "title": "Introduction - Firecrawl Docs"
+      }
+    },
+    {
+      "id": "entity-docs-openai-agents",
+      "source_id": "docs-openai-agents",
+      "raw_record_source_id": "docs-openai-agents",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "official_doc",
+      "external_id": "docs-openai-agents",
+      "name": "Agents SDK | OpenAI API",
+      "canonical_url": "https://developers.openai.com/api/docs/guides/agents",
+      "summary": "Agents SDK | OpenAI API Home API Docs Guides and concepts for the OpenAI API API reference Endpoints, parameters, and responses Codex Docs Guides, concepts, and product docs for Codex Use cases Example workflows and tasks teams hand to Codex ChatGPT Apps SDK Build apps to extend ChatGPT Workspace Ag",
+      "metrics": {
+        "text_length": 12600,
+        "title": "Agents SDK | OpenAI API"
+      }
+    },
+    {
+      "id": "entity-docs-crewai-tools",
+      "source_id": "docs-crewai-tools",
+      "raw_record_source_id": "docs-crewai-tools",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "official_doc",
+      "external_id": "docs-crewai-tools",
+      "name": "Tools - CrewAI",
+      "canonical_url": "https://docs.crewai.com/en/concepts/tools",
+      "summary": "Tools - CrewAI Documentation Index Fetch the complete documentation index at: /llms.txt Use this file to discover all available pages before exploring further. Skip to main content CrewAI home page v1.14.7 English Search... ⌘ K Ask Assistant Start Cloud Trial crewAIInc/crewAI crewAIInc/crewAI Search",
+      "metrics": {
+        "text_length": 13794,
+        "title": "Tools - CrewAI"
+      }
+    },
+    {
+      "id": "entity-docs-mcp-intro",
+      "source_id": "docs-mcp-intro",
+      "raw_record_source_id": "docs-mcp-intro",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "official_doc",
+      "external_id": "docs-mcp-intro",
+      "name": "What is the Model Context Protocol (MCP)? - Model Context Protocol",
+      "canonical_url": "https://modelcontextprotocol.io/docs/getting-started/intro",
+      "summary": "What is the Model Context Protocol (MCP)? - Model Context Protocol Documentation Index Fetch the complete documentation index at: /llms.txt Use this file to discover all available pages before exploring further. Skip to main content Model Context Protocol home page Search... ⌘ K Ask Assistant Blog G",
+      "metrics": {
+        "text_length": 3091,
+        "title": "What is the Model Context Protocol (MCP)? - Model Context Protocol"
+      }
+    },
+    {
+      "id": "entity-method-github-public-api",
+      "source_id": "method-github-public-api",
+      "raw_record_source_id": "method-github-public-api",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "github-public-api",
+      "name": "GitHub public API collection method",
+      "canonical_url": "https://docs.github.com/en/rest",
+      "summary": "Prefer API-first collection when a platform exposes public metadata.",
+      "metrics": {
+        "platform": "GitHub",
+        "risk_level": "low",
+        "recommended_collector": "github_repo, github_topic, generic_web"
+      }
+    },
+    {
+      "id": "entity-method-amazon-public-pages",
+      "source_id": "method-amazon-public-pages",
+      "raw_record_source_id": "method-amazon-public-pages",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "amazon-public-pages",
+      "name": "Amazon public page collection boundary",
+      "canonical_url": "https://www.amazon.com/",
+      "summary": "For e-commerce platforms, method design must start from compliance and data minimization.",
+      "metrics": {
+        "platform": "Amazon",
+        "risk_level": "medium",
+        "recommended_collector": "manual_json"
+      }
+    },
+    {
+      "id": "entity-method-shopify-storefront",
+      "source_id": "method-shopify-storefront",
+      "raw_record_source_id": "method-shopify-storefront",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "shopify-storefront",
+      "name": "Shopify storefront collection method",
+      "canonical_url": "https://www.shopify.com/",
+      "summary": "Storefront monitoring is useful for competitor signals when scoped to public pages.",
+      "metrics": {
+        "platform": "Shopify Storefront",
+        "risk_level": "medium",
+        "recommended_collector": "generic_web, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-reddit-public-api",
+      "source_id": "method-reddit-public-api",
+      "raw_record_source_id": "method-reddit-public-api",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "reddit-public-api",
+      "name": "Reddit public API collection boundary",
+      "canonical_url": "https://www.reddit.com/dev/api/",
+      "summary": "Social collection should aggregate trend signals, not expose individuals.",
+      "metrics": {
+        "platform": "Reddit",
+        "risk_level": "medium",
+        "recommended_collector": "manual_json"
+      }
+    },
+    {
+      "id": "entity-method-youtube-data-api",
+      "source_id": "method-youtube-data-api",
+      "raw_record_source_id": "method-youtube-data-api",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "youtube-data-api",
+      "name": "YouTube Data API collection method",
+      "canonical_url": "https://developers.google.com/youtube/v3",
+      "summary": "Video platform collection should separate public metadata from user-level data.",
+      "metrics": {
+        "platform": "YouTube",
+        "risk_level": "medium",
+        "recommended_collector": "manual_json"
+      }
+    },
+    {
+      "id": "entity-method-tiktok-creative-center",
+      "source_id": "method-tiktok-creative-center",
+      "raw_record_source_id": "method-tiktok-creative-center",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "tiktok-creative-center",
+      "name": "TikTok Creative Center public trend method",
+      "canonical_url": "https://ads.tiktok.com/business/creativecenter/",
+      "summary": "Trend intelligence should prioritize aggregated public signals.",
+      "metrics": {
+        "platform": "TikTok Creative Center",
+        "risk_level": "medium",
+        "recommended_collector": "manual_json"
+      }
+    },
+    {
+      "id": "entity-method-competitor-public-site",
+      "source_id": "method-competitor-public-site",
+      "raw_record_source_id": "method-competitor-public-site",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "entity_type": "platform_method",
+      "external_id": "competitor-public-site",
+      "name": "Competitor public website monitoring method",
+      "canonical_url": "https://www.w3.org/TR/robots/",
+      "summary": "Competitor monitoring is strongest when mapped to specific change signals.",
+      "metrics": {
+        "platform": "Competitor public websites",
+        "risk_level": "medium",
+        "recommended_collector": "generic_web"
+      }
+    },
+    {
+      "id": "entity-method-compliance-boundary",
+      "source_id": "method-compliance-boundary",
+      "raw_record_source_id": "method-compliance-boundary",
+      "project_key": "compliance-boundary",
+      "category": "compliance_boundary",
+      "domain": "governance",
+      "entity_type": "compliance_boundary",
+      "external_id": "collection-compliance-boundary",
+      "name": "Cross-platform collection compliance boundary",
+      "canonical_url": "https://www.w3.org/TR/robots/",
+      "summary": "A collection workbench must encode compliance constraints as first-class intelligence.",
+      "metrics": {
+        "platform": "Cross-platform",
+        "risk_level": "high",
+        "recommended_collector": "manual_json"
+      }
+    },
+    {
+      "id": "entity-github-repo-skyvern",
+      "source_id": "github-repo-skyvern",
+      "raw_record_source_id": "github-repo-skyvern",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "Skyvern-AI/skyvern",
+      "name": "Skyvern-AI/skyvern",
+      "canonical_url": "https://github.com/Skyvern-AI/skyvern",
+      "summary": "Automate browser based workflows with AI",
+      "metrics": {
+        "stars": 21919,
+        "forks": 2040,
+        "open_issues": 164,
+        "updated_at": "2026-06-16T16:25:31Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-scrapegraphai",
+      "source_id": "github-repo-scrapegraphai",
+      "raw_record_source_id": "github-repo-scrapegraphai",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "ScrapeGraphAI/Scrapegraph-ai",
+      "name": "ScrapeGraphAI/Scrapegraph-ai",
+      "canonical_url": "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+      "summary": "Python scraper based on AI",
+      "metrics": {
+        "stars": 27261,
+        "forks": 2574,
+        "open_issues": 2,
+        "updated_at": "2026-06-16T16:13:12Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-agentql",
+      "source_id": "github-repo-agentql",
+      "raw_record_source_id": "github-repo-agentql",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "tinyfish-io/agentql",
+      "name": "tinyfish-io/agentql",
+      "canonical_url": "https://github.com/tinyfish-io/agentql",
+      "summary": "AgentQL is a suite of tools for connecting your AI to the web. Featuring a query language and Playwright integrations for interacting with elements and extracting data quickly, precisely, and at scale. Includes REST API, Python and JavaScript SDKs, browser debugger.",
+      "metrics": {
+        "stars": 1401,
+        "forks": 161,
+        "open_issues": 7,
+        "updated_at": "2026-06-15T20:38:05Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-agent-browser",
+      "source_id": "github-repo-agent-browser",
+      "raw_record_source_id": "github-repo-agent-browser",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "github_repo",
+      "external_id": "vercel-labs/agent-browser",
+      "name": "vercel-labs/agent-browser",
+      "canonical_url": "https://github.com/vercel-labs/agent-browser",
+      "summary": "Browser automation CLI for AI agents",
+      "metrics": {
+        "stars": 36213,
+        "forks": 2290,
+        "open_issues": 525,
+        "updated_at": "2026-06-16T16:33:25Z",
+        "language": "Rust"
+      }
+    },
+    {
+      "id": "entity-github-repo-maxun",
+      "source_id": "github-repo-maxun",
+      "raw_record_source_id": "github-repo-maxun",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "entity_type": "github_repo",
+      "external_id": "getmaxun/maxun",
+      "name": "getmaxun/maxun",
+      "canonical_url": "https://github.com/getmaxun/maxun",
+      "summary": "🔥 The open-source no-code platform for web scraping, crawling, search and AI data extraction • Turn websites into structured APIs in minutes 🔥 ",
+      "metrics": {
+        "stars": 15910,
+        "forks": 1329,
+        "open_issues": 116,
+        "updated_at": "2026-06-16T15:14:57Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-web-check",
+      "source_id": "github-repo-web-check",
+      "raw_record_source_id": "github-repo-web-check",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "entity_type": "github_repo",
+      "external_id": "lissy93/web-check",
+      "name": "lissy93/web-check",
+      "canonical_url": "https://github.com/lissy93/web-check",
+      "summary": "🕵️‍♂️ All-in-one OSINT tool for analysing any website",
+      "metrics": {
+        "stars": 33722,
+        "forks": 2755,
+        "open_issues": 79,
+        "updated_at": "2026-06-16T16:16:37Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-github-repo-katana",
+      "source_id": "github-repo-katana",
+      "raw_record_source_id": "github-repo-katana",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "entity_type": "github_repo",
+      "external_id": "projectdiscovery/katana",
+      "name": "projectdiscovery/katana",
+      "canonical_url": "https://github.com/projectdiscovery/katana",
+      "summary": "A next-generation crawling and spidering framework.",
+      "metrics": {
+        "stars": 17028,
+        "forks": 1144,
+        "open_issues": 6,
+        "updated_at": "2026-06-16T16:05:00Z",
+        "language": "Go"
+      }
+    },
+    {
+      "id": "entity-github-repo-httpx",
+      "source_id": "github-repo-httpx",
+      "raw_record_source_id": "github-repo-httpx",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "entity_type": "github_repo",
+      "external_id": "projectdiscovery/httpx",
+      "name": "projectdiscovery/httpx",
+      "canonical_url": "https://github.com/projectdiscovery/httpx",
+      "summary": "httpx is a fast and multi-purpose HTTP toolkit that allows running multiple probes using the retryablehttp library.",
+      "metrics": {
+        "stars": 10051,
+        "forks": 1074,
+        "open_issues": 6,
+        "updated_at": "2026-06-16T13:44:58Z",
+        "language": "Go"
+      }
+    },
+    {
+      "id": "entity-github-repo-pydoll",
+      "source_id": "github-repo-pydoll",
+      "raw_record_source_id": "github-repo-pydoll",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_automation",
+      "domain": "browser",
+      "entity_type": "github_repo",
+      "external_id": "autoscrape-labs/pydoll",
+      "name": "autoscrape-labs/pydoll",
+      "canonical_url": "https://github.com/autoscrape-labs/pydoll",
+      "summary": "Pydoll is a library for automating chromium-based browsers without a WebDriver, offering realistic interactions. ",
+      "metrics": {
+        "stars": 6910,
+        "forks": 386,
+        "open_issues": 29,
+        "updated_at": "2026-06-16T07:08:48Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-scrapling",
+      "source_id": "github-repo-scrapling",
+      "raw_record_source_id": "github-repo-scrapling",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_risk",
+      "domain": "browser",
+      "entity_type": "github_repo",
+      "external_id": "D4Vinci/Scrapling",
+      "name": "D4Vinci/Scrapling",
+      "canonical_url": "https://github.com/D4Vinci/Scrapling",
+      "summary": "🕷️ An adaptive Web Scraping framework that handles everything from a single request to a full-scale crawl!",
+      "metrics": {
+        "stars": 64266,
+        "forks": 6293,
+        "open_issues": 7,
+        "updated_at": "2026-06-16T16:39:57Z",
+        "language": "Python"
+      }
+    },
+    {
+      "id": "entity-github-repo-browserless",
+      "source_id": "github-repo-browserless",
+      "raw_record_source_id": "github-repo-browserless",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "github_repo",
+      "external_id": "browserless/browserless",
+      "name": "browserless/browserless",
+      "canonical_url": "https://github.com/browserless/browserless",
+      "summary": "Deploy headless browsers in Docker. Run on our cloud or bring your own. Free for non-commercial uses.",
+      "metrics": {
+        "stars": 13352,
+        "forks": 1016,
+        "open_issues": 29,
+        "updated_at": "2026-06-16T12:21:10Z",
+        "language": "TypeScript"
+      }
+    },
+    {
+      "id": "entity-docs-browse-ai",
+      "source_id": "docs-browse-ai",
+      "raw_record_source_id": "docs-browse-ai",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "entity_type": "official_doc",
+      "external_id": "docs-browse-ai",
+      "name": "Scrape and Monitor Data from Any Website with No Code - Browse AI",
+      "canonical_url": "https://www.browse.ai/",
+      "summary": "Scrape and Monitor Data from Any Website with No Code - Browse AI Features Features AI web scraper Scrape data from any website with no code. Websites to spreadsheets Turn websites into live spreadsheets in Google Sheets or Airtable. Website monitoring AI change detection and monitoring. 7,000+ Inte",
+      "metrics": {
+        "text_length": 42636,
+        "title": "Scrape and Monitor Data from Any Website with No Code - Browse AI"
+      }
+    },
+    {
+      "id": "entity-docs-octoparse",
+      "source_id": "docs-octoparse",
+      "raw_record_source_id": "docs-octoparse",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "entity_type": "official_doc",
+      "external_id": "docs-octoparse",
+      "name": "Web Scraping Tool & Free Web Crawlers | Octoparse",
+      "canonical_url": "https://www.octoparse.com/",
+      "summary": "Web Scraping Tool & Free Web Crawlers | Octoparse Platform Solutions Data Service Resources Pricing Log in Download Start a free trial EN Easy Web Scraping for Anyone Octoparse is your no-code solution for web scraping to turn web pages into structured data in minutes. Start a free trial Watch a dem",
+      "metrics": {
+        "text_length": 15255,
+        "title": "Web Scraping Tool & Free Web Crawlers | Octoparse"
+      }
+    },
+    {
+      "id": "entity-docs-yingdao-rpa",
+      "source_id": "docs-yingdao-rpa",
+      "raw_record_source_id": "docs-yingdao-rpa",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "official_doc",
+      "external_id": "docs-yingdao-rpa",
+      "name": "影刀RPA - 影刀官网 影刀RPA - 影刀官网",
+      "canonical_url": "https://www.yingdao.com/",
+      "summary": "影刀RPA - 影刀官网 影刀RPA - 影刀官网 产品 客户案例 大咖分享 影刀与教育 影刀AI Power New 关于我们 资源 给我们留言 免费下载 我们创造软件机器人，让人不需要像机器一样工作 免费下载 企业版咨询 简单易用，轻松驾驭任何逻辑规则的工作 任何操作系统、 桌面软件、Web程序的自动化。 Windows电脑 win7及以上系统 Mac电脑 OS10及以上系统 手机 Android手机 更多系统 信创、专有云等 100%精确度 9倍效率提升 24小时全天候待命 灵活对接任何业务平台 影刀AI 影刀AI，登场！ 聊聊天就能搭建自动化流程。 积木式搭建，拖拖拽拽， 一个自动化就",
+      "metrics": {
+        "text_length": 7115,
+        "title": "影刀RPA - 影刀官网 影刀RPA - 影刀官网"
+      }
+    },
+    {
+      "id": "entity-docs-power-automate-web-automation",
+      "source_id": "docs-power-automate-web-automation",
+      "raw_record_source_id": "docs-power-automate-web-automation",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "official_doc",
+      "external_id": "docs-power-automate-web-automation",
+      "name": "Browser automation actions reference - Power Automate | Microsoft Learn",
+      "canonical_url": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+      "summary": "Browser automation actions reference - Power Automate | Microsoft Learn Skip to main content Skip to Ask Learn chat experience This browser is no longer supported. Upgrade to Microsoft Edge to take advantage of the latest features, security updates, and technical support. Download Microsoft Edge Mor",
+      "metrics": {
+        "text_length": 44960,
+        "title": "Browser automation actions reference - Power Automate | Microsoft Learn"
+      }
+    },
+    {
+      "id": "entity-docs-uipath-studio",
+      "source_id": "docs-uipath-studio",
+      "raw_record_source_id": "docs-uipath-studio",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "official_doc",
+      "external_id": "docs-uipath-studio",
+      "name": "Studio - Introduction",
+      "canonical_url": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+      "summary": "Studio - Introduction search Search ​ Language translate English expand_more ​ Sign in studio 2024.10 false Studio Standalone · 2024.10 - Collapse Getting Started Introduction The User Interface Keyboard Shortcuts Signing in to Your Account Configuring Studio Settings Project Templates Orchestration",
+      "metrics": {
+        "text_length": 12838,
+        "title": "Studio - Introduction"
+      }
+    },
+    {
+      "id": "entity-docs-apify-platform",
+      "source_id": "docs-apify-platform",
+      "raw_record_source_id": "docs-apify-platform",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "official_doc",
+      "external_id": "docs-apify-platform",
+      "name": "Apify platform documentation | Platform | Apify Documentation",
+      "canonical_url": "https://docs.apify.com/platform",
+      "summary": "Apify platform documentation | Platform | Apify Documentation Skip to main content Academy Platform API Reference Client for JavaScript Client for Python SDK SDK for JavaScript SDK for Python CLI Open source Crawlee Fingerprint Suite impit MCP CLI Actor whitepaper proxy-chain Apify on GitHub Discord",
+      "metrics": {
+        "text_length": 2052,
+        "title": "Apify platform documentation | Platform | Apify Documentation"
+      }
+    },
+    {
+      "id": "entity-docs-browserless",
+      "source_id": "docs-browserless",
+      "raw_record_source_id": "docs-browserless",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "entity_type": "official_doc",
+      "external_id": "docs-browserless",
+      "name": "Browserless Docs | Browserless Documentation",
+      "canonical_url": "https://docs.browserless.io/",
+      "summary": "Browserless Docs | Browserless Documentation For AI agents: a documentation index is available at /llms.txt Skip to main content Browserless.io Guides Overview BrowserQL Browsers as a Service REST APIs Enterprise BaaS V1 (Deprecated) API Reference BrowserQL Schema Browsers as a Service OpenAPI Refer",
+      "metrics": {
+        "text_length": 2585,
+        "title": "Browserless Docs | Browserless Documentation"
+      }
+    },
+    {
+      "id": "entity-method-browse-ai-no-code",
+      "source_id": "method-browse-ai-no-code",
+      "raw_record_source_id": "method-browse-ai-no-code",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "entity_type": "no_code_scraping",
+      "external_id": "browse-ai-no-code",
+      "name": "Browse AI no-code collection SOP",
+      "canonical_url": "https://www.browse.ai/",
+      "summary": "Browse AI is useful for business-facing website-to-table workflows when source authorization and field boundaries are explicit.",
+      "metrics": {
+        "platform": "Browse AI",
+        "risk_level": "medium",
+        "recommended_collector": "no_code_saas, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-octoparse-no-code",
+      "source_id": "method-octoparse-no-code",
+      "raw_record_source_id": "method-octoparse-no-code",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "entity_type": "no_code_scraping",
+      "external_id": "octoparse-no-code",
+      "name": "Octoparse no-code extraction SOP",
+      "canonical_url": "https://www.octoparse.com/",
+      "summary": "No-code tools are best for teaching field modeling and repeatable workflow design before writing code.",
+      "metrics": {
+        "platform": "Octoparse / 八爪鱼采集器",
+        "risk_level": "medium",
+        "recommended_collector": "no_code_desktop, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-yingdao-rpa",
+      "source_id": "method-yingdao-rpa",
+      "raw_record_source_id": "method-yingdao-rpa",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "rpa_automation",
+      "external_id": "yingdao-rpa-business-workflow",
+      "name": "影刀 RPA business collection SOP",
+      "canonical_url": "https://www.yingdao.com/",
+      "summary": "影刀 RPA is most valuable for domestic business operations where humans already have authorized repeatable browser or desktop workflows.",
+      "metrics": {
+        "platform": "影刀 RPA",
+        "risk_level": "medium",
+        "recommended_collector": "rpa_desktop, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-power-automate-desktop",
+      "source_id": "method-power-automate-desktop",
+      "raw_record_source_id": "method-power-automate-desktop",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "rpa_automation",
+      "external_id": "power-automate-desktop-web-extraction",
+      "name": "Power Automate Desktop web extraction SOP",
+      "canonical_url": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+      "summary": "Power Automate is a practical bridge from browser extraction to Office workflow automation.",
+      "metrics": {
+        "platform": "Power Automate Desktop",
+        "risk_level": "low",
+        "recommended_collector": "rpa_desktop, official_actions"
+      }
+    },
+    {
+      "id": "entity-method-uipath-studio",
+      "source_id": "method-uipath-studio",
+      "raw_record_source_id": "method-uipath-studio",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "entity_type": "rpa_automation",
+      "external_id": "uipath-studio-enterprise-rpa",
+      "name": "UiPath Studio enterprise RPA SOP",
+      "canonical_url": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+      "summary": "UiPath is the enterprise reference for governed RPA, not the fastest path for lightweight scraping.",
+      "metrics": {
+        "platform": "UiPath Studio",
+        "risk_level": "low",
+        "recommended_collector": "enterprise_rpa, orchestrated_workflow"
+      }
+    },
+    {
+      "id": "entity-method-apify-actor-platform",
+      "source_id": "method-apify-actor-platform",
+      "raw_record_source_id": "method-apify-actor-platform",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "entity_type": "crawler_framework",
+      "external_id": "apify-actor-platform",
+      "name": "Apify Actor platform collection SOP",
+      "canonical_url": "https://docs.apify.com/platform",
+      "summary": "Apify demonstrates the platform path from crawler code to scheduled, observable collection jobs.",
+      "metrics": {
+        "platform": "Apify",
+        "risk_level": "medium",
+        "recommended_collector": "actor_marketplace, crawlee, api"
+      }
+    },
+    {
+      "id": "entity-method-web-check-preflight",
+      "source_id": "method-web-check-preflight",
+      "raw_record_source_id": "method-web-check-preflight",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "entity_type": "osint_preflight",
+      "external_id": "web-check-public-site-preflight",
+      "name": "Web-Check public site preflight SOP",
+      "canonical_url": "https://web-check.xyz/",
+      "summary": "Web-Check belongs before scraping: it teaches what attackers and collectors can already see publicly.",
+      "metrics": {
+        "platform": "Web-Check",
+        "risk_level": "high",
+        "recommended_collector": "authorized_preflight, generic_web, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-katana-authorized-crawl",
+      "source_id": "method-katana-authorized-crawl",
+      "raw_record_source_id": "method-katana-authorized-crawl",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "entity_type": "osint_preflight",
+      "external_id": "katana-authorized-url-discovery",
+      "name": "Katana authorized URL discovery SOP",
+      "canonical_url": "https://github.com/projectdiscovery/katana",
+      "summary": "Katana is useful for scope-aware URL discovery, but it is a security tool and must stay inside authorization boundaries.",
+      "metrics": {
+        "platform": "Katana",
+        "risk_level": "high",
+        "recommended_collector": "authorized_crawler, cli, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-agent-browser-browser-qa",
+      "source_id": "method-agent-browser-browser-qa",
+      "raw_record_source_id": "method-agent-browser-browser-qa",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "entity_type": "ai_agent_collection",
+      "external_id": "agent-browser-page-understanding",
+      "name": "agent-browser page understanding SOP",
+      "canonical_url": "https://github.com/vercel-labs/agent-browser",
+      "summary": "agent-browser is a strong training anchor for how AI sees and verifies webpages before collecting data.",
+      "metrics": {
+        "platform": "agent-browser",
+        "risk_level": "medium",
+        "recommended_collector": "browser_agent_cli, playwright, manual_json"
+      }
+    },
+    {
+      "id": "entity-method-browser-fingerprint-boundary",
+      "source_id": "method-browser-fingerprint-boundary",
+      "raw_record_source_id": "method-browser-fingerprint-boundary",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_risk",
+      "domain": "browser",
+      "entity_type": "browser_risk",
+      "external_id": "browser-fingerprint-risk-boundary",
+      "name": "Browser fingerprint and anti-detect boundary SOP",
+      "canonical_url": "https://www.w3.org/TR/robots/",
+      "summary": "Fingerprint tools belong in risk education and authorized QA, not in production scraping SOPs.",
+      "metrics": {
+        "platform": "Cross-browser risk boundary",
+        "risk_level": "high",
+        "recommended_collector": "manual_json, authorized_test_page"
+      }
+    }
+  ],
+  "signals": [
+    {
+      "id": "signal-attention-github-repo-langchain",
+      "source_id": "github-repo-langchain",
+      "entity_id": "entity-github-repo-langchain",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "attention_level",
+      "title": "langchain-ai/langchain 当前关注度达到 139471 stars",
+      "current_value": 139471,
+      "previous_value": 139471,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:27:08Z",
+        "source_url": "https://github.com/langchain-ai/langchain",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-firecrawl",
+      "source_id": "github-repo-firecrawl",
+      "entity_id": "entity-github-repo-firecrawl",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "attention_level",
+      "title": "firecrawl/firecrawl 当前关注度达到 133531 stars",
+      "current_value": 133531,
+      "previous_value": 133531,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:38:49Z",
+        "source_url": "https://github.com/firecrawl/firecrawl",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-browser-use",
+      "source_id": "github-repo-browser-use",
+      "entity_id": "entity-github-repo-browser-use",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "attention_level",
+      "title": "browser-use/browser-use 当前关注度达到 99127 stars",
+      "current_value": 99127,
+      "previous_value": 99127,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:30:03Z",
+        "source_url": "https://github.com/browser-use/browser-use",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-puppeteer",
+      "source_id": "github-repo-puppeteer",
+      "entity_id": "entity-github-repo-puppeteer",
+      "project_key": "open-source-collection",
+      "signal_type": "attention_level",
+      "title": "puppeteer/puppeteer 当前关注度达到 94826 stars",
+      "current_value": 94826,
+      "previous_value": 94826,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:38:35Z",
+        "source_url": "https://github.com/puppeteer/puppeteer",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-playwright",
+      "source_id": "github-repo-playwright",
+      "entity_id": "entity-github-repo-playwright",
+      "project_key": "open-source-collection",
+      "signal_type": "attention_level",
+      "title": "microsoft/playwright 当前关注度达到 91080 stars",
+      "current_value": 91080,
+      "previous_value": 91080,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:20:22Z",
+        "source_url": "https://github.com/microsoft/playwright",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-mcp-servers",
+      "source_id": "github-repo-mcp-servers",
+      "entity_id": "entity-github-repo-mcp-servers",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "attention_level",
+      "title": "modelcontextprotocol/servers 当前关注度达到 87323 stars",
+      "current_value": 87323,
+      "previous_value": 87323,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:01:37Z",
+        "source_url": "https://github.com/modelcontextprotocol/servers",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-crawl4ai",
+      "source_id": "github-repo-crawl4ai",
+      "entity_id": "entity-github-repo-crawl4ai",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "attention_level",
+      "title": "unclecode/crawl4ai 当前关注度达到 68656 stars",
+      "current_value": 68656,
+      "previous_value": 68656,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:06:50Z",
+        "source_url": "https://github.com/unclecode/crawl4ai",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-attention-github-repo-scrapling",
+      "source_id": "github-repo-scrapling",
+      "entity_id": "entity-github-repo-scrapling",
+      "project_key": "browser-preflight-risk",
+      "signal_type": "attention_level",
+      "title": "D4Vinci/Scrapling 当前关注度达到 64266 stars",
+      "current_value": 64266,
+      "previous_value": 64266,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.86,
+      "severity": "high",
+      "metadata": {
+        "metric": "stargazers_count",
+        "updated_at": "2026-06-16T16:39:57Z",
+        "source_url": "https://github.com/D4Vinci/Scrapling",
+        "interpretation": "single_snapshot_attention_level"
+      }
+    },
+    {
+      "id": "signal-topic-coverage-github-topic-mcp-server",
+      "source_id": "github-topic-mcp-server",
+      "entity_id": "entity-github-topic-mcp-server",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "topic_coverage",
+      "title": "mcp-server topic 当前覆盖 18054 个公开仓库",
+      "current_value": 18054,
+      "previous_value": 18054,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.82,
+      "severity": "medium",
+      "metadata": {
+        "metric": "github_topic_total_count",
+        "source_url": "https://github.com/topics/mcp-server",
+        "interpretation": "single_snapshot_ecosystem_size"
+      }
+    },
+    {
+      "id": "signal-topic-coverage-github-topic-ai-agent",
+      "source_id": "github-topic-ai-agent",
+      "entity_id": "entity-github-topic-ai-agent",
+      "project_key": "agent-collection-ecosystem",
+      "signal_type": "topic_coverage",
+      "title": "ai-agent topic 当前覆盖 17037 个公开仓库",
+      "current_value": 17037,
+      "previous_value": 17037,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.82,
+      "severity": "medium",
+      "metadata": {
+        "metric": "github_topic_total_count",
+        "source_url": "https://github.com/topics/ai-agent",
+        "interpretation": "single_snapshot_ecosystem_size"
+      }
+    },
+    {
+      "id": "signal-topic-coverage-github-topic-web-scraping",
+      "source_id": "github-topic-web-scraping",
+      "entity_id": "entity-github-topic-web-scraping",
+      "project_key": "open-source-collection",
+      "signal_type": "topic_coverage",
+      "title": "web-scraping topic 当前覆盖 14969 个公开仓库",
+      "current_value": 14969,
+      "previous_value": 14969,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.82,
+      "severity": "medium",
+      "metadata": {
+        "metric": "github_topic_total_count",
+        "source_url": "https://github.com/topics/web-scraping",
+        "interpretation": "single_snapshot_ecosystem_size"
+      }
+    },
+    {
+      "id": "signal-topic-coverage-github-topic-crawler",
+      "source_id": "github-topic-crawler",
+      "entity_id": "entity-github-topic-crawler",
+      "project_key": "open-source-collection",
+      "signal_type": "topic_coverage",
+      "title": "crawler topic 当前覆盖 8312 个公开仓库",
+      "current_value": 8312,
+      "previous_value": 8312,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.82,
+      "severity": "medium",
+      "metadata": {
+        "metric": "github_topic_total_count",
+        "source_url": "https://github.com/topics/crawler",
+        "interpretation": "single_snapshot_ecosystem_size"
+      }
+    },
+    {
+      "id": "signal-risk-method-compliance-boundary",
+      "source_id": "method-compliance-boundary",
+      "entity_id": "entity-method-compliance-boundary",
+      "project_key": "compliance-boundary",
+      "signal_type": "risk_boundary",
+      "title": "跨平台采集必须先固化合规边界",
+      "current_value": 1,
+      "previous_value": 1,
+      "delta": 0,
+      "delta_ratio": 0,
+      "confidence": 0.9,
+      "severity": "high",
+      "metadata": {
+        "metric": "policy_boundary_present",
+        "source_url": "https://www.w3.org/TR/robots/",
+        "interpretation": "governance_required_before_platform_scraping"
+      }
+    }
+  ],
+  "intelligence_items": [
+    {
+      "id": "intel-ai-ready-crawling-stack",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "title": "AI 原生采集工具已形成独立培训模块",
+      "claim": "Firecrawl 当前 133531 stars，browser-use 当前 99127 stars，Crawl4AI 当前 68656 stars；三者共同说明 AI 应用正在把网页采集、结构化抽取和浏览器操作合并为新的工具层。",
+      "impact": "培训中需要把传统爬虫、API 抓取和 AI-ready extraction 分成三条路线讲清楚。",
+      "recommended_action": "新增一个 20 分钟模块：用 Firecrawl/Crawl4AI/browser-use 对比 API 化抽取、LLM 友好 Markdown、浏览器 agent 三种范式。",
+      "training_talk_track": "讲解重点：培训中需要把传统爬虫、API 抓取和 AI-ready extraction 分成三条路线讲清楚。 动作：新增一个 20 分钟模块：用 Firecrawl/Crawl4AI/browser-use 对比 API 化抽取、LLM 友好 Markdown、浏览器 agent 三种范式。",
+      "evidence_source_ids": [
+        "github-repo-firecrawl",
+        "github-repo-browser-use",
+        "github-repo-crawl4ai"
+      ],
+      "evidence_urls": [
+        "https://github.com/firecrawl/firecrawl",
+        "https://github.com/browser-use/browser-use",
+        "https://github.com/unclecode/crawl4ai"
+      ],
+      "entity_ids": [
+        "entity-github-repo-firecrawl",
+        "entity-github-repo-browser-use",
+        "entity-github-repo-crawl4ai"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-firecrawl",
+        "signal-attention-github-repo-browser-use",
+        "signal-attention-github-repo-crawl4ai"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.91,
+        "confidence": 0.88,
+        "novelty": 0.86,
+        "urgency": 0.78,
+        "final": 0.867
+      }
+    },
+    {
+      "id": "intel-browser-automation-remains-core",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "domain": "osint",
+      "title": "浏览器自动化仍是动态页面采集的基础能力",
+      "claim": "Playwright 当前 91080 stars，Puppeteer 当前 94826 stars，Selenium 当前 34203 stars；动态渲染、交互触发和端到端验证仍离不开浏览器自动化。",
+      "impact": "培训不能只讲 HTTP 请求和 HTML 解析，必须覆盖浏览器自动化的成本、稳定性和合规边界。",
+      "recommended_action": "把 Playwright 作为主讲工具，Puppeteer/Selenium 作为对比案例，强调页面交互测试和采集不是同一件事。",
+      "training_talk_track": "讲解重点：培训不能只讲 HTTP 请求和 HTML 解析，必须覆盖浏览器自动化的成本、稳定性和合规边界。 动作：把 Playwright 作为主讲工具，Puppeteer/Selenium 作为对比案例，强调页面交互测试和采集不是同一件事。",
+      "evidence_source_ids": [
+        "github-repo-playwright",
+        "github-repo-puppeteer",
+        "github-repo-selenium",
+        "docs-playwright"
+      ],
+      "evidence_urls": [
+        "https://github.com/microsoft/playwright",
+        "https://github.com/puppeteer/puppeteer",
+        "https://github.com/SeleniumHQ/selenium",
+        "https://playwright.dev/"
+      ],
+      "entity_ids": [
+        "entity-github-repo-playwright",
+        "entity-github-repo-puppeteer",
+        "entity-github-repo-selenium",
+        "entity-docs-playwright"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-playwright",
+        "signal-attention-github-repo-puppeteer"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.86,
+        "confidence": 0.9,
+        "novelty": 0.7,
+        "urgency": 0.74,
+        "final": 0.814
+      }
+    },
+    {
+      "id": "intel-scrapy-remains-python-baseline",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "title": "Scrapy 仍适合作为 Python 爬虫工程基线",
+      "claim": "Scrapy 当前 62275 stars，且官方 release notes 可采集到完整版本线索；它适合讲解调度、下载、解析、pipeline 和中间件结构。",
+      "impact": "Scrapy 的价值不是新奇，而是工程化结构成熟，适合建立学员对爬虫系统边界的基本认识。",
+      "recommended_action": "保留 Scrapy 作为第一课工程基线，再引入 Crawlee、Playwright 和 AI extraction 作为延伸。",
+      "training_talk_track": "讲解重点：Scrapy 的价值不是新奇，而是工程化结构成熟，适合建立学员对爬虫系统边界的基本认识。 动作：保留 Scrapy 作为第一课工程基线，再引入 Crawlee、Playwright 和 AI extraction 作为延伸。",
+      "evidence_source_ids": [
+        "github-repo-scrapy",
+        "docs-scrapy-news"
+      ],
+      "evidence_urls": [
+        "https://github.com/scrapy/scrapy",
+        "https://docs.scrapy.org/en/latest/news.html"
+      ],
+      "entity_ids": [
+        "entity-github-repo-scrapy",
+        "entity-docs-scrapy-news"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.78,
+        "confidence": 0.88,
+        "novelty": 0.55,
+        "urgency": 0.6,
+        "final": 0.723
+      }
+    },
+    {
+      "id": "intel-crawlee-bridges-crawler-production-patterns",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "domain": "osint",
+      "title": "Crawlee 适合讲生产化 crawler 队列和运行抽象",
+      "claim": "Crawlee 当前 23788 stars，Crawlee Python 当前 9201 stars；它更适合讲请求队列、存储、代理和运行平台抽象。",
+      "impact": "相比只讲解析库，Crawlee 更能解释生产采集任务为什么需要队列和状态管理。",
+      "recommended_action": "把 Crawlee 放在 Scrapy 之后，用作“从脚本到采集任务平台”的过渡案例。",
+      "training_talk_track": "讲解重点：相比只讲解析库，Crawlee 更能解释生产采集任务为什么需要队列和状态管理。 动作：把 Crawlee 放在 Scrapy 之后，用作“从脚本到采集任务平台”的过渡案例。",
+      "evidence_source_ids": [
+        "github-repo-crawlee",
+        "github-repo-crawlee-python",
+        "docs-crawlee"
+      ],
+      "evidence_urls": [
+        "https://github.com/apify/crawlee",
+        "https://github.com/apify/crawlee-python",
+        "https://crawlee.dev/"
+      ],
+      "entity_ids": [
+        "entity-github-repo-crawlee",
+        "entity-github-repo-crawlee-python",
+        "entity-docs-crawlee"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.75,
+        "confidence": 0.82,
+        "novelty": 0.68,
+        "urgency": 0.62,
+        "final": 0.727
+      }
+    },
+    {
+      "id": "intel-agent-frameworks-need-tool-boundaries",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "title": "Agent 框架要先定义 tool 边界，再谈自动采集",
+      "claim": "LangChain 当前 139471 stars，CrewAI 当前 53701 stars；OpenAI Agents SDK 与 CrewAI Tools 文档也显示 agent 工作流需要明确工具输入、输出和权限边界。",
+      "impact": "Agent 能提高编排能力，但不能替代数据授权、采集频率、证据追溯和错误处理。",
+      "recommended_action": "培训中把 agent 定位为编排层，不把它包装成绕过平台限制的采集器。",
+      "training_talk_track": "讲解重点：Agent 能提高编排能力，但不能替代数据授权、采集频率、证据追溯和错误处理。 动作：培训中把 agent 定位为编排层，不把它包装成绕过平台限制的采集器。",
+      "evidence_source_ids": [
+        "github-repo-langchain",
+        "github-repo-crewai",
+        "docs-openai-agents",
+        "docs-crewai-tools"
+      ],
+      "evidence_urls": [
+        "https://github.com/langchain-ai/langchain",
+        "https://github.com/crewAIInc/crewAI",
+        "https://developers.openai.com/api/docs/guides/agents",
+        "https://docs.crewai.com/en/concepts/tools"
+      ],
+      "entity_ids": [
+        "entity-github-repo-langchain",
+        "entity-github-repo-crewai",
+        "entity-docs-openai-agents",
+        "entity-docs-crewai-tools"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-langchain"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.83,
+        "confidence": 0.84,
+        "novelty": 0.8,
+        "urgency": 0.7,
+        "final": 0.8
+      }
+    },
+    {
+      "id": "intel-mcp-source-connectors",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "title": "MCP 适合讲数据源工具化，而不是直接替代采集系统",
+      "claim": "MCP servers 当前 87323 stars，`mcp-server` topic 当前覆盖 18054 个公开仓库；这说明工具协议和数据源连接器正在成为 agent 工作台的重要接口层。",
+      "impact": "MCP 的培训重点应放在授权、工具 schema、审计和可观测性，而不是把所有数据源直接暴露给模型。",
+      "recommended_action": "新增 MCP 章节：演示如何把已授权数据源封装为工具，同时保留 evidence trail。",
+      "training_talk_track": "讲解重点：MCP 的培训重点应放在授权、工具 schema、审计和可观测性，而不是把所有数据源直接暴露给模型。 动作：新增 MCP 章节：演示如何把已授权数据源封装为工具，同时保留 evidence trail。",
+      "evidence_source_ids": [
+        "github-repo-mcp-servers",
+        "github-topic-mcp-server",
+        "docs-mcp-intro"
+      ],
+      "evidence_urls": [
+        "https://github.com/modelcontextprotocol/servers",
+        "https://github.com/topics/mcp-server",
+        "https://modelcontextprotocol.io/docs/getting-started/intro"
+      ],
+      "entity_ids": [
+        "entity-github-repo-mcp-servers",
+        "entity-github-topic-mcp-server",
+        "entity-docs-mcp-intro"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-mcp-servers",
+        "signal-topic-coverage-github-topic-mcp-server"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.82,
+        "confidence": 0.83,
+        "novelty": 0.82,
+        "urgency": 0.66,
+        "final": 0.79
+      }
+    },
+    {
+      "id": "intel-agent-browser-understanding",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "title": "Agent 浏览器训练要把页面理解、网络观察和人工复核连成闭环",
+      "claim": "agent-browser 当前 36213 stars，Stagehand 当前 23129 stars，browser-use 当前 99127 stars；三者共同说明 Agent 采集训练不能只讲自然语言指令，还要讲浏览器快照、网络请求、截图证据和人工接管。",
+      "impact": "浏览器 Agent 的业务价值在于帮助学员理解页面，而不是把网页自动化包装成无边界抓取。",
+      "recommended_action": "新增 agent-browser 课堂练习：打开授权页面，导出 accessibility snapshot、network 摘要、截图和页面 diff，再写成方法卡。",
+      "training_talk_track": "讲解重点：浏览器 Agent 的业务价值在于帮助学员理解页面，而不是把网页自动化包装成无边界抓取。 动作：新增 agent-browser 课堂练习：打开授权页面，导出 accessibility snapshot、network 摘要、截图和页面 diff，再写成方法卡。",
+      "evidence_source_ids": [
+        "github-repo-agent-browser",
+        "github-repo-stagehand",
+        "github-repo-browser-use",
+        "method-agent-browser-browser-qa"
+      ],
+      "evidence_urls": [
+        "https://github.com/vercel-labs/agent-browser",
+        "https://github.com/browserbase/stagehand",
+        "https://github.com/browser-use/browser-use",
+        "https://github.com/vercel-labs/agent-browser"
+      ],
+      "entity_ids": [
+        "entity-github-repo-agent-browser",
+        "entity-github-repo-stagehand",
+        "entity-github-repo-browser-use",
+        "entity-method-agent-browser-browser-qa"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-browser-use"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.86,
+        "confidence": 0.86,
+        "novelty": 0.82,
+        "urgency": 0.76,
+        "final": 0.832
+      }
+    },
+    {
+      "id": "intel-ai-extraction-pipeline-diversifies",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "domain": "agent",
+      "title": "AI 抽取工具已从 crawler 扩展到语义查询、视觉流程和 graph pipeline",
+      "claim": "ScrapeGraphAI 当前 27261 stars，Skyvern 当前 21919 stars，AgentQL 当前 1401 stars；AI 采集工具正在分化为 prompt pipeline、视觉浏览器流程和语义查询三类训练材料。",
+      "impact": "培训不能只把 AI 采集等同于 Firecrawl 或 Crawl4AI，需要让学员知道不同工具的控制粒度和失败模式。",
+      "recommended_action": "把 ScrapeGraphAI、Skyvern、AgentQL 放入对比表：分别讲结构化抽取、工作流自动化和语义定位。",
+      "training_talk_track": "讲解重点：培训不能只把 AI 采集等同于 Firecrawl 或 Crawl4AI，需要让学员知道不同工具的控制粒度和失败模式。 动作：把 ScrapeGraphAI、Skyvern、AgentQL 放入对比表：分别讲结构化抽取、工作流自动化和语义定位。",
+      "evidence_source_ids": [
+        "github-repo-scrapegraphai",
+        "github-repo-skyvern",
+        "github-repo-agentql"
+      ],
+      "evidence_urls": [
+        "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+        "https://github.com/Skyvern-AI/skyvern",
+        "https://github.com/tinyfish-io/agentql"
+      ],
+      "entity_ids": [
+        "entity-github-repo-scrapegraphai",
+        "entity-github-repo-skyvern",
+        "entity-github-repo-agentql"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.82,
+        "confidence": 0.82,
+        "novelty": 0.84,
+        "urgency": 0.68,
+        "final": 0.796
+      }
+    },
+    {
+      "id": "intel-rpa-no-code-collection-track",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "domain": "rpa",
+      "title": "RPA 和 no-code 采集应成为业务培训主线，而不是开发者工具的附录",
+      "claim": "Browse AI、Octoparse、影刀 RPA、Power Automate 和 UiPath 的来源与方法卡已经覆盖从点选式网页抽取到企业 RPA 治理的完整梯度。",
+      "impact": "培训对象不全是工程师；业务用户需要看见网页字段、流程录制、定时运行、导出和异常复核这些可操作 SOP。",
+      "recommended_action": "新增 RPA/no-code 训练路径：先用 Browse AI 或 Octoparse 讲字段建模，再用影刀 RPA 讲国内后台流程，最后用 Power Automate/UiPath 讲企业治理。",
+      "training_talk_track": "讲解重点：培训对象不全是工程师；业务用户需要看见网页字段、流程录制、定时运行、导出和异常复核这些可操作 SOP。 动作：新增 RPA/no-code 训练路径：先用 Browse AI 或 Octoparse 讲字段建模，再用影刀 RPA 讲国内后台流程，最后用 Power Automate/UiPath 讲企业治理。",
+      "evidence_source_ids": [
+        "docs-browse-ai",
+        "docs-octoparse",
+        "docs-yingdao-rpa",
+        "method-browse-ai-no-code",
+        "method-yingdao-rpa",
+        "method-power-automate-desktop",
+        "method-uipath-studio"
+      ],
+      "evidence_urls": [
+        "https://www.browse.ai/",
+        "https://www.octoparse.com/",
+        "https://www.yingdao.com/",
+        "https://www.browse.ai/",
+        "https://www.yingdao.com/",
+        "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+        "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction"
+      ],
+      "entity_ids": [
+        "entity-docs-browse-ai",
+        "entity-docs-octoparse",
+        "entity-docs-yingdao-rpa",
+        "entity-method-browse-ai-no-code",
+        "entity-method-yingdao-rpa",
+        "entity-method-power-automate-desktop",
+        "entity-method-uipath-studio"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.84,
+        "confidence": 0.82,
+        "novelty": 0.78,
+        "urgency": 0.74,
+        "final": 0.803
+      }
+    },
+    {
+      "id": "intel-open-source-no-code-bridges-training",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "domain": "rpa",
+      "title": "开源 no-code 采集平台能连接业务培训和工程化采集",
+      "claim": "Maxun 当前 15910 stars，Apify 平台文档和 Actor 方法卡提供了从可视化任务到平台化运行、数据集和 API 导出的训练路径。",
+      "impact": "no-code 不等于低质量；它适合先训练字段建模和任务边界，再过渡到 Crawlee、Actor 和自建采集服务。",
+      "recommended_action": "把 Maxun 与 Apify 放在同一模块：Maxun 讲开源可视化采集，Apify 讲平台化 Actor 和数据集交付。",
+      "training_talk_track": "讲解重点：no-code 不等于低质量；它适合先训练字段建模和任务边界，再过渡到 Crawlee、Actor 和自建采集服务。 动作：把 Maxun 与 Apify 放在同一模块：Maxun 讲开源可视化采集，Apify 讲平台化 Actor 和数据集交付。",
+      "evidence_source_ids": [
+        "github-repo-maxun",
+        "docs-apify-platform",
+        "method-apify-actor-platform"
+      ],
+      "evidence_urls": [
+        "https://github.com/getmaxun/maxun",
+        "https://docs.apify.com/platform",
+        "https://docs.apify.com/platform"
+      ],
+      "entity_ids": [
+        "entity-github-repo-maxun",
+        "entity-docs-apify-platform",
+        "entity-method-apify-actor-platform"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.78,
+        "confidence": 0.8,
+        "novelty": 0.78,
+        "urgency": 0.66,
+        "final": 0.761
+      }
+    },
+    {
+      "id": "intel-browser-preflight-before-scraping",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "domain": "browser",
+      "title": "浏览器采集前必须先做公开暴露面和授权范围预检",
+      "claim": "Web-Check 当前 33722 stars，Katana 当前 17028 stars，httpx 当前 10051 stars；这些工具说明采集工作台需要先理解目标站点公开暴露面、URL 范围和 HTTP 信号，再进入内容采集。",
+      "impact": "站点预检能降低误采、过采和越权风险，是培训和生产采集之间的关键控制点。",
+      "recommended_action": "新增预检训练：对自有或授权站点输出 DNS/headers/robots/URL 范围/截图证据，并明确是否允许进入下一步采集。",
+      "training_talk_track": "讲解重点：站点预检能降低误采、过采和越权风险，是培训和生产采集之间的关键控制点。 动作：新增预检训练：对自有或授权站点输出 DNS/headers/robots/URL 范围/截图证据，并明确是否允许进入下一步采集。",
+      "evidence_source_ids": [
+        "github-repo-web-check",
+        "github-repo-katana",
+        "github-repo-httpx",
+        "method-web-check-preflight",
+        "method-katana-authorized-crawl"
+      ],
+      "evidence_urls": [
+        "https://github.com/lissy93/web-check",
+        "https://github.com/projectdiscovery/katana",
+        "https://github.com/projectdiscovery/httpx",
+        "https://web-check.xyz/",
+        "https://github.com/projectdiscovery/katana"
+      ],
+      "entity_ids": [
+        "entity-github-repo-web-check",
+        "entity-github-repo-katana",
+        "entity-github-repo-httpx",
+        "entity-method-web-check-preflight",
+        "entity-method-katana-authorized-crawl"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.86,
+        "confidence": 0.84,
+        "novelty": 0.8,
+        "urgency": 0.82,
+        "final": 0.835
+      }
+    },
+    {
+      "id": "intel-fingerprint-risk-is-training-boundary",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_risk",
+      "domain": "browser",
+      "title": "浏览器指纹和反检测工具只能作为风险教育，不应进入绕过式 SOP",
+      "claim": "Scrapling 当前 64266 stars，Pydoll 当前 6910 stars；它们具备浏览器解析、CDP、HAR 或自适应抽取训练价值，但 anti-bot/stealth 相关语义会显著提高合规风险。",
+      "impact": "课程需要帮助学员理解检测面，但不能训练绕过 Cloudflare、DataDome、Kasada、验证码、登录控制或平台风控。",
+      "recommended_action": "把 Pydoll、Scrapling 和浏览器指纹边界放入高风险案例区：只讲授权测试、差异诊断和禁止项。",
+      "training_talk_track": "讲解重点：课程需要帮助学员理解检测面，但不能训练绕过 Cloudflare、DataDome、Kasada、验证码、登录控制或平台风控。 动作：把 Pydoll、Scrapling 和浏览器指纹边界放入高风险案例区：只讲授权测试、差异诊断和禁止项。",
+      "evidence_source_ids": [
+        "github-repo-scrapling",
+        "github-repo-pydoll",
+        "method-browser-fingerprint-boundary"
+      ],
+      "evidence_urls": [
+        "https://github.com/D4Vinci/Scrapling",
+        "https://github.com/autoscrape-labs/pydoll",
+        "https://www.w3.org/TR/robots/"
+      ],
+      "entity_ids": [
+        "entity-github-repo-scrapling",
+        "entity-github-repo-pydoll",
+        "entity-method-browser-fingerprint-boundary"
+      ],
+      "signal_ids": [
+        "signal-attention-github-repo-scrapling"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.82,
+        "confidence": 0.82,
+        "novelty": 0.86,
+        "urgency": 0.9,
+        "final": 0.844
+      }
+    },
+    {
+      "id": "intel-github-api-first-low-risk",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "GitHub 适合作为低风险 API-first 采集训练样板",
+      "claim": "`web-scraping` topic 当前覆盖 14969 个公开仓库，`ai-agent` topic 当前覆盖 17037 个公开仓库；GitHub REST 文档和 repo API 文档可以支撑从官方 API 获取公开元数据。",
+      "impact": "GitHub 能同时训练 API 请求、分页、rate limit、数据归一化和证据追溯，是最适合公开教学的起点。",
+      "recommended_action": "把 GitHub repo/topic 作为第一轮实操数据源，避免一开始进入高风险平台页面抓取。",
+      "training_talk_track": "讲解重点：GitHub 能同时训练 API 请求、分页、rate limit、数据归一化和证据追溯，是最适合公开教学的起点。 动作：把 GitHub repo/topic 作为第一轮实操数据源，避免一开始进入高风险平台页面抓取。",
+      "evidence_source_ids": [
+        "github-topic-web-scraping",
+        "github-topic-ai-agent",
+        "docs-github-rest",
+        "docs-github-repos"
+      ],
+      "evidence_urls": [
+        "https://github.com/topics/web-scraping",
+        "https://github.com/topics/ai-agent",
+        "https://docs.github.com/en/rest",
+        "https://docs.github.com/rest/repos/repos"
+      ],
+      "entity_ids": [
+        "entity-github-topic-web-scraping",
+        "entity-github-topic-ai-agent",
+        "entity-docs-github-rest",
+        "entity-docs-github-repos"
+      ],
+      "signal_ids": [
+        "signal-topic-coverage-github-topic-web-scraping",
+        "signal-topic-coverage-github-topic-ai-agent"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.88,
+        "confidence": 0.92,
+        "novelty": 0.62,
+        "urgency": 0.82,
+        "final": 0.826
+      }
+    },
+    {
+      "id": "intel-official-docs-need-parser-strategy",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "官方文档采集要区分标题、正文摘要和版本线索",
+      "claim": "本轮快照显示 GitHub repo API 与 Scrapy release notes 正文较长，通用 HTML 抽取足以发现内容，但培训级情报需要进一步做章节化解析。",
+      "impact": "只抓全文会制造噪音；面向培训的文档采集需要稳定标题、更新时间、章节和关键声明。",
+      "recommended_action": "后续实现 doc-specific parser，把 release notes、API reference 和 guide 文档拆成不同模板。",
+      "training_talk_track": "讲解重点：只抓全文会制造噪音；面向培训的文档采集需要稳定标题、更新时间、章节和关键声明。 动作：后续实现 doc-specific parser，把 release notes、API reference 和 guide 文档拆成不同模板。",
+      "evidence_source_ids": [
+        "docs-github-repos",
+        "docs-scrapy-news",
+        "docs-openai-agents"
+      ],
+      "evidence_urls": [
+        "https://docs.github.com/rest/repos/repos",
+        "https://docs.scrapy.org/en/latest/news.html",
+        "https://developers.openai.com/api/docs/guides/agents"
+      ],
+      "entity_ids": [
+        "entity-docs-github-repos",
+        "entity-docs-scrapy-news",
+        "entity-docs-openai-agents"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.7,
+        "confidence": 0.8,
+        "novelty": 0.72,
+        "urgency": 0.58,
+        "final": 0.705
+      }
+    },
+    {
+      "id": "intel-ecommerce-method-boundary",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "电商平台训练先讲合规方法卡，不直接讲绕过式抓取",
+      "claim": "Amazon 与 Shopify 相关方法卡明确把公开页面、授权导出、合规 provider 和数据最小化放在前置位置。",
+      "impact": "电商采集很容易滑向反爬绕过、价格监控滥用和平台规则冲突；培训必须先建立边界。",
+      "recommended_action": "把电商章节定义为方法设计课：字段目标、授权来源、频率控制、证据留存和风险提示。",
+      "training_talk_track": "讲解重点：电商采集很容易滑向反爬绕过、价格监控滥用和平台规则冲突；培训必须先建立边界。 动作：把电商章节定义为方法设计课：字段目标、授权来源、频率控制、证据留存和风险提示。",
+      "evidence_source_ids": [
+        "method-amazon-public-pages",
+        "method-shopify-storefront"
+      ],
+      "evidence_urls": [
+        "https://www.amazon.com/",
+        "https://www.shopify.com/"
+      ],
+      "entity_ids": [
+        "entity-method-amazon-public-pages",
+        "entity-method-shopify-storefront"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.76,
+        "confidence": 0.86,
+        "novelty": 0.58,
+        "urgency": 0.8,
+        "final": 0.757
+      }
+    },
+    {
+      "id": "intel-social-collection-aggregate-only",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "社媒采集训练应聚焦聚合趋势，不暴露个人级数据",
+      "claim": "Reddit、YouTube、TikTok 方法卡都把公开聚合信号、官方 API 或公开趋势页作为训练边界。",
+      "impact": "社媒数据的主要风险是个人信息、画像和平台政策；训练中要避免教个人级抓取。",
+      "recommended_action": "社媒章节只讲公开趋势、聚合指标和内容主题，不讲账号画像、私信、登录态或规避限制。",
+      "training_talk_track": "讲解重点：社媒数据的主要风险是个人信息、画像和平台政策；训练中要避免教个人级抓取。 动作：社媒章节只讲公开趋势、聚合指标和内容主题，不讲账号画像、私信、登录态或规避限制。",
+      "evidence_source_ids": [
+        "method-reddit-public-api",
+        "method-youtube-data-api",
+        "method-tiktok-creative-center"
+      ],
+      "evidence_urls": [
+        "https://www.reddit.com/dev/api/",
+        "https://developers.google.com/youtube/v3",
+        "https://ads.tiktok.com/business/creativecenter/"
+      ],
+      "entity_ids": [
+        "entity-method-reddit-public-api",
+        "entity-method-youtube-data-api",
+        "entity-method-tiktok-creative-center"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.78,
+        "confidence": 0.88,
+        "novelty": 0.62,
+        "urgency": 0.84,
+        "final": 0.785
+      }
+    },
+    {
+      "id": "intel-competitor-public-site-monitoring",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "竞品监控应从公开页面变化检测开始",
+      "claim": "竞品 public site 方法卡把 landing page、pricing page 和 feature page 作为可讲解目标，同时要求尊重 robots 和频率边界。",
+      "impact": "公开页面变化检测能支撑商业培训场景，又比高风险平台数据抓取更容易闭环。",
+      "recommended_action": "用 generic_web 采集公开页面，形成 raw record、entity snapshot、page_changed signal 和 evidence。",
+      "training_talk_track": "讲解重点：公开页面变化检测能支撑商业培训场景，又比高风险平台数据抓取更容易闭环。 动作：用 generic_web 采集公开页面，形成 raw record、entity snapshot、page_changed signal 和 evidence。",
+      "evidence_source_ids": [
+        "method-competitor-public-site",
+        "docs-playwright"
+      ],
+      "evidence_urls": [
+        "https://www.w3.org/TR/robots/",
+        "https://playwright.dev/"
+      ],
+      "entity_ids": [
+        "entity-method-competitor-public-site",
+        "entity-docs-playwright"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.73,
+        "confidence": 0.82,
+        "novelty": 0.6,
+        "urgency": 0.62,
+        "final": 0.705
+      }
+    },
+    {
+      "id": "intel-compliance-as-first-class-intelligence",
+      "project_key": "compliance-boundary",
+      "category": "compliance_boundary",
+      "domain": "governance",
+      "title": "合规边界必须成为工作台的一等情报对象",
+      "claim": "跨平台合规方法卡明确禁止绕过登录、付费墙、访问控制或在无合法基础时采集个人信息。",
+      "impact": "如果合规只写在文档里，采集任务和 agent 编排会绕过它；工作台必须把风险边界呈现在 alerts 和 intelligence 页面。",
+      "recommended_action": "把 high risk 方法卡生成 alert，并在每个高风险平台方法情报中引用该边界。",
+      "training_talk_track": "讲解重点：如果合规只写在文档里，采集任务和 agent 编排会绕过它；工作台必须把风险边界呈现在 alerts 和 intelligence 页面。 动作：把 high risk 方法卡生成 alert，并在每个高风险平台方法情报中引用该边界。",
+      "evidence_source_ids": [
+        "method-compliance-boundary"
+      ],
+      "evidence_urls": [
+        "https://www.w3.org/TR/robots/"
+      ],
+      "entity_ids": [
+        "entity-method-compliance-boundary"
+      ],
+      "signal_ids": [
+        "signal-risk-method-compliance-boundary"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "risk",
+      "status": "new",
+      "scores": {
+        "impact": 0.9,
+        "confidence": 0.92,
+        "novelty": 0.7,
+        "urgency": 0.9,
+        "final": 0.865
+      }
+    },
+    {
+      "id": "intel-topic-map-guides-training-priority",
+      "project_key": "open-source-collection",
+      "category": "github_intelligence",
+      "domain": "osint",
+      "title": "GitHub topic 覆盖量可用于安排培训优先级",
+      "claim": "`mcp-server` topic 当前覆盖 18054 个仓库，`ai-agent` topic 当前覆盖 17037 个仓库，`web-scraping` topic 当前覆盖 14969 个仓库；topic 覆盖量可作为培训内容排序的弱信号。",
+      "impact": "topic 数量不能代表质量，但能提示哪些生态需要优先解释概念和工具差异。",
+      "recommended_action": "把 topic 覆盖量用于 dashboard 概览，不直接作为推荐排名的唯一依据。",
+      "training_talk_track": "讲解重点：topic 数量不能代表质量，但能提示哪些生态需要优先解释概念和工具差异。 动作：把 topic 覆盖量用于 dashboard 概览，不直接作为推荐排名的唯一依据。",
+      "evidence_source_ids": [
+        "github-topic-mcp-server",
+        "github-topic-ai-agent",
+        "github-topic-web-scraping"
+      ],
+      "evidence_urls": [
+        "https://github.com/topics/mcp-server",
+        "https://github.com/topics/ai-agent",
+        "https://github.com/topics/web-scraping"
+      ],
+      "entity_ids": [
+        "entity-github-topic-mcp-server",
+        "entity-github-topic-ai-agent",
+        "entity-github-topic-web-scraping"
+      ],
+      "signal_ids": [
+        "signal-topic-coverage-github-topic-mcp-server",
+        "signal-topic-coverage-github-topic-ai-agent",
+        "signal-topic-coverage-github-topic-web-scraping"
+      ],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.72,
+        "confidence": 0.76,
+        "novelty": 0.66,
+        "urgency": 0.58,
+        "final": 0.69
+      }
+    },
+    {
+      "id": "intel-raw-evidence-trail-is-training-asset",
+      "project_key": "platform-methods",
+      "category": "platform_method",
+      "domain": "platform",
+      "title": "原始记录和 evidence trail 本身就是培训资产",
+      "claim": "本轮 44 个 source 均已成功生成 raw record，且每条记录都有 source URL、collector type 和 collected_at。",
+      "impact": "培训中要让学员看到从 source 到 raw record、entity、signal、intelligence、report 的完整链路。",
+      "recommended_action": "在页面验收时逐页展示同一条情报如何回溯到 GitHub/API/docs/method card 来源。",
+      "training_talk_track": "讲解重点：培训中要让学员看到从 source 到 raw record、entity、signal、intelligence、report 的完整链路。 动作：在页面验收时逐页展示同一条情报如何回溯到 GitHub/API/docs/method card 来源。",
+      "evidence_source_ids": [
+        "docs-github-rest",
+        "github-repo-scrapy",
+        "method-github-public-api"
+      ],
+      "evidence_urls": [
+        "https://docs.github.com/en/rest",
+        "https://github.com/scrapy/scrapy",
+        "https://docs.github.com/en/rest"
+      ],
+      "entity_ids": [
+        "entity-docs-github-rest",
+        "entity-github-repo-scrapy",
+        "entity-method-github-public-api"
+      ],
+      "signal_ids": [],
+      "last_checked_at": "2026-06-16T16:39:38+00:00",
+      "intelligence_type": "opportunity",
+      "status": "new",
+      "scores": {
+        "impact": 0.82,
+        "confidence": 0.86,
+        "novelty": 0.56,
+        "urgency": 0.72,
+        "final": 0.758
+      }
+    }
+  ],
+  "report": {
+    "id": "report-training-intelligence-weekly-20260617",
+    "title": "数据采集培训情报周报",
+    "report_type": "weekly_training",
+    "status": "published",
+    "period_start": "2026-06-16",
+    "period_end": "2026-06-16",
+    "last_checked_at": "2026-06-16T16:39:38+00:00",
+    "summary": "本周培训内容聚焦 GitHub API、开源爬虫框架、浏览器自动化、AI agent、RPA/no-code、站点预检和跨平台合规边界。",
+    "sections": [
+      {
+        "title": "优先讲解",
+        "items": [
+          "AI 原生采集工具已形成独立培训模块",
+          "合规边界必须成为工作台的一等情报对象",
+          "浏览器指纹和反检测工具只能作为风险教育，不应进入绕过式 SOP",
+          "浏览器采集前必须先做公开暴露面和授权范围预检",
+          "Agent 浏览器训练要把页面理解、网络观察和人工复核连成闭环",
+          "GitHub 适合作为低风险 API-first 采集训练样板"
+        ]
+      },
+      {
+        "title": "工具生态",
+        "items": [
+          "AI 原生采集工具已形成独立培训模块",
+          "浏览器自动化仍是动态页面采集的基础能力",
+          "Scrapy 仍适合作为 Python 爬虫工程基线",
+          "Crawlee 适合讲生产化 crawler 队列和运行抽象",
+          "Agent 框架要先定义 tool 边界，再谈自动采集",
+          "MCP 适合讲数据源工具化，而不是直接替代采集系统"
+        ]
+      },
+      {
+        "title": "业务流程与合规",
+        "items": [
+          "RPA 和 no-code 采集应成为业务培训主线，而不是开发者工具的附录",
+          "浏览器采集前必须先做公开暴露面和授权范围预检",
+          "浏览器指纹和反检测工具只能作为风险教育，不应进入绕过式 SOP",
+          "GitHub 适合作为低风险 API-first 采集训练样板",
+          "官方文档采集要区分标题、正文摘要和版本线索",
+          "电商平台训练先讲合规方法卡，不直接讲绕过式抓取"
+        ]
+      }
+    ],
+    "intelligence_ids": [
+      "intel-ai-ready-crawling-stack",
+      "intel-browser-automation-remains-core",
+      "intel-scrapy-remains-python-baseline",
+      "intel-crawlee-bridges-crawler-production-patterns",
+      "intel-agent-frameworks-need-tool-boundaries",
+      "intel-mcp-source-connectors",
+      "intel-agent-browser-understanding",
+      "intel-ai-extraction-pipeline-diversifies",
+      "intel-rpa-no-code-collection-track",
+      "intel-open-source-no-code-bridges-training",
+      "intel-browser-preflight-before-scraping",
+      "intel-fingerprint-risk-is-training-boundary",
+      "intel-github-api-first-low-risk",
+      "intel-official-docs-need-parser-strategy",
+      "intel-ecommerce-method-boundary",
+      "intel-social-collection-aggregate-only",
+      "intel-competitor-public-site-monitoring",
+      "intel-compliance-as-first-class-intelligence",
+      "intel-topic-map-guides-training-priority",
+      "intel-raw-evidence-trail-is-training-asset"
+    ]
+  },
+  "alerts": [
+    {
+      "id": "alert-ai-agent-tool-attention",
+      "title": "AI 采集工具关注度较高",
+      "severity": "high",
+      "status": "open",
+      "signal_ids": [
+        "signal-attention-github-repo-langchain",
+        "signal-attention-github-repo-firecrawl",
+        "signal-attention-github-repo-browser-use"
+      ],
+      "recommended_action": "在培训中优先展示 Firecrawl、browser-use、Crawl4AI 和 MCP 的差异。"
+    },
+    {
+      "id": "alert-browser-automation-core",
+      "title": "浏览器自动化仍是动态页面采集核心能力",
+      "severity": "medium",
+      "status": "open",
+      "signal_ids": [
+        "signal-attention-github-repo-puppeteer",
+        "signal-attention-github-repo-playwright"
+      ],
+      "recommended_action": "保留 Playwright 章节，并把采集与 E2E 测试边界讲清楚。"
+    },
+    {
+      "id": "alert-compliance-boundary-required",
+      "title": "高风险平台采集必须先讲合规边界",
+      "severity": "high",
+      "status": "open",
+      "signal_ids": [
+        "signal-risk-method-compliance-boundary"
+      ],
+      "recommended_action": "电商、社媒和竞品章节必须先展示禁止项和授权边界。"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notification-training-report-ready",
+      "type": "report_ready",
+      "title": "数据采集培训情报周报已生成",
+      "message": "本周培训内容聚焦 GitHub API、开源爬虫框架、浏览器自动化、AI agent、RPA/no-code、站点预检和跨平台合规边界。",
+      "target_id": "report-training-intelligence-weekly-20260617"
+    },
+    {
+      "id": "notification-training-alerts-ready",
+      "type": "alerts_ready",
+      "title": "培训告警已生成",
+      "message": "已生成 3 条培训相关告警。",
+      "target_id": "alert-ai-agent-tool-attention"
+    },
+    {
+      "id": "notification-training-evidence-ready",
+      "type": "evidence_ready",
+      "title": "培训证据链已就绪",
+      "message": "GitHub、官方文档和方法卡快照已可用于页面讲解。",
+      "target_id": "report-training-intelligence-weekly-20260617"
+    }
+  ]
+}

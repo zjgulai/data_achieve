@@ -42,7 +42,7 @@ def parse_args() -> SnapshotArgs:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260615.json",
+        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260617.json",
         help="Path to write the snapshot JSON.",
     )
     parser.add_argument(

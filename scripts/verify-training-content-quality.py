@@ -19,12 +19,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--snapshot",
         type=Path,
-        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260615.json",
+        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260617.json",
     )
     parser.add_argument(
         "--curation",
         type=Path,
-        default=ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260615.json",
+        default=ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260617.json",
     )
     return parser.parse_args()
 

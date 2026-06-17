@@ -37,21 +37,22 @@ from data_intelligence_hub.seed.training_content import (
 from data_intelligence_hub.services.toolkit_service import get_toolkit_overview
 
 ROOT_DIR = Path(__file__).resolve().parents[4]
-CURATION_PATH = ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260615.json"
-SNAPSHOT_PATH = ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260615.json"
+FIXTURE_DIR = ROOT_DIR / "apps" / "api" / "tests" / "fixtures" / "training_content"
+CURATION_PATH = FIXTURE_DIR / "training-content-curation-20260617.json"
+SNAPSHOT_PATH = FIXTURE_DIR / "training-content-snapshot-20260617.json"
 
 
 def test_curated_training_ids_cover_seed_graph() -> None:
     ids = curated_training_ids()
 
-    assert len(ids["projects"]) == 4
-    assert len(ids["sources"]) == 44
-    assert len(ids["tasks"]) == 44
-    assert len(ids["task_runs"]) == 44
-    assert len(ids["raw_records"]) == 44
-    assert len(ids["entities"]) == 44
+    assert len(ids["projects"]) == 6
+    assert len(ids["sources"]) == 69
+    assert len(ids["tasks"]) == 69
+    assert len(ids["task_runs"]) == 69
+    assert len(ids["raw_records"]) == 69
+    assert len(ids["entities"]) == 69
     assert len(ids["signals"]) == 13
-    assert len(ids["intelligence"]) == 14
+    assert len(ids["intelligence"]) == 20
     assert len(ids["reports"]) == 1
     assert len(ids["alert_rules"]) == 3
     assert len(ids["alert_events"]) == 3
@@ -80,12 +81,12 @@ async def test_training_content_seed_execute_is_idempotent(
 
     assert first_report.counts == second_report.counts
     async with session_factory() as session:
-        assert await _count(session, Project) == 5
-        assert await _count(session, Source) == 44
-        assert await _count(session, CollectionTask) == 44
-        assert await _count(session, RawRecord) == 44
-        assert await _count(session, Entity) == 45
-        assert await _count(session, IntelligenceItem) == 14
+        assert await _count(session, Project) == 7
+        assert await _count(session, Source) == 69
+        assert await _count(session, CollectionTask) == 69
+        assert await _count(session, RawRecord) == 69
+        assert await _count(session, Entity) == 70
+        assert await _count(session, IntelligenceItem) == 20
         weekly_report = await session.scalar(
             select(Report).where(Report.report_type == "weekly_training")
         )
@@ -101,7 +102,7 @@ async def test_training_content_seed_execute_is_idempotent(
             )
             or 0
         )
-        assert included_intelligence == 14
+        assert included_intelligence == 20
 
 
 @pytest.mark.asyncio
@@ -140,11 +141,11 @@ async def test_toolkit_overview_reads_curated_training(
         overview = await get_toolkit_overview(session, _demo_id("workspace-main"))
 
     assert overview.dataset == "curated_training"
-    assert overview.metrics.source_count == 44
-    assert overview.metrics.tool_count >= 10
-    assert overview.metrics.method_count >= 8
-    assert overview.metrics.intelligence_count == 14
-    assert overview.metrics.evidence_count == 40
+    assert overview.metrics.source_count == 69
+    assert overview.metrics.tool_count >= 20
+    assert overview.metrics.method_count >= 18
+    assert overview.metrics.intelligence_count == 20
+    assert overview.metrics.evidence_count == 65
     assert overview.tools[0].stars is not None
     assert overview.tools[0].source_credibility_score >= 60
     assert overview.tools[0].source_credibility_level in {"high", "medium", "review"}
@@ -152,7 +153,7 @@ async def test_toolkit_overview_reads_curated_training(
     assert any(tool.name == "firecrawl/firecrawl" for tool in overview.tools)
     assert any(method.platform == "GitHub" for method in overview.methods)
     assert all(item.evidence_count > 0 for item in overview.intelligence_items)
-    assert len(overview.lecture_playbooks) == 14
+    assert len(overview.lecture_playbooks) == 20
     assert len(overview.image_anchor_diagnostics) == 6
     assert len(overview.browser_labs) == 5
     assert len(overview.authorization_checklists) == 3
@@ -172,13 +173,16 @@ async def test_toolkit_overview_reads_curated_training(
     assert all(playbook.verification_steps for playbook in overview.lecture_playbooks)
     assert all(playbook.risk_boundaries for playbook in overview.lecture_playbooks)
     assert all(playbook.evidence_urls for playbook in overview.lecture_playbooks)
-    assert len(overview.learning_paths) == 5
+    assert len(overview.learning_paths) == 7
     path_by_id = {path.id: path for path in overview.learning_paths}
     assert path_by_id["github-api-baseline"].tool_count > 0
     assert path_by_id["github-api-baseline"].method_count > 0
     assert path_by_id["github-api-baseline"].evidence_count > 0
     assert path_by_id["agent-mcp-orchestration"].tool_count > 0
     assert path_by_id["agent-mcp-orchestration"].method_count > 0
+    assert path_by_id["rpa-no-code-business-workflows"].method_count > 0
+    assert path_by_id["browser-preflight-risk-diagnostics"].tool_count > 0
+    assert path_by_id["browser-preflight-risk-diagnostics"].method_count > 0
     assert path_by_id["platform-sop-governance"].method_count > 0
     assert path_by_id["platform-sop-governance"].risk_level == "high"
 
@@ -220,10 +224,10 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert response.status_code == 200
     body = response.json()
     assert body["dataset"] == "curated_training"
-    assert body["metrics"]["source_count"] == 44
-    assert body["metrics"]["evidence_count"] == 40
-    assert len(body["learning_paths"]) == 5
-    assert len(body["lecture_playbooks"]) == 14
+    assert body["metrics"]["source_count"] == 69
+    assert body["metrics"]["evidence_count"] == 65
+    assert len(body["learning_paths"]) == 7
+    assert len(body["lecture_playbooks"]) == 20
     assert len(body["image_anchor_diagnostics"]) == 6
     assert len(body["browser_labs"]) == 5
     assert len(body["authorization_checklists"]) == 3
@@ -234,7 +238,7 @@ async def test_toolkit_route_uses_authenticated_workspace_id(
     assert body["authorization_checklists"][0]["required_checks"]
     assert body["lecture_playbooks"][0]["hands_on_steps"]
     assert body["learning_paths"][0]["acceptance_criteria"]
-    assert len(body["intelligence_items"]) == 14
+    assert len(body["intelligence_items"]) == 20
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:

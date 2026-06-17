@@ -29,15 +29,17 @@ from data_intelligence_hub.models.workspace import Workspace
 
 TRAINING_NAMESPACE = uuid.UUID("f51bbf7e-40fa-49b7-9163-a59bb40b56cc")
 DEMO_NAMESPACE = uuid.UUID("2df8a496-5ea6-49c3-8aef-9604ac8e6238")
-TRAINING_SEED_VERSION = "2026-06-15-curated-training-v1"
-DEFAULT_CURATION_PATH = Path("tmp/outputs/training-content-curation-20260615.json")
-DEFAULT_SNAPSHOT_PATH = Path("tmp/outputs/training-content-snapshot-20260615.json")
+TRAINING_SEED_VERSION = "2026-06-17-curated-training-v2"
+DEFAULT_CURATION_PATH = Path("tmp/outputs/training-content-curation-20260617.json")
+DEFAULT_SNAPSHOT_PATH = Path("tmp/outputs/training-content-snapshot-20260617.json")
 
 TRAINING_PROJECT_KEYS = (
     "open-source-collection",
     "platform-methods",
     "agent-collection-ecosystem",
     "compliance-boundary",
+    "rpa-no-code-collection",
+    "browser-preflight-risk",
 )
 
 TRAINING_SOURCE_IDS = (
@@ -48,9 +50,6 @@ TRAINING_SOURCE_IDS = (
     "github-topic-ai-agent",
     "github-topic-mcp-server",
     "github-topic-agent-framework",
-    "github-topic-web-crawler",
-    "github-topic-scraping",
-    "github-topic-data-mining",
     "github-repo-scrapy",
     "github-repo-playwright",
     "github-repo-puppeteer",
@@ -85,6 +84,34 @@ TRAINING_SOURCE_IDS = (
     "method-tiktok-creative-center",
     "method-competitor-public-site",
     "method-compliance-boundary",
+    "github-repo-skyvern",
+    "github-repo-scrapegraphai",
+    "github-repo-agentql",
+    "github-repo-agent-browser",
+    "github-repo-maxun",
+    "github-repo-web-check",
+    "github-repo-katana",
+    "github-repo-httpx",
+    "github-repo-pydoll",
+    "github-repo-scrapling",
+    "github-repo-browserless",
+    "docs-browse-ai",
+    "docs-octoparse",
+    "docs-yingdao-rpa",
+    "docs-power-automate-web-automation",
+    "docs-uipath-studio",
+    "docs-apify-platform",
+    "docs-browserless",
+    "method-browse-ai-no-code",
+    "method-octoparse-no-code",
+    "method-yingdao-rpa",
+    "method-power-automate-desktop",
+    "method-uipath-studio",
+    "method-apify-actor-platform",
+    "method-web-check-preflight",
+    "method-katana-authorized-crawl",
+    "method-agent-browser-browser-qa",
+    "method-browser-fingerprint-boundary",
 )
 
 ATTENTION_SIGNAL_SOURCE_IDS = (
@@ -95,7 +122,7 @@ ATTENTION_SIGNAL_SOURCE_IDS = (
     "github-repo-playwright",
     "github-repo-mcp-servers",
     "github-repo-crawl4ai",
-    "github-repo-scrapy",
+    "github-repo-scrapling",
 )
 TOPIC_SIGNAL_SOURCE_IDS = (
     "github-topic-mcp-server",
@@ -144,6 +171,43 @@ TRAINING_INTELLIGENCE_EVIDENCE_SOURCE_IDS: dict[str, tuple[str, ...]] = {
         "github-topic-mcp-server",
         "docs-mcp-intro",
     ),
+    "intel-agent-browser-understanding": (
+        "github-repo-agent-browser",
+        "github-repo-stagehand",
+        "github-repo-browser-use",
+        "method-agent-browser-browser-qa",
+    ),
+    "intel-ai-extraction-pipeline-diversifies": (
+        "github-repo-scrapegraphai",
+        "github-repo-skyvern",
+        "github-repo-agentql",
+    ),
+    "intel-rpa-no-code-collection-track": (
+        "docs-browse-ai",
+        "docs-octoparse",
+        "docs-yingdao-rpa",
+        "method-browse-ai-no-code",
+        "method-yingdao-rpa",
+        "method-power-automate-desktop",
+        "method-uipath-studio",
+    ),
+    "intel-open-source-no-code-bridges-training": (
+        "github-repo-maxun",
+        "docs-apify-platform",
+        "method-apify-actor-platform",
+    ),
+    "intel-browser-preflight-before-scraping": (
+        "github-repo-web-check",
+        "github-repo-katana",
+        "github-repo-httpx",
+        "method-web-check-preflight",
+        "method-katana-authorized-crawl",
+    ),
+    "intel-fingerprint-risk-is-training-boundary": (
+        "github-repo-scrapling",
+        "github-repo-pydoll",
+        "method-browser-fingerprint-boundary",
+    ),
     "intel-github-api-first-low-risk": (
         "github-topic-web-scraping",
         "github-topic-ai-agent",
@@ -181,7 +245,7 @@ TRAINING_INTELLIGENCE_EVIDENCE_SOURCE_IDS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-TRAINING_REPORT_IDS = ("report-training-intelligence-weekly-20260615",)
+TRAINING_REPORT_IDS = ("report-training-intelligence-weekly-20260617",)
 TRAINING_ALERT_IDS = (
     "alert-ai-agent-tool-attention",
     "alert-browser-automation-core",

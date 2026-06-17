@@ -26,13 +26,13 @@ def parse_args() -> CurationArgs:
     parser.add_argument(
         "--snapshot",
         type=Path,
-        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260615.json",
+        default=ROOT_DIR / "tmp" / "outputs" / "training-content-snapshot-20260617.json",
         help="Collected training snapshot JSON.",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260615.json",
+        default=ROOT_DIR / "tmp" / "outputs" / "training-content-curation-20260617.json",
         help="Machine-readable curation JSON.",
     )
     parser.add_argument(
@@ -41,7 +41,7 @@ def parse_args() -> CurationArgs:
         default=ROOT_DIR
         / "drafts"
         / "analysis"
-        / "analysis-training-content-curation-draft-20260615.md",
+        / "analysis-training-content-curation-draft-20260617.md",
         help="Human-readable curation draft.",
     )
     parsed = parser.parse_args()
@@ -414,6 +414,147 @@ def build_intelligence(
             0.66,
         ),
         intelligence(
+            "intel-agent-browser-understanding",
+            "agent-collection-ecosystem",
+            "ai_agent_collection",
+            "Agent 浏览器训练要把页面理解、网络观察和人工复核连成闭环",
+            (
+                f"agent-browser 当前 {repo_stars('github-repo-agent-browser')} stars，"
+                f"Stagehand 当前 {repo_stars('github-repo-stagehand')} stars，"
+                f"browser-use 当前 {repo_stars('github-repo-browser-use')} stars；"
+                "三者共同说明 Agent 采集训练不能只讲自然语言指令，还要讲浏览器快照、网络请求、截图证据和人工接管。"
+            ),
+            "浏览器 Agent 的业务价值在于帮助学员理解页面，而不是把网页自动化包装成无边界抓取。",
+            "新增 agent-browser 课堂练习：打开授权页面，导出 accessibility snapshot、network 摘要、截图和页面 diff，再写成方法卡。",
+            [
+                "github-repo-agent-browser",
+                "github-repo-stagehand",
+                "github-repo-browser-use",
+                "method-agent-browser-browser-qa",
+            ],
+            signal_ids,
+            last_checked_at,
+            0.86,
+            0.86,
+            0.82,
+            0.76,
+        ),
+        intelligence(
+            "intel-ai-extraction-pipeline-diversifies",
+            "agent-collection-ecosystem",
+            "ai_agent_collection",
+            "AI 抽取工具已从 crawler 扩展到语义查询、视觉流程和 graph pipeline",
+            (
+                f"ScrapeGraphAI 当前 {repo_stars('github-repo-scrapegraphai')} stars，"
+                f"Skyvern 当前 {repo_stars('github-repo-skyvern')} stars，"
+                f"AgentQL 当前 {repo_stars('github-repo-agentql')} stars；"
+                "AI 采集工具正在分化为 prompt pipeline、视觉浏览器流程和语义查询三类训练材料。"
+            ),
+            "培训不能只把 AI 采集等同于 Firecrawl 或 Crawl4AI，需要让学员知道不同工具的控制粒度和失败模式。",
+            "把 ScrapeGraphAI、Skyvern、AgentQL 放入对比表：分别讲结构化抽取、工作流自动化和语义定位。",
+            ["github-repo-scrapegraphai", "github-repo-skyvern", "github-repo-agentql"],
+            signal_ids,
+            last_checked_at,
+            0.82,
+            0.82,
+            0.84,
+            0.68,
+        ),
+        intelligence(
+            "intel-rpa-no-code-collection-track",
+            "rpa-no-code-collection",
+            "rpa_automation",
+            "RPA 和 no-code 采集应成为业务培训主线，而不是开发者工具的附录",
+            "Browse AI、Octoparse、影刀 RPA、Power Automate 和 UiPath 的来源与方法卡已经覆盖从点选式网页抽取到企业 RPA 治理的完整梯度。",
+            "培训对象不全是工程师；业务用户需要看见网页字段、流程录制、定时运行、导出和异常复核这些可操作 SOP。",
+            "新增 RPA/no-code 训练路径：先用 Browse AI 或 Octoparse 讲字段建模，再用影刀 RPA 讲国内后台流程，最后用 Power Automate/UiPath 讲企业治理。",
+            [
+                "docs-browse-ai",
+                "docs-octoparse",
+                "docs-yingdao-rpa",
+                "method-browse-ai-no-code",
+                "method-yingdao-rpa",
+                "method-power-automate-desktop",
+                "method-uipath-studio",
+            ],
+            signal_ids,
+            last_checked_at,
+            0.84,
+            0.82,
+            0.78,
+            0.74,
+        ),
+        intelligence(
+            "intel-open-source-no-code-bridges-training",
+            "rpa-no-code-collection",
+            "no_code_scraping",
+            "开源 no-code 采集平台能连接业务培训和工程化采集",
+            (
+                f"Maxun 当前 {repo_stars('github-repo-maxun')} stars，"
+                "Apify 平台文档和 Actor 方法卡提供了从可视化任务到平台化运行、数据集和 API 导出的训练路径。"
+            ),
+            "no-code 不等于低质量；它适合先训练字段建模和任务边界，再过渡到 Crawlee、Actor 和自建采集服务。",
+            "把 Maxun 与 Apify 放在同一模块：Maxun 讲开源可视化采集，Apify 讲平台化 Actor 和数据集交付。",
+            ["github-repo-maxun", "docs-apify-platform", "method-apify-actor-platform"],
+            signal_ids,
+            last_checked_at,
+            0.78,
+            0.8,
+            0.78,
+            0.66,
+        ),
+        intelligence(
+            "intel-browser-preflight-before-scraping",
+            "browser-preflight-risk",
+            "osint_preflight",
+            "浏览器采集前必须先做公开暴露面和授权范围预检",
+            (
+                f"Web-Check 当前 {repo_stars('github-repo-web-check')} stars，"
+                f"Katana 当前 {repo_stars('github-repo-katana')} stars，"
+                f"httpx 当前 {repo_stars('github-repo-httpx')} stars；"
+                "这些工具说明采集工作台需要先理解目标站点公开暴露面、URL 范围和 HTTP 信号，再进入内容采集。"
+            ),
+            "站点预检能降低误采、过采和越权风险，是培训和生产采集之间的关键控制点。",
+            "新增预检训练：对自有或授权站点输出 DNS/headers/robots/URL 范围/截图证据，并明确是否允许进入下一步采集。",
+            [
+                "github-repo-web-check",
+                "github-repo-katana",
+                "github-repo-httpx",
+                "method-web-check-preflight",
+                "method-katana-authorized-crawl",
+            ],
+            signal_ids,
+            last_checked_at,
+            0.86,
+            0.84,
+            0.8,
+            0.82,
+        ),
+        intelligence(
+            "intel-fingerprint-risk-is-training-boundary",
+            "browser-preflight-risk",
+            "browser_risk",
+            "浏览器指纹和反检测工具只能作为风险教育，不应进入绕过式 SOP",
+            (
+                f"Scrapling 当前 {repo_stars('github-repo-scrapling')} stars，"
+                f"Pydoll 当前 {repo_stars('github-repo-pydoll')} stars；"
+                "它们具备浏览器解析、CDP、HAR 或自适应抽取训练价值，但 anti-bot/stealth 相关语义会显著提高合规风险。"
+            ),
+            "课程需要帮助学员理解检测面，但不能训练绕过 Cloudflare、DataDome、Kasada、验证码、登录控制或平台风控。",
+            "把 Pydoll、Scrapling 和浏览器指纹边界放入高风险案例区：只讲授权测试、差异诊断和禁止项。",
+            [
+                "github-repo-scrapling",
+                "github-repo-pydoll",
+                "method-browser-fingerprint-boundary",
+            ],
+            signal_ids,
+            last_checked_at,
+            0.82,
+            0.82,
+            0.86,
+            0.9,
+        ),
+        intelligence(
             "intel-github-api-first-low-risk",
             "platform-methods",
             "platform_method",
@@ -613,14 +754,14 @@ def build_report(intelligence_items: list[dict[str, Any]], last_checked_at: str)
     )[:6]
     report_date = last_checked_at[:10]
     return {
-        "id": "report-training-intelligence-weekly-20260615",
+        "id": "report-training-intelligence-weekly-20260617",
         "title": "数据采集培训情报周报",
         "report_type": "weekly_training",
         "status": "published",
         "period_start": report_date,
         "period_end": report_date,
         "last_checked_at": last_checked_at,
-        "summary": "本周培训内容聚焦 GitHub API、开源爬虫框架、浏览器自动化、AI agent 采集生态和跨平台合规边界。",
+        "summary": "本周培训内容聚焦 GitHub API、开源爬虫框架、浏览器自动化、AI agent、RPA/no-code、站点预检和跨平台合规边界。",
         "sections": [
             {
                 "title": "优先讲解",
@@ -631,15 +772,28 @@ def build_report(intelligence_items: list[dict[str, Any]], last_checked_at: str)
                 "items": [
                     item["title"]
                     for item in intelligence_items
-                    if item["category"] in {"crawler_framework", "browser_automation", "ai_agent_collection"}
+                    if item["category"]
+                    in {
+                        "crawler_framework",
+                        "browser_automation",
+                        "ai_agent_collection",
+                        "no_code_scraping",
+                    }
                 ][:6],
             },
             {
-                "title": "平台与合规",
+                "title": "业务流程与合规",
                 "items": [
                     item["title"]
                     for item in intelligence_items
-                    if item["category"] in {"platform_method", "compliance_boundary"}
+                    if item["category"]
+                    in {
+                        "platform_method",
+                        "compliance_boundary",
+                        "rpa_automation",
+                        "osint_preflight",
+                        "browser_risk",
+                    }
                 ][:6],
             },
         ],
@@ -712,7 +866,7 @@ def build_notifications(report: dict[str, Any], alerts: list[dict[str, Any]]) ->
 
 
 def write_markdown(curation: dict[str, Any], path: Path) -> None:
-    document_date = str(curation["generated_at"])[:10]
+    document_date = date_from_snapshot_path(curation) or str(curation["generated_at"])[:10]
     lines = [
         "---",
         "title: 培训内容情报萃取草稿",
@@ -762,6 +916,14 @@ def write_markdown(curation: dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def date_from_snapshot_path(curation: dict[str, Any]) -> str | None:
+    name = Path(str(curation.get("source_snapshot") or "")).stem
+    suffix = name.rsplit("-", maxsplit=1)[-1]
+    if len(suffix) == 8 and suffix.isdigit():
+        return f"{suffix[:4]}-{suffix[4:6]}-{suffix[6:]}"
+    return None
+
+
 def write_json(value: dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as file:
@@ -802,6 +964,17 @@ def source_url_for(source_id: str) -> str:
             "github-repo-mcp-servers": "https://github.com/modelcontextprotocol/servers",
             "github-repo-stagehand": "https://github.com/browserbase/stagehand",
             "github-repo-langchain": "https://github.com/langchain-ai/langchain",
+            "github-repo-skyvern": "https://github.com/Skyvern-AI/skyvern",
+            "github-repo-scrapegraphai": "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+            "github-repo-agentql": "https://github.com/tinyfish-io/agentql",
+            "github-repo-agent-browser": "https://github.com/vercel-labs/agent-browser",
+            "github-repo-maxun": "https://github.com/getmaxun/maxun",
+            "github-repo-web-check": "https://github.com/lissy93/web-check",
+            "github-repo-katana": "https://github.com/projectdiscovery/katana",
+            "github-repo-httpx": "https://github.com/projectdiscovery/httpx",
+            "github-repo-pydoll": "https://github.com/autoscrape-labs/pydoll",
+            "github-repo-scrapling": "https://github.com/D4Vinci/Scrapling",
+            "github-repo-browserless": "https://github.com/browserless/browserless",
         }
         return repo_urls[source_id]
     doc_urls = {
@@ -815,6 +988,13 @@ def source_url_for(source_id: str) -> str:
         "docs-openai-agents": "https://developers.openai.com/api/docs/guides/agents",
         "docs-crewai-tools": "https://docs.crewai.com/en/concepts/tools",
         "docs-mcp-intro": "https://modelcontextprotocol.io/docs/getting-started/intro",
+        "docs-browse-ai": "https://www.browse.ai/",
+        "docs-octoparse": "https://www.octoparse.com/",
+        "docs-yingdao-rpa": "https://www.yingdao.com/",
+        "docs-power-automate-web-automation": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+        "docs-uipath-studio": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+        "docs-apify-platform": "https://docs.apify.com/platform",
+        "docs-browserless": "https://docs.browserless.io/",
         "method-github-public-api": "https://docs.github.com/en/rest",
         "method-amazon-public-pages": "https://www.amazon.com/",
         "method-shopify-storefront": "https://www.shopify.com/",
@@ -823,6 +1003,16 @@ def source_url_for(source_id: str) -> str:
         "method-tiktok-creative-center": "https://ads.tiktok.com/business/creativecenter/",
         "method-competitor-public-site": "https://www.w3.org/TR/robots/",
         "method-compliance-boundary": "https://www.w3.org/TR/robots/",
+        "method-browse-ai-no-code": "https://www.browse.ai/",
+        "method-octoparse-no-code": "https://www.octoparse.com/",
+        "method-yingdao-rpa": "https://www.yingdao.com/",
+        "method-power-automate-desktop": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+        "method-uipath-studio": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+        "method-apify-actor-platform": "https://docs.apify.com/platform",
+        "method-web-check-preflight": "https://web-check.xyz/",
+        "method-katana-authorized-crawl": "https://github.com/projectdiscovery/katana",
+        "method-agent-browser-browser-qa": "https://github.com/vercel-labs/agent-browser",
+        "method-browser-fingerprint-boundary": "https://www.w3.org/TR/robots/",
     }
     return doc_urls[source_id]
 
@@ -841,6 +1031,8 @@ def domain_for_project(project_key: str) -> str:
         "platform-methods": "platform",
         "agent-collection-ecosystem": "agent",
         "compliance-boundary": "governance",
+        "rpa-no-code-collection": "rpa",
+        "browser-preflight-risk": "browser",
     }.get(project_key, "training")
 
 

@@ -856,6 +856,63 @@ LEARNING_PATH_SPECS = (
         ),
     ),
     _LearningPathSpec(
+        id="rpa-no-code-business-workflows",
+        title="RPA / No-code 业务采集流程",
+        stage="starter",
+        focus=(
+            "用 Browse AI、Octoparse、影刀 RPA、Power Automate 和 UiPath "
+            "讲业务用户如何把公开网页、授权后台和 Office 流程转成可复核采集任务。"
+        ),
+        risk_level="medium",
+        tool_keywords=("maxun", "apify", "no-code", "browse", "octoparse"),
+        tool_categories=("no_code_scraping",),
+        method_keywords=(
+            "browse",
+            "octoparse",
+            "影刀",
+            "rpa",
+            "power automate",
+            "uipath",
+            "no-code",
+            "业务",
+        ),
+        intelligence_domains=("rpa",),
+        intelligence_keywords=("rpa", "no-code", "业务", "流程", "影刀"),
+        acceptance_criteria=(
+            "能为业务用户说明点选字段、运行频率、导出和异常复核。",
+            "能区分公开页面、授权后台和个人数据禁止项。",
+            "能把 RPA 流程沉淀成来源、字段、边界和回滚方式清晰的方法卡。",
+        ),
+    ),
+    _LearningPathSpec(
+        id="browser-preflight-risk-diagnostics",
+        title="浏览器预检与风险诊断",
+        stage="governance",
+        focus=(
+            "用 Web-Check、Katana、httpx、Pydoll 和 Scrapling "
+            "讲采集前站点画像、授权范围、浏览器检测面和高风险工具边界。"
+        ),
+        risk_level="high",
+        tool_keywords=("web-check", "katana", "httpx", "pydoll", "scrapling"),
+        tool_categories=("osint_preflight", "browser_risk"),
+        method_keywords=(
+            "web-check",
+            "katana",
+            "fingerprint",
+            "preflight",
+            "授权",
+            "浏览器",
+            "anti-detect",
+        ),
+        intelligence_domains=("browser", "governance"),
+        intelligence_keywords=("预检", "浏览器", "授权", "fingerprint", "风险"),
+        acceptance_criteria=(
+            "能在采集前输出公开暴露面、robots、headers、URL 范围和截图证据。",
+            "能说明安全工具和采集工具的授权边界。",
+            "高风险 anti-detect 工具只进入风险教育，不提供绕过步骤。",
+        ),
+    ),
+    _LearningPathSpec(
         id="platform-sop-governance",
         title="平台 SOP 与合规边界",
         stage="starter",

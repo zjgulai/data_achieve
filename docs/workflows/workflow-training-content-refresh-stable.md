@@ -5,7 +5,7 @@ module: operations
 topic: training-content-refresh
 status: stable
 created: 2026-06-15
-updated: 2026-06-15
+updated: 2026-06-17
 owner: self
 source: human+ai
 ---
@@ -86,6 +86,19 @@ source: human+ai
 12. `crewAIInc/crewAI`
 13. `crewAIInc/crewAI-tools`
 14. `modelcontextprotocol/servers`
+15. `browserbase/stagehand`
+16. `langchain-ai/langchain`
+17. `Skyvern-AI/skyvern`
+18. `ScrapeGraphAI/Scrapegraph-ai`
+19. `tinyfish-io/agentql`
+20. `vercel-labs/agent-browser`
+21. `getmaxun/maxun`
+22. `lissy93/web-check`
+23. `projectdiscovery/katana`
+24. `projectdiscovery/httpx`
+25. `autoscrape-labs/pydoll`
+26. `D4Vinci/Scrapling`
+27. `browserless/browserless`
 
 ### 官方文档源
 
@@ -101,14 +114,21 @@ source: human+ai
 8. OpenAI Agents SDK 文档：`https://developers.openai.com/api/docs/guides/agents`
 9. CrewAI Tools 文档：`https://docs.crewai.com/en/concepts/tools`
 10. MCP 文档：`https://modelcontextprotocol.io/docs/getting-started/intro`
+11. Browse AI：`https://www.browse.ai/`
+12. Octoparse：`https://www.octoparse.com/`
+13. 影刀 RPA：`https://www.yingdao.com/`
+14. Power Automate Web automation：`https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation`
+15. UiPath Studio：`https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction`
+16. Apify Platform：`https://docs.apify.com/platform`
+17. Browserless：`https://docs.browserless.io/`
 
 ## 页面落点
 
 | 页面 | 必须呈现的培训内容 |
 |---|---|
 | `/dashboard` | 今日情报摘要、采集覆盖率、热门工具变化、待处理告警 |
-| `/projects` | 四个训练项目：开源采集工具、平台采集方法、Agent 采集生态、合规风险雷达 |
-| `/sources` | GitHub topic、GitHub repo、官方文档、人工方法卡四类 source |
+| `/projects` | 六个训练项目：开源采集工具、平台采集方法、Agent 采集生态、合规风险雷达、RPA/no-code、浏览器预检与风险诊断 |
+| `/sources` | GitHub topic、GitHub repo、官方文档、人工方法卡、RPA/no-code 产品、OSINT 预检工具 |
 | `/tasks` | 每个 source 对应采集任务，显示最近执行状态和证据数量 |
 | `/raw-records` | 原始 GitHub/API/docs 快照，保留来源 URL 和采集时间 |
 | `/entities` | 工具、框架、平台、方法卡实体 |
@@ -161,12 +181,12 @@ source: human+ai
 落盘位置：
 
 ```text
-tmp/outputs/training-content-snapshot-20260615.json
+tmp/outputs/training-content-snapshot-20260617.json
 ```
 
 验收标准：
 
-1. 快照记录总数不少于 40。
+1. 快照成功记录总数不少于 60。
 2. 每条记录有 `source_url`、`collected_at`、`collector_type`。
 3. GitHub 记录保留 stars、forks、open issues、updated_at。
 4. 官方文档记录保留 title 和摘要。
@@ -176,7 +196,7 @@ tmp/outputs/training-content-snapshot-20260615.json
 执行内容：
 
 1. 将快照归类为工具趋势、平台方法、Agent 生态、合规边界。
-2. 生成 12 到 16 条培训情报。
+2. 生成不少于 16 条培训情报；2026-06-17 批次为 20 条。
 3. 每条情报包含：结论、证据、影响、建议动作、适合培训讲解的切入点。
 4. 对高风险平台只写方法边界，不写规避限制的操作细节。
 
@@ -257,7 +277,7 @@ docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-com
 
 ```text
 docs/workflows/workflow-training-content-refresh-stable.md
-tmp/outputs/training-content-acceptance-20260615.json
+tmp/outputs/training-content-acceptance-20260617.json
 tmp/screenshots/
 ```
 
@@ -271,12 +291,12 @@ tmp/screenshots/
 
 上线前必须满足：
 
-1. 项目数不少于 4。
-2. sources 不少于 20。
-3. raw records 不少于 40。
-4. entities 不少于 30。
+1. 项目数不少于 6。
+2. sources 不少于 60。
+3. raw records 不少于 60。
+4. entities 不少于 60。
 5. signals 不少于 12。
-6. intelligence items 不少于 12。
+6. intelligence items 不少于 16。
 7. reports 不少于 1。
 8. alerts 不少于 3。
 9. notifications 不少于 3。

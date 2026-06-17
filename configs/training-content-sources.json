@@ -1,5 +1,5 @@
 {
-  "version": "2026-06-15",
+  "version": "2026-06-17",
   "dataset": "curated_training",
   "content_contract": {
     "required_source_fields": [
@@ -41,25 +41,51 @@
         "示例",
         "样本"
       ],
-      "min_sources": 20,
-      "min_raw_records": 40,
-      "min_entities": 30,
+      "min_sources": 60,
+      "min_raw_records": 60,
+      "min_entities": 60,
       "min_signals": 12,
-      "min_intelligence_items": 12,
+      "min_intelligence_items": 16,
       "min_reports": 1
     },
     "page_contract": {
-      "/dashboard": ["overview_metrics", "recent_intelligence", "risk_alerts"],
-      "/projects": ["training_projects"],
-      "/sources": ["training_sources"],
-      "/tasks": ["collection_tasks"],
-      "/raw-records": ["source_snapshots"],
-      "/entities": ["tool_entities", "platform_method_entities"],
-      "/signals": ["trend_signals", "risk_signals"],
-      "/intelligence": ["training_intelligence_items"],
-      "/reports": ["training_report"],
-      "/alerts": ["training_alerts"],
-      "/notifications": ["training_notifications"]
+      "/dashboard": [
+        "overview_metrics",
+        "recent_intelligence",
+        "risk_alerts"
+      ],
+      "/projects": [
+        "training_projects"
+      ],
+      "/sources": [
+        "training_sources"
+      ],
+      "/tasks": [
+        "collection_tasks"
+      ],
+      "/raw-records": [
+        "source_snapshots"
+      ],
+      "/entities": [
+        "tool_entities",
+        "platform_method_entities"
+      ],
+      "/signals": [
+        "trend_signals",
+        "risk_signals"
+      ],
+      "/intelligence": [
+        "training_intelligence_items"
+      ],
+      "/reports": [
+        "training_report"
+      ],
+      "/alerts": [
+        "training_alerts"
+      ],
+      "/notifications": [
+        "training_notifications"
+      ]
     }
   },
   "projects": [
@@ -86,6 +112,18 @@
       "name": "Compliance Boundary Radar",
       "domain": "governance",
       "description": "Surface data minimization, robots, platform policy, and personal data boundaries."
+    },
+    {
+      "key": "rpa-no-code-collection",
+      "name": "RPA and No-code Collection Methods",
+      "domain": "rpa",
+      "description": "Track business-facing RPA, no-code scraping, and workflow automation products for training SOPs."
+    },
+    {
+      "key": "browser-preflight-risk",
+      "name": "Browser Preflight and Risk Diagnostics",
+      "domain": "browser",
+      "description": "Track browser inspection, site preflight, OSINT, and fingerprint-risk tools with strict authorization boundaries."
     }
   ],
   "sources": [
@@ -102,7 +140,14 @@
       "title": "GitHub topic: web-scraping",
       "risk_level": "low",
       "training_use": "Discover mainstream open-source web scraping projects.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-crawler",
@@ -117,7 +162,14 @@
       "title": "GitHub topic: crawler",
       "risk_level": "low",
       "training_use": "Identify crawler frameworks and maintenance patterns.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-data-extraction",
@@ -132,7 +184,14 @@
       "title": "GitHub topic: data-extraction",
       "risk_level": "low",
       "training_use": "Compare extraction-first tools with crawler frameworks.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-browser-automation",
@@ -147,7 +206,14 @@
       "title": "GitHub topic: browser-automation",
       "risk_level": "low",
       "training_use": "Track browser automation projects for dynamic websites.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-ai-agent",
@@ -162,7 +228,14 @@
       "title": "GitHub topic: ai-agent",
       "risk_level": "low",
       "training_use": "Track agent projects that can orchestrate collection workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-mcp-server",
@@ -177,7 +250,14 @@
       "title": "GitHub topic: mcp-server",
       "risk_level": "low",
       "training_use": "Track MCP server ecosystem for tool-accessible data sources.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-agent-framework",
@@ -192,7 +272,14 @@
       "title": "GitHub topic: agent-framework",
       "risk_level": "low",
       "training_use": "Compare agent framework maturity for collection orchestration.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-web-crawler",
@@ -207,7 +294,14 @@
       "title": "GitHub topic: web-crawler",
       "risk_level": "low",
       "training_use": "Discover classic and modern web crawler repositories.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-scraping",
@@ -222,7 +316,14 @@
       "title": "GitHub topic: scraping",
       "risk_level": "low",
       "training_use": "Track broad scraping ecosystem changes.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-topic-data-mining",
@@ -237,7 +338,14 @@
       "title": "GitHub topic: data-mining",
       "risk_level": "low",
       "training_use": "Connect collection tools to downstream mining workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-scrapy",
@@ -252,7 +360,14 @@
       "title": "Scrapy repository",
       "risk_level": "low",
       "training_use": "Explain mature Python crawler architecture and signals.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-playwright",
@@ -267,7 +382,14 @@
       "title": "Playwright repository",
       "risk_level": "low",
       "training_use": "Explain browser automation for dynamic collection workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-puppeteer",
@@ -282,7 +404,14 @@
       "title": "Puppeteer repository",
       "risk_level": "low",
       "training_use": "Compare Node.js browser automation approaches.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-selenium",
@@ -297,7 +426,14 @@
       "title": "Selenium repository",
       "risk_level": "low",
       "training_use": "Explain legacy and cross-browser automation foundations.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-crawlee",
@@ -312,7 +448,14 @@
       "title": "Crawlee repository",
       "risk_level": "low",
       "training_use": "Explain production crawler patterns and queue abstractions.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-crawlee-python",
@@ -327,7 +470,14 @@
       "title": "Crawlee Python repository",
       "risk_level": "low",
       "training_use": "Track Python crawler framework evolution beyond Scrapy.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-crawl4ai",
@@ -342,7 +492,14 @@
       "title": "Crawl4AI repository",
       "risk_level": "low",
       "training_use": "Explain LLM-friendly crawling and extraction workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-firecrawl",
@@ -357,7 +514,14 @@
       "title": "Firecrawl repository",
       "risk_level": "low",
       "training_use": "Explain API-first web extraction for AI applications.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-browser-use",
@@ -372,7 +536,14 @@
       "title": "browser-use repository",
       "risk_level": "low",
       "training_use": "Explain browser agents for collection and operation tasks.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-openai-agents-python",
@@ -387,7 +558,14 @@
       "title": "OpenAI Agents Python repository",
       "risk_level": "low",
       "training_use": "Explain agent orchestration primitives for data workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-openai-agents-js",
@@ -402,7 +580,14 @@
       "title": "OpenAI Agents JS repository",
       "risk_level": "low",
       "training_use": "Compare JavaScript agent orchestration for collection apps.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-crewai",
@@ -417,7 +602,14 @@
       "title": "CrewAI repository",
       "risk_level": "low",
       "training_use": "Explain multi-agent collection workflow orchestration.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-crewai-tools",
@@ -432,7 +624,14 @@
       "title": "CrewAI Tools repository",
       "risk_level": "low",
       "training_use": "Map reusable tools for agent-based collection tasks.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-mcp-servers",
@@ -447,7 +646,14 @@
       "title": "MCP servers repository",
       "risk_level": "low",
       "training_use": "Explain MCP source connectors and tool-callable data access.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-stagehand",
@@ -462,7 +668,14 @@
       "title": "Stagehand repository",
       "risk_level": "low",
       "training_use": "Explain agent-assisted browser automation for extraction tasks.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "github-repo-langchain",
@@ -477,7 +690,14 @@
       "title": "LangChain repository",
       "risk_level": "low",
       "training_use": "Explain broader agent/tool orchestration context for data workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-github-rest",
@@ -492,7 +712,13 @@
       "title": "GitHub REST API documentation",
       "risk_level": "low",
       "training_use": "Teach API-first collection from public developer platforms.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-github-repos",
@@ -507,7 +733,13 @@
       "title": "GitHub Repositories API documentation",
       "risk_level": "low",
       "training_use": "Explain repository metadata fields and API constraints.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-scrapy-news",
@@ -522,7 +754,14 @@
       "title": "Scrapy release notes",
       "risk_level": "low",
       "training_use": "Track framework release changes that affect training content.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-playwright",
@@ -537,7 +776,13 @@
       "title": "Playwright documentation",
       "risk_level": "low",
       "training_use": "Teach browser automation primitives and supported languages.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-crawlee",
@@ -552,7 +797,13 @@
       "title": "Crawlee documentation",
       "risk_level": "low",
       "training_use": "Teach production crawling concepts and crawler abstractions.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-crawl4ai",
@@ -567,7 +818,13 @@
       "title": "Crawl4AI documentation",
       "risk_level": "low",
       "training_use": "Explain LLM-ready crawling and structured extraction.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-firecrawl",
@@ -582,7 +839,13 @@
       "title": "Firecrawl API documentation",
       "risk_level": "low",
       "training_use": "Explain API-based crawl and scrape workflows for AI apps.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-openai-agents",
@@ -597,7 +860,13 @@
       "title": "OpenAI Agents SDK documentation",
       "risk_level": "low",
       "training_use": "Explain agent orchestration patterns for data workflows.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-crewai-tools",
@@ -612,7 +881,13 @@
       "title": "CrewAI Tools documentation",
       "risk_level": "low",
       "training_use": "Explain tool abstractions for agentic collection tasks.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "docs-mcp-intro",
@@ -627,7 +902,13 @@
       "title": "Model Context Protocol documentation",
       "risk_level": "low",
       "training_use": "Explain tool-callable source integration for collection workbenches.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "method-github-public-api",
@@ -640,7 +921,11 @@
           "method_id": "github-public-api",
           "platform": "GitHub",
           "recommended_collector": "github_repo, github_topic, generic_web",
-          "data_types": ["repository metadata", "topic search", "documentation"],
+          "data_types": [
+            "repository metadata",
+            "topic search",
+            "documentation"
+          ],
           "boundary": "Use public REST API and respect rate limits.",
           "training_takeaway": "Prefer API-first collection when a platform exposes public metadata."
         }
@@ -649,7 +934,13 @@
       "title": "GitHub public API collection method",
       "risk_level": "low",
       "training_use": "Teach API-first collection and rate-limit planning.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
     },
     {
       "id": "method-amazon-public-pages",
@@ -662,7 +953,11 @@
           "method_id": "amazon-public-pages",
           "platform": "Amazon",
           "recommended_collector": "manual_json",
-          "data_types": ["public product fields", "price observations", "ranking observations"],
+          "data_types": [
+            "public product fields",
+            "price observations",
+            "ranking observations"
+          ],
           "boundary": "Do not bypass access controls or collect personal data; use compliant providers or approved internal exports for production.",
           "training_takeaway": "For e-commerce platforms, method design must start from compliance and data minimization."
         }
@@ -671,7 +966,14 @@
       "title": "Amazon public page collection boundary",
       "risk_level": "medium",
       "training_use": "Teach e-commerce collection constraints without unsafe tactics.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "intelligence", "alerts"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence",
+        "alerts"
+      ]
     },
     {
       "id": "method-shopify-storefront",
@@ -684,7 +986,11 @@
           "method_id": "shopify-storefront",
           "platform": "Shopify Storefront",
           "recommended_collector": "generic_web, manual_json",
-          "data_types": ["public product catalog", "theme changes", "landing page changes"],
+          "data_types": [
+            "public product catalog",
+            "theme changes",
+            "landing page changes"
+          ],
           "boundary": "Collect only public pages and observe robots and rate limits.",
           "training_takeaway": "Storefront monitoring is useful for competitor signals when scoped to public pages."
         }
@@ -693,7 +999,14 @@
       "title": "Shopify storefront collection method",
       "risk_level": "medium",
       "training_use": "Teach public storefront monitoring and change detection.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "method-reddit-public-api",
@@ -706,7 +1019,11 @@
           "method_id": "reddit-public-api",
           "platform": "Reddit",
           "recommended_collector": "manual_json",
-          "data_types": ["public posts", "subreddit trends", "comment volume"],
+          "data_types": [
+            "public posts",
+            "subreddit trends",
+            "comment volume"
+          ],
           "boundary": "Use approved APIs and avoid personal data profiling.",
           "training_takeaway": "Social collection should aggregate trend signals, not expose individuals."
         }
@@ -715,7 +1032,15 @@
       "title": "Reddit public API collection boundary",
       "risk_level": "medium",
       "training_use": "Teach social trend collection with privacy boundaries.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence", "alerts"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
     },
     {
       "id": "method-youtube-data-api",
@@ -728,7 +1053,11 @@
           "method_id": "youtube-data-api",
           "platform": "YouTube",
           "recommended_collector": "manual_json",
-          "data_types": ["public video metadata", "channel metadata", "engagement aggregates"],
+          "data_types": [
+            "public video metadata",
+            "channel metadata",
+            "engagement aggregates"
+          ],
           "boundary": "Use official API quotas and aggregate public metrics.",
           "training_takeaway": "Video platform collection should separate public metadata from user-level data."
         }
@@ -737,7 +1066,14 @@
       "title": "YouTube Data API collection method",
       "risk_level": "medium",
       "training_use": "Teach quota-aware social/video metadata collection.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "method-tiktok-creative-center",
@@ -750,7 +1086,11 @@
           "method_id": "tiktok-creative-center",
           "platform": "TikTok Creative Center",
           "recommended_collector": "manual_json",
-          "data_types": ["public trend pages", "creative categories", "aggregate trend signals"],
+          "data_types": [
+            "public trend pages",
+            "creative categories",
+            "aggregate trend signals"
+          ],
           "boundary": "Use public aggregated views; do not scrape personal accounts or bypass controls.",
           "training_takeaway": "Trend intelligence should prioritize aggregated public signals."
         }
@@ -759,7 +1099,15 @@
       "title": "TikTok Creative Center public trend method",
       "risk_level": "medium",
       "training_use": "Teach trend discovery without unsafe social scraping.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence", "alerts"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
     },
     {
       "id": "method-competitor-public-site",
@@ -772,7 +1120,11 @@
           "method_id": "competitor-public-site",
           "platform": "Competitor public websites",
           "recommended_collector": "generic_web",
-          "data_types": ["landing page copy", "pricing page changes", "feature page changes"],
+          "data_types": [
+            "landing page copy",
+            "pricing page changes",
+            "feature page changes"
+          ],
           "boundary": "Monitor public pages only and respect robots policies.",
           "training_takeaway": "Competitor monitoring is strongest when mapped to specific change signals."
         }
@@ -781,7 +1133,14 @@
       "title": "Competitor public website monitoring method",
       "risk_level": "medium",
       "training_use": "Teach public-page monitoring and evidence capture.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
     },
     {
       "id": "method-compliance-boundary",
@@ -794,7 +1153,12 @@
           "method_id": "collection-compliance-boundary",
           "platform": "Cross-platform",
           "recommended_collector": "manual_json",
-          "data_types": ["robots", "rate limits", "personal data boundary", "policy notes"],
+          "data_types": [
+            "robots",
+            "rate limits",
+            "personal data boundary",
+            "policy notes"
+          ],
           "boundary": "Do not bypass login, paywalls, access controls, or collect personal data without a lawful basis.",
           "training_takeaway": "A collection workbench must encode compliance constraints as first-class intelligence."
         }
@@ -803,7 +1167,757 @@
       "title": "Cross-platform collection compliance boundary",
       "risk_level": "high",
       "training_use": "Teach non-negotiable boundaries for collection programs.",
-      "content_targets": ["sources", "tasks", "raw_records", "entities", "signals", "intelligence", "alerts"]
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "github-repo-skyvern",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "Skyvern-AI",
+        "repo": "skyvern"
+      },
+      "source_url": "https://github.com/Skyvern-AI/skyvern",
+      "title": "Skyvern repository",
+      "risk_level": "medium",
+      "training_use": "Explain AI browser workflow automation with audit and authorization boundaries.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-scrapegraphai",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "ScrapeGraphAI",
+        "repo": "Scrapegraph-ai"
+      },
+      "source_url": "https://github.com/ScrapeGraphAI/Scrapegraph-ai",
+      "title": "ScrapeGraphAI repository",
+      "risk_level": "medium",
+      "training_use": "Explain AI-driven extraction pipelines and prompt-guided structured scraping.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-agentql",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "tinyfish-io",
+        "repo": "agentql"
+      },
+      "source_url": "https://github.com/tinyfish-io/agentql",
+      "title": "AgentQL repository",
+      "risk_level": "medium",
+      "training_use": "Explain semantic web querying when selectors are brittle.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-agent-browser",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "vercel-labs",
+        "repo": "agent-browser"
+      },
+      "source_url": "https://github.com/vercel-labs/agent-browser",
+      "title": "agent-browser repository",
+      "risk_level": "medium",
+      "training_use": "Explain how agents inspect browser snapshots, network, screenshots, and page diffs.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-maxun",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "getmaxun",
+        "repo": "maxun"
+      },
+      "source_url": "https://github.com/getmaxun/maxun",
+      "title": "Maxun repository",
+      "risk_level": "medium",
+      "training_use": "Explain open-source no-code web scraping and AI extraction workflows.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-web-check",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "lissy93",
+        "repo": "web-check"
+      },
+      "source_url": "https://github.com/lissy93/web-check",
+      "title": "Web-Check repository",
+      "risk_level": "high",
+      "training_use": "Explain public site preflight, exposed metadata, and collection authorization boundaries.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-katana",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "projectdiscovery",
+        "repo": "katana"
+      },
+      "source_url": "https://github.com/projectdiscovery/katana",
+      "title": "Katana repository",
+      "risk_level": "high",
+      "training_use": "Explain authorized URL discovery and scope control before collection.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-httpx",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "projectdiscovery",
+        "repo": "httpx"
+      },
+      "source_url": "https://github.com/projectdiscovery/httpx",
+      "title": "ProjectDiscovery httpx repository",
+      "risk_level": "high",
+      "training_use": "Explain authorized HTTP probing, status, title, and technology signal collection.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-pydoll",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_automation",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "autoscrape-labs",
+        "repo": "pydoll"
+      },
+      "source_url": "https://github.com/autoscrape-labs/pydoll",
+      "title": "Pydoll repository",
+      "risk_level": "high",
+      "training_use": "Explain Chrome DevTools Protocol, HAR capture, and browser inspection under authorization.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-scrapling",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_risk",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "D4Vinci",
+        "repo": "Scrapling"
+      },
+      "source_url": "https://github.com/D4Vinci/Scrapling",
+      "title": "Scrapling repository",
+      "risk_level": "high",
+      "training_use": "Explain adaptive scraping and anti-bot risk boundaries without bypass SOPs.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "github-repo-browserless",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "collector_type": "github_repo",
+      "config": {
+        "owner": "browserless",
+        "repo": "browserless"
+      },
+      "source_url": "https://github.com/browserless/browserless",
+      "title": "Browserless repository",
+      "risk_level": "medium",
+      "training_use": "Explain managed headless browser infrastructure and session evidence capture.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-browse-ai",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://www.browse.ai/",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://www.browse.ai/",
+      "title": "Browse AI official site",
+      "risk_level": "medium",
+      "training_use": "Teach no-code web scraping, monitoring, and website-to-API workflows for business users.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-octoparse",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://www.octoparse.com/",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://www.octoparse.com/",
+      "title": "Octoparse official site",
+      "risk_level": "medium",
+      "training_use": "Teach no-code data extraction and workflow design for non-developer collection tasks.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-yingdao-rpa",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://www.yingdao.com/",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://www.yingdao.com/",
+      "title": "影刀 RPA official site",
+      "risk_level": "medium",
+      "training_use": "Teach domestic RPA workflows for ecommerce, retail, finance, support, and back-office collection.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-power-automate-web-automation",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+      "title": "Power Automate web automation actions",
+      "risk_level": "low",
+      "training_use": "Teach Microsoft desktop flow web extraction actions and Office workflow integration.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-uipath-studio",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+      "title": "UiPath Studio documentation",
+      "risk_level": "low",
+      "training_use": "Teach enterprise RPA governance, browser automation, and workflow packaging.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-apify-platform",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://docs.apify.com/platform",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://docs.apify.com/platform",
+      "title": "Apify platform documentation",
+      "risk_level": "medium",
+      "training_use": "Teach Actor marketplace, platformized scraping jobs, storage, API, and SDK integration.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "docs-browserless",
+      "project_key": "open-source-collection",
+      "category": "browser_automation",
+      "collector_type": "generic_web",
+      "config": {
+        "url": "https://docs.browserless.io/",
+        "extract_mode": "main_content"
+      },
+      "source_url": "https://docs.browserless.io/",
+      "title": "Browserless documentation",
+      "risk_level": "medium",
+      "training_use": "Teach managed browser sessions, Docker deployment, and evidence capture.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "intelligence"
+      ]
+    },
+    {
+      "id": "method-browse-ai-no-code",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "no_code_scraping",
+        "json_data": {
+          "method_id": "browse-ai-no-code",
+          "platform": "Browse AI",
+          "recommended_collector": "no_code_saas, manual_json",
+          "data_types": [
+            "public page tables",
+            "website monitoring",
+            "CSV exports",
+            "Google Sheets sync"
+          ],
+          "boundary": "Use only public or authorized pages; do not collect personal data or bypass login, CAPTCHA, or platform restrictions.",
+          "training_takeaway": "Browse AI is useful for business-facing website-to-table workflows when source authorization and field boundaries are explicit."
+        }
+      },
+      "source_url": "https://www.browse.ai/",
+      "title": "Browse AI no-code collection SOP",
+      "risk_level": "medium",
+      "training_use": "Teach no-code robot setup, field selection, monitoring schedule, and export SOP.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-octoparse-no-code",
+      "project_key": "rpa-no-code-collection",
+      "category": "no_code_scraping",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "no_code_scraping",
+        "json_data": {
+          "method_id": "octoparse-no-code",
+          "platform": "Octoparse / 八爪鱼采集器",
+          "recommended_collector": "no_code_desktop, manual_json",
+          "data_types": [
+            "list pages",
+            "detail pages",
+            "pagination",
+            "scheduled exports"
+          ],
+          "boundary": "Use compliant public pages or authorized accounts; avoid bypassing anti-abuse controls or collecting personal data.",
+          "training_takeaway": "No-code tools are best for teaching field modeling and repeatable workflow design before writing code."
+        }
+      },
+      "source_url": "https://www.octoparse.com/",
+      "title": "Octoparse no-code extraction SOP",
+      "risk_level": "medium",
+      "training_use": "Teach no-code extraction workflow design for lists, details, pagination, and exports.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-yingdao-rpa",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "rpa_automation",
+        "json_data": {
+          "method_id": "yingdao-rpa-business-workflow",
+          "platform": "影刀 RPA",
+          "recommended_collector": "rpa_desktop, manual_json",
+          "data_types": [
+            "authorized back-office pages",
+            "ERP records",
+            "ecommerce operation reports",
+            "downloaded files"
+          ],
+          "boundary": "Only automate workflows owned or authorized by the business; credentials, screenshots, and exports must be governed.",
+          "training_takeaway": "影刀 RPA is most valuable for domestic business operations where humans already have authorized repeatable browser or desktop workflows."
+        }
+      },
+      "source_url": "https://www.yingdao.com/",
+      "title": "影刀 RPA business collection SOP",
+      "risk_level": "medium",
+      "training_use": "Teach domestic RPA SOP for ecommerce, ERP, finance, and support workflows.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-power-automate-desktop",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "rpa_automation",
+        "json_data": {
+          "method_id": "power-automate-desktop-web-extraction",
+          "platform": "Power Automate Desktop",
+          "recommended_collector": "rpa_desktop, official_actions",
+          "data_types": [
+            "web page fields",
+            "tables",
+            "Excel files",
+            "SharePoint or Office outputs"
+          ],
+          "boundary": "Prefer internal or authorized web apps; keep secrets in managed credentials and avoid sharing browser profiles.",
+          "training_takeaway": "Power Automate is a practical bridge from browser extraction to Office workflow automation."
+        }
+      },
+      "source_url": "https://learn.microsoft.com/en-us/power-automate/desktop-flows/actions-reference/webautomation",
+      "title": "Power Automate Desktop web extraction SOP",
+      "risk_level": "low",
+      "training_use": "Teach Microsoft web automation actions and internal workflow integration.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-uipath-studio",
+      "project_key": "rpa-no-code-collection",
+      "category": "rpa_automation",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "rpa_automation",
+        "json_data": {
+          "method_id": "uipath-studio-enterprise-rpa",
+          "platform": "UiPath Studio",
+          "recommended_collector": "enterprise_rpa, orchestrated_workflow",
+          "data_types": [
+            "browser workflow data",
+            "document downloads",
+            "enterprise app fields",
+            "audit logs"
+          ],
+          "boundary": "Use enterprise governance, environment separation, credential vaults, and audit logs for all browser automation tasks.",
+          "training_takeaway": "UiPath is the enterprise reference for governed RPA, not the fastest path for lightweight scraping."
+        }
+      },
+      "source_url": "https://docs.uipath.com/studio/standalone/2024.10/user-guide/introduction",
+      "title": "UiPath Studio enterprise RPA SOP",
+      "risk_level": "low",
+      "training_use": "Teach enterprise RPA governance and browser automation control points.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-apify-actor-platform",
+      "project_key": "open-source-collection",
+      "category": "crawler_framework",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "crawler_framework",
+        "json_data": {
+          "method_id": "apify-actor-platform",
+          "platform": "Apify",
+          "recommended_collector": "actor_marketplace, crawlee, api",
+          "data_types": [
+            "actor datasets",
+            "crawler outputs",
+            "scheduled jobs",
+            "API exports"
+          ],
+          "boundary": "Review Actor source, target authorization, proxy use, pricing, and dataset retention before production use.",
+          "training_takeaway": "Apify demonstrates the platform path from crawler code to scheduled, observable collection jobs."
+        }
+      },
+      "source_url": "https://docs.apify.com/platform",
+      "title": "Apify Actor platform collection SOP",
+      "risk_level": "medium",
+      "training_use": "Teach Actor marketplace, dataset storage, API export, and governance checks.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-web-check-preflight",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "osint_preflight",
+        "json_data": {
+          "method_id": "web-check-public-site-preflight",
+          "platform": "Web-Check",
+          "recommended_collector": "authorized_preflight, generic_web, manual_json",
+          "data_types": [
+            "DNS records",
+            "headers",
+            "robots",
+            "technology stack",
+            "security.txt",
+            "public metadata"
+          ],
+          "boundary": "Run only against owned, authorized, or clearly permitted public websites; do not treat preflight as permission to scrape.",
+          "training_takeaway": "Web-Check belongs before scraping: it teaches what attackers and collectors can already see publicly."
+        }
+      },
+      "source_url": "https://web-check.xyz/",
+      "title": "Web-Check public site preflight SOP",
+      "risk_level": "high",
+      "training_use": "Teach site X-Ray preflight before any browser collection task.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-katana-authorized-crawl",
+      "project_key": "browser-preflight-risk",
+      "category": "osint_preflight",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "osint_preflight",
+        "json_data": {
+          "method_id": "katana-authorized-url-discovery",
+          "platform": "Katana",
+          "recommended_collector": "authorized_crawler, cli, manual_json",
+          "data_types": [
+            "public URLs",
+            "links",
+            "forms",
+            "JavaScript-discovered routes"
+          ],
+          "boundary": "Use strict scope, rate limits, and written authorization; do not enumerate private areas or bypass controls.",
+          "training_takeaway": "Katana is useful for scope-aware URL discovery, but it is a security tool and must stay inside authorization boundaries."
+        }
+      },
+      "source_url": "https://github.com/projectdiscovery/katana",
+      "title": "Katana authorized URL discovery SOP",
+      "risk_level": "high",
+      "training_use": "Teach authorized URL discovery and scope control.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-agent-browser-browser-qa",
+      "project_key": "agent-collection-ecosystem",
+      "category": "ai_agent_collection",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "ai_agent_collection",
+        "json_data": {
+          "method_id": "agent-browser-page-understanding",
+          "platform": "agent-browser",
+          "recommended_collector": "browser_agent_cli, playwright, manual_json",
+          "data_types": [
+            "accessibility snapshot",
+            "screenshots",
+            "network requests",
+            "page diffs",
+            "HAR"
+          ],
+          "boundary": "Use only authorized URLs and non-sensitive browser profiles; never import production cookies into training workflows.",
+          "training_takeaway": "agent-browser is a strong training anchor for how AI sees and verifies webpages before collecting data."
+        }
+      },
+      "source_url": "https://github.com/vercel-labs/agent-browser",
+      "title": "agent-browser page understanding SOP",
+      "risk_level": "medium",
+      "training_use": "Teach browser parsing, snapshots, network inspection, and E2E evidence capture.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
+    },
+    {
+      "id": "method-browser-fingerprint-boundary",
+      "project_key": "browser-preflight-risk",
+      "category": "browser_risk",
+      "collector_type": "manual_json",
+      "config": {
+        "entity_type": "browser_risk",
+        "json_data": {
+          "method_id": "browser-fingerprint-risk-boundary",
+          "platform": "Cross-browser risk boundary",
+          "recommended_collector": "manual_json, authorized_test_page",
+          "data_types": [
+            "navigator fields",
+            "client hints",
+            "canvas/webgl notes",
+            "risk review"
+          ],
+          "boundary": "Do not teach or deploy bypass steps for Cloudflare, DataDome, Kasada, CAPTCHA, login controls, or platform anti-abuse systems.",
+          "training_takeaway": "Fingerprint tools belong in risk education and authorized QA, not in production scraping SOPs."
+        }
+      },
+      "source_url": "https://www.w3.org/TR/robots/",
+      "title": "Browser fingerprint and anti-detect boundary SOP",
+      "risk_level": "high",
+      "training_use": "Teach anti-detect tools as risk cases, not bypass instructions.",
+      "content_targets": [
+        "sources",
+        "tasks",
+        "raw_records",
+        "entities",
+        "signals",
+        "intelligence",
+        "alerts"
+      ]
     }
   ]
 }
