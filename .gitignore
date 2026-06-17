@@ -34,5 +34,6 @@ tmp/**
 
 # Local autonomous loop control
 .Codex/
+.codegraph/
 .kiro/
 TODO.md

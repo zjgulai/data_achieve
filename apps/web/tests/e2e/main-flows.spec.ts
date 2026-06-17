@@ -1,5 +1,6 @@
 import {
-  APIRequestContext,
+  type APIRequestContext,
+  type APIResponse,
   type Locator,
   type Page,
   expect,
@@ -8,36 +9,79 @@ import {
 
 const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
 
+type RealApiCredentials = {
+  email: string;
+  password: string;
+};
+
+let generatedRealApiCredentials: RealApiCredentials | null = null;
+
+function realApiBaseUrl() {
+  return process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+}
+
+function generatedCredentials(): RealApiCredentials {
+  if (generatedRealApiCredentials) {
+    return generatedRealApiCredentials;
+  }
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  generatedRealApiCredentials = {
+    email: `e2e-real-api-${stamp}@example.com`,
+    password: `E2ePass-${stamp}`,
+  };
+  return generatedRealApiCredentials;
+}
+
+async function authenticateRealApiRequest(request: APIRequestContext) {
+  const baseUrl = realApiBaseUrl();
+  const configuredPassword = process.env.SCRAPY_DEMO_PASSWORD;
+  if (configuredPassword) {
+    const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+    const response = await request.post(`${baseUrl}/api/auth/login`, {
+      data: { email, password: configuredPassword },
+    });
+    assertAuthResponse(response, "Real API login");
+    return { baseUrl, cookieText: extractCookieText(response, "login") };
+  }
+
+  const credentials = generatedCredentials();
+  const response = await request.post(`${baseUrl}/api/auth/register`, {
+    data: {
+      email: credentials.email,
+      password: credentials.password,
+      name: "Playwright Real API E2E",
+    },
+  });
+  if (response.status() === 409) {
+    const loginResponse = await request.post(`${baseUrl}/api/auth/login`, {
+      data: credentials,
+    });
+    assertAuthResponse(loginResponse, "Generated Real API login");
+    return { baseUrl, cookieText: extractCookieText(loginResponse, "login") };
+  }
+  assertAuthResponse(response, "Generated Real API register");
+  return { baseUrl, cookieText: extractCookieText(response, "register") };
+}
+
+function assertAuthResponse(response: APIResponse, label: string) {
+  if (!response.ok()) {
+    throw new Error(`${label} failed (${response.status()})`);
+  }
+}
+
+function extractCookieText(response: APIResponse, action: string) {
+  const rawSetCookie = response.headers()["set-cookie"] as string | undefined;
+  if (!rawSetCookie) {
+    throw new Error(`Real API ${action} response did not return access token cookie`);
+  }
+  return rawSetCookie.split(";")[0];
+}
+
 async function loginByApi(page: Page, request: APIRequestContext) {
   if (!realApiMode) {
     return;
   }
-  const baseUrl =
-    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
-  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
-  const password = process.env.SCRAPY_DEMO_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
-    );
-  }
-
-  const response = await request.post(`${baseUrl}/api/auth/login`, {
-    data: { email, password },
-  });
-  if (!response.ok()) {
-    const detail = await response.text();
-    throw new Error(`Real API login failed (${response.status()}): ${detail}`);
-  }
-
-  const rawSetCookie = response.headers()["set-cookie"] as string | undefined;
-  if (!rawSetCookie) {
-    throw new Error(
-      "Real API login response did not return access token cookie",
-    );
-  }
-
-  const cookieText = rawSetCookie.split(";")[0];
+  const { baseUrl, cookieText } = await authenticateRealApiRequest(request);
   const [name, ...valueParts] = cookieText.split("=");
   if (!name || valueParts.length === 0) {
     throw new Error("Real API login response set-cookie header format invalid");
@@ -94,18 +138,7 @@ async function createTaskFlowFixture(
   if (!realApiMode) {
     return null;
   }
-  const baseUrl =
-    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
-  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
-  const password = process.env.SCRAPY_DEMO_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
-    );
-  }
-  await request.post(`${baseUrl}/api/auth/login`, {
-    data: { email, password },
-  });
+  const { baseUrl } = await authenticateRealApiRequest(request);
   const projectsResponse = await request.get(`${baseUrl}/api/projects`);
   if (!projectsResponse.ok()) {
     throw new Error(
@@ -156,18 +189,7 @@ async function createIntelligenceFixture(
   if (!realApiMode) {
     return;
   }
-  const baseUrl =
-    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
-  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
-  const password = process.env.SCRAPY_DEMO_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
-    );
-  }
-  await request.post(`${baseUrl}/api/auth/login`, {
-    data: { email, password },
-  });
+  const { baseUrl } = await authenticateRealApiRequest(request);
   const projectsResponse = await request.get(`${baseUrl}/api/projects`);
   if (!projectsResponse.ok()) {
     throw new Error(
@@ -248,8 +270,7 @@ async function createReportFixture(request: APIRequestContext, suffix: string) {
     return;
   }
   await createIntelligenceFixture(request, `report-${suffix}`);
-  const baseUrl =
-    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  const { baseUrl } = await authenticateRealApiRequest(request);
   const projectsResponse = await request.get(`${baseUrl}/api/projects`);
   if (!projectsResponse.ok()) {
     throw new Error(
@@ -274,18 +295,7 @@ async function createNotificationFixture(request: APIRequestContext) {
   if (!realApiMode) {
     return;
   }
-  const baseUrl =
-    process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
-  const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
-  const password = process.env.SCRAPY_DEMO_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "SCRAPY_DEMO_PASSWORD is required when PLAYWRIGHT_REAL_API=true",
-    );
-  }
-  await request.post(`${baseUrl}/api/auth/login`, {
-    data: { email, password },
-  });
+  const { baseUrl } = await authenticateRealApiRequest(request);
   const projectsResponse = await request.get(`${baseUrl}/api/projects`);
   if (!projectsResponse.ok()) {
     throw new Error(
@@ -315,8 +325,11 @@ async function createNotificationFixture(request: APIRequestContext) {
   }
 }
 
-test.beforeEach(async ({ page, request }) => {
+test.beforeEach(async ({ page, request }, testInfo) => {
   if (!realApiMode) {
+    return;
+  }
+  if (testInfo.title === "registers and logs in through the auth UI") {
     return;
   }
   await loginByApi(page, request);

@@ -5,7 +5,7 @@ module: operations
 topic: release-rollback
 status: stable
 created: 2026-06-14
-updated: 2026-06-14
+updated: 2026-06-17
 owner: self
 source: human+ai
 ---
@@ -56,7 +56,7 @@ pnpm -C apps/web build
 生产 preflight：
 
 ```bash
-ssh -i /Users/pray/project/data_scrapy/ai_video.pem ubuntu@101.34.52.232 \
+ssh -i ~/.ssh/data_scrapy_ai_video.pem ubuntu@101.34.52.232 \
   'cd /opt/data-achieve-scrapy/app && \
    bash scripts/deploy-preflight-scrapy.sh \
      --env-file /opt/data-achieve-scrapy/.env.production \

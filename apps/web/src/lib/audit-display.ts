@@ -78,10 +78,13 @@ function collectFacts(value: unknown, key: string, facts: AuditFact[], maxItems:
   }
 
   if (Array.isArray(value)) {
-    const primitiveItems = value.filter((item) => isPrimitive(item));
-    if (primitiveItems.length > 0 && key && !isInternalKey(key)) {
+    const primitiveItems = value
+      .filter((item) => isPrimitive(item))
+      .filter((item) => !isTechnicalValue(item));
+    const label = formatAuditLabel(key);
+    if (primitiveItems.length > 0 && key && !isInternalKey(key) && !isInternalKey(label)) {
       facts.push({
-        label: formatAuditLabel(key),
+        label,
         value: primitiveItems.map(formatAuditValue).join(" / "),
       });
     }
@@ -89,8 +92,16 @@ function collectFacts(value: unknown, key: string, facts: AuditFact[], maxItems:
   }
 
   if (isPrimitive(value)) {
-    if (key && !isInternalKey(key) && !isTechnicalValue(value)) {
-      facts.push({ label: formatAuditLabel(key), value: formatAuditValue(value) });
+    const label = formatAuditLabel(key);
+    const formattedValue = formatAuditValue(value);
+    if (
+      key &&
+      !isInternalKey(key) &&
+      !isInternalKey(label) &&
+      !isTechnicalValue(value) &&
+      !isInternalKey(formattedValue)
+    ) {
+      facts.push({ label, value: formattedValue });
     }
     return;
   }

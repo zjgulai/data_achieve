@@ -507,7 +507,7 @@ export function ReportsWorkspace() {
         />
       </section>
 
-      <details className="group rounded-2xl border border-[#E9E5E2] bg-white">
+      <details open className="group rounded-2xl border border-[#E9E5E2] bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -628,16 +628,16 @@ export function ReportsWorkspace() {
         </div>
       </details>
 
-      <details className="group rounded-2xl border border-[#E9E5E2] bg-white">
+      <details open className="group rounded-2xl border border-[#E9E5E2] bg-white">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#FCEBF0] text-[#C25B6E]">
               <BellRing size={17} aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-base font-semibold text-[#1D1D1F]">
+              <p className="text-base font-semibold text-[#1D1D1F]">
                 自动分发
-              </h2>
+              </p>
               <p className="mt-1 text-sm leading-6 text-[#86868B]">
                 配置日报发送时间、站内通知和邮件通道。
               </p>

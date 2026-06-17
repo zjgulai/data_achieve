@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -560,6 +560,14 @@ class _TrainingIntelligence:
         self.updated_at = item.updated_at
 
 
+class _LectureTemplate(TypedDict):
+    audience: str
+    level: str
+    hands_on_steps: list[str]
+    risk_boundaries: list[str]
+    classroom_exercise: str
+
+
 async def _list_training_intelligence(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -1049,7 +1057,7 @@ def _build_lecture_playbook(item: _TrainingIntelligence) -> ToolkitLecturePlaybo
     )
 
 
-def _lecture_template(item: _TrainingIntelligence) -> dict[str, object]:
+def _lecture_template(item: _TrainingIntelligence) -> _LectureTemplate:
     text = f"{item.title}\n{item.summary}\n{item.domain}".lower()
     if _has_any(text, ("firecrawl", "crawl4ai", "ai-ready", "markdown")):
         return {

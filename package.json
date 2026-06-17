@@ -6,5 +6,10 @@
     "dev:web": "pnpm --dir apps/web dev",
     "lint:web": "pnpm --dir apps/web lint",
     "test:web": "pnpm --dir apps/web test"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.15"
+    }
   }
 }
