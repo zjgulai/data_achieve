@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.core.security import hash_password
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
+from data_intelligence_hub.models.dataset import Dataset, DatasetDriftEvent, DatasetVersion
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.intelligence import (
     Evidence,
@@ -38,7 +39,7 @@ from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 
 NAMESPACE = uuid.UUID("2df8a496-5ea6-49c3-8aef-9604ac8e6238")
 DEFAULT_EMAIL = "owner@example.com"
-DEMO_SEED_VERSION = "2026-06-14-curated-v2"
+DEMO_SEED_VERSION = "2026-06-18-curated-v3"
 
 DOMAIN_FRESHNESS_TARGETS: dict[str, dict[str, Any]] = {
     "osint": {
@@ -77,6 +78,9 @@ class DemoContext:
     task_ids: dict[str, uuid.UUID]
     run_ids: dict[str, uuid.UUID]
     raw_record_ids: dict[str, uuid.UUID]
+    dataset_ids: dict[str, uuid.UUID]
+    dataset_version_ids: dict[str, uuid.UUID]
+    dataset_drift_event_ids: dict[str, uuid.UUID]
     entity_ids: dict[str, uuid.UUID]
     snapshot_ids: dict[str, uuid.UUID]
     signal_ids: dict[str, uuid.UUID]
@@ -172,6 +176,15 @@ def _build_context() -> DemoContext:
             "competitor-prev": _id("raw-competitor-prev"),
             "competitor-current": _id("raw-competitor-current"),
         },
+        dataset_ids={
+            "ecommerce-tools": _id("dataset-ecommerce-tools"),
+        },
+        dataset_version_ids={
+            "ecommerce-tools-v1": _id("dataset-version-ecommerce-tools-v1"),
+        },
+        dataset_drift_event_ids={
+            "ecommerce-tools-field-gap": _id("dataset-drift-ecommerce-tools-field-gap"),
+        },
         entity_ids={
             "osint-repo": _id("entity-osint-repo"),
             "amazon-product": _id("entity-amazon-product"),
@@ -222,6 +235,7 @@ async def seed_demo_data() -> None:
         await _merge_projects(session, context, now)
         await _merge_collection_layer(session, context, now)
         await _merge_entity_layer(session, context, now)
+        await _merge_dataset_layer(session, context, now)
         await _merge_intelligence_layer(session, context, now)
         await _merge_reports_alerts_notifications(session, context, now)
         await session.commit()
@@ -1631,6 +1645,177 @@ def _snapshot(
         metrics=metrics,
         captured_at=captured_at,
         created_at=captured_at,
+    )
+
+
+async def _merge_dataset_layer(
+    session: AsyncSession,
+    context: DemoContext,
+    now: datetime,
+) -> None:
+    selected_fields = [
+        "title",
+        "price",
+        "sku",
+        "canonical_url",
+        "method_quality",
+        "collection_methods",
+    ]
+    amazon_run_id = context.run_ids["amazon-success"]
+    current_raw_id = context.raw_record_ids["amazon-current"]
+    previous_raw_id = context.raw_record_ids["amazon-prev"]
+    rows = [
+        {
+            "row_id": f"{amazon_run_id}:{current_raw_id}",
+            "task_run_id": str(amazon_run_id),
+            "raw_record_id": str(current_raw_id),
+            "source_url": "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
+            "values": {
+                "title": "Amazon BSR + Keepa 价格排名雷达",
+                "price": 39.9,
+                "sku": "AMZ-BSR-KEEPA-AIR-FILTER",
+                "canonical_url": "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
+                "method_quality": 91,
+                "collection_methods": [
+                    "Amazon Best Sellers public page",
+                    "Keepa price history API",
+                ],
+            },
+            "missing_fields": [],
+            "completeness_percent": 100,
+        },
+        {
+            "row_id": f"{amazon_run_id}:{previous_raw_id}",
+            "task_run_id": str(amazon_run_id),
+            "raw_record_id": str(previous_raw_id),
+            "source_url": "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
+            "values": {
+                "title": "Amazon Review + BSR 组合采集 SOP",
+                "sku": "AMZ-BSR-REVIEWS-SOP",
+                "canonical_url": "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
+                "method_quality": 84,
+                "collection_methods": [
+                    "Amazon public ranking page",
+                    "review list parser",
+                    "price history enrichment",
+                ],
+            },
+            "missing_fields": ["price"],
+            "completeness_percent": 83,
+        },
+    ]
+    export_rows: list[dict[str, Any]] = []
+    for row in rows:
+        values = row["values"]
+        if not isinstance(values, dict):
+            values = {}
+        export_rows.append({field: values.get(field) for field in selected_fields})
+    await _merge_all(
+        session,
+        [
+            Dataset(
+                id=context.dataset_ids["ecommerce-tools"],
+                workspace_id=context.workspace_id,
+                project_id=context.project_ids["ecommerce"],
+                name="电商平台采集工具与 SOP 数据集",
+                dataset_type="ecommerce_product",
+                status="active",
+                description=(
+                    "沉淀 Amazon、Keepa、Shopify 等平台的数据采集工具、核心字段和适用场景，"
+                    "用于培训和后续自动化采集方案选择。"
+                ),
+                created_at=now - timedelta(hours=5),
+                updated_at=now,
+            ),
+            DatasetVersion(
+                id=context.dataset_version_ids["ecommerce-tools-v1"],
+                dataset_id=context.dataset_ids["ecommerce-tools"],
+                workspace_id=context.workspace_id,
+                project_id=context.project_ids["ecommerce"],
+                created_by_user_id=context.user_id,
+                version_number=1,
+                source_task_run_ids=[str(context.run_ids["amazon-success"])],
+                selected_fields=selected_fields,
+                cleaning_script=[
+                    "drop rows where title is empty",
+                    "trim string fields and collapse repeated whitespace",
+                    "cast price to decimal when present",
+                    "normalize canonical_url as an absolute URL string",
+                    "keep collection_methods as an ordered method list for training review",
+                    "keep missing values explicit as null for downstream review",
+                ],
+                rows=rows,
+                export_preview={
+                    "format": "json",
+                    "schema": {
+                        "fields": selected_fields,
+                        "primary_key": "canonical_url",
+                        "missing_value_policy": "explicit_null",
+                    },
+                    "rows": export_rows,
+                },
+                row_count=2,
+                average_completeness_percent=92,
+                status="saved",
+                created_at=now - timedelta(hours=4),
+            ),
+            DatasetDriftEvent(
+                id=context.dataset_drift_event_ids["ecommerce-tools-field-gap"],
+                workspace_id=context.workspace_id,
+                project_id=context.project_ids["ecommerce"],
+                dataset_id=context.dataset_ids["ecommerce-tools"],
+                dataset_version_id=context.dataset_version_ids["ecommerce-tools-v1"],
+                event_type="ecommerce_product_drift",
+                status="warning",
+                thresholds={
+                    "completeness_drop_threshold_percent": 10,
+                    "freshness_grace_hours": 24,
+                },
+                summary={
+                    "requested_tasks": 1,
+                    "checked_tasks": 1,
+                    "blocked_tasks": 0,
+                    "warning_tasks": 1,
+                    "critical_tasks": 0,
+                    "stale_tasks": 0,
+                    "missing_field_tasks": 1,
+                    "run_started": False,
+                    "alert_created": False,
+                },
+                items=[
+                    {
+                        "task_id": str(context.task_ids["amazon"]),
+                        "task_name": "Amazon BSR / Keepa 指标导入",
+                        "source_url": "https://www.amazon.com/Best-Sellers/zgbs/home-garden",
+                        "status": "warning",
+                        "blocked_reason": None,
+                        "latest_run_id": str(context.run_ids["amazon-success"]),
+                        "latest_run_status": "success",
+                        "dataset_version_completeness_percent": 92,
+                        "latest_completeness_percent": 83,
+                        "completeness_drop_percent": 9,
+                        "missing_fields": ["price"],
+                        "new_missing_fields": ["price"],
+                        "freshness_target_hours": 12,
+                        "stale_hours": 0,
+                        "issues": ["approved_fields_missing"],
+                    }
+                ],
+                audit_events=[
+                    {
+                        "event": "product_drift_event_saved",
+                        "dataset_id": str(context.dataset_ids["ecommerce-tools"]),
+                        "dataset_version_id": str(
+                            context.dataset_version_ids["ecommerce-tools-v1"]
+                        ),
+                        "run_started": False,
+                        "alert_created": False,
+                    }
+                ],
+                note="Amazon Review + BSR 组合采集 SOP 缺少价格字段，培训时需要强调字段补齐策略。",
+                created_at=now - timedelta(hours=3),
+            ),
+        ],
     )
 
 

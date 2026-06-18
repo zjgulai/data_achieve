@@ -14,6 +14,9 @@ from data_intelligence_hub.models import (
     AlertRule,
     Base,
     CollectionTask,
+    Dataset,
+    DatasetDriftEvent,
+    DatasetVersion,
     Entity,
     EntitySnapshot,
     Evidence,
@@ -37,6 +40,7 @@ from data_intelligence_hub.seed.demo_data import (
     _delete_legacy_demo_records,
     _id,
     _merge_collection_layer,
+    _merge_dataset_layer,
     _merge_entity_layer,
     _merge_identity,
     _merge_intelligence_layer,
@@ -51,6 +55,8 @@ def test_demo_seed_covers_navigation_domains() -> None:
 
     assert set(context.project_ids) == {"osint", "ecommerce", "social", "competitor"}
     assert set(context.source_ids) == {"osint", "amazon", "social", "competitor"}
+    assert set(context.dataset_ids) == {"ecommerce-tools"}
+    assert set(context.dataset_version_ids) == {"ecommerce-tools-v1"}
     assert set(context.intelligence_ids) == {
         "osint-scrapy-momentum",
         "amazon-margin-risk",
@@ -102,6 +108,50 @@ async def test_demo_collection_tasks_use_auto_freshness_policy() -> None:
     assert {task.config["schedule_policy"] for task in tasks if task.config is not None} == {
         "auto_freshness"
     }
+
+
+@pytest.mark.asyncio
+async def test_demo_seed_includes_product_dataset_asset() -> None:
+    session_factory = await _create_demo_cleanup_session_factory()
+    context = _build_context()
+    now = datetime(2026, 6, 18, 10, 0, tzinfo=UTC)
+    async with session_factory() as session:
+        await _seed_curated_demo(session, now)
+        await session.commit()
+
+    async with session_factory() as session:
+        dataset = await session.get(Dataset, context.dataset_ids["ecommerce-tools"])
+        version = await session.get(
+            DatasetVersion,
+            context.dataset_version_ids["ecommerce-tools-v1"],
+        )
+        drift_event = await session.get(
+            DatasetDriftEvent,
+            context.dataset_drift_event_ids["ecommerce-tools-field-gap"],
+        )
+
+    assert dataset is not None
+    assert dataset.name == "电商平台采集工具与 SOP 数据集"
+    assert dataset.dataset_type == "ecommerce_product"
+    assert version is not None
+    assert version.dataset_id == dataset.id
+    assert version.row_count == 2
+    assert version.average_completeness_percent == 92
+    assert version.selected_fields == [
+        "title",
+        "price",
+        "sku",
+        "canonical_url",
+        "method_quality",
+        "collection_methods",
+    ]
+    assert version.rows[0]["values"]["title"] == "Amazon BSR + Keepa 价格排名雷达"
+    assert version.rows[1]["missing_fields"] == ["price"]
+    assert version.export_preview["schema"]["primary_key"] == "canonical_url"
+    assert drift_event is not None
+    assert drift_event.dataset_version_id == version.id
+    assert drift_event.status == "warning"
+    assert drift_event.summary["missing_field_tasks"] == 1
 
 
 @pytest.mark.asyncio
@@ -221,6 +271,7 @@ async def _seed_curated_demo(session: AsyncSession, now: datetime) -> None:
     await _merge_projects(session, context, now)
     await _merge_collection_layer(session, context, now)
     await _merge_entity_layer(session, context, now)
+    await _merge_dataset_layer(session, context, now)
     await _merge_intelligence_layer(session, context, now)
     await _merge_reports_alerts_notifications(session, context, now)
 
@@ -231,6 +282,7 @@ async def _curated_demo_visible_texts(session: AsyncSession) -> list[str]:
     for model, fields in (
         (Source, ("name", "url")),
         (CollectionTask, ("name", "collector_type", "status")),
+        (Dataset, ("name", "dataset_type", "status", "description")),
         (Entity, ("name", "canonical_url", "external_id", "entity_type")),
         (IntelligenceItem, ("title", "summary", "intelligence_type", "domain")),
         (Evidence, ("title", "url", "excerpt", "highlighted_text")),
