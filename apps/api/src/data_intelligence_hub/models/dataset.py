@@ -4,7 +4,16 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from data_intelligence_hub.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -32,6 +41,7 @@ class Dataset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     project: Mapped[Project] = relationship(back_populates="datasets")
     versions: Mapped[list[DatasetVersion]] = relationship(back_populates="dataset")
     drift_events: Mapped[list[DatasetDriftEvent]] = relationship(back_populates="dataset")
+    export_jobs: Mapped[list[DatasetExportJob]] = relationship(back_populates="dataset")
 
 
 class DatasetVersion(UUIDPrimaryKeyMixin, Base):
@@ -60,6 +70,7 @@ class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     project: Mapped[Project] = relationship()
     created_by_user: Mapped[User] = relationship()
     drift_events: Mapped[list[DatasetDriftEvent]] = relationship(back_populates="dataset_version")
+    export_jobs: Mapped[list[DatasetExportJob]] = relationship(back_populates="dataset_version")
 
 
 class DatasetDriftEvent(UUIDPrimaryKeyMixin, Base):
@@ -85,3 +96,34 @@ class DatasetDriftEvent(UUIDPrimaryKeyMixin, Base):
     project: Mapped[Project] = relationship()
     dataset: Mapped[Dataset] = relationship(back_populates="drift_events")
     dataset_version: Mapped[DatasetVersion] = relationship(back_populates="drift_events")
+
+
+class DatasetExportJob(UUIDPrimaryKeyMixin, Base):
+    __tablename__ = "dataset_export_jobs"
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id"), nullable=False)
+    dataset_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("dataset_versions.id"),
+        nullable=False,
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    export_format: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    artifact_path: Mapped[str] = mapped_column(Text, nullable=False)
+    artifact_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    row_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    checksum_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    audit_events: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    workspace: Mapped[Workspace] = relationship()
+    project: Mapped[Project] = relationship()
+    dataset: Mapped[Dataset] = relationship(back_populates="export_jobs")
+    dataset_version: Mapped[DatasetVersion] = relationship(back_populates="export_jobs")
+    created_by_user: Mapped[User] = relationship()

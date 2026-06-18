@@ -4,11 +4,16 @@ import type { Evidence, IntelligenceItem } from "@/types/intelligence";
 import type { AlertEvent, AlertRule } from "@/types/alert";
 import type {
   AutomationProductDiscovery,
+  AutomationDatasetExportFormat,
   AutomationProductBatchRun,
   AutomationProductBatchRunInput,
   AutomationProductDatasetPreview,
   AutomationProductDatasetPreviewInput,
   AutomationProductDatasetSave,
+  AutomationProductDatasetExportCreateInput,
+  AutomationProductDatasetExportJob,
+  AutomationProductDatasetExportList,
+  AutomationProductDatasetExportListInput,
   AutomationProductDatasetSaveInput,
   AutomationProductDatasetList,
   AutomationProductDatasetListInput,
@@ -1275,6 +1280,9 @@ export function getMockAutomationProductDriftCheck(
 }
 
 const mockAutomationDriftEvents: AutomationProductDriftEvent[] = [];
+const mockAutomationDatasetExportJobs: AutomationProductDatasetExportJob[] = [
+  getDefaultMockDatasetExportJob(),
+];
 const mockDriftAlertRules: AlertRule[] = [];
 const mockDriftSignals: Signal[] = [];
 const mockDriftAlertEvents: AlertEvent[] = [];
@@ -1364,6 +1372,69 @@ export function getMockAutomationProductDatasetVersions(
     total: versionsByDataset[input.datasetId]?.length ?? versions.length,
     runStarted: false,
     alertCreated: false,
+  };
+}
+
+export function getMockAutomationProductDatasetExportCreate(
+  input: AutomationProductDatasetExportCreateInput,
+): AutomationProductDatasetExportJob {
+  const dataset = getDefaultMockProductDatasetItems().find(
+    (item) => item.dataset.id === input.datasetId,
+  )?.dataset ?? getDefaultMockShopifyDataset();
+  const version =
+    getDefaultMockProductDatasetVersions()[dataset.id]?.find(
+      (item) => item.id === input.datasetVersionId,
+    ) ?? getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
+  const createdAt = new Date().toISOString();
+  const id = `export_${createdAt.replace(/[^0-9]/g, "")}_${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+  const job: AutomationProductDatasetExportJob = {
+    id,
+    dataset,
+    version,
+    exportFormat: input.exportFormat,
+    status: input.confirmCreate ? "success" : "blocked",
+    filename: `shopify-product-dataset-v${version.versionNumber}.${input.exportFormat}`,
+    contentType: exportContentType(input.exportFormat),
+    artifactSizeBytes: input.confirmCreate ? 384 : 0,
+    rowCount: version.rowCount,
+    checksumSha256: "mock".padEnd(64, "0"),
+    errorMessage: input.confirmCreate ? null : "dataset_export_confirmation_required",
+    createdAt,
+    finishedAt: input.confirmCreate ? createdAt : null,
+    downloadUrl: input.confirmCreate
+      ? `/api/automation/product-datasets/${dataset.id}/versions/${version.id}/exports/${id}/download`
+      : null,
+    auditEvents: [
+      {
+        event: "product_dataset_export_file_written",
+        export_format: input.exportFormat,
+        run_started: false,
+      },
+    ],
+    blockedReasons: [
+      "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。",
+    ],
+  };
+  if (input.confirmCreate) {
+    mockAutomationDatasetExportJobs.unshift(job);
+  }
+  return job;
+}
+
+export function getMockAutomationProductDatasetExports(
+  input: AutomationProductDatasetExportListInput,
+): AutomationProductDatasetExportList {
+  const items = mockAutomationDatasetExportJobs
+    .filter((job) => job.dataset.id === input.datasetId)
+    .filter((job) => !input.datasetVersionId || job.version.id === input.datasetVersionId)
+    .slice(0, input.limit ?? 20);
+  return {
+    items,
+    total: items.length,
+    exportCreated: false,
+    runStarted: false,
   };
 }
 
@@ -1845,6 +1916,38 @@ function getDefaultMockProductDatasetVersions(): Record<string, AutomationProduc
   };
 }
 
+function getDefaultMockDatasetExportJob(): AutomationProductDatasetExportJob {
+  const dataset = getDefaultMockShopifyDataset();
+  const version = getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
+  return {
+    id: "export_shopify_price_v2_csv",
+    dataset,
+    version,
+    exportFormat: "csv",
+    status: "success",
+    filename: "shopify-product-dataset-v2.csv",
+    contentType: exportContentType("csv"),
+    artifactSizeBytes: 384,
+    rowCount: version.rowCount,
+    checksumSha256: "mock".padEnd(64, "0"),
+    errorMessage: null,
+    createdAt: "2026-06-18T10:20:00.000Z",
+    finishedAt: "2026-06-18T10:20:00.000Z",
+    downloadUrl:
+      "/api/automation/product-datasets/dataset_shopify_price/versions/dataset_shopify_price_v2/exports/export_shopify_price_v2_csv/download",
+    auditEvents: [
+      {
+        event: "product_dataset_export_file_written",
+        export_format: "csv",
+        run_started: false,
+      },
+    ],
+    blockedReasons: [
+      "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。",
+    ],
+  };
+}
+
 function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
   const dataset = getDefaultMockShopifyDataset();
   const version = getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
@@ -1930,6 +2033,16 @@ function getDefaultMockShopifyDataset(): AutomationProductDatasetList["items"][n
     status: "active",
     description: "从集合页发现商品 URL 后，对商品页进行字段抽取、清洗和质量留痕。",
   };
+}
+
+function exportContentType(format: AutomationDatasetExportFormat) {
+  if (format === "json") {
+    return "application/json; charset=utf-8";
+  }
+  if (format === "jsonl") {
+    return "application/x-ndjson; charset=utf-8";
+  }
+  return "text/csv; charset=utf-8";
 }
 
 function mockNextRunAt(lastRunAt: string | null, targetHours: number) {

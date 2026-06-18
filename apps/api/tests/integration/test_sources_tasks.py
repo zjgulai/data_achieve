@@ -1006,6 +1006,65 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert [item["version_number"] for item in dataset_versions["versions"]] == [2, 1]
     assert dataset_versions["versions"][1]["id"] == first_save["version"]["id"]
 
+    unconfirmed_export_response = await client.post(
+        "/api/automation/product-dataset-exports",
+        json={
+            "authorized": True,
+            "confirm_create": False,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "export_format": "csv",
+        },
+    )
+    assert unconfirmed_export_response.status_code == 400
+    assert unconfirmed_export_response.json()["detail"] == "dataset_export_confirmation_required"
+
+    export_response = await client.post(
+        "/api/automation/product-dataset-exports",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "export_format": "csv",
+        },
+    )
+    assert export_response.status_code == 200
+    export_job = export_response.json()
+    assert export_job["dataset"]["id"] == first_save["dataset"]["id"]
+    assert export_job["version"]["id"] == first_save["version"]["id"]
+    assert export_job["export_format"] == "csv"
+    assert export_job["status"] == "success"
+    assert export_job["filename"].endswith(".csv")
+    assert export_job["artifact_size_bytes"] > 0
+    assert export_job["row_count"] == 2
+    assert len(export_job["checksum_sha256"]) == 64
+    assert export_job["download_url"].endswith(f"/exports/{export_job['id']}/download")
+    assert any(
+        event["event"] == "product_dataset_export_file_written"
+        for event in export_job["audit_events"]
+    )
+    assert "下载接口" in export_job["blocked_reasons"][0]
+
+    export_history_response = await client.get(
+        f"/api/automation/product-datasets/{first_save['dataset']['id']}/exports",
+        params={"dataset_version_id": first_save["version"]["id"]},
+    )
+    assert export_history_response.status_code == 200
+    export_history = export_history_response.json()
+    assert export_history["total"] == 1
+    assert export_history["export_created"] is False
+    assert export_history["run_started"] is False
+    assert export_history["items"][0]["id"] == export_job["id"]
+
+    export_download_response = await client.get(export_job["download_url"])
+    assert export_download_response.status_code == 200
+    assert export_download_response.headers["content-type"].startswith("text/csv")
+    exported_csv = export_download_response.text
+    assert "title,price,sku,canonical_url" in exported_csv
+    assert "Demo Carry Bag" in exported_csv
+    assert "Weekend Tote" in exported_csv
+
     drift_alert_preview_response = await client.post(
         "/api/automation/product-drift-alert-preview",
         json={

@@ -4,12 +4,16 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
     AutomationProductBatchRunRequest,
     AutomationProductBatchRunResponse,
+    AutomationProductDatasetExportCreateRequest,
+    AutomationProductDatasetExportJobResponse,
+    AutomationProductDatasetExportListResponse,
     AutomationProductDatasetListResponse,
     AutomationProductDatasetPreviewRequest,
     AutomationProductDatasetPreviewResponse,
@@ -46,10 +50,13 @@ from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
     check_product_drift,
+    create_product_dataset_export,
     create_product_drift_alert_events,
     create_product_drift_alert_rule,
     create_reviewed_product_fanout,
     discover_products_for_collection,
+    get_product_dataset_export_file,
+    list_product_dataset_exports,
     list_product_dataset_versions,
     list_product_datasets,
     list_product_drift_events,
@@ -367,3 +374,80 @@ async def list_product_dataset_versions_route(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+
+
+@router.post(
+    "/product-dataset-exports",
+    response_model=AutomationProductDatasetExportJobResponse,
+)
+async def create_product_dataset_export_route(
+    payload: AutomationProductDatasetExportCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDatasetExportJobResponse:
+    try:
+        return await create_product_dataset_export(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/product-datasets/{dataset_id}/exports",
+    response_model=AutomationProductDatasetExportListResponse,
+)
+async def list_product_dataset_exports_route(
+    dataset_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    dataset_version_id: uuid.UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AutomationProductDatasetExportListResponse:
+    try:
+        return await list_product_dataset_exports(
+            session,
+            context.workspace,
+            dataset_id=dataset_id,
+            dataset_version_id=dataset_version_id,
+            limit=limit,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download")
+async def download_product_dataset_export_route(
+    dataset_id: uuid.UUID,
+    version_id: uuid.UUID,
+    export_job_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> FileResponse:
+    try:
+        export_job, artifact_path = await get_product_dataset_export_file(
+            session,
+            context.workspace,
+            dataset_id=dataset_id,
+            dataset_version_id=version_id,
+            export_job_id=export_job_id,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    return FileResponse(
+        artifact_path,
+        media_type=export_job.content_type,
+        filename=export_job.filename,
+    )

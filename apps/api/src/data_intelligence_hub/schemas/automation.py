@@ -69,6 +69,14 @@ class AutomationProductDatasetSaveRequest(AutomationProductDatasetPreviewRequest
     description: str | None = Field(default=None, max_length=1000)
 
 
+class AutomationProductDatasetExportCreateRequest(BaseModel):
+    authorized: bool
+    confirm_create: bool
+    dataset_id: uuid.UUID
+    dataset_version_id: uuid.UUID
+    export_format: Literal["csv", "json", "jsonl"] = "csv"
+
+
 class AutomationProductScheduleApproveRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID
@@ -523,6 +531,32 @@ class AutomationProductDatasetVersionListResponse(BaseModel):
     total: int
     run_started: bool
     alert_created: bool
+
+
+class AutomationProductDatasetExportJobResponse(BaseModel):
+    id: uuid.UUID
+    dataset: AutomationDatasetResponse
+    version: AutomationDatasetVersionResponse
+    export_format: Literal["csv", "json", "jsonl"]
+    status: str
+    filename: str
+    content_type: str
+    artifact_size_bytes: int
+    row_count: int
+    checksum_sha256: str
+    error_message: str | None
+    created_at: datetime
+    finished_at: datetime | None
+    download_url: str | None
+    audit_events: list[dict[str, Any]]
+    blocked_reasons: list[str]
+
+
+class AutomationProductDatasetExportListResponse(BaseModel):
+    items: list[AutomationProductDatasetExportJobResponse]
+    total: int
+    export_created: bool
+    run_started: bool
 
 
 class AutomationProductDriftAlertRuleDraftResponse(BaseModel):

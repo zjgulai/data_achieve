@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import urldefrag, urlparse
 
 import httpx
@@ -17,8 +20,14 @@ from data_intelligence_hub.collectors.ecommerce_product_page import (
     ECOMMERCE_PRODUCT_FIELDS,
     EcommerceProductPageCollector,
 )
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.alert import AlertEvent
-from data_intelligence_hub.models.dataset import Dataset, DatasetDriftEvent, DatasetVersion
+from data_intelligence_hub.models.dataset import (
+    Dataset,
+    DatasetDriftEvent,
+    DatasetExportJob,
+    DatasetVersion,
+)
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.signal import Signal
@@ -30,12 +39,15 @@ from data_intelligence_hub.repositories.datasets import (
     count_dataset_drift_events,
     count_dataset_versions,
     create_dataset_drift_event,
+    create_dataset_export_job,
     get_dataset,
     get_dataset_by_name,
     get_dataset_drift_event,
+    get_dataset_export_job,
     get_dataset_version,
     get_latest_dataset_version,
     list_dataset_drift_events,
+    list_dataset_export_jobs,
     list_dataset_versions,
     list_datasets,
 )
@@ -74,6 +86,9 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductBatchRunResponse,
     AutomationProductBatchRunSummaryResponse,
     AutomationProductCandidateResponse,
+    AutomationProductDatasetExportCreateRequest,
+    AutomationProductDatasetExportJobResponse,
+    AutomationProductDatasetExportListResponse,
     AutomationProductDatasetListItemResponse,
     AutomationProductDatasetListResponse,
     AutomationProductDatasetPreviewRequest,
@@ -140,6 +155,12 @@ from data_intelligence_hub.services.notification_service import (
 )
 from data_intelligence_hub.services.source_service import create_source, enable_source
 from data_intelligence_hub.services.task_service import get_task_or_raise, run_task_now
+
+DATASET_EXPORT_CONTENT_TYPES = {
+    "csv": "text/csv; charset=utf-8",
+    "json": "application/json; charset=utf-8",
+    "jsonl": "application/x-ndjson; charset=utf-8",
+}
 
 
 async def analyze_site_for_collection(
@@ -1234,6 +1255,159 @@ async def list_product_dataset_versions(
     )
 
 
+async def create_product_dataset_export(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationProductDatasetExportCreateRequest,
+) -> AutomationProductDatasetExportJobResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_create:
+        raise CollectorError("dataset_export_confirmation_required")
+
+    dataset, version = await _get_dataset_and_version(
+        session,
+        workspace,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    export_format = payload.export_format
+    job_id = uuid.uuid4()
+    created_at = datetime.now(UTC)
+    filename = _dataset_export_filename(dataset, version, job_id, export_format)
+    target_path = _dataset_export_path(
+        workspace_id=workspace.id,
+        dataset_id=dataset.id,
+        version_id=version.id,
+        filename=filename,
+    )
+    audit_events: list[dict[str, object]] = [
+        {
+            "event": "product_dataset_export_requested",
+            "dataset_id": str(dataset.id),
+            "dataset_version_id": str(version.id),
+            "export_format": export_format,
+            "row_count": version.row_count,
+            "run_started": False,
+        }
+    ]
+
+    content = _render_dataset_export(dataset, version, export_format)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = target_path.with_name(f"{target_path.name}.tmp")
+    temporary_path.write_bytes(content)
+    temporary_path.replace(target_path)
+
+    checksum = hashlib.sha256(content).hexdigest()
+    finished_at = datetime.now(UTC)
+    export_job = DatasetExportJob(
+        id=job_id,
+        workspace_id=workspace.id,
+        project_id=dataset.project_id,
+        dataset_id=dataset.id,
+        dataset_version_id=version.id,
+        created_by_user_id=user.id,
+        export_format=export_format,
+        status="success",
+        filename=filename,
+        content_type=DATASET_EXPORT_CONTENT_TYPES[export_format],
+        artifact_path=str(target_path),
+        artifact_size_bytes=len(content),
+        row_count=version.row_count,
+        checksum_sha256=checksum,
+        error_message=None,
+        audit_events=[
+            *audit_events,
+            {
+                "event": "product_dataset_export_file_written",
+                "artifact_size_bytes": len(content),
+                "checksum_sha256": checksum,
+                "run_started": False,
+            },
+        ],
+        created_at=created_at,
+        finished_at=finished_at,
+    )
+    created_job = await create_dataset_export_job(session, export_job)
+    return _dataset_export_job_response(created_job, dataset, version)
+
+
+async def list_product_dataset_exports(
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID | None = None,
+    limit: int = 20,
+) -> AutomationProductDatasetExportListResponse:
+    dataset = await get_dataset(session, workspace.id, dataset_id)
+    if dataset is None:
+        raise CollectorError("dataset_not_found")
+    if dataset_version_id is not None:
+        version = await get_dataset_version(session, workspace.id, dataset.id, dataset_version_id)
+        if version is None:
+            raise CollectorError("dataset_version_not_found")
+    jobs = await list_dataset_export_jobs(
+        session,
+        workspace.id,
+        dataset.id,
+        dataset_version_id=dataset_version_id,
+        limit=limit,
+    )
+    items: list[AutomationProductDatasetExportJobResponse] = []
+    for job in jobs:
+        version = await get_dataset_version(
+            session,
+            workspace.id,
+            job.dataset_id,
+            job.dataset_version_id,
+        )
+        if version is None:
+            continue
+        items.append(_dataset_export_job_response(job, dataset, version))
+    return AutomationProductDatasetExportListResponse(
+        items=items,
+        total=len(items),
+        export_created=False,
+        run_started=False,
+    )
+
+
+async def get_product_dataset_export_file(
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    export_job_id: uuid.UUID,
+) -> tuple[DatasetExportJob, Path]:
+    dataset, version = await _get_dataset_and_version(
+        session,
+        workspace,
+        dataset_id,
+        dataset_version_id,
+    )
+    export_job = await get_dataset_export_job(
+        session,
+        workspace.id,
+        dataset.id,
+        version.id,
+        export_job_id,
+    )
+    if export_job is None:
+        raise CollectorError("dataset_export_not_found")
+    if export_job.status != "success":
+        raise CollectorError("dataset_export_not_ready")
+    artifact_path = Path(export_job.artifact_path).resolve()
+    export_root = _dataset_export_root().resolve()
+    try:
+        artifact_path.relative_to(export_root)
+    except ValueError as exc:
+        raise CollectorError("dataset_export_artifact_outside_root") from exc
+    if not artifact_path.is_file():
+        raise CollectorError("dataset_export_file_missing")
+    return export_job, artifact_path
+
+
 async def preview_product_drift_alert_rule(
     session: AsyncSession,
     workspace: Workspace,
@@ -2242,6 +2416,171 @@ def _dataset_version_response(
         created_at=version.created_at,
         export_preview=version.export_preview,
     )
+
+
+async def _get_dataset_and_version(
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    version_id: uuid.UUID,
+) -> tuple[Dataset, DatasetVersion]:
+    dataset = await get_dataset(session, workspace.id, dataset_id)
+    if dataset is None:
+        raise CollectorError("dataset_not_found")
+    version = await get_dataset_version(session, workspace.id, dataset.id, version_id)
+    if version is None:
+        raise CollectorError("dataset_version_not_found")
+    return dataset, version
+
+
+def _dataset_export_job_response(
+    export_job: DatasetExportJob,
+    dataset: Dataset,
+    version: DatasetVersion,
+) -> AutomationProductDatasetExportJobResponse:
+    download_url = None
+    if export_job.status == "success":
+        download_url = (
+            f"/api/automation/product-datasets/{dataset.id}/versions/{version.id}"
+            f"/exports/{export_job.id}/download"
+        )
+    return AutomationProductDatasetExportJobResponse(
+        id=export_job.id,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        export_format=export_job.export_format,
+        status=export_job.status,
+        filename=export_job.filename,
+        content_type=export_job.content_type,
+        artifact_size_bytes=export_job.artifact_size_bytes,
+        row_count=export_job.row_count,
+        checksum_sha256=export_job.checksum_sha256,
+        error_message=export_job.error_message,
+        created_at=export_job.created_at,
+        finished_at=export_job.finished_at,
+        download_url=download_url,
+        audit_events=export_job.audit_events,
+        blocked_reasons=[
+            "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。"
+        ],
+    )
+
+
+def _dataset_export_root() -> Path:
+    return Path(get_settings().dataset_export_dir).expanduser()
+
+
+def _dataset_export_path(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    version_id: uuid.UUID,
+    filename: str,
+) -> Path:
+    return (
+        _dataset_export_root()
+        / str(workspace_id)
+        / str(dataset_id)
+        / str(version_id)
+        / filename
+    ).resolve()
+
+
+def _dataset_export_filename(
+    dataset: Dataset,
+    version: DatasetVersion,
+    job_id: uuid.UUID,
+    export_format: str,
+) -> str:
+    slug = _dataset_export_slug(dataset.name)
+    return f"{slug}-v{version.version_number}-{str(job_id)[:8]}.{export_format}"
+
+
+def _dataset_export_slug(value: str) -> str:
+    characters: list[str] = []
+    for character in value.lower():
+        if character.isalnum():
+            characters.append(character)
+        elif characters and characters[-1] != "-":
+            characters.append("-")
+    slug = "".join(characters).strip("-")
+    return slug[:80] or "dataset"
+
+
+def _render_dataset_export(
+    dataset: Dataset,
+    version: DatasetVersion,
+    export_format: str,
+) -> bytes:
+    rows = _dataset_export_rows(version)
+    if export_format == "csv":
+        return _render_dataset_csv(version, rows)
+    if export_format == "jsonl":
+        lines = [json.dumps(row, ensure_ascii=False, default=str) for row in rows]
+        return ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8")
+    payload = {
+        "dataset": {
+            "id": str(dataset.id),
+            "project_id": str(dataset.project_id),
+            "name": dataset.name,
+            "dataset_type": dataset.dataset_type,
+        },
+        "version": {
+            "id": str(version.id),
+            "version_number": version.version_number,
+            "selected_fields": version.selected_fields,
+            "row_count": version.row_count,
+            "average_completeness_percent": version.average_completeness_percent,
+            "created_at": version.created_at.isoformat(),
+        },
+        "schema": version.export_preview.get("schema", {}),
+        "rows": rows,
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+
+
+def _dataset_export_rows(version: DatasetVersion) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for saved_row in version.rows:
+        values = saved_row.get("values") if isinstance(saved_row, dict) else None
+        if not isinstance(values, dict):
+            values = {}
+        row: dict[str, object] = {
+            field: values.get(field)
+            for field in version.selected_fields
+        }
+        row["row_id"] = saved_row.get("row_id")
+        row["source_url"] = saved_row.get("source_url")
+        row["task_run_id"] = saved_row.get("task_run_id")
+        row["raw_record_id"] = saved_row.get("raw_record_id")
+        row["missing_fields"] = saved_row.get("missing_fields", [])
+        row["completeness_percent"] = saved_row.get("completeness_percent")
+        rows.append(row)
+    return rows
+
+
+def _render_dataset_csv(version: DatasetVersion, rows: list[dict[str, object]]) -> bytes:
+    stream = io.StringIO()
+    fieldnames = [
+        *version.selected_fields,
+        "row_id",
+        "source_url",
+        "task_run_id",
+        "raw_record_id",
+        "missing_fields",
+        "completeness_percent",
+    ]
+    writer = csv.DictWriter(stream, fieldnames=fieldnames, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({field: _csv_export_value(row.get(field)) for field in fieldnames})
+    return stream.getvalue().encode("utf-8")
+
+
+def _csv_export_value(value: object) -> str | int | float | bool | None:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    return json.dumps(value, ensure_ascii=False, default=str)
 
 
 def _drift_event_response(

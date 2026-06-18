@@ -329,6 +329,48 @@ export type AutomationDatasetVersion = {
   exportPreview: Record<string, unknown>;
 };
 
+export type AutomationDatasetExportFormat = "csv" | "json" | "jsonl";
+
+export type AutomationProductDatasetExportJob = {
+  id: string;
+  dataset: AutomationDataset;
+  version: AutomationDatasetVersion;
+  exportFormat: AutomationDatasetExportFormat;
+  status: string;
+  filename: string;
+  contentType: string;
+  artifactSizeBytes: number;
+  rowCount: number;
+  checksumSha256: string;
+  errorMessage: string | null;
+  createdAt: string;
+  finishedAt: string | null;
+  downloadUrl: string | null;
+  auditEvents: Array<Record<string, unknown>>;
+  blockedReasons: string[];
+};
+
+export type AutomationProductDatasetExportCreateInput = {
+  authorized: boolean;
+  confirmCreate: boolean;
+  datasetId: string;
+  datasetVersionId: string;
+  exportFormat: AutomationDatasetExportFormat;
+};
+
+export type AutomationProductDatasetExportList = {
+  items: AutomationProductDatasetExportJob[];
+  total: number;
+  exportCreated: boolean;
+  runStarted: boolean;
+};
+
+export type AutomationProductDatasetExportListInput = {
+  datasetId: string;
+  datasetVersionId?: string;
+  limit?: number;
+};
+
 export type AutomationProductDatasetSave = {
   savedAt: string;
   authorizationConfirmed: boolean;

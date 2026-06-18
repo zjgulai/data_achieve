@@ -1,10 +1,12 @@
-import { apiFetch, mockApiEnabled } from "@/lib/api/client";
+import { apiBaseUrl, apiFetch, mockApiEnabled } from "@/lib/api/client";
 import {
   getMockAutomationProductFanoutCreate,
   getMockAutomationProductFanoutPreview,
   getMockAutomationProductBatchRun,
   getMockAutomationProductDatasetPreview,
   getMockAutomationProductDatasetSave,
+  getMockAutomationProductDatasetExportCreate,
+  getMockAutomationProductDatasetExports,
   getMockAutomationProductDatasets,
   getMockAutomationProductDatasetVersions,
   getMockAutomationProductDiscovery,
@@ -29,6 +31,10 @@ import type {
   AutomationProductDatasetPreview,
   AutomationProductDatasetPreviewInput,
   AutomationProductDatasetSave,
+  AutomationProductDatasetExportCreateInput,
+  AutomationProductDatasetExportJob,
+  AutomationProductDatasetExportList,
+  AutomationProductDatasetExportListInput,
   AutomationProductDatasetSaveInput,
   AutomationProductDatasetList,
   AutomationProductDatasetListInput,
@@ -340,6 +346,32 @@ type AutomationProductDatasetSaveResponse = {
   };
   audit_events: Array<Record<string, unknown>>;
   blocked_reasons: string[];
+};
+
+type AutomationProductDatasetExportJobResponse = {
+  id: string;
+  dataset: AutomationProductDatasetSaveResponse["dataset"];
+  version: AutomationProductDatasetSaveResponse["version"];
+  export_format: "csv" | "json" | "jsonl";
+  status: string;
+  filename: string;
+  content_type: string;
+  artifact_size_bytes: number;
+  row_count: number;
+  checksum_sha256: string;
+  error_message: string | null;
+  created_at: string;
+  finished_at: string | null;
+  download_url: string | null;
+  audit_events: Array<Record<string, unknown>>;
+  blocked_reasons: string[];
+};
+
+type AutomationProductDatasetExportListResponse = {
+  items: AutomationProductDatasetExportJobResponse[];
+  total: number;
+  export_created: boolean;
+  run_started: boolean;
 };
 
 type AutomationProductScheduleApproveResponse = {
@@ -731,6 +763,28 @@ export async function saveAutomationProductDataset(
   return mapAutomationProductDatasetSave(response);
 }
 
+export async function createAutomationProductDatasetExport(
+  input: AutomationProductDatasetExportCreateInput,
+): Promise<AutomationProductDatasetExportJob> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDatasetExportCreate(input);
+  }
+  const response = await apiFetch<AutomationProductDatasetExportJobResponse>(
+    "/api/automation/product-dataset-exports",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_create: input.confirmCreate,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        export_format: input.exportFormat,
+      }),
+    },
+  );
+  return mapAutomationProductDatasetExportJob(response);
+}
+
 export async function approveAutomationProductSchedule(
   input: AutomationProductScheduleApproveInput,
 ): Promise<AutomationProductScheduleApprove> {
@@ -888,6 +942,35 @@ export async function listAutomationProductDatasetVersions(
     runStarted: response.run_started,
     alertCreated: response.alert_created,
   };
+}
+
+export async function listAutomationProductDatasetExports(
+  input: AutomationProductDatasetExportListInput,
+): Promise<AutomationProductDatasetExportList> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDatasetExports(input);
+  }
+  const params = new URLSearchParams();
+  if (input.datasetVersionId) {
+    params.set("dataset_version_id", input.datasetVersionId);
+  }
+  if (input.limit) {
+    params.set("limit", String(input.limit));
+  }
+  const query = params.toString();
+  const response = await apiFetch<AutomationProductDatasetExportListResponse>(
+    `/api/automation/product-datasets/${input.datasetId}/exports${query ? `?${query}` : ""}`,
+  );
+  return {
+    items: response.items.map(mapAutomationProductDatasetExportJob),
+    total: response.total,
+    exportCreated: response.export_created,
+    runStarted: response.run_started,
+  };
+}
+
+export function datasetExportDownloadHref(downloadUrl: string) {
+  return `${apiBaseUrl}${downloadUrl}`;
 }
 
 export async function previewAutomationProductDriftAlertRule(
@@ -1633,6 +1716,29 @@ function mapAutomationDatasetVersion(
     status: response.status,
     createdAt: response.created_at,
     exportPreview: response.export_preview,
+  };
+}
+
+function mapAutomationProductDatasetExportJob(
+  response: AutomationProductDatasetExportJobResponse,
+): AutomationProductDatasetExportJob {
+  return {
+    id: response.id,
+    dataset: mapAutomationDataset(response.dataset),
+    version: mapAutomationDatasetVersion(response.version),
+    exportFormat: response.export_format,
+    status: response.status,
+    filename: response.filename,
+    contentType: response.content_type,
+    artifactSizeBytes: response.artifact_size_bytes,
+    rowCount: response.row_count,
+    checksumSha256: response.checksum_sha256,
+    errorMessage: response.error_message,
+    createdAt: response.created_at,
+    finishedAt: response.finished_at,
+    downloadUrl: response.download_url,
+    auditEvents: response.audit_events,
+    blockedReasons: response.blocked_reasons,
   };
 }
 

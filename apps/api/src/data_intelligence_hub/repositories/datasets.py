@@ -5,7 +5,12 @@ import uuid
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.models.dataset import Dataset, DatasetDriftEvent, DatasetVersion
+from data_intelligence_hub.models.dataset import (
+    Dataset,
+    DatasetDriftEvent,
+    DatasetExportJob,
+    DatasetVersion,
+)
 
 
 async def get_dataset_by_name(
@@ -169,5 +174,51 @@ async def list_dataset_drift_events(
     if dataset_version_id is not None:
         statement = statement.where(DatasetDriftEvent.dataset_version_id == dataset_version_id)
     statement = statement.order_by(desc(DatasetDriftEvent.created_at)).limit(limit)
+    result = await session.execute(statement)
+    return list(result.scalars().all())
+
+
+async def create_dataset_export_job(
+    session: AsyncSession,
+    export_job: DatasetExportJob,
+) -> DatasetExportJob:
+    session.add(export_job)
+    await session.commit()
+    await session.refresh(export_job)
+    return export_job
+
+
+async def get_dataset_export_job(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    export_job_id: uuid.UUID,
+) -> DatasetExportJob | None:
+    result = await session.execute(
+        select(DatasetExportJob).where(
+            DatasetExportJob.workspace_id == workspace_id,
+            DatasetExportJob.dataset_id == dataset_id,
+            DatasetExportJob.dataset_version_id == dataset_version_id,
+            DatasetExportJob.id == export_job_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_dataset_export_jobs(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID | None = None,
+    limit: int = 20,
+) -> list[DatasetExportJob]:
+    statement = select(DatasetExportJob).where(
+        DatasetExportJob.workspace_id == workspace_id,
+        DatasetExportJob.dataset_id == dataset_id,
+    )
+    if dataset_version_id is not None:
+        statement = statement.where(DatasetExportJob.dataset_version_id == dataset_version_id)
+    statement = statement.order_by(desc(DatasetExportJob.created_at)).limit(limit)
     result = await session.execute(statement)
     return list(result.scalars().all())

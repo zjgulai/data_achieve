@@ -18,6 +18,7 @@ from data_intelligence_hub.models import (
     CollectionTask,
     Dataset,
     DatasetDriftEvent,
+    DatasetExportJob,
     DatasetVersion,
     Entity,
     EntitySnapshot,
@@ -275,6 +276,19 @@ async def cleanup_e2e_fixtures(
             ),
         )
     )
+    dataset_export_job_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(DatasetExportJob.id).where(
+                or_(
+                    DatasetExportJob.workspace_id.in_(workspace_ids),
+                    DatasetExportJob.project_id.in_(project_ids),
+                    DatasetExportJob.dataset_id.in_(dataset_ids),
+                    DatasetExportJob.dataset_version_id.in_(dataset_version_ids),
+                ),
+            ),
+        )
+    )
     alert_rule_ids = _unique_ids(
         await _fetch_ids(
             session,
@@ -334,6 +348,7 @@ async def cleanup_e2e_fixtures(
         "datasets": len(dataset_ids),
         "dataset_versions": len(dataset_version_ids),
         "dataset_drift_events": len(dataset_drift_event_ids),
+        "dataset_export_jobs": len(dataset_export_job_ids),
         "alert_rules": len(alert_rule_ids),
         "alert_events": len(alert_event_ids),
         "notifications": len(notification_ids),
@@ -378,6 +393,7 @@ async def cleanup_e2e_fixtures(
         dataset_ids=dataset_ids,
         dataset_version_ids=dataset_version_ids,
         dataset_drift_event_ids=dataset_drift_event_ids,
+        dataset_export_job_ids=dataset_export_job_ids,
         alert_rule_ids=alert_rule_ids,
         alert_event_ids=alert_event_ids,
         notification_ids=notification_ids,
@@ -409,6 +425,7 @@ async def _apply_cleanup(
     dataset_ids: list[uuid.UUID],
     dataset_version_ids: list[uuid.UUID],
     dataset_drift_event_ids: list[uuid.UUID],
+    dataset_export_job_ids: list[uuid.UUID],
     alert_rule_ids: list[uuid.UUID],
     alert_event_ids: list[uuid.UUID],
     notification_ids: list[uuid.UUID],
@@ -432,6 +449,7 @@ async def _apply_cleanup(
     await _delete_ids(session, IntelligenceItem, intelligence_ids)
     await _delete_ids(session, Signal, signal_ids)
     await _delete_ids(session, DatasetDriftEvent, dataset_drift_event_ids)
+    await _delete_ids(session, DatasetExportJob, dataset_export_job_ids)
     await _delete_ids(session, DatasetVersion, dataset_version_ids)
     await _delete_ids(session, Dataset, dataset_ids)
     await _delete_ids(session, EntitySnapshot, snapshot_ids)

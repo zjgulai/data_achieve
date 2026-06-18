@@ -617,10 +617,14 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByRole("heading", { name: "选中数据集概览" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "版本历史" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "版本字段与清洗规则" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "数据集导出" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "漂移历史" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
     await expect(page.getByText("Version 2")).toBeVisible();
     await expect(page.getByText("cast price to decimal when present").first()).toBeVisible();
+    await page.getByRole("button", { name: "生成导出文件" }).click();
+    await expect(page.getByText("已生成导出文件")).toBeVisible();
+    await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible();
     await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
     await expect(page.getByText("缺字段：price, sku")).toBeVisible();
     await page.getByRole("button", { name: "预览告警策略" }).click();

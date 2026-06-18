@@ -8,6 +8,8 @@ import {
   Clock3,
   Mail,
   Database,
+  Download,
+  FileDown,
   FileCode2,
   Layers3,
   Loader2,
@@ -21,8 +23,11 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
+  createAutomationProductDatasetExport,
   createAutomationProductDriftAlertEvents,
   createAutomationProductDriftAlertRule,
+  datasetExportDownloadHref,
+  listAutomationProductDatasetExports,
   listAutomationProductDatasetVersions,
   listAutomationProductDatasets,
   listAutomationProductDriftEvents,
@@ -32,7 +37,9 @@ import {
 } from "@/lib/api/automation";
 import { cn } from "@/lib/utils";
 import type {
+  AutomationDatasetExportFormat,
   AutomationDatasetVersion,
+  AutomationProductDatasetExportJob,
   AutomationProductDatasetListItem,
   AutomationProductDriftAlertPreview,
   AutomationProductDriftAlertEventCreate,
@@ -47,6 +54,11 @@ export function DatasetsWorkspace() {
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
   const [versions, setVersions] = useState<AutomationDatasetVersion[]>([]);
   const [driftEvents, setDriftEvents] = useState<AutomationProductDriftEvent[]>([]);
+  const [exportFormat, setExportFormat] = useState<AutomationDatasetExportFormat>("csv");
+  const [exportJobs, setExportJobs] = useState<AutomationProductDatasetExportJob[]>([]);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +106,7 @@ export function DatasetsWorkspace() {
     if (!selectedDatasetId) {
       setVersions([]);
       setDriftEvents([]);
+      setExportJobs([]);
       return;
     }
     let mounted = true;
@@ -101,13 +114,15 @@ export function DatasetsWorkspace() {
     Promise.all([
       listAutomationProductDatasetVersions({ datasetId: selectedDatasetId, limit: 50 }),
       listAutomationProductDriftEvents({ datasetId: selectedDatasetId, limit: 20 }),
+      listAutomationProductDatasetExports({ datasetId: selectedDatasetId, limit: 20 }),
     ])
-      .then(([versionResult, driftResult]) => {
+      .then(([versionResult, driftResult, exportResult]) => {
         if (!mounted) {
           return;
         }
         setVersions(versionResult.versions);
         setDriftEvents(driftResult.items);
+        setExportJobs(exportResult.items);
       })
       .catch((caught) => {
         if (mounted) {
@@ -143,6 +158,39 @@ export function DatasetsWorkspace() {
     setAlertEmailSend(null);
     setAlertError(null);
   }, [selectedDatasetId, activeVersion?.id]);
+
+  useEffect(() => {
+    setExportError(null);
+    setExportMessage(null);
+  }, [selectedDatasetId, activeVersion?.id]);
+
+  async function createDatasetExport() {
+    if (!selectedDataset || !activeVersion) {
+      setExportError("请选择一个已保存版本的数据集。");
+      return;
+    }
+    setExportLoading(true);
+    setExportError(null);
+    setExportMessage(null);
+    try {
+      const result = await createAutomationProductDatasetExport({
+        authorized: true,
+        confirmCreate: true,
+        datasetId: selectedDataset.dataset.id,
+        datasetVersionId: activeVersion.id,
+        exportFormat,
+      });
+      setExportJobs((current) => [
+        result,
+        ...current.filter((item) => item.id !== result.id),
+      ]);
+      setExportMessage(`已生成导出文件：${result.filename}`);
+    } catch (caught) {
+      setExportError(caught instanceof Error ? caught.message : "Dataset export failed");
+    } finally {
+      setExportLoading(false);
+    }
+  }
 
   async function previewAlertPolicy() {
     if (!selectedDataset) {
@@ -465,7 +513,7 @@ export function DatasetsWorkspace() {
                       <p className="text-sm font-semibold text-[#2E201C]">导出预览</p>
                       <p className="mt-2 text-sm leading-6 text-[#7A625A]">
                         主键：{exportPrimaryKey(activeVersion)}；预览行：{exportPreviewRows(activeVersion)}。
-                        当前页面只读展示，不写出文件或对象存储。
+                        可在下方生成 CSV、JSON 或 JSONL 导出文件，下载接口会再次校验当前账号的数据集权限。
                       </p>
                     </div>
                   </div>
@@ -474,6 +522,111 @@ export function DatasetsWorkspace() {
                 )}
               </Panel>
             </div>
+
+            <Panel icon={FileDown} title="数据集导出">
+              {activeVersion ? (
+                <div className="grid gap-4">
+                  <p className="text-sm leading-6 text-[#7A625A]">
+                    将当前 Dataset Version 写出为受控导出文件。导出不会启动采集任务，也不会修改数据集版本；历史文件可直接下载用于培训、复盘或下游导入。
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,180px)_auto_1fr] md:items-end">
+                    <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
+                      导出格式
+                      <select
+                        className="h-10 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
+                        onChange={(event) =>
+                          setExportFormat(event.target.value as AutomationDatasetExportFormat)
+                        }
+                        value={exportFormat}
+                      >
+                        <option value="csv">CSV 表格</option>
+                        <option value="json">JSON 数组</option>
+                        <option value="jsonl">JSONL 行式</option>
+                      </select>
+                    </label>
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={exportLoading || !selectedDataset || !activeVersion}
+                      onClick={createDatasetExport}
+                      type="button"
+                    >
+                      {exportLoading ? (
+                        <Loader2 className="animate-spin" size={15} aria-hidden="true" />
+                      ) : (
+                        <FileDown size={15} aria-hidden="true" />
+                      )}
+                      生成导出文件
+                    </button>
+                    <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-xs leading-5 text-[#7A625A]">
+                      当前版本 v{activeVersion.versionNumber}，字段{" "}
+                      {activeVersion.selectedFields.join(", ")}。
+                    </div>
+                  </div>
+
+                  {exportError ? (
+                    <p className="rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] p-3 text-sm font-semibold text-[#B85F4F]">
+                      {exportError}
+                    </p>
+                  ) : null}
+                  {exportMessage ? (
+                    <p className="rounded-xl border border-[#BFE6C9] bg-[#EAF7EE] p-3 text-sm font-semibold text-[#287A45]">
+                      {exportMessage}
+                    </p>
+                  ) : null}
+
+                  {exportJobs.length > 0 ? (
+                    <div className="grid gap-3">
+                      {exportJobs.map((job) => (
+                        <article
+                          className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3"
+                          key={job.id}
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <StatusBadge status={job.status} />
+                                <span className="rounded-full border border-[#E8D4CB] bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]">
+                                  {formatExportFormat(job.exportFormat)}
+                                </span>
+                              </div>
+                              <p className="mt-2 break-words text-sm font-semibold text-[#2E201C]">
+                                {job.filename}
+                              </p>
+                              <p className="mt-1 text-xs leading-5 text-[#7A625A]">
+                                v{job.version.versionNumber} · {job.rowCount} 行 ·{" "}
+                                {formatBytes(job.artifactSizeBytes)} · {formatDate(job.createdAt)}
+                              </p>
+                              <p className="mt-1 break-all text-xs leading-5 text-[#A06D61]">
+                                SHA256：{job.checksumSha256}
+                              </p>
+                            </div>
+                            {job.downloadUrl ? (
+                              <a
+                                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#E8D4CB] bg-white px-4 text-sm font-semibold text-[#7D4F43] hover:border-[#C96F5C]"
+                                href={datasetExportDownloadHref(job.downloadUrl)}
+                                rel="noreferrer"
+                                target="_blank"
+                              >
+                                <Download size={15} aria-hidden="true" />
+                                下载
+                              </a>
+                            ) : (
+                              <span className="text-sm font-semibold text-[#B85F4F]">
+                                {job.errorMessage ?? "暂不可下载"}
+                              </span>
+                            )}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyDetail text="当前数据集还没有导出文件。选择格式后生成导出文件，即可在这里下载。" />
+                  )}
+                </div>
+              ) : (
+                <EmptyDetail text="暂无可导出的 Dataset Version。" />
+              )}
+            </Panel>
 
             <Panel icon={RefreshCw} title="漂移历史">
               {driftEvents.length > 0 ? (
@@ -835,6 +988,26 @@ function formatDatasetType(value: string) {
     return "电商商品数据集";
   }
   return value;
+}
+
+function formatExportFormat(value: AutomationDatasetExportFormat) {
+  if (value === "json") {
+    return "JSON";
+  }
+  if (value === "jsonl") {
+    return "JSONL";
+  }
+  return "CSV";
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) {
+    return `${value} B`;
+  }
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatAlertChannel(value: string) {

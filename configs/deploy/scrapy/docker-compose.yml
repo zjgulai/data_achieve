@@ -40,6 +40,7 @@ services:
       CORS_ORIGINS: '["https://scrapy.lute-tlz-dddd.top"]'
       DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
       JWT_SECRET: ${SCRAPY_JWT_SECRET:?SCRAPY_JWT_SECRET is required}
+      DATASET_EXPORT_DIR: ${SCRAPY_DATASET_EXPORT_DIR:-/app/exports/datasets}
       LLM_PROVIDER: mock
       LOG_LEVEL: INFO
       SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-false}
@@ -51,6 +52,8 @@ services:
       SMTP_USER: ${SCRAPY_SMTP_USER:-}
     expose:
       - "8000"
+    volumes:
+      - scrapy_export_data:/app/exports
     healthcheck:
       test:
         [
@@ -131,3 +134,5 @@ networks:
 volumes:
   scrapy_postgres_data:
     name: data_achieve_scrapy_postgres_data
+  scrapy_export_data:
+    name: data_achieve_scrapy_export_data

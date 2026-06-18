@@ -16,6 +16,7 @@ from data_intelligence_hub.models import (
     CollectionTask,
     Dataset,
     DatasetDriftEvent,
+    DatasetExportJob,
     DatasetVersion,
     Entity,
     EntitySnapshot,
@@ -75,6 +76,7 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
     assert report.counts["datasets"] == 1
     assert report.counts["dataset_versions"] == 1
     assert report.counts["dataset_drift_events"] == 1
+    assert report.counts["dataset_export_jobs"] == 1
     assert report.counts["alert_events"] == 1
     assert report.samples["users"] == ["e2e-old@example.com"]
 
@@ -94,6 +96,7 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
         assert await session.get(Dataset, old_fixture["dataset_id"]) is None
         assert await session.get(DatasetVersion, old_fixture["dataset_version_id"]) is None
         assert await session.get(DatasetDriftEvent, old_fixture["dataset_drift_event_id"]) is None
+        assert await session.get(DatasetExportJob, old_fixture["dataset_export_job_id"]) is None
         assert await session.get(RawRecord, old_fixture["raw_record_id"]) is None
         assert await session.get(Entity, old_fixture["entity_id"]) is None
         assert await session.get(EntitySnapshot, old_fixture["current_snapshot_id"]) is None
@@ -269,6 +272,28 @@ async def _create_fixture_graph(
         created_at=created_at,
     )
     session.add(dataset_drift_event)
+    await session.flush()
+
+    dataset_export_job = DatasetExportJob(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        dataset_id=dataset.id,
+        dataset_version_id=dataset_version.id,
+        created_by_user_id=user.id,
+        export_format="csv",
+        status="success",
+        filename=f"{workspace_slug}.csv",
+        content_type="text/csv; charset=utf-8",
+        artifact_path=f"/tmp/{workspace_slug}.csv",
+        artifact_size_bytes=32,
+        row_count=1,
+        checksum_sha256="0" * 64,
+        error_message=None,
+        audit_events=[{"event": "fixture"}],
+        created_at=created_at,
+        finished_at=created_at,
+    )
+    session.add(dataset_export_job)
     await session.flush()
 
     raw_record = RawRecord(
@@ -474,6 +499,7 @@ async def _create_fixture_graph(
         "dataset_id": dataset.id,
         "dataset_version_id": dataset_version.id,
         "dataset_drift_event_id": dataset_drift_event.id,
+        "dataset_export_job_id": dataset_export_job.id,
         "raw_record_id": raw_record.id,
         "entity_id": entity.id,
         "current_snapshot_id": current_snapshot.id,
