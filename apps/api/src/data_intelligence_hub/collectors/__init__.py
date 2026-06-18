@@ -4,6 +4,10 @@ from data_intelligence_hub.collectors.base import (
     CollectorRawRecord,
     CollectorTestResult,
 )
+from data_intelligence_hub.collectors.ecommerce_product_discovery import (
+    EcommerceProductDiscoveryCollector,
+)
+from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
@@ -15,6 +19,8 @@ __all__ = [
     "CollectorError",
     "CollectorRawRecord",
     "CollectorTestResult",
+    "EcommerceProductDiscoveryCollector",
+    "EcommerceProductPageCollector",
     "GenericWebCollector",
     "GitHubRepoCollector",
     "GitHubTopicCollector",

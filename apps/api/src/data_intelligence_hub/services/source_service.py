@@ -168,4 +168,6 @@ def _source_url_from_config(source_type: str, config: dict[str, object]) -> str 
         return f"https://github.com/{config['owner']}/{config['repo']}"
     if source_type == "generic_web":
         return str(config["url"])
+    if source_type in {"ecommerce_product_discovery", "ecommerce_product_page"}:
+        return str(config["url"])
     return None

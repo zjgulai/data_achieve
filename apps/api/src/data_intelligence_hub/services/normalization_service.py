@@ -76,6 +76,10 @@ def build_snapshot_drafts(
         return _github_topic_snapshots(content, raw_record, project_domain)
     if record_type == "generic_web":
         return [_generic_web_snapshot(content, raw_record, project_domain)]
+    if record_type == "ecommerce_product_page":
+        return [_ecommerce_product_page_snapshot(content, raw_record, project_domain)]
+    if record_type == "ecommerce_product_discovery":
+        return [_ecommerce_product_discovery_snapshot(content, raw_record, project_domain)]
     if record_type == "manual_json":
         return _manual_json_snapshots(content, raw_record, project_domain)
     return []
@@ -222,6 +226,70 @@ def _manual_json_snapshots(
             for index, item in enumerate(payload)
         ]
     return [_manual_payload_snapshot(entity_type, payload, raw_record, project_domain, 0)]
+
+
+def _ecommerce_product_page_snapshot(
+    content: dict[str, Any],
+    raw_record: RawRecord,
+    project_domain: str,
+) -> NormalizedSnapshotDraft:
+    fields = content.get("extracted_fields")
+    field_data = fields if isinstance(fields, dict) else {}
+    canonical_url = _text(field_data.get("canonical_url")) or raw_record.source_url
+    name = _text(field_data.get("title")) or canonical_url or raw_record.id.hex
+    external_id = (
+        _text(field_data.get("sku"))
+        or canonical_url
+        or _text(field_data.get("title"))
+        or raw_record.id.hex
+    )
+    return NormalizedSnapshotDraft(
+        entity_type="product",
+        external_id=external_id,
+        canonical_url=canonical_url,
+        name=name,
+        domain=project_domain,
+        snapshot_data=_clean_snapshot(content),
+        metrics={
+            "price": _number(field_data.get("price")),
+            "field_count": len(field_data),
+        },
+        captured_at=raw_record.collected_at,
+    )
+
+
+def _ecommerce_product_discovery_snapshot(
+    content: dict[str, Any],
+    raw_record: RawRecord,
+    project_domain: str,
+) -> NormalizedSnapshotDraft:
+    candidates = content.get("product_candidates")
+    product_candidates = candidates if isinstance(candidates, list) else []
+    page_structure = content.get("page_structure")
+    structure_data = page_structure if isinstance(page_structure, dict) else {}
+    discovery_plan = content.get("discovery_plan")
+    plan_data = discovery_plan if isinstance(discovery_plan, dict) else {}
+    canonical_url = (
+        _text(structure_data.get("canonical_url"))
+        or _text(content.get("url"))
+        or raw_record.source_url
+    )
+    name = _text(structure_data.get("title")) or canonical_url or raw_record.id.hex
+    return NormalizedSnapshotDraft(
+        entity_type="product_catalog",
+        external_id=canonical_url or raw_record.id.hex,
+        canonical_url=canonical_url,
+        name=name,
+        domain=project_domain,
+        snapshot_data=_clean_snapshot(content),
+        metrics={
+            "candidate_count": len(product_candidates),
+            "link_count": _number(structure_data.get("link_count")),
+            "product_link_count": _number(structure_data.get("product_link_count")),
+            "max_products": _number(plan_data.get("max_products")),
+        },
+        captured_at=raw_record.collected_at,
+    )
 
 
 def _manual_payload_snapshot(

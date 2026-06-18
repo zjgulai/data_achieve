@@ -1,6 +1,12 @@
 import type { ProjectDomain } from "@/types/project";
 
-export type CollectorType = "github_repo" | "github_topic" | "generic_web" | "manual_json";
+export type CollectorType =
+  | "ecommerce_product_discovery"
+  | "ecommerce_product_page"
+  | "generic_web"
+  | "github_repo"
+  | "github_topic"
+  | "manual_json";
 
 export type Collector = {
   id: string;
@@ -128,6 +134,8 @@ export type SchedulerOverview = {
 };
 
 export const sourceDomainDefaults: Record<CollectorType, ProjectDomain> = {
+  ecommerce_product_discovery: "ecommerce",
+  ecommerce_product_page: "ecommerce",
   github_repo: "osint",
   github_topic: "osint",
   generic_web: "competitor",

@@ -3,6 +3,42 @@ import type { Entity, EntitySnapshot } from "@/types/entity";
 import type { Evidence, IntelligenceItem } from "@/types/intelligence";
 import type { AlertEvent, AlertRule } from "@/types/alert";
 import type {
+  AutomationProductDiscovery,
+  AutomationProductBatchRun,
+  AutomationProductBatchRunInput,
+  AutomationProductDatasetPreview,
+  AutomationProductDatasetPreviewInput,
+  AutomationProductDatasetSave,
+  AutomationProductDatasetSaveInput,
+  AutomationProductDatasetList,
+  AutomationProductDatasetListInput,
+  AutomationProductDatasetVersionList,
+  AutomationProductDatasetVersionListInput,
+  AutomationProductDriftCheck,
+  AutomationProductDriftCheckInput,
+  AutomationProductDriftAlertPreview,
+  AutomationProductDriftAlertPreviewInput,
+  AutomationProductDriftAlertEventCreate,
+  AutomationProductDriftAlertEventCreateInput,
+  AutomationProductDriftAlertNotificationSend,
+  AutomationProductDriftAlertNotificationSendInput,
+  AutomationProductDriftAlertEmailSend,
+  AutomationProductDriftAlertEmailSendInput,
+  AutomationProductDriftAlertRuleCreate,
+  AutomationProductDriftAlertRuleCreateInput,
+  AutomationProductDriftEvent,
+  AutomationProductDriftEventList,
+  AutomationProductDriftEventListInput,
+  AutomationProductDriftEventSaveInput,
+  AutomationProductFanoutCreate,
+  AutomationProductFanoutCreateInput,
+  AutomationProductFanoutPreview,
+  AutomationProductFanoutPreviewInput,
+  AutomationProductScheduleApprove,
+  AutomationProductScheduleApproveInput,
+  AutomationSiteAnalysis,
+} from "@/types/automation";
+import type {
   EmailChannelStatus,
   EmailChannelTestResult,
   NotificationItem,
@@ -160,6 +196,22 @@ export function getMockProjects(): Project[] {
 export function getMockCollectors(): Collector[] {
   return [
     {
+      id: "collector_ecommerce_product_discovery",
+      type: "ecommerce_product_discovery",
+      name: "Ecommerce Product Discovery",
+      description: "Discover product URLs from a public collection, listing, or sitemap page.",
+      configSchema: { required: ["url"], optional: ["max_products", "platform_hint"] },
+      enabled: true,
+    },
+    {
+      id: "collector_ecommerce_product_page",
+      type: "ecommerce_product_page",
+      name: "Ecommerce Product Page",
+      description: "Analyze a public product page and extract structured product fields.",
+      configSchema: { required: ["url"], optional: ["fields", "platform_hint"] },
+      enabled: true,
+    },
+    {
       id: "collector_github_repo",
       type: "github_repo",
       name: "GitHub Repo",
@@ -196,6 +248,34 @@ export function getMockCollectors(): Collector[] {
 
 export function getMockSources(): Source[] {
   return [
+    {
+      id: "source_shopify_collection_discovery",
+      projectId: "project_marketplace_price",
+      name: "Shopify 集合页商品发现",
+      type: "ecommerce_product_discovery",
+      url: "https://shop.example/collections/summer-bags",
+      config: {
+        url: "https://shop.example/collections/summer-bags",
+        max_products: 50,
+        platform_hint: "shopify",
+      },
+      scheduleCron: "0 7 * * *",
+      enabled: true,
+    },
+    {
+      id: "source_shopify_product_demo",
+      projectId: "project_marketplace_price",
+      name: "Shopify 商品页字段采集",
+      type: "ecommerce_product_page",
+      url: "https://shop.example/products/demo-bag",
+      config: {
+        url: "https://shop.example/products/demo-bag",
+        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+        platform_hint: "shopify",
+      },
+      scheduleCron: "0 8 * * *",
+      enabled: true,
+    },
     {
       id: "source_codex_repo",
       projectId: "project_osint",
@@ -253,6 +333,38 @@ export function getMockSources(): Source[] {
 
 export function getMockTasks(): CollectionTask[] {
   const tasks: Array<MockTaskSeed> = [
+    {
+      id: "task_shopify_collection_discovery",
+      projectId: "project_marketplace_price",
+      sourceId: "source_shopify_collection_discovery",
+      collectorType: "ecommerce_product_discovery",
+      name: "Shopify 集合页商品发现",
+      scheduleCron: "0 7 * * *",
+      status: "enabled",
+      successCount: 18,
+      failureCount: 0,
+      lastRunAt: "2026-06-11T16:20:18.000Z",
+      projectName: "Marketplace Price Radar",
+      projectDomain: "ecommerce",
+      sourceName: "Shopify 集合页商品发现",
+      sourceUrl: "https://shop.example/collections/summer-bags",
+    },
+    {
+      id: "task_shopify_product_demo",
+      projectId: "project_marketplace_price",
+      sourceId: "source_shopify_product_demo",
+      collectorType: "ecommerce_product_page",
+      name: "Shopify 商品页字段采集",
+      scheduleCron: "0 8 * * *",
+      status: "enabled",
+      successCount: 31,
+      failureCount: 0,
+      lastRunAt: "2026-06-11T16:26:18.000Z",
+      projectName: "Marketplace Price Radar",
+      projectDomain: "ecommerce",
+      sourceName: "Shopify 商品页字段采集",
+      sourceUrl: "https://shop.example/products/demo-bag",
+    },
     {
       id: "task_twitter_keywords",
       projectId: "project_osint",
@@ -433,10 +545,10 @@ function withMockTaskFreshness(task: MockTaskSeed): CollectionTask {
       : retryAfterAt ?? mockNextRunAt(task.lastRunAt, 24);
   return {
     ...task,
-    projectName: "AI Scrapy Tools",
-    projectDomain: "osint",
-    sourceName: task.name,
-    sourceUrl: null,
+    projectName: task.projectName ?? "AI Scrapy Tools",
+    projectDomain: task.projectDomain ?? "osint",
+    sourceName: task.sourceName ?? task.name,
+    sourceUrl: task.sourceUrl ?? null,
     schedulePolicy: task.scheduleCron ? "manual_refresh_only" : "auto_freshness",
     freshnessTargetHours: 24,
     freshnessStatus,
@@ -452,6 +564,1371 @@ function withMockTaskFreshness(task: MockTaskSeed): CollectionTask {
     latestRunStartedAt: task.lastRunAt,
     latestRunFinishedAt: task.lastRunAt,
     latestRunCreatedAt: task.lastRunAt,
+  };
+}
+
+export function getMockAutomationSiteAnalysis(url: string): AutomationSiteAnalysis {
+  const requestedUrl = url.trim() || "https://shop.example/products/demo-bag";
+  return {
+    requestedUrl,
+    analyzedAt: new Date().toISOString(),
+    authorizationConfirmed: true,
+    platformProfile: {
+      platformType: requestedUrl.includes("myshopify") || requestedUrl.includes("shop")
+        ? "shopify"
+        : "independent_ecommerce",
+      confidence: 0.89,
+      indicators: ["schema.org Product JSON-LD", "product price meta", "Shopify theme runtime marker"],
+      riskLevel: "low",
+    },
+    pageStructure: {
+      pageType: "product_detail",
+      title: "Demo Carry Bag",
+      canonicalUrl: requestedUrl,
+      scriptCount: 8,
+      formCount: 1,
+      imageCount: 6,
+      productSchemaCount: 1,
+      sameOriginLinkCount: 18,
+      textSample:
+        "Demo Carry Bag is a compact product fixture with price, SKU, stock status and canonical product URL.",
+    },
+    fieldCandidates: [
+      {
+        key: "title",
+        label: "商品标题",
+        value: "Demo Carry Bag",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.92,
+        selected: true,
+        cleaningRule: "strip_text",
+      },
+      {
+        key: "price",
+        label: "价格",
+        value: 129.9,
+        dataType: "number",
+        source: "json_ld_or_meta",
+        confidence: 0.92,
+        selected: true,
+        cleaningRule: "parse_decimal",
+      },
+      {
+        key: "currency",
+        label: "货币",
+        value: "USD",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "strip_text",
+      },
+      {
+        key: "availability",
+        label: "库存状态",
+        value: "in_stock",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "normalize_enum",
+      },
+      {
+        key: "sku",
+        label: "SKU",
+        value: "BAG-001",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "strip_text",
+      },
+      {
+        key: "brand",
+        label: "品牌",
+        value: "Demo Brand",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "strip_text",
+      },
+      {
+        key: "description",
+        label: "描述",
+        value: "A compact product fixture.",
+        dataType: "string",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "strip_text",
+      },
+      {
+        key: "image_url",
+        label: "主图",
+        value: "https://shop.example/cdn/demo.jpg",
+        dataType: "url",
+        source: "json_ld_or_meta",
+        confidence: 0.78,
+        selected: true,
+        cleaningRule: "normalize_url",
+      },
+      {
+        key: "canonical_url",
+        label: "规范 URL",
+        value: requestedUrl,
+        dataType: "url",
+        source: "json_ld_or_meta",
+        confidence: 0.92,
+        selected: true,
+        cleaningRule: "normalize_url",
+      },
+    ],
+    toolRecommendations: [
+      {
+        tool: "ecommerce_product_page",
+        collectorType: "ecommerce_product_page",
+        fit: "primary",
+        riskLevel: "low",
+        reason: "商品结构字段已从 JSON-LD 或 meta 中识别，可直接进入结构化采集。",
+      },
+      {
+        tool: "Generic Web",
+        collectorType: "generic_web",
+        fit: "evidence",
+        riskLevel: "low",
+        reason: "保留页面快照用于证据追溯和字段漂移对比。",
+      },
+    ],
+    cleaningPlan: [
+      { field: "title", operation: "strip_text", description: "去除首尾空白，保留原始语义。" },
+      { field: "price", operation: "parse_decimal", description: "去除货币符号和千分位，保存为 decimal number。" },
+      { field: "availability", operation: "normalize_enum", description: "归一化为 in_stock、out_of_stock 或 unknown。" },
+      { field: "canonical_url", operation: "normalize_url", description: "转为绝对 URL，用于去重和回溯。" },
+    ],
+    sourceDraft: {
+      type: "ecommerce_product_page",
+      config: {
+        url: requestedUrl,
+        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+        platform_hint: "shopify",
+      },
+      suggestedName: "商品页采集：Demo Carry Bag",
+      scheduleCron: null,
+    },
+    blockedReasons: [],
+  };
+}
+
+export function getMockAutomationProductDiscovery(url: string): AutomationProductDiscovery {
+  const requestedUrl = url.trim() || "https://shop.example/collections/summer-bags";
+  return {
+    requestedUrl,
+    analyzedAt: new Date().toISOString(),
+    authorizationConfirmed: true,
+    platformProfile: {
+      platformType: requestedUrl.includes("shop") ? "shopify" : "independent_ecommerce",
+      confidence: 0.86,
+      indicators: ["product URL pattern", "JSON-LD catalog data", "collection listing URL"],
+      riskLevel: "low",
+    },
+    pageStructure: {
+      pageType: "collection_listing",
+      title: "Summer Bags",
+      canonicalUrl: requestedUrl,
+      linkCount: 42,
+      productLinkCount: 12,
+      jsonldUrlCount: 3,
+      sitemapUrlCount: 0,
+      scriptCount: 8,
+      textSample:
+        "Summer Bags collection page exposes product cards, product links, titles, and canonical product URLs.",
+    },
+    productCandidates: [
+      {
+        url: "https://shop.example/products/demo-bag",
+        title: "Demo Carry Bag",
+        source: "json_ld",
+        confidence: 0.9,
+      },
+      {
+        url: "https://shop.example/products/weekend-tote",
+        title: "Weekend Tote",
+        source: "anchor",
+        confidence: 0.86,
+      },
+      {
+        url: "https://shop.example/collections/summer-bags/products/city-pack",
+        title: "City Pack",
+        source: "anchor",
+        confidence: 0.9,
+      },
+    ],
+    toolRecommendations: [
+      {
+        tool: "ecommerce_product_discovery",
+        collectorType: "ecommerce_product_discovery",
+        fit: "primary",
+        riskLevel: "low",
+        reason: "集合页已经暴露商品 URL，可先建立候选商品池，再人工确认是否批量进入商品页采集。",
+      },
+      {
+        tool: "ecommerce_product_page",
+        collectorType: "ecommerce_product_page",
+        fit: "next_step",
+        riskLevel: "low",
+        reason: "候选商品 URL 确认后，下一步进入商品详情页字段解析。",
+      },
+    ],
+    discoveryPlan: {
+      nextCollectorType: "ecommerce_product_page",
+      candidateCount: 3,
+      maxProducts: 50,
+      fanOutRequiresReview: true,
+    },
+    sourceDraft: {
+      type: "ecommerce_product_discovery",
+      config: {
+        url: requestedUrl,
+        max_products: 50,
+        platform_hint: "shopify",
+      },
+      suggestedName: "商品链接发现：Summer Bags",
+      scheduleCron: null,
+    },
+    blockedReasons: [],
+  };
+}
+
+export function getMockAutomationProductFanoutPreview(
+  input: AutomationProductFanoutPreviewInput,
+): AutomationProductFanoutPreview {
+  const selected = input.candidates.slice(0, input.maxSources ?? 20);
+  const candidateStatuses = selected.map((candidate, index) => {
+    const blocked = index > 0 && selected.findIndex((item) => item.url === candidate.url) < index;
+    return {
+      url: candidate.url,
+      title: candidate.title ?? null,
+      source: candidate.source ?? null,
+      confidence: candidate.confidence ?? null,
+      status: blocked ? "blocked" as const : "ready" as const,
+      reason: blocked ? "duplicate_candidate_url" : null,
+    };
+  });
+  const readyCandidates = candidateStatuses.filter((candidate) => candidate.status === "ready");
+  const fields = input.fields ?? ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"];
+  return {
+    requestedParentUrl: input.parentUrl,
+    analyzedAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    candidateStatuses,
+    sourceDrafts: readyCandidates.map((candidate) => ({
+      type: "ecommerce_product_page",
+      config: {
+        url: candidate.url,
+        fields,
+        platform_hint: "auto",
+      },
+      suggestedName: `商品页采集：${candidate.title ?? candidate.url}`,
+      scheduleCron: null,
+    })),
+    batchPlan: {
+      runMode: "preview_only",
+      nextCollectorType: "ecommerce_product_page",
+      readyCount: readyCandidates.length,
+      blockedCount: candidateStatuses.length - readyCandidates.length,
+      maxSources: input.maxSources ?? 20,
+      fields,
+      manualReviewRequired: true,
+      executionBoundary: "preview_only_no_database_write",
+    },
+    blockedReasons: [
+      "当前结果仅为预览，尚未创建真实 Source、Task 或采集运行。",
+    ],
+  };
+}
+
+export function getMockAutomationProductFanoutCreate(
+  input: AutomationProductFanoutCreateInput,
+): AutomationProductFanoutCreate {
+  const preview = getMockAutomationProductFanoutPreview(input);
+  const now = new Date().toISOString();
+  return {
+    requestedParentUrl: input.parentUrl,
+    createdAt: now,
+    authorizationConfirmed: input.authorized,
+    persistedSources: preview.sourceDrafts.map((draft, index) => {
+      const url = String(draft.config.url ?? "");
+      return {
+        url,
+        action: "created",
+        source: {
+          id: `source_fanout_${index + 1}`,
+          projectId: input.projectId,
+          name: draft.suggestedName,
+          type: draft.type,
+          url,
+          enabled: input.enableTasks ?? true,
+          config: draft.config,
+          scheduleCron: null,
+          createdAt: now,
+          updatedAt: now,
+        },
+        task: (input.enableTasks ?? true)
+          ? {
+              id: `task_fanout_${index + 1}`,
+              sourceId: `source_fanout_${index + 1}`,
+              collectorType: "ecommerce_product_page",
+              name: draft.suggestedName,
+              status: "enabled",
+              scheduleCron: null,
+            }
+          : null,
+      };
+    }),
+    candidateStatuses: preview.candidateStatuses,
+    summary: {
+      createdSources: preview.sourceDrafts.length,
+      reusedSources: 0,
+      enabledTasks: input.enableTasks === false ? 0 : preview.sourceDrafts.length,
+      blockedCandidates: preview.batchPlan.blockedCount,
+      runStarted: false,
+    },
+    auditEvents: [
+      {
+        event: "fanout_create_requested",
+        preview_ready_count: preview.batchPlan.readyCount,
+        enable_tasks: input.enableTasks ?? true,
+      },
+      ...preview.sourceDrafts.map((draft) => ({
+        event: "fanout_source_persisted",
+        url: draft.config.url,
+        action: "created",
+        run_started: false,
+      })),
+    ],
+    blockedReasons: [
+      "已完成持久化创建或复用，但尚未启动任何采集运行。",
+    ],
+  };
+}
+
+export function getMockAutomationProductBatchRun(
+  input: AutomationProductBatchRunInput,
+): AutomationProductBatchRun {
+  const now = new Date().toISOString();
+  const items = input.taskIds.slice(0, input.maxTasks ?? 5).map((taskId, index) => {
+    const complete = index % 2 === 0;
+    const configuredFields = ["title", "price", "sku", "canonical_url"];
+    const fieldValues = complete
+      ? {
+          title: "Demo Carry Bag",
+          price: 129.9,
+          sku: "BAG-001",
+          canonical_url: "https://shop.example/products/demo-bag",
+        }
+      : {
+          title: "Weekend Tote",
+          canonical_url: "https://shop.example/products/weekend-tote",
+        };
+    const extractedFields = configuredFields.filter((field) => field in fieldValues);
+    const missingFields = configuredFields.filter((field) => !(field in fieldValues));
+    const completenessPercent = Math.round((extractedFields.length / configuredFields.length) * 100);
+    return {
+      taskId,
+      taskName: index === 0 ? "商品页采集：Demo Carry Bag" : "商品页采集：Weekend Tote",
+      sourceId: `source_fanout_${index + 1}`,
+      sourceUrl:
+        index === 0
+          ? "https://shop.example/products/demo-bag"
+          : "https://shop.example/products/weekend-tote",
+      status: "run_completed" as const,
+      blockedReason: null,
+      run: {
+        id: `run_batch_${index + 1}`,
+        taskId,
+        status: "success",
+        recordsCount: 1,
+        entitiesCount: 1,
+        errorMessage: null,
+        startedAt: now,
+        finishedAt: now,
+      },
+      recordsCount: 1,
+      entitiesCount: 1,
+      fieldCompleteness: {
+        configuredFields,
+        extractedFields,
+        missingFields,
+        fieldValues,
+        completenessRatio: completenessPercent / 100,
+        completenessPercent,
+      },
+      errorMessage: null,
+    };
+  });
+  const average = items.length
+    ? Math.round(
+        items.reduce((total, item) => total + (item.fieldCompleteness?.completenessPercent ?? 0), 0)
+        / items.length,
+      )
+    : 0;
+  return {
+    createdAt: now,
+    authorizationConfirmed: input.authorized,
+    items,
+    summary: {
+      requestedTasks: input.taskIds.length,
+      runTasks: items.length,
+      blockedTasks: Math.max(input.taskIds.length - items.length, 0),
+      successfulRuns: items.length,
+      failedRuns: 0,
+      recordsCount: items.reduce((total, item) => total + item.recordsCount, 0),
+      entitiesCount: items.reduce((total, item) => total + item.entitiesCount, 0),
+      averageCompletenessPercent: average,
+      runStarted: items.length > 0,
+    },
+    auditEvents: [
+      {
+        event: "product_batch_run_requested",
+        requested_tasks: input.taskIds.length,
+      },
+      ...items.map((item) => ({
+        event: "product_batch_task_run_completed",
+        task_id: item.taskId,
+        completeness_percent: item.fieldCompleteness?.completenessPercent,
+      })),
+    ],
+    blockedReasons: ["本次仅执行用户确认的小批量任务，没有创建调度或自动循环。"],
+  };
+}
+
+export function getMockAutomationProductDatasetPreview(
+  input: AutomationProductDatasetPreviewInput,
+): AutomationProductDatasetPreview {
+  const fields = input.fields ?? ["title", "price", "sku", "canonical_url"];
+  const sourceRows = [
+    {
+      title: "Demo Carry Bag",
+      price: 129.9,
+      sku: "BAG-001",
+      canonical_url: "https://shop.example/products/demo-bag",
+    },
+    {
+      title: "Weekend Tote",
+      canonical_url: "https://shop.example/products/weekend-tote",
+    },
+  ];
+  const rows = sourceRows.slice(0, input.maxRows ?? 100).map((values, index) => {
+    const filteredValues = Object.fromEntries(
+      fields
+        .filter((field) => field in values)
+        .map((field) => [field, values[field as keyof typeof values]]),
+    );
+    const missingFields = fields.filter((field) => !(field in filteredValues));
+    return {
+      rowId: `mock-row-${index + 1}`,
+      taskRunId: input.taskRunIds[index] ?? input.taskRunIds[0] ?? `run_batch_${index + 1}`,
+      rawRecordId: `raw_dataset_${index + 1}`,
+      sourceUrl: String(values.canonical_url),
+      values: filteredValues,
+      missingFields,
+      completenessPercent: Math.round((Object.keys(filteredValues).length / fields.length) * 100),
+    };
+  });
+  const average = rows.length
+    ? Math.round(rows.reduce((total, row) => total + row.completenessPercent, 0) / rows.length)
+    : 0;
+  return {
+    createdAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    rows,
+    summary: {
+      requestedRuns: input.taskRunIds.length,
+      matchedRuns: Math.min(input.taskRunIds.length, rows.length),
+      rowsCount: rows.length,
+      selectedFields: fields,
+      averageCompletenessPercent: average,
+      exportFormat: "json",
+      exportReady: rows.length > 0,
+    },
+    cleaningScriptDraft: [
+      "drop rows where title is empty",
+      "trim string fields and collapse repeated whitespace",
+      "cast price to decimal when present",
+      "normalize canonical_url and image_url as absolute URL strings",
+      "keep missing values explicit as null for downstream review",
+    ],
+    exportPreview: {
+      format: "json",
+      schema: {
+        fields,
+        primary_key: "canonical_url",
+        missing_value_policy: "explicit_null",
+      },
+      rows: rows.map((row) =>
+        Object.fromEntries(fields.map((field) => [field, row.values[field] ?? null])),
+      ),
+    },
+    auditEvents: [
+      {
+        event: "product_dataset_preview_requested",
+        requested_runs: input.taskRunIds.length,
+      },
+    ],
+    blockedReasons: ["当前为只读数据集预览，尚未保存 Dataset 或写出导出文件。"],
+  };
+}
+
+export function getMockAutomationProductDatasetSave(
+  input: AutomationProductDatasetSaveInput,
+): AutomationProductDatasetSave {
+  const preview = getMockAutomationProductDatasetPreview(input);
+  const now = new Date().toISOString();
+  const normalizedName = input.name.trim() || "Mock Product Dataset";
+  const datasetId = `dataset_${normalizedName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  return {
+    savedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset: {
+      id: datasetId,
+      projectId: "proj_ecommerce",
+      name: normalizedName,
+      datasetType: "ecommerce_product",
+      status: "active",
+      description: input.description ?? null,
+    },
+    version: {
+      id: `${datasetId}_v1`,
+      datasetId,
+      versionNumber: 1,
+      sourceTaskRunIds: input.taskRunIds,
+      selectedFields: preview.summary.selectedFields,
+      cleaningScript: preview.cleaningScriptDraft,
+      rowCount: preview.summary.rowsCount,
+      averageCompletenessPercent: preview.summary.averageCompletenessPercent,
+      status: "saved",
+      createdAt: now,
+      exportPreview: preview.exportPreview,
+    },
+    auditEvents: [
+      {
+        event: "product_dataset_version_saved",
+        dataset_id: datasetId,
+        version_id: `${datasetId}_v1`,
+        version_number: 1,
+        row_count: preview.summary.rowsCount,
+      },
+    ],
+    blockedReasons: [
+      "Dataset 版本已保存；mock 环境尚未写出文件、对象存储导出或自动调度。",
+    ],
+  };
+}
+
+export function getMockAutomationProductScheduleApprove(
+  input: AutomationProductScheduleApproveInput,
+): AutomationProductScheduleApprove {
+  const now = new Date().toISOString();
+  const dataset = {
+    id: input.datasetId,
+    projectId: "proj_ecommerce",
+    name: "Training Product Dataset Smoke",
+    datasetType: "ecommerce_product",
+    status: "active",
+    description: "Mock approved dataset.",
+  };
+  const version = {
+    id: input.datasetVersionId,
+    datasetId: input.datasetId,
+    versionNumber: 1,
+    sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
+    selectedFields: ["title", "price", "sku", "canonical_url"],
+    cleaningScript: [
+      "drop rows where title is empty",
+      "trim string fields and collapse repeated whitespace",
+    ],
+    rowCount: 2,
+    averageCompletenessPercent: 75,
+    status: "saved",
+    createdAt: now,
+    exportPreview: { format: "json" },
+  };
+  const approvedTasks = input.taskIds.map((taskId, index) => ({
+    taskId,
+    taskName: `商品页采集任务 ${index + 1}`,
+    status: "enabled",
+    scheduleCron: input.scheduleCron?.trim() || null,
+    schedulePolicy: input.schedulePolicy ?? "auto_freshness",
+    freshnessTargetHours: input.freshnessTargetHours ?? 24,
+    datasetId: input.datasetId,
+    datasetVersionId: input.datasetVersionId,
+    approvedAt: now,
+  }));
+  return {
+    approvedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    approvedTasks,
+    blockedTasks: [],
+    summary: {
+      requestedTasks: input.taskIds.length,
+      approvedTasks: approvedTasks.length,
+      blockedTasks: 0,
+      runStarted: false,
+    },
+    auditEvents: [
+      {
+        event: "product_schedule_approved",
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        approved_tasks: approvedTasks.length,
+        run_started: false,
+      },
+    ],
+    blockedReasons: ["调度审批只更新 Task 配置，不会立即启动采集运行。"],
+  };
+}
+
+export function getMockAutomationProductDriftCheck(
+  input: AutomationProductDriftCheckInput,
+): AutomationProductDriftCheck {
+  const now = new Date().toISOString();
+  const dataset = {
+    id: input.datasetId,
+    projectId: "proj_ecommerce",
+    name: "Training Product Dataset Smoke",
+    datasetType: "ecommerce_product",
+    status: "active",
+    description: "Mock approved dataset.",
+  };
+  const version = {
+    id: input.datasetVersionId,
+    datasetId: input.datasetId,
+    versionNumber: 1,
+    sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
+    selectedFields: ["title", "price", "sku", "canonical_url"],
+    cleaningScript: [
+      "drop rows where title is empty",
+      "trim string fields and collapse repeated whitespace",
+    ],
+    rowCount: 2,
+    averageCompletenessPercent: 75,
+    status: "saved",
+    createdAt: now,
+    exportPreview: { format: "json" },
+  };
+  const items = input.taskIds.map((taskId, index) => {
+    const isCritical = index === 1;
+    const status: "critical" | "ok" = isCritical ? "critical" : "ok";
+    return {
+      taskId,
+      taskName: `商品页采集任务 ${index + 1}`,
+      sourceUrl: `https://shop.example/products/mock-${index + 1}`,
+      status,
+      blockedReason: null,
+      latestRunId: `run_batch_${index + 1}`,
+      latestRunStatus: "success",
+      datasetVersionCompletenessPercent: 75,
+      latestCompletenessPercent: isCritical ? 50 : 100,
+      completenessDropPercent: isCritical ? 25 : 0,
+      missingFields: isCritical ? ["price", "sku"] : [],
+      newMissingFields: isCritical ? ["price", "sku"] : [],
+      freshnessTargetHours: 6,
+      staleHours: 0,
+      issues: isCritical
+        ? ["completeness_drift_exceeded", "approved_fields_missing"]
+        : [],
+    };
+  });
+  const criticalTasks = items.filter((item) => item.status === "critical").length;
+  return {
+    checkedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    items,
+    summary: {
+      requestedTasks: input.taskIds.length,
+      checkedTasks: input.taskIds.length,
+      blockedTasks: 0,
+      warningTasks: 0,
+      criticalTasks,
+      staleTasks: 0,
+      missingFieldTasks: criticalTasks,
+      runStarted: false,
+      alertCreated: false,
+    },
+    auditEvents: [
+      {
+        event: "product_drift_check_requested",
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    blockedReasons: ["漂移检查为只读评估，不会启动采集、创建告警或发送通知。"],
+  };
+}
+
+const mockAutomationDriftEvents: AutomationProductDriftEvent[] = [];
+const mockDriftAlertRules: AlertRule[] = [];
+const mockDriftSignals: Signal[] = [];
+const mockDriftAlertEvents: AlertEvent[] = [];
+const mockDriftNotifications: NotificationItem[] = [];
+
+export function getMockAutomationProductDriftEventSave(
+  input: AutomationProductDriftEventSaveInput,
+): AutomationProductDriftEvent {
+  const checked = getMockAutomationProductDriftCheck(input);
+  const criticalTasks = checked.summary.criticalTasks;
+  const warningTasks = checked.summary.warningTasks + checked.summary.blockedTasks;
+  const status: AutomationProductDriftEvent["status"] =
+    criticalTasks > 0 ? "critical" : warningTasks > 0 ? "warning" : "ok";
+  const event: AutomationProductDriftEvent = {
+    id: `drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    dataset: checked.dataset,
+    version: checked.version,
+    eventType: "ecommerce_product_drift",
+    status,
+    thresholds: {
+      completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+      freshness_grace_hours: input.freshnessGraceHours ?? 0,
+    },
+    summary: checked.summary,
+    items: checked.items,
+    auditEvents: [
+      ...checked.auditEvents,
+      {
+        event: "product_drift_event_saved",
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    note: input.note?.trim() || null,
+    runStarted: false,
+    alertCreated: false,
+  };
+  mockAutomationDriftEvents.unshift(event);
+  return event;
+}
+
+export function getMockAutomationProductDriftEvents(
+  input: AutomationProductDriftEventListInput = {},
+): AutomationProductDriftEventList {
+  const limit = input.limit ?? 20;
+  const items = [...mockAutomationDriftEvents, getDefaultMockProductDriftEvent()]
+    .filter((event) => !input.datasetId || event.dataset.id === input.datasetId)
+    .filter((event) => !input.datasetVersionId || event.version.id === input.datasetVersionId)
+    .slice(0, limit);
+  return {
+    items,
+    total: items.length,
+    runStarted: false,
+    alertCreated: false,
+  };
+}
+
+export function getMockAutomationProductDatasets(
+  input: AutomationProductDatasetListInput = {},
+): AutomationProductDatasetList {
+  const datasets = getDefaultMockProductDatasetItems()
+    .filter((item) => !input.projectId || item.dataset.projectId === input.projectId)
+    .slice(0, input.limit ?? 50);
+  return {
+    items: datasets,
+    total: datasets.length,
+    runStarted: false,
+    alertCreated: false,
+  };
+}
+
+export function getMockAutomationProductDatasetVersions(
+  input: AutomationProductDatasetVersionListInput,
+): AutomationProductDatasetVersionList {
+  const versionsByDataset = getDefaultMockProductDatasetVersions();
+  const datasetItem = getDefaultMockProductDatasetItems().find(
+    (item) => item.dataset.id === input.datasetId,
+  ) ?? getDefaultMockProductDatasetItems()[0];
+  const versions = (versionsByDataset[input.datasetId] ?? versionsByDataset[datasetItem.dataset.id] ?? [])
+    .slice(0, input.limit ?? 50);
+  return {
+    dataset: datasetItem.dataset,
+    versions,
+    total: versionsByDataset[input.datasetId]?.length ?? versions.length,
+    runStarted: false,
+    alertCreated: false,
+  };
+}
+
+export function getMockAutomationProductDriftAlertPreview(
+  input: AutomationProductDriftAlertPreviewInput,
+): AutomationProductDriftAlertPreview {
+  const dataset = getDefaultMockProductDatasetItems().find(
+    (item) => item.dataset.id === input.datasetId,
+  )?.dataset ?? getDefaultMockShopifyDataset();
+  const latestVersion =
+    getDefaultMockProductDatasetVersions()[dataset.id]?.[0] ??
+    getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
+  const statuses = input.minStatus === "warning" ? ["warning", "critical"] : ["critical"];
+  const matchedEvents = getMockAutomationProductDriftEvents({
+    datasetId: dataset.id,
+    datasetVersionId: input.datasetVersionId ?? latestVersion.id,
+    limit: input.limit ?? 20,
+  }).items.filter((event) => statuses.includes(event.status));
+  return {
+    generatedAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    dataset,
+    latestVersion,
+    ruleDraft: {
+      name: input.name?.trim() || `Dataset drift alert: ${dataset.name}`,
+      projectId: dataset.projectId,
+      signalType: "dataset_drift",
+      condition: {
+        field: "severity",
+        op: "in",
+        value: input.minStatus === "warning" ? ["medium", "high"] : ["high"],
+        source: "dataset_drift_event",
+        dataset_id: dataset.id,
+        dataset_version_id: latestVersion.id,
+        drift_statuses: statuses,
+        event_type: "ecommerce_product_drift",
+      },
+      channel: input.channel ?? "in_app",
+      enabled: input.enabled ?? true,
+    },
+    matchedEvents,
+    summary: {
+      matchedEvents: matchedEvents.length,
+      criticalEvents: matchedEvents.filter((event) => event.status === "critical").length,
+      warningEvents: matchedEvents.filter((event) => event.status === "warning").length,
+      alertRuleCreated: false,
+      signalCreated: false,
+      alertEventCreated: false,
+      notificationCreated: false,
+      runStarted: false,
+    },
+    blockedReasons: [
+      "告警策略预览只读取已保存 DriftEvent，不会创建 AlertRule、Signal、AlertEvent 或通知。",
+    ],
+  };
+}
+
+export function getMockAutomationProductDriftAlertRuleCreate(
+  input: AutomationProductDriftAlertRuleCreateInput,
+): AutomationProductDriftAlertRuleCreate {
+  const preview = getMockAutomationProductDriftAlertPreview(input);
+  const alertRule: AlertRule = {
+    id: `rule_drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    workspaceId: "workspace_mock",
+    projectId: preview.ruleDraft.projectId,
+    name: preview.ruleDraft.name,
+    signalType: preview.ruleDraft.signalType,
+    condition: preview.ruleDraft.condition,
+    channel: preview.ruleDraft.channel,
+    enabled: preview.ruleDraft.enabled,
+    createdAt: new Date().toISOString(),
+  };
+  if (input.confirmCreate) {
+    mockDriftAlertRules.unshift(alertRule);
+  }
+  return {
+    ...preview,
+    generatedAt: new Date().toISOString(),
+    summary: {
+      ...preview.summary,
+      alertRuleCreated: Boolean(input.confirmCreate),
+      signalCreated: false,
+      alertEventCreated: false,
+      notificationCreated: false,
+      runStarted: false,
+    },
+    blockedReasons: [
+      "已创建 DriftEvent 告警策略；本次不会回放历史事件、创建 Signal、AlertEvent 或发送通知。",
+      "后续需要 DatasetDrift 信号桥接后，规则才会进入现有 AlertEvent 生成链路。",
+    ],
+    alertRule,
+  };
+}
+
+export function getMockAutomationProductDriftAlertEventCreate(
+  input: AutomationProductDriftAlertEventCreateInput,
+): AutomationProductDriftAlertEventCreate {
+  const datasetItem = getDefaultMockProductDatasetItems().find(
+    (item) => item.dataset.id === input.datasetId,
+  );
+  const dataset = datasetItem?.dataset ?? getDefaultMockShopifyDataset();
+  const version =
+    getDefaultMockProductDatasetVersions()[dataset.id]?.find(
+      (item) => item.id === input.datasetVersionId,
+    ) ?? getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
+  const driftEvent =
+    getMockAutomationProductDriftEvents({
+      datasetId: dataset.id,
+      datasetVersionId: version.id,
+      limit: 20,
+    }).items.find((event) => event.id === input.driftEventId) ??
+    getDefaultMockProductDriftEvent();
+  const existingSignal = mockDriftSignals.find(
+    (signal) => signal.metadata.drift_event_id === driftEvent.id,
+  );
+  const signalCreated = !existingSignal && input.confirmCreate;
+  const signal: Signal =
+    existingSignal ?? {
+      id: `signal_drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId: "workspace_mock",
+      projectId: dataset.projectId,
+      entityId: `entity_${dataset.id}`,
+      signalType: "dataset_drift",
+      previousSnapshotId: `snapshot_${version.id}_baseline`,
+      currentSnapshotId: `snapshot_${driftEvent.id}`,
+      previousValue: 0,
+      currentValue: driftEvent.summary.criticalTasks || driftEvent.summary.missingFieldTasks,
+      delta: driftEvent.summary.criticalTasks || driftEvent.summary.missingFieldTasks,
+      deltaRatio: null,
+      confidence: driftEvent.status === "critical" ? 90 : 80,
+      severity: driftEvent.status === "critical" ? "high" : "medium",
+      detectedAt: new Date().toISOString(),
+      metadata: {
+        source: "dataset_drift_event",
+        dataset_id: dataset.id,
+        dataset_version_id: version.id,
+        drift_event_id: driftEvent.id,
+        event_type: driftEvent.eventType,
+        status: driftEvent.status,
+      },
+    };
+  if (signalCreated) {
+    mockDriftSignals.unshift(signal);
+  }
+  const matchedRule = mockDriftAlertRules.find(
+    (rule) =>
+      rule.signalType === "dataset_drift" &&
+      rule.projectId === dataset.projectId &&
+      rule.condition.source === "dataset_drift_event" &&
+      rule.condition.dataset_id === dataset.id &&
+      (rule.condition.dataset_version_id === version.id ||
+        rule.condition.dataset_version_id === null) &&
+      Array.isArray(rule.condition.value) &&
+      rule.condition.value.includes(signal.severity),
+  );
+  const existingAlertEvent = mockDriftAlertEvents.find(
+    (event) => event.signalId === signal.id && event.ruleId === matchedRule?.id,
+  );
+  const alertEventCreated = Boolean(input.confirmCreate && matchedRule && !existingAlertEvent);
+  const alertEvent: AlertEvent | null =
+    existingAlertEvent ??
+    (matchedRule
+      ? {
+          id: `event_drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          ruleId: matchedRule.id,
+          signalId: signal.id,
+          status: "triggered",
+          payload: {
+            rule_name: matchedRule.name,
+            signal_type: signal.signalType,
+            severity: signal.severity,
+            project_id: dataset.projectId,
+            source: "dataset_drift_event",
+            dataset_id: dataset.id,
+            dataset_version_id: version.id,
+            drift_event_id: driftEvent.id,
+            event_type: driftEvent.eventType,
+          },
+          triggeredAt: new Date().toISOString(),
+          sentAt: null,
+        }
+      : null);
+  if (alertEventCreated && alertEvent) {
+    mockDriftAlertEvents.unshift(alertEvent);
+  }
+  return {
+    generatedAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    driftEvent,
+    signal,
+    alertEvents: alertEventCreated && alertEvent ? [alertEvent] : [],
+    summary: {
+      matchedEvents: 1,
+      criticalEvents: driftEvent.status === "critical" ? 1 : 0,
+      warningEvents: driftEvent.status === "warning" ? 1 : 0,
+      alertRuleCreated: false,
+      signalCreated,
+      alertEventCreated,
+      notificationCreated: false,
+      runStarted: false,
+    },
+    blockedReasons: [
+      "本次只桥接已保存 DriftEvent 到 Signal/AlertEvent；不会启动采集、创建 TaskRun、发送通知或写出文件。",
+    ],
+  };
+}
+
+export function getMockAutomationProductDriftAlertNotificationSend(
+  input: AutomationProductDriftAlertNotificationSendInput,
+): AutomationProductDriftAlertNotificationSend {
+  if (!input.confirmSend) {
+    throw new Error("drift_alert_notification_confirmation_required");
+  }
+  const dataset = getDefaultMockShopifyDataset();
+  const [version] = getDefaultMockProductDatasetVersions().dataset_shopify_price;
+  const driftEvent =
+    mockAutomationDriftEvents.find((event) => event.id === input.driftEventId) ??
+    getDefaultMockProductDriftEvent();
+  const requestedAlertEvents = mockDriftAlertEvents.filter((event) =>
+    input.alertEventIds.includes(event.id),
+  );
+  let createdNotifications = 0;
+  const notifications: NotificationItem[] = requestedAlertEvents.map((event) => {
+    const existing = mockDriftNotifications.find(
+      (notification) => notification.referenceId === event.id,
+    );
+    if (existing) {
+      event.status = "sent";
+      event.sentAt = event.sentAt ?? new Date().toISOString();
+      return existing;
+    }
+    const notification: NotificationItem = {
+      id: `notification_drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      userId: "user_mock",
+      title: `数据集漂移告警：${dataset.name}`,
+      body: `${driftEvent.eventType} 已命中告警事件；状态 ${driftEvent.status}，请复核字段完整率与刷新策略。`,
+      notificationType: "alert",
+      referenceType: "alert_event",
+      referenceId: event.id,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    event.status = "sent";
+    event.sentAt = event.sentAt ?? notification.createdAt;
+    mockDriftNotifications.unshift(notification);
+    createdNotifications += 1;
+    return notification;
+  });
+  return {
+    generatedAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    driftEvent,
+    alertEvents: requestedAlertEvents,
+    notifications,
+    summary: {
+      matchedEvents: requestedAlertEvents.length,
+      criticalEvents: driftEvent.status === "critical" ? requestedAlertEvents.length : 0,
+      warningEvents: driftEvent.status === "warning" ? requestedAlertEvents.length : 0,
+      alertRuleCreated: false,
+      signalCreated: false,
+      alertEventCreated: false,
+      notificationCreated: createdNotifications > 0,
+      runStarted: false,
+    },
+    blockedReasons: [
+      "本次只发送已生成 AlertEvent 的站内通知；不会启动采集、创建 TaskRun、发送邮件、修改调度或写出文件。",
+    ],
+  };
+}
+
+export function getMockAutomationProductDriftAlertEmailSend(
+  input: AutomationProductDriftAlertEmailSendInput,
+): AutomationProductDriftAlertEmailSend {
+  if (!input.confirmSend) {
+    throw new Error("drift_alert_email_confirmation_required");
+  }
+  const dataset = getDefaultMockShopifyDataset();
+  const [version] = getDefaultMockProductDatasetVersions().dataset_shopify_price;
+  const driftEvent =
+    mockAutomationDriftEvents.find((event) => event.id === input.driftEventId) ??
+    getDefaultMockProductDriftEvent();
+  const requestedAlertEvents = mockDriftAlertEvents.filter((event) =>
+    input.alertEventIds.includes(event.id),
+  );
+  if (requestedAlertEvents.length === 0) {
+    return {
+      generatedAt: new Date().toISOString(),
+      authorizationConfirmed: input.authorized,
+      dataset,
+      version,
+      driftEvent,
+      alertEvents: [],
+      emailDeliveries: [],
+      summary: {
+        matchedEvents: 0,
+        criticalEvents: 0,
+        warningEvents: 0,
+        alertRuleCreated: false,
+        signalCreated: false,
+        alertEventCreated: false,
+        notificationCreated: false,
+        runStarted: false,
+      },
+      blockedReasons: ["未检测到匹配的 AlertEvent，未发起邮件告警。"],
+    };
+  }
+
+  const existingDeliveryIds = new Set<string>();
+  const emailDeliveries = requestedAlertEvents.map((event) => {
+    const eventId = event.id;
+    const signal = mockDriftSignals.find((item) => item.id === event.signalId);
+    const rule = mockDriftAlertRules.find((ruleItem) => ruleItem.id === event.ruleId);
+    if (!rule || !signal) {
+      return {
+        alertEventId: eventId,
+        recipientEmail: input.recipientEmail ?? "demo@example.com",
+        delivered: false,
+        deliveredAt: null,
+        reason: "missing_rule_or_signal",
+      };
+    }
+    if (rule.channel !== "email" && rule.channel !== "both") {
+      return {
+        alertEventId: eventId,
+        recipientEmail: input.recipientEmail ?? "demo@example.com",
+        delivered: false,
+        deliveredAt: null,
+        reason: "alert_event_channel_not_email",
+      };
+    }
+    const deliveryId = `${event.signalId}:${eventId}`;
+    const matched = existingDeliveryIds.has(deliveryId);
+    existingDeliveryIds.add(deliveryId);
+    return {
+      alertEventId: eventId,
+      recipientEmail: input.recipientEmail ?? "demo@example.com",
+      delivered: !matched,
+      deliveredAt: matched ? null : new Date().toISOString(),
+      reason: matched ? "already_delivered" : null,
+    };
+  });
+
+  return {
+    generatedAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    driftEvent,
+    alertEvents: requestedAlertEvents,
+    emailDeliveries,
+    summary: {
+      matchedEvents: requestedAlertEvents.length,
+      criticalEvents: driftEvent.status === "critical" ? requestedAlertEvents.length : 0,
+      warningEvents: driftEvent.status === "warning" ? requestedAlertEvents.length : 0,
+      alertRuleCreated: false,
+      signalCreated: false,
+      alertEventCreated: false,
+      notificationCreated: false,
+      runStarted: false,
+    },
+    blockedReasons: [
+      "本次只发送已生成 AlertEvent 的邮件告警；不会启动采集、创建 TaskRun、发送站内通知、修改调度或写出文件。",
+    ],
+  };
+}
+
+function getDefaultMockProductDatasetItems(): AutomationProductDatasetList["items"] {
+  const shopifyDataset = getDefaultMockShopifyDataset();
+  const [latestVersion] = getDefaultMockProductDatasetVersions().dataset_shopify_price;
+  const latestSavedEvent = mockAutomationDriftEvents.find(
+    (event) => event.dataset.id === "dataset_shopify_price",
+  );
+  return [
+    {
+      dataset: shopifyDataset,
+      latestVersion,
+      versionCount: 2,
+      latestDriftEvent: latestSavedEvent ?? getDefaultMockProductDriftEvent(),
+      driftEventCount: 1 + mockAutomationDriftEvents.filter(
+        (event) => event.dataset.id === "dataset_shopify_price",
+      ).length,
+    },
+    {
+      dataset: {
+        id: "dataset_brand_catalog",
+        projectId: "project_competitor",
+        name: "竞品官网目录数据集",
+        datasetType: "ecommerce_product",
+        status: "active",
+        description: "用于沉淀竞品官网公开商品目录和 URL 字段，后续可接入价格与库存监控。",
+      },
+      latestVersion: null,
+      versionCount: 0,
+      latestDriftEvent: null,
+      driftEventCount: 0,
+    },
+  ];
+}
+
+function getDefaultMockProductDatasetVersions(): Record<string, AutomationProductDatasetVersionList["versions"]> {
+  return {
+    dataset_shopify_price: [
+      {
+        id: "dataset_shopify_price_v2",
+        datasetId: "dataset_shopify_price",
+        versionNumber: 2,
+        sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
+        selectedFields: ["title", "price", "sku", "canonical_url"],
+        cleaningScript: [
+          "drop rows where title is empty",
+          "trim string fields and collapse repeated whitespace",
+          "cast price to decimal when present",
+          "normalize canonical_url and image_url as absolute URL strings",
+          "keep missing values explicit as null for downstream review",
+        ],
+        rowCount: 2,
+        averageCompletenessPercent: 75,
+        status: "saved",
+        createdAt: "2026-06-18T09:20:00.000Z",
+        exportPreview: {
+          format: "json",
+          schema: {
+            fields: ["title", "price", "sku", "canonical_url"],
+            primary_key: "canonical_url",
+            missing_value_policy: "explicit_null",
+          },
+          rows: [
+            {
+              title: "Demo Carry Bag",
+              price: 129.9,
+              sku: "BAG-001",
+              canonical_url: "https://shop.example/products/demo-bag",
+            },
+            {
+              title: "Weekend Tote",
+              price: null,
+              sku: null,
+              canonical_url: "https://shop.example/products/weekend-tote",
+            },
+          ],
+        },
+      },
+      {
+        id: "dataset_shopify_price_v1",
+        datasetId: "dataset_shopify_price",
+        versionNumber: 1,
+        sourceTaskRunIds: ["run_batch_1"],
+        selectedFields: ["title", "price", "canonical_url"],
+        cleaningScript: [
+          "drop rows where title is empty",
+          "trim string fields and collapse repeated whitespace",
+          "cast price to decimal when present",
+        ],
+        rowCount: 1,
+        averageCompletenessPercent: 100,
+        status: "saved",
+        createdAt: "2026-06-18T08:30:00.000Z",
+        exportPreview: {
+          format: "json",
+          schema: {
+            fields: ["title", "price", "canonical_url"],
+            primary_key: "canonical_url",
+          },
+          rows: [
+            {
+              title: "Demo Carry Bag",
+              price: 129.9,
+              canonical_url: "https://shop.example/products/demo-bag",
+            },
+          ],
+        },
+      },
+    ],
+    dataset_brand_catalog: [],
+  };
+}
+
+function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
+  const dataset = getDefaultMockShopifyDataset();
+  const version = getDefaultMockProductDatasetVersions().dataset_shopify_price[0];
+  return {
+    id: "drift_shopify_price_critical",
+    createdAt: "2026-06-18T10:05:00.000Z",
+    dataset,
+    version,
+    eventType: "ecommerce_product_drift",
+    status: "critical",
+    thresholds: {
+      completeness_drop_threshold_percent: 10,
+      freshness_grace_hours: 24,
+    },
+    summary: {
+      requestedTasks: 2,
+      checkedTasks: 2,
+      blockedTasks: 0,
+      warningTasks: 0,
+      criticalTasks: 1,
+      staleTasks: 0,
+      missingFieldTasks: 1,
+      runStarted: false,
+      alertCreated: false,
+    },
+    items: [
+      {
+        taskId: "task_fanout_1",
+        taskName: "商品页采集：Demo Carry Bag",
+        sourceUrl: "https://shop.example/products/demo-bag",
+        status: "ok",
+        blockedReason: null,
+        latestRunId: "run_batch_1",
+        latestRunStatus: "success",
+        datasetVersionCompletenessPercent: 75,
+        latestCompletenessPercent: 100,
+        completenessDropPercent: 0,
+        missingFields: [],
+        newMissingFields: [],
+        freshnessTargetHours: 6,
+        staleHours: 0,
+        issues: [],
+      },
+      {
+        taskId: "task_fanout_2",
+        taskName: "商品页采集：Weekend Tote",
+        sourceUrl: "https://shop.example/products/weekend-tote",
+        status: "critical",
+        blockedReason: null,
+        latestRunId: "run_batch_2",
+        latestRunStatus: "success",
+        datasetVersionCompletenessPercent: 75,
+        latestCompletenessPercent: 50,
+        completenessDropPercent: 25,
+        missingFields: ["price", "sku"],
+        newMissingFields: ["price", "sku"],
+        freshnessTargetHours: 6,
+        staleHours: 0,
+        issues: ["completeness_drift_exceeded", "approved_fields_missing"],
+      },
+    ],
+    auditEvents: [
+      {
+        event: "product_drift_event_saved",
+        dataset_id: "dataset_shopify_price",
+        dataset_version_id: "dataset_shopify_price_v2",
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    note: "示例：Weekend Tote 最近一次采集缺少价格和 SKU，需要复核字段解析。",
+    runStarted: false,
+    alertCreated: false,
+  };
+}
+
+function getDefaultMockShopifyDataset(): AutomationProductDatasetList["items"][number]["dataset"] {
+  return {
+    id: "dataset_shopify_price",
+    projectId: "project_marketplace_price",
+    name: "Shopify 商品价格数据集",
+    datasetType: "ecommerce_product",
+    status: "active",
+    description: "从集合页发现商品 URL 后，对商品页进行字段抽取、清洗和质量留痕。",
   };
 }
 
@@ -804,6 +2281,7 @@ export function getMockEntitySnapshots(entityId: string): EntitySnapshot[] {
 
 export function getMockSignals(): Signal[] {
   return [
+    ...mockDriftSignals,
     {
       id: "signal_star_growth",
       workspaceId: "workspace_mock",
@@ -1376,6 +2854,7 @@ function nextMockRunAt(scheduleTime: string, timezone: string) {
 
 export function getMockAlertRules(): AlertRule[] {
   return [
+    ...mockDriftAlertRules,
     {
       id: "rule_high_severity",
       workspaceId: "workspace_mock",
@@ -1414,6 +2893,7 @@ export function getMockAlertRules(): AlertRule[] {
 
 export function getMockAlertEvents(): AlertEvent[] {
   return [
+    ...mockDriftAlertEvents,
     {
       id: "event_page_changed",
       ruleId: "rule_high_severity",
@@ -1474,6 +2954,7 @@ export function getMockAlertEvents(): AlertEvent[] {
 
 export function getMockNotifications(): NotificationItem[] {
   return [
+    ...mockDriftNotifications,
     {
       id: "notification_alert_data_quality",
       userId: "user_mock",

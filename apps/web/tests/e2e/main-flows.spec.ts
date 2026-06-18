@@ -561,6 +561,96 @@ test.describe("MVP workspace routes", () => {
     await expectNoVisibleTechnicalNoise(page);
   });
 
+  test("runs automation workbench through read-only drift check in mock mode", async ({
+    page,
+  }) => {
+    test.skip(realApiMode, "Automation workbench smoke is mock-only in this suite.");
+
+    await page.goto("/automation");
+    await expect(
+      page.getByRole("heading", { name: "URL 到结构化采集计划" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "商品发现" }).click();
+    await page
+      .getByLabel("我确认这是公开可访问页面，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
+      .check();
+    await page.getByRole("button", { name: "发现商品 URL" }).click();
+    await expect(
+      page.getByRole("heading", { name: "候选商品 URL" }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "生成采集源预览" }).click();
+    await expect(
+      page.getByRole("heading", { name: "子商品页采集源预览" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "确认创建 Source/Task" }).click();
+    await expect(page.getByText("已创建或复用采集源")).toBeVisible();
+    await page.getByRole("button", { name: "小批量运行" }).click();
+    await expect(page.getByText("采集结果数据集预览")).toBeVisible();
+    await page.getByRole("button", { name: "生成数据集预览" }).click();
+    await expect(page.getByText("数据集名称")).toBeVisible();
+    await page.getByRole("button", { name: "保存 Dataset Version" }).click();
+    await expect(page.getByText("Schedule Approval")).toBeVisible();
+    await page.getByRole("button", { name: "审批调度" }).click();
+    await expect(page.getByText("Drift Check")).toBeVisible();
+    await page.getByRole("button", { name: "检查漂移" }).click();
+    await expect(page.getByText("关键漂移")).toBeVisible();
+    await expect(page.getByText("critical")).toBeVisible();
+    await expect(
+      page.getByText("漂移检查为只读评估，不会启动采集、创建告警或发送通知。"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "保存漂移快照" }).click();
+    await expect(page.getByText("已保存漂移快照")).toBeVisible();
+    await expect(page.getByText("漂移历史")).toBeVisible();
+    await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
+  });
+
+  test("renders dataset assets and drift history in mock mode", async ({ page }) => {
+    test.skip(realApiMode, "Dataset asset smoke is mock-only in this suite.");
+
+    await page.goto("/datasets");
+    await expect(
+      page.getByRole("heading", { name: "数据集资产台", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "数据集资产池" })).toBeVisible();
+    await expect(page.getByText("Shopify 商品价格数据集").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "选中数据集概览" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "版本历史" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "版本字段与清洗规则" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "漂移历史" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
+    await expect(page.getByText("Version 2")).toBeVisible();
+    await expect(page.getByText("cast price to decimal when present").first()).toBeVisible();
+    await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
+    await expect(page.getByText("缺字段：price, sku")).toBeVisible();
+    await page.getByRole("button", { name: "预览告警策略" }).click();
+    await expect(page.getByText("匹配 DriftEvent")).toBeVisible();
+    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await page.getByRole("button", { name: "确认创建策略" }).click();
+    await expect(page.getByText("已创建 DriftEvent 告警策略")).toBeVisible();
+    await expect(page.getByText("未创建 AlertEvent")).toBeVisible();
+    await page.getByRole("button", { name: "生成告警事件" }).click();
+    await expect(page.getByText("已生成 dataset_drift Signal")).toBeVisible();
+    await expect(page.getByText("已创建 AlertEvent 1 条")).toBeVisible();
+    await expect(page.getByText("未发送通知").first()).toBeVisible();
+    await page.getByRole("button", { name: "发送站内通知" }).click();
+    await expect(page.getByText("已发送站内通知 1 条")).toBeVisible();
+    await expect(page.getByText("AlertEvent 已标记为 sent")).toBeVisible();
+    await expect(page.getByText("未发送邮件")).toBeVisible();
+
+    await page.getByRole("combobox", { name: "通知通道" }).selectOption("email");
+    await page.getByRole("button", { name: "预览告警策略" }).click();
+    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await page.getByRole("button", { name: "确认创建策略" }).click();
+    await expect(
+      page.getByText("已创建 DriftEvent 告警策略").first(),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "生成告警事件" }).last().click();
+    await expect(page.getByText("已创建 AlertEvent 1 条")).toBeVisible();
+    await page.getByRole("button", { name: "发送邮件告警" }).last().click();
+    await expect(page.getByText("已发送邮件告警")).toBeVisible();
+  });
+
   test("covers signals entities raw records and domain pages", async ({
     page,
     request,
@@ -810,6 +900,7 @@ test.describe("mobile layout guard", () => {
     "/notifications",
     "/tasks",
     "/sources",
+    "/datasets",
   ]) {
     test(`${route} does not overflow horizontally`, async ({
       page,

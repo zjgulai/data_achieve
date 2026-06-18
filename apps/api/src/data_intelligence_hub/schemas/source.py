@@ -6,7 +6,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SourceType = Literal["github_repo", "github_topic", "generic_web", "manual_json"]
+SourceType = Literal[
+    "github_repo",
+    "github_topic",
+    "generic_web",
+    "manual_json",
+    "ecommerce_product_discovery",
+    "ecommerce_product_page",
+]
 
 
 class SourceCreateRequest(BaseModel):

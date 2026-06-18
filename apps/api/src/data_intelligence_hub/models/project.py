@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from data_intelligence_hub.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 if TYPE_CHECKING:
+    from data_intelligence_hub.models.dataset import Dataset
     from data_intelligence_hub.models.entity import Entity
     from data_intelligence_hub.models.raw_record import RawRecord
     from data_intelligence_hub.models.signal import Signal
@@ -38,3 +39,4 @@ class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     raw_records: Mapped[list[RawRecord]] = relationship(back_populates="project")
     entities: Mapped[list[Entity]] = relationship(back_populates="project")
     signals: Mapped[list[Signal]] = relationship(back_populates="project")
+    datasets: Mapped[list[Dataset]] = relationship(back_populates="project")

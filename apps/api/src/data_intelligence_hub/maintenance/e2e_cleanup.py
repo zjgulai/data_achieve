@@ -16,6 +16,9 @@ from data_intelligence_hub.models import (
     AlertEvent,
     AlertRule,
     CollectionTask,
+    Dataset,
+    DatasetDriftEvent,
+    DatasetVersion,
     Entity,
     EntitySnapshot,
     Evidence,
@@ -239,6 +242,39 @@ async def cleanup_e2e_fixtures(
             ),
         )
     )
+    dataset_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Dataset.id).where(
+                or_(Dataset.workspace_id.in_(workspace_ids), Dataset.project_id.in_(project_ids)),
+            ),
+        )
+    )
+    dataset_version_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(DatasetVersion.id).where(
+                or_(
+                    DatasetVersion.workspace_id.in_(workspace_ids),
+                    DatasetVersion.project_id.in_(project_ids),
+                    DatasetVersion.dataset_id.in_(dataset_ids),
+                ),
+            ),
+        )
+    )
+    dataset_drift_event_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(DatasetDriftEvent.id).where(
+                or_(
+                    DatasetDriftEvent.workspace_id.in_(workspace_ids),
+                    DatasetDriftEvent.project_id.in_(project_ids),
+                    DatasetDriftEvent.dataset_id.in_(dataset_ids),
+                    DatasetDriftEvent.dataset_version_id.in_(dataset_version_ids),
+                ),
+            ),
+        )
+    )
     alert_rule_ids = _unique_ids(
         await _fetch_ids(
             session,
@@ -295,6 +331,9 @@ async def cleanup_e2e_fixtures(
         "report_subscriptions": len(report_subscription_ids),
         "report_subscription_runs": len(report_subscription_run_ids),
         "report_audit_events": len(report_audit_event_ids),
+        "datasets": len(dataset_ids),
+        "dataset_versions": len(dataset_version_ids),
+        "dataset_drift_events": len(dataset_drift_event_ids),
         "alert_rules": len(alert_rule_ids),
         "alert_events": len(alert_event_ids),
         "notifications": len(notification_ids),
@@ -336,6 +375,9 @@ async def cleanup_e2e_fixtures(
         report_subscription_ids=report_subscription_ids,
         report_subscription_run_ids=report_subscription_run_ids,
         report_audit_event_ids=report_audit_event_ids,
+        dataset_ids=dataset_ids,
+        dataset_version_ids=dataset_version_ids,
+        dataset_drift_event_ids=dataset_drift_event_ids,
         alert_rule_ids=alert_rule_ids,
         alert_event_ids=alert_event_ids,
         notification_ids=notification_ids,
@@ -364,6 +406,9 @@ async def _apply_cleanup(
     report_subscription_ids: list[uuid.UUID],
     report_subscription_run_ids: list[uuid.UUID],
     report_audit_event_ids: list[uuid.UUID],
+    dataset_ids: list[uuid.UUID],
+    dataset_version_ids: list[uuid.UUID],
+    dataset_drift_event_ids: list[uuid.UUID],
     alert_rule_ids: list[uuid.UUID],
     alert_event_ids: list[uuid.UUID],
     notification_ids: list[uuid.UUID],
@@ -386,6 +431,9 @@ async def _apply_cleanup(
     await _delete_ids(session, Report, report_ids)
     await _delete_ids(session, IntelligenceItem, intelligence_ids)
     await _delete_ids(session, Signal, signal_ids)
+    await _delete_ids(session, DatasetDriftEvent, dataset_drift_event_ids)
+    await _delete_ids(session, DatasetVersion, dataset_version_ids)
+    await _delete_ids(session, Dataset, dataset_ids)
     await _delete_ids(session, EntitySnapshot, snapshot_ids)
     await _delete_ids(session, RawRecord, raw_record_ids)
     await _delete_ids(session, Entity, entity_ids)

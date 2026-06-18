@@ -86,6 +86,83 @@ def test_build_snapshot_drafts_for_generic_web() -> None:
     assert drafts[0].metrics["text_length"] == 11
 
 
+def test_build_snapshot_drafts_for_ecommerce_product_page() -> None:
+    raw_record = make_raw_record(
+        "ecommerce_product_page",
+        {
+            "provider": "ecommerce",
+            "kind": "product_page",
+            "url": "https://shop.example/products/demo-bag",
+            "extracted_fields": {
+                "title": "Demo Carry Bag",
+                "price": 129.9,
+                "currency": "USD",
+                "sku": "BAG-001",
+                "canonical_url": "https://shop.example/products/demo-bag",
+            },
+            "field_schema": [],
+            "cleaning_plan": [],
+        },
+    )
+
+    drafts = build_snapshot_drafts(raw_record, "ecommerce")
+
+    assert len(drafts) == 1
+    assert drafts[0].entity_type == "product"
+    assert drafts[0].external_id == "BAG-001"
+    assert drafts[0].name == "Demo Carry Bag"
+    assert drafts[0].metrics["price"] == 129.9
+    assert drafts[0].metrics["field_count"] == 5
+
+
+def test_build_snapshot_drafts_for_ecommerce_product_discovery() -> None:
+    raw_record = make_raw_record(
+        "ecommerce_product_discovery",
+        {
+            "provider": "ecommerce",
+            "kind": "product_discovery",
+            "url": "https://shop.example/collections/summer-bags",
+            "page_structure": {
+                "page_type": "collection_listing",
+                "title": "Summer Bags",
+                "canonical_url": "https://shop.example/collections/summer-bags",
+                "link_count": 18,
+                "product_link_count": 3,
+            },
+            "product_candidates": [
+                {
+                    "url": "https://shop.example/products/demo-bag",
+                    "title": "Demo Carry Bag",
+                    "source": "anchor",
+                    "confidence": 0.9,
+                },
+                {
+                    "url": "https://shop.example/products/weekend-tote",
+                    "title": "Weekend Tote",
+                    "source": "anchor",
+                    "confidence": 0.86,
+                },
+            ],
+            "discovery_plan": {
+                "next_collector_type": "ecommerce_product_page",
+                "candidate_count": 2,
+                "max_products": 50,
+                "fan_out_requires_review": True,
+            },
+        },
+    )
+
+    drafts = build_snapshot_drafts(raw_record, "ecommerce")
+
+    assert len(drafts) == 1
+    assert drafts[0].entity_type == "product_catalog"
+    assert drafts[0].external_id == "https://shop.example/collections/summer-bags"
+    assert drafts[0].name == "Summer Bags"
+    assert drafts[0].metrics["candidate_count"] == 2
+    assert drafts[0].metrics["product_link_count"] == 3
+    assert drafts[0].metrics["max_products"] == 50
+
+
 def test_build_snapshot_drafts_for_manual_json_list_payload() -> None:
     raw_record = make_raw_record(
         "manual_json",

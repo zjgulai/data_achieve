@@ -33,3 +33,21 @@ async def get_source(
         select(Source).where(Source.id == source_id, Source.workspace_id == workspace_id)
     )
     return result.scalar_one_or_none()
+
+
+async def get_source_by_type_url(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    source_type: str,
+    url: str,
+) -> Source | None:
+    result = await session.execute(
+        select(Source).where(
+            Source.workspace_id == workspace_id,
+            Source.project_id == project_id,
+            Source.type == source_type,
+            Source.url == url,
+        )
+    )
+    return result.scalar_one_or_none()

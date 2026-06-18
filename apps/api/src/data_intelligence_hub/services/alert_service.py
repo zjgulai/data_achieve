@@ -135,6 +135,7 @@ async def match_alert_rules_for_signal(
     workspace: Workspace,
     signal: Signal,
     intelligence: IntelligenceItem | None,
+    deliver_notifications: bool = True,
 ) -> list[AlertEvent]:
     rules = await list_alert_rules(session, workspace.id, enabled=True)
     project = await get_project(session, workspace.id, signal.project_id)
@@ -158,7 +159,7 @@ async def match_alert_rules_for_signal(
             triggered_at=datetime.now(UTC),
         )
         await create_alert_event(session, event)
-        if rule.channel in {"in_app", "both"}:
+        if deliver_notifications and rule.channel in {"in_app", "both"}:
             event.status = "sent"
             event.sent_at = datetime.now(UTC)
             await create_in_app_notification(
@@ -175,6 +176,8 @@ async def match_alert_rules_for_signal(
 
 
 def condition_matches(condition: dict[str, Any], context: dict[str, Any]) -> bool:
+    if not _condition_scope_matches(condition, context):
+        return False
     field = condition.get("field")
     operator = condition.get("op")
     expected = condition.get("value")
@@ -198,6 +201,16 @@ def condition_matches(condition: dict[str, Any], context: dict[str, Any]) -> boo
     return False
 
 
+def _condition_scope_matches(condition: dict[str, Any], context: dict[str, Any]) -> bool:
+    for key in ("source", "dataset_id", "dataset_version_id", "event_type"):
+        expected = condition.get(key)
+        if expected is None:
+            continue
+        if context.get(key) != expected:
+            return False
+    return True
+
+
 def _compare_number(
     actual: Any,
     expected: Any,
@@ -213,6 +226,7 @@ def _match_context(
     intelligence: IntelligenceItem | None,
     domain: str | None,
 ) -> dict[str, Any]:
+    metadata = signal.metadata_json if isinstance(signal.metadata_json, dict) else {}
     return {
         "signal_type": signal.signal_type,
         "severity": signal.severity,
@@ -225,6 +239,11 @@ def _match_context(
         "final_score": intelligence.final_score if intelligence is not None else None,
         "intelligence_type": intelligence.intelligence_type if intelligence is not None else None,
         "status": intelligence.status if intelligence is not None else None,
+        "source": metadata.get("source"),
+        "dataset_id": metadata.get("dataset_id"),
+        "dataset_version_id": metadata.get("dataset_version_id"),
+        "drift_event_id": metadata.get("drift_event_id"),
+        "event_type": metadata.get("event_type"),
     }
 
 
@@ -244,4 +263,9 @@ def _event_payload(
         "domain": context.get("domain"),
         "final_score": context.get("final_score"),
         "intelligence_type": context.get("intelligence_type"),
+        "source": context.get("source"),
+        "dataset_id": context.get("dataset_id"),
+        "dataset_version_id": context.get("dataset_version_id"),
+        "drift_event_id": context.get("drift_event_id"),
+        "event_type": context.get("event_type"),
     }

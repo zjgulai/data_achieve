@@ -1,6 +1,7 @@
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.base import Base
 from data_intelligence_hub.models.collector import Collector
+from data_intelligence_hub.models.dataset import Dataset, DatasetDriftEvent, DatasetVersion
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.intelligence import (
     Evidence,
@@ -29,6 +30,9 @@ __all__ = [
     "Base",
     "CollectionTask",
     "Collector",
+    "Dataset",
+    "DatasetDriftEvent",
+    "DatasetVersion",
     "Entity",
     "EntitySnapshot",
     "Evidence",

@@ -5,6 +5,10 @@ from typing import Any
 import httpx
 
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
+from data_intelligence_hub.collectors.ecommerce_product_discovery import (
+    EcommerceProductDiscoveryCollector,
+)
+from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
@@ -17,6 +21,8 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     GitHubTopicCollector.collector_type: GitHubTopicCollector,
     GenericWebCollector.collector_type: GenericWebCollector,
     ManualJsonCollector.collector_type: ManualJsonCollector,
+    EcommerceProductDiscoveryCollector.collector_type: EcommerceProductDiscoveryCollector,
+    EcommerceProductPageCollector.collector_type: EcommerceProductPageCollector,
 }
 
 

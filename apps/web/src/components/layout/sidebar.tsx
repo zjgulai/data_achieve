@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   SquareStack,
+  TableProperties,
   Wrench,
 } from "lucide-react";
 import type { Route } from "next";
@@ -56,6 +57,8 @@ const generalItems = [
 ] satisfies NavItem[];
 
 const engineItems = [
+  { href: route("/automation"), label: "自动采集", icon: Bot },
+  { href: route("/datasets"), label: "数据集", icon: TableProperties },
   { href: route("/tasks"), label: "采集任务", icon: SquareStack },
   { href: route("/sources"), label: "数据源", icon: Boxes },
   { href: route("/raw-records"), label: "原始数据", icon: Database },

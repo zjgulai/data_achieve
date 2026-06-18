@@ -55,6 +55,32 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             "properties": {"entity_type": "string", "json_data": "object"},
         },
     ),
+    CollectorDefinition(
+        type="ecommerce_product_discovery",
+        name="Ecommerce Product Discovery",
+        description="Discover product URLs from a public independent-site listing or sitemap page.",
+        config_schema={
+            "required": ["url"],
+            "properties": {
+                "url": "string",
+                "max_products": "integer",
+                "platform_hint": "string",
+            },
+        },
+    ),
+    CollectorDefinition(
+        type="ecommerce_product_page",
+        name="Ecommerce Product Page",
+        description="Parse a public independent-site product page into structured product fields.",
+        config_schema={
+            "required": ["url"],
+            "properties": {
+                "url": "string",
+                "fields": "array",
+                "platform_hint": "string",
+            },
+        },
+    ),
 )
 
 
@@ -93,6 +119,10 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_generic_web_config(config)
     if collector_type == "manual_json":
         return _validate_manual_json_config(config)
+    if collector_type == "ecommerce_product_page":
+        return _validate_ecommerce_product_page_config(config)
+    if collector_type == "ecommerce_product_discovery":
+        return _validate_ecommerce_product_discovery_config(config)
 
     from data_intelligence_hub.services.exceptions import CollectorNotFoundError
 
@@ -145,3 +175,74 @@ def _validate_manual_json_config(config: dict[str, Any]) -> dict[str, Any]:
 
         raise CollectorConfigError
     return {"entity_type": entity_type, "json_data": json_data}
+
+
+def _validate_ecommerce_product_page_config(config: dict[str, Any]) -> dict[str, Any]:
+    url = _require_text(config, "url")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    fields = config.get(
+        "fields",
+        [
+            "title",
+            "price",
+            "currency",
+            "availability",
+            "sku",
+            "brand",
+            "description",
+            "image_url",
+            "canonical_url",
+        ],
+    )
+    allowed_fields = {
+        "title",
+        "price",
+        "currency",
+        "availability",
+        "sku",
+        "brand",
+        "description",
+        "image_url",
+        "canonical_url",
+    }
+    if not isinstance(fields, list) or not fields:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    normalized_fields: list[str] = []
+    for field in fields:
+        if not isinstance(field, str) or field not in allowed_fields:
+            from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+            raise CollectorConfigError
+        normalized_fields.append(field)
+    platform_hint = config.get("platform_hint", "auto")
+    if platform_hint not in {"auto", "shopify", "independent_ecommerce"}:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    return {"url": url, "fields": normalized_fields, "platform_hint": platform_hint}
+
+
+def _validate_ecommerce_product_discovery_config(config: dict[str, Any]) -> dict[str, Any]:
+    url = _require_text(config, "url")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    max_products = config.get("max_products", 50)
+    if not isinstance(max_products, int) or max_products < 1 or max_products > 200:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    platform_hint = config.get("platform_hint", "auto")
+    if platform_hint not in {"auto", "shopify", "independent_ecommerce"}:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    return {"url": url, "max_products": max_products, "platform_hint": platform_hint}

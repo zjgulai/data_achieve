@@ -44,6 +44,24 @@ async def get_notification(
     return result.scalar_one_or_none()
 
 
+async def get_notification_by_reference(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    reference_type: str,
+    reference_id: uuid.UUID,
+    notification_type: str | None = None,
+) -> Notification | None:
+    statement = select(Notification).where(
+        Notification.user_id == user_id,
+        Notification.reference_type == reference_type,
+        Notification.reference_id == reference_id,
+    )
+    if notification_type is not None:
+        statement = statement.where(Notification.notification_type == notification_type)
+    result = await session.execute(statement.order_by(Notification.created_at.desc()))
+    return result.scalars().first()
+
+
 async def list_notifications_by_ids(
     session: AsyncSession,
     user_id: uuid.UUID,

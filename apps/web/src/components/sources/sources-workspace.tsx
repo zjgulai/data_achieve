@@ -14,6 +14,7 @@ import {
   Power,
   RotateCcw,
   ShieldCheck,
+  ShoppingCart,
   UploadCloud,
   XCircle,
   Zap,
@@ -43,6 +44,8 @@ import type { Project } from "@/types/project";
 import type { CollectionTask, Collector, CollectorType, Source } from "@/types/source-task";
 
 const collectorTypeLabels: Record<CollectorType, string> = {
+  ecommerce_product_discovery: "Ecommerce Discovery",
+  ecommerce_product_page: "Ecommerce Product",
   github_repo: "GitHub Repo",
   github_topic: "GitHub Topic",
   generic_web: "Generic Web",
@@ -50,6 +53,8 @@ const collectorTypeLabels: Record<CollectorType, string> = {
 };
 
 const collectorShortLabels: Record<CollectorType, string> = {
+  ecommerce_product_discovery: "Discovery",
+  ecommerce_product_page: "Product",
   github_repo: "Repo",
   github_topic: "Topic",
   generic_web: "Web",
@@ -66,6 +71,20 @@ const collectorVisuals: Record<
     text: string;
   }
 > = {
+  ecommerce_product_discovery: {
+    icon: Link2,
+    eyebrow: "商品 URL 发现",
+    tone: "border-[#D9E2CC] bg-[#F7FBF1]",
+    accent: "bg-[#5F8F5B]",
+    text: "text-[#536B40]",
+  },
+  ecommerce_product_page: {
+    icon: ShoppingCart,
+    eyebrow: "商品字段采集",
+    tone: "border-[#D9E2CC] bg-[#F7FBF1]",
+    accent: "bg-[#6F985E]",
+    text: "text-[#536B40]",
+  },
   github_repo: {
     icon: Github,
     eyebrow: "持续仓库监控",
@@ -185,6 +204,8 @@ export function SourcesWorkspace() {
         return counts;
       },
       {
+        ecommerce_product_discovery: 0,
+        ecommerce_product_page: 0,
         github_repo: 0,
         github_topic: 0,
         generic_web: 0,
@@ -223,9 +244,15 @@ export function SourcesWorkspace() {
         return;
       }
       if (editingSourceId) {
+        const sourceUrl =
+          collectorType === "generic_web" ||
+          collectorType === "ecommerce_product_page" ||
+          collectorType === "ecommerce_product_discovery"
+            ? url
+            : undefined;
         const source = await updateSource(editingSourceId, {
           name,
-          url: collectorType === "generic_web" ? url : undefined,
+          url: sourceUrl,
           config: buildConfig(),
           scheduleCron: normalizeScheduleCron(scheduleCron) ?? null,
         });
@@ -245,11 +272,17 @@ export function SourcesWorkspace() {
         setMessage(`${source.name}: source updated; retest before next run`);
         return;
       }
+      const sourceUrl =
+        collectorType === "generic_web" ||
+        collectorType === "ecommerce_product_page" ||
+        collectorType === "ecommerce_product_discovery"
+          ? url
+          : undefined;
       const source = await createSource({
         projectId: selectedProjectId,
         name,
         type: collectorType,
-        url: collectorType === "generic_web" ? url : undefined,
+        url: sourceUrl,
         config: buildConfig(),
         scheduleCron: normalizeScheduleCron(scheduleCron),
       });
@@ -346,6 +379,16 @@ export function SourcesWorkspace() {
     if (collectorType === "generic_web") {
       return { url, extract_mode: "main_content" };
     }
+    if (collectorType === "ecommerce_product_page") {
+      return {
+        url,
+        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+        platform_hint: "auto",
+      };
+    }
+    if (collectorType === "ecommerce_product_discovery") {
+      return { url, max_products: 50, platform_hint: "auto" };
+    }
     try {
       return { entity_type: entityType, json_data: JSON.parse(jsonText) as unknown };
     } catch {
@@ -363,7 +406,11 @@ export function SourcesWorkspace() {
       setTopic(formatConfigValue(source.config.topic) || "web-scraping");
       return;
     }
-    if (source.type === "generic_web") {
+    if (
+      source.type === "generic_web" ||
+      source.type === "ecommerce_product_page" ||
+      source.type === "ecommerce_product_discovery"
+    ) {
       setUrl(source.url ?? (formatConfigValue(source.config.url) || "https://example.com"));
       return;
     }
@@ -643,7 +690,11 @@ function DynamicConfigFields(props: DynamicConfigFieldsProps) {
   if (props.collectorType === "github_topic") {
     return <TextField label="Topic" onChange={props.setTopic} value={props.topic} />;
   }
-  if (props.collectorType === "generic_web") {
+  if (
+    props.collectorType === "generic_web" ||
+    props.collectorType === "ecommerce_product_page" ||
+    props.collectorType === "ecommerce_product_discovery"
+  ) {
     return <TextField label="URL" onChange={props.setUrl} value={props.url} />;
   }
   return (
@@ -964,6 +1015,16 @@ function getSourceConfigSummary(source: Source): string {
   if (source.type === "generic_web") {
     return formatConfigValue(source.config.extract_mode) || "main_content";
   }
+  if (source.type === "ecommerce_product_page") {
+    const fields = source.config.fields;
+    const count = Array.isArray(fields) ? fields.length : 0;
+    return `${formatConfigValue(source.config.platform_hint) || "auto"} · ${count} fields`;
+  }
+  if (source.type === "ecommerce_product_discovery") {
+    return `${formatConfigValue(source.config.platform_hint) || "auto"} · ${
+      formatConfigValue(source.config.max_products) || "50"
+    } max`;
+  }
   const jsonData = source.config.json_data;
   if (jsonData && typeof jsonData === "object" && !Array.isArray(jsonData)) {
     return `${formatConfigValue(source.config.entity_type) || "entity"} · ${
@@ -982,6 +1043,12 @@ function getSourceEndpointLabel(source: Source): string {
   }
   if (source.type === "manual_json") {
     return "手动录入事实";
+  }
+  if (source.type === "ecommerce_product_page") {
+    return formatConfigValue(source.config.url) || source.url || "商品页 URL";
+  }
+  if (source.type === "ecommerce_product_discovery") {
+    return formatConfigValue(source.config.url) || source.url || "集合页 URL";
   }
   return "No URL";
 }

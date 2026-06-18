@@ -14,6 +14,9 @@ from data_intelligence_hub.models import (
     AlertRule,
     Base,
     CollectionTask,
+    Dataset,
+    DatasetDriftEvent,
+    DatasetVersion,
     Entity,
     EntitySnapshot,
     Evidence,
@@ -69,6 +72,9 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
     assert report.counts["users"] == 1
     assert report.counts["workspaces"] == 1
     assert report.counts["entity_snapshots"] == 2
+    assert report.counts["datasets"] == 1
+    assert report.counts["dataset_versions"] == 1
+    assert report.counts["dataset_drift_events"] == 1
     assert report.counts["alert_events"] == 1
     assert report.samples["users"] == ["e2e-old@example.com"]
 
@@ -85,6 +91,9 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
         assert await session.get(Source, old_fixture["source_id"]) is None
         assert await session.get(CollectionTask, old_fixture["task_id"]) is None
         assert await session.get(TaskRun, old_fixture["run_id"]) is None
+        assert await session.get(Dataset, old_fixture["dataset_id"]) is None
+        assert await session.get(DatasetVersion, old_fixture["dataset_version_id"]) is None
+        assert await session.get(DatasetDriftEvent, old_fixture["dataset_drift_event_id"]) is None
         assert await session.get(RawRecord, old_fixture["raw_record_id"]) is None
         assert await session.get(Entity, old_fixture["entity_id"]) is None
         assert await session.get(EntitySnapshot, old_fixture["current_snapshot_id"]) is None
@@ -211,6 +220,55 @@ async def _create_fixture_graph(
         created_at=created_at,
     )
     session.add(run)
+    await session.flush()
+
+    dataset = Dataset(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        name=f"Fixture Dataset {workspace_slug}",
+        dataset_type="ecommerce_product",
+        status="active",
+        description="Fixture dataset",
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(dataset)
+    await session.flush()
+
+    dataset_version = DatasetVersion(
+        dataset_id=dataset.id,
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        version_number=1,
+        source_task_run_ids=[str(run.id)],
+        selected_fields=["title", "price"],
+        cleaning_script=["strip title", "parse price"],
+        rows=[{"title": workspace_slug, "price": 10}],
+        export_preview={"rows": [{"title": workspace_slug, "price": 10}]},
+        row_count=1,
+        average_completeness_percent=100,
+        status="saved",
+        created_at=created_at,
+    )
+    session.add(dataset_version)
+    await session.flush()
+
+    dataset_drift_event = DatasetDriftEvent(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        dataset_id=dataset.id,
+        dataset_version_id=dataset_version.id,
+        event_type="ecommerce_product_drift",
+        status="critical",
+        thresholds={"completeness_drop_threshold_percent": 10},
+        summary={"critical_tasks": 1},
+        items=[{"task_id": str(task.id), "status": "critical"}],
+        audit_events=[{"event": "fixture"}],
+        note="Fixture drift",
+        created_at=created_at,
+    )
+    session.add(dataset_drift_event)
     await session.flush()
 
     raw_record = RawRecord(
@@ -413,6 +471,9 @@ async def _create_fixture_graph(
         "source_id": source.id,
         "task_id": task.id,
         "run_id": run.id,
+        "dataset_id": dataset.id,
+        "dataset_version_id": dataset_version.id,
+        "dataset_drift_event_id": dataset_drift_event.id,
         "raw_record_id": raw_record.id,
         "entity_id": entity.id,
         "current_snapshot_id": current_snapshot.id,

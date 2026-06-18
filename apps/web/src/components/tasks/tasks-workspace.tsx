@@ -75,6 +75,8 @@ const domainLabels: Record<DomainKey, string> = {
 };
 
 const collectorLabels: Record<CollectorType, string> = {
+  ecommerce_product_discovery: "商品发现",
+  ecommerce_product_page: "商品页",
   github_repo: "GitHub Repo",
   github_topic: "GitHub Topic",
   generic_web: "网页",

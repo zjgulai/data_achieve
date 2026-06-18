@@ -11,6 +11,10 @@ from data_intelligence_hub.collectors.base import (
     HTTP_USER_AGENT,
     CollectorError,
 )
+from data_intelligence_hub.collectors.ecommerce_product_discovery import (
+    EcommerceProductDiscoveryCollector,
+)
+from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
@@ -204,6 +208,140 @@ async def test_generic_web_collector_collects_html_snapshot(
     assert content["title"] == "Demo"
     assert "Hello" in content["text_content"]
     assert collector.normalize(raw_record) == []
+
+
+@pytest.mark.asyncio
+async def test_ecommerce_product_page_collector_extracts_product_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    html = """
+    <html>
+      <head>
+        <title>Demo Shopify Product</title>
+        <link rel="canonical" href="/products/demo-bag">
+        <meta property="og:image" content="/cdn/demo.jpg">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Demo Carry Bag",
+          "sku": "BAG-001",
+          "brand": {"@type": "Brand", "name": "Demo Brand"},
+          "description": "A compact product fixture.",
+          "image": ["/cdn/demo.jpg"],
+          "offers": {
+            "@type": "Offer",
+            "price": "129.90",
+            "priceCurrency": "USD",
+            "availability": "https://schema.org/InStock"
+          }
+        }
+        </script>
+        <script src="https://cdn.shopify.com/theme.js"></script>
+      </head>
+      <body><h1>Demo Carry Bag</h1><form></form></body>
+    </html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(200, text=html)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = EcommerceProductPageCollector(
+            {"url": "https://shop.example/products/demo-bag"},
+            client,
+        )
+        test_result = await collector.test()
+        collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    raw_record = collect_result.raw_records[0]
+    assert raw_record.record_type == "ecommerce_product_page"
+    content = raw_record.content
+    assert isinstance(content, dict)
+    assert content["platform_profile"]["platform_type"] == "shopify"
+    assert content["extracted_fields"]["title"] == "Demo Carry Bag"
+    assert content["extracted_fields"]["price"] == 129.9
+    assert content["extracted_fields"]["currency"] == "USD"
+    assert content["extracted_fields"]["sku"] == "BAG-001"
+    assert content["extracted_fields"]["availability"] == "in_stock"
+    assert content["extracted_fields"]["canonical_url"] == (
+        "https://shop.example/products/demo-bag"
+    )
+    assert content["tool_recommendations"][0]["collector_type"] == "ecommerce_product_page"
+
+
+@pytest.mark.asyncio
+async def test_ecommerce_product_discovery_collector_detects_product_urls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    html = """
+    <html>
+      <head>
+        <title>Summer Bags</title>
+        <link rel="canonical" href="/collections/summer-bags">
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "item": {
+                "@type": "Product",
+                "name": "Demo Carry Bag",
+                "url": "/products/demo-bag"
+              }
+            }
+          ]
+        }
+        </script>
+        <script src="https://cdn.shopify.com/theme.js"></script>
+      </head>
+      <body>
+        <a href="/collections/summer-bags/products/demo-bag">Demo Carry Bag</a>
+        <a href="/products/weekend-tote">Weekend Tote</a>
+        <a href="/pages/about">About</a>
+      </body>
+    </html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(200, text=html)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = EcommerceProductDiscoveryCollector(
+            {"url": "https://shop.example/collections/summer-bags", "max_products": 10},
+            client,
+        )
+        test_result = await collector.test()
+        collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    raw_record = collect_result.raw_records[0]
+    assert raw_record.record_type == "ecommerce_product_discovery"
+    content = raw_record.content
+    assert isinstance(content, dict)
+    candidates = content["product_candidates"]
+    assert isinstance(candidates, list)
+    candidate_urls = {candidate["url"] for candidate in candidates}
+    assert candidate_urls == {
+        "https://shop.example/products/demo-bag",
+        "https://shop.example/collections/summer-bags/products/demo-bag",
+        "https://shop.example/products/weekend-tote",
+    }
+    assert content["page_structure"]["page_type"] == "collection_listing"
+    assert content["page_structure"]["product_link_count"] == 2
+    assert content["discovery_plan"]["next_collector_type"] == "ecommerce_product_page"
+    assert content["tool_recommendations"][0]["collector_type"] == (
+        "ecommerce_product_discovery"
+    )
 
 
 @pytest.mark.asyncio
