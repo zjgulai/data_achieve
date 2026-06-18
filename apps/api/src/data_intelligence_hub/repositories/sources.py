@@ -49,5 +49,7 @@ async def get_source_by_type_url(
             Source.type == source_type,
             Source.url == url,
         )
+        .order_by(Source.created_at.desc(), Source.id.desc())
+        .limit(1)
     )
     return result.scalar_one_or_none()

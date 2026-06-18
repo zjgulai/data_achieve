@@ -586,6 +586,57 @@ async def test_automation_product_fanout_create_is_idempotent(
 
 
 @pytest.mark.asyncio
+async def test_automation_product_fanout_reuses_one_source_when_duplicates_exist(
+    client: AsyncClient,
+) -> None:
+    project_id = await register_and_create_project(client)
+    for index in range(2):
+        source_response = await client.post(
+            "/api/sources",
+            json={
+                "project_id": project_id,
+                "name": f"Duplicate Demo Carry Bag {index}",
+                "type": "ecommerce_product_page",
+                "url": "https://shop.example/products/demo-bag",
+                "config": {
+                    "url": "https://shop.example/products/demo-bag",
+                    "fields": ["title", "price", "canonical_url"],
+                    "platform_hint": "auto",
+                },
+                "schedule_cron": None,
+            },
+        )
+        assert source_response.status_code == 201
+
+    response = await client.post(
+        "/api/automation/product-fanout-create",
+        json={
+            "project_id": project_id,
+            "parent_url": "https://shop.example/collections/summer-bags",
+            "authorized": True,
+            "max_sources": 10,
+            "enable_tasks": True,
+            "fields": ["title", "price", "canonical_url"],
+            "candidates": [
+                {
+                    "url": "https://shop.example/products/demo-bag",
+                    "title": "Demo Carry Bag",
+                    "source": "json_ld",
+                    "confidence": 0.9,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["summary"]["created_sources"] == 0
+    assert body["summary"]["reused_sources"] == 1
+    assert body["persisted_sources"][0]["action"] == "reused"
+    assert body["persisted_sources"][0]["task"]["status"] == "enabled"
+
+
+@pytest.mark.asyncio
 async def test_automation_product_batch_run_returns_field_completeness(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,

@@ -592,7 +592,7 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: "审批调度" }).click();
     await expect(page.getByText("Drift Check")).toBeVisible();
     await page.getByRole("button", { name: "检查漂移" }).click();
-    await expect(page.getByText("关键漂移")).toBeVisible();
+    await expect(page.getByText("关键漂移", { exact: true })).toBeVisible();
     await expect(page.getByText("critical")).toBeVisible();
     await expect(
       page.getByText("漂移检查为只读评估，不会启动采集、创建告警或发送通知。"),
