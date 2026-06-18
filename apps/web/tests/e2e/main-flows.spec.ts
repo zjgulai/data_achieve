@@ -315,6 +315,40 @@ async function createIntelligenceFixture(
   }
 }
 
+async function createAlertEventFixture(request: APIRequestContext, suffix: string) {
+  if (!realApiMode) {
+    return;
+  }
+  const { baseUrl } = await authenticateRealApiRequest(request);
+  const projectsResponse = await request.get(`${baseUrl}/api/projects`);
+  if (!projectsResponse.ok()) {
+    throw new Error(
+      `Project fixture lookup failed: ${await projectsResponse.text()}`,
+    );
+  }
+  const projects = (await projectsResponse.json()) as Array<{ id: string }>;
+  if (projects.length === 0) {
+    throw new Error("Alert event fixture requires at least one project");
+  }
+  const ruleName = `Playwright Alert Event ${suffix} ${Date.now()}`;
+  const ruleResponse = await request.post(`${baseUrl}/api/alert-rules`, {
+    data: {
+      project_id: projects[0].id,
+      name: ruleName,
+      signal_type: "*",
+      condition: { field: "severity", op: "in", value: ["high", "critical"] },
+      channel: "in_app",
+      enabled: true,
+    },
+  });
+  if (!ruleResponse.ok()) {
+    throw new Error(
+      `Alert event fixture rule create failed: ${await ruleResponse.text()}`,
+    );
+  }
+  await createIntelligenceFixture(request, `alert-event-${suffix}`);
+}
+
 async function createReportFixture(request: APIRequestContext, suffix: string) {
   if (!realApiMode) {
     return;
@@ -519,6 +553,19 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByLabel("生成项目")).toBeVisible();
     await expect(page.getByLabel("报告筛选项目")).toBeVisible();
+    const reportQueue = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "报告队列" }),
+    });
+    await page
+      .getByPlaceholder("搜索标题、项目、正文...")
+      .fill("not-a-real-report-filter");
+    await expect(page.getByText("当前筛选条件下暂无报告")).toBeVisible();
+    await page.getByPlaceholder("搜索标题、项目、正文...").fill("");
+    await reportQueue
+      .getByRole("button", { name: "待发送", exact: true })
+      .click();
+    await expect(reportQueue.locator("article").first()).toBeVisible();
+    await reportQueue.getByRole("button", { name: "全部", exact: true }).click();
     await expect(page.getByText("自动分发", { exact: true }).first()).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "订阅规则", exact: true }),
@@ -628,6 +675,46 @@ test.describe("MVP workspace routes", () => {
     await expect(
       page.locator("article").filter({ hasText: ruleName }),
     ).toHaveCount(1);
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
+  test("filters alert events and updates event status", async ({
+    page,
+    request,
+  }, testInfo) => {
+    await createAlertEventFixture(request, `status-${testInfo.project.name}`);
+    await page.goto("/alerts");
+    await expect(page.getByRole("heading", { name: "预警中心" })).toBeVisible();
+
+    const eventStream = page.locator("aside").filter({
+      has: page.getByRole("heading", { name: "预警事件流" }),
+    });
+    const eventSearch = eventStream.getByPlaceholder("搜索事件、信号");
+    const eventStatus = eventStream.locator("select");
+    const eventCard = eventStream.getByRole("button", { name: /star_growth/ }).first();
+
+    await eventSearch.fill("not-a-real-alert-event");
+    await expect(page.getByText("没有匹配的预警事件。")).toBeVisible();
+    await eventSearch.fill("star_growth");
+    await eventStatus.selectOption(realApiMode ? "sent" : "acknowledged");
+    await expect(eventCard).toBeVisible();
+    await eventCard.click();
+    await expect(eventStream.getByText("事件事实")).toBeVisible();
+
+    const acknowledgeButton = eventStream.getByRole("button", { name: "确认" });
+    if (realApiMode) {
+      await acknowledgeButton.click();
+      await expect(page.getByText(/AlertEvent .*: acknowledged/)).toBeVisible();
+    } else {
+      await expect(acknowledgeButton).toBeDisabled();
+    }
+    await eventStatus.selectOption("acknowledged");
+    await expect(eventCard).toBeVisible();
+
+    await eventStream.getByRole("button", { name: "解决" }).click();
+    await expect(page.getByText(/AlertEvent .*: resolved/)).toBeVisible();
+    await eventStatus.selectOption("resolved");
+    await expect(eventCard).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 
