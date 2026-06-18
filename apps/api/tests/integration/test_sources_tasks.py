@@ -806,6 +806,49 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert dataset["export_preview"]["rows"][1]["price"] is None
     assert "尚未保存 Dataset" in dataset["blocked_reasons"][-1]
 
+    deduped_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={
+            "authorized": True,
+            "max_tasks": 5,
+            "task_ids": product_task_ids,
+        },
+    )
+    assert deduped_batch_response.status_code == 200
+    deduped_batch = deduped_batch_response.json()
+    assert deduped_batch["summary"]["records_count"] == 2
+    assert deduped_batch["summary"]["average_completeness_percent"] == 75
+    assert all(
+        event["deduplicated_source_records_reused"] is True
+        for event in deduped_batch["audit_events"]
+        if event["event"] == "product_batch_task_run_completed"
+    )
+
+    deduped_run_items = [
+        item for item in deduped_batch["items"] if item["status"] == "run_completed"
+    ]
+    deduped_dataset_response = await client.post(
+        "/api/automation/product-dataset-preview",
+        json={
+            "authorized": True,
+            "task_run_ids": [item["run"]["id"] for item in deduped_run_items],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "max_rows": 10,
+        },
+    )
+    assert deduped_dataset_response.status_code == 200
+    deduped_dataset = deduped_dataset_response.json()
+    assert deduped_dataset["summary"]["matched_runs"] == 2
+    assert deduped_dataset["summary"]["rows_count"] == 2
+    assert [row["values"]["title"] for row in deduped_dataset["rows"]] == [
+        "Demo Carry Bag",
+        "Weekend Tote",
+    ]
+    assert any(
+        event["event"] == "product_dataset_run_reused_deduplicated_source_records"
+        for event in deduped_dataset["audit_events"]
+    )
+
     save_payload = {
         "authorized": True,
         "name": "Summer Bags Product Dataset",
@@ -857,6 +900,12 @@ async def test_automation_product_batch_run_returns_field_completeness(
     )
     assert quality_gate_response.status_code == 400
     assert quality_gate_response.json()["detail"] == "dataset_quality_gate_failed"
+
+    task_runs_before_schedule_response = await client.get(
+        f"/api/tasks/{run_items[0]['task_id']}/runs"
+    )
+    assert task_runs_before_schedule_response.status_code == 200
+    task_runs_before_schedule_count = len(task_runs_before_schedule_response.json())
 
     schedule_response = await client.post(
         "/api/automation/product-schedule-approve",
@@ -911,7 +960,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     task_runs_after_schedule_response = await client.get(f"/api/tasks/{approved_task_id}/runs")
     assert task_runs_after_schedule_response.status_code == 200
-    assert len(task_runs_after_schedule_response.json()) == 1
+    assert len(task_runs_after_schedule_response.json()) == task_runs_before_schedule_count
 
     drift_response = await client.post(
         "/api/automation/product-drift-check",
@@ -1506,7 +1555,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     task_runs_after_drift_response = await client.get(f"/api/tasks/{approved_task_id}/runs")
     assert task_runs_after_drift_response.status_code == 200
-    assert len(task_runs_after_drift_response.json()) == 1
+    assert len(task_runs_after_drift_response.json()) == task_runs_before_schedule_count
 
 
 @pytest.mark.asyncio

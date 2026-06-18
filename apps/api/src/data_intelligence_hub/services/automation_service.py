@@ -539,7 +539,7 @@ async def run_reviewed_product_batch(
             )
             continue
 
-        raw_records = await list_raw_records(
+        raw_records, reused_deduplicated_records = await _product_records_for_task_run(
             session=session,
             workspace_id=workspace.id,
             task_run_id=run.id,
@@ -548,6 +548,9 @@ async def run_reviewed_product_batch(
         field_completeness = _product_field_completeness(task, raw_records)
         item_status = (
             "run_completed" if run.status in {"success", "partial_success"} else "run_failed"
+        )
+        effective_records_count = (
+            len(raw_records) if reused_deduplicated_records else run.records_count
         )
         items.append(
             AutomationProductBatchRunItemResponse(
@@ -558,7 +561,7 @@ async def run_reviewed_product_batch(
                 status=item_status,
                 blocked_reason=None,
                 run=run,
-                records_count=run.records_count,
+                records_count=effective_records_count,
                 entities_count=run.entities_count,
                 field_completeness=field_completeness,
                 error_message=run.error_message,
@@ -570,9 +573,10 @@ async def run_reviewed_product_batch(
                 "task_id": str(task.id),
                 "run_id": str(run.id),
                 "status": run.status,
-                "records_count": run.records_count,
+                "records_count": effective_records_count,
                 "entities_count": run.entities_count,
                 "completeness_percent": field_completeness.completeness_percent,
+                "deduplicated_source_records_reused": reused_deduplicated_records,
             }
         )
 
@@ -616,17 +620,12 @@ async def preview_product_dataset(
     ]
 
     for task_run_id in payload.task_run_ids:
-        raw_records = await list_raw_records(
+        product_records, reused_deduplicated_records = await _product_records_for_task_run(
             session=session,
             workspace_id=workspace.id,
             task_run_id=task_run_id,
             limit=payload.max_rows,
         )
-        product_records = [
-            raw_record
-            for raw_record in raw_records
-            if raw_record.record_type == "ecommerce_product_page"
-        ]
         if not product_records:
             audit_events.append(
                 {
@@ -636,6 +635,14 @@ async def preview_product_dataset(
                 }
             )
             continue
+        if reused_deduplicated_records:
+            audit_events.append(
+                {
+                    "event": "product_dataset_run_reused_deduplicated_source_records",
+                    "task_run_id": str(task_run_id),
+                    "records_count": len(product_records),
+                }
+            )
         matched_run_ids.add(task_run_id)
         for raw_record in product_records:
             if len(rows) >= payload.max_rows:
@@ -985,23 +992,19 @@ async def check_product_drift(
         completeness_drop_percent: int | None = None
         missing_fields: list[str] = []
         new_missing_fields: list[str] = []
+        reused_deduplicated_records = False
 
         if latest_run is None:
             issues.append("latest_run_missing")
         elif latest_run.status not in {"success", "partial_success"}:
             issues.append("latest_run_failed")
         else:
-            raw_records = await list_raw_records(
+            product_records, reused_deduplicated_records = await _product_records_for_task_run(
                 session=session,
                 workspace_id=workspace.id,
                 task_run_id=latest_run.id,
                 limit=500,
             )
-            product_records = [
-                raw_record
-                for raw_record in raw_records
-                if raw_record.record_type == "ecommerce_product_page"
-            ]
             field_completeness = _product_field_completeness_for_fields(
                 product_records,
                 approved_fields,
@@ -1057,6 +1060,9 @@ async def check_product_drift(
                 "issues": issues,
                 "run_started": False,
                 "alert_created": False,
+                "deduplicated_source_records_reused": (
+                    reused_deduplicated_records if latest_run else False
+                ),
             }
         )
 
@@ -2776,20 +2782,61 @@ async def _dataset_product_raw_records(
 ) -> list[RawRecord]:
     records: list[RawRecord] = []
     for task_run_id in task_run_ids:
-        raw_records = await list_raw_records(
+        product_records, _reused_deduplicated_records = await _product_records_for_task_run(
             session=session,
             workspace_id=workspace_id,
             task_run_id=task_run_id,
             limit=max_rows,
         )
-        records.extend(
-            raw_record
-            for raw_record in raw_records
-            if raw_record.record_type == "ecommerce_product_page"
-        )
+        records.extend(product_records)
         if len(records) >= max_rows:
             return records[:max_rows]
     return records
+
+
+async def _product_records_for_task_run(
+    *,
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_id: uuid.UUID,
+    limit: int,
+) -> tuple[list[RawRecord], bool]:
+    raw_records = await list_raw_records(
+        session=session,
+        workspace_id=workspace_id,
+        task_run_id=task_run_id,
+        limit=limit,
+    )
+    product_records = _product_page_records(raw_records)
+    if product_records:
+        return product_records, False
+
+    task_run = await session.get(TaskRun, task_run_id)
+    if (
+        task_run is None
+        or task_run.workspace_id != workspace_id
+        or task_run.status not in {"success", "partial_success"}
+    ):
+        return [], False
+    task = await session.get(CollectionTask, task_run.task_id)
+    if task is None or task.workspace_id != workspace_id:
+        return [], False
+    source_records = await list_raw_records(
+        session=session,
+        workspace_id=workspace_id,
+        source_id=task.source_id,
+        limit=limit,
+    )
+    fallback_records = _product_page_records(source_records)
+    return fallback_records, bool(fallback_records)
+
+
+def _product_page_records(raw_records: list[RawRecord]) -> list[RawRecord]:
+    return [
+        raw_record
+        for raw_record in raw_records
+        if raw_record.record_type == "ecommerce_product_page"
+    ]
 
 
 def _discovery_blocked_reasons(product_candidates: object) -> list[str]:
