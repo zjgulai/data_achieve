@@ -164,9 +164,10 @@ async def _fetch_html(url: str, http_client: httpx.AsyncClient | None) -> str:
     if not result.raw_records:
         raise CollectorError("ecommerce_product_discovery_empty_response")
     content = result.raw_records[0].content
-    if not isinstance(content, dict) or not isinstance(content.get("html_content"), str):
+    html_content = content.get("html_content") if isinstance(content, dict) else None
+    if not isinstance(html_content, str):
         raise CollectorError("ecommerce_product_discovery_missing_html")
-    return content["html_content"]
+    return html_content
 
 
 def analyze_ecommerce_product_discovery(
@@ -314,10 +315,10 @@ def _jsonld_product_url_candidates(
 
 def _walk_jsonld(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, list):
-        results: list[dict[str, Any]] = []
+        list_results: list[dict[str, Any]] = []
         for item in value:
-            results.extend(_walk_jsonld(item))
-        return results
+            list_results.extend(_walk_jsonld(item))
+        return list_results
     if not isinstance(value, dict):
         return []
     results: list[dict[str, Any]] = []
@@ -353,8 +354,9 @@ def _jsonld_url(item: dict[str, Any]) -> str | None:
     if isinstance(value, str):
         return value
     offers = item.get("offers")
-    if isinstance(offers, dict) and isinstance(offers.get("url"), str):
-        return offers["url"]
+    offer_url = offers.get("url") if isinstance(offers, dict) else None
+    if isinstance(offer_url, str):
+        return offer_url
     return None
 
 

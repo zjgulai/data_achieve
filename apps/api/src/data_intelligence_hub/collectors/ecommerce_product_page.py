@@ -207,9 +207,10 @@ async def _fetch_html(url: str, http_client: httpx.AsyncClient | None) -> str:
     if not result.raw_records:
         raise CollectorError("ecommerce_product_page_empty_response")
     content = result.raw_records[0].content
-    if not isinstance(content, dict) or not isinstance(content.get("html_content"), str):
+    html_content = content.get("html_content") if isinstance(content, dict) else None
+    if not isinstance(html_content, str):
         raise CollectorError("ecommerce_product_page_missing_html")
-    return content["html_content"]
+    return html_content
 
 
 def analyze_ecommerce_product_page(

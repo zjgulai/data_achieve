@@ -593,6 +593,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
     class FixtureEcommerceCollector(EcommerceProductPageCollector):
         async def collect(self) -> CollectionResult:
             url = str(self.config["url"])
+            extracted_fields: dict[str, object]
             if "weekend-tote" in url:
                 extracted_fields = {
                     "title": "Weekend Tote",
