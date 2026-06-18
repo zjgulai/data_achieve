@@ -516,6 +516,7 @@ export function DatasetsWorkspace() {
                         可在下方生成 CSV、JSON 或 JSONL 导出文件，下载接口会再次校验当前账号的数据集权限。
                       </p>
                     </div>
+                    <DatasetRowsPreview version={activeVersion} />
                   </div>
                 ) : (
                   <EmptyDetail text="暂无可展示的字段和清洗规则。" />
@@ -899,6 +900,52 @@ function VersionCard({ version }: { version: AutomationDatasetVersion }) {
   );
 }
 
+function DatasetRowsPreview({ version }: { version: AutomationDatasetVersion }) {
+  const rows = exportPreviewRowObjects(version).slice(0, 3);
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-[#E8D4CB] bg-[#FFFDFC] p-3">
+        <p className="text-sm font-semibold text-[#2E201C]">数据行预览</p>
+        <p className="mt-2 text-sm leading-6 text-[#7A625A]">
+          当前版本没有可直接展示的行级预览。
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-[#2E201C]">数据行预览</p>
+        <p className="text-xs font-semibold text-[#B47767]">
+          显示前 {rows.length} 行 · {version.selectedFields.length} 个字段
+        </p>
+      </div>
+      <div className="mt-3 grid gap-3">
+        {rows.map((row, index) => (
+          <article
+            className="rounded-xl border border-[#F0E1D9] bg-white p-3"
+            key={`${version.id}-row-${index}`}
+          >
+            <p className="text-xs font-semibold uppercase text-[#B47767]">Row {index + 1}</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {version.selectedFields.map((field) => (
+                <div className="min-w-0 rounded-lg bg-[#FFF8F4] px-3 py-2" key={field}>
+                  <p className="text-[11px] font-semibold uppercase text-[#B47767]">
+                    {field}
+                  </p>
+                  <p className="mt-1 break-words text-sm font-semibold text-[#2E201C]">
+                    {formatPreviewValue(row[field])}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DriftEventCard({ event }: { event: AutomationProductDriftEvent }) {
   return (
     <article className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
@@ -981,6 +1028,29 @@ function exportPrimaryKey(version: AutomationDatasetVersion) {
 function exportPreviewRows(version: AutomationDatasetVersion) {
   const rows = version.exportPreview.rows;
   return Array.isArray(rows) ? String(rows.length) : String(version.rowCount);
+}
+
+function exportPreviewRowObjects(version: AutomationDatasetVersion): Array<Record<string, unknown>> {
+  const rows = version.exportPreview.rows;
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  return rows.filter((row): row is Record<string, unknown> => {
+    return typeof row === "object" && row !== null && !Array.isArray(row);
+  });
+}
+
+function formatPreviewValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "缺失";
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => formatPreviewValue(item)).join(" / ");
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }
 
 function formatDatasetType(value: string) {

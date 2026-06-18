@@ -622,6 +622,8 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
     await expect(page.getByText("Version 2")).toBeVisible();
     await expect(page.getByText("cast price to decimal when present").first()).toBeVisible();
+    await expect(page.getByText("数据行预览")).toBeVisible();
+    await expect(page.getByText("Demo Carry Bag", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "生成导出文件" }).click();
     await expect(page.getByText("已生成导出文件")).toBeVisible();
     await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible();
