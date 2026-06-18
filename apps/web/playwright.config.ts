@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3100;
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const localBaseUrl = `http://127.0.0.1:${port}`;
+const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -11,6 +12,7 @@ export default defineConfig({
   expect: {
     timeout: 8_000,
   },
+  workers: externalBaseUrl && realApiMode ? 1 : undefined,
   use: {
     baseURL: externalBaseUrl ?? localBaseUrl,
     trace: "retain-on-failure",
