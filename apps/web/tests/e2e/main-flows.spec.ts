@@ -1012,7 +1012,21 @@ test.describe("MVP workspace routes", () => {
     if (testInfo.project.name === "mobile") {
       const mobileCards = page.locator("div.md\\:hidden [role='button']");
       if ((await mobileCards.count()) > 0) {
-        await expect(mobileCards.first()).toBeVisible();
+        const mobileTaskCard = fixtureTaskName
+          ? mobileCards.filter({ hasText: fixtureTaskName }).first()
+          : mobileCards.first();
+        await expect(mobileTaskCard).toBeVisible();
+        await mobileTaskCard.getByRole("button", { name: "日志" }).click();
+        await expect(page.getByText("查看最近一次运行详情")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "运行历史" })).toBeVisible();
+        await expect(page.getByText("重试历史")).toBeVisible();
+        const pauseButton = mobileTaskCard.getByRole("button", { name: "暂停" });
+        if ((await pauseButton.count()) > 0) {
+          await pauseButton.click();
+          await expect(page.getByText(/paused/)).toBeVisible();
+          await mobileTaskCard.getByRole("button", { name: "恢复" }).click();
+          await expect(page.getByText(/resumed/)).toBeVisible();
+        }
       } else if ((await emptyHint.count()) > 0) {
         await expect(emptyHint.first()).toBeVisible();
       } else {
@@ -1059,6 +1073,19 @@ test.describe("MVP workspace routes", () => {
       page.getByRole("heading", { name: "站内通知收件箱", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "通知偏好" })).toBeVisible();
+
+    const inbox = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "通知队列" }),
+    });
+    await inbox.getByPlaceholder("搜索标题、正文、引用").fill("not-a-real-notification");
+    await expect(inbox.getByText("暂无通知。")).toBeVisible();
+    await inbox.getByPlaceholder("搜索标题、正文、引用").fill("");
+    await inbox.getByRole("button", { name: "All", exact: true }).click();
+    await expect(inbox.locator("article").first()).toBeVisible();
+    await inbox.locator("select").selectOption("report_ready");
+    await expect(inbox.locator("article").first()).toBeVisible();
+    await inbox.locator("select").selectOption("all");
+    await inbox.getByRole("button", { name: "Unread", exact: true }).click();
 
     await page.getByLabel("报告 站内通知").click();
     await page.getByRole("button", { name: "保存偏好" }).click();
