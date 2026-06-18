@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import urldefrag, urlparse
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.collectors.base import CollectorError
@@ -704,6 +705,7 @@ async def save_product_dataset_version(
         raise CollectorError("dataset_project_lineage_ambiguous")
     project_id = next(iter(project_ids))
 
+    await _lock_workspace_for_dataset_save(session, workspace.id)
     dataset = await get_dataset_by_name(session, workspace.id, dataset_name)
     created_dataset = False
     if dataset is None:
@@ -2837,6 +2839,12 @@ def _product_page_records(raw_records: list[RawRecord]) -> list[RawRecord]:
         for raw_record in raw_records
         if raw_record.record_type == "ecommerce_product_page"
     ]
+
+
+async def _lock_workspace_for_dataset_save(session: AsyncSession, workspace_id: uuid.UUID) -> None:
+    await session.execute(
+        select(Workspace.id).where(Workspace.id == workspace_id).with_for_update()
+    )
 
 
 def _discovery_blocked_reasons(product_candidates: object) -> list[str]:
