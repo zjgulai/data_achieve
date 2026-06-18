@@ -19,6 +19,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.ecommerce_demo_fixture import demo_ecommerce_html
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 
 ECOMMERCE_PRODUCT_FIELDS = (
@@ -199,6 +200,11 @@ class EcommerceProductAnalysis:
 
 
 async def _fetch_html(url: str, http_client: httpx.AsyncClient | None) -> str:
+    if http_client is None:
+        fixture_html = demo_ecommerce_html(url)
+        if fixture_html is not None:
+            return fixture_html
+
     collector = GenericWebCollector(
         {"url": url, "extract_mode": "full_html"},
         http_client=http_client,

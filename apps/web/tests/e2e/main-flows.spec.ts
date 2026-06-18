@@ -561,11 +561,9 @@ test.describe("MVP workspace routes", () => {
     await expectNoVisibleTechnicalNoise(page);
   });
 
-  test("runs automation workbench through read-only drift check in mock mode", async ({
+  test("runs automation workbench through dataset save and read-only drift check", async ({
     page,
   }) => {
-    test.skip(realApiMode, "Automation workbench smoke is mock-only in this suite.");
-
     await page.goto("/automation");
     await expect(
       page.getByRole("heading", { name: "URL 到结构化采集计划" }),

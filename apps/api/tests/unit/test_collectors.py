@@ -275,6 +275,23 @@ async def test_ecommerce_product_page_collector_extracts_product_fields(
 
 
 @pytest.mark.asyncio
+async def test_ecommerce_product_page_collector_uses_demo_fixture_without_http_client() -> None:
+    collector = EcommerceProductPageCollector(
+        {"url": "https://shop.example/products/demo-bag"},
+    )
+
+    test_result = await collector.test()
+    collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    content = collect_result.raw_records[0].content
+    assert isinstance(content, dict)
+    assert content["extracted_fields"]["title"] == "Demo Carry Bag"
+    assert content["extracted_fields"]["price"] == 129.9
+    assert content["page_structure"]["product_schema_count"] == 1
+
+
+@pytest.mark.asyncio
 async def test_ecommerce_product_discovery_collector_detects_product_urls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -342,6 +359,27 @@ async def test_ecommerce_product_discovery_collector_detects_product_urls(
     assert content["tool_recommendations"][0]["collector_type"] == (
         "ecommerce_product_discovery"
     )
+
+
+@pytest.mark.asyncio
+async def test_ecommerce_product_discovery_collector_uses_demo_fixture_without_http_client(
+) -> None:
+    collector = EcommerceProductDiscoveryCollector(
+        {"url": "https://shop.example/collections/summer-bags", "max_products": 10},
+    )
+
+    test_result = await collector.test()
+    collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    content = collect_result.raw_records[0].content
+    assert isinstance(content, dict)
+    candidates = content["product_candidates"]
+    assert [candidate["url"] for candidate in candidates] == [
+        "https://shop.example/products/demo-bag",
+        "https://shop.example/products/weekend-tote",
+    ]
+    assert content["page_structure"]["page_type"] == "collection_listing"
 
 
 @pytest.mark.asyncio
