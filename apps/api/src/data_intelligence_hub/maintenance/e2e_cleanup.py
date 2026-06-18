@@ -259,6 +259,7 @@ async def cleanup_e2e_fixtures(
                     DatasetVersion.workspace_id.in_(workspace_ids),
                     DatasetVersion.project_id.in_(project_ids),
                     DatasetVersion.dataset_id.in_(dataset_ids),
+                    DatasetVersion.created_by_user_id.in_(user_ids),
                 ),
             ),
         )
@@ -285,6 +286,7 @@ async def cleanup_e2e_fixtures(
                     DatasetExportJob.project_id.in_(project_ids),
                     DatasetExportJob.dataset_id.in_(dataset_ids),
                     DatasetExportJob.dataset_version_id.in_(dataset_version_ids),
+                    DatasetExportJob.created_by_user_id.in_(user_ids),
                 ),
             ),
         )

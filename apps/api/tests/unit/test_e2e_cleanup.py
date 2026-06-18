@@ -110,6 +110,180 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
         assert await session.get(User, protected_fixture["user_id"]) is not None
 
 
+@pytest.mark.asyncio
+async def test_e2e_cleanup_removes_shared_workspace_dataset_versions_for_e2e_users() -> None:
+    session_factory = await _create_session_factory()
+    now = datetime.now(UTC)
+    old_created_at = now - timedelta(days=8)
+
+    async with session_factory() as session:
+        shared_owner = User(
+            email="owner@example.com",
+            password_hash="hashed-password",
+            name="Shared Owner",
+            status="active",
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        e2e_user = User(
+            email="e2e-shared@example.com",
+            password_hash="hashed-password",
+            name="E2E Shared User",
+            status="active",
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        session.add_all([shared_owner, e2e_user])
+        await session.flush()
+
+        shared_workspace = Workspace(
+            name="Shared Training Workspace",
+            slug="shared-training",
+            owner_id=shared_owner.id,
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        session.add(shared_workspace)
+        await session.flush()
+
+        shared_member = WorkspaceMember(
+            workspace_id=shared_workspace.id,
+            user_id=shared_owner.id,
+            role="owner",
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        e2e_member = WorkspaceMember(
+            workspace_id=shared_workspace.id,
+            user_id=e2e_user.id,
+            role="member",
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        shared_project = Project(
+            workspace_id=shared_workspace.id,
+            name="Shared Project",
+            description=None,
+            domain="ecommerce",
+            status="active",
+            owner_id=shared_owner.id,
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        session.add_all([shared_member, e2e_member, shared_project])
+        await session.flush()
+
+        shared_dataset = Dataset(
+            workspace_id=shared_workspace.id,
+            project_id=shared_project.id,
+            name="Product Dataset 2026-06-18",
+            dataset_type="ecommerce_product",
+            status="active",
+            description="Shared dataset created during production E2E",
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        session.add(shared_dataset)
+        await session.flush()
+
+        dataset_version = DatasetVersion(
+            dataset_id=shared_dataset.id,
+            workspace_id=shared_workspace.id,
+            project_id=shared_project.id,
+            created_by_user_id=e2e_user.id,
+            version_number=1,
+            source_task_run_ids=[],
+            selected_fields=["title"],
+            cleaning_script=["trim title"],
+            rows=[{"title": "Demo Carry Bag"}],
+            export_preview={"rows": [{"title": "Demo Carry Bag"}]},
+            row_count=1,
+            average_completeness_percent=100,
+            status="saved",
+            created_at=old_created_at,
+        )
+        session.add(dataset_version)
+        await session.flush()
+
+        drift_event = DatasetDriftEvent(
+            workspace_id=shared_workspace.id,
+            project_id=shared_project.id,
+            dataset_id=shared_dataset.id,
+            dataset_version_id=dataset_version.id,
+            event_type="ecommerce_product_drift",
+            status="critical",
+            thresholds={"completeness_drop_threshold_percent": 10},
+            summary={"critical_tasks": 1},
+            items=[],
+            audit_events=[],
+            note="Shared E2E drift",
+            created_at=old_created_at,
+        )
+        export_job = DatasetExportJob(
+            workspace_id=shared_workspace.id,
+            project_id=shared_project.id,
+            dataset_id=shared_dataset.id,
+            dataset_version_id=dataset_version.id,
+            created_by_user_id=e2e_user.id,
+            export_format="json",
+            status="success",
+            filename="shared.json",
+            content_type="application/json",
+            artifact_path="/tmp/shared.json",
+            artifact_size_bytes=32,
+            row_count=1,
+            checksum_sha256="1" * 64,
+            error_message=None,
+            audit_events=[],
+            created_at=old_created_at,
+            finished_at=old_created_at,
+        )
+        session.add_all([drift_event, export_job])
+        await session.commit()
+
+        ids = {
+            "shared_owner_id": shared_owner.id,
+            "e2e_user_id": e2e_user.id,
+            "shared_workspace_id": shared_workspace.id,
+            "shared_project_id": shared_project.id,
+            "shared_dataset_id": shared_dataset.id,
+            "dataset_version_id": dataset_version.id,
+            "drift_event_id": drift_event.id,
+            "export_job_id": export_job.id,
+            "e2e_member_id": e2e_member.id,
+        }
+
+    async with session_factory() as session:
+        report = await cleanup_e2e_fixtures(session, dry_run=True, older_than_hours=24 * 7)
+        await session.commit()
+
+    assert report.counts["users"] == 1
+    assert report.counts["workspaces"] == 0
+    assert report.counts["projects"] == 0
+    assert report.counts["datasets"] == 0
+    assert report.counts["dataset_versions"] == 1
+    assert report.counts["dataset_drift_events"] == 1
+    assert report.counts["dataset_export_jobs"] == 1
+    assert report.samples["users"] == ["e2e-shared@example.com"]
+
+    async with session_factory() as session:
+        report = await cleanup_e2e_fixtures(session, dry_run=False, older_than_hours=24 * 7)
+        await session.commit()
+
+    assert report.dry_run is False
+    async with session_factory() as session:
+        assert await session.get(User, ids["e2e_user_id"]) is None
+        assert await session.get(WorkspaceMember, ids["e2e_member_id"]) is None
+        assert await session.get(DatasetVersion, ids["dataset_version_id"]) is None
+        assert await session.get(DatasetDriftEvent, ids["drift_event_id"]) is None
+        assert await session.get(DatasetExportJob, ids["export_job_id"]) is None
+
+        assert await session.get(User, ids["shared_owner_id"]) is not None
+        assert await session.get(Workspace, ids["shared_workspace_id"]) is not None
+        assert await session.get(Project, ids["shared_project_id"]) is not None
+        assert await session.get(Dataset, ids["shared_dataset_id"]) is not None
+
+
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
