@@ -26,6 +26,22 @@ services:
     networks:
       - scrapy_internal
 
+  export-init:
+    command:
+      [
+        "sh",
+        "-c",
+        "mkdir -p /app/exports/datasets && chown -R app:app /app/exports",
+      ]
+    container_name: data_achieve_scrapy_export_init
+    image: data_achieve_scrapy_api:latest
+    networks:
+      - scrapy_internal
+    restart: "no"
+    user: root
+    volumes:
+      - scrapy_export_data:/app/exports
+
   api:
     build:
       context: ../../../apps/api
@@ -34,6 +50,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      export-init:
+        condition: service_completed_successfully
     environment:
       APP_ENV: production
       AUTH_COOKIE_SECURE: ${SCRAPY_AUTH_COOKIE_SECURE:-true}
