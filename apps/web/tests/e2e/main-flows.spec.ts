@@ -131,6 +131,56 @@ async function expectNoVisibleTechnicalNoise(page: Page) {
   }
 }
 
+async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
+  await page.goto("/automation");
+  await expect(
+    page.getByRole("heading", { name: "URL 到结构化采集计划" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "商品发现" }).click();
+  await page
+    .getByLabel(
+      "我确认这是公开可访问页面，采集分析不涉及登录态、验证码绕过或未授权数据访问。",
+    )
+    .check();
+  await page.getByRole("button", { name: "发现商品 URL" }).click();
+  await expect(
+    page.getByRole("heading", { name: "候选商品 URL" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "生成采集源预览" }).click();
+  await expect(
+    page.getByRole("heading", { name: "子商品页采集源预览" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "确认创建 Source/Task" }).click();
+  await expect(page.getByText("已创建或复用采集源")).toBeVisible();
+  await page.getByRole("button", { name: "小批量运行" }).click();
+  await expect(page.getByText("采集结果数据集预览")).toBeVisible();
+  await expect(page.getByRole("button", { name: "标题" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "价格" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "SKU" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "规范 URL" })).toBeVisible();
+
+  await page.getByRole("button", { name: "生成数据集预览" }).click();
+  await expect(page.getByText("数据集名称")).toBeVisible();
+  if (datasetName) {
+    await page.getByLabel("数据集名称").fill(datasetName);
+  }
+  await page.getByRole("button", { name: "保存 Dataset Version" }).click();
+  await expect(page.getByText("Schedule Approval")).toBeVisible();
+  await page.getByRole("button", { name: "审批调度" }).click();
+  await expect(page.getByText("Drift Check")).toBeVisible();
+  await page.getByRole("button", { name: "检查漂移" }).click();
+  await expect(page.getByText("关键漂移", { exact: true })).toBeVisible();
+  await expect(page.getByText("critical")).toBeVisible();
+  await expect(
+    page.getByText("漂移检查为只读评估，不会启动采集、创建告警或发送通知。"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "保存漂移快照" }).click();
+  await expect(page.getByText("已保存漂移快照")).toBeVisible();
+  await expect(page.getByText("漂移历史")).toBeVisible();
+  await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
+}
+
 async function createTaskFlowFixture(
   request: APIRequestContext,
   suffix: string,
@@ -407,6 +457,55 @@ test.describe("MVP workspace routes", () => {
     await expectNoVisibleTechnicalNoise(page);
   });
 
+  test("filters toolkit and validates URL preflight guardrails", async ({
+    page,
+  }) => {
+    await page.goto("/toolkit");
+    await expect(
+      page.getByRole("heading", { name: "数据采集培训工具与方法库" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "授权 URL 预检向导" }),
+    ).toBeVisible();
+    await expect(page.getByText("浏览器解析实验室")).toBeVisible();
+    await expect(page.getByText("平台采集方法卡")).toBeVisible();
+
+    const search = page.getByLabel("搜索采集工具库");
+    await search.fill("Playwright");
+    await expect(
+      page.locator("button").filter({ hasText: "Playwright" }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "安装 SOP", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "验收命令", exact: true }),
+    ).toBeVisible();
+
+    await search.fill("not-a-real-tool-filter");
+    await expect(
+      page.getByText("没有匹配工具，放宽关键词或筛选条件。"),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "清空筛选" }).click();
+    await expect(
+      page.getByRole("heading", { name: "工具雷达", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator("button").filter({ hasText: "Firecrawl" }).first(),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "生成预检报告" }).click();
+    await expect(page.getByText("请输入需要预检的授权 URL。")).toBeVisible();
+    await page
+      .getByPlaceholder("https://example.com")
+      .fill("https://example.com");
+    await page.getByRole("button", { name: "生成预检报告" }).click();
+    await expect(
+      page.getByText("必须先确认该 URL 属于自有、授权或明确允许分析的目标。"),
+    ).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
   test("generates and sends a report", async ({ page, request }, testInfo) => {
     await createReportFixture(request, testInfo.project.name);
     await page.goto("/reports");
@@ -564,43 +663,46 @@ test.describe("MVP workspace routes", () => {
   test("runs automation workbench through dataset save and read-only drift check", async ({
     page,
   }) => {
-    await page.goto("/automation");
-    await expect(
-      page.getByRole("heading", { name: "URL 到结构化采集计划" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "商品发现" }).click();
-    await page
-      .getByLabel("我确认这是公开可访问页面，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
-      .check();
-    await page.getByRole("button", { name: "发现商品 URL" }).click();
-    await expect(
-      page.getByRole("heading", { name: "候选商品 URL" }),
-    ).toBeVisible();
+    await createAutomationDatasetAsset(page);
+  });
 
-    await page.getByRole("button", { name: "生成采集源预览" }).click();
+  test("operates real dataset asset export and drift alert preview", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!realApiMode, "Dataset asset write-through smoke needs real API.");
+
+    const datasetName = `Playwright Dataset ${testInfo.project.name} ${Date.now()}`;
+    await createAutomationDatasetAsset(page, datasetName);
+
+    await page.goto("/datasets");
     await expect(
-      page.getByRole("heading", { name: "子商品页采集源预览" }),
+      page.getByRole("heading", { name: "数据集资产台", exact: true }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "确认创建 Source/Task" }).click();
-    await expect(page.getByText("已创建或复用采集源")).toBeVisible();
-    await page.getByRole("button", { name: "小批量运行" }).click();
-    await expect(page.getByText("采集结果数据集预览")).toBeVisible();
-    await page.getByRole("button", { name: "生成数据集预览" }).click();
-    await expect(page.getByText("数据集名称")).toBeVisible();
-    await page.getByRole("button", { name: "保存 Dataset Version" }).click();
-    await expect(page.getByText("Schedule Approval")).toBeVisible();
-    await page.getByRole("button", { name: "审批调度" }).click();
-    await expect(page.getByText("Drift Check")).toBeVisible();
-    await page.getByRole("button", { name: "检查漂移" }).click();
-    await expect(page.getByText("关键漂移", { exact: true })).toBeVisible();
-    await expect(page.getByText("critical")).toBeVisible();
-    await expect(
-      page.getByText("漂移检查为只读评估，不会启动采集、创建告警或发送通知。"),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "保存漂移快照" }).click();
-    await expect(page.getByText("已保存漂移快照")).toBeVisible();
-    await expect(page.getByText("漂移历史")).toBeVisible();
-    await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
+    const datasetCard = page.locator("button").filter({ hasText: datasetName }).first();
+    await expect(datasetCard).toBeVisible({ timeout: 15_000 });
+    await datasetCard.click();
+    await expect(page.getByRole("heading", { name: "选中数据集概览" })).toBeVisible();
+    await expect(page.getByText(datasetName).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "版本历史" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "版本字段与清洗规则" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "数据集导出" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
+    await expect(page.getByText("数据行预览")).toBeVisible();
+    await expect(page.getByText("Demo Carry Bag", { exact: true }).first()).toBeVisible();
+
+    await page.getByLabel("导出格式").selectOption("json");
+    await page.getByRole("button", { name: "生成导出文件" }).click();
+    await expect(page.getByText("已生成导出文件")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible();
+
+    await page.getByLabel("触发阈值").selectOption("warning");
+    await page.getByLabel("通知通道").selectOption("in_app");
+    await page.getByRole("button", { name: "预览告警策略" }).click();
+    await expect(page.getByText("匹配 DriftEvent")).toBeVisible();
+    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
   });
 
   test("renders dataset assets and drift history in mock mode", async ({ page }) => {
