@@ -49,14 +49,14 @@ source: human+ai
 9. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
 10. 清洗计划已升级为可保存、可试跑、可追踪到数据集版本的正式草案资产。
 11. 当前 Platform Package 已覆盖 `shopify-independent-ecommerce`、`github-api-first` 与 `public-page-structure-preflight`，三者均为 `executable` 边界。
-12. 最新生产部署 commit 为 `dda2786638d4aac8647bbff8b3694b05113678f3`，生产真实 API E2E 已验证 `/automation` 主链路与平台包应用链路。
+12. 最新生产部署 commit 为 `20c4bd252bbf85cac0a7d68acaa199e087e6fa05`，生产真实 API E2E 已验证 `/automation` 主链路、平台包应用链路、GitHub 工具雷达 Dataset/导出/漂移/报告闭环。
 
 ### 2.2 文档与实现不一致
 
 1. 稳定 PRD 仍以 GitHub Repo、GitHub Topic、Generic Web、Manual JSON 为 MVP Collector 叙述主轴，需要继续向自动化采集工作台叙事迁移。
 2. 架构和 API 文档已开始同步 Automation、Dataset Export、Platform Package、采集计划、清洗计划和生产验收事实；后续需要防止再次漂移。
 3. Phase 1 草案中的“Dataset 记录级导出未完成”已经过期，当前实现中已存在导出模型、服务、路由和前端入口。
-4. 仍需把 GitHub/API-first 从“Source/Task/Run 可执行”推进到 Dataset、导出、漂移和报告闭环；marketplace、social 等平台包仍需先定义官方 API、授权导出或人工导入闭环。
+4. GitHub/API-first 已从“Source/Task/Run 可执行”推进到 Dataset、导出、漂移和报告闭环；marketplace、social 等平台包仍需先定义官方 API、授权导出或人工导入闭环。
 
 ## 3. 产品定位重述
 
@@ -317,13 +317,13 @@ P2 是平台稳定后的增强能力。
 
 ## 9. 下一步执行建议
 
-当前轮次执行 Phase A 的文档和状态同步。
+当前轮次先执行 Phase B 后的文档和状态同步，再进入 Phase C。
 
-Phase A 完成后的下一轮建议：
+状态同步后的下一轮建议：
 
-1. 先用当前文档状态确认 `/automation`、`/datasets`、漂移和告警相关页面中仍残留的内部技术名词。
-2. 进入 Phase B：GitHub/API-first 数据集和报告闭环。
-3. 之后进入 Phase C：browser-harness 支撑的浏览器结构解析诊断深化。
+1. 进入 Phase C：browser-harness 支撑的浏览器结构解析诊断深化。
+2. 首个切片只做授权公开页面的只读结构诊断，不做登录绕过、反检测或风控规避。
+3. 将诊断结果转成“推荐采集路径 / 不建议自动采集原因 / 字段稳定性 / 后续清洗建议”。
 4. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
 
 ## 10. 不确定项
@@ -331,7 +331,7 @@ Phase A 完成后的下一轮建议：
 以下事项需要在进入对应 Phase 前再核验：
 
 1. Dataset Export 在生产容器中的文件持久化目录和备份策略。
-2. GitHub/API-first 是否优先从 topic 监控、repo 列表导入，还是 release/README 解析开始。
+2. GitHub/API-first 下一步增强优先级：repo release/README 解析、issue 活跃度、license/default branch 画像和 topic 长期监控。
 3. browser-harness 结构解析预检是否仅做本地/生产 E2E 工具，还是进入后端服务能力。
 4. marketplace 和 social 平台采集的授权边界和数据来源。
 5. 是否在 P2 前提前引入 COS/S3，还是继续使用本地 volume。

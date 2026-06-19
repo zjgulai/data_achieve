@@ -269,15 +269,16 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 1. 本轮为本地实现与本地验收，生产未部署。
 2. Report 资产保存不会启动采集、创建通知或发送邮件。
 
-### 2026-06-19 平台包追加部署与生产验收记录
+### 2026-06-19 工具雷达 Report 资产部署与生产验收记录
 
 事实：
 
-1. 最新生产部署 commit：`dda2786638d4aac8647bbff8b3694b05113678f3`。
-2. 生产 release 目录：`/opt/data-achieve-scrapy/releases/20260619190523-dda2786638d4`。
+1. 最新生产部署 commit：`20c4bd252bbf85cac0a7d68acaa199e087e6fa05`。
+2. 生产运行目录：`/opt/data-achieve-scrapy/app`，该目录当前 HEAD 为 `20c4bd2`。
 3. `/api/automation/platform-packages` 在生产返回 3 个平台包：`shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`。
 4. `github-api-first` 已升级为 `executable`，可从 `/automation` 创建 GitHub topic Source、启用 Task，并执行一次公开 GitHub API 采集。
 5. `public-page-structure-preflight` 已作为 `executable` 平台包上线，可从 `/automation` 调用公开网页结构预检；授权通过后可继续创建 `generic_web` 采集源。
+6. GitHub 工具雷达 Dataset 已可进入导出、漂移检查和只读报告链路，并可保存为 `report_type=github_tool_radar` 的 Report 中心资产。
 
 生产验收：
 
@@ -286,13 +287,14 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 3. 生产健康检查返回 `status=ok`、`database=connected`、`schema_revision=202606110020`、`schema_head=202606110020`。
 4. `/automation`、`/toolkit`、`/tasks`、`/datasets`、`/reports`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities` 页面 HTTP 检查均返回 200。
 5. E2E fixture cleanup 与 demo-noise cleanup 已执行，后续 dry-run 计数为 0。
+6. 2026-06-19 只读复核：`https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`。
 
 边界：
 
-1. 本记录覆盖下方 `db6189f` 历史基线中的 GitHub/API-first SOP-only 边界；当前事实以本记录为准。
-2. GitHub/API-first 当前可执行范围是 Topic Radar 的 Source/Task/Run 链路；工具情报 Dataset、导出、漂移和报告闭环仍是下一阶段任务。
+1. 本记录覆盖下方 `db6189f` 历史基线中的 GitHub/API-first SOP-only 边界，也覆盖上一轮 `dda2786` 平台包部署记录；当前事实以本记录为准。
+2. GitHub/API-first 当前可执行范围是 Topic Radar 的 Source/Task/Run、Dataset、导出、漂移、只读报告和 Report 资产链路；通知、邮件、自动采集调度仍保持 fail-closed。
 3. 公开网页结构预检当前是授权 gate 和结构诊断，不实现登录绕过、反检测或风控规避。
-4. Gateway reload 首次遇到 Edge 容器 `starting` 状态，等待健康检查变为 `healthy` 后重试成功；该经验已写入自进化候选池。
+4. 远程 GitHub fetch 曾遇到传输失败，本次部署先保存远程 dirty worktree 的 status、patch 与 stash，再通过 git bundle fast-forward 到 `20c4bd2`；该经验已写入自进化候选池。
 
 ### 2026-06-19 P0 生产部署与真实浏览器验收记录（历史基线：db6189f）
 
@@ -317,7 +319,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 1. 本节覆盖下方各“本地实现记录”中的 `production unchanged` 历史边界；那些边界只描述当时提交前状态。
 2. 平台包仍处于首批静态 contract registry 阶段，尚未支持用户自定义平台包持久化。
-3. GitHub/API-first 当时仍是 SOP/import-only 平台包；该历史边界已被上方 `dda2786` 生产记录覆盖。
+3. GitHub/API-first 当时仍是 SOP/import-only 平台包；该历史边界已被上方 `20c4bd2` 生产记录覆盖。
 4. 采集任务运行锁、重试预算、超时策略和更完整的前端提交中状态仍是后续可靠性增强项。
 
 ### 2026-06-19 P0-1 本地实现记录
@@ -421,5 +423,5 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 1. `production unchanged`：本记录不代表生产环境已部署或生产数据库已执行 migration。
 2. 平台包目前是静态 contract registry；尚未支持用户自定义平台包持久化。
-3. GitHub/API-first 当时仍是 SOP/import-only，不代表已经进入 Automation 一键运行链路；当前事实以上方 `dda2786` 生产记录为准。
+3. GitHub/API-first 当时仍是 SOP/import-only，不代表已经进入 Automation 一键运行链路；当前事实以上方 `20c4bd2` 生产记录为准。
 4. 生产 read-only smoke、授权生产写入 E2E、生产 E2E fixture cleanup 尚未执行。
