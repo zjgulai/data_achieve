@@ -273,8 +273,8 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 事实：
 
-1. 最新生产部署 commit：`20c4bd252bbf85cac0a7d68acaa199e087e6fa05`。
-2. 生产运行目录：`/opt/data-achieve-scrapy/app`，该目录当前 HEAD 为 `20c4bd2`。
+1. 该轮生产部署 commit：`20c4bd252bbf85cac0a7d68acaa199e087e6fa05`。
+2. 生产运行目录：`/opt/data-achieve-scrapy/app`，该轮部署完成时 HEAD 为 `20c4bd2`。
 3. `/api/automation/platform-packages` 在生产返回 3 个平台包：`shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`。
 4. `github-api-first` 已升级为 `executable`，可从 `/automation` 创建 GitHub topic Source、启用 Task，并执行一次公开 GitHub API 采集。
 5. `public-page-structure-preflight` 已作为 `executable` 平台包上线，可从 `/automation` 调用公开网页结构预检；授权通过后可继续创建 `generic_web` 采集源。
@@ -295,6 +295,30 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 2. GitHub/API-first 当前可执行范围是 Topic Radar 的 Source/Task/Run、Dataset、导出、漂移、只读报告和 Report 资产链路；通知、邮件、自动采集调度仍保持 fail-closed。
 3. 公开网页结构预检当前是授权 gate 和结构诊断，不实现登录绕过、反检测或风控规避。
 4. 远程 GitHub fetch 曾遇到传输失败，本次部署先保存远程 dirty worktree 的 status、patch 与 stash，再通过 git bundle fast-forward 到 `20c4bd2`；该经验已写入自进化候选池。
+
+### 2026-06-19 Phase C-1 结构预检采集路径建议部署记录
+
+事实：
+
+1. 最新生产部署 commit：`d9b2a5e35274963c1804d200824d5767d2f4ae3d`。
+2. `/api/toolkit/preflight` 新增 `collection_strategy`，包含 `recommended_path`、`label`、`fit`、`confidence`、`field_stability`、`reasons`、`next_steps`、`cleaning_notes`。
+3. `/automation` 的结构预检结果新增“采集路径建议”面板，展示推荐路径、适配度、字段稳定性、判断依据、下一步和清洗建议。
+4. `/toolkit` 的授权 URL 预检报告同步展示同一策略字段。
+
+验收证据：
+
+1. 本地 `bash scripts/verify-mvp.sh` 通过：API `94 passed`，Web unit `1 passed`，Playwright `34 passed / 8 skipped`。
+2. 生产 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`。
+3. 生产 `/dashboard`、`/automation`、`/toolkit`、`/datasets`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities` 页面 HTTP 检查均返回 200。
+4. 生产只读 preflight smoke 返回 `recommended_path=generic_web`、`fit=high`、`field_stability=medium`、`run_started=false`。
+5. 生产真实 API E2E 通过：Playwright `34 passed / 8 skipped`。
+6. E2E fixture cleanup 已执行，清理后 dry-run 全部计数为 0。
+
+边界：
+
+1. 本轮新增的是结构诊断和策略建议，不执行登录绕过、反检测或风控规避。
+2. 生产只读 preflight smoke 使用登录态调用授权公开 URL 预检，不创建 Source、Task、Run、Dataset 或 Report。
+3. 真实 API E2E 产生的一次性测试数据已通过 cleanup 脚本清理。
 
 ### 2026-06-19 P0 生产部署与真实浏览器验收记录（历史基线：db6189f）
 

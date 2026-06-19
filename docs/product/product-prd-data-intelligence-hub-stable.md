@@ -16,9 +16,9 @@ source: human+ai
 >
 > 本 PRD 由两份源 PRD 交叉审计后整合而来，融合了四轮全维度调研的用户决策，是一份面向 AI 可执行开发的产品规格书。
 
-> **2026-06-19 当前执行附录**：本 PRD 的历史设计目标仍保留，但当前产品已经从“跨平台数据采集情报平台”推进为“自动化数据采集工作台”。最新已验证主链路是：授权 URL/API/导入样本 -> 结构解析 -> 字段筛选 -> 采集计划 -> 清洗计划试跑 -> Dataset 保存/导出 -> 漂移监控/告警/报告。生产部署 commit `20c4bd2` 已验证 3 个可执行平台包：独立站商品采集、GitHub API-first Topic Radar、公开网页结构预检。
+> **2026-06-19 当前执行附录**：本 PRD 的历史设计目标仍保留，但当前产品已经从“跨平台数据采集情报平台”推进为“自动化数据采集工作台”。最新已验证主链路是：授权 URL/API/导入样本 -> 结构解析 -> 字段筛选 -> 采集计划 -> 清洗计划试跑 -> Dataset 保存/导出 -> 漂移监控/告警/报告。生产部署 commit `d9b2a5e` 已验证 3 个可执行平台包：独立站商品采集、GitHub API-first Topic Radar、公开网页结构预检。
 >
-> **当前增量状态**：GitHub API-first Topic Radar 已验证从 topic 采集运行 -> `github_tool_radar` DatasetVersion -> 导出 -> 漂移快照 -> 工具雷达报告 -> Report 中心资产保存的闭环。Report 资产保存只写 `reports` 与 report audit event，不启动采集、不创建通知、不发送邮件；生产健康检查与真实 API E2E 已完成，后续重点转入浏览器结构解析预检和更多平台包深化。
+> **当前增量状态**：GitHub API-first Topic Radar 已验证从 topic 采集运行 -> `github_tool_radar` DatasetVersion -> 导出 -> 漂移快照 -> 工具雷达报告 -> Report 中心资产保存的闭环。浏览器结构预检已新增采集路径建议，能输出推荐路径、适配度、字段稳定性、判断依据、下一步和清洗建议。Report 资产保存只写 `reports` 与 report audit event，不启动采集、不创建通知、不发送邮件；结构预检只读 smoke 不启动采集运行。
 
 ---
 

@@ -49,7 +49,7 @@ source: human+ai
 9. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
 10. 清洗计划已升级为可保存、可试跑、可追踪到数据集版本的正式草案资产。
 11. 当前 Platform Package 已覆盖 `shopify-independent-ecommerce`、`github-api-first` 与 `public-page-structure-preflight`，三者均为 `executable` 边界。
-12. 最新生产部署 commit 为 `20c4bd252bbf85cac0a7d68acaa199e087e6fa05`，生产真实 API E2E 已验证 `/automation` 主链路、平台包应用链路、GitHub 工具雷达 Dataset/导出/漂移/报告闭环。
+12. 最新生产部署 commit 为 `d9b2a5e35274963c1804d200824d5767d2f4ae3d`，生产真实 API E2E 已验证 `/automation` 主链路、平台包应用链路、GitHub 工具雷达 Dataset/导出/漂移/报告闭环，以及结构预检采集路径建议的 API 返回。
 
 ### 2.2 文档与实现不一致
 
@@ -317,13 +317,13 @@ P2 是平台稳定后的增强能力。
 
 ## 9. 下一步执行建议
 
-当前轮次先执行 Phase B 后的文档和状态同步，再进入 Phase C。
+当前轮次已完成 Phase B 后的文档和状态同步，并完成 Phase C-1 结构预检采集路径建议。
 
 状态同步后的下一轮建议：
 
-1. 进入 Phase C：browser-harness 支撑的浏览器结构解析诊断深化。
-2. 首个切片只做授权公开页面的只读结构诊断，不做登录绕过、反检测或风控规避。
-3. 将诊断结果转成“推荐采集路径 / 不建议自动采集原因 / 字段稳定性 / 后续清洗建议”。
+1. 继续 Phase C-2：browser-harness 支撑的真实浏览器结构解析诊断深化。
+2. 将当前静态 preflight 的策略建议与 browser-harness 的可见文本、accessibility snapshot、network 摘要和截图证据对齐。
+3. 只处理授权公开页面，不做登录绕过、反检测或风控规避。
 4. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
 
 ## 10. 不确定项
