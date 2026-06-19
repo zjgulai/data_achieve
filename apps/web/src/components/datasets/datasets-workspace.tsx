@@ -383,7 +383,7 @@ export function DatasetsWorkspace() {
         <section className="rounded-2xl border border-dashed border-[#E8D4CB] bg-white p-6">
           <h2 className="text-lg font-semibold text-[#2E201C]">暂无已保存的数据集</h2>
           <p className="mt-2 text-sm leading-6 text-[#7A625A]">
-            先到自动采集工作台完成商品发现、小批量采集、数据集预览和 Dataset Version 保存，保存后会在这里形成可回看的资产。
+            先到自动采集工作台完成商品发现、小批量采集、数据集预览和数据集版本保存，保存后会在这里形成可回看的资产。
           </p>
           <Link
             className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F]"
@@ -474,7 +474,7 @@ export function DatasetsWorkspace() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyDetail text="当前数据集还没有保存版本。先在自动采集工作台完成数据集预览并保存 Dataset Version。" />
+                  <EmptyDetail text="当前数据集还没有保存版本。先在自动采集工作台完成数据集预览并保存数据集版本。" />
                 )}
               </Panel>
 
@@ -528,7 +528,7 @@ export function DatasetsWorkspace() {
               {activeVersion ? (
                 <div className="grid gap-4">
                   <p className="text-sm leading-6 text-[#7A625A]">
-                    将当前 Dataset Version 写出为受控导出文件。导出不会启动采集任务，也不会修改数据集版本；历史文件可直接下载用于培训、复盘或下游导入。
+                    将当前数据集版本写出为受控导出文件。导出不会启动采集任务，也不会修改数据集版本；历史文件可直接下载用于培训、复盘或下游导入。
                   </p>
                   <div className="grid gap-3 md:grid-cols-[minmax(0,180px)_auto_1fr] md:items-end">
                     <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
@@ -625,7 +625,7 @@ export function DatasetsWorkspace() {
                   )}
                 </div>
               ) : (
-                <EmptyDetail text="暂无可导出的 Dataset Version。" />
+                <EmptyDetail text="暂无可导出的数据集版本。" />
               )}
             </Panel>
 

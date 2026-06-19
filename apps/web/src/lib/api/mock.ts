@@ -1132,7 +1132,7 @@ export function getMockAutomationProductFanoutPreview(
       executionBoundary: "preview_only_no_database_write",
     },
     blockedReasons: [
-      "当前结果仅为预览，尚未创建真实 Source、Task 或采集运行。",
+      "当前结果仅为预览，尚未创建真实采集源、任务或采集运行。",
     ],
   };
 }
@@ -1479,7 +1479,7 @@ export function getMockAutomationProductScheduleApprove(
         run_started: false,
       },
     ],
-    blockedReasons: ["调度审批只更新 Task 配置，不会立即启动采集运行。"],
+    blockedReasons: ["调度审批只更新任务配置，不会立即启动采集运行。"],
   };
 }
 

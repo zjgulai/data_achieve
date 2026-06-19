@@ -1037,7 +1037,7 @@ export async function createAutomationCleaningPlan(
       datasetVersionCreated: false,
       runStarted: false,
       auditEvents: [{ event: "mock_cleaning_plan_created" }],
-      blockedReasons: ["CleaningPlan 已保存为草案；尚未保存 DatasetVersion 或启动采集。"],
+      blockedReasons: ["清洗计划已保存为草案；尚未保存数据集版本或启动采集。"],
     };
   }
   const response = await apiFetch<AutomationCleaningPlanCreateResponse>(
@@ -1970,7 +1970,7 @@ function getMockAutomationCleaningPlanDryRun(
       rows: rows.map((row) => row.afterValues),
     },
     auditEvents: [{ event: "mock_cleaning_plan_dry-run_requested" }],
-    blockedReasons: ["CleaningPlan dry-run 只转换样本行，不会保存 DatasetVersion。"],
+    blockedReasons: ["清洗规则试跑只转换样本行，不会保存数据集版本。"],
   };
 }
 

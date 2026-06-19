@@ -151,7 +151,7 @@ async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
   await expect(
     page.getByRole("heading", { name: "子商品页采集源预览" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "确认创建 Source/Task" }).click();
+  await page.getByRole("button", { name: "确认创建采集源和任务" }).click();
   await expect(page.getByText("已创建或复用采集源")).toBeVisible();
   await page.getByRole("button", { name: "小批量运行" }).click();
   await expect(page.getByText("采集结果数据集预览")).toBeVisible();
@@ -165,7 +165,7 @@ async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
   if (datasetName) {
     await page.getByLabel("数据集名称").fill(datasetName);
   }
-  await page.getByRole("button", { name: "保存 Dataset Version" }).click();
+  await page.getByRole("button", { name: "保存数据集版本" }).click();
   await expect(page.getByText("Schedule Approval")).toBeVisible();
   await page.getByRole("button", { name: "审批调度" }).click();
   await expect(page.getByText("Drift Check")).toBeVisible();
@@ -762,7 +762,7 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
-    await expect(page.getByText("SOP/import-only")).toBeVisible();
+    await expect(page.getByText("仅导入 SOP")).toBeVisible();
 
     await page
       .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })

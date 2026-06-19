@@ -991,7 +991,7 @@ async def dry_run_cleaning_plan(
             }
         ],
         blocked_reasons=[
-            "CleaningPlan dry-run 只转换样本行，不会保存 DatasetVersion。",
+            "清洗规则试跑只转换样本行，不会保存数据集版本。",
         ],
     )
 
@@ -1051,7 +1051,7 @@ async def create_cleaning_plan_asset(
             }
         ],
         blocked_reasons=[
-            "CleaningPlan 已保存为草案；尚未保存 DatasetVersion 或启动采集。",
+            "清洗计划已保存为草案；尚未保存数据集版本或启动采集。",
         ],
     )
 
@@ -1313,11 +1313,11 @@ async def approve_product_schedule(
 
     await session.commit()
 
-    blocked_reasons = ["调度审批只更新 Task 配置，不会立即启动采集运行。"]
+    blocked_reasons = ["调度审批只更新任务配置，不会立即启动采集运行。"]
     if blocked_tasks:
-        blocked_reasons.append("部分 Task 未通过调度审批条件，已在 blocked_tasks 中列出。")
+        blocked_reasons.append("部分任务未通过调度审批条件，已在阻断任务列表中列出。")
     if not approved_tasks:
-        blocked_reasons.append("没有 Task 进入已审批调度状态。")
+        blocked_reasons.append("没有任务进入已审批调度状态。")
 
     return AutomationProductScheduleApproveResponse(
         approved_at=approved_at,
@@ -1511,7 +1511,7 @@ async def check_product_drift(
     summary = _product_drift_summary(payload.task_ids, items)
     blocked_reasons = ["漂移检查为只读评估，不会启动采集、创建告警或发送通知。"]
     if summary.blocked_tasks:
-        blocked_reasons.append("部分 Task 未通过 DatasetVersion 审批谱系或类型校验。")
+        blocked_reasons.append("部分任务未通过数据集版本审批谱系或类型校验。")
     if summary.critical_tasks:
         blocked_reasons.append("存在关键漂移，请先复核字段缺失、采集失败或数据集基准。")
     elif summary.warning_tasks:
@@ -2901,7 +2901,7 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 AutomationPlatformPackageRiskBoundaryResponse(
                     condition="字段缺失率高于质量阈值",
                     severity="warning",
-                    guidance="先调整字段选择和 CleaningPlan，再保存 DatasetVersion。",
+                    guidance="先调整字段选择和清洗计划，再保存数据集版本。",
                 ),
             ],
             sop_links=[
@@ -4065,7 +4065,7 @@ def _fanout_blocked_reasons(
         blocked.append("没有可预览的商品页采集源。")
     if blocked_count:
         blocked.append("部分候选 URL 被阻断，请复核后再创建批量任务。")
-    blocked.append("当前结果仅为预览，尚未创建真实 Source、Task 或采集运行。")
+    blocked.append("当前结果仅为预览，尚未创建真实采集源、任务或采集运行。")
     return blocked
 
 

@@ -890,7 +890,7 @@ function AnalysisResult({ analysis }: { analysis: AutomationSiteAnalysis }) {
             </div>
           </Panel>
 
-          <Panel icon={Database} label="Source Draft" title="可入库数据源草稿">
+          <Panel icon={Database} label="采集源草稿" title="可入库数据源草稿">
             <div className="grid gap-3">
               {analysis.extractionPlan ? (
                 <div className="rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3">
@@ -1026,14 +1026,14 @@ function DiscoveryResult({
   async function runBatchQualityCheck() {
     setBatchRunError(null);
     if (!fanoutCreate) {
-      setBatchRunError("请先确认创建 Source/Task。");
+      setBatchRunError("请先确认创建采集源和任务。");
       return;
     }
     const taskIds = fanoutCreate.persistedSources
       .map((item) => item.task?.id)
       .filter((taskId): taskId is string => Boolean(taskId));
     if (taskIds.length === 0) {
-      setBatchRunError("当前没有可运行的已启用 Task。");
+      setBatchRunError("当前没有可运行的已启用任务。");
       return;
     }
     setBatchRunLoading(true);
@@ -1097,7 +1097,7 @@ function DiscoveryResult({
                   已选择 {selectedCandidates.length} / {discovery.productCandidates.length}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-[#7A625A]">
-                  预览只生成商品页采集源草稿，不创建真实 Source 或 Task。
+                  预览只生成商品页采集源草稿，不创建真实采集源或任务。
                 </p>
               </div>
               <button
@@ -1209,7 +1209,7 @@ function DiscoveryResult({
             </div>
           </Panel>
 
-          <Panel icon={Database} label="Source Draft" title="可入库数据源草稿">
+          <Panel icon={Database} label="采集源草稿" title="可入库数据源草稿">
             <div className="grid gap-3">
               <Fact label="建议名称" value={discovery.sourceDraft.suggestedName} />
               <Fact label="Collector" value={discovery.sourceDraft.type} />
@@ -1253,7 +1253,7 @@ function FanoutPreviewPanel({
   return (
     <Panel icon={ClipboardList} label="Fan-out Preview" title="子商品页采集源预览">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Fact label="运行模式" value={preview.batchPlan.runMode} />
+        <Fact label="运行模式" value={formatFanoutRunMode(preview.batchPlan.runMode)} />
         <Fact label="可创建草稿" value={String(preview.batchPlan.readyCount)} />
         <Fact label="阻断候选" value={String(preview.batchPlan.blockedCount)} />
         <Fact
@@ -1264,14 +1264,14 @@ function FanoutPreviewPanel({
       <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
         <p className="text-xs font-semibold uppercase text-[#B47767]">执行边界</p>
         <p className="mt-2 text-sm leading-6 text-[#7A625A]">
-          {preview.batchPlan.executionBoundary}
+          {formatFanoutExecutionBoundary(preview.batchPlan.executionBoundary)}
         </p>
       </div>
       <div className="mt-4 flex flex-col gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFF8F4] p-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-[#2E201C]">确认创建 reviewed child sources</p>
+          <p className="text-sm font-semibold text-[#2E201C]">确认创建商品页采集源</p>
           <p className="mt-1 text-xs leading-5 text-[#7A625A]">
-            该操作会创建或复用 Source，并启用对应 Task，但不会启动采集运行。
+            该操作会创建或复用采集源，并启用对应任务，但不会启动采集运行。
           </p>
         </div>
         <button
@@ -1281,7 +1281,7 @@ function FanoutPreviewPanel({
           type="button"
         >
           {createLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-          确认创建 Source/Task
+          确认创建采集源和任务
         </button>
       </div>
       {createError ? (
@@ -1314,7 +1314,7 @@ function FanoutPreviewPanel({
                       : "bg-[#F6ECE8] text-[#9E5C4D]",
                   )}
                 >
-                  {candidate.status === "ready" ? "ready" : "blocked"}
+                  {candidate.status === "ready" ? "就绪" : "阻断"}
                 </span>
               </div>
               <p className="mt-1 break-all text-xs leading-5 text-[#7A625A]">{candidate.url}</p>
@@ -1325,7 +1325,7 @@ function FanoutPreviewPanel({
           ))}
         </div>
         <div className="grid gap-2">
-          <p className="text-sm font-semibold text-[#2E201C]">Source Drafts</p>
+          <p className="text-sm font-semibold text-[#2E201C]">采集源草稿</p>
           {preview.sourceDrafts.map((draft) => (
             <div
               className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3"
@@ -1403,9 +1403,9 @@ function FanoutCreateResult({
         <RiskBadge risk={result.summary.runStarted ? "medium" : "low"} />
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Fact label="新建 Source" value={String(result.summary.createdSources)} />
-        <Fact label="复用 Source" value={String(result.summary.reusedSources)} />
-        <Fact label="启用 Task" value={String(result.summary.enabledTasks)} />
+        <Fact label="新建采集源" value={String(result.summary.createdSources)} />
+        <Fact label="复用采集源" value={String(result.summary.reusedSources)} />
+        <Fact label="启用任务" value={String(result.summary.enabledTasks)} />
         <Fact label="阻断候选" value={String(result.summary.blockedCandidates)} />
         <Fact label="启动运行" value={result.summary.runStarted ? "是" : "否"} />
       </div>
@@ -1427,9 +1427,9 @@ function FanoutCreateResult({
               </span>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <Fact label="Source" value={item.source.id} />
-              <Fact label="Task" value={item.task?.id ?? "未启用"} />
-              <Fact label="Task 状态" value={item.task?.status ?? "无"} />
+              <Fact label="采集源 ID" value={item.source.id} />
+              <Fact label="任务 ID" value={item.task?.id ?? "未启用"} />
+              <Fact label="任务状态" value={item.task?.status ?? "无"} />
             </div>
           </div>
         ))}
@@ -1448,7 +1448,7 @@ function FanoutCreateResult({
         <div>
           <p className="text-sm font-semibold text-[#2E201C]">运行小批量采集并评估质量</p>
           <p className="mt-1 text-xs leading-5 text-[#5F5757]">
-            将运行 {runnableTasks} 个已启用商品页 Task，并只统计本次 run 产出的字段。
+            将运行 {runnableTasks} 个已启用商品页任务，并只统计本次运行产出的字段。
           </p>
         </div>
         <button
@@ -1530,7 +1530,7 @@ function BatchRunResult({
       });
       setDatasetPreview(preview);
     } catch (caught) {
-      setDatasetError(caught instanceof Error ? caught.message : "Dataset preview failed");
+      setDatasetError(caught instanceof Error ? caught.message : "数据集预览生成失败");
     } finally {
       setDatasetLoading(false);
     }
@@ -1548,9 +1548,9 @@ function BatchRunResult({
         </span>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Fact label="已运行 Task" value={String(result.summary.runTasks)} />
-        <Fact label="阻断 Task" value={String(result.summary.blockedTasks)} />
-        <Fact label="成功 Run" value={String(result.summary.successfulRuns)} />
+        <Fact label="已运行任务" value={String(result.summary.runTasks)} />
+        <Fact label="阻断任务" value={String(result.summary.blockedTasks)} />
+        <Fact label="成功运行" value={String(result.summary.successfulRuns)} />
         <Fact label="记录" value={String(result.summary.recordsCount)} />
         <Fact label="快照" value={String(result.summary.entitiesCount)} />
       </div>
@@ -1621,10 +1621,10 @@ function BatchRunResult({
       <div className="mt-4 rounded-2xl border border-[#D9E2CC] bg-[#FAFCF7] p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase text-[#4E7C45]">Dataset Preview</p>
+            <p className="text-xs font-semibold uppercase text-[#4E7C45]">数据集预览</p>
             <h3 className="mt-1 text-base font-semibold text-[#2E201C]">采集结果数据集预览</h3>
             <p className="mt-1 text-sm leading-6 text-[#5F5757]">
-              从本次成功运行中生成只读表格和 JSON 导出草稿，不保存 Dataset。
+              从本次成功运行中生成只读表格和 JSON 导出草稿，不写入正式数据集。
             </p>
           </div>
           <button
@@ -1680,7 +1680,7 @@ function DatasetPreviewResult({
   result: AutomationProductDatasetPreview;
   taskIds: string[];
 }) {
-  const defaultDatasetName = `Product Dataset ${result.createdAt.slice(0, 10) || "Draft"}`;
+  const defaultDatasetName = `商品数据集 ${result.createdAt.slice(0, 10) || "草稿"}`;
   const [datasetName, setDatasetName] = useState(defaultDatasetName);
   const [saveResult, setSaveResult] = useState<AutomationProductDatasetSave | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1708,7 +1708,10 @@ function DatasetPreviewResult({
   const [driftEventSaving, setDriftEventSaving] = useState(false);
   const [driftEventMessage, setDriftEventMessage] = useState<string | null>(null);
   const taskRunIds = useMemo(
-    () => Array.from(new Set(result.rows.map((row) => row.taskRunId))),
+    () =>
+      Array.from(new Set(result.rows.map((row) => row.taskRunId))).filter(
+        (taskRunId): taskRunId is string => Boolean(taskRunId),
+      ),
     [result.rows],
   );
   const cleaningRules = useMemo(() => {
@@ -1739,7 +1742,7 @@ function DatasetPreviewResult({
   async function runCleaningDryRun() {
     setCleaningError(null);
     if (taskRunIds.length === 0) {
-      setCleaningError("当前预览没有可 dry-run 的数据来源 Run。");
+      setCleaningError("当前预览没有可试跑的数据来源运行记录。");
       return;
     }
     if (cleaningRules.length === 0) {
@@ -1759,7 +1762,7 @@ function DatasetPreviewResult({
       setCleaningPlan(null);
       setSaveResult(null);
     } catch (caught) {
-      setCleaningError(caught instanceof Error ? caught.message : "Cleaning dry-run failed");
+      setCleaningError(caught instanceof Error ? caught.message : "清洗规则试跑失败");
     } finally {
       setCleaningLoading(false);
     }
@@ -1768,7 +1771,7 @@ function DatasetPreviewResult({
   async function saveCleaningPlan() {
     setCleaningError(null);
     if (taskRunIds.length === 0) {
-      setCleaningError("当前预览没有可保存清洗计划的数据来源 Run。");
+      setCleaningError("当前预览没有可保存清洗计划的数据来源运行记录。");
       return;
     }
     if (cleaningRules.length === 0) {
@@ -1779,7 +1782,7 @@ function DatasetPreviewResult({
     try {
       const created = await createAutomationCleaningPlan({
         authorized: result.authorizationConfirmed,
-        name: `${datasetName.trim() || defaultDatasetName} Cleaning Plan`,
+        name: `${datasetName.trim() || defaultDatasetName} 清洗计划`,
         taskRunIds,
         fields: result.summary.selectedFields,
         rules: cleaningRules,
@@ -1790,7 +1793,7 @@ function DatasetPreviewResult({
       setUseCleaningPlan(true);
       setSaveResult(null);
     } catch (caught) {
-      setCleaningError(caught instanceof Error ? caught.message : "Cleaning plan save failed");
+      setCleaningError(caught instanceof Error ? caught.message : "清洗计划保存失败");
     } finally {
       setCleaningSaving(false);
     }
@@ -1806,7 +1809,7 @@ function DatasetPreviewResult({
       });
       setDriftEvents(history.items);
     } catch (caught) {
-      setDriftEventMessage(caught instanceof Error ? caught.message : "Drift history failed");
+      setDriftEventMessage(caught instanceof Error ? caught.message : "漂移历史加载失败");
     } finally {
       setDriftHistoryLoading(false);
     }
@@ -1819,7 +1822,7 @@ function DatasetPreviewResult({
       return;
     }
     if (taskRunIds.length === 0) {
-      setSaveError("当前预览没有可保存的数据来源 Run。");
+      setSaveError("当前预览没有可保存的数据来源运行记录。");
       return;
     }
     setSaveLoading(true);
@@ -1827,7 +1830,7 @@ function DatasetPreviewResult({
       const saved = await saveAutomationProductDataset({
         authorized: result.authorizationConfirmed,
         name: datasetName.trim(),
-        description: `来自 ${taskRunIds.length} 个小批量采集 Run 的商品数据集。`,
+        description: `来自 ${taskRunIds.length} 个小批量采集运行记录的商品数据集。`,
         taskRunIds,
         fields: result.summary.selectedFields,
         maxRows: Math.max(result.rows.length, 1),
@@ -1843,7 +1846,7 @@ function DatasetPreviewResult({
       setDriftEventMessage(null);
       await loadDriftHistory(saved);
     } catch (caught) {
-      setSaveError(caught instanceof Error ? caught.message : "Dataset save failed");
+      setSaveError(caught instanceof Error ? caught.message : "数据集版本保存失败");
     } finally {
       setSaveLoading(false);
     }
@@ -1852,11 +1855,11 @@ function DatasetPreviewResult({
   async function approveSchedule() {
     setScheduleError(null);
     if (!saveResult) {
-      setScheduleError("请先保存 Dataset Version。");
+      setScheduleError("请先保存数据集版本。");
       return;
     }
     if (taskIds.length === 0) {
-      setScheduleError("当前没有可审批调度的商品页 Task。");
+      setScheduleError("当前没有可审批调度的商品页任务。");
       return;
     }
     setScheduleLoading(true);
@@ -1877,7 +1880,7 @@ function DatasetPreviewResult({
       setDriftError(null);
       setDriftEventMessage(null);
     } catch (caught) {
-      setScheduleError(caught instanceof Error ? caught.message : "Schedule approval failed");
+      setScheduleError(caught instanceof Error ? caught.message : "调度审批失败");
     } finally {
       setScheduleLoading(false);
     }
@@ -1886,11 +1889,11 @@ function DatasetPreviewResult({
   async function checkDrift() {
     setDriftError(null);
     if (!saveResult) {
-      setDriftError("请先保存 Dataset Version。");
+      setDriftError("请先保存数据集版本。");
       return;
     }
     if (!scheduleResult || scheduleResult.summary.approvedTasks === 0) {
-      setDriftError("请先审批至少一个商品页 Task。");
+      setDriftError("请先审批至少一个商品页任务。");
       return;
     }
     const approvedTaskIds = scheduleResult.approvedTasks.map((task) => task.taskId);
@@ -1906,7 +1909,7 @@ function DatasetPreviewResult({
       });
       setDriftResult(checked);
     } catch (caught) {
-      setDriftError(caught instanceof Error ? caught.message : "Drift check failed");
+      setDriftError(caught instanceof Error ? caught.message : "漂移检查失败");
     } finally {
       setDriftLoading(false);
     }
@@ -1916,11 +1919,11 @@ function DatasetPreviewResult({
     setDriftError(null);
     setDriftEventMessage(null);
     if (!saveResult) {
-      setDriftError("请先保存 Dataset Version。");
+      setDriftError("请先保存数据集版本。");
       return;
     }
     if (!scheduleResult || scheduleResult.summary.approvedTasks === 0) {
-      setDriftError("请先审批至少一个商品页 Task。");
+      setDriftError("请先审批至少一个商品页任务。");
       return;
     }
     const approvedTaskIds = scheduleResult.approvedTasks.map((task) => task.taskId);
@@ -1938,7 +1941,7 @@ function DatasetPreviewResult({
       setDriftEventMessage("已保存漂移快照");
       await loadDriftHistory(saveResult);
     } catch (caught) {
-      setDriftError(caught instanceof Error ? caught.message : "Drift event save failed");
+      setDriftError(caught instanceof Error ? caught.message : "漂移快照保存失败");
     } finally {
       setDriftEventSaving(false);
     }
@@ -1947,7 +1950,7 @@ function DatasetPreviewResult({
   return (
     <div className="mt-4 grid gap-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Fact label="匹配 Run" value={`${result.summary.matchedRuns}/${result.summary.requestedRuns}`} />
+        <Fact label="匹配运行" value={`${result.summary.matchedRuns}/${result.summary.requestedRuns}`} />
         <Fact label="行数" value={String(result.summary.rowsCount)} />
         <Fact label="字段数" value={String(result.summary.selectedFields.length)} />
         <Fact label="平均完整度" value={`${result.summary.averageCompletenessPercent}%`} />
@@ -1956,8 +1959,8 @@ function DatasetPreviewResult({
       <div className="rounded-xl border border-[#D9E2CC] bg-white p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase text-[#4E7C45]">Cleaning Plan</p>
-            <h3 className="mt-1 text-base font-semibold text-[#2E201C]">清洗规则 dry-run</h3>
+            <p className="text-xs font-semibold uppercase text-[#4E7C45]">清洗计划</p>
+            <h3 className="mt-1 text-base font-semibold text-[#2E201C]">清洗规则试跑</h3>
             <p className="mt-1 text-sm leading-6 text-[#5F5757]">
               先在样本行上预演清洗效果，确认后保存为可复用计划。
             </p>
@@ -1970,7 +1973,7 @@ function DatasetPreviewResult({
               type="button"
             >
               {cleaningLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <SlidersHorizontal size={16} aria-hidden="true" />}
-              运行 dry-run
+              试跑清洗规则
             </button>
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-3 text-sm font-semibold text-white transition hover:bg-[#46332C] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
@@ -1979,7 +1982,7 @@ function DatasetPreviewResult({
               type="button"
             >
               {cleaningSaving ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
-              保存 CleaningPlan
+              保存清洗计划
             </button>
           </div>
         </div>
@@ -2003,7 +2006,7 @@ function DatasetPreviewResult({
             <Fact label="样本行" value={String(cleaningDryRun.summary.rowsCount)} />
             <Fact label="变更行" value={String(cleaningDryRun.summary.rowsChanged)} />
             <Fact label="规则数" value={String(cleaningDryRun.summary.rulesCount)} />
-            <Fact label="写入边界" value={cleaningDryRun.summary.datasetVersionCreated ? "已写入" : "dry-run"} />
+            <Fact label="写入边界" value={cleaningDryRun.summary.datasetVersionCreated ? "已写入" : "只试跑"} />
           </div>
         ) : null}
         {cleaningDryRun?.rows.some((row) => row.changedFields.length > 0) ? (
@@ -2033,7 +2036,7 @@ function DatasetPreviewResult({
                 已保存：{cleaningPlan.cleaningPlan.name} v{cleaningPlan.cleaningPlan.versionNumber}
               </p>
               <p className="mt-1 break-all text-xs text-[#536B40]">
-                CleaningPlan ID: {cleaningPlan.cleaningPlan.id}
+                清洗计划 ID: {cleaningPlan.cleaningPlan.id}
               </p>
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#536B40]">
@@ -2043,7 +2046,7 @@ function DatasetPreviewResult({
                 onChange={(event) => setUseCleaningPlan(event.target.checked)}
                 type="checkbox"
               />
-              保存 Dataset 时使用
+              保存数据集时使用
             </label>
           </div>
         ) : null}
@@ -2071,7 +2074,7 @@ function DatasetPreviewResult({
             type="button"
           >
             {saveLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Database size={16} aria-hidden="true" />}
-            保存 Dataset Version
+            保存数据集版本
           </button>
         </div>
         {saveError ? (
@@ -2082,7 +2085,7 @@ function DatasetPreviewResult({
         {saveResult ? (
           <div className="mt-3 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              <Fact label="Dataset" value={saveResult.dataset.name} />
+              <Fact label="数据集" value={saveResult.dataset.name} />
               <Fact label="版本" value={`v${saveResult.version.versionNumber}`} />
               <Fact label="保存行数" value={String(saveResult.version.rowCount)} />
               <Fact
@@ -2092,11 +2095,11 @@ function DatasetPreviewResult({
               <Fact label="状态" value={saveResult.version.status} />
             </div>
             <div className="mt-3 grid gap-2 text-xs font-semibold text-[#536B40]">
-              <p className="break-all">Dataset ID: {saveResult.dataset.id}</p>
-              <p className="break-all">Version ID: {saveResult.version.id}</p>
+              <p className="break-all">数据集 ID: {saveResult.dataset.id}</p>
+              <p className="break-all">版本 ID: {saveResult.version.id}</p>
               {saveResult.version.cleaningPlanId ? (
                 <p className="break-all">
-                  CleaningPlan ID: {saveResult.version.cleaningPlanId}
+                  清洗计划 ID: {saveResult.version.cleaningPlanId}
                 </p>
               ) : null}
               {saveResult.blockedReasons.map((reason) => (
@@ -2114,11 +2117,11 @@ function DatasetPreviewResult({
                   <p className="text-xs font-semibold uppercase text-[#4E7C45]">Schedule Approval</p>
                   <h3 className="mt-1 text-sm font-semibold text-[#2E201C]">质量通过后审批自动保鲜</h3>
                   <p className="mt-1 text-xs leading-5 text-[#5F5757]">
-                    仅写入 Task 调度元数据，不会立即启动采集运行。
+                    仅写入任务调度元数据，不会立即启动采集运行。
                   </p>
                 </div>
                 <span className="rounded-full bg-[#ECF7EA] px-3 py-1 text-xs font-semibold text-[#4E7C45]">
-                  {taskIds.length} 个 Task
+                  {taskIds.length} 个任务
                 </span>
               </div>
               <div className="mt-3 grid gap-3 lg:grid-cols-4">
@@ -2182,7 +2185,7 @@ function DatasetPreviewResult({
               </div>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-[#5F5757]">
-                  当前 Dataset Version 完整度 {saveResult.version.averageCompletenessPercent}%。
+                  当前数据集版本完整度 {saveResult.version.averageCompletenessPercent}%。
                 </p>
                 <button
                   className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-3 text-sm font-semibold text-white transition hover:bg-[#46332C] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
@@ -2202,8 +2205,8 @@ function DatasetPreviewResult({
               {scheduleResult ? (
                 <div className="mt-3 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3">
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Fact label="审批 Task" value={String(scheduleResult.summary.approvedTasks)} />
-                    <Fact label="阻断 Task" value={String(scheduleResult.summary.blockedTasks)} />
+                    <Fact label="审批任务" value={String(scheduleResult.summary.approvedTasks)} />
+                    <Fact label="阻断任务" value={String(scheduleResult.summary.blockedTasks)} />
                     <Fact label="立即运行" value={scheduleResult.summary.runStarted ? "是" : "否"} />
                     <Fact
                       label="目标新鲜度"
@@ -2242,11 +2245,11 @@ function DatasetPreviewResult({
                         <p className="text-xs font-semibold uppercase text-[#4E7C45]">Drift Check</p>
                         <h3 className="mt-1 text-sm font-semibold text-[#2E201C]">调度漂移检查</h3>
                         <p className="mt-1 text-xs leading-5 text-[#5F5757]">
-                          对比最新运行、DatasetVersion 基准和新鲜度目标；只读检查，不会启动采集。
+                          对比最新运行、数据集版本基准和新鲜度目标；只读检查，不会启动采集。
                         </p>
                       </div>
                       <span className="rounded-full bg-[#ECF7EA] px-3 py-1 text-xs font-semibold text-[#4E7C45]">
-                        {scheduleResult.summary.approvedTasks} 个已审批 Task
+                        {scheduleResult.summary.approvedTasks} 个已审批任务
                       </span>
                     </div>
                     <div className="mt-3 grid gap-3 lg:grid-cols-4">
@@ -2409,7 +2412,7 @@ function DriftHistoryResult({
           <p className="text-xs font-semibold uppercase text-[#4E7C45]">Drift History</p>
           <h3 className="mt-1 text-sm font-semibold text-[#2E201C]">漂移历史</h3>
           <p className="mt-1 text-xs leading-5 text-[#5F5757]">
-            保存后的快照用于追踪 DatasetVersion 后续质量变化，不会触发通知。
+            保存后的快照用于追踪数据集版本后续质量变化，不会触发通知。
           </p>
         </div>
         <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#536B40]">
@@ -2731,11 +2734,25 @@ function formatRisk(value: string) {
 
 function formatExecutionBoundary(value: AutomationPlatformPackage["executionBoundary"]) {
   const labels: Record<AutomationPlatformPackage["executionBoundary"], string> = {
-    blocked: "Blocked",
+    blocked: "阻断",
     executable: "可执行",
-    sop_import_only: "SOP/import-only",
+    sop_import_only: "仅导入 SOP",
   };
   return labels[value];
+}
+
+function formatFanoutRunMode(value: string) {
+  const labels: Record<string, string> = {
+    preview_only: "仅预览，不写入",
+  };
+  return labels[value] ?? value;
+}
+
+function formatFanoutExecutionBoundary(value: string) {
+  const labels: Record<string, string> = {
+    preview_only_no_database_write: "仅生成预览，不写入数据库",
+  };
+  return labels[value] ?? value;
 }
 
 function formatPageType(value: string) {
