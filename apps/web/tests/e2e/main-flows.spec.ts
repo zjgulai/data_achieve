@@ -609,6 +609,10 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByRole("heading", { name: "真实浏览器诊断" })).toBeVisible();
     await expect(page.getByText("只读证据")).toBeVisible();
     await expect(page.getByText("已导入浏览器诊断，可作为后续字段契约和采集方式判断依据。")).toBeVisible();
+    await expect(page.getByText("字段契约草案", { exact: true })).toBeVisible();
+    await expect(page.getByText("采集工具推荐", { exact: true })).toBeVisible();
+    await expect(page.getByText("generic_web 公开页面采集")).toBeVisible();
+    await expect(page.getByText("可创建 generic_web 草稿")).toBeVisible();
     await expect(page.getByText("API 候选")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });

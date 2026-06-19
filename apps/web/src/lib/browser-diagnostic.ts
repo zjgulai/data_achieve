@@ -1,13 +1,19 @@
 import type {
+  BrowserDiagnosticActionPlan,
   BrowserDiagnosticApiCandidate,
+  BrowserDiagnosticCleaningRule,
   BrowserDiagnosticCounters,
   BrowserDiagnosticEvidence,
+  BrowserDiagnosticFieldContractDraft,
+  BrowserDiagnosticFieldContractField,
   BrowserDiagnosticFieldStability,
   BrowserDiagnosticFit,
   BrowserDiagnosticNetworkSummary,
   BrowserDiagnosticRecommendedPath,
   BrowserDiagnosticRunPolicy,
+  BrowserDiagnosticSourceDraft,
   BrowserDiagnosticStrategy,
+  BrowserDiagnosticToolRecommendation,
   BrowserDiagnosticVisibleText,
   BrowserStructureDiagnostic,
 } from "@/types/browser-diagnostic";
@@ -121,6 +127,38 @@ export function comparePreflightWithBrowserDiagnostic(
   };
 }
 
+export function buildBrowserDiagnosticActionPlan(
+  diagnostic: BrowserStructureDiagnostic,
+): BrowserDiagnosticActionPlan {
+  const fieldContract = buildFieldContractDraft(diagnostic);
+  const blockingReasons = buildActionBlockingReasons(diagnostic);
+  const primaryRecommendation = buildPrimaryToolRecommendation(diagnostic);
+  const canCreateGenericWebSource =
+    blockingReasons.length === 0 &&
+    diagnostic.extractionStrategy.recommendedPath === "generic_web" &&
+    diagnostic.extractionStrategy.fit !== "low";
+  const readiness = blockingReasons.some((reason) =>
+    reason.includes("生产写入标记") || reason.includes("阻断"),
+  )
+    ? "blocked"
+    : canCreateGenericWebSource
+      ? "ready"
+      : "review";
+
+  return {
+    readiness,
+    canCreateGenericWebSource,
+    fieldContract,
+    primaryRecommendation,
+    secondaryRecommendations: buildSecondaryToolRecommendations(diagnostic),
+    sourceDraft: canCreateGenericWebSource
+      ? buildGenericWebSourceDraft(diagnostic, fieldContract)
+      : null,
+    blockingReasons,
+    riskControls: buildRiskControls(diagnostic),
+  };
+}
+
 export function formatBrowserDiagnosticPath(value: BrowserDiagnosticRecommendedPath): string {
   const labels: Record<BrowserDiagnosticRecommendedPath, string> = {
     blocked_review: "阻断复核",
@@ -151,6 +189,336 @@ export function formatBrowserDiagnosticFieldStability(
     medium: "中",
   };
   return labels[value];
+}
+
+function buildFieldContractDraft(
+  diagnostic: BrowserStructureDiagnostic,
+): BrowserDiagnosticFieldContractDraft {
+  const fields: BrowserDiagnosticFieldContractField[] = [
+    {
+      key: "page_title",
+      label: "页面标题",
+      valueSample: firstVisibleLine(diagnostic.visibleText.sample) || hostLabelFromUrl(diagnostic.finalUrl),
+      source: "visible_text_first_line",
+      required: true,
+      stability: diagnostic.extractionStrategy.fieldStability,
+      selectorHint: "title, h1, [data-testid*=title]",
+    },
+    {
+      key: "canonical_url",
+      label: "规范 URL",
+      valueSample: diagnostic.finalUrl,
+      source: "browser_final_url",
+      required: true,
+      stability: "high",
+      selectorHint: "link[rel=canonical] fallback browser final_url",
+    },
+    {
+      key: "visible_text",
+      label: "正文样本",
+      valueSample: diagnostic.visibleText.sample || "未提供正文样本",
+      source: "browser_visible_text",
+      required: true,
+      stability: diagnostic.extractionStrategy.fieldStability,
+      selectorHint: "main, article, body visible text",
+    },
+  ];
+
+  if (diagnostic.domCounters.sameOriginLinks > 0) {
+    fields.push({
+      key: "same_origin_links",
+      label: "同源链接",
+      valueSample: `${diagnostic.domCounters.sameOriginLinks} 个`,
+      source: "browser_dom_links",
+      required: false,
+      stability: "medium",
+      selectorHint: "a[href^='/'], a[href^=origin]",
+    });
+  }
+
+  if (diagnostic.domCounters.cards > 0) {
+    fields.push({
+      key: "card_count",
+      label: "卡片数量",
+      valueSample: `${diagnostic.domCounters.cards} 个`,
+      source: "browser_dom_cards",
+      required: false,
+      stability: diagnostic.extractionStrategy.fieldStability,
+      selectorHint: "article, [class*=card], [data-testid*=card]",
+    });
+  }
+
+  if (diagnostic.domCounters.forms > 0) {
+    fields.push({
+      key: "form_count",
+      label: "表单数量",
+      valueSample: `${diagnostic.domCounters.forms} 个`,
+      source: "browser_dom_forms",
+      required: false,
+      stability: "low",
+      selectorHint: "form, input, button",
+    });
+  }
+
+  if (diagnostic.domCounters.jsonLdBlocks > 0) {
+    fields.push({
+      key: "json_ld_blocks",
+      label: "结构化数据块",
+      valueSample: `${diagnostic.domCounters.jsonLdBlocks} 个`,
+      source: "browser_json_ld",
+      required: false,
+      stability: "high",
+      selectorHint: "script[type='application/ld+json']",
+    });
+  }
+
+  const firstApiCandidate = diagnostic.networkSummary.apiCandidates[0];
+  if (firstApiCandidate || diagnostic.networkSummary.apiCandidateCount > 0) {
+    fields.push({
+      key: "api_candidate",
+      label: "API 候选入口",
+      valueSample: firstApiCandidate?.url ?? `${diagnostic.networkSummary.apiCandidateCount} 个候选`,
+      source: "browser_network_xhr_fetch",
+      required: false,
+      stability: diagnostic.networkSummary.xhrFetchCount > 0 ? "medium" : "low",
+      selectorHint: "Network fetch/xhr candidate",
+    });
+  }
+
+  return {
+    title: `${hostLabelFromUrl(diagnostic.finalUrl)} 字段契约草案`,
+    sourceUrl: diagnostic.finalUrl,
+    fields,
+    cleaningRules: buildCleaningRules(fields),
+    evidenceSummary: [
+      `浏览器证据源：${diagnostic.evidence.source}`,
+      `推荐路径：${formatBrowserDiagnosticPath(diagnostic.extractionStrategy.recommendedPath)}`,
+      `字段稳定性：${formatBrowserDiagnosticFieldStability(diagnostic.extractionStrategy.fieldStability)}`,
+      `可见文本：${diagnostic.visibleText.length} 字符 / ${diagnostic.visibleText.lineCount} 行`,
+    ],
+  };
+}
+
+function buildCleaningRules(
+  fields: BrowserDiagnosticFieldContractField[],
+): BrowserDiagnosticCleaningRule[] {
+  return fields.flatMap((field) => {
+    if (field.key === "canonical_url" || field.key === "api_candidate") {
+      return [
+        {
+          field: field.key,
+          operation: "normalize_url",
+          description: "统一 URL 结尾、协议和重定向后的最终地址。",
+        },
+      ];
+    }
+    if (field.key.endsWith("_count") || field.key === "same_origin_links" || field.key === "json_ld_blocks") {
+      return [
+        {
+          field: field.key,
+          operation: "parse_integer",
+          description: "将浏览器诊断计数转换为整数，便于质量阈值判断。",
+        },
+      ];
+    }
+    return [
+      {
+        field: field.key,
+        operation: "strip_text",
+        description: "去除首尾空白并压缩连续空白字符。",
+      },
+    ];
+  });
+}
+
+function buildActionBlockingReasons(diagnostic: BrowserStructureDiagnostic): string[] {
+  const reasons: string[] = [];
+  if (diagnostic.runPolicy.productionWrite) {
+    reasons.push("诊断证据带有生产写入标记，必须先重新执行只读诊断。");
+  }
+  if (
+    diagnostic.extractionStrategy.fit === "blocked" ||
+    diagnostic.extractionStrategy.recommendedPath === "blocked_review"
+  ) {
+    reasons.push("浏览器诊断存在阻断项，不能创建采集任务。");
+  }
+  if (diagnostic.extractionStrategy.recommendedPath !== "generic_web") {
+    reasons.push(
+      `浏览器诊断推荐 ${diagnostic.extractionStrategy.recommendedPath}，不应直接创建 generic_web。`,
+    );
+  }
+  if (diagnostic.extractionStrategy.recommendedPath === "generic_web" && diagnostic.extractionStrategy.fit === "low") {
+    reasons.push("generic_web 适配度较低，需要先补充字段选择器或人工复核。");
+  }
+  return reasons;
+}
+
+function buildPrimaryToolRecommendation(
+  diagnostic: BrowserStructureDiagnostic,
+): BrowserDiagnosticToolRecommendation {
+  const path = diagnostic.extractionStrategy.recommendedPath;
+  const labels: Record<BrowserDiagnosticRecommendedPath, string> = {
+    blocked_review: "授权和边界复核",
+    browser_automation: "browser-harness + Playwright/Crawlee",
+    generic_web: "generic_web 公开页面采集",
+    manual_review: "人工复核与样本标注",
+    official_api_or_file: "官方 API / 文件导入",
+  };
+  const collectorTypes: Record<BrowserDiagnosticRecommendedPath, string> = {
+    blocked_review: "manual_review",
+    browser_automation: "external_browser_automation",
+    generic_web: "generic_web",
+    manual_review: "manual_json",
+    official_api_or_file: "manual_json",
+  };
+  return {
+    toolFamily: path,
+    toolLabel: labels[path],
+    collectorType: collectorTypes[path],
+    fit: diagnostic.extractionStrategy.fit,
+    riskLevel: riskLevelForDiagnostic(diagnostic),
+    reason: primaryRecommendationReason(diagnostic),
+    nextActions: diagnostic.extractionStrategy.nextSteps.length > 0
+      ? diagnostic.extractionStrategy.nextSteps
+      : ["复核字段契约、保存只读证据，再创建采集任务。"],
+  };
+}
+
+function buildSecondaryToolRecommendations(
+  diagnostic: BrowserStructureDiagnostic,
+): BrowserDiagnosticToolRecommendation[] {
+  const recommendations: BrowserDiagnosticToolRecommendation[] = [];
+  if (
+    diagnostic.networkSummary.apiCandidateCount > 0 &&
+    diagnostic.extractionStrategy.recommendedPath !== "official_api_or_file"
+  ) {
+    recommendations.push({
+      toolFamily: "official_api_or_file",
+      toolLabel: "API 候选复核",
+      collectorType: "manual_json",
+      fit: "medium",
+      riskLevel: "medium",
+      reason: "浏览器网络记录发现 fetch/xhr 候选，可能存在更稳定的数据接口。",
+      nextActions: ["确认接口授权、参数和分页方式。", "不要在未授权接口上执行批量请求。"],
+    });
+  }
+  if (
+    diagnostic.domCounters.forms > 0 &&
+    diagnostic.extractionStrategy.recommendedPath !== "manual_review"
+  ) {
+    recommendations.push({
+      toolFamily: "manual_review",
+      toolLabel: "表单/登录边界复核",
+      collectorType: "manual_json",
+      fit: "medium",
+      riskLevel: "high",
+      reason: "页面存在表单元素，采集前需要确认是否涉及登录、提交或个人数据。",
+      nextActions: ["确认只读路径。", "禁止自动提交表单或改写远端状态。"],
+    });
+  }
+  return recommendations;
+}
+
+function buildGenericWebSourceDraft(
+  diagnostic: BrowserStructureDiagnostic,
+  fieldContract: BrowserDiagnosticFieldContractDraft,
+): BrowserDiagnosticSourceDraft {
+  return {
+    type: "generic_web",
+    suggestedName: `Browser Diagnostic: ${hostLabelFromUrl(diagnostic.finalUrl)}`,
+    url: diagnostic.finalUrl,
+    config: {
+      url: diagnostic.finalUrl,
+      extract_mode: "main_content",
+      fields: fieldContract.fields.map((field) => field.key),
+      browser_diagnostic: {
+        schema_version: diagnostic.schemaVersion,
+        final_url: diagnostic.finalUrl,
+        recommended_path: diagnostic.extractionStrategy.recommendedPath,
+        confidence: diagnostic.extractionStrategy.confidence,
+        field_stability: diagnostic.extractionStrategy.fieldStability,
+        evidence_source: diagnostic.evidence.source,
+        screenshot_path: diagnostic.evidence.screenshotPath,
+      },
+      field_contract: {
+        fields: fieldContract.fields.map((field) => ({
+          key: field.key,
+          label: field.label,
+          source: field.source,
+          required: field.required,
+        })),
+        cleaning_rules: fieldContract.cleaningRules,
+      },
+    },
+  };
+}
+
+function buildRiskControls(diagnostic: BrowserStructureDiagnostic): string[] {
+  const controls = [
+    diagnostic.runPolicy.authorizationConfirmed
+      ? "授权已确认，但创建任务前仍需保留证据。"
+      : "授权未确认，不能进入真实采集。",
+    diagnostic.runPolicy.productionWrite
+      ? "当前诊断存在写入标记，必须重跑只读诊断。"
+      : "当前诊断标记为只读证据。",
+    "字段契约进入任务配置前，需要保留 screenshot 或诊断 JSON 作为审计证据。",
+  ];
+  if (diagnostic.riskFlags.length > 0) {
+    controls.push(`风险标记：${diagnostic.riskFlags.join(" / ")}`);
+  }
+  return controls;
+}
+
+function primaryRecommendationReason(diagnostic: BrowserStructureDiagnostic): string {
+  const strategy = diagnostic.extractionStrategy;
+  if (strategy.reasons.length > 0) {
+    return strategy.reasons[0];
+  }
+  if (strategy.recommendedPath === "generic_web") {
+    return "页面渲染后可见文本和链接可直接读取，优先从公开页面主内容采集。";
+  }
+  if (strategy.recommendedPath === "browser_automation") {
+    return "页面结构依赖浏览器渲染或交互，需要真实浏览器证据驱动的自动化方案。";
+  }
+  if (strategy.recommendedPath === "official_api_or_file") {
+    return "浏览器诊断显示更适合使用授权 API 或文件数据源。";
+  }
+  return "浏览器诊断需要人工复核后才能进入任务创建。";
+}
+
+function riskLevelForDiagnostic(
+  diagnostic: BrowserStructureDiagnostic,
+): BrowserDiagnosticToolRecommendation["riskLevel"] {
+  if (
+    diagnostic.runPolicy.productionWrite ||
+    diagnostic.extractionStrategy.fit === "blocked" ||
+    diagnostic.extractionStrategy.recommendedPath === "blocked_review"
+  ) {
+    return "high";
+  }
+  if (
+    diagnostic.riskFlags.length > 0 ||
+    diagnostic.domCounters.forms > 0 ||
+    diagnostic.extractionStrategy.recommendedPath !== "generic_web"
+  ) {
+    return "medium";
+  }
+  return "low";
+}
+
+function firstVisibleLine(sample: string): string {
+  return sample
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) ?? "";
+}
+
+function hostLabelFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 function mapStrategy(value: unknown): BrowserDiagnosticStrategy | null {

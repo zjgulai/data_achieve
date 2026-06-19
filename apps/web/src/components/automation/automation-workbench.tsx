@@ -39,12 +39,14 @@ import {
   saveAutomationProductDriftEvent,
   saveAutomationProductDataset,
 } from "@/lib/api/automation";
+import { buildBrowserDiagnosticActionPlan } from "@/lib/browser-diagnostic";
 import { listProjects } from "@/lib/api/projects";
 import { createSource, enableSource } from "@/lib/api/sources";
 import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
+import type { BrowserStructureDiagnostic } from "@/types/browser-diagnostic";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
 import type { ToolkitPreflightReport } from "@/types/toolkit";
@@ -192,6 +194,9 @@ export function AutomationWorkbench() {
   const [githubMaxResults, setGithubMaxResults] = useState("20");
   const [githubRun, setGithubRun] = useState<GitHubTopicRunState | null>(null);
   const [preflightReport, setPreflightReport] = useState<ToolkitPreflightReport | null>(null);
+  const [browserDiagnostic, setBrowserDiagnostic] = useState<BrowserStructureDiagnostic | null>(
+    null,
+  );
   const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
@@ -327,6 +332,7 @@ export function AutomationWorkbench() {
     try {
       const report = await runToolkitPreflight(url.trim(), authorized);
       setPreflightReport(report);
+      setBrowserDiagnostic(null);
       setGenericWebRun(null);
       setAnalysis(null);
       setDiscovery(null);
@@ -351,14 +357,26 @@ export function AutomationWorkbench() {
       setError("请选择写入项目后再创建 generic_web 采集源。");
       return;
     }
+    const diagnosticPlan = browserDiagnostic
+      ? buildBrowserDiagnosticActionPlan(browserDiagnostic)
+      : null;
+    if (diagnosticPlan && !diagnosticPlan.canCreateGenericWebSource) {
+      setError(
+        diagnosticPlan.blockingReasons[0] ??
+          "浏览器诊断不建议直接创建 generic_web，请先复核推荐工具。",
+      );
+      return;
+    }
+    const sourceDraft = diagnosticPlan?.sourceDraft;
     setLoading(true);
     try {
       const source = await createSource({
         projectId: selectedProjectId,
-        name: `Generic Web: ${hostLabelFromUrl(preflightReport.finalUrl)}`,
+        name:
+          sourceDraft?.suggestedName ?? `Generic Web: ${hostLabelFromUrl(preflightReport.finalUrl)}`,
         type: "generic_web",
-        url: preflightReport.finalUrl,
-        config: {
+        url: sourceDraft?.url ?? preflightReport.finalUrl,
+        config: sourceDraft?.config ?? {
           url: preflightReport.finalUrl,
           extract_mode: "main_content",
         },
@@ -848,8 +866,10 @@ export function AutomationWorkbench() {
       ) : mode === "structure_preflight" ? (
         preflightReport ? (
           <StructurePreflightResult
+            browserDiagnostic={browserDiagnostic}
             genericWebRun={genericWebRun}
             loading={loading}
+            onBrowserDiagnosticChange={setBrowserDiagnostic}
             onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
             report={preflightReport}
             selectedProjectId={selectedProjectId}
@@ -1654,21 +1674,31 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
 }
 
 function StructurePreflightResult({
+  browserDiagnostic,
   genericWebRun,
   loading,
+  onBrowserDiagnosticChange,
   onCreateGenericWebSource,
   report,
   selectedProjectId,
 }: {
+  browserDiagnostic: BrowserStructureDiagnostic | null;
   genericWebRun: GenericWebRunState | null;
   loading: boolean;
+  onBrowserDiagnosticChange: (diagnostic: BrowserStructureDiagnostic | null) => void;
   onCreateGenericWebSource: () => void;
   report: ToolkitPreflightReport;
   selectedProjectId: string;
 }) {
   const gate = report.authorizationGate;
   const strategy = report.collectionStrategy;
-  const canCreateSource = gate.allowedToContinue && selectedProjectId.length > 0;
+  const browserActionPlan = browserDiagnostic
+    ? buildBrowserDiagnosticActionPlan(browserDiagnostic)
+    : null;
+  const canCreateSource =
+    gate.allowedToContinue &&
+    selectedProjectId.length > 0 &&
+    (!browserActionPlan || browserActionPlan.canCreateGenericWebSource);
   const draftFields = [
     { label: "页面标题", value: report.dom.title ?? "未识别", source: "html_title" },
     { label: "规范 URL", value: report.dom.canonicalUrl ?? report.finalUrl, source: "canonical_or_final_url" },
@@ -1802,11 +1832,31 @@ function StructurePreflightResult({
             {!selectedProjectId ? (
               <p className="text-xs leading-5 text-[#B85F4F]">请选择写入项目。</p>
             ) : null}
+            {browserActionPlan ? (
+              <p
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-xs leading-5",
+                  browserActionPlan.canCreateGenericWebSource
+                    ? "border-[#D7E8D7] bg-[#F3FBF3] text-[#2F6B3A]"
+                    : "border-[#F1D9A8] bg-[#FFF9E9] text-[#87611B]",
+                )}
+              >
+                浏览器诊断判断：
+                {browserActionPlan.canCreateGenericWebSource
+                  ? "可使用 generic_web 草稿创建采集源。"
+                  : browserActionPlan.blockingReasons[0] ?? "需要复核推荐工具后再创建。"}
+              </p>
+            ) : (
+              <p className="text-xs leading-5 text-[#87611B]">
+                未导入浏览器诊断时只按静态预检创建；建议先导入 browser-harness 证据。
+              </p>
+            )}
           </div>
         </Panel>
 
         <BrowserDiagnosticImportPanel
           compact
+          onDiagnosticChange={onBrowserDiagnosticChange}
           preflightReport={report}
           title="浏览器诊断对照"
         />

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildBrowserDiagnosticActionPlan,
   comparePreflightWithBrowserDiagnostic,
   parseBrowserStructureDiagnosticJson,
 } from "@/lib/browser-diagnostic";
@@ -109,5 +110,97 @@ describe("parseBrowserStructureDiagnosticJson", () => {
 
     expect(comparison.pathAgreement).toBe(false);
     expect(comparison.message).toContain("真实浏览器诊断与静态预检不同");
+  });
+
+  it("builds field contract and a generic_web task draft from browser evidence", () => {
+    const parsed = parseBrowserStructureDiagnosticJson(JSON.stringify(diagnosticPayload));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+
+    const plan = buildBrowserDiagnosticActionPlan(parsed.diagnostic);
+
+    expect(plan.readiness).toBe("ready");
+    expect(plan.canCreateGenericWebSource).toBe(true);
+    expect(plan.primaryRecommendation.collectorType).toBe("generic_web");
+    expect(plan.sourceDraft?.type).toBe("generic_web");
+    expect(plan.sourceDraft?.config.fields).toContain("page_title");
+    expect(plan.fieldContract.fields.map((field) => field.key)).toEqual(
+      expect.arrayContaining(["page_title", "canonical_url", "visible_text"]),
+    );
+    expect(plan.fieldContract.cleaningRules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "canonical_url", operation: "normalize_url" }),
+      ]),
+    );
+  });
+
+  it("blocks generic_web task creation when browser evidence points to automation", () => {
+    const browserAutomationPayload = {
+      ...diagnosticPayload,
+      extraction_strategy: {
+        ...diagnosticPayload.extraction_strategy,
+        recommended_path: "browser_automation",
+        fit: "medium",
+        confidence: 72,
+        field_stability: "medium",
+      },
+      dom_counters: {
+        ...diagnosticPayload.dom_counters,
+        buttons: 8,
+        scripts: 24,
+      },
+      network_summary: {
+        ...diagnosticPayload.network_summary,
+        xhr_fetch_count: 6,
+        api_candidate_count: 2,
+        api_candidates: [
+          {
+            url: "https://example.com/api/products",
+            initiator_type: "fetch",
+            same_origin: true,
+            duration_ms: 124,
+            transfer_size: 4096,
+          },
+        ],
+      },
+    };
+    const parsed = parseBrowserStructureDiagnosticJson(JSON.stringify(browserAutomationPayload));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+
+    const plan = buildBrowserDiagnosticActionPlan(parsed.diagnostic);
+
+    expect(plan.readiness).toBe("review");
+    expect(plan.canCreateGenericWebSource).toBe(false);
+    expect(plan.primaryRecommendation.toolFamily).toBe("browser_automation");
+    expect(plan.blockingReasons).toContain("浏览器诊断推荐 browser_automation，不应直接创建 generic_web。");
+    expect(plan.fieldContract.fields.map((field) => field.key)).toContain("api_candidate");
+    expect(plan.sourceDraft).toBeNull();
+  });
+
+  it("blocks task creation when diagnostic evidence contains production write markers", () => {
+    const parsed = parseBrowserStructureDiagnosticJson(
+      JSON.stringify({
+        ...diagnosticPayload,
+        run_policy: {
+          ...diagnosticPayload.run_policy,
+          production_write: true,
+        },
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+
+    const plan = buildBrowserDiagnosticActionPlan(parsed.diagnostic);
+
+    expect(plan.readiness).toBe("blocked");
+    expect(plan.canCreateGenericWebSource).toBe(false);
+    expect(plan.blockingReasons).toContain("诊断证据带有生产写入标记，必须先重新执行只读诊断。");
   });
 });

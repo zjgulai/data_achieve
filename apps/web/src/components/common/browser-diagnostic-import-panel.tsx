@@ -1,9 +1,19 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, FileCode2, GitCompareArrows, X } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardList,
+  Database,
+  FileCode2,
+  GitCompareArrows,
+  Search,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import {
+  buildBrowserDiagnosticActionPlan,
   comparePreflightWithBrowserDiagnostic,
   formatBrowserDiagnosticFieldStability,
   formatBrowserDiagnosticFit,
@@ -16,12 +26,14 @@ import type { ToolkitPreflightReport } from "@/types/toolkit";
 
 type BrowserDiagnosticImportPanelProps = {
   compact?: boolean;
+  onDiagnosticChange?: (diagnostic: BrowserStructureDiagnostic | null) => void;
   preflightReport?: ToolkitPreflightReport | null;
   title?: string;
 };
 
 export function BrowserDiagnosticImportPanel({
   compact = false,
+  onDiagnosticChange,
   preflightReport,
   title = "真实浏览器诊断",
 }: BrowserDiagnosticImportPanelProps) {
@@ -44,12 +56,14 @@ export function BrowserDiagnosticImportPanel({
       return;
     }
     setDiagnostic(parsed.diagnostic);
+    onDiagnosticChange?.(parsed.diagnostic);
     setError(null);
   }
 
   function clearDiagnostic() {
     setRawJson("");
     setDiagnostic(null);
+    onDiagnosticChange?.(null);
     setError(null);
   }
 
@@ -156,6 +170,7 @@ function BrowserDiagnosticSummary({
   diagnostic: BrowserStructureDiagnostic;
 }) {
   const strategy = diagnostic.extractionStrategy;
+  const actionPlan = buildBrowserDiagnosticActionPlan(diagnostic);
   return (
     <div className="mt-4 grid gap-3">
       <div
@@ -231,6 +246,88 @@ function BrowserDiagnosticSummary({
           label="错误"
           value={diagnostic.evidence.errors.length > 0 ? diagnostic.evidence.errors.join(" / ") : "无"}
         />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <ClipboardList size={14} className="text-[#B47767]" aria-hidden="true" />
+            <p className="text-xs font-semibold uppercase text-[#B47767]">字段契约草案</p>
+          </div>
+          <p className="mb-2 text-sm font-semibold text-[#1D1D1F]">
+            {actionPlan.fieldContract.title}
+          </p>
+          <div className="grid gap-2">
+            {actionPlan.fieldContract.fields.slice(0, 6).map((field) => (
+              <div className="rounded-lg border border-[#EDE6DF] bg-white px-2.5 py-2" key={field.key}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold text-[#1D1D1F]">{field.label}</p>
+                  <span className="rounded-full bg-[#FFF0EA] px-2 py-0.5 text-[10px] font-semibold text-[#9E5C4D]">
+                    {field.required ? "必填" : "可选"} · {formatBrowserDiagnosticFieldStability(field.stability)}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-xs text-[#5F5757]">{field.valueSample}</p>
+                <p className="mt-1 text-[10px] font-semibold uppercase text-[#B47767]">
+                  {field.source}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Search size={14} className="text-[#B47767]" aria-hidden="true" />
+              <p className="text-xs font-semibold uppercase text-[#B47767]">采集工具推荐</p>
+            </div>
+            <div className="rounded-lg border border-[#EDE6DF] bg-white px-2.5 py-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-[#1D1D1F]">
+                    {actionPlan.primaryRecommendation.toolLabel}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase text-[#B47767]">
+                    {actionPlan.primaryRecommendation.fit} · {actionPlan.primaryRecommendation.collectorType}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    actionPlan.readiness === "ready"
+                      ? "bg-[#F2FAEF] text-[#4E7C45]"
+                      : actionPlan.readiness === "blocked"
+                        ? "bg-[#FFF2EF] text-[#B85F4F]"
+                        : "bg-[#FFF9E9] text-[#87611B]",
+                  )}
+                >
+                  {actionPlan.canCreateGenericWebSource ? "可创建 generic_web 草稿" : "创建前复核"}
+                </span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[#5F5757]">
+                {actionPlan.primaryRecommendation.reason}
+              </p>
+            </div>
+            {actionPlan.blockingReasons.length > 0 ? (
+              <DiagnosticList title="创建前阻断" items={actionPlan.blockingReasons} />
+            ) : null}
+          </div>
+
+          {actionPlan.sourceDraft ? (
+            <div className="rounded-xl border border-[#CDE4C6] bg-[#F2FAEF] p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Database size={14} className="text-[#4E7C45]" aria-hidden="true" />
+                <p className="text-xs font-semibold uppercase text-[#4E7C45]">采集源草稿</p>
+              </div>
+              <p className="text-sm font-semibold text-[#2F6B3A]">
+                {actionPlan.sourceDraft.suggestedName}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-[#4F7F56]">
+                {actionPlan.sourceDraft.type} · 字段 {actionPlan.sourceDraft.config.fields.join(", ")}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

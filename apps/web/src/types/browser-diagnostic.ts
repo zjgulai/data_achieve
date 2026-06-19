@@ -76,6 +76,82 @@ export type BrowserDiagnosticEvidence = {
   errors: string[];
 };
 
+export type BrowserDiagnosticActionReadiness = "ready" | "review" | "blocked";
+
+export type BrowserDiagnosticFieldContractField = {
+  key: string;
+  label: string;
+  valueSample: string;
+  source: string;
+  required: boolean;
+  stability: BrowserDiagnosticFieldStability;
+  selectorHint: string;
+};
+
+export type BrowserDiagnosticCleaningRule = {
+  field: string;
+  operation: string;
+  description: string;
+};
+
+export type BrowserDiagnosticFieldContractDraft = {
+  title: string;
+  sourceUrl: string;
+  fields: BrowserDiagnosticFieldContractField[];
+  cleaningRules: BrowserDiagnosticCleaningRule[];
+  evidenceSummary: string[];
+};
+
+export type BrowserDiagnosticToolRecommendation = {
+  toolFamily: BrowserDiagnosticRecommendedPath;
+  toolLabel: string;
+  collectorType: string;
+  fit: BrowserDiagnosticFit;
+  riskLevel: "low" | "medium" | "high";
+  reason: string;
+  nextActions: string[];
+};
+
+export type BrowserDiagnosticSourceDraft = {
+  type: "generic_web";
+  suggestedName: string;
+  url: string;
+  config: {
+    url: string;
+    extract_mode: "main_content";
+    fields: string[];
+    browser_diagnostic: {
+      schema_version: "browser_structure_diagnostic.v1";
+      final_url: string;
+      recommended_path: BrowserDiagnosticRecommendedPath;
+      confidence: number;
+      field_stability: BrowserDiagnosticFieldStability;
+      evidence_source: string;
+      screenshot_path: string | null;
+    };
+    field_contract: {
+      fields: Array<{
+        key: string;
+        label: string;
+        source: string;
+        required: boolean;
+      }>;
+      cleaning_rules: BrowserDiagnosticCleaningRule[];
+    };
+  };
+};
+
+export type BrowserDiagnosticActionPlan = {
+  readiness: BrowserDiagnosticActionReadiness;
+  canCreateGenericWebSource: boolean;
+  fieldContract: BrowserDiagnosticFieldContractDraft;
+  primaryRecommendation: BrowserDiagnosticToolRecommendation;
+  secondaryRecommendations: BrowserDiagnosticToolRecommendation[];
+  sourceDraft: BrowserDiagnosticSourceDraft | null;
+  blockingReasons: string[];
+  riskControls: string[];
+};
+
 export type BrowserStructureDiagnostic = {
   schemaVersion: "browser_structure_diagnostic.v1";
   generatedAt: string;
