@@ -44,6 +44,7 @@ import { createSource, enableSource } from "@/lib/api/sources";
 import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
+import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
 import type { ToolkitPreflightReport } from "@/types/toolkit";
@@ -1803,6 +1804,12 @@ function StructurePreflightResult({
             ) : null}
           </div>
         </Panel>
+
+        <BrowserDiagnosticImportPanel
+          compact
+          preflightReport={report}
+          title="浏览器诊断对照"
+        />
 
         <Panel icon={ShieldCheck} label="Recommendations" title="后续建议">
           <div className="grid gap-2">

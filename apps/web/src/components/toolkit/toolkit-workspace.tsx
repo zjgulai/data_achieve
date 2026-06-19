@@ -32,6 +32,7 @@ import {
   saveToolkitMethodCardDraft,
 } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
+import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
 import type {
   ToolkitAuthorizationChecklist,
   ToolkitBrowserLab,
@@ -1022,9 +1023,12 @@ export function ToolkitWorkspace() {
             />
           </>
         ) : (
-          <p className="mt-4 rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
-            预检报告会显示主文档状态、授权门禁、公开声明、DOM 字段线索、network 摘要和下一步动作。
-          </p>
+          <>
+            <p className="mt-4 rounded-xl border border-dashed border-[#E9E5E2] px-3 py-4 text-sm text-[#86868B]">
+              预检报告会显示主文档状态、授权门禁、公开声明、DOM 字段线索、network 摘要和下一步动作。
+            </p>
+            <BrowserDiagnosticImportPanel />
+          </>
         )}
 
         <MethodCardDraftList drafts={methodDrafts} error={methodDraftsError} />
@@ -2003,6 +2007,8 @@ function PreflightReportCard({ report }: { report: ToolkitPreflightReport }) {
           <CompactList title="清洗建议" items={strategy.cleaningNotes.slice(0, 3)} />
         </div>
       </div>
+
+      <BrowserDiagnosticImportPanel preflightReport={report} />
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-xl border border-[#EDE6DF] bg-white p-4">
