@@ -797,14 +797,14 @@ export function DatasetsWorkspace() {
                         </div>
                       ) : null}
                       {alertNotificationSend?.blockedReasons.length ? (
-                        <p>通知边界：{alertNotificationSend.blockedReasons.join("；")}</p>
+                        <p>通知边界：{formatBoundaryReasons(alertNotificationSend.blockedReasons)}</p>
                       ) : null}
                       {alertEmailSend?.blockedReasons.length ? (
-                        <p>邮件边界：{alertEmailSend.blockedReasons.join("；")}</p>
+                        <p>邮件边界：{formatBoundaryReasons(alertEmailSend.blockedReasons)}</p>
                       ) : null}
                       {!alertRuleCreate && alertPreview.blockedReasons.length > 0 ? (
                         <p>
-                          边界说明：{alertPreview.blockedReasons.join("；")}
+                          边界说明：{formatBoundaryReasons(alertPreview.blockedReasons)}
                         </p>
                       ) : null}
                     </div>
@@ -1099,6 +1099,24 @@ function formatDriftEventType(value: string) {
     dataset_drift: "数据集字段漂移",
   };
   return labels[value] ?? value.replaceAll("_", " ");
+}
+
+function formatBoundaryReasons(reasons: string[]) {
+  return reasons.map(formatBoundaryReason).join("；");
+}
+
+function formatBoundaryReason(reason: string) {
+  return reason
+    .replaceAll("DriftEvent 告警策略", "漂移告警策略")
+    .replaceAll("已保存 DriftEvent", "已保存漂移快照")
+    .replaceAll("AlertRule", "告警策略")
+    .replaceAll("AlertEvent", "告警事件")
+    .replaceAll("DriftEvent", "漂移快照")
+    .replaceAll("DatasetDrift", "数据集漂移")
+    .replaceAll("TaskRun", "采集运行")
+    .replaceAll("DatasetVersion", "数据集版本")
+    .replaceAll("CleaningPlan", "清洗计划")
+    .replaceAll("dataset_drift", "数据集字段漂移");
 }
 
 function formatAlertConditionValue(condition: Record<string, unknown>) {
