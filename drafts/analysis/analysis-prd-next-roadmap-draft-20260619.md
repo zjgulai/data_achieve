@@ -30,11 +30,11 @@ source: human+ai
 -> 报告、告警、通知与导出
 ```
 
-优先级判断：先补齐“采集计划和清洗计划的一等模型化”，再扩展平台包。原因是如果 ExtractionPlan 和 CleaningPlan 不能保存、复用、版本化，后续每增加一个平台都会堆成一次性流程，无法稳定运营。
+状态修正：采集计划、清洗计划、首批平台包和重复动作基础保护已经完成一轮生产部署与验收。下一阶段优先级应从“补齐骨架”切换为“扩大真实平台采集深度”，尤其是 GitHub/API-first 工具情报包、浏览器结构解析预检、独立站 collection/sitemap 深化，以及 marketplace/social 的授权导入或 API 路线。
 
 ## 2. 事实基线
 
-以下为 2026-06-19 本地代码和文档检查得到的事实。
+以下为 2026-06-19 本地代码、文档和生产验收记录得到的事实。
 
 ### 2.1 已完成或基本完成
 
@@ -46,13 +46,17 @@ source: human+ai
 6. 数据模型已存在 `datasets`、`dataset_versions`、`dataset_drift_events`、`dataset_export_jobs`。
 7. Dataset 导出已经不是空白项：后端已有 `product-dataset-exports` 创建接口、导出历史接口和下载接口，前端已有 CSV/JSON/JSONL 导出交互。
 8. 集成测试已覆盖 Dataset 导出确认、导出文件写入、导出历史、下载和 CSV 内容验证。
+9. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
+10. 清洗计划已升级为可保存、可试跑、可追踪到数据集版本的正式草案资产。
+11. 首批 Platform Package 已覆盖 `shopify-independent-ecommerce` 与 `github-api-first`；前者可执行，后者仍是 SOP/import-only。
+12. P0 生产部署 commit 为 `db6189faea4cf4b400d711162f43bdf928d5e938`，真实 Chrome + browser-harness 已验证 `/automation` 主链路。
 
 ### 2.2 文档与实现不一致
 
-1. 稳定 PRD 仍以 GitHub Repo、GitHub Topic、Generic Web、Manual JSON 为 MVP Collector 叙述主轴，未完整反映自动采集工作台和电商平台包进展。
-2. 架构文档仍偏“数据情报平台”视角，缺少 Automation、Dataset Export、Platform Package、ExtractionPlan、CleaningPlan 的最新架构位置。
-3. API Contract 未完整同步当前 `/api/automation`、Dataset、导出、漂移和告警链路。
-4. Phase 1 草案中的“Dataset 记录级导出未完成”已经过期，当前实现中已存在导出模型、服务、路由和前端入口。
+1. 稳定 PRD 仍以 GitHub Repo、GitHub Topic、Generic Web、Manual JSON 为 MVP Collector 叙述主轴，需要继续向自动化采集工作台叙事迁移。
+2. 架构和 API 文档已开始同步 Automation、Dataset Export、Platform Package、采集计划、清洗计划和生产验收事实；后续需要防止再次漂移。
+3. Phase 1 草案中的“Dataset 记录级导出未完成”已经过期，当前实现中已存在导出模型、服务、路由和前端入口。
+4. 仍需把 GitHub/API-first、marketplace、social 等平台包从 SOP/导入说明推进到可验收的采集闭环或明确的授权导入闭环。
 
 ## 3. 产品定位重述
 
@@ -67,79 +71,67 @@ source: human+ai
 5. 不知道采集任务是否仍然稳定、字段是否漂移、数据是否缺失。
 6. 不知道如何把采集结果交付给培训、分析、报告或下游系统。
 
-## 4. P0 Gap
+## 4. P0 状态与剩余缺口
 
-P0 是下一阶段必须先闭环的缺口。
+P0 的目标是让自动化采集工作台从“页面骨架”变成可验收闭环。当前状态是：核心 P0 已完成第一轮实现、部署和验收，但仍有可运营化增强项。
 
-### 4.1 ExtractionPlan 未一等模型化
+### 4.1 采集计划资产
 
-当前自动化流程可以生成采集建议，但计划主要仍以 API response、Source config 和前端状态承载。
+当前状态：
 
-需要补齐：
+1. `site_analyses` 与 `extraction_plans` 已落库。
+2. 分析 URL 后可以保存历史分析，并创建默认采集计划版本。
+3. 前端 `/automation` 已接入项目归档选择、历史分析列表和采集计划保存状态。
 
-1. `site_analyses`：保存 URL、平台画像、页面类型、授权确认、分析结果、风险边界。
-2. `field_candidates`：保存字段候选、来源选择器、置信度、样例值、稳定性评分。
-3. `extraction_plans`：保存字段选择、采集策略、collector 类型、执行参数、计划状态。
-4. 计划版本：每次字段或策略调整都应能回溯。
+剩余缺口：
 
-验收标准：
+1. 字段候选的稳定性评分仍需要更多真实平台样本校准。
+2. 采集计划复制后的差异对比还不够强。
+3. 平台包与采集计划之间的版本依赖需要更明确。
 
-1. 用户分析 URL 后，刷新页面仍能看到历史分析。
-2. 用户可以从历史分析创建或复制采集计划。
-3. 同一个 URL 可以有多个计划版本。
-4. 计划能明确输出将使用的 collector、字段、频率和边界说明。
+### 4.2 清洗计划资产
 
-### 4.2 CleaningPlan 未一等模型化
+当前状态：
 
-当前 DatasetVersion 已保存 `selected_fields` 和 `cleaning_script`，但清洗规则还没有成为可复用资产。
+1. `cleaning_plans` 已落库。
+2. 清洗规则可先对样本行试跑，再保存为可复用草案。
+3. 数据集版本可追踪 `cleaning_plan_id`。
+4. 前端已接入默认规则、试跑、保存清洗计划和绑定保存数据集。
 
-需要补齐：
+剩余缺口：
 
-1. `cleaning_plans`：字段标准化、类型转换、默认值、去重主键、异常值规则。
-2. dry-run：清洗规则必须先在样本行上预览。
-3. 版本管理：清洗规则变更要能追踪。
-4. 应用范围：可绑定 ExtractionPlan、Dataset 或平台包。
+1. 清洗规则编辑器还停留在基础规则层，需要增强字段类型、主键、默认值、格式化和去重体验。
+2. before/after 对比可读性仍可提升。
+3. AI 清洗脚本只能作为草案，后续必须继续保持试跑和人工确认边界。
 
-验收标准：
+### 4.3 平台包模板
 
-1. 用户可编辑字段类型、主键和基础清洗规则。
-2. dry-run 能展示清洗前后对比。
-3. 清洗规则确认后才允许保存为正式 DatasetVersion。
-4. AI 只能生成草案，不允许直接写入正式规则。
+当前状态：
 
-### 4.3 平台包模板不完整
+1. 已定义 PlatformPackage contract。
+2. 首批平台包包含 `shopify-independent-ecommerce` 和 `github-api-first`。
+3. Shopify/独立站包可执行，并能进入当前 Automation 主链路。
+4. GitHub/API-first 包目前是 SOP/import-only，用于工具情报场景的下一轮深化。
 
-当前 Shopify-style 商品页和发现流程已经打通，但平台包还没有产品化成可复制模板。
+剩余缺口：
 
-需要补齐：
+1. 平台包还不是用户可自定义、可版本化的持久化资产。
+2. GitHub/API-first 需要从 SOP/import-only 推进到可运行采集链路。
+3. marketplace 和 social 平台必须先定义官方 API、授权导出或人工导入路径，不默认做登录态抓取。
 
-1. 平台包元数据：平台类型、可采集对象、字段 schema、推荐策略、风险等级。
-2. 平台包 SOP：安装、授权、采集步骤、失败处理、导出方式。
-3. 平台包验收 fixture：每个平台必须有稳定 fixture 和真实授权样例。
-4. 平台包策略推荐：API 优先、静态解析、浏览器自动化、RPA、第三方工具、人工导入。
+### 4.4 调度、告警与重复动作保护
 
-验收标准：
+当前状态：
 
-1. 平台包页面能说明适用场景和不适用场景。
-2. 每个平台包至少包含一个从输入到 Dataset 导出的可演示闭环。
-3. 风险平台不能默认进入自动采集，只能进入 SOP、导入或授权 API 路线。
+1. 漂移快照已增加 fingerprint 复用。
+2. 漂移告警规则已按项目、条件、渠道和启用状态复用既有规则。
+3. 采集失败日志已增加标准化 `failure_reason`。
 
-### 4.4 调度与重复动作保护需要硬化
+剩余缺口：
 
-需要补齐：
-
-1. 重复点击保护。
-2. AlertRule 去重。
-3. 任务锁和重复运行保护。
-4. 运行预算、超时、重试次数和失败原因标准化。
-5. 采集任务与导出任务的状态可解释。
-
-验收标准：
-
-1. 前端重复点击不会创建重复规则或重复任务。
-2. 同一 dataset、同一阈值规则不会重复创建。
-3. 任务失败后能在 UI 看到原因和下一步建议。
-4. E2E 覆盖重复点击、失败重试和刷新恢复。
+1. 前端提交中禁用状态和重复点击反馈仍需统一。
+2. 采集任务运行锁、重试预算和超时策略仍需继续增强。
+3. 失败状态需要在 UI 中输出更明确的下一步建议。
 
 ## 5. P1 Gap
 
@@ -209,85 +201,87 @@ P2 是平台稳定后的增强能力。
 
 ## 7. 推荐执行顺序
 
-### Phase A：文档和状态同步
+### Phase A：状态同步和术语治理
 
-目标：消除 PRD、架构、API Contract 和实现状态的偏差。
+目标：消除 PRD、架构、API Contract 和实现状态的偏差，并把页面文案从内部技术名词切回业务动作。
 
 任务：
 
-1. 更新稳定架构文档，加入 Automation、Dataset Export、Platform Package。
-2. 更新 API Contract，补齐 `/api/automation` 当前路由。
-3. 更新 Phase 1 草案，把已完成的 Dataset Export 标为完成。
-4. 生成 P0/P1/P2 backlog 对应实现文件和验收证据。
+1. 更新稳定架构文档，加入 P0 生产验收状态。
+2. 更新 API Contract，区分技术合同名和用户页面文案。
+3. 更新 Phase 1 草案和 P0 backlog，把已完成能力从待办中移除。
+4. 盘点 UI 中仍残留的 `AlertRule`、`TaskRun`、`DriftEvent`、`Signal/AlertEvent` 等内部名词，形成下一轮页面文案清理项。
 
 验收：
 
 1. 文档不再把已完成事项列为未完成。
 2. 每个 P0 项都能映射到后端、前端、测试和生产验收。
 
-### Phase B：ExtractionPlan 持久化
+### Phase B：GitHub/API-first 可执行平台包
 
-目标：让采集计划成为可回看的资产。
-
-任务：
-
-1. 新增模型、schema、repository、migration。
-2. 新增分析历史列表和详情接口。
-3. 前端 `/automation` 增加历史分析和复制计划入口。
-4. E2E 覆盖分析、保存、刷新恢复、复制计划。
-
-验收：
-
-1. 页面刷新不丢失 site analysis。
-2. 用户能从历史分析创建采集任务。
-
-### Phase C：CleaningPlan 持久化和 dry-run
-
-目标：让清洗规则从 DatasetVersion 的附属字段升级为可复用资产。
+目标：把工具情报监控从 SOP/import-only 推进为可运行采集链路，服务“当下采集工具、agent、skill、crawler、RPA 项目”情报库。
 
 任务：
 
-1. 新增 CleaningPlan 模型。
-2. 支持字段类型、主键、默认值、格式化、去重规则。
-3. 新增 dry-run API 和前端对比视图。
-4. Dataset 保存时绑定 CleaningPlan 版本。
+1. 将 `github-api-first` 平台包升级为 executable。
+2. 定义 repo、topic、release、README、issue activity 等字段 schema。
+3. 建立工具实体标准：名称、安装方式、适用平台、采集方式、维护活跃度、风险边界、SOP 链接。
+4. 接入 Dataset 保存、导出、漂移检查和报告。
 
 验收：
 
-1. 清洗规则可保存、复制、版本化。
-2. DatasetVersion 能明确追踪来自哪个 CleaningPlan。
+1. 可输入 GitHub topic 或 repo 列表生成工具情报数据集。
+2. 数据集能进入导出、漂移和报告链路。
+3. 页面能说明每个工具适用场景和不适用场景。
 
-### Phase D：平台包模板化
+### Phase C：浏览器结构解析预检
 
-目标：把 Shopify-style 成果沉淀成可复制的平台包系统。
+目标：把 browser-harness 的真实浏览器能力用于只读结构诊断，帮助判断目标站点适合 API、静态解析、浏览器自动化、RPA 还是人工导入。
 
 任务：
 
-1. 定义 PlatformPackage contract。
-2. 将 Shopify/独立站包迁移到模板。
-3. 平台包页面展示字段、策略、SOP、风险边界和演示入口。
-4. 添加 GitHub/API-first 平台包。
+1. 设计只读页面能力探测：渲染方式、关键字段来源、分页方式、登录态需求、反爬风险信号。
+2. 将探测结果写入站点分析或采集计划建议。
+3. UI 展示“推荐采集路径”和“不建议自动采集原因”。
+4. 明确不实现登录绕过、反检测或风控规避。
 
 验收：
 
-1. 平台包不是静态介绍页，而是能启动实际采集流程。
-2. 每个平台包都有 SOP 和 E2E fixture。
+1. 对授权公开页面能输出结构诊断和策略建议。
+2. 对风险页面只输出边界说明，不进入默认自动采集。
 
-### Phase E：调度和告警可靠性
+### Phase D：独立站电商平台包深化
 
-目标：让长期运行稳定。
+目标：把当前 Shopify/独立站包从 demo 闭环提升为可培训、可复用的采集模板。
 
 任务：
 
-1. 任务锁和重复运行保护。
-2. AlertRule 幂等创建。
-3. 重复点击保护。
-4. 失败状态和 UI 修复建议。
+1. 强化 collection、listing、sitemap 的发现质量。
+2. 扩展字段：变体、SKU、库存、图片、品牌、价格历史、类目。
+3. 增加字段缺失、价格变化、新增/下架的漂移示例。
+4. 补齐培训 SOP：从 URL 到 Dataset 导出全流程。
 
 验收：
 
-1. 重复点击不会产生重复任务、重复规则或重复事件。
-2. 失败任务有可解释状态和下一步动作。
+1. 授权测试站点能完成发现、fan-out、批量运行、数据集保存和导出。
+2. 至少一条漂移样例可用于培训演示。
+
+### Phase E：marketplace 与 social 的边界型平台包
+
+目标：先把高风险平台做成合规边界、字段模型和授权导入路径，避免误导用户以为可以默认页面抓取。
+
+任务：
+
+1. Amazon、Temu、Shopee、Lazada：优先官方 API、授权导出和人工导入模板。
+2. YouTube、Reddit：优先官方 API 或公开数据。
+3. TikTok、Instagram、X、小红书：先做 SOP、字段模型和导入模板。
+4. UI 明确标识“可自动采集 / API 优先 / 仅导入 / 暂不支持”的策略等级。
+
+验收：
+
+1. 至少完成一个 marketplace import/API-first demo。
+2. 至少完成一个 social API/import demo。
+3. 高风险平台不会默认进入自动采集执行链路。
 
 ## 8. 验收策略
 
@@ -312,24 +306,21 @@ P2 是平台稳定后的增强能力。
 
 ## 9. 下一步执行建议
 
-立即执行 Phase A。
+当前轮次执行 Phase A 的文档和状态同步。
 
-具体顺序：
+Phase A 完成后的下一轮建议：
 
-1. 更新 `docs/architecture/architecture-data-intelligence-hub-stable.md`。
-2. 更新 `docs/api/api-contract-data-intelligence-hub-stable.md`。
-3. 更新 `drafts/analysis/analysis-automation-platform-phase1-refactor-draft-20260617.md` 的过期 gap。
-4. 建立 P0 backlog 文件，绑定代码路径和验收方式。
-5. 运行文档级检查和相关 API 测试，确认没有把已完成能力误列为未完成。
-
-Phase A 完成后进入 Phase B：ExtractionPlan 持久化。
+1. 先清理 `/automation`、`/datasets`、漂移和告警相关页面中剩余的内部技术名词。
+2. 再进入 Phase B：GitHub/API-first 可执行平台包。
+3. 之后进入 Phase C：browser-harness 支撑的浏览器结构解析预检。
+4. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
 
 ## 10. 不确定项
 
 以下事项需要在进入对应 Phase 前再核验：
 
-1. 生产环境当前部署 SHA 是否已包含 Dataset Export 运行时代码。
-2. Dataset Export 在生产容器中的文件持久化目录和备份策略。
-3. 下一个非 Shopify 平台包的业务优先级。
-4. 社媒平台采集的授权边界和数据来源。
+1. Dataset Export 在生产容器中的文件持久化目录和备份策略。
+2. GitHub/API-first 是否优先从 topic 监控、repo 列表导入，还是 release/README 解析开始。
+3. browser-harness 结构解析预检是否仅做本地/生产 E2E 工具，还是进入后端服务能力。
+4. marketplace 和 social 平台采集的授权边界和数据来源。
 5. 是否在 P2 前提前引入 COS/S3，还是继续使用本地 volume。

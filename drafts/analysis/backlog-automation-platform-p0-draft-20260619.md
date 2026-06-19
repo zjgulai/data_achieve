@@ -12,6 +12,8 @@ source: human+ai
 
 # 自动化数据采集工作台 P0 Backlog
 
+状态说明：第 2 至第 7 节保留原始 P0 计划语义，用于追溯为什么做这些任务；当前完成状态和验收事实以第 8 节执行记录为准。
+
 ## 1. 目标
 
 P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可运营资产系统”。
@@ -191,6 +193,32 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 ## 8. 执行记录
 
+### 2026-06-19 P0 生产部署与真实浏览器验收记录
+
+事实：
+
+1. P0-1 `ExtractionPlan` 持久化、P0-2 清洗计划持久化和试跑、P0-3 Platform Package 模板化、P0-4 重复动作基础保护已合入并部署到生产。
+2. 生产部署 commit：`db6189faea4cf4b400d711162f43bdf928d5e938`。
+3. 生产站点：`https://scrapy.lute-tlz-dddd.top`。
+4. 真实 Chrome + browser-harness 已验证 `/automation` 主链路：应用平台包、商品发现、fan-out 预览、创建采集源/任务、批量运行、数据集预览、清洗规则试跑。
+5. UI 文案已完成核心链路去调试化：面向用户页面不再把 `dry-run`、`CleaningPlan`、`DatasetVersion`、`Source/Task` 作为核心操作文案。
+
+生产验收：
+
+1. `bash scripts/verify-mvp.sh`：API `91 passed`，Web build 通过，Playwright `34 passed / 8 skipped`。
+2. 生产 API smoke 通过。
+3. 生产真实 API E2E：`14 passed / 7 skipped`。
+4. 真实浏览器 E2E 通过，截图证据：`/tmp/data-scrapy-prod-db6189f-automation-cleaning-trial.png`。
+5. E2E fixture cleanup 已执行，后续清理试跑计数为 0。
+6. 本轮只读复核：`GET https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`、`database=connected`、`schema_revision=202606110020`、`schema_head=202606110020`。
+
+边界：
+
+1. 本节覆盖下方各“本地实现记录”中的 `production unchanged` 历史边界；那些边界只描述当时提交前状态。
+2. 平台包仍处于首批静态 contract registry 阶段，尚未支持用户自定义平台包持久化。
+3. GitHub/API-first 目前仍是 SOP/import-only 平台包，不代表已经进入 Automation 一键运行链路。
+4. 采集任务运行锁、重试预算、超时策略和更完整的前端提交中状态仍是后续可靠性增强项。
+
 ### 2026-06-19 P0-1 本地实现记录
 
 事实：
@@ -211,7 +239,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 1. `production unchanged`：本记录不代表生产环境已部署或生产数据库已执行 migration。
 2. 生产 read-only smoke、授权生产写入 E2E、生产 E2E fixture cleanup 尚未执行。
-3. P0-2 CleaningPlan 持久化和 dry-run 仍是下一轮未完成任务。
+3. P0-2 清洗计划持久化和试跑在后续记录中已完成；本条仅保留 P0-1 当时边界。
 
 ### 2026-06-19 P0-2 本地实现记录
 
@@ -238,7 +266,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 1. `production unchanged`：本记录不代表生产环境已部署或生产数据库已执行 migration。
 2. `bash scripts/verify-mvp.sh --with-db` 首次被本机 `5432` 端口占用阻断；改用 `POSTGRES_PORT=55432` 后 full script 的 Alembic 阶段仍需显式 `DATABASE_URL`，因此最终 DB migration 证据来自单独的 Alembic 命令。
 3. 生产 read-only smoke、授权生产写入 E2E、生产 E2E fixture cleanup 尚未执行。
-4. P0-4 重复动作保护仍是下一轮未完成任务。
+4. P0-4 重复动作基础保护在后续记录中已完成；本条仅保留 P0-2 当时边界。
 
 ### 2026-06-19 P0-4 本地实现记录
 
@@ -264,7 +292,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 1. `production unchanged`：本记录不代表生产环境已部署或生产数据库已执行 migration。
 2. 本轮未改前端按钮提交中禁用状态；当前验收重点是后端重复写入保护和失败原因分类。
 3. 生产 read-only smoke、授权生产写入 E2E、生产 E2E fixture cleanup 尚未执行。
-4. 下一轮建议进入 P0-3 Platform Package 模板化，或先做生产部署前的 migration/production read-only smoke 计划。
+4. P0-3 Platform Package 模板化和生产部署验收在后续记录中已完成；本条仅保留 P0-4 当时边界。
 
 ### 2026-06-19 P0-3 本地实现记录
 

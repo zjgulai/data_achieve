@@ -30,6 +30,7 @@ Base URL：
 5. 创建接口成功通常返回 `200` 或 `201`，以实际 route 声明为准。
 6. 未认证返回 `401`，无权限或跨 workspace 资源不可见。
 7. 生产环境 cookie 必须启用 secure。
+8. 本文件是技术合同，endpoint、schema 和 response model 名称保留英文；面向用户页面应使用“采集任务、数据集版本、清洗计划、试跑”等中文业务文案。
 
 ## Auth
 
@@ -97,33 +98,33 @@ osint, ecommerce, social, competitor, mixed
 | `POST` | `/api/automation/site-analysis` | `url`、`authorized`、`target=ecommerce_product`、`fields?` | `AutomationSiteAnalysisResponse` | 分析公开商品页，返回平台画像、页面结构、字段候选、工具推荐、清洗草案和 source draft |
 | `POST` | `/api/automation/product-discovery` | `url`、`authorized`、`max_products?` | `AutomationProductDiscoveryResponse` | 从 listing、collection 或 sitemap 页面发现商品候选 URL |
 | `POST` | `/api/automation/product-fanout-preview` | `parent_url`、`authorized`、`candidates`、`fields?`、`max_sources?` | `AutomationProductFanoutPreviewResponse` | 预览候选商品 URL 是否可转成商品页 source |
-| `POST` | `/api/automation/product-fanout-create` | `project_id`、`parent_url`、`authorized`、`candidates`、`fields?`、`max_sources?`、`enable_tasks?` | `AutomationProductFanoutCreateResponse` | 创建或复用商品页 source，可同时启用 task |
+| `POST` | `/api/automation/product-fanout-create` | `project_id`、`parent_url`、`authorized`、`candidates`、`fields?`、`max_sources?`、`enable_tasks?` | `AutomationProductFanoutCreateResponse` | 创建或复用商品页采集源，可同时启用采集任务 |
 
 关键边界：
 
 1. 这些接口不支持登录态抓取、风控绕过或反检测能力。
-2. `product-fanout-preview` 只预览，不创建 source 或 task。
-3. `product-fanout-create` 会写入 source/task，必须用于授权页面或测试 fixture。
+2. `product-fanout-preview` 只预览，不创建采集源或采集任务。
+3. `product-fanout-create` 会写入采集源/任务，必须用于授权页面或测试 fixture。
 
 ### Batch Run And Dataset
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/product-batch-run` | `authorized`、`task_ids`、`max_tasks?` | `AutomationProductBatchRunResponse` | 对已审阅商品页 task 执行小批量采集 |
-| `POST` | `/api/automation/product-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从 TaskRun 聚合 Dataset 预览和清洗草案 |
-| `POST` | `/api/automation/cleaning-plan-dry-run` | `authorized`、`task_run_ids`、`fields?`、`rules`、`max_rows?` | `AutomationCleaningPlanDryRunResponse` | 对样本行执行清洗规则 dry-run，不保存 DatasetVersion |
-| `POST` | `/api/automation/cleaning-plans` | dry-run request + `name` | `AutomationCleaningPlanCreateResponse` | 保存可复用 CleaningPlan 草案 |
-| `GET` | `/api/automation/cleaning-plans` | query: `project_id?`、`limit?` | `AutomationCleaningPlanListResponse` | 列出 CleaningPlan 资产 |
-| `POST` | `/api/automation/product-dataset-save` | `authorized`、`task_run_ids`、`fields?`、`max_rows?`、`name`、`description?`、`cleaning_plan_id?` | `AutomationProductDatasetSaveResponse` | 保存 DatasetVersion，可追踪 CleaningPlan |
-| `GET` | `/api/automation/product-datasets` | query: `project_id?`、`limit?` | `AutomationProductDatasetListResponse` | 列出商品 Dataset 资产 |
-| `GET` | `/api/automation/product-datasets/{dataset_id}/versions` | query: `limit?` | `AutomationProductDatasetVersionListResponse` | 列出 DatasetVersion |
+| `POST` | `/api/automation/product-batch-run` | `authorized`、`task_ids`、`max_tasks?` | `AutomationProductBatchRunResponse` | 对已审阅商品页采集任务执行小批量采集 |
+| `POST` | `/api/automation/product-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从采集运行结果聚合数据集预览和清洗草案 |
+| `POST` | `/api/automation/cleaning-plan-dry-run` | `authorized`、`task_run_ids`、`fields?`、`rules`、`max_rows?` | `AutomationCleaningPlanDryRunResponse` | 对样本行执行清洗规则试跑，不保存数据集版本 |
+| `POST` | `/api/automation/cleaning-plans` | 试跑请求 + `name` | `AutomationCleaningPlanCreateResponse` | 保存可复用清洗计划草案 |
+| `GET` | `/api/automation/cleaning-plans` | query: `project_id?`、`limit?` | `AutomationCleaningPlanListResponse` | 列出清洗计划资产 |
+| `POST` | `/api/automation/product-dataset-save` | `authorized`、`task_run_ids`、`fields?`、`max_rows?`、`name`、`description?`、`cleaning_plan_id?` | `AutomationProductDatasetSaveResponse` | 保存数据集版本，可追踪清洗计划 |
+| `GET` | `/api/automation/product-datasets` | query: `project_id?`、`limit?` | `AutomationProductDatasetListResponse` | 列出商品数据集资产 |
+| `GET` | `/api/automation/product-datasets/{dataset_id}/versions` | query: `limit?` | `AutomationProductDatasetVersionListResponse` | 列出数据集版本 |
 
-Dataset 不变量：
+数据集不变量：
 
-1. DatasetVersion 必须保留 `source_task_run_ids`、`selected_fields`、`cleaning_script`、`rows`、`export_preview` 和 completeness 指标。
-2. `CleaningPlan` 是独立草案资产，保存规则、脚本文案、dry-run preview 和版本号。
+1. 数据集版本必须保留 `source_task_run_ids`、`selected_fields`、`cleaning_script`、`rows`、`export_preview` 和 completeness 指标。
+2. 清洗计划是独立草案资产，保存规则、脚本文案、试跑预览和版本号。
 3. `cleaning-plan-dry-run` 必须返回 `dataset_version_created=false`、`cleaning_plan_created=false`、`run_started=false`。
-4. DatasetVersion 可选追踪 `cleaning_plan_id`；不传该字段时保持原始 preview 保存行为。
+4. 数据集版本可选追踪 `cleaning_plan_id`；不传该字段时保持原始预览保存行为。
 
 ### Dataset Export
 
@@ -143,8 +144,8 @@ Dataset 不变量：
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/product-schedule-approve` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、调度策略字段 | `AutomationProductScheduleApproveResponse` | 审批 Dataset 关联 task 的后续刷新策略 |
-| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查 DatasetVersion 与最新运行结果的字段漂移 |
+| `POST` | `/api/automation/product-schedule-approve` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、调度策略字段 | `AutomationProductScheduleApproveResponse` | 审批数据集关联采集任务的后续刷新策略 |
+| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查数据集版本与最新运行结果的字段漂移 |
 | `POST` | `/api/automation/product-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 保存漂移快照 |
 | `GET` | `/api/automation/product-drift-events` | query: `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出漂移事件 |
 | `POST` | `/api/automation/product-drift-alert-preview` | `authorized`、`dataset_id`、`dataset_version_id?`、`min_status?`、`channel?` | `AutomationProductDriftAlertPreviewResponse` | 预览漂移告警规则 |
@@ -153,11 +154,16 @@ Dataset 不变量：
 | `POST` | `/api/automation/product-drift-alert-notifications` | `authorized`、`confirm_send`、`dataset_id`、`dataset_version_id`、`drift_event_id`、`alert_event_ids` | `AutomationProductDriftAlertNotificationSendResponse` | 发送站内通知 |
 | `POST` | `/api/automation/product-drift-alert-emails` | notification request + `recipient_email?` | `AutomationProductDriftAlertEmailSendResponse` | 发送邮件告警 |
 
-当前待硬化：
+当前已硬化：
 
-1. AlertRule 幂等创建。
-2. 重复点击保护。
-3. Task 运行锁、重试预算和失败原因标准化。
+1. 漂移快照保存具备 fingerprint 复用，重复提交不会创建重复漂移事件。
+2. 漂移告警规则按项目、条件、渠道和启用状态复用既有规则。
+3. 采集运行失败日志已记录标准化 `failure_reason`。
+
+仍需扩展：
+
+1. 前端提交中状态和更完整的重复点击交互反馈。
+2. 采集任务运行锁、重试预算和超时策略。
 
 ## Task And Run
 

@@ -108,38 +108,40 @@ Phase 1 通过后，下一平台按以下顺序推进：
 4. YouTube / Reddit，优先官方 API 或公开结构。
 5. 小红书 / TikTok / Instagram / X，单独做登录态和平台政策决策。
 
-## 8. 2026-06-18 执行结果
+## 8. 2026-06-18 至 2026-06-19 执行结果
 
 Phase 1 已从草案推进到生产可验收闭环：
 
 1. 新增 `ecommerce_product_page` 和 `ecommerce_product_discovery` collectors。
 2. 新增 `/automation` 工作台，覆盖站点解析、商品发现、fan-out 创建、小批量运行、Dataset 预览、保存、调度审批、漂移检查。
 3. 新增 `/datasets` 资产台，展示 DatasetVersion、字段与清洗规则、漂移历史和漂移告警策略。
-4. 新增 `datasets`、`dataset_versions`、`dataset_drift_events` 三张表，生产 schema 升级到 `202606110017`。
+4. 新增数据集、数据集版本、漂移事件、导出任务、站点分析、采集计划和清洗计划相关表，生产 schema 已升级到 `202606110020`。
 5. 告警链路已覆盖站内通知和邮件告警；生产 E2E 使用一次性账号验证后已清理。
 6. cleanup 工具已补齐新数据集表，避免真实 E2E fixture 残留。
+7. 首批 Platform Package 已覆盖 Shopify/独立站和 GitHub/API-first；前者可执行，后者仍是 SOP/import-only。
+8. P0 生产部署 commit 为 `db6189faea4cf4b400d711162f43bdf928d5e938`，真实 Chrome + browser-harness 已验证 `/automation` 主链路。
 
 仍未完成：
 
-1. 真实平台包扩展到 Shopify collection / sitemap 批量发现之外的 Amazon、社媒和 API-first 平台。
-2. 告警规则去重与重复点击防护，目前重复创建规则会产生多条可匹配 AlertEvent。
-3. `SiteAnalysis`、`ExtractionPlan`、`CleaningPlan` 仍主要由 API response、Source config、DatasetVersion 字段和前端状态承载，还没有升级为可保存、可复制、可版本化的正式资产。
-4. Dataset 导出已具备本地文件写出、下载和审计记录，但生产持久化目录、备份策略和 COS/S3 对象存储抽象仍未闭环。
+1. 真实平台包还没有扩展到 Amazon、Temu、Shopee、Lazada、YouTube、Reddit 等 marketplace/social 平台的 API 或授权导入闭环。
+2. GitHub/API-first 仍是 SOP/import-only，不代表已经进入 Automation 一键采集链路。
+3. 平台包还不是用户可自定义、可版本化的持久化资产。
+4. Dataset 导出已具备文件写出、下载和审计记录，但生产持久化目录、备份策略和 COS/S3 对象存储抽象仍未闭环。
+5. 采集任务运行锁、重试预算、超时策略和前端提交中状态仍需继续增强。
 
-## 9. 2026-06-19 状态修正
+## 9. 2026-06-19 P0 收口记录
 
-本地仓库检查确认，Dataset Export 已实现，不应继续作为 Phase 1 未完成项：
+本地仓库检查和生产验收记录确认，Phase 1 的 P0 骨架已完成：
 
-1. 后端已存在 `DatasetExportJob` 模型。
-2. `/api/automation/product-dataset-exports` 可创建导出任务，支持 `csv`、`json`、`jsonl`。
-3. `/api/automation/product-datasets/{dataset_id}/exports` 可查看导出历史。
-4. `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download` 可下载导出文件。
-5. 前端 `/datasets` 已提供生成导出文件与下载入口。
-6. 集成测试已覆盖导出确认、文件写入、导出历史、下载和 CSV 内容验证。
+1. Dataset Export 已实现：后端有 `DatasetExportJob` 模型，接口支持 `csv`、`json`、`jsonl`，前端 `/datasets` 已提供生成和下载入口。
+2. 采集计划已实现：`SiteAnalysis` 与 `ExtractionPlan` 可保存、查询和复制版本。
+3. 清洗计划已实现：规则可试跑、保存，并可被数据集版本追踪。
+4. Platform Package 初版已实现：Shopify/独立站可执行，GitHub/API-first 作为下一轮 executable 候选。
+5. 重复动作基础保护已实现：漂移快照和漂移告警规则具备复用逻辑，采集失败日志具备标准化原因。
 
-下一阶段 P0 调整为：
+下一阶段不再继续补 P0 骨架，调整为：
 
-1. `ExtractionPlan` 持久化。
-2. `CleaningPlan` 持久化和 dry-run。
-3. Platform Package 模板化。
-4. AlertRule 幂等创建、重复点击保护和任务运行锁。
+1. 清理 UI 中剩余内部技术名词，让培训和业务用户能直接理解。
+2. 将 GitHub/API-first 平台包升级为可执行采集链路。
+3. 引入 browser-harness 支撑的只读结构解析预检。
+4. 深化独立站电商包，并为 marketplace/social 建立 API/import-first 边界包。

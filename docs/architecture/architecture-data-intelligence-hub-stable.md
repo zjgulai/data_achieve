@@ -75,9 +75,10 @@ flowchart LR
 当前实现边界：
 
 1. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
-2. `CleaningPlan` 已升级为可保存、可 dry-run、可被 DatasetVersion 追踪的正式草案资产。
+2. `CleaningPlan` 已升级为可保存、可试跑、可被数据集版本追踪的正式草案资产。
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
+5. 截至 commit `db6189f`，Automation 平台包、采集计划、清洗计划、数据集保存和生产浏览器链路已完成一轮生产验收；后续重点是更多平台包的真实采集深度与长期运行可靠性。
 
 ## 数据闭环
 
@@ -139,9 +140,9 @@ flowchart LR
 
 后续应新增或拆分：
 
-1. `PlatformPackage` 元数据层，用于 Shopify、GitHub/API-first、marketplace、social 等平台包。
-2. CleaningPlan 规则编辑器和更完整的 before/after 预览。
-3. 写入类接口的重复动作保护和幂等键。
+1. `PlatformPackage` 持久化和自定义层，用于 Shopify、GitHub/API-first、marketplace、social 等平台包的版本管理和交付验收。
+2. 清洗计划规则编辑器和更完整的 before/after 预览。
+3. 前端提交中状态、采集任务运行锁、重试预算和超时策略。
 
 ## 采集与调度
 
