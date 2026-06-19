@@ -206,6 +206,22 @@ type ToolkitPreflightAuthorizationGateResponse = {
   required_next_actions: string[];
 };
 
+type ToolkitPreflightCollectionStrategyResponse = {
+  recommended_path:
+    | "generic_web"
+    | "browser_automation"
+    | "official_api_or_file"
+    | "manual_review"
+    | "blocked_review";
+  label: string;
+  fit: "high" | "medium" | "low" | "blocked";
+  confidence: number;
+  field_stability: "high" | "medium" | "low";
+  reasons: string[];
+  next_steps: string[];
+  cleaning_notes: string[];
+};
+
 type ToolkitPreflightReportResponse = {
   requested_url: string;
   final_url: string;
@@ -219,6 +235,7 @@ type ToolkitPreflightReportResponse = {
   dom: ToolkitPreflightDomResponse;
   network: ToolkitPreflightNetworkResponse;
   authorization_gate: ToolkitPreflightAuthorizationGateResponse;
+  collection_strategy: ToolkitPreflightCollectionStrategyResponse;
   recommendations: string[];
 };
 
@@ -501,6 +518,16 @@ function mapPreflightReport(
       blockedReasons: response.authorization_gate.blocked_reasons,
       requiredNextActions: response.authorization_gate.required_next_actions,
     },
+    collectionStrategy: {
+      recommendedPath: response.collection_strategy.recommended_path,
+      label: response.collection_strategy.label,
+      fit: response.collection_strategy.fit,
+      confidence: response.collection_strategy.confidence,
+      fieldStability: response.collection_strategy.field_stability,
+      reasons: response.collection_strategy.reasons,
+      nextSteps: response.collection_strategy.next_steps,
+      cleaningNotes: response.collection_strategy.cleaning_notes,
+    },
     recommendations: response.recommendations,
   };
 }
@@ -586,6 +613,16 @@ function toPreflightReportRequest(
       risk_level: report.authorizationGate.riskLevel,
       blocked_reasons: report.authorizationGate.blockedReasons,
       required_next_actions: report.authorizationGate.requiredNextActions,
+    },
+    collection_strategy: {
+      recommended_path: report.collectionStrategy.recommendedPath,
+      label: report.collectionStrategy.label,
+      fit: report.collectionStrategy.fit,
+      confidence: report.collectionStrategy.confidence,
+      field_stability: report.collectionStrategy.fieldStability,
+      reasons: report.collectionStrategy.reasons,
+      next_steps: report.collectionStrategy.nextSteps,
+      cleaning_notes: report.collectionStrategy.cleaningNotes,
     },
     recommendations: report.recommendations,
   };

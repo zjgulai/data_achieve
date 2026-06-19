@@ -77,6 +77,10 @@ async def test_toolkit_preflight_builds_public_page_report(
     assert report.network.same_origin_links == 1
     assert report.network.external_links == 1
     assert report.network.script_count == 1
+    assert report.collection_strategy.recommended_path == "generic_web"
+    assert report.collection_strategy.fit == "high"
+    assert report.collection_strategy.field_stability == "high"
+    assert "DOM 字段契约" in " ".join(report.collection_strategy.next_steps)
 
 
 @pytest.mark.asyncio
@@ -125,3 +129,37 @@ async def test_toolkit_preflight_blocks_global_robots_disallow(
     assert report.authorization_gate.blocked_reasons == [
         "robots.txt 对全站采集给出禁止信号。"
     ]
+    assert report.collection_strategy.recommended_path == "blocked_review"
+    assert report.collection_strategy.fit == "blocked"
+
+
+@pytest.mark.asyncio
+async def test_toolkit_preflight_recommends_browser_for_script_heavy_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nDisallow:\n")
+        if request.url.path == "/sitemap.xml":
+            return httpx.Response(404)
+        if request.url.path == "/.well-known/security.txt":
+            return httpx.Response(404)
+        scripts = "".join(f"<script src='/app-{index}.js'></script>" for index in range(12))
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html"},
+            text=f"<html><head><title>App Shell</title></head><body>{scripts}</body></html>",
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        report = await run_toolkit_preflight(
+            ToolkitPreflightRequest(url="https://example.com", authorized=True),
+            http_client=client,
+        )
+
+    assert report.authorization_gate.allowed_to_continue is True
+    assert report.collection_strategy.recommended_path == "browser_automation"
+    assert report.collection_strategy.field_stability == "low"
+    assert "真实浏览器" in " ".join(report.collection_strategy.next_steps)

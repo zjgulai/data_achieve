@@ -1666,6 +1666,7 @@ function StructurePreflightResult({
   selectedProjectId: string;
 }) {
   const gate = report.authorizationGate;
+  const strategy = report.collectionStrategy;
   const canCreateSource = gate.allowedToContinue && selectedProjectId.length > 0;
   const draftFields = [
     { label: "页面标题", value: report.dom.title ?? "未识别", source: "html_title" },
@@ -1688,13 +1689,13 @@ function StructurePreflightResult({
             <Fact label="最终 URL" value={report.finalUrl} />
             <Fact label="HTTP 状态" value={String(report.network.finalStatusCode)} />
             <Fact label="风险级别" value={formatRisk(gate.riskLevel)} />
-            <Fact label="表单数" value={String(report.network.formCount)} />
+            <Fact label="推荐路径" value={formatRecommendedPath(strategy.recommendedPath)} />
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Fact label="robots" value={formatResourceAvailability(report.robots.available)} />
             <Fact label="sitemap" value={formatResourceAvailability(report.sitemap.available)} />
-            <Fact label="脚本数" value={String(report.network.scriptCount)} />
-            <Fact label="同源链接" value={String(report.network.sameOriginLinks)} />
+            <Fact label="字段稳定性" value={formatFieldStability(strategy.fieldStability)} />
+            <Fact label="适配度" value={`${formatStrategyFit(strategy.fit)} · ${strategy.confidence}%`} />
           </div>
           <div
             className={cn(
@@ -1737,6 +1738,49 @@ function StructurePreflightResult({
       </div>
 
       <aside className="grid min-w-0 gap-5">
+        <Panel icon={ShieldCheck} label="Collection Strategy" title="采集路径建议">
+          <div className="grid gap-3">
+            <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-semibold text-[#2E201C]">
+                    {strategy.label}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase text-[#B47767]">
+                    {formatRecommendedPath(strategy.recommendedPath)} · {formatStrategyFit(strategy.fit)}
+                  </p>
+                </div>
+                <span className="w-fit rounded-full bg-[#FFF0EA] px-2.5 py-1 text-xs font-semibold text-[#9E5C4D]">
+                  {strategy.confidence}%
+                </span>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs leading-5 text-[#7A625A]">
+                {strategy.reasons.slice(0, 3).map((reason) => (
+                  <p className="rounded-lg bg-white px-3 py-2" key={reason}>
+                    {reason}
+                  </p>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+              <p className="text-xs font-semibold uppercase text-[#B47767]">下一步</p>
+              <ul className="mt-2 grid gap-2 text-sm leading-5 text-[#5F5757]">
+                {strategy.nextSteps.slice(0, 4).map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+              <p className="text-xs font-semibold uppercase text-[#B47767]">清洗建议</p>
+              <ul className="mt-2 grid gap-2 text-sm leading-5 text-[#5F5757]">
+                {strategy.cleaningNotes.slice(0, 3).map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Panel>
+
         <Panel icon={Database} label="generic_web" title="采集源运行入口">
           <div className="grid gap-3">
             <p className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-sm leading-6 text-[#7A625A]">
@@ -3766,6 +3810,36 @@ function formatTaskRunStatus(value: string) {
 
 function formatResourceAvailability(value: boolean) {
   return value ? "可读取" : "需复核";
+}
+
+function formatRecommendedPath(value: ToolkitPreflightReport["collectionStrategy"]["recommendedPath"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["recommendedPath"], string> = {
+    blocked_review: "阻断复核",
+    browser_automation: "浏览器自动化",
+    generic_web: "静态页面采集",
+    manual_review: "人工复核",
+    official_api_or_file: "API/文件导入",
+  };
+  return labels[value];
+}
+
+function formatStrategyFit(value: ToolkitPreflightReport["collectionStrategy"]["fit"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["fit"], string> = {
+    blocked: "阻断",
+    high: "高适配",
+    low: "低适配",
+    medium: "中适配",
+  };
+  return labels[value];
+}
+
+function formatFieldStability(value: ToolkitPreflightReport["collectionStrategy"]["fieldStability"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["fieldStability"], string> = {
+    high: "高",
+    low: "低",
+    medium: "中",
+  };
+  return labels[value];
 }
 
 function hostLabelFromUrl(value: string) {

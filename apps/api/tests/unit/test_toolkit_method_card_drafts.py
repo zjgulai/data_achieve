@@ -32,6 +32,7 @@ from data_intelligence_hub.models import (
 from data_intelligence_hub.schemas.toolkit import (
     ToolkitMethodCardDraftRequest,
     ToolkitPreflightAuthorizationGateResponse,
+    ToolkitPreflightCollectionStrategyResponse,
     ToolkitPreflightDomResponse,
     ToolkitPreflightHttpResourceResponse,
     ToolkitPreflightNetworkResponse,
@@ -173,6 +174,16 @@ def _report(final_url: str) -> ToolkitPreflightReportResponse:
             risk_level="low",
             blocked_reasons=[],
             required_next_actions=["可进入低风险公开页面采集实验。"],
+        ),
+        collection_strategy=ToolkitPreflightCollectionStrategyResponse(
+            recommended_path="generic_web",
+            label="静态公开页面采集",
+            fit="high",
+            confidence=86,
+            field_stability="medium",
+            reasons=["标题、链接和可见文本可从 HTML 直接读取。"],
+            next_steps=["建立 DOM 字段契约，使用 generic_web 做低频公开页面采集实验。"],
+            cleaning_notes=["保留 requested_url、final_url、标题、描述和正文样本。"],
         ),
         recommendations=["robots.txt 可读取，未发现全站禁止规则。"],
     )

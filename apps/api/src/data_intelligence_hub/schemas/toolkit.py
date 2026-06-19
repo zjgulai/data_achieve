@@ -189,6 +189,23 @@ class ToolkitPreflightAuthorizationGateResponse(BaseModel):
     required_next_actions: list[str]
 
 
+class ToolkitPreflightCollectionStrategyResponse(BaseModel):
+    recommended_path: Literal[
+        "generic_web",
+        "browser_automation",
+        "official_api_or_file",
+        "manual_review",
+        "blocked_review",
+    ]
+    label: str
+    fit: Literal["high", "medium", "low", "blocked"]
+    confidence: int = Field(ge=0, le=100)
+    field_stability: Literal["high", "medium", "low"]
+    reasons: list[str]
+    next_steps: list[str]
+    cleaning_notes: list[str]
+
+
 class ToolkitPreflightReportResponse(BaseModel):
     requested_url: str
     final_url: str
@@ -202,6 +219,7 @@ class ToolkitPreflightReportResponse(BaseModel):
     dom: ToolkitPreflightDomResponse
     network: ToolkitPreflightNetworkResponse
     authorization_gate: ToolkitPreflightAuthorizationGateResponse
+    collection_strategy: ToolkitPreflightCollectionStrategyResponse
     recommendations: list[str]
 
 

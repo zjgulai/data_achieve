@@ -175,6 +175,22 @@ export type ToolkitPreflightAuthorizationGate = {
   requiredNextActions: string[];
 };
 
+export type ToolkitPreflightCollectionStrategy = {
+  recommendedPath:
+    | "generic_web"
+    | "browser_automation"
+    | "official_api_or_file"
+    | "manual_review"
+    | "blocked_review";
+  label: string;
+  fit: "high" | "medium" | "low" | "blocked";
+  confidence: number;
+  fieldStability: "high" | "medium" | "low";
+  reasons: string[];
+  nextSteps: string[];
+  cleaningNotes: string[];
+};
+
 export type ToolkitPreflightReport = {
   requestedUrl: string;
   finalUrl: string;
@@ -188,6 +204,7 @@ export type ToolkitPreflightReport = {
   dom: ToolkitPreflightDom;
   network: ToolkitPreflightNetwork;
   authorizationGate: ToolkitPreflightAuthorizationGate;
+  collectionStrategy: ToolkitPreflightCollectionStrategy;
   recommendations: string[];
 };
 

@@ -11,6 +11,7 @@ from data_intelligence_hub.collectors import generic_web as generic_web_module
 from data_intelligence_hub.collectors.base import HTTP_HEADERS, HTTP_TIMEOUT_SECONDS, CollectorError
 from data_intelligence_hub.schemas.toolkit import (
     ToolkitPreflightAuthorizationGateResponse,
+    ToolkitPreflightCollectionStrategyResponse,
     ToolkitPreflightDomResponse,
     ToolkitPreflightHttpResourceResponse,
     ToolkitPreflightNetworkResponse,
@@ -79,6 +80,13 @@ async def _run_preflight_with_client(
         sitemap=sitemap,
         security_txt=security_txt,
     )
+    collection_strategy = _build_collection_strategy(
+        document=document,
+        dom=dom,
+        gate=gate,
+        robots=robots,
+        sitemap=sitemap,
+    )
     return ToolkitPreflightReportResponse(
         requested_url=payload.url.strip(),
         final_url=document.final_url,
@@ -92,6 +100,7 @@ async def _run_preflight_with_client(
         dom=dom.to_response(),
         network=network,
         authorization_gate=gate,
+        collection_strategy=collection_strategy,
         recommendations=recommendations,
     )
 
@@ -402,6 +411,144 @@ def _assess_preflight(
         ),
         recommendations,
     )
+
+
+def _build_collection_strategy(
+    *,
+    document: _DocumentFetch,
+    dom: _DomInspection,
+    gate: ToolkitPreflightAuthorizationGateResponse,
+    robots: ToolkitPreflightHttpResourceResponse,
+    sitemap: ToolkitPreflightHttpResourceResponse,
+) -> ToolkitPreflightCollectionStrategyResponse:
+    content_type = (document.response.headers.get("content-type") or "").lower()
+    reasons: list[str] = []
+    next_steps: list[str] = []
+    cleaning_notes: list[str] = []
+
+    field_stability = _field_stability(dom)
+    if not gate.allowed_to_continue:
+        return ToolkitPreflightCollectionStrategyResponse(
+            recommended_path="blocked_review",
+            label="先人工复核授权与站点政策",
+            fit="blocked",
+            confidence=20,
+            field_stability="low",
+            reasons=gate.blocked_reasons or ["预检存在阻断项。"],
+            next_steps=gate.required_next_actions
+            or ["记录阻断原因，取得明确授权后再重新预检。"],
+            cleaning_notes=["不生成字段采集脚本，避免把阻断页面误写入训练数据。"],
+        )
+
+    if "html" not in content_type:
+        return ToolkitPreflightCollectionStrategyResponse(
+            recommended_path="official_api_or_file",
+            label="优先使用官方 API 或授权文件导入",
+            fit="medium",
+            confidence=60,
+            field_stability="low",
+            reasons=[
+                "主响应不是 HTML 页面，DOM 字段契约不稳定。",
+                "该目标更适合按文件/API 的结构化字段处理。",
+            ],
+            next_steps=[
+                "确认数据提供方是否有 API、CSV、JSON、RSS 或后台导出。",
+                "将字段映射成导入模板，再进入 Dataset 保存和清洗计划。",
+            ],
+            cleaning_notes=[
+                "先保留原始字段名和类型，再做字段重命名、空值填充和枚举规范化。"
+            ],
+        )
+
+    if dom.form_count > 0:
+        reasons.append("页面包含表单，可能涉及登录、查询条件、账号态或个人信息。")
+        next_steps.append("人工确认表单是否只用于公开搜索，不采集登录态或个人信息。")
+        cleaning_notes.append("把输入条件、结果列表和详情字段分开建模，避免混写。")
+        return ToolkitPreflightCollectionStrategyResponse(
+            recommended_path="manual_review",
+            label="人工复核后再选择 RPA、API 或导入",
+            fit="low",
+            confidence=45,
+            field_stability="low",
+            reasons=reasons,
+            next_steps=next_steps,
+            cleaning_notes=cleaning_notes,
+        )
+
+    if dom.script_count > 10 and len(dom.text_sample) < 120:
+        return ToolkitPreflightCollectionStrategyResponse(
+            recommended_path="browser_automation",
+            label="浏览器自动化或官方 API 复核",
+            fit="medium",
+            confidence=62,
+            field_stability="low",
+            reasons=[
+                "脚本资源较多且首屏可见文本较少，核心字段可能由运行时接口渲染。",
+                "仅用静态 HTML 解析容易漏字段或拿到骨架页面。",
+            ],
+            next_steps=[
+                "用真实浏览器捕获可见文本、accessibility snapshot 和 network 摘要。",
+                "优先识别公开 JSON/API 端点；没有稳定端点时再评估浏览器采集。",
+            ],
+            cleaning_notes=[
+                "为运行时字段记录来源接口或选择器，保存字段缺失率作为漂移基线。"
+            ],
+        )
+
+    if dom.script_count > 10:
+        reasons.append("脚本资源较多，动态字段需要抽样复核。")
+        next_steps.append("先用静态 generic_web 采集一轮，再用真实浏览器比对字段缺失。")
+        confidence = 70
+        fit = "medium"
+    else:
+        reasons.append("标题、链接和可见文本可从 HTML 直接读取。")
+        next_steps.append("建立 DOM 字段契约，使用 generic_web 做低频公开页面采集实验。")
+        confidence = 86 if sitemap.available or dom.same_origin_links > 0 else 76
+        fit = "high"
+
+    if robots.available:
+        reasons.append("robots.txt 可读取，已纳入采集边界判断。")
+    if sitemap.available:
+        next_steps.append("从 sitemap 或同源链接抽样扩展 URL 清单。")
+    else:
+        next_steps.append("没有 sitemap 时只抽样同源链接，不假设全站 URL 清单。")
+
+    cleaning_notes.extend(
+        [
+            "保留 requested_url、final_url、标题、描述、正文样本和同源链接数。",
+            "对标题、描述和正文做去空白、截断、URL 规范化。",
+        ]
+    )
+    return ToolkitPreflightCollectionStrategyResponse(
+        recommended_path="generic_web",
+        label="静态公开页面采集",
+        fit=fit,
+        confidence=confidence,
+        field_stability=field_stability,
+        reasons=reasons,
+        next_steps=next_steps,
+        cleaning_notes=cleaning_notes,
+    )
+
+
+def _field_stability(dom: _DomInspection) -> str:
+    stable_markers = sum(
+        [
+            bool(dom.title),
+            bool(dom.description),
+            bool(dom.canonical_url),
+            len(dom.headings) > 0,
+            len(dom.text_sample) >= 120,
+            dom.same_origin_links > 0,
+        ]
+    )
+    if dom.form_count > 0 or (dom.script_count > 10 and len(dom.text_sample) < 120):
+        return "low"
+    if stable_markers >= 4 and dom.script_count <= 5:
+        return "high"
+    if stable_markers >= 3:
+        return "medium"
+    return "low"
 
 
 def _select_headers(headers: httpx.Headers) -> dict[str, str]:

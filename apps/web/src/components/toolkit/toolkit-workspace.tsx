@@ -1922,6 +1922,7 @@ function MethodCardDraftList({
 
 function PreflightReportCard({ report }: { report: ToolkitPreflightReport }) {
   const risk = parseRisk(report.authorizationGate.riskLevel);
+  const strategy = report.collectionStrategy;
   const headerEntries = Object.entries(report.headers);
   return (
     <article className="mt-4 rounded-2xl border border-[#E9E5E2] bg-[#FFFDFC] p-4">
@@ -1979,6 +1980,28 @@ function PreflightReportCard({ report }: { report: ToolkitPreflightReport }) {
         <PreflightResourceCard title="robots.txt" resource={report.robots} />
         <PreflightResourceCard title="sitemap.xml" resource={report.sitemap} />
         <PreflightResourceCard title="security.txt" resource={report.securityTxt} />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#EDE6DF] bg-white p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase text-[#B47767]">Collection Strategy</p>
+            <h5 className="mt-1 break-words text-sm font-semibold text-[#1D1D1F]">
+              {strategy.label}
+            </h5>
+            <p className="mt-1 text-xs leading-5 text-[#86868B]">
+              {formatRecommendedPath(strategy.recommendedPath)} · {formatStrategyFit(strategy.fit)} · 字段稳定性 {formatFieldStability(strategy.fieldStability)}
+            </p>
+          </div>
+          <span className="w-fit rounded-full border border-[#EDE6DF] bg-[#FBF8F5] px-2.5 py-1 text-[11px] font-semibold text-[#7A625A]">
+            {strategy.confidence}%
+          </span>
+        </div>
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          <CompactList title="判断依据" items={strategy.reasons.slice(0, 3)} />
+          <CompactList title="下一步" items={strategy.nextSteps.slice(0, 3)} />
+          <CompactList title="清洗建议" items={strategy.cleaningNotes.slice(0, 3)} />
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
@@ -2427,6 +2450,36 @@ function parseStage(value: string): StageKey {
 
 function parseRisk(value: string): RiskLevel {
   return value === "low" || value === "medium" || value === "high" ? value : "medium";
+}
+
+function formatRecommendedPath(value: ToolkitPreflightReport["collectionStrategy"]["recommendedPath"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["recommendedPath"], string> = {
+    blocked_review: "阻断复核",
+    browser_automation: "浏览器自动化",
+    generic_web: "静态页面采集",
+    manual_review: "人工复核",
+    official_api_or_file: "API/文件导入",
+  };
+  return labels[value];
+}
+
+function formatStrategyFit(value: ToolkitPreflightReport["collectionStrategy"]["fit"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["fit"], string> = {
+    blocked: "阻断",
+    high: "高适配",
+    low: "低适配",
+    medium: "中适配",
+  };
+  return labels[value];
+}
+
+function formatFieldStability(value: ToolkitPreflightReport["collectionStrategy"]["fieldStability"]) {
+  const labels: Record<ToolkitPreflightReport["collectionStrategy"]["fieldStability"], string> = {
+    high: "高",
+    low: "低",
+    medium: "中",
+  };
+  return labels[value];
 }
 
 function toolDisplayStars(tool: ToolItem, dynamicTool: ToolkitTool | undefined): string {
