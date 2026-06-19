@@ -129,10 +129,10 @@ type AutomationPlatformPackageResponse = {
     source: string;
     cleaning_rule: string;
   }>;
-  default_entrypoint: "product-discovery" | "site-analysis" | "sop-import";
+  default_entrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create" | "preflight";
   sample_urls: Array<{
     label: string;
-    entrypoint: "product-discovery" | "site-analysis" | "sop-import";
+    entrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create" | "preflight";
     url: string;
     description: string;
   }>;

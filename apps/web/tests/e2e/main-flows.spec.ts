@@ -769,7 +769,8 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
-    await expect(page.getByText("可执行", { exact: true })).toHaveCount(2);
+    await expect(page.getByText("公开网页结构解析预检", { exact: true })).toBeVisible();
+    await expect(page.getByText("可执行", { exact: true })).toHaveCount(3);
 
     await page
       .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })
@@ -788,7 +789,19 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("价格", { exact: true })).toBeVisible();
     await expect(page.getByText("SKU", { exact: true })).toBeVisible();
     await expect(page.getByText("SKU: fill_default")).toBeVisible();
-    await expect(page.getByText("规范 URL", { exact: true })).toBeVisible();
+    await expect(page.getByText("规范 URL", { exact: true }).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "应用公开网页结构解析预检" }).click();
+    await expect(page.getByRole("button", { name: "结构预检", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByLabel("公开网页 URL")).toHaveValue("https://example.com");
+    await expect(page.locator("form").getByText("预检范围", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "生成结构预检" }).click();
+    await expect(
+      page.getByText("请先确认目标为公开页面或公开 API，且你有权进行采集分析。"),
+    ).toBeVisible();
 
     await page.getByRole("button", { name: "应用GitHub API-first 工具情报采集" }).click();
     await expect(page.getByRole("button", { name: "Topic Radar", exact: true })).toHaveAttribute(

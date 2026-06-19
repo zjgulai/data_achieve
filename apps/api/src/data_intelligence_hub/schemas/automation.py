@@ -234,7 +234,13 @@ class AutomationPlatformPackageFieldResponse(BaseModel):
 
 class AutomationPlatformPackageSampleUrlResponse(BaseModel):
     label: str
-    entrypoint: Literal["product-discovery", "site-analysis", "sop-import", "source-create"]
+    entrypoint: Literal[
+        "product-discovery",
+        "site-analysis",
+        "sop-import",
+        "source-create",
+        "preflight",
+    ]
     url: str
     description: str
 
@@ -289,7 +295,13 @@ class AutomationPlatformPackageResponse(BaseModel):
     supported_targets: list[str]
     collector_types: list[str]
     field_schema: list[AutomationPlatformPackageFieldResponse]
-    default_entrypoint: Literal["product-discovery", "site-analysis", "sop-import", "source-create"]
+    default_entrypoint: Literal[
+        "product-discovery",
+        "site-analysis",
+        "sop-import",
+        "source-create",
+        "preflight",
+    ]
     sample_urls: list[AutomationPlatformPackageSampleUrlResponse]
     cleaning_rules: list[AutomationPlatformPackageCleaningRuleResponse]
     operator_checklist: list[str]

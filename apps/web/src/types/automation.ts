@@ -45,7 +45,7 @@ export type AutomationPlatformPackageField = {
 
 export type AutomationPlatformPackageSampleUrl = {
   label: string;
-  entrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create";
+  entrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create" | "preflight";
   url: string;
   description: string;
 };
@@ -90,7 +90,7 @@ export type AutomationPlatformPackage = {
   supportedTargets: string[];
   collectorTypes: string[];
   fieldSchema: AutomationPlatformPackageField[];
-  defaultEntrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create";
+  defaultEntrypoint: "product-discovery" | "site-analysis" | "sop-import" | "source-create" | "preflight";
   sampleUrls: AutomationPlatformPackageSampleUrl[];
   cleaningRules: AutomationPlatformPackageCleaningRule[];
   operatorChecklist: string[];

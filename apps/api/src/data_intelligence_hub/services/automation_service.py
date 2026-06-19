@@ -3055,6 +3055,170 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
             execution_boundary="executable",
             run_started=False,
         ),
+        AutomationPlatformPackageResponse(
+            id="public-page-structure-preflight",
+            name="公开网页结构解析预检",
+            category="browser_preflight",
+            summary=(
+                "面向任意公开网页的采集前置诊断；先检查授权、robots、"
+                "sitemap、重定向、DOM 摘要和链接结构，再决定是否进入 generic_web "
+                "或浏览器自动化采集。"
+            ),
+            supported_targets=["public_web_page", "site_structure", "field_contract_draft"],
+            collector_types=["toolkit_preflight", "generic_web"],
+            field_schema=[
+                AutomationPlatformPackageFieldResponse(
+                    key="page_title",
+                    label="页面标题",
+                    data_type="string",
+                    required=True,
+                    source="html_title",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="canonical_url",
+                    label="规范 URL",
+                    data_type="url",
+                    required=True,
+                    source="canonical_or_final_url",
+                    cleaning_rule="normalize_url",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="meta_description",
+                    label="页面描述",
+                    data_type="string",
+                    required=False,
+                    source="meta_description",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="headings",
+                    label="标题层级",
+                    data_type="string_array",
+                    required=False,
+                    source="dom_h1_h2_h3",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="same_origin_links",
+                    label="同源链接",
+                    data_type="integer",
+                    required=False,
+                    source="dom_links",
+                    cleaning_rule="fill_default",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="text_sample",
+                    label="正文样本",
+                    data_type="text",
+                    required=False,
+                    source="visible_text",
+                    cleaning_rule="strip_text",
+                ),
+            ],
+            default_entrypoint="preflight",
+            sample_urls=[
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="公开网页样例",
+                    entrypoint="preflight",
+                    url="https://example.com",
+                    description=(
+                        "用于生成采集前置预检报告，确认 URL、robots、DOM、"
+                        "链接结构和后续采集工具选择。"
+                    ),
+                )
+            ],
+            cleaning_rules=[
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="page_title",
+                    operation="strip_text",
+                    description="去除页面标题首尾空白并合并重复空格。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="canonical_url",
+                    operation="normalize_url",
+                    description="规范最终 URL 和 canonical URL，降低重复页面记录。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="meta_description",
+                    operation="strip_text",
+                    description="清理 meta description，用作页面摘要候选。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="text_sample",
+                    operation="strip_text",
+                    description="压缩正文样本文本空白，便于人工判断字段价值。",
+                ),
+            ],
+            operator_checklist=[
+                "确认目标 URL 属于自有、授权或明确允许分析的公开页面。",
+                "先看 robots、sitemap、security.txt 和表单数量，再决定是否继续。",
+                "把 title、canonical_url、headings、text_sample 作为首轮字段契约。",
+                "脚本多或关键内容不可见时，再升级到 Playwright/browser-use 等浏览器方案。",
+            ],
+            strategy_matrix=[
+                AutomationPlatformPackageStrategyResponse(
+                    id="public-url-structure-preflight",
+                    label="公开 URL 结构预检",
+                    entrypoint="preflight",
+                    collector_type="toolkit_preflight",
+                    fit="high",
+                    can_start_from_automation=True,
+                    review_required=True,
+                    description=(
+                        "从 Automation 直接调用预检 API，输出授权 gate、DOM 摘要、"
+                        "资源线索和后续工具建议。"
+                    ),
+                ),
+                AutomationPlatformPackageStrategyResponse(
+                    id="preflight-to-generic-web",
+                    label="预检后创建 generic_web 采集源",
+                    entrypoint="source-create",
+                    collector_type="generic_web",
+                    fit="medium",
+                    can_start_from_automation=True,
+                    review_required=True,
+                    description=(
+                        "预检未触发阻断项后，将最终 URL 创建为 generic_web 采集源，"
+                        "执行一次公开页面采集。"
+                    ),
+                ),
+            ],
+            risk_boundaries=[
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="公开页面、robots 未给出全站禁止信号，且不依赖账号态",
+                    severity="info",
+                    guidance="可在授权确认后生成预检报告，并小批量验证 generic_web 采集。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="出现登录墙、验证码、私网地址、账号参数或个人数据",
+                    severity="blocked",
+                    guidance="停止自动化采集，转入人工授权或官方 API 路线。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="页面脚本重、正文样本不足或关键字段由交互加载",
+                    severity="warning",
+                    guidance="先用浏览器解析实验室定位 DOM、network 和 selector，再决定工具升级。",
+                ),
+            ],
+            sop_links=[
+                AutomationPlatformPackageSopLinkResponse(
+                    label="授权 URL 预检向导",
+                    href="/toolkit?category=governance",
+                ),
+                AutomationPlatformPackageSopLinkResponse(
+                    label="浏览器解析实验室",
+                    href="/toolkit?category=browser_automation",
+                ),
+            ],
+            sample_fixture=AutomationPlatformPackageFixtureResponse(
+                fixture_type="http_preflight_fixture",
+                available=True,
+                description="单元测试使用固定 HTML、robots 和 sitemap 响应验证预检报告。",
+            ),
+            execution_boundary="executable",
+            run_started=False,
+        ),
     ]
 
 

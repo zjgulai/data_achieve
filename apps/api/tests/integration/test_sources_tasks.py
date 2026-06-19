@@ -104,12 +104,13 @@ async def test_automation_platform_packages_expose_collection_contract(
     list_response = await client.get("/api/automation/platform-packages")
     assert list_response.status_code == 200
     package_list = list_response.json()
-    assert package_list["total"] >= 2
+    assert package_list["total"] >= 3
     assert package_list["run_started"] is False
 
     packages_by_id = {item["id"]: item for item in package_list["items"]}
     assert "shopify-independent-ecommerce" in packages_by_id
     assert "github-api-first" in packages_by_id
+    assert "public-page-structure-preflight" in packages_by_id
 
     ecommerce_package = packages_by_id["shopify-independent-ecommerce"]
     assert ecommerce_package["category"] == "ecommerce"
@@ -165,6 +166,34 @@ async def test_automation_platform_packages_expose_collection_contract(
         and strategy["collector_type"] == "github_topic"
         and strategy["can_start_from_automation"] is True
         for strategy in github_package["strategy_matrix"]
+    )
+
+    preflight_package = packages_by_id["public-page-structure-preflight"]
+    assert preflight_package["category"] == "browser_preflight"
+    assert preflight_package["execution_boundary"] == "executable"
+    assert preflight_package["default_entrypoint"] == "preflight"
+    assert preflight_package["collector_types"] == ["toolkit_preflight", "generic_web"]
+    assert {field["key"] for field in preflight_package["field_schema"]} >= {
+        "page_title",
+        "canonical_url",
+        "headings",
+        "text_sample",
+    }
+    assert any(
+        strategy["entrypoint"] == "preflight"
+        and strategy["collector_type"] == "toolkit_preflight"
+        and strategy["can_start_from_automation"] is True
+        for strategy in preflight_package["strategy_matrix"]
+    )
+    assert any(
+        strategy["entrypoint"] == "source-create"
+        and strategy["collector_type"] == "generic_web"
+        and strategy["can_start_from_automation"] is True
+        for strategy in preflight_package["strategy_matrix"]
+    )
+    assert any(
+        boundary["severity"] == "blocked" and "验证码" in boundary["condition"]
+        for boundary in preflight_package["risk_boundaries"]
     )
 
     detail_response = await client.get(

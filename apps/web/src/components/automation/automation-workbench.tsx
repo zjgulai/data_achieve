@@ -36,9 +36,11 @@ import {
 import { listProjects } from "@/lib/api/projects";
 import { createSource, enableSource } from "@/lib/api/sources";
 import { runTask } from "@/lib/api/tasks";
+import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
+import type { ToolkitPreflightReport } from "@/types/toolkit";
 import type {
   AutomationCleaningPlanCreate,
   AutomationCleaningPlanDryRun,
@@ -76,9 +78,14 @@ const fieldLabels: Record<string, string> = {
   canonical_url: "规范 URL",
   currency: "货币",
   description: "描述",
+  headings: "标题层级",
   image_url: "主图",
+  meta_description: "页面描述",
+  page_title: "页面标题",
   price: "价格",
+  same_origin_links: "同源链接",
   sku: "SKU",
+  text_sample: "正文样本",
   title: "标题",
 };
 
@@ -88,6 +95,13 @@ type GitHubTopicRunState = {
   run: TaskRun | null;
   topic: string;
   maxResults: number;
+};
+
+type GenericWebRunState = {
+  source: Source;
+  task: CollectionTask;
+  run: TaskRun | null;
+  url: string;
 };
 
 function defaultCleaningRulesForFields(fields: string[]): AutomationCleaningRule[] {
@@ -138,7 +152,7 @@ function defaultCleaningRulesForFields(fields: string[]): AutomationCleaningRule
   return rules;
 }
 
-type AutomationMode = "product_page" | "product_discovery" | "github_topic_radar";
+type AutomationMode = "product_page" | "product_discovery" | "github_topic_radar" | "structure_preflight";
 
 export function AutomationWorkbench() {
   const [mode, setMode] = useState<AutomationMode>("product_page");
@@ -148,6 +162,8 @@ export function AutomationWorkbench() {
   const [githubTopic, setGithubTopic] = useState("web-scraping");
   const [githubMaxResults, setGithubMaxResults] = useState("20");
   const [githubRun, setGithubRun] = useState<GitHubTopicRunState | null>(null);
+  const [preflightReport, setPreflightReport] = useState<ToolkitPreflightReport | null>(null);
+  const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
     "price",
@@ -264,8 +280,65 @@ export function AutomationWorkbench() {
       setGithubRun({ source, task, run, topic, maxResults });
       setAnalysis(null);
       setDiscovery(null);
+      setPreflightReport(null);
+      setGenericWebRun(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "GitHub Topic Radar run failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runStructurePreflight() {
+    if (!url.trim()) {
+      setError("请填写待预检的公开网页 URL。");
+      return;
+    }
+    setLoading(true);
+    try {
+      const report = await runToolkitPreflight(url.trim(), authorized);
+      setPreflightReport(report);
+      setGenericWebRun(null);
+      setAnalysis(null);
+      setDiscovery(null);
+      setGithubRun(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "公开网页结构预检失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createGenericWebSourceFromPreflight() {
+    if (!preflightReport) {
+      setError("请先生成结构预检报告。");
+      return;
+    }
+    if (!preflightReport.authorizationGate.allowedToContinue) {
+      setError("当前预检存在阻断项，不能自动创建 generic_web 采集源。");
+      return;
+    }
+    if (!selectedProjectId) {
+      setError("请选择写入项目后再创建 generic_web 采集源。");
+      return;
+    }
+    setLoading(true);
+    try {
+      const source = await createSource({
+        projectId: selectedProjectId,
+        name: `Generic Web: ${hostLabelFromUrl(preflightReport.finalUrl)}`,
+        type: "generic_web",
+        url: preflightReport.finalUrl,
+        config: {
+          url: preflightReport.finalUrl,
+          extract_mode: "main_content",
+        },
+      });
+      const task = await enableSource(source.id);
+      const run = await runTask(task.id);
+      setGenericWebRun({ source, task, run, url: preflightReport.finalUrl });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "generic_web 采集源创建或运行失败");
     } finally {
       setLoading(false);
     }
@@ -279,6 +352,10 @@ export function AutomationWorkbench() {
     }
     if (mode === "github_topic_radar") {
       await runGitHubTopicRadar();
+      return;
+    }
+    if (mode === "structure_preflight") {
+      await runStructurePreflight();
       return;
     }
     if (!url.trim()) {
@@ -296,6 +373,8 @@ export function AutomationWorkbench() {
         setDiscovery(result);
         setAnalysis(null);
         setGithubRun(null);
+        setPreflightReport(null);
+        setGenericWebRun(null);
         return;
       }
       const result = await analyzeAutomationSite({
@@ -307,6 +386,8 @@ export function AutomationWorkbench() {
       setAnalysis(result);
       setDiscovery(null);
       setGithubRun(null);
+      setPreflightReport(null);
+      setGenericWebRun(null);
       if (selectedProjectId) {
         void refreshAnalysisHistory(selectedProjectId);
       }
@@ -364,12 +445,20 @@ export function AutomationWorkbench() {
     }
     setFields(platformPackage.fieldSchema.map((field) => field.key));
     setAppliedPlatformPackage(platformPackage);
+    setError(null);
     setAnalysis(null);
     setDiscovery(null);
     setGithubRun(null);
+    setPreflightReport(null);
+    setGenericWebRun(null);
     const sampleUrl = platformPackage.sampleUrls.find(
       (sample) => sample.entrypoint === executableStrategy.entrypoint,
     );
+    if (executableStrategy.entrypoint === "preflight" || executableStrategy.collectorType === "toolkit_preflight") {
+      setMode("structure_preflight");
+      setUrl(sampleUrl?.url ?? "https://example.com");
+      return;
+    }
     if (executableStrategy.collectorType === "github_topic") {
       setMode("github_topic_radar");
       setGithubTopic(topicFromGitHubUrl(sampleUrl?.url) ?? "web-scraping");
@@ -402,7 +491,7 @@ export function AutomationWorkbench() {
               URL 到结构化采集计划
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7A625A]">
-              针对公开电商页面和 GitHub API-first topic 先做结构解析。商品发现用于提取候选 URL，Topic Radar 用于把公开仓库元数据写入采集源、任务和运行结果。
+              针对公开网页、电商页面和 GitHub API-first topic 先做结构解析。结构预检用于判断授权与 DOM 基础字段，商品发现用于提取候选 URL，Topic Radar 用于把公开仓库元数据写入采集源、任务和运行结果。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <MetricPill icon={ShieldCheck} label="授权边界" value={authorized ? "已确认" : "待确认"} />
@@ -411,6 +500,8 @@ export function AutomationWorkbench() {
                 label={
                   mode === "github_topic_radar"
                     ? "仓库上限"
+                    : mode === "structure_preflight"
+                      ? "预检范围"
                     : mode === "product_discovery"
                       ? "候选上限"
                       : "目标字段"
@@ -418,6 +509,8 @@ export function AutomationWorkbench() {
                 value={
                   mode === "github_topic_radar"
                     ? `${githubMaxResults || "20"} 条`
+                    : mode === "structure_preflight"
+                      ? "DOM/robots"
                     : mode === "product_discovery"
                       ? `${maxProducts || "50"} 条`
                       : `${fields.length} 个`
@@ -431,6 +524,12 @@ export function AutomationWorkbench() {
                     ? githubRun
                       ? `${githubRun.run?.recordsCount ?? 0} 条`
                       : "待运行"
+                    : mode === "structure_preflight"
+                      ? preflightReport
+                        ? preflightReport.authorizationGate.allowedToContinue
+                          ? "可继续"
+                          : "需复核"
+                        : "待预检"
                     : mode === "product_discovery"
                     ? discovery
                       ? `${discovery.productCandidates.length} URL`
@@ -451,12 +550,13 @@ export function AutomationWorkbench() {
                 void submitAutomation();
               }}
             >
-              <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1 sm:grid-cols-4">
                 {(
                   [
                     { mode: "product_page", label: "商品页分析" },
                     { mode: "product_discovery", label: "商品发现" },
                     { mode: "github_topic_radar", label: "Topic Radar" },
+                    { mode: "structure_preflight", label: "结构预检" },
                   ] as const
                 ).map((item) => (
                   <button
@@ -470,14 +570,21 @@ export function AutomationWorkbench() {
                     key={item.mode}
                     onClick={() => {
                       setMode(item.mode);
+                      setError(null);
                       setAnalysis(null);
                       setDiscovery(null);
                       setGithubRun(null);
+                      setPreflightReport(null);
+                      setGenericWebRun(null);
                       if (item.mode === "github_topic_radar") {
                         const osintProject = projects.find((project) => project.domain === "osint");
                         if (osintProject) {
                           setSelectedProjectId(osintProject.id);
                         }
+                        return;
+                      }
+                      if (item.mode === "structure_preflight") {
+                        setUrl("https://example.com");
                         return;
                       }
                       setUrl(
@@ -505,13 +612,21 @@ export function AutomationWorkbench() {
                 </label>
               ) : (
                 <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
-                  <span>{mode === "product_discovery" ? "集合页 / 列表页 URL" : "商品页 URL"}</span>
+                  <span>
+                    {mode === "product_discovery"
+                      ? "集合页 / 列表页 URL"
+                      : mode === "structure_preflight"
+                        ? "公开网页 URL"
+                        : "商品页 URL"}
+                  </span>
                   <input
                     className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
                     onChange={(event) => setUrl(event.target.value)}
                     placeholder={
                       mode === "product_discovery"
                         ? "https://example.com/collections/category"
+                        : mode === "structure_preflight"
+                          ? "https://example.com"
                         : "https://example.com/products/item"
                     }
                     value={url}
@@ -594,6 +709,36 @@ export function AutomationWorkbench() {
                     </select>
                   </label>
                 </div>
+              ) : mode === "structure_preflight" ? (
+                <div className="grid gap-3">
+                  <div className="rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-3">
+                    <p className="text-sm font-semibold text-[#3B2924]">预检范围</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {["HTTP 状态", "robots/sitemap", "DOM 摘要", "链接与表单"].map((item) => (
+                        <span
+                          className="rounded-full border border-[#E8D4CB] bg-white px-2.5 py-1 text-xs font-semibold text-[#7D4F43]"
+                          key={item}
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                    <span>后续采集写入项目</span>
+                    <select
+                      className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                      onChange={(event) => setSelectedProjectId(event.target.value)}
+                      value={selectedProjectId}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               ) : (
                 <div className="grid gap-3">
                   <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
@@ -634,6 +779,8 @@ export function AutomationWorkbench() {
                   ? "处理中"
                   : mode === "github_topic_radar"
                     ? "创建并运行 Topic Radar"
+                    : mode === "structure_preflight"
+                      ? "生成结构预检"
                     : mode === "product_discovery"
                       ? "发现商品 URL"
                       : "开始分析"}
@@ -666,6 +813,18 @@ export function AutomationWorkbench() {
       {mode === "github_topic_radar" ? (
         githubRun ? (
           <GitHubTopicRunResult result={githubRun} />
+        ) : (
+          <EmptyAnalysisState mode={mode} />
+        )
+      ) : mode === "structure_preflight" ? (
+        preflightReport ? (
+          <StructurePreflightResult
+            genericWebRun={genericWebRun}
+            loading={loading}
+            onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
+            report={preflightReport}
+            selectedProjectId={selectedProjectId}
+          />
         ) : (
           <EmptyAnalysisState mode={mode} />
         )
@@ -989,6 +1148,149 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
           </p>
         </div>
       </Panel>
+    </section>
+  );
+}
+
+function StructurePreflightResult({
+  genericWebRun,
+  loading,
+  onCreateGenericWebSource,
+  report,
+  selectedProjectId,
+}: {
+  genericWebRun: GenericWebRunState | null;
+  loading: boolean;
+  onCreateGenericWebSource: () => void;
+  report: ToolkitPreflightReport;
+  selectedProjectId: string;
+}) {
+  const gate = report.authorizationGate;
+  const canCreateSource = gate.allowedToContinue && selectedProjectId.length > 0;
+  const draftFields = [
+    { label: "页面标题", value: report.dom.title ?? "未识别", source: "html_title" },
+    { label: "规范 URL", value: report.dom.canonicalUrl ?? report.finalUrl, source: "canonical_or_final_url" },
+    { label: "页面描述", value: report.dom.description ?? "未识别", source: "meta_description" },
+    {
+      label: "标题层级",
+      value: report.dom.headings.length > 0 ? report.dom.headings.join(" / ") : "未识别",
+      source: "dom_h1_h2_h3",
+    },
+    { label: "同源链接", value: `${report.network.sameOriginLinks} 个`, source: "dom_links" },
+    { label: "正文样本", value: report.dom.textSample || "未识别", source: "visible_text" },
+  ];
+
+  return (
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <div className="grid min-w-0 gap-5">
+        <Panel icon={Activity} label="Structure Preflight" title="公开网页结构预检结果">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Fact label="最终 URL" value={report.finalUrl} />
+            <Fact label="HTTP 状态" value={String(report.network.finalStatusCode)} />
+            <Fact label="风险级别" value={formatRisk(gate.riskLevel)} />
+            <Fact label="表单数" value={String(report.network.formCount)} />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Fact label="robots" value={formatResourceAvailability(report.robots.available)} />
+            <Fact label="sitemap" value={formatResourceAvailability(report.sitemap.available)} />
+            <Fact label="脚本数" value={String(report.network.scriptCount)} />
+            <Fact label="同源链接" value={String(report.network.sameOriginLinks)} />
+          </div>
+          <div
+            className={cn(
+              "mt-4 rounded-xl border p-3 text-sm",
+              gate.allowedToContinue
+                ? "border-[#D7E8D7] bg-[#F3FBF3] text-[#2F6B3A]"
+                : "border-[#F0C8C0] bg-[#FFF2EF] text-[#B85F4F]",
+            )}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-semibold">
+                {gate.allowedToContinue ? "可进入下一步采集验证" : "需要人工复核后再继续"}
+              </p>
+              <RiskBadge risk={gate.riskLevel} />
+            </div>
+            <ul className="mt-2 grid gap-1 text-xs leading-5">
+              {(gate.blockedReasons.length > 0 ? gate.blockedReasons : gate.requiredNextActions).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </Panel>
+
+        <Panel icon={ClipboardList} label="Field Contract Draft" title="字段契约草稿">
+          <div className="grid gap-3 md:grid-cols-2">
+            {draftFields.map((field) => (
+              <article
+                className="min-w-0 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3"
+                key={field.label}
+              >
+                <p className="text-sm font-semibold text-[#2E201C]">{field.label}</p>
+                <p className="mt-2 max-h-28 overflow-auto break-words rounded-lg bg-white px-3 py-2 text-sm leading-5 text-[#5F5757]">
+                  {field.value}
+                </p>
+                <p className="mt-2 text-xs font-semibold uppercase text-[#B47767]">{field.source}</p>
+              </article>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <aside className="grid min-w-0 gap-5">
+        <Panel icon={Database} label="generic_web" title="采集源运行入口">
+          <div className="grid gap-3">
+            <p className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-sm leading-6 text-[#7A625A]">
+              预检通过后，可以把最终 URL 创建为 generic_web 采集源并执行一次公开页面采集。该步骤会写入采集源、任务和运行记录。
+            </p>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(201,111,92,0.18)] transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
+              disabled={loading || !canCreateSource}
+              onClick={onCreateGenericWebSource}
+              type="button"
+            >
+              {loading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Database size={16} aria-hidden="true" />}
+              创建并运行 generic_web
+            </button>
+            {!gate.allowedToContinue ? (
+              <p className="text-xs leading-5 text-[#B85F4F]">当前预检存在阻断项，必须先完成人工复核。</p>
+            ) : null}
+            {!selectedProjectId ? (
+              <p className="text-xs leading-5 text-[#B85F4F]">请选择写入项目。</p>
+            ) : null}
+          </div>
+        </Panel>
+
+        <Panel icon={ShieldCheck} label="Recommendations" title="后续建议">
+          <div className="grid gap-2">
+            {report.recommendations.slice(0, 6).map((item) => (
+              <p
+                className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-sm leading-5 text-[#7A625A]"
+                key={item}
+              >
+                {item}
+              </p>
+            ))}
+          </div>
+        </Panel>
+
+        {genericWebRun ? (
+          <Panel icon={CheckCircle2} label="Run Result" title="公开网页采集结果">
+            <div className="grid gap-3">
+              <Fact label="采集源" value={genericWebRun.source.name} />
+              <Fact label="Collector" value={genericWebRun.task.collectorType} />
+              <Fact label="任务状态" value={formatTaskRunStatus(genericWebRun.run?.status ?? genericWebRun.task.status)} />
+              <Fact label="本次记录" value={String(genericWebRun.run?.recordsCount ?? 0)} />
+              <a
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#D7E8D7] bg-[#F3FBF3] px-3 text-xs font-semibold text-[#2F6B3A] hover:border-[#4F7F56]"
+                href="/tasks"
+              >
+                <ExternalLink size={13} aria-hidden="true" />
+                查看任务页
+              </a>
+            </div>
+          </Panel>
+        ) : null}
+      </aside>
     </section>
   );
 }
@@ -2784,20 +3086,30 @@ function formatDatasetValue(value: unknown) {
 }
 
 function EmptyAnalysisState({ mode }: { mode: AutomationMode }) {
+  const title =
+    mode === "product_discovery"
+      ? "等待商品 URL 发现"
+      : mode === "github_topic_radar"
+        ? "等待 Topic Radar 运行"
+        : mode === "structure_preflight"
+          ? "等待结构预检"
+          : "等待 URL 分析";
+  const body =
+    mode === "product_discovery"
+      ? "从集合页、分类页或 sitemap 中提取候选商品 URL，确认后再进入商品详情页字段采集。"
+      : mode === "github_topic_radar"
+        ? "从公开 GitHub topic 创建 API-first 采集源，运行后会生成仓库工具情报记录。"
+        : mode === "structure_preflight"
+          ? "先确认公开授权，再检查 HTTP、robots、sitemap、DOM、链接和表单，判断是否可以进入 generic_web 或浏览器采集。"
+          : "商品页分析会明确字段能否结构化保存，以及是否需要浏览器运行时复核。";
   return (
     <section className="rounded-2xl border border-dashed border-[#DDBEAF] bg-white/70 p-8">
       <div className="mx-auto max-w-2xl text-center">
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF0EA] text-[#C96F5C]">
           <Link2 size={22} aria-hidden="true" />
         </span>
-        <h2 className="mt-4 text-lg font-semibold text-[#2E201C]">
-          {mode === "product_discovery" ? "等待商品 URL 发现" : "等待 URL 分析"}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[#7A625A]">
-          {mode === "product_discovery"
-            ? "从集合页、分类页或 sitemap 中提取候选商品 URL，确认后再进入商品详情页字段采集。"
-            : "商品页分析会明确字段能否结构化保存，以及是否需要浏览器运行时复核。"}
-        </p>
+        <h2 className="mt-4 text-lg font-semibold text-[#2E201C]">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-[#7A625A]">{body}</p>
       </div>
     </section>
   );
@@ -2950,6 +3262,19 @@ function formatTaskRunStatus(value: string) {
     success: "成功",
   };
   return labels[value] ?? value;
+}
+
+function formatResourceAvailability(value: boolean) {
+  return value ? "可读取" : "需复核";
+}
+
+function hostLabelFromUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname || value;
+  } catch {
+    return value;
+  }
 }
 
 function formatFanoutRunMode(value: string) {
