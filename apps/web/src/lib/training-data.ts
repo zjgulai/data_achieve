@@ -63,7 +63,7 @@ export function trainingRiskLabel(value: string): string {
 }
 
 export function isTrainingReportType(reportType: string): boolean {
-  return reportType === "weekly_training";
+  return ["github_tool_radar", "weekly_training"].includes(reportType);
 }
 
 export function isTrainingTask(task: CollectionTask): boolean {

@@ -19,17 +19,23 @@ import { useEffect, useMemo, useState } from "react";
 import {
   analyzeAutomationSite,
   approveAutomationProductSchedule,
+  checkAutomationGitHubToolDrift,
   checkAutomationProductDrift,
   createAutomationCleaningPlan,
+  createAutomationGitHubToolReportAsset,
   createAutomationProductFanout,
   discoverAutomationProducts,
   dryRunAutomationCleaningPlan,
+  generateAutomationGitHubToolReport,
   listAutomationPlatformPackages,
   listAutomationSiteAnalyses,
   listAutomationProductDriftEvents,
   previewAutomationProductDataset,
   previewAutomationProductFanout,
+  previewAutomationGitHubToolDataset,
   runAutomationProductBatch,
+  saveAutomationGitHubToolDriftEvent,
+  saveAutomationGitHubToolDataset,
   saveAutomationProductDriftEvent,
   saveAutomationProductDataset,
 } from "@/lib/api/automation";
@@ -46,6 +52,8 @@ import type {
   AutomationCleaningPlanDryRun,
   AutomationCleaningRule,
   AutomationFieldCandidate,
+  AutomationGitHubToolReport,
+  AutomationGitHubToolReportAsset,
   AutomationProductBatchRun,
   AutomationProductDatasetPreview,
   AutomationProductDatasetSave,
@@ -80,14 +88,34 @@ const fieldLabels: Record<string, string> = {
   description: "描述",
   headings: "标题层级",
   image_url: "主图",
+  forks: "Forks",
   meta_description: "页面描述",
+  html_url: "仓库 URL",
+  language: "语言",
+  open_issues: "Open issues",
   page_title: "页面标题",
   price: "价格",
+  repo_full_name: "仓库全名",
   same_origin_links: "同源链接",
   sku: "SKU",
+  stars: "Stars",
   text_sample: "正文样本",
   title: "标题",
+  topics: "Topics",
+  updated_at: "更新时间",
+  pushed_at: "最近推送",
 };
+
+const githubToolFields = [
+  "repo_full_name",
+  "stars",
+  "forks",
+  "open_issues",
+  "language",
+  "topics",
+  "html_url",
+  "updated_at",
+];
 
 type GitHubTopicRunState = {
   source: Source;
@@ -1107,6 +1135,213 @@ function PlatformPackageMatrix({
 
 function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
   const topicUrl = result.source.url ?? `https://github.com/topics/${result.topic}`;
+  const [datasetFields, setDatasetFields] = useState<string[]>(githubToolFields);
+  const [datasetPreview, setDatasetPreview] = useState<AutomationProductDatasetPreview | null>(null);
+  const [datasetName, setDatasetName] = useState(`GitHub Tool Radar ${result.topic}`);
+  const [saveResult, setSaveResult] = useState<AutomationProductDatasetSave | null>(null);
+  const [datasetError, setDatasetError] = useState<string | null>(null);
+  const [datasetLoading, setDatasetLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [toolReport, setToolReport] = useState<AutomationGitHubToolReport | null>(null);
+  const [toolReportAsset, setToolReportAsset] = useState<AutomationGitHubToolReportAsset | null>(null);
+  const [toolDrift, setToolDrift] = useState<AutomationProductDriftCheck | null>(null);
+  const [toolDriftEvent, setToolDriftEvent] = useState<AutomationProductDriftEvent | null>(null);
+  const [toolIntelLoading, setToolIntelLoading] = useState<"report" | "asset" | "drift" | "snapshot" | null>(null);
+  const [toolIntelError, setToolIntelError] = useState<string | null>(null);
+  const taskRunIds = result.run?.id ? [result.run.id] : [];
+  const taskIds = result.task.id ? [result.task.id] : [];
+
+  function toggleDatasetField(field: string) {
+    setDatasetFields((current) =>
+      current.includes(field)
+        ? current.filter((item) => item !== field)
+        : [...current, field],
+    );
+    setDatasetPreview(null);
+    setSaveResult(null);
+    setToolReport(null);
+    setToolReportAsset(null);
+    setToolDrift(null);
+    setToolDriftEvent(null);
+    setDatasetError(null);
+    setToolIntelError(null);
+  }
+
+  async function generateDatasetPreview() {
+    setDatasetError(null);
+    if (taskRunIds.length === 0) {
+      setDatasetError("当前没有可进入工具数据集预览的成功运行。");
+      return;
+    }
+    if (datasetFields.length === 0) {
+      setDatasetError("请至少选择一个工具数据字段。");
+      return;
+    }
+    setDatasetLoading(true);
+    try {
+      const preview = await previewAutomationGitHubToolDataset({
+        authorized: true,
+        taskRunIds,
+        fields: datasetFields,
+        maxRows: Math.max(result.maxResults, 1),
+      });
+      setDatasetPreview(preview);
+      setSaveResult(null);
+      setToolReport(null);
+      setToolReportAsset(null);
+      setToolDrift(null);
+      setToolDriftEvent(null);
+    } catch (caught) {
+      setDatasetError(caught instanceof Error ? caught.message : "工具数据集预览生成失败");
+    } finally {
+      setDatasetLoading(false);
+    }
+  }
+
+  async function saveDatasetVersion() {
+    setDatasetError(null);
+    if (!datasetPreview) {
+      setDatasetError("请先生成工具数据集预览。");
+      return;
+    }
+    if (!datasetName.trim()) {
+      setDatasetError("请填写工具数据集名称。");
+      return;
+    }
+    setSaveLoading(true);
+    try {
+      const saved = await saveAutomationGitHubToolDataset({
+        authorized: datasetPreview.authorizationConfirmed,
+        name: datasetName.trim(),
+        description: `来自 GitHub topic ${result.topic} 的工具情报数据集。`,
+        taskRunIds,
+        fields: datasetPreview.summary.selectedFields,
+        maxRows: Math.max(datasetPreview.rows.length, 1),
+      });
+      setSaveResult(saved);
+      setToolReport(null);
+      setToolReportAsset(null);
+      setToolDrift(null);
+      setToolDriftEvent(null);
+      setToolIntelError(null);
+    } catch (caught) {
+      setDatasetError(caught instanceof Error ? caught.message : "工具数据集保存失败");
+    } finally {
+      setSaveLoading(false);
+    }
+  }
+
+  async function generateToolReport() {
+    if (!saveResult) {
+      setToolIntelError("请先保存工具数据集。");
+      return;
+    }
+    setToolIntelLoading("report");
+    setToolIntelError(null);
+    try {
+      const report = await generateAutomationGitHubToolReport({
+        authorized: saveResult.authorizationConfirmed,
+        datasetId: saveResult.dataset.id,
+        datasetVersionId: saveResult.version.id,
+        minStars: 10000,
+        topLimit: 5,
+      });
+      setToolReport(report);
+      setToolReportAsset(null);
+    } catch (caught) {
+      setToolIntelError(caught instanceof Error ? caught.message : "工具雷达报告生成失败");
+    } finally {
+      setToolIntelLoading(null);
+    }
+  }
+
+  async function saveToolReportAsset() {
+    if (!saveResult) {
+      setToolIntelError("请先保存工具数据集。");
+      return;
+    }
+    if (!toolReport) {
+      setToolIntelError("请先生成工具雷达报告。");
+      return;
+    }
+    setToolIntelLoading("asset");
+    setToolIntelError(null);
+    try {
+      const asset = await createAutomationGitHubToolReportAsset({
+        authorized: saveResult.authorizationConfirmed,
+        confirmCreate: true,
+        datasetId: saveResult.dataset.id,
+        datasetVersionId: saveResult.version.id,
+        minStars: 10000,
+        topLimit: 5,
+      });
+      setToolReport(asset);
+      setToolReportAsset(asset);
+    } catch (caught) {
+      setToolIntelError(caught instanceof Error ? caught.message : "工具雷达报告保存失败");
+    } finally {
+      setToolIntelLoading(null);
+    }
+  }
+
+  async function checkToolDrift() {
+    if (!saveResult) {
+      setToolIntelError("请先保存工具数据集。");
+      return;
+    }
+    if (taskIds.length === 0) {
+      setToolIntelError("当前没有可用于工具漂移检查的任务。");
+      return;
+    }
+    setToolIntelLoading("drift");
+    setToolIntelError(null);
+    try {
+      const drift = await checkAutomationGitHubToolDrift({
+        authorized: saveResult.authorizationConfirmed,
+        datasetId: saveResult.dataset.id,
+        datasetVersionId: saveResult.version.id,
+        taskIds,
+        completenessDropThresholdPercent: 10,
+        freshnessGraceHours: 24,
+      });
+      setToolDrift(drift);
+      setToolDriftEvent(null);
+    } catch (caught) {
+      setToolIntelError(caught instanceof Error ? caught.message : "工具情报漂移检查失败");
+    } finally {
+      setToolIntelLoading(null);
+    }
+  }
+
+  async function saveToolDriftSnapshot() {
+    if (!saveResult) {
+      setToolIntelError("请先保存工具数据集。");
+      return;
+    }
+    if (!toolDrift) {
+      setToolIntelError("请先完成工具情报漂移检查。");
+      return;
+    }
+    setToolIntelLoading("snapshot");
+    setToolIntelError(null);
+    try {
+      const event = await saveAutomationGitHubToolDriftEvent({
+        authorized: saveResult.authorizationConfirmed,
+        datasetId: saveResult.dataset.id,
+        datasetVersionId: saveResult.version.id,
+        taskIds,
+        completenessDropThresholdPercent: 10,
+        freshnessGraceHours: 24,
+        note: "Saved from GitHub tool radar review.",
+      });
+      setToolDriftEvent(event);
+    } catch (caught) {
+      setToolIntelError(caught instanceof Error ? caught.message : "工具情报漂移快照保存失败");
+    } finally {
+      setToolIntelLoading(null);
+    }
+  }
+
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
       <Panel icon={Activity} label="GitHub Topic Radar" title="公开仓库情报采集结果">
@@ -1148,6 +1383,271 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
           </p>
         </div>
       </Panel>
+
+      <div className="grid gap-4 xl:col-span-2">
+        <Panel icon={Database} label="Tool Dataset" title="工具情报数据集">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm leading-6 text-[#5F5757]">
+                从本次 GitHub topic 运行中提取仓库字段，保存为可导出、可复用的数据集版本。
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {githubToolFields.map((field) => (
+                  <button
+                    className={cn(
+                      "inline-flex h-8 items-center rounded-full border px-3 text-xs font-semibold transition",
+                      datasetFields.includes(field)
+                        ? "border-[#4E7C45] bg-[#4E7C45] text-white"
+                        : "border-[#D9E2CC] bg-white text-[#536B40] hover:border-[#4E7C45]",
+                    )}
+                    key={field}
+                    onClick={() => toggleDatasetField(field)}
+                    type="button"
+                  >
+                    {fieldLabels[field] ?? field}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-3 text-sm font-semibold text-white transition hover:bg-[#46332C] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
+              disabled={datasetLoading || taskRunIds.length === 0 || datasetFields.length === 0}
+              onClick={() => void generateDatasetPreview()}
+              type="button"
+            >
+              {datasetLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Database size={16} aria-hidden="true" />}
+              生成工具数据集预览
+            </button>
+          </div>
+          {datasetError ? (
+            <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-medium text-[#B85F4F]">
+              {datasetError}
+            </p>
+          ) : null}
+          {datasetPreview ? (
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <Fact label="匹配运行" value={`${datasetPreview.summary.matchedRuns}/${datasetPreview.summary.requestedRuns}`} />
+                <Fact label="仓库行数" value={String(datasetPreview.summary.rowsCount)} />
+                <Fact label="字段数" value={String(datasetPreview.summary.selectedFields.length)} />
+                <Fact label="平均完整度" value={`${datasetPreview.summary.averageCompletenessPercent}%`} />
+                <Fact label="导出草稿" value={datasetPreview.summary.exportReady ? "已就绪" : "未就绪"} />
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-[#D9E2CC] bg-white">
+                <table className="min-w-full border-collapse text-left text-sm">
+                  <thead className="bg-[#ECF7EA] text-xs font-semibold uppercase text-[#4E7C45]">
+                    <tr>
+                      <th className="px-3 py-2">完整度</th>
+                      {datasetPreview.summary.selectedFields.map((field) => (
+                        <th className="px-3 py-2" key={field}>
+                          {fieldLabels[field] ?? field}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datasetPreview.rows.map((row) => (
+                      <tr className="border-t border-[#E0E8D5]" key={row.rowId}>
+                        <td className="px-3 py-2 text-xs font-semibold text-[#4E7C45]">
+                          {row.completenessPercent}%
+                        </td>
+                        {datasetPreview.summary.selectedFields.map((field) => (
+                          <td className="max-w-[220px] px-3 py-2 text-[#2E201C]" key={`${row.rowId}-${field}`}>
+                            <span className="line-clamp-2 break-words">
+                              {formatDatasetValue(row.values[field])}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-col gap-3 rounded-xl border border-[#D9E2CC] bg-white p-3 lg:flex-row lg:items-end lg:justify-between">
+                <label className="grid min-w-0 flex-1 gap-2 text-sm font-semibold text-[#2E201C]">
+                  <span>工具数据集名称</span>
+                  <input
+                    className="h-10 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 text-sm text-[#2E201C] outline-none transition placeholder:text-[#8EA17D] focus:border-[#4E7C45] focus:ring-4 focus:ring-[#E0E8D5]"
+                    onChange={(event) => {
+                      setDatasetName(event.target.value);
+                      setSaveResult(null);
+                      setToolReport(null);
+                      setToolReportAsset(null);
+                      setToolDrift(null);
+                      setToolDriftEvent(null);
+                      setDatasetError(null);
+                    }}
+                    value={datasetName}
+                  />
+                </label>
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#4E7C45] px-3 text-sm font-semibold text-white transition hover:bg-[#416B39] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
+                  disabled={saveLoading || datasetPreview.rows.length === 0}
+                  onClick={() => void saveDatasetVersion()}
+                  type="button"
+                >
+                  {saveLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+                  保存工具数据集
+                </button>
+              </div>
+              {saveResult ? (
+                <div className="rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <Fact label="数据集" value={saveResult.dataset.name} />
+                    <Fact label="类型" value={saveResult.dataset.datasetType} />
+                    <Fact label="版本" value={`v${saveResult.version.versionNumber}`} />
+                    <Fact label="保存行数" value={String(saveResult.version.rowCount)} />
+                    <Fact label="完整度" value={`${saveResult.version.averageCompletenessPercent}%`} />
+                  </div>
+                  <div className="mt-3 grid gap-2 text-xs font-semibold text-[#536B40]">
+                    <p className="break-all">数据集 ID: {saveResult.dataset.id}</p>
+                    <p className="break-all">版本 ID: {saveResult.version.id}</p>
+                    <p>下一步可到数据集资产台导出 CSV、JSON 或 JSONL，并接入工具雷达报告。</p>
+                  </div>
+                  <div className="mt-4 grid gap-3 rounded-xl border border-[#D9E2CC] bg-white p-3">
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-[#2E201C]">工具雷达验收</p>
+                        <p className="mt-1 text-xs leading-5 text-[#6A625D]">
+                          基于已保存版本生成报告，或对同源 GitHub 任务做只读漂移检查。
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 text-xs font-semibold text-[#4E7C45] hover:border-[#4E7C45] disabled:cursor-not-allowed disabled:text-[#96A48D]"
+                          disabled={toolIntelLoading !== null}
+                          onClick={() => void generateToolReport()}
+                          type="button"
+                        >
+                          {toolIntelLoading === "report" ? <Loader2 className="animate-spin" size={14} aria-hidden="true" /> : <ClipboardList size={14} aria-hidden="true" />}
+                          生成雷达报告
+                        </button>
+                        <button
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 text-xs font-semibold text-[#4E7C45] hover:border-[#4E7C45] disabled:cursor-not-allowed disabled:text-[#96A48D]"
+                          disabled={toolIntelLoading !== null || !toolReport}
+                          onClick={() => void saveToolReportAsset()}
+                          type="button"
+                        >
+                          {toolIntelLoading === "asset" ? <Loader2 className="animate-spin" size={14} aria-hidden="true" /> : <ClipboardList size={14} aria-hidden="true" />}
+                          保存到报告中心
+                        </button>
+                        <button
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 text-xs font-semibold text-[#4E7C45] hover:border-[#4E7C45] disabled:cursor-not-allowed disabled:text-[#96A48D]"
+                          disabled={toolIntelLoading !== null || taskIds.length === 0}
+                          onClick={() => void checkToolDrift()}
+                          type="button"
+                        >
+                          {toolIntelLoading === "drift" ? <Loader2 className="animate-spin" size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}
+                          检查工具漂移
+                        </button>
+                        <button
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-3 text-xs font-semibold text-white hover:bg-[#46332C] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
+                          disabled={toolIntelLoading !== null || !toolDrift}
+                          onClick={() => void saveToolDriftSnapshot()}
+                          type="button"
+                        >
+                          {toolIntelLoading === "snapshot" ? <Loader2 className="animate-spin" size={14} aria-hidden="true" /> : <Database size={14} aria-hidden="true" />}
+                          保存漂移快照
+                        </button>
+                      </div>
+                    </div>
+                    {toolIntelError ? (
+                      <p className="rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-medium text-[#B85F4F]">
+                        {toolIntelError}
+                      </p>
+                    ) : null}
+                    {toolReport ? (
+                      <div className="grid gap-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <Fact label="仓库数" value={String(toolReport.summary.repositoryCount)} />
+                          <Fact label="Stars 合计" value={String(toolReport.summary.totalStars)} />
+                          <Fact label="高价值仓库" value={String(toolReport.summary.highValueRepositories)} />
+                          <Fact label="Top 语言" value={Object.entries(toolReport.summary.languages)[0]?.join(" x") ?? "未识别"} />
+                        </div>
+                        <div className="grid gap-2">
+                          {toolReport.topRepositories.slice(0, 3).map((repository) => (
+                            <a
+                              className="flex flex-col gap-1 rounded-xl border border-[#E0E8D5] bg-[#FAFCF7] p-3 text-sm text-[#2E201C] hover:border-[#4E7C45]"
+                              href={repository.htmlUrl ?? "#"}
+                              key={repository.repoFullName}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              <span className="font-semibold">{repository.repoFullName}</span>
+                              <span className="text-xs text-[#6A625D]">
+                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.topics.slice(0, 3).join(" / ") || "no topic"}
+                              </span>
+                            </a>
+                          ))}
+                        </div>
+                        <div className="grid gap-2 text-xs leading-5 text-[#536B40]">
+                          {toolReport.recommendations.slice(0, 3).map((recommendation) => (
+                            <p className="rounded-xl bg-[#ECF7EA] px-3 py-2" key={recommendation}>
+                              {recommendation}
+                            </p>
+                          ))}
+                        </div>
+                        {toolReportAsset ? (
+                          <div className="rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3 text-sm text-[#2F6B3A]">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="font-semibold">已保存到报告中心</p>
+                                <p className="mt-1 break-all text-xs leading-5 text-[#4F7F56]">
+                                  {toolReportAsset.report.title} · {toolReportAsset.report.id}
+                                </p>
+                              </div>
+                              <a
+                                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-[#B9D9B8] bg-white px-3 text-xs font-semibold text-[#2F6B3A] hover:border-[#4F7F56]"
+                                href={`/reports/${toolReportAsset.report.id}`}
+                              >
+                                <ExternalLink size={13} aria-hidden="true" />
+                                打开报告
+                              </a>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {toolDrift ? (
+                      <div className="grid gap-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <Fact label="检查任务" value={String(toolDrift.summary.checkedTasks)} />
+                          <Fact label="关键漂移" value={String(toolDrift.summary.criticalTasks)} />
+                          <Fact label="字段缺失" value={String(toolDrift.summary.missingFieldTasks)} />
+                          <Fact label="状态" value={toolDrift.summary.criticalTasks > 0 ? "critical" : "ok"} />
+                        </div>
+                        <div className="grid gap-2">
+                          {toolDrift.items.map((item) => (
+                            <div className="rounded-xl border border-[#E0E8D5] bg-[#FAFCF7] p-3 text-sm" key={item.taskId}>
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-semibold text-[#2E201C]">{item.taskName ?? item.taskId}</span>
+                                <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-[#4E7C45]">{item.status}</span>
+                              </div>
+                              <p className="mt-2 text-xs leading-5 text-[#6A625D]">
+                                基准 {item.datasetVersionCompletenessPercent}% · 最新 {item.latestCompletenessPercent ?? "-"}% · 下降 {item.completenessDropPercent ?? "-"}%
+                              </p>
+                              {item.newMissingFields.length > 0 ? (
+                                <p className="mt-1 text-xs font-semibold text-[#B85F4F]">
+                                  缺失字段：{item.newMissingFields.map((field) => fieldLabels[field] ?? field).join("、")}
+                                </p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {toolDriftEvent ? (
+                      <p className="rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] px-3 py-2 text-sm font-semibold text-[#2F6B3A]">
+                        已保存漂移快照：{toolDriftEvent.status} · {toolDriftEvent.id}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </Panel>
+      </div>
     </section>
   );
 }

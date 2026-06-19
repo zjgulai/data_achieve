@@ -20,7 +20,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`。
+3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
@@ -69,6 +69,7 @@ flowchart LR
   DS --> CP["Cleaning Plan / Rules"]
   DS --> DRIFT["Dataset Drift"]
   DS --> EXP["Dataset Export"]
+  DS --> REP["Report Asset"]
   DRIFT --> ALERT["Alert / Notification"]
 ```
 
@@ -78,7 +79,16 @@ flowchart LR
 2. `CleaningPlan` 已升级为可保存、可试跑、可被数据集版本追踪的正式草案资产。
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
-5. 截至 commit `db6189f`，Automation 平台包、采集计划、清洗计划、数据集保存和生产浏览器链路已完成一轮生产验收；后续重点是更多平台包的真实采集深度与长期运行可靠性。
+5. GitHub Topic Radar 运行记录已可保存为 `github_tool_radar` DatasetVersion，并可生成工具雷达只读报告、漂移快照和 `report_type=github_tool_radar` 的 Report 中心资产。
+6. 截至 commit `dda2786`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检和生产浏览器链路已完成一轮生产验收；后续重点是 GitHub/API-first 数据集化、更多平台包真实采集深度与长期运行可靠性。
+
+当前平台包矩阵：
+
+| id | 分类 | 默认入口 | 执行边界 | 当前状态 |
+|---|---|---|---|---|
+| `shopify-independent-ecommerce` | ecommerce | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset |
+| `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集 |
+| `public-page-structure-preflight` | browser_preflight | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
 
 ## 数据闭环
 
@@ -195,7 +205,7 @@ flowchart LR
 
 ## 生产验收事实
 
-截至 2026-06-14，已验证：
+历史基线，截至 2026-06-14，已验证：
 
 1. 本地 `bash scripts/verify-mvp.sh` 通过：API `45 passed`，Web build 通过，Playwright `17 passed, 5 skipped`。
 2. 生产 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `production`、`ok`、`database=connected`。
@@ -203,9 +213,13 @@ flowchart LR
 4. 演示数据项目域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
 5. 演示数据 collector 覆盖 `generic_web`、`github_repo`、`manual_json`。
 
-截至 2026-06-19，本地仓库检查确认：
+截至 2026-06-19，commit `dda2786` 已验证：
 
 1. `/api/automation` 路由已存在，覆盖 site analysis、product discovery、fan-out、batch run、Dataset、drift、alert 和 export。
 2. `DatasetExportJob` 模型、导出服务、导出历史接口和下载接口已存在。
 3. 前端 `/datasets` 已存在生成导出文件和下载导出文件的交互。
-4. 以上为本地仓库实现事实；是否已在生产环境部署仍需单独核验生产 SHA、容器状态和真实 E2E。
+4. `/api/automation/platform-packages` 在生产返回 3 个平台包，包含 `public-page-structure-preflight`，且 `github-api-first` 已是可执行平台包。
+5. 生产部署目录为 `/opt/data-achieve-scrapy/releases/20260619190523-dda2786638d4`，`/opt/data-achieve-scrapy/current` 指向该 release。
+6. 生产健康检查返回 `status=ok`、`database=connected`、`schema_revision=202606110020`、`schema_head=202606110020`。
+7. 生产真实 API E2E 通过：Playwright `34 passed / 8 skipped`。
+8. E2E 与 demo 噪音清理已执行，后续 dry-run 计数为 0。

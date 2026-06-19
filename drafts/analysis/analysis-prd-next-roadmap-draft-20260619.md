@@ -30,7 +30,7 @@ source: human+ai
 -> 报告、告警、通知与导出
 ```
 
-状态修正：采集计划、清洗计划、首批平台包和重复动作基础保护已经完成一轮生产部署与验收。下一阶段优先级应从“补齐骨架”切换为“扩大真实平台采集深度”，尤其是 GitHub/API-first 工具情报包、浏览器结构解析预检、独立站 collection/sitemap 深化，以及 marketplace/social 的授权导入或 API 路线。
+状态修正：采集计划、清洗计划、首批平台包和重复动作基础保护已经完成一轮生产部署与验收。GitHub/API-first 已完成 Topic Radar 的可执行基础链路；公开网页结构解析预检已作为第三个平台包上线。下一阶段优先级应从“补齐骨架”切换为“扩大真实平台采集深度”，尤其是 GitHub 工具情报数据集化、浏览器结构解析诊断深化、独立站 collection/sitemap 深化，以及 marketplace/social 的授权导入或 API 路线。
 
 ## 2. 事实基线
 
@@ -48,15 +48,15 @@ source: human+ai
 8. 集成测试已覆盖 Dataset 导出确认、导出文件写入、导出历史、下载和 CSV 内容验证。
 9. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
 10. 清洗计划已升级为可保存、可试跑、可追踪到数据集版本的正式草案资产。
-11. 首批 Platform Package 已覆盖 `shopify-independent-ecommerce` 与 `github-api-first`；前者可执行，后者仍是 SOP/import-only。
-12. P0 生产部署 commit 为 `db6189faea4cf4b400d711162f43bdf928d5e938`，真实 Chrome + browser-harness 已验证 `/automation` 主链路。
+11. 当前 Platform Package 已覆盖 `shopify-independent-ecommerce`、`github-api-first` 与 `public-page-structure-preflight`，三者均为 `executable` 边界。
+12. 最新生产部署 commit 为 `dda2786638d4aac8647bbff8b3694b05113678f3`，生产真实 API E2E 已验证 `/automation` 主链路与平台包应用链路。
 
 ### 2.2 文档与实现不一致
 
 1. 稳定 PRD 仍以 GitHub Repo、GitHub Topic、Generic Web、Manual JSON 为 MVP Collector 叙述主轴，需要继续向自动化采集工作台叙事迁移。
 2. 架构和 API 文档已开始同步 Automation、Dataset Export、Platform Package、采集计划、清洗计划和生产验收事实；后续需要防止再次漂移。
 3. Phase 1 草案中的“Dataset 记录级导出未完成”已经过期，当前实现中已存在导出模型、服务、路由和前端入口。
-4. 仍需把 GitHub/API-first、marketplace、social 等平台包从 SOP/导入说明推进到可验收的采集闭环或明确的授权导入闭环。
+4. 仍需把 GitHub/API-first 从“Source/Task/Run 可执行”推进到 Dataset、导出、漂移和报告闭环；marketplace、social 等平台包仍需先定义官方 API、授权导出或人工导入闭环。
 
 ## 3. 产品定位重述
 
@@ -109,15 +109,17 @@ P0 的目标是让自动化采集工作台从“页面骨架”变成可验收�
 当前状态：
 
 1. 已定义 PlatformPackage contract。
-2. 首批平台包包含 `shopify-independent-ecommerce` 和 `github-api-first`。
+2. 当前平台包包含 `shopify-independent-ecommerce`、`github-api-first` 和 `public-page-structure-preflight`。
 3. Shopify/独立站包可执行，并能进入当前 Automation 主链路。
-4. GitHub/API-first 包目前是 SOP/import-only，用于工具情报场景的下一轮深化。
+4. GitHub/API-first 包已可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集。
+5. 公开网页结构预检包已可从 `/automation` 调用 Toolkit preflight，并在授权通过后创建 `generic_web` 采集源。
 
 剩余缺口：
 
 1. 平台包还不是用户可自定义、可版本化的持久化资产。
-2. GitHub/API-first 需要从 SOP/import-only 推进到可运行采集链路。
-3. marketplace 和 social 平台必须先定义官方 API、授权导出或人工导入路径，不默认做登录态抓取。
+2. GitHub/API-first 需要继续补 Dataset 保存、导出、漂移检查和报告回流。
+3. 公开网页结构预检需要继续增强浏览器结构诊断和工具推荐解释。
+4. marketplace 和 social 平台必须先定义官方 API、授权导出或人工导入路径，不默认做登录态抓取。
 
 ### 4.4 调度、告警与重复动作保护
 
@@ -156,15 +158,21 @@ P1 是 P0 稳定后推进的平台能力。
 
 范围：
 
-1. GitHub repo、topic、release、stars、issues、README。
-2. 工具情报监控作为第一个 API-first 平台包。
-3. 将工具雷达里的 Browser AI、RPA、crawler、agent 项目转成可追踪实体。
+1. GitHub topic 已完成基础可执行链路：创建 Source、启用 Task、执行公开 API 采集。
+2. GitHub topic 运行记录已可生成 `github_tool_radar` Dataset 预览并保存版本；CSV/JSON/JSONL 导出复用现有 Dataset Export。
+3. GitHub 工具 Dataset 已可进入同源 task 漂移检查，并可保存 `github_tool_radar_drift` 漂移快照。
+4. GitHub 工具 Dataset 已可生成只读工具雷达报告，汇总仓库数、stars、语言、topics、高价值仓库和培训建议，并可保存为 `report_type=github_tool_radar` 的 Report 中心资产。
+5. 下一步补齐 repo、release、README、issue activity 等字段 schema。
+6. 工具情报监控作为第一个 API-first 平台包。
+7. 将工具雷达里的 Browser AI、RPA、crawler、agent 项目转成可追踪实体和 Dataset。
 
 验收：
 
 1. 可监控指定 topic 或 repo 列表。
-2. 可生成工具情报 Dataset。
-3. 可把工具推荐结果回流到采集策略推荐层。
+2. 可生成工具情报 Dataset，并支持 CSV/JSON/JSONL 导出。
+3. 数据集能进入漂移检查并保存漂移快照。
+4. 可生成工具雷达报告，并可进入报告中心资产。
+5. 可把工具推荐结果回流到采集策略推荐层。
 
 ### 5.3 Marketplace 平台包边界
 
@@ -217,22 +225,25 @@ P2 是平台稳定后的增强能力。
 1. 文档不再把已完成事项列为未完成。
 2. 每个 P0 项都能映射到后端、前端、测试和生产验收。
 
-### Phase B：GitHub/API-first 可执行平台包
+### Phase B：GitHub/API-first 数据集和报告闭环
 
-目标：把工具情报监控从 SOP/import-only 推进为可运行采集链路，服务“当下采集工具、agent、skill、crawler、RPA 项目”情报库。
+目标：在已完成 Topic Radar 可执行基础链路后，把工具情报监控推进到 Dataset、导出、漂移和报告闭环，服务“当下采集工具、agent、skill、crawler、RPA 项目”情报库。
 
 任务：
 
-1. 将 `github-api-first` 平台包升级为 executable。
-2. 定义 repo、topic、release、README、issue activity 等字段 schema。
-3. 建立工具实体标准：名称、安装方式、适用平台、采集方式、维护活跃度、风险边界、SOP 链接。
-4. 接入 Dataset 保存、导出、漂移检查和报告。
+1. 基于 `github_topic` TaskRun 聚合 repo rows，生成工具情报 Dataset 预览和保存入口。已完成第一切片。
+2. 复用 Dataset Export 输出 CSV/JSON/JSONL。已完成 API 验证。
+3. 定义 repo、topic、release、README、issue activity 等字段 schema。
+4. 建立工具实体标准：名称、安装方式、适用平台、采集方式、维护活跃度、风险边界、SOP 链接。
+5. 接入漂移检查和工具雷达报告。已完成本地切片；报告中心持久化已完成本地验证，生产仍需部署和只读验收。
 
 验收：
 
 1. 可输入 GitHub topic 或 repo 列表生成工具情报数据集。
-2. 数据集能进入导出、漂移和报告链路。
-3. 页面能说明每个工具适用场景和不适用场景。
+2. 数据集能进入导出链路。
+3. 数据集能进入漂移和报告链路。
+4. 页面能说明每个工具适用场景和不适用场景。
+5. 生产 E2E 后清理所有测试 Source、Task、Dataset、Report 产物。
 
 ### Phase C：浏览器结构解析预检
 
@@ -310,9 +321,9 @@ P2 是平台稳定后的增强能力。
 
 Phase A 完成后的下一轮建议：
 
-1. 先清理 `/automation`、`/datasets`、漂移和告警相关页面中剩余的内部技术名词。
-2. 再进入 Phase B：GitHub/API-first 可执行平台包。
-3. 之后进入 Phase C：browser-harness 支撑的浏览器结构解析预检。
+1. 先用当前文档状态确认 `/automation`、`/datasets`、漂移和告警相关页面中仍残留的内部技术名词。
+2. 进入 Phase B：GitHub/API-first 数据集和报告闭环。
+3. 之后进入 Phase C：browser-harness 支撑的浏览器结构解析诊断深化。
 4. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
 
 ## 10. 不确定项

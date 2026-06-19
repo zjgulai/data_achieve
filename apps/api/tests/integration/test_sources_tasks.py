@@ -11,9 +11,11 @@ from sqlalchemy.pool import StaticPool
 from data_intelligence_hub.api.routes import automation as automation_routes
 from data_intelligence_hub.collectors import registry as collector_registry
 from data_intelligence_hub.collectors.base import (
+    BaseCollector,
     CollectionResult,
     CollectorError,
     CollectorRawRecord,
+    CollectorTestResult,
 )
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
@@ -404,6 +406,326 @@ async def test_github_topic_source_derives_traceable_url(client: AsyncClient) ->
     source = response.json()
     assert source["type"] == "github_topic"
     assert source["url"] == "https://github.com/topics/web-scraping"
+
+
+@pytest.mark.asyncio
+async def test_github_topic_radar_saves_tool_dataset_and_export(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FixtureGitHubTopicCollector(BaseCollector):
+        collector_type = "github_topic"
+        collect_calls = 0
+
+        def validate_config(self) -> dict[str, object]:
+            return {
+                "topic": self.config.get("topic", "web-scraping"),
+                "max_results": self.config.get("max_results", 2),
+            }
+
+        async def test(self) -> CollectorTestResult:
+            return CollectorTestResult(status="ok", message="ok", logs=[])
+
+        async def collect(self) -> CollectionResult:
+            self.__class__.collect_calls += 1
+            if self.__class__.collect_calls == 1:
+                repositories = [
+                    {
+                        "full_name": "browser-use/browser-use",
+                        "html_url": "https://github.com/browser-use/browser-use",
+                        "description": "Make websites accessible for AI agents",
+                        "stargazers_count": 72000,
+                        "forks_count": 8400,
+                        "open_issues_count": 120,
+                        "language": "Python",
+                        "topics": ["browser-automation", "ai-agent"],
+                        "pushed_at": "2026-06-18T00:00:00Z",
+                        "updated_at": "2026-06-18T01:00:00Z",
+                    },
+                    {
+                        "full_name": "scrapy/scrapy",
+                        "html_url": "https://github.com/scrapy/scrapy",
+                        "description": "A fast high-level web crawling framework",
+                        "stargazers_count": 56000,
+                        "forks_count": 11000,
+                        "open_issues_count": 400,
+                        "language": "Python",
+                        "topics": ["crawler", "scraping"],
+                        "pushed_at": "2026-06-17T00:00:00Z",
+                        "updated_at": "2026-06-17T01:00:00Z",
+                    },
+                ]
+            else:
+                repositories = [
+                    {
+                        "full_name": "browser-use/browser-use",
+                        "html_url": "https://github.com/browser-use/browser-use",
+                        "description": "Make websites accessible for AI agents",
+                        "stargazers_count": 72000,
+                        "forks_count": 8400,
+                        "open_issues_count": 120,
+                        "language": "Python",
+                        "topics": [],
+                        "pushed_at": "2026-06-18T00:00:00Z",
+                        "updated_at": None,
+                    }
+                ]
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="github_topic",
+                        source_url="https://github.com/topics/web-scraping",
+                        content={
+                            "provider": "github",
+                            "kind": "topic_search",
+                            "topic": "web-scraping",
+                            "total_count": len(repositories),
+                            "repositories": repositories,
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "github_topic",
+        FixtureGitHubTopicCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "GitHub Topic Radar: web-scraping",
+            "type": "github_topic",
+            "config": {"topic": "web-scraping", "max_results": 2},
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert run_response.status_code == 201
+    run = run_response.json()
+    assert run["status"] == "success"
+
+    preview_response = await client.post(
+        "/api/automation/github-tool-dataset-preview",
+        json={
+            "authorized": True,
+            "task_run_ids": [run["id"]],
+            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "max_rows": 10,
+        },
+    )
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    assert preview["summary"]["rows_count"] == 2
+    assert preview["summary"]["matched_runs"] == 1
+    assert preview["summary"]["selected_fields"] == [
+        "repo_full_name",
+        "stars",
+        "html_url",
+        "language",
+        "topics",
+        "updated_at",
+    ]
+    assert preview["rows"][0]["values"]["repo_full_name"] == "browser-use/browser-use"
+    assert preview["rows"][0]["values"]["stars"] == 72000
+    assert preview["export_preview"]["schema"]["primary_key"] == "html_url"
+
+    save_response = await client.post(
+        "/api/automation/github-tool-dataset-save",
+        json={
+            "authorized": True,
+            "name": "GitHub Tool Radar web-scraping",
+            "description": "Tool radar dataset from GitHub topic.",
+            "task_run_ids": [run["id"]],
+            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "max_rows": 10,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["dataset"]["dataset_type"] == "github_tool_radar"
+    assert saved["version"]["row_count"] == 2
+    assert saved["version"]["selected_fields"] == [
+        "repo_full_name",
+        "stars",
+        "html_url",
+        "language",
+        "topics",
+        "updated_at",
+    ]
+
+    export_response = await client.post(
+        "/api/automation/product-dataset-exports",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "export_format": "csv",
+        },
+    )
+    assert export_response.status_code == 200
+    export_job = export_response.json()
+    assert export_job["row_count"] == 2
+    assert export_job["download_url"]
+
+    download_response = await client.get(export_job["download_url"])
+    assert download_response.status_code == 200
+    assert "repo_full_name" in download_response.text
+    assert "browser-use/browser-use" in download_response.text
+
+    second_run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert second_run_response.status_code == 201
+    second_run = second_run_response.json()
+    assert second_run["status"] == "success"
+
+    drift_response = await client.post(
+        "/api/automation/github-tool-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["dataset"]["dataset_type"] == "github_tool_radar"
+    assert drift["summary"] == {
+        "requested_tasks": 1,
+        "checked_tasks": 1,
+        "blocked_tasks": 0,
+        "warning_tasks": 0,
+        "critical_tasks": 1,
+        "stale_tasks": 0,
+        "missing_field_tasks": 1,
+        "run_started": False,
+        "alert_created": False,
+    }
+    assert drift["items"][0]["latest_run_id"] == second_run["id"]
+    assert drift["items"][0]["latest_completeness_percent"] == 67
+    assert drift["items"][0]["completeness_drop_percent"] == 33
+    assert drift["items"][0]["new_missing_fields"] == ["topics", "updated_at"]
+    assert drift["items"][0]["issues"] == [
+        "completeness_drift_exceeded",
+        "approved_fields_missing",
+    ]
+    assert any(
+        event["event"] == "github_tool_drift_task_checked"
+        and event["run_started"] is False
+        and event["alert_created"] is False
+        for event in drift["audit_events"]
+    )
+    assert "不会启动采集" in drift["blocked_reasons"][0]
+
+    drift_event_response = await client.post(
+        "/api/automation/github-tool-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "Saved from GitHub tool radar review.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["event_type"] == "github_tool_radar_drift"
+    assert drift_event["status"] == "critical"
+    assert drift_event["summary"] == drift["summary"]
+    assert drift_event["note"] == "Saved from GitHub tool radar review."
+    assert any(
+        event["event"] == "github_tool_drift_event_saved"
+        and event["run_started"] is False
+        and event["alert_created"] is False
+        for event in drift_event["audit_events"]
+    )
+
+    report_response = await client.post(
+        "/api/automation/github-tool-report",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "min_stars": 10000,
+            "top_limit": 5,
+        },
+    )
+    assert report_response.status_code == 200
+    report = report_response.json()
+    assert report["summary"] == {
+        "repository_count": 2,
+        "total_stars": 128000,
+        "high_value_repositories": 2,
+        "languages": {"Python": 2},
+        "top_topics": {
+            "ai-agent": 1,
+            "browser-automation": 1,
+            "crawler": 1,
+            "scraping": 1,
+        },
+        "report_created": False,
+        "run_started": False,
+    }
+    assert report["top_repositories"][0]["repo_full_name"] == "browser-use/browser-use"
+    assert "browser-use/browser-use" in report["recommendations"][0]
+
+    report_asset_response = await client.post(
+        "/api/automation/github-tool-report-assets",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "min_stars": 10000,
+            "top_limit": 5,
+        },
+    )
+    assert report_asset_response.status_code == 201
+    report_asset = report_asset_response.json()
+    assert report_asset["summary"]["report_created"] is True
+    assert report_asset["summary"]["run_started"] is False
+    assert report_asset["notification_created"] is False
+    assert report_asset["report"]["report_type"] == "github_tool_radar"
+    assert report_asset["report"]["status"] == "generated"
+    assert "GitHub Tool Radar web-scraping" in report_asset["report"]["title"]
+    assert "browser-use/browser-use" in report_asset["report"]["content"]
+    assert "github_tool_radar" in report_asset["report"]["content"]
+    assert any(
+        event["event"] == "github_tool_report_asset_created"
+        and event["report_created"] is True
+        and event["run_started"] is False
+        and event["notification_created"] is False
+        for event in report_asset["audit_events"]
+    )
+    assert "不会启动采集" in report_asset["blocked_reasons"][0]
+
+    stored_report_response = await client.get(f"/api/reports/{report_asset['report']['id']}")
+    assert stored_report_response.status_code == 200
+    assert stored_report_response.json()["content"] == report_asset["report"]["content"]
+
+    report_list_response = await client.get("/api/reports")
+    assert report_list_response.status_code == 200
+    assert any(
+        item["id"] == report_asset["report"]["id"]
+        and item["report_type"] == "github_tool_radar"
+        for item in report_list_response.json()
+    )
 
 
 @pytest.mark.asyncio

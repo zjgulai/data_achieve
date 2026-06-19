@@ -110,5 +110,9 @@ def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
         "description": repo.get("description"),
         "stargazers_count": repo.get("stargazers_count"),
         "forks_count": repo.get("forks_count"),
+        "open_issues_count": repo.get("open_issues_count"),
+        "language": repo.get("language"),
+        "topics": repo.get("topics"),
+        "pushed_at": repo.get("pushed_at"),
         "updated_at": repo.get("updated_at"),
     }

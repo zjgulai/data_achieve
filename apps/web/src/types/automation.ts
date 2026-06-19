@@ -1,5 +1,6 @@
 import type { AlertEvent } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
+import type { Report } from "@/types/report";
 import type { Signal } from "@/types/signal";
 
 export type AutomationFieldCandidate = {
@@ -716,6 +717,56 @@ export type AutomationProductDriftEventListInput = {
   datasetId?: string;
   datasetVersionId?: string;
   limit?: number;
+};
+
+export type AutomationGitHubToolReportRepository = {
+  repoFullName: string;
+  htmlUrl: string | null;
+  description: string | null;
+  stars: number;
+  forks: number | null;
+  openIssues: number | null;
+  language: string | null;
+  topics: string[];
+  updatedAt: string | null;
+  pushedAt: string | null;
+};
+
+export type AutomationGitHubToolReport = {
+  generatedAt: string;
+  authorizationConfirmed: boolean;
+  dataset: AutomationDataset;
+  version: AutomationDatasetVersion;
+  summary: {
+    repositoryCount: number;
+    totalStars: number;
+    highValueRepositories: number;
+    languages: Record<string, number>;
+    topTopics: Record<string, number>;
+    reportCreated: boolean;
+    runStarted: boolean;
+  };
+  topRepositories: AutomationGitHubToolReportRepository[];
+  recommendations: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  blockedReasons: string[];
+};
+
+export type AutomationGitHubToolReportInput = {
+  authorized: boolean;
+  datasetId: string;
+  datasetVersionId: string;
+  minStars?: number;
+  topLimit?: number;
+};
+
+export type AutomationGitHubToolReportAsset = AutomationGitHubToolReport & {
+  report: Report;
+  notificationCreated: boolean;
+};
+
+export type AutomationGitHubToolReportAssetInput = AutomationGitHubToolReportInput & {
+  confirmCreate: boolean;
 };
 
 export type AutomationProductDatasetListItem = {

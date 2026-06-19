@@ -30,6 +30,10 @@ import type {
   AutomationCleaningRule,
   AutomationCleaningStep,
   AutomationFieldCandidate,
+  AutomationGitHubToolReport,
+  AutomationGitHubToolReportAsset,
+  AutomationGitHubToolReportAssetInput,
+  AutomationGitHubToolReportInput,
   AutomationProductDiscovery,
   AutomationProductDiscoveryInput,
   AutomationProductBatchRun,
@@ -78,6 +82,7 @@ import type {
   AutomationSiteAnalysisListInput,
   AutomationToolRecommendation,
 } from "@/types/automation";
+import type { Report } from "@/types/report";
 import type { AlertEvent } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { Signal } from "@/types/signal";
@@ -646,6 +651,55 @@ type AutomationProductDriftEventListResponse = {
   alert_created: boolean;
 };
 
+type AutomationGitHubToolReportResponse = {
+  generated_at: string;
+  authorization_confirmed: boolean;
+  dataset: AutomationProductDatasetSaveResponse["dataset"];
+  version: AutomationProductDatasetSaveResponse["version"];
+  summary: {
+    repository_count: number;
+    total_stars: number;
+    high_value_repositories: number;
+    languages: Record<string, number>;
+    top_topics: Record<string, number>;
+    report_created: boolean;
+    run_started: boolean;
+  };
+  top_repositories: Array<{
+    repo_full_name: string;
+    html_url: string | null;
+    description: string | null;
+    stars: number;
+    forks: number | null;
+    open_issues: number | null;
+    language: string | null;
+    topics: string[];
+    updated_at: string | null;
+    pushed_at: string | null;
+  }>;
+  recommendations: string[];
+  audit_events: Array<Record<string, unknown>>;
+  blocked_reasons: string[];
+};
+
+type ReportResponse = {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  report_type: string;
+  title: string;
+  content: string;
+  status: string;
+  period_start: string;
+  period_end: string;
+  created_at: string;
+};
+
+type AutomationGitHubToolReportAssetResponse = AutomationGitHubToolReportResponse & {
+  report: ReportResponse;
+  notification_created: boolean;
+};
+
 type AutomationProductDatasetListResponse = {
   items: Array<{
     dataset: AutomationProductDatasetSaveResponse["dataset"];
@@ -988,6 +1042,27 @@ export async function previewAutomationProductDataset(
   return mapAutomationProductDatasetPreview(response);
 }
 
+export async function previewAutomationGitHubToolDataset(
+  input: AutomationProductDatasetPreviewInput,
+): Promise<AutomationProductDatasetPreview> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDatasetPreview(input);
+  }
+  const response = await apiFetch<AutomationProductDatasetPreviewResponse>(
+    "/api/automation/github-tool-dataset-preview",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        task_run_ids: input.taskRunIds,
+        fields: input.fields,
+        max_rows: input.maxRows ?? 100,
+      }),
+    },
+  );
+  return mapAutomationProductDatasetPreview(response);
+}
+
 export async function dryRunAutomationCleaningPlan(
   input: AutomationCleaningPlanInput,
 ): Promise<AutomationCleaningPlanDryRun> {
@@ -1081,6 +1156,29 @@ export async function saveAutomationProductDataset(
   return mapAutomationProductDatasetSave(response);
 }
 
+export async function saveAutomationGitHubToolDataset(
+  input: AutomationProductDatasetSaveInput,
+): Promise<AutomationProductDatasetSave> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDatasetSave(input);
+  }
+  const response = await apiFetch<AutomationProductDatasetSaveResponse>(
+    "/api/automation/github-tool-dataset-save",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        name: input.name,
+        description: input.description,
+        task_run_ids: input.taskRunIds,
+        fields: input.fields,
+        max_rows: input.maxRows ?? 100,
+      }),
+    },
+  );
+  return mapAutomationProductDatasetSave(response);
+}
+
 export async function createAutomationProductDatasetExport(
   input: AutomationProductDatasetExportCreateInput,
 ): Promise<AutomationProductDatasetExportJob> {
@@ -1152,6 +1250,29 @@ export async function checkAutomationProductDrift(
   return mapAutomationProductDriftCheck(response);
 }
 
+export async function checkAutomationGitHubToolDrift(
+  input: AutomationProductDriftCheckInput,
+): Promise<AutomationProductDriftCheck> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDriftCheck(input);
+  }
+  const response = await apiFetch<AutomationProductDriftCheckResponse>(
+    "/api/automation/github-tool-drift-check",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        task_ids: input.taskIds,
+        completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+        freshness_grace_hours: input.freshnessGraceHours ?? 0,
+      }),
+    },
+  );
+  return mapAutomationProductDriftCheck(response);
+}
+
 export async function saveAutomationProductDriftEvent(
   input: AutomationProductDriftEventSaveInput,
 ): Promise<AutomationProductDriftEvent> {
@@ -1174,6 +1295,75 @@ export async function saveAutomationProductDriftEvent(
     },
   );
   return mapAutomationProductDriftEvent(response);
+}
+
+export async function saveAutomationGitHubToolDriftEvent(
+  input: AutomationProductDriftEventSaveInput,
+): Promise<AutomationProductDriftEvent> {
+  if (mockApiEnabled) {
+    return getMockAutomationProductDriftEventSave(input);
+  }
+  const response = await apiFetch<AutomationProductDriftEventResponse>(
+    "/api/automation/github-tool-drift-events",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        task_ids: input.taskIds,
+        completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+        freshness_grace_hours: input.freshnessGraceHours ?? 0,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationProductDriftEvent(response);
+}
+
+export async function generateAutomationGitHubToolReport(
+  input: AutomationGitHubToolReportInput,
+): Promise<AutomationGitHubToolReport> {
+  if (mockApiEnabled) {
+    return getMockAutomationGitHubToolReport(input);
+  }
+  const response = await apiFetch<AutomationGitHubToolReportResponse>(
+    "/api/automation/github-tool-report",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        min_stars: input.minStars ?? 1000,
+        top_limit: input.topLimit ?? 10,
+      }),
+    },
+  );
+  return mapAutomationGitHubToolReport(response);
+}
+
+export async function createAutomationGitHubToolReportAsset(
+  input: AutomationGitHubToolReportAssetInput,
+): Promise<AutomationGitHubToolReportAsset> {
+  if (mockApiEnabled) {
+    return getMockAutomationGitHubToolReportAsset(input);
+  }
+  const response = await apiFetch<AutomationGitHubToolReportAssetResponse>(
+    "/api/automation/github-tool-report-assets",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_create: input.confirmCreate,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        min_stars: input.minStars ?? 1000,
+        top_limit: input.topLimit ?? 10,
+      }),
+    },
+  );
+  return mapAutomationGitHubToolReportAsset(response);
 }
 
 export async function listAutomationProductDriftEvents(
@@ -2284,6 +2474,170 @@ function mapAutomationProductDriftEvent(
     note: response.note,
     runStarted: response.run_started,
     alertCreated: response.alert_created,
+  };
+}
+
+function mapAutomationGitHubToolReport(
+  response: AutomationGitHubToolReportResponse,
+): AutomationGitHubToolReport {
+  return {
+    generatedAt: response.generated_at,
+    authorizationConfirmed: response.authorization_confirmed,
+    dataset: mapAutomationDataset(response.dataset),
+    version: mapAutomationDatasetVersion(response.version),
+    summary: {
+      repositoryCount: response.summary.repository_count,
+      totalStars: response.summary.total_stars,
+      highValueRepositories: response.summary.high_value_repositories,
+      languages: response.summary.languages,
+      topTopics: response.summary.top_topics,
+      reportCreated: response.summary.report_created,
+      runStarted: response.summary.run_started,
+    },
+    topRepositories: response.top_repositories.map((repository) => ({
+      repoFullName: repository.repo_full_name,
+      htmlUrl: repository.html_url,
+      description: repository.description,
+      stars: repository.stars,
+      forks: repository.forks,
+      openIssues: repository.open_issues,
+      language: repository.language,
+      topics: repository.topics,
+      updatedAt: repository.updated_at,
+      pushedAt: repository.pushed_at,
+    })),
+    recommendations: response.recommendations,
+    auditEvents: response.audit_events,
+    blockedReasons: response.blocked_reasons,
+  };
+}
+
+function mapAutomationGitHubToolReportAsset(
+  response: AutomationGitHubToolReportAssetResponse,
+): AutomationGitHubToolReportAsset {
+  return {
+    ...mapAutomationGitHubToolReport(response),
+    report: mapReport(response.report),
+    notificationCreated: response.notification_created,
+  };
+}
+
+function mapReport(response: ReportResponse): Report {
+  return {
+    id: response.id,
+    workspaceId: response.workspace_id,
+    projectId: response.project_id,
+    reportType: response.report_type,
+    title: response.title,
+    content: response.content,
+    status: response.status,
+    periodStart: response.period_start,
+    periodEnd: response.period_end,
+    createdAt: response.created_at,
+  };
+}
+
+function getMockAutomationGitHubToolReport(
+  input: AutomationGitHubToolReportInput,
+): AutomationGitHubToolReport {
+  const now = new Date().toISOString();
+  return {
+    generatedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset: {
+      id: input.datasetId,
+      projectId: "project_marketplace_price",
+      name: "GitHub Tool Radar mock",
+      datasetType: "github_tool_radar",
+      status: "active",
+      description: "Mock GitHub tool radar dataset.",
+    },
+    version: {
+      id: input.datasetVersionId,
+      datasetId: input.datasetId,
+      cleaningPlanId: null,
+      versionNumber: 1,
+      sourceTaskRunIds: [],
+      selectedFields: ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+      cleaningScript: [],
+      rowCount: 2,
+      averageCompletenessPercent: 100,
+      status: "saved",
+      createdAt: now,
+      exportPreview: {},
+    },
+    summary: {
+      repositoryCount: 2,
+      totalStars: 128000,
+      highValueRepositories: 2,
+      languages: { Python: 2 },
+      topTopics: {
+        "ai-agent": 1,
+        "browser-automation": 1,
+        crawler: 1,
+        scraping: 1,
+      },
+      reportCreated: false,
+      runStarted: false,
+    },
+    topRepositories: [
+      {
+        repoFullName: "browser-use/browser-use",
+        htmlUrl: "https://github.com/browser-use/browser-use",
+        description: "Make websites accessible for AI agents",
+        stars: 72000,
+        forks: 8400,
+        openIssues: 120,
+        language: "Python",
+        topics: ["browser-automation", "ai-agent"],
+        updatedAt: now,
+        pushedAt: now,
+      },
+    ],
+    recommendations: [
+      "browser-use/browser-use 具备 72000 stars，可优先用于 AI 浏览器自动化培训与 SOP 编写。",
+    ],
+    auditEvents: [],
+    blockedReasons: ["Mock 报告不会启动采集、创建报告资产或发送通知。"],
+  };
+}
+
+function getMockAutomationGitHubToolReportAsset(
+  input: AutomationGitHubToolReportAssetInput,
+): AutomationGitHubToolReportAsset {
+  const report = getMockAutomationGitHubToolReport(input);
+  const now = new Date().toISOString();
+  return {
+    ...report,
+    generatedAt: now,
+    summary: {
+      ...report.summary,
+      reportCreated: input.confirmCreate,
+      runStarted: false,
+    },
+    auditEvents: [
+      ...report.auditEvents,
+      {
+        event: "github_tool_report_asset_created",
+        report_created: input.confirmCreate,
+        run_started: false,
+        notification_created: false,
+      },
+    ],
+    blockedReasons: ["Mock 报告资产已保存；不会启动采集、创建通知或发送邮件。"],
+    report: {
+      id: "report_github_tool_radar_mock",
+      workspaceId: "workspace_demo",
+      projectId: "project_marketplace_price",
+      reportType: "github_tool_radar",
+      title: "GitHub 工具雷达报告 - GitHub Tool Radar mock v1",
+      content: "github_tool_radar\nbrowser-use/browser-use",
+      status: "generated",
+      periodStart: now,
+      periodEnd: now,
+      createdAt: now,
+    },
+    notificationCreated: false,
   };
 }
 

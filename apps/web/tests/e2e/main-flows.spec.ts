@@ -819,6 +819,21 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("GitHub Topic Radar: web-scraping")).toBeVisible();
     await expect(page.getByText("github_topic", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("成功", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "生成工具数据集预览" }).click();
+    await expect(page.getByText("工具情报数据集", { exact: true })).toBeVisible();
+    await expect(page.getByText("仓库行数")).toBeVisible();
+    await page.getByRole("button", { name: "保存工具数据集" }).click();
+    await expect(page.getByText("数据集 ID:")).toBeVisible();
+    await expect(page.getByText("工具雷达验收")).toBeVisible();
+    await page.getByRole("button", { name: "生成雷达报告" }).click();
+    await expect(page.getByText("高价值仓库")).toBeVisible();
+    await page.getByRole("button", { name: "保存到报告中心" }).click();
+    await expect(page.getByText("已保存到报告中心")).toBeVisible();
+    await expect(page.getByRole("link", { name: "打开报告" })).toBeVisible();
+    await page.getByRole("button", { name: "检查工具漂移" }).click();
+    await expect(page.getByText("检查任务")).toBeVisible();
+    await page.getByRole("button", { name: "保存漂移快照" }).click();
+    await expect(page.getByText("已保存漂移快照")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 

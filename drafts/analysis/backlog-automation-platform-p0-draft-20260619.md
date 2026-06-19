@@ -193,7 +193,108 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 ## 8. 执行记录
 
-### 2026-06-19 P0 生产部署与真实浏览器验收记录
+### 2026-06-19 Phase B.1 GitHub 工具数据集本地实现记录
+
+事实：
+
+1. 已新增 `/api/automation/github-tool-dataset-preview`，可从 `github_topic` / `github_repo` 运行记录生成工具情报 Dataset 预览。
+2. 已新增 `/api/automation/github-tool-dataset-save`，保存 `dataset_type=github_tool_radar` 的 DatasetVersion。
+3. GitHub topic collector 已补齐 `open_issues_count`、`language`、`topics`、`pushed_at` 等工具情报字段。
+4. `/automation` 的 GitHub Topic Radar 结果区已新增工具数据集字段筛选、预览和保存交互。
+5. CSV/JSON/JSONL 导出复用现有 Dataset Export API；本轮 API 集成测试已覆盖 CSV 导出和下载。
+
+本地验收：
+
+1. RED：`uv run pytest tests/integration/test_sources_tasks.py::test_github_topic_radar_saves_tool_dataset_and_export -q` 先失败于 `/api/automation/github-tool-dataset-preview` 返回 404。
+2. GREEN：同一测试后续通过，并验证 GitHub topic fixture -> 工具 Dataset 预览 -> 保存 `github_tool_radar` DatasetVersion -> CSV 导出下载。
+3. `uv run pytest tests/integration/test_sources_tasks.py::test_github_topic_radar_saves_tool_dataset_and_export tests/integration/test_sources_tasks.py::test_automation_platform_packages_expose_collection_contract -q` 通过：2 passed。
+4. `uv run ruff check src tests/integration/test_sources_tasks.py` 通过。
+5. `uv run mypy src` 通过。
+6. `pnpm --dir apps/web exec tsc --noEmit` 通过。
+7. `pnpm --dir apps/web exec playwright test tests/e2e/main-flows.spec.ts -g "renders automation platform packages"` 通过：desktop/mobile 2 passed。
+
+边界：
+
+1. `production unchanged`：本记录不代表生产环境已部署。
+2. 本轮完成 GitHub 工具 Dataset 预览、保存和导出 API 验证；工具漂移检查、策略推荐回流和工具雷达报告仍是 Phase B 下一切片。
+3. 导出 endpoint 仍复用历史 `product-dataset-exports` 命名；底层按 Dataset/Version 权限工作，后续可补无破坏 alias。
+
+### 2026-06-19 Phase B.2 GitHub 工具漂移与雷达报告本地实现记录
+
+事实：
+
+1. 已新增 `/api/automation/github-tool-drift-check`，对 `github_tool_radar` 数据集做同源 GitHub task 的只读漂移检查。
+2. 已新增 `/api/automation/github-tool-drift-events`，保存 `event_type=github_tool_radar_drift` 的 DatasetDriftEvent，并复用 fingerprint 避免重复快照。
+3. 已新增 `/api/automation/github-tool-report`，基于已保存 DatasetVersion 汇总仓库数、stars、语言、topics、高价值仓库和培训建议。
+4. 已新增 `/api/automation/github-tool-report-assets`，在 `confirm_create=true` 时保存 `report_type=github_tool_radar` 的 Report 中心资产。
+4. `/automation` GitHub Topic Radar 结果区在保存工具数据集后，可生成雷达报告、检查工具漂移、保存漂移快照。
+
+本地验收：
+
+1. RED：`uv run pytest tests/integration/test_sources_tasks.py::test_github_topic_radar_saves_tool_dataset_and_export -q` 先失败于 `/api/automation/github-tool-drift-check` 返回 404。
+2. GREEN：同一测试后续通过，并验证 GitHub 工具 Dataset -> 二次运行 -> 漂移检查 -> 保存 `github_tool_radar_drift` -> 生成工具雷达报告。
+3. `uv run pytest tests/integration/test_sources_tasks.py::test_github_topic_radar_saves_tool_dataset_and_export tests/integration/test_sources_tasks.py::test_automation_product_batch_run_returns_field_completeness -q` 通过：2 passed。
+4. `uv run ruff check src tests/integration/test_sources_tasks.py` 通过。
+5. `uv run mypy src` 通过。
+6. `pnpm --dir apps/web exec tsc --noEmit` 通过。
+7. `pnpm lint:web` 通过。
+8. `pnpm --dir apps/web exec playwright test tests/e2e/main-flows.spec.ts -g "renders automation platform packages"` 通过：desktop/mobile 2 passed。
+
+边界：
+
+1. `production unchanged`：本记录不代表生产环境已部署。
+2. GitHub 工具漂移和报告均为只读评估；不会启动采集、创建告警或发送通知。
+3. `github-tool-report-assets` 只写 Report 资产和 report audit event；不会启动采集、创建站内通知或发送邮件。
+
+### 2026-06-19 Phase B.3 GitHub 工具雷达报告中心资产本地实现记录
+
+目标：把 GitHub 工具雷达从只读 response 推进为可在 Report 中心查看的持久化资产，同时保持发送、通知、采集运行全部 fail-closed。
+
+实现：
+
+1. 新增 `AutomationGitHubToolReportAssetCreateRequest` / `AutomationGitHubToolReportAssetResponse`。
+2. 新增 `/api/automation/github-tool-report-assets`，要求 `authorized=true` 和 `confirm_create=true`。
+3. 新增 `create_github_tool_report_asset`，复用只读报告汇总后创建 `reports.report_type=github_tool_radar`，并写入 `github_tool_report_asset_created` audit event。
+4. 前端 `/automation` 在 GitHub Topic Radar 结果中新增“保存到报告中心”按钮，保存后展示 `/reports/{reportId}` 入口。
+5. `github_tool_radar` 被纳入前端培训报告类型判断，Report 中心训练视角可识别该类报告。
+
+验收证据：
+
+1. RED：目标 integration test 先失败在 `/api/automation/github-tool-report-assets` 返回 `404`。
+2. GREEN：同一测试后续通过，验证 report asset 创建、Report API 读回、报告列表包含 `github_tool_radar`。
+3. 前端目标 Playwright 覆盖桌面和移动，从 Topic Radar 到保存报告中心，断言“已保存到报告中心”和“打开报告”入口出现。
+
+边界：
+
+1. 本轮为本地实现与本地验收，生产未部署。
+2. Report 资产保存不会启动采集、创建通知或发送邮件。
+
+### 2026-06-19 平台包追加部署与生产验收记录
+
+事实：
+
+1. 最新生产部署 commit：`dda2786638d4aac8647bbff8b3694b05113678f3`。
+2. 生产 release 目录：`/opt/data-achieve-scrapy/releases/20260619190523-dda2786638d4`。
+3. `/api/automation/platform-packages` 在生产返回 3 个平台包：`shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`。
+4. `github-api-first` 已升级为 `executable`，可从 `/automation` 创建 GitHub topic Source、启用 Task，并执行一次公开 GitHub API 采集。
+5. `public-page-structure-preflight` 已作为 `executable` 平台包上线，可从 `/automation` 调用公开网页结构预检；授权通过后可继续创建 `generic_web` 采集源。
+
+生产验收：
+
+1. 生产 API smoke 通过。
+2. 生产真实 API E2E 通过：Playwright `34 passed / 8 skipped`。
+3. 生产健康检查返回 `status=ok`、`database=connected`、`schema_revision=202606110020`、`schema_head=202606110020`。
+4. `/automation`、`/toolkit`、`/tasks`、`/datasets`、`/reports`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities` 页面 HTTP 检查均返回 200。
+5. E2E fixture cleanup 与 demo-noise cleanup 已执行，后续 dry-run 计数为 0。
+
+边界：
+
+1. 本记录覆盖下方 `db6189f` 历史基线中的 GitHub/API-first SOP-only 边界；当前事实以本记录为准。
+2. GitHub/API-first 当前可执行范围是 Topic Radar 的 Source/Task/Run 链路；工具情报 Dataset、导出、漂移和报告闭环仍是下一阶段任务。
+3. 公开网页结构预检当前是授权 gate 和结构诊断，不实现登录绕过、反检测或风控规避。
+4. Gateway reload 首次遇到 Edge 容器 `starting` 状态，等待健康检查变为 `healthy` 后重试成功；该经验已写入自进化候选池。
+
+### 2026-06-19 P0 生产部署与真实浏览器验收记录（历史基线：db6189f）
 
 事实：
 
@@ -216,7 +317,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 1. 本节覆盖下方各“本地实现记录”中的 `production unchanged` 历史边界；那些边界只描述当时提交前状态。
 2. 平台包仍处于首批静态 contract registry 阶段，尚未支持用户自定义平台包持久化。
-3. GitHub/API-first 目前仍是 SOP/import-only 平台包，不代表已经进入 Automation 一键运行链路。
+3. GitHub/API-first 当时仍是 SOP/import-only 平台包；该历史边界已被上方 `dda2786` 生产记录覆盖。
 4. 采集任务运行锁、重试预算、超时策略和更完整的前端提交中状态仍是后续可靠性增强项。
 
 ### 2026-06-19 P0-1 本地实现记录
@@ -302,7 +403,7 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 2. 已新增 `/api/automation/platform-packages` 和 `/api/automation/platform-packages/{package_id}`。
 3. 首批平台包包含 `shopify-independent-ecommerce` 和 `github-api-first`。
 4. `shopify-independent-ecommerce` 标记为 `executable`，指向 `ecommerce_product_discovery` 与 `ecommerce_product_page`。
-5. `github-api-first` 标记为 `sop_import_only`，指向 `github_topic` 与 `github_repo`，不允许从 Automation 默认启动。
+5. `github-api-first` 当时标记为 `sop_import_only`，指向 `github_topic` 与 `github_repo`，不允许从 Automation 默认启动；后续 commit 已将其升级为 `executable`。
 6. `/automation` 已新增“平台包矩阵”，展示字段 contract、collector、策略、风险边界和 SOP links；可执行平台包支持一键应用到当前采集入口。
 7. Mock API 已同步平台包数据，保证本地 E2E 和真实 API contract 不分叉。
 
@@ -320,5 +421,5 @@ P0 的目标是把当前 `/automation` 从“可运行流程”升级为“可�
 
 1. `production unchanged`：本记录不代表生产环境已部署或生产数据库已执行 migration。
 2. 平台包目前是静态 contract registry；尚未支持用户自定义平台包持久化。
-3. GitHub/API-first 仍是 SOP/import-only，不代表已经进入 Automation 一键运行链路。
+3. GitHub/API-first 当时仍是 SOP/import-only，不代表已经进入 Automation 一键运行链路；当前事实以上方 `dda2786` 生产记录为准。
 4. 生产 read-only smoke、授权生产写入 E2E、生产 E2E fixture cleanup 尚未执行。

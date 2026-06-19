@@ -34,6 +34,7 @@ from data_intelligence_hub.models.dataset import (
 )
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.raw_record import RawRecord
+from data_intelligence_hub.models.report import Report, ReportAuditEvent
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.user import User
@@ -86,6 +87,7 @@ from data_intelligence_hub.repositories.entities import (
 from data_intelligence_hub.repositories.notifications import get_notification_by_reference
 from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.raw_records import list_raw_records
+from data_intelligence_hub.repositories.reports import create_report, create_report_audit_event
 from data_intelligence_hub.repositories.signals import get_signal, list_signals
 from data_intelligence_hub.repositories.sources import get_source_by_type_url
 from data_intelligence_hub.repositories.tasks import get_task, list_task_runs
@@ -118,6 +120,16 @@ from data_intelligence_hub.schemas.automation import (
     AutomationFanoutCreateSummaryResponse,
     AutomationFanoutPersistedSourceResponse,
     AutomationFieldCandidateResponse,
+    AutomationGitHubToolDatasetPreviewRequest,
+    AutomationGitHubToolDatasetSaveRequest,
+    AutomationGitHubToolDriftCheckRequest,
+    AutomationGitHubToolDriftEventSaveRequest,
+    AutomationGitHubToolReportAssetCreateRequest,
+    AutomationGitHubToolReportAssetResponse,
+    AutomationGitHubToolReportRepositoryResponse,
+    AutomationGitHubToolReportRequest,
+    AutomationGitHubToolReportResponse,
+    AutomationGitHubToolReportSummaryResponse,
     AutomationPageStructureResponse,
     AutomationPlatformPackageCleaningRuleResponse,
     AutomationPlatformPackageFieldResponse,
@@ -187,6 +199,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationToolRecommendationResponse,
 )
 from data_intelligence_hub.schemas.notification import NotificationResponse
+from data_intelligence_hub.schemas.report import ReportResponse
 from data_intelligence_hub.schemas.signal import SignalResponse
 from data_intelligence_hub.schemas.source import SourceCreateRequest, SourceResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse
@@ -214,6 +227,19 @@ DATASET_EXPORT_CONTENT_TYPES = {
     "json": "application/json; charset=utf-8",
     "jsonl": "application/x-ndjson; charset=utf-8",
 }
+
+GITHUB_TOOL_FIELDS = (
+    "repo_full_name",
+    "description",
+    "stars",
+    "forks",
+    "open_issues",
+    "language",
+    "topics",
+    "html_url",
+    "updated_at",
+    "pushed_at",
+)
 
 
 def list_platform_packages() -> AutomationPlatformPackageListResponse:
@@ -938,6 +964,187 @@ async def preview_product_dataset(
     )
 
 
+async def preview_github_tool_dataset(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationGitHubToolDatasetPreviewRequest,
+) -> AutomationProductDatasetPreviewResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    selected_fields = _github_tool_dataset_fields(payload.fields)
+    rows: list[AutomationProductDatasetRowResponse] = []
+    matched_run_ids: set[uuid.UUID] = set()
+    audit_events: list[dict[str, object]] = [
+        {
+            "event": "github_tool_dataset_preview_requested",
+            "requested_runs": len(payload.task_run_ids),
+            "max_rows": payload.max_rows,
+            "fields": selected_fields,
+            "run_started": False,
+        }
+    ]
+
+    for task_run_id in payload.task_run_ids:
+        raw_records = await _github_tool_raw_records_for_task_run(
+            session=session,
+            workspace_id=workspace.id,
+            task_run_id=task_run_id,
+            limit=payload.max_rows,
+        )
+        if not raw_records:
+            audit_events.append(
+                {
+                    "event": "github_tool_dataset_run_skipped",
+                    "task_run_id": str(task_run_id),
+                    "reason": "no_github_topic_or_repo_records",
+                    "run_started": False,
+                }
+            )
+            continue
+        matched_run_ids.add(task_run_id)
+        for raw_record in raw_records:
+            for row in _github_tool_rows(raw_record, selected_fields):
+                if len(rows) >= payload.max_rows:
+                    break
+                rows.append(row)
+            if len(rows) >= payload.max_rows:
+                break
+        if len(rows) >= payload.max_rows:
+            audit_events.append(
+                {
+                    "event": "github_tool_dataset_row_limit_reached",
+                    "max_rows": payload.max_rows,
+                    "run_started": False,
+                }
+            )
+            break
+
+    summary = _dataset_summary(payload.task_run_ids, matched_run_ids, rows, selected_fields)
+    blocked_reasons: list[str] = []
+    if summary.rows_count == 0:
+        blocked_reasons.append("未找到可进入工具情报数据集的 GitHub topic/repo 采集记录。")
+    if summary.rows_count >= payload.max_rows:
+        blocked_reasons.append("工具情报数据集预览已达到本次最大行数限制。")
+    blocked_reasons.append("当前为只读工具数据集预览，尚未保存 Dataset 或写出导出文件。")
+
+    return AutomationProductDatasetPreviewResponse(
+        created_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        rows=rows,
+        summary=summary,
+        cleaning_script_draft=_github_tool_cleaning_script_draft(selected_fields),
+        export_preview=_github_tool_export_preview(rows, selected_fields),
+        audit_events=audit_events,
+        blocked_reasons=blocked_reasons,
+    )
+
+
+async def save_github_tool_dataset_version(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationGitHubToolDatasetSaveRequest,
+) -> AutomationProductDatasetSaveResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    dataset_name = payload.name.strip()
+    if not dataset_name:
+        raise CollectorError("dataset_name_required")
+
+    preview = await preview_github_tool_dataset(session, workspace, payload)
+    if not preview.rows:
+        raise CollectorError("dataset_preview_empty")
+
+    raw_records = await _dataset_github_tool_raw_records(
+        session,
+        workspace.id,
+        payload.task_run_ids,
+        payload.max_rows,
+    )
+    project_ids = {raw_record.project_id for raw_record in raw_records}
+    if len(project_ids) != 1:
+        raise CollectorError("dataset_project_lineage_ambiguous")
+    project_id = next(iter(project_ids))
+
+    await _lock_workspace_for_dataset_save(session, workspace.id)
+    dataset = await get_dataset_by_name(session, workspace.id, dataset_name)
+    created_dataset = False
+    if dataset is None:
+        dataset = Dataset(
+            workspace_id=workspace.id,
+            project_id=project_id,
+            name=dataset_name,
+            dataset_type="github_tool_radar",
+            status="active",
+            description=payload.description.strip() if payload.description else None,
+        )
+        session.add(dataset)
+        await session.flush()
+        created_dataset = True
+    elif dataset.project_id != project_id:
+        raise CollectorError("dataset_project_lineage_conflict")
+    elif dataset.dataset_type != "github_tool_radar":
+        raise CollectorError("dataset_type_conflict")
+
+    latest_version = await get_latest_dataset_version(session, dataset.id)
+    next_version_number = 1 if latest_version is None else latest_version.version_number + 1
+    created_at = datetime.now(UTC)
+    version = DatasetVersion(
+        dataset_id=dataset.id,
+        workspace_id=workspace.id,
+        project_id=dataset.project_id,
+        created_by_user_id=user.id,
+        cleaning_plan_id=None,
+        version_number=next_version_number,
+        source_task_run_ids=[str(task_run_id) for task_run_id in payload.task_run_ids],
+        selected_fields=preview.summary.selected_fields,
+        cleaning_script=preview.cleaning_script_draft,
+        rows=[
+            {
+                "row_id": row.row_id,
+                "task_run_id": str(row.task_run_id),
+                "raw_record_id": str(row.raw_record_id),
+                "source_url": row.source_url,
+                "values": row.values,
+                "missing_fields": row.missing_fields,
+                "completeness_percent": row.completeness_percent,
+            }
+            for row in preview.rows
+        ],
+        export_preview=preview.export_preview,
+        row_count=len(preview.rows),
+        average_completeness_percent=preview.summary.average_completeness_percent,
+        status="saved",
+        created_at=created_at,
+    )
+    session.add(version)
+    await session.commit()
+    await session.refresh(dataset)
+    await session.refresh(version)
+
+    return AutomationProductDatasetSaveResponse(
+        saved_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        audit_events=[
+            {
+                "event": "github_tool_dataset_version_saved",
+                "dataset_id": str(dataset.id),
+                "version_id": str(version.id),
+                "version_number": version.version_number,
+                "created_dataset": created_dataset,
+                "row_count": version.row_count,
+                "run_started": False,
+            }
+        ],
+        blocked_reasons=[
+            "工具情报 Dataset 版本已保存；尚未写出文件、创建漂移快照或生成报告。"
+        ],
+    )
+
+
 async def dry_run_cleaning_plan(
     session: AsyncSession,
     workspace: Workspace,
@@ -1548,6 +1755,169 @@ async def check_product_drift(
     )
 
 
+async def check_github_tool_drift(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationGitHubToolDriftCheckRequest,
+) -> AutomationProductDriftCheckResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    dataset = await get_dataset(session, workspace.id, payload.dataset_id)
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    if dataset is None or version is None:
+        raise CollectorError("dataset_version_not_found")
+    if dataset.dataset_type != "github_tool_radar":
+        raise CollectorError("dataset_type_not_github_tool_radar")
+
+    checked_at = datetime.now(UTC)
+    anchor_task_ids = await _dataset_version_task_ids(session, workspace, version)
+    items: list[AutomationProductDriftItemResponse] = []
+    audit_events: list[dict[str, object]] = [
+        {
+            "event": "github_tool_drift_check_requested",
+            "dataset_id": str(dataset.id),
+            "dataset_version_id": str(version.id),
+            "requested_tasks": len(payload.task_ids),
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+            "run_started": False,
+            "alert_created": False,
+        }
+    ]
+    seen_task_ids: set[uuid.UUID] = set()
+
+    for task_id in payload.task_ids:
+        if task_id in seen_task_ids:
+            items.append(_blocked_drift_item(task_id, version, "duplicate_task_id"))
+            audit_events.append(
+                {
+                    "event": "github_tool_drift_task_blocked",
+                    "task_id": str(task_id),
+                    "reason": "duplicate_task_id",
+                }
+            )
+            continue
+        seen_task_ids.add(task_id)
+
+        task = await get_task(session, workspace.id, task_id)
+        reason = _github_tool_drift_task_block_reason(task, dataset, anchor_task_ids)
+        if reason is not None:
+            items.append(_blocked_drift_item(task_id, version, reason, task))
+            audit_events.append(
+                {
+                    "event": "github_tool_drift_task_blocked",
+                    "task_id": str(task_id),
+                    "reason": reason,
+                }
+            )
+            continue
+
+        assert task is not None
+        latest_runs = await list_task_runs(session, workspace.id, task.id)
+        latest_run = latest_runs[0] if latest_runs else None
+        approved_fields = _github_tool_dataset_fields(version.selected_fields)
+        issues: list[str] = []
+        latest_completeness_percent: int | None = None
+        completeness_drop_percent: int | None = None
+        missing_fields: list[str] = []
+        new_missing_fields: list[str] = []
+
+        if latest_run is None:
+            issues.append("latest_run_missing")
+        elif latest_run.status not in {"success", "partial_success"}:
+            issues.append("latest_run_failed")
+        else:
+            github_records = await _github_tool_raw_records_for_task_run(
+                session=session,
+                workspace_id=workspace.id,
+                task_run_id=latest_run.id,
+                limit=500,
+            )
+            field_completeness = _github_tool_field_completeness_for_fields(
+                github_records,
+                approved_fields,
+            )
+            latest_completeness_percent = field_completeness.completeness_percent
+            completeness_drop_percent = max(
+                version.average_completeness_percent - latest_completeness_percent,
+                0,
+            )
+            missing_fields = field_completeness.missing_fields
+            new_missing_fields = [
+                field for field in approved_fields if field in field_completeness.missing_fields
+            ]
+            if completeness_drop_percent > payload.completeness_drop_threshold_percent:
+                issues.append("completeness_drift_exceeded")
+            if new_missing_fields:
+                issues.append("approved_fields_missing")
+
+        freshness_target_hours, stale_hours = _task_freshness_drift(
+            task,
+            checked_at,
+            payload.freshness_grace_hours,
+        )
+        if stale_hours is not None and stale_hours > 0:
+            issues.append("freshness_target_missed")
+
+        status = _drift_status(issues)
+        items.append(
+            AutomationProductDriftItemResponse(
+                task_id=task.id,
+                task_name=task.name,
+                source_url=_task_source_url(task),
+                status=status,
+                blocked_reason=None,
+                latest_run_id=latest_run.id if latest_run else None,
+                latest_run_status=latest_run.status if latest_run else None,
+                dataset_version_completeness_percent=version.average_completeness_percent,
+                latest_completeness_percent=latest_completeness_percent,
+                completeness_drop_percent=completeness_drop_percent,
+                missing_fields=missing_fields,
+                new_missing_fields=new_missing_fields,
+                freshness_target_hours=freshness_target_hours,
+                stale_hours=stale_hours,
+                issues=issues,
+            )
+        )
+        audit_events.append(
+            {
+                "event": "github_tool_drift_task_checked",
+                "task_id": str(task.id),
+                "latest_run_id": str(latest_run.id) if latest_run else None,
+                "status": status,
+                "issues": issues,
+                "run_started": False,
+                "alert_created": False,
+            }
+        )
+
+    summary = _product_drift_summary(payload.task_ids, items)
+    blocked_reasons = ["GitHub 工具漂移检查为只读评估，不会启动采集、创建告警或发送通知。"]
+    if summary.blocked_tasks:
+        blocked_reasons.append("部分任务未通过 GitHub 工具数据集谱系或类型校验。")
+    if summary.critical_tasks:
+        blocked_reasons.append("存在关键工具情报漂移，请复核字段缺失、采集失败或基准版本。")
+    elif summary.warning_tasks:
+        blocked_reasons.append("存在轻度工具情报漂移或新鲜度风险，建议复核后再进入培训材料。")
+
+    return AutomationProductDriftCheckResponse(
+        checked_at=checked_at,
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        items=items,
+        summary=summary,
+        audit_events=audit_events,
+        blocked_reasons=blocked_reasons,
+    )
+
+
 async def save_product_drift_event(
     session: AsyncSession,
     workspace: Workspace,
@@ -1625,6 +1995,242 @@ async def save_product_drift_event(
     )
     saved_event = await create_dataset_drift_event(session, event)
     return _drift_event_response(saved_event, checked.dataset, checked.version)
+
+
+async def save_github_tool_drift_event(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationGitHubToolDriftEventSaveRequest,
+) -> AutomationProductDriftEventResponse:
+    checked = await check_github_tool_drift(session, workspace, payload)
+    created_at = datetime.now(UTC)
+    event_status = _drift_event_status(checked.summary)
+    summary_json = checked.summary.model_dump(mode="json")
+    items_json = [item.model_dump(mode="json") for item in checked.items]
+    idempotency_key = _dataset_drift_event_idempotency_key(
+        event_type="github_tool_radar_drift",
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        task_ids=payload.task_ids,
+        thresholds={
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+        },
+        summary=summary_json,
+        items=items_json,
+        note=payload.note,
+    )
+    existing_event = await _existing_product_drift_event(
+        session=session,
+        workspace=workspace,
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        idempotency_key=idempotency_key,
+    )
+    if existing_event is not None:
+        existing_event.audit_events = [
+            *existing_event.audit_events,
+            {
+                "event": "github_tool_drift_event_reused",
+                "dataset_id": str(checked.dataset.id),
+                "dataset_version_id": str(checked.version.id),
+                "status": existing_event.status,
+                "idempotency_key": idempotency_key,
+                "run_started": False,
+                "alert_created": False,
+            },
+        ]
+        await session.commit()
+        await session.refresh(existing_event)
+        return _drift_event_response(existing_event, checked.dataset, checked.version)
+
+    audit_events = [
+        *checked.audit_events,
+        {
+            "event": "github_tool_drift_event_saved",
+            "dataset_id": str(checked.dataset.id),
+            "dataset_version_id": str(checked.version.id),
+            "status": event_status,
+            "idempotency_key": idempotency_key,
+            "run_started": False,
+            "alert_created": False,
+        },
+    ]
+    event = DatasetDriftEvent(
+        workspace_id=workspace.id,
+        project_id=checked.dataset.project_id,
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        event_type="github_tool_radar_drift",
+        status=event_status,
+        thresholds={
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+        },
+        summary={**summary_json, "idempotency_key": idempotency_key},
+        items=items_json,
+        audit_events=audit_events,
+        note=payload.note.strip() if payload.note and payload.note.strip() else None,
+        created_at=created_at,
+    )
+    saved_event = await create_dataset_drift_event(session, event)
+    return _drift_event_response(saved_event, checked.dataset, checked.version)
+
+
+async def generate_github_tool_report(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationGitHubToolReportRequest,
+) -> AutomationGitHubToolReportResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    dataset = await get_dataset(session, workspace.id, payload.dataset_id)
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    if dataset is None or version is None:
+        raise CollectorError("dataset_version_not_found")
+    if dataset.dataset_type != "github_tool_radar":
+        raise CollectorError("dataset_type_not_github_tool_radar")
+
+    repositories = _github_tool_report_repositories(version.rows)
+    top_repositories = sorted(
+        repositories,
+        key=lambda repository: repository.stars,
+        reverse=True,
+    )[: payload.top_limit]
+    total_stars = sum(repository.stars for repository in repositories)
+    languages = _count_repository_languages(repositories)
+    top_topics = _count_repository_topics(repositories)
+    high_value_count = len([
+        repository
+        for repository in repositories
+        if repository.stars >= payload.min_stars
+    ])
+    recommendations = _github_tool_report_recommendations(top_repositories, payload.min_stars)
+
+    return AutomationGitHubToolReportResponse(
+        generated_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        summary=AutomationGitHubToolReportSummaryResponse(
+            repository_count=len(repositories),
+            total_stars=total_stars,
+            high_value_repositories=high_value_count,
+            languages=languages,
+            top_topics=top_topics,
+            report_created=False,
+            run_started=False,
+        ),
+        top_repositories=top_repositories,
+        recommendations=recommendations,
+        audit_events=[
+            {
+                "event": "github_tool_report_generated",
+                "dataset_id": str(dataset.id),
+                "dataset_version_id": str(version.id),
+                "repository_count": len(repositories),
+                "top_limit": payload.top_limit,
+                "min_stars": payload.min_stars,
+                "report_created": False,
+                "run_started": False,
+            }
+        ],
+        blocked_reasons=[
+            "GitHub 工具雷达报告为只读生成，不会启动采集、创建报告资产或发送通知。"
+        ],
+    )
+
+
+async def create_github_tool_report_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationGitHubToolReportAssetCreateRequest,
+) -> AutomationGitHubToolReportAssetResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_create:
+        raise CollectorError("github_tool_report_asset_confirmation_required")
+
+    generated = await generate_github_tool_report(session, workspace, payload)
+    created_at = datetime.now(UTC)
+    title = (
+        f"GitHub 工具雷达报告 - {generated.dataset.name} "
+        f"v{generated.version.version_number}"
+    )
+    report = Report(
+        workspace_id=workspace.id,
+        project_id=generated.dataset.project_id,
+        report_type="github_tool_radar",
+        title=title,
+        content=_render_github_tool_report_asset_content(generated),
+        status="generated",
+        period_start=generated.version.created_at,
+        period_end=created_at,
+    )
+    await create_report(session, report)
+    await create_report_audit_event(
+        session,
+        ReportAuditEvent(
+            workspace_id=workspace.id,
+            report_id=report.id,
+            actor_id=user.id,
+            event_type="github_tool_report_asset_created",
+            from_status=None,
+            to_status=report.status,
+            metadata_json=json.dumps(
+                {
+                    "dataset_id": str(generated.dataset.id),
+                    "dataset_version_id": str(generated.version.id),
+                    "repository_count": str(generated.summary.repository_count),
+                    "top_limit": str(payload.top_limit),
+                    "min_stars": str(payload.min_stars),
+                    "report_created": "true",
+                    "run_started": "false",
+                    "notification_created": "false",
+                },
+                ensure_ascii=False,
+            ),
+            created_at=created_at,
+        ),
+    )
+    await session.commit()
+    await session.refresh(report)
+
+    summary = generated.summary.model_copy(update={"report_created": True})
+    audit_events = [
+        *generated.audit_events,
+        {
+            "event": "github_tool_report_asset_created",
+            "dataset_id": str(generated.dataset.id),
+            "dataset_version_id": str(generated.version.id),
+            "report_id": str(report.id),
+            "report_created": True,
+            "run_started": False,
+            "notification_created": False,
+        },
+    ]
+    return AutomationGitHubToolReportAssetResponse(
+        generated_at=created_at,
+        authorization_confirmed=generated.authorization_confirmed,
+        dataset=generated.dataset,
+        version=generated.version,
+        summary=summary,
+        top_repositories=generated.top_repositories,
+        recommendations=generated.recommendations,
+        audit_events=audit_events,
+        blocked_reasons=[
+            "报告资产已保存到 Report 中心；不会启动采集、创建通知或发送邮件。"
+        ],
+        report=ReportResponse.from_model(report),
+        notification_created=False,
+    )
 
 
 async def list_product_drift_events(
@@ -2409,10 +3015,33 @@ def _product_drift_event_idempotency_key(
     items: list[dict[str, Any]],
     note: str | None,
 ) -> str:
+    return _dataset_drift_event_idempotency_key(
+        event_type="ecommerce_product_drift",
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        task_ids=task_ids,
+        thresholds=thresholds,
+        summary=summary,
+        items=items,
+        note=note,
+    )
+
+
+def _dataset_drift_event_idempotency_key(
+    *,
+    event_type: str,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    task_ids: list[uuid.UUID],
+    thresholds: dict[str, Any],
+    summary: dict[str, Any],
+    items: list[dict[str, Any]],
+    note: str | None,
+) -> str:
     normalized_items = sorted(items, key=lambda item: str(item.get("task_id") or ""))
     return _stable_json_hash(
         {
-            "event_type": "ecommerce_product_drift",
+            "event_type": event_type,
             "dataset_id": str(dataset_id),
             "dataset_version_id": str(dataset_version_id),
             "task_ids": sorted(str(task_id) for task_id in task_ids),
@@ -2685,6 +3314,27 @@ async def _dataset_version_anchor_task(
             continue
         return task_run, task
     raise CollectorError("dataset_drift_signal_bridge_lineage_missing")
+
+
+async def _dataset_version_task_ids(
+    session: AsyncSession,
+    workspace: Workspace,
+    version: DatasetVersion,
+) -> set[uuid.UUID]:
+    task_ids: set[uuid.UUID] = set()
+    for raw_id in version.source_task_run_ids:
+        try:
+            run_id = uuid.UUID(raw_id)
+        except (TypeError, ValueError):
+            continue
+        task_run = await session.get(TaskRun, run_id)
+        if task_run is None or task_run.workspace_id != workspace.id:
+            continue
+        task = await get_task(session, workspace.id, task_run.task_id)
+        if task is None or task.project_id != version.project_id:
+            continue
+        task_ids.add(task.id)
+    return task_ids
 
 
 async def _upsert_dataset_entity(
@@ -3298,6 +3948,22 @@ def _drift_task_block_reason(
     return None
 
 
+def _github_tool_drift_task_block_reason(
+    task: CollectionTask | None,
+    dataset: Dataset,
+    anchor_task_ids: set[uuid.UUID],
+) -> str | None:
+    if task is None:
+        return "task_not_found"
+    if task.project_id != dataset.project_id:
+        return "task_project_lineage_conflict"
+    if task.collector_type not in {"github_topic", "github_repo"}:
+        return "task_collector_type_not_github_tool"
+    if task.id not in anchor_task_ids:
+        return "task_dataset_lineage_unapproved"
+    return None
+
+
 def _blocked_drift_item(
     task_id: uuid.UUID,
     version: DatasetVersion,
@@ -3837,6 +4503,22 @@ def _dataset_fields(fields: list[str] | None) -> list[str]:
     return normalized or list(ECOMMERCE_PRODUCT_FIELDS)
 
 
+def _github_tool_dataset_fields(fields: list[str] | None) -> list[str]:
+    requested = fields or [
+        "repo_full_name",
+        "stars",
+        "forks",
+        "open_issues",
+        "language",
+        "topics",
+        "html_url",
+        "updated_at",
+    ]
+    allowed = set(GITHUB_TOOL_FIELDS)
+    normalized = [field for field in requested if field in allowed]
+    return normalized or list(GITHUB_TOOL_FIELDS)
+
+
 def _dataset_row(
     raw_record: RawRecord,
     selected_fields: list[str],
@@ -3857,6 +4539,106 @@ def _dataset_row(
         values=values,
         missing_fields=missing_fields,
         completeness_percent=round(ratio * 100),
+    )
+
+
+def _github_tool_rows(
+    raw_record: RawRecord,
+    selected_fields: list[str],
+) -> list[AutomationProductDatasetRowResponse]:
+    content = raw_record.content if isinstance(raw_record.content, dict) else {}
+    repositories = content.get("repositories")
+    repo_items = repositories if isinstance(repositories, list) else []
+    if not repo_items and raw_record.record_type == "github_repo":
+        repo_items = [content]
+
+    rows: list[AutomationProductDatasetRowResponse] = []
+    for index, repo in enumerate(repo_items):
+        if not isinstance(repo, dict):
+            continue
+        values_by_field = _github_tool_values(repo)
+        values = {
+            field: values_by_field.get(field)
+            for field in selected_fields
+            if _has_field_value(values_by_field.get(field))
+        }
+        missing_fields = [field for field in selected_fields if field not in values]
+        ratio = len(values) / len(selected_fields) if selected_fields else 0
+        row_key = values_by_field.get("html_url") or values_by_field.get("repo_full_name") or index
+        rows.append(
+            AutomationProductDatasetRowResponse(
+                row_id=f"{raw_record.task_run_id}:{raw_record.id}:{row_key}",
+                task_run_id=raw_record.task_run_id,
+                raw_record_id=raw_record.id,
+                source_url=(
+                    str(values_by_field["html_url"])
+                    if _has_field_value(values_by_field.get("html_url"))
+                    else raw_record.source_url
+                ),
+                values=values,
+                missing_fields=missing_fields,
+                completeness_percent=round(ratio * 100),
+            )
+        )
+    return rows
+
+
+def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
+    stars = repo.get("stargazers_count", repo.get("stars"))
+    forks = repo.get("forks_count", repo.get("forks"))
+    open_issues = repo.get("open_issues_count", repo.get("open_issues"))
+    full_name = repo.get("full_name") or repo.get("repo_full_name")
+    html_url = repo.get("html_url") or repo.get("url")
+    topics = repo.get("topics")
+    return {
+        "repo_full_name": full_name,
+        "description": repo.get("description"),
+        "stars": stars,
+        "forks": forks,
+        "open_issues": open_issues,
+        "language": repo.get("language"),
+        "topics": topics if isinstance(topics, list) else [],
+        "html_url": html_url,
+        "updated_at": repo.get("updated_at"),
+        "pushed_at": repo.get("pushed_at"),
+    }
+
+
+def _github_tool_field_completeness_for_fields(
+    raw_records: list[RawRecord],
+    configured_fields: list[str],
+) -> AutomationProductBatchFieldCompletenessResponse:
+    rows: list[AutomationProductDatasetRowResponse] = []
+    for raw_record in raw_records:
+        rows.extend(_github_tool_rows(raw_record, configured_fields))
+
+    field_values: dict[str, object] = {}
+    missing_fields_set: set[str] = set()
+    for row in rows:
+        missing_fields_set.update(row.missing_fields)
+        for field in configured_fields:
+            if field in field_values:
+                continue
+            value = row.values.get(field)
+            if _has_field_value(value):
+                field_values[field] = value
+
+    if not rows:
+        missing_fields_set.update(configured_fields)
+        completeness_percent = 0
+    else:
+        completeness_percent = round(
+            sum(row.completeness_percent for row in rows) / len(rows)
+        )
+    missing_fields = [field for field in configured_fields if field in missing_fields_set]
+    extracted_fields = [field for field in configured_fields if field not in missing_fields_set]
+    return AutomationProductBatchFieldCompletenessResponse(
+        configured_fields=configured_fields,
+        extracted_fields=extracted_fields,
+        missing_fields=missing_fields,
+        field_values=field_values,
+        completeness_ratio=round(completeness_percent / 100, 4),
+        completeness_percent=completeness_percent,
     )
 
 
@@ -4062,6 +4844,19 @@ def _cleaning_script_draft(selected_fields: list[str]) -> list[str]:
     return steps
 
 
+def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
+    steps = [
+        "strip repo_full_name and html_url",
+        "normalize html_url as canonical repository URL",
+        "parse stars, forks and open_issues as integers when present",
+        "normalize topics into lower-case tag arrays",
+        "keep missing values explicit as null for downstream review",
+    ]
+    if "updated_at" in selected_fields or "pushed_at" in selected_fields:
+        steps.append("preserve GitHub timestamps as ISO strings for freshness review")
+    return steps
+
+
 def _dataset_export_preview(
     rows: list[AutomationProductDatasetRowResponse],
     selected_fields: list[str],
@@ -4083,6 +4878,203 @@ def _dataset_export_preview(
     }
 
 
+def _github_tool_export_preview(
+    rows: list[AutomationProductDatasetRowResponse],
+    selected_fields: list[str],
+) -> dict[str, object]:
+    return {
+        "format": "json",
+        "schema": {
+            "fields": selected_fields,
+            "primary_key": "html_url",
+            "missing_value_policy": "explicit_null",
+            "dataset_type": "github_tool_radar",
+        },
+        "rows": [
+            {
+                field: row.values.get(field)
+                for field in selected_fields
+            }
+            for row in rows[:10]
+        ],
+    }
+
+
+def _github_tool_report_repositories(
+    saved_rows: list[dict[str, object]],
+) -> list[AutomationGitHubToolReportRepositoryResponse]:
+    repositories: list[AutomationGitHubToolReportRepositoryResponse] = []
+    for saved_row in saved_rows:
+        values = saved_row.get("values")
+        if not isinstance(values, dict):
+            continue
+        repo_full_name = _string_or_none(values.get("repo_full_name"))
+        if repo_full_name is None:
+            continue
+        topics_value = values.get("topics")
+        topics = [
+            str(topic).strip()
+            for topic in topics_value
+            if str(topic).strip()
+        ] if isinstance(topics_value, list) else []
+        repositories.append(
+            AutomationGitHubToolReportRepositoryResponse(
+                repo_full_name=repo_full_name,
+                html_url=_string_or_none(values.get("html_url")),
+                description=_string_or_none(values.get("description")),
+                stars=_int_or_zero(values.get("stars")),
+                forks=_int_or_none(values.get("forks")),
+                open_issues=_int_or_none(values.get("open_issues")),
+                language=_string_or_none(values.get("language")),
+                topics=topics,
+                updated_at=_string_or_none(values.get("updated_at")),
+                pushed_at=_string_or_none(values.get("pushed_at")),
+            )
+        )
+    return repositories
+
+
+def _count_repository_languages(
+    repositories: list[AutomationGitHubToolReportRepositoryResponse],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for repository in repositories:
+        if repository.language is None:
+            continue
+        counts[repository.language] = counts.get(repository.language, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _count_repository_topics(
+    repositories: list[AutomationGitHubToolReportRepositoryResponse],
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for repository in repositories:
+        for topic in repository.topics:
+            counts[topic] = counts.get(topic, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _github_tool_report_recommendations(
+    top_repositories: list[AutomationGitHubToolReportRepositoryResponse],
+    min_stars: int,
+) -> list[str]:
+    if not top_repositories:
+        return ["当前工具数据集没有可生成培训建议的仓库行。"]
+    recommendations: list[str] = []
+    for repository in top_repositories[:3]:
+        threshold_note = (
+            f"达到 {min_stars} stars 门槛"
+            if repository.stars >= min_stars
+            else f"未达到 {min_stars} stars 门槛"
+        )
+        topics = "、".join(repository.topics[:3]) if repository.topics else "未标注 topic"
+        recommendations.append(
+            f"{repository.repo_full_name} 具备 {repository.stars} stars，{threshold_note}；"
+            f"可优先用于 {topics} 方向的数据采集工具培训与 SOP 编写。"
+        )
+    return recommendations
+
+
+def _render_github_tool_report_asset_content(
+    report: AutomationGitHubToolReportResponse,
+) -> str:
+    top_repository_lines = [
+        "| 仓库 | Stars | 语言 | Open issues | Topics | 链接 |",
+        "| --- | ---: | --- | ---: | --- | --- |",
+    ]
+    for repository in report.top_repositories:
+        topics = "、".join(repository.topics[:5]) if repository.topics else "未标注"
+        html_url = repository.html_url or ""
+        open_issues = repository.open_issues if repository.open_issues is not None else "-"
+        top_repository_lines.append(
+            "| "
+            f"{repository.repo_full_name} | "
+            f"{repository.stars} | "
+            f"{repository.language or '-'} | "
+            f"{open_issues} | "
+            f"{topics} | "
+            f"{html_url} |"
+        )
+
+    recommendation_lines = [
+        f"{index}. {recommendation}"
+        for index, recommendation in enumerate(report.recommendations, start=1)
+    ]
+    languages = _format_github_tool_report_counts(report.summary.languages)
+    topics = _format_github_tool_report_counts(report.summary.top_topics)
+    fields = "、".join(report.version.selected_fields)
+
+    sections = [
+        f"# GitHub 工具雷达报告 - {report.dataset.name}",
+        "",
+        "## 报告口径",
+        f"- dataset_type: {report.dataset.dataset_type}",
+        f"- dataset_id: {report.dataset.id}",
+        f"- dataset_version_id: {report.version.id}",
+        f"- version_number: {report.version.version_number}",
+        f"- selected_fields: {fields}",
+        f"- row_count: {report.version.row_count}",
+        f"- average_completeness_percent: {report.version.average_completeness_percent}",
+        "",
+        "## 工具池概览",
+        f"- repository_count: {report.summary.repository_count}",
+        f"- total_stars: {report.summary.total_stars}",
+        f"- high_value_repositories: {report.summary.high_value_repositories}",
+        f"- languages: {languages}",
+        f"- top_topics: {topics}",
+        "",
+        "## Top 仓库",
+        *top_repository_lines,
+        "",
+        "## 培训应用建议",
+        *recommendation_lines,
+        "",
+        "## 证据边界",
+        "- 本报告来自已保存的 github_tool_radar DatasetVersion。",
+        "- 保存报告不会启动采集、创建通知或发送邮件。",
+        "- 若用于培训材料，需要结合最新 drift check 复核字段完整度和新鲜度。",
+    ]
+    return "\n".join(sections).strip()
+
+
+def _format_github_tool_report_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "无"
+    return "、".join(f"{key}={value}" for key, value in counts.items())
+
+
+def _string_or_none(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _int_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        try:
+            return int(float(text))
+        except ValueError:
+            return None
+    return None
+
+
+def _int_or_zero(value: object) -> int:
+    return _int_or_none(value) or 0
+
+
 async def _dataset_product_raw_records(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -4098,6 +5090,26 @@ async def _dataset_product_raw_records(
             limit=max_rows,
         )
         records.extend(product_records)
+        if len(records) >= max_rows:
+            return records[:max_rows]
+    return records
+
+
+async def _dataset_github_tool_raw_records(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_ids: list[uuid.UUID],
+    max_rows: int,
+) -> list[RawRecord]:
+    records: list[RawRecord] = []
+    for task_run_id in task_run_ids:
+        github_records = await _github_tool_raw_records_for_task_run(
+            session=session,
+            workspace_id=workspace_id,
+            task_run_id=task_run_id,
+            limit=max_rows,
+        )
+        records.extend(github_records)
         if len(records) >= max_rows:
             return records[:max_rows]
     return records
@@ -4121,6 +5133,26 @@ async def _single_project_id_for_task_runs(
     if len(project_ids) != 1:
         raise CollectorError("cleaning_plan_project_lineage_ambiguous")
     return next(iter(project_ids))
+
+
+async def _github_tool_raw_records_for_task_run(
+    *,
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_id: uuid.UUID,
+    limit: int,
+) -> list[RawRecord]:
+    raw_records = await list_raw_records(
+        session=session,
+        workspace_id=workspace_id,
+        task_run_id=task_run_id,
+        limit=limit,
+    )
+    return [
+        raw_record
+        for raw_record in raw_records
+        if raw_record.record_type in {"github_topic", "github_repo"}
+    ]
 
 
 async def _product_records_for_task_run(

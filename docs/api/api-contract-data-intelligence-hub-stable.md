@@ -91,6 +91,72 @@ osint, ecommerce, social, competitor, mixed
 
 所有 Automation 接口都要求登录态。写入、运行、导出、发送通知类动作必须在请求体中显式传入 `authorized=true`；部分动作还要求 `confirm_create=true` 或 `confirm_send=true`。
 
+### Platform Package Contract
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `GET` | `/api/automation/platform-packages` | 无 | `AutomationPlatformPackageListResponse` | 返回当前平台包矩阵 |
+| `GET` | `/api/automation/platform-packages/{package_id}` | path: `package_id` | `AutomationPlatformPackageResponse` | 返回单个平台包合同，未知 id 返回 `404` |
+
+当前平台包：
+
+| id | execution boundary | default entrypoint | 说明 |
+|---|---|---|---|
+| `shopify-independent-ecommerce` | `executable` | `product-discovery` | 独立站/Shopify-style 商品采集，从集合页或商品页进入 Automation 主链路 |
+| `github-api-first` | `executable` | `source-create` | GitHub topic 工具情报采集，使用官方 API 创建 Source、启用 Task 并运行一次 |
+| `public-page-structure-preflight` | `executable` | `preflight` | 授权公开网页结构预检，先输出 gate 和结构诊断，再决定是否创建 `generic_web` Source |
+
+平台包不变量：
+
+1. `execution_boundary=executable` 只表示可以从界面启动其声明的低风险路径，不代表绕过授权、rate limit 或平台政策。
+2. GitHub/API-first 当前可执行路径是 `github_topic` Topic Radar；单仓库 `github_repo` 仍建议通过 Sources 创建重点仓库监控。
+3. `public-page-structure-preflight` 使用 Toolkit preflight，不是 Source collector；只有用户确认后才可继续创建 `generic_web` Source。
+
+### GitHub/API-first Topic Radar Flow
+
+GitHub Topic Radar 当前复用既有 Source/Task/Run API，不新增专用写入接口：
+
+| 步骤 | 接口 | 关键字段 | 说明 |
+|---|---|---|---|
+| 创建 Source | `POST /api/sources` | `type=github_topic`、`config.topic`、`config.max_results` | 创建公开 topic 采集源 |
+| 启用 Task | `POST /api/sources/{source_id}/enable` | 无 | 创建或复用采集任务 |
+| 执行采集 | `POST /api/tasks/{task_id}/run` | 无 | 调用 GitHub Search API，写入 TaskRun、RawRecord、Entity/Snapshot/Signal |
+
+GitHub 工具数据集化：
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `POST` | `/api/automation/github-tool-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从 GitHub topic/repo 运行记录生成工具情报数据集预览，不保存 DatasetVersion |
+| `POST` | `/api/automation/github-tool-dataset-save` | preview request + `name`、`description?` | `AutomationProductDatasetSaveResponse` | 保存 `dataset_type=github_tool_radar` 的 DatasetVersion |
+
+GitHub 工具数据集字段：
+
+```text
+repo_full_name, description, stars, forks, open_issues, language, topics, html_url, updated_at, pushed_at
+```
+
+GitHub 工具数据集导出复用 Dataset Export：
+
+1. `POST /api/automation/product-dataset-exports`
+2. `GET /api/automation/product-datasets/{dataset_id}/exports`
+3. `GET /api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download`
+
+这些导出 endpoint 名称仍保留 `product` 历史命名，但底层按 Dataset/Version 权限和 `dataset_type` 工作；后续可再做无破坏的 alias。
+
+### Public Page Structure Preflight
+
+公开网页结构预检当前挂在 Toolkit API 下：
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `POST` | `/api/toolkit/preflight` | `url`、`authorized` | `ToolkitPreflightReportResponse` | 对公开 URL 做授权 gate、robots、sitemap、DOM 摘要和工具建议 |
+
+预检通过后，如需进入持续采集，前端再复用：
+
+1. `POST /api/sources` 创建 `generic_web` Source。
+2. `POST /api/sources/{source_id}/enable` 启用 Task。
+3. `POST /api/tasks/{task_id}/run` 执行一次公开网页采集。
+
 ### Site Analysis And Product Discovery
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
@@ -139,6 +205,26 @@ osint, ecommerce, social, competitor, mixed
 1. 未传 `confirm_create=true` 时必须拒绝导出。
 2. ExportJob 必须记录 `filename`、`content_type`、`artifact_size_bytes`、`row_count`、`checksum_sha256`、`audit_events`。
 3. 下载接口必须限制 artifact 位于 `Settings.dataset_export_dir` 内，避免路径穿越。
+
+GitHub 工具漂移和报告：
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `POST` | `/api/automation/github-tool-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 对 `github_tool_radar` 数据集做同源 GitHub task 只读漂移检查 |
+| `POST` | `/api/automation/github-tool-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 保存 `event_type=github_tool_radar_drift` 的漂移快照 |
+| `GET` | `/api/automation/github-tool-drift-events` | query: `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出 GitHub 工具数据集漂移事件 |
+| `POST` | `/api/automation/github-tool-report` | `authorized`、`dataset_id`、`dataset_version_id`、`min_stars?`、`top_limit?` | `AutomationGitHubToolReportResponse` | 基于已保存版本生成只读工具雷达报告 |
+| `POST` | `/api/automation/github-tool-report-assets` | report request + `confirm_create=true` | `AutomationGitHubToolReportAssetResponse` | 将工具雷达报告保存为 `report_type=github_tool_radar` 的 Report 中心资产，成功返回 `201` |
+
+`AutomationGitHubToolReportResponse.summary` 包含 `repository_count`、`total_stars`、`high_value_repositories`、`languages`、`top_topics`、`report_created=false`、`run_started=false`。
+
+`AutomationGitHubToolReportAssetResponse` 继承只读报告 response，并额外返回 `report` 与 `notification_created=false`；`summary.report_created=true` 仅表示已写入 Report 资产，不表示发送或创建通知。
+
+边界：
+
+1. GitHub 工具漂移检查只允许与 DatasetVersion `source_task_run_ids` 同源的 `github_topic` / `github_repo` task 进入比较。
+2. GitHub 工具漂移和只读报告接口均不启动采集、不创建告警、不发送通知。
+3. `github-tool-report-assets` 只创建 Report 中心资产和审计事件；不会启动采集、创建站内通知或发送邮件。
 
 ### Schedule, Drift And Dataset Alerts
 

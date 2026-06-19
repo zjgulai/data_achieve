@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from data_intelligence_hub.schemas.alert import AlertEventResponse, AlertRuleResponse
 from data_intelligence_hub.schemas.notification import NotificationResponse
+from data_intelligence_hub.schemas.report import ReportResponse
 from data_intelligence_hub.schemas.signal import SignalResponse
 from data_intelligence_hub.schemas.source import SourceResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
@@ -71,6 +72,15 @@ class AutomationProductDatasetSaveRequest(AutomationProductDatasetPreviewRequest
     cleaning_plan_id: uuid.UUID | None = None
 
 
+class AutomationGitHubToolDatasetPreviewRequest(AutomationProductDatasetPreviewRequest):
+    pass
+
+
+class AutomationGitHubToolDatasetSaveRequest(AutomationGitHubToolDatasetPreviewRequest):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+
+
 class AutomationCleaningRuleInput(BaseModel):
     field: str = Field(min_length=1, max_length=80)
     operation: Literal[
@@ -128,6 +138,26 @@ class AutomationProductDriftCheckRequest(BaseModel):
 
 class AutomationProductDriftEventSaveRequest(AutomationProductDriftCheckRequest):
     note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationGitHubToolDriftCheckRequest(AutomationProductDriftCheckRequest):
+    pass
+
+
+class AutomationGitHubToolDriftEventSaveRequest(AutomationGitHubToolDriftCheckRequest):
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationGitHubToolReportRequest(BaseModel):
+    authorized: bool
+    dataset_id: uuid.UUID
+    dataset_version_id: uuid.UUID
+    min_stars: int = Field(default=1000, ge=0)
+    top_limit: int = Field(default=10, ge=1, le=50)
+
+
+class AutomationGitHubToolReportAssetCreateRequest(AutomationGitHubToolReportRequest):
+    confirm_create: bool
 
 
 class AutomationProductDriftAlertPreviewRequest(BaseModel):
@@ -762,6 +792,46 @@ class AutomationProductDriftEventListResponse(BaseModel):
     total: int
     run_started: bool
     alert_created: bool
+
+
+class AutomationGitHubToolReportRepositoryResponse(BaseModel):
+    repo_full_name: str
+    html_url: str | None
+    description: str | None
+    stars: int
+    forks: int | None
+    open_issues: int | None
+    language: str | None
+    topics: list[str]
+    updated_at: str | None
+    pushed_at: str | None
+
+
+class AutomationGitHubToolReportSummaryResponse(BaseModel):
+    repository_count: int
+    total_stars: int
+    high_value_repositories: int
+    languages: dict[str, int]
+    top_topics: dict[str, int]
+    report_created: bool
+    run_started: bool
+
+
+class AutomationGitHubToolReportResponse(BaseModel):
+    generated_at: datetime
+    authorization_confirmed: bool
+    dataset: AutomationDatasetResponse
+    version: AutomationDatasetVersionResponse
+    summary: AutomationGitHubToolReportSummaryResponse
+    top_repositories: list[AutomationGitHubToolReportRepositoryResponse]
+    recommendations: list[str]
+    audit_events: list[dict[str, Any]]
+    blocked_reasons: list[str]
+
+
+class AutomationGitHubToolReportAssetResponse(AutomationGitHubToolReportResponse):
+    report: ReportResponse
+    notification_created: bool
 
 
 class AutomationProductDatasetListItemResponse(BaseModel):
