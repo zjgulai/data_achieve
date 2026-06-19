@@ -171,9 +171,9 @@ export function AlertsWorkspace() {
         enabled,
       });
       setRules((current) => [rule, ...current]);
-      setMessage(`${rule.name}: rule created`);
+      setMessage(`${rule.name}：规则已创建`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Alert rule create failed");
+      setError(caught instanceof Error ? caught.message : "预警规则创建失败");
     }
   }
 
@@ -184,9 +184,9 @@ export function AlertsWorkspace() {
       const updated = await updateAlertEventStatus(eventId, nextStatus);
       setEvents((current) => current.map((event) => (event.id === updated.id ? updated : event)));
       setSelectedEventId(updated.id);
-      setMessage(`AlertEvent ${updated.id.slice(0, 8)}: ${updated.status}`);
+      setMessage(`告警事件 ${updated.id.slice(0, 8)}：${formatEventStatus(updated.status)}`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Alert event update failed");
+      setError(caught instanceof Error ? caught.message : "预警事件更新失败");
     }
   }
 
@@ -208,13 +208,13 @@ export function AlertsWorkspace() {
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-white/75 px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
               <ShieldAlert size={14} aria-hidden="true" />
-              Alert Delivery Layer
+              预警交付层
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-normal text-[#2E201C] sm:text-3xl">
               预警交付控制台
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#7A625A]">
-              当 Signal 命中规则后生成 AlertEvent，并按站内、邮件或双通道推送给团队。
+              当情报信号命中规则后生成预警事件，并按站内、邮件或双通道推送给团队。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
               <MetricPill icon={SlidersHorizontal} label="规则数" value={String(stats.rules)} />
@@ -232,11 +232,11 @@ export function AlertsWorkspace() {
           <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase text-[#B47767]">Channels</p>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">交付通道</p>
                 <h3 className="mt-1 text-base font-semibold text-[#2E201C]">交付通道</h3>
               </div>
               <span className="rounded-full bg-[#C96F5C] px-3 py-1 text-xs font-semibold text-white">
-                {stats.activeChannels} active
+                {stats.activeChannels} 个启用
               </span>
             </div>
             <div className="mt-4 grid gap-2">
@@ -256,13 +256,13 @@ export function AlertsWorkspace() {
         <section className="min-w-0 rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#B47767]">Alert Rules</p>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">预警规则</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">规则配置</h2>
               <p className="mt-1 text-sm text-[#7A625A]">定义信号类型、匹配条件和交付通道。</p>
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-full border border-[#E8D4CB] bg-[#FFF7F2] px-3 py-1.5 text-xs font-semibold text-[#9E5C4D]">
               <Radio size={14} aria-hidden="true" />
-              Signal match
+              命中规则
             </span>
           </div>
 
@@ -276,7 +276,7 @@ export function AlertsWorkspace() {
           <div className="mb-5 rounded-2xl border border-[#E8D4CB] bg-[#FFF8F4] p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase text-[#B47767]">New Rule</p>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">新建策略</p>
                 <h3 className="mt-1 text-base font-semibold text-[#2E201C]">创建预警规则</h3>
               </div>
               <button
@@ -285,13 +285,13 @@ export function AlertsWorkspace() {
                 type="button"
               >
                 <PlusCircle size={16} aria-hidden="true" />
-                Create
+                创建规则
               </button>
             </div>
             <div className="mb-4 rounded-xl border border-[#F1D9A8] bg-white/80 p-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm leading-6 text-[#87611B]">
-                  培训模板用于演示：当高分情报或高风险信号出现时，同时推送站内和邮件，方便讲解从 Signal 到 AlertEvent 的交付链路。
+                  培训模板用于演示：当高分情报或高风险信号出现时，同时推送站内和邮件，方便讲解从信号命中到预警交付的链路。
                 </p>
                 <button
                   className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#F1D9A8] bg-[#FFF9E9] px-3 text-xs font-semibold text-[#8C6824] transition hover:border-[#C96F5C]"
@@ -306,9 +306,9 @@ export function AlertsWorkspace() {
             <div className="grid gap-3">
               <TextField label="规则名称" onChange={setName} value={name} />
               <div className="grid gap-3 md:grid-cols-2">
-                <TextField label="Signal Type" onChange={setSignalType} value={signalType} />
+                <TextField label="信号类型" onChange={setSignalType} value={signalType} />
                 <SelectField
-                  label="Channel"
+                  label="交付通道"
                   onChange={(nextValue) => setChannel(nextValue as AlertChannel)}
                   options={[
                     { label: "站内通知", value: "in_app" },
@@ -320,18 +320,18 @@ export function AlertsWorkspace() {
               </div>
               <div className="grid gap-3 md:grid-cols-[1fr_120px_1fr]">
                 <SelectField
-                  label="Field"
+                  label="匹配字段"
                   onChange={setField}
                   options={fieldOptions.map((option) => ({ label: option, value: option }))}
                   value={field}
                 />
                 <SelectField
-                  label="Op"
+                  label="条件"
                   onChange={setOperator}
                   options={opOptions.map((option) => ({ label: option, value: option }))}
                   value={operator}
                 />
-                <TextField label="Value" onChange={setValue} value={value} />
+                <TextField label="阈值" onChange={setValue} value={value} />
               </div>
               <div className="flex flex-col gap-3 rounded-xl border border-[#E8D4CB] bg-white/70 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <button
@@ -340,7 +340,7 @@ export function AlertsWorkspace() {
                   type="button"
                 >
                   {enabled ? <ToggleRight size={20} aria-hidden="true" /> : <ToggleLeft size={20} aria-hidden="true" />}
-                  {enabled ? "enabled" : "disabled"}
+                  {enabled ? "已启用" : "已暂停"}
                 </button>
                 <RuleConditionSummary condition={buildCondition(field, operator, value)} />
               </div>
@@ -362,7 +362,7 @@ export function AlertsWorkspace() {
         <aside className="min-w-0 rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#B47767]">Alert Events</p>
+              <p className="text-xs font-semibold uppercase text-[#B47767]">预警事件</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">预警事件流</h2>
               <p className="mt-1 text-sm text-[#7A625A]">事件状态、触发信号和交付事实。</p>
             </div>
@@ -399,7 +399,7 @@ export function AlertsWorkspace() {
                 <option value="all">全部状态</option>
                 {eventStatuses.map((status) => (
                   <option key={status} value={status}>
-                    {status}
+                    {formatEventStatus(status)}
                   </option>
                 ))}
               </select>
@@ -468,7 +468,7 @@ function RuleCard({ rule }: { rule: AlertRule }) {
             rule.enabled ? "bg-[#ECF7EA] text-[#4E7C45]" : "bg-[#F6ECE8] text-[#9E5C4D]",
           )}
         >
-          {rule.enabled ? "enabled" : "disabled"}
+          {rule.enabled ? "已启用" : "已暂停"}
         </span>
       </div>
       <div className="mt-4 rounded-xl border border-white/80 bg-white/75 p-3">
@@ -517,14 +517,14 @@ function EventCard({
             statusTone[event.status] ?? "bg-[#F6ECE8] text-[#7D4F43]",
           )}
         >
-          {event.status}
+          {formatEventStatus(event.status)}
         </span>
       </div>
       <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <Metric label="severity" value={event.payload.severity} />
-        <Metric label="domain" value={event.payload.domain} />
-        <Metric label="score" value={event.payload.final_score} />
-        <Metric label="channel" value={event.payload.channel} />
+        <Metric label="严重度" value={event.payload.severity} />
+        <Metric label="领域" value={event.payload.domain} />
+        <Metric label="评分" value={event.payload.final_score} />
+        <Metric label="通道" value={event.payload.channel} />
       </dl>
     </button>
   );
@@ -807,4 +807,15 @@ function formatShortTraceId(value: string | null | undefined): string {
     return "—";
   }
   return value.length > 12 ? `${value.slice(0, 8)}...` : value;
+}
+
+function formatEventStatus(status: string) {
+  const labels: Record<string, string> = {
+    triggered: "已触发",
+    sent: "已发送",
+    acknowledged: "已确认",
+    muted: "已静默",
+    resolved: "已解决",
+  };
+  return labels[status] ?? status;
 }

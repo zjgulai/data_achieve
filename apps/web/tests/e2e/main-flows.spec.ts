@@ -124,6 +124,13 @@ async function expectNoVisibleTechnicalNoise(page: Page) {
     "HTML snapshot retained",
     "Entity ID",
     "Signal ID",
+    "AlertRule",
+    "AlertEvent",
+    "DriftEvent",
+    "TaskRun",
+    "DatasetVersion",
+    "CleaningPlan",
+    "Source/Task",
     "Latest Snapshot",
     "payload 审计",
   ]) {
@@ -670,8 +677,8 @@ test.describe("MVP workspace routes", () => {
 
     const ruleName = `High severity signal ${testInfo.project.name} ${Date.now()}`;
     await page.getByLabel("规则名称").fill(ruleName);
-    await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(`${ruleName}: rule created`)).toBeVisible();
+    await page.getByRole("button", { name: "创建规则" }).click();
+    await expect(page.getByText(`${ruleName}：规则已创建`)).toBeVisible();
     await expect(
       page.locator("article").filter({ hasText: ruleName }),
     ).toHaveCount(1);
@@ -701,18 +708,18 @@ test.describe("MVP workspace routes", () => {
     await eventCard.click();
     await expect(eventStream.getByText("事件事实")).toBeVisible();
 
-    const acknowledgeButton = eventStream.getByRole("button", { name: "确认" });
+    const acknowledgeButton = eventStream.getByRole("button", { name: "确认", exact: true });
     if (realApiMode) {
       await acknowledgeButton.click();
-      await expect(page.getByText(/AlertEvent .*: acknowledged/)).toBeVisible();
+      await expect(page.getByText(/告警事件 .*：已确认/)).toBeVisible();
     } else {
       await expect(acknowledgeButton).toBeDisabled();
     }
     await eventStatus.selectOption("acknowledged");
     await expect(eventCard).toBeVisible();
 
-    await eventStream.getByRole("button", { name: "解决" }).click();
-    await expect(page.getByText(/AlertEvent .*: resolved/)).toBeVisible();
+    await eventStream.getByRole("button", { name: "解决", exact: true }).click();
+    await expect(page.getByText(/告警事件 .*：已解决/)).toBeVisible();
     await eventStatus.selectOption("resolved");
     await expect(eventCard).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
@@ -819,8 +826,8 @@ test.describe("MVP workspace routes", () => {
     await page.getByLabel("触发阈值").selectOption("warning");
     await page.getByLabel("通知通道").selectOption("in_app");
     await page.getByRole("button", { name: "预览告警策略" }).click();
-    await expect(page.getByText("匹配 DriftEvent")).toBeVisible();
-    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await expect(page.getByText("匹配漂移快照")).toBeVisible();
+    await expect(page.getByText("预览不会创建告警策略")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 
@@ -846,32 +853,32 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: "生成导出文件" }).click();
     await expect(page.getByText("已生成导出文件")).toBeVisible();
     await expect(page.getByRole("link", { name: "下载" }).first()).toBeVisible();
-    await expect(page.getByText("ecommerce_product_drift").first()).toBeVisible();
+    await expect(page.getByText("商品字段漂移").first()).toBeVisible();
     await expect(page.getByText("缺字段：price, sku")).toBeVisible();
     await page.getByRole("button", { name: "预览告警策略" }).click();
-    await expect(page.getByText("匹配 DriftEvent")).toBeVisible();
-    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await expect(page.getByText("匹配漂移快照")).toBeVisible();
+    await expect(page.getByText("预览不会创建告警策略")).toBeVisible();
     await page.getByRole("button", { name: "确认创建策略" }).click();
-    await expect(page.getByText("已创建 DriftEvent 告警策略")).toBeVisible();
-    await expect(page.getByText("未创建 AlertEvent")).toBeVisible();
+    await expect(page.getByText("已创建漂移告警策略")).toBeVisible();
+    await expect(page.getByText("未创建告警事件")).toBeVisible();
     await page.getByRole("button", { name: "生成告警事件" }).click();
-    await expect(page.getByText("已生成 dataset_drift Signal")).toBeVisible();
-    await expect(page.getByText("已创建 AlertEvent 1 条")).toBeVisible();
+    await expect(page.getByText("已生成数据集漂移信号")).toBeVisible();
+    await expect(page.getByText("已创建告警事件 1 条")).toBeVisible();
     await expect(page.getByText("未发送通知").first()).toBeVisible();
     await page.getByRole("button", { name: "发送站内通知" }).click();
     await expect(page.getByText("已发送站内通知 1 条")).toBeVisible();
-    await expect(page.getByText("AlertEvent 已标记为 sent")).toBeVisible();
+    await expect(page.getByText("告警事件已标记为已发送")).toBeVisible();
     await expect(page.getByText("未发送邮件")).toBeVisible();
 
     await page.getByRole("combobox", { name: "通知通道" }).selectOption("email");
     await page.getByRole("button", { name: "预览告警策略" }).click();
-    await expect(page.getByText("预览不会创建 AlertRule")).toBeVisible();
+    await expect(page.getByText("预览不会创建告警策略")).toBeVisible();
     await page.getByRole("button", { name: "确认创建策略" }).click();
     await expect(
-      page.getByText("已创建 DriftEvent 告警策略").first(),
+      page.getByText("已创建漂移告警策略").first(),
     ).toBeVisible();
     await page.getByRole("button", { name: "生成告警事件" }).last().click();
-    await expect(page.getByText("已创建 AlertEvent 1 条")).toBeVisible();
+    await expect(page.getByText("已创建告警事件 1 条")).toBeVisible();
     await page.getByRole("button", { name: "发送邮件告警" }).last().click();
     await expect(page.getByText("已发送邮件告警")).toBeVisible();
   });

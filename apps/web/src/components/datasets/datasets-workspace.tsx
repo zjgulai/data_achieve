@@ -251,7 +251,7 @@ export function DatasetsWorkspace() {
 
   async function createAlertEvents() {
     if (!selectedDataset || !activeVersion || !activeDriftEvent) {
-      setAlertError("当前数据集缺少可桥接的 DriftEvent。");
+      setAlertError("当前数据集缺少可用于告警的漂移快照。");
       return;
     }
     setAlertLoading(true);
@@ -276,12 +276,12 @@ export function DatasetsWorkspace() {
 
   async function sendAlertNotifications() {
     if (!selectedDataset || !activeVersion || !activeDriftEvent || !alertEventCreate) {
-      setAlertError("请先生成可发送通知的 AlertEvent。");
+      setAlertError("请先生成可发送通知的告警事件。");
       return;
     }
     const alertEventIds = alertEventCreate.alertEvents.map((event) => event.id);
     if (alertEventIds.length === 0) {
-      setAlertError("当前没有新生成的 AlertEvent 可发送通知。");
+      setAlertError("当前没有新生成的告警事件可发送通知。");
       return;
     }
     setAlertLoading(true);
@@ -306,7 +306,7 @@ export function DatasetsWorkspace() {
 
   async function sendAlertEmails() {
     if (!selectedDataset || !activeVersion || !activeDriftEvent || !alertEventCreate) {
-      setAlertError("请先生成可发送通知的 AlertEvent。");
+      setAlertError("请先生成可发送通知的告警事件。");
       return;
     }
     if (alertChannel === "in_app") {
@@ -315,7 +315,7 @@ export function DatasetsWorkspace() {
     }
     const alertEventIds = alertEventCreate.alertEvents.map((event) => event.id);
     if (alertEventIds.length === 0) {
-      setAlertError("当前没有可发送邮件的 AlertEvent。");
+      setAlertError("当前没有可发送邮件的告警事件。");
       return;
     }
     setAlertLoading(true);
@@ -644,8 +644,8 @@ export function DatasetsWorkspace() {
             <Panel icon={ShieldAlert} title="漂移告警策略">
               <div className="grid gap-4">
                 <p className="text-sm leading-6 text-[#7A625A]">
-                  基于已保存的 DriftEvent 预览未来告警规则。预览不会创建规则；确认后只创建
-                  AlertRule，不回放历史事件、不创建 AlertEvent，也不发送通知。
+                  基于已保存的漂移快照预览未来告警策略。预览不会写入任何数据；
+                  确认后只创建策略，不回放历史事件、不生成告警事件，也不发送通知。
                 </p>
 
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] md:items-end">
@@ -737,7 +737,7 @@ export function DatasetsWorkspace() {
                           {alertPreview.ruleDraft.name}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-[#7A625A]">
-                          策略条件：dataset_drift / severity in{" "}
+                          策略条件：数据集字段漂移 / 严重度包含{" "}
                           {formatAlertConditionValue(alertPreview.ruleDraft.condition)} /{" "}
                           {formatAlertChannel(alertPreview.ruleDraft.channel)}
                         </p>
@@ -747,7 +747,7 @@ export function DatasetsWorkspace() {
 
                     <div className="grid gap-2 sm:grid-cols-3">
                       <MiniStat
-                        label="匹配 DriftEvent"
+                        label="匹配漂移快照"
                         value={String(alertPreview.summary.matchedEvents)}
                       />
                       <MiniStat
@@ -761,23 +761,23 @@ export function DatasetsWorkspace() {
                     </div>
 
                     <div className="grid gap-2 text-sm leading-6 text-[#7A625A]">
-                      <p>预览不会创建 AlertRule、AlertEvent 或通知。</p>
+                      <p>预览不会创建告警策略、告警事件或通知。</p>
                       {alertRuleCreate ? (
                         <p className="font-semibold text-[#287A45]">
-                          已创建 DriftEvent 告警策略：{shortId(alertRuleCreate.alertRule.id)}。
-                          未创建 AlertEvent，未发送通知。
+                          已创建漂移告警策略：{shortId(alertRuleCreate.alertRule.id)}。
+                          未创建告警事件，未发送通知。
                         </p>
                       ) : null}
                       {alertEventCreate ? (
                         <p className="font-semibold text-[#287A45]">
-                          已生成 dataset_drift Signal：{shortId(alertEventCreate.signal.id)}。
-                          已创建 AlertEvent {alertEventCreate.alertEvents.length} 条，未发送通知。
+                          已生成数据集漂移信号：{shortId(alertEventCreate.signal.id)}。
+                          已创建告警事件 {alertEventCreate.alertEvents.length} 条，未发送通知。
                         </p>
                       ) : null}
                       {alertNotificationSend ? (
                         <p className="font-semibold text-[#287A45]">
                           已发送站内通知 {alertNotificationSend.notifications.length} 条，
-                          AlertEvent 已标记为 sent；未发送邮件。
+                          告警事件已标记为已发送；未发送邮件。
                         </p>
                       ) : null}
                       {alertEmailSend ? (
@@ -954,7 +954,7 @@ function DriftEventCard({ event }: { event: AutomationProductDriftEvent }) {
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={event.status} />
             <span className="text-xs font-semibold uppercase text-[#B47767]">
-              {event.eventType}
+              {formatDriftEventType(event.eventType)}
             </span>
           </div>
           <p className="mt-2 text-sm font-semibold text-[#2E201C]">
@@ -1091,6 +1091,14 @@ function formatAlertChannel(value: string) {
     return "站内 + 邮件";
   }
   return value;
+}
+
+function formatDriftEventType(value: string) {
+  const labels: Record<string, string> = {
+    ecommerce_product_drift: "商品字段漂移",
+    dataset_drift: "数据集字段漂移",
+  };
+  return labels[value] ?? value.replaceAll("_", " ");
 }
 
 function formatAlertConditionValue(condition: Record<string, unknown>) {
