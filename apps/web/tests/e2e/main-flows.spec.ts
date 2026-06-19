@@ -69,6 +69,75 @@ const browserDiagnosticFixtureJson = JSON.stringify({
   },
 });
 
+const browserAutomationDiagnosticFixtureJson = JSON.stringify({
+  schema_version: "browser_structure_diagnostic.v1",
+  generated_at: "2026-06-19T14:10:00Z",
+  requested_url: "https://example.com/app",
+  final_url: "https://example.com/app",
+  run_policy: {
+    authorization_confirmed: true,
+    execution_mode: "browser_harness_real_chrome_read_only",
+    production_write: false,
+    login_or_private_page_allowed: false,
+    cookies_exported: false,
+  },
+  visible_text: {
+    length: 680,
+    line_count: 18,
+    sample: "Dynamic Product Grid",
+  },
+  dom_counters: {
+    links: 18,
+    same_origin_links: 12,
+    external_links: 6,
+    forms: 0,
+    inputs: 2,
+    buttons: 9,
+    tables: 0,
+    lists: 2,
+    articles: 0,
+    cards: 16,
+    images: 16,
+    scripts: 24,
+    stylesheets: 4,
+    json_ld_blocks: 0,
+  },
+  risk_flags: ["dynamic_rendering"],
+  extraction_strategy: {
+    recommended_path: "browser_automation",
+    fit: "medium",
+    confidence: 72,
+    field_stability: "medium",
+    reasons: ["页面依赖浏览器渲染和异步接口，静态 HTML 不足以稳定抽取字段。"],
+    next_steps: ["使用 browser-harness 生成只读动作轨迹。"],
+    cleaning_notes: ["对卡片文本和 API 候选 URL 做结构化清洗。"],
+  },
+  network_summary: {
+    resource_count: 38,
+    same_origin_resources: 30,
+    cross_origin_resources: 8,
+    xhr_fetch_count: 6,
+    script_count: 24,
+    image_count: 16,
+    api_candidate_count: 1,
+    api_candidates: [
+      {
+        url: "https://example.com/api/products",
+        initiator_type: "fetch",
+        same_origin: true,
+        duration_ms: 124,
+        transfer_size: 4096,
+      },
+    ],
+    initiator_type_counts: { fetch: 6, script: 24 },
+  },
+  evidence: {
+    screenshot_path: "tmp/outputs/browser-diagnostics/example-app.png",
+    source: "browser-harness",
+    errors: [],
+  },
+});
+
 type RealApiCredentials = {
   email: string;
   password: string;
@@ -613,7 +682,20 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("采集工具推荐", { exact: true })).toBeVisible();
     await expect(page.getByText("generic_web 公开页面采集")).toBeVisible();
     await expect(page.getByText("可创建 generic_web 草稿")).toBeVisible();
+    await page.getByLabel("Selector hint for visible_text").fill("main article");
+    await page.getByLabel("选择字段 页面标题").uncheck();
+    await page.getByRole("button", { name: "保存字段契约草稿" }).click();
+    await expect(page.getByText("字段契约已保存")).toBeVisible();
+    await expect(page.getByText("已选择 2 个字段")).toBeVisible();
+    await expect(page.getByLabel("Selector hint for visible_text")).toHaveValue("main article");
     await expect(page.getByText("API 候选")).toBeVisible();
+    await page.getByRole("button", { name: "清空" }).last().click();
+    await page.getByLabel("Browser diagnostic JSON").fill(browserAutomationDiagnosticFixtureJson);
+    await page.getByRole("button", { name: "导入浏览器诊断 JSON" }).click();
+    await expect(page.getByText("浏览器自动化任务草稿")).toBeVisible();
+    await expect(page.getByText("browser_harness · 字段")).toBeVisible();
+    await expect(page.getByText("创建前复核", { exact: true })).toBeVisible();
+    await expect(page.getByText("只读执行，不提交表单、不点击购买或发布类按钮。")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 

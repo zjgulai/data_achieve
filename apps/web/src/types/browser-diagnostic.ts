@@ -84,6 +84,7 @@ export type BrowserDiagnosticFieldContractField = {
   valueSample: string;
   source: string;
   required: boolean;
+  selected: boolean;
   stability: BrowserDiagnosticFieldStability;
   selectorHint: string;
 };
@@ -100,6 +101,7 @@ export type BrowserDiagnosticFieldContractDraft = {
   fields: BrowserDiagnosticFieldContractField[];
   cleaningRules: BrowserDiagnosticCleaningRule[];
   evidenceSummary: string[];
+  savedAt: string | null;
 };
 
 export type BrowserDiagnosticToolRecommendation = {
@@ -135,10 +137,48 @@ export type BrowserDiagnosticSourceDraft = {
         label: string;
         source: string;
         required: boolean;
+        selected: boolean;
+        selector_hint: string;
       }>;
       cleaning_rules: BrowserDiagnosticCleaningRule[];
     };
   };
+};
+
+export type BrowserDiagnosticBrowserAutomationDraft = {
+  type: "browser_automation";
+  runner: "browser_harness";
+  suggestedName: string;
+  config: {
+    start_url: string;
+    execution_mode: "read_only_browser_harness";
+    recommended_tools: string[];
+    api_candidates: string[];
+    field_contract: {
+      fields: Array<{
+        key: string;
+        label: string;
+        source: string;
+        required: boolean;
+        selected: boolean;
+        selector_hint: string;
+      }>;
+      cleaning_rules: BrowserDiagnosticCleaningRule[];
+    };
+  };
+  guardrails: string[];
+};
+
+export type BrowserDiagnosticFieldContractEdit = {
+  key: string;
+  selected?: boolean;
+  required?: boolean;
+  selectorHint?: string;
+};
+
+export type BrowserDiagnosticActionPlanOptions = {
+  fieldEdits?: BrowserDiagnosticFieldContractEdit[];
+  savedAt?: string | null;
 };
 
 export type BrowserDiagnosticActionPlan = {
@@ -148,6 +188,7 @@ export type BrowserDiagnosticActionPlan = {
   primaryRecommendation: BrowserDiagnosticToolRecommendation;
   secondaryRecommendations: BrowserDiagnosticToolRecommendation[];
   sourceDraft: BrowserDiagnosticSourceDraft | null;
+  browserAutomationDraft: BrowserDiagnosticBrowserAutomationDraft | null;
   blockingReasons: string[];
   riskControls: string[];
 };

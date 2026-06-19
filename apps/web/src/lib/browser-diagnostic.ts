@@ -1,10 +1,13 @@
 import type {
   BrowserDiagnosticActionPlan,
+  BrowserDiagnosticActionPlanOptions,
   BrowserDiagnosticApiCandidate,
+  BrowserDiagnosticBrowserAutomationDraft,
   BrowserDiagnosticCleaningRule,
   BrowserDiagnosticCounters,
   BrowserDiagnosticEvidence,
   BrowserDiagnosticFieldContractDraft,
+  BrowserDiagnosticFieldContractEdit,
   BrowserDiagnosticFieldContractField,
   BrowserDiagnosticFieldStability,
   BrowserDiagnosticFit,
@@ -129,8 +132,9 @@ export function comparePreflightWithBrowserDiagnostic(
 
 export function buildBrowserDiagnosticActionPlan(
   diagnostic: BrowserStructureDiagnostic,
+  options: BrowserDiagnosticActionPlanOptions = {},
 ): BrowserDiagnosticActionPlan {
-  const fieldContract = buildFieldContractDraft(diagnostic);
+  const fieldContract = buildFieldContractDraft(diagnostic, options);
   const blockingReasons = buildActionBlockingReasons(diagnostic);
   const primaryRecommendation = buildPrimaryToolRecommendation(diagnostic);
   const canCreateGenericWebSource =
@@ -154,6 +158,10 @@ export function buildBrowserDiagnosticActionPlan(
     sourceDraft: canCreateGenericWebSource
       ? buildGenericWebSourceDraft(diagnostic, fieldContract)
       : null,
+    browserAutomationDraft:
+      diagnostic.extractionStrategy.recommendedPath === "browser_automation"
+        ? buildBrowserAutomationDraft(diagnostic, fieldContract)
+        : null,
     blockingReasons,
     riskControls: buildRiskControls(diagnostic),
   };
@@ -193,6 +201,7 @@ export function formatBrowserDiagnosticFieldStability(
 
 function buildFieldContractDraft(
   diagnostic: BrowserStructureDiagnostic,
+  options: BrowserDiagnosticActionPlanOptions,
 ): BrowserDiagnosticFieldContractDraft {
   const fields: BrowserDiagnosticFieldContractField[] = [
     {
@@ -201,6 +210,7 @@ function buildFieldContractDraft(
       valueSample: firstVisibleLine(diagnostic.visibleText.sample) || hostLabelFromUrl(diagnostic.finalUrl),
       source: "visible_text_first_line",
       required: true,
+      selected: true,
       stability: diagnostic.extractionStrategy.fieldStability,
       selectorHint: "title, h1, [data-testid*=title]",
     },
@@ -210,6 +220,7 @@ function buildFieldContractDraft(
       valueSample: diagnostic.finalUrl,
       source: "browser_final_url",
       required: true,
+      selected: true,
       stability: "high",
       selectorHint: "link[rel=canonical] fallback browser final_url",
     },
@@ -219,6 +230,7 @@ function buildFieldContractDraft(
       valueSample: diagnostic.visibleText.sample || "未提供正文样本",
       source: "browser_visible_text",
       required: true,
+      selected: true,
       stability: diagnostic.extractionStrategy.fieldStability,
       selectorHint: "main, article, body visible text",
     },
@@ -231,6 +243,7 @@ function buildFieldContractDraft(
       valueSample: `${diagnostic.domCounters.sameOriginLinks} 个`,
       source: "browser_dom_links",
       required: false,
+      selected: true,
       stability: "medium",
       selectorHint: "a[href^='/'], a[href^=origin]",
     });
@@ -243,6 +256,7 @@ function buildFieldContractDraft(
       valueSample: `${diagnostic.domCounters.cards} 个`,
       source: "browser_dom_cards",
       required: false,
+      selected: true,
       stability: diagnostic.extractionStrategy.fieldStability,
       selectorHint: "article, [class*=card], [data-testid*=card]",
     });
@@ -255,6 +269,7 @@ function buildFieldContractDraft(
       valueSample: `${diagnostic.domCounters.forms} 个`,
       source: "browser_dom_forms",
       required: false,
+      selected: false,
       stability: "low",
       selectorHint: "form, input, button",
     });
@@ -267,6 +282,7 @@ function buildFieldContractDraft(
       valueSample: `${diagnostic.domCounters.jsonLdBlocks} 个`,
       source: "browser_json_ld",
       required: false,
+      selected: true,
       stability: "high",
       selectorHint: "script[type='application/ld+json']",
     });
@@ -280,23 +296,48 @@ function buildFieldContractDraft(
       valueSample: firstApiCandidate?.url ?? `${diagnostic.networkSummary.apiCandidateCount} 个候选`,
       source: "browser_network_xhr_fetch",
       required: false,
+      selected: true,
       stability: diagnostic.networkSummary.xhrFetchCount > 0 ? "medium" : "low",
       selectorHint: "Network fetch/xhr candidate",
     });
   }
+  const editedFields = applyFieldContractEdits(fields, options.fieldEdits ?? []);
 
   return {
     title: `${hostLabelFromUrl(diagnostic.finalUrl)} 字段契约草案`,
     sourceUrl: diagnostic.finalUrl,
-    fields,
-    cleaningRules: buildCleaningRules(fields),
+    fields: editedFields,
+    cleaningRules: buildCleaningRules(editedFields.filter((field) => field.selected)),
     evidenceSummary: [
       `浏览器证据源：${diagnostic.evidence.source}`,
       `推荐路径：${formatBrowserDiagnosticPath(diagnostic.extractionStrategy.recommendedPath)}`,
       `字段稳定性：${formatBrowserDiagnosticFieldStability(diagnostic.extractionStrategy.fieldStability)}`,
       `可见文本：${diagnostic.visibleText.length} 字符 / ${diagnostic.visibleText.lineCount} 行`,
     ],
+    savedAt: options.savedAt ?? null,
   };
+}
+
+function applyFieldContractEdits(
+  fields: BrowserDiagnosticFieldContractField[],
+  edits: BrowserDiagnosticFieldContractEdit[],
+): BrowserDiagnosticFieldContractField[] {
+  if (edits.length === 0) {
+    return fields;
+  }
+  const editsByKey = new Map(edits.map((edit) => [edit.key, edit]));
+  return fields.map((field) => {
+    const edit = editsByKey.get(field.key);
+    if (!edit) {
+      return field;
+    }
+    return {
+      ...field,
+      required: edit.required ?? field.required,
+      selected: edit.selected ?? field.selected,
+      selectorHint: edit.selectorHint?.trim() || field.selectorHint,
+    };
+  });
 }
 
 function buildCleaningRules(
@@ -423,6 +464,7 @@ function buildGenericWebSourceDraft(
   diagnostic: BrowserStructureDiagnostic,
   fieldContract: BrowserDiagnosticFieldContractDraft,
 ): BrowserDiagnosticSourceDraft {
+  const selectedFields = fieldContract.fields.filter((field) => field.selected);
   return {
     type: "generic_web",
     suggestedName: `Browser Diagnostic: ${hostLabelFromUrl(diagnostic.finalUrl)}`,
@@ -430,7 +472,7 @@ function buildGenericWebSourceDraft(
     config: {
       url: diagnostic.finalUrl,
       extract_mode: "main_content",
-      fields: fieldContract.fields.map((field) => field.key),
+      fields: selectedFields.map((field) => field.key),
       browser_diagnostic: {
         schema_version: diagnostic.schemaVersion,
         final_url: diagnostic.finalUrl,
@@ -441,15 +483,51 @@ function buildGenericWebSourceDraft(
         screenshot_path: diagnostic.evidence.screenshotPath,
       },
       field_contract: {
-        fields: fieldContract.fields.map((field) => ({
+        fields: selectedFields.map((field) => ({
           key: field.key,
           label: field.label,
           source: field.source,
           required: field.required,
+          selected: field.selected,
+          selector_hint: field.selectorHint,
         })),
         cleaning_rules: fieldContract.cleaningRules,
       },
     },
+  };
+}
+
+function buildBrowserAutomationDraft(
+  diagnostic: BrowserStructureDiagnostic,
+  fieldContract: BrowserDiagnosticFieldContractDraft,
+): BrowserDiagnosticBrowserAutomationDraft {
+  const selectedFields = fieldContract.fields.filter((field) => field.selected);
+  return {
+    type: "browser_automation",
+    runner: "browser_harness",
+    suggestedName: `Browser Automation: ${hostLabelFromUrl(diagnostic.finalUrl)}`,
+    config: {
+      start_url: diagnostic.finalUrl,
+      execution_mode: "read_only_browser_harness",
+      recommended_tools: ["browser-harness", "Playwright", "Crawlee"],
+      api_candidates: diagnostic.networkSummary.apiCandidates.map((candidate) => candidate.url),
+      field_contract: {
+        fields: selectedFields.map((field) => ({
+          key: field.key,
+          label: field.label,
+          source: field.source,
+          required: field.required,
+          selected: field.selected,
+          selector_hint: field.selectorHint,
+        })),
+        cleaning_rules: fieldContract.cleaningRules,
+      },
+    },
+    guardrails: [
+      "只读执行，不提交表单、不点击购买或发布类按钮。",
+      "必须保留诊断 JSON、截图路径和最终 URL 作为审计证据。",
+      "先小批量验证字段稳定性，再进入任务调度。",
+    ],
   };
 }
 

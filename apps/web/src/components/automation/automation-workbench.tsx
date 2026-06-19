@@ -46,7 +46,10 @@ import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
-import type { BrowserStructureDiagnostic } from "@/types/browser-diagnostic";
+import type {
+  BrowserDiagnosticActionPlan,
+  BrowserStructureDiagnostic,
+} from "@/types/browser-diagnostic";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
 import type { ToolkitPreflightReport } from "@/types/toolkit";
@@ -197,6 +200,9 @@ export function AutomationWorkbench() {
   const [browserDiagnostic, setBrowserDiagnostic] = useState<BrowserStructureDiagnostic | null>(
     null,
   );
+  const [browserActionPlan, setBrowserActionPlan] = useState<BrowserDiagnosticActionPlan | null>(
+    null,
+  );
   const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
@@ -333,6 +339,7 @@ export function AutomationWorkbench() {
       const report = await runToolkitPreflight(url.trim(), authorized);
       setPreflightReport(report);
       setBrowserDiagnostic(null);
+      setBrowserActionPlan(null);
       setGenericWebRun(null);
       setAnalysis(null);
       setDiscovery(null);
@@ -357,9 +364,9 @@ export function AutomationWorkbench() {
       setError("请选择写入项目后再创建 generic_web 采集源。");
       return;
     }
-    const diagnosticPlan = browserDiagnostic
+    const diagnosticPlan = browserActionPlan ?? (browserDiagnostic
       ? buildBrowserDiagnosticActionPlan(browserDiagnostic)
-      : null;
+      : null);
     if (diagnosticPlan && !diagnosticPlan.canCreateGenericWebSource) {
       setError(
         diagnosticPlan.blockingReasons[0] ??
@@ -866,9 +873,10 @@ export function AutomationWorkbench() {
       ) : mode === "structure_preflight" ? (
         preflightReport ? (
           <StructurePreflightResult
-            browserDiagnostic={browserDiagnostic}
+            browserActionPlan={browserActionPlan}
             genericWebRun={genericWebRun}
             loading={loading}
+            onBrowserActionPlanChange={setBrowserActionPlan}
             onBrowserDiagnosticChange={setBrowserDiagnostic}
             onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
             report={preflightReport}
@@ -1674,17 +1682,19 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
 }
 
 function StructurePreflightResult({
-  browserDiagnostic,
+  browserActionPlan,
   genericWebRun,
   loading,
+  onBrowserActionPlanChange,
   onBrowserDiagnosticChange,
   onCreateGenericWebSource,
   report,
   selectedProjectId,
 }: {
-  browserDiagnostic: BrowserStructureDiagnostic | null;
+  browserActionPlan: BrowserDiagnosticActionPlan | null;
   genericWebRun: GenericWebRunState | null;
   loading: boolean;
+  onBrowserActionPlanChange: (actionPlan: BrowserDiagnosticActionPlan | null) => void;
   onBrowserDiagnosticChange: (diagnostic: BrowserStructureDiagnostic | null) => void;
   onCreateGenericWebSource: () => void;
   report: ToolkitPreflightReport;
@@ -1692,9 +1702,6 @@ function StructurePreflightResult({
 }) {
   const gate = report.authorizationGate;
   const strategy = report.collectionStrategy;
-  const browserActionPlan = browserDiagnostic
-    ? buildBrowserDiagnosticActionPlan(browserDiagnostic)
-    : null;
   const canCreateSource =
     gate.allowedToContinue &&
     selectedProjectId.length > 0 &&
@@ -1856,6 +1863,7 @@ function StructurePreflightResult({
 
         <BrowserDiagnosticImportPanel
           compact
+          onActionPlanChange={onBrowserActionPlanChange}
           onDiagnosticChange={onBrowserDiagnosticChange}
           preflightReport={report}
           title="浏览器诊断对照"

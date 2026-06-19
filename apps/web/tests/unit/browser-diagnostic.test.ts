@@ -180,6 +180,40 @@ describe("parseBrowserStructureDiagnosticJson", () => {
     expect(plan.blockingReasons).toContain("浏览器诊断推荐 browser_automation，不应直接创建 generic_web。");
     expect(plan.fieldContract.fields.map((field) => field.key)).toContain("api_candidate");
     expect(plan.sourceDraft).toBeNull();
+    expect(plan.browserAutomationDraft?.type).toBe("browser_automation");
+    expect(plan.browserAutomationDraft?.runner).toBe("browser_harness");
+    expect(plan.browserAutomationDraft?.config.start_url).toBe("https://example.com/");
+    expect(plan.browserAutomationDraft?.guardrails).toContain("只读执行，不提交表单、不点击购买或发布类按钮。");
+  });
+
+  it("applies saved selector edits to field contracts and source drafts", () => {
+    const parsed = parseBrowserStructureDiagnosticJson(JSON.stringify(diagnosticPayload));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+
+    const plan = buildBrowserDiagnosticActionPlan(parsed.diagnostic, {
+      fieldEdits: [
+        { key: "page_title", selected: false },
+        { key: "visible_text", selectorHint: "main article", required: true },
+      ],
+      savedAt: "2026-06-20T00:00:00.000Z",
+    });
+
+    expect(plan.fieldContract.savedAt).toBe("2026-06-20T00:00:00.000Z");
+    expect(plan.fieldContract.fields.find((field) => field.key === "page_title")?.selected).toBe(false);
+    expect(plan.fieldContract.fields.find((field) => field.key === "visible_text")?.selectorHint).toBe("main article");
+    expect(plan.sourceDraft?.config.fields).not.toContain("page_title");
+    expect(plan.sourceDraft?.config.field_contract.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "visible_text",
+          selector_hint: "main article",
+          selected: true,
+        }),
+      ]),
+    );
   });
 
   it("blocks task creation when diagnostic evidence contains production write markers", () => {
