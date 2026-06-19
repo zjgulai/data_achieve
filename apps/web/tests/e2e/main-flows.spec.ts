@@ -146,7 +146,7 @@ async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
   await page.getByRole("button", { name: "商品发现" }).click();
   await page
     .getByLabel(
-      "我确认这是公开可访问页面，采集分析不涉及登录态、验证码绕过或未授权数据访问。",
+      "我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。",
     )
     .check();
   await page.getByRole("button", { name: "发现商品 URL" }).click();

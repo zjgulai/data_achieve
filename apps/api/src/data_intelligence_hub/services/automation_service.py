@@ -3001,7 +3001,10 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     fit="high",
                     can_start_from_automation=True,
                     review_required=True,
-                    description="从 Automation 创建 GitHub topic 采集源、启用任务，并执行一次小批量 API 采集。",
+                    description=(
+                        "从 Automation 创建 GitHub topic 采集源、启用任务，"
+                        "并执行一次小批量 API 采集。"
+                    ),
                 ),
                 AutomationPlatformPackageStrategyResponse(
                     id="repo-detail-import",
@@ -3018,7 +3021,10 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 AutomationPlatformPackageRiskBoundaryResponse(
                     condition="未配置 GitHub token 时使用公开 API 低频采集",
                     severity="warning",
-                    guidance="限制 max_results 和手动运行次数；触发 rate limit 后不要自动重试放大请求。",
+                    guidance=(
+                        "限制 max_results 和手动运行次数；"
+                        "触发 rate limit 后不要自动重试放大请求。"
+                    ),
                 ),
                 AutomationPlatformPackageRiskBoundaryResponse(
                     condition="仓库内容涉及个人数据、issue 评论或私有上下文",
