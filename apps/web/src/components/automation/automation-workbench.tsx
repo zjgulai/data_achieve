@@ -20,8 +20,12 @@ import {
   analyzeAutomationSite,
   approveAutomationProductSchedule,
   checkAutomationProductDrift,
+  createAutomationCleaningPlan,
   createAutomationProductFanout,
   discoverAutomationProducts,
+  dryRunAutomationCleaningPlan,
+  listAutomationPlatformPackages,
+  listAutomationSiteAnalyses,
   listAutomationProductDriftEvents,
   previewAutomationProductDataset,
   previewAutomationProductFanout,
@@ -33,6 +37,9 @@ import { listProjects } from "@/lib/api/projects";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
 import type {
+  AutomationCleaningPlanCreate,
+  AutomationCleaningPlanDryRun,
+  AutomationCleaningRule,
   AutomationFieldCandidate,
   AutomationProductBatchRun,
   AutomationProductDatasetPreview,
@@ -42,8 +49,10 @@ import type {
   AutomationProductDriftEvent,
   AutomationProductFanoutCreate,
   AutomationProductFanoutPreview,
+  AutomationPlatformPackage,
   AutomationProductScheduleApprove,
   AutomationSiteAnalysis,
+  AutomationSiteAnalysisHistoryItem,
 } from "@/types/automation";
 
 const defaultFields = [
@@ -70,6 +79,54 @@ const fieldLabels: Record<string, string> = {
   title: "标题",
 };
 
+function defaultCleaningRulesForFields(fields: string[]): AutomationCleaningRule[] {
+  const rules: AutomationCleaningRule[] = [];
+  if (fields.includes("title")) {
+    rules.push({
+      field: "title",
+      operation: "strip_text",
+      description: "去除标题首尾空白并合并重复空格。",
+    });
+  }
+  if (fields.includes("price")) {
+    rules.push({
+      field: "price",
+      operation: "parse_decimal",
+      description: "将价格转换为 decimal number。",
+    });
+  }
+  if (fields.includes("currency")) {
+    rules.push({
+      field: "currency",
+      operation: "uppercase",
+      description: "货币代码转为大写。",
+    });
+  }
+  if (fields.includes("availability")) {
+    rules.push({
+      field: "availability",
+      operation: "normalize_availability",
+      description: "库存状态归一为 in_stock/out_of_stock/unknown。",
+    });
+  }
+  if (fields.includes("sku")) {
+    rules.push({
+      field: "sku",
+      operation: "fill_default",
+      value: "UNKNOWN-SKU",
+      description: "缺失 SKU 时保留可审计默认值。",
+    });
+  }
+  if (fields.includes("canonical_url")) {
+    rules.push({
+      field: "canonical_url",
+      operation: "normalize_url",
+      description: "规范 URL 字段格式。",
+    });
+  }
+  return rules;
+}
+
 type AutomationMode = "product_page" | "product_discovery";
 
 export function AutomationWorkbench() {
@@ -92,6 +149,13 @@ export function AutomationWorkbench() {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [analysisHistory, setAnalysisHistory] = useState<AutomationSiteAnalysisHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [platformPackages, setPlatformPackages] = useState<AutomationPlatformPackage[]>([]);
+  const [platformPackageLoading, setPlatformPackageLoading] = useState(false);
+  const [platformPackageError, setPlatformPackageError] = useState<string | null>(null);
+  const [appliedPlatformPackageName, setAppliedPlatformPackageName] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -114,6 +178,43 @@ export function AutomationWorkbench() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setPlatformPackageLoading(true);
+    setPlatformPackageError(null);
+    listAutomationPlatformPackages()
+      .then((result) => {
+        if (!mounted) {
+          return;
+        }
+        setPlatformPackages(result.items);
+      })
+      .catch((caught) => {
+        if (!mounted) {
+          return;
+        }
+        setPlatformPackageError(
+          caught instanceof Error ? caught.message : "Platform package loading failed",
+        );
+      })
+      .finally(() => {
+        if (mounted) {
+          setPlatformPackageLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setAnalysisHistory([]);
+      return;
+    }
+    void refreshAnalysisHistory(selectedProjectId);
+  }, [selectedProjectId]);
 
   const selectedFieldCount = useMemo(
     () => analysis?.fieldCandidates.filter((field) => field.selected).length ?? fields.length,
@@ -143,16 +244,37 @@ export function AutomationWorkbench() {
         return;
       }
       const result = await analyzeAutomationSite({
+        projectId: selectedProjectId || undefined,
         url: url.trim(),
         authorized,
         fields,
       });
       setAnalysis(result);
       setDiscovery(null);
+      if (selectedProjectId) {
+        void refreshAnalysisHistory(selectedProjectId);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Automation analysis failed");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function refreshAnalysisHistory(projectId: string) {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const result = await listAutomationSiteAnalyses({
+        projectId,
+        target: "ecommerce_product",
+        limit: 5,
+      });
+      setAnalysisHistory(result.items);
+    } catch (caught) {
+      setHistoryError(caught instanceof Error ? caught.message : "Analysis history failed");
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -163,6 +285,30 @@ export function AutomationWorkbench() {
       }
       return [...current, field];
     });
+  }
+
+  function applyPlatformPackage(platformPackage: AutomationPlatformPackage) {
+    const executableStrategy =
+      platformPackage.strategyMatrix.find(
+        (strategy) => strategy.canStartFromAutomation && strategy.entrypoint === "product-discovery",
+      ) ??
+      platformPackage.strategyMatrix.find(
+        (strategy) => strategy.canStartFromAutomation && strategy.entrypoint === "site-analysis",
+      );
+    if (!executableStrategy) {
+      return;
+    }
+    setFields(platformPackage.fieldSchema.map((field) => field.key));
+    setAppliedPlatformPackageName(platformPackage.name);
+    setAnalysis(null);
+    setDiscovery(null);
+    if (executableStrategy.entrypoint === "product-discovery") {
+      setMode("product_discovery");
+      setUrl("https://shop.example/collections/summer-bags");
+      return;
+    }
+    setMode("product_page");
+    setUrl("https://shop.example/products/demo-bag");
   }
 
   return (
@@ -214,6 +360,7 @@ export function AutomationWorkbench() {
               <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1">
                 {(["product_page", "product_discovery"] as const).map((item) => (
                   <button
+                    aria-pressed={mode === item}
                     className={cn(
                       "h-9 rounded-lg px-3 text-xs font-semibold transition",
                       mode === item
@@ -266,6 +413,20 @@ export function AutomationWorkbench() {
 
               {mode === "product_page" ? (
                 <div className="grid gap-2">
+                  <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                    <span>归档项目</span>
+                    <select
+                      className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                      onChange={(event) => setSelectedProjectId(event.target.value)}
+                      value={selectedProjectId}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <span className="text-sm font-semibold text-[#3B2924]">字段目标</span>
                   <div className="flex flex-wrap gap-2">
                     {defaultFields.map((field) => (
@@ -329,9 +490,24 @@ export function AutomationWorkbench() {
                 {error}
               </p>
             ) : null}
+            {mode === "product_page" ? (
+              <AnalysisHistoryPanel
+                error={historyError}
+                items={analysisHistory}
+                loading={historyLoading}
+              />
+            ) : null}
           </div>
         </div>
       </section>
+
+      <PlatformPackageMatrix
+        appliedPackageName={appliedPlatformPackageName}
+        error={platformPackageError}
+        loading={platformPackageLoading}
+        onApply={applyPlatformPackage}
+        packages={platformPackages}
+      />
 
       {mode === "product_discovery" ? (
         discovery ? (
@@ -347,6 +523,241 @@ export function AutomationWorkbench() {
         analysis ? <AnalysisResult analysis={analysis} /> : <EmptyAnalysisState mode={mode} />
       )}
     </div>
+  );
+}
+
+function AnalysisHistoryPanel({
+  error,
+  items,
+  loading,
+}: {
+  error: string | null;
+  items: AutomationSiteAnalysisHistoryItem[];
+  loading: boolean;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-[#E8D4CB] bg-[#FFFDFC] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2E201C]">历史分析</p>
+          <p className="mt-1 text-xs leading-5 text-[#7A625A]">
+            已保存的站点分析会在这里形成可复用采集计划。
+          </p>
+        </div>
+        {loading ? <Loader2 className="animate-spin text-[#C96F5C]" size={16} aria-hidden="true" /> : null}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+      {items.length > 0 ? (
+        <div className="mt-3 grid gap-2">
+          {items.map((item) => (
+            <article className="rounded-xl border border-[#F0E1D9] bg-white p-3" key={item.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#2E201C]">
+                    {item.latestPlan?.name ?? formatPageType(item.pageType)}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-[#7A625A]">{item.requestedUrl}</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-[#E8D4CB] px-2 py-1 text-xs font-semibold text-[#7D4F43]">
+                  v{item.latestPlan?.versionNumber ?? 0}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-[#9E5C4D]">
+                <span>{formatPlatform(item.platformType)}</span>
+                <span>{formatRisk(item.riskLevel)}</span>
+                <span>{formatShortDate(item.analyzedAt)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl border border-dashed border-[#E8D4CB] px-3 py-3 text-xs leading-5 text-[#7A625A]">
+          暂无历史分析。完成一次商品页分析后，系统会保存默认采集计划。
+        </p>
+      )}
+    </div>
+  );
+}
+
+function PlatformPackageMatrix({
+  appliedPackageName,
+  error,
+  loading,
+  onApply,
+  packages,
+}: {
+  appliedPackageName: string | null;
+  error: string | null;
+  loading: boolean;
+  onApply: (platformPackage: AutomationPlatformPackage) => void;
+  packages: AutomationPlatformPackage[];
+}) {
+  return (
+    <section className="rounded-2xl border border-[#EDDCD3] bg-white p-5 shadow-[0_12px_40px_rgba(115,70,58,0.06)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-[#FFF8F4] px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
+            <ClipboardList size={14} aria-hidden="true" />
+            Platform Packages
+          </div>
+          <h2 className="mt-3 text-xl font-semibold tracking-normal text-[#2E201C]">
+            平台包矩阵
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#7A625A]">
+            每个平台包绑定采集目标、字段 contract、工具策略、风险边界和 SOP 入口。
+          </p>
+        </div>
+        {loading ? (
+          <Loader2 className="animate-spin text-[#C96F5C]" size={18} aria-hidden="true" />
+        ) : (
+          <span className="rounded-full border border-[#E8D4CB] px-3 py-1 text-xs font-semibold text-[#7D4F43]">
+            {packages.length} packages
+          </span>
+        )}
+      </div>
+
+      {appliedPackageName ? (
+        <p className="mt-4 rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] px-3 py-2 text-sm font-semibold text-[#2F6B3A]">
+          已应用平台包：{appliedPackageName}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mt-4 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        {packages.map((platformPackage) => {
+          const executable = platformPackage.executionBoundary === "executable";
+          return (
+            <article
+              className="grid min-w-0 gap-4 rounded-2xl border border-[#F0E1D9] bg-[#FFFDFC] p-4"
+              key={platformPackage.id}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words text-base font-semibold text-[#2E201C]">
+                    {platformPackage.name}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#7A625A]">
+                    {platformPackage.summary}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                    executable
+                      ? "border-[#D7E8D7] bg-[#F3FBF3] text-[#2F6B3A]"
+                      : "border-[#E8D4CB] bg-[#FFF8F4] text-[#7D4F43]",
+                  )}
+                >
+                  {formatExecutionBoundary(platformPackage.executionBoundary)}
+                </span>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-[#B47767]">Collectors</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {platformPackage.collectorTypes.map((collectorType) => (
+                      <code
+                        className="rounded-full bg-[#2E201C] px-2 py-1 text-xs font-semibold text-[#FFF8F4]"
+                        key={collectorType}
+                      >
+                        {collectorType}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-[#B47767]">Targets</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {platformPackage.supportedTargets.map((target) => (
+                      <span
+                        className="rounded-full border border-[#E8D4CB] px-2 py-1 text-xs font-semibold text-[#7D4F43]"
+                        key={target}
+                      >
+                        {target}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">Field Contract</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {platformPackage.fieldSchema.map((field) => (
+                    <span
+                      className="inline-flex h-8 items-center rounded-full border border-[#E8D4CB] bg-white px-3 text-xs font-semibold text-[#7D4F43]"
+                      key={field.key}
+                    >
+                      {fieldLabels[field.key] ?? field.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                {platformPackage.strategyMatrix.slice(0, 2).map((strategy) => (
+                  <div className="rounded-xl border border-[#F0E1D9] bg-white p-3" key={strategy.id}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#2E201C]">{strategy.label}</p>
+                      <span className="rounded-full bg-[#FFF0EA] px-2 py-1 text-xs font-semibold text-[#9E5C4D]">
+                        {strategy.fit}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-[#7A625A]">{strategy.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">Risk Boundary</p>
+                <p className="mt-2 text-sm leading-6 text-[#7A625A]">
+                  {platformPackage.riskBoundaries[0]?.condition ?? "待补充边界"}：
+                  {platformPackage.riskBoundaries[0]?.guidance ?? "需要人工确认。"}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {platformPackage.sopLinks.map((link) => (
+                    <a
+                      className="inline-flex h-9 items-center gap-2 rounded-full border border-[#E8D4CB] px-3 text-xs font-semibold text-[#7D4F43] hover:border-[#C96F5C]"
+                      href={link.href}
+                      key={link.href}
+                    >
+                      <ExternalLink size={13} aria-hidden="true" />
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+                <button
+                  className={cn(
+                    "inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition",
+                    executable
+                      ? "bg-[#C96F5C] text-white hover:bg-[#B85F4F]"
+                      : "cursor-not-allowed border border-[#E8D4CB] bg-[#FFF8F4] text-[#9E5C4D]",
+                  )}
+                  disabled={!executable}
+                  onClick={() => onApply(platformPackage)}
+                  type="button"
+                >
+                  <Link2 size={13} aria-hidden="true" />
+                  {executable ? `应用${platformPackage.name}` : "SOP 审核后导入"}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -447,6 +858,16 @@ function AnalysisResult({ analysis }: { analysis: AutomationSiteAnalysis }) {
 
           <Panel icon={Database} label="Source Draft" title="可入库数据源草稿">
             <div className="grid gap-3">
+              {analysis.extractionPlan ? (
+                <div className="rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3">
+                  <p className="text-sm font-semibold text-[#2F6B3A]">
+                    采集计划已保存：v{analysis.extractionPlan.versionNumber}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[#4F7F56]">
+                    {analysis.extractionPlan.name}；字段 {analysis.extractionPlan.selectedFields.join(", ")}。
+                  </p>
+                </div>
+              ) : null}
               <Fact label="建议名称" value={analysis.sourceDraft.suggestedName} />
               <Fact label="Collector" value={analysis.sourceDraft.type} />
               <Fact label="调度" value={analysis.sourceDraft.scheduleCron ?? "手动确认后启用"} />
@@ -1196,6 +1617,12 @@ function DatasetPreviewResult({
   const [saveResult, setSaveResult] = useState<AutomationProductDatasetSave | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [cleaningDryRun, setCleaningDryRun] = useState<AutomationCleaningPlanDryRun | null>(null);
+  const [cleaningPlan, setCleaningPlan] = useState<AutomationCleaningPlanCreate | null>(null);
+  const [cleaningLoading, setCleaningLoading] = useState(false);
+  const [cleaningSaving, setCleaningSaving] = useState(false);
+  const [cleaningError, setCleaningError] = useState<string | null>(null);
+  const [useCleaningPlan, setUseCleaningPlan] = useState(true);
   const [schedulePolicy, setSchedulePolicy] = useState<"auto_freshness" | "manual_refresh_only">("auto_freshness");
   const [scheduleCron, setScheduleCron] = useState("");
   const [freshnessTargetHours, setFreshnessTargetHours] = useState("6");
@@ -1216,11 +1643,19 @@ function DatasetPreviewResult({
     () => Array.from(new Set(result.rows.map((row) => row.taskRunId))),
     [result.rows],
   );
+  const cleaningRules = useMemo(
+    () => defaultCleaningRulesForFields(result.summary.selectedFields),
+    [result.summary.selectedFields],
+  );
 
   useEffect(() => {
     setDatasetName(defaultDatasetName);
     setSaveResult(null);
     setSaveError(null);
+    setCleaningDryRun(null);
+    setCleaningPlan(null);
+    setCleaningError(null);
+    setUseCleaningPlan(true);
     setScheduleResult(null);
     setScheduleError(null);
     setDriftResult(null);
@@ -1228,6 +1663,66 @@ function DatasetPreviewResult({
     setDriftEvents([]);
     setDriftEventMessage(null);
   }, [defaultDatasetName]);
+
+  async function runCleaningDryRun() {
+    setCleaningError(null);
+    if (taskRunIds.length === 0) {
+      setCleaningError("当前预览没有可 dry-run 的数据来源 Run。");
+      return;
+    }
+    if (cleaningRules.length === 0) {
+      setCleaningError("当前字段没有可用的默认清洗规则。");
+      return;
+    }
+    setCleaningLoading(true);
+    try {
+      const dryRun = await dryRunAutomationCleaningPlan({
+        authorized: result.authorizationConfirmed,
+        taskRunIds,
+        fields: result.summary.selectedFields,
+        rules: cleaningRules,
+        maxRows: Math.max(result.rows.length, 1),
+      });
+      setCleaningDryRun(dryRun);
+      setCleaningPlan(null);
+      setSaveResult(null);
+    } catch (caught) {
+      setCleaningError(caught instanceof Error ? caught.message : "Cleaning dry-run failed");
+    } finally {
+      setCleaningLoading(false);
+    }
+  }
+
+  async function saveCleaningPlan() {
+    setCleaningError(null);
+    if (taskRunIds.length === 0) {
+      setCleaningError("当前预览没有可保存清洗计划的数据来源 Run。");
+      return;
+    }
+    if (cleaningRules.length === 0) {
+      setCleaningError("当前字段没有可保存的默认清洗规则。");
+      return;
+    }
+    setCleaningSaving(true);
+    try {
+      const created = await createAutomationCleaningPlan({
+        authorized: result.authorizationConfirmed,
+        name: `${datasetName.trim() || defaultDatasetName} Cleaning Plan`,
+        taskRunIds,
+        fields: result.summary.selectedFields,
+        rules: cleaningRules,
+        maxRows: Math.max(result.rows.length, 1),
+      });
+      setCleaningPlan(created);
+      setCleaningDryRun(created.dryRun);
+      setUseCleaningPlan(true);
+      setSaveResult(null);
+    } catch (caught) {
+      setCleaningError(caught instanceof Error ? caught.message : "Cleaning plan save failed");
+    } finally {
+      setCleaningSaving(false);
+    }
+  }
 
   async function loadDriftHistory(saved: AutomationProductDatasetSave) {
     setDriftHistoryLoading(true);
@@ -1264,6 +1759,8 @@ function DatasetPreviewResult({
         taskRunIds,
         fields: result.summary.selectedFields,
         maxRows: Math.max(result.rows.length, 1),
+        cleaningPlanId:
+          useCleaningPlan && cleaningPlan ? cleaningPlan.cleaningPlan.id : undefined,
       });
       setSaveResult(saved);
       setScheduleResult(null);
@@ -1385,6 +1882,101 @@ function DatasetPreviewResult({
         <Fact label="导出" value={result.summary.exportReady ? result.summary.exportFormat : "未就绪"} />
       </div>
       <div className="rounded-xl border border-[#D9E2CC] bg-white p-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase text-[#4E7C45]">Cleaning Plan</p>
+            <h3 className="mt-1 text-base font-semibold text-[#2E201C]">清洗规则 dry-run</h3>
+            <p className="mt-1 text-sm leading-6 text-[#5F5757]">
+              先在样本行上预演清洗效果，确认后保存为可复用计划。
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 text-sm font-semibold text-[#536B40] transition hover:border-[#4E7C45] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={cleaningLoading || cleaningRules.length === 0}
+              onClick={() => void runCleaningDryRun()}
+              type="button"
+            >
+              {cleaningLoading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <SlidersHorizontal size={16} aria-hidden="true" />}
+              运行 dry-run
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-3 text-sm font-semibold text-white transition hover:bg-[#46332C] disabled:cursor-not-allowed disabled:bg-[#B8C9B0]"
+              disabled={cleaningSaving || cleaningRules.length === 0}
+              onClick={() => void saveCleaningPlan()}
+              type="button"
+            >
+              {cleaningSaving ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <CheckCircle2 size={16} aria-hidden="true" />}
+              保存 CleaningPlan
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {cleaningRules.map((rule) => (
+            <span
+              className="rounded-full border border-[#D9E2CC] bg-[#FAFCF7] px-3 py-1 text-xs font-semibold text-[#536B40]"
+              key={`${rule.field}-${rule.operation}`}
+            >
+              {fieldLabels[rule.field] ?? rule.field}: {rule.operation}
+            </span>
+          ))}
+        </div>
+        {cleaningError ? (
+          <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-medium text-[#B85F4F]">
+            {cleaningError}
+          </p>
+        ) : null}
+        {cleaningDryRun ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Fact label="样本行" value={String(cleaningDryRun.summary.rowsCount)} />
+            <Fact label="变更行" value={String(cleaningDryRun.summary.rowsChanged)} />
+            <Fact label="规则数" value={String(cleaningDryRun.summary.rulesCount)} />
+            <Fact label="写入边界" value={cleaningDryRun.summary.datasetVersionCreated ? "已写入" : "dry-run"} />
+          </div>
+        ) : null}
+        {cleaningDryRun?.rows.some((row) => row.changedFields.length > 0) ? (
+          <div className="mt-3 grid gap-2">
+            {cleaningDryRun.rows
+              .filter((row) => row.changedFields.length > 0)
+              .slice(0, 2)
+              .map((row) => (
+                <div
+                  className="rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3 text-xs text-[#536B40]"
+                  key={row.rowId}
+                >
+                  <p className="font-semibold text-[#2E201C]">
+                    变更字段：{row.changedFields.join(" / ")}
+                  </p>
+                  <p className="mt-1 break-words">
+                    缺失字段：{row.missingFieldsAfter.join(" / ") || "无"}
+                  </p>
+                </div>
+              ))}
+          </div>
+        ) : null}
+        {cleaningPlan ? (
+          <div className="mt-3 flex flex-col gap-3 rounded-xl border border-[#D9E2CC] bg-[#ECF7EA] p-3 text-sm text-[#2E201C] sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold">
+                已保存：{cleaningPlan.cleaningPlan.name} v{cleaningPlan.cleaningPlan.versionNumber}
+              </p>
+              <p className="mt-1 break-all text-xs text-[#536B40]">
+                CleaningPlan ID: {cleaningPlan.cleaningPlan.id}
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-[#536B40]">
+              <input
+                checked={useCleaningPlan}
+                className="h-4 w-4 accent-[#4E7C45]"
+                onChange={(event) => setUseCleaningPlan(event.target.checked)}
+                type="checkbox"
+              />
+              保存 Dataset 时使用
+            </label>
+          </div>
+        ) : null}
+      </div>
+      <div className="rounded-xl border border-[#D9E2CC] bg-white p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <label className="grid min-w-0 flex-1 gap-2 text-sm font-semibold text-[#2E201C]">
             <span>数据集名称</span>
@@ -1430,6 +2022,11 @@ function DatasetPreviewResult({
             <div className="mt-3 grid gap-2 text-xs font-semibold text-[#536B40]">
               <p className="break-all">Dataset ID: {saveResult.dataset.id}</p>
               <p className="break-all">Version ID: {saveResult.version.id}</p>
+              {saveResult.version.cleaningPlanId ? (
+                <p className="break-all">
+                  CleaningPlan ID: {saveResult.version.cleaningPlanId}
+                </p>
+              ) : null}
               {saveResult.blockedReasons.map((reason) => (
                 <p
                   className="rounded-xl border border-[#D9E2CC] bg-white px-3 py-2"
@@ -2060,6 +2657,15 @@ function formatRisk(value: string) {
   return labels[value] ?? value;
 }
 
+function formatExecutionBoundary(value: AutomationPlatformPackage["executionBoundary"]) {
+  const labels: Record<AutomationPlatformPackage["executionBoundary"], string> = {
+    blocked: "Blocked",
+    executable: "可执行",
+    sop_import_only: "SOP/import-only",
+  };
+  return labels[value];
+}
+
 function formatPageType(value: string) {
   const labels: Record<string, string> = {
     collection_listing: "集合列表页",
@@ -2071,4 +2677,17 @@ function formatPageType(value: string) {
     unknown_listing: "未知列表页",
   };
   return labels[value] ?? value;
+}
+
+function formatShortDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("zh-CN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+  });
 }

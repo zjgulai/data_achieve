@@ -9,6 +9,15 @@ from fastapi.responses import FileResponse
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
+    AutomationCleaningPlanCreateRequest,
+    AutomationCleaningPlanCreateResponse,
+    AutomationCleaningPlanDryRunRequest,
+    AutomationCleaningPlanDryRunResponse,
+    AutomationCleaningPlanListResponse,
+    AutomationExtractionPlanCreateRequest,
+    AutomationExtractionPlanResponse,
+    AutomationPlatformPackageListResponse,
+    AutomationPlatformPackageResponse,
     AutomationProductBatchRunRequest,
     AutomationProductBatchRunResponse,
     AutomationProductDatasetExportCreateRequest,
@@ -43,6 +52,8 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductFanoutPreviewResponse,
     AutomationProductScheduleApproveRequest,
     AutomationProductScheduleApproveResponse,
+    AutomationSiteAnalysisDetailResponse,
+    AutomationSiteAnalysisListResponse,
     AutomationSiteAnalysisRequest,
     AutomationSiteAnalysisResponse,
 )
@@ -50,16 +61,25 @@ from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
     check_product_drift,
+    create_cleaning_plan_asset,
+    create_extraction_plan_from_site_analysis,
     create_product_dataset_export,
     create_product_drift_alert_events,
     create_product_drift_alert_rule,
     create_reviewed_product_fanout,
     discover_products_for_collection,
+    dry_run_cleaning_plan,
+    get_platform_package,
     get_product_dataset_export_file,
+    get_site_analysis_history_detail,
+    list_cleaning_plan_assets,
+    list_platform_packages,
     list_product_dataset_exports,
     list_product_dataset_versions,
     list_product_datasets,
     list_product_drift_events,
+    list_site_analysis_history,
+    persist_site_analysis_plan,
     preview_product_dataset,
     preview_product_drift_alert_rule,
     preview_product_fanout,
@@ -78,17 +98,118 @@ from data_intelligence_hub.services.exceptions import (
 router = APIRouter(tags=["automation"])
 
 
+@router.get("/platform-packages", response_model=AutomationPlatformPackageListResponse)
+async def list_platform_packages_route(
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationPlatformPackageListResponse:
+    del context
+    return list_platform_packages()
+
+
+@router.get(
+    "/platform-packages/{package_id}",
+    response_model=AutomationPlatformPackageResponse,
+)
+async def get_platform_package_route(
+    package_id: str,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationPlatformPackageResponse:
+    del context
+    try:
+        return get_platform_package(package_id)
+    except CollectorError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
 @router.post("/site-analysis", response_model=AutomationSiteAnalysisResponse)
 async def analyze_site(
     payload: AutomationSiteAnalysisRequest,
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> AutomationSiteAnalysisResponse:
-    del context
     try:
-        return await analyze_site_for_collection(payload)
+        result = await analyze_site_for_collection(payload)
+        return await persist_site_analysis_plan(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+            result,
+        )
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/site-analyses", response_model=AutomationSiteAnalysisListResponse)
+async def list_site_analyses_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: uuid.UUID | None = None,
+    target: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AutomationSiteAnalysisListResponse:
+    return await list_site_analysis_history(
+        session,
+        context.workspace,
+        project_id=project_id,
+        target=target,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/site-analyses/{site_analysis_id}",
+    response_model=AutomationSiteAnalysisDetailResponse,
+)
+async def get_site_analysis_route(
+    site_analysis_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationSiteAnalysisDetailResponse:
+    try:
+        return await get_site_analysis_history_detail(
+            session,
+            context.workspace,
+            site_analysis_id,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/site-analyses/{site_analysis_id}/extraction-plans",
+    response_model=AutomationExtractionPlanResponse,
+)
+async def create_extraction_plan_route(
+    site_analysis_id: uuid.UUID,
+    payload: AutomationExtractionPlanCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationExtractionPlanResponse:
+    try:
+        return await create_extraction_plan_from_site_analysis(
+            session,
+            context.workspace,
+            context.user,
+            site_analysis_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc) == "site_analysis_not_found"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
             detail=str(exc),
         ) from exc
 
@@ -168,6 +289,56 @@ async def preview_product_dataset_route(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/cleaning-plan-dry-run", response_model=AutomationCleaningPlanDryRunResponse)
+async def dry_run_cleaning_plan_route(
+    payload: AutomationCleaningPlanDryRunRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationCleaningPlanDryRunResponse:
+    try:
+        return await dry_run_cleaning_plan(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/cleaning-plans", response_model=AutomationCleaningPlanCreateResponse)
+async def create_cleaning_plan_route(
+    payload: AutomationCleaningPlanCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationCleaningPlanCreateResponse:
+    try:
+        return await create_cleaning_plan_asset(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/cleaning-plans", response_model=AutomationCleaningPlanListResponse)
+async def list_cleaning_plans_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: uuid.UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AutomationCleaningPlanListResponse:
+    return await list_cleaning_plan_assets(
+        session,
+        context.workspace,
+        project_id=project_id,
+        limit=limit,
+    )
 
 
 @router.post("/product-dataset-save", response_model=AutomationProductDatasetSaveResponse)

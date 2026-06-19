@@ -1,7 +1,9 @@
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
+from data_intelligence_hub.models.automation_plan import ExtractionPlan, SiteAnalysis
 from data_intelligence_hub.models.base import Base
 from data_intelligence_hub.models.collector import Collector
 from data_intelligence_hub.models.dataset import (
+    CleaningPlan,
     Dataset,
     DatasetDriftEvent,
     DatasetExportJob,
@@ -33,6 +35,7 @@ __all__ = [
     "AlertEvent",
     "AlertRule",
     "Base",
+    "CleaningPlan",
     "CollectionTask",
     "Collector",
     "Dataset",
@@ -41,6 +44,7 @@ __all__ = [
     "DatasetVersion",
     "Entity",
     "EntitySnapshot",
+    "ExtractionPlan",
     "Evidence",
     "IntelligenceFeedback",
     "IntelligenceItem",
@@ -54,6 +58,7 @@ __all__ = [
     "SchedulerLease",
     "SchedulerTick",
     "Signal",
+    "SiteAnalysis",
     "Source",
     "TaskRun",
     "User",

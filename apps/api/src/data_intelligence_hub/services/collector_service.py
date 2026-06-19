@@ -96,7 +96,9 @@ async def execute_collection_task(
         status = "failed"
         error_message = str(exc) or exc.__class__.__name__
         error_traceback = traceback.format_exc()
-        logs.append(collector_log("collector_failed", error_message, level="error"))
+        failed_log = collector_log("collector_failed", error_message, level="error")
+        failed_log["failure_reason"] = _collection_failure_reason(error_message)
+        logs.append(failed_log)
 
     finished_at = datetime.now(UTC)
     run.status = status
@@ -216,3 +218,22 @@ def _run_status(result_errors: list[str], created_records: int) -> str:
     if result_errors:
         return "failed"
     return "success"
+
+
+def _collection_failure_reason(message: str) -> str:
+    normalized = message.strip().lower()
+    if normalized.startswith("http_timeout"):
+        return "timeout"
+    if normalized.startswith("http_rate_limited"):
+        return "rate_limited"
+    if (
+        normalized.startswith("collector config field is required")
+        or normalized.startswith("collector is not registered")
+        or normalized.startswith("url must be")
+        or normalized.startswith("fields must be")
+        or normalized.startswith("unsupported")
+        or normalized.endswith("_not_detected")
+        or normalized.endswith("_invalid_content")
+    ):
+        return "validation_failed"
+    return "collector_failed"

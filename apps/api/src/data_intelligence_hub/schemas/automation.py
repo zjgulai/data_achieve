@@ -14,6 +14,7 @@ from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunRe
 
 
 class AutomationSiteAnalysisRequest(BaseModel):
+    project_id: uuid.UUID | None = None
     url: str = Field(min_length=1, max_length=5000)
     authorized: bool
     target: Literal["ecommerce_product"] = "ecommerce_product"
@@ -67,6 +68,33 @@ class AutomationProductDatasetPreviewRequest(BaseModel):
 class AutomationProductDatasetSaveRequest(AutomationProductDatasetPreviewRequest):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
+    cleaning_plan_id: uuid.UUID | None = None
+
+
+class AutomationCleaningRuleInput(BaseModel):
+    field: str = Field(min_length=1, max_length=80)
+    operation: Literal[
+        "strip_text",
+        "parse_decimal",
+        "normalize_url",
+        "uppercase",
+        "normalize_availability",
+        "fill_default",
+    ]
+    value: str | int | float | bool | None = None
+    description: str | None = Field(default=None, max_length=500)
+
+
+class AutomationCleaningPlanDryRunRequest(BaseModel):
+    authorized: bool
+    task_run_ids: list[uuid.UUID] = Field(min_length=1, max_length=50)
+    fields: list[str] | None = None
+    rules: list[AutomationCleaningRuleInput] = Field(min_length=1, max_length=50)
+    max_rows: int = Field(default=100, ge=1, le=500)
+
+
+class AutomationCleaningPlanCreateRequest(AutomationCleaningPlanDryRunRequest):
+    name: str = Field(min_length=1, max_length=200)
 
 
 class AutomationProductDatasetExportCreateRequest(BaseModel):
@@ -195,6 +223,122 @@ class AutomationSourceDraftResponse(BaseModel):
     schedule_cron: str | None
 
 
+class AutomationPlatformPackageFieldResponse(BaseModel):
+    key: str
+    label: str
+    data_type: str
+    required: bool
+    source: str
+    cleaning_rule: str
+
+
+class AutomationPlatformPackageStrategyResponse(BaseModel):
+    id: str
+    label: str
+    entrypoint: str
+    collector_type: str
+    fit: Literal["high", "medium", "low"]
+    can_start_from_automation: bool
+    review_required: bool
+    description: str
+
+
+class AutomationPlatformPackageRiskBoundaryResponse(BaseModel):
+    condition: str
+    severity: Literal["info", "warning", "blocked"]
+    guidance: str
+
+
+class AutomationPlatformPackageSopLinkResponse(BaseModel):
+    label: str
+    href: str
+
+
+class AutomationPlatformPackageFixtureResponse(BaseModel):
+    fixture_type: str
+    available: bool
+    description: str
+
+
+class AutomationPlatformPackageResponse(BaseModel):
+    id: str
+    name: str
+    category: str
+    summary: str
+    supported_targets: list[str]
+    collector_types: list[str]
+    field_schema: list[AutomationPlatformPackageFieldResponse]
+    strategy_matrix: list[AutomationPlatformPackageStrategyResponse]
+    risk_boundaries: list[AutomationPlatformPackageRiskBoundaryResponse]
+    sop_links: list[AutomationPlatformPackageSopLinkResponse]
+    sample_fixture: AutomationPlatformPackageFixtureResponse
+    execution_boundary: Literal["executable", "sop_import_only", "blocked"]
+    run_started: bool
+
+
+class AutomationPlatformPackageListResponse(BaseModel):
+    items: list[AutomationPlatformPackageResponse]
+    total: int
+    run_started: bool
+
+
+class AutomationExtractionPlanCreateRequest(BaseModel):
+    authorized: bool
+    name: str | None = Field(default=None, max_length=200)
+    fields: list[str] | None = None
+    schedule_cron: str | None = Field(default=None, max_length=50)
+
+
+class AutomationExtractionPlanResponse(BaseModel):
+    id: uuid.UUID
+    site_analysis_id: uuid.UUID
+    project_id: uuid.UUID
+    name: str
+    version_number: int
+    collector_type: str
+    selected_fields: list[str]
+    source_draft: AutomationSourceDraftResponse
+    schedule_cron: str | None
+    status: str
+    risk_level: str
+    audit_events: list[dict[str, Any]]
+    created_at: datetime
+    run_started: bool = False
+
+
+class AutomationSiteAnalysisHistoryItemResponse(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    requested_url: str
+    target: str
+    status: str
+    platform_type: str
+    page_type: str
+    risk_level: str
+    analyzed_at: datetime
+    created_at: datetime
+    latest_plan: AutomationExtractionPlanResponse | None = None
+
+
+class AutomationSiteAnalysisListResponse(BaseModel):
+    items: list[AutomationSiteAnalysisHistoryItemResponse]
+    total: int
+    run_started: bool = False
+
+
+class AutomationSiteAnalysisDetailResponse(BaseModel):
+    site_analysis: AutomationSiteAnalysisHistoryItemResponse
+    platform_profile: AutomationPlatformProfileResponse
+    page_structure: AutomationPageStructureResponse
+    field_candidates: list[AutomationFieldCandidateResponse]
+    tool_recommendations: list[AutomationToolRecommendationResponse]
+    cleaning_plan: list[AutomationCleaningStepResponse]
+    source_draft: AutomationSourceDraftResponse
+    extraction_plans: list[AutomationExtractionPlanResponse]
+    blocked_reasons: list[str]
+    run_started: bool = False
+
+
 class AutomationProductCandidateResponse(BaseModel):
     url: str
     title: str | None
@@ -252,6 +396,11 @@ class AutomationSiteAnalysisResponse(BaseModel):
     cleaning_plan: list[AutomationCleaningStepResponse]
     source_draft: AutomationSourceDraftResponse
     blocked_reasons: list[str]
+    site_analysis: AutomationSiteAnalysisHistoryItemResponse | None = None
+    extraction_plan: AutomationExtractionPlanResponse | None = None
+    site_analysis_created: bool = False
+    extraction_plan_created: bool = False
+    run_started: bool = False
 
 
 class AutomationProductDiscoveryResponse(BaseModel):
@@ -378,6 +527,73 @@ class AutomationProductDatasetPreviewResponse(BaseModel):
     blocked_reasons: list[str]
 
 
+class AutomationCleaningPlanDryRunRowResponse(BaseModel):
+    row_id: str
+    task_run_id: uuid.UUID
+    raw_record_id: uuid.UUID
+    source_url: str | None
+    before_values: dict[str, Any]
+    after_values: dict[str, Any]
+    missing_fields_before: list[str]
+    missing_fields_after: list[str]
+    changed_fields: list[str]
+
+
+class AutomationCleaningPlanDryRunSummaryResponse(BaseModel):
+    rows_count: int
+    rows_changed: int
+    rules_count: int
+    selected_fields: list[str]
+    dataset_version_created: bool
+    cleaning_plan_created: bool
+    run_started: bool
+
+
+class AutomationCleaningPlanDryRunResponse(BaseModel):
+    created_at: datetime
+    authorization_confirmed: bool
+    rows: list[AutomationCleaningPlanDryRunRowResponse]
+    summary: AutomationCleaningPlanDryRunSummaryResponse
+    cleaning_script: list[str]
+    export_preview: dict[str, Any]
+    audit_events: list[dict[str, Any]]
+    blocked_reasons: list[str]
+
+
+class AutomationCleaningPlanResponse(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    name: str
+    version_number: int
+    target: str
+    selected_fields: list[str]
+    source_task_run_ids: list[str]
+    rules: list[dict[str, Any]]
+    cleaning_script: list[str]
+    dry_run_preview: dict[str, Any]
+    status: str
+    created_at: datetime
+
+
+class AutomationCleaningPlanCreateResponse(BaseModel):
+    saved_at: datetime
+    authorization_confirmed: bool
+    cleaning_plan: AutomationCleaningPlanResponse
+    dry_run: AutomationCleaningPlanDryRunResponse
+    cleaning_plan_created: bool
+    dataset_version_created: bool
+    run_started: bool
+    audit_events: list[dict[str, Any]]
+    blocked_reasons: list[str]
+
+
+class AutomationCleaningPlanListResponse(BaseModel):
+    items: list[AutomationCleaningPlanResponse]
+    total: int
+    dataset_version_created: bool
+    run_started: bool
+
+
 class AutomationDatasetResponse(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID
@@ -390,6 +606,7 @@ class AutomationDatasetResponse(BaseModel):
 class AutomationDatasetVersionResponse(BaseModel):
     id: uuid.UUID
     dataset_id: uuid.UUID
+    cleaning_plan_id: uuid.UUID | None = None
     version_number: int
     source_task_run_ids: list[str]
     selected_fields: list[str]

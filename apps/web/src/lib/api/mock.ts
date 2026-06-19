@@ -39,6 +39,7 @@ import type {
   AutomationProductFanoutCreateInput,
   AutomationProductFanoutPreview,
   AutomationProductFanoutPreviewInput,
+  AutomationPlatformPackage,
   AutomationProductScheduleApprove,
   AutomationProductScheduleApproveInput,
   AutomationSiteAnalysis,
@@ -68,6 +69,149 @@ import type {
   Source,
   TaskRun,
 } from "@/types/source-task";
+
+export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[] {
+  return [
+    {
+      id: "shopify-independent-ecommerce",
+      name: "独立站 / Shopify-style 商品采集",
+      category: "ecommerce",
+      summary: "面向公开商品详情页和集合页，优先读取 Product JSON-LD、页面结构和同源商品链接。",
+      supportedTargets: ["ecommerce_product", "ecommerce_product_collection"],
+      collectorTypes: ["ecommerce_product_discovery", "ecommerce_product_page"],
+      fieldSchema: [
+        {
+          key: "title",
+          label: "商品标题",
+          dataType: "string",
+          required: true,
+          source: "json_ld_or_dom",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "price",
+          label: "价格",
+          dataType: "decimal",
+          required: false,
+          source: "json_ld_or_dom",
+          cleaningRule: "parse_decimal",
+        },
+        {
+          key: "canonical_url",
+          label: "规范 URL",
+          dataType: "url",
+          required: true,
+          source: "page_url_or_canonical",
+          cleaningRule: "normalize_url",
+        },
+      ],
+      strategyMatrix: [
+        {
+          id: "collection-to-products",
+          label: "集合页发现商品 URL",
+          entrypoint: "product-discovery",
+          collectorType: "ecommerce_product_discovery",
+          fit: "high",
+          canStartFromAutomation: true,
+          reviewRequired: true,
+          description: "从公开集合页发现商品链接，人工确认后创建商品页任务。",
+        },
+        {
+          id: "single-product-analysis",
+          label: "单商品页字段解析",
+          entrypoint: "site-analysis",
+          collectorType: "ecommerce_product_page",
+          fit: "high",
+          canStartFromAutomation: true,
+          reviewRequired: false,
+          description: "解析一个公开商品详情页，生成字段候选和采集计划。",
+        },
+      ],
+      riskBoundaries: [
+        {
+          condition: "页面公开访问且不需要登录态",
+          severity: "info",
+          guidance: "可在授权确认后进入小批量采集链路。",
+        },
+        {
+          condition: "出现验证码、登录墙、购物车态或个人数据",
+          severity: "blocked",
+          guidance: "停止自动采集，改为人工评估或官方 API。",
+        },
+      ],
+      sopLinks: [
+        { label: "平台方法卡", href: "/toolkit?category=platform_method" },
+        { label: "采集工作台", href: "/automation" },
+      ],
+      sampleFixture: {
+        fixtureType: "deterministic_html",
+        available: true,
+        description: "E2E 使用固定商品页和集合页 fixture 验证。",
+      },
+      executionBoundary: "executable",
+      runStarted: false,
+    },
+    {
+      id: "github-api-first",
+      name: "GitHub API-first 工具情报采集",
+      category: "developer_platform",
+      summary: "面向 GitHub topic、repo 和开源采集工具情报；优先使用官方 API。",
+      supportedTargets: ["tool_repository", "topic_radar", "release_monitor"],
+      collectorTypes: ["github_topic", "github_repo"],
+      fieldSchema: [
+        {
+          key: "repo_full_name",
+          label: "仓库全名",
+          dataType: "string",
+          required: true,
+          source: "github_api",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "html_url",
+          label: "仓库 URL",
+          dataType: "url",
+          required: true,
+          source: "github_api",
+          cleaningRule: "normalize_url",
+        },
+      ],
+      strategyMatrix: [
+        {
+          id: "topic-radar-import",
+          label: "Topic 工具雷达导入",
+          entrypoint: "source-create",
+          collectorType: "github_topic",
+          fit: "high",
+          canStartFromAutomation: false,
+          reviewRequired: true,
+          description: "通过 Sources 创建 GitHub topic 采集源，先审查限速策略。",
+        },
+      ],
+      riskBoundaries: [
+        {
+          condition: "未配置 GitHub token 或触发 rate limit",
+          severity: "blocked",
+          guidance: "先配置凭据、限速和调度窗口，不自动重试放大请求。",
+        },
+      ],
+      sopLinks: [
+        {
+          label: "GitHub/API-first SOP",
+          href: "/toolkit?category=platform_method&platform=github",
+        },
+        { label: "采集源配置", href: "/sources" },
+      ],
+      sampleFixture: {
+        fixtureType: "api_fixture",
+        available: true,
+        description: "单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
+      },
+      executionBoundary: "sop_import_only",
+      runStarted: false,
+    },
+  ];
+}
 
 export function getMockDashboard(domain?: string): DashboardSummary {
   const allTop = getMockIntelligence().map((item) => ({
@@ -574,9 +718,36 @@ function withMockTaskFreshness(task: MockTaskSeed): CollectionTask {
 
 export function getMockAutomationSiteAnalysis(url: string): AutomationSiteAnalysis {
   const requestedUrl = url.trim() || "https://shop.example/products/demo-bag";
+  const analyzedAt = new Date().toISOString();
+  const sourceDraft = {
+    type: "ecommerce_product_page",
+    config: {
+      url: requestedUrl,
+      fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+      platform_hint: "shopify",
+    },
+    suggestedName: "商品页采集：Demo Carry Bag",
+    scheduleCron: null,
+  };
+  const extractionPlan = {
+    id: "mock-extraction-plan-1",
+    siteAnalysisId: "mock-site-analysis-1",
+    projectId: "mock-project-1",
+    name: sourceDraft.suggestedName,
+    versionNumber: 1,
+    collectorType: sourceDraft.type,
+    selectedFields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+    sourceDraft,
+    scheduleCron: sourceDraft.scheduleCron,
+    status: "draft",
+    riskLevel: "low",
+    auditEvents: [{ event: "mock_plan_created", at: analyzedAt }],
+    createdAt: analyzedAt,
+    runStarted: false,
+  };
   return {
     requestedUrl,
-    analyzedAt: new Date().toISOString(),
+    analyzedAt,
     authorizationConfirmed: true,
     platformProfile: {
       platformType: requestedUrl.includes("myshopify") || requestedUrl.includes("shop")
@@ -712,17 +883,25 @@ export function getMockAutomationSiteAnalysis(url: string): AutomationSiteAnalys
       { field: "availability", operation: "normalize_enum", description: "归一化为 in_stock、out_of_stock 或 unknown。" },
       { field: "canonical_url", operation: "normalize_url", description: "转为绝对 URL，用于去重和回溯。" },
     ],
-    sourceDraft: {
-      type: "ecommerce_product_page",
-      config: {
-        url: requestedUrl,
-        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
-        platform_hint: "shopify",
-      },
-      suggestedName: "商品页采集：Demo Carry Bag",
-      scheduleCron: null,
-    },
+    sourceDraft,
     blockedReasons: [],
+    siteAnalysis: {
+      id: "mock-site-analysis-1",
+      projectId: "mock-project-1",
+      requestedUrl,
+      target: "ecommerce_product",
+      status: "analyzed",
+      platformType: "shopify",
+      pageType: "product_detail",
+      riskLevel: "low",
+      analyzedAt,
+      createdAt: analyzedAt,
+      latestPlan: extractionPlan,
+    },
+    extractionPlan,
+    siteAnalysisCreated: true,
+    extractionPlanCreated: true,
+    runStarted: false,
   };
 }
 
@@ -1107,6 +1286,7 @@ export function getMockAutomationProductDatasetSave(
     version: {
       id: `${datasetId}_v1`,
       datasetId,
+      cleaningPlanId: input.cleaningPlanId ?? null,
       versionNumber: 1,
       sourceTaskRunIds: input.taskRunIds,
       selectedFields: preview.summary.selectedFields,
@@ -1124,6 +1304,7 @@ export function getMockAutomationProductDatasetSave(
         version_id: `${datasetId}_v1`,
         version_number: 1,
         row_count: preview.summary.rowsCount,
+        cleaning_plan_id: input.cleaningPlanId ?? null,
       },
     ],
     blockedReasons: [
@@ -1147,6 +1328,7 @@ export function getMockAutomationProductScheduleApprove(
   const version = {
     id: input.datasetVersionId,
     datasetId: input.datasetId,
+    cleaningPlanId: null,
     versionNumber: 1,
     sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
     selectedFields: ["title", "price", "sku", "canonical_url"],
@@ -1212,6 +1394,7 @@ export function getMockAutomationProductDriftCheck(
   const version = {
     id: input.datasetVersionId,
     datasetId: input.datasetId,
+    cleaningPlanId: null,
     versionNumber: 1,
     sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
     selectedFields: ["title", "price", "sku", "canonical_url"],
@@ -1844,6 +2027,7 @@ function getDefaultMockProductDatasetVersions(): Record<string, AutomationProduc
       {
         id: "dataset_shopify_price_v2",
         datasetId: "dataset_shopify_price",
+        cleaningPlanId: null,
         versionNumber: 2,
         sourceTaskRunIds: ["run_batch_1", "run_batch_2"],
         selectedFields: ["title", "price", "sku", "canonical_url"],
@@ -1884,6 +2068,7 @@ function getDefaultMockProductDatasetVersions(): Record<string, AutomationProduc
       {
         id: "dataset_shopify_price_v1",
         datasetId: "dataset_shopify_price",
+        cleaningPlanId: null,
         versionNumber: 1,
         sourceTaskRunIds: ["run_batch_1"],
         selectedFields: ["title", "price", "canonical_url"],

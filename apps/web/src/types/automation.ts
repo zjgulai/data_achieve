@@ -27,6 +27,115 @@ export type AutomationCleaningStep = {
   description: string;
 };
 
+export type AutomationSourceDraft = {
+  type: string;
+  config: Record<string, unknown>;
+  suggestedName: string;
+  scheduleCron: string | null;
+};
+
+export type AutomationPlatformPackageField = {
+  key: string;
+  label: string;
+  dataType: string;
+  required: boolean;
+  source: string;
+  cleaningRule: string;
+};
+
+export type AutomationPlatformPackageStrategy = {
+  id: string;
+  label: string;
+  entrypoint: string;
+  collectorType: string;
+  fit: "high" | "medium" | "low";
+  canStartFromAutomation: boolean;
+  reviewRequired: boolean;
+  description: string;
+};
+
+export type AutomationPlatformPackageRiskBoundary = {
+  condition: string;
+  severity: "info" | "warning" | "blocked";
+  guidance: string;
+};
+
+export type AutomationPlatformPackageSopLink = {
+  label: string;
+  href: string;
+};
+
+export type AutomationPlatformPackageFixture = {
+  fixtureType: string;
+  available: boolean;
+  description: string;
+};
+
+export type AutomationPlatformPackage = {
+  id: string;
+  name: string;
+  category: string;
+  summary: string;
+  supportedTargets: string[];
+  collectorTypes: string[];
+  fieldSchema: AutomationPlatformPackageField[];
+  strategyMatrix: AutomationPlatformPackageStrategy[];
+  riskBoundaries: AutomationPlatformPackageRiskBoundary[];
+  sopLinks: AutomationPlatformPackageSopLink[];
+  sampleFixture: AutomationPlatformPackageFixture;
+  executionBoundary: "executable" | "sop_import_only" | "blocked";
+  runStarted: boolean;
+};
+
+export type AutomationPlatformPackageList = {
+  items: AutomationPlatformPackage[];
+  total: number;
+  runStarted: boolean;
+};
+
+export type AutomationExtractionPlan = {
+  id: string;
+  siteAnalysisId: string;
+  projectId: string;
+  name: string;
+  versionNumber: number;
+  collectorType: string;
+  selectedFields: string[];
+  sourceDraft: AutomationSourceDraft;
+  scheduleCron: string | null;
+  status: string;
+  riskLevel: string;
+  auditEvents: Array<Record<string, unknown>>;
+  createdAt: string;
+  runStarted: boolean;
+};
+
+export type AutomationSiteAnalysisHistoryItem = {
+  id: string;
+  projectId: string;
+  requestedUrl: string;
+  target: string;
+  status: string;
+  platformType: string;
+  pageType: string;
+  riskLevel: string;
+  analyzedAt: string;
+  createdAt: string;
+  latestPlan: AutomationExtractionPlan | null;
+};
+
+export type AutomationSiteAnalysisList = {
+  items: AutomationSiteAnalysisHistoryItem[];
+  total: number;
+  runStarted: boolean;
+};
+
+export type AutomationSiteAnalysisListInput = {
+  projectId?: string;
+  target?: "ecommerce_product";
+  limit?: number;
+};
+
 export type AutomationSiteAnalysis = {
   requestedUrl: string;
   analyzedAt: string;
@@ -51,16 +160,17 @@ export type AutomationSiteAnalysis = {
   fieldCandidates: AutomationFieldCandidate[];
   toolRecommendations: AutomationToolRecommendation[];
   cleaningPlan: AutomationCleaningStep[];
-  sourceDraft: {
-    type: string;
-    config: Record<string, unknown>;
-    suggestedName: string;
-    scheduleCron: string | null;
-  };
+  sourceDraft: AutomationSourceDraft;
   blockedReasons: string[];
+  siteAnalysis: AutomationSiteAnalysisHistoryItem | null;
+  extractionPlan: AutomationExtractionPlan | null;
+  siteAnalysisCreated: boolean;
+  extractionPlanCreated: boolean;
+  runStarted: boolean;
 };
 
 export type AutomationSiteAnalysisInput = {
+  projectId?: string;
   url: string;
   authorized: boolean;
   target?: "ecommerce_product";
@@ -306,6 +416,85 @@ export type AutomationProductDatasetPreviewInput = {
   maxRows?: number;
 };
 
+export type AutomationCleaningRule = {
+  field: string;
+  operation:
+    | "strip_text"
+    | "parse_decimal"
+    | "normalize_url"
+    | "uppercase"
+    | "normalize_availability"
+    | "fill_default";
+  value?: string | number | boolean | null;
+  description?: string | null;
+};
+
+export type AutomationCleaningPlanDryRunRow = {
+  rowId: string;
+  taskRunId: string;
+  rawRecordId: string;
+  sourceUrl: string | null;
+  beforeValues: Record<string, unknown>;
+  afterValues: Record<string, unknown>;
+  missingFieldsBefore: string[];
+  missingFieldsAfter: string[];
+  changedFields: string[];
+};
+
+export type AutomationCleaningPlanDryRun = {
+  createdAt: string;
+  authorizationConfirmed: boolean;
+  rows: AutomationCleaningPlanDryRunRow[];
+  summary: {
+    rowsCount: number;
+    rowsChanged: number;
+    rulesCount: number;
+    selectedFields: string[];
+    datasetVersionCreated: boolean;
+    cleaningPlanCreated: boolean;
+    runStarted: boolean;
+  };
+  cleaningScript: string[];
+  exportPreview: Record<string, unknown>;
+  auditEvents: Array<Record<string, unknown>>;
+  blockedReasons: string[];
+};
+
+export type AutomationCleaningPlan = {
+  id: string;
+  projectId: string;
+  name: string;
+  versionNumber: number;
+  target: string;
+  selectedFields: string[];
+  sourceTaskRunIds: string[];
+  rules: Array<Record<string, unknown>>;
+  cleaningScript: string[];
+  dryRunPreview: Record<string, unknown>;
+  status: string;
+  createdAt: string;
+};
+
+export type AutomationCleaningPlanCreate = {
+  savedAt: string;
+  authorizationConfirmed: boolean;
+  cleaningPlan: AutomationCleaningPlan;
+  dryRun: AutomationCleaningPlanDryRun;
+  cleaningPlanCreated: boolean;
+  datasetVersionCreated: boolean;
+  runStarted: boolean;
+  auditEvents: Array<Record<string, unknown>>;
+  blockedReasons: string[];
+};
+
+export type AutomationCleaningPlanInput = AutomationProductDatasetPreviewInput & {
+  rules: AutomationCleaningRule[];
+};
+
+export type AutomationCleaningPlanCreateInput = AutomationCleaningPlanInput & {
+  name: string;
+};
+
 export type AutomationDataset = {
   id: string;
   projectId: string;
@@ -318,6 +507,7 @@ export type AutomationDataset = {
 export type AutomationDatasetVersion = {
   id: string;
   datasetId: string;
+  cleaningPlanId: string | null;
   versionNumber: number;
   sourceTaskRunIds: string[];
   selectedFields: string[];
@@ -383,6 +573,7 @@ export type AutomationProductDatasetSave = {
 export type AutomationProductDatasetSaveInput = AutomationProductDatasetPreviewInput & {
   name: string;
   description?: string;
+  cleaningPlanId?: string;
 };
 
 export type AutomationScheduleApprovedTask = {

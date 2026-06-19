@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.routes import automation as automation_routes
 from data_intelligence_hub.collectors import registry as collector_registry
 from data_intelligence_hub.collectors.base import (
     CollectionResult,
@@ -22,6 +23,15 @@ from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.schemas.automation import (
+    AutomationCleaningStepResponse,
+    AutomationFieldCandidateResponse,
+    AutomationPageStructureResponse,
+    AutomationPlatformProfileResponse,
+    AutomationSiteAnalysisResponse,
+    AutomationSourceDraftResponse,
+    AutomationToolRecommendationResponse,
+)
 
 
 @pytest_asyncio.fixture()
@@ -83,6 +93,235 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
         "ecommerce_product_discovery",
         "ecommerce_product_page",
     }
+
+
+@pytest.mark.asyncio
+async def test_automation_platform_packages_expose_collection_contract(
+    client: AsyncClient,
+) -> None:
+    await register_and_create_project(client)
+
+    list_response = await client.get("/api/automation/platform-packages")
+    assert list_response.status_code == 200
+    package_list = list_response.json()
+    assert package_list["total"] >= 2
+    assert package_list["run_started"] is False
+
+    packages_by_id = {item["id"]: item for item in package_list["items"]}
+    assert "shopify-independent-ecommerce" in packages_by_id
+    assert "github-api-first" in packages_by_id
+
+    ecommerce_package = packages_by_id["shopify-independent-ecommerce"]
+    assert ecommerce_package["category"] == "ecommerce"
+    assert ecommerce_package["execution_boundary"] == "executable"
+    assert ecommerce_package["collector_types"] == [
+        "ecommerce_product_discovery",
+        "ecommerce_product_page",
+    ]
+    assert ecommerce_package["supported_targets"] == [
+        "ecommerce_product",
+        "ecommerce_product_collection",
+    ]
+    assert {field["key"] for field in ecommerce_package["field_schema"]} >= {
+        "title",
+        "price",
+        "canonical_url",
+    }
+    assert any(
+        strategy["entrypoint"] == "product-discovery"
+        and strategy["collector_type"] == "ecommerce_product_discovery"
+        and strategy["can_start_from_automation"] is True
+        for strategy in ecommerce_package["strategy_matrix"]
+    )
+    assert ecommerce_package["sample_fixture"]["fixture_type"] == "deterministic_html"
+    assert ecommerce_package["sample_fixture"]["available"] is True
+    assert ecommerce_package["sop_links"][0]["href"].startswith("/toolkit")
+
+    github_package = packages_by_id["github-api-first"]
+    assert github_package["category"] == "developer_platform"
+    assert github_package["execution_boundary"] == "sop_import_only"
+    assert "github_topic" in github_package["collector_types"]
+    assert any(
+        boundary["severity"] == "blocked"
+        and "token" in boundary["condition"].lower()
+        for boundary in github_package["risk_boundaries"]
+    )
+    assert all(
+        strategy["can_start_from_automation"] is False
+        for strategy in github_package["strategy_matrix"]
+    )
+
+    detail_response = await client.get(
+        "/api/automation/platform-packages/shopify-independent-ecommerce"
+    )
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["id"] == ecommerce_package["id"]
+    assert detail["run_started"] is False
+
+    missing_response = await client.get("/api/automation/platform-packages/missing")
+    assert missing_response.status_code == 404
+    assert missing_response.json()["detail"] == "platform_package_not_found"
+
+
+@pytest.mark.asyncio
+async def test_automation_site_analysis_persists_history_and_extraction_plan(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_analyze_site_for_collection(
+        payload: object,
+    ) -> AutomationSiteAnalysisResponse:
+        del payload
+        return AutomationSiteAnalysisResponse(
+            requested_url="https://shop.example/products/demo-bag",
+            analyzed_at="2026-06-19T00:00:00Z",
+            authorization_confirmed=True,
+            platform_profile=AutomationPlatformProfileResponse(
+                platform_type="independent_ecommerce",
+                confidence=0.92,
+                indicators=["json_ld_product"],
+                risk_level="low",
+            ),
+            page_structure=AutomationPageStructureResponse(
+                page_type="product_detail",
+                title="Demo Carry Bag",
+                canonical_url="https://shop.example/products/demo-bag",
+                script_count=3,
+                form_count=0,
+                image_count=4,
+                product_schema_count=1,
+                same_origin_link_count=12,
+                text_sample="Demo Carry Bag USD 129.90",
+            ),
+            field_candidates=[
+                AutomationFieldCandidateResponse(
+                    key="title",
+                    label="Title",
+                    value="Demo Carry Bag",
+                    data_type="string",
+                    source="json_ld",
+                    confidence=0.95,
+                    selected=True,
+                    cleaning_rule="trim",
+                ),
+                AutomationFieldCandidateResponse(
+                    key="price",
+                    label="Price",
+                    value=129.9,
+                    data_type="number",
+                    source="json_ld",
+                    confidence=0.9,
+                    selected=True,
+                    cleaning_rule="decimal",
+                ),
+                AutomationFieldCandidateResponse(
+                    key="sku",
+                    label="SKU",
+                    value="BAG-001",
+                    data_type="string",
+                    source="json_ld",
+                    confidence=0.88,
+                    selected=True,
+                    cleaning_rule="trim",
+                ),
+            ],
+            tool_recommendations=[
+                AutomationToolRecommendationResponse(
+                    tool="Built-in ecommerce product parser",
+                    collector_type="ecommerce_product_page",
+                    fit="high",
+                    risk_level="low",
+                    reason="JSON-LD product schema is available.",
+                )
+            ],
+            cleaning_plan=[
+                AutomationCleaningStepResponse(
+                    field="price",
+                    operation="cast_decimal",
+                    description="Cast price to decimal.",
+                )
+            ],
+            source_draft=AutomationSourceDraftResponse(
+                type="ecommerce_product_page",
+                config={
+                    "url": "https://shop.example/products/demo-bag",
+                    "fields": ["title", "price", "sku"],
+                    "platform_hint": "independent_ecommerce",
+                },
+                suggested_name="商品页采集：Demo Carry Bag",
+                schedule_cron=None,
+            ),
+            blocked_reasons=[],
+        )
+
+    monkeypatch.setattr(
+        automation_routes,
+        "analyze_site_for_collection",
+        fake_analyze_site_for_collection,
+    )
+    project_id = await register_and_create_project(client)
+
+    analysis_response = await client.post(
+        "/api/automation/site-analysis",
+        json={
+            "project_id": project_id,
+            "url": "https://shop.example/products/demo-bag",
+            "authorized": True,
+            "target": "ecommerce_product",
+            "fields": ["title", "price", "sku"],
+        },
+    )
+
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+    assert analysis["site_analysis_created"] is True
+    assert analysis["extraction_plan_created"] is True
+    assert analysis["run_started"] is False
+    assert analysis["site_analysis"]["project_id"] == project_id
+    assert analysis["site_analysis"]["requested_url"] == "https://shop.example/products/demo-bag"
+    assert analysis["site_analysis"]["platform_type"] == "independent_ecommerce"
+    assert analysis["site_analysis"]["page_type"] == "product_detail"
+    assert analysis["extraction_plan"]["version_number"] == 1
+    assert analysis["extraction_plan"]["collector_type"] == "ecommerce_product_page"
+    assert analysis["extraction_plan"]["selected_fields"] == ["title", "price", "sku"]
+
+    history_response = await client.get(
+        "/api/automation/site-analyses",
+        params={"project_id": project_id},
+    )
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert history["total"] == 1
+    assert history["items"][0]["id"] == analysis["site_analysis"]["id"]
+    assert history["items"][0]["latest_plan"]["id"] == analysis["extraction_plan"]["id"]
+    assert history["run_started"] is False
+
+    detail_response = await client.get(
+        f"/api/automation/site-analyses/{analysis['site_analysis']['id']}"
+    )
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["site_analysis"]["id"] == analysis["site_analysis"]["id"]
+    assert detail["field_candidates"][0]["key"] == "title"
+    assert detail["extraction_plans"][0]["id"] == analysis["extraction_plan"]["id"]
+
+    copied_plan_response = await client.post(
+        f"/api/automation/site-analyses/{analysis['site_analysis']['id']}/extraction-plans",
+        json={
+            "authorized": True,
+            "name": "SKU focused plan",
+            "fields": ["title", "sku"],
+            "schedule_cron": "0 8 * * *",
+        },
+    )
+    assert copied_plan_response.status_code == 200
+    copied_plan = copied_plan_response.json()
+    assert copied_plan["version_number"] == 2
+    assert copied_plan["name"] == "SKU focused plan"
+    assert copied_plan["selected_fields"] == ["title", "sku"]
+    assert copied_plan["source_draft"]["config"]["fields"] == ["title", "sku"]
+    assert copied_plan["run_started"] is False
 
 
 @pytest.mark.asyncio
@@ -806,6 +1045,90 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert dataset["export_preview"]["rows"][1]["price"] is None
     assert "尚未保存 Dataset" in dataset["blocked_reasons"][-1]
 
+    cleaning_rules = [
+        {
+            "field": "title",
+            "operation": "strip_text",
+            "description": "Trim product title whitespace.",
+        },
+        {
+            "field": "price",
+            "operation": "parse_decimal",
+            "description": "Parse product price into a decimal number.",
+        },
+        {
+            "field": "sku",
+            "operation": "fill_default",
+            "value": "UNKNOWN-SKU",
+            "description": "Fill missing SKU values before export.",
+        },
+    ]
+    dry_run_response = await client.post(
+        "/api/automation/cleaning-plan-dry-run",
+        json={
+            "authorized": True,
+            "task_run_ids": [item["run"]["id"] for item in run_items],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "rules": cleaning_rules,
+            "max_rows": 10,
+        },
+    )
+    assert dry_run_response.status_code == 200
+    dry_run = dry_run_response.json()
+    assert dry_run["summary"] == {
+        "rows_count": 2,
+        "rows_changed": 1,
+        "rules_count": 3,
+        "selected_fields": ["title", "price", "sku", "canonical_url"],
+        "dataset_version_created": False,
+        "cleaning_plan_created": False,
+        "run_started": False,
+    }
+    assert dry_run["rows"][1]["before_values"]["sku"] is None
+    assert dry_run["rows"][1]["after_values"]["sku"] == "UNKNOWN-SKU"
+    assert dry_run["rows"][1]["missing_fields_after"] == ["price"]
+    assert dry_run["cleaning_script"][-1] == "fill sku with default value UNKNOWN-SKU"
+    assert "dry-run" in dry_run["audit_events"][0]["event"]
+
+    datasets_after_dry_run_response = await client.get("/api/automation/product-datasets")
+    assert datasets_after_dry_run_response.status_code == 200
+    assert datasets_after_dry_run_response.json()["total"] == 0
+
+    cleaning_plan_response = await client.post(
+        "/api/automation/cleaning-plans",
+        json={
+            "authorized": True,
+            "name": "SKU fallback cleaning plan",
+            "task_run_ids": [item["run"]["id"] for item in run_items],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "rules": cleaning_rules,
+            "max_rows": 10,
+        },
+    )
+    assert cleaning_plan_response.status_code == 200
+    cleaning_plan_result = cleaning_plan_response.json()
+    assert cleaning_plan_result["cleaning_plan_created"] is True
+    assert cleaning_plan_result["dataset_version_created"] is False
+    assert cleaning_plan_result["run_started"] is False
+    assert cleaning_plan_result["cleaning_plan"]["name"] == "SKU fallback cleaning plan"
+    assert cleaning_plan_result["cleaning_plan"]["version_number"] == 1
+    assert cleaning_plan_result["cleaning_plan"]["selected_fields"] == [
+        "title",
+        "price",
+        "sku",
+        "canonical_url",
+    ]
+    assert cleaning_plan_result["dry_run"]["summary"]["rows_changed"] == 1
+
+    cleaning_plan_list_response = await client.get(
+        "/api/automation/cleaning-plans",
+        params={"project_id": project_id},
+    )
+    assert cleaning_plan_list_response.status_code == 200
+    cleaning_plan_list = cleaning_plan_list_response.json()
+    assert cleaning_plan_list["total"] == 1
+    assert cleaning_plan_list["items"][0]["id"] == cleaning_plan_result["cleaning_plan"]["id"]
+
     deduped_batch_response = await client.post(
         "/api/automation/product-batch-run",
         json={
@@ -1056,6 +1379,28 @@ async def test_automation_product_batch_run_returns_field_completeness(
         for event in drift_event["audit_events"]
     )
 
+    repeated_drift_event_response = await client.post(
+        "/api/automation/product-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "task_ids": [item["task_id"] for item in run_items],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "Saved from integration drift check.",
+        },
+    )
+    assert repeated_drift_event_response.status_code == 200
+    repeated_drift_event = repeated_drift_event_response.json()
+    assert repeated_drift_event["id"] == drift_event["id"]
+    assert repeated_drift_event["run_started"] is False
+    assert repeated_drift_event["alert_created"] is False
+    assert any(
+        event["event"] == "product_drift_event_reused"
+        for event in repeated_drift_event["audit_events"]
+    )
+
     drift_history_after_response = await client.get(
         "/api/automation/product-drift-events",
         params={
@@ -1251,6 +1596,36 @@ async def test_automation_product_batch_run_returns_field_completeness(
     alert_rules_after_create = alert_rules_after_create_response.json()
     assert len(alert_rules_after_create) == 1
     assert alert_rules_after_create[0]["id"] == drift_alert_rule["alert_rule"]["id"]
+
+    repeated_drift_alert_rule_response = await client.post(
+        "/api/automation/product-drift-alert-rules",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "min_status": "critical",
+            "channel": "in_app",
+            "enabled": True,
+            "name": "Critical product drift policy",
+        },
+    )
+    assert repeated_drift_alert_rule_response.status_code == 200
+    repeated_drift_alert_rule = repeated_drift_alert_rule_response.json()
+    assert repeated_drift_alert_rule["alert_rule"]["id"] == drift_alert_rule["alert_rule"]["id"]
+    assert repeated_drift_alert_rule["summary"]["alert_rule_created"] is False
+    assert repeated_drift_alert_rule["summary"]["signal_created"] is False
+    assert repeated_drift_alert_rule["summary"]["alert_event_created"] is False
+    assert repeated_drift_alert_rule["summary"]["notification_created"] is False
+    assert "已存在匹配的 DriftEvent 告警策略" in (
+        repeated_drift_alert_rule["blocked_reasons"][0]
+    )
+
+    alert_rules_after_repeat_response = await client.get("/api/alert-rules")
+    assert alert_rules_after_repeat_response.status_code == 200
+    alert_rules_after_repeat = alert_rules_after_repeat_response.json()
+    assert len(alert_rules_after_repeat) == 1
+    assert alert_rules_after_repeat[0]["id"] == drift_alert_rule["alert_rule"]["id"]
 
     alert_events_after_create_response = await client.get("/api/alert-events")
     assert alert_events_after_create_response.status_code == 200
@@ -1557,6 +1932,35 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert task_runs_after_drift_response.status_code == 200
     assert len(task_runs_after_drift_response.json()) == task_runs_before_schedule_count
 
+    cleaned_save_response = await client.post(
+        "/api/automation/product-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Cleaned Summer Bags Product Dataset",
+            "description": "Dataset saved with reusable cleaning plan.",
+            "task_run_ids": [item["run"]["id"] for item in run_items],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "max_rows": 10,
+            "cleaning_plan_id": cleaning_plan_result["cleaning_plan"]["id"],
+        },
+    )
+    assert cleaned_save_response.status_code == 200
+    cleaned_save = cleaned_save_response.json()
+    assert cleaned_save["version"]["version_number"] == 1
+    assert cleaned_save["version"]["cleaning_plan_id"] == (
+        cleaning_plan_result["cleaning_plan"]["id"]
+    )
+    assert cleaned_save["version"]["cleaning_script"][-1] == (
+        "fill sku with default value UNKNOWN-SKU"
+    )
+    assert cleaned_save["version"]["export_preview"]["rows"][1]["sku"] == "UNKNOWN-SKU"
+    assert cleaned_save["version"]["average_completeness_percent"] == 88
+    assert any(
+        event["event"] == "product_dataset_version_saved"
+        and event["cleaning_plan_id"] == cleaning_plan_result["cleaning_plan"]["id"]
+        for event in cleaned_save["audit_events"]
+    )
+
 
 @pytest.mark.asyncio
 async def test_collector_exception_persists_failed_task_run(
@@ -1597,6 +2001,8 @@ async def test_collector_exception_persists_failed_task_run(
     assert run["status"] == "failed"
     assert run["error_message"] == "fixture_collector_failure"
     assert "collector_failed" in {log["step"] for log in run["logs"]}
+    failed_logs = [log for log in run["logs"] if log["step"] == "collector_failed"]
+    assert failed_logs[0]["failure_reason"] == "collector_failed"
 
     runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
     assert runs_response.status_code == 200

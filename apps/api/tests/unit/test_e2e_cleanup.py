@@ -13,6 +13,7 @@ from data_intelligence_hub.models import (
     AlertEvent,
     AlertRule,
     Base,
+    CleaningPlan,
     CollectionTask,
     Dataset,
     DatasetDriftEvent,
@@ -21,6 +22,7 @@ from data_intelligence_hub.models import (
     Entity,
     EntitySnapshot,
     Evidence,
+    ExtractionPlan,
     IntelligenceFeedback,
     IntelligenceItem,
     Notification,
@@ -31,6 +33,7 @@ from data_intelligence_hub.models import (
     ReportSubscription,
     ReportSubscriptionRun,
     Signal,
+    SiteAnalysis,
     Source,
     TaskRun,
     User,
@@ -75,8 +78,11 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
     assert report.counts["entity_snapshots"] == 2
     assert report.counts["datasets"] == 1
     assert report.counts["dataset_versions"] == 1
+    assert report.counts["cleaning_plans"] == 1
     assert report.counts["dataset_drift_events"] == 1
     assert report.counts["dataset_export_jobs"] == 1
+    assert report.counts["site_analyses"] == 1
+    assert report.counts["extraction_plans"] == 1
     assert report.counts["alert_events"] == 1
     assert report.samples["users"] == ["e2e-old@example.com"]
 
@@ -95,8 +101,11 @@ async def test_e2e_cleanup_dry_run_then_removes_expired_fixture_graph() -> None:
         assert await session.get(TaskRun, old_fixture["run_id"]) is None
         assert await session.get(Dataset, old_fixture["dataset_id"]) is None
         assert await session.get(DatasetVersion, old_fixture["dataset_version_id"]) is None
+        assert await session.get(CleaningPlan, old_fixture["cleaning_plan_id"]) is None
         assert await session.get(DatasetDriftEvent, old_fixture["dataset_drift_event_id"]) is None
         assert await session.get(DatasetExportJob, old_fixture["dataset_export_job_id"]) is None
+        assert await session.get(SiteAnalysis, old_fixture["site_analysis_id"]) is None
+        assert await session.get(ExtractionPlan, old_fixture["extraction_plan_id"]) is None
         assert await session.get(RawRecord, old_fixture["raw_record_id"]) is None
         assert await session.get(Entity, old_fixture["entity_id"]) is None
         assert await session.get(EntitySnapshot, old_fixture["current_snapshot_id"]) is None
@@ -412,11 +421,37 @@ async def _create_fixture_graph(
     session.add(dataset)
     await session.flush()
 
+    cleaning_plan = CleaningPlan(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        name=f"Fixture Cleaning Plan {workspace_slug}",
+        version_number=1,
+        target="ecommerce_product",
+        selected_fields=["title", "price"],
+        source_task_run_ids=[str(run.id)],
+        rules=[
+            {
+                "field": "price",
+                "operation": "parse_decimal",
+                "description": "Parse price.",
+            }
+        ],
+        cleaning_script=["parse price as decimal when present"],
+        dry_run_preview={"rows_changed": 0},
+        status="draft",
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(cleaning_plan)
+    await session.flush()
+
     dataset_version = DatasetVersion(
         dataset_id=dataset.id,
         workspace_id=workspace.id,
         project_id=project.id,
         created_by_user_id=user.id,
+        cleaning_plan_id=cleaning_plan.id,
         version_number=1,
         source_task_run_ids=[str(run.id)],
         selected_fields=["title", "price"],
@@ -468,6 +503,83 @@ async def _create_fixture_graph(
         finished_at=created_at,
     )
     session.add(dataset_export_job)
+    await session.flush()
+
+    site_analysis = SiteAnalysis(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        requested_url=f"https://example.com/products/{workspace_slug}",
+        target="ecommerce_product",
+        status="analyzed",
+        authorization_confirmed=True,
+        analyzed_at=created_at,
+        platform_profile={
+            "platform_type": "independent_ecommerce",
+            "confidence": 0.9,
+            "indicators": ["fixture"],
+            "risk_level": "low",
+        },
+        page_structure={
+            "page_type": "product_detail",
+            "title": workspace_slug,
+            "canonical_url": f"https://example.com/products/{workspace_slug}",
+            "script_count": 1,
+            "form_count": 0,
+            "image_count": 1,
+            "product_schema_count": 1,
+            "same_origin_link_count": 1,
+            "text_sample": workspace_slug,
+        },
+        field_candidates=[
+            {
+                "key": "title",
+                "label": "Title",
+                "value": workspace_slug,
+                "data_type": "string",
+                "source": "fixture",
+                "confidence": 0.9,
+                "selected": True,
+                "cleaning_rule": "trim",
+            }
+        ],
+        tool_recommendations=[],
+        cleaning_plan=[],
+        source_draft={
+            "type": "ecommerce_product_page",
+            "config": {
+                "url": f"https://example.com/products/{workspace_slug}",
+                "fields": ["title"],
+                "platform_hint": "independent_ecommerce",
+            },
+            "suggested_name": f"Fixture plan {workspace_slug}",
+            "schedule_cron": None,
+        },
+        blocked_reasons=[],
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(site_analysis)
+    await session.flush()
+
+    extraction_plan = ExtractionPlan(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        site_analysis_id=site_analysis.id,
+        created_by_user_id=user.id,
+        name=f"Fixture plan {workspace_slug}",
+        version_number=1,
+        collector_type="ecommerce_product_page",
+        selected_fields=["title"],
+        source_draft=site_analysis.source_draft,
+        schedule_cron=None,
+        status="draft",
+        risk_level="low",
+        audit_events=[{"event": "fixture"}],
+        created_at=created_at,
+        updated_at=created_at,
+    )
+    session.add(extraction_plan)
     await session.flush()
 
     raw_record = RawRecord(
@@ -671,9 +783,12 @@ async def _create_fixture_graph(
         "task_id": task.id,
         "run_id": run.id,
         "dataset_id": dataset.id,
+        "cleaning_plan_id": cleaning_plan.id,
         "dataset_version_id": dataset_version.id,
         "dataset_drift_event_id": dataset_drift_event.id,
         "dataset_export_job_id": dataset_export_job.id,
+        "site_analysis_id": site_analysis.id,
+        "extraction_plan_id": extraction_plan.id,
         "raw_record_id": raw_record.id,
         "entity_id": entity.id,
         "current_snapshot_id": current_snapshot.id,

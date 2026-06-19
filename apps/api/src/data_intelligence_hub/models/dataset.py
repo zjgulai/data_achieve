@@ -44,6 +44,36 @@ class Dataset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     export_jobs: Mapped[list[DatasetExportJob]] = relationship(back_populates="dataset")
 
 
+class CleaningPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "cleaning_plans"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "name",
+            "version_number",
+            name="uq_cleaning_plans_workspace_name_version",
+        ),
+    )
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    target: Mapped[str] = mapped_column(String(50), nullable=False)
+    selected_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    source_task_run_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    rules: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    cleaning_script: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    dry_run_preview: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="draft", nullable=False)
+
+    workspace: Mapped[Workspace] = relationship()
+    project: Mapped[Project] = relationship()
+    created_by_user: Mapped[User] = relationship()
+    dataset_versions: Mapped[list[DatasetVersion]] = relationship(back_populates="cleaning_plan")
+
+
 class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "dataset_versions"
     __table_args__ = (
@@ -54,6 +84,7 @@ class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    cleaning_plan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cleaning_plans.id"))
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     source_task_run_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     selected_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False)
@@ -69,6 +100,7 @@ class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     workspace: Mapped[Workspace] = relationship()
     project: Mapped[Project] = relationship()
     created_by_user: Mapped[User] = relationship()
+    cleaning_plan: Mapped[CleaningPlan | None] = relationship(back_populates="dataset_versions")
     drift_events: Mapped[list[DatasetDriftEvent]] = relationship(back_populates="dataset_version")
     export_jobs: Mapped[list[DatasetExportJob]] = relationship(back_populates="dataset_version")
 

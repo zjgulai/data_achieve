@@ -7,6 +7,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urldefrag, urlparse
 
 import httpx
@@ -22,8 +23,10 @@ from data_intelligence_hub.collectors.ecommerce_product_page import (
     EcommerceProductPageCollector,
 )
 from data_intelligence_hub.core.config import get_settings
-from data_intelligence_hub.models.alert import AlertEvent
+from data_intelligence_hub.models.alert import AlertEvent, AlertRule
+from data_intelligence_hub.models.automation_plan import ExtractionPlan, SiteAnalysis
 from data_intelligence_hub.models.dataset import (
+    CleaningPlan,
     Dataset,
     DatasetDriftEvent,
     DatasetExportJob,
@@ -35,7 +38,31 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
-from data_intelligence_hub.repositories.alerts import get_alert_event, get_alert_rule
+from data_intelligence_hub.repositories.alerts import (
+    get_alert_event,
+    get_alert_rule,
+    list_alert_rules,
+)
+from data_intelligence_hub.repositories.automation_plans import (
+    commit_and_refresh_extraction_plan,
+    commit_and_refresh_site_analysis_plan,
+    count_site_analyses,
+    create_extraction_plan,
+    create_site_analysis,
+    get_latest_extraction_plan,
+    get_site_analysis,
+    list_extraction_plans,
+    list_site_analyses,
+    next_extraction_plan_version,
+)
+from data_intelligence_hub.repositories.cleaning_plans import (
+    commit_and_refresh_cleaning_plan,
+    count_cleaning_plans,
+    create_cleaning_plan,
+    get_cleaning_plan,
+    list_cleaning_plans,
+    next_cleaning_plan_version,
+)
 from data_intelligence_hub.repositories.datasets import (
     count_dataset_drift_events,
     count_dataset_versions,
@@ -57,6 +84,7 @@ from data_intelligence_hub.repositories.entities import (
     get_entity_snapshot,
 )
 from data_intelligence_hub.repositories.notifications import get_notification_by_reference
+from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.raw_records import list_raw_records
 from data_intelligence_hub.repositories.signals import get_signal, list_signals
 from data_intelligence_hub.repositories.sources import get_source_by_type_url
@@ -69,17 +97,35 @@ from data_intelligence_hub.schemas.alert import (
     AlertRuleResponse,
 )
 from data_intelligence_hub.schemas.automation import (
+    AutomationCleaningPlanCreateRequest,
+    AutomationCleaningPlanCreateResponse,
+    AutomationCleaningPlanDryRunRequest,
+    AutomationCleaningPlanDryRunResponse,
+    AutomationCleaningPlanDryRunRowResponse,
+    AutomationCleaningPlanDryRunSummaryResponse,
+    AutomationCleaningPlanListResponse,
+    AutomationCleaningPlanResponse,
+    AutomationCleaningRuleInput,
     AutomationCleaningStepResponse,
     AutomationDatasetResponse,
     AutomationDatasetVersionResponse,
     AutomationDiscoveryPageStructureResponse,
     AutomationDiscoveryPlanResponse,
+    AutomationExtractionPlanCreateRequest,
+    AutomationExtractionPlanResponse,
     AutomationFanoutBatchPlanResponse,
     AutomationFanoutCandidateStatusResponse,
     AutomationFanoutCreateSummaryResponse,
     AutomationFanoutPersistedSourceResponse,
     AutomationFieldCandidateResponse,
     AutomationPageStructureResponse,
+    AutomationPlatformPackageFieldResponse,
+    AutomationPlatformPackageFixtureResponse,
+    AutomationPlatformPackageListResponse,
+    AutomationPlatformPackageResponse,
+    AutomationPlatformPackageRiskBoundaryResponse,
+    AutomationPlatformPackageSopLinkResponse,
+    AutomationPlatformPackageStrategyResponse,
     AutomationPlatformProfileResponse,
     AutomationProductBatchFieldCompletenessResponse,
     AutomationProductBatchRunItemResponse,
@@ -130,6 +176,9 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductScheduleApproveSummaryResponse,
     AutomationScheduleApprovedTaskResponse,
     AutomationScheduleBlockedTaskResponse,
+    AutomationSiteAnalysisDetailResponse,
+    AutomationSiteAnalysisHistoryItemResponse,
+    AutomationSiteAnalysisListResponse,
     AutomationSiteAnalysisRequest,
     AutomationSiteAnalysisResponse,
     AutomationSourceDraftResponse,
@@ -146,6 +195,7 @@ from data_intelligence_hub.services.alert_service import (
     match_alert_rules_for_signal,
 )
 from data_intelligence_hub.services.exceptions import (
+    ProjectNotFoundError,
     TaskAlreadyRunningError,
     TaskNotFoundError,
     TaskNotRunnableError,
@@ -162,6 +212,22 @@ DATASET_EXPORT_CONTENT_TYPES = {
     "json": "application/json; charset=utf-8",
     "jsonl": "application/x-ndjson; charset=utf-8",
 }
+
+
+def list_platform_packages() -> AutomationPlatformPackageListResponse:
+    packages = _platform_packages()
+    return AutomationPlatformPackageListResponse(
+        items=packages,
+        total=len(packages),
+        run_started=False,
+    )
+
+
+def get_platform_package(package_id: str) -> AutomationPlatformPackageResponse:
+    for package in _platform_packages():
+        if package.id == package_id:
+            return package
+    raise CollectorError("platform_package_not_found")
 
 
 async def analyze_site_for_collection(
@@ -218,6 +284,197 @@ async def analyze_site_for_collection(
         ),
         blocked_reasons=blocked_reasons,
     )
+
+
+async def persist_site_analysis_plan(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationSiteAnalysisRequest,
+    result: AutomationSiteAnalysisResponse,
+) -> AutomationSiteAnalysisResponse:
+    if payload.project_id is None:
+        return result
+    project = await get_project(session, workspace.id, payload.project_id)
+    if project is None:
+        raise ProjectNotFoundError
+
+    platform_profile = result.platform_profile.model_dump(mode="json")
+    page_structure = result.page_structure.model_dump(mode="json")
+    source_draft = result.source_draft.model_dump(mode="json")
+    selected_fields = _selected_fields_from_source_draft(source_draft)
+    risk_level = str(platform_profile.get("risk_level") or "unknown")
+    now = datetime.now(UTC)
+    site_analysis = SiteAnalysis(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        requested_url=result.requested_url,
+        target=payload.target,
+        status="analyzed",
+        authorization_confirmed=result.authorization_confirmed,
+        analyzed_at=result.analyzed_at,
+        platform_profile=platform_profile,
+        page_structure=page_structure,
+        field_candidates=[
+            candidate.model_dump(mode="json") for candidate in result.field_candidates
+        ],
+        tool_recommendations=[
+            recommendation.model_dump(mode="json")
+            for recommendation in result.tool_recommendations
+        ],
+        cleaning_plan=[step.model_dump(mode="json") for step in result.cleaning_plan],
+        source_draft=source_draft,
+        blocked_reasons=result.blocked_reasons,
+    )
+    await create_site_analysis(session, site_analysis)
+    extraction_plan = ExtractionPlan(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        site_analysis_id=site_analysis.id,
+        created_by_user_id=user.id,
+        name=result.source_draft.suggested_name,
+        version_number=1,
+        collector_type=result.source_draft.type,
+        selected_fields=selected_fields,
+        source_draft=source_draft,
+        schedule_cron=result.source_draft.schedule_cron,
+        status="draft",
+        risk_level=risk_level,
+        audit_events=[
+            {
+                "event": "extraction_plan_created_from_site_analysis",
+                "site_analysis_id": str(site_analysis.id),
+                "created_at": now.isoformat(),
+                "run_started": False,
+            }
+        ],
+    )
+    await create_extraction_plan(session, extraction_plan)
+    site_analysis, extraction_plan = await commit_and_refresh_site_analysis_plan(
+        session,
+        site_analysis,
+        extraction_plan,
+    )
+    plan_response = _extraction_plan_response(extraction_plan)
+    result.site_analysis = _site_analysis_history_item(site_analysis, plan_response)
+    result.extraction_plan = plan_response
+    result.site_analysis_created = True
+    result.extraction_plan_created = True
+    result.run_started = False
+    return result
+
+
+async def list_site_analysis_history(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None = None,
+    target: str | None = None,
+    limit: int = 50,
+) -> AutomationSiteAnalysisListResponse:
+    analyses = await list_site_analyses(
+        session,
+        workspace.id,
+        project_id=project_id,
+        target=target,
+        limit=limit,
+    )
+    items: list[AutomationSiteAnalysisHistoryItemResponse] = []
+    for analysis in analyses:
+        latest_plan = await get_latest_extraction_plan(session, workspace.id, analysis.id)
+        items.append(
+            _site_analysis_history_item(
+                analysis,
+                _extraction_plan_response(latest_plan) if latest_plan else None,
+            )
+        )
+    total = await count_site_analyses(
+        session,
+        workspace.id,
+        project_id=project_id,
+        target=target,
+    )
+    return AutomationSiteAnalysisListResponse(items=items, total=total, run_started=False)
+
+
+async def get_site_analysis_history_detail(
+    session: AsyncSession,
+    workspace: Workspace,
+    site_analysis_id: uuid.UUID,
+) -> AutomationSiteAnalysisDetailResponse:
+    analysis = await get_site_analysis(session, workspace.id, site_analysis_id)
+    if analysis is None:
+        raise CollectorError("site_analysis_not_found")
+    plans = await list_extraction_plans(session, workspace.id, analysis.id)
+    plan_responses = [_extraction_plan_response(plan) for plan in plans]
+    latest_plan = plan_responses[0] if plan_responses else None
+    return AutomationSiteAnalysisDetailResponse(
+        site_analysis=_site_analysis_history_item(analysis, latest_plan),
+        platform_profile=AutomationPlatformProfileResponse(**analysis.platform_profile),
+        page_structure=AutomationPageStructureResponse(**analysis.page_structure),
+        field_candidates=[
+            AutomationFieldCandidateResponse(**candidate)
+            for candidate in analysis.field_candidates
+        ],
+        tool_recommendations=[
+            AutomationToolRecommendationResponse(**recommendation)
+            for recommendation in analysis.tool_recommendations
+        ],
+        cleaning_plan=[AutomationCleaningStepResponse(**step) for step in analysis.cleaning_plan],
+        source_draft=AutomationSourceDraftResponse(**analysis.source_draft),
+        extraction_plans=plan_responses,
+        blocked_reasons=analysis.blocked_reasons,
+        run_started=False,
+    )
+
+
+async def create_extraction_plan_from_site_analysis(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    site_analysis_id: uuid.UUID,
+    payload: AutomationExtractionPlanCreateRequest,
+) -> AutomationExtractionPlanResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    analysis = await get_site_analysis(session, workspace.id, site_analysis_id)
+    if analysis is None:
+        raise CollectorError("site_analysis_not_found")
+
+    source_draft = dict(analysis.source_draft)
+    raw_source_config = source_draft.get("config")
+    source_config = dict(raw_source_config) if isinstance(raw_source_config, dict) else {}
+    selected_fields = payload.fields or _selected_fields_from_source_draft(source_draft)
+    source_config["fields"] = selected_fields
+    source_draft["config"] = source_config
+    source_draft["schedule_cron"] = payload.schedule_cron
+    version_number = await next_extraction_plan_version(session, workspace.id, analysis.id)
+    now = datetime.now(UTC)
+    extraction_plan = ExtractionPlan(
+        workspace_id=workspace.id,
+        project_id=analysis.project_id,
+        site_analysis_id=analysis.id,
+        created_by_user_id=user.id,
+        name=(payload.name or source_draft.get("suggested_name") or "Extraction plan").strip(),
+        version_number=version_number,
+        collector_type=str(source_draft["type"]),
+        selected_fields=selected_fields,
+        source_draft=source_draft,
+        schedule_cron=payload.schedule_cron,
+        status="draft",
+        risk_level=str(analysis.platform_profile.get("risk_level") or "unknown"),
+        audit_events=[
+            {
+                "event": "extraction_plan_created_from_history",
+                "site_analysis_id": str(analysis.id),
+                "created_at": now.isoformat(),
+                "run_started": False,
+            }
+        ],
+    )
+    await create_extraction_plan(session, extraction_plan)
+    extraction_plan = await commit_and_refresh_extraction_plan(session, extraction_plan)
+    return _extraction_plan_response(extraction_plan)
 
 
 async def discover_products_for_collection(
@@ -679,6 +936,145 @@ async def preview_product_dataset(
     )
 
 
+async def dry_run_cleaning_plan(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationCleaningPlanDryRunRequest,
+) -> AutomationCleaningPlanDryRunResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    preview = await preview_product_dataset(
+        session,
+        workspace,
+        AutomationProductDatasetPreviewRequest(
+            authorized=payload.authorized,
+            task_run_ids=payload.task_run_ids,
+            fields=payload.fields,
+            max_rows=payload.max_rows,
+        ),
+    )
+    selected_fields = preview.summary.selected_fields
+    rows = [
+        _cleaning_plan_dry_run_row(row, selected_fields, payload.rules)
+        for row in preview.rows
+    ]
+    rows_changed = len([row for row in rows if row.changed_fields])
+    cleaning_script = _cleaning_script_from_rules(payload.rules)
+    export_preview = _cleaning_export_preview(rows, selected_fields)
+    return AutomationCleaningPlanDryRunResponse(
+        created_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        rows=rows,
+        summary=AutomationCleaningPlanDryRunSummaryResponse(
+            rows_count=len(rows),
+            rows_changed=rows_changed,
+            rules_count=len(payload.rules),
+            selected_fields=selected_fields,
+            dataset_version_created=False,
+            cleaning_plan_created=False,
+            run_started=False,
+        ),
+        cleaning_script=cleaning_script,
+        export_preview=export_preview,
+        audit_events=[
+            {
+                "event": "cleaning_plan_dry-run_requested",
+                "requested_runs": len(payload.task_run_ids),
+                "max_rows": payload.max_rows,
+                "rules_count": len(payload.rules),
+                "rows_changed": rows_changed,
+                "run_started": False,
+                "dataset_version_created": False,
+            }
+        ],
+        blocked_reasons=[
+            "CleaningPlan dry-run 只转换样本行，不会保存 DatasetVersion。",
+        ],
+    )
+
+
+async def create_cleaning_plan_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationCleaningPlanCreateRequest,
+) -> AutomationCleaningPlanCreateResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    name = payload.name.strip()
+    if not name:
+        raise CollectorError("cleaning_plan_name_required")
+
+    dry_run = await dry_run_cleaning_plan(session, workspace, payload)
+    project_id = await _single_project_id_for_task_runs(
+        session,
+        workspace.id,
+        payload.task_run_ids,
+        payload.max_rows,
+    )
+    version_number = await next_cleaning_plan_version(session, workspace.id, name)
+    cleaning_plan = CleaningPlan(
+        workspace_id=workspace.id,
+        project_id=project_id,
+        created_by_user_id=user.id,
+        name=name,
+        version_number=version_number,
+        target="ecommerce_product",
+        selected_fields=dry_run.summary.selected_fields,
+        source_task_run_ids=[str(task_run_id) for task_run_id in payload.task_run_ids],
+        rules=[rule.model_dump(mode="json", exclude_none=True) for rule in payload.rules],
+        cleaning_script=dry_run.cleaning_script,
+        dry_run_preview=dry_run.model_dump(mode="json"),
+        status="draft",
+    )
+    await create_cleaning_plan(session, cleaning_plan)
+    cleaning_plan = await commit_and_refresh_cleaning_plan(session, cleaning_plan)
+    plan_response = _cleaning_plan_response(cleaning_plan)
+    return AutomationCleaningPlanCreateResponse(
+        saved_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        cleaning_plan=plan_response,
+        dry_run=dry_run,
+        cleaning_plan_created=True,
+        dataset_version_created=False,
+        run_started=False,
+        audit_events=[
+            {
+                "event": "cleaning_plan_created",
+                "cleaning_plan_id": str(cleaning_plan.id),
+                "version_number": cleaning_plan.version_number,
+                "dataset_version_created": False,
+                "run_started": False,
+            }
+        ],
+        blocked_reasons=[
+            "CleaningPlan 已保存为草案；尚未保存 DatasetVersion 或启动采集。",
+        ],
+    )
+
+
+async def list_cleaning_plan_assets(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None = None,
+    limit: int = 50,
+) -> AutomationCleaningPlanListResponse:
+    plans = await list_cleaning_plans(
+        session,
+        workspace.id,
+        project_id=project_id,
+        limit=limit,
+    )
+    total = await count_cleaning_plans(session, workspace.id, project_id=project_id)
+    return AutomationCleaningPlanListResponse(
+        items=[_cleaning_plan_response(plan) for plan in plans],
+        total=total,
+        dataset_version_created=False,
+        run_started=False,
+    )
+
+
 async def save_product_dataset_version(
     session: AsyncSession,
     workspace: Workspace,
@@ -690,9 +1086,44 @@ async def save_product_dataset_version(
     dataset_name = payload.name.strip()
     if not dataset_name:
         raise CollectorError("dataset_name_required")
+    cleaning_plan: CleaningPlan | None = None
+    if payload.cleaning_plan_id is not None:
+        cleaning_plan = await get_cleaning_plan(session, workspace.id, payload.cleaning_plan_id)
+        if cleaning_plan is None:
+            raise CollectorError("cleaning_plan_not_found")
+
     preview = await preview_product_dataset(session, workspace, payload)
     if not preview.rows:
         raise CollectorError("dataset_preview_empty")
+    rows_for_version = preview.rows
+    selected_fields = preview.summary.selected_fields
+    cleaning_script = preview.cleaning_script_draft
+    export_preview = preview.export_preview
+    average_completeness_percent = preview.summary.average_completeness_percent
+
+    if cleaning_plan is not None:
+        dry_run = await dry_run_cleaning_plan(
+            session,
+            workspace,
+            AutomationCleaningPlanDryRunRequest(
+                authorized=payload.authorized,
+                task_run_ids=payload.task_run_ids,
+                fields=payload.fields or cleaning_plan.selected_fields,
+                rules=[
+                    AutomationCleaningRuleInput(**rule)
+                    for rule in cleaning_plan.rules
+                ],
+                max_rows=payload.max_rows,
+            ),
+        )
+        rows_for_version = _dataset_rows_from_cleaning_dry_run(
+            dry_run.rows,
+            dry_run.summary.selected_fields,
+        )
+        selected_fields = dry_run.summary.selected_fields
+        cleaning_script = cleaning_plan.cleaning_script
+        export_preview = dry_run.export_preview
+        average_completeness_percent = _average_dataset_completeness(rows_for_version)
 
     raw_records = await _dataset_product_raw_records(
         session,
@@ -704,6 +1135,8 @@ async def save_product_dataset_version(
     if len(project_ids) != 1:
         raise CollectorError("dataset_project_lineage_ambiguous")
     project_id = next(iter(project_ids))
+    if cleaning_plan is not None and cleaning_plan.project_id != project_id:
+        raise CollectorError("cleaning_plan_project_lineage_conflict")
 
     await _lock_workspace_for_dataset_save(session, workspace.id)
     dataset = await get_dataset_by_name(session, workspace.id, dataset_name)
@@ -731,10 +1164,11 @@ async def save_product_dataset_version(
         workspace_id=workspace.id,
         project_id=dataset.project_id,
         created_by_user_id=user.id,
+        cleaning_plan_id=cleaning_plan.id if cleaning_plan is not None else None,
         version_number=next_version_number,
         source_task_run_ids=[str(task_run_id) for task_run_id in payload.task_run_ids],
-        selected_fields=preview.summary.selected_fields,
-        cleaning_script=preview.cleaning_script_draft,
+        selected_fields=selected_fields,
+        cleaning_script=cleaning_script,
         rows=[
             {
                 "row_id": row.row_id,
@@ -745,11 +1179,11 @@ async def save_product_dataset_version(
                 "missing_fields": row.missing_fields,
                 "completeness_percent": row.completeness_percent,
             }
-            for row in preview.rows
+            for row in rows_for_version
         ],
-        export_preview=preview.export_preview,
-        row_count=preview.summary.rows_count,
-        average_completeness_percent=preview.summary.average_completeness_percent,
+        export_preview=export_preview,
+        row_count=len(rows_for_version),
+        average_completeness_percent=average_completeness_percent,
         status="saved",
         created_at=created_at,
     )
@@ -772,6 +1206,7 @@ async def save_product_dataset_version(
         version=AutomationDatasetVersionResponse(
             id=version.id,
             dataset_id=version.dataset_id,
+            cleaning_plan_id=version.cleaning_plan_id,
             version_number=version.version_number,
             source_task_run_ids=version.source_task_run_ids,
             selected_fields=version.selected_fields,
@@ -790,6 +1225,9 @@ async def save_product_dataset_version(
                 "version_number": version.version_number,
                 "created_dataset": created_dataset,
                 "row_count": version.row_count,
+                "cleaning_plan_id": (
+                    str(cleaning_plan.id) if cleaning_plan is not None else None
+                ),
             }
         ],
         blocked_reasons=[
@@ -1116,6 +1554,44 @@ async def save_product_drift_event(
     checked = await check_product_drift(session, workspace, payload)
     created_at = datetime.now(UTC)
     event_status = _drift_event_status(checked.summary)
+    summary_json = checked.summary.model_dump(mode="json")
+    items_json = [item.model_dump(mode="json") for item in checked.items]
+    idempotency_key = _product_drift_event_idempotency_key(
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        task_ids=payload.task_ids,
+        thresholds={
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+        },
+        summary=summary_json,
+        items=items_json,
+        note=payload.note,
+    )
+    existing_event = await _existing_product_drift_event(
+        session=session,
+        workspace=workspace,
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        idempotency_key=idempotency_key,
+    )
+    if existing_event is not None:
+        existing_event.audit_events = [
+            *existing_event.audit_events,
+            {
+                "event": "product_drift_event_reused",
+                "dataset_id": str(checked.dataset.id),
+                "dataset_version_id": str(checked.version.id),
+                "status": existing_event.status,
+                "idempotency_key": idempotency_key,
+                "run_started": False,
+                "alert_created": False,
+            },
+        ]
+        await session.commit()
+        await session.refresh(existing_event)
+        return _drift_event_response(existing_event, checked.dataset, checked.version)
+
     audit_events = [
         *checked.audit_events,
         {
@@ -1123,6 +1599,7 @@ async def save_product_drift_event(
             "dataset_id": str(checked.dataset.id),
             "dataset_version_id": str(checked.version.id),
             "status": event_status,
+            "idempotency_key": idempotency_key,
             "run_started": False,
             "alert_created": False,
         },
@@ -1138,8 +1615,8 @@ async def save_product_drift_event(
             "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
             "freshness_grace_hours": payload.freshness_grace_hours,
         },
-        summary=checked.summary.model_dump(mode="json"),
-        items=[item.model_dump(mode="json") for item in checked.items],
+        summary={**summary_json, "idempotency_key": idempotency_key},
+        items=items_json,
         audit_events=audit_events,
         note=payload.note.strip() if payload.note and payload.note.strip() else None,
         created_at=created_at,
@@ -1486,6 +1963,38 @@ async def create_product_drift_alert_rule(
     if not payload.confirm_create:
         raise CollectorError("drift_alert_rule_confirmation_required")
     preview = await preview_product_drift_alert_rule(session, workspace, payload)
+    existing_rule = await _existing_product_drift_alert_rule(
+        session=session,
+        workspace=workspace,
+        rule_draft=preview.rule_draft,
+    )
+    if existing_rule is not None:
+        return AutomationProductDriftAlertRuleCreateResponse(
+            generated_at=datetime.now(UTC),
+            authorization_confirmed=preview.authorization_confirmed,
+            dataset=preview.dataset,
+            latest_version=preview.latest_version,
+            rule_draft=preview.rule_draft,
+            matched_events=preview.matched_events,
+            summary=AutomationProductDriftAlertSummaryResponse(
+                matched_events=preview.summary.matched_events,
+                critical_events=preview.summary.critical_events,
+                warning_events=preview.summary.warning_events,
+                alert_rule_created=False,
+                signal_created=False,
+                alert_event_created=False,
+                notification_created=False,
+                run_started=False,
+            ),
+            blocked_reasons=[
+                (
+                    "已存在匹配的 DriftEvent 告警策略，已复用现有 AlertRule；"
+                    "本次不会创建重复规则、回放历史事件、创建 Signal、AlertEvent 或发送通知。"
+                ),
+                "后续需要 DatasetDrift 信号桥接后，规则才会进入现有 AlertEvent 生成链路。",
+            ],
+            alert_rule=AlertRuleResponse.from_model(existing_rule),
+        )
     rule = await create_alert_rule_from_payload(
         session,
         workspace,
@@ -1888,6 +2397,73 @@ def _drift_alert_rule_draft(
     )
 
 
+def _product_drift_event_idempotency_key(
+    *,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    task_ids: list[uuid.UUID],
+    thresholds: dict[str, Any],
+    summary: dict[str, Any],
+    items: list[dict[str, Any]],
+    note: str | None,
+) -> str:
+    normalized_items = sorted(items, key=lambda item: str(item.get("task_id") or ""))
+    return _stable_json_hash(
+        {
+            "event_type": "ecommerce_product_drift",
+            "dataset_id": str(dataset_id),
+            "dataset_version_id": str(dataset_version_id),
+            "task_ids": sorted(str(task_id) for task_id in task_ids),
+            "thresholds": thresholds,
+            "summary": summary,
+            "items": normalized_items,
+            "note": note.strip() if note and note.strip() else None,
+        }
+    )
+
+
+async def _existing_product_drift_event(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    idempotency_key: str,
+) -> DatasetDriftEvent | None:
+    events = await list_dataset_drift_events(
+        session,
+        workspace.id,
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        limit=100,
+    )
+    for event in events:
+        summary = event.summary if isinstance(event.summary, dict) else {}
+        if summary.get("idempotency_key") == idempotency_key:
+            return event
+    return None
+
+
+async def _existing_product_drift_alert_rule(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    rule_draft: AutomationProductDriftAlertRuleDraftResponse,
+) -> AlertRule | None:
+    rules = await list_alert_rules(session, workspace.id, enabled=rule_draft.enabled)
+    expected_condition = _canonical_json(rule_draft.condition)
+    for rule in rules:
+        if rule.project_id != rule_draft.project_id:
+            continue
+        if rule.signal_type != rule_draft.signal_type:
+            continue
+        if rule.channel != rule_draft.channel:
+            continue
+        if _canonical_json(rule.condition) == expected_condition:
+            return rule
+    return None
+
+
 def _drift_alert_preview_response(
     *,
     dataset: Dataset,
@@ -2164,6 +2740,233 @@ def _stable_json_hash(value: dict[str, object]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+
+
+def _platform_packages() -> list[AutomationPlatformPackageResponse]:
+    return [
+        AutomationPlatformPackageResponse(
+            id="shopify-independent-ecommerce",
+            name="独立站 / Shopify-style 商品采集",
+            category="ecommerce",
+            summary=(
+                "面向公开商品详情页和集合页，优先读取 Product JSON-LD、"
+                "页面结构和同源商品链接，适合作为电商平台自动化采集首个可执行包。"
+            ),
+            supported_targets=["ecommerce_product", "ecommerce_product_collection"],
+            collector_types=["ecommerce_product_discovery", "ecommerce_product_page"],
+            field_schema=[
+                AutomationPlatformPackageFieldResponse(
+                    key="title",
+                    label="商品标题",
+                    data_type="string",
+                    required=True,
+                    source="json_ld_or_dom",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="price",
+                    label="价格",
+                    data_type="decimal",
+                    required=False,
+                    source="json_ld_or_dom",
+                    cleaning_rule="parse_decimal",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="currency",
+                    label="货币",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_or_dom",
+                    cleaning_rule="uppercase",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="availability",
+                    label="库存状态",
+                    data_type="enum",
+                    required=False,
+                    source="json_ld_or_dom",
+                    cleaning_rule="normalize_availability",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="sku",
+                    label="SKU",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_or_dom",
+                    cleaning_rule="fill_default",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="canonical_url",
+                    label="规范 URL",
+                    data_type="url",
+                    required=True,
+                    source="page_url_or_canonical",
+                    cleaning_rule="normalize_url",
+                ),
+            ],
+            strategy_matrix=[
+                AutomationPlatformPackageStrategyResponse(
+                    id="collection-to-products",
+                    label="集合页发现商品 URL",
+                    entrypoint="product-discovery",
+                    collector_type="ecommerce_product_discovery",
+                    fit="high",
+                    can_start_from_automation=True,
+                    review_required=True,
+                    description="从公开集合页发现商品链接，人工确认后 fan-out 创建商品页任务。",
+                ),
+                AutomationPlatformPackageStrategyResponse(
+                    id="single-product-analysis",
+                    label="单商品页字段解析",
+                    entrypoint="site-analysis",
+                    collector_type="ecommerce_product_page",
+                    fit="high",
+                    can_start_from_automation=True,
+                    review_required=False,
+                    description="直接解析一个公开商品详情页，生成字段候选和采集计划。",
+                ),
+            ],
+            risk_boundaries=[
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="页面公开访问且不需要登录态",
+                    severity="info",
+                    guidance="可在授权确认后进入 Automation 小批量采集链路。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="出现验证码、登录墙、购物车态或个人数据",
+                    severity="blocked",
+                    guidance="停止自动采集，改为人工评估或平台官方 API。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="字段缺失率高于质量阈值",
+                    severity="warning",
+                    guidance="先调整字段选择和 CleaningPlan，再保存 DatasetVersion。",
+                ),
+            ],
+            sop_links=[
+                AutomationPlatformPackageSopLinkResponse(
+                    label="平台方法卡",
+                    href="/toolkit?category=platform_method",
+                ),
+                AutomationPlatformPackageSopLinkResponse(
+                    label="采集工作台",
+                    href="/automation",
+                ),
+            ],
+            sample_fixture=AutomationPlatformPackageFixtureResponse(
+                fixture_type="deterministic_html",
+                available=True,
+                description="E2E 使用固定商品页和集合页 fixture 验证 discovery、fan-out、dataset。",
+            ),
+            execution_boundary="executable",
+            run_started=False,
+        ),
+        AutomationPlatformPackageResponse(
+            id="github-api-first",
+            name="GitHub API-first 工具情报采集",
+            category="developer_platform",
+            summary=(
+                "面向 GitHub topic、repo 和开源采集工具情报；优先使用官方 API、"
+                "限速信息和公开仓库元数据，不默认进入网页抓取。"
+            ),
+            supported_targets=["tool_repository", "topic_radar", "release_monitor"],
+            collector_types=["github_topic", "github_repo"],
+            field_schema=[
+                AutomationPlatformPackageFieldResponse(
+                    key="repo_full_name",
+                    label="仓库全名",
+                    data_type="string",
+                    required=True,
+                    source="github_api",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="stars",
+                    label="Star 数",
+                    data_type="integer",
+                    required=False,
+                    source="github_api",
+                    cleaning_rule="parse_integer",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="topics",
+                    label="Topic 标签",
+                    data_type="string_array",
+                    required=False,
+                    source="github_api",
+                    cleaning_rule="normalize_tags",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="html_url",
+                    label="仓库 URL",
+                    data_type="url",
+                    required=True,
+                    source="github_api",
+                    cleaning_rule="normalize_url",
+                ),
+            ],
+            strategy_matrix=[
+                AutomationPlatformPackageStrategyResponse(
+                    id="topic-radar-import",
+                    label="Topic 工具雷达导入",
+                    entrypoint="source-create",
+                    collector_type="github_topic",
+                    fit="high",
+                    can_start_from_automation=False,
+                    review_required=True,
+                    description="通过 Sources 创建 GitHub topic 采集源，先审查 topic 和限速策略。",
+                ),
+                AutomationPlatformPackageStrategyResponse(
+                    id="repo-detail-import",
+                    label="单仓库详情导入",
+                    entrypoint="source-create",
+                    collector_type="github_repo",
+                    fit="medium",
+                    can_start_from_automation=False,
+                    review_required=True,
+                    description="通过 Sources 创建 GitHub repo 采集源，适合补充重点项目画像。",
+                ),
+            ],
+            risk_boundaries=[
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="未配置 GitHub token 或触发 rate limit",
+                    severity="blocked",
+                    guidance="不要自动重试放大请求；先配置凭据、限速和调度窗口。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="仓库内容涉及个人数据、issue 评论或私有上下文",
+                    severity="blocked",
+                    guidance="只保留公开项目元数据，不采集个人级内容。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="需要网页补充 README 或 release 详情",
+                    severity="warning",
+                    guidance="优先走官方 API；网页解析作为人工确认后的补充步骤。",
+                ),
+            ],
+            sop_links=[
+                AutomationPlatformPackageSopLinkResponse(
+                    label="GitHub/API-first SOP",
+                    href="/toolkit?category=platform_method&platform=github",
+                ),
+                AutomationPlatformPackageSopLinkResponse(
+                    label="采集源配置",
+                    href="/sources",
+                ),
+            ],
+            sample_fixture=AutomationPlatformPackageFixtureResponse(
+                fixture_type="api_fixture",
+                available=True,
+                description="单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
+            ),
+            execution_boundary="sop_import_only",
+            run_started=False,
+        ),
+    ]
+
+
 def _blocked_reasons(page_structure: dict[str, object], selected_fields: list[str]) -> list[str]:
     blocked: list[str] = []
     if not selected_fields:
@@ -2397,6 +3200,72 @@ def _drift_event_status(summary: AutomationProductDriftSummaryResponse) -> str:
     return "ok"
 
 
+def _selected_fields_from_source_draft(source_draft: dict[str, object]) -> list[str]:
+    config = source_draft.get("config")
+    if not isinstance(config, dict):
+        return list(ECOMMERCE_PRODUCT_FIELDS)
+    fields = config.get("fields")
+    if not isinstance(fields, list):
+        return list(ECOMMERCE_PRODUCT_FIELDS)
+    selected_fields = [field for field in fields if isinstance(field, str) and field.strip()]
+    return selected_fields or list(ECOMMERCE_PRODUCT_FIELDS)
+
+
+def _source_draft_response(source_draft: dict[str, object]) -> AutomationSourceDraftResponse:
+    raw_config = source_draft.get("config")
+    config = dict(raw_config) if isinstance(raw_config, dict) else {}
+    return AutomationSourceDraftResponse(
+        type=str(source_draft.get("type") or "ecommerce_product_page"),
+        config=config,
+        suggested_name=str(source_draft.get("suggested_name") or "Extraction plan"),
+        schedule_cron=(
+            str(source_draft["schedule_cron"])
+            if source_draft.get("schedule_cron") is not None
+            else None
+        ),
+    )
+
+
+def _extraction_plan_response(
+    extraction_plan: ExtractionPlan,
+) -> AutomationExtractionPlanResponse:
+    return AutomationExtractionPlanResponse(
+        id=extraction_plan.id,
+        site_analysis_id=extraction_plan.site_analysis_id,
+        project_id=extraction_plan.project_id,
+        name=extraction_plan.name,
+        version_number=extraction_plan.version_number,
+        collector_type=extraction_plan.collector_type,
+        selected_fields=extraction_plan.selected_fields,
+        source_draft=_source_draft_response(extraction_plan.source_draft),
+        schedule_cron=extraction_plan.schedule_cron,
+        status=extraction_plan.status,
+        risk_level=extraction_plan.risk_level,
+        audit_events=extraction_plan.audit_events,
+        created_at=extraction_plan.created_at,
+        run_started=False,
+    )
+
+
+def _site_analysis_history_item(
+    site_analysis: SiteAnalysis,
+    latest_plan: AutomationExtractionPlanResponse | None,
+) -> AutomationSiteAnalysisHistoryItemResponse:
+    return AutomationSiteAnalysisHistoryItemResponse(
+        id=site_analysis.id,
+        project_id=site_analysis.project_id,
+        requested_url=site_analysis.requested_url,
+        target=site_analysis.target,
+        status=site_analysis.status,
+        platform_type=str(site_analysis.platform_profile.get("platform_type") or "unknown"),
+        page_type=str(site_analysis.page_structure.get("page_type") or "unknown"),
+        risk_level=str(site_analysis.platform_profile.get("risk_level") or "unknown"),
+        analyzed_at=site_analysis.analyzed_at,
+        created_at=site_analysis.created_at,
+        latest_plan=latest_plan,
+    )
+
+
 def _dataset_response(dataset: Dataset | AutomationDatasetResponse) -> AutomationDatasetResponse:
     return AutomationDatasetResponse(
         id=dataset.id,
@@ -2414,6 +3283,7 @@ def _dataset_version_response(
     return AutomationDatasetVersionResponse(
         id=version.id,
         dataset_id=version.dataset_id,
+        cleaning_plan_id=version.cleaning_plan_id,
         version_number=version.version_number,
         source_task_run_ids=version.source_task_run_ids,
         selected_fields=version.selected_fields,
@@ -2423,6 +3293,23 @@ def _dataset_version_response(
         status=version.status,
         created_at=version.created_at,
         export_preview=version.export_preview,
+    )
+
+
+def _cleaning_plan_response(cleaning_plan: CleaningPlan) -> AutomationCleaningPlanResponse:
+    return AutomationCleaningPlanResponse(
+        id=cleaning_plan.id,
+        project_id=cleaning_plan.project_id,
+        name=cleaning_plan.name,
+        version_number=cleaning_plan.version_number,
+        target=cleaning_plan.target,
+        selected_fields=cleaning_plan.selected_fields,
+        source_task_run_ids=cleaning_plan.source_task_run_ids,
+        rules=cleaning_plan.rules,
+        cleaning_script=cleaning_plan.cleaning_script,
+        dry_run_preview=cleaning_plan.dry_run_preview,
+        status=cleaning_plan.status,
+        created_at=cleaning_plan.created_at,
     )
 
 
@@ -2718,6 +3605,167 @@ def _dataset_row(
     )
 
 
+def _cleaning_plan_dry_run_row(
+    row: AutomationProductDatasetRowResponse,
+    selected_fields: list[str],
+    rules: list[AutomationCleaningRuleInput],
+) -> AutomationCleaningPlanDryRunRowResponse:
+    before_values = {
+        field: row.values.get(field)
+        for field in selected_fields
+    }
+    after_values = dict(before_values)
+    for rule in rules:
+        if rule.field not in selected_fields:
+            continue
+        after_values[rule.field] = _apply_cleaning_rule(
+            after_values.get(rule.field),
+            rule,
+        )
+    changed_fields = [
+        field
+        for field in selected_fields
+        if before_values.get(field) != after_values.get(field)
+    ]
+    missing_fields_before = [
+        field for field in selected_fields if not _has_field_value(before_values.get(field))
+    ]
+    missing_fields_after = [
+        field for field in selected_fields if not _has_field_value(after_values.get(field))
+    ]
+    return AutomationCleaningPlanDryRunRowResponse(
+        row_id=row.row_id,
+        task_run_id=row.task_run_id,
+        raw_record_id=row.raw_record_id,
+        source_url=row.source_url,
+        before_values=before_values,
+        after_values=after_values,
+        missing_fields_before=missing_fields_before,
+        missing_fields_after=missing_fields_after,
+        changed_fields=changed_fields,
+    )
+
+
+def _dataset_rows_from_cleaning_dry_run(
+    rows: list[AutomationCleaningPlanDryRunRowResponse],
+    selected_fields: list[str],
+) -> list[AutomationProductDatasetRowResponse]:
+    dataset_rows: list[AutomationProductDatasetRowResponse] = []
+    for row in rows:
+        values = {
+            field: row.after_values.get(field)
+            for field in selected_fields
+            if _has_field_value(row.after_values.get(field))
+        }
+        missing_fields = [field for field in selected_fields if field not in values]
+        ratio = len(values) / len(selected_fields) if selected_fields else 0
+        dataset_rows.append(
+            AutomationProductDatasetRowResponse(
+                row_id=row.row_id,
+                task_run_id=row.task_run_id,
+                raw_record_id=row.raw_record_id,
+                source_url=row.source_url,
+                values=values,
+                missing_fields=missing_fields,
+                completeness_percent=round(ratio * 100),
+            )
+        )
+    return dataset_rows
+
+
+def _apply_cleaning_rule(
+    value: object,
+    rule: AutomationCleaningRuleInput,
+) -> object:
+    if rule.operation == "fill_default":
+        return rule.value if not _has_field_value(value) else value
+    if not _has_field_value(value):
+        return None
+    if rule.operation == "strip_text":
+        return " ".join(value.split()) if isinstance(value, str) else value
+    if rule.operation == "parse_decimal":
+        return _parse_decimal_value(value)
+    if rule.operation == "normalize_url":
+        return value.strip() if isinstance(value, str) else value
+    if rule.operation == "uppercase":
+        return value.strip().upper() if isinstance(value, str) else value
+    if rule.operation == "normalize_availability":
+        return _normalize_availability_value(value)
+    return value
+
+
+def _parse_decimal_value(value: object) -> object:
+    if isinstance(value, int | float):
+        return value
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip().replace(",", "")
+    numeric = "".join(
+        character
+        for character in normalized
+        if character.isdigit() or character in {".", "-"}
+    )
+    if numeric in {"", ".", "-", "-."}:
+        return value.strip()
+    try:
+        parsed = float(numeric)
+    except ValueError:
+        return value.strip()
+    return int(parsed) if parsed.is_integer() else parsed
+
+
+def _normalize_availability_value(value: object) -> object:
+    if not isinstance(value, str):
+        return value
+    normalized = value.strip().lower().replace(" ", "_").replace("-", "_")
+    if normalized in {"in_stock", "instock", "available", "有货"}:
+        return "in_stock"
+    if normalized in {"out_of_stock", "outofstock", "sold_out", "unavailable", "无货"}:
+        return "out_of_stock"
+    return "unknown"
+
+
+def _cleaning_script_from_rules(rules: list[AutomationCleaningRuleInput]) -> list[str]:
+    return [_cleaning_rule_script(rule) for rule in rules]
+
+
+def _cleaning_rule_script(rule: AutomationCleaningRuleInput) -> str:
+    if rule.operation == "fill_default":
+        return f"fill {rule.field} with default value {rule.value}"
+    if rule.operation == "strip_text":
+        return f"strip whitespace and collapse repeated spaces in {rule.field}"
+    if rule.operation == "parse_decimal":
+        return f"parse {rule.field} as decimal when present"
+    if rule.operation == "normalize_url":
+        return f"normalize {rule.field} as URL string"
+    if rule.operation == "uppercase":
+        return f"uppercase {rule.field} when present"
+    if rule.operation == "normalize_availability":
+        return f"normalize {rule.field} into in_stock/out_of_stock/unknown"
+    return f"apply {rule.operation} to {rule.field}"
+
+
+def _cleaning_export_preview(
+    rows: list[AutomationCleaningPlanDryRunRowResponse],
+    selected_fields: list[str],
+) -> dict[str, object]:
+    return {
+        "format": "json",
+        "schema": {
+            "fields": selected_fields,
+            "primary_key": "canonical_url",
+            "missing_value_policy": "explicit_null",
+        },
+        "rows": [
+            {
+                field: row.after_values.get(field)
+                for field in selected_fields
+            }
+            for row in rows[:10]
+        ],
+    }
+
+
 def _dataset_summary(
     requested_task_run_ids: list[uuid.UUID],
     matched_run_ids: set[uuid.UUID],
@@ -2738,6 +3786,10 @@ def _dataset_summary(
         export_format="json",
         export_ready=bool(rows),
     )
+
+
+def _average_dataset_completeness(rows: list[AutomationProductDatasetRowResponse]) -> int:
+    return round(sum(row.completeness_percent for row in rows) / len(rows)) if rows else 0
 
 
 def _cleaning_script_draft(selected_fields: list[str]) -> list[str]:
@@ -2794,6 +3846,26 @@ async def _dataset_product_raw_records(
         if len(records) >= max_rows:
             return records[:max_rows]
     return records
+
+
+async def _single_project_id_for_task_runs(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_ids: list[uuid.UUID],
+    max_rows: int,
+) -> uuid.UUID:
+    raw_records = await _dataset_product_raw_records(
+        session,
+        workspace_id,
+        task_run_ids,
+        max_rows,
+    )
+    if not raw_records:
+        raise CollectorError("cleaning_plan_preview_empty")
+    project_ids = {raw_record.project_id for raw_record in raw_records}
+    if len(project_ids) != 1:
+        raise CollectorError("cleaning_plan_project_lineage_ambiguous")
+    return next(iter(project_ids))
 
 
 async def _product_records_for_task_run(

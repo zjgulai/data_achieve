@@ -5,7 +5,7 @@ module: automation
 topic: data-collection-automation-platform-phase1
 status: draft
 created: 2026-06-17
-updated: 2026-06-18
+updated: 2026-06-19
 owner: self
 source: human+ai
 ---
@@ -52,7 +52,7 @@ Phase 1 先以 API response 和 Source config 承载新对象，不立即做数�
 | FieldCandidate | API response | FieldSchema 表 |
 | ExtractionPlan | API response + Source config | ExtractionPlan 表 |
 | CleaningPlan | API response + Source config | CleaningPipeline 表 |
-| Dataset | 已实现 `datasets` / `dataset_versions` | 后续拆 DatasetRecord / ExportJob |
+| Dataset | 已实现 `datasets` / `dataset_versions` / `dataset_export_jobs` | 后续拆 DatasetRecord，并补对象存储抽象 |
 | QualityIssue | 已通过 `dataset_drift_events` 承载漂移快照 | 后续拆 QualityIssue / Incident |
 
 ## 4. Phase 1 后端能力
@@ -121,6 +121,25 @@ Phase 1 已从草案推进到生产可验收闭环：
 
 仍未完成：
 
-1. Dataset 记录级导出、对象存储写出、下载任务和导出审计。
-2. 真实平台包扩展到 Shopify collection / sitemap 批量发现之外的 Amazon、社媒和 API-first 平台。
-3. 告警规则去重与重复点击防护，目前重复创建规则会产生多条可匹配 AlertEvent。
+1. 真实平台包扩展到 Shopify collection / sitemap 批量发现之外的 Amazon、社媒和 API-first 平台。
+2. 告警规则去重与重复点击防护，目前重复创建规则会产生多条可匹配 AlertEvent。
+3. `SiteAnalysis`、`ExtractionPlan`、`CleaningPlan` 仍主要由 API response、Source config、DatasetVersion 字段和前端状态承载，还没有升级为可保存、可复制、可版本化的正式资产。
+4. Dataset 导出已具备本地文件写出、下载和审计记录，但生产持久化目录、备份策略和 COS/S3 对象存储抽象仍未闭环。
+
+## 9. 2026-06-19 状态修正
+
+本地仓库检查确认，Dataset Export 已实现，不应继续作为 Phase 1 未完成项：
+
+1. 后端已存在 `DatasetExportJob` 模型。
+2. `/api/automation/product-dataset-exports` 可创建导出任务，支持 `csv`、`json`、`jsonl`。
+3. `/api/automation/product-datasets/{dataset_id}/exports` 可查看导出历史。
+4. `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download` 可下载导出文件。
+5. 前端 `/datasets` 已提供生成导出文件与下载入口。
+6. 集成测试已覆盖导出确认、文件写入、导出历史、下载和 CSV 内容验证。
+
+下一阶段 P0 调整为：
+
+1. `ExtractionPlan` 持久化。
+2. `CleaningPlan` 持久化和 dry-run。
+3. Platform Package 模板化。
+4. AlertRule 幂等创建、重复点击保护和任务运行锁。

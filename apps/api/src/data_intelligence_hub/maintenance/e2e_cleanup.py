@@ -15,6 +15,7 @@ from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.models import (
     AlertEvent,
     AlertRule,
+    CleaningPlan,
     CollectionTask,
     Dataset,
     DatasetDriftEvent,
@@ -23,6 +24,7 @@ from data_intelligence_hub.models import (
     Entity,
     EntitySnapshot,
     Evidence,
+    ExtractionPlan,
     IntelligenceFeedback,
     IntelligenceItem,
     Notification,
@@ -33,6 +35,7 @@ from data_intelligence_hub.models import (
     ReportSubscription,
     ReportSubscriptionRun,
     Signal,
+    SiteAnalysis,
     Source,
     TaskRun,
     User,
@@ -264,6 +267,28 @@ async def cleanup_e2e_fixtures(
             ),
         )
     )
+    dataset_version_cleaning_plan_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(DatasetVersion.cleaning_plan_id).where(
+                DatasetVersion.id.in_(dataset_version_ids),
+                DatasetVersion.cleaning_plan_id.is_not(None),
+            ),
+        )
+    )
+    owned_cleaning_plan_ids = await _fetch_ids(
+        session,
+        select(CleaningPlan.id).where(
+            or_(
+                CleaningPlan.workspace_id.in_(workspace_ids),
+                CleaningPlan.project_id.in_(project_ids),
+                CleaningPlan.created_by_user_id.in_(user_ids),
+            ),
+        ),
+    )
+    cleaning_plan_ids = _unique_ids(
+        [*dataset_version_cleaning_plan_ids, *owned_cleaning_plan_ids]
+    )
     dataset_drift_event_ids = _unique_ids(
         await _fetch_ids(
             session,
@@ -287,6 +312,31 @@ async def cleanup_e2e_fixtures(
                     DatasetExportJob.dataset_id.in_(dataset_ids),
                     DatasetExportJob.dataset_version_id.in_(dataset_version_ids),
                     DatasetExportJob.created_by_user_id.in_(user_ids),
+                ),
+            ),
+        )
+    )
+    site_analysis_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(SiteAnalysis.id).where(
+                or_(
+                    SiteAnalysis.workspace_id.in_(workspace_ids),
+                    SiteAnalysis.project_id.in_(project_ids),
+                    SiteAnalysis.created_by_user_id.in_(user_ids),
+                ),
+            ),
+        )
+    )
+    extraction_plan_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(ExtractionPlan.id).where(
+                or_(
+                    ExtractionPlan.workspace_id.in_(workspace_ids),
+                    ExtractionPlan.project_id.in_(project_ids),
+                    ExtractionPlan.site_analysis_id.in_(site_analysis_ids),
+                    ExtractionPlan.created_by_user_id.in_(user_ids),
                 ),
             ),
         )
@@ -349,8 +399,11 @@ async def cleanup_e2e_fixtures(
         "report_audit_events": len(report_audit_event_ids),
         "datasets": len(dataset_ids),
         "dataset_versions": len(dataset_version_ids),
+        "cleaning_plans": len(cleaning_plan_ids),
         "dataset_drift_events": len(dataset_drift_event_ids),
         "dataset_export_jobs": len(dataset_export_job_ids),
+        "site_analyses": len(site_analysis_ids),
+        "extraction_plans": len(extraction_plan_ids),
         "alert_rules": len(alert_rule_ids),
         "alert_events": len(alert_event_ids),
         "notifications": len(notification_ids),
@@ -394,8 +447,11 @@ async def cleanup_e2e_fixtures(
         report_audit_event_ids=report_audit_event_ids,
         dataset_ids=dataset_ids,
         dataset_version_ids=dataset_version_ids,
+        cleaning_plan_ids=cleaning_plan_ids,
         dataset_drift_event_ids=dataset_drift_event_ids,
         dataset_export_job_ids=dataset_export_job_ids,
+        site_analysis_ids=site_analysis_ids,
+        extraction_plan_ids=extraction_plan_ids,
         alert_rule_ids=alert_rule_ids,
         alert_event_ids=alert_event_ids,
         notification_ids=notification_ids,
@@ -426,8 +482,11 @@ async def _apply_cleanup(
     report_audit_event_ids: list[uuid.UUID],
     dataset_ids: list[uuid.UUID],
     dataset_version_ids: list[uuid.UUID],
+    cleaning_plan_ids: list[uuid.UUID],
     dataset_drift_event_ids: list[uuid.UUID],
     dataset_export_job_ids: list[uuid.UUID],
+    site_analysis_ids: list[uuid.UUID],
+    extraction_plan_ids: list[uuid.UUID],
     alert_rule_ids: list[uuid.UUID],
     alert_event_ids: list[uuid.UUID],
     notification_ids: list[uuid.UUID],
@@ -453,7 +512,10 @@ async def _apply_cleanup(
     await _delete_ids(session, DatasetDriftEvent, dataset_drift_event_ids)
     await _delete_ids(session, DatasetExportJob, dataset_export_job_ids)
     await _delete_ids(session, DatasetVersion, dataset_version_ids)
+    await _delete_ids(session, CleaningPlan, cleaning_plan_ids)
     await _delete_ids(session, Dataset, dataset_ids)
+    await _delete_ids(session, ExtractionPlan, extraction_plan_ids)
+    await _delete_ids(session, SiteAnalysis, site_analysis_ids)
     await _delete_ids(session, EntitySnapshot, snapshot_ids)
     await _delete_ids(session, RawRecord, raw_record_ids)
     await _delete_ids(session, Entity, entity_ids)

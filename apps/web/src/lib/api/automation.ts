@@ -19,9 +19,15 @@ import {
   getMockAutomationProductDriftEvents,
   getMockAutomationProductDriftEventSave,
   getMockAutomationProductScheduleApprove,
+  getMockAutomationPlatformPackages,
   getMockAutomationSiteAnalysis,
 } from "@/lib/api/mock";
 import type {
+  AutomationCleaningPlanCreate,
+  AutomationCleaningPlanCreateInput,
+  AutomationCleaningPlanDryRun,
+  AutomationCleaningPlanInput,
+  AutomationCleaningRule,
   AutomationCleaningStep,
   AutomationFieldCandidate,
   AutomationProductDiscovery,
@@ -62,8 +68,14 @@ import type {
   AutomationProductFanoutPreviewInput,
   AutomationProductScheduleApprove,
   AutomationProductScheduleApproveInput,
+  AutomationExtractionPlan,
+  AutomationPlatformPackage,
+  AutomationPlatformPackageList,
   AutomationSiteAnalysis,
+  AutomationSiteAnalysisHistoryItem,
   AutomationSiteAnalysisInput,
+  AutomationSiteAnalysisList,
+  AutomationSiteAnalysisListInput,
   AutomationToolRecommendation,
 } from "@/types/automation";
 import type { AlertEvent } from "@/types/alert";
@@ -95,6 +107,99 @@ type AutomationCleaningStepResponse = {
   description: string;
 };
 
+type AutomationSourceDraftResponse = {
+  type: string;
+  config: Record<string, unknown>;
+  suggested_name: string;
+  schedule_cron: string | null;
+};
+
+type AutomationPlatformPackageResponse = {
+  id: string;
+  name: string;
+  category: string;
+  summary: string;
+  supported_targets: string[];
+  collector_types: string[];
+  field_schema: Array<{
+    key: string;
+    label: string;
+    data_type: string;
+    required: boolean;
+    source: string;
+    cleaning_rule: string;
+  }>;
+  strategy_matrix: Array<{
+    id: string;
+    label: string;
+    entrypoint: string;
+    collector_type: string;
+    fit: "high" | "medium" | "low";
+    can_start_from_automation: boolean;
+    review_required: boolean;
+    description: string;
+  }>;
+  risk_boundaries: Array<{
+    condition: string;
+    severity: "info" | "warning" | "blocked";
+    guidance: string;
+  }>;
+  sop_links: Array<{
+    label: string;
+    href: string;
+  }>;
+  sample_fixture: {
+    fixture_type: string;
+    available: boolean;
+    description: string;
+  };
+  execution_boundary: "executable" | "sop_import_only" | "blocked";
+  run_started: boolean;
+};
+
+type AutomationPlatformPackageListResponse = {
+  items: AutomationPlatformPackageResponse[];
+  total: number;
+  run_started: boolean;
+};
+
+type AutomationExtractionPlanResponse = {
+  id: string;
+  site_analysis_id: string;
+  project_id: string;
+  name: string;
+  version_number: number;
+  collector_type: string;
+  selected_fields: string[];
+  source_draft: AutomationSourceDraftResponse;
+  schedule_cron: string | null;
+  status: string;
+  risk_level: string;
+  audit_events: Array<Record<string, unknown>>;
+  created_at: string;
+  run_started: boolean;
+};
+
+type AutomationSiteAnalysisHistoryItemResponse = {
+  id: string;
+  project_id: string;
+  requested_url: string;
+  target: string;
+  status: string;
+  platform_type: string;
+  page_type: string;
+  risk_level: string;
+  analyzed_at: string;
+  created_at: string;
+  latest_plan: AutomationExtractionPlanResponse | null;
+};
+
+type AutomationSiteAnalysisListResponse = {
+  items: AutomationSiteAnalysisHistoryItemResponse[];
+  total: number;
+  run_started: boolean;
+};
+
 type AutomationSiteAnalysisResponse = {
   requested_url: string;
   analyzed_at: string;
@@ -119,13 +224,13 @@ type AutomationSiteAnalysisResponse = {
   field_candidates: AutomationFieldCandidateResponse[];
   tool_recommendations: AutomationToolRecommendationResponse[];
   cleaning_plan: AutomationCleaningStepResponse[];
-  source_draft: {
-    type: string;
-    config: Record<string, unknown>;
-    suggested_name: string;
-    schedule_cron: string | null;
-  };
+  source_draft: AutomationSourceDraftResponse;
   blocked_reasons: string[];
+  site_analysis: AutomationSiteAnalysisHistoryItemResponse | null;
+  extraction_plan: AutomationExtractionPlanResponse | null;
+  site_analysis_created: boolean;
+  extraction_plan_created: boolean;
+  run_started: boolean;
 };
 
 type AutomationProductCandidateResponse = {
@@ -320,6 +425,62 @@ type AutomationProductDatasetPreviewResponse = {
   blocked_reasons: string[];
 };
 
+type AutomationCleaningPlanDryRunResponse = {
+  created_at: string;
+  authorization_confirmed: boolean;
+  rows: Array<{
+    row_id: string;
+    task_run_id: string;
+    raw_record_id: string;
+    source_url: string | null;
+    before_values: Record<string, unknown>;
+    after_values: Record<string, unknown>;
+    missing_fields_before: string[];
+    missing_fields_after: string[];
+    changed_fields: string[];
+  }>;
+  summary: {
+    rows_count: number;
+    rows_changed: number;
+    rules_count: number;
+    selected_fields: string[];
+    dataset_version_created: boolean;
+    cleaning_plan_created: boolean;
+    run_started: boolean;
+  };
+  cleaning_script: string[];
+  export_preview: Record<string, unknown>;
+  audit_events: Array<Record<string, unknown>>;
+  blocked_reasons: string[];
+};
+
+type AutomationCleaningPlanResponse = {
+  id: string;
+  project_id: string;
+  name: string;
+  version_number: number;
+  target: string;
+  selected_fields: string[];
+  source_task_run_ids: string[];
+  rules: Array<Record<string, unknown>>;
+  cleaning_script: string[];
+  dry_run_preview: Record<string, unknown>;
+  status: string;
+  created_at: string;
+};
+
+type AutomationCleaningPlanCreateResponse = {
+  saved_at: string;
+  authorization_confirmed: boolean;
+  cleaning_plan: AutomationCleaningPlanResponse;
+  dry_run: AutomationCleaningPlanDryRunResponse;
+  cleaning_plan_created: boolean;
+  dataset_version_created: boolean;
+  run_started: boolean;
+  audit_events: Array<Record<string, unknown>>;
+  blocked_reasons: string[];
+};
+
 type AutomationProductDatasetSaveResponse = {
   saved_at: string;
   authorization_confirmed: boolean;
@@ -334,6 +495,7 @@ type AutomationProductDatasetSaveResponse = {
   version: {
     id: string;
     dataset_id: string;
+    cleaning_plan_id: string | null;
     version_number: number;
     source_task_run_ids: string[];
     selected_fields: string[];
@@ -615,6 +777,25 @@ type AutomationProductDriftAlertEmailSendResponse = {
   blocked_reasons: string[];
 };
 
+export async function listAutomationPlatformPackages(): Promise<AutomationPlatformPackageList> {
+  if (mockApiEnabled) {
+    const items = getMockAutomationPlatformPackages();
+    return {
+      items,
+      total: items.length,
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationPlatformPackageListResponse>(
+    "/api/automation/platform-packages",
+  );
+  return {
+    items: response.items.map(mapAutomationPlatformPackage),
+    total: response.total,
+    runStarted: response.run_started,
+  };
+}
+
 export async function analyzeAutomationSite(
   input: AutomationSiteAnalysisInput,
 ): Promise<AutomationSiteAnalysis> {
@@ -624,6 +805,7 @@ export async function analyzeAutomationSite(
   const response = await apiFetch<AutomationSiteAnalysisResponse>("/api/automation/site-analysis", {
     method: "POST",
     body: JSON.stringify({
+      project_id: input.projectId,
       url: input.url,
       authorized: input.authorized,
       target: input.target ?? "ecommerce_product",
@@ -631,6 +813,52 @@ export async function analyzeAutomationSite(
     }),
   });
   return mapAutomationSiteAnalysis(response);
+}
+
+export async function listAutomationSiteAnalyses(
+  input: AutomationSiteAnalysisListInput = {},
+): Promise<AutomationSiteAnalysisList> {
+  if (mockApiEnabled) {
+    const analysis = getMockAutomationSiteAnalysis("https://shop.example/products/demo-bag");
+    return {
+      items: [
+        {
+          id: "site_analysis_mock",
+          projectId: input.projectId ?? "project_marketplace_price",
+          requestedUrl: analysis.requestedUrl,
+          target: "ecommerce_product",
+          status: "analyzed",
+          platformType: analysis.platformProfile.platformType,
+          pageType: analysis.pageStructure.pageType,
+          riskLevel: analysis.platformProfile.riskLevel,
+          analyzedAt: analysis.analyzedAt,
+          createdAt: analysis.analyzedAt,
+          latestPlan: null,
+        },
+      ],
+      total: 1,
+      runStarted: false,
+    };
+  }
+  const params = new URLSearchParams();
+  if (input.projectId) {
+    params.set("project_id", input.projectId);
+  }
+  if (input.target) {
+    params.set("target", input.target);
+  }
+  if (input.limit) {
+    params.set("limit", String(input.limit));
+  }
+  const query = params.toString();
+  const response = await apiFetch<AutomationSiteAnalysisListResponse>(
+    `/api/automation/site-analyses${query ? `?${query}` : ""}`,
+  );
+  return {
+    items: response.items.map(mapAutomationSiteAnalysisHistoryItem),
+    total: response.total,
+    runStarted: response.run_started,
+  };
 }
 
 export async function discoverAutomationProducts(
@@ -740,6 +968,75 @@ export async function previewAutomationProductDataset(
   return mapAutomationProductDatasetPreview(response);
 }
 
+export async function dryRunAutomationCleaningPlan(
+  input: AutomationCleaningPlanInput,
+): Promise<AutomationCleaningPlanDryRun> {
+  if (mockApiEnabled) {
+    return getMockAutomationCleaningPlanDryRun(input);
+  }
+  const response = await apiFetch<AutomationCleaningPlanDryRunResponse>(
+    "/api/automation/cleaning-plan-dry-run",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        task_run_ids: input.taskRunIds,
+        fields: input.fields,
+        rules: input.rules.map(mapCleaningRuleRequest),
+        max_rows: input.maxRows ?? 100,
+      }),
+    },
+  );
+  return mapAutomationCleaningPlanDryRun(response);
+}
+
+export async function createAutomationCleaningPlan(
+  input: AutomationCleaningPlanCreateInput,
+): Promise<AutomationCleaningPlanCreate> {
+  if (mockApiEnabled) {
+    const dryRun = getMockAutomationCleaningPlanDryRun(input);
+    return {
+      savedAt: new Date().toISOString(),
+      authorizationConfirmed: input.authorized,
+      cleaningPlan: {
+        id: "mock-cleaning-plan-1",
+        projectId: "mock-project-1",
+        name: input.name,
+        versionNumber: 1,
+        target: "ecommerce_product",
+        selectedFields: dryRun.summary.selectedFields,
+        sourceTaskRunIds: input.taskRunIds,
+        rules: input.rules as unknown as Array<Record<string, unknown>>,
+        cleaningScript: dryRun.cleaningScript,
+        dryRunPreview: dryRun.exportPreview,
+        status: "draft",
+        createdAt: new Date().toISOString(),
+      },
+      dryRun,
+      cleaningPlanCreated: true,
+      datasetVersionCreated: false,
+      runStarted: false,
+      auditEvents: [{ event: "mock_cleaning_plan_created" }],
+      blockedReasons: ["CleaningPlan 已保存为草案；尚未保存 DatasetVersion 或启动采集。"],
+    };
+  }
+  const response = await apiFetch<AutomationCleaningPlanCreateResponse>(
+    "/api/automation/cleaning-plans",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        name: input.name,
+        task_run_ids: input.taskRunIds,
+        fields: input.fields,
+        rules: input.rules.map(mapCleaningRuleRequest),
+        max_rows: input.maxRows ?? 100,
+      }),
+    },
+  );
+  return mapAutomationCleaningPlanCreate(response);
+}
+
 export async function saveAutomationProductDataset(
   input: AutomationProductDatasetSaveInput,
 ): Promise<AutomationProductDatasetSave> {
@@ -757,6 +1054,7 @@ export async function saveAutomationProductDataset(
         task_run_ids: input.taskRunIds,
         fields: input.fields,
         max_rows: input.maxRows ?? 100,
+        cleaning_plan_id: input.cleaningPlanId,
       }),
     },
   );
@@ -1222,6 +1520,53 @@ function mapAutomationNotification(response: NotificationResponse): Notification
   };
 }
 
+function mapAutomationPlatformPackage(
+  response: AutomationPlatformPackageResponse,
+): AutomationPlatformPackage {
+  return {
+    id: response.id,
+    name: response.name,
+    category: response.category,
+    summary: response.summary,
+    supportedTargets: response.supported_targets,
+    collectorTypes: response.collector_types,
+    fieldSchema: response.field_schema.map((field) => ({
+      key: field.key,
+      label: field.label,
+      dataType: field.data_type,
+      required: field.required,
+      source: field.source,
+      cleaningRule: field.cleaning_rule,
+    })),
+    strategyMatrix: response.strategy_matrix.map((strategy) => ({
+      id: strategy.id,
+      label: strategy.label,
+      entrypoint: strategy.entrypoint,
+      collectorType: strategy.collector_type,
+      fit: strategy.fit,
+      canStartFromAutomation: strategy.can_start_from_automation,
+      reviewRequired: strategy.review_required,
+      description: strategy.description,
+    })),
+    riskBoundaries: response.risk_boundaries.map((boundary) => ({
+      condition: boundary.condition,
+      severity: boundary.severity,
+      guidance: boundary.guidance,
+    })),
+    sopLinks: response.sop_links.map((link) => ({
+      label: link.label,
+      href: link.href,
+    })),
+    sampleFixture: {
+      fixtureType: response.sample_fixture.fixture_type,
+      available: response.sample_fixture.available,
+      description: response.sample_fixture.description,
+    },
+    executionBoundary: response.execution_boundary,
+    runStarted: response.run_started,
+  };
+}
+
 function mapAutomationSiteAnalysis(response: AutomationSiteAnalysisResponse): AutomationSiteAnalysis {
   return {
     requestedUrl: response.requested_url,
@@ -1254,6 +1599,59 @@ function mapAutomationSiteAnalysis(response: AutomationSiteAnalysisResponse): Au
       scheduleCron: response.source_draft.schedule_cron,
     },
     blockedReasons: response.blocked_reasons,
+    siteAnalysis: response.site_analysis
+      ? mapAutomationSiteAnalysisHistoryItem(response.site_analysis)
+      : null,
+    extractionPlan: response.extraction_plan
+      ? mapAutomationExtractionPlan(response.extraction_plan)
+      : null,
+    siteAnalysisCreated: response.site_analysis_created,
+    extractionPlanCreated: response.extraction_plan_created,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationExtractionPlan(
+  response: AutomationExtractionPlanResponse,
+): AutomationExtractionPlan {
+  return {
+    id: response.id,
+    siteAnalysisId: response.site_analysis_id,
+    projectId: response.project_id,
+    name: response.name,
+    versionNumber: response.version_number,
+    collectorType: response.collector_type,
+    selectedFields: response.selected_fields,
+    sourceDraft: {
+      type: response.source_draft.type,
+      config: response.source_draft.config,
+      suggestedName: response.source_draft.suggested_name,
+      scheduleCron: response.source_draft.schedule_cron,
+    },
+    scheduleCron: response.schedule_cron,
+    status: response.status,
+    riskLevel: response.risk_level,
+    auditEvents: response.audit_events,
+    createdAt: response.created_at,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationSiteAnalysisHistoryItem(
+  response: AutomationSiteAnalysisHistoryItemResponse,
+): AutomationSiteAnalysisHistoryItem {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    requestedUrl: response.requested_url,
+    target: response.target,
+    status: response.status,
+    platformType: response.platform_type,
+    pageType: response.page_type,
+    riskLevel: response.risk_level,
+    analyzedAt: response.analyzed_at,
+    createdAt: response.created_at,
+    latestPlan: response.latest_plan ? mapAutomationExtractionPlan(response.latest_plan) : null,
   };
 }
 
@@ -1447,6 +1845,101 @@ function mapAutomationProductBatchRun(
   };
 }
 
+function mapCleaningRuleRequest(rule: AutomationCleaningRule) {
+  return {
+    field: rule.field,
+    operation: rule.operation,
+    value: rule.value,
+    description: rule.description,
+  };
+}
+
+function getMockAutomationCleaningPlanDryRun(
+  input: AutomationCleaningPlanInput,
+): AutomationCleaningPlanDryRun {
+  const selectedFields = input.fields?.length
+    ? input.fields
+    : ["title", "price", "sku", "canonical_url"];
+  const beforeRows = [
+    {
+      rowId: "mock-run-1:mock-record-1",
+      taskRunId: input.taskRunIds[0] ?? "mock-run-1",
+      rawRecordId: "mock-record-1",
+      sourceUrl: "https://shop.example/products/demo-bag",
+      values: {
+        title: "Demo Carry Bag",
+        price: 129.9,
+        sku: "BAG-001",
+        canonical_url: "https://shop.example/products/demo-bag",
+      },
+    },
+    {
+      rowId: "mock-run-2:mock-record-2",
+      taskRunId: input.taskRunIds[1] ?? input.taskRunIds[0] ?? "mock-run-2",
+      rawRecordId: "mock-record-2",
+      sourceUrl: "https://shop.example/products/weekend-tote",
+      values: {
+        title: "Weekend Tote",
+        price: null,
+        sku: null,
+        canonical_url: "https://shop.example/products/weekend-tote",
+      },
+    },
+  ];
+  const rows = beforeRows.map((row) => {
+    const beforeValues = Object.fromEntries(
+      selectedFields.map((field) => [field, row.values[field as keyof typeof row.values] ?? null]),
+    );
+    const afterValues: Record<string, unknown> = { ...beforeValues };
+    for (const rule of input.rules) {
+      if (rule.operation === "fill_default" && !afterValues[rule.field]) {
+        afterValues[rule.field] = rule.value ?? null;
+      }
+      if (rule.operation === "strip_text" && typeof afterValues[rule.field] === "string") {
+        afterValues[rule.field] = String(afterValues[rule.field]).trim().replace(/\s+/g, " ");
+      }
+    }
+    const changedFields = selectedFields.filter((field) => beforeValues[field] !== afterValues[field]);
+    return {
+      rowId: row.rowId,
+      taskRunId: row.taskRunId,
+      rawRecordId: row.rawRecordId,
+      sourceUrl: row.sourceUrl,
+      beforeValues,
+      afterValues,
+      missingFieldsBefore: selectedFields.filter((field) => !beforeValues[field]),
+      missingFieldsAfter: selectedFields.filter((field) => !afterValues[field]),
+      changedFields,
+    };
+  });
+  return {
+    createdAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    rows,
+    summary: {
+      rowsCount: rows.length,
+      rowsChanged: rows.filter((row) => row.changedFields.length > 0).length,
+      rulesCount: input.rules.length,
+      selectedFields,
+      datasetVersionCreated: false,
+      cleaningPlanCreated: false,
+      runStarted: false,
+    },
+    cleaningScript: input.rules.map((rule) =>
+      rule.operation === "fill_default"
+        ? `fill ${rule.field} with default value ${rule.value}`
+        : `${rule.operation} ${rule.field}`,
+    ),
+    exportPreview: {
+      format: "json",
+      schema: { fields: selectedFields, primary_key: "canonical_url" },
+      rows: rows.map((row) => row.afterValues),
+    },
+    auditEvents: [{ event: "mock_cleaning_plan_dry-run_requested" }],
+    blockedReasons: ["CleaningPlan dry-run 只转换样本行，不会保存 DatasetVersion。"],
+  };
+}
+
 function mapAutomationProductDatasetPreview(
   response: AutomationProductDatasetPreviewResponse,
 ): AutomationProductDatasetPreview {
@@ -1478,6 +1971,74 @@ function mapAutomationProductDatasetPreview(
   };
 }
 
+function mapAutomationCleaningPlanDryRun(
+  response: AutomationCleaningPlanDryRunResponse,
+): AutomationCleaningPlanDryRun {
+  return {
+    createdAt: response.created_at,
+    authorizationConfirmed: response.authorization_confirmed,
+    rows: response.rows.map((row) => ({
+      rowId: row.row_id,
+      taskRunId: row.task_run_id,
+      rawRecordId: row.raw_record_id,
+      sourceUrl: row.source_url,
+      beforeValues: row.before_values,
+      afterValues: row.after_values,
+      missingFieldsBefore: row.missing_fields_before,
+      missingFieldsAfter: row.missing_fields_after,
+      changedFields: row.changed_fields,
+    })),
+    summary: {
+      rowsCount: response.summary.rows_count,
+      rowsChanged: response.summary.rows_changed,
+      rulesCount: response.summary.rules_count,
+      selectedFields: response.summary.selected_fields,
+      datasetVersionCreated: response.summary.dataset_version_created,
+      cleaningPlanCreated: response.summary.cleaning_plan_created,
+      runStarted: response.summary.run_started,
+    },
+    cleaningScript: response.cleaning_script,
+    exportPreview: response.export_preview,
+    auditEvents: response.audit_events,
+    blockedReasons: response.blocked_reasons,
+  };
+}
+
+function mapAutomationCleaningPlan(
+  response: AutomationCleaningPlanResponse,
+): AutomationCleaningPlanCreate["cleaningPlan"] {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    name: response.name,
+    versionNumber: response.version_number,
+    target: response.target,
+    selectedFields: response.selected_fields,
+    sourceTaskRunIds: response.source_task_run_ids,
+    rules: response.rules,
+    cleaningScript: response.cleaning_script,
+    dryRunPreview: response.dry_run_preview,
+    status: response.status,
+    createdAt: response.created_at,
+  };
+}
+
+function mapAutomationCleaningPlanCreate(
+  response: AutomationCleaningPlanCreateResponse,
+): AutomationCleaningPlanCreate {
+  return {
+    savedAt: response.saved_at,
+    authorizationConfirmed: response.authorization_confirmed,
+    cleaningPlan: mapAutomationCleaningPlan(response.cleaning_plan),
+    dryRun: mapAutomationCleaningPlanDryRun(response.dry_run),
+    cleaningPlanCreated: response.cleaning_plan_created,
+    datasetVersionCreated: response.dataset_version_created,
+    runStarted: response.run_started,
+    auditEvents: response.audit_events,
+    blockedReasons: response.blocked_reasons,
+  };
+}
+
 function mapAutomationProductDatasetSave(
   response: AutomationProductDatasetSaveResponse,
 ): AutomationProductDatasetSave {
@@ -1495,6 +2056,7 @@ function mapAutomationProductDatasetSave(
     version: {
       id: response.version.id,
       datasetId: response.version.dataset_id,
+      cleaningPlanId: response.version.cleaning_plan_id,
       versionNumber: response.version.version_number,
       sourceTaskRunIds: response.version.source_task_run_ids,
       selectedFields: response.version.selected_fields,
@@ -1527,6 +2089,7 @@ function mapAutomationProductScheduleApprove(
     version: {
       id: response.version.id,
       datasetId: response.version.dataset_id,
+      cleaningPlanId: response.version.cleaning_plan_id,
       versionNumber: response.version.version_number,
       sourceTaskRunIds: response.version.source_task_run_ids,
       selectedFields: response.version.selected_fields,
@@ -1580,6 +2143,7 @@ function mapAutomationProductDriftCheck(
     version: {
       id: response.version.id,
       datasetId: response.version.dataset_id,
+      cleaningPlanId: response.version.cleaning_plan_id,
       versionNumber: response.version.version_number,
       sourceTaskRunIds: response.version.source_task_run_ids,
       selectedFields: response.version.selected_fields,
@@ -1640,6 +2204,7 @@ function mapAutomationProductDriftEvent(
     version: {
       id: response.version.id,
       datasetId: response.version.dataset_id,
+      cleaningPlanId: response.version.cleaning_plan_id,
       versionNumber: response.version.version_number,
       sourceTaskRunIds: response.version.source_task_run_ids,
       selectedFields: response.version.selected_fields,
@@ -1707,6 +2272,7 @@ function mapAutomationDatasetVersion(
   return {
     id: response.id,
     datasetId: response.dataset_id,
+    cleaningPlanId: response.cleaning_plan_id,
     versionNumber: response.version_number,
     sourceTaskRunIds: response.source_task_run_ids,
     selectedFields: response.selected_fields,

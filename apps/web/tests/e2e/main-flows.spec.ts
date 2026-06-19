@@ -753,6 +753,31 @@ test.describe("MVP workspace routes", () => {
     await createAutomationDatasetAsset(page);
   });
 
+  test("renders automation platform packages and applies executable package", async ({
+    page,
+  }) => {
+    await page.goto("/automation");
+    await expect(
+      page.getByRole("heading", { name: "平台包矩阵" }),
+    ).toBeVisible();
+    await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
+    await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
+    await expect(page.getByText("SOP/import-only")).toBeVisible();
+
+    await page
+      .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })
+      .click();
+    await expect(page.getByRole("button", { name: "商品发现" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByText("已应用平台包：独立站 / Shopify-style 商品采集")).toBeVisible();
+    await expect(page.getByText("标题", { exact: true })).toBeVisible();
+    await expect(page.getByText("价格", { exact: true })).toBeVisible();
+    await expect(page.getByText("规范 URL", { exact: true })).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
   test("operates real dataset asset export and drift alert preview", async ({
     page,
   }, testInfo) => {

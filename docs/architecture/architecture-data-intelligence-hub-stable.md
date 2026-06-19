@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-14
+updated: 2026-06-19
 owner: self
 source: human+ai
 ---
@@ -20,9 +20,10 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`。
-4. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
-5. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
+3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`。
+4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
+5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
+6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
 
 ## 运行拓扑
 
@@ -51,6 +52,33 @@ flowchart LR
 3. PostgreSQL volume 为 `data_achieve_scrapy_postgres_data`，不与其他应用共享。
 4. 生产敏感配置只在 `/opt/data-achieve-scrapy/.env.production`，不进入仓库。
 
+## 自动采集工作台闭环
+
+当前产品定位已从“工具情报展示”推进为“自动化数据采集工作台”。工具情报仍保留，但它的架构角色是采集策略推荐层，而不是主链路。
+
+自动采集主链路：
+
+```mermaid
+flowchart LR
+  URL["目标 URL / API / 导入样本"] --> AUTH["授权与合规确认"]
+  AUTH --> SA["Site Analysis"]
+  SA --> FC["Field Candidates"]
+  FC --> EP["Extraction Plan"]
+  EP --> RUN["Collector Run"]
+  RUN --> DS["Dataset Version"]
+  DS --> CP["Cleaning Plan / Rules"]
+  DS --> DRIFT["Dataset Drift"]
+  DS --> EXP["Dataset Export"]
+  DRIFT --> ALERT["Alert / Notification"]
+```
+
+当前实现边界：
+
+1. `SiteAnalysis` 与 `ExtractionPlan` 已升级为可保存、可查询、可复制版本的正式资产。
+2. `CleaningPlan` 已升级为可保存、可 dry-run、可被 DatasetVersion 追踪的正式草案资产。
+3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
+4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
+
 ## 数据闭环
 
 ```mermaid
@@ -66,6 +94,10 @@ flowchart LR
   SIG --> AE["AlertEvent"]
   REP --> N["Notification"]
   AE --> N
+  RAW --> DS["Dataset"]
+  DS --> DE["DatasetExportJob"]
+  DS --> DD["DatasetDriftEvent"]
+  DD --> AE
 ```
 
 核心不变量：
@@ -76,6 +108,8 @@ flowchart LR
 4. `IntelligenceItem` 的评分来自规则公式，摘要文案不能新增事实。
 5. `Evidence` 必须能追溯到 signal、entity、raw record 或 URL。
 6. Report、Alert、Notification 都消费已存在的情报和证据，不绕过证据链。
+7. Dataset 是面向下游交付的结构化资产，必须能追溯到 TaskRun、RawRecord 和字段选择。
+8. DatasetExportJob 是受控导出记录，必须记录格式、文件名、大小、行数、checksum 和审计事件。
 
 ## 模块分层
 
@@ -90,6 +124,25 @@ flowchart LR
 | Web lib | `apps/web/src/lib/` | API client、mock API、格式化工具 |
 | Web types | `apps/web/src/types/` | 前端类型定义 |
 
+## Automation 与 Dataset 模块
+
+| 模块 | 主要文件 | 当前职责 |
+|---|---|---|
+| Automation routes | `apps/api/src/data_intelligence_hub/api/routes/automation.py` | `/api/automation` HTTP 入口 |
+| Automation service | `apps/api/src/data_intelligence_hub/services/automation_service.py` | 站点分析、商品发现、fan-out、批量运行、Dataset、漂移、告警和导出流程 |
+| Automation schemas | `apps/api/src/data_intelligence_hub/schemas/automation.py` | 自动采集请求与响应合同 |
+| Dataset models | `apps/api/src/data_intelligence_hub/models/dataset.py` | Dataset、DatasetVersion、CleaningPlan、DatasetDriftEvent、DatasetExportJob |
+| Dataset repository | `apps/api/src/data_intelligence_hub/repositories/datasets.py` | Dataset 查询、版本、漂移与导出任务持久化 |
+| CleaningPlan repository | `apps/api/src/data_intelligence_hub/repositories/cleaning_plans.py` | CleaningPlan 查询、版本号和持久化 |
+| Automation page | `apps/web/src/components/automation/automation-workbench.tsx` | 自动采集工作台 |
+| Dataset page | `apps/web/src/components/datasets/datasets-workspace.tsx` | 数据集资产台、导出与漂移历史 |
+
+后续应新增或拆分：
+
+1. `PlatformPackage` 元数据层，用于 Shopify、GitHub/API-first、marketplace、social 等平台包。
+2. CleaningPlan 规则编辑器和更完整的 before/after 预览。
+3. 写入类接口的重复动作保护和幂等键。
+
 ## 采集与调度
 
 采集任务的稳定路径：
@@ -103,6 +156,25 @@ flowchart LR
 7. Normalization 生成 `Entity` 与 `EntitySnapshot`。
 8. Signal service 比较快照并生成 `Signal`。
 9. Intelligence service 生成 `IntelligenceItem` 和 `Evidence`。
+10. 自动采集流程可以从 TaskRun 聚合生成 DatasetVersion，并进一步生成 DatasetDriftEvent、AlertEvent、Notification 或 DatasetExportJob。
+
+当前稳定 collector：
+
+| type | 用途 |
+|---|---|
+| `github_repo` | 监控公开 GitHub 仓库指标 |
+| `github_topic` | 按公开 topic 发现 GitHub 仓库 |
+| `generic_web` | 采集公开网页快照 |
+| `manual_json` | 导入人工或外部工具结构化样本 |
+| `ecommerce_product_discovery` | 从独立站列表页或 sitemap 发现商品 URL |
+| `ecommerce_product_page` | 从公开独立站商品页解析结构化商品字段 |
+
+平台边界：
+
+1. Shopify-style 独立站是当前第一平台包。
+2. GitHub/API-first 平台包适合承接采集工具情报监控。
+3. Amazon、Temu、Shopee、Lazada 等 marketplace 应优先走官方 API、授权导出或人工导入。
+4. TikTok、Instagram、X、小红书等社媒平台在未明确授权和平台政策前，不实现登录态抓取、反检测或风控绕过。
 
 调度器当前是进程内轻量调度，由 `SCHEDULER_ENABLED` 控制。生产 compose 支持开启，默认值由远程 `.env.production` 决定。后续如果任务规模增大，应把单 owner 机制升级为独立 worker 或 Temporal。
 
@@ -129,3 +201,10 @@ flowchart LR
 3. 生产真实 API E2E 通过：Playwright `17 passed, 5 skipped`。
 4. 演示数据项目域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
 5. 演示数据 collector 覆盖 `generic_web`、`github_repo`、`manual_json`。
+
+截至 2026-06-19，本地仓库检查确认：
+
+1. `/api/automation` 路由已存在，覆盖 site analysis、product discovery、fan-out、batch run、Dataset、drift、alert 和 export。
+2. `DatasetExportJob` 模型、导出服务、导出历史接口和下载接口已存在。
+3. 前端 `/datasets` 已存在生成导出文件和下载导出文件的交互。
+4. 以上为本地仓库实现事实；是否已在生产环境部署仍需单独核验生产 SHA、容器状态和真实 E2E。
