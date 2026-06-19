@@ -5,7 +5,7 @@ module: engineering
 topic: real-data-closed-loop
 status: stable
 created: 2026-06-12
-updated: 2026-06-13
+updated: 2026-06-19
 owner: self
 source: human+ai
 ---
@@ -153,9 +153,10 @@ uv run python -m data_intelligence_hub.seed.demo_data
 7. 执行 Alembic 迁移。
 8. 执行演示数据种子。
 9. 启动 web 和 edge。
-10. 执行 API smoke。
-11. 执行线上 E2E。
-12. 回归检查既有域名 `video.lute-tlz-dddd.top`、`mkt.lute-tlz-dddd.top`、`voc.lute-tlz-dddd.top`。
+10. 刷新外层共享网关，避免旧 Docker DNS 解析导致公网 502。
+11. 执行 API smoke。
+12. 执行线上 E2E。
+13. 回归检查既有域名 `video.lute-tlz-dddd.top`、`mkt.lute-tlz-dddd.top`、`voc.lute-tlz-dddd.top`。
 
 > 说明：生产 compose 运行与重建需显式加载 `.env.production`，否则数据库口令会回退默认值。  
 > 推荐在 `app` 目录下执行：  
@@ -167,6 +168,18 @@ uv run python -m data_intelligence_hub.seed.demo_data
 bash scripts/deploy-preflight-scrapy.sh \
   --env-file /opt/data-achieve-scrapy/.env.production \
   --compose-file configs/deploy/scrapy/docker-compose.yml
+```
+
+web/edge 重建后必须运行：
+
+```bash
+bash scripts/reload-scrapy-gateway.sh
+```
+
+只读预检：
+
+```bash
+bash scripts/reload-scrapy-gateway.sh --dry-run
 ```
 
 验收：

@@ -5,7 +5,7 @@ module: operations
 topic: release-rollback
 status: stable
 created: 2026-06-14
-updated: 2026-06-17
+updated: 2026-06-19
 owner: self
 source: human+ai
 ---
@@ -73,9 +73,10 @@ ssh -i ~/.ssh/data_scrapy_ai_video.pem ubuntu@101.34.52.232 \
 6. 启动数据库。
 7. 执行 Alembic 迁移。
 8. 必要时执行 demo seed。
-9. 运行 API smoke。
-10. 运行生产真实 API E2E。
-11. 检查容器健康。
+9. 启动 API/Web/Edge 后刷新外层共享网关。
+10. 运行 API smoke。
+11. 运行生产真实 API E2E。
+12. 检查容器健康。
 
 生产 compose 命令必须显式加载 env：
 
@@ -96,6 +97,18 @@ docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-com
 
 ```bash
 docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d api web edge
+```
+
+刷新外层共享网关：
+
+```bash
+bash scripts/reload-scrapy-gateway.sh
+```
+
+说明：`data_achieve_scrapy_edge` 重建后，外层 `ai_video_nginx` 可能继续使用旧的 Docker DNS 解析结果，公网会短暂返回 502。该脚本会先确认 edge healthy、`data_achieve_scrapy_proxy` 可解析、外层 Nginx 配置有效，再 reload 外层网关并执行内部与公网 health smoke。只读预检可使用：
+
+```bash
+bash scripts/reload-scrapy-gateway.sh --dry-run
 ```
 
 demo seed：
@@ -129,10 +142,11 @@ bash scripts/smoke-api-scrapy.sh
 
 1. `curl -ks https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`、`database=connected`、`schema=current`。
 2. `docker compose ps` 显示 api、db、edge、web healthy。
-3. 主要页面返回 200：`/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`。
-4. 演示账号数据域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
-5. 最新高价值情报不是 placeholder，至少包含开源、 电商、社媒、竞品四类。
-6. 生产真实 API E2E 通过。
+3. `bash scripts/reload-scrapy-gateway.sh --dry-run` 通过，外层网关可解析 `data_achieve_scrapy_proxy`。
+4. 主要页面返回 200：`/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`。
+5. 演示账号数据域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
+6. 最新高价值情报不是 placeholder，至少包含开源、 电商、社媒、竞品四类。
+7. 生产真实 API E2E 通过。
 
 ## 回滚触发条件
 
@@ -172,9 +186,10 @@ docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-com
 网关回滚：
 
 1. 先恢复项目 edge compose。
-2. 如果宿主机 nginx 被影响，恢复发布前备份。
-3. 执行 `nginx -t`。
-4. reload nginx。
+2. 执行 `bash scripts/reload-scrapy-gateway.sh --dry-run`，确认外层网关可解析当前 edge。
+3. 如果宿主机 nginx 被影响，恢复发布前备份。
+4. 执行 `nginx -t`。
+5. reload nginx。
 
 ## 发布记录要求
 
