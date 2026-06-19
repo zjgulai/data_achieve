@@ -34,8 +34,11 @@ import {
   saveAutomationProductDataset,
 } from "@/lib/api/automation";
 import { listProjects } from "@/lib/api/projects";
+import { createSource, enableSource } from "@/lib/api/sources";
+import { runTask } from "@/lib/api/tasks";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/types/project";
+import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
 import type {
   AutomationCleaningPlanCreate,
   AutomationCleaningPlanDryRun,
@@ -77,6 +80,14 @@ const fieldLabels: Record<string, string> = {
   price: "价格",
   sku: "SKU",
   title: "标题",
+};
+
+type GitHubTopicRunState = {
+  source: Source;
+  task: CollectionTask;
+  run: TaskRun | null;
+  topic: string;
+  maxResults: number;
 };
 
 function defaultCleaningRulesForFields(fields: string[]): AutomationCleaningRule[] {
@@ -127,13 +138,16 @@ function defaultCleaningRulesForFields(fields: string[]): AutomationCleaningRule
   return rules;
 }
 
-type AutomationMode = "product_page" | "product_discovery";
+type AutomationMode = "product_page" | "product_discovery" | "github_topic_radar";
 
 export function AutomationWorkbench() {
   const [mode, setMode] = useState<AutomationMode>("product_page");
   const [url, setUrl] = useState("https://shop.example/products/demo-bag");
   const [authorized, setAuthorized] = useState(false);
   const [maxProducts, setMaxProducts] = useState("50");
+  const [githubTopic, setGithubTopic] = useState("web-scraping");
+  const [githubMaxResults, setGithubMaxResults] = useState("20");
+  const [githubRun, setGithubRun] = useState<GitHubTopicRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
     "price",
@@ -222,10 +236,49 @@ export function AutomationWorkbench() {
     [analysis, fields.length],
   );
 
+  async function runGitHubTopicRadar() {
+    if (!selectedProjectId) {
+      setError("请选择写入项目后再创建 GitHub Topic Radar。");
+      return;
+    }
+    const topic = normalizeGitHubTopic(githubTopic);
+    if (!topic) {
+      setError("请填写 GitHub topic，例如 web-scraping。");
+      return;
+    }
+    const maxResults = clampInteger(Number.parseInt(githubMaxResults, 10), 1, 100, 20);
+    setLoading(true);
+    try {
+      const source = await createSource({
+        projectId: selectedProjectId,
+        name: `GitHub Topic Radar: ${topic}`,
+        type: "github_topic",
+        url: `https://github.com/topics/${topic}`,
+        config: {
+          topic,
+          max_results: maxResults,
+        },
+      });
+      const task = await enableSource(source.id);
+      const run = await runTask(task.id);
+      setGithubRun({ source, task, run, topic, maxResults });
+      setAnalysis(null);
+      setDiscovery(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "GitHub Topic Radar run failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function submitAutomation() {
     setError(null);
     if (!authorized) {
-      setError("请先确认该 URL 为公开页面，且你有权进行采集分析。");
+      setError("请先确认目标为公开页面或公开 API，且你有权进行采集分析。");
+      return;
+    }
+    if (mode === "github_topic_radar") {
+      await runGitHubTopicRadar();
       return;
     }
     if (!url.trim()) {
@@ -242,6 +295,7 @@ export function AutomationWorkbench() {
         });
         setDiscovery(result);
         setAnalysis(null);
+        setGithubRun(null);
         return;
       }
       const result = await analyzeAutomationSite({
@@ -252,6 +306,7 @@ export function AutomationWorkbench() {
       });
       setAnalysis(result);
       setDiscovery(null);
+      setGithubRun(null);
       if (selectedProjectId) {
         void refreshAnalysisHistory(selectedProjectId);
       }
@@ -300,6 +355,9 @@ export function AutomationWorkbench() {
       ) ??
       platformPackage.strategyMatrix.find(
         (strategy) => strategy.canStartFromAutomation && strategy.entrypoint === "site-analysis",
+      ) ??
+      platformPackage.strategyMatrix.find(
+        (strategy) => strategy.canStartFromAutomation,
       );
     if (!executableStrategy) {
       return;
@@ -308,9 +366,20 @@ export function AutomationWorkbench() {
     setAppliedPlatformPackage(platformPackage);
     setAnalysis(null);
     setDiscovery(null);
+    setGithubRun(null);
     const sampleUrl = platformPackage.sampleUrls.find(
       (sample) => sample.entrypoint === executableStrategy.entrypoint,
     );
+    if (executableStrategy.collectorType === "github_topic") {
+      setMode("github_topic_radar");
+      setGithubTopic(topicFromGitHubUrl(sampleUrl?.url) ?? "web-scraping");
+      setGithubMaxResults("20");
+      const osintProject = projects.find((project) => project.domain === "osint");
+      if (osintProject) {
+        setSelectedProjectId(osintProject.id);
+      }
+      return;
+    }
     if (executableStrategy.entrypoint === "product-discovery") {
       setMode("product_discovery");
       setUrl(sampleUrl?.url ?? "https://shop.example/collections/summer-bags");
@@ -333,20 +402,36 @@ export function AutomationWorkbench() {
               URL 到结构化采集计划
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7A625A]">
-              针对公开电商页面先做结构解析。商品发现用于从集合页提取候选商品 URL，商品页分析用于识别字段、清洗规则和入库草稿。
+              针对公开电商页面和 GitHub API-first topic 先做结构解析。商品发现用于提取候选 URL，Topic Radar 用于把公开仓库元数据写入采集源、任务和运行结果。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <MetricPill icon={ShieldCheck} label="授权边界" value={authorized ? "已确认" : "待确认"} />
               <MetricPill
                 icon={SlidersHorizontal}
-                label={mode === "product_discovery" ? "候选上限" : "目标字段"}
-                value={mode === "product_discovery" ? `${maxProducts || "50"} 条` : `${fields.length} 个`}
+                label={
+                  mode === "github_topic_radar"
+                    ? "仓库上限"
+                    : mode === "product_discovery"
+                      ? "候选上限"
+                      : "目标字段"
+                }
+                value={
+                  mode === "github_topic_radar"
+                    ? `${githubMaxResults || "20"} 条`
+                    : mode === "product_discovery"
+                      ? `${maxProducts || "50"} 条`
+                      : `${fields.length} 个`
+                }
               />
               <MetricPill
                 icon={Database}
                 label="结构保存"
                 value={
-                  mode === "product_discovery"
+                  mode === "github_topic_radar"
+                    ? githubRun
+                      ? `${githubRun.run?.recordsCount ?? 0} 条`
+                      : "待运行"
+                    : mode === "product_discovery"
                     ? discovery
                       ? `${discovery.productCandidates.length} URL`
                       : "待发现"
@@ -366,47 +451,73 @@ export function AutomationWorkbench() {
                 void submitAutomation();
               }}
             >
-              <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1">
-                {(["product_page", "product_discovery"] as const).map((item) => (
+              <div className="grid grid-cols-3 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1">
+                {(
+                  [
+                    { mode: "product_page", label: "商品页分析" },
+                    { mode: "product_discovery", label: "商品发现" },
+                    { mode: "github_topic_radar", label: "Topic Radar" },
+                  ] as const
+                ).map((item) => (
                   <button
-                    aria-pressed={mode === item}
+                    aria-pressed={mode === item.mode}
                     className={cn(
-                      "h-9 rounded-lg px-3 text-xs font-semibold transition",
-                      mode === item
+                      "h-9 rounded-lg px-2 text-xs font-semibold transition",
+                      mode === item.mode
                         ? "bg-[#C96F5C] text-white shadow-[0_8px_18px_rgba(201,111,92,0.2)]"
                         : "text-[#7D4F43] hover:bg-[#FFF0EA]",
                     )}
-                    key={item}
+                    key={item.mode}
                     onClick={() => {
-                      setMode(item);
+                      setMode(item.mode);
                       setAnalysis(null);
                       setDiscovery(null);
+                      setGithubRun(null);
+                      if (item.mode === "github_topic_radar") {
+                        const osintProject = projects.find((project) => project.domain === "osint");
+                        if (osintProject) {
+                          setSelectedProjectId(osintProject.id);
+                        }
+                        return;
+                      }
                       setUrl(
-                        item === "product_discovery"
+                        item.mode === "product_discovery"
                           ? "https://shop.example/collections/summer-bags"
                           : "https://shop.example/products/demo-bag",
                       );
                     }}
                     type="button"
                   >
-                    {item === "product_discovery" ? "商品发现" : "商品页分析"}
+                    {item.label}
                   </button>
                 ))}
               </div>
 
-              <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
-                <span>{mode === "product_discovery" ? "集合页 / 列表页 URL" : "商品页 URL"}</span>
-                <input
-                  className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
-                  onChange={(event) => setUrl(event.target.value)}
-                  placeholder={
-                    mode === "product_discovery"
-                      ? "https://example.com/collections/category"
-                      : "https://example.com/products/item"
-                  }
-                  value={url}
-                />
-              </label>
+              {mode === "github_topic_radar" ? (
+                <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                  <span>GitHub topic</span>
+                  <input
+                    className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                    onChange={(event) => setGithubTopic(event.target.value)}
+                    placeholder="web-scraping"
+                    value={githubTopic}
+                  />
+                </label>
+              ) : (
+                <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                  <span>{mode === "product_discovery" ? "集合页 / 列表页 URL" : "商品页 URL"}</span>
+                  <input
+                    className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder={
+                      mode === "product_discovery"
+                        ? "https://example.com/collections/category"
+                        : "https://example.com/products/item"
+                    }
+                    value={url}
+                  />
+                </label>
+              )}
 
               <label className="flex items-start gap-3 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-3 text-sm text-[#5F5757]">
                 <input
@@ -416,7 +527,7 @@ export function AutomationWorkbench() {
                   type="checkbox"
                 />
                 <span>
-                  我确认这是公开可访问页面，采集分析不涉及登录态、验证码绕过或未授权数据访问。
+                  我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。
                 </span>
               </label>
 
@@ -455,7 +566,7 @@ export function AutomationWorkbench() {
                     ))}
                   </div>
                 </div>
-              ) : (
+              ) : mode === "product_discovery" ? (
                 <div className="grid gap-3">
                   <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
                     <span>最多候选商品</span>
@@ -483,6 +594,34 @@ export function AutomationWorkbench() {
                     </select>
                   </label>
                 </div>
+              ) : (
+                <div className="grid gap-3">
+                  <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                    <span>最多仓库</span>
+                    <input
+                      className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition placeholder:text-[#B9A19A] focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                      max={100}
+                      min={1}
+                      onChange={(event) => setGithubMaxResults(event.target.value)}
+                      type="number"
+                      value={githubMaxResults}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+                    <span>写入项目</span>
+                    <select
+                      className="h-11 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 text-sm text-[#3B2924] outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                      onChange={(event) => setSelectedProjectId(event.target.value)}
+                      value={selectedProjectId}
+                    >
+                      {projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
               )}
 
               <button
@@ -491,7 +630,13 @@ export function AutomationWorkbench() {
                 type="submit"
               >
                 {loading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
-                {loading ? "处理中" : mode === "product_discovery" ? "发现商品 URL" : "开始分析"}
+                {loading
+                  ? "处理中"
+                  : mode === "github_topic_radar"
+                    ? "创建并运行 Topic Radar"
+                    : mode === "product_discovery"
+                      ? "发现商品 URL"
+                      : "开始分析"}
               </button>
             </form>
             {error ? (
@@ -518,7 +663,13 @@ export function AutomationWorkbench() {
         packages={platformPackages}
       />
 
-      {mode === "product_discovery" ? (
+      {mode === "github_topic_radar" ? (
+        githubRun ? (
+          <GitHubTopicRunResult result={githubRun} />
+        ) : (
+          <EmptyAnalysisState mode={mode} />
+        )
+      ) : mode === "product_discovery" ? (
         discovery ? (
           <DiscoveryResult
             key={discovery.analyzedAt}
@@ -791,6 +942,53 @@ function PlatformPackageMatrix({
           );
         })}
       </div>
+    </section>
+  );
+}
+
+function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
+  const topicUrl = result.source.url ?? `https://github.com/topics/${result.topic}`;
+  return (
+    <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <Panel icon={Activity} label="GitHub Topic Radar" title="公开仓库情报采集结果">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Fact label="Topic" value={result.topic} />
+          <Fact label="仓库上限" value={String(result.maxResults)} />
+          <Fact label="采集状态" value={formatTaskRunStatus(result.run?.status ?? result.task.status)} />
+          <Fact label="本次记录" value={String(result.run?.recordsCount ?? 0)} />
+        </div>
+        <div className="mt-4 rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3 text-sm text-[#2F6B3A]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="font-semibold">采集源与任务已创建</p>
+              <p className="mt-1 text-xs leading-5 text-[#4F7F56]">
+                系统已使用 GitHub 公开 API 创建 topic 采集源、启用任务，并完成一次手动运行。
+              </p>
+            </div>
+            <a
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-[#B9D9B8] bg-white px-3 text-xs font-semibold text-[#2F6B3A] hover:border-[#4F7F56]"
+              href={topicUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <ExternalLink size={13} aria-hidden="true" />
+              打开 topic
+            </a>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel icon={Database} label="Execution Trace" title="结构化保存状态">
+        <div className="grid gap-3">
+          <Fact label="采集源" value={result.source.name} />
+          <Fact label="Collector" value={result.task.collectorType} />
+          <Fact label="任务状态" value={formatTaskRunStatus(result.task.status)} />
+          <Fact label="快照数量" value={String(result.run?.entitiesCount ?? 0)} />
+          <p className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-sm leading-6 text-[#7A625A]">
+            后续可以在任务页查看运行历史，在数据集页继续做字段筛选、清洗计划和结构化保存。
+          </p>
+        </div>
+      </Panel>
     </section>
   );
 }
@@ -2741,6 +2939,19 @@ function formatExecutionBoundary(value: AutomationPlatformPackage["executionBoun
   return labels[value];
 }
 
+function formatTaskRunStatus(value: string) {
+  const labels: Record<string, string> = {
+    disabled: "已停用",
+    draft: "草稿",
+    enabled: "已启用",
+    failed: "失败",
+    paused: "已暂停",
+    running: "运行中",
+    success: "成功",
+  };
+  return labels[value] ?? value;
+}
+
 function formatFanoutRunMode(value: string) {
   const labels: Record<string, string> = {
     preview_only: "仅预览，不写入",
@@ -2753,6 +2964,31 @@ function formatFanoutExecutionBoundary(value: string) {
     preview_only_no_database_write: "仅生成预览，不写入数据库",
   };
   return labels[value] ?? value;
+}
+
+function normalizeGitHubTopic(value: string) {
+  return value
+    .trim()
+    .replace(/^https?:\/\/github\.com\/topics\//i, "")
+    .replace(/^topics\//i, "")
+    .replace(/^#/, "")
+    .split(/[/?#]/)[0]
+    .toLowerCase();
+}
+
+function topicFromGitHubUrl(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+  const topic = normalizeGitHubTopic(value);
+  return topic || null;
+}
+
+function clampInteger(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function formatPageType(value: string) {

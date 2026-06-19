@@ -151,17 +151,19 @@ async def test_automation_platform_packages_expose_collection_contract(
 
     github_package = packages_by_id["github-api-first"]
     assert github_package["category"] == "developer_platform"
-    assert github_package["execution_boundary"] == "sop_import_only"
+    assert github_package["execution_boundary"] == "executable"
     assert "github_topic" in github_package["collector_types"]
-    assert github_package["default_entrypoint"] == "sop-import"
+    assert github_package["default_entrypoint"] == "source-create"
     assert github_package["sample_urls"][0]["url"].startswith("https://github.com/topics/")
     assert any(
-        boundary["severity"] == "blocked"
-        and "token" in boundary["condition"].lower()
+        boundary["severity"] == "warning"
+        and "github token" in boundary["condition"].lower()
         for boundary in github_package["risk_boundaries"]
     )
-    assert all(
-        strategy["can_start_from_automation"] is False
+    assert any(
+        strategy["entrypoint"] == "source-create"
+        and strategy["collector_type"] == "github_topic"
+        and strategy["can_start_from_automation"] is True
         for strategy in github_package["strategy_matrix"]
     )
 
@@ -353,6 +355,26 @@ async def test_source_rejects_invalid_config(client: AsyncClient) -> None:
     )
 
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_github_topic_source_derives_traceable_url(client: AsyncClient) -> None:
+    project_id = await register_and_create_project(client)
+
+    response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "GitHub Topic Radar: web-scraping",
+            "type": "github_topic",
+            "config": {"topic": "web-scraping", "max_results": 20},
+        },
+    )
+
+    assert response.status_code == 201
+    source = response.json()
+    assert source["type"] == "github_topic"
+    assert source["url"] == "https://github.com/topics/web-scraping"
 
 
 @pytest.mark.asyncio

@@ -166,6 +166,8 @@ async def disable_source(
 def _source_url_from_config(source_type: str, config: dict[str, object]) -> str | None:
     if source_type == "github_repo":
         return f"https://github.com/{config['owner']}/{config['repo']}"
+    if source_type == "github_topic":
+        return f"https://github.com/topics/{config['topic']}"
     if source_type == "generic_web":
         return str(config["url"])
     if source_type in {"ecommerce_product_discovery", "ecommerce_product_page"}:

@@ -86,7 +86,7 @@ export async function listSources(): Promise<Source[]> {
 export async function createSource(payload: SourceCreateInput): Promise<Source> {
   if (mockApiEnabled) {
     return {
-      id: `source_${Date.now()}`,
+      id: `source_${payload.type}_${Date.now()}`,
       projectId: payload.projectId,
       name: payload.name,
       type: payload.type,
@@ -165,11 +165,12 @@ export async function testSource(sourceId: string): Promise<SourceTestResult> {
 export async function enableSource(sourceId: string): Promise<CollectionTask> {
   if (mockApiEnabled) {
     const task = getMockSources().find((source) => source.id === sourceId);
+    const inferredType = inferCollectorTypeFromSourceId(sourceId);
     return {
       id: `task_${sourceId}`,
       projectId: task?.projectId ?? "project_demo",
       sourceId,
-      collectorType: task?.type ?? "github_repo",
+      collectorType: task?.type ?? inferredType,
       name: task?.name ?? "Demo Task",
       scheduleCron: task?.scheduleCron ?? null,
       status: "enabled",
@@ -200,6 +201,25 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
     method: "POST",
   });
   return mapTask(response);
+}
+
+function inferCollectorTypeFromSourceId(sourceId: string): CollectorType {
+  if (sourceId.includes("github_topic")) {
+    return "github_topic";
+  }
+  if (sourceId.includes("ecommerce_product_discovery")) {
+    return "ecommerce_product_discovery";
+  }
+  if (sourceId.includes("ecommerce_product_page")) {
+    return "ecommerce_product_page";
+  }
+  if (sourceId.includes("generic_web")) {
+    return "generic_web";
+  }
+  if (sourceId.includes("manual_json")) {
+    return "manual_json";
+  }
+  return "github_repo";
 }
 
 export async function disableSource(sourceId: string): Promise<Source> {

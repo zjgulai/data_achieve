@@ -254,13 +254,13 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           cleaningRule: "normalize_url",
         },
       ],
-      defaultEntrypoint: "sop-import",
+      defaultEntrypoint: "source-create",
       sampleUrls: [
         {
           label: "Topic 样例",
-          entrypoint: "sop-import",
+          entrypoint: "source-create",
           url: "https://github.com/topics/web-scraping",
-          description: "人工确认 topic 范围后，通过 GitHub API-first 工作流采集。",
+          description: "从公开 topic 创建 GitHub API-first 采集源、任务并小批量运行。",
         },
       ],
       cleaningRules: [
@@ -287,16 +287,16 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           entrypoint: "source-create",
           collectorType: "github_topic",
           fit: "high",
-          canStartFromAutomation: false,
+          canStartFromAutomation: true,
           reviewRequired: true,
-          description: "通过 Sources 创建 GitHub topic 采集源，先审查限速策略。",
+          description: "从 Automation 创建 GitHub topic 采集源、启用任务，并执行一次小批量 API 采集。",
         },
       ],
       riskBoundaries: [
         {
-          condition: "未配置 GitHub token 或触发 rate limit",
-          severity: "blocked",
-          guidance: "先配置凭据、限速和调度窗口，不自动重试放大请求。",
+          condition: "未配置 GitHub token 时使用公开 API 低频采集",
+          severity: "warning",
+          guidance: "限制 max_results 和手动运行次数；触发 rate limit 后不要自动重试放大请求。",
         },
       ],
       sopLinks: [
@@ -311,7 +311,7 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         available: true,
         description: "单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
       },
-      executionBoundary: "sop_import_only",
+      executionBoundary: "executable",
       runStarted: false,
     },
   ];
@@ -2342,6 +2342,25 @@ function mockNextRunAt(lastRunAt: string | null, targetHours: number) {
 }
 
 export function getMockTaskRun(taskId: string): TaskRun {
+  if (taskId.includes("github_topic")) {
+    return {
+      id: `run_${Date.now()}`,
+      taskId,
+      status: "success",
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      recordsCount: 20,
+      entitiesCount: 20,
+      errorMessage: null,
+      createdAt: new Date().toISOString(),
+      logs: [
+        { step: "task_run_created", message: "Manual GitHub topic run requested." },
+        { step: "github_topic_collected", message: "Collected public repositories for topic web-scraping." },
+        { step: "snapshots_saved", message: "Saved repository snapshots for review." },
+      ],
+    };
+  }
+
   if (taskId === "task_linkedin_company") {
     return {
       id: `run_${Date.now()}`,

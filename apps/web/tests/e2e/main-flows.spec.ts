@@ -769,7 +769,7 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
     await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
-    await expect(page.getByText("仅导入 SOP")).toBeVisible();
+    await expect(page.getByText("可执行", { exact: true })).toHaveCount(2);
 
     await page
       .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })
@@ -789,6 +789,23 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("SKU", { exact: true })).toBeVisible();
     await expect(page.getByText("SKU: fill_default")).toBeVisible();
     await expect(page.getByText("规范 URL", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "应用GitHub API-first 工具情报采集" }).click();
+    await expect(page.getByRole("button", { name: "Topic Radar", exact: true })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByLabel("GitHub topic")).toHaveValue("web-scraping");
+    await page
+      .getByLabel("我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
+      .check();
+    await page.getByLabel("最多仓库").fill("3");
+    await page.getByRole("button", { name: "创建并运行 Topic Radar" }).click();
+    await expect(page.getByRole("heading", { name: "公开仓库情报采集结果" })).toBeVisible();
+    await expect(page.getByText("采集源与任务已创建")).toBeVisible();
+    await expect(page.getByText("GitHub Topic Radar: web-scraping")).toBeVisible();
+    await expect(page.getByText("github_topic", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("成功", { exact: true }).first()).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 

@@ -2966,13 +2966,13 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     cleaning_rule="normalize_url",
                 ),
             ],
-            default_entrypoint="sop-import",
+            default_entrypoint="source-create",
             sample_urls=[
                 AutomationPlatformPackageSampleUrlResponse(
                     label="Topic 样例",
-                    entrypoint="sop-import",
+                    entrypoint="source-create",
                     url="https://github.com/topics/web-scraping",
-                    description="用于人工确认 topic 范围后，通过 GitHub API-first 工作流采集。",
+                    description="用于从公开 topic 创建 GitHub API-first 采集源、任务并小批量运行。",
                 ),
             ],
             cleaning_rules=[
@@ -2999,9 +2999,9 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     entrypoint="source-create",
                     collector_type="github_topic",
                     fit="high",
-                    can_start_from_automation=False,
+                    can_start_from_automation=True,
                     review_required=True,
-                    description="通过 Sources 创建 GitHub topic 采集源，先审查 topic 和限速策略。",
+                    description="从 Automation 创建 GitHub topic 采集源、启用任务，并执行一次小批量 API 采集。",
                 ),
                 AutomationPlatformPackageStrategyResponse(
                     id="repo-detail-import",
@@ -3016,9 +3016,9 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
             ],
             risk_boundaries=[
                 AutomationPlatformPackageRiskBoundaryResponse(
-                    condition="未配置 GitHub token 或触发 rate limit",
-                    severity="blocked",
-                    guidance="不要自动重试放大请求；先配置凭据、限速和调度窗口。",
+                    condition="未配置 GitHub token 时使用公开 API 低频采集",
+                    severity="warning",
+                    guidance="限制 max_results 和手动运行次数；触发 rate limit 后不要自动重试放大请求。",
                 ),
                 AutomationPlatformPackageRiskBoundaryResponse(
                     condition="仓库内容涉及个人数据、issue 评论或私有上下文",
@@ -3046,7 +3046,7 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 available=True,
                 description="单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
             ),
-            execution_boundary="sop_import_only",
+            execution_boundary="executable",
             run_started=False,
         ),
     ]
