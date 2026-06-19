@@ -771,9 +771,16 @@ test.describe("MVP workspace routes", () => {
       "aria-pressed",
       "true",
     );
+    await expect(page.getByLabel("集合页 / 列表页 URL")).toHaveValue(
+      "https://shop.example/collections/summer-bags",
+    );
     await expect(page.getByText("已应用平台包：独立站 / Shopify-style 商品采集")).toBeVisible();
+    await expect(page.getByText("操作清单")).toBeVisible();
+    await expect(page.getByText("默认清洗规则")).toBeVisible();
     await expect(page.getByText("标题", { exact: true })).toBeVisible();
     await expect(page.getByText("价格", { exact: true })).toBeVisible();
+    await expect(page.getByText("SKU", { exact: true })).toBeVisible();
+    await expect(page.getByText("SKU: fill_default")).toBeVisible();
     await expect(page.getByText("规范 URL", { exact: true })).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });

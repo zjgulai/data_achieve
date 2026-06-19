@@ -125,8 +125,20 @@ async def test_automation_platform_packages_expose_collection_contract(
     assert {field["key"] for field in ecommerce_package["field_schema"]} >= {
         "title",
         "price",
+        "sku",
         "canonical_url",
     }
+    assert ecommerce_package["default_entrypoint"] == "product-discovery"
+    assert {
+        sample["entrypoint"] for sample in ecommerce_package["sample_urls"]
+    } >= {"product-discovery", "site-analysis"}
+    assert any(
+        rule["field"] == "sku"
+        and rule["operation"] == "fill_default"
+        and rule["value"] == "UNKNOWN-SKU"
+        for rule in ecommerce_package["cleaning_rules"]
+    )
+    assert any("清洗计划" in item for item in ecommerce_package["operator_checklist"])
     assert any(
         strategy["entrypoint"] == "product-discovery"
         and strategy["collector_type"] == "ecommerce_product_discovery"
@@ -141,6 +153,8 @@ async def test_automation_platform_packages_expose_collection_contract(
     assert github_package["category"] == "developer_platform"
     assert github_package["execution_boundary"] == "sop_import_only"
     assert "github_topic" in github_package["collector_types"]
+    assert github_package["default_entrypoint"] == "sop-import"
+    assert github_package["sample_urls"][0]["url"].startswith("https://github.com/topics/")
     assert any(
         boundary["severity"] == "blocked"
         and "token" in boundary["condition"].lower()

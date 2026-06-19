@@ -232,6 +232,27 @@ class AutomationPlatformPackageFieldResponse(BaseModel):
     cleaning_rule: str
 
 
+class AutomationPlatformPackageSampleUrlResponse(BaseModel):
+    label: str
+    entrypoint: Literal["product-discovery", "site-analysis", "sop-import"]
+    url: str
+    description: str
+
+
+class AutomationPlatformPackageCleaningRuleResponse(BaseModel):
+    field: str
+    operation: Literal[
+        "strip_text",
+        "parse_decimal",
+        "normalize_url",
+        "uppercase",
+        "normalize_availability",
+        "fill_default",
+    ]
+    value: str | int | float | bool | None = None
+    description: str
+
+
 class AutomationPlatformPackageStrategyResponse(BaseModel):
     id: str
     label: str
@@ -268,6 +289,10 @@ class AutomationPlatformPackageResponse(BaseModel):
     supported_targets: list[str]
     collector_types: list[str]
     field_schema: list[AutomationPlatformPackageFieldResponse]
+    default_entrypoint: Literal["product-discovery", "site-analysis", "sop-import"]
+    sample_urls: list[AutomationPlatformPackageSampleUrlResponse]
+    cleaning_rules: list[AutomationPlatformPackageCleaningRuleResponse]
+    operator_checklist: list[str]
     strategy_matrix: list[AutomationPlatformPackageStrategyResponse]
     risk_boundaries: list[AutomationPlatformPackageRiskBoundaryResponse]
     sop_links: list[AutomationPlatformPackageSopLinkResponse]

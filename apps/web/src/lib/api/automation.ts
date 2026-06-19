@@ -129,6 +129,26 @@ type AutomationPlatformPackageResponse = {
     source: string;
     cleaning_rule: string;
   }>;
+  default_entrypoint: "product-discovery" | "site-analysis" | "sop-import";
+  sample_urls: Array<{
+    label: string;
+    entrypoint: "product-discovery" | "site-analysis" | "sop-import";
+    url: string;
+    description: string;
+  }>;
+  cleaning_rules: Array<{
+    field: string;
+    operation:
+      | "strip_text"
+      | "parse_decimal"
+      | "normalize_url"
+      | "uppercase"
+      | "normalize_availability"
+      | "fill_default";
+    value?: string | number | boolean | null;
+    description: string;
+  }>;
+  operator_checklist: string[];
   strategy_matrix: Array<{
     id: string;
     label: string;
@@ -1538,6 +1558,20 @@ function mapAutomationPlatformPackage(
       source: field.source,
       cleaningRule: field.cleaning_rule,
     })),
+    defaultEntrypoint: response.default_entrypoint,
+    sampleUrls: response.sample_urls.map((sample) => ({
+      label: sample.label,
+      entrypoint: sample.entrypoint,
+      url: sample.url,
+      description: sample.description,
+    })),
+    cleaningRules: response.cleaning_rules.map((rule) => ({
+      field: rule.field,
+      operation: rule.operation,
+      value: rule.value,
+      description: rule.description,
+    })),
+    operatorChecklist: response.operator_checklist,
     strategyMatrix: response.strategy_matrix.map((strategy) => ({
       id: strategy.id,
       label: strategy.label,

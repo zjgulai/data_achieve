@@ -119,11 +119,13 @@ from data_intelligence_hub.schemas.automation import (
     AutomationFanoutPersistedSourceResponse,
     AutomationFieldCandidateResponse,
     AutomationPageStructureResponse,
+    AutomationPlatformPackageCleaningRuleResponse,
     AutomationPlatformPackageFieldResponse,
     AutomationPlatformPackageFixtureResponse,
     AutomationPlatformPackageListResponse,
     AutomationPlatformPackageResponse,
     AutomationPlatformPackageRiskBoundaryResponse,
+    AutomationPlatformPackageSampleUrlResponse,
     AutomationPlatformPackageSopLinkResponse,
     AutomationPlatformPackageStrategyResponse,
     AutomationPlatformProfileResponse,
@@ -2806,6 +2808,63 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     cleaning_rule="normalize_url",
                 ),
             ],
+            default_entrypoint="product-discovery",
+            sample_urls=[
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="集合页样例",
+                    entrypoint="product-discovery",
+                    url="https://shop.example/collections/summer-bags",
+                    description="用于从公开集合页发现商品 URL，再进入 fan-out 小批量采集。",
+                ),
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="商品页样例",
+                    entrypoint="site-analysis",
+                    url="https://shop.example/products/demo-bag",
+                    description="用于直接验证 Product JSON-LD、价格、SKU 和 canonical URL 字段。",
+                ),
+            ],
+            cleaning_rules=[
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="title",
+                    operation="strip_text",
+                    description="去除商品标题首尾空白并合并重复空格。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="price",
+                    operation="parse_decimal",
+                    description="将价格字段转换为可排序的 decimal number。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="currency",
+                    operation="uppercase",
+                    description="把货币代码统一为大写，便于跨站点合并。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="availability",
+                    operation="normalize_availability",
+                    description="库存状态归一为 in_stock/out_of_stock/unknown。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="sku",
+                    operation="fill_default",
+                    value="UNKNOWN-SKU",
+                    description="缺失 SKU 时保留可审计默认值，避免主键生成断裂。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="canonical_url",
+                    operation="normalize_url",
+                    description="规范 URL 字段，降低重复商品记录。",
+                ),
+            ],
+            operator_checklist=[
+                "确认目标页面公开可访问，不依赖登录态、验证码或购物车状态。",
+                "优先从集合页发现 5-20 个候选商品 URL，再人工剔除无关链接。",
+                (
+                    "保留 title、price、canonical_url 作为最小必选字段，"
+                    "SKU 缺失时用清洗规则标注默认值。"
+                ),
+                "先执行清洗计划试跑，确认价格和库存字段正常后再保存数据集版本。",
+            ],
             strategy_matrix=[
                 AutomationPlatformPackageStrategyResponse(
                     id="collection-to-products",
@@ -2906,6 +2965,32 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     source="github_api",
                     cleaning_rule="normalize_url",
                 ),
+            ],
+            default_entrypoint="sop-import",
+            sample_urls=[
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="Topic 样例",
+                    entrypoint="sop-import",
+                    url="https://github.com/topics/web-scraping",
+                    description="用于人工确认 topic 范围后，通过 GitHub API-first 工作流采集。",
+                ),
+            ],
+            cleaning_rules=[
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="repo_full_name",
+                    operation="strip_text",
+                    description="去除仓库全名首尾空白。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="html_url",
+                    operation="normalize_url",
+                    description="规范仓库 URL。",
+                ),
+            ],
+            operator_checklist=[
+                "确认 GitHub API rate limit、token 权限和 topic 范围。",
+                "优先使用官方 API，不解析登录态页面。",
+                "将 stars、topics、html_url 作为工具情报排序和溯源字段。",
             ],
             strategy_matrix=[
                 AutomationPlatformPackageStrategyResponse(

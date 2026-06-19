@@ -155,7 +155,8 @@ export function AutomationWorkbench() {
   const [platformPackages, setPlatformPackages] = useState<AutomationPlatformPackage[]>([]);
   const [platformPackageLoading, setPlatformPackageLoading] = useState(false);
   const [platformPackageError, setPlatformPackageError] = useState<string | null>(null);
-  const [appliedPlatformPackageName, setAppliedPlatformPackageName] = useState<string | null>(null);
+  const [appliedPlatformPackage, setAppliedPlatformPackage] =
+    useState<AutomationPlatformPackage | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -290,6 +291,11 @@ export function AutomationWorkbench() {
   function applyPlatformPackage(platformPackage: AutomationPlatformPackage) {
     const executableStrategy =
       platformPackage.strategyMatrix.find(
+        (strategy) =>
+          strategy.canStartFromAutomation &&
+          strategy.entrypoint === platformPackage.defaultEntrypoint,
+      ) ??
+      platformPackage.strategyMatrix.find(
         (strategy) => strategy.canStartFromAutomation && strategy.entrypoint === "product-discovery",
       ) ??
       platformPackage.strategyMatrix.find(
@@ -299,16 +305,19 @@ export function AutomationWorkbench() {
       return;
     }
     setFields(platformPackage.fieldSchema.map((field) => field.key));
-    setAppliedPlatformPackageName(platformPackage.name);
+    setAppliedPlatformPackage(platformPackage);
     setAnalysis(null);
     setDiscovery(null);
+    const sampleUrl = platformPackage.sampleUrls.find(
+      (sample) => sample.entrypoint === executableStrategy.entrypoint,
+    );
     if (executableStrategy.entrypoint === "product-discovery") {
       setMode("product_discovery");
-      setUrl("https://shop.example/collections/summer-bags");
+      setUrl(sampleUrl?.url ?? "https://shop.example/collections/summer-bags");
       return;
     }
     setMode("product_page");
-    setUrl("https://shop.example/products/demo-bag");
+    setUrl(sampleUrl?.url ?? "https://shop.example/products/demo-bag");
   }
 
   return (
@@ -502,7 +511,7 @@ export function AutomationWorkbench() {
       </section>
 
       <PlatformPackageMatrix
-        appliedPackageName={appliedPlatformPackageName}
+        appliedPackage={appliedPlatformPackage}
         error={platformPackageError}
         loading={platformPackageLoading}
         onApply={applyPlatformPackage}
@@ -513,8 +522,10 @@ export function AutomationWorkbench() {
         discovery ? (
           <DiscoveryResult
             key={discovery.analyzedAt}
+            packageCleaningRules={appliedPlatformPackage?.cleaningRules ?? []}
             discovery={discovery}
             selectedProjectId={selectedProjectId}
+            selectedFields={fields}
           />
         ) : (
           <EmptyAnalysisState mode={mode} />
@@ -584,13 +595,13 @@ function AnalysisHistoryPanel({
 }
 
 function PlatformPackageMatrix({
-  appliedPackageName,
+  appliedPackage,
   error,
   loading,
   onApply,
   packages,
 }: {
-  appliedPackageName: string | null;
+  appliedPackage: AutomationPlatformPackage | null;
   error: string | null;
   loading: boolean;
   onApply: (platformPackage: AutomationPlatformPackage) => void;
@@ -620,10 +631,33 @@ function PlatformPackageMatrix({
         )}
       </div>
 
-      {appliedPackageName ? (
-        <p className="mt-4 rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] px-3 py-2 text-sm font-semibold text-[#2F6B3A]">
-          已应用平台包：{appliedPackageName}
-        </p>
+      {appliedPackage ? (
+        <div className="mt-4 grid gap-3 rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3 text-sm text-[#2F6B3A]">
+          <p className="font-semibold">已应用平台包：{appliedPackage.name}</p>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div>
+              <p className="text-xs font-semibold uppercase text-[#4F7F56]">操作清单</p>
+              <ul className="mt-2 grid gap-1 text-xs leading-5 text-[#4F7F56]">
+                {appliedPackage.operatorChecklist.slice(0, 4).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase text-[#4F7F56]">默认清洗规则</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {appliedPackage.cleaningRules.slice(0, 6).map((rule) => (
+                  <span
+                    className="rounded-full border border-[#B9D9B8] bg-white px-2.5 py-1 text-xs font-semibold text-[#2F6B3A]"
+                    key={`${rule.field}-${rule.operation}`}
+                  >
+                    {fieldLabels[rule.field] ?? rule.field}: {rule.operation}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
       {error ? (
         <p className="mt-4 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-semibold text-[#B85F4F]">
@@ -884,10 +918,14 @@ function AnalysisResult({ analysis }: { analysis: AutomationSiteAnalysis }) {
 
 function DiscoveryResult({
   discovery,
+  packageCleaningRules,
   selectedProjectId,
+  selectedFields,
 }: {
   discovery: AutomationProductDiscovery;
+  packageCleaningRules: AutomationCleaningRule[];
   selectedProjectId: string;
+  selectedFields: string[];
 }) {
   const [selectedUrls, setSelectedUrls] = useState<string[]>(
     discovery.productCandidates.slice(0, 5).map((candidate) => candidate.url),
@@ -904,6 +942,7 @@ function DiscoveryResult({
   const selectedCandidates = discovery.productCandidates.filter((candidate) =>
     selectedUrls.includes(candidate.url),
   );
+  const effectiveFields = selectedFields.length > 0 ? selectedFields : defaultFields;
 
   function toggleCandidate(url: string) {
     setSelectedUrls((current) =>
@@ -934,7 +973,7 @@ function DiscoveryResult({
           source: candidate.source,
           confidence: candidate.confidence,
         })),
-        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+        fields: effectiveFields,
         maxSources: 20,
       });
       setFanoutPreview(preview);
@@ -1127,8 +1166,10 @@ function DiscoveryResult({
               batchRunLoading={batchRunLoading}
               onConfirmCreate={() => void confirmFanoutCreate()}
               onRunBatch={() => void runBatchQualityCheck()}
+              packageCleaningRules={packageCleaningRules}
               preview={fanoutPreview}
               result={fanoutCreate}
+              selectedFields={effectiveFields}
             />
           ) : null}
         </div>
@@ -1194,6 +1235,8 @@ function FanoutPreviewPanel({
   batchRunError,
   onConfirmCreate,
   onRunBatch,
+  packageCleaningRules,
+  selectedFields,
 }: {
   preview: AutomationProductFanoutPreview;
   result: AutomationProductFanoutCreate | null;
@@ -1204,6 +1247,8 @@ function FanoutPreviewPanel({
   batchRunError: string | null;
   onConfirmCreate: () => void;
   onRunBatch: () => void;
+  packageCleaningRules: AutomationCleaningRule[];
+  selectedFields: string[];
 }) {
   return (
     <Panel icon={ClipboardList} label="Fan-out Preview" title="子商品页采集源预览">
@@ -1318,7 +1363,9 @@ function FanoutPreviewPanel({
           batchRunError={batchRunError}
           batchRunLoading={batchRunLoading}
           onRunBatch={onRunBatch}
+          packageCleaningRules={packageCleaningRules}
           result={result}
+          selectedFields={selectedFields}
         />
       ) : null}
     </Panel>
@@ -1331,12 +1378,16 @@ function FanoutCreateResult({
   batchRunLoading,
   batchRunError,
   onRunBatch,
+  packageCleaningRules,
+  selectedFields,
 }: {
   result: AutomationProductFanoutCreate;
   batchRun: AutomationProductBatchRun | null;
   batchRunLoading: boolean;
   batchRunError: string | null;
   onRunBatch: () => void;
+  packageCleaningRules: AutomationCleaningRule[];
+  selectedFields: string[];
 }) {
   const runnableTasks = result.persistedSources.filter((item) => item.task).length;
   return (
@@ -1415,18 +1466,29 @@ function FanoutCreateResult({
           {batchRunError}
         </p>
       ) : null}
-      {batchRun ? <BatchRunResult result={batchRun} /> : null}
+      {batchRun ? (
+        <BatchRunResult
+          packageCleaningRules={packageCleaningRules}
+          result={batchRun}
+          selectedFields={selectedFields}
+        />
+      ) : null}
     </div>
   );
 }
 
-function BatchRunResult({ result }: { result: AutomationProductBatchRun }) {
-  const [datasetFields, setDatasetFields] = useState<string[]>([
-    "title",
-    "price",
-    "sku",
-    "canonical_url",
-  ]);
+function BatchRunResult({
+  packageCleaningRules,
+  result,
+  selectedFields,
+}: {
+  packageCleaningRules: AutomationCleaningRule[];
+  result: AutomationProductBatchRun;
+  selectedFields: string[];
+}) {
+  const [datasetFields, setDatasetFields] = useState<string[]>(
+    selectedFields.length > 0 ? selectedFields : ["title", "price", "sku", "canonical_url"],
+  );
   const [datasetPreview, setDatasetPreview] = useState<AutomationProductDatasetPreview | null>(null);
   const [datasetError, setDatasetError] = useState<string | null>(null);
   const [datasetLoading, setDatasetLoading] = useState(false);
@@ -1598,7 +1660,11 @@ function BatchRunResult({ result }: { result: AutomationProductBatchRun }) {
           </p>
         ) : null}
         {datasetPreview ? (
-          <DatasetPreviewResult result={datasetPreview} taskIds={successfulTaskIds} />
+          <DatasetPreviewResult
+            packageCleaningRules={packageCleaningRules}
+            result={datasetPreview}
+            taskIds={successfulTaskIds}
+          />
         ) : null}
       </div>
     </div>
@@ -1606,9 +1672,11 @@ function BatchRunResult({ result }: { result: AutomationProductBatchRun }) {
 }
 
 function DatasetPreviewResult({
+  packageCleaningRules,
   result,
   taskIds,
 }: {
+  packageCleaningRules: AutomationCleaningRule[];
   result: AutomationProductDatasetPreview;
   taskIds: string[];
 }) {
@@ -1643,10 +1711,14 @@ function DatasetPreviewResult({
     () => Array.from(new Set(result.rows.map((row) => row.taskRunId))),
     [result.rows],
   );
-  const cleaningRules = useMemo(
-    () => defaultCleaningRulesForFields(result.summary.selectedFields),
-    [result.summary.selectedFields],
-  );
+  const cleaningRules = useMemo(() => {
+    const packageRules = packageCleaningRules.filter((rule) =>
+      result.summary.selectedFields.includes(rule.field),
+    );
+    return packageRules.length > 0
+      ? packageRules
+      : defaultCleaningRulesForFields(result.summary.selectedFields);
+  }, [packageCleaningRules, result.summary.selectedFields]);
 
   useEffect(() => {
     setDatasetName(defaultDatasetName);
