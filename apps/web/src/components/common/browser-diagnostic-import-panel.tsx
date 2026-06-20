@@ -7,6 +7,7 @@ import {
   Database,
   FileCode2,
   GitCompareArrows,
+  Loader2,
   Search,
   X,
 } from "lucide-react";
@@ -30,17 +31,28 @@ import type {
 import type { ToolkitPreflightReport } from "@/types/toolkit";
 
 type BrowserDiagnosticImportPanelProps = {
+  browserAutomationPlanSaveDisabledReason?: string | null;
+  browserAutomationPlanSaveMessage?: string | null;
+  browserAutomationPlanSaving?: boolean;
   compact?: boolean;
   onActionPlanChange?: (actionPlan: BrowserDiagnosticActionPlan | null) => void;
   onDiagnosticChange?: (diagnostic: BrowserStructureDiagnostic | null) => void;
+  onSaveBrowserAutomationPlan?: (
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) => Promise<void> | void;
   preflightReport?: ToolkitPreflightReport | null;
   title?: string;
 };
 
 export function BrowserDiagnosticImportPanel({
+  browserAutomationPlanSaveDisabledReason,
+  browserAutomationPlanSaveMessage,
+  browserAutomationPlanSaving = false,
   compact = false,
   onActionPlanChange,
   onDiagnosticChange,
+  onSaveBrowserAutomationPlan,
   preflightReport,
   title = "真实浏览器诊断",
 }: BrowserDiagnosticImportPanelProps) {
@@ -201,10 +213,16 @@ export function BrowserDiagnosticImportPanel({
       {diagnostic && comparison && actionPlan ? (
         <BrowserDiagnosticSummary
           actionPlan={actionPlan}
+          browserAutomationPlanSaveDisabledReason={
+            browserAutomationPlanSaveDisabledReason
+          }
+          browserAutomationPlanSaveMessage={browserAutomationPlanSaveMessage}
+          browserAutomationPlanSaving={browserAutomationPlanSaving}
           comparison={comparison}
           diagnostic={diagnostic}
           onFieldEdit={updateFieldEdit}
           onSaveFieldContract={saveFieldContractDraft}
+          onSaveBrowserAutomationPlan={onSaveBrowserAutomationPlan}
         />
       ) : null}
     </section>
@@ -213,15 +231,26 @@ export function BrowserDiagnosticImportPanel({
 
 function BrowserDiagnosticSummary({
   actionPlan,
+  browserAutomationPlanSaveDisabledReason,
+  browserAutomationPlanSaveMessage,
+  browserAutomationPlanSaving,
   comparison,
   diagnostic,
   onFieldEdit,
+  onSaveBrowserAutomationPlan,
   onSaveFieldContract,
 }: {
   actionPlan: BrowserDiagnosticActionPlan;
+  browserAutomationPlanSaveDisabledReason?: string | null;
+  browserAutomationPlanSaveMessage?: string | null;
+  browserAutomationPlanSaving: boolean;
   comparison: NonNullable<ReturnType<typeof comparePreflightWithBrowserDiagnostic>>;
   diagnostic: BrowserStructureDiagnostic;
   onFieldEdit: (key: string, patch: Omit<BrowserDiagnosticFieldContractEdit, "key">) => void;
+  onSaveBrowserAutomationPlan?: (
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) => Promise<void> | void;
   onSaveFieldContract: () => void;
 }) {
   const strategy = diagnostic.extractionStrategy;
@@ -411,6 +440,36 @@ function BrowserDiagnosticSummary({
                 items={actionPlan.browserAutomationDraft.guardrails.slice(0, 3)}
                 title="执行边界"
               />
+              {onSaveBrowserAutomationPlan ? (
+                <div className="mt-3 grid gap-2">
+                  <button
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-[#87611B] px-3 text-xs font-semibold text-white transition hover:bg-[#6F5018] disabled:cursor-not-allowed disabled:bg-[#D6C08C]"
+                    disabled={
+                      browserAutomationPlanSaving ||
+                      Boolean(browserAutomationPlanSaveDisabledReason)
+                    }
+                    onClick={() => void onSaveBrowserAutomationPlan(actionPlan, diagnostic)}
+                    type="button"
+                  >
+                    {browserAutomationPlanSaving ? (
+                      <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                    ) : (
+                      <Database size={14} aria-hidden="true" />
+                    )}
+                    保存只读自动化方案
+                  </button>
+                  {browserAutomationPlanSaveDisabledReason ? (
+                    <p className="text-xs leading-5 text-[#9B6A1D]">
+                      {browserAutomationPlanSaveDisabledReason}
+                    </p>
+                  ) : null}
+                  {browserAutomationPlanSaveMessage ? (
+                    <p className="rounded-lg border border-[#CDE4C6] bg-[#F2FAEF] px-2.5 py-1.5 text-xs font-semibold text-[#4E7C45]">
+                      {browserAutomationPlanSaveMessage}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

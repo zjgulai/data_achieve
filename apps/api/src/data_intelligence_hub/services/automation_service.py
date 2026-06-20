@@ -99,6 +99,10 @@ from data_intelligence_hub.schemas.alert import (
     AlertRuleResponse,
 )
 from data_intelligence_hub.schemas.automation import (
+    AutomationBrowserAutomationPlanRequest,
+    AutomationBrowserAutomationPlanResponse,
+    AutomationBrowserCleaningRuleRequest,
+    AutomationBrowserFieldContractFieldRequest,
     AutomationCleaningPlanCreateRequest,
     AutomationCleaningPlanCreateResponse,
     AutomationCleaningPlanDryRunRequest,
@@ -503,6 +507,158 @@ async def create_extraction_plan_from_site_analysis(
     await create_extraction_plan(session, extraction_plan)
     extraction_plan = await commit_and_refresh_extraction_plan(session, extraction_plan)
     return _extraction_plan_response(extraction_plan)
+
+
+async def save_browser_automation_plan(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationBrowserAutomationPlanRequest,
+) -> AutomationBrowserAutomationPlanResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    project = await get_project(session, workspace.id, payload.project_id)
+    if project is None:
+        raise ProjectNotFoundError
+
+    selected_fields = [
+        field.key.strip()
+        for field in payload.field_contract.fields
+        if field.selected and field.key.strip()
+    ]
+    selected_fields = list(dict.fromkeys(selected_fields))
+    if not selected_fields:
+        raise CollectorError("browser_automation_fields_required")
+
+    final_url = payload.browser_diagnostic.final_url.strip()
+    requested_url = payload.requested_url.strip()
+    confidence = _browser_confidence_ratio(payload.browser_diagnostic.confidence)
+    name = (
+        payload.name.strip()
+        if isinstance(payload.name, str) and payload.name.strip()
+        else f"Browser Automation: {_browser_plan_host_label(final_url or requested_url)}"
+    )
+    field_contract = {
+        "fields": [
+            field.model_dump(mode="json") for field in payload.field_contract.fields
+        ],
+        "cleaning_rules": [
+            rule.model_dump(mode="json") for rule in payload.field_contract.cleaning_rules
+        ],
+    }
+    browser_diagnostic = payload.browser_diagnostic.model_dump(mode="json")
+    source_draft = {
+        "type": "browser_automation",
+        "config": {
+            "start_url": final_url,
+            "requested_url": requested_url,
+            "runner": payload.runner,
+            "execution_mode": payload.execution_mode,
+            "fields": selected_fields,
+            "field_contract": field_contract,
+            "browser_diagnostic": browser_diagnostic,
+            "api_candidates": payload.api_candidates,
+            "guardrails": _browser_guardrails(payload.guardrails),
+            "run_started": False,
+        },
+        "suggested_name": name,
+        "schedule_cron": None,
+    }
+    platform_profile = {
+        "platform_type": "dynamic_browser_page",
+        "confidence": confidence,
+        "indicators": [
+            "browser_structure_diagnostic",
+            f"recommended_path:{payload.browser_diagnostic.recommended_path}",
+            f"field_stability:{payload.browser_diagnostic.field_stability or 'unknown'}",
+        ],
+        "risk_level": payload.risk_level,
+    }
+    page_structure = {
+        "page_type": "browser_runtime",
+        "title": None,
+        "canonical_url": final_url,
+        "script_count": 0,
+        "form_count": 0,
+        "image_count": 0,
+        "product_schema_count": 0,
+        "same_origin_link_count": 0,
+        "text_sample": "Browser-harness diagnostic evidence imported as read-only draft.",
+    }
+    field_candidates = _browser_field_candidates(
+        payload.field_contract.fields,
+        payload.field_contract.cleaning_rules,
+        confidence,
+    )
+    tool_recommendations = [
+        {
+            "tool": "browser-harness + Playwright/Crawlee",
+            "collector_type": "browser_automation",
+            "fit": _browser_tool_fit(payload.risk_level),
+            "risk_level": payload.risk_level,
+            "reason": "静态预检不足以稳定提取字段，先保存只读浏览器自动化方案与证据。",
+        }
+    ]
+    cleaning_plan = _browser_cleaning_plan(payload.field_contract.cleaning_rules)
+    now = datetime.now(UTC)
+    site_analysis = SiteAnalysis(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        requested_url=requested_url,
+        target="browser_automation",
+        status="draft",
+        authorization_confirmed=payload.authorized,
+        analyzed_at=now,
+        platform_profile=platform_profile,
+        page_structure=page_structure,
+        field_candidates=field_candidates,
+        tool_recommendations=tool_recommendations,
+        cleaning_plan=cleaning_plan,
+        source_draft=source_draft,
+        blocked_reasons=[
+            "当前仅保存只读 browser automation 方案，尚未启动浏览器运行、创建采集源或写入采集结果。"
+        ],
+    )
+    await create_site_analysis(session, site_analysis)
+    extraction_plan = ExtractionPlan(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        site_analysis_id=site_analysis.id,
+        created_by_user_id=user.id,
+        name=name,
+        version_number=1,
+        collector_type="browser_automation",
+        selected_fields=selected_fields,
+        source_draft=source_draft,
+        schedule_cron=None,
+        status="draft",
+        risk_level=payload.risk_level,
+        audit_events=[
+            {
+                "event": "browser_automation_plan_saved",
+                "site_analysis_id": str(site_analysis.id),
+                "evidence_source": payload.browser_diagnostic.evidence_source,
+                "execution_mode": payload.execution_mode,
+                "created_at": now.isoformat(),
+                "run_started": False,
+            }
+        ],
+    )
+    await create_extraction_plan(session, extraction_plan)
+    site_analysis, extraction_plan = await commit_and_refresh_site_analysis_plan(
+        session,
+        site_analysis,
+        extraction_plan,
+    )
+    plan_response = _extraction_plan_response(extraction_plan)
+    return AutomationBrowserAutomationPlanResponse(
+        site_analysis=_site_analysis_history_item(site_analysis, plan_response),
+        extraction_plan=plan_response,
+        site_analysis_created=True,
+        extraction_plan_created=True,
+        run_started=False,
+    )
 
 
 async def discover_products_for_collection(
@@ -3879,6 +4035,72 @@ def _blocked_reasons(page_structure: dict[str, object], selected_fields: list[st
     if page_structure.get("form_count", 0) and page_structure.get("product_schema_count", 0) == 0:
         blocked.append("页面包含表单且缺少 Product schema，需人工确认是否涉及登录态。")
     return blocked
+
+
+def _browser_confidence_ratio(confidence: float) -> float:
+    if confidence > 1:
+        return round(confidence / 100, 4)
+    return round(confidence, 4)
+
+
+def _browser_plan_host_label(url: str) -> str:
+    parsed = urlparse(url)
+    return parsed.netloc or parsed.path or "browser-page"
+
+
+def _browser_guardrails(guardrails: list[str]) -> list[str]:
+    defaults = [
+        "只读执行，不提交表单、不点击购买或发布类按钮。",
+        "必须保留诊断 JSON、截图路径和最终 URL 作为审计证据。",
+        "先小批量验证字段稳定性，再进入任务调度。",
+    ]
+    merged = [item.strip() for item in [*guardrails, *defaults] if item.strip()]
+    return list(dict.fromkeys(merged))
+
+
+def _browser_tool_fit(risk_level: str) -> str:
+    if risk_level == "high":
+        return "low"
+    if risk_level == "medium":
+        return "medium"
+    return "high"
+
+
+def _browser_field_candidates(
+    fields: list[AutomationBrowserFieldContractFieldRequest],
+    cleaning_rules: list[AutomationBrowserCleaningRuleRequest],
+    confidence: float,
+) -> list[dict[str, object]]:
+    cleaning_rule_by_field = {
+        rule.field: rule.operation for rule in cleaning_rules if rule.field.strip()
+    }
+    return [
+        {
+            "key": field.key,
+            "label": field.label,
+            "value": field.selector_hint or None,
+            "data_type": "string",
+            "source": field.source,
+            "confidence": confidence,
+            "selected": field.selected,
+            "cleaning_rule": cleaning_rule_by_field.get(field.key, "manual_review"),
+        }
+        for field in fields
+    ]
+
+
+def _browser_cleaning_plan(
+    cleaning_rules: list[AutomationBrowserCleaningRuleRequest],
+) -> list[dict[str, str]]:
+    if cleaning_rules:
+        return [rule.model_dump(mode="json") for rule in cleaning_rules]
+    return [
+        {
+            "field": "selected_fields",
+            "operation": "manual_review",
+            "description": "首次执行前人工复核 selector hint 与字段样本稳定性。",
+        }
+    ]
 
 
 def _blocked_batch_item(

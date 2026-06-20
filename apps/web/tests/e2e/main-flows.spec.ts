@@ -989,6 +989,111 @@ test.describe("MVP workspace routes", () => {
     await expectNoVisibleTechnicalNoise(page);
   });
 
+  test("saves browser automation diagnostic as read-only plan", async ({
+    page,
+  }) => {
+    await page.route("**/api/toolkit/preflight", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          requested_url: "https://example.com/app",
+          final_url: "https://example.com/app",
+          checked_at: "2026-06-19T14:20:00Z",
+          authorization_confirmed: true,
+          headers: { "content-type": "text/html" },
+          redirects: [],
+          robots: {
+            url: "https://example.com/robots.txt",
+            status_code: 200,
+            content_type: "text/plain",
+            content_length: 24,
+            available: true,
+            summary: "No blocking rule found.",
+          },
+          sitemap: {
+            url: "https://example.com/sitemap.xml",
+            status_code: 404,
+            content_type: null,
+            content_length: null,
+            available: false,
+            summary: "Not found.",
+          },
+          security_txt: {
+            url: "https://example.com/.well-known/security.txt",
+            status_code: 404,
+            content_type: null,
+            content_length: null,
+            available: false,
+            summary: "Not found.",
+          },
+          dom: {
+            title: "Dynamic Product Grid",
+            description: "Dynamic app shell",
+            canonical_url: "https://example.com/app",
+            meta_robots: null,
+            headings: ["Dynamic Product Grid"],
+            link_count: 12,
+            script_count: 24,
+            stylesheet_count: 4,
+            image_count: 16,
+            form_count: 0,
+            text_sample: "Dynamic Product Grid",
+          },
+          network: {
+            request_method: "GET",
+            final_status_code: 200,
+            final_content_type: "text/html",
+            redirect_count: 0,
+            same_origin_links: 12,
+            external_links: 6,
+            script_count: 24,
+            stylesheet_count: 4,
+            image_count: 16,
+            form_count: 0,
+          },
+          authorization_gate: {
+            allowed_to_continue: true,
+            risk_level: "medium",
+            blocked_reasons: [],
+            required_next_actions: ["导入 browser-harness 只读诊断。"],
+          },
+          collection_strategy: {
+            recommended_path: "browser_automation",
+            label: "浏览器自动化",
+            fit: "medium",
+            confidence: 72,
+            field_stability: "medium",
+            reasons: ["页面依赖浏览器渲染和异步接口。"],
+            next_steps: ["保存只读 browser automation 方案。"],
+            cleaning_notes: ["复核字段 selector hint。"],
+          },
+          recommendations: ["导入 browser-harness 证据后保存只读方案。"],
+        }),
+      });
+    });
+    await page.goto("/automation");
+    await page.getByRole("button", { name: "结构预检", exact: true }).click();
+    await page
+      .getByLabel("我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
+      .check();
+    await page.getByLabel("公开网页 URL").fill("https://example.com/app");
+    await page.getByRole("button", { name: "生成结构预检" }).click();
+    await expect(
+      page.getByRole("heading", { name: "公开网页结构预检结果" }),
+    ).toBeVisible();
+
+    await page.getByLabel("Browser diagnostic JSON").fill(browserAutomationDiagnosticFixtureJson);
+    await page.getByRole("button", { name: "导入浏览器诊断 JSON" }).click();
+    await expect(page.getByText("浏览器自动化任务草稿")).toBeVisible();
+    await expect(page.getByRole("button", { name: "保存只读自动化方案" })).toBeVisible();
+
+    await page.getByRole("button", { name: "保存只读自动化方案" }).click();
+    await expect(page.getByText(/已保存 Browser Automation:/)).toBeVisible();
+    await expect(page.getByText("未启动采集运行。")).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
   test("operates real dataset asset export and drift alert preview", async ({
     page,
   }, testInfo) => {

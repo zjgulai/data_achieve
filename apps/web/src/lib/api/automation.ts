@@ -28,6 +28,8 @@ import type {
   AutomationCleaningPlanDryRun,
   AutomationCleaningPlanInput,
   AutomationCleaningRule,
+  AutomationBrowserAutomationPlan,
+  AutomationBrowserAutomationPlanInput,
   AutomationCleaningStep,
   AutomationFieldCandidate,
   AutomationGitHubToolReport,
@@ -253,6 +255,14 @@ type AutomationSiteAnalysisResponse = {
   blocked_reasons: string[];
   site_analysis: AutomationSiteAnalysisHistoryItemResponse | null;
   extraction_plan: AutomationExtractionPlanResponse | null;
+  site_analysis_created: boolean;
+  extraction_plan_created: boolean;
+  run_started: boolean;
+};
+
+type AutomationBrowserAutomationPlanResponse = {
+  site_analysis: AutomationSiteAnalysisHistoryItemResponse;
+  extraction_plan: AutomationExtractionPlanResponse;
   site_analysis_created: boolean;
   extraction_plan_created: boolean;
   run_started: boolean;
@@ -887,6 +897,124 @@ export async function analyzeAutomationSite(
     }),
   });
   return mapAutomationSiteAnalysis(response);
+}
+
+export async function saveAutomationBrowserAutomationPlan(
+  input: AutomationBrowserAutomationPlanInput,
+): Promise<AutomationBrowserAutomationPlan> {
+  const selectedFields = input.fieldContract.fields
+    .filter((field) => field.selected)
+    .map((field) => field.key);
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const planId = `mock-browser-plan-${now}`;
+    const siteAnalysisId = `mock-browser-analysis-${now}`;
+    const extractionPlan: AutomationExtractionPlan = {
+      id: planId,
+      siteAnalysisId,
+      projectId: input.projectId,
+      name: input.name ?? "Browser Automation: mock",
+      versionNumber: 1,
+      collectorType: "browser_automation",
+      selectedFields,
+      sourceDraft: {
+        type: "browser_automation",
+        suggestedName: input.name ?? "Browser Automation: mock",
+        scheduleCron: null,
+        config: {
+          start_url: input.browserDiagnostic.finalUrl,
+          requested_url: input.requestedUrl,
+          runner: input.runner,
+          execution_mode: input.executionMode,
+          fields: selectedFields,
+          field_contract: input.fieldContract,
+          browser_diagnostic: input.browserDiagnostic,
+          api_candidates: input.apiCandidates,
+          guardrails: input.guardrails,
+          run_started: false,
+        },
+      },
+      scheduleCron: null,
+      status: "draft",
+      riskLevel: input.riskLevel,
+      auditEvents: [
+        {
+          event: "browser_automation_plan_saved",
+          created_at: now,
+          run_started: false,
+        },
+      ],
+      createdAt: now,
+      runStarted: false,
+    };
+    return {
+      siteAnalysis: {
+        id: siteAnalysisId,
+        projectId: input.projectId,
+        requestedUrl: input.requestedUrl,
+        target: "browser_automation",
+        status: "draft",
+        platformType: "dynamic_browser_page",
+        pageType: "browser_runtime",
+        riskLevel: input.riskLevel,
+        analyzedAt: now,
+        createdAt: now,
+        latestPlan: extractionPlan,
+      },
+      extractionPlan,
+      siteAnalysisCreated: true,
+      extractionPlanCreated: true,
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserAutomationPlanResponse>(
+    "/api/automation/browser-automation-plans",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        project_id: input.projectId,
+        requested_url: input.requestedUrl,
+        authorized: input.authorized,
+        name: input.name,
+        runner: input.runner,
+        execution_mode: input.executionMode,
+        risk_level: input.riskLevel,
+        field_contract: {
+          fields: input.fieldContract.fields.map((field) => ({
+            key: field.key,
+            label: field.label,
+            source: field.source,
+            required: field.required,
+            selected: field.selected,
+            selector_hint: field.selectorHint,
+          })),
+          cleaning_rules: input.fieldContract.cleaningRules.map((rule) => ({
+            field: rule.field,
+            operation: rule.operation,
+            description: rule.description,
+          })),
+        },
+        browser_diagnostic: {
+          schema_version: input.browserDiagnostic.schemaVersion,
+          final_url: input.browserDiagnostic.finalUrl,
+          recommended_path: input.browserDiagnostic.recommendedPath,
+          confidence: input.browserDiagnostic.confidence,
+          field_stability: input.browserDiagnostic.fieldStability,
+          evidence_source: input.browserDiagnostic.evidenceSource,
+          screenshot_path: input.browserDiagnostic.screenshotPath,
+        },
+        api_candidates: input.apiCandidates,
+        guardrails: input.guardrails,
+      }),
+    },
+  );
+  return {
+    siteAnalysis: mapAutomationSiteAnalysisHistoryItem(response.site_analysis),
+    extractionPlan: mapAutomationExtractionPlan(response.extraction_plan),
+    siteAnalysisCreated: response.site_analysis_created,
+    extractionPlanCreated: response.extraction_plan_created,
+    runStarted: response.run_started,
+  };
 }
 
 export async function listAutomationSiteAnalyses(

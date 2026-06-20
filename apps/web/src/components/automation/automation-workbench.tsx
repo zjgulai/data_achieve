@@ -34,6 +34,7 @@ import {
   previewAutomationProductFanout,
   previewAutomationGitHubToolDataset,
   runAutomationProductBatch,
+  saveAutomationBrowserAutomationPlan,
   saveAutomationGitHubToolDriftEvent,
   saveAutomationGitHubToolDataset,
   saveAutomationProductDriftEvent,
@@ -203,6 +204,8 @@ export function AutomationWorkbench() {
   const [browserActionPlan, setBrowserActionPlan] = useState<BrowserDiagnosticActionPlan | null>(
     null,
   );
+  const [browserPlanSaveLoading, setBrowserPlanSaveLoading] = useState(false);
+  const [browserPlanSaveMessage, setBrowserPlanSaveMessage] = useState<string | null>(null);
   const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
@@ -284,8 +287,11 @@ export function AutomationWorkbench() {
       setAnalysisHistory([]);
       return;
     }
-    void refreshAnalysisHistory(selectedProjectId);
-  }, [selectedProjectId]);
+    void refreshAnalysisHistory(
+      selectedProjectId,
+      mode === "structure_preflight" ? "browser_automation" : "ecommerce_product",
+    );
+  }, [mode, selectedProjectId]);
 
   const selectedFieldCount = useMemo(
     () => analysis?.fieldCandidates.filter((field) => field.selected).length ?? fields.length,
@@ -340,6 +346,7 @@ export function AutomationWorkbench() {
       setPreflightReport(report);
       setBrowserDiagnostic(null);
       setBrowserActionPlan(null);
+      setBrowserPlanSaveMessage(null);
       setGenericWebRun(null);
       setAnalysis(null);
       setDiscovery(null);
@@ -398,6 +405,69 @@ export function AutomationWorkbench() {
     }
   }
 
+  async function saveBrowserAutomationPlanFromDiagnostic(
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) {
+    const draft = actionPlan.browserAutomationDraft;
+    if (!draft) {
+      setError("当前浏览器诊断没有生成 browser automation 方案。");
+      return;
+    }
+    if (!selectedProjectId) {
+      setError("请选择写入项目后再保存 browser automation 方案。");
+      return;
+    }
+    if (!authorized) {
+      setError("请先确认目标为公开页面或公开 API，且你有权进行采集分析。");
+      return;
+    }
+    setError(null);
+    setBrowserPlanSaveMessage(null);
+    setBrowserPlanSaveLoading(true);
+    try {
+      const result = await saveAutomationBrowserAutomationPlan({
+        projectId: selectedProjectId,
+        requestedUrl: diagnostic.requestedUrl || diagnostic.finalUrl,
+        authorized,
+        name: draft.suggestedName,
+        runner: draft.runner,
+        executionMode: draft.config.execution_mode,
+        riskLevel: actionPlan.primaryRecommendation.riskLevel,
+        fieldContract: {
+          fields: draft.config.field_contract.fields.map((field) => ({
+            key: field.key,
+            label: field.label,
+            source: field.source,
+            required: field.required,
+            selected: field.selected,
+            selectorHint: field.selector_hint,
+          })),
+          cleaningRules: draft.config.field_contract.cleaning_rules,
+        },
+        browserDiagnostic: {
+          schemaVersion: "browser_structure_diagnostic.v1",
+          finalUrl: diagnostic.finalUrl,
+          recommendedPath: diagnostic.extractionStrategy.recommendedPath,
+          confidence: diagnostic.extractionStrategy.confidence,
+          fieldStability: diagnostic.extractionStrategy.fieldStability,
+          evidenceSource: diagnostic.evidence.source,
+          screenshotPath: diagnostic.evidence.screenshotPath,
+        },
+        apiCandidates: draft.config.api_candidates,
+        guardrails: draft.guardrails,
+      });
+      setBrowserPlanSaveMessage(
+        `已保存 ${result.extractionPlan.name} v${result.extractionPlan.versionNumber}，未启动采集运行。`,
+      );
+      void refreshAnalysisHistory(selectedProjectId, "browser_automation");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "browser automation 方案保存失败");
+    } finally {
+      setBrowserPlanSaveLoading(false);
+    }
+  }
+
   async function submitAutomation() {
     setError(null);
     if (!authorized) {
@@ -443,7 +513,7 @@ export function AutomationWorkbench() {
       setPreflightReport(null);
       setGenericWebRun(null);
       if (selectedProjectId) {
-        void refreshAnalysisHistory(selectedProjectId);
+        void refreshAnalysisHistory(selectedProjectId, "ecommerce_product");
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Automation analysis failed");
@@ -452,13 +522,16 @@ export function AutomationWorkbench() {
     }
   }
 
-  async function refreshAnalysisHistory(projectId: string) {
+  async function refreshAnalysisHistory(
+    projectId: string,
+    target: "ecommerce_product" | "browser_automation",
+  ) {
     setHistoryLoading(true);
     setHistoryError(null);
     try {
       const result = await listAutomationSiteAnalyses({
         projectId,
-        target: "ecommerce_product",
+        target,
         limit: 5,
       });
       setAnalysisHistory(result.items);
@@ -630,6 +703,9 @@ export function AutomationWorkbench() {
                       setGithubRun(null);
                       setPreflightReport(null);
                       setGenericWebRun(null);
+                      setBrowserDiagnostic(null);
+                      setBrowserActionPlan(null);
+                      setBrowserPlanSaveMessage(null);
                       if (item.mode === "github_topic_radar") {
                         const osintProject = projects.find((project) => project.domain === "osint");
                         if (osintProject) {
@@ -873,12 +949,16 @@ export function AutomationWorkbench() {
       ) : mode === "structure_preflight" ? (
         preflightReport ? (
           <StructurePreflightResult
+            authorized={authorized}
             browserActionPlan={browserActionPlan}
+            browserPlanSaveLoading={browserPlanSaveLoading}
+            browserPlanSaveMessage={browserPlanSaveMessage}
             genericWebRun={genericWebRun}
             loading={loading}
             onBrowserActionPlanChange={setBrowserActionPlan}
             onBrowserDiagnosticChange={setBrowserDiagnostic}
             onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
+            onSaveBrowserAutomationPlan={saveBrowserAutomationPlanFromDiagnostic}
             report={preflightReport}
             selectedProjectId={selectedProjectId}
           />
@@ -1682,21 +1762,32 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
 }
 
 function StructurePreflightResult({
+  authorized,
   browserActionPlan,
+  browserPlanSaveLoading,
+  browserPlanSaveMessage,
   genericWebRun,
   loading,
   onBrowserActionPlanChange,
   onBrowserDiagnosticChange,
   onCreateGenericWebSource,
+  onSaveBrowserAutomationPlan,
   report,
   selectedProjectId,
 }: {
+  authorized: boolean;
   browserActionPlan: BrowserDiagnosticActionPlan | null;
+  browserPlanSaveLoading: boolean;
+  browserPlanSaveMessage: string | null;
   genericWebRun: GenericWebRunState | null;
   loading: boolean;
   onBrowserActionPlanChange: (actionPlan: BrowserDiagnosticActionPlan | null) => void;
   onBrowserDiagnosticChange: (diagnostic: BrowserStructureDiagnostic | null) => void;
   onCreateGenericWebSource: () => void;
+  onSaveBrowserAutomationPlan: (
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) => Promise<void> | void;
   report: ToolkitPreflightReport;
   selectedProjectId: string;
 }) {
@@ -1862,9 +1953,19 @@ function StructurePreflightResult({
         </Panel>
 
         <BrowserDiagnosticImportPanel
+          browserAutomationPlanSaveDisabledReason={
+            !selectedProjectId
+              ? "请选择写入项目。"
+              : !authorized
+                ? "请先确认授权边界。"
+                : null
+          }
+          browserAutomationPlanSaveMessage={browserPlanSaveMessage}
+          browserAutomationPlanSaving={browserPlanSaveLoading}
           compact
           onActionPlanChange={onBrowserActionPlanChange}
           onDiagnosticChange={onBrowserDiagnosticChange}
+          onSaveBrowserAutomationPlan={onSaveBrowserAutomationPlan}
           preflightReport={report}
           title="浏览器诊断对照"
         />

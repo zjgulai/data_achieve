@@ -9,6 +9,8 @@ from fastapi.responses import FileResponse
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
+    AutomationBrowserAutomationPlanRequest,
+    AutomationBrowserAutomationPlanResponse,
     AutomationCleaningPlanCreateRequest,
     AutomationCleaningPlanCreateResponse,
     AutomationCleaningPlanDryRunRequest,
@@ -96,6 +98,7 @@ from data_intelligence_hub.services.automation_service import (
     preview_product_drift_alert_rule,
     preview_product_fanout,
     run_reviewed_product_batch,
+    save_browser_automation_plan,
     save_github_tool_dataset_version,
     save_github_tool_drift_event,
     save_product_dataset_version,
@@ -224,6 +227,31 @@ async def create_extraction_plan_route(
         )
         raise HTTPException(
             status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-automation-plans",
+    response_model=AutomationBrowserAutomationPlanResponse,
+)
+async def save_browser_automation_plan_route(
+    payload: AutomationBrowserAutomationPlanRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserAutomationPlanResponse:
+    try:
+        return await save_browser_automation_plan(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
 

@@ -148,7 +148,7 @@ export type AutomationSiteAnalysisList = {
 
 export type AutomationSiteAnalysisListInput = {
   projectId?: string;
-  target?: "ecommerce_product";
+  target?: "ecommerce_product" | "browser_automation";
   limit?: number;
 };
 
@@ -191,6 +191,54 @@ export type AutomationSiteAnalysisInput = {
   authorized: boolean;
   target?: "ecommerce_product";
   fields?: string[];
+};
+
+export type AutomationBrowserFieldContractFieldInput = {
+  key: string;
+  label: string;
+  source: string;
+  required: boolean;
+  selected: boolean;
+  selectorHint?: string | null;
+};
+
+export type AutomationBrowserCleaningRuleInput = {
+  field: string;
+  operation: string;
+  description: string;
+};
+
+export type AutomationBrowserAutomationPlanInput = {
+  projectId: string;
+  requestedUrl: string;
+  authorized: boolean;
+  name?: string;
+  runner: "browser_harness";
+  executionMode: "read_only_browser_harness";
+  riskLevel: "low" | "medium" | "high";
+  fieldContract: {
+    fields: AutomationBrowserFieldContractFieldInput[];
+    cleaningRules: AutomationBrowserCleaningRuleInput[];
+  };
+  browserDiagnostic: {
+    schemaVersion: "browser_structure_diagnostic.v1";
+    finalUrl: string;
+    recommendedPath: string;
+    confidence: number;
+    fieldStability?: "high" | "medium" | "low" | null;
+    evidenceSource: string;
+    screenshotPath?: string | null;
+  };
+  apiCandidates: string[];
+  guardrails: string[];
+};
+
+export type AutomationBrowserAutomationPlan = {
+  siteAnalysis: AutomationSiteAnalysisHistoryItem;
+  extractionPlan: AutomationExtractionPlan;
+  siteAnalysisCreated: boolean;
+  extractionPlanCreated: boolean;
+  runStarted: boolean;
 };
 
 export type AutomationProductCandidate = {

@@ -372,6 +372,135 @@ async def test_automation_site_analysis_persists_history_and_extraction_plan(
 
 
 @pytest.mark.asyncio
+async def test_browser_automation_plan_persists_read_only_draft(
+    client: AsyncClient,
+) -> None:
+    project_id = await register_and_create_project(client)
+    payload = {
+        "project_id": project_id,
+        "requested_url": "https://example.com/products/dynamic-bag",
+        "authorized": True,
+        "name": "Browser Automation: dynamic-bag",
+        "runner": "browser_harness",
+        "execution_mode": "read_only_browser_harness",
+        "risk_level": "medium",
+        "field_contract": {
+            "fields": [
+                {
+                    "key": "page_title",
+                    "label": "页面标题",
+                    "source": "browser_text",
+                    "required": True,
+                    "selected": True,
+                    "selector_hint": "h1",
+                },
+                {
+                    "key": "price",
+                    "label": "价格",
+                    "source": "browser_text",
+                    "required": False,
+                    "selected": False,
+                    "selector_hint": "[data-price]",
+                },
+                {
+                    "key": "api_candidate",
+                    "label": "API 候选",
+                    "source": "network",
+                    "required": False,
+                    "selected": True,
+                    "selector_hint": "xhr:/api/products",
+                },
+            ],
+            "cleaning_rules": [
+                {
+                    "field": "page_title",
+                    "operation": "strip_text",
+                    "description": "去除标题前后空白。",
+                }
+            ],
+        },
+        "browser_diagnostic": {
+            "schema_version": "browser_structure_diagnostic.v1",
+            "final_url": "https://example.com/products/dynamic-bag",
+            "recommended_path": "browser_automation",
+            "confidence": 86,
+            "field_stability": "medium",
+            "evidence_source": "browser-harness",
+            "screenshot_path": "/tmp/browser-diagnostic/dynamic-bag.png",
+        },
+        "api_candidates": ["https://example.com/api/products/dynamic-bag"],
+        "guardrails": [
+            "只读执行，不提交表单、不点击购买或发布类按钮。",
+            "保留诊断 JSON、截图路径和最终 URL 作为审计证据。",
+        ],
+    }
+
+    unauthorized_response = await client.post(
+        "/api/automation/browser-automation-plans",
+        json={**payload, "authorized": False},
+    )
+    assert unauthorized_response.status_code == 400
+    assert unauthorized_response.json()["detail"] == "automation_authorization_required"
+
+    response = await client.post("/api/automation/browser-automation-plans", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["run_started"] is False
+    assert result["site_analysis_created"] is True
+    assert result["extraction_plan_created"] is True
+    assert result["site_analysis"]["project_id"] == project_id
+    assert result["site_analysis"]["target"] == "browser_automation"
+    assert result["site_analysis"]["status"] == "draft"
+    assert result["site_analysis"]["requested_url"] == payload["requested_url"]
+    assert result["site_analysis"]["platform_type"] == "dynamic_browser_page"
+    assert result["site_analysis"]["page_type"] == "browser_runtime"
+
+    plan = result["extraction_plan"]
+    assert plan["collector_type"] == "browser_automation"
+    assert plan["status"] == "draft"
+    assert plan["risk_level"] == "medium"
+    assert plan["selected_fields"] == ["page_title", "api_candidate"]
+    assert plan["run_started"] is False
+    assert plan["audit_events"][0]["event"] == "browser_automation_plan_saved"
+    assert plan["audit_events"][0]["run_started"] is False
+
+    source_draft = plan["source_draft"]
+    assert source_draft["type"] == "browser_automation"
+    assert source_draft["suggested_name"] == "Browser Automation: dynamic-bag"
+    config = source_draft["config"]
+    assert config["runner"] == "browser_harness"
+    assert config["execution_mode"] == "read_only_browser_harness"
+    assert config["start_url"] == "https://example.com/products/dynamic-bag"
+    assert config["fields"] == ["page_title", "api_candidate"]
+    assert config["run_started"] is False
+    assert config["browser_diagnostic"]["evidence_source"] == "browser-harness"
+    assert config["field_contract"]["fields"][0]["selector_hint"] == "h1"
+    assert config["api_candidates"] == ["https://example.com/api/products/dynamic-bag"]
+    assert "只读执行" in config["guardrails"][0]
+
+    history_response = await client.get(
+        "/api/automation/site-analyses",
+        params={"project_id": project_id, "target": "browser_automation"},
+    )
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert history["total"] == 1
+    assert history["items"][0]["id"] == result["site_analysis"]["id"]
+    assert history["items"][0]["latest_plan"]["id"] == plan["id"]
+    assert history["run_started"] is False
+
+    detail_response = await client.get(
+        f"/api/automation/site-analyses/{result['site_analysis']['id']}"
+    )
+    assert detail_response.status_code == 200
+    detail = detail_response.json()
+    assert detail["source_draft"]["config"]["runner"] == "browser_harness"
+    assert detail["field_candidates"][0]["key"] == "page_title"
+    assert detail["tool_recommendations"][0]["collector_type"] == "browser_automation"
+
+
+@pytest.mark.asyncio
 async def test_source_rejects_invalid_config(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 

@@ -356,6 +356,58 @@ class AutomationExtractionPlanCreateRequest(BaseModel):
     schedule_cron: str | None = Field(default=None, max_length=50)
 
 
+class AutomationBrowserFieldContractFieldRequest(BaseModel):
+    key: str = Field(min_length=1, max_length=120)
+    label: str = Field(min_length=1, max_length=200)
+    source: str = Field(min_length=1, max_length=200)
+    required: bool = False
+    selected: bool = True
+    selector_hint: str | None = Field(default=None, max_length=1000)
+
+
+class AutomationBrowserCleaningRuleRequest(BaseModel):
+    field: str = Field(min_length=1, max_length=120)
+    operation: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=1000)
+
+
+class AutomationBrowserFieldContractRequest(BaseModel):
+    fields: list[AutomationBrowserFieldContractFieldRequest] = Field(
+        min_length=1,
+        max_length=50,
+    )
+    cleaning_rules: list[AutomationBrowserCleaningRuleRequest] = Field(
+        default_factory=list,
+        max_length=50,
+    )
+
+
+class AutomationBrowserDiagnosticEvidenceRequest(BaseModel):
+    schema_version: Literal["browser_structure_diagnostic.v1"] = (
+        "browser_structure_diagnostic.v1"
+    )
+    final_url: str = Field(min_length=1, max_length=5000)
+    recommended_path: str = Field(min_length=1, max_length=80)
+    confidence: float = Field(default=0, ge=0, le=100)
+    field_stability: Literal["high", "medium", "low"] | None = None
+    evidence_source: str = Field(default="browser-harness", max_length=120)
+    screenshot_path: str | None = Field(default=None, max_length=1000)
+
+
+class AutomationBrowserAutomationPlanRequest(BaseModel):
+    project_id: uuid.UUID
+    requested_url: str = Field(min_length=1, max_length=5000)
+    authorized: bool
+    name: str | None = Field(default=None, max_length=200)
+    runner: Literal["browser_harness"] = "browser_harness"
+    execution_mode: Literal["read_only_browser_harness"] = "read_only_browser_harness"
+    risk_level: Literal["low", "medium", "high"] = "medium"
+    field_contract: AutomationBrowserFieldContractRequest
+    browser_diagnostic: AutomationBrowserDiagnosticEvidenceRequest
+    api_candidates: list[str] = Field(default_factory=list, max_length=20)
+    guardrails: list[str] = Field(default_factory=list, max_length=20)
+
+
 class AutomationExtractionPlanResponse(BaseModel):
     id: uuid.UUID
     site_analysis_id: uuid.UUID
@@ -390,6 +442,14 @@ class AutomationSiteAnalysisHistoryItemResponse(BaseModel):
 class AutomationSiteAnalysisListResponse(BaseModel):
     items: list[AutomationSiteAnalysisHistoryItemResponse]
     total: int
+    run_started: bool = False
+
+
+class AutomationBrowserAutomationPlanResponse(BaseModel):
+    site_analysis: AutomationSiteAnalysisHistoryItemResponse
+    extraction_plan: AutomationExtractionPlanResponse
+    site_analysis_created: bool
+    extraction_plan_created: bool
     run_started: bool = False
 
 
