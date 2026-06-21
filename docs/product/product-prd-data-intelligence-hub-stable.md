@@ -24,8 +24,8 @@ source: human+ai
 |---|---|---|
 | 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；本轮没有做业务代码修改 |
 | 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码和 API contract 可见 |
-| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；2026-06-21 production HEAD `80f0566` 已完成 schema `202606110023` 发布和只读 smoke |
-| GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产 | 历史验收已记录；本轮未重新跑生产 GitHub 采集 |
+| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；2026-06-21 production HEAD `e9ccb81` 已完成 schema `202606110023` 发布、M3 GitHub API-first 字段合同发布和只读 smoke |
+| GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段 | authenticated read-only 平台包检查已确认字段合同；本轮未重新跑生产 GitHub 采集或生产写入 |
 | Browser diagnostic | `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun` 已随 production schema `202606110023` 上线；`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 保持只读/受控边界 | 生产已具备资产表和页面/API 表达，不等于真实浏览器执行器已获准生产运行 |
 | 生产 health | 2026-06-21 发布后只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true` | L3 production read-only；只证明发布和 schema 对齐，不证明生产写入 E2E |
 | 外部能力环境 | 本机 `browser-harness` 存在，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
@@ -83,7 +83,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 
 | 优先级 | 平台/能力 | 原因 | 执行边界 |
 |---|---|---|---|
-| P0 | GitHub API-first 深化 | 已有官方 API、topic/repo collector、Dataset/Report 闭环，是最稳的平台内化样板 | 官方 API 为事实源；Agent Reach/gh CLI 只做 router/doctor 或补充检索 |
+| P0 | GitHub API-first 深化 | M3 已完成首轮字段合同、collector、report、前端和本地门禁，并已部署到 production HEAD `e9ccb81`；剩余 README metadata、issue activity、commit freshness、显式 schema version/provenance 和生产写入验收 | 官方 API 为事实源；Agent Reach/gh CLI 只做 router/doctor 或补充检索；生产写入 E2E 需单独授权 |
 | P0 | browser-harness 有界证据 | 当前浏览器诊断已经资产化，下一步最需要补 selector 和 network 证据 | 默认 `collection_resources_written=false`；截图/trace/HAR 文件写入必须先完成 retention 方案 |
 | P0 | 独立站/Shopify-style 深化 | 已有 `ecommerce_product_discovery` 和 `ecommerce_product_page`，可形成业务数据集 | 只处理授权公开页面；不处理登录墙、验证码或反检测 |
 | P1 | Public Web/RSS/Docs | 低风险、高复用，适合培训内容、竞品官网和文档更新监控 | 公开 URL/feed；保留来源、时间、final URL 和摘要，不覆盖原始事实 |
@@ -177,7 +177,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 | 用户登录 / Workspace / Project | 已有 | 邮箱密码、单 workspace 和项目管理仍是 MVP 边界 |
 | Source / Task / TaskRun | 已有 | 采集源、采集任务和运行记录是正式写入链路 |
 | 稳定 Collector | 已有 | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` |
-| Platform Package | 已有第一版 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`；下一步做能力探测和版本化 |
+| Platform Package | 已有第一版 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`；`github-api-first` 已部署 M3 字段合同，下一步补 version、owner 和 acceptance registry |
 | SiteAnalysis / ExtractionPlan | 已有 | 公开 URL 分析、字段候选、采集计划和浏览器诊断导入 |
 | Browser diagnostic | 本地增强中 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`；不是生产无人值守采集 |
 | CleaningPlan | 已有 | 清洗规则草案、试跑和 DatasetVersion 追踪 |
@@ -185,7 +185,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 | Dataset Export | 已有 | CSV/JSON/JSONL 导出，必须记录审计和 checksum |
 | Drift / Alert / Notification | 已有基础 | 漂移、告警规则、站内通知和邮件仍需按授权分层 |
 | Report Asset | 已有基础 | 工具雷达报告可保存为 Report 资产；保存不等于通知或邮件发送 |
-| CapabilityProbe | 待实现 | Agent Reach 风格的能力体检和后端候选路由，先做 no-read/no-write probe |
+| CapabilityProbe | 已有第一版 | Agent Reach 风格的能力体检和后端候选路由已覆盖 missing/blocked/available no-read/no-write probe；下一步补 probe run history 和 evidence asset |
 | ExternalToolSnapshot | 待实现 | 外部工具 read/search 输出的人工审核导入资产 |
 | Marketplace API/import | 待实现 | Amazon 等优先 API、授权导出或人工导入 |
 | Social SOP/import-only | 待实现 | Twitter/X、小红书、Instagram、LinkedIn 等默认不做自动页面抓取 |

@@ -29,6 +29,7 @@ source: human+ai
 | R0-5 | Release branch setup and scoped staging | done | 已从 `main` 切到 `codex/prd2-r0-release-boundary`；RC1/RC2 已 staged，RC3 草稿未 staged；尚未 commit |
 | R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
 | R0-7 | Authorized production write E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
+| R0-8 | M3 post-R0 production release | done | production HEAD `e9ccb81`；schema 仍为 `202606110023`；GitHub API-first 字段合同 L3 read-only smoke passed |
 
 ## 2. Release Scope Inventory
 
@@ -299,7 +300,96 @@ Supported claim: production has been deployed to `80f0566` and schema `202606110
 
 Unsupported claim: production write E2E is complete. No new production test user, Source, Task, Dataset, Report, notification, email, provider call, or scheduler mutation was created in this release pass.
 
-## 8. Remaining Authorization Points
+## 8. M3 Production Release Evidence
+
+M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
+
+```text
+release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
+previous production HEAD: 80f0566288ab1cab3348730c65df811bcfd42d9a
+release method: git bundle upload + git merge --ff-only FETCH_HEAD
+preflight: passed
+api image build: passed
+web image build: passed
+gateway reload: passed
+gateway dry-run: passed
+```
+
+Schema state after M3:
+
+```text
+schema=current
+schema_revision=202606110023
+schema_head=202606110023
+```
+
+M3 did not add a migration; the production schema remained aligned with BrowserDiagnosticRun/Job/JobRun release head.
+
+Container state:
+
+```text
+data_achieve_scrapy_api healthy
+data_achieve_scrapy_db healthy
+data_achieve_scrapy_edge healthy
+data_achieve_scrapy_web healthy
+```
+
+Public page smoke:
+
+```text
+/dashboard 200
+/intelligence 200
+/reports 200
+/tasks 200
+/sources 200
+/alerts 200
+/notifications 200
+/projects 200
+/signals 200
+/raw-records 200
+/entities 200
+/automation 200
+/datasets 200
+```
+
+Authenticated read-only API smoke passed for existing demo credentials:
+
+```text
+/api/auth/me passed
+/api/dashboard/overview passed
+/api/tasks passed
+/api/reports passed
+/api/alert-events passed
+/api/notifications passed
+```
+
+GitHub API-first package field contract:
+
+```text
+GET /api/automation/platform-packages/github-api-first
+required fields include:
+- license_spdx_id
+- default_branch
+- latest_release_tag
+- latest_release_published_at
+- pushed_at
+```
+
+Cross-domain gateway regression:
+
+```text
+https://video.lute-tlz-dddd.top 200
+https://mkt.lute-tlz-dddd.top 200
+https://voc.lute-tlz-dddd.top 302
+https://voc.lute-tlz-dddd.top/login/?next=%2Fsuperset%2Fwelcome%2F 200 after redirect
+https://scrapy.lute-tlz-dddd.top/api/health 200
+```
+
+Supported claim: production has been deployed to `e9ccb81`, schema remains `202606110023`, and M3 GitHub API-first field contract is available through authenticated read-only API.
+
+Unsupported claim: production write E2E is complete. No new production test user, Source, Task, Dataset, Report, notification, email, provider call, or scheduler mutation was created in this release pass.
+
+## 9. Remaining Authorization Points
 
 Before production write E2E:
 
@@ -308,11 +398,11 @@ Before production write E2E:
 3. Confirm cleanup register fields and cleanup command.
 4. Confirm no provider call, no external send, no scheduler mutation unless separately authorized.
 
-## 9. Next Execution Step
+## 10. Next Execution Step
 
 The next executable step is not another release-boundary pass. It is either:
 
 1. Authorized production write E2E with cleanup register; or
-2. M3 GitHub API-first deepening on a new feature branch.
+2. Remaining M3 GitHub API-first deepening for README metadata, issue activity, commit freshness, explicit DatasetVersion schema/provenance and drift rules.
 
 Do not claim L4 production write coverage until option 1 is explicitly authorized and completed.

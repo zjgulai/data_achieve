@@ -14,40 +14,43 @@ source: human+ai
 
 ## 0. Evidence Boundary
 
-本文件盘点的是 2026-06-21 这一轮只读核验下的“线上当前状态 vs PRD2/本地工作树目标”。本轮没有执行部署、登录态操作、生产写入、provider call、邮件发送、通知发送、调度变更或外部平台读取。
+本文件盘点的是 2026-06-21 M3 GitHub API-first 深化发布后的“线上当前状态 vs PRD2/本地工作树目标”。本轮执行了 production deploy、authenticated read-only smoke 和 gateway/cross-domain read-only regression；没有执行生产写入、provider call、邮件发送、通知发送、调度变更或外部平台读取。
 
 | Evidence | Current fact | Boundary |
 |---|---|---|
 | Production health | `GET https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true` | L3 production read-only smoke；证明 production release 已对齐到 PRD2 R0 schema |
-| Production pages | `/automation` 返回 `200 text/html`，`/datasets` 返回 `200 text/html`，根路径返回 `307 text/html` | L3 production read-only smoke；未登录，不证明页面内写入链路可用 |
+| Production pages | `/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`、`/automation`、`/datasets` 均返回 `200 text/html` | L3 production read-only smoke；不证明页面内写入链路可用 |
 | Production auth boundary | 未认证访问 `/api/automation/platform-packages` 和 `/api/sources` 返回 `401 application/json` | L3 production read-only smoke；符合业务接口需要登录态的 API 合同 |
+| Authenticated read-only API smoke | 既有 demo 账号读取 session、dashboard、tasks、reports、alert events、notifications 均通过 | L3 production read-only；没有创建或修改业务数据 |
+| GitHub API-first package | Authenticated read-only `GET /api/automation/platform-packages/github-api-first` 确认 `field_schema.required` 包含 `license_spdx_id`、`default_branch`、`latest_release_tag`、`latest_release_published_at`、`pushed_at` | L3 production read-only；只证明平台包字段合同已发布，不证明生产 GitHub 采集写入 |
 | Local PRD2 docs | PRD2 源头文档为 `docs/product/product-prd-data-intelligence-hub-stable.md`；执行计划为 `docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md` | L1 repo evidence |
-| Release commit | `main@80f0566288ab1cab3348730c65df811bcfd42d9a` 已发布到 `/opt/data-achieve-scrapy/app` | L3 production deployment evidence；不含生产写入 E2E |
+| Release commit | `main@e9ccb814899231d49be2f130ed0a9ee9599c93fc` 已发布到 `/opt/data-achieve-scrapy/app` | L3 production deployment evidence；不含生产写入 E2E |
 | Schema delta | `202606110021_browser_diagnostic_runs.py`、`202606110022_browser_diagnostic_jobs.py`、`202606110023_browser_diagnostic_job_runs.py` 已在生产 migration 中执行 | Browser diagnostic 资产表已上线；真实浏览器执行仍需单独授权 |
 | Browser local smoke | `workflow-browser-evidence-artifact-retention-stable.md` 记录 `tmp/browser-harness-readonly-smoke-20260621.json` 为 `blocked_local_daemon`、`browser_started=false`、`collection_resources_written=false` | L2 local validation；不是生产可用性证明 |
+| Cross-domain regression | `video.lute-tlz-dddd.top=200`、`mkt.lute-tlz-dddd.top=200`、`voc.lute-tlz-dddd.top=302`，跟随 redirect 后到登录页返回 200；`scrapy.lute-tlz-dddd.top/api/health=200` | L3 read-only gateway regression；`voc` 直接访问是 302，不应写成直接 200 |
 
 ## 1. Executive Snapshot
 
 ### Facts
 
-1. 当前线上服务是可访问的：API health 正常，数据库已连接，`/automation` 和 `/datasets` 页面能返回 HTML。
-2. 当前线上 API 未认证访问会返回 401，这和 API contract 中“登录、注册以外业务接口都要求当前用户和 workspace”的设计一致。
+1. 当前线上服务是可访问的：API health 正常，数据库已连接，核心页面均能返回 HTML。
+2. 当前线上 API 未认证访问会返回 401，这和 API contract 中“登录、注册以外业务接口都要求当前用户和 workspace”的设计一致；既有 demo 账号 authenticated read-only smoke 已通过。
 3. PRD2 的产品中心已经从通用情报平台收敛为“平台化采集工作台”，主链路是授权确认、能力探测、结构/浏览器诊断、字段候选、采集/清洗计划、Dataset、Export、Drift、Report、Alert、Evidence。
-4. 本地工作树已经包含 PRD2/M1/M2 的多项实现痕迹：平台包、CapabilityProbe、BrowserDiagnosticRun/Job/JobRun、browser local runner、GitHub Tool Radar、独立站 dataset/export/drift/report 等。
-5. 生产 Alembic head 已到 `202606110023`，PRD2 R0 release/schema gap 已闭合；剩余 gap 转为 authenticated production read-only / authorized production write E2E 证据。
+4. 本地和生产 HEAD `e9ccb81` 已包含 PRD2/M1/M2/M3 的多项实现：平台包、CapabilityProbe、BrowserDiagnosticRun/Job/JobRun、browser local runner、GitHub Tool Radar 深化字段、独立站 dataset/export/drift/report 等。
+5. 生产 Alembic head 已到 `202606110023`，PRD2 R0 release/schema gap 已闭合；M3 GitHub API-first 字段合同已上线；剩余 gap 转为剩余字段深度、显式 provenance 和 authorized production write E2E 证据。
 
 ### Inferences
 
-1. 线上产品已经完成 PRD2 R0 release/schema 对齐，但这仍然只是 production release + read-only smoke，不等于生产写入 E2E 已完成。
+1. 线上产品已经完成 PRD2 R0 release/schema 对齐和 M3 首轮 GitHub API-first 字段深化发布，但这仍然只是 production release + read-only smoke，不等于生产写入 E2E 已完成。
 2. BrowserDiagnosticRun/Job/JobRun 资产化链路已随 schema `202606110023` 上线；真实浏览器执行器、文件保留和外部平台读取仍需单独授权。
-3. GitHub API-first 和独立站/Shopify-style 是下一阶段最适合继续加深的平台样板，因为它们已经有 collector、Dataset、Export、Drift、Report 的本地产品路径。
+3. GitHub API-first 仍是下一阶段最适合继续加深的平台样板，因为首轮 M3 已上线但 README metadata、issue activity、commit freshness、显式 field provenance 和生产写入验收仍未闭合。
 4. Public Web/RSS/Docs、Video transcript import、Public community trend 适合做 P1 新平台包；Marketplace、RPA/no-code、Social 平台应先做 API/import/SOP，不应默认做页面自动采集。
 
 ### Unknowns
 
-1. 本轮没有使用登录态执行生产 `/automation` 内部流程，所以不能确认生产平台包矩阵、CapabilityProbe、Dataset write-through、Report asset 创建在当前线上版本中可用。
-2. 本轮没有检查部署 commit SHA，也没有执行 release pipeline，所以无法确认线上版本对应哪个本地提交。
-3. 本轮没有生产写入授权，所以没有执行 Source/Task/TaskRun/Dataset/Report/Alert 的 L4 验收。
+1. 本轮使用登录态执行了生产 read-only API smoke，但没有在 `/automation` 页面内执行交互式写入流程，所以不能确认生产 Dataset write-through、Report asset 创建和 cleanup 链路。
+2. 本轮没有生产写入授权，所以没有执行 Source/Task/TaskRun/Dataset/Report/Alert 的 L4 验收。
+3. 本轮没有重新运行生产 GitHub topic/repo 采集，所以 M3 的生产证据只覆盖字段合同发布，不覆盖真实 GitHub 采集写入结果。
 4. 线上运行环境是否安装 `agent-reach` 或 `browser-harness` 未验证；即便安装，也只能先进入 doctor/read-only probe 边界。
 
 ## 2. PRD2 Gap Matrix
@@ -55,14 +58,14 @@ source: human+ai
 | Area | PRD2 target | Current deployed evidence | Local/repo evidence | Gap | Priority |
 |---|---|---|---|---|---|
 | Product shell | `/automation` 作为平台化采集工作台主入口，`/datasets` 作为数据资产池 | `/automation=200`、`/datasets=200` | Web app 有 automation/datasets routes 和 E2E 覆盖 | 生产页面内交互未登录验证；根路径 `307` 只说明有跳转 | P0 release evidence |
-| Auth/workspace boundary | 业务接口绑定登录态、workspace、current user | 未认证业务 API 返回 401 | API contract 明确 cookie auth；routes 使用 `get_auth_context` | 缺少本轮 authenticated production E2E | P0 evidence |
+| Auth/workspace boundary | 业务接口绑定登录态、workspace、current user | 未认证业务 API 返回 401；authenticated read-only smoke 通过 | API contract 明确 cookie auth；routes 使用 `get_auth_context` | 缺少 authorized production write E2E 和 cleanup evidence | P0 evidence |
 | Stable collectors | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 本轮未重新运行生产采集 | API docs、collector tests、Automation service 可见 | 稳定 collector 需要在 release 后做授权生产 smoke 和 cleanup register | P0 release |
-| PlatformPackage | 3 个可解释、可验收平台包：independent site、GitHub API-first、public page preflight | 未认证平台包接口返回 401，不能读取内容 | `list_platform_packages()` 返回 3 个 package；E2E 覆盖应用平台包 | 平台包仍是静态 catalog；缺 version、owner、acceptance registry | P0/P1 |
+| PlatformPackage | 3 个可解释、可验收平台包：independent site、GitHub API-first、public page preflight | 未认证平台包接口返回 401；authenticated read-only 已确认 `github-api-first` M3 字段合同 | `list_platform_packages()` 返回 3 个 package；E2E 覆盖应用平台包 | 平台包仍是静态 catalog；缺 version、owner、acceptance registry | P0/P1 |
 | CapabilityProbe | Agent Reach 风格 no-read/no-write doctor，区分 backend candidates 和 forbidden actions | 生产未登录未验证 | `list_capability_probes()`、`_probe_agent_reach_channel()`、TS types/UI 可见 | 线上未证明；缺 probe run history、probe evidence asset、operator remediation UI | P0 |
 | Agent Reach fusion | 作为能力路由和 doctor，不直接读平台内容 | 线上未知 | 本地逻辑只允许 `agent-reach doctor --json`，缺失时返回 `missing_tool` | 未安装/线上运行态未知；尚未沉淀 channel-level evidence | P0/P1 |
-| BrowserDiagnostic assets | BrowserDiagnosticRun/Job/JobRun 只读证据资产，selector/network/promotion/redaction 可审计 | 线上 schema head 已是 `202606110023` | migrations `021/022/023`、routes、service、UI、E2E 已在 `80f0566` 发布 | 资产表已上线；real browser local smoke 仍受 daemon 阻断；无生产 runner 授权 | M2-3 |
+| BrowserDiagnostic assets | BrowserDiagnosticRun/Job/JobRun 只读证据资产，selector/network/promotion/redaction 可审计 | 线上 schema head 已是 `202606110023` | migrations `021/022/023`、routes、service、UI、E2E 已随 `80f0566` 发布并保留在 `e9ccb81` | 资产表已上线；real browser local smoke 仍受 daemon 阻断；无生产 runner 授权 | M2-3 |
 | Browser artifact retention | metadata-only 当前阶段，截图/trace/HAR 需单独批准 | 生产未验证 | retention workflow 已定义 `files_written=false` 等不变量 | 缺自动 TTL/cleanup job；未实现 approved artifact retention mode | P1 |
-| GitHub Tool Radar | API-first 样板，能进入 Dataset/Export/Drift/Report | 本轮未生产写入 | E2E 覆盖 Topic Radar -> dataset -> report -> drift；dataset 字段含 repo/stars/forks/issues/language/topics/url/time | 缺 release、README、license、default branch、issue activity、commit freshness；schema version/provenance 不足 | P0/M3 |
+| GitHub Tool Radar | API-first 样板，能进入 Dataset/Export/Drift/Report | authenticated read-only 平台包字段合同已确认；本轮未生产写入 | E2E 覆盖 Topic Radar -> dataset -> report -> drift；M3 已补 license、default branch、latest release、pushed_at 等字段和 report summary | README metadata、issue activity、commit freshness、显式 schema version/provenance、生产写入 E2E 仍未闭合 | P0/M3 |
 | Independent site | Shopify-style 商品发现、fan-out、dataset、drift、export | 本轮未生产写入 | 平台包和 service 覆盖 title/price/currency/availability/sku/canonical_url | 缺 pagination/sitemap/canonical 去重增强；缺 variant/image/brand/category；授权测试站 E2E 未执行 | P0/M4 |
 | Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | 只有 page availability，不是采集链路 | `public-page-structure-preflight` 已有，generic_web 可作为基础 | RSS/Docs 还不是一等平台包；缺 feed parser、doc diff、dataset schema、drift/report | P1/M5 |
 | Video transcript import | YouTube/B 站公开视频 metadata/transcript import，不下载媒体 | 无 | PRD2 已定义边界 | 缺 import schema、source provenance、copyright/subtitle fields、UI flow | P1/M6 |
@@ -121,6 +124,14 @@ pnpm test:web
 bash scripts/verify-mvp.sh
 bash scripts/verify-mvp.sh --with-db
 ```
+
+当前 M3 状态：
+
+1. `M3-1` 部分完成：license、default branch、latest release、pushed_at 已部署；README metadata、issue activity、commit freshness 仍待补。
+2. `M3-2` 部分完成：collector/API/report 已带字段来源和缺失摘要；DatasetVersion 显式 `schema_version` 与 per-field provenance 仍待补。
+3. `M3-3` 部分完成：report 已显示 license/release/default branch/pushed_at summary；维护风险、安装方式、适用/不适用边界仍待增强。
+4. `M3-4` 未完成：当前只继承既有 completeness/drift 基础能力，尚未按 stars/forks/issues/release freshness/field missingness 分层输出。
+5. `M3-5` 已完成本地门禁和 production read-only smoke；production write E2E 仍为 pending authorization。
 
 ### Track M4 - Independent Site / Shopify-style Deepening
 
@@ -189,8 +200,8 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 
 | Priority | Platform/capability | Why next | Work mode |
 |---|---|---|---|
-| Done | Release boundary and migration to `023` | production HEAD `80f0566`，schema `202606110023`，L3 read-only smoke 完成 | release/evidence |
-| P0 | GitHub API-first | 官方 API、低风险、已有 collector/Dataset/Report path | API collector |
+| Done | Release boundary, migration to `023`, M3 read-only deployment | production HEAD `e9ccb81`，schema `202606110023`，L3 read-only smoke 和 GitHub API-first 字段合同检查完成 | release/evidence |
+| P0 | GitHub API-first remaining M3 | 官方 API、低风险、已有 collector/Dataset/Report path；首轮字段深化已上线，剩余 README/issue/freshness/provenance/drift | API collector |
 | P0 | Independent site / Shopify-style | 已有业务闭环，能产生电商 dataset/drift | public page collector |
 | P1 | Public Web/RSS/Docs | 低风险、高复用，适合训练/竞品/文档更新 | URL/feed/docs collector |
 | P1 | Video transcript import | 内容趋势价值高，但应 import metadata/transcript | import |
@@ -201,12 +212,11 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 
 ## 6. Immediate Next To Do
 
-按当前证据，R0 release/schema 对齐已完成。下一轮不应重复 release boundary，应进入受控生产证据补齐和平台深挖。
+按当前证据，R0 release/schema 对齐和 M3 首轮 production read-only 发布已完成。下一轮不应重复 release boundary，应进入剩余 M3 深挖或授权生产写入验收。
 
-1. 做 authenticated production read-only smoke：使用既有 demo 账号读取 session、dashboard、tasks、reports、alert events、notifications，不创建新数据。
+1. 补齐 M3 剩余项：README metadata、issue activity、commit freshness、DatasetVersion `schema_version`、per-field provenance 和 drift 分层规则。
 2. 如需证明写入链路，再单独授权 L4 production E2E：明确测试 workspace、允许写入的 Source/Task/Dataset/Report 范围、cleanup register 和 cleanup dry-run/execute。
-3. 进入 M3 GitHub API-first deepening：扩展 repo metadata、release/license/default branch、issue activity、commit freshness 和 provenance。
-4. 并行准备 M4 Independent Site 和 M5 Public Web/RSS/Docs，但保持平台政策、授权和导入优先边界。
+3. 并行准备 M4 Independent Site 和 M5 Public Web/RSS/Docs，但保持平台政策、授权和导入优先边界。
 
 ## 7. Definition Of Done
 
