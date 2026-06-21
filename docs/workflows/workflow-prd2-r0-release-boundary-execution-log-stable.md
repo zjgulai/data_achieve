@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-本轮没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration；生产写入 E2E、provider call、邮件发送、站内通知发送和调度变更仍未执行。
 
 ## 1. Task Orchestration
 
@@ -27,7 +27,8 @@ source: human+ai
 | R0-3 | Local DB/migration gate | done | `POSTGRES_PORT=15432 DATABASE_URL=postgresql+asyncpg://data_intel:<local-dev-password>@localhost:15432/data_intel bash scripts/verify-mvp.sh --with-db` |
 | R0-4 | Production read-only smoke | done | `/api/health`、`/automation`、`/datasets`、unauthenticated `/api/automation/platform-packages` |
 | R0-5 | Release branch setup and scoped staging | done | 已从 `main` 切到 `codex/prd2-r0-release-boundary`；RC1/RC2 已 staged，RC3 草稿未 staged；尚未 commit |
-| R0-6 | Authorized production E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
+| R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
+| R0-7 | Authorized production write E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
 
 ## 2. Release Scope Inventory
 
@@ -214,15 +215,91 @@ Supported claim: current production is healthy at schema `202606110020` and page
 
 Unsupported claim: BrowserDiagnosticRun/Job/JobRun schema `202606110021/022/023` is deployed to production.
 
-## 7. Remaining Authorization Points
+## 7. Post-merge Production Release Evidence
 
-Before production deployment:
+Production release was executed after PR #1 was merged into `main`.
 
-1. Confirm release scope and staging set.
-2. Confirm deployment target and release method.
-3. Confirm production migration window from `202606110020` to `202606110023`.
-4. Prepare rollback note for `202606110021/022/023`.
-5. Prepare post-deploy L3 smoke: `/api/health`, `/automation`, `/datasets`, unauthenticated 401 checks.
+```text
+release commit: 80f0566288ab1cab3348730c65df811bcfd42d9a
+previous production HEAD: d9b2a5e35274963c1804d200824d5767d2f4ae3d
+release method: git bundle upload + git merge --ff-only FETCH_HEAD
+preflight: passed
+image build: passed
+gateway reload: passed
+gateway dry-run: passed
+```
+
+Production Alembic migration:
+
+```text
+202606110020 -> 202606110021 browser diagnostic run assets
+202606110021 -> 202606110022 browser diagnostic job assets
+202606110022 -> 202606110023 browser diagnostic local run assets
+```
+
+Production health after release:
+
+```text
+environment=production
+status=ok
+database=connected
+schema=current
+schema_revision=202606110023
+schema_head=202606110023
+scheduler_enabled=true
+```
+
+Container state:
+
+```text
+data_achieve_scrapy_api healthy
+data_achieve_scrapy_db healthy
+data_achieve_scrapy_edge healthy
+data_achieve_scrapy_web healthy
+```
+
+Public page smoke:
+
+```text
+/dashboard 200
+/intelligence 200
+/reports 200
+/tasks 200
+/sources 200
+/alerts 200
+/notifications 200
+/projects 200
+/signals 200
+/raw-records 200
+/entities 200
+/automation 200
+/datasets 200
+```
+
+Authenticated read-only API smoke passed for existing demo credentials:
+
+```text
+/api/auth/me passed
+/api/dashboard/overview passed
+/api/tasks non-empty
+/api/reports non-empty
+/api/alert-events non-empty
+/api/notifications non-empty
+```
+
+Cross-domain gateway regression:
+
+```text
+https://video.lute-tlz-dddd.top 200
+https://mkt.lute-tlz-dddd.top 200
+https://voc.lute-tlz-dddd.top 200
+```
+
+Supported claim: production has been deployed to `80f0566` and schema `202606110023`.
+
+Unsupported claim: production write E2E is complete. No new production test user, Source, Task, Dataset, Report, notification, email, provider call, or scheduler mutation was created in this release pass.
+
+## 8. Remaining Authorization Points
 
 Before production write E2E:
 
@@ -231,11 +308,11 @@ Before production write E2E:
 3. Confirm cleanup register fields and cleanup command.
 4. Confirm no provider call, no external send, no scheduler mutation unless separately authorized.
 
-## 8. Next Execution Step
+## 9. Next Execution Step
 
-The next executable step is release preparation, not new platform expansion:
+The next executable step is not another release-boundary pass. It is either:
 
-1. Split the current dirty worktree into a scoped release candidate.
-2. Re-run `bash scripts/verify-mvp.sh --with-db` on the final scoped diff.
-3. Only after explicit deployment authorization, deploy and run production read-only smoke.
-4. Only after separate production-write authorization, run the smallest L4 E2E with cleanup.
+1. Authorized production write E2E with cleanup register; or
+2. M3 GitHub API-first deepening on a new feature branch.
+
+Do not claim L4 production write coverage until option 1 is explicitly authorized and completed.

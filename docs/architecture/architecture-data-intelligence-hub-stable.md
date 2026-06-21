@@ -80,7 +80,7 @@ flowchart LR
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
 5. GitHub Topic Radar 运行记录已可保存为 `github_tool_radar` DatasetVersion，并可生成工具雷达只读报告、漂移快照和 `report_type=github_tool_radar` 的 Report 中心资产。
-6. 截至 commit `d9b2a5e`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、工具雷达 Report 资产和生产浏览器链路已完成一轮生产验收；公开网页结构预检已新增采集路径建议层，后续重点是 browser-harness 真实浏览器诊断、更多平台包真实采集深度与长期运行可靠性。
+6. 截至 production HEAD `80f0566`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产和生产浏览器链路已完成发布；后续重点是授权生产写入 E2E、browser-harness 真实浏览器执行器、更多平台包真实采集深度与长期运行可靠性。
 
 当前平台包矩阵：
 
@@ -225,3 +225,13 @@ flowchart LR
 8. E2E 与 demo 噪音清理已执行，后续 dry-run 计数为 0。
 9. Report 中心已支持 `report_type=github_tool_radar` 的工具雷达资产；该保存动作不启动采集、不创建通知、不发送邮件。
 10. `/api/toolkit/preflight` 返回 `collection_strategy`，生产只读 smoke 已确认 `recommended_path=generic_web`、`fit=high`、`run_started=false`。
+
+截至 2026-06-21，production HEAD `80f0566` 已验证：
+
+1. 生产运行目录 `/opt/data-achieve-scrapy/app` 已通过 git bundle fast-forward 更新到 `80f0566288ab1cab3348730c65df811bcfd42d9a`。
+2. 生产 Alembic migration 已从 `202606110020` 升级到 `202606110023`，覆盖 BrowserDiagnosticRun/Job/JobRun 表。
+3. 生产健康检查返回 `status=ok`、`database=connected`、`schema_revision=202606110023`、`schema_head=202606110023`。
+4. `api`、`db`、`web`、`edge` compose 服务均为 healthy，外层 gateway reload 和 dry-run check 均通过。
+5. `/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`、`/automation`、`/datasets` 均返回 200。
+6. Demo 账号 authenticated read-only API smoke 通过，覆盖 session、dashboard、tasks、reports、alert events、notifications。
+7. 本轮未执行生产写入 E2E、未创建测试用户、未触发 provider call、未发送邮件或外部通知。

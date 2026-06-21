@@ -24,10 +24,10 @@ source: human+ai
 |---|---|---|
 | 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；本轮没有做业务代码修改 |
 | 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码和 API contract 可见 |
-| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；本轮只做生产 health 只读复核 |
+| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；2026-06-21 production HEAD `80f0566` 已完成 schema `202606110023` 发布和只读 smoke |
 | GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产 | 历史验收已记录；本轮未重新跑生产 GitHub 采集 |
-| Browser diagnostic | 本地已有 `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun`、`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 第一切片 | 当前仍是本地/受控诊断链路，不等于生产浏览器执行器已上线 |
-| 生产 health | 2026-06-21 只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`scheduler_enabled=true` | 只证明服务健康，不证明本轮重新验收采集全链路 |
+| Browser diagnostic | `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun` 已随 production schema `202606110023` 上线；`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 保持只读/受控边界 | 生产已具备资产表和页面/API 表达，不等于真实浏览器执行器已获准生产运行 |
+| 生产 health | 2026-06-21 发布后只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true` | L3 production read-only；只证明发布和 schema 对齐，不证明生产写入 E2E |
 | 外部能力环境 | 本机 `browser-harness` 存在，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
 
 ### 本轮修订目的
