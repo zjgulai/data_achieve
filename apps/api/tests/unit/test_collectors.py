@@ -58,6 +58,19 @@ async def test_manual_json_collector_validates_tests_collects_and_normalizes() -
 async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
+        if request.url.path.endswith("/readme"):
+            return httpx.Response(
+                200,
+                json={
+                    "name": "README.md",
+                    "path": "README.md",
+                    "sha": "abc123",
+                    "html_url": "https://github.com/openai/codex/blob/main/README.md",
+                    "download_url": "https://raw.githubusercontent.com/openai/codex/main/README.md",
+                    "size": 2048,
+                    "encoding": "base64",
+                },
+            )
         if request.url.path.endswith("/releases/latest"):
             return httpx.Response(
                 200,
@@ -104,9 +117,17 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
     assert raw_record.source_url == "https://github.com/openai/codex"
     assert content["full_name"] == "openai/codex"
     assert content["license_spdx_id"] == "Apache-2.0"
+    assert content["schema_version"] == "github_repo.v3"
     assert content["latest_release_tag"] == "v1.0.0"
     assert content["latest_release_published_at"] == "2026-06-12T00:00:00Z"
     assert content["provenance"]["latest_release_found"] is True
+    assert content["provenance"]["readme_found"] is True
+    assert content["readme_detected"] is True
+    assert content["readme_name"] == "README.md"
+    assert content["readme_size"] == 2048
+    assert content["issue_activity_open_count"] == 12
+    assert content["issue_activity_status"] == "active"
+    assert content["commit_freshness_status"] in {"fresh", "aging", "stale"}
     assert collector.normalize(raw_record) == []
 
 
@@ -118,6 +139,8 @@ async def test_github_repo_collector_retries_transient_upstream_failure() -> Non
         nonlocal repo_request_count
         assert_request_policy(request)
         if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        if request.url.path.endswith("/readme"):
             return httpx.Response(404, json={"message": "Not Found"})
         repo_request_count += 1
         if repo_request_count == 1:
@@ -142,6 +165,8 @@ async def test_github_repo_collector_retries_transient_upstream_failure() -> Non
     assert content["full_name"] == "openai/codex"
     assert content["latest_release"] is None
     assert content["provenance"]["latest_release_found"] is False
+    assert content["readme_detected"] is False
+    assert content["provenance"]["readme_found"] is False
 
 
 @pytest.mark.asyncio
@@ -154,6 +179,8 @@ async def test_github_repo_collector_uses_github_token(
         assert request.headers["authorization"] == "Bearer test-token"
         assert request.headers["x-github-api-version"] == "2022-11-28"
         if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        if request.url.path.endswith("/readme"):
             return httpx.Response(404, json={"message": "Not Found"})
         return httpx.Response(
             200,
@@ -219,7 +246,12 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
     assert content["repositories"][0]["license_spdx_id"] == "MIT"
     assert content["repositories"][0]["default_branch"] == "main"
     assert content["repositories"][0]["owner_login"] == "example"
-    assert content["schema_version"] == "github_topic.v2"
+    assert content["repositories"][0]["readme_detected"] is None
+    assert content["repositories"][0]["readme_source"] == "not_available_in_github_search_api"
+    assert content["repositories"][0]["issue_activity_open_count"] == 1
+    assert content["repositories"][0]["issue_activity_status"] == "active"
+    assert content["repositories"][0]["commit_freshness_status"] in {"fresh", "aging", "stale"}
+    assert content["schema_version"] == "github_topic.v3"
     assert content["provenance"]["source"] == "github_search_api"
     assert collector.normalize(raw_record) == []
 

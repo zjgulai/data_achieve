@@ -1005,6 +1005,7 @@ export type AutomationProductDriftCheck = {
     criticalTasks: number;
     staleTasks: number;
     missingFieldTasks: number;
+    driftLayers: Record<string, number>;
     runStarted: boolean;
     alertCreated: boolean;
   };
@@ -1072,6 +1073,13 @@ export type AutomationGitHubToolReportRepository = {
   fork: boolean | null;
   updatedAt: string | null;
   pushedAt: string | null;
+  readmeDetected: boolean | null;
+  readmeHtmlUrl: string | null;
+  readmeSize: number | null;
+  issueActivityOpenCount: number | null;
+  issueActivityStatus: string | null;
+  commitFreshnessDays: number | null;
+  commitFreshnessStatus: string | null;
 };
 
 export type AutomationGitHubToolReport = {
@@ -1085,6 +1093,9 @@ export type AutomationGitHubToolReport = {
     highValueRepositories: number;
     licensedRepositories: number;
     releaseTaggedRepositories: number;
+    readmeDocumentedRepositories: number;
+    issueActiveRepositories: number;
+    freshCommitRepositories: number;
     archivedRepositories: number;
     forkRepositories: number;
     languages: Record<string, number>;

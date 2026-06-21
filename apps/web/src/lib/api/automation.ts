@@ -890,6 +890,7 @@ type AutomationProductDriftCheckResponse = {
     critical_tasks: number;
     stale_tasks: number;
     missing_field_tasks: number;
+    drift_layers: Record<string, number>;
     run_started: boolean;
     alert_created: boolean;
   };
@@ -931,6 +932,9 @@ type AutomationGitHubToolReportResponse = {
     high_value_repositories: number;
     licensed_repositories: number;
     release_tagged_repositories: number;
+    readme_documented_repositories: number;
+    issue_active_repositories: number;
+    fresh_commit_repositories: number;
     archived_repositories: number;
     fork_repositories: number;
     languages: Record<string, number>;
@@ -956,6 +960,13 @@ type AutomationGitHubToolReportResponse = {
     fork: boolean | null;
     updated_at: string | null;
     pushed_at: string | null;
+    readme_detected: boolean | null;
+    readme_html_url: string | null;
+    readme_size: number | null;
+    issue_activity_open_count: number | null;
+    issue_activity_status: string | null;
+    commit_freshness_days: number | null;
+    commit_freshness_status: string | null;
   }>;
   recommendations: string[];
   audit_events: Array<Record<string, unknown>>;
@@ -3781,6 +3792,7 @@ function mapAutomationProductDriftCheck(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
     },
@@ -3828,6 +3840,7 @@ function mapAutomationProductDriftEvent(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
     },
@@ -3869,6 +3882,9 @@ function mapAutomationGitHubToolReport(
       highValueRepositories: response.summary.high_value_repositories,
       licensedRepositories: response.summary.licensed_repositories,
       releaseTaggedRepositories: response.summary.release_tagged_repositories,
+      readmeDocumentedRepositories: response.summary.readme_documented_repositories,
+      issueActiveRepositories: response.summary.issue_active_repositories,
+      freshCommitRepositories: response.summary.fresh_commit_repositories,
       archivedRepositories: response.summary.archived_repositories,
       forkRepositories: response.summary.fork_repositories,
       languages: response.summary.languages,
@@ -3894,6 +3910,13 @@ function mapAutomationGitHubToolReport(
       fork: repository.fork,
       updatedAt: repository.updated_at,
       pushedAt: repository.pushed_at,
+      readmeDetected: repository.readme_detected,
+      readmeHtmlUrl: repository.readme_html_url,
+      readmeSize: repository.readme_size,
+      issueActivityOpenCount: repository.issue_activity_open_count,
+      issueActivityStatus: repository.issue_activity_status,
+      commitFreshnessDays: repository.commit_freshness_days,
+      commitFreshnessStatus: repository.commit_freshness_status,
     })),
     recommendations: response.recommendations,
     auditEvents: response.audit_events,
@@ -3971,6 +3994,9 @@ function getMockAutomationGitHubToolReport(
       highValueRepositories: 2,
       licensedRepositories: 2,
       releaseTaggedRepositories: 2,
+      readmeDocumentedRepositories: 2,
+      issueActiveRepositories: 2,
+      freshCommitRepositories: 2,
       archivedRepositories: 0,
       forkRepositories: 0,
       languages: { Python: 2 },
@@ -4002,6 +4028,13 @@ function getMockAutomationGitHubToolReport(
         fork: false,
         updatedAt: now,
         pushedAt: now,
+        readmeDetected: true,
+        readmeHtmlUrl: "https://github.com/browser-use/browser-use/blob/main/README.md",
+        readmeSize: 12000,
+        issueActivityOpenCount: 120,
+        issueActivityStatus: "active",
+        commitFreshnessDays: 0,
+        commitFreshnessStatus: "fresh",
       },
     ],
     recommendations: [
