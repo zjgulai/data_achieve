@@ -19,31 +19,47 @@ import { useEffect, useMemo, useState } from "react";
 import {
   analyzeAutomationSite,
   approveAutomationProductSchedule,
+  buildAutomationBrowserExecutorContract,
   checkAutomationGitHubToolDrift,
   checkAutomationProductDrift,
+  cancelAutomationBrowserDiagnosticJob,
   createAutomationCleaningPlan,
+  createAutomationBrowserDiagnosticJob,
   createAutomationGitHubToolReportAsset,
   createAutomationProductFanout,
   discoverAutomationProducts,
+  dryRunAutomationBrowserExecutableSpec,
   dryRunAutomationCleaningPlan,
   generateAutomationGitHubToolReport,
+  listAutomationBrowserDiagnosticJobs,
+  listAutomationBrowserDiagnosticJobRuns,
+  listAutomationBrowserDiagnostics,
+  listAutomationCapabilityProbes,
   listAutomationPlatformPackages,
   listAutomationSiteAnalyses,
   listAutomationProductDriftEvents,
   previewAutomationProductDataset,
   previewAutomationProductFanout,
   previewAutomationGitHubToolDataset,
+  runAutomationBrowserDiagnosticJobLocal,
   runAutomationProductBatch,
+  saveAutomationBrowserAutomationPlan,
   saveAutomationGitHubToolDriftEvent,
   saveAutomationGitHubToolDataset,
   saveAutomationProductDriftEvent,
   saveAutomationProductDataset,
 } from "@/lib/api/automation";
+import { buildBrowserDiagnosticActionPlan } from "@/lib/browser-diagnostic";
 import { listProjects } from "@/lib/api/projects";
 import { createSource, enableSource } from "@/lib/api/sources";
 import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
+import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
+import type {
+  BrowserDiagnosticActionPlan,
+  BrowserStructureDiagnostic,
+} from "@/types/browser-diagnostic";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Source, TaskRun } from "@/types/source-task";
 import type { ToolkitPreflightReport } from "@/types/toolkit";
@@ -62,8 +78,14 @@ import type {
   AutomationProductDriftEvent,
   AutomationProductFanoutCreate,
   AutomationProductFanoutPreview,
+  AutomationCapabilityProbe,
   AutomationPlatformPackage,
   AutomationProductScheduleApprove,
+  AutomationBrowserDiagnosticJob,
+  AutomationBrowserExecutorContract,
+  AutomationBrowserLocalRunnerResult,
+  AutomationBrowserDiagnosticRun,
+  AutomationBrowserExecutableSpecDryRun,
   AutomationSiteAnalysis,
   AutomationSiteAnalysisHistoryItem,
 } from "@/types/automation";
@@ -191,6 +213,34 @@ export function AutomationWorkbench() {
   const [githubMaxResults, setGithubMaxResults] = useState("20");
   const [githubRun, setGithubRun] = useState<GitHubTopicRunState | null>(null);
   const [preflightReport, setPreflightReport] = useState<ToolkitPreflightReport | null>(null);
+  const [browserDiagnostic, setBrowserDiagnostic] = useState<BrowserStructureDiagnostic | null>(
+    null,
+  );
+  const [browserActionPlan, setBrowserActionPlan] = useState<BrowserDiagnosticActionPlan | null>(
+    null,
+  );
+  const [browserPlanSaveLoading, setBrowserPlanSaveLoading] = useState(false);
+  const [browserPlanSaveMessage, setBrowserPlanSaveMessage] = useState<string | null>(null);
+  const [browserSpecDryRun, setBrowserSpecDryRun] =
+    useState<AutomationBrowserExecutableSpecDryRun | null>(null);
+  const [browserSpecDryRunLoading, setBrowserSpecDryRunLoading] = useState(false);
+  const [browserSpecDryRunError, setBrowserSpecDryRunError] = useState<string | null>(null);
+  const [browserDiagnosticJobs, setBrowserDiagnosticJobs] = useState<
+    AutomationBrowserDiagnosticJob[]
+  >([]);
+  const [browserJobLoading, setBrowserJobLoading] = useState(false);
+  const [browserJobError, setBrowserJobError] = useState<string | null>(null);
+  const [browserExecutorContract, setBrowserExecutorContract] =
+    useState<AutomationBrowserExecutorContract | null>(null);
+  const [browserExecutorLoading, setBrowserExecutorLoading] = useState(false);
+  const [browserExecutorError, setBrowserExecutorError] = useState<string | null>(null);
+  const [browserLocalRuns, setBrowserLocalRuns] = useState<
+    AutomationBrowserLocalRunnerResult[]
+  >([]);
+  const [browserLocalRunResult, setBrowserLocalRunResult] =
+    useState<AutomationBrowserLocalRunnerResult | null>(null);
+  const [browserLocalRunLoading, setBrowserLocalRunLoading] = useState(false);
+  const [browserLocalRunError, setBrowserLocalRunError] = useState<string | null>(null);
   const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
@@ -208,6 +258,9 @@ export function AutomationWorkbench() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [analysisHistory, setAnalysisHistory] = useState<AutomationSiteAnalysisHistoryItem[]>([]);
+  const [browserDiagnosticHistory, setBrowserDiagnosticHistory] = useState<
+    AutomationBrowserDiagnosticRun[]
+  >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [platformPackages, setPlatformPackages] = useState<AutomationPlatformPackage[]>([]);
@@ -215,6 +268,9 @@ export function AutomationWorkbench() {
   const [platformPackageError, setPlatformPackageError] = useState<string | null>(null);
   const [appliedPlatformPackage, setAppliedPlatformPackage] =
     useState<AutomationPlatformPackage | null>(null);
+  const [capabilityProbes, setCapabilityProbes] = useState<AutomationCapabilityProbe[]>([]);
+  const [capabilityProbeLoading, setCapabilityProbeLoading] = useState(false);
+  const [capabilityProbeError, setCapabilityProbeError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -231,6 +287,35 @@ export function AutomationWorkbench() {
         if (mounted) {
           setProjects([]);
           setSelectedProjectId("");
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setCapabilityProbeLoading(true);
+    setCapabilityProbeError(null);
+    listAutomationCapabilityProbes()
+      .then((result) => {
+        if (!mounted) {
+          return;
+        }
+        setCapabilityProbes(result.items);
+      })
+      .catch((caught) => {
+        if (!mounted) {
+          return;
+        }
+        setCapabilityProbeError(
+          caught instanceof Error ? caught.message : "Capability probe loading failed",
+        );
+      })
+      .finally(() => {
+        if (mounted) {
+          setCapabilityProbeLoading(false);
         }
       });
     return () => {
@@ -270,10 +355,31 @@ export function AutomationWorkbench() {
   useEffect(() => {
     if (!selectedProjectId) {
       setAnalysisHistory([]);
+      setBrowserDiagnosticHistory([]);
+      setBrowserDiagnosticJobs([]);
+      setBrowserExecutorContract(null);
+      setBrowserLocalRuns([]);
+      setBrowserLocalRunResult(null);
       return;
     }
-    void refreshAnalysisHistory(selectedProjectId);
-  }, [selectedProjectId]);
+    void refreshAnalysisHistory(
+      selectedProjectId,
+      mode === "structure_preflight" ? "browser_automation" : "ecommerce_product",
+    );
+    if (mode === "structure_preflight") {
+      setBrowserLocalRuns([]);
+      setBrowserLocalRunResult(null);
+      void refreshBrowserDiagnosticHistory(selectedProjectId);
+      void refreshBrowserDiagnosticJobs(selectedProjectId);
+      void refreshBrowserDiagnosticJobRuns(selectedProjectId);
+    } else {
+      setBrowserDiagnosticHistory([]);
+      setBrowserDiagnosticJobs([]);
+      setBrowserExecutorContract(null);
+      setBrowserLocalRuns([]);
+      setBrowserLocalRunResult(null);
+    }
+  }, [mode, selectedProjectId]);
 
   const selectedFieldCount = useMemo(
     () => analysis?.fieldCandidates.filter((field) => field.selected).length ?? fields.length,
@@ -326,6 +432,9 @@ export function AutomationWorkbench() {
     try {
       const report = await runToolkitPreflight(url.trim(), authorized);
       setPreflightReport(report);
+      setBrowserDiagnostic(null);
+      setBrowserActionPlan(null);
+      setBrowserPlanSaveMessage(null);
       setGenericWebRun(null);
       setAnalysis(null);
       setDiscovery(null);
@@ -350,14 +459,26 @@ export function AutomationWorkbench() {
       setError("请选择写入项目后再创建 generic_web 采集源。");
       return;
     }
+    const diagnosticPlan = browserActionPlan ?? (browserDiagnostic
+      ? buildBrowserDiagnosticActionPlan(browserDiagnostic)
+      : null);
+    if (diagnosticPlan && !diagnosticPlan.canCreateGenericWebSource) {
+      setError(
+        diagnosticPlan.blockingReasons[0] ??
+          "浏览器诊断不建议直接创建 generic_web，请先复核推荐工具。",
+      );
+      return;
+    }
+    const sourceDraft = diagnosticPlan?.sourceDraft;
     setLoading(true);
     try {
       const source = await createSource({
         projectId: selectedProjectId,
-        name: `Generic Web: ${hostLabelFromUrl(preflightReport.finalUrl)}`,
+        name:
+          sourceDraft?.suggestedName ?? `Generic Web: ${hostLabelFromUrl(preflightReport.finalUrl)}`,
         type: "generic_web",
-        url: preflightReport.finalUrl,
-        config: {
+        url: sourceDraft?.url ?? preflightReport.finalUrl,
+        config: sourceDraft?.config ?? {
           url: preflightReport.finalUrl,
           extract_mode: "main_content",
         },
@@ -369,6 +490,73 @@ export function AutomationWorkbench() {
       setError(caught instanceof Error ? caught.message : "generic_web 采集源创建或运行失败");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveBrowserAutomationPlanFromDiagnostic(
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) {
+    const draft = actionPlan.browserAutomationDraft;
+    if (!draft) {
+      setError("当前浏览器诊断没有生成 browser automation 方案。");
+      return;
+    }
+    if (!selectedProjectId) {
+      setError("请选择写入项目后再保存 browser automation 方案。");
+      return;
+    }
+    if (!authorized) {
+      setError("请先确认目标为公开页面或公开 API，且你有权进行采集分析。");
+      return;
+    }
+    setError(null);
+    setBrowserPlanSaveMessage(null);
+    setBrowserPlanSaveLoading(true);
+    try {
+      const result = await saveAutomationBrowserAutomationPlan({
+        projectId: selectedProjectId,
+        requestedUrl: diagnostic.requestedUrl || diagnostic.finalUrl,
+        authorized,
+        name: draft.suggestedName,
+        runner: draft.runner,
+        executionMode: draft.config.execution_mode,
+        riskLevel: actionPlan.primaryRecommendation.riskLevel,
+        fieldContract: {
+          fields: draft.config.field_contract.fields.map((field) => ({
+            key: field.key,
+            label: field.label,
+            source: field.source,
+            required: field.required,
+            selected: field.selected,
+            selectorHint: field.selector_hint,
+          })),
+          cleaningRules: draft.config.field_contract.cleaning_rules,
+        },
+        browserDiagnostic: {
+          schemaVersion: "browser_structure_diagnostic.v1",
+          finalUrl: diagnostic.finalUrl,
+          recommendedPath: diagnostic.extractionStrategy.recommendedPath,
+          confidence: diagnostic.extractionStrategy.confidence,
+          fieldStability: diagnostic.extractionStrategy.fieldStability,
+          evidenceSource: diagnostic.evidence.source,
+          screenshotPath: diagnostic.evidence.screenshotPath,
+        },
+        diagnosticPayload: serializeBrowserDiagnosticPayload(diagnostic),
+        apiCandidates: draft.config.api_candidates,
+        guardrails: draft.guardrails,
+      });
+      setBrowserPlanSaveMessage(
+        `已保存 ${result.extractionPlan.name} v${result.extractionPlan.versionNumber}，诊断资产 ${result.browserDiagnostic.id.slice(0, 8)} 已归档，未启动采集运行。`,
+      );
+      setAnalysisHistory([result.siteAnalysis]);
+      setBrowserDiagnosticHistory([result.browserDiagnostic]);
+      void refreshAnalysisHistory(selectedProjectId, "browser_automation");
+      void refreshBrowserDiagnosticHistory(selectedProjectId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "browser automation 方案保存失败");
+    } finally {
+      setBrowserPlanSaveLoading(false);
     }
   }
 
@@ -417,7 +605,7 @@ export function AutomationWorkbench() {
       setPreflightReport(null);
       setGenericWebRun(null);
       if (selectedProjectId) {
-        void refreshAnalysisHistory(selectedProjectId);
+        void refreshAnalysisHistory(selectedProjectId, "ecommerce_product");
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Automation analysis failed");
@@ -426,13 +614,16 @@ export function AutomationWorkbench() {
     }
   }
 
-  async function refreshAnalysisHistory(projectId: string) {
+  async function refreshAnalysisHistory(
+    projectId: string,
+    target: "ecommerce_product" | "browser_automation",
+  ) {
     setHistoryLoading(true);
     setHistoryError(null);
     try {
       const result = await listAutomationSiteAnalyses({
         projectId,
-        target: "ecommerce_product",
+        target,
         limit: 5,
       });
       setAnalysisHistory(result.items);
@@ -440,6 +631,204 @@ export function AutomationWorkbench() {
       setHistoryError(caught instanceof Error ? caught.message : "Analysis history failed");
     } finally {
       setHistoryLoading(false);
+    }
+  }
+
+  async function refreshBrowserDiagnosticHistory(projectId: string) {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const result = await listAutomationBrowserDiagnostics({
+        projectId,
+        limit: 5,
+      });
+      setBrowserDiagnosticHistory(result.items);
+    } catch (caught) {
+      setHistoryError(caught instanceof Error ? caught.message : "Browser diagnostic history failed");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function refreshBrowserDiagnosticJobs(projectId: string) {
+    setBrowserJobLoading(true);
+    setBrowserJobError(null);
+    try {
+      const result = await listAutomationBrowserDiagnosticJobs({
+        projectId,
+        limit: 5,
+      });
+      setBrowserDiagnosticJobs(result.items);
+    } catch (caught) {
+      setBrowserJobError(caught instanceof Error ? caught.message : "Browser diagnostic job list failed");
+    } finally {
+      setBrowserJobLoading(false);
+    }
+  }
+
+  async function refreshBrowserDiagnosticJobRuns(projectId: string) {
+    setBrowserLocalRunError(null);
+    try {
+      const result = await listAutomationBrowserDiagnosticJobRuns({
+        projectId,
+        limit: 5,
+      });
+      setBrowserLocalRuns(result.items);
+      setBrowserLocalRunResult((current) => current ?? result.items[0] ?? null);
+    } catch (caught) {
+      setBrowserLocalRunError(
+        caught instanceof Error ? caught.message : "本地回放证据加载未完成",
+      );
+    }
+  }
+
+  async function validateBrowserExecutableSpec(item: AutomationSiteAnalysisHistoryItem) {
+    const plan = item.latestPlan;
+    if (!plan) {
+      setBrowserSpecDryRunError("当前历史项没有可校验的执行规格。");
+      return;
+    }
+    if (!authorized) {
+      setBrowserSpecDryRunError("请先确认授权边界后再校验执行规格。");
+      return;
+    }
+    const config = plan.sourceDraft.config;
+    const diagnosticRunId = readString(config.browser_diagnostic_run_id);
+    setBrowserSpecDryRunLoading(true);
+    setBrowserSpecDryRunError(null);
+    setBrowserSpecDryRun(null);
+    try {
+      const result = await dryRunAutomationBrowserExecutableSpec({
+        authorized,
+        confirmReview: true,
+        siteAnalysisId: item.id,
+        extractionPlanId: plan.id,
+        browserDiagnosticRunId: diagnosticRunId,
+      });
+      setBrowserSpecDryRun(result);
+    } catch (caught) {
+      setBrowserSpecDryRunError(
+        caught instanceof Error ? caught.message : "执行规格校验未完成",
+      );
+    } finally {
+      setBrowserSpecDryRunLoading(false);
+    }
+  }
+
+  async function createBrowserDiagnosticJob(result: AutomationBrowserExecutableSpecDryRun) {
+    if (!authorized) {
+      setBrowserJobError("请先确认授权边界后再创建诊断任务。");
+      return;
+    }
+    if (result.summary.blockedChecks > 0 || !result.summary.canDryRunAfterReview) {
+      setBrowserJobError("当前执行规格仍存在阻断项，不能创建诊断任务。");
+      return;
+    }
+    setBrowserJobLoading(true);
+    setBrowserJobError(null);
+    try {
+      const job = await createAutomationBrowserDiagnosticJob({
+        authorized,
+        confirmCreate: true,
+        siteAnalysisId: result.siteAnalysis.id,
+        extractionPlanId: result.extractionPlan.id,
+        browserDiagnosticRunId: result.browserDiagnostic?.id ?? null,
+        networkObservationMode: "metadata_only",
+        artifactMode: "screenshot_reference_only",
+        note: "Created from reviewed browser executable spec in automation workbench.",
+      });
+      setBrowserDiagnosticJobs((current) => [
+        job,
+        ...current.filter((item) => item.id !== job.id),
+      ]);
+    } catch (caught) {
+      setBrowserJobError(caught instanceof Error ? caught.message : "浏览器诊断任务创建未完成");
+    } finally {
+      setBrowserJobLoading(false);
+    }
+  }
+
+  async function cancelBrowserDiagnosticJob(jobId: string) {
+    setBrowserJobLoading(true);
+    setBrowserJobError(null);
+    try {
+      const job = await cancelAutomationBrowserDiagnosticJob(jobId);
+      setBrowserDiagnosticJobs((current) =>
+        current.map((item) => (item.id === job.id ? job : item)),
+      );
+    } catch (caught) {
+      setBrowserJobError(caught instanceof Error ? caught.message : "浏览器诊断任务取消未完成");
+    } finally {
+      setBrowserJobLoading(false);
+    }
+  }
+
+  async function buildBrowserExecutorContract(jobId: string) {
+    if (!authorized) {
+      setBrowserExecutorError("请先确认授权边界后再生成执行器合同。");
+      return;
+    }
+    setBrowserExecutorLoading(true);
+    setBrowserExecutorError(null);
+    try {
+      const contract = await buildAutomationBrowserExecutorContract(jobId, {
+        authorized,
+        confirmReview: true,
+        artifactRetentionDays: 7,
+        maxPreviewRows: 20,
+        includeScreenshot: true,
+        includeTraceSummary: false,
+        includeHarSummary: true,
+        note: "Build no-run executor contract from automation workbench.",
+      });
+      setBrowserExecutorContract(contract);
+    } catch (caught) {
+      setBrowserExecutorError(
+        caught instanceof Error ? caught.message : "执行器合同生成未完成",
+      );
+    } finally {
+      setBrowserExecutorLoading(false);
+    }
+  }
+
+  async function runBrowserLocalRunner(
+    jobId: string,
+    runMode: "diagnostic_snapshot_replay" | "ephemeral_browser_harness_probe" =
+      "diagnostic_snapshot_replay",
+  ) {
+    if (!authorized) {
+      setBrowserLocalRunError("请先确认授权边界后再生成本地回放证据。");
+      return;
+    }
+    setBrowserLocalRunLoading(true);
+    setBrowserLocalRunError(null);
+    try {
+      const result = await runAutomationBrowserDiagnosticJobLocal(jobId, {
+        authorized,
+        confirmExecute: true,
+        runMode,
+        confirmRealBrowserProbe: runMode === "ephemeral_browser_harness_probe",
+        artifactRetentionDays: 7,
+        maxPreviewRows: 20,
+        includeScreenshot: true,
+        includeTraceSummary: false,
+        includeHarSummary: true,
+        note:
+          runMode === "ephemeral_browser_harness_probe"
+            ? "Run ephemeral browser-harness probe from automation workbench."
+            : "Run diagnostic snapshot replay from automation workbench.",
+      });
+      setBrowserLocalRunResult(result);
+      setBrowserLocalRuns((current) => [
+        result,
+        ...current.filter((item) => item.id !== result.id),
+      ]);
+    } catch (caught) {
+      setBrowserLocalRunError(
+        caught instanceof Error ? caught.message : "本地回放证据生成未完成",
+      );
+    } finally {
+      setBrowserLocalRunLoading(false);
     }
   }
 
@@ -604,6 +993,9 @@ export function AutomationWorkbench() {
                       setGithubRun(null);
                       setPreflightReport(null);
                       setGenericWebRun(null);
+                      setBrowserDiagnostic(null);
+                      setBrowserActionPlan(null);
+                      setBrowserPlanSaveMessage(null);
                       if (item.mode === "github_topic_radar") {
                         const osintProject = projects.find((project) => project.domain === "osint");
                         if (osintProject) {
@@ -825,10 +1217,64 @@ export function AutomationWorkbench() {
                 items={analysisHistory}
                 loading={historyLoading}
               />
+            ) : mode === "structure_preflight" ? (
+              <div className="grid gap-3">
+                <BrowserDiagnosticHistoryPanel
+                  error={historyError}
+                  items={browserDiagnosticHistory}
+                  loading={historyLoading}
+                />
+                <AnalysisHistoryPanel
+                  description="已保存的 browser automation 方案会显示 selector、等待条件和 API 候选等执行规格。"
+                  emptyText="暂无自动化方案历史。保存只读自动化方案后，执行规格会出现在这里。"
+                  error={historyError}
+                  items={analysisHistory}
+                  loading={historyLoading}
+                  browserJobLoading={browserJobLoading}
+                  onBrowserJobCreate={(result) => void createBrowserDiagnosticJob(result)}
+                  onBrowserSpecDryRun={(item) => void validateBrowserExecutableSpec(item)}
+                  specDryRunError={browserSpecDryRunError}
+                  specDryRunLoading={browserSpecDryRunLoading}
+                  specDryRunResult={browserSpecDryRun}
+                  title="自动化方案历史"
+                />
+                <BrowserDiagnosticJobHistoryPanel
+                  error={browserJobError}
+                  items={browserDiagnosticJobs}
+                  loading={browserJobLoading}
+                  onCancel={(jobId) => void cancelBrowserDiagnosticJob(jobId)}
+                  onBuildContract={(jobId) => void buildBrowserExecutorContract(jobId)}
+                  contractLoading={browserExecutorLoading}
+                />
+                <BrowserExecutorContractPanel
+                  contract={browserExecutorContract}
+                  error={browserExecutorError}
+                  loading={browserExecutorLoading}
+                  onRunHarnessProbe={(jobId) =>
+                    void runBrowserLocalRunner(jobId, "ephemeral_browser_harness_probe")
+                  }
+                  onRunLocal={(jobId) =>
+                    void runBrowserLocalRunner(jobId, "diagnostic_snapshot_replay")
+                  }
+                  runLoading={browserLocalRunLoading}
+                />
+                <BrowserLocalRunnerResultPanel
+                  error={browserLocalRunError}
+                  items={browserLocalRuns}
+                  loading={browserLocalRunLoading}
+                  result={browserLocalRunResult}
+                />
+              </div>
             ) : null}
           </div>
         </div>
       </section>
+
+      <CapabilityProbePanel
+        error={capabilityProbeError}
+        items={capabilityProbes}
+        loading={capabilityProbeLoading}
+      />
 
       <PlatformPackageMatrix
         appliedPackage={appliedPlatformPackage}
@@ -847,9 +1293,16 @@ export function AutomationWorkbench() {
       ) : mode === "structure_preflight" ? (
         preflightReport ? (
           <StructurePreflightResult
+            authorized={authorized}
+            browserActionPlan={browserActionPlan}
+            browserPlanSaveLoading={browserPlanSaveLoading}
+            browserPlanSaveMessage={browserPlanSaveMessage}
             genericWebRun={genericWebRun}
             loading={loading}
+            onBrowserActionPlanChange={setBrowserActionPlan}
+            onBrowserDiagnosticChange={setBrowserDiagnostic}
             onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
+            onSaveBrowserAutomationPlan={saveBrowserAutomationPlanFromDiagnostic}
             report={preflightReport}
             selectedProjectId={selectedProjectId}
           />
@@ -876,21 +1329,39 @@ export function AutomationWorkbench() {
 }
 
 function AnalysisHistoryPanel({
+  browserJobLoading = false,
+  description = "已保存的站点分析会在这里形成可复用采集计划。",
+  emptyText = "暂无历史分析。完成一次商品页分析后，系统会保存默认采集计划。",
   error,
   items,
   loading,
+  onBrowserJobCreate,
+  onBrowserSpecDryRun,
+  specDryRunError = null,
+  specDryRunLoading = false,
+  specDryRunResult = null,
+  title = "历史分析",
 }: {
+  description?: string;
+  emptyText?: string;
   error: string | null;
   items: AutomationSiteAnalysisHistoryItem[];
   loading: boolean;
+  browserJobLoading?: boolean;
+  onBrowserJobCreate?: (result: AutomationBrowserExecutableSpecDryRun) => void;
+  onBrowserSpecDryRun?: (item: AutomationSiteAnalysisHistoryItem) => void;
+  specDryRunError?: string | null;
+  specDryRunLoading?: boolean;
+  specDryRunResult?: AutomationBrowserExecutableSpecDryRun | null;
+  title?: string;
 }) {
   return (
     <div className="mt-4 rounded-2xl border border-[#E8D4CB] bg-[#FFFDFC] p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#2E201C]">历史分析</p>
+          <p className="text-sm font-semibold text-[#2E201C]">{title}</p>
           <p className="mt-1 text-xs leading-5 text-[#7A625A]">
-            已保存的站点分析会在这里形成可复用采集计划。
+            {description}
           </p>
         </div>
         {loading ? <Loader2 className="animate-spin text-[#C96F5C]" size={16} aria-hidden="true" /> : null}
@@ -920,15 +1391,685 @@ function AnalysisHistoryPanel({
                 <span>{formatRisk(item.riskLevel)}</span>
                 <span>{formatShortDate(item.analyzedAt)}</span>
               </div>
+              {item.latestPlan?.collectorType === "browser_automation" ? (
+                <div className="mt-3 grid gap-2">
+                  <ExecutableSpecSummary config={item.latestPlan.sourceDraft.config} />
+                  {onBrowserSpecDryRun ? (
+                    <button
+                      className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#E8D4CB] bg-[#FFF8F4] px-3 py-1.5 text-xs font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#9E5C4D] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={specDryRunLoading}
+                      onClick={() => onBrowserSpecDryRun(item)}
+                      type="button"
+                    >
+                      {specDryRunLoading ? (
+                        <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                      ) : (
+                        <ShieldCheck size={14} aria-hidden="true" />
+                      )}
+                      校验执行规格
+                    </button>
+                  ) : null}
+                  {specDryRunError ? (
+                    <p className="rounded-lg border border-[#F0C8C0] bg-[#FFF2EF] px-2.5 py-2 text-xs font-semibold text-[#B85F4F]">
+                      {specDryRunError}
+                    </p>
+                  ) : null}
+                  {specDryRunResult?.extractionPlan.id === item.latestPlan.id ? (
+                    <BrowserSpecDryRunResult
+                      jobLoading={browserJobLoading}
+                      onCreateJob={onBrowserJobCreate}
+                      result={specDryRunResult}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
       ) : (
         <p className="mt-3 rounded-xl border border-dashed border-[#E8D4CB] px-3 py-3 text-xs leading-5 text-[#7A625A]">
-          暂无历史分析。完成一次商品页分析后，系统会保存默认采集计划。
+          {emptyText}
         </p>
       )}
     </div>
+  );
+}
+
+function BrowserDiagnosticHistoryPanel({
+  error,
+  items,
+  loading,
+}: {
+  error: string | null;
+  items: AutomationBrowserDiagnosticRun[];
+  loading: boolean;
+}) {
+  return (
+    <div className="mt-4 rounded-2xl border border-[#E8D4CB] bg-[#FFFDFC] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2E201C]">浏览器诊断资产</p>
+          <p className="mt-1 text-xs leading-5 text-[#7A625A]">
+            已保存的真实浏览器结构诊断会在这里沉淀为后续采集规格证据。
+          </p>
+        </div>
+        {loading ? <Loader2 className="animate-spin text-[#C96F5C]" size={16} aria-hidden="true" /> : null}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+      {items.length > 0 ? (
+        <div className="mt-3 grid gap-2">
+          {items.map((item) => (
+            <article className="rounded-xl border border-[#F0E1D9] bg-white p-3" key={item.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#2E201C]">
+                    {formatRecommendedPath(item.recommendedPath as ToolkitPreflightReport["collectionStrategy"]["recommendedPath"])}
+                    {" · "}
+                    {Math.round(item.confidence * 100)}%
+                  </p>
+                  <p className="mt-1 truncate text-xs text-[#7A625A]">{item.finalUrl}</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-[#E8D4CB] px-2 py-1 text-xs font-semibold text-[#7D4F43]">
+                  {item.runStarted ? "已运行" : "只读资产"}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-[#9E5C4D]">
+                <span>字段稳定性 {item.fieldStability ?? "unknown"}</span>
+                <span>{item.evidenceSource}</span>
+                <span>{formatShortDate(item.createdAt)}</span>
+              </div>
+              {item.blockedReasons.length > 0 ? (
+                <p className="mt-2 rounded-lg bg-[#FFF8F4] px-2 py-1 text-xs leading-5 text-[#7A625A]">
+                  {item.blockedReasons[0]}
+                </p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl border border-dashed border-[#E8D4CB] px-3 py-3 text-xs leading-5 text-[#7A625A]">
+          暂无浏览器诊断资产。导入 browser-harness 诊断 JSON 并保存方案后会出现在这里。
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BrowserDiagnosticJobHistoryPanel({
+  contractLoading,
+  error,
+  items,
+  loading,
+  onBuildContract,
+  onCancel,
+}: {
+  contractLoading: boolean;
+  error: string | null;
+  items: AutomationBrowserDiagnosticJob[];
+  loading: boolean;
+  onBuildContract: (jobId: string) => void;
+  onCancel: (jobId: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E8D4CB] bg-[#FFFDFC] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2E201C]">浏览器诊断任务</p>
+          <p className="mt-1 text-xs leading-5 text-[#7A625A]">
+            这里只保存已审核的只读任务意图，真实浏览器执行器尚未接入。
+          </p>
+        </div>
+        {loading ? <Loader2 className="animate-spin text-[#C96F5C]" size={16} aria-hidden="true" /> : null}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+      {items.length > 0 ? (
+        <div className="mt-3 grid gap-2">
+          {items.map((item) => (
+            <article className="rounded-xl border border-[#F0E1D9] bg-white p-3" key={item.id}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#2E201C]">
+                    {formatBrowserJobStatus(item.status)}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-[#7A625A]">{item.finalUrl}</p>
+                </div>
+                <span className="shrink-0 rounded-full border border-[#E8D4CB] px-2 py-1 text-xs font-semibold text-[#7D4F43]">
+                  {item.runStarted ? "已运行" : "未运行"}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-[#9E5C4D]">
+                <span>{item.selectorScope.length} selector</span>
+                <span>{item.waitPolicy.length} 等待条件</span>
+                <span>{formatShortDate(item.createdAt)}</span>
+              </div>
+              {item.blockedReasons.length > 0 ? (
+                <p className="mt-2 rounded-lg bg-[#FFF8F4] px-2 py-1 text-xs leading-5 text-[#7A625A]">
+                  {formatBrowserJobReason(item.blockedReasons[0])}
+                </p>
+              ) : null}
+              {item.status !== "cancelled" ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#B8D8BA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F6B3A] transition hover:border-[#6AA772] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={contractLoading}
+                    onClick={() => onBuildContract(item.id)}
+                    type="button"
+                  >
+                    {contractLoading ? (
+                      <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                    ) : (
+                      <ShieldCheck size={14} aria-hidden="true" />
+                    )}
+                    生成执行器合同
+                  </button>
+                  <button
+                    className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#E8D4CB] bg-[#FFF8F4] px-3 py-1.5 text-xs font-semibold text-[#7D4F43] transition hover:border-[#C96F5C] hover:text-[#9E5C4D] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={loading}
+                    onClick={() => onCancel(item.id)}
+                    type="button"
+                  >
+                    {loading ? (
+                      <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                    ) : (
+                      <CheckCircle2 size={14} aria-hidden="true" />
+                    )}
+                    取消任务
+                  </button>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-xl border border-dashed border-[#E8D4CB] px-3 py-3 text-xs leading-5 text-[#7A625A]">
+          暂无浏览器诊断任务。先校验执行规格，再显式创建只读任务。
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BrowserExecutorContractPanel({
+  contract,
+  error,
+  loading,
+  onRunHarnessProbe,
+  onRunLocal,
+  runLoading,
+}: {
+  contract: AutomationBrowserExecutorContract | null;
+  error: string | null;
+  loading: boolean;
+  onRunHarnessProbe: (jobId: string) => void;
+  onRunLocal: (jobId: string) => void;
+  runLoading: boolean;
+}) {
+  if (!contract && !error && !loading) {
+    return null;
+  }
+  const adapterName = readString(contract?.adapter.adapter_name) ?? "browser_harness_read_only_local";
+  const isolationMode = readString(contract?.runtimeIsolation.mode) ?? "local_ephemeral_browser_context";
+  const retentionDays = String(contract?.artifactRetentionPolicy.retention_days ?? "-");
+  const passedChecks = contract?.readinessChecks.filter((item) => item.status === "passed").length ?? 0;
+  const reviewChecks = contract?.readinessChecks.filter((item) => item.status === "review").length ?? 0;
+  const blockedChecks = contract?.readinessChecks.filter((item) => item.status === "blocked").length ?? 0;
+  return (
+    <div className="rounded-2xl border border-[#D7E8D7] bg-[#F3FBF3] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#2F6B3A]">执行器合同</p>
+          <p className="mt-1 text-xs leading-5 text-[#4F7F56]">
+            合同限定本地隔离执行器输入、产物保留和禁止动作；本机探测只打开临时 tab 读取页面元信息。
+          </p>
+        </div>
+        {loading ? <Loader2 className="animate-spin text-[#2F6B3A]" size={16} aria-hidden="true" /> : null}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+      {contract ? (
+        <div className="mt-3 grid gap-2 text-xs leading-5 text-[#4F7F56]">
+          <div className="rounded-xl border border-[#B8D8BA] bg-white p-3">
+            <p className="font-semibold text-[#2F6B3A]">
+              {adapterName} · {isolationMode}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2 font-semibold">
+              <span>{passedChecks} 通过</span>
+              <span>{reviewChecks} 复核</span>
+              <span>{blockedChecks} 阻断</span>
+              <span>保留 {retentionDays} 天</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-[#B8D8BA] bg-white p-3">
+            <p className="font-semibold text-[#2F6B3A]">允许动作</p>
+            <p className="mt-1">{contract.allowedActions.slice(0, 4).join(" / ")}</p>
+          </div>
+          <div className="rounded-xl border border-[#B8D8BA] bg-white p-3">
+            <p className="font-semibold text-[#2F6B3A]">禁止动作</p>
+            <p className="mt-1">{contract.deniedActions.slice(0, 5).join(" / ")}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#B8D8BA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F6B3A] transition hover:border-[#6AA772] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={runLoading || blockedChecks > 0}
+              onClick={() => onRunLocal(contract.job.id)}
+              type="button"
+            >
+              {runLoading ? (
+                <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+              ) : (
+                <Activity size={14} aria-hidden="true" />
+              )}
+              生成本地回放证据
+            </button>
+            <button
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#AFC9E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#284E7A] transition hover:border-[#6A91BE] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={runLoading || blockedChecks > 0}
+              onClick={() => onRunHarnessProbe(contract.job.id)}
+              type="button"
+            >
+              {runLoading ? (
+                <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+              ) : (
+                <Activity size={14} aria-hidden="true" />
+              )}
+              运行本机浏览器探测
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BrowserLocalRunnerResultPanel({
+  error,
+  items,
+  loading,
+  result,
+}: {
+  error: string | null;
+  items: AutomationBrowserLocalRunnerResult[];
+  loading: boolean;
+  result: AutomationBrowserLocalRunnerResult | null;
+}) {
+  const visibleResult = result ?? items[0] ?? null;
+  if (!visibleResult && !error && !loading) {
+    return null;
+  }
+  const firstPreviewRow = readRecord(visibleResult?.previewRows[0]);
+  const previewValues = readRecord(firstPreviewRow?.values);
+  const visibleValues = previewValues ? Object.entries(previewValues).slice(0, 4) : [];
+  const selectorEvaluations =
+    visibleResult?.selectorEvaluations.length
+      ? visibleResult.selectorEvaluations.slice(0, 4)
+      : visibleResult?.selectorResults.slice(0, 4) ?? [];
+  const networkMetadataSummary = readRecord(visibleResult?.networkMetadataSummary);
+  const promotionGate = readRecord(visibleResult?.promotionGate);
+  const redactionSummary = readRecord(visibleResult?.redactionSummary);
+  const apiCandidateCount =
+    typeof networkMetadataSummary?.api_candidate_count === "number"
+      ? networkMetadataSummary.api_candidate_count
+      : null;
+  const resourceCount =
+    typeof networkMetadataSummary?.resource_count === "number"
+      ? networkMetadataSummary.resource_count
+      : null;
+  const canPromote = promotionGate?.can_create_collection_resources === true;
+  const promotionReasons = readArray(promotionGate?.reasons)
+    .map((item) => (typeof item === "string" ? item : null))
+    .filter((item): item is string => item !== null)
+    .slice(0, 3);
+  const previewCount = String(visibleResult?.previewRows.length ?? 0);
+  const isHarnessProbe =
+    visibleResult?.runMode === "ephemeral_browser_harness_probe";
+  const browserStatusLabel = visibleResult?.browserStarted
+    ? isHarnessProbe
+      ? "已完成浏览器只读探测"
+      : "已启动浏览器"
+    : "未启动真实浏览器";
+  return (
+    <div className="rounded-2xl border border-[#D7E0EF] bg-[#F7FAFF] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#284E7A]">本地回放证据</p>
+          <p className="mt-1 text-xs leading-5 text-[#506B8D]">
+            {isHarnessProbe
+              ? "基于 browser-harness 临时 tab 读取页面元信息；不写文件，不创建采集资源。"
+              : "基于已保存诊断快照生成字段预览；未启动真实浏览器，不写文件，不创建采集资源。"}
+          </p>
+        </div>
+        {loading ? <Loader2 className="animate-spin text-[#284E7A]" size={16} aria-hidden="true" /> : null}
+      </div>
+      {error ? (
+        <p className="mt-3 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+      {visibleResult ? (
+        <div className="mt-3 grid gap-2 text-xs leading-5 text-[#506B8D]">
+          <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+            <p className="font-semibold text-[#284E7A]">
+              {formatBrowserLocalRunStatus(visibleResult.status)} · {visibleResult.runMode}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2 font-semibold">
+              <span>{previewCount} 行预览</span>
+              <span>{browserStatusLabel}</span>
+              <span>{visibleResult.filesWritten ? "已写文件" : "未写文件"}</span>
+              <span>
+                {visibleResult.collectionResourcesWritten ? "已写采集资源" : "未写采集资源"}
+              </span>
+            </div>
+          </div>
+          {visibleValues.length > 0 ? (
+            <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+              <p className="font-semibold text-[#284E7A]">字段预览</p>
+              <div className="mt-1 grid gap-1">
+                {visibleValues.map(([key, value]) => (
+                  <p key={key}>
+                    <span className="font-semibold">{key}：</span>
+                    {String(value)}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {selectorEvaluations.length > 0 ? (
+            <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+              <p className="font-semibold text-[#284E7A]">selector 求值</p>
+              <div className="mt-1 grid gap-1">
+                {selectorEvaluations.map((item) => {
+                  const field = readString(item.field) ?? "unknown";
+                  const status = readString(item.status) ?? "unknown";
+                  const matchCount =
+                    typeof item.match_count === "number" ? item.match_count : null;
+                  return (
+                    <p key={field}>
+                      <span className="font-semibold">{field}：</span>
+                      {formatBrowserLocalSelectorStatus(status)}
+                      {matchCount !== null ? `，${matchCount} 个匹配` : ""}
+                    </p>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+          {networkMetadataSummary ? (
+            <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+              <p className="font-semibold text-[#284E7A]">network metadata</p>
+              <div className="mt-1 grid gap-1">
+                <p>
+                  API 候选：
+                  {apiCandidateCount ?? "未统计"}
+                  {resourceCount !== null ? `；资源数：${resourceCount}` : ""}
+                </p>
+                <p>
+                  {networkMetadataSummary.capture_headers === true
+                    ? "已采集 headers"
+                    : "未采集 headers"}
+                  ；
+                  {networkMetadataSummary.capture_body === true
+                    ? "已采集正文"
+                    : "未采集正文"}
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {promotionGate ? (
+            <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+              <p className="font-semibold text-[#284E7A]">
+                晋级门禁：{canPromote ? "可进入采集资源创建" : "不能直接创建采集资源"}
+              </p>
+              {promotionReasons.length > 0 ? (
+                <div className="mt-1 grid gap-1">
+                  {promotionReasons.map((reason) => (
+                    <p key={reason}>{formatBrowserJobReason(reason)}</p>
+                  ))}
+                </div>
+              ) : null}
+              {redactionSummary ? (
+                <p className="mt-1">
+                  {redactionSummary.cookies_captured === true
+                    ? "已采集 cookie"
+                    : "未采集 cookie"}
+                  ；
+                  {redactionSummary.headers_captured === true
+                    ? "已采集 headers"
+                    : "未采集 headers"}
+                  ；
+                  {redactionSummary.bodies_captured === true
+                    ? "已采集正文"
+                    : "未采集正文"}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ExecutableSpecSummary({ config }: { config: Record<string, unknown> }) {
+  const spec = readRecord(config.executable_spec);
+  if (!spec) {
+    return null;
+  }
+  const selectorCount = readArray(spec.selector_contract).length;
+  const waitCount = readArray(spec.wait_conditions).length;
+  const apiCandidateCount = readArray(spec.api_candidates).length;
+  const reviewRequired = spec.manual_review_required === true;
+  return (
+    <div className="mt-3 rounded-lg border border-[#E8D4CB] bg-[#FFF8F4] px-2.5 py-2 text-xs leading-5 text-[#7A625A]">
+      <span className="font-semibold text-[#7D4F43]">执行规格：</span>
+      {selectorCount} 个 selector、{waitCount} 个等待条件、{apiCandidateCount} 个 API 候选；
+      {reviewRequired ? "需要人工复核后再运行。" : "低风险字段可进入后续 dry-run 审核。"}
+    </div>
+  );
+}
+
+function BrowserSpecDryRunResult({
+  jobLoading = false,
+  onCreateJob,
+  result,
+}: {
+  jobLoading?: boolean;
+  onCreateJob?: (result: AutomationBrowserExecutableSpecDryRun) => void;
+  result: AutomationBrowserExecutableSpecDryRun;
+}) {
+  const visibleChecks = result.checks.slice(0, 4);
+  const canCreateJob = result.summary.blockedChecks === 0 && result.summary.canDryRunAfterReview;
+  return (
+    <div className="rounded-lg border border-[#D7E8D7] bg-[#F3FBF3] px-2.5 py-2 text-xs leading-5 text-[#2F6B3A]">
+      <div className="flex flex-wrap items-center gap-2 font-semibold">
+        <span>规格校验：{formatSpecDryRunStatus(result.summary.status)}</span>
+        <span>{result.summary.passedChecks}/{result.summary.totalChecks} 通过</span>
+        <span>{result.summary.reviewChecks} 项需复核</span>
+        <span>{result.summary.blockedChecks} 项阻断</span>
+      </div>
+      <p className="mt-1 text-[#4F7F56]">
+        {result.summary.selectorCount} 个 selector、{result.summary.waitConditionCount} 个等待条件、
+        {result.summary.apiCandidateCount} 个 API 候选；未启动浏览器运行，未允许写入。
+      </p>
+      <div className="mt-2 grid gap-1">
+        {visibleChecks.map((check) => (
+          <p className="text-[#4F7F56]" key={check.key}>
+            <span className="font-semibold">{formatSpecCheckStatus(check.status)}</span>
+            {" · "}
+            {check.label}：{check.message}
+          </p>
+        ))}
+      </div>
+      {canCreateJob && onCreateJob ? (
+        <button
+          className="mt-3 inline-flex w-fit items-center gap-2 rounded-lg border border-[#B8D8BA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F6B3A] transition hover:border-[#6AA772] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={jobLoading}
+          onClick={() => onCreateJob(result)}
+          type="button"
+        >
+          {jobLoading ? (
+            <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+          ) : (
+            <ShieldCheck size={14} aria-hidden="true" />
+          )}
+          创建浏览器诊断任务
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function CapabilityProbePanel({
+  error,
+  items,
+  loading,
+}: {
+  error: string | null;
+  items: AutomationCapabilityProbe[];
+  loading: boolean;
+}) {
+  const agentReach = items.find((item) => item.agentReach)?.agentReach ?? null;
+  return (
+    <section className="rounded-2xl border border-[#EDDCD3] bg-white p-5 shadow-[0_12px_40px_rgba(115,70,58,0.06)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-[#FFF8F4] px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
+            <Activity size={14} aria-hidden="true" />
+            Capability Probe
+          </div>
+          <h2 className="mt-3 text-xl font-semibold tracking-normal text-[#2E201C]">
+            平台能力探测
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#7A625A]">
+            展示每个平台当前可用后端、凭据模式、执行边界和禁止动作；probe 只做体检，不创建采集资源。
+          </p>
+        </div>
+        {loading ? (
+          <Loader2 className="animate-spin text-[#C96F5C]" size={18} aria-hidden="true" />
+        ) : (
+          <span className="rounded-full border border-[#E8D4CB] px-3 py-1 text-xs font-semibold text-[#7D4F43]">
+            {items.length} probes
+          </span>
+        )}
+      </div>
+
+      {agentReach ? (
+        <div className="mt-4 grid gap-2 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3 text-sm text-[#7A625A] md:grid-cols-3">
+          <p>
+            <span className="font-semibold text-[#2E201C]">Agent Reach：</span>
+            {agentReach.installed ? "已发现" : "未安装"}
+          </p>
+          <p>
+            <span className="font-semibold text-[#2E201C]">Doctor：</span>
+            {formatCapabilityStatus(agentReach.doctorStatus)}
+          </p>
+          <p>
+            <span className="font-semibold text-[#2E201C]">Side effects：</span>
+            read/search 均未调用
+          </p>
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="mt-4 rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-sm font-semibold text-[#B85F4F]">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        {items.map((item) => {
+          const primaryCandidate = item.backendCandidates[0];
+          return (
+            <article
+              className="grid min-w-0 gap-3 rounded-2xl border border-[#F0E1D9] bg-[#FFFDFC] p-4"
+              key={item.platformId}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="break-words text-base font-semibold text-[#2E201C]">
+                    {item.platformLabel}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold uppercase text-[#B47767]">
+                    {item.platformId}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                    capabilityStatusClass(item.doctorStatus),
+                  )}
+                >
+                  {formatCapabilityStatus(item.doctorStatus)}
+                </span>
+              </div>
+
+              <div className="grid gap-2 text-sm text-[#7A625A]">
+                <p>
+                  <span className="font-semibold text-[#2E201C]">边界：</span>
+                  {formatCapabilityBoundary(item.executionBoundary)}
+                </p>
+                <p>
+                  <span className="font-semibold text-[#2E201C]">凭据：</span>
+                  {formatCredentialMode(item.credentialMode)}
+                </p>
+                <p>
+                  <span className="font-semibold text-[#2E201C]">主后端：</span>
+                  {primaryCandidate?.label ?? "待定义"} ·{" "}
+                  {formatCapabilityStatus(primaryCandidate?.status ?? "unknown")}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">
+                  Allowed outputs
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.allowedOutputs.map((output) => (
+                    <span
+                      className="rounded-full border border-[#D7E8D7] bg-[#F3FBF3] px-2.5 py-1 text-xs font-semibold text-[#2F6B3A]"
+                      key={output}
+                    >
+                      {formatCapabilityOutput(output)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#B47767]">Forbidden</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {item.forbiddenActions.slice(0, 5).map((action) => (
+                    <span
+                      className="rounded-full border border-[#F0C8C0] bg-[#FFF2EF] px-2.5 py-1 text-xs font-semibold text-[#B85F4F]"
+                      key={action}
+                    >
+                      {action}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">Next action</p>
+                <p className="mt-1 text-sm leading-6 text-[#7A625A]">
+                  {item.nextActions[0] ?? "等待下一阶段定义。"}
+                </p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -1653,21 +2794,41 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
 }
 
 function StructurePreflightResult({
+  authorized,
+  browserActionPlan,
+  browserPlanSaveLoading,
+  browserPlanSaveMessage,
   genericWebRun,
   loading,
+  onBrowserActionPlanChange,
+  onBrowserDiagnosticChange,
   onCreateGenericWebSource,
+  onSaveBrowserAutomationPlan,
   report,
   selectedProjectId,
 }: {
+  authorized: boolean;
+  browserActionPlan: BrowserDiagnosticActionPlan | null;
+  browserPlanSaveLoading: boolean;
+  browserPlanSaveMessage: string | null;
   genericWebRun: GenericWebRunState | null;
   loading: boolean;
+  onBrowserActionPlanChange: (actionPlan: BrowserDiagnosticActionPlan | null) => void;
+  onBrowserDiagnosticChange: (diagnostic: BrowserStructureDiagnostic | null) => void;
   onCreateGenericWebSource: () => void;
+  onSaveBrowserAutomationPlan: (
+    actionPlan: BrowserDiagnosticActionPlan,
+    diagnostic: BrowserStructureDiagnostic,
+  ) => Promise<void> | void;
   report: ToolkitPreflightReport;
   selectedProjectId: string;
 }) {
   const gate = report.authorizationGate;
   const strategy = report.collectionStrategy;
-  const canCreateSource = gate.allowedToContinue && selectedProjectId.length > 0;
+  const canCreateSource =
+    gate.allowedToContinue &&
+    selectedProjectId.length > 0 &&
+    (!browserActionPlan || browserActionPlan.canCreateGenericWebSource);
   const draftFields = [
     { label: "页面标题", value: report.dom.title ?? "未识别", source: "html_title" },
     { label: "规范 URL", value: report.dom.canonicalUrl ?? report.finalUrl, source: "canonical_or_final_url" },
@@ -1801,8 +2962,45 @@ function StructurePreflightResult({
             {!selectedProjectId ? (
               <p className="text-xs leading-5 text-[#B85F4F]">请选择写入项目。</p>
             ) : null}
+            {browserActionPlan ? (
+              <p
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-xs leading-5",
+                  browserActionPlan.canCreateGenericWebSource
+                    ? "border-[#D7E8D7] bg-[#F3FBF3] text-[#2F6B3A]"
+                    : "border-[#F1D9A8] bg-[#FFF9E9] text-[#87611B]",
+                )}
+              >
+                浏览器诊断判断：
+                {browserActionPlan.canCreateGenericWebSource
+                  ? "可使用 generic_web 草稿创建采集源。"
+                  : browserActionPlan.blockingReasons[0] ?? "需要复核推荐工具后再创建。"}
+              </p>
+            ) : (
+              <p className="text-xs leading-5 text-[#87611B]">
+                未导入浏览器诊断时只按静态预检创建；建议先导入 browser-harness 证据。
+              </p>
+            )}
           </div>
         </Panel>
+
+        <BrowserDiagnosticImportPanel
+          browserAutomationPlanSaveDisabledReason={
+            !selectedProjectId
+              ? "请选择写入项目。"
+              : !authorized
+                ? "请先确认授权边界。"
+                : null
+          }
+          browserAutomationPlanSaveMessage={browserPlanSaveMessage}
+          browserAutomationPlanSaving={browserPlanSaveLoading}
+          compact
+          onActionPlanChange={onBrowserActionPlanChange}
+          onDiagnosticChange={onBrowserDiagnosticChange}
+          onSaveBrowserAutomationPlan={onSaveBrowserAutomationPlan}
+          preflightReport={report}
+          title="浏览器诊断对照"
+        />
 
         <Panel icon={ShieldCheck} label="Recommendations" title="后续建议">
           <div className="grid gap-2">
@@ -3786,6 +4984,66 @@ function formatRisk(value: string) {
   return labels[value] ?? value;
 }
 
+function formatCapabilityStatus(value: string) {
+  const labels: Record<string, string> = {
+    available: "可用",
+    blocked: "阻断",
+    manual_review: "需人工复核",
+    missing_tool: "缺少工具",
+    not_configured: "未配置",
+    requires_login: "需登录态",
+    requires_proxy: "需代理",
+    unknown: "未知",
+  };
+  return labels[value] ?? value;
+}
+
+function capabilityStatusClass(value: string) {
+  if (value === "available") {
+    return "border-[#D7E8D7] bg-[#F3FBF3] text-[#2F6B3A]";
+  }
+  if (value === "blocked" || value === "missing_tool") {
+    return "border-[#F0C8C0] bg-[#FFF2EF] text-[#B85F4F]";
+  }
+  return "border-[#E8D4CB] bg-[#FFF8F4] text-[#7D4F43]";
+}
+
+function formatCapabilityBoundary(value: AutomationCapabilityProbe["executionBoundary"]) {
+  const labels: Record<AutomationCapabilityProbe["executionBoundary"], string> = {
+    blocked: "阻断",
+    executable: "可执行",
+    import_only: "仅导入",
+    read_only_probe: "只读探测",
+    sop_only: "仅 SOP",
+  };
+  return labels[value];
+}
+
+function formatCapabilityOutput(value: string) {
+  const labels: Record<string, string> = {
+    BrowserDiagnosticJobRun: "浏览器诊断结果",
+    DatasetVersion: "数据集版本",
+    ExternalToolSnapshot: "外部工具快照",
+    RawRecord: "原始采集记录",
+    Report: "报告资产",
+    Source: "采集源",
+    TaskRun: "采集运行",
+  };
+  return labels[value] ?? value;
+}
+
+function formatCredentialMode(value: AutomationCapabilityProbe["credentialMode"]) {
+  const labels: Record<AutomationCapabilityProbe["credentialMode"], string> = {
+    browser_profile: "浏览器 profile",
+    cookie: "Cookie",
+    manual_export: "人工导出",
+    none: "无",
+    token: "Token",
+    unknown: "未知",
+  };
+  return labels[value];
+}
+
 function formatExecutionBoundary(value: AutomationPlatformPackage["executionBoundary"]) {
   const labels: Record<AutomationPlatformPackage["executionBoundary"], string> = {
     blocked: "阻断",
@@ -3842,6 +5100,78 @@ function formatFieldStability(value: ToolkitPreflightReport["collectionStrategy"
   return labels[value];
 }
 
+function serializeBrowserDiagnosticPayload(
+  diagnostic: BrowserStructureDiagnostic,
+): Record<string, unknown> {
+  return {
+    schema_version: diagnostic.schemaVersion,
+    generated_at: diagnostic.generatedAt,
+    requested_url: diagnostic.requestedUrl,
+    final_url: diagnostic.finalUrl,
+    run_policy: {
+      authorization_confirmed: diagnostic.runPolicy.authorizationConfirmed,
+      execution_mode: diagnostic.runPolicy.executionMode,
+      production_write: diagnostic.runPolicy.productionWrite,
+      login_or_private_page_allowed: diagnostic.runPolicy.loginOrPrivatePageAllowed,
+      cookies_exported: diagnostic.runPolicy.cookiesExported,
+      note: diagnostic.runPolicy.note,
+    },
+    visible_text: {
+      length: diagnostic.visibleText.length,
+      line_count: diagnostic.visibleText.lineCount,
+      sample: diagnostic.visibleText.sample,
+    },
+    dom_counters: {
+      links: diagnostic.domCounters.links,
+      same_origin_links: diagnostic.domCounters.sameOriginLinks,
+      external_links: diagnostic.domCounters.externalLinks,
+      forms: diagnostic.domCounters.forms,
+      inputs: diagnostic.domCounters.inputs,
+      buttons: diagnostic.domCounters.buttons,
+      tables: diagnostic.domCounters.tables,
+      lists: diagnostic.domCounters.lists,
+      articles: diagnostic.domCounters.articles,
+      cards: diagnostic.domCounters.cards,
+      images: diagnostic.domCounters.images,
+      scripts: diagnostic.domCounters.scripts,
+      stylesheets: diagnostic.domCounters.stylesheets,
+      json_ld_blocks: diagnostic.domCounters.jsonLdBlocks,
+    },
+    risk_flags: diagnostic.riskFlags,
+    extraction_strategy: {
+      recommended_path: diagnostic.extractionStrategy.recommendedPath,
+      fit: diagnostic.extractionStrategy.fit,
+      confidence: diagnostic.extractionStrategy.confidence,
+      field_stability: diagnostic.extractionStrategy.fieldStability,
+      reasons: diagnostic.extractionStrategy.reasons,
+      next_steps: diagnostic.extractionStrategy.nextSteps,
+      cleaning_notes: diagnostic.extractionStrategy.cleaningNotes,
+    },
+    network_summary: {
+      resource_count: diagnostic.networkSummary.resourceCount,
+      same_origin_resources: diagnostic.networkSummary.sameOriginResources,
+      cross_origin_resources: diagnostic.networkSummary.crossOriginResources,
+      xhr_fetch_count: diagnostic.networkSummary.xhrFetchCount,
+      script_count: diagnostic.networkSummary.scriptCount,
+      image_count: diagnostic.networkSummary.imageCount,
+      api_candidate_count: diagnostic.networkSummary.apiCandidateCount,
+      api_candidates: diagnostic.networkSummary.apiCandidates.map((candidate) => ({
+        url: candidate.url,
+        initiator_type: candidate.initiatorType,
+        same_origin: candidate.sameOrigin,
+        duration_ms: candidate.durationMs,
+        transfer_size: candidate.transferSize,
+      })),
+      initiator_type_counts: diagnostic.networkSummary.initiatorTypeCounts,
+    },
+    evidence: {
+      screenshot_path: diagnostic.evidence.screenshotPath,
+      source: diagnostic.evidence.source,
+      errors: diagnostic.evidence.errors,
+    },
+  };
+}
+
 function hostLabelFromUrl(value: string) {
   try {
     const parsed = new URL(value);
@@ -3888,6 +5218,89 @@ function clampInteger(value: number, min: number, max: number, fallback: number)
     return fallback;
   }
   return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  return value as Record<string, unknown>;
+}
+
+function readArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function formatSpecDryRunStatus(value: AutomationBrowserExecutableSpecDryRun["summary"]["status"]) {
+  const labels: Record<AutomationBrowserExecutableSpecDryRun["summary"]["status"], string> = {
+    blocked: "阻断",
+    ready: "可进入下一步",
+    review: "需复核",
+  };
+  return labels[value];
+}
+
+function formatSpecCheckStatus(value: "passed" | "review" | "blocked") {
+  const labels: Record<"passed" | "review" | "blocked", string> = {
+    blocked: "阻断",
+    passed: "通过",
+    review: "复核",
+  };
+  return labels[value];
+}
+
+function formatBrowserJobStatus(value: string) {
+  const labels: Record<string, string> = {
+    blocked: "已阻断",
+    cancelled: "已取消",
+    queued: "已排队",
+    ready_for_manual_execution: "已审核，等待人工执行",
+  };
+  return labels[value] ?? value;
+}
+
+function formatBrowserLocalRunStatus(value: string) {
+  const labels: Record<string, string> = {
+    blocked: "已阻断",
+    blocked_ephemeral_probe: "浏览器探测被阻断",
+    completed_ephemeral_probe: "浏览器探测完成",
+    completed_snapshot_replay: "快照回放完成",
+    failed: "未完成",
+    failed_ephemeral_probe: "浏览器探测失败",
+  };
+  return labels[value] ?? value;
+}
+
+function formatBrowserLocalSelectorStatus(value: string) {
+  const labels: Record<string, string> = {
+    not_observed_in_diagnostic_snapshot: "诊断快照未识别",
+    observed_from_diagnostic_snapshot: "已从诊断快照识别",
+  };
+  return labels[value] ?? value;
+}
+
+function formatBrowserJobReason(value: string) {
+  const labels: Record<string, string> = {
+    browser_diagnostic_job_cancelled_before_runner_start: "任务已取消，未启动浏览器运行。",
+    browser_diagnostic_job_created_no_runner: "任务已创建为只读资产，执行器尚未接入。",
+    browser_harness_binary_unavailable: "browser-harness CLI 不可用。",
+    browser_harness_ephemeral_probe_only: "本机探测仅读取临时 tab 页面元信息。",
+    browser_harness_probe_failed: "browser-harness 探测未完成。",
+    browser_local_runner_snapshot_replay_only: "本地 runner 仅回放已保存诊断快照。",
+    m2_read_only_contract_no_direct_promotion:
+      "当前阶段仅沉淀只读证据，不能直接创建采集资源。",
+    no_files_written_no_collection_resources_created: "未写文件，未创建采集资源。",
+    no_real_browser_started_no_files_written_no_collection_resources_created:
+      "未启动真实浏览器，未写文件，未创建采集资源。",
+    no_source_task_taskrun_dataset_notification_or_scheduler_side_effect:
+      "未创建采集源、任务、运行、数据集、通知或调度。",
+    required_selector_missing: "必需 selector 仍有缺失，需复核后再进入后续链路。",
+  };
+  return labels[value] ?? value;
 }
 
 function formatPageType(value: string) {

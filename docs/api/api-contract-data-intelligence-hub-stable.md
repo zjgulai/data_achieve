@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-19
+updated: 2026-06-21
 owner: self
 source: human+ai
 ---
@@ -111,6 +111,87 @@ osint, ecommerce, social, competitor, mixed
 1. `execution_boundary=executable` 只表示可以从界面启动其声明的低风险路径，不代表绕过授权、rate limit 或平台政策。
 2. GitHub/API-first 当前可执行路径是 `github_topic` Topic Radar；单仓库 `github_repo` 仍建议通过 Sources 创建重点仓库监控。
 3. `public-page-structure-preflight` 使用 Toolkit preflight，不是 Source collector；只有用户确认后才可继续创建 `generic_web` Source。
+
+### Capability Probe Contract
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `GET` | `/api/automation/capability-probes` | query: `platform_id?` | `AutomationCapabilityProbeListResponse` | 返回平台能力体检矩阵；只运行允许的本地 doctor/probe，不读取平台内容、不创建采集资源 |
+
+`AutomationCapabilityProbeResponse` 最小字段：
+
+```text
+schema_version=capability_probe.v1
+platform_id
+platform_label
+doctor_status
+credential_mode
+execution_boundary
+risk_level
+backend_candidates[]
+agent_reach?
+allowed_outputs[]
+forbidden_actions[]
+next_actions[]
+run_started=false
+collection_resources_written=false
+```
+
+`AutomationAgentReachChannelProbeResponse` 最小字段：
+
+```text
+schema_version=agent_reach_channel_probe.v1
+installed
+command_path
+doctor_status
+active_backend
+requires_login
+requires_proxy
+blocked_reason
+platforms[]
+read_invoked=false
+search_invoked=false
+raw_summary
+```
+
+能力探测不变量：
+
+1. `agent-reach` 缺失时返回 `doctor_status=missing_tool`，不能伪装为平台可采集。
+2. `agent-reach` 存在时只允许调用 `agent-reach doctor --json`；不得调用 read/search，不得自动安装工具。
+3. `browser-harness` 能力只作为 read-only probe 候选，不得直接创建 Source/Task/TaskRun/Dataset。
+4. `execution_boundary=sop_only` 或 `import_only` 的平台不得在 UI 中出现默认自动采集按钮。
+5. 所有 response 必须保持 `run_started=false`、`collection_resources_written=false`，直到进入单独授权的采集写入链路。
+
+### Browser Local Runner Evidence Contract
+
+浏览器本地诊断运行仍属于 `BrowserDiagnosticJobRun` 证据资产，不等于正式采集任务。
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `POST` | `/api/automation/browser-diagnostic-jobs/{job_id}/local-run` | `authorized`、`confirm_execute`、`run_mode`、`confirm_real_browser_probe?` | `AutomationBrowserLocalRunnerResultResponse` | 只读回放或本机临时 tab 探测；不创建 Source/Task/TaskRun/Dataset |
+| `GET` | `/api/automation/browser-diagnostic-job-runs` | query: `project_id?`、`diagnostic_job_id?` | `AutomationBrowserLocalRunnerResultListResponse` | 返回本地诊断运行历史和只读副作用汇总 |
+
+`AutomationBrowserLocalRunnerResultResponse` 在兼容旧字段的基础上新增 M2 证据字段：
+
+```text
+selector_results[]
+selector_evaluations[]
+network_observation_summary
+network_metadata_summary
+promotion_gate
+redaction_summary
+files_written=false
+collection_resources_written=false
+```
+
+M2 字段约束：
+
+1. `selector_evaluations[]` 是 `selector_results[]` 的规范化视图，包含 `field`、`selector_hint`、`match_count`、`sample_text`、`missing_reason` 和 `browser_started`。
+2. `network_metadata_summary` 只允许保留 metadata：`capture_headers=false`、`capture_body=false`、`redacted=true`；URL 必须移除 query 和 fragment。
+3. `promotion_gate.can_create_collection_resources=false`，并包含 `m2_read_only_contract_no_direct_promotion`，直到另一个经授权的创建链路接管。
+4. `redaction_summary` 必须显式声明 `cookies_captured=false`、`headers_captured=false`、`bodies_captured=false`、`query_parameters_retained=false`。
+5. `run_mode=ephemeral_browser_harness_probe` 可以使 `browser_started=true`，但仍保持 `files_written=false` 和 `collection_resources_written=false`。
+6. Artifact retention 规则以 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md` 为准；PRD2 M2 当前阶段只允许 metadata 和 `tmp/` 本地验证 JSON。
 
 ### GitHub/API-first Topic Radar Flow
 

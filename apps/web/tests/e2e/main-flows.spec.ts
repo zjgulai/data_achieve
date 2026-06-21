@@ -8,6 +8,135 @@ import {
 } from "@playwright/test";
 
 const realApiMode = process.env.PLAYWRIGHT_REAL_API === "true";
+const browserDiagnosticFixtureJson = JSON.stringify({
+  schema_version: "browser_structure_diagnostic.v1",
+  generated_at: "2026-06-19T14:00:00Z",
+  requested_url: "https://example.com",
+  final_url: "https://example.com/",
+  run_policy: {
+    authorization_confirmed: true,
+    execution_mode: "browser_harness_real_chrome_read_only",
+    production_write: false,
+    login_or_private_page_allowed: false,
+    cookies_exported: false,
+  },
+  visible_text: {
+    length: 180,
+    line_count: 4,
+    sample: "Example Domain",
+  },
+  dom_counters: {
+    links: 1,
+    same_origin_links: 0,
+    external_links: 1,
+    forms: 0,
+    inputs: 0,
+    buttons: 0,
+    tables: 0,
+    lists: 0,
+    articles: 0,
+    cards: 0,
+    images: 0,
+    scripts: 0,
+    stylesheets: 0,
+    json_ld_blocks: 0,
+  },
+  risk_flags: [],
+  extraction_strategy: {
+    recommended_path: "generic_web",
+    fit: "high",
+    confidence: 84,
+    field_stability: "high",
+    reasons: ["浏览器渲染后正文、链接和标题可直接读取。"],
+    next_steps: ["建立 DOM 字段契约。"],
+    cleaning_notes: ["清洗标题和链接。"],
+  },
+  network_summary: {
+    resource_count: 0,
+    same_origin_resources: 0,
+    cross_origin_resources: 0,
+    xhr_fetch_count: 0,
+    script_count: 0,
+    image_count: 0,
+    api_candidate_count: 0,
+    api_candidates: [],
+    initiator_type_counts: {},
+  },
+  evidence: {
+    screenshot_path: "tmp/outputs/browser-diagnostics/example.png",
+    source: "browser-harness",
+    errors: [],
+  },
+});
+
+const browserAutomationDiagnosticFixtureJson = JSON.stringify({
+  schema_version: "browser_structure_diagnostic.v1",
+  generated_at: "2026-06-19T14:10:00Z",
+  requested_url: "https://example.com/app",
+  final_url: "https://example.com/app",
+  run_policy: {
+    authorization_confirmed: true,
+    execution_mode: "browser_harness_real_chrome_read_only",
+    production_write: false,
+    login_or_private_page_allowed: false,
+    cookies_exported: false,
+  },
+  visible_text: {
+    length: 680,
+    line_count: 18,
+    sample: "Dynamic Product Grid",
+  },
+  dom_counters: {
+    links: 18,
+    same_origin_links: 12,
+    external_links: 6,
+    forms: 0,
+    inputs: 2,
+    buttons: 9,
+    tables: 0,
+    lists: 2,
+    articles: 0,
+    cards: 16,
+    images: 16,
+    scripts: 24,
+    stylesheets: 4,
+    json_ld_blocks: 0,
+  },
+  risk_flags: ["dynamic_rendering"],
+  extraction_strategy: {
+    recommended_path: "browser_automation",
+    fit: "medium",
+    confidence: 72,
+    field_stability: "medium",
+    reasons: ["页面依赖浏览器渲染和异步接口，静态 HTML 不足以稳定抽取字段。"],
+    next_steps: ["使用 browser-harness 生成只读动作轨迹。"],
+    cleaning_notes: ["对卡片文本和 API 候选 URL 做结构化清洗。"],
+  },
+  network_summary: {
+    resource_count: 38,
+    same_origin_resources: 30,
+    cross_origin_resources: 8,
+    xhr_fetch_count: 6,
+    script_count: 24,
+    image_count: 16,
+    api_candidate_count: 1,
+    api_candidates: [
+      {
+        url: "https://example.com/api/products",
+        initiator_type: "fetch",
+        same_origin: true,
+        duration_ms: 124,
+        transfer_size: 4096,
+      },
+    ],
+    initiator_type_counts: { fetch: 6, script: 24 },
+  },
+  evidence: {
+    screenshot_path: "tmp/outputs/browser-diagnostics/example-app.png",
+    source: "browser-harness",
+    errors: [],
+  },
+});
 
 type RealApiCredentials = {
   email: string;
@@ -544,6 +673,29 @@ test.describe("MVP workspace routes", () => {
     await expect(
       page.getByText("必须先确认该 URL 属于自有、授权或明确允许分析的目标。"),
     ).toBeVisible();
+    await page.getByLabel("Browser diagnostic JSON").fill(browserDiagnosticFixtureJson);
+    await page.getByRole("button", { name: "导入浏览器诊断 JSON" }).click();
+    await expect(page.getByRole("heading", { name: "真实浏览器诊断" })).toBeVisible();
+    await expect(page.getByText("只读证据")).toBeVisible();
+    await expect(page.getByText("已导入浏览器诊断，可作为后续字段契约和采集方式判断依据。")).toBeVisible();
+    await expect(page.getByText("字段契约草案", { exact: true })).toBeVisible();
+    await expect(page.getByText("采集工具推荐", { exact: true })).toBeVisible();
+    await expect(page.getByText("generic_web 公开页面采集")).toBeVisible();
+    await expect(page.getByText("可创建 generic_web 草稿")).toBeVisible();
+    await page.getByLabel("Selector hint for visible_text").fill("main article");
+    await page.getByLabel("选择字段 页面标题").uncheck();
+    await page.getByRole("button", { name: "保存字段契约草稿" }).click();
+    await expect(page.getByText("字段契约已保存")).toBeVisible();
+    await expect(page.getByText("已选择 2 个字段")).toBeVisible();
+    await expect(page.getByLabel("Selector hint for visible_text")).toHaveValue("main article");
+    await expect(page.getByText("API 候选")).toBeVisible();
+    await page.getByRole("button", { name: "清空" }).last().click();
+    await page.getByLabel("Browser diagnostic JSON").fill(browserAutomationDiagnosticFixtureJson);
+    await page.getByRole("button", { name: "导入浏览器诊断 JSON" }).click();
+    await expect(page.getByText("浏览器自动化任务草稿")).toBeVisible();
+    await expect(page.getByText("browser_harness · 字段")).toBeVisible();
+    await expect(page.getByText("创建前复核", { exact: true })).toBeVisible();
+    await expect(page.getByText("只读执行，不提交表单、不点击购买或发布类按钮。")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 
@@ -834,6 +986,136 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("检查任务")).toBeVisible();
     await page.getByRole("button", { name: "保存漂移快照" }).click();
     await expect(page.getByText("已保存漂移快照")).toBeVisible();
+    await expectNoVisibleTechnicalNoise(page);
+  });
+
+  test("saves browser automation diagnostic as read-only plan", async ({
+    page,
+  }) => {
+    await page.route("**/api/toolkit/preflight", async (route) => {
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          requested_url: "https://example.com/app",
+          final_url: "https://example.com/app",
+          checked_at: "2026-06-19T14:20:00Z",
+          authorization_confirmed: true,
+          headers: { "content-type": "text/html" },
+          redirects: [],
+          robots: {
+            url: "https://example.com/robots.txt",
+            status_code: 200,
+            content_type: "text/plain",
+            content_length: 24,
+            available: true,
+            summary: "No blocking rule found.",
+          },
+          sitemap: {
+            url: "https://example.com/sitemap.xml",
+            status_code: 404,
+            content_type: null,
+            content_length: null,
+            available: false,
+            summary: "Not found.",
+          },
+          security_txt: {
+            url: "https://example.com/.well-known/security.txt",
+            status_code: 404,
+            content_type: null,
+            content_length: null,
+            available: false,
+            summary: "Not found.",
+          },
+          dom: {
+            title: "Dynamic Product Grid",
+            description: "Dynamic app shell",
+            canonical_url: "https://example.com/app",
+            meta_robots: null,
+            headings: ["Dynamic Product Grid"],
+            link_count: 12,
+            script_count: 24,
+            stylesheet_count: 4,
+            image_count: 16,
+            form_count: 0,
+            text_sample: "Dynamic Product Grid",
+          },
+          network: {
+            request_method: "GET",
+            final_status_code: 200,
+            final_content_type: "text/html",
+            redirect_count: 0,
+            same_origin_links: 12,
+            external_links: 6,
+            script_count: 24,
+            stylesheet_count: 4,
+            image_count: 16,
+            form_count: 0,
+          },
+          authorization_gate: {
+            allowed_to_continue: true,
+            risk_level: "medium",
+            blocked_reasons: [],
+            required_next_actions: ["导入 browser-harness 只读诊断。"],
+          },
+          collection_strategy: {
+            recommended_path: "browser_automation",
+            label: "浏览器自动化",
+            fit: "medium",
+            confidence: 72,
+            field_stability: "medium",
+            reasons: ["页面依赖浏览器渲染和异步接口。"],
+            next_steps: ["保存只读 browser automation 方案。"],
+            cleaning_notes: ["复核字段 selector hint。"],
+          },
+          recommendations: ["导入 browser-harness 证据后保存只读方案。"],
+        }),
+      });
+    });
+    await page.goto("/automation");
+    await page.getByRole("button", { name: "结构预检", exact: true }).click();
+    await page
+      .getByLabel("我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
+      .check();
+    await page.getByLabel("公开网页 URL").fill("https://example.com/app");
+    await page.getByRole("button", { name: "生成结构预检" }).click();
+    await expect(
+      page.getByRole("heading", { name: "公开网页结构预检结果" }),
+    ).toBeVisible();
+
+    await page.getByLabel("Browser diagnostic JSON").fill(browserAutomationDiagnosticFixtureJson);
+    await page.getByRole("button", { name: "导入浏览器诊断 JSON" }).click();
+    await expect(page.getByText("浏览器自动化任务草稿")).toBeVisible();
+    await expect(page.getByRole("button", { name: "保存只读自动化方案" })).toBeVisible();
+
+    await page.getByRole("button", { name: "保存只读自动化方案" }).click();
+    await expect(page.getByText(/已保存 Browser Automation:/)).toBeVisible();
+    await expect(page.getByText("浏览器诊断资产")).toBeVisible();
+    await expect(page.getByText("只读资产").first()).toBeVisible();
+    await expect(page.getByText("执行规格：").first()).toBeVisible();
+    await page.getByRole("button", { name: "校验执行规格" }).click();
+    await expect(page.getByText("规格校验：需复核")).toBeVisible();
+    await expect(page.getByText("未启动浏览器运行，未允许写入。")).toBeVisible();
+    await page.getByRole("button", { name: "创建浏览器诊断任务" }).click();
+    await expect(page.getByText("浏览器诊断任务", { exact: true })).toBeVisible();
+    await expect(page.getByText("已审核，等待人工执行")).toBeVisible();
+    await expect(page.getByText("任务已创建为只读资产，执行器尚未接入。")).toBeVisible();
+    await page.getByRole("button", { name: "生成执行器合同" }).click();
+    await expect(page.getByText("执行器合同", { exact: true })).toBeVisible();
+    await expect(page.getByText("browser_harness_read_only_local")).toBeVisible();
+    await expect(page.getByText("local_ephemeral_browser_context")).toBeVisible();
+    await page.getByRole("button", { name: "生成本地回放证据" }).click();
+    await expect(page.getByText("本地回放证据", { exact: true })).toBeVisible();
+    await expect(page.getByText("diagnostic_snapshot_replay")).toBeVisible();
+    await expect(page.getByText("未启动真实浏览器", { exact: true })).toBeVisible();
+    await expect(page.getByText("Dynamic Product Grid").first()).toBeVisible();
+    await page.getByRole("button", { name: "运行本机浏览器探测" }).click();
+    await expect(page.getByText("ephemeral_browser_harness_probe")).toBeVisible();
+    await expect(page.getByText("已完成浏览器只读探测", { exact: true })).toBeVisible();
+    await expect(page.getByText("未写文件", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "取消任务" }).click();
+    await expect(page.getByText("已取消")).toBeVisible();
+    await expect(page.getByText("未启动采集运行。").first()).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 

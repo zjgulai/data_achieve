@@ -1,5 +1,11 @@
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
-from data_intelligence_hub.models.automation_plan import ExtractionPlan, SiteAnalysis
+from data_intelligence_hub.models.automation_plan import (
+    BrowserDiagnosticJob,
+    BrowserDiagnosticJobRun,
+    BrowserDiagnosticRun,
+    ExtractionPlan,
+    SiteAnalysis,
+)
 from data_intelligence_hub.models.base import Base
 from data_intelligence_hub.models.collector import Collector
 from data_intelligence_hub.models.dataset import (
@@ -35,6 +41,9 @@ __all__ = [
     "AlertEvent",
     "AlertRule",
     "Base",
+    "BrowserDiagnosticJob",
+    "BrowserDiagnosticJobRun",
+    "BrowserDiagnosticRun",
     "CleaningPlan",
     "CollectionTask",
     "Collector",

@@ -9,6 +9,20 @@ from fastapi.responses import FileResponse
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
+    AutomationBrowserAutomationPlanRequest,
+    AutomationBrowserAutomationPlanResponse,
+    AutomationBrowserDiagnosticJobCreateRequest,
+    AutomationBrowserDiagnosticJobListResponse,
+    AutomationBrowserDiagnosticJobResponse,
+    AutomationBrowserDiagnosticRunListResponse,
+    AutomationBrowserExecutableSpecDryRunRequest,
+    AutomationBrowserExecutableSpecDryRunResponse,
+    AutomationBrowserExecutorContractRequest,
+    AutomationBrowserExecutorContractResponse,
+    AutomationBrowserLocalRunnerRequest,
+    AutomationBrowserLocalRunnerResultListResponse,
+    AutomationBrowserLocalRunnerResultResponse,
+    AutomationCapabilityProbeListResponse,
     AutomationCleaningPlanCreateRequest,
     AutomationCleaningPlanCreateResponse,
     AutomationCleaningPlanDryRunRequest,
@@ -68,8 +82,11 @@ from data_intelligence_hub.schemas.automation import (
 from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
+    build_browser_executor_contract,
+    cancel_browser_diagnostic_job_asset,
     check_github_tool_drift,
     check_product_drift,
+    create_browser_diagnostic_job_asset,
     create_cleaning_plan_asset,
     create_extraction_plan_from_site_analysis,
     create_github_tool_report_asset,
@@ -78,11 +95,17 @@ from data_intelligence_hub.services.automation_service import (
     create_product_drift_alert_rule,
     create_reviewed_product_fanout,
     discover_products_for_collection,
+    dry_run_browser_executable_spec,
     dry_run_cleaning_plan,
     generate_github_tool_report,
+    get_browser_diagnostic_job_asset,
     get_platform_package,
     get_product_dataset_export_file,
     get_site_analysis_history_detail,
+    list_browser_diagnostic_job_assets,
+    list_browser_diagnostic_job_run_assets,
+    list_browser_diagnostics,
+    list_capability_probes,
     list_cleaning_plan_assets,
     list_platform_packages,
     list_product_dataset_exports,
@@ -95,7 +118,9 @@ from data_intelligence_hub.services.automation_service import (
     preview_product_dataset,
     preview_product_drift_alert_rule,
     preview_product_fanout,
+    run_browser_diagnostic_job_local,
     run_reviewed_product_batch,
+    save_browser_automation_plan,
     save_github_tool_dataset_version,
     save_github_tool_drift_event,
     save_product_dataset_version,
@@ -131,6 +156,18 @@ async def get_platform_package_route(
     del context
     try:
         return get_platform_package(package_id)
+    except CollectorError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/capability-probes", response_model=AutomationCapabilityProbeListResponse)
+async def list_capability_probes_route(
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    platform_id: str | None = None,
+) -> AutomationCapabilityProbeListResponse:
+    del context
+    try:
+        return list_capability_probes(platform_id=platform_id)
     except CollectorError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -226,6 +263,263 @@ async def create_extraction_plan_route(
             status_code=status_code,
             detail=str(exc),
         ) from exc
+
+
+@router.post(
+    "/browser-automation-plans",
+    response_model=AutomationBrowserAutomationPlanResponse,
+)
+async def save_browser_automation_plan_route(
+    payload: AutomationBrowserAutomationPlanRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserAutomationPlanResponse:
+    try:
+        return await save_browser_automation_plan(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except ProjectNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/browser-diagnostics",
+    response_model=AutomationBrowserDiagnosticRunListResponse,
+)
+async def list_browser_diagnostics_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: uuid.UUID | None = None,
+    site_analysis_id: uuid.UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AutomationBrowserDiagnosticRunListResponse:
+    return await list_browser_diagnostics(
+        session,
+        context.workspace,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/browser-automation-spec-dry-run",
+    response_model=AutomationBrowserExecutableSpecDryRunResponse,
+)
+async def dry_run_browser_automation_spec_route(
+    payload: AutomationBrowserExecutableSpecDryRunRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserExecutableSpecDryRunResponse:
+    try:
+        return await dry_run_browser_executable_spec(
+            session,
+            context.workspace,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc) in {"site_analysis_not_found", "extraction_plan_not_found"}
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-jobs",
+    response_model=AutomationBrowserDiagnosticJobResponse,
+)
+async def create_browser_diagnostic_job_route(
+    payload: AutomationBrowserDiagnosticJobCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserDiagnosticJobResponse:
+    try:
+        return await create_browser_diagnostic_job_asset(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc)
+            in {
+                "site_analysis_not_found",
+                "extraction_plan_not_found",
+                "browser_diagnostic_run_not_found",
+            }
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/browser-diagnostic-jobs",
+    response_model=AutomationBrowserDiagnosticJobListResponse,
+)
+async def list_browser_diagnostic_jobs_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: uuid.UUID | None = None,
+    site_analysis_id: uuid.UUID | None = None,
+    extraction_plan_id: uuid.UUID | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AutomationBrowserDiagnosticJobListResponse:
+    return await list_browser_diagnostic_job_assets(
+        session,
+        context.workspace,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+        extraction_plan_id=extraction_plan_id,
+        status=status_filter,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/browser-diagnostic-jobs/{diagnostic_job_id}",
+    response_model=AutomationBrowserDiagnosticJobResponse,
+)
+async def get_browser_diagnostic_job_route(
+    diagnostic_job_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserDiagnosticJobResponse:
+    try:
+        return await get_browser_diagnostic_job_asset(
+            session,
+            context.workspace,
+            diagnostic_job_id,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-jobs/{diagnostic_job_id}/cancel",
+    response_model=AutomationBrowserDiagnosticJobResponse,
+)
+async def cancel_browser_diagnostic_job_route(
+    diagnostic_job_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserDiagnosticJobResponse:
+    try:
+        return await cancel_browser_diagnostic_job_asset(
+            session,
+            context.workspace,
+            diagnostic_job_id,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-jobs/{diagnostic_job_id}/executor-contract",
+    response_model=AutomationBrowserExecutorContractResponse,
+)
+async def build_browser_executor_contract_route(
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserExecutorContractRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserExecutorContractResponse:
+    try:
+        return await build_browser_executor_contract(
+            session,
+            context.workspace,
+            diagnostic_job_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc) == "browser_diagnostic_job_not_found"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-jobs/{diagnostic_job_id}/local-run",
+    response_model=AutomationBrowserLocalRunnerResultResponse,
+)
+async def run_browser_diagnostic_job_local_route(
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserLocalRunnerRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserLocalRunnerResultResponse:
+    try:
+        return await run_browser_diagnostic_job_local(
+            session,
+            context.workspace,
+            diagnostic_job_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc)
+            in {
+                "browser_diagnostic_job_not_found",
+                "browser_diagnostic_run_not_found",
+            }
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/browser-diagnostic-job-runs",
+    response_model=AutomationBrowserLocalRunnerResultListResponse,
+)
+async def list_browser_diagnostic_job_runs_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    project_id: Annotated[uuid.UUID | None, Query()] = None,
+    diagnostic_job_id: Annotated[uuid.UUID | None, Query()] = None,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> AutomationBrowserLocalRunnerResultListResponse:
+    return await list_browser_diagnostic_job_run_assets(
+        session,
+        context.workspace,
+        project_id=project_id,
+        diagnostic_job_id=diagnostic_job_id,
+        status=status_filter,
+        limit=limit,
+    )
 
 
 @router.post("/product-discovery", response_model=AutomationProductDiscoveryResponse)

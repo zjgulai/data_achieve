@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import hashlib
 import io
 import json
+import os
+import shutil
+import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urldefrag, urlparse
 
 import httpx
@@ -24,7 +28,13 @@ from data_intelligence_hub.collectors.ecommerce_product_page import (
 )
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
-from data_intelligence_hub.models.automation_plan import ExtractionPlan, SiteAnalysis
+from data_intelligence_hub.models.automation_plan import (
+    BrowserDiagnosticJob,
+    BrowserDiagnosticJobRun,
+    BrowserDiagnosticRun,
+    ExtractionPlan,
+    SiteAnalysis,
+)
 from data_intelligence_hub.models.dataset import (
     CleaningPlan,
     Dataset,
@@ -45,16 +55,33 @@ from data_intelligence_hub.repositories.alerts import (
     list_alert_rules,
 )
 from data_intelligence_hub.repositories.automation_plans import (
+    commit_and_refresh_browser_diagnostic_job,
+    commit_and_refresh_browser_diagnostic_job_run,
     commit_and_refresh_extraction_plan,
     commit_and_refresh_site_analysis_plan,
+    count_browser_diagnostic_job_runs,
+    count_browser_diagnostic_jobs,
+    count_browser_diagnostic_runs,
     count_site_analyses,
+    create_browser_diagnostic_job_run,
+    create_browser_diagnostic_run,
     create_extraction_plan,
     create_site_analysis,
+    get_browser_diagnostic_job,
+    get_browser_diagnostic_job_by_fingerprint,
+    get_browser_diagnostic_run,
+    get_extraction_plan,
     get_latest_extraction_plan,
     get_site_analysis,
+    list_browser_diagnostic_job_runs,
+    list_browser_diagnostic_jobs,
+    list_browser_diagnostic_runs,
     list_extraction_plans,
     list_site_analyses,
     next_extraction_plan_version,
+)
+from data_intelligence_hub.repositories.automation_plans import (
+    create_browser_diagnostic_job as insert_browser_diagnostic_job,
 )
 from data_intelligence_hub.repositories.cleaning_plans import (
     commit_and_refresh_cleaning_plan,
@@ -99,6 +126,29 @@ from data_intelligence_hub.schemas.alert import (
     AlertRuleResponse,
 )
 from data_intelligence_hub.schemas.automation import (
+    AutomationAgentReachChannelProbeResponse,
+    AutomationBrowserAutomationPlanRequest,
+    AutomationBrowserAutomationPlanResponse,
+    AutomationBrowserCleaningRuleRequest,
+    AutomationBrowserDiagnosticJobCreateRequest,
+    AutomationBrowserDiagnosticJobListResponse,
+    AutomationBrowserDiagnosticJobResponse,
+    AutomationBrowserDiagnosticRunListResponse,
+    AutomationBrowserDiagnosticRunResponse,
+    AutomationBrowserExecutableSpecCheckResponse,
+    AutomationBrowserExecutableSpecDryRunRequest,
+    AutomationBrowserExecutableSpecDryRunResponse,
+    AutomationBrowserExecutableSpecDryRunSummaryResponse,
+    AutomationBrowserExecutorContractRequest,
+    AutomationBrowserExecutorContractResponse,
+    AutomationBrowserExecutorReadinessCheckResponse,
+    AutomationBrowserFieldContractFieldRequest,
+    AutomationBrowserLocalRunnerRequest,
+    AutomationBrowserLocalRunnerResultListResponse,
+    AutomationBrowserLocalRunnerResultResponse,
+    AutomationCapabilityProbeBackendCandidateResponse,
+    AutomationCapabilityProbeListResponse,
+    AutomationCapabilityProbeResponse,
     AutomationCleaningPlanCreateRequest,
     AutomationCleaningPlanCreateResponse,
     AutomationCleaningPlanDryRunRequest,
@@ -256,6 +306,23 @@ def get_platform_package(package_id: str) -> AutomationPlatformPackageResponse:
         if package.id == package_id:
             return package
     raise CollectorError("platform_package_not_found")
+
+
+def list_capability_probes(platform_id: str | None = None) -> AutomationCapabilityProbeListResponse:
+    generated_at = datetime.now(UTC).isoformat()
+    agent_reach = _probe_agent_reach_channel()
+    probes = _capability_probe_catalog(generated_at, agent_reach)
+    if platform_id:
+        probes = [probe for probe in probes if probe.platform_id == platform_id]
+        if not probes:
+            raise CollectorError("capability_probe_platform_not_found")
+    return AutomationCapabilityProbeListResponse(
+        generated_at=generated_at,
+        items=probes,
+        total=len(probes),
+        run_started=False,
+        collection_resources_written=False,
+    )
 
 
 async def analyze_site_for_collection(
@@ -503,6 +570,768 @@ async def create_extraction_plan_from_site_analysis(
     await create_extraction_plan(session, extraction_plan)
     extraction_plan = await commit_and_refresh_extraction_plan(session, extraction_plan)
     return _extraction_plan_response(extraction_plan)
+
+
+async def save_browser_automation_plan(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationBrowserAutomationPlanRequest,
+) -> AutomationBrowserAutomationPlanResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    project = await get_project(session, workspace.id, payload.project_id)
+    if project is None:
+        raise ProjectNotFoundError
+
+    selected_fields = [
+        field.key.strip()
+        for field in payload.field_contract.fields
+        if field.selected and field.key.strip()
+    ]
+    selected_fields = list(dict.fromkeys(selected_fields))
+    if not selected_fields:
+        raise CollectorError("browser_automation_fields_required")
+
+    final_url = payload.browser_diagnostic.final_url.strip()
+    requested_url = payload.requested_url.strip()
+    confidence = _browser_confidence_ratio(payload.browser_diagnostic.confidence)
+    name = (
+        payload.name.strip()
+        if isinstance(payload.name, str) and payload.name.strip()
+        else f"Browser Automation: {_browser_plan_host_label(final_url or requested_url)}"
+    )
+    field_contract = {
+        "fields": [
+            field.model_dump(mode="json") for field in payload.field_contract.fields
+        ],
+        "cleaning_rules": [
+            rule.model_dump(mode="json") for rule in payload.field_contract.cleaning_rules
+        ],
+    }
+    browser_diagnostic = payload.browser_diagnostic.model_dump(mode="json")
+    diagnostic_payload = _browser_diagnostic_payload(payload.diagnostic_payload, payload)
+    diagnostic_run_id = uuid.uuid4()
+    guardrails = _browser_guardrails(payload.guardrails)
+    executable_spec = _browser_executable_spec(
+        fields=payload.field_contract.fields,
+        api_candidates=payload.api_candidates,
+        guardrails=guardrails,
+        risk_level=payload.risk_level,
+        field_stability=payload.browser_diagnostic.field_stability,
+    )
+    source_draft = {
+        "type": "browser_automation",
+        "config": {
+            "browser_diagnostic_run_id": str(diagnostic_run_id),
+            "start_url": final_url,
+            "requested_url": requested_url,
+            "runner": payload.runner,
+            "execution_mode": payload.execution_mode,
+            "fields": selected_fields,
+            "field_contract": field_contract,
+            "browser_diagnostic": browser_diagnostic,
+            "executable_spec": executable_spec,
+            "api_candidates": payload.api_candidates,
+            "guardrails": guardrails,
+            "run_started": False,
+        },
+        "suggested_name": name,
+        "schedule_cron": None,
+    }
+    platform_profile = {
+        "platform_type": "dynamic_browser_page",
+        "confidence": confidence,
+        "indicators": [
+            "browser_structure_diagnostic",
+            f"recommended_path:{payload.browser_diagnostic.recommended_path}",
+            f"field_stability:{payload.browser_diagnostic.field_stability or 'unknown'}",
+        ],
+        "risk_level": payload.risk_level,
+    }
+    page_structure = {
+        "page_type": "browser_runtime",
+        "title": None,
+        "canonical_url": final_url,
+        "script_count": 0,
+        "form_count": 0,
+        "image_count": 0,
+        "product_schema_count": 0,
+        "same_origin_link_count": 0,
+        "text_sample": "Browser-harness diagnostic evidence imported as read-only draft.",
+    }
+    field_candidates = _browser_field_candidates(
+        payload.field_contract.fields,
+        payload.field_contract.cleaning_rules,
+        confidence,
+    )
+    tool_recommendations = [
+        {
+            "tool": "browser-harness + Playwright/Crawlee",
+            "collector_type": "browser_automation",
+            "fit": _browser_tool_fit(payload.risk_level),
+            "risk_level": payload.risk_level,
+            "reason": "静态预检不足以稳定提取字段，先保存只读浏览器自动化方案与证据。",
+        }
+    ]
+    cleaning_plan = _browser_cleaning_plan(payload.field_contract.cleaning_rules)
+    now = datetime.now(UTC)
+    site_analysis = SiteAnalysis(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        requested_url=requested_url,
+        target="browser_automation",
+        status="draft",
+        authorization_confirmed=payload.authorized,
+        analyzed_at=now,
+        platform_profile=platform_profile,
+        page_structure=page_structure,
+        field_candidates=field_candidates,
+        tool_recommendations=tool_recommendations,
+        cleaning_plan=cleaning_plan,
+        source_draft=source_draft,
+        blocked_reasons=[
+            "当前仅保存只读 browser automation 方案，尚未启动浏览器运行、创建采集源或写入采集结果。"
+        ],
+    )
+    await create_site_analysis(session, site_analysis)
+    diagnostic_run = BrowserDiagnosticRun(
+        id=diagnostic_run_id,
+        workspace_id=workspace.id,
+        project_id=project.id,
+        created_by_user_id=user.id,
+        site_analysis_id=site_analysis.id,
+        requested_url=requested_url,
+        final_url=final_url,
+        status="draft",
+        authorization_confirmed=payload.authorized,
+        schema_version=payload.browser_diagnostic.schema_version,
+        recommended_path=payload.browser_diagnostic.recommended_path,
+        confidence=confidence,
+        field_stability=payload.browser_diagnostic.field_stability,
+        evidence_source=payload.browser_diagnostic.evidence_source,
+        screenshot_path=payload.browser_diagnostic.screenshot_path,
+        run_policy=_browser_diagnostic_run_policy(payload, diagnostic_payload),
+        page_summary=_browser_diagnostic_page_summary(diagnostic_payload),
+        network_summary=_browser_diagnostic_network_summary(
+            diagnostic_payload,
+            payload.api_candidates,
+        ),
+        accessibility_summary=_browser_diagnostic_accessibility_summary(diagnostic_payload),
+        risk_flags=_browser_diagnostic_risk_flags(diagnostic_payload),
+        extraction_strategy=_browser_diagnostic_extraction_strategy(
+            diagnostic_payload,
+            payload,
+        ),
+        diagnostic_payload=diagnostic_payload,
+        blocked_reasons=[
+            "浏览器诊断已保存为只读资产，尚未启动浏览器运行、创建采集源或写入采集结果。"
+        ],
+        run_started=False,
+    )
+    await create_browser_diagnostic_run(session, diagnostic_run)
+    extraction_plan = ExtractionPlan(
+        workspace_id=workspace.id,
+        project_id=project.id,
+        site_analysis_id=site_analysis.id,
+        created_by_user_id=user.id,
+        name=name,
+        version_number=1,
+        collector_type="browser_automation",
+        selected_fields=selected_fields,
+        source_draft=source_draft,
+        schedule_cron=None,
+        status="draft",
+        risk_level=payload.risk_level,
+        audit_events=[
+            {
+                "event": "browser_automation_plan_saved",
+                "site_analysis_id": str(site_analysis.id),
+                "browser_diagnostic_run_id": str(diagnostic_run.id),
+                "evidence_source": payload.browser_diagnostic.evidence_source,
+                "execution_mode": payload.execution_mode,
+                "created_at": now.isoformat(),
+                "run_started": False,
+            }
+        ],
+    )
+    await create_extraction_plan(session, extraction_plan)
+    site_analysis, extraction_plan = await commit_and_refresh_site_analysis_plan(
+        session,
+        site_analysis,
+        extraction_plan,
+    )
+    await session.refresh(diagnostic_run)
+    plan_response = _extraction_plan_response(extraction_plan)
+    return AutomationBrowserAutomationPlanResponse(
+        site_analysis=_site_analysis_history_item(site_analysis, plan_response),
+        extraction_plan=plan_response,
+        browser_diagnostic=_browser_diagnostic_run_response(diagnostic_run),
+        site_analysis_created=True,
+        extraction_plan_created=True,
+        browser_diagnostic_created=True,
+        run_started=False,
+    )
+
+
+async def list_browser_diagnostics(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None = None,
+    site_analysis_id: uuid.UUID | None = None,
+    limit: int = 50,
+) -> AutomationBrowserDiagnosticRunListResponse:
+    runs = await list_browser_diagnostic_runs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+        limit=limit,
+    )
+    total = await count_browser_diagnostic_runs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+    )
+    return AutomationBrowserDiagnosticRunListResponse(
+        items=[_browser_diagnostic_run_response(run) for run in runs],
+        total=total,
+        run_started=False,
+    )
+
+
+async def dry_run_browser_executable_spec(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationBrowserExecutableSpecDryRunRequest,
+) -> AutomationBrowserExecutableSpecDryRunResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_spec_review_confirmation_required")
+
+    analysis = await get_site_analysis(session, workspace.id, payload.site_analysis_id)
+    if analysis is None:
+        raise CollectorError("site_analysis_not_found")
+    plan = await get_extraction_plan(session, workspace.id, payload.extraction_plan_id)
+    if plan is None:
+        raise CollectorError("extraction_plan_not_found")
+    if plan.site_analysis_id != analysis.id:
+        raise CollectorError("extraction_plan_site_analysis_mismatch")
+
+    source_draft = dict(plan.source_draft)
+    source_config = _dict_value(source_draft, "config")
+    executable_spec = _dict_value(source_config, "executable_spec")
+    diagnostic_run_id = payload.browser_diagnostic_run_id or _uuid_from_config(
+        source_config,
+        "browser_diagnostic_run_id",
+    )
+    diagnostic_run = (
+        await get_browser_diagnostic_run(session, workspace.id, diagnostic_run_id)
+        if diagnostic_run_id is not None
+        else None
+    )
+    checks = _browser_executable_spec_checks(
+        analysis=analysis,
+        plan=plan,
+        source_config=source_config,
+        executable_spec=executable_spec,
+        diagnostic_run=diagnostic_run,
+    )
+    summary = _browser_executable_spec_summary(checks, executable_spec)
+    plan_response = _extraction_plan_response(plan)
+    return AutomationBrowserExecutableSpecDryRunResponse(
+        site_analysis=_site_analysis_history_item(analysis, plan_response),
+        extraction_plan=plan_response,
+        browser_diagnostic=(
+            _browser_diagnostic_run_response(diagnostic_run)
+            if diagnostic_run is not None
+            else None
+        ),
+        summary=summary,
+        checks=checks,
+        executable_spec=executable_spec,
+        blocked_reasons=[check.message for check in checks if check.status == "blocked"],
+        audit_events=[
+            {
+                "event": "browser_automation_spec_dry_run_validated",
+                "site_analysis_id": str(analysis.id),
+                "extraction_plan_id": str(plan.id),
+                "browser_diagnostic_run_id": (
+                    str(diagnostic_run.id) if diagnostic_run is not None else None
+                ),
+                "status": summary.status,
+                "write_allowed": summary.write_allowed,
+                "run_started": False,
+                "created_at": datetime.now(UTC).isoformat(),
+            }
+        ],
+        run_started=False,
+    )
+
+
+async def create_browser_diagnostic_job_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationBrowserDiagnosticJobCreateRequest,
+) -> AutomationBrowserDiagnosticJobResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_create:
+        raise CollectorError("browser_diagnostic_job_confirmation_required")
+
+    analysis = await get_site_analysis(session, workspace.id, payload.site_analysis_id)
+    if analysis is None:
+        raise CollectorError("site_analysis_not_found")
+    plan = await get_extraction_plan(session, workspace.id, payload.extraction_plan_id)
+    if plan is None:
+        raise CollectorError("extraction_plan_not_found")
+    if plan.site_analysis_id != analysis.id:
+        raise CollectorError("extraction_plan_site_analysis_mismatch")
+
+    source_draft = dict(plan.source_draft)
+    source_config = _dict_value(source_draft, "config")
+    executable_spec = _dict_value(source_config, "executable_spec")
+    diagnostic_run_id = payload.browser_diagnostic_run_id or _uuid_from_config(
+        source_config,
+        "browser_diagnostic_run_id",
+    )
+    if diagnostic_run_id is None:
+        raise CollectorError("browser_diagnostic_run_not_found")
+    diagnostic_run = await get_browser_diagnostic_run(
+        session,
+        workspace.id,
+        diagnostic_run_id,
+    )
+    if diagnostic_run is None:
+        raise CollectorError("browser_diagnostic_run_not_found")
+
+    checks = _browser_executable_spec_checks(
+        analysis=analysis,
+        plan=plan,
+        source_config=source_config,
+        executable_spec=executable_spec,
+        diagnostic_run=diagnostic_run,
+    )
+    summary = _browser_executable_spec_summary(checks, executable_spec)
+    if summary.blocked_checks > 0 or not summary.can_dry_run_after_review:
+        raise CollectorError("browser_diagnostic_job_spec_blocked")
+
+    selector_scope = _list_of_dicts(executable_spec.get("selector_contract"))
+    wait_policy = _list_of_dicts(executable_spec.get("wait_conditions"))
+    api_candidates = _string_list(executable_spec.get("api_candidates"))
+    network_policy = _browser_diagnostic_job_network_policy(
+        payload.network_observation_mode,
+        api_candidates,
+    )
+    artifact_policy = _browser_diagnostic_job_artifact_policy(
+        payload.artifact_mode,
+        diagnostic_run,
+    )
+    safety_flags = _browser_diagnostic_job_safety_flags(
+        _string_list(executable_spec.get("guardrails")),
+    )
+    dry_run_summary = summary.model_dump(mode="json")
+    request_fingerprint = _browser_diagnostic_job_fingerprint(
+        workspace_id=workspace.id,
+        site_analysis_id=analysis.id,
+        extraction_plan_id=plan.id,
+        browser_diagnostic_run_id=diagnostic_run.id,
+        network_policy=network_policy,
+        artifact_policy=artifact_policy,
+    )
+    existing = await get_browser_diagnostic_job_by_fingerprint(
+        session,
+        workspace.id,
+        request_fingerprint,
+    )
+    if existing is not None:
+        return _browser_diagnostic_job_response(existing)
+
+    now = datetime.now(UTC)
+    note = payload.note.strip() if isinstance(payload.note, str) and payload.note.strip() else None
+    audit_event = {
+        "event": "browser_diagnostic_job_created",
+        "site_analysis_id": str(analysis.id),
+        "extraction_plan_id": str(plan.id),
+        "browser_diagnostic_run_id": str(diagnostic_run.id),
+        "status": "ready_for_manual_execution",
+        "network_observation_mode": payload.network_observation_mode,
+        "artifact_mode": payload.artifact_mode,
+        "write_allowed": False,
+        "run_started": False,
+        "created_at": now.isoformat(),
+    }
+    if note is not None:
+        audit_event["note"] = note
+
+    diagnostic_job = BrowserDiagnosticJob(
+        workspace_id=workspace.id,
+        project_id=plan.project_id,
+        created_by_user_id=user.id,
+        site_analysis_id=analysis.id,
+        extraction_plan_id=plan.id,
+        browser_diagnostic_run_id=diagnostic_run.id,
+        request_fingerprint=request_fingerprint,
+        requested_url=analysis.requested_url,
+        final_url=diagnostic_run.final_url,
+        status="ready_for_manual_execution",
+        authorization_confirmed=payload.authorized,
+        runner=str(source_config.get("runner") or "browser_harness"),
+        execution_mode=str(source_config.get("execution_mode") or "read_only_browser_harness"),
+        selector_scope=selector_scope,
+        wait_policy=wait_policy,
+        network_observation_policy=network_policy,
+        artifact_policy=artifact_policy,
+        safety_flags=safety_flags,
+        dry_run_summary=dry_run_summary,
+        executable_spec_snapshot=executable_spec,
+        blocked_reasons=[
+            "browser_diagnostic_job_created_no_runner",
+            "no_source_task_taskrun_dataset_notification_or_scheduler_side_effect",
+        ],
+        audit_events=[audit_event],
+        run_started=False,
+        cancelled_at=None,
+    )
+    await insert_browser_diagnostic_job(session, diagnostic_job)
+    diagnostic_job = await commit_and_refresh_browser_diagnostic_job(
+        session,
+        diagnostic_job,
+    )
+    return _browser_diagnostic_job_response(diagnostic_job)
+
+
+async def list_browser_diagnostic_job_assets(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None = None,
+    site_analysis_id: uuid.UUID | None = None,
+    extraction_plan_id: uuid.UUID | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> AutomationBrowserDiagnosticJobListResponse:
+    jobs = await list_browser_diagnostic_jobs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+        extraction_plan_id=extraction_plan_id,
+        status=status,
+        limit=limit,
+    )
+    total = await count_browser_diagnostic_jobs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        site_analysis_id=site_analysis_id,
+        extraction_plan_id=extraction_plan_id,
+        status=status,
+    )
+    return AutomationBrowserDiagnosticJobListResponse(
+        items=[_browser_diagnostic_job_response(job) for job in jobs],
+        total=total,
+        run_started=False,
+    )
+
+
+async def get_browser_diagnostic_job_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_id: uuid.UUID,
+) -> AutomationBrowserDiagnosticJobResponse:
+    job = await get_browser_diagnostic_job(session, workspace.id, diagnostic_job_id)
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+    return _browser_diagnostic_job_response(job)
+
+
+async def cancel_browser_diagnostic_job_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_id: uuid.UUID,
+) -> AutomationBrowserDiagnosticJobResponse:
+    job = await get_browser_diagnostic_job(session, workspace.id, diagnostic_job_id)
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+    if job.status == "cancelled":
+        return _browser_diagnostic_job_response(job)
+
+    now = datetime.now(UTC)
+    job.status = "cancelled"
+    job.cancelled_at = now
+    job.blocked_reasons = [
+        *job.blocked_reasons,
+        "browser_diagnostic_job_cancelled_before_runner_start",
+    ]
+    job.audit_events = [
+        *job.audit_events,
+        {
+            "event": "browser_diagnostic_job_cancelled",
+            "job_id": str(job.id),
+            "run_started": False,
+            "created_at": now.isoformat(),
+        },
+    ]
+    job = await commit_and_refresh_browser_diagnostic_job(session, job)
+    return _browser_diagnostic_job_response(job)
+
+
+async def build_browser_executor_contract(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserExecutorContractRequest,
+) -> AutomationBrowserExecutorContractResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_executor_contract_review_required")
+
+    job = await get_browser_diagnostic_job(session, workspace.id, diagnostic_job_id)
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+
+    readiness_checks = _browser_executor_readiness_checks(job)
+    blocked_reasons = [
+        check.message for check in readiness_checks if check.status == "blocked"
+    ]
+    artifact_policy = _browser_executor_artifact_retention_policy(job, payload)
+    now = datetime.now(UTC)
+    return AutomationBrowserExecutorContractResponse(
+        job=_browser_diagnostic_job_response(job),
+        adapter=_browser_executor_adapter_contract(job),
+        runtime_isolation=_browser_executor_runtime_isolation(job),
+        artifact_retention_policy=artifact_policy,
+        allowed_actions=_browser_executor_allowed_actions(job),
+        denied_actions=_browser_executor_denied_actions(),
+        readiness_checks=readiness_checks,
+        blocked_reasons=blocked_reasons,
+        audit_events=[
+            {
+                "event": "browser_executor_contract_built",
+                "job_id": str(job.id),
+                "status": "blocked" if blocked_reasons else "ready",
+                "artifact_retention_days": payload.artifact_retention_days,
+                "max_preview_rows": payload.max_preview_rows,
+                "write_files_now": False,
+                "run_started": False,
+                "execution_started": False,
+                "created_at": now.isoformat(),
+                **(
+                    {"note": payload.note.strip()}
+                    if isinstance(payload.note, str) and payload.note.strip()
+                    else {}
+                ),
+            }
+        ],
+        run_started=False,
+        execution_started=False,
+    )
+
+
+async def list_browser_diagnostic_job_run_assets(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None = None,
+    diagnostic_job_id: uuid.UUID | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> AutomationBrowserLocalRunnerResultListResponse:
+    items = await list_browser_diagnostic_job_runs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        diagnostic_job_id=diagnostic_job_id,
+        status=status,
+        limit=limit,
+    )
+    total = await count_browser_diagnostic_job_runs(
+        session,
+        workspace.id,
+        project_id=project_id,
+        diagnostic_job_id=diagnostic_job_id,
+        status=status,
+    )
+    return AutomationBrowserLocalRunnerResultListResponse(
+        items=[_browser_local_runner_result_response(item) for item in items],
+        total=total,
+        browser_started=any(item.browser_started for item in items),
+        files_written=any(item.files_written for item in items),
+        collection_resources_written=any(
+            item.collection_resources_written for item in items
+        ),
+    )
+
+
+async def run_browser_diagnostic_job_local(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserLocalRunnerRequest,
+) -> AutomationBrowserLocalRunnerResultResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_execute:
+        raise CollectorError("browser_local_runner_confirmation_required")
+    if (
+        payload.run_mode == "ephemeral_browser_harness_probe"
+        and not payload.confirm_real_browser_probe
+    ):
+        raise CollectorError("browser_harness_probe_confirmation_required")
+
+    job = await get_browser_diagnostic_job(session, workspace.id, diagnostic_job_id)
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+    if job.status != "ready_for_manual_execution":
+        raise CollectorError("browser_diagnostic_job_not_ready_for_local_run")
+    if job.run_started:
+        raise CollectorError("browser_diagnostic_job_already_marked_running")
+
+    contract = await build_browser_executor_contract(
+        session,
+        workspace,
+        diagnostic_job_id,
+        AutomationBrowserExecutorContractRequest(
+            authorized=payload.authorized,
+            confirm_review=True,
+            artifact_retention_days=payload.artifact_retention_days,
+            max_preview_rows=payload.max_preview_rows,
+            include_screenshot=payload.include_screenshot,
+            include_trace_summary=payload.include_trace_summary,
+            include_har_summary=payload.include_har_summary,
+            note=payload.note,
+        ),
+    )
+    if contract.blocked_reasons:
+        raise CollectorError("browser_executor_contract_blocked")
+
+    diagnostic_run = await get_browser_diagnostic_run(
+        session,
+        workspace.id,
+        job.browser_diagnostic_run_id,
+    )
+    if diagnostic_run is None:
+        raise CollectorError("browser_diagnostic_run_not_found")
+
+    now = datetime.now(UTC)
+    selector_results = _browser_local_runner_selector_results(job, diagnostic_run)
+    preview_rows = _browser_local_runner_preview_rows(
+        job=job,
+        selector_results=selector_results,
+        max_rows=payload.max_preview_rows,
+    )
+    artifact_manifest = _browser_local_runner_artifact_manifest(
+        contract=contract,
+        diagnostic_run=diagnostic_run,
+        preview_rows=preview_rows,
+    )
+    network_summary = _browser_local_runner_network_summary(
+        job=job,
+        diagnostic_run=diagnostic_run,
+    )
+    error_summary = _browser_local_runner_error_summary(diagnostic_run)
+    note = payload.note.strip() if isinstance(payload.note, str) and payload.note.strip() else None
+    status = "completed_snapshot_replay"
+    browser_started = False
+    blocked_reasons = [
+        "browser_local_runner_snapshot_replay_only",
+        "no_real_browser_started_no_files_written_no_collection_resources_created",
+    ]
+    audit_event: dict[str, Any] = {
+        "event": "browser_local_runner_snapshot_replay_completed",
+        "job_id": str(job.id),
+        "run_mode": payload.run_mode,
+        "preview_row_count": len(preview_rows),
+        "selector_result_count": len(selector_results),
+        "execution_started": True,
+        "browser_started": False,
+        "files_written": False,
+        "collection_resources_written": False,
+        "created_at": now.isoformat(),
+    }
+    if payload.run_mode == "ephemeral_browser_harness_probe":
+        probe_result = await asyncio.to_thread(
+            _run_browser_harness_ephemeral_probe,
+            job,
+            payload,
+        )
+        browser_started = probe_result.get("status") == "completed"
+        status = {
+            "completed": "completed_ephemeral_probe",
+            "blocked": "blocked_ephemeral_probe",
+        }.get(str(probe_result.get("status")), "failed_ephemeral_probe")
+        artifact_manifest = _browser_harness_probe_artifact_manifest(
+            artifact_manifest,
+            probe_result,
+        )
+        network_summary = _browser_harness_probe_network_summary(
+            network_summary,
+            probe_result,
+        )
+        error_summary = _browser_harness_probe_error_summary(error_summary, probe_result)
+        blocked_reasons = [
+            "browser_harness_ephemeral_probe_only",
+            "no_files_written_no_collection_resources_created",
+        ]
+        if status == "blocked_ephemeral_probe":
+            blocked_reasons.append("browser_harness_binary_unavailable")
+        if status == "failed_ephemeral_probe":
+            blocked_reasons.append("browser_harness_probe_failed")
+        audit_event = {
+            "event": "browser_harness_ephemeral_probe_completed",
+            "job_id": str(job.id),
+            "run_mode": payload.run_mode,
+            "probe_status": probe_result.get("status"),
+            "probe_exit_code": probe_result.get("exit_code"),
+            "target_tab_closed": probe_result.get("target_tab_closed") is True,
+            "preview_row_count": len(preview_rows),
+            "selector_result_count": len(selector_results),
+            "execution_started": True,
+            "browser_started": browser_started,
+            "files_written": False,
+            "collection_resources_written": False,
+            "created_at": now.isoformat(),
+        }
+    if note is not None:
+        audit_event["note"] = note
+
+    run_asset = BrowserDiagnosticJobRun(
+        workspace_id=workspace.id,
+        project_id=job.project_id,
+        created_by_user_id=job.created_by_user_id,
+        browser_diagnostic_job_id=job.id,
+        site_analysis_id=job.site_analysis_id,
+        extraction_plan_id=job.extraction_plan_id,
+        browser_diagnostic_run_id=job.browser_diagnostic_run_id,
+        requested_url=job.requested_url,
+        final_url=job.final_url,
+        status=status,
+        runner="browser_harness_read_only_local",
+        run_mode=payload.run_mode,
+        contract_snapshot=contract.model_dump(mode="json"),
+        artifact_manifest=artifact_manifest,
+        selector_results=selector_results,
+        preview_rows=preview_rows,
+        network_observation_summary=network_summary,
+        error_summary=error_summary,
+        blocked_reasons=blocked_reasons,
+        audit_events=[audit_event],
+        execution_started=True,
+        browser_started=browser_started,
+        files_written=False,
+        collection_resources_written=False,
+        started_at=now,
+        finished_at=now,
+        browser_diagnostic_job=job,
+        browser_diagnostic_run=diagnostic_run,
+    )
+    await create_browser_diagnostic_job_run(session, run_asset)
+    run_asset = await commit_and_refresh_browser_diagnostic_job_run(session, run_asset)
+    return _browser_local_runner_result_response(run_asset)
 
 
 async def discover_products_for_collection(
@@ -3396,6 +4225,460 @@ def _canonical_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
 
 
+def _probe_agent_reach_channel() -> AutomationAgentReachChannelProbeResponse:
+    command_path = shutil.which("agent-reach")
+    if not command_path:
+        return AutomationAgentReachChannelProbeResponse(
+            installed=False,
+            command_path=None,
+            doctor_status="missing_tool",
+            active_backend=None,
+            requires_login=False,
+            requires_proxy=False,
+            blocked_reason="agent_reach_not_installed",
+            platforms=[],
+            read_invoked=False,
+            search_invoked=False,
+            raw_summary={
+                "checked_command": "agent-reach",
+                "side_effects": "no_read_no_search_no_write",
+            },
+        )
+
+    try:
+        result = subprocess.run(
+            [command_path, "doctor", "--json"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return AutomationAgentReachChannelProbeResponse(
+            installed=True,
+            command_path=command_path,
+            doctor_status="blocked",
+            active_backend=None,
+            requires_login=False,
+            requires_proxy=False,
+            blocked_reason=type(exc).__name__,
+            platforms=[],
+            read_invoked=False,
+            search_invoked=False,
+            raw_summary={"error": str(exc), "side_effects": "doctor_only"},
+        )
+
+    parsed: dict[str, Any] = {}
+    if result.stdout.strip():
+        try:
+            loaded = json.loads(result.stdout)
+            if isinstance(loaded, dict):
+                parsed = loaded
+        except json.JSONDecodeError:
+            parsed = {"stdout_preview": result.stdout[:500]}
+    status_text = json.dumps(parsed, ensure_ascii=False).lower()
+    requires_login = any(token in status_text for token in ("login", "cookie", "browser_profile"))
+    requires_proxy = "proxy" in status_text
+    platforms = _agent_reach_platforms(parsed)
+    active_backend = _agent_reach_active_backend(parsed)
+    doctor_status: Literal[
+        "available",
+        "missing_tool",
+        "not_configured",
+        "requires_login",
+        "requires_proxy",
+        "blocked",
+        "unknown",
+    ]
+    if result.returncode == 0:
+        doctor_status = "available"
+    elif requires_login:
+        doctor_status = "requires_login"
+    elif requires_proxy:
+        doctor_status = "requires_proxy"
+    else:
+        doctor_status = "blocked"
+    return AutomationAgentReachChannelProbeResponse(
+        installed=True,
+        command_path=command_path,
+        doctor_status=doctor_status,
+        active_backend=active_backend,
+        requires_login=requires_login,
+        requires_proxy=requires_proxy,
+        blocked_reason=None if result.returncode == 0 else f"doctor_exit_{result.returncode}",
+        platforms=platforms,
+        read_invoked=False,
+        search_invoked=False,
+        raw_summary={
+            "exit_code": result.returncode,
+            "stdout_keys": sorted(parsed.keys())[:20],
+            "stderr_preview": result.stderr[:500] if result.stderr else "",
+            "side_effects": "doctor_only_no_read_no_search_no_write",
+        },
+    )
+
+
+def _agent_reach_platforms(payload: dict[str, Any]) -> list[str]:
+    for key in ("platforms", "channels", "tools"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            platforms: list[str] = []
+            for item in value:
+                if isinstance(item, str):
+                    platforms.append(item)
+                elif isinstance(item, dict):
+                    name = item.get("name") or item.get("platform") or item.get("id")
+                    if isinstance(name, str):
+                        platforms.append(name)
+            return sorted(set(platforms))
+        if isinstance(value, dict):
+            return sorted(str(item) for item in value)
+    return []
+
+
+def _agent_reach_active_backend(payload: dict[str, Any]) -> str | None:
+    for key in ("active_backend", "backend", "selected_backend"):
+        value = payload.get(key)
+        if isinstance(value, str) and value:
+            return value
+    channels = payload.get("channels")
+    if isinstance(channels, dict):
+        for value in channels.values():
+            if isinstance(value, dict):
+                backend = value.get("active_backend") or value.get("backend")
+                if isinstance(backend, str) and backend:
+                    return backend
+    return None
+
+
+def _candidate(
+    backend_id: str,
+    label: str,
+    priority: int,
+    status: Literal[
+        "available",
+        "missing_tool",
+        "not_configured",
+        "requires_login",
+        "requires_proxy",
+        "manual_review",
+        "blocked",
+        "unknown",
+    ],
+    credential_mode: Literal[
+        "none",
+        "token",
+        "cookie",
+        "browser_profile",
+        "manual_export",
+        "unknown",
+    ],
+    *,
+    requires_login: bool = False,
+    requires_proxy: bool = False,
+    evidence_level: Literal[
+        "L0-unverified",
+        "L1-repo-or-runtime",
+        "L2-fixture-or-dry-run",
+        "L3-production-read-only",
+        "L4-authorized-live",
+    ] = "L1-repo-or-runtime",
+    notes: list[str] | None = None,
+) -> AutomationCapabilityProbeBackendCandidateResponse:
+    return AutomationCapabilityProbeBackendCandidateResponse(
+        backend_id=backend_id,
+        label=label,
+        priority=priority,
+        status=status,
+        credential_mode=credential_mode,
+        requires_login=requires_login,
+        requires_proxy=requires_proxy,
+        evidence_level=evidence_level,
+        notes=notes or [],
+    )
+
+
+def _agent_reach_candidate(
+    agent_reach: AutomationAgentReachChannelProbeResponse,
+    priority: int,
+    *,
+    requires_login: bool = False,
+    requires_proxy: bool = False,
+    notes: list[str] | None = None,
+) -> AutomationCapabilityProbeBackendCandidateResponse:
+    status = agent_reach.doctor_status
+    return _candidate(
+        "agent_reach_channel",
+        "Agent Reach channel probe",
+        priority,
+        status,
+        "unknown",
+        requires_login=requires_login or agent_reach.requires_login,
+        requires_proxy=requires_proxy or agent_reach.requires_proxy,
+        notes=[
+            *(notes or []),
+            (
+                "Only `agent-reach doctor --json` is allowed in this probe; "
+                "read/search are not invoked."
+            ),
+        ],
+    )
+
+
+def _capability_probe_catalog(
+    generated_at: str,
+    agent_reach: AutomationAgentReachChannelProbeResponse,
+) -> list[AutomationCapabilityProbeResponse]:
+    browser_harness_path = shutil.which("browser-harness")
+    browser_harness_status: Literal["available", "missing_tool"] = (
+        "available" if browser_harness_path else "missing_tool"
+    )
+    common_forbidden = [
+        "submit_form",
+        "login_bypass",
+        "cookie_export",
+        "anti_detect",
+        "notification_send",
+        "scheduler_mutation",
+    ]
+    return [
+        AutomationCapabilityProbeResponse(
+            platform_id="github",
+            platform_label="GitHub API-first",
+            generated_at=generated_at,
+            doctor_status="available",
+            credential_mode="token",
+            execution_boundary="executable",
+            risk_level="low",
+            backend_candidates=[
+                _candidate(
+                    "official_github_api",
+                    "GitHub REST/Search API",
+                    1,
+                    "available",
+                    "token",
+                    notes=["Formal facts should continue to come from the official GitHub API."],
+                ),
+                _agent_reach_candidate(
+                    agent_reach,
+                    2,
+                    notes=[
+                        (
+                            "Use only as router/doctor or supplemental local lookup, "
+                            "not as source of record."
+                        )
+                    ],
+                ),
+            ],
+            agent_reach=agent_reach,
+            allowed_outputs=["Source", "TaskRun", "RawRecord", "DatasetVersion", "Report"],
+            forbidden_actions=common_forbidden,
+            next_actions=[
+                "Deepen release, README, license, issue activity, and freshness fields.",
+                "Keep GitHub API as source of record.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+        AutomationCapabilityProbeResponse(
+            platform_id="public_web_rss_docs",
+            platform_label="Public Web / RSS / Docs",
+            generated_at=generated_at,
+            doctor_status="available",
+            credential_mode="none",
+            execution_boundary="read_only_probe",
+            risk_level="low",
+            backend_candidates=[
+                _candidate(
+                    "generic_web",
+                    "Generic Web collector",
+                    1,
+                    "available",
+                    "none",
+                    notes=["Available for public URL snapshots after authorization."],
+                ),
+                _candidate(
+                    "rss_feedparser",
+                    "RSS/Atom parser",
+                    2,
+                    "manual_review",
+                    "none",
+                    notes=["Planned P1 package; not yet a stable collector in this project."],
+                ),
+                _agent_reach_candidate(agent_reach, 3),
+            ],
+            agent_reach=agent_reach,
+            allowed_outputs=["ExternalToolSnapshot", "RawRecord", "DatasetVersion"],
+            forbidden_actions=common_forbidden,
+            next_actions=[
+                "Define public-web-rss-docs platform package.",
+                "Add fixture coverage for one public docs page and one public feed.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+        AutomationCapabilityProbeResponse(
+            platform_id="browser_preflight",
+            platform_label="Browser Harness read-only evidence",
+            generated_at=generated_at,
+            doctor_status=browser_harness_status,
+            credential_mode="browser_profile",
+            execution_boundary="read_only_probe",
+            risk_level="medium",
+            backend_candidates=[
+                _candidate(
+                    "browser_harness_probe",
+                    "browser-harness CLI",
+                    1,
+                    browser_harness_status,
+                    "browser_profile",
+                    notes=[
+                        "Use only for bounded page info, selector, and network evidence.",
+                        "Do not create Source/Task/Dataset from the probe result directly.",
+                    ],
+                ),
+                _candidate(
+                    "snapshot_replay",
+                    "Saved diagnostic snapshot replay",
+                    2,
+                    "available",
+                    "none",
+                    evidence_level="L2-fixture-or-dry-run",
+                    notes=["Existing local replay asset stays no-run and no-file-write."],
+                ),
+            ],
+            agent_reach=None,
+            allowed_outputs=["BrowserDiagnosticJobRun"],
+            forbidden_actions=common_forbidden,
+            next_actions=[
+                "Extend BrowserDiagnosticJobRun with selector evaluation and network metadata.",
+                "Keep files_written=false until artifact retention is approved.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+        AutomationCapabilityProbeResponse(
+            platform_id="video_public_transcript",
+            platform_label="YouTube / Bilibili public transcript import",
+            generated_at=generated_at,
+            doctor_status="manual_review",
+            credential_mode="none",
+            execution_boundary="import_only",
+            risk_level="medium",
+            backend_candidates=[
+                _agent_reach_candidate(
+                    agent_reach,
+                    1,
+                    notes=[
+                        (
+                            "Candidate for metadata/transcript import only; "
+                            "media download is forbidden by default."
+                        )
+                    ],
+                ),
+                _candidate(
+                    "manual_transcript_import",
+                    "Manual metadata/transcript import",
+                    2,
+                    "manual_review",
+                    "manual_export",
+                    notes=["First production-safe path is reviewed import, not crawler execution."],
+                ),
+            ],
+            agent_reach=agent_reach,
+            allowed_outputs=["ExternalToolSnapshot", "DatasetVersion"],
+            forbidden_actions=[*common_forbidden, "media_download"],
+            next_actions=[
+                "Define metadata/transcript import template.",
+                "Record transcript source, URL, publish time, and rights boundary.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+        AutomationCapabilityProbeResponse(
+            platform_id="marketplace_authorized_import",
+            platform_label="Marketplace API/export/import",
+            generated_at=generated_at,
+            doctor_status="manual_review",
+            credential_mode="manual_export",
+            execution_boundary="import_only",
+            risk_level="medium",
+            backend_candidates=[
+                _candidate(
+                    "official_marketplace_api",
+                    "Official API or authorized export",
+                    1,
+                    "manual_review",
+                    "token",
+                    notes=["Amazon/SP-API or seller-console export must be separately authorized."],
+                ),
+                _candidate(
+                    "browser_structure_assessment",
+                    "Public page structure assessment",
+                    2,
+                    "manual_review",
+                    "none",
+                    notes=[
+                        "Browser evidence can assess structure, not default scraping permission."
+                    ],
+                ),
+            ],
+            agent_reach=None,
+            allowed_outputs=["ExternalToolSnapshot", "DatasetVersion"],
+            forbidden_actions=common_forbidden,
+            next_actions=[
+                "Create one marketplace CSV/API import template.",
+                "Keep page scraping blocked until authorization and platform policy are explicit.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+        AutomationCapabilityProbeResponse(
+            platform_id="social_sop_import_only",
+            platform_label="Twitter/X, Xiaohongshu, Instagram, LinkedIn",
+            generated_at=generated_at,
+            doctor_status="blocked",
+            credential_mode="manual_export",
+            execution_boundary="sop_only",
+            risk_level="high",
+            backend_candidates=[
+                _agent_reach_candidate(
+                    agent_reach,
+                    1,
+                    requires_login=True,
+                    notes=[
+                        (
+                            "External support does not promote these platforms to "
+                            "product-level collection."
+                        )
+                    ],
+                ),
+                _candidate(
+                    "manual_sop_import",
+                    "Reviewed SOP/import template",
+                    2,
+                    "manual_review",
+                    "manual_export",
+                    notes=["Default safe path is SOP/import-only."],
+                ),
+            ],
+            agent_reach=agent_reach,
+            allowed_outputs=["ExternalToolSnapshot"],
+            forbidden_actions=[
+                *common_forbidden,
+                "bulk_scroll_collection",
+                "personal_profile_enrichment",
+            ],
+            next_actions=[
+                "Keep automatic collection disabled.",
+                "Create field templates and manual import SOP only.",
+            ],
+            run_started=False,
+            collection_resources_written=False,
+        ),
+    ]
+
+
 def _platform_packages() -> list[AutomationPlatformPackageResponse]:
     return [
         AutomationPlatformPackageResponse(
@@ -3881,6 +5164,1335 @@ def _blocked_reasons(page_structure: dict[str, object], selected_fields: list[st
     return blocked
 
 
+def _browser_confidence_ratio(confidence: float) -> float:
+    if confidence > 1:
+        return round(confidence / 100, 4)
+    return round(confidence, 4)
+
+
+def _browser_plan_host_label(url: str) -> str:
+    parsed = urlparse(url)
+    return parsed.netloc or parsed.path or "browser-page"
+
+
+def _browser_guardrails(guardrails: list[str]) -> list[str]:
+    defaults = [
+        "只读执行，不提交表单、不点击购买或发布类按钮。",
+        "必须保留诊断 JSON、截图路径和最终 URL 作为审计证据。",
+        "先小批量验证字段稳定性，再进入任务调度。",
+    ]
+    merged = [item.strip() for item in [*guardrails, *defaults] if item.strip()]
+    return list(dict.fromkeys(merged))
+
+
+def _browser_tool_fit(risk_level: str) -> str:
+    if risk_level == "high":
+        return "low"
+    if risk_level == "medium":
+        return "medium"
+    return "high"
+
+
+def _browser_field_candidates(
+    fields: list[AutomationBrowserFieldContractFieldRequest],
+    cleaning_rules: list[AutomationBrowserCleaningRuleRequest],
+    confidence: float,
+) -> list[dict[str, object]]:
+    cleaning_rule_by_field = {
+        rule.field: rule.operation for rule in cleaning_rules if rule.field.strip()
+    }
+    return [
+        {
+            "key": field.key,
+            "label": field.label,
+            "value": field.selector_hint or None,
+            "data_type": "string",
+            "source": field.source,
+            "confidence": confidence,
+            "selected": field.selected,
+            "cleaning_rule": cleaning_rule_by_field.get(field.key, "manual_review"),
+        }
+        for field in fields
+    ]
+
+
+def _browser_cleaning_plan(
+    cleaning_rules: list[AutomationBrowserCleaningRuleRequest],
+) -> list[dict[str, str]]:
+    if cleaning_rules:
+        return [rule.model_dump(mode="json") for rule in cleaning_rules]
+    return [
+        {
+            "field": "selected_fields",
+            "operation": "manual_review",
+            "description": "首次执行前人工复核 selector hint 与字段样本稳定性。",
+        }
+    ]
+
+
+def _browser_diagnostic_payload(
+    raw_payload: dict[str, Any],
+    payload: AutomationBrowserAutomationPlanRequest,
+) -> dict[str, Any]:
+    if raw_payload:
+        return raw_payload
+    return {
+        "schema_version": payload.browser_diagnostic.schema_version,
+        "requested_url": payload.requested_url,
+        "final_url": payload.browser_diagnostic.final_url,
+        "run_policy": {
+            "authorization_confirmed": payload.authorized,
+            "execution_mode": payload.execution_mode,
+            "production_write": False,
+            "login_or_private_page_allowed": False,
+            "cookies_exported": False,
+        },
+        "extraction_strategy": {
+            "recommended_path": payload.browser_diagnostic.recommended_path,
+            "confidence": payload.browser_diagnostic.confidence,
+            "field_stability": payload.browser_diagnostic.field_stability,
+        },
+        "network_summary": {"api_candidates": payload.api_candidates},
+        "evidence": {
+            "source": payload.browser_diagnostic.evidence_source,
+            "screenshot_path": payload.browser_diagnostic.screenshot_path,
+            "errors": [],
+        },
+    }
+
+
+def _browser_diagnostic_run_policy(
+    payload: AutomationBrowserAutomationPlanRequest,
+    diagnostic_payload: dict[str, Any],
+) -> dict[str, Any]:
+    raw_policy = _dict_value(diagnostic_payload, "run_policy")
+    return {
+        **raw_policy,
+        "runner": payload.runner,
+        "execution_mode": payload.execution_mode,
+        "authorization_confirmed": payload.authorized,
+        "read_only": True,
+        "run_started": False,
+        "source_created": False,
+        "task_run_created": False,
+        "production_write": False,
+        "login_or_private_page_allowed": False,
+        "cookies_exported": False,
+    }
+
+
+def _browser_diagnostic_page_summary(diagnostic_payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "visible_text": _dict_value(diagnostic_payload, "visible_text"),
+        "dom_counters": _dict_value(diagnostic_payload, "dom_counters"),
+        "final_url": diagnostic_payload.get("final_url"),
+        "generated_at": diagnostic_payload.get("generated_at"),
+    }
+
+
+def _browser_diagnostic_network_summary(
+    diagnostic_payload: dict[str, Any],
+    api_candidates: list[str],
+) -> dict[str, Any]:
+    raw_network = _dict_value(diagnostic_payload, "network_summary")
+    if "api_candidates" not in raw_network:
+        raw_network["api_candidates"] = api_candidates
+    raw_network["api_candidate_count"] = len(raw_network.get("api_candidates") or [])
+    return raw_network
+
+
+def _browser_diagnostic_accessibility_summary(
+    diagnostic_payload: dict[str, Any],
+) -> dict[str, Any]:
+    return _dict_value(diagnostic_payload, "accessibility_summary")
+
+
+def _browser_diagnostic_risk_flags(
+    diagnostic_payload: dict[str, Any],
+) -> list[dict[str, Any]]:
+    raw_flags = diagnostic_payload.get("risk_flags")
+    if not isinstance(raw_flags, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for flag in raw_flags:
+        if isinstance(flag, dict):
+            normalized.append(flag)
+        elif isinstance(flag, str) and flag.strip():
+            normalized.append({"flag": flag.strip(), "severity": "review"})
+    return normalized
+
+
+def _browser_diagnostic_extraction_strategy(
+    diagnostic_payload: dict[str, Any],
+    payload: AutomationBrowserAutomationPlanRequest,
+) -> dict[str, Any]:
+    raw_strategy = _dict_value(diagnostic_payload, "extraction_strategy")
+    return {
+        **raw_strategy,
+        "recommended_path": payload.browser_diagnostic.recommended_path,
+        "confidence": payload.browser_diagnostic.confidence,
+        "field_stability": payload.browser_diagnostic.field_stability,
+        "run_started": False,
+    }
+
+
+def _browser_executable_spec(
+    fields: list[AutomationBrowserFieldContractFieldRequest],
+    api_candidates: list[str],
+    guardrails: list[str],
+    risk_level: str,
+    field_stability: str | None,
+) -> dict[str, Any]:
+    selected = [field for field in fields if field.selected]
+    return {
+        "schema_version": "browser_automation_executable_spec.v1",
+        "status": "draft",
+        "run_started": False,
+        "manual_review_required": risk_level != "low" or field_stability in {None, "low"},
+        "selector_contract": [
+            {
+                "field": field.key,
+                "label": field.label,
+                "source": field.source,
+                "required": field.required,
+                "selector_hint": field.selector_hint,
+                "stability": field_stability or "unknown",
+            }
+            for field in selected
+        ],
+        "wait_conditions": [
+            {"type": "domcontentloaded", "timeout_seconds": 15},
+            {"type": "network_idle_probe", "timeout_seconds": 10},
+        ],
+        "pagination_hypothesis": {
+            "strategy": "not_configured",
+            "review_required": True,
+            "note": "首次规格仅覆盖单页字段验证，分页需要独立人工确认。",
+        },
+        "api_candidates": api_candidates,
+        "dry_run_limits": {
+            "max_pages": 1,
+            "max_records": 20,
+            "timeout_seconds": 30,
+            "write_allowed": False,
+        },
+        "guardrails": guardrails,
+    }
+
+
+def _browser_executable_spec_checks(
+    analysis: SiteAnalysis,
+    plan: ExtractionPlan,
+    source_config: dict[str, Any],
+    executable_spec: dict[str, Any],
+    diagnostic_run: BrowserDiagnosticRun | None,
+) -> list[AutomationBrowserExecutableSpecCheckResponse]:
+    selector_contract = _list_of_dicts(executable_spec.get("selector_contract"))
+    wait_conditions = _list_of_dicts(executable_spec.get("wait_conditions"))
+    api_candidates = _string_list(executable_spec.get("api_candidates"))
+    guardrails = _string_list(executable_spec.get("guardrails"))
+    dry_run_limits = _dict_value(executable_spec, "dry_run_limits")
+    selected_field_set = {str(field) for field in plan.selected_fields}
+    selector_field_set = {
+        str(item.get("field"))
+        for item in selector_contract
+        if item.get("field") is not None
+    }
+    missing_selected_fields = sorted(selected_field_set - selector_field_set)
+    required_missing_hints = [
+        str(item.get("field"))
+        for item in selector_contract
+        if item.get("required") is True and not str(item.get("selector_hint") or "").strip()
+    ]
+    write_allowed = dry_run_limits.get("write_allowed") is True
+    checks = [
+        _spec_check(
+            "site-analysis-target",
+            "站点分析类型",
+            "passed" if analysis.target == "browser_automation" else "blocked",
+            (
+                "站点分析目标为 browser automation。"
+                if analysis.target == "browser_automation"
+                else "站点分析目标不是 browser automation，不能校验该执行规格。"
+            ),
+            {"target": analysis.target},
+        ),
+        _spec_check(
+            "collector-type",
+            "采集器类型",
+            "passed" if plan.collector_type == "browser_automation" else "blocked",
+            (
+                "执行计划绑定 browser automation。"
+                if plan.collector_type == "browser_automation"
+                else "执行计划未绑定 browser automation。"
+            ),
+            {"collector_type": plan.collector_type},
+        ),
+        _spec_check(
+            "schema-version",
+            "规格版本",
+            (
+                "passed"
+                if executable_spec.get("schema_version")
+                == "browser_automation_executable_spec.v1"
+                else "blocked"
+            ),
+            (
+                "执行规格版本可识别。"
+                if executable_spec.get("schema_version")
+                == "browser_automation_executable_spec.v1"
+                else "缺少可识别的 browser automation 执行规格版本。"
+            ),
+            {"schema_version": executable_spec.get("schema_version")},
+        ),
+        _spec_check(
+            "selector-contract",
+            "字段 selector 合约",
+            "blocked" if not selector_contract or missing_selected_fields else "passed",
+            (
+                "selector 合约覆盖已选字段。"
+                if selector_contract and not missing_selected_fields
+                else "selector 合约为空或未覆盖所有已选字段。"
+            ),
+            {
+                "selector_count": len(selector_contract),
+                "selected_fields": sorted(selected_field_set),
+                "missing_selected_fields": missing_selected_fields,
+            },
+        ),
+        _spec_check(
+            "selector-hints",
+            "关键字段定位线索",
+            "review" if required_missing_hints else "passed",
+            (
+                "关键字段均包含定位线索。"
+                if not required_missing_hints
+                else "部分关键字段缺少 selector hint，需要人工补全。"
+            ),
+            {"required_missing_hints": required_missing_hints},
+        ),
+        _spec_check(
+            "wait-conditions",
+            "等待条件",
+            "passed" if wait_conditions else "review",
+            (
+                "已定义页面等待条件。"
+                if wait_conditions
+                else "缺少等待条件，后续真实 dry-run 前需要补充。"
+            ),
+            {"wait_condition_count": len(wait_conditions)},
+        ),
+        _spec_check(
+            "api-candidates",
+            "API 候选",
+            "passed" if api_candidates else "review",
+            (
+                "已记录 API 候选，可优先评估 API-first 路径。"
+                if api_candidates
+                else "没有 API 候选，后续执行更依赖 DOM selector 稳定性。"
+            ),
+            {"api_candidate_count": len(api_candidates)},
+        ),
+        _spec_check(
+            "dry-run-limits",
+            "只读 dry-run 限制",
+            "blocked" if write_allowed else "passed",
+            (
+                "dry-run 限制禁止写入。"
+                if not write_allowed
+                else "dry-run 限制允许写入，违反当前阶段边界。"
+            ),
+            {
+                "write_allowed": write_allowed,
+                "max_pages": dry_run_limits.get("max_pages"),
+                "max_records": dry_run_limits.get("max_records"),
+            },
+        ),
+        _spec_check(
+            "guardrails",
+            "执行护栏",
+            "passed" if _guardrails_include_read_only(guardrails) else "review",
+            (
+                "执行护栏包含只读边界。"
+                if _guardrails_include_read_only(guardrails)
+                else "执行护栏未明确只读边界，需要补充。"
+            ),
+            {"guardrails": guardrails},
+        ),
+        _browser_diagnostic_lineage_check(
+            analysis=analysis,
+            source_config=source_config,
+            diagnostic_run=diagnostic_run,
+        ),
+        _spec_check(
+            "manual-review",
+            "人工复核",
+            "review" if executable_spec.get("manual_review_required") is True else "passed",
+            (
+                "执行规格标记为需要人工复核。"
+                if executable_spec.get("manual_review_required") is True
+                else "执行规格未要求额外人工复核。"
+            ),
+            {"manual_review_required": executable_spec.get("manual_review_required")},
+        ),
+    ]
+    return checks
+
+
+def _browser_diagnostic_lineage_check(
+    analysis: SiteAnalysis,
+    source_config: dict[str, Any],
+    diagnostic_run: BrowserDiagnosticRun | None,
+) -> AutomationBrowserExecutableSpecCheckResponse:
+    if diagnostic_run is None:
+        return _spec_check(
+            "diagnostic-lineage",
+            "诊断资产链路",
+            "blocked",
+            "未找到关联的浏览器诊断资产。",
+            {},
+        )
+    final_url_matches = diagnostic_run.final_url == source_config.get("start_url")
+    same_analysis = diagnostic_run.site_analysis_id == analysis.id
+    read_only = diagnostic_run.run_policy.get("read_only") is True
+    no_browser_run = diagnostic_run.run_started is False
+    status: Literal["passed", "review", "blocked"] = (
+        "passed"
+        if same_analysis and final_url_matches and read_only and no_browser_run
+        else "blocked"
+    )
+    return _spec_check(
+        "diagnostic-lineage",
+        "诊断资产链路",
+        status,
+        (
+            "诊断资产与执行规格链路一致，且保持只读。"
+            if status == "passed"
+            else "诊断资产与执行规格链路不一致或不满足只读边界。"
+        ),
+        {
+            "browser_diagnostic_run_id": str(diagnostic_run.id),
+            "same_site_analysis": same_analysis,
+            "final_url_matches": final_url_matches,
+            "read_only": read_only,
+            "run_started": diagnostic_run.run_started,
+        },
+    )
+
+
+def _browser_executable_spec_summary(
+    checks: list[AutomationBrowserExecutableSpecCheckResponse],
+    executable_spec: dict[str, Any],
+) -> AutomationBrowserExecutableSpecDryRunSummaryResponse:
+    blocked_checks = sum(1 for check in checks if check.status == "blocked")
+    review_checks = sum(1 for check in checks if check.status == "review")
+    passed_checks = sum(1 for check in checks if check.status == "passed")
+    status: Literal["ready", "review", "blocked"]
+    if blocked_checks:
+        status = "blocked"
+    elif review_checks:
+        status = "review"
+    else:
+        status = "ready"
+    selector_contract = _list_of_dicts(executable_spec.get("selector_contract"))
+    wait_conditions = _list_of_dicts(executable_spec.get("wait_conditions"))
+    api_candidates = _string_list(executable_spec.get("api_candidates"))
+    dry_run_limits = _dict_value(executable_spec, "dry_run_limits")
+    write_allowed = dry_run_limits.get("write_allowed") is True
+    return AutomationBrowserExecutableSpecDryRunSummaryResponse(
+        status=status,
+        total_checks=len(checks),
+        passed_checks=passed_checks,
+        review_checks=review_checks,
+        blocked_checks=blocked_checks,
+        selector_count=len(selector_contract),
+        wait_condition_count=len(wait_conditions),
+        api_candidate_count=len(api_candidates),
+        manual_review_required=executable_spec.get("manual_review_required") is True,
+        can_dry_run_after_review=status in {"ready", "review"} and not write_allowed,
+        write_allowed=write_allowed,
+        run_started=False,
+    )
+
+
+def _browser_diagnostic_job_network_policy(
+    mode: str,
+    api_candidates: list[str],
+) -> dict[str, Any]:
+    return {
+        "mode": mode,
+        "same_origin_only": mode == "same_origin_api_candidates",
+        "capture_body": False,
+        "capture_headers": False,
+        "write_allowed": False,
+        "api_candidates": api_candidates if mode == "same_origin_api_candidates" else [],
+    }
+
+
+def _browser_diagnostic_job_artifact_policy(
+    mode: str,
+    diagnostic_run: BrowserDiagnosticRun,
+) -> dict[str, Any]:
+    return {
+        "mode": mode,
+        "write_files": False,
+        "retain_screenshot_path": (
+            diagnostic_run.screenshot_path
+            if mode == "screenshot_reference_only"
+            else None
+        ),
+        "retain_diagnostic_json": mode == "diagnostic_json_reference",
+        "object_storage_write": False,
+    }
+
+
+def _browser_diagnostic_job_safety_flags(guardrails: list[str]) -> list[str]:
+    default_flags = [
+        "read_only",
+        "no_browser_run_started",
+        "no_login_state_reuse",
+        "no_cookie_export",
+        "no_form_submit",
+        "no_source_task_taskrun_creation",
+        "no_dataset_write",
+        "no_notification_or_email",
+        "no_scheduler_mutation",
+    ]
+    return list(dict.fromkeys([*default_flags, *guardrails]))
+
+
+def _browser_diagnostic_job_fingerprint(
+    workspace_id: uuid.UUID,
+    site_analysis_id: uuid.UUID,
+    extraction_plan_id: uuid.UUID,
+    browser_diagnostic_run_id: uuid.UUID,
+    network_policy: dict[str, Any],
+    artifact_policy: dict[str, Any],
+) -> str:
+    payload = {
+        "workspace_id": str(workspace_id),
+        "site_analysis_id": str(site_analysis_id),
+        "extraction_plan_id": str(extraction_plan_id),
+        "browser_diagnostic_run_id": str(browser_diagnostic_run_id),
+        "network_policy": network_policy,
+        "artifact_policy": artifact_policy,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _browser_executor_adapter_contract(job: BrowserDiagnosticJob) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_executor_adapter_contract.v1",
+        "adapter_name": "browser_harness_read_only_local",
+        "adapter_kind": "local_manual_runner",
+        "job_id": str(job.id),
+        "input_contract": {
+            "final_url": job.final_url,
+            "selector_scope": job.selector_scope,
+            "wait_policy": job.wait_policy,
+            "network_observation_policy": job.network_observation_policy,
+        },
+        "output_contract": {
+            "artifact_manifest": "json",
+            "field_preview_rows": "in_memory_only_until_runner_phase",
+            "network_observation_summary": "metadata_only",
+            "execution_log": "structured_steps",
+        },
+        "execution_policy": {
+            "manual_operator_required": True,
+            "automatic_api_worker_start": False,
+            "production_enabled": False,
+            "write_allowed": False,
+            "run_started": False,
+        },
+    }
+
+
+def _browser_executor_runtime_isolation(job: BrowserDiagnosticJob) -> dict[str, Any]:
+    return {
+        "mode": "local_ephemeral_browser_context",
+        "runner": job.runner,
+        "execution_mode": job.execution_mode,
+        "reuse_user_profile": False,
+        "cookie_export_allowed": False,
+        "login_state_allowed": False,
+        "private_page_allowed": False,
+        "network_scope": job.network_observation_policy.get("mode", "metadata_only"),
+        "filesystem_write_allowed": False,
+        "secrets_allowed": False,
+    }
+
+
+def _browser_executor_artifact_retention_policy(
+    job: BrowserDiagnosticJob,
+    payload: AutomationBrowserExecutorContractRequest,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_artifact_retention_policy.v1",
+        "base_path": f"tmp/browser-diagnostic-runs/{job.id}",
+        "write_files_now": False,
+        "retention_days": payload.artifact_retention_days,
+        "max_preview_rows": payload.max_preview_rows,
+        "screenshot": {
+            "enabled": payload.include_screenshot,
+            "source_reference": job.artifact_policy.get("retain_screenshot_path"),
+        },
+        "trace_summary": {
+            "enabled": payload.include_trace_summary,
+            "full_trace_capture": False,
+        },
+        "har_summary": {
+            "enabled": payload.include_har_summary,
+            "capture_headers": False,
+            "capture_body": False,
+        },
+        "redaction": {
+            "drop_headers": ["authorization", "cookie", "set-cookie"],
+            "drop_query_params": ["token", "key", "session", "password"],
+            "drop_private_page_content": True,
+        },
+    }
+
+
+def _browser_executor_allowed_actions(job: BrowserDiagnosticJob) -> list[str]:
+    actions = [
+        "open_authorized_final_url",
+        "wait_domcontentloaded",
+        "read_visible_text",
+        "read_accessibility_snapshot",
+        "evaluate_declared_selectors",
+        "produce_in_memory_preview_rows",
+    ]
+    if job.network_observation_policy.get("mode") == "same_origin_api_candidates":
+        actions.append("observe_same_origin_network_metadata")
+    else:
+        actions.append("observe_network_metadata_counts")
+    return actions
+
+
+def _browser_executor_denied_actions() -> list[str]:
+    return [
+        "reuse_user_chrome_profile",
+        "export_cookies",
+        "login_or_private_page_access",
+        "submit_forms",
+        "click_purchase_or_publish_actions",
+        "download_files",
+        "write_source_or_task",
+        "create_task_run",
+        "write_dataset_or_export",
+        "send_notification_or_email",
+        "mutate_scheduler",
+    ]
+
+
+def _browser_executor_readiness_checks(
+    job: BrowserDiagnosticJob,
+) -> list[AutomationBrowserExecutorReadinessCheckResponse]:
+    dry_run_summary = dict(job.dry_run_summary)
+    safety_flags = set(job.safety_flags)
+    network_policy = dict(job.network_observation_policy)
+    artifact_policy = dict(job.artifact_policy)
+    return [
+        _executor_check(
+            "job-status",
+            "任务状态",
+            "passed" if job.status == "ready_for_manual_execution" else "blocked",
+            (
+                "诊断任务已审核，等待人工执行。"
+                if job.status == "ready_for_manual_execution"
+                else "诊断任务不是可执行状态。"
+            ),
+            {"status": job.status},
+        ),
+        _executor_check(
+            "no-run-started",
+            "运行状态",
+            "passed" if job.run_started is False else "blocked",
+            (
+                "任务尚未启动运行。"
+                if job.run_started is False
+                else "任务已有运行标记，不能生成新的本地执行合同。"
+            ),
+            {"run_started": job.run_started},
+        ),
+        _executor_check(
+            "execution-mode",
+            "执行模式",
+            "passed" if job.execution_mode == "read_only_browser_harness" else "blocked",
+            (
+                "执行模式限定为 read-only browser harness。"
+                if job.execution_mode == "read_only_browser_harness"
+                else "执行模式不是 read-only browser harness。"
+            ),
+            {"execution_mode": job.execution_mode},
+        ),
+        _executor_check(
+            "selector-scope",
+            "字段范围",
+            "passed" if job.selector_scope else "blocked",
+            (
+                "已定义 selector scope。"
+                if job.selector_scope
+                else "缺少 selector scope。"
+            ),
+            {"selector_count": len(job.selector_scope)},
+        ),
+        _executor_check(
+            "wait-policy",
+            "等待策略",
+            "passed" if job.wait_policy else "review",
+            (
+                "已定义等待策略。"
+                if job.wait_policy
+                else "缺少等待策略，真实执行前需要补齐。"
+            ),
+            {"wait_condition_count": len(job.wait_policy)},
+        ),
+        _executor_check(
+            "network-policy",
+            "网络观察",
+            (
+                "passed"
+                if network_policy.get("write_allowed") is False
+                and network_policy.get("capture_body") is False
+                else "blocked"
+            ),
+            (
+                "网络策略仅允许元数据观察。"
+                if network_policy.get("write_allowed") is False
+                and network_policy.get("capture_body") is False
+                else "网络策略允许写入或正文捕获。"
+            ),
+            network_policy,
+        ),
+        _executor_check(
+            "artifact-policy",
+            "产物策略",
+            (
+                "passed"
+                if artifact_policy.get("write_files") is False
+                and artifact_policy.get("object_storage_write") is False
+                else "blocked"
+            ),
+            (
+                "当前阶段不写文件或对象存储。"
+                if artifact_policy.get("write_files") is False
+                and artifact_policy.get("object_storage_write") is False
+                else "产物策略允许文件或对象存储写入。"
+            ),
+            artifact_policy,
+        ),
+        _executor_check(
+            "safety-flags",
+            "安全边界",
+            (
+                "passed"
+                if {"read_only", "no_login_state_reuse", "no_cookie_export"}
+                <= safety_flags
+                else "review"
+            ),
+            (
+                "安全边界包含只读、无登录态复用、无 cookie 导出。"
+                if {"read_only", "no_login_state_reuse", "no_cookie_export"}
+                <= safety_flags
+                else "安全边界需要补充登录态和 cookie 限制。"
+            ),
+            {"safety_flags": job.safety_flags},
+        ),
+        _executor_check(
+            "dry-run-summary",
+            "规格校验摘要",
+            (
+                "passed"
+                if dry_run_summary.get("write_allowed") is False
+                and dry_run_summary.get("status") != "blocked"
+                else "blocked"
+            ),
+            (
+                "执行规格校验允许进入人工执行合同。"
+                if dry_run_summary.get("write_allowed") is False
+                and dry_run_summary.get("status") != "blocked"
+                else "执行规格校验仍处于阻断或允许写入状态。"
+            ),
+            dry_run_summary,
+        ),
+    ]
+
+
+def _browser_local_runner_selector_results(
+    job: BrowserDiagnosticJob,
+    diagnostic_run: BrowserDiagnosticRun,
+) -> list[dict[str, Any]]:
+    snapshot_values = _browser_local_runner_snapshot_values(diagnostic_run)
+    results: list[dict[str, Any]] = []
+    for selector in job.selector_scope:
+        field = str(selector.get("field") or selector.get("key") or "unknown_field")
+        selector_hint = selector.get("selector_hint") or selector.get("selector")
+        value = snapshot_values.get(field)
+        results.append(
+            {
+                "field": field,
+                "label": selector.get("label") or field,
+                "selector_hint": selector_hint,
+                "required": selector.get("required") is True,
+                "status": (
+                    "observed_from_diagnostic_snapshot"
+                    if value is not None
+                    else "not_observed_in_diagnostic_snapshot"
+                ),
+                "value": value,
+                "source": "diagnostic_snapshot_replay",
+                "browser_started": False,
+            }
+        )
+    return results
+
+
+def _browser_local_runner_snapshot_values(
+    diagnostic_run: BrowserDiagnosticRun,
+) -> dict[str, str | int | float | bool | None]:
+    visible_text = _dict_value(diagnostic_run.page_summary, "visible_text")
+    sample = str(visible_text.get("sample") or "").strip()
+    first_line = next((line.strip() for line in sample.splitlines() if line.strip()), None)
+    network_summary = dict(diagnostic_run.network_summary)
+    api_candidates = network_summary.get("api_candidates")
+    first_api_candidate: str | None = None
+    if isinstance(api_candidates, list):
+        for candidate in api_candidates:
+            if isinstance(candidate, dict) and isinstance(candidate.get("url"), str):
+                first_api_candidate = candidate["url"]
+                break
+            if isinstance(candidate, str):
+                first_api_candidate = candidate
+                break
+    return {
+        "page_title": first_line,
+        "visible_text_sample": sample or None,
+        "api_candidate": first_api_candidate,
+        "final_url": diagnostic_run.final_url,
+        "requested_url": diagnostic_run.requested_url,
+        "screenshot_path": diagnostic_run.screenshot_path,
+    }
+
+
+def _browser_local_runner_preview_rows(
+    job: BrowserDiagnosticJob,
+    selector_results: list[dict[str, Any]],
+    max_rows: int,
+) -> list[dict[str, Any]]:
+    if max_rows < 1:
+        return []
+    values = {
+        str(result["field"]): result.get("value")
+        for result in selector_results
+        if result.get("field") and result.get("value") is not None
+    }
+    if not values:
+        return []
+    return [
+        {
+            "row_index": 1,
+            "source": "diagnostic_snapshot_replay",
+            "requested_url": job.requested_url,
+            "final_url": job.final_url,
+            "values": values,
+            "selector_statuses": {
+                str(result["field"]): result.get("status")
+                for result in selector_results
+                if result.get("field")
+            },
+        }
+    ]
+
+
+def _browser_local_runner_artifact_manifest(
+    contract: AutomationBrowserExecutorContractResponse,
+    diagnostic_run: BrowserDiagnosticRun,
+    preview_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    retention_policy = dict(contract.artifact_retention_policy)
+    return {
+        "schema_version": "browser_local_runner_artifact_manifest.v1",
+        "base_path": retention_policy.get("base_path"),
+        "retention_days": retention_policy.get("retention_days"),
+        "files_written": False,
+        "object_storage_write": False,
+        "preview_rows_count": len(preview_rows),
+        "screenshot": {
+            "enabled": _dict_value(retention_policy, "screenshot").get("enabled") is True,
+            "referenced_path": diagnostic_run.screenshot_path,
+            "generated_path": None,
+        },
+        "trace_summary": {
+            "enabled": _dict_value(retention_policy, "trace_summary").get("enabled") is True,
+            "generated_path": None,
+        },
+        "har_summary": {
+            "enabled": _dict_value(retention_policy, "har_summary").get("enabled") is True,
+            "capture_headers": False,
+            "capture_body": False,
+            "generated_path": None,
+        },
+    }
+
+
+def _browser_local_runner_network_summary(
+    job: BrowserDiagnosticJob,
+    diagnostic_run: BrowserDiagnosticRun,
+) -> dict[str, Any]:
+    network = dict(diagnostic_run.network_summary)
+    api_candidates = network.get("api_candidates") if isinstance(network, dict) else []
+    if not isinstance(api_candidates, list):
+        api_candidates = []
+    return {
+        "mode": job.network_observation_policy.get("mode", "metadata_only"),
+        "same_origin_only": job.network_observation_policy.get("same_origin_only") is True,
+        "capture_headers": False,
+        "capture_body": False,
+        "observed_from_diagnostic_snapshot": True,
+        "browser_started": False,
+        "resource_count": network.get("resource_count"),
+        "api_candidate_count": len(api_candidates),
+        "api_candidates": api_candidates,
+    }
+
+
+def _browser_local_runner_error_summary(
+    diagnostic_run: BrowserDiagnosticRun,
+) -> dict[str, Any]:
+    evidence = _dict_value(diagnostic_run.diagnostic_payload, "evidence")
+    raw_errors = evidence.get("errors")
+    errors = [str(error)[:300] for error in raw_errors] if isinstance(raw_errors, list) else []
+    return {
+        "error_count": len(errors),
+        "errors": errors,
+        "redacted": True,
+        "browser_started": False,
+    }
+
+
+def _browser_local_runner_selector_evaluations(
+    selector_results: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    evaluations: list[dict[str, Any]] = []
+    for result in selector_results:
+        value = result.get("value")
+        observed = value is not None
+        field = str(result.get("field") or "unknown_field")
+        evaluations.append(
+            {
+                "schema_version": "browser_selector_evaluation.v1",
+                "field": field,
+                "label": result.get("label") or field,
+                "selector_hint": result.get("selector_hint"),
+                "required": result.get("required") is True,
+                "status": result.get("status") or (
+                    "observed" if observed else "not_observed"
+                ),
+                "match_count": 1 if observed else 0,
+                "sample_text": _browser_local_runner_sample_text(value),
+                "missing_reason": None
+                if observed
+                else "not_observed_in_diagnostic_snapshot",
+                "source": result.get("source") or "diagnostic_snapshot_replay",
+                "browser_started": result.get("browser_started") is True,
+            }
+        )
+    return evaluations
+
+
+def _browser_local_runner_sample_text(value: Any, limit: int = 180) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = (
+            _browser_probe_sanitize_url(value)
+            if value.startswith(("http://", "https://"))
+            else value
+        )
+    else:
+        text = json.dumps(value, ensure_ascii=False, default=str)
+    text = " ".join(text.strip().split())
+    if not text:
+        return None
+    return text[:limit]
+
+
+def _browser_local_runner_network_metadata_summary(
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    api_candidates = _browser_local_runner_api_candidates(summary.get("api_candidates"))
+    ephemeral_probe = summary.get("ephemeral_probe")
+    result = {
+        "schema_version": "browser_network_metadata_summary.v1",
+        "mode": summary.get("mode") or "metadata_only",
+        "same_origin_only": summary.get("same_origin_only") is True,
+        "metadata_only": True,
+        "capture_headers": False,
+        "capture_body": False,
+        "browser_started": summary.get("browser_started") is True,
+        "observed_from_diagnostic_snapshot": (
+            summary.get("observed_from_diagnostic_snapshot") is True
+        ),
+        "resource_count": summary.get("resource_count"),
+        "api_candidate_count": len(api_candidates),
+        "api_candidates": api_candidates,
+        "redacted": True,
+    }
+    if isinstance(ephemeral_probe, dict):
+        result["ephemeral_probe"] = {
+            "schema_version": ephemeral_probe.get("schema_version"),
+            "status": ephemeral_probe.get("status"),
+            "target_url": ephemeral_probe.get("target_url"),
+            "page_info": ephemeral_probe.get("page_info") or {},
+            "target_tab_closed": ephemeral_probe.get("target_tab_closed") is True,
+            "redacted": True,
+        }
+    return result
+
+
+def _browser_local_runner_api_candidates(value: Any) -> list[Any]:
+    if not isinstance(value, list):
+        return []
+    candidates: list[Any] = []
+    for candidate in value[:10]:
+        if isinstance(candidate, str):
+            candidates.append(_browser_probe_sanitize_url(candidate))
+            continue
+        if isinstance(candidate, dict):
+            sanitized = dict(candidate)
+            if isinstance(sanitized.get("url"), str):
+                sanitized["url"] = _browser_probe_sanitize_url(str(sanitized["url"]))
+            candidates.append(sanitized)
+    return candidates
+
+
+def _browser_local_runner_promotion_gate(
+    run_asset: BrowserDiagnosticJobRun,
+) -> dict[str, Any]:
+    selector_evaluations = _browser_local_runner_selector_evaluations(
+        run_asset.selector_results
+    )
+    required_missing_fields = [
+        str(item["field"])
+        for item in selector_evaluations
+        if item.get("required") is True and int(item.get("match_count") or 0) < 1
+    ]
+    reasons = ["m2_read_only_contract_no_direct_promotion"]
+    if required_missing_fields:
+        reasons.append("required_selector_missing")
+    if run_asset.files_written:
+        reasons.append("unexpected_files_written")
+    if run_asset.collection_resources_written:
+        reasons.append("unexpected_collection_resource_write")
+    return {
+        "schema_version": "browser_promotion_gate.v1",
+        "status": "blocked",
+        "can_create_collection_resources": False,
+        "review_required": True,
+        "reasons": reasons,
+        "required_missing_fields": required_missing_fields,
+        "browser_started": run_asset.browser_started,
+        "files_written": run_asset.files_written,
+        "collection_resources_written": run_asset.collection_resources_written,
+    }
+
+
+def _browser_local_runner_redaction_summary(
+    run_asset: BrowserDiagnosticJobRun,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_local_runner_redaction_summary.v1",
+        "cookies_captured": False,
+        "headers_captured": False,
+        "bodies_captured": False,
+        "query_parameters_retained": False,
+        "url_query_fragment_removed": True,
+        "stdout_stderr_tail_redacted": True,
+        "sample_text_max_chars": 180,
+        "files_written": run_asset.files_written,
+        "collection_resources_written": run_asset.collection_resources_written,
+    }
+
+
+def _run_browser_harness_ephemeral_probe(
+    job: BrowserDiagnosticJob,
+    payload: AutomationBrowserLocalRunnerRequest,
+) -> dict[str, Any]:
+    binary = (
+        payload.browser_harness_binary
+        or os.environ.get("BROWSER_HARNESS_BIN")
+        or "/Users/pray/.local/bin/browser-harness"
+    )
+    script = _browser_harness_ephemeral_probe_script(job.requested_url)
+    try:
+        completed = subprocess.run(
+            [binary],
+            input=script,
+            text=True,
+            capture_output=True,
+            timeout=payload.probe_timeout_seconds,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {
+            "status": "blocked",
+            "browser_started": False,
+            "target_tab_closed": False,
+            "exit_code": None,
+            "binary": _browser_harness_binary_label(binary),
+            "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "error": "browser_harness_binary_not_found",
+            "stdout_tail": "",
+            "stderr_tail": "",
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "status": "failed",
+            "browser_started": False,
+            "target_tab_closed": False,
+            "exit_code": None,
+            "binary": _browser_harness_binary_label(binary),
+            "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "error": "browser_harness_probe_timeout",
+            "stdout_tail": _tail_text(exc.stdout),
+            "stderr_tail": _tail_text(exc.stderr),
+        }
+
+    parsed = _parse_browser_harness_json_line(completed.stdout)
+    if completed.returncode != 0:
+        return {
+            "status": "failed",
+            "browser_started": False,
+            "target_tab_closed": False,
+            "exit_code": completed.returncode,
+            "binary": _browser_harness_binary_label(binary),
+            "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "error": "browser_harness_probe_nonzero_exit",
+            "stdout_tail": _tail_text(completed.stdout),
+            "stderr_tail": _tail_text(completed.stderr),
+        }
+    if parsed is None:
+        return {
+            "status": "failed",
+            "browser_started": False,
+            "target_tab_closed": False,
+            "exit_code": completed.returncode,
+            "binary": _browser_harness_binary_label(binary),
+            "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "error": "browser_harness_probe_json_not_found",
+            "stdout_tail": _tail_text(completed.stdout),
+            "stderr_tail": _tail_text(completed.stderr),
+        }
+
+    page_info = parsed.get("page_info") if isinstance(parsed, dict) else None
+    return {
+        "status": "completed",
+        "browser_started": True,
+        "target_tab_closed": parsed.get("target_tab_closed") is True,
+        "exit_code": completed.returncode,
+        "binary": _browser_harness_binary_label(binary),
+        "target_url": _browser_probe_sanitize_url(job.requested_url),
+        "page_info": _sanitize_browser_harness_page_info(page_info),
+        "stdout_tail": "",
+        "stderr_tail": _tail_text(completed.stderr),
+    }
+
+
+def _browser_harness_ephemeral_probe_script(url: str) -> str:
+    serialized_url = json.dumps(url)
+    return f"""
+import json
+
+target_id = None
+try:
+    target_id = new_tab({serialized_url})
+    wait_for_load(timeout=12.0)
+    print(json.dumps({{
+        "ok": True,
+        "page_info": page_info(),
+        "target_tab_closed": False,
+    }}, ensure_ascii=False))
+finally:
+    if target_id:
+        try:
+            close_tab(target_id)
+            print(json.dumps({{"target_tab_closed": True}}, ensure_ascii=False))
+        except Exception:
+            pass
+"""
+
+
+def _parse_browser_harness_json_line(stdout: str | bytes | None) -> dict[str, Any] | None:
+    text = (
+        stdout.decode("utf-8", errors="replace")
+        if isinstance(stdout, bytes)
+        else str(stdout or "")
+    )
+    parsed: dict[str, Any] | None = None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            candidate = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate, dict):
+            parsed = {**(parsed or {}), **candidate}
+    return parsed
+
+
+def _sanitize_browser_harness_page_info(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    allowed_keys = {"url", "title", "w", "h", "sx", "sy", "pw", "ph"}
+    sanitized = {key: value.get(key) for key in allowed_keys if key in value}
+    if isinstance(sanitized.get("url"), str):
+        sanitized["url"] = _browser_probe_sanitize_url(str(sanitized["url"]))
+    return sanitized
+
+
+def _browser_probe_sanitize_url(value: str) -> str:
+    parsed = urlparse(value)
+    return parsed._replace(query="", fragment="").geturl()
+
+
+def _browser_harness_binary_label(value: str) -> str:
+    path = Path(value)
+    if path.name == "browser-harness":
+        return str(path)
+    return path.name or "browser-harness"
+
+
+def _tail_text(value: str | bytes | None, limit: int = 600) -> str:
+    text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value or "")
+    text = text.strip()
+    if not text:
+        return ""
+    redacted = text.replace("Authorization", "[redacted-header]")
+    return redacted[-limit:]
+
+
+def _browser_harness_probe_artifact_manifest(
+    manifest: dict[str, Any],
+    probe_result: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        **manifest,
+        "ephemeral_probe": {
+            "schema_version": "browser_harness_ephemeral_probe.v1",
+            "status": probe_result.get("status"),
+            "binary": probe_result.get("binary"),
+            "exit_code": probe_result.get("exit_code"),
+            "files_written": False,
+            "object_storage_write": False,
+            "target_tab_closed": probe_result.get("target_tab_closed") is True,
+        },
+    }
+
+
+def _browser_harness_probe_network_summary(
+    summary: dict[str, Any],
+    probe_result: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        **summary,
+        "browser_started": probe_result.get("browser_started") is True,
+        "ephemeral_probe": {
+            "schema_version": "browser_harness_ephemeral_probe.v1",
+            "status": probe_result.get("status"),
+            "target_url": probe_result.get("target_url"),
+            "page_info": probe_result.get("page_info") or {},
+            "target_tab_closed": probe_result.get("target_tab_closed") is True,
+            "stdout_tail": probe_result.get("stdout_tail") or "",
+            "stderr_tail": probe_result.get("stderr_tail") or "",
+            "redacted": True,
+        },
+    }
+
+
+def _browser_harness_probe_error_summary(
+    summary: dict[str, Any],
+    probe_result: dict[str, Any],
+) -> dict[str, Any]:
+    errors = list(summary.get("errors") or [])
+    if probe_result.get("error"):
+        errors.append(str(probe_result["error"]))
+    return {
+        **summary,
+        "error_count": len(errors),
+        "errors": errors,
+        "browser_started": probe_result.get("browser_started") is True,
+    }
+
+
+def _executor_check(
+    key: str,
+    label: str,
+    status: Literal["passed", "review", "blocked"],
+    message: str,
+    evidence: dict[str, Any],
+) -> AutomationBrowserExecutorReadinessCheckResponse:
+    return AutomationBrowserExecutorReadinessCheckResponse(
+        key=key,
+        label=label,
+        status=status,
+        message=message,
+        evidence=evidence,
+    )
+
+
+def _spec_check(
+    key: str,
+    label: str,
+    status: Literal["passed", "review", "blocked"],
+    message: str,
+    evidence: dict[str, Any],
+) -> AutomationBrowserExecutableSpecCheckResponse:
+    return AutomationBrowserExecutableSpecCheckResponse(
+        key=key,
+        label=label,
+        status=status,
+        message=message,
+        evidence=evidence,
+    )
+
+
+def _dict_value(payload: dict[str, Any], key: str) -> dict[str, Any]:
+    value = payload.get(key)
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _list_of_dicts(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [dict(item) for item in value if isinstance(item, dict)]
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value if str(item).strip()]
+
+
+def _uuid_from_config(config: dict[str, Any], key: str) -> uuid.UUID | None:
+    value = config.get(key)
+    if not isinstance(value, str):
+        return None
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        return None
+
+
+def _guardrails_include_read_only(guardrails: list[str]) -> bool:
+    return any("只读" in item or "read_only" in item.lower() for item in guardrails)
+
+
 def _blocked_batch_item(
     task_id: uuid.UUID,
     reason: str,
@@ -4165,6 +6777,102 @@ def _extraction_plan_response(
         audit_events=extraction_plan.audit_events,
         created_at=extraction_plan.created_at,
         run_started=False,
+    )
+
+
+def _browser_diagnostic_run_response(
+    diagnostic_run: BrowserDiagnosticRun,
+) -> AutomationBrowserDiagnosticRunResponse:
+    return AutomationBrowserDiagnosticRunResponse(
+        id=diagnostic_run.id,
+        project_id=diagnostic_run.project_id,
+        site_analysis_id=diagnostic_run.site_analysis_id,
+        requested_url=diagnostic_run.requested_url,
+        final_url=diagnostic_run.final_url,
+        status=diagnostic_run.status,
+        authorization_confirmed=diagnostic_run.authorization_confirmed,
+        schema_version=diagnostic_run.schema_version,
+        recommended_path=diagnostic_run.recommended_path,
+        confidence=diagnostic_run.confidence,
+        field_stability=diagnostic_run.field_stability,
+        evidence_source=diagnostic_run.evidence_source,
+        screenshot_path=diagnostic_run.screenshot_path,
+        run_policy=diagnostic_run.run_policy,
+        page_summary=diagnostic_run.page_summary,
+        network_summary=diagnostic_run.network_summary,
+        accessibility_summary=diagnostic_run.accessibility_summary,
+        risk_flags=diagnostic_run.risk_flags,
+        extraction_strategy=diagnostic_run.extraction_strategy,
+        blocked_reasons=diagnostic_run.blocked_reasons,
+        created_at=diagnostic_run.created_at,
+        run_started=diagnostic_run.run_started,
+    )
+
+
+def _browser_diagnostic_job_response(
+    diagnostic_job: BrowserDiagnosticJob,
+) -> AutomationBrowserDiagnosticJobResponse:
+    return AutomationBrowserDiagnosticJobResponse(
+        id=diagnostic_job.id,
+        project_id=diagnostic_job.project_id,
+        site_analysis_id=diagnostic_job.site_analysis_id,
+        extraction_plan_id=diagnostic_job.extraction_plan_id,
+        browser_diagnostic_run_id=diagnostic_job.browser_diagnostic_run_id,
+        requested_url=diagnostic_job.requested_url,
+        final_url=diagnostic_job.final_url,
+        status=diagnostic_job.status,
+        authorization_confirmed=diagnostic_job.authorization_confirmed,
+        runner=diagnostic_job.runner,
+        execution_mode=diagnostic_job.execution_mode,
+        selector_scope=diagnostic_job.selector_scope,
+        wait_policy=diagnostic_job.wait_policy,
+        network_observation_policy=diagnostic_job.network_observation_policy,
+        artifact_policy=diagnostic_job.artifact_policy,
+        safety_flags=diagnostic_job.safety_flags,
+        dry_run_summary=diagnostic_job.dry_run_summary,
+        executable_spec_snapshot=diagnostic_job.executable_spec_snapshot,
+        blocked_reasons=diagnostic_job.blocked_reasons,
+        audit_events=diagnostic_job.audit_events,
+        created_at=diagnostic_job.created_at,
+        updated_at=diagnostic_job.updated_at,
+        cancelled_at=diagnostic_job.cancelled_at,
+        run_started=diagnostic_job.run_started,
+    )
+
+
+def _browser_local_runner_result_response(
+    run_asset: BrowserDiagnosticJobRun,
+) -> AutomationBrowserLocalRunnerResultResponse:
+    return AutomationBrowserLocalRunnerResultResponse(
+        id=run_asset.id,
+        job=_browser_diagnostic_job_response(run_asset.browser_diagnostic_job),
+        status=run_asset.status,
+        runner=run_asset.runner,
+        run_mode=run_asset.run_mode,
+        contract_snapshot=run_asset.contract_snapshot,
+        artifact_manifest=run_asset.artifact_manifest,
+        selector_results=run_asset.selector_results,
+        selector_evaluations=_browser_local_runner_selector_evaluations(
+            run_asset.selector_results
+        ),
+        preview_rows=run_asset.preview_rows,
+        network_observation_summary=run_asset.network_observation_summary,
+        network_metadata_summary=_browser_local_runner_network_metadata_summary(
+            run_asset.network_observation_summary
+        ),
+        error_summary=run_asset.error_summary,
+        promotion_gate=_browser_local_runner_promotion_gate(run_asset),
+        redaction_summary=_browser_local_runner_redaction_summary(run_asset),
+        blocked_reasons=run_asset.blocked_reasons,
+        audit_events=run_asset.audit_events,
+        created_at=run_asset.created_at,
+        updated_at=run_asset.updated_at,
+        started_at=run_asset.started_at,
+        finished_at=run_asset.finished_at,
+        execution_started=run_asset.execution_started,
+        browser_started=run_asset.browser_started,
+        files_written=run_asset.files_written,
+        collection_resources_written=run_asset.collection_resources_written,
     )
 
 
