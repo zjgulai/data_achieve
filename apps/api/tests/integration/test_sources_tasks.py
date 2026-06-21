@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from collections.abc import AsyncGenerator, AsyncIterator
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -212,6 +214,133 @@ async def test_automation_platform_packages_expose_collection_contract(
 
 
 @pytest.mark.asyncio
+async def test_automation_capability_probes_fail_closed_when_agent_reach_missing(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_create_project(client)
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.automation_service.shutil.which",
+        lambda command: None,
+    )
+
+    response = await client.get("/api/automation/capability-probes")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["schema_version"] == "capability_probe_list.v1"
+    assert payload["run_started"] is False
+    assert payload["collection_resources_written"] is False
+    assert payload["total"] >= 6
+
+    probes_by_id = {item["platform_id"]: item for item in payload["items"]}
+    github_probe = probes_by_id["github"]
+    assert github_probe["schema_version"] == "capability_probe.v1"
+    assert github_probe["execution_boundary"] == "executable"
+    assert github_probe["run_started"] is False
+    assert github_probe["collection_resources_written"] is False
+    assert github_probe["agent_reach"]["installed"] is False
+    assert github_probe["agent_reach"]["doctor_status"] == "missing_tool"
+    assert github_probe["agent_reach"]["blocked_reason"] == "agent_reach_not_installed"
+    assert github_probe["agent_reach"]["read_invoked"] is False
+    assert github_probe["agent_reach"]["search_invoked"] is False
+    assert any(
+        candidate["backend_id"] == "official_github_api"
+        and candidate["status"] == "available"
+        for candidate in github_probe["backend_candidates"]
+    )
+    assert any(
+        candidate["backend_id"] == "agent_reach_channel"
+        and candidate["status"] == "missing_tool"
+        for candidate in github_probe["backend_candidates"]
+    )
+
+    browser_probe = probes_by_id["browser_preflight"]
+    assert browser_probe["doctor_status"] == "missing_tool"
+    assert browser_probe["agent_reach"] is None
+    assert browser_probe["allowed_outputs"] == ["BrowserDiagnosticJobRun"]
+
+    social_probe = probes_by_id["social_sop_import_only"]
+    assert social_probe["execution_boundary"] == "sop_only"
+    assert "cookie_export" in social_probe["forbidden_actions"]
+    assert "personal_profile_enrichment" in social_probe["forbidden_actions"]
+
+    missing_response = await client.get(
+        "/api/automation/capability-probes",
+        params={"platform_id": "missing"},
+    )
+    assert missing_response.status_code == 404
+    assert missing_response.json()["detail"] == "capability_probe_platform_not_found"
+
+
+@pytest.mark.asyncio
+async def test_automation_capability_probes_use_agent_reach_doctor_only(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_create_project(client)
+    calls: list[list[str]] = []
+
+    def fake_which(command: str) -> str | None:
+        if command == "agent-reach":
+            return "/usr/local/bin/agent-reach"
+        if command == "browser-harness":
+            return "/usr/local/bin/browser-harness"
+        return None
+
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        assert args == ["/usr/local/bin/agent-reach", "doctor", "--json"]
+        assert kwargs["capture_output"] is True
+        assert kwargs["check"] is False
+        assert kwargs["text"] is True
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=0,
+            stdout=(
+                '{"platforms":["github","web"],'
+                '"channels":{"github":{"active_backend":"gh"}}}'
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.automation_service.shutil.which",
+        fake_which,
+    )
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.automation_service.subprocess.run",
+        fake_run,
+    )
+
+    response = await client.get(
+        "/api/automation/capability-probes",
+        params={"platform_id": "github"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert calls == [["/usr/local/bin/agent-reach", "doctor", "--json"]]
+
+    github_probe = payload["items"][0]
+    assert github_probe["platform_id"] == "github"
+    assert github_probe["agent_reach"]["installed"] is True
+    assert github_probe["agent_reach"]["doctor_status"] == "available"
+    assert github_probe["agent_reach"]["active_backend"] == "gh"
+    assert github_probe["agent_reach"]["platforms"] == ["github", "web"]
+    assert github_probe["agent_reach"]["read_invoked"] is False
+    assert github_probe["agent_reach"]["search_invoked"] is False
+    assert any(
+        candidate["backend_id"] == "agent_reach_channel"
+        and candidate["status"] == "available"
+        and "doctor --json" in " ".join(candidate["notes"])
+        for candidate in github_probe["backend_candidates"]
+    )
+    assert payload["run_started"] is False
+    assert payload["collection_resources_written"] is False
+
+
+@pytest.mark.asyncio
 async def test_automation_site_analysis_persists_history_and_extraction_plan(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
@@ -374,6 +503,7 @@ async def test_automation_site_analysis_persists_history_and_extraction_plan(
 @pytest.mark.asyncio
 async def test_browser_automation_plan_persists_read_only_draft(
     client: AsyncClient,
+    tmp_path: Path,
 ) -> None:
     project_id = await register_and_create_project(client)
     payload = {
@@ -398,8 +528,8 @@ async def test_browser_automation_plan_persists_read_only_draft(
                     "key": "price",
                     "label": "价格",
                     "source": "browser_text",
-                    "required": False,
-                    "selected": False,
+                    "required": True,
+                    "selected": True,
                     "selector_hint": "[data-price]",
                 },
                 {
@@ -428,6 +558,53 @@ async def test_browser_automation_plan_persists_read_only_draft(
             "evidence_source": "browser-harness",
             "screenshot_path": "/tmp/browser-diagnostic/dynamic-bag.png",
         },
+        "diagnostic_payload": {
+            "schema_version": "browser_structure_diagnostic.v1",
+            "generated_at": "2026-06-21T00:00:00Z",
+            "requested_url": "https://example.com/products/dynamic-bag",
+            "final_url": "https://example.com/products/dynamic-bag",
+            "run_policy": {
+                "authorization_confirmed": True,
+                "execution_mode": "read_only_browser_harness",
+                "production_write": False,
+                "login_or_private_page_allowed": False,
+                "cookies_exported": False,
+            },
+            "visible_text": {
+                "length": 120,
+                "line_count": 5,
+                "sample": "Dynamic Bag\n$129",
+            },
+            "dom_counters": {
+                "links": 20,
+                "forms": 0,
+                "scripts": 18,
+            },
+            "risk_flags": ["dynamic_content"],
+            "extraction_strategy": {
+                "recommended_path": "browser_automation",
+                "fit": "medium",
+                "confidence": 86,
+                "field_stability": "medium",
+                "reasons": ["关键字段由前端渲染。"],
+            },
+            "network_summary": {
+                "resource_count": 42,
+                "api_candidate_count": 1,
+                "api_candidates": [
+                    {
+                        "url": "https://example.com/api/products/dynamic-bag",
+                        "initiator_type": "fetch",
+                    }
+                ],
+            },
+            "accessibility_summary": {"heading_count": 2},
+            "evidence": {
+                "source": "browser-harness",
+                "screenshot_path": "/tmp/browser-diagnostic/dynamic-bag.png",
+                "errors": [],
+            },
+        },
         "api_candidates": ["https://example.com/api/products/dynamic-bag"],
         "guardrails": [
             "只读执行，不提交表单、不点击购买或发布类按钮。",
@@ -449,6 +626,7 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert result["run_started"] is False
     assert result["site_analysis_created"] is True
     assert result["extraction_plan_created"] is True
+    assert result["browser_diagnostic_created"] is True
     assert result["site_analysis"]["project_id"] == project_id
     assert result["site_analysis"]["target"] == "browser_automation"
     assert result["site_analysis"]["status"] == "draft"
@@ -460,7 +638,7 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert plan["collector_type"] == "browser_automation"
     assert plan["status"] == "draft"
     assert plan["risk_level"] == "medium"
-    assert plan["selected_fields"] == ["page_title", "api_candidate"]
+    assert plan["selected_fields"] == ["page_title", "price", "api_candidate"]
     assert plan["run_started"] is False
     assert plan["audit_events"][0]["event"] == "browser_automation_plan_saved"
     assert plan["audit_events"][0]["run_started"] is False
@@ -472,12 +650,29 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert config["runner"] == "browser_harness"
     assert config["execution_mode"] == "read_only_browser_harness"
     assert config["start_url"] == "https://example.com/products/dynamic-bag"
-    assert config["fields"] == ["page_title", "api_candidate"]
+    assert config["fields"] == ["page_title", "price", "api_candidate"]
     assert config["run_started"] is False
+    assert config["browser_diagnostic_run_id"] == result["browser_diagnostic"]["id"]
     assert config["browser_diagnostic"]["evidence_source"] == "browser-harness"
     assert config["field_contract"]["fields"][0]["selector_hint"] == "h1"
     assert config["api_candidates"] == ["https://example.com/api/products/dynamic-bag"]
     assert "只读执行" in config["guardrails"][0]
+    assert config["executable_spec"]["schema_version"] == "browser_automation_executable_spec.v1"
+    assert config["executable_spec"]["manual_review_required"] is True
+    assert config["executable_spec"]["selector_contract"][0]["field"] == "page_title"
+    assert config["executable_spec"]["wait_conditions"][0]["type"] == "domcontentloaded"
+    assert config["executable_spec"]["dry_run_limits"]["write_allowed"] is False
+
+    diagnostic = result["browser_diagnostic"]
+    assert diagnostic["site_analysis_id"] == result["site_analysis"]["id"]
+    assert diagnostic["recommended_path"] == "browser_automation"
+    assert diagnostic["field_stability"] == "medium"
+    assert diagnostic["run_policy"]["read_only"] is True
+    assert diagnostic["run_policy"]["run_started"] is False
+    assert diagnostic["page_summary"]["visible_text"]["sample"] == "Dynamic Bag\n$129"
+    assert diagnostic["network_summary"]["api_candidate_count"] == 1
+    assert diagnostic["risk_flags"] == [{"flag": "dynamic_content", "severity": "review"}]
+    assert diagnostic["run_started"] is False
 
     history_response = await client.get(
         "/api/automation/site-analyses",
@@ -498,6 +693,614 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert detail["source_draft"]["config"]["runner"] == "browser_harness"
     assert detail["field_candidates"][0]["key"] == "page_title"
     assert detail["tool_recommendations"][0]["collector_type"] == "browser_automation"
+
+    diagnostics_response = await client.get(
+        "/api/automation/browser-diagnostics",
+        params={"project_id": project_id},
+    )
+    assert diagnostics_response.status_code == 200
+    diagnostics = diagnostics_response.json()
+    assert diagnostics["total"] == 1
+    assert diagnostics["items"][0]["id"] == diagnostic["id"]
+    assert diagnostics["items"][0]["run_started"] is False
+
+    unconfirmed_dry_run_response = await client.post(
+        "/api/automation/browser-automation-spec-dry-run",
+        json={
+            "authorized": True,
+            "confirm_review": False,
+            "site_analysis_id": result["site_analysis"]["id"],
+            "extraction_plan_id": plan["id"],
+            "browser_diagnostic_run_id": diagnostic["id"],
+        },
+    )
+    assert unconfirmed_dry_run_response.status_code == 400
+    assert (
+        unconfirmed_dry_run_response.json()["detail"]
+        == "browser_spec_review_confirmation_required"
+    )
+
+    dry_run_response = await client.post(
+        "/api/automation/browser-automation-spec-dry-run",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "site_analysis_id": result["site_analysis"]["id"],
+            "extraction_plan_id": plan["id"],
+            "browser_diagnostic_run_id": diagnostic["id"],
+        },
+    )
+    assert dry_run_response.status_code == 200
+    dry_run = dry_run_response.json()
+    assert dry_run["run_started"] is False
+    assert dry_run["summary"]["status"] == "review"
+    assert dry_run["summary"]["blocked_checks"] == 0
+    assert dry_run["summary"]["review_checks"] >= 1
+    assert dry_run["summary"]["selector_count"] == 3
+    assert dry_run["summary"]["wait_condition_count"] == 2
+    assert dry_run["summary"]["api_candidate_count"] == 1
+    assert dry_run["summary"]["write_allowed"] is False
+    assert dry_run["summary"]["can_dry_run_after_review"] is True
+    assert dry_run["extraction_plan"]["id"] == plan["id"]
+    assert dry_run["browser_diagnostic"]["id"] == diagnostic["id"]
+    checks_by_key = {check["key"]: check for check in dry_run["checks"]}
+    assert checks_by_key["diagnostic-lineage"]["status"] == "passed"
+    assert checks_by_key["dry-run-limits"]["status"] == "passed"
+    assert checks_by_key["manual-review"]["status"] == "review"
+    assert dry_run["blocked_reasons"] == []
+    assert dry_run["audit_events"][0]["event"] == "browser_automation_spec_dry_run_validated"
+    assert dry_run["audit_events"][0]["run_started"] is False
+
+    unconfirmed_job_response = await client.post(
+        "/api/automation/browser-diagnostic-jobs",
+        json={
+            "authorized": True,
+            "confirm_create": False,
+            "site_analysis_id": result["site_analysis"]["id"],
+            "extraction_plan_id": plan["id"],
+            "browser_diagnostic_run_id": diagnostic["id"],
+        },
+    )
+    assert unconfirmed_job_response.status_code == 400
+    assert (
+        unconfirmed_job_response.json()["detail"]
+        == "browser_diagnostic_job_confirmation_required"
+    )
+
+    job_response = await client.post(
+        "/api/automation/browser-diagnostic-jobs",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "site_analysis_id": result["site_analysis"]["id"],
+            "extraction_plan_id": plan["id"],
+            "browser_diagnostic_run_id": diagnostic["id"],
+            "network_observation_mode": "same_origin_api_candidates",
+            "artifact_mode": "screenshot_reference_only",
+            "note": "Queue reviewed browser diagnostic job.",
+        },
+    )
+    assert job_response.status_code == 200
+    job = job_response.json()
+    assert job["status"] == "ready_for_manual_execution"
+    assert job["run_started"] is False
+    assert job["site_analysis_id"] == result["site_analysis"]["id"]
+    assert job["extraction_plan_id"] == plan["id"]
+    assert job["browser_diagnostic_run_id"] == diagnostic["id"]
+    assert job["requested_url"] == payload["requested_url"]
+    assert job["final_url"] == "https://example.com/products/dynamic-bag"
+    assert job["runner"] == "browser_harness"
+    assert job["execution_mode"] == "read_only_browser_harness"
+    assert [item["field"] for item in job["selector_scope"]] == [
+        "page_title",
+        "price",
+        "api_candidate",
+    ]
+    assert job["wait_policy"][0]["type"] == "domcontentloaded"
+    assert job["network_observation_policy"] == {
+        "mode": "same_origin_api_candidates",
+        "same_origin_only": True,
+        "capture_body": False,
+        "capture_headers": False,
+        "write_allowed": False,
+        "api_candidates": ["https://example.com/api/products/dynamic-bag"],
+    }
+    assert job["artifact_policy"]["mode"] == "screenshot_reference_only"
+    assert (
+        job["artifact_policy"]["retain_screenshot_path"]
+        == "/tmp/browser-diagnostic/dynamic-bag.png"
+    )
+    assert "no_source_task_taskrun_creation" in job["safety_flags"]
+    assert job["dry_run_summary"]["status"] == "review"
+    assert job["dry_run_summary"]["write_allowed"] is False
+    assert "browser_diagnostic_job_created_no_runner" in job["blocked_reasons"]
+    assert job["audit_events"][0]["event"] == "browser_diagnostic_job_created"
+    assert job["audit_events"][0]["run_started"] is False
+
+    duplicate_job_response = await client.post(
+        "/api/automation/browser-diagnostic-jobs",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "site_analysis_id": result["site_analysis"]["id"],
+            "extraction_plan_id": plan["id"],
+            "browser_diagnostic_run_id": diagnostic["id"],
+            "network_observation_mode": "same_origin_api_candidates",
+            "artifact_mode": "screenshot_reference_only",
+        },
+    )
+    assert duplicate_job_response.status_code == 200
+    assert duplicate_job_response.json()["id"] == job["id"]
+
+    job_list_response = await client.get(
+        "/api/automation/browser-diagnostic-jobs",
+        params={"project_id": project_id, "status": "ready_for_manual_execution"},
+    )
+    assert job_list_response.status_code == 200
+    job_list = job_list_response.json()
+    assert job_list["total"] == 1
+    assert job_list["run_started"] is False
+    assert job_list["items"][0]["id"] == job["id"]
+
+    job_detail_response = await client.get(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}"
+    )
+    assert job_detail_response.status_code == 200
+    assert job_detail_response.json()["id"] == job["id"]
+
+    unconfirmed_contract_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/executor-contract",
+        json={
+            "authorized": True,
+            "confirm_review": False,
+        },
+    )
+    assert unconfirmed_contract_response.status_code == 400
+    assert (
+        unconfirmed_contract_response.json()["detail"]
+        == "browser_executor_contract_review_required"
+    )
+
+    contract_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/executor-contract",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Build local runner contract only.",
+        },
+    )
+    assert contract_response.status_code == 200
+    contract = contract_response.json()
+    assert contract["job"]["id"] == job["id"]
+    assert contract["adapter"]["schema_version"] == "browser_executor_adapter_contract.v1"
+    assert contract["adapter"]["adapter_name"] == "browser_harness_read_only_local"
+    assert contract["adapter"]["execution_policy"] == {
+        "manual_operator_required": True,
+        "automatic_api_worker_start": False,
+        "production_enabled": False,
+        "write_allowed": False,
+        "run_started": False,
+    }
+    assert contract["runtime_isolation"]["mode"] == "local_ephemeral_browser_context"
+    assert contract["runtime_isolation"]["reuse_user_profile"] is False
+    assert contract["runtime_isolation"]["cookie_export_allowed"] is False
+    assert contract["artifact_retention_policy"]["write_files_now"] is False
+    assert contract["artifact_retention_policy"]["retention_days"] == 5
+    assert contract["artifact_retention_policy"]["max_preview_rows"] == 12
+    assert contract["artifact_retention_policy"]["har_summary"]["capture_body"] is False
+    assert "evaluate_declared_selectors" in contract["allowed_actions"]
+    assert "reuse_user_chrome_profile" in contract["denied_actions"]
+    readiness_by_key = {item["key"]: item for item in contract["readiness_checks"]}
+    assert readiness_by_key["job-status"]["status"] == "passed"
+    assert readiness_by_key["no-run-started"]["status"] == "passed"
+    assert readiness_by_key["network-policy"]["status"] == "passed"
+    assert readiness_by_key["artifact-policy"]["status"] == "passed"
+    assert contract["blocked_reasons"] == []
+    assert contract["run_started"] is False
+    assert contract["execution_started"] is False
+    assert contract["audit_events"][0]["event"] == "browser_executor_contract_built"
+    assert contract["audit_events"][0]["run_started"] is False
+
+    unconfirmed_local_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": False,
+        },
+    )
+    assert unconfirmed_local_run_response.status_code == 400
+    assert (
+        unconfirmed_local_run_response.json()["detail"]
+        == "browser_local_runner_confirmation_required"
+    )
+
+    local_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Replay diagnostic snapshot locally.",
+        },
+    )
+    assert local_run_response.status_code == 200
+    local_run = local_run_response.json()
+    assert local_run["job"]["id"] == job["id"]
+    assert local_run["status"] == "completed_snapshot_replay"
+    assert local_run["runner"] == "browser_harness_read_only_local"
+    assert local_run["run_mode"] == "diagnostic_snapshot_replay"
+    assert local_run["execution_started"] is True
+    assert local_run["browser_started"] is False
+    assert local_run["files_written"] is False
+    assert local_run["collection_resources_written"] is False
+    assert (
+        local_run["contract_snapshot"]["adapter"]["adapter_name"]
+        == "browser_harness_read_only_local"
+    )
+    assert local_run["artifact_manifest"]["schema_version"] == (
+        "browser_local_runner_artifact_manifest.v1"
+    )
+    assert local_run["artifact_manifest"]["files_written"] is False
+    assert local_run["artifact_manifest"]["preview_rows_count"] == 1
+    assert (
+        local_run["artifact_manifest"]["screenshot"]["referenced_path"]
+        == "/tmp/browser-diagnostic/dynamic-bag.png"
+    )
+    selector_results = {item["field"]: item for item in local_run["selector_results"]}
+    assert selector_results["page_title"]["status"] == "observed_from_diagnostic_snapshot"
+    assert selector_results["page_title"]["value"] == "Dynamic Bag"
+    assert selector_results["price"]["status"] == "not_observed_in_diagnostic_snapshot"
+    assert selector_results["price"]["value"] is None
+    assert selector_results["api_candidate"]["value"] == (
+        "https://example.com/api/products/dynamic-bag"
+    )
+    selector_evaluations = {
+        item["field"]: item for item in local_run["selector_evaluations"]
+    }
+    assert selector_evaluations["page_title"]["schema_version"] == (
+        "browser_selector_evaluation.v1"
+    )
+    assert selector_evaluations["page_title"]["match_count"] == 1
+    assert selector_evaluations["page_title"]["sample_text"] == "Dynamic Bag"
+    assert selector_evaluations["price"]["match_count"] == 0
+    assert selector_evaluations["price"]["missing_reason"] == (
+        "not_observed_in_diagnostic_snapshot"
+    )
+    assert selector_evaluations["price"]["required"] is True
+    assert selector_evaluations["api_candidate"]["sample_text"] == (
+        "https://example.com/api/products/dynamic-bag"
+    )
+    assert local_run["preview_rows"][0]["values"] == {
+        "page_title": "Dynamic Bag",
+        "api_candidate": "https://example.com/api/products/dynamic-bag",
+    }
+    assert local_run["network_observation_summary"]["browser_started"] is False
+    assert local_run["network_observation_summary"]["api_candidate_count"] == 1
+    assert local_run["network_metadata_summary"]["schema_version"] == (
+        "browser_network_metadata_summary.v1"
+    )
+    assert local_run["network_metadata_summary"]["metadata_only"] is True
+    assert local_run["network_metadata_summary"]["capture_headers"] is False
+    assert local_run["network_metadata_summary"]["capture_body"] is False
+    assert local_run["network_metadata_summary"]["api_candidate_count"] == 1
+    assert local_run["error_summary"]["error_count"] == 0
+    assert local_run["promotion_gate"]["schema_version"] == "browser_promotion_gate.v1"
+    assert local_run["promotion_gate"]["can_create_collection_resources"] is False
+    assert "m2_read_only_contract_no_direct_promotion" in (
+        local_run["promotion_gate"]["reasons"]
+    )
+    assert "required_selector_missing" in local_run["promotion_gate"]["reasons"]
+    assert local_run["promotion_gate"]["required_missing_fields"] == ["price"]
+    assert local_run["redaction_summary"] == {
+        "schema_version": "browser_local_runner_redaction_summary.v1",
+        "cookies_captured": False,
+        "headers_captured": False,
+        "bodies_captured": False,
+        "query_parameters_retained": False,
+        "url_query_fragment_removed": True,
+        "stdout_stderr_tail_redacted": True,
+        "sample_text_max_chars": 180,
+        "files_written": False,
+        "collection_resources_written": False,
+    }
+    assert "browser_local_runner_snapshot_replay_only" in local_run["blocked_reasons"]
+    assert (
+        local_run["audit_events"][0]["event"]
+        == "browser_local_runner_snapshot_replay_completed"
+    )
+    assert local_run["audit_events"][0]["browser_started"] is False
+    assert local_run["audit_events"][0]["collection_resources_written"] is False
+
+    local_run_list_response = await client.get(
+        "/api/automation/browser-diagnostic-job-runs",
+        params={"project_id": project_id, "diagnostic_job_id": job["id"]},
+    )
+    assert local_run_list_response.status_code == 200
+    local_run_list = local_run_list_response.json()
+    assert local_run_list["total"] == 1
+    assert local_run_list["browser_started"] is False
+    assert local_run_list["files_written"] is False
+    assert local_run_list["collection_resources_written"] is False
+    assert local_run_list["items"][0]["id"] == local_run["id"]
+
+    unconfirmed_probe_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+        },
+    )
+    assert unconfirmed_probe_run_response.status_code == 400
+    assert (
+        unconfirmed_probe_run_response.json()["detail"]
+        == "browser_harness_probe_confirmation_required"
+    )
+
+    fake_harness = tmp_path / "browser-harness"
+    fake_harness.write_text(
+        """#!/usr/bin/env python3
+import json
+import sys
+
+sys.stdin.read()
+print(json.dumps({
+    "ok": True,
+    "page_info": {
+        "url": "https://example.com/products/dynamic-bag?token=secret#frag",
+        "title": "Dynamic Bag",
+        "w": 1280,
+        "h": 720,
+        "sx": 0,
+        "sy": 0,
+        "pw": 1280,
+        "ph": 1800,
+    },
+    "target_tab_closed": False,
+}))
+print(json.dumps({"target_tab_closed": True}))
+""",
+    )
+    fake_harness.chmod(0o755)
+    probe_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+            "confirm_real_browser_probe": True,
+            "browser_harness_binary": str(fake_harness),
+            "probe_timeout_seconds": 3,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Run fake browser-harness probe locally.",
+        },
+    )
+    assert probe_run_response.status_code == 200
+    probe_run = probe_run_response.json()
+    assert probe_run["status"] == "completed_ephemeral_probe"
+    assert probe_run["run_mode"] == "ephemeral_browser_harness_probe"
+    assert probe_run["execution_started"] is True
+    assert probe_run["browser_started"] is True
+    assert probe_run["files_written"] is False
+    assert probe_run["collection_resources_written"] is False
+    assert probe_run["artifact_manifest"]["ephemeral_probe"] == {
+        "schema_version": "browser_harness_ephemeral_probe.v1",
+        "status": "completed",
+        "binary": str(fake_harness),
+        "exit_code": 0,
+        "files_written": False,
+        "object_storage_write": False,
+        "target_tab_closed": True,
+    }
+    assert probe_run["network_observation_summary"]["browser_started"] is True
+    assert probe_run["network_observation_summary"]["ephemeral_probe"]["page_info"][
+        "url"
+    ] == "https://example.com/products/dynamic-bag"
+    assert (
+        probe_run["network_observation_summary"]["ephemeral_probe"]["target_tab_closed"]
+        is True
+    )
+    assert probe_run["network_metadata_summary"]["browser_started"] is True
+    assert probe_run["network_metadata_summary"]["capture_headers"] is False
+    assert probe_run["network_metadata_summary"]["capture_body"] is False
+    assert probe_run["network_metadata_summary"]["ephemeral_probe"]["page_info"][
+        "url"
+    ] == "https://example.com/products/dynamic-bag"
+    assert probe_run["error_summary"]["error_count"] == 0
+    assert probe_run["promotion_gate"]["can_create_collection_resources"] is False
+    assert "m2_read_only_contract_no_direct_promotion" in (
+        probe_run["promotion_gate"]["reasons"]
+    )
+    assert "required_selector_missing" in probe_run["promotion_gate"]["reasons"]
+    assert probe_run["promotion_gate"]["required_missing_fields"] == ["price"]
+    assert probe_run["redaction_summary"]["cookies_captured"] is False
+    assert probe_run["redaction_summary"]["headers_captured"] is False
+    assert probe_run["redaction_summary"]["bodies_captured"] is False
+    assert "browser_harness_ephemeral_probe_only" in probe_run["blocked_reasons"]
+    assert (
+        probe_run["audit_events"][0]["event"]
+        == "browser_harness_ephemeral_probe_completed"
+    )
+    assert probe_run["audit_events"][0]["browser_started"] is True
+
+    blocked_probe_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+            "confirm_real_browser_probe": True,
+            "browser_harness_binary": str(tmp_path / "missing-browser-harness"),
+            "probe_timeout_seconds": 3,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Run unavailable browser-harness probe locally.",
+        },
+    )
+    assert blocked_probe_run_response.status_code == 200
+    blocked_probe_run = blocked_probe_run_response.json()
+    assert blocked_probe_run["status"] == "blocked_ephemeral_probe"
+    assert blocked_probe_run["execution_started"] is True
+    assert blocked_probe_run["browser_started"] is False
+    assert blocked_probe_run["files_written"] is False
+    assert blocked_probe_run["collection_resources_written"] is False
+    assert blocked_probe_run["artifact_manifest"]["ephemeral_probe"]["status"] == "blocked"
+    assert blocked_probe_run["network_metadata_summary"]["ephemeral_probe"]["status"] == (
+        "blocked"
+    )
+    assert blocked_probe_run["promotion_gate"]["can_create_collection_resources"] is False
+    assert blocked_probe_run["redaction_summary"]["cookies_captured"] is False
+    assert "browser_harness_binary_unavailable" in blocked_probe_run["blocked_reasons"]
+
+    redaction_case_harness = tmp_path / "browser-harness-redaction-case"
+    redaction_case_harness.write_text(
+        """#!/usr/bin/env python3
+import sys
+
+sys.stdin.read()
+print("Authorization header observed during local probe")
+print("Cookie header observed during local probe", file=sys.stderr)
+raise SystemExit(2)
+""",
+    )
+    redaction_case_harness.chmod(0o755)
+    redaction_case_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+            "confirm_real_browser_probe": True,
+            "browser_harness_binary": str(redaction_case_harness),
+            "probe_timeout_seconds": 3,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Run redaction-case browser-harness probe locally.",
+        },
+    )
+    assert redaction_case_response.status_code == 200
+    redaction_case_run = redaction_case_response.json()
+    assert redaction_case_run["status"] == "failed_ephemeral_probe"
+    assert redaction_case_run["browser_started"] is False
+    assert redaction_case_run["files_written"] is False
+    assert redaction_case_run["collection_resources_written"] is False
+    assert redaction_case_run["error_summary"]["errors"] == [
+        "browser_harness_probe_nonzero_exit"
+    ]
+    redaction_probe = redaction_case_run["network_observation_summary"][
+        "ephemeral_probe"
+    ]
+    assert redaction_probe["status"] == "failed"
+    assert "[redacted-header]" in redaction_probe["stdout_tail"]
+    assert "Authorization" not in redaction_probe["stdout_tail"]
+    assert redaction_case_run["redaction_summary"]["headers_captured"] is False
+    assert "browser_harness_probe_failed" in redaction_case_run["blocked_reasons"]
+
+    timeout_case_harness = tmp_path / "browser-harness-timeout-case"
+    timeout_case_harness.write_text(
+        """#!/usr/bin/env python3
+import sys
+import time
+
+sys.stdin.read()
+print("probe still running", flush=True)
+time.sleep(10)
+""",
+    )
+    timeout_case_harness.chmod(0o755)
+    timeout_case_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+            "confirm_real_browser_probe": True,
+            "browser_harness_binary": str(timeout_case_harness),
+            "probe_timeout_seconds": 3,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Run timeout-case browser-harness probe locally.",
+        },
+    )
+    assert timeout_case_response.status_code == 200
+    timeout_case_run = timeout_case_response.json()
+    assert timeout_case_run["status"] == "failed_ephemeral_probe"
+    assert timeout_case_run["browser_started"] is False
+    assert timeout_case_run["files_written"] is False
+    assert timeout_case_run["collection_resources_written"] is False
+    assert timeout_case_run["error_summary"]["errors"] == [
+        "browser_harness_probe_timeout"
+    ]
+    assert timeout_case_run["network_metadata_summary"]["ephemeral_probe"]["status"] == (
+        "failed"
+    )
+    assert timeout_case_run["promotion_gate"]["can_create_collection_resources"] is False
+    assert timeout_case_run["redaction_summary"]["bodies_captured"] is False
+    assert "browser_harness_probe_failed" in timeout_case_run["blocked_reasons"]
+
+    post_probe_list_response = await client.get(
+        "/api/automation/browser-diagnostic-job-runs",
+        params={"project_id": project_id, "diagnostic_job_id": job["id"]},
+    )
+    assert post_probe_list_response.status_code == 200
+    post_probe_list = post_probe_list_response.json()
+    assert post_probe_list["total"] == 5
+    assert post_probe_list["browser_started"] is True
+    assert post_probe_list["files_written"] is False
+    assert post_probe_list["collection_resources_written"] is False
+    assert {item["id"] for item in post_probe_list["items"]} == {
+        local_run["id"],
+        probe_run["id"],
+        blocked_probe_run["id"],
+        redaction_case_run["id"],
+        timeout_case_run["id"],
+    }
+
+    post_run_job_detail_response = await client.get(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}"
+    )
+    assert post_run_job_detail_response.status_code == 200
+    assert post_run_job_detail_response.json()["run_started"] is False
+
+    cancelled_job_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/cancel"
+    )
+    assert cancelled_job_response.status_code == 200
+    cancelled_job = cancelled_job_response.json()
+    assert cancelled_job["status"] == "cancelled"
+    assert cancelled_job["cancelled_at"] is not None
+    assert cancelled_job["run_started"] is False
+    assert any(
+        event["event"] == "browser_diagnostic_job_cancelled"
+        and event["run_started"] is False
+        for event in cancelled_job["audit_events"]
+    )
+
+    sources_response = await client.get("/api/sources")
+    assert sources_response.status_code == 200
+    assert all(item["type"] != "browser_automation" for item in sources_response.json())
 
 
 @pytest.mark.asyncio

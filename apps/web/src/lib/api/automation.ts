@@ -19,6 +19,7 @@ import {
   getMockAutomationProductDriftEvents,
   getMockAutomationProductDriftEventSave,
   getMockAutomationProductScheduleApprove,
+  getMockAutomationCapabilityProbes,
   getMockAutomationPlatformPackages,
   getMockAutomationSiteAnalysis,
 } from "@/lib/api/mock";
@@ -30,7 +31,24 @@ import type {
   AutomationCleaningRule,
   AutomationBrowserAutomationPlan,
   AutomationBrowserAutomationPlanInput,
+  AutomationBrowserDiagnosticJob,
+  AutomationBrowserDiagnosticJobCreateInput,
+  AutomationBrowserDiagnosticJobList,
+  AutomationBrowserExecutorContract,
+  AutomationBrowserExecutorContractInput,
+  AutomationBrowserExecutorReadinessCheck,
+  AutomationBrowserLocalRunnerInput,
+  AutomationBrowserLocalRunnerResult,
+  AutomationBrowserLocalRunnerResultList,
+  AutomationBrowserDiagnosticRun,
+  AutomationBrowserDiagnosticRunList,
+  AutomationBrowserExecutableSpecCheck,
+  AutomationBrowserExecutableSpecDryRun,
+  AutomationBrowserExecutableSpecDryRunInput,
+  AutomationBrowserExecutableSpecDryRunSummary,
   AutomationCleaningStep,
+  AutomationCapabilityProbe,
+  AutomationCapabilityProbeList,
   AutomationFieldCandidate,
   AutomationGitHubToolReport,
   AutomationGitHubToolReportAsset,
@@ -190,6 +208,88 @@ type AutomationPlatformPackageListResponse = {
   run_started: boolean;
 };
 
+type AutomationCapabilityProbeBackendCandidateResponse = {
+  backend_id: string;
+  label: string;
+  priority: number;
+  status:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "manual_review"
+    | "blocked"
+    | "unknown";
+  credential_mode: "none" | "token" | "cookie" | "browser_profile" | "manual_export" | "unknown";
+  requires_login: boolean;
+  requires_proxy: boolean;
+  evidence_level:
+    | "L0-unverified"
+    | "L1-repo-or-runtime"
+    | "L2-fixture-or-dry-run"
+    | "L3-production-read-only"
+    | "L4-authorized-live";
+  notes: string[];
+};
+
+type AutomationAgentReachChannelProbeResponse = {
+  schema_version: "agent_reach_channel_probe.v1";
+  installed: boolean;
+  command_path: string | null;
+  doctor_status:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "blocked"
+    | "unknown";
+  active_backend: string | null;
+  requires_login: boolean;
+  requires_proxy: boolean;
+  blocked_reason: string | null;
+  platforms: string[];
+  read_invoked: boolean;
+  search_invoked: boolean;
+  raw_summary: Record<string, unknown>;
+};
+
+type AutomationCapabilityProbeResponse = {
+  schema_version: "capability_probe.v1";
+  platform_id: string;
+  platform_label: string;
+  generated_at: string;
+  doctor_status:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "manual_review"
+    | "blocked"
+    | "unknown";
+  credential_mode: "none" | "token" | "cookie" | "browser_profile" | "manual_export" | "unknown";
+  execution_boundary: "executable" | "read_only_probe" | "import_only" | "sop_only" | "blocked";
+  risk_level: "low" | "medium" | "high";
+  backend_candidates: AutomationCapabilityProbeBackendCandidateResponse[];
+  agent_reach: AutomationAgentReachChannelProbeResponse | null;
+  allowed_outputs: string[];
+  forbidden_actions: string[];
+  next_actions: string[];
+  run_started: boolean;
+  collection_resources_written: boolean;
+};
+
+type AutomationCapabilityProbeListResponse = {
+  schema_version: "capability_probe_list.v1";
+  generated_at: string;
+  items: AutomationCapabilityProbeResponse[];
+  total: number;
+  run_started: boolean;
+  collection_resources_written: boolean;
+};
+
 type AutomationExtractionPlanResponse = {
   id: string;
   site_analysis_id: string;
@@ -263,9 +363,168 @@ type AutomationSiteAnalysisResponse = {
 type AutomationBrowserAutomationPlanResponse = {
   site_analysis: AutomationSiteAnalysisHistoryItemResponse;
   extraction_plan: AutomationExtractionPlanResponse;
+  browser_diagnostic: AutomationBrowserDiagnosticRunResponse;
   site_analysis_created: boolean;
   extraction_plan_created: boolean;
+  browser_diagnostic_created: boolean;
   run_started: boolean;
+};
+
+type AutomationBrowserDiagnosticRunResponse = {
+  id: string;
+  project_id: string;
+  site_analysis_id: string | null;
+  requested_url: string;
+  final_url: string;
+  status: string;
+  authorization_confirmed: boolean;
+  schema_version: string;
+  recommended_path: string;
+  confidence: number;
+  field_stability: string | null;
+  evidence_source: string;
+  screenshot_path: string | null;
+  run_policy: Record<string, unknown>;
+  page_summary: Record<string, unknown>;
+  network_summary: Record<string, unknown>;
+  accessibility_summary: Record<string, unknown>;
+  risk_flags: Array<Record<string, unknown>>;
+  extraction_strategy: Record<string, unknown>;
+  blocked_reasons: string[];
+  created_at: string;
+  run_started: boolean;
+};
+
+type AutomationBrowserDiagnosticRunListResponse = {
+  items: AutomationBrowserDiagnosticRunResponse[];
+  total: number;
+  run_started: boolean;
+};
+
+type AutomationBrowserExecutableSpecCheckResponse = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+type AutomationBrowserExecutableSpecDryRunSummaryResponse = {
+  status: "ready" | "review" | "blocked";
+  total_checks: number;
+  passed_checks: number;
+  review_checks: number;
+  blocked_checks: number;
+  selector_count: number;
+  wait_condition_count: number;
+  api_candidate_count: number;
+  manual_review_required: boolean;
+  can_dry_run_after_review: boolean;
+  write_allowed: boolean;
+  run_started: boolean;
+};
+
+type AutomationBrowserExecutableSpecDryRunResponse = {
+  site_analysis: AutomationSiteAnalysisHistoryItemResponse;
+  extraction_plan: AutomationExtractionPlanResponse;
+  browser_diagnostic: AutomationBrowserDiagnosticRunResponse | null;
+  summary: AutomationBrowserExecutableSpecDryRunSummaryResponse;
+  checks: AutomationBrowserExecutableSpecCheckResponse[];
+  executable_spec: Record<string, unknown>;
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  run_started: boolean;
+};
+
+type AutomationBrowserDiagnosticJobResponse = {
+  id: string;
+  project_id: string;
+  site_analysis_id: string;
+  extraction_plan_id: string;
+  browser_diagnostic_run_id: string;
+  requested_url: string;
+  final_url: string;
+  status: string;
+  authorization_confirmed: boolean;
+  runner: string;
+  execution_mode: string;
+  selector_scope: Array<Record<string, unknown>>;
+  wait_policy: Array<Record<string, unknown>>;
+  network_observation_policy: Record<string, unknown>;
+  artifact_policy: Record<string, unknown>;
+  safety_flags: string[];
+  dry_run_summary: Record<string, unknown>;
+  executable_spec_snapshot: Record<string, unknown>;
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  created_at: string;
+  updated_at: string;
+  cancelled_at: string | null;
+  run_started: boolean;
+};
+
+type AutomationBrowserDiagnosticJobListResponse = {
+  items: AutomationBrowserDiagnosticJobResponse[];
+  total: number;
+  run_started: boolean;
+};
+
+type AutomationBrowserExecutorReadinessCheckResponse = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+type AutomationBrowserExecutorContractResponse = {
+  job: AutomationBrowserDiagnosticJobResponse;
+  adapter: Record<string, unknown>;
+  runtime_isolation: Record<string, unknown>;
+  artifact_retention_policy: Record<string, unknown>;
+  allowed_actions: string[];
+  denied_actions: string[];
+  readiness_checks: AutomationBrowserExecutorReadinessCheckResponse[];
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  run_started: boolean;
+  execution_started: boolean;
+};
+
+type AutomationBrowserLocalRunnerResultResponse = {
+  id: string;
+  job: AutomationBrowserDiagnosticJobResponse;
+  status: string;
+  runner: string;
+  run_mode: string;
+  contract_snapshot: Record<string, unknown>;
+  artifact_manifest: Record<string, unknown>;
+  selector_results: Array<Record<string, unknown>>;
+  selector_evaluations: Array<Record<string, unknown>>;
+  preview_rows: Array<Record<string, unknown>>;
+  network_observation_summary: Record<string, unknown>;
+  network_metadata_summary: Record<string, unknown>;
+  error_summary: Record<string, unknown>;
+  promotion_gate: Record<string, unknown>;
+  redaction_summary: Record<string, unknown>;
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  created_at: string;
+  updated_at: string;
+  started_at: string;
+  finished_at: string;
+  execution_started: boolean;
+  browser_started: boolean;
+  files_written: boolean;
+  collection_resources_written: boolean;
+};
+
+type AutomationBrowserLocalRunnerResultListResponse = {
+  items: AutomationBrowserLocalRunnerResultResponse[];
+  total: number;
+  browser_started: boolean;
+  files_written: boolean;
+  collection_resources_written: boolean;
 };
 
 type AutomationProductCandidateResponse = {
@@ -880,6 +1139,38 @@ export async function listAutomationPlatformPackages(): Promise<AutomationPlatfo
   };
 }
 
+export async function listAutomationCapabilityProbes(input: {
+  platformId?: string;
+} = {}): Promise<AutomationCapabilityProbeList> {
+  if (mockApiEnabled) {
+    const list = getMockAutomationCapabilityProbes();
+    const items = input.platformId
+      ? list.items.filter((item) => item.platformId === input.platformId)
+      : list.items;
+    return {
+      ...list,
+      items,
+      total: items.length,
+    };
+  }
+  const params = new URLSearchParams();
+  if (input.platformId) {
+    params.set("platform_id", input.platformId);
+  }
+  const query = params.toString();
+  const response = await apiFetch<AutomationCapabilityProbeListResponse>(
+    `/api/automation/capability-probes${query ? `?${query}` : ""}`,
+  );
+  return {
+    schemaVersion: response.schema_version,
+    generatedAt: response.generated_at,
+    items: response.items.map(mapAutomationCapabilityProbe),
+    total: response.total,
+    runStarted: response.run_started,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
 export async function analyzeAutomationSite(
   input: AutomationSiteAnalysisInput,
 ): Promise<AutomationSiteAnalysis> {
@@ -929,6 +1220,19 @@ export async function saveAutomationBrowserAutomationPlan(
           fields: selectedFields,
           field_contract: input.fieldContract,
           browser_diagnostic: input.browserDiagnostic,
+          browser_diagnostic_run_id: "mock-browser-diagnostic-run",
+          executable_spec: {
+            schema_version: "browser_automation_executable_spec.v1",
+            status: "draft",
+            run_started: false,
+            manual_review_required: input.riskLevel !== "low",
+            selector_contract: selectedFields.map((field) => ({ field })),
+            wait_conditions: [{ type: "domcontentloaded", timeout_seconds: 15 }],
+            pagination_hypothesis: { strategy: "not_configured", review_required: true },
+            api_candidates: input.apiCandidates,
+            dry_run_limits: { max_pages: 1, max_records: 20, write_allowed: false },
+            guardrails: input.guardrails,
+          },
           api_candidates: input.apiCandidates,
           guardrails: input.guardrails,
           run_started: false,
@@ -962,8 +1266,35 @@ export async function saveAutomationBrowserAutomationPlan(
         latestPlan: extractionPlan,
       },
       extractionPlan,
+      browserDiagnostic: {
+        id: "mock-browser-diagnostic-run",
+        projectId: input.projectId,
+        siteAnalysisId,
+        requestedUrl: input.requestedUrl,
+        finalUrl: input.browserDiagnostic.finalUrl,
+        status: "draft",
+        authorizationConfirmed: input.authorized,
+        schemaVersion: input.browserDiagnostic.schemaVersion,
+        recommendedPath: input.browserDiagnostic.recommendedPath,
+        confidence: input.browserDiagnostic.confidence > 1
+          ? input.browserDiagnostic.confidence / 100
+          : input.browserDiagnostic.confidence,
+        fieldStability: input.browserDiagnostic.fieldStability ?? null,
+        evidenceSource: input.browserDiagnostic.evidenceSource,
+        screenshotPath: input.browserDiagnostic.screenshotPath ?? null,
+        runPolicy: { read_only: true, run_started: false },
+        pageSummary: {},
+        networkSummary: { api_candidate_count: input.apiCandidates.length },
+        accessibilitySummary: {},
+        riskFlags: [],
+        extractionStrategy: { recommended_path: input.browserDiagnostic.recommendedPath },
+        blockedReasons: ["浏览器诊断已保存为只读资产，尚未启动采集运行。"],
+        createdAt: now,
+        runStarted: false,
+      },
       siteAnalysisCreated: true,
       extractionPlanCreated: true,
+      browserDiagnosticCreated: true,
       runStarted: false,
     };
   }
@@ -1003,6 +1334,7 @@ export async function saveAutomationBrowserAutomationPlan(
           evidence_source: input.browserDiagnostic.evidenceSource,
           screenshot_path: input.browserDiagnostic.screenshotPath,
         },
+        diagnostic_payload: input.diagnosticPayload ?? {},
         api_candidates: input.apiCandidates,
         guardrails: input.guardrails,
       }),
@@ -1011,9 +1343,643 @@ export async function saveAutomationBrowserAutomationPlan(
   return {
     siteAnalysis: mapAutomationSiteAnalysisHistoryItem(response.site_analysis),
     extractionPlan: mapAutomationExtractionPlan(response.extraction_plan),
+    browserDiagnostic: mapAutomationBrowserDiagnosticRun(response.browser_diagnostic),
     siteAnalysisCreated: response.site_analysis_created,
     extractionPlanCreated: response.extraction_plan_created,
+    browserDiagnosticCreated: response.browser_diagnostic_created,
     runStarted: response.run_started,
+  };
+}
+
+export async function listAutomationBrowserDiagnostics(input: {
+  projectId?: string;
+  siteAnalysisId?: string;
+  limit?: number;
+} = {}): Promise<AutomationBrowserDiagnosticRunList> {
+  const query = new URLSearchParams();
+  if (input.projectId) {
+    query.set("project_id", input.projectId);
+  }
+  if (input.siteAnalysisId) {
+    query.set("site_analysis_id", input.siteAnalysisId);
+  }
+  if (input.limit) {
+    query.set("limit", String(input.limit));
+  }
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    return {
+      items: [
+        {
+          id: "mock-browser-diagnostic-history",
+          projectId: input.projectId ?? "project_marketplace_price",
+          siteAnalysisId: input.siteAnalysisId ?? "mock-browser-analysis-history",
+          requestedUrl: "https://example.com/app",
+          finalUrl: "https://example.com/app",
+          status: "draft",
+          authorizationConfirmed: true,
+          schemaVersion: "browser_structure_diagnostic.v1",
+          recommendedPath: "browser_automation",
+          confidence: 0.82,
+          fieldStability: "medium",
+          evidenceSource: "browser-harness",
+          screenshotPath: null,
+          runPolicy: { read_only: true, run_started: false },
+          pageSummary: {},
+          networkSummary: { api_candidate_count: 1 },
+          accessibilitySummary: {},
+          riskFlags: [],
+          extractionStrategy: { recommended_path: "browser_automation" },
+          blockedReasons: ["浏览器诊断已保存为只读资产，尚未启动采集运行。"],
+          createdAt: now,
+          runStarted: false,
+        },
+      ],
+      total: 1,
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserDiagnosticRunListResponse>(
+    `/api/automation/browser-diagnostics${query.size ? `?${query}` : ""}`,
+  );
+  return {
+    items: response.items.map(mapAutomationBrowserDiagnosticRun),
+    total: response.total,
+    runStarted: response.run_started,
+  };
+}
+
+export async function dryRunAutomationBrowserExecutableSpec(
+  input: AutomationBrowserExecutableSpecDryRunInput,
+): Promise<AutomationBrowserExecutableSpecDryRun> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const extractionPlan: AutomationExtractionPlan = {
+      id: input.extractionPlanId,
+      siteAnalysisId: input.siteAnalysisId,
+      projectId: "project_marketplace_price",
+      name: "Browser Automation: example.com",
+      versionNumber: 1,
+      collectorType: "browser_automation",
+      selectedFields: ["page_title", "canonical_url"],
+      sourceDraft: {
+        type: "browser_automation",
+        suggestedName: "Browser Automation: example.com",
+        scheduleCron: null,
+        config: {
+          executable_spec: {
+            schema_version: "browser_automation_executable_spec.v1",
+            selector_contract: [{ field: "page_title" }, { field: "canonical_url" }],
+            wait_conditions: [{ type: "domcontentloaded", timeout_seconds: 15 }],
+            api_candidates: ["https://example.com/api/products"],
+            manual_review_required: true,
+            run_started: false,
+          },
+        },
+      },
+      scheduleCron: null,
+      status: "draft",
+      riskLevel: "medium",
+      auditEvents: [],
+      createdAt: now,
+      runStarted: false,
+    };
+    return {
+      siteAnalysis: {
+        id: input.siteAnalysisId,
+        projectId: "project_marketplace_price",
+        requestedUrl: "https://example.com/app",
+        target: "browser_automation",
+        status: "draft",
+        platformType: "dynamic_browser_page",
+        pageType: "browser_runtime",
+        riskLevel: "medium",
+        analyzedAt: now,
+        createdAt: now,
+        latestPlan: extractionPlan,
+      },
+      extractionPlan,
+      browserDiagnostic: null,
+      summary: {
+        status: "review",
+        totalChecks: 11,
+        passedChecks: 10,
+        reviewChecks: 1,
+        blockedChecks: 0,
+        selectorCount: 2,
+        waitConditionCount: 1,
+        apiCandidateCount: 1,
+        manualReviewRequired: true,
+        canDryRunAfterReview: true,
+        writeAllowed: false,
+        runStarted: false,
+      },
+      checks: [
+        {
+          key: "manual-review",
+          label: "人工复核",
+          status: "review",
+          message: "执行规格标记为需要人工复核。",
+          evidence: { manual_review_required: true },
+        },
+      ],
+      executableSpec: {},
+      blockedReasons: [],
+      auditEvents: [{ event: "browser_automation_spec_dry_run_validated" }],
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserExecutableSpecDryRunResponse>(
+    "/api/automation/browser-automation-spec-dry-run",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        site_analysis_id: input.siteAnalysisId,
+        extraction_plan_id: input.extractionPlanId,
+        browser_diagnostic_run_id: input.browserDiagnosticRunId,
+      }),
+    },
+  );
+  return mapAutomationBrowserExecutableSpecDryRun(response);
+}
+
+export async function createAutomationBrowserDiagnosticJob(
+  input: AutomationBrowserDiagnosticJobCreateInput,
+): Promise<AutomationBrowserDiagnosticJob> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    return {
+      id: "mock-browser-diagnostic-job",
+      projectId: "project_marketplace_price",
+      siteAnalysisId: input.siteAnalysisId,
+      extractionPlanId: input.extractionPlanId,
+      browserDiagnosticRunId: input.browserDiagnosticRunId ?? "mock-browser-diagnostic-history",
+      requestedUrl: "https://example.com/app",
+      finalUrl: "https://example.com/app",
+      status: "ready_for_manual_execution",
+      authorizationConfirmed: input.authorized,
+      runner: "browser_harness",
+      executionMode: "read_only_browser_harness",
+      selectorScope: [{ field: "page_title" }, { field: "canonical_url" }],
+      waitPolicy: [{ type: "domcontentloaded", timeout_seconds: 15 }],
+      networkObservationPolicy: {
+        mode: input.networkObservationMode ?? "metadata_only",
+        write_allowed: false,
+      },
+      artifactPolicy: {
+        mode: input.artifactMode ?? "screenshot_reference_only",
+        write_files: false,
+      },
+      safetyFlags: ["read_only", "no_browser_run_started", "no_source_task_taskrun_creation"],
+      dryRunSummary: { status: "review", write_allowed: false },
+      executableSpecSnapshot: {},
+      blockedReasons: ["browser_diagnostic_job_created_no_runner"],
+      auditEvents: [{ event: "browser_diagnostic_job_created", run_started: false }],
+      createdAt: now,
+      updatedAt: now,
+      cancelledAt: null,
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserDiagnosticJobResponse>(
+    "/api/automation/browser-diagnostic-jobs",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_create: input.confirmCreate,
+        site_analysis_id: input.siteAnalysisId,
+        extraction_plan_id: input.extractionPlanId,
+        browser_diagnostic_run_id: input.browserDiagnosticRunId,
+        network_observation_mode: input.networkObservationMode ?? "metadata_only",
+        artifact_mode: input.artifactMode ?? "screenshot_reference_only",
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserDiagnosticJob(response);
+}
+
+export async function listAutomationBrowserDiagnosticJobs(input: {
+  projectId?: string;
+  siteAnalysisId?: string;
+  extractionPlanId?: string;
+  status?: string;
+  limit?: number;
+} = {}): Promise<AutomationBrowserDiagnosticJobList> {
+  const query = new URLSearchParams();
+  if (input.projectId) {
+    query.set("project_id", input.projectId);
+  }
+  if (input.siteAnalysisId) {
+    query.set("site_analysis_id", input.siteAnalysisId);
+  }
+  if (input.extractionPlanId) {
+    query.set("extraction_plan_id", input.extractionPlanId);
+  }
+  if (input.status) {
+    query.set("status", input.status);
+  }
+  if (input.limit) {
+    query.set("limit", String(input.limit));
+  }
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    return {
+      items: [
+        {
+          id: "mock-browser-diagnostic-job",
+          projectId: input.projectId ?? "project_marketplace_price",
+          siteAnalysisId: input.siteAnalysisId ?? "mock-browser-analysis-history",
+          extractionPlanId: input.extractionPlanId ?? "mock-browser-plan-history",
+          browserDiagnosticRunId: "mock-browser-diagnostic-history",
+          requestedUrl: "https://example.com/app",
+          finalUrl: "https://example.com/app",
+          status: input.status ?? "ready_for_manual_execution",
+          authorizationConfirmed: true,
+          runner: "browser_harness",
+          executionMode: "read_only_browser_harness",
+          selectorScope: [{ field: "page_title" }, { field: "canonical_url" }],
+          waitPolicy: [{ type: "domcontentloaded", timeout_seconds: 15 }],
+          networkObservationPolicy: { mode: "metadata_only", write_allowed: false },
+          artifactPolicy: { mode: "screenshot_reference_only", write_files: false },
+          safetyFlags: ["read_only", "no_browser_run_started"],
+          dryRunSummary: { status: "review", write_allowed: false },
+          executableSpecSnapshot: {},
+          blockedReasons: ["browser_diagnostic_job_created_no_runner"],
+          auditEvents: [{ event: "browser_diagnostic_job_created", run_started: false }],
+          createdAt: now,
+          updatedAt: now,
+          cancelledAt: null,
+          runStarted: false,
+        },
+      ],
+      total: 1,
+      runStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserDiagnosticJobListResponse>(
+    `/api/automation/browser-diagnostic-jobs${query.size ? `?${query}` : ""}`,
+  );
+  return {
+    items: response.items.map(mapAutomationBrowserDiagnosticJob),
+    total: response.total,
+    runStarted: response.run_started,
+  };
+}
+
+export async function getAutomationBrowserDiagnosticJob(
+  jobId: string,
+): Promise<AutomationBrowserDiagnosticJob> {
+  if (mockApiEnabled) {
+    const list = await listAutomationBrowserDiagnosticJobs();
+    return { ...list.items[0], id: jobId };
+  }
+  const response = await apiFetch<AutomationBrowserDiagnosticJobResponse>(
+    `/api/automation/browser-diagnostic-jobs/${jobId}`,
+  );
+  return mapAutomationBrowserDiagnosticJob(response);
+}
+
+export async function cancelAutomationBrowserDiagnosticJob(
+  jobId: string,
+): Promise<AutomationBrowserDiagnosticJob> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const job = await getAutomationBrowserDiagnosticJob(jobId);
+    return {
+      ...job,
+      status: "cancelled",
+      cancelledAt: now,
+      updatedAt: now,
+      auditEvents: [
+        ...job.auditEvents,
+        { event: "browser_diagnostic_job_cancelled", run_started: false },
+      ],
+    };
+  }
+  const response = await apiFetch<AutomationBrowserDiagnosticJobResponse>(
+    `/api/automation/browser-diagnostic-jobs/${jobId}/cancel`,
+    { method: "POST" },
+  );
+  return mapAutomationBrowserDiagnosticJob(response);
+}
+
+export async function buildAutomationBrowserExecutorContract(
+  jobId: string,
+  input: AutomationBrowserExecutorContractInput,
+): Promise<AutomationBrowserExecutorContract> {
+  if (mockApiEnabled) {
+    const job = await getAutomationBrowserDiagnosticJob(jobId);
+    return {
+      job,
+      adapter: {
+        schema_version: "browser_executor_adapter_contract.v1",
+        adapter_name: "browser_harness_read_only_local",
+        adapter_kind: "local_manual_runner",
+        execution_policy: {
+          manual_operator_required: true,
+          automatic_api_worker_start: false,
+          production_enabled: false,
+          write_allowed: false,
+          run_started: false,
+        },
+      },
+      runtimeIsolation: {
+        mode: "local_ephemeral_browser_context",
+        reuse_user_profile: false,
+        cookie_export_allowed: false,
+        login_state_allowed: false,
+        filesystem_write_allowed: false,
+      },
+      artifactRetentionPolicy: {
+        schema_version: "browser_artifact_retention_policy.v1",
+        write_files_now: false,
+        retention_days: input.artifactRetentionDays ?? 7,
+        max_preview_rows: input.maxPreviewRows ?? 20,
+        har_summary: { enabled: input.includeHarSummary ?? true, capture_body: false },
+      },
+      allowedActions: ["open_authorized_final_url", "evaluate_declared_selectors"],
+      deniedActions: ["reuse_user_chrome_profile", "export_cookies", "create_task_run"],
+      readinessChecks: [
+        {
+          key: "job-status",
+          label: "任务状态",
+          status: "passed",
+          message: "诊断任务已审核，等待人工执行。",
+          evidence: { status: job.status },
+        },
+      ],
+      blockedReasons: [],
+      auditEvents: [{ event: "browser_executor_contract_built", run_started: false }],
+      runStarted: false,
+      executionStarted: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserExecutorContractResponse>(
+    `/api/automation/browser-diagnostic-jobs/${jobId}/executor-contract`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        artifact_retention_days: input.artifactRetentionDays ?? 7,
+        max_preview_rows: input.maxPreviewRows ?? 20,
+        include_screenshot: input.includeScreenshot ?? true,
+        include_trace_summary: input.includeTraceSummary ?? false,
+        include_har_summary: input.includeHarSummary ?? true,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserExecutorContract(response);
+}
+
+export async function runAutomationBrowserDiagnosticJobLocal(
+  jobId: string,
+  input: AutomationBrowserLocalRunnerInput,
+): Promise<AutomationBrowserLocalRunnerResult> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const runMode = input.runMode ?? "diagnostic_snapshot_replay";
+    const isHarnessProbe = runMode === "ephemeral_browser_harness_probe";
+    const contract = await buildAutomationBrowserExecutorContract(jobId, {
+      authorized: input.authorized,
+      confirmReview: true,
+      artifactRetentionDays: input.artifactRetentionDays ?? 7,
+      maxPreviewRows: input.maxPreviewRows ?? 20,
+      includeScreenshot: input.includeScreenshot ?? true,
+      includeTraceSummary: input.includeTraceSummary ?? false,
+      includeHarSummary: input.includeHarSummary ?? true,
+      note: input.note,
+    });
+    return {
+      id: isHarnessProbe ? "mock-browser-harness-probe-run" : "mock-browser-local-run",
+      job: contract.job,
+      status: isHarnessProbe ? "completed_ephemeral_probe" : "completed_snapshot_replay",
+      runner: "browser_harness_read_only_local",
+      runMode,
+      contractSnapshot: contract as unknown as Record<string, unknown>,
+      artifactManifest: {
+        schema_version: "browser_local_runner_artifact_manifest.v1",
+        files_written: false,
+        preview_rows_count: 1,
+        screenshot: { referenced_path: "/tmp/browser-diagnostic/mock.png" },
+        ...(isHarnessProbe
+          ? {
+              ephemeral_probe: {
+                schema_version: "browser_harness_ephemeral_probe.v1",
+                status: "completed",
+                binary: "mock-browser-harness",
+                exit_code: 0,
+                files_written: false,
+                object_storage_write: false,
+                target_tab_closed: true,
+              },
+            }
+          : {}),
+      },
+      selectorResults: [
+        {
+          field: "page_title",
+          status: "observed_from_diagnostic_snapshot",
+          value: "Dynamic Product Grid",
+        },
+      ],
+      selectorEvaluations: [
+        {
+          schema_version: "browser_selector_evaluation.v1",
+          field: "page_title",
+          label: "page_title",
+          selector_hint: "title",
+          required: true,
+          status: "observed_from_diagnostic_snapshot",
+          match_count: 1,
+          sample_text: "Dynamic Product Grid",
+          missing_reason: null,
+          source: "diagnostic_snapshot_replay",
+          browser_started: false,
+        },
+      ],
+      previewRows: [
+        {
+          row_index: 1,
+          source: "diagnostic_snapshot_replay",
+          values: { page_title: "Dynamic Product Grid" },
+        },
+      ],
+      networkObservationSummary: {
+        mode: "metadata_only",
+        browser_started: isHarnessProbe,
+        api_candidate_count: 0,
+        ...(isHarnessProbe
+          ? {
+              ephemeral_probe: {
+                schema_version: "browser_harness_ephemeral_probe.v1",
+                status: "completed",
+                target_url: "https://example.com/app",
+                page_info: {
+                  url: "https://example.com/app",
+                  title: "Dynamic Product Grid",
+                  w: 1280,
+                  h: 720,
+                },
+                target_tab_closed: true,
+                redacted: true,
+              },
+            }
+          : {}),
+      },
+      networkMetadataSummary: {
+        schema_version: "browser_network_metadata_summary.v1",
+        mode: "metadata_only",
+        same_origin_only: true,
+        metadata_only: true,
+        capture_headers: false,
+        capture_body: false,
+        browser_started: isHarnessProbe,
+        observed_from_diagnostic_snapshot: true,
+        resource_count: 0,
+        api_candidate_count: 0,
+        api_candidates: [],
+        redacted: true,
+        ...(isHarnessProbe
+          ? {
+              ephemeral_probe: {
+                schema_version: "browser_harness_ephemeral_probe.v1",
+                status: "completed",
+                target_url: "https://example.com/app",
+                page_info: {
+                  url: "https://example.com/app",
+                  title: "Dynamic Product Grid",
+                  w: 1280,
+                  h: 720,
+                },
+                target_tab_closed: true,
+                redacted: true,
+              },
+            }
+          : {}),
+      },
+      errorSummary: {
+        error_count: 0,
+        errors: [],
+        redacted: true,
+        browser_started: isHarnessProbe,
+      },
+      promotionGate: {
+        schema_version: "browser_promotion_gate.v1",
+        status: "blocked",
+        can_create_collection_resources: false,
+        review_required: true,
+        reasons: ["m2_read_only_contract_no_direct_promotion"],
+        required_missing_fields: [],
+        browser_started: isHarnessProbe,
+        files_written: false,
+        collection_resources_written: false,
+      },
+      redactionSummary: {
+        schema_version: "browser_local_runner_redaction_summary.v1",
+        cookies_captured: false,
+        headers_captured: false,
+        bodies_captured: false,
+        query_parameters_retained: false,
+        url_query_fragment_removed: true,
+        stdout_stderr_tail_redacted: true,
+        sample_text_max_chars: 180,
+        files_written: false,
+        collection_resources_written: false,
+      },
+      blockedReasons: isHarnessProbe
+        ? [
+            "browser_harness_ephemeral_probe_only",
+            "no_files_written_no_collection_resources_created",
+          ]
+        : [
+            "browser_local_runner_snapshot_replay_only",
+            "no_real_browser_started_no_files_written_no_collection_resources_created",
+          ],
+      auditEvents: [
+        {
+          event: isHarnessProbe
+            ? "browser_harness_ephemeral_probe_completed"
+            : "browser_local_runner_snapshot_replay_completed",
+          browser_started: isHarnessProbe,
+          collection_resources_written: false,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+      startedAt: now,
+      finishedAt: now,
+      executionStarted: true,
+      browserStarted: isHarnessProbe,
+      filesWritten: false,
+      collectionResourcesWritten: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserLocalRunnerResultResponse>(
+    `/api/automation/browser-diagnostic-jobs/${jobId}/local-run`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_execute: input.confirmExecute,
+        run_mode: input.runMode ?? "diagnostic_snapshot_replay",
+        confirm_real_browser_probe: input.confirmRealBrowserProbe ?? false,
+        browser_harness_binary: input.browserHarnessBinary,
+        probe_timeout_seconds: input.probeTimeoutSeconds ?? 15,
+        artifact_retention_days: input.artifactRetentionDays ?? 7,
+        max_preview_rows: input.maxPreviewRows ?? 20,
+        include_screenshot: input.includeScreenshot ?? true,
+        include_trace_summary: input.includeTraceSummary ?? false,
+        include_har_summary: input.includeHarSummary ?? true,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserLocalRunnerResult(response);
+}
+
+export async function listAutomationBrowserDiagnosticJobRuns(input: {
+  projectId?: string;
+  diagnosticJobId?: string;
+  status?: string;
+  limit?: number;
+} = {}): Promise<AutomationBrowserLocalRunnerResultList> {
+  const query = new URLSearchParams();
+  if (input.projectId) {
+    query.set("project_id", input.projectId);
+  }
+  if (input.diagnosticJobId) {
+    query.set("diagnostic_job_id", input.diagnosticJobId);
+  }
+  if (input.status) {
+    query.set("status", input.status);
+  }
+  if (input.limit) {
+    query.set("limit", String(input.limit));
+  }
+  if (mockApiEnabled) {
+    return {
+      items: [],
+      total: 0,
+      browserStarted: false,
+      filesWritten: false,
+      collectionResourcesWritten: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserLocalRunnerResultListResponse>(
+    `/api/automation/browser-diagnostic-job-runs${query.size ? `?${query}` : ""}`,
+  );
+  return {
+    items: response.items.map(mapAutomationBrowserLocalRunnerResult),
+    total: response.total,
+    browserStarted: response.browser_started,
+    filesWritten: response.files_written,
+    collectionResourcesWritten: response.collection_resources_written,
   };
 }
 
@@ -1021,6 +1987,61 @@ export async function listAutomationSiteAnalyses(
   input: AutomationSiteAnalysisListInput = {},
 ): Promise<AutomationSiteAnalysisList> {
   if (mockApiEnabled) {
+    if (input.target === "browser_automation") {
+      const now = new Date().toISOString();
+      const siteAnalysisId = "mock-browser-analysis-history";
+      const plan: AutomationExtractionPlan = {
+        id: "mock-browser-plan-history",
+        siteAnalysisId,
+        projectId: input.projectId ?? "project_marketplace_price",
+        name: "Browser Automation: example.com",
+        versionNumber: 1,
+        collectorType: "browser_automation",
+        selectedFields: ["page_title", "canonical_url"],
+        sourceDraft: {
+          type: "browser_automation",
+          suggestedName: "Browser Automation: example.com",
+          scheduleCron: null,
+          config: {
+            browser_diagnostic_run_id: "mock-browser-diagnostic-history",
+            executable_spec: {
+              schema_version: "browser_automation_executable_spec.v1",
+              selector_contract: [{ field: "page_title" }, { field: "canonical_url" }],
+              wait_conditions: [{ type: "domcontentloaded", timeout_seconds: 15 }],
+              api_candidates: ["https://example.com/api/products"],
+              manual_review_required: true,
+              run_started: false,
+            },
+            run_started: false,
+          },
+        },
+        scheduleCron: null,
+        status: "draft",
+        riskLevel: "medium",
+        auditEvents: [{ event: "browser_automation_plan_saved", run_started: false }],
+        createdAt: now,
+        runStarted: false,
+      };
+      return {
+        items: [
+          {
+            id: siteAnalysisId,
+            projectId: input.projectId ?? "project_marketplace_price",
+            requestedUrl: "https://example.com/app",
+            target: "browser_automation",
+            status: "draft",
+            platformType: "dynamic_browser_page",
+            pageType: "browser_runtime",
+            riskLevel: "medium",
+            analyzedAt: now,
+            createdAt: now,
+            latestPlan: plan,
+          },
+        ],
+        total: 1,
+        runStarted: false,
+      };
+    }
     const analysis = getMockAutomationSiteAnalysis("https://shop.example/products/demo-bag");
     return {
       items: [
@@ -1919,6 +2940,53 @@ function mapAutomationPlatformPackage(
   };
 }
 
+function mapAutomationCapabilityProbe(
+  response: AutomationCapabilityProbeResponse,
+): AutomationCapabilityProbe {
+  return {
+    schemaVersion: response.schema_version,
+    platformId: response.platform_id,
+    platformLabel: response.platform_label,
+    generatedAt: response.generated_at,
+    doctorStatus: response.doctor_status,
+    credentialMode: response.credential_mode,
+    executionBoundary: response.execution_boundary,
+    riskLevel: response.risk_level,
+    backendCandidates: response.backend_candidates.map((candidate) => ({
+      backendId: candidate.backend_id,
+      label: candidate.label,
+      priority: candidate.priority,
+      status: candidate.status,
+      credentialMode: candidate.credential_mode,
+      requiresLogin: candidate.requires_login,
+      requiresProxy: candidate.requires_proxy,
+      evidenceLevel: candidate.evidence_level,
+      notes: candidate.notes,
+    })),
+    agentReach: response.agent_reach
+      ? {
+          schemaVersion: response.agent_reach.schema_version,
+          installed: response.agent_reach.installed,
+          commandPath: response.agent_reach.command_path,
+          doctorStatus: response.agent_reach.doctor_status,
+          activeBackend: response.agent_reach.active_backend,
+          requiresLogin: response.agent_reach.requires_login,
+          requiresProxy: response.agent_reach.requires_proxy,
+          blockedReason: response.agent_reach.blocked_reason,
+          platforms: response.agent_reach.platforms,
+          readInvoked: response.agent_reach.read_invoked,
+          searchInvoked: response.agent_reach.search_invoked,
+          rawSummary: response.agent_reach.raw_summary,
+        }
+      : null,
+    allowedOutputs: response.allowed_outputs,
+    forbiddenActions: response.forbidden_actions,
+    nextActions: response.next_actions,
+    runStarted: response.run_started,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
 function mapAutomationSiteAnalysis(response: AutomationSiteAnalysisResponse): AutomationSiteAnalysis {
   return {
     requestedUrl: response.requested_url,
@@ -1986,6 +3054,177 @@ function mapAutomationExtractionPlan(
     auditEvents: response.audit_events,
     createdAt: response.created_at,
     runStarted: response.run_started,
+  };
+}
+
+function mapAutomationBrowserDiagnosticRun(
+  response: AutomationBrowserDiagnosticRunResponse,
+): AutomationBrowserDiagnosticRun {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    siteAnalysisId: response.site_analysis_id,
+    requestedUrl: response.requested_url,
+    finalUrl: response.final_url,
+    status: response.status,
+    authorizationConfirmed: response.authorization_confirmed,
+    schemaVersion: response.schema_version,
+    recommendedPath: response.recommended_path,
+    confidence: response.confidence,
+    fieldStability: response.field_stability,
+    evidenceSource: response.evidence_source,
+    screenshotPath: response.screenshot_path,
+    runPolicy: response.run_policy,
+    pageSummary: response.page_summary,
+    networkSummary: response.network_summary,
+    accessibilitySummary: response.accessibility_summary,
+    riskFlags: response.risk_flags,
+    extractionStrategy: response.extraction_strategy,
+    blockedReasons: response.blocked_reasons,
+    createdAt: response.created_at,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationBrowserExecutableSpecDryRun(
+  response: AutomationBrowserExecutableSpecDryRunResponse,
+): AutomationBrowserExecutableSpecDryRun {
+  return {
+    siteAnalysis: mapAutomationSiteAnalysisHistoryItem(response.site_analysis),
+    extractionPlan: mapAutomationExtractionPlan(response.extraction_plan),
+    browserDiagnostic: response.browser_diagnostic
+      ? mapAutomationBrowserDiagnosticRun(response.browser_diagnostic)
+      : null,
+    summary: mapAutomationBrowserExecutableSpecSummary(response.summary),
+    checks: response.checks.map(mapAutomationBrowserExecutableSpecCheck),
+    executableSpec: response.executable_spec,
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationBrowserDiagnosticJob(
+  response: AutomationBrowserDiagnosticJobResponse,
+): AutomationBrowserDiagnosticJob {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    siteAnalysisId: response.site_analysis_id,
+    extractionPlanId: response.extraction_plan_id,
+    browserDiagnosticRunId: response.browser_diagnostic_run_id,
+    requestedUrl: response.requested_url,
+    finalUrl: response.final_url,
+    status: response.status,
+    authorizationConfirmed: response.authorization_confirmed,
+    runner: response.runner,
+    executionMode: response.execution_mode,
+    selectorScope: response.selector_scope,
+    waitPolicy: response.wait_policy,
+    networkObservationPolicy: response.network_observation_policy,
+    artifactPolicy: response.artifact_policy,
+    safetyFlags: response.safety_flags,
+    dryRunSummary: response.dry_run_summary,
+    executableSpecSnapshot: response.executable_spec_snapshot,
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    createdAt: response.created_at,
+    updatedAt: response.updated_at,
+    cancelledAt: response.cancelled_at,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationBrowserExecutorContract(
+  response: AutomationBrowserExecutorContractResponse,
+): AutomationBrowserExecutorContract {
+  return {
+    job: mapAutomationBrowserDiagnosticJob(response.job),
+    adapter: response.adapter,
+    runtimeIsolation: response.runtime_isolation,
+    artifactRetentionPolicy: response.artifact_retention_policy,
+    allowedActions: response.allowed_actions,
+    deniedActions: response.denied_actions,
+    readinessChecks: response.readiness_checks.map(mapAutomationBrowserExecutorCheck),
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    runStarted: response.run_started,
+    executionStarted: response.execution_started,
+  };
+}
+
+function mapAutomationBrowserExecutorCheck(
+  response: AutomationBrowserExecutorReadinessCheckResponse,
+): AutomationBrowserExecutorReadinessCheck {
+  return {
+    key: response.key,
+    label: response.label,
+    status: response.status,
+    message: response.message,
+    evidence: response.evidence,
+  };
+}
+
+function mapAutomationBrowserLocalRunnerResult(
+  response: AutomationBrowserLocalRunnerResultResponse,
+): AutomationBrowserLocalRunnerResult {
+  return {
+    id: response.id,
+    job: mapAutomationBrowserDiagnosticJob(response.job),
+    status: response.status,
+    runner: response.runner,
+    runMode: response.run_mode,
+    contractSnapshot: response.contract_snapshot,
+    artifactManifest: response.artifact_manifest,
+    selectorResults: response.selector_results,
+    selectorEvaluations: response.selector_evaluations,
+    previewRows: response.preview_rows,
+    networkObservationSummary: response.network_observation_summary,
+    networkMetadataSummary: response.network_metadata_summary,
+    errorSummary: response.error_summary,
+    promotionGate: response.promotion_gate,
+    redactionSummary: response.redaction_summary,
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    createdAt: response.created_at,
+    updatedAt: response.updated_at,
+    startedAt: response.started_at,
+    finishedAt: response.finished_at,
+    executionStarted: response.execution_started,
+    browserStarted: response.browser_started,
+    filesWritten: response.files_written,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
+function mapAutomationBrowserExecutableSpecSummary(
+  response: AutomationBrowserExecutableSpecDryRunSummaryResponse,
+): AutomationBrowserExecutableSpecDryRunSummary {
+  return {
+    status: response.status,
+    totalChecks: response.total_checks,
+    passedChecks: response.passed_checks,
+    reviewChecks: response.review_checks,
+    blockedChecks: response.blocked_checks,
+    selectorCount: response.selector_count,
+    waitConditionCount: response.wait_condition_count,
+    apiCandidateCount: response.api_candidate_count,
+    manualReviewRequired: response.manual_review_required,
+    canDryRunAfterReview: response.can_dry_run_after_review,
+    writeAllowed: response.write_allowed,
+    runStarted: response.run_started,
+  };
+}
+
+function mapAutomationBrowserExecutableSpecCheck(
+  response: AutomationBrowserExecutableSpecCheckResponse,
+): AutomationBrowserExecutableSpecCheck {
+  return {
+    key: response.key,
+    label: response.label,
+    status: response.status,
+    message: response.message,
+    evidence: response.evidence,
   };
 }
 

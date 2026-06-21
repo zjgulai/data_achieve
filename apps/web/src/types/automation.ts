@@ -109,6 +109,88 @@ export type AutomationPlatformPackageList = {
   runStarted: boolean;
 };
 
+export type AutomationCapabilityProbeBackendCandidate = {
+  backendId: string;
+  label: string;
+  priority: number;
+  status:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "manual_review"
+    | "blocked"
+    | "unknown";
+  credentialMode: "none" | "token" | "cookie" | "browser_profile" | "manual_export" | "unknown";
+  requiresLogin: boolean;
+  requiresProxy: boolean;
+  evidenceLevel:
+    | "L0-unverified"
+    | "L1-repo-or-runtime"
+    | "L2-fixture-or-dry-run"
+    | "L3-production-read-only"
+    | "L4-authorized-live";
+  notes: string[];
+};
+
+export type AutomationAgentReachChannelProbe = {
+  schemaVersion: "agent_reach_channel_probe.v1";
+  installed: boolean;
+  commandPath: string | null;
+  doctorStatus:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "blocked"
+    | "unknown";
+  activeBackend: string | null;
+  requiresLogin: boolean;
+  requiresProxy: boolean;
+  blockedReason: string | null;
+  platforms: string[];
+  readInvoked: boolean;
+  searchInvoked: boolean;
+  rawSummary: Record<string, unknown>;
+};
+
+export type AutomationCapabilityProbe = {
+  schemaVersion: "capability_probe.v1";
+  platformId: string;
+  platformLabel: string;
+  generatedAt: string;
+  doctorStatus:
+    | "available"
+    | "missing_tool"
+    | "not_configured"
+    | "requires_login"
+    | "requires_proxy"
+    | "manual_review"
+    | "blocked"
+    | "unknown";
+  credentialMode: "none" | "token" | "cookie" | "browser_profile" | "manual_export" | "unknown";
+  executionBoundary: "executable" | "read_only_probe" | "import_only" | "sop_only" | "blocked";
+  riskLevel: "low" | "medium" | "high";
+  backendCandidates: AutomationCapabilityProbeBackendCandidate[];
+  agentReach: AutomationAgentReachChannelProbe | null;
+  allowedOutputs: string[];
+  forbiddenActions: string[];
+  nextActions: string[];
+  runStarted: boolean;
+  collectionResourcesWritten: boolean;
+};
+
+export type AutomationCapabilityProbeList = {
+  schemaVersion: "capability_probe_list.v1";
+  generatedAt: string;
+  items: AutomationCapabilityProbe[];
+  total: number;
+  runStarted: boolean;
+  collectionResourcesWritten: boolean;
+};
+
 export type AutomationExtractionPlan = {
   id: string;
   siteAnalysisId: string;
@@ -229,16 +311,221 @@ export type AutomationBrowserAutomationPlanInput = {
     evidenceSource: string;
     screenshotPath?: string | null;
   };
+  diagnosticPayload?: Record<string, unknown>;
   apiCandidates: string[];
   guardrails: string[];
+};
+
+export type AutomationBrowserDiagnosticRun = {
+  id: string;
+  projectId: string;
+  siteAnalysisId: string | null;
+  requestedUrl: string;
+  finalUrl: string;
+  status: string;
+  authorizationConfirmed: boolean;
+  schemaVersion: string;
+  recommendedPath: string;
+  confidence: number;
+  fieldStability: string | null;
+  evidenceSource: string;
+  screenshotPath: string | null;
+  runPolicy: Record<string, unknown>;
+  pageSummary: Record<string, unknown>;
+  networkSummary: Record<string, unknown>;
+  accessibilitySummary: Record<string, unknown>;
+  riskFlags: Array<Record<string, unknown>>;
+  extractionStrategy: Record<string, unknown>;
+  blockedReasons: string[];
+  createdAt: string;
+  runStarted: boolean;
+};
+
+export type AutomationBrowserDiagnosticRunList = {
+  items: AutomationBrowserDiagnosticRun[];
+  total: number;
+  runStarted: boolean;
 };
 
 export type AutomationBrowserAutomationPlan = {
   siteAnalysis: AutomationSiteAnalysisHistoryItem;
   extractionPlan: AutomationExtractionPlan;
+  browserDiagnostic: AutomationBrowserDiagnosticRun;
   siteAnalysisCreated: boolean;
   extractionPlanCreated: boolean;
+  browserDiagnosticCreated: boolean;
   runStarted: boolean;
+};
+
+export type AutomationBrowserExecutableSpecDryRunInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  siteAnalysisId: string;
+  extractionPlanId: string;
+  browserDiagnosticRunId?: string | null;
+};
+
+export type AutomationBrowserExecutableSpecCheck = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+export type AutomationBrowserExecutableSpecDryRunSummary = {
+  status: "ready" | "review" | "blocked";
+  totalChecks: number;
+  passedChecks: number;
+  reviewChecks: number;
+  blockedChecks: number;
+  selectorCount: number;
+  waitConditionCount: number;
+  apiCandidateCount: number;
+  manualReviewRequired: boolean;
+  canDryRunAfterReview: boolean;
+  writeAllowed: boolean;
+  runStarted: boolean;
+};
+
+export type AutomationBrowserExecutableSpecDryRun = {
+  siteAnalysis: AutomationSiteAnalysisHistoryItem;
+  extractionPlan: AutomationExtractionPlan;
+  browserDiagnostic: AutomationBrowserDiagnosticRun | null;
+  summary: AutomationBrowserExecutableSpecDryRunSummary;
+  checks: AutomationBrowserExecutableSpecCheck[];
+  executableSpec: Record<string, unknown>;
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  runStarted: boolean;
+};
+
+export type AutomationBrowserDiagnosticJobCreateInput = {
+  authorized: boolean;
+  confirmCreate: boolean;
+  siteAnalysisId: string;
+  extractionPlanId: string;
+  browserDiagnosticRunId?: string | null;
+  networkObservationMode?: "metadata_only" | "same_origin_api_candidates";
+  artifactMode?: "none" | "screenshot_reference_only" | "diagnostic_json_reference";
+  note?: string | null;
+};
+
+export type AutomationBrowserDiagnosticJob = {
+  id: string;
+  projectId: string;
+  siteAnalysisId: string;
+  extractionPlanId: string;
+  browserDiagnosticRunId: string;
+  requestedUrl: string;
+  finalUrl: string;
+  status: string;
+  authorizationConfirmed: boolean;
+  runner: string;
+  executionMode: string;
+  selectorScope: Array<Record<string, unknown>>;
+  waitPolicy: Array<Record<string, unknown>>;
+  networkObservationPolicy: Record<string, unknown>;
+  artifactPolicy: Record<string, unknown>;
+  safetyFlags: string[];
+  dryRunSummary: Record<string, unknown>;
+  executableSpecSnapshot: Record<string, unknown>;
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  createdAt: string;
+  updatedAt: string;
+  cancelledAt: string | null;
+  runStarted: boolean;
+};
+
+export type AutomationBrowserDiagnosticJobList = {
+  items: AutomationBrowserDiagnosticJob[];
+  total: number;
+  runStarted: boolean;
+};
+
+export type AutomationBrowserExecutorContractInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  artifactRetentionDays?: number;
+  maxPreviewRows?: number;
+  includeScreenshot?: boolean;
+  includeTraceSummary?: boolean;
+  includeHarSummary?: boolean;
+  note?: string | null;
+};
+
+export type AutomationBrowserExecutorReadinessCheck = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+export type AutomationBrowserExecutorContract = {
+  job: AutomationBrowserDiagnosticJob;
+  adapter: Record<string, unknown>;
+  runtimeIsolation: Record<string, unknown>;
+  artifactRetentionPolicy: Record<string, unknown>;
+  allowedActions: string[];
+  deniedActions: string[];
+  readinessChecks: AutomationBrowserExecutorReadinessCheck[];
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  runStarted: boolean;
+  executionStarted: boolean;
+};
+
+export type AutomationBrowserLocalRunnerInput = {
+  authorized: boolean;
+  confirmExecute: boolean;
+  runMode?: "diagnostic_snapshot_replay" | "ephemeral_browser_harness_probe";
+  confirmRealBrowserProbe?: boolean;
+  browserHarnessBinary?: string;
+  probeTimeoutSeconds?: number;
+  artifactRetentionDays?: number;
+  maxPreviewRows?: number;
+  includeScreenshot?: boolean;
+  includeTraceSummary?: boolean;
+  includeHarSummary?: boolean;
+  note?: string | null;
+};
+
+export type AutomationBrowserLocalRunnerResult = {
+  id: string;
+  job: AutomationBrowserDiagnosticJob;
+  status: string;
+  runner: string;
+  runMode: string;
+  contractSnapshot: Record<string, unknown>;
+  artifactManifest: Record<string, unknown>;
+  selectorResults: Array<Record<string, unknown>>;
+  selectorEvaluations: Array<Record<string, unknown>>;
+  previewRows: Array<Record<string, unknown>>;
+  networkObservationSummary: Record<string, unknown>;
+  networkMetadataSummary: Record<string, unknown>;
+  errorSummary: Record<string, unknown>;
+  promotionGate: Record<string, unknown>;
+  redactionSummary: Record<string, unknown>;
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  createdAt: string;
+  updatedAt: string;
+  startedAt: string;
+  finishedAt: string;
+  executionStarted: boolean;
+  browserStarted: boolean;
+  filesWritten: boolean;
+  collectionResourcesWritten: boolean;
+};
+
+export type AutomationBrowserLocalRunnerResultList = {
+  items: AutomationBrowserLocalRunnerResult[];
+  total: number;
+  browserStarted: boolean;
+  filesWritten: boolean;
+  collectionResourcesWritten: boolean;
 };
 
 export type AutomationProductCandidate = {

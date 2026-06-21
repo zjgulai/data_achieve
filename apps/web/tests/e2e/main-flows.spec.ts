@@ -1090,7 +1090,32 @@ test.describe("MVP workspace routes", () => {
 
     await page.getByRole("button", { name: "保存只读自动化方案" }).click();
     await expect(page.getByText(/已保存 Browser Automation:/)).toBeVisible();
-    await expect(page.getByText("未启动采集运行。")).toBeVisible();
+    await expect(page.getByText("浏览器诊断资产")).toBeVisible();
+    await expect(page.getByText("只读资产").first()).toBeVisible();
+    await expect(page.getByText("执行规格：").first()).toBeVisible();
+    await page.getByRole("button", { name: "校验执行规格" }).click();
+    await expect(page.getByText("规格校验：需复核")).toBeVisible();
+    await expect(page.getByText("未启动浏览器运行，未允许写入。")).toBeVisible();
+    await page.getByRole("button", { name: "创建浏览器诊断任务" }).click();
+    await expect(page.getByText("浏览器诊断任务", { exact: true })).toBeVisible();
+    await expect(page.getByText("已审核，等待人工执行")).toBeVisible();
+    await expect(page.getByText("任务已创建为只读资产，执行器尚未接入。")).toBeVisible();
+    await page.getByRole("button", { name: "生成执行器合同" }).click();
+    await expect(page.getByText("执行器合同", { exact: true })).toBeVisible();
+    await expect(page.getByText("browser_harness_read_only_local")).toBeVisible();
+    await expect(page.getByText("local_ephemeral_browser_context")).toBeVisible();
+    await page.getByRole("button", { name: "生成本地回放证据" }).click();
+    await expect(page.getByText("本地回放证据", { exact: true })).toBeVisible();
+    await expect(page.getByText("diagnostic_snapshot_replay")).toBeVisible();
+    await expect(page.getByText("未启动真实浏览器", { exact: true })).toBeVisible();
+    await expect(page.getByText("Dynamic Product Grid").first()).toBeVisible();
+    await page.getByRole("button", { name: "运行本机浏览器探测" }).click();
+    await expect(page.getByText("ephemeral_browser_harness_probe")).toBeVisible();
+    await expect(page.getByText("已完成浏览器只读探测", { exact: true })).toBeVisible();
+    await expect(page.getByText("未写文件", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "取消任务" }).click();
+    await expect(page.getByText("已取消")).toBeVisible();
+    await expect(page.getByText("未启动采集运行。").first()).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
   });
 

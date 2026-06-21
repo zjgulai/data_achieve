@@ -1,6 +1,6 @@
 # Data Intelligence Hub
 
-Data Intelligence Hub 是一个以可追溯情报为核心的数据采集与分析平台。
+Data Intelligence Hub 是一个以授权、证据和可复用 Dataset 为核心的平台化数据采集工作台。
 
 核心链路：
 
@@ -11,6 +11,7 @@ RawRecord -> EntitySnapshot -> Signal -> Intelligence -> Evidence -> Report / Al
 ## 文档入口
 
 - 产品 PRD：[docs/product/product-prd-data-intelligence-hub-stable.md](docs/product/product-prd-data-intelligence-hub-stable.md)
+- PRD2 平台采集执行计划：[docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md](docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md)
 - 技术架构：[docs/architecture/architecture-data-intelligence-hub-stable.md](docs/architecture/architecture-data-intelligence-hub-stable.md)
 - API 合同：[docs/api/api-contract-data-intelligence-hub-stable.md](docs/api/api-contract-data-intelligence-hub-stable.md)
 - 开发计划草案：[drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md](drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md)

@@ -86,7 +86,9 @@ class AutomationCleaningRuleInput(BaseModel):
     operation: Literal[
         "strip_text",
         "parse_decimal",
+        "parse_integer",
         "normalize_url",
+        "normalize_tags",
         "uppercase",
         "normalize_availability",
         "fill_default",
@@ -349,6 +351,114 @@ class AutomationPlatformPackageListResponse(BaseModel):
     run_started: bool
 
 
+class AutomationCapabilityProbeBackendCandidateResponse(BaseModel):
+    backend_id: str
+    label: str
+    priority: int
+    status: Literal[
+        "available",
+        "missing_tool",
+        "not_configured",
+        "requires_login",
+        "requires_proxy",
+        "manual_review",
+        "blocked",
+        "unknown",
+    ]
+    credential_mode: Literal[
+        "none",
+        "token",
+        "cookie",
+        "browser_profile",
+        "manual_export",
+        "unknown",
+    ]
+    requires_login: bool
+    requires_proxy: bool
+    evidence_level: Literal[
+        "L0-unverified",
+        "L1-repo-or-runtime",
+        "L2-fixture-or-dry-run",
+        "L3-production-read-only",
+        "L4-authorized-live",
+    ]
+    notes: list[str]
+
+
+class AutomationAgentReachChannelProbeResponse(BaseModel):
+    schema_version: Literal["agent_reach_channel_probe.v1"] = (
+        "agent_reach_channel_probe.v1"
+    )
+    installed: bool
+    command_path: str | None
+    doctor_status: Literal[
+        "available",
+        "missing_tool",
+        "not_configured",
+        "requires_login",
+        "requires_proxy",
+        "blocked",
+        "unknown",
+    ]
+    active_backend: str | None
+    requires_login: bool
+    requires_proxy: bool
+    blocked_reason: str | None
+    platforms: list[str]
+    read_invoked: bool
+    search_invoked: bool
+    raw_summary: dict[str, Any]
+
+
+class AutomationCapabilityProbeResponse(BaseModel):
+    schema_version: Literal["capability_probe.v1"] = "capability_probe.v1"
+    platform_id: str
+    platform_label: str
+    generated_at: str
+    doctor_status: Literal[
+        "available",
+        "missing_tool",
+        "not_configured",
+        "requires_login",
+        "requires_proxy",
+        "manual_review",
+        "blocked",
+        "unknown",
+    ]
+    credential_mode: Literal[
+        "none",
+        "token",
+        "cookie",
+        "browser_profile",
+        "manual_export",
+        "unknown",
+    ]
+    execution_boundary: Literal[
+        "executable",
+        "read_only_probe",
+        "import_only",
+        "sop_only",
+        "blocked",
+    ]
+    risk_level: Literal["low", "medium", "high"]
+    backend_candidates: list[AutomationCapabilityProbeBackendCandidateResponse]
+    agent_reach: AutomationAgentReachChannelProbeResponse | None = None
+    allowed_outputs: list[str]
+    forbidden_actions: list[str]
+    next_actions: list[str]
+    run_started: bool
+    collection_resources_written: bool
+
+
+class AutomationCapabilityProbeListResponse(BaseModel):
+    schema_version: Literal["capability_probe_list.v1"] = "capability_probe_list.v1"
+    generated_at: str
+    items: list[AutomationCapabilityProbeResponse]
+    total: int
+    run_started: bool
+    collection_resources_written: bool
+
+
 class AutomationExtractionPlanCreateRequest(BaseModel):
     authorized: bool
     name: str | None = Field(default=None, max_length=200)
@@ -404,8 +514,89 @@ class AutomationBrowserAutomationPlanRequest(BaseModel):
     risk_level: Literal["low", "medium", "high"] = "medium"
     field_contract: AutomationBrowserFieldContractRequest
     browser_diagnostic: AutomationBrowserDiagnosticEvidenceRequest
+    diagnostic_payload: dict[str, Any] = Field(default_factory=dict)
     api_candidates: list[str] = Field(default_factory=list, max_length=20)
     guardrails: list[str] = Field(default_factory=list, max_length=20)
+
+
+class AutomationBrowserDiagnosticRunResponse(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    site_analysis_id: uuid.UUID | None
+    requested_url: str
+    final_url: str
+    status: str
+    authorization_confirmed: bool
+    schema_version: str
+    recommended_path: str
+    confidence: float
+    field_stability: str | None
+    evidence_source: str
+    screenshot_path: str | None
+    run_policy: dict[str, Any]
+    page_summary: dict[str, Any]
+    network_summary: dict[str, Any]
+    accessibility_summary: dict[str, Any]
+    risk_flags: list[dict[str, Any]]
+    extraction_strategy: dict[str, Any]
+    blocked_reasons: list[str]
+    created_at: datetime
+    run_started: bool = False
+
+
+class AutomationBrowserDiagnosticRunListResponse(BaseModel):
+    items: list[AutomationBrowserDiagnosticRunResponse]
+    total: int
+    run_started: bool = False
+
+
+class AutomationBrowserExecutableSpecDryRunRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    site_analysis_id: uuid.UUID
+    extraction_plan_id: uuid.UUID
+    browser_diagnostic_run_id: uuid.UUID | None = None
+
+
+class AutomationBrowserDiagnosticJobCreateRequest(BaseModel):
+    authorized: bool
+    confirm_create: bool
+    site_analysis_id: uuid.UUID
+    extraction_plan_id: uuid.UUID
+    browser_diagnostic_run_id: uuid.UUID | None = None
+    network_observation_mode: Literal[
+        "metadata_only",
+        "same_origin_api_candidates",
+    ] = "metadata_only"
+    artifact_mode: Literal[
+        "none",
+        "screenshot_reference_only",
+        "diagnostic_json_reference",
+    ] = "screenshot_reference_only"
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserExecutableSpecCheckResponse(BaseModel):
+    key: str
+    label: str
+    status: Literal["passed", "review", "blocked"]
+    message: str
+    evidence: dict[str, Any]
+
+
+class AutomationBrowserExecutableSpecDryRunSummaryResponse(BaseModel):
+    status: Literal["ready", "review", "blocked"]
+    total_checks: int
+    passed_checks: int
+    review_checks: int
+    blocked_checks: int
+    selector_count: int
+    wait_condition_count: int
+    api_candidate_count: int
+    manual_review_required: bool
+    can_dry_run_after_review: bool
+    write_allowed: bool = False
+    run_started: bool = False
 
 
 class AutomationExtractionPlanResponse(BaseModel):
@@ -448,9 +639,143 @@ class AutomationSiteAnalysisListResponse(BaseModel):
 class AutomationBrowserAutomationPlanResponse(BaseModel):
     site_analysis: AutomationSiteAnalysisHistoryItemResponse
     extraction_plan: AutomationExtractionPlanResponse
+    browser_diagnostic: AutomationBrowserDiagnosticRunResponse
     site_analysis_created: bool
     extraction_plan_created: bool
+    browser_diagnostic_created: bool
     run_started: bool = False
+
+
+class AutomationBrowserExecutableSpecDryRunResponse(BaseModel):
+    site_analysis: AutomationSiteAnalysisHistoryItemResponse
+    extraction_plan: AutomationExtractionPlanResponse
+    browser_diagnostic: AutomationBrowserDiagnosticRunResponse | None
+    summary: AutomationBrowserExecutableSpecDryRunSummaryResponse
+    checks: list[AutomationBrowserExecutableSpecCheckResponse]
+    executable_spec: dict[str, Any]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    run_started: bool = False
+
+
+class AutomationBrowserDiagnosticJobResponse(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    site_analysis_id: uuid.UUID
+    extraction_plan_id: uuid.UUID
+    browser_diagnostic_run_id: uuid.UUID
+    requested_url: str
+    final_url: str
+    status: str
+    authorization_confirmed: bool
+    runner: str
+    execution_mode: str
+    selector_scope: list[dict[str, Any]]
+    wait_policy: list[dict[str, Any]]
+    network_observation_policy: dict[str, Any]
+    artifact_policy: dict[str, Any]
+    safety_flags: list[str]
+    dry_run_summary: dict[str, Any]
+    executable_spec_snapshot: dict[str, Any]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    created_at: datetime
+    updated_at: datetime
+    cancelled_at: datetime | None
+    run_started: bool = False
+
+
+class AutomationBrowserDiagnosticJobListResponse(BaseModel):
+    items: list[AutomationBrowserDiagnosticJobResponse]
+    total: int
+    run_started: bool = False
+
+
+class AutomationBrowserExecutorContractRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    artifact_retention_days: int = Field(default=7, ge=1, le=30)
+    max_preview_rows: int = Field(default=20, ge=1, le=100)
+    include_screenshot: bool = True
+    include_trace_summary: bool = False
+    include_har_summary: bool = True
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserExecutorReadinessCheckResponse(BaseModel):
+    key: str
+    label: str
+    status: Literal["passed", "review", "blocked"]
+    message: str
+    evidence: dict[str, Any]
+
+
+class AutomationBrowserExecutorContractResponse(BaseModel):
+    job: AutomationBrowserDiagnosticJobResponse
+    adapter: dict[str, Any]
+    runtime_isolation: dict[str, Any]
+    artifact_retention_policy: dict[str, Any]
+    allowed_actions: list[str]
+    denied_actions: list[str]
+    readiness_checks: list[AutomationBrowserExecutorReadinessCheckResponse]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    run_started: bool = False
+    execution_started: bool = False
+
+
+class AutomationBrowserLocalRunnerRequest(BaseModel):
+    authorized: bool
+    confirm_execute: bool
+    run_mode: Literal[
+        "diagnostic_snapshot_replay",
+        "ephemeral_browser_harness_probe",
+    ] = "diagnostic_snapshot_replay"
+    confirm_real_browser_probe: bool = False
+    browser_harness_binary: str | None = Field(default=None, max_length=500)
+    probe_timeout_seconds: int = Field(default=15, ge=3, le=45)
+    artifact_retention_days: int = Field(default=7, ge=1, le=30)
+    max_preview_rows: int = Field(default=20, ge=1, le=100)
+    include_screenshot: bool = True
+    include_trace_summary: bool = False
+    include_har_summary: bool = True
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserLocalRunnerResultResponse(BaseModel):
+    id: uuid.UUID
+    job: AutomationBrowserDiagnosticJobResponse
+    status: str
+    runner: str
+    run_mode: str
+    contract_snapshot: dict[str, Any]
+    artifact_manifest: dict[str, Any]
+    selector_results: list[dict[str, Any]]
+    selector_evaluations: list[dict[str, Any]]
+    preview_rows: list[dict[str, Any]]
+    network_observation_summary: dict[str, Any]
+    network_metadata_summary: dict[str, Any]
+    error_summary: dict[str, Any]
+    promotion_gate: dict[str, Any]
+    redaction_summary: dict[str, Any]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    created_at: datetime
+    updated_at: datetime
+    started_at: datetime
+    finished_at: datetime
+    execution_started: bool
+    browser_started: bool
+    files_written: bool
+    collection_resources_written: bool
+
+
+class AutomationBrowserLocalRunnerResultListResponse(BaseModel):
+    items: list[AutomationBrowserLocalRunnerResultResponse]
+    total: int
+    browser_started: bool = False
+    files_written: bool = False
+    collection_resources_written: bool = False
 
 
 class AutomationSiteAnalysisDetailResponse(BaseModel):

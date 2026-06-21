@@ -1,50 +1,132 @@
 ---
-title: Data Intelligence Hub 整合产品 PRD
+title: Data Intelligence Hub PRD 2.0 平台化采集工作台
 doc_type: prd
 module: product
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-11
-updated: 2026-06-19
+updated: 2026-06-21
 owner: self
 source: human+ai
 ---
 
-# Data Intelligence Hub — 整合产品 PRD v2.0
+# Data Intelligence Hub PRD 2.0 — 平台化采集工作台
 
-> **状态**：已冻结 · **版本日期**：2026-06-11
+> **当前状态**：PRD 2.0 当前源头版本 · **版本日期**：2026-06-21
 >
-> 本 PRD 由两份源 PRD 交叉审计后整合而来，融合了四轮全维度调研的用户决策，是一份面向 AI 可执行开发的产品规格书。
+> 本版本将早期“跨平台数据采集情报平台”收敛为“平台化数据采集工作台”。旧 PRD 的数据闭环、证据链、Collector、Report、Alert 等详细规格仍作为历史详细规格保留；本文件顶部的 PRD 2.0 控制面用于指导下一阶段平台采集实现、优先级和验收边界。
 
-> **2026-06-19 当前执行附录**：本 PRD 的历史设计目标仍保留，但当前产品已经从“跨平台数据采集情报平台”推进为“自动化数据采集工作台”。最新已验证主链路是：授权 URL/API/导入样本 -> 结构解析 -> 字段筛选 -> 采集计划 -> 清洗计划试跑 -> Dataset 保存/导出 -> 漂移监控/告警/报告。生产部署 commit `d9b2a5e` 已验证 3 个可执行平台包：独立站商品采集、GitHub API-first Topic Radar、公开网页结构预检。
->
-> **当前增量状态**：GitHub API-first Topic Radar 已验证从 topic 采集运行 -> `github_tool_radar` DatasetVersion -> 导出 -> 漂移快照 -> 工具雷达报告 -> Report 中心资产保存的闭环。浏览器结构预检已新增采集路径建议，能输出推荐路径、适配度、字段稳定性、判断依据、下一步和清洗建议。Report 资产保存只写 `reports` 与 report audit event，不启动采集、不创建通知、不发送邮件；结构预检只读 smoke 不启动采集运行。
+## PRD 2.0 当前控制面
+
+### 事实基线
+
+| 事项 | 当前事实 | 证据边界 |
+|---|---|---|
+| 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；本轮没有做业务代码修改 |
+| 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码和 API contract 可见 |
+| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；本轮只做生产 health 只读复核 |
+| GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产 | 历史验收已记录；本轮未重新跑生产 GitHub 采集 |
+| Browser diagnostic | 本地已有 `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun`、`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 第一切片 | 当前仍是本地/受控诊断链路，不等于生产浏览器执行器已上线 |
+| 生产 health | 2026-06-21 只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`scheduler_enabled=true` | 只证明服务健康，不证明本轮重新验收采集全链路 |
+| 外部能力环境 | 本机 `browser-harness` 存在，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
+
+### 本轮修订目的
+
+1. 把 PRD 的中心从“多域情报平台”调整为“平台化采集工作台”。
+2. 把 Agent Reach 内化为平台能力路由和健康检查思路，而不是一次性扩成多个生产 collector。
+3. 把 browser-harness 内化为浏览器只读证据生成器，而不是默认无人值守抓取器。
+4. 明确哪些平台已打通、哪些只能做 API/import/SOP，避免把方法卡、工具可读性或本地 spike 误写成生产采集能力。
+5. 将下一阶段执行计划落到独立 workflow 文档：[PRD2 平台采集执行计划](../workflows/workflow-prd2-platform-collection-execution-plan-stable.md)。
+
+## PRD 2.0 产品规格摘要
+
+### 产品定位
+
+Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中心的平台化采集工作台。它帮助运营、数据、增长、市场和技术人员判断目标平台适合 API、静态解析、浏览器诊断、RPA、第三方工具还是人工导入，并把可执行路径沉淀为可追溯的 Dataset、Report、Alert 和审计证据。
+
+### 主链路
+
+```text
+目标平台 / URL / API / 导入样本
+-> 授权与合规确认
+-> 平台能力探测
+-> 结构解析 / 浏览器只读诊断
+-> 字段候选与字段稳定性评分
+-> 采集计划 / 清洗计划
+-> Source / Task / TaskRun / RawRecord
+-> DatasetVersion / Export / Drift
+-> Report / Alert / Notification / Evidence
+```
+
+### 核心产品对象
+
+| 对象 | PRD 2.0 角色 | 下一阶段变化 |
+|---|---|---|
+| `PlatformPackage` | 平台级采集路径合同 | 从静态平台包扩展为可版本化、可解释、可验收的策略对象 |
+| `CapabilityProbe` | 平台能力和后端候选体检资产 | 新增 Agent Reach 风格的 doctor/result contract，先作为草案资产 |
+| `BrowserDiagnosticRun/Job/JobRun` | 浏览器只读证据资产 | 扩展 selector 求值、network metadata、artifact retention 和 promotion gate |
+| `ExternalToolSnapshot` | 外部工具读/搜结果导入资产 | 用于 Web/RSS/GitHub/Video 等低风险渠道的人工审核导入 |
+| `DatasetVersion` | 结构化交付资产 | 继续作为采集结果进入导出、漂移、报告的中心 |
+| `Evidence` | 事实链路绑定 | 所有报告、告警和推荐必须可回溯到采集或诊断证据 |
+
+## 能力融合与平台优先级
+
+### 三者融合方式
+
+| 系统 | 应内化的能力 | 不应承担的职责 |
+|---|---|---|
+| Data Intelligence Hub | 授权、字段、采集、清洗、Dataset、报告、告警、审计闭环 | 跟踪所有平台工具变化、直接绕过平台风控 |
+| Agent Reach | 平台后端候选、安装/诊断/doctor、read/search 可用性路由 | 长期数据资产、字段版本、生产写入、合规判断 |
+| browser-harness | 真实浏览器只读证据：page info、selector、network metadata、screenshot/trace/HAR 摘要 | 登录绕过、cookie 导出、无人值守社媒抓取、直接创建 Dataset |
+
+### 平台采集优先级
+
+| 优先级 | 平台/能力 | 原因 | 执行边界 |
+|---|---|---|---|
+| P0 | GitHub API-first 深化 | 已有官方 API、topic/repo collector、Dataset/Report 闭环，是最稳的平台内化样板 | 官方 API 为事实源；Agent Reach/gh CLI 只做 router/doctor 或补充检索 |
+| P0 | browser-harness 有界证据 | 当前浏览器诊断已经资产化，下一步最需要补 selector 和 network 证据 | 默认 `collection_resources_written=false`；截图/trace/HAR 文件写入必须先完成 retention 方案 |
+| P0 | 独立站/Shopify-style 深化 | 已有 `ecommerce_product_discovery` 和 `ecommerce_product_page`，可形成业务数据集 | 只处理授权公开页面；不处理登录墙、验证码或反检测 |
+| P1 | Public Web/RSS/Docs | 低风险、高复用，适合培训内容、竞品官网和文档更新监控 | 公开 URL/feed；保留来源、时间、final URL 和摘要，不覆盖原始事实 |
+| P1 | YouTube/B 站公开视频 metadata/transcript import | 适合内容趋势和培训资料，但不应下载媒体资产 | 先做 metadata/transcript import；版权和字幕来源进入审计字段 |
+| P1/P2 | V2EX/公开社区趋势 | 公开社区聚合可做趋势数据，不做人级画像 | 聚合主题、链接、时间、回复数；不采个人画像 |
+| P2 | Amazon/Marketplace | 商业价值高，但页面抓取风险高 | 官方 API、授权导出或人工导入优先；browser-harness 只做公开结构评估 |
+| P2 | Reddit 聚合趋势 | Agent Reach 可探测，但登录态/403 风险明显 | 先 SOP/import-only 或明确授权 read-only；不采个人级画像 |
+| P2 | RPA/no-code/内部后台 | 能服务真实业务流程，但授权、账号和留痕要求高 | 先 workflow/import 连接器；不复用主账号 cookie 做无人值守采集 |
+| P3 | Twitter/X、小红书、Instagram、LinkedIn | 登录态、个人数据、平台政策和风控风险高 | SOP/import-only；不做 cookie 导出、登录绕过、滚动批采或反检测 |
+
+## 证据与验收边界
+
+| 证据等级 | 含义 | 当前可用场景 |
+|---|---|---|
+| `L0-unverified` | 只有推断或外部项目声称 | 新平台假设、未安装工具 |
+| `L1-repo-or-runtime` | 本地代码、公开仓库、公开文档或本机命令可见 | PRD/架构/API contract、本机 `browser-harness --doctor` |
+| `L2-local-test-or-dry-run` | 本地测试、fixture、fake CLI、dry-run 或 no-run 合同通过 | BrowserDiagnosticJob/JobRun 本地切片 |
+| `L3-production-read-only` | 生产只读观测，无写入 | `/api/health`、只读 endpoint smoke |
+| `L4-authorized-live` | 明确授权且有真实写入/运行日志，并完成 cleanup | Source/Task/Dataset/Report 等生产 E2E |
+
+本 PRD2.0 的强制边界：
+
+1. `doctor` 或 `probe` 不等于采集成功。
+2. browser-harness 能打开页面不等于允许持续采集。
+3. 方法卡、训练源、外部工具输出不等于正式平台已打通。
+4. `Report` 资产保存不等于通知或邮件已发送。
+5. `production health ok` 不等于本轮平台链路重新验收。
+6. 任何 provider call、生产写入、邮件发送、登录态复用、cookie 导出、调度变更都必须有显式授权和可清理审计记录。
 
 ---
 
 ## 目录
 
-1. [调研决策汇总](#1-调研决策汇总)
-2. [产品定义](#2-产品定义)
-3. [核心用户故事](#3-核心用户故事)
-4. [信息架构与导航](#4-信息架构与导航)
-5. [核心对象与状态机](#5-核心对象与状态机)
-6. [技术架构](#6-技术架构)
-7. [数据库设计](#7-数据库设计)
-8. [Collector 采集引擎](#8-collector-采集引擎)
-9. [Signal 信号检测引擎](#9-signal-信号检测引擎)
-10. [Intelligence 情报引擎](#10-intelligence-情报引擎)
-11. [Report 日报系统](#11-report-日报系统)
-12. [Alert 预警系统](#12-alert-预警系统)
-13. [API 合约](#13-api-合约)
-14. [前端页面规格](#14-前端页面规格)
-15. [后端服务流程](#15-后端服务流程)
-16. [LLM 使用边界](#16-llm-使用边界)
-17. [部署方案](#17-部署方案)
-18. [开发计划](#18-开发计划)
-19. [验收标准](#19-验收标准)
-20. [风险控制](#20-风险控制)
-21. [附录：源 PRD 差异整合说明](#21-附录源-prd-差异整合说明)
+- [PRD 2.0 当前控制面](#prd-20-当前控制面)
+- [PRD 2.0 产品规格摘要](#prd-20-产品规格摘要)
+- [能力融合与平台优先级](#能力融合与平台优先级)
+- [证据与验收边界](#证据与验收边界)
+- [历史详细规格：调研决策汇总](#1-调研决策汇总)
+- [历史详细规格：产品定义](#2-产品定义)
+- [历史详细规格：核心用户故事](#3-核心用户故事)
+- [历史详细规格：信息架构与导航](#4-信息架构与导航)
+- [历史详细规格：核心对象与状态机](#5-核心对象与状态机)
+- [历史详细规格：开发计划与验收标准](#18-开发计划)
 
 ---
 
@@ -55,7 +137,7 @@ source: human+ai
 | 维度 | 决策 | 理由 |
 |---|---|---|
 | 目标用户 | 全场景覆盖（跨境 / 技术 / 社媒 / 竞品） | 四域业务场景均需覆盖 |
-| MVP 策略 | 多域浅覆盖——四域各做一个核心 Collector | 先验证多域数据链路的可行性 |
+| PRD 2.0 策略 | 平台包深挖 + 能力探测 + 证据资产 | 先把低风险平台做成可复用闭环，再扩到 API/import/SOP 平台 |
 | 后端技术栈 | Python 3.12 + FastAPI | 数据处理采集生态成熟，自动 OpenAPI |
 | 数据库 | PostgreSQL（JSONB 支持半结构化数据） | 功能完整，JSONB 列完美匹配采集数据 |
 | 任务调度 | APScheduler（进程内，无外部依赖） | 小规模日采集量 <1 万条，Celery/Redis 过重 |
@@ -65,8 +147,8 @@ source: human+ai
 | 数据规模 | 小型（<20 数据源，日采集 <1 万条） | 单机 PostgreSQL + 进程内调度可满足 |
 | 用户认证 | 邮箱 + 密码登录 | MVP 最简方案 |
 | 通知渠道 | 站内通知 + 邮件（SMTP） | 日报和预警的基础触达方式 |
-| MVP Collector | GitHub Repo / GitHub Topic / 通用网页 / 手动 JSON | 四域各一个 Collector |
-| 核心关注模块 | 采集 + 信号检测 + 情报 + Dashboard + 日报 + 预警 | 全链路闭环优先 |
+| 稳定 Collector | GitHub Repo / GitHub Topic / 通用网页 / 手动 JSON / 独立站商品发现 / 独立站商品页 | 当前实现和 API contract 可见 |
+| 核心关注模块 | 授权与合规确认 + 平台包 + 能力探测 + 浏览器证据 + Dataset + 导出 + 漂移 + 报告/告警 | 可追溯数据资产闭环优先 |
 
 ---
 
@@ -74,57 +156,54 @@ source: human+ai
 
 ### 2.1 产品名称
 
-**Data Intelligence Hub** — 跨平台数据采集情报平台
+**Data Intelligence Hub** — 平台化数据采集工作台
 
 ### 2.2 一句话定位
 
-一个以"可追溯情报"为核心的跨域（开源/网页/电商/社媒）数据采集与分析平台，帮助运营、技术和市场人员持续发现变化、生成证据可溯的业务洞察。
+一个以授权、证据和可复用 Dataset 为核心的平台化数据采集工作台，帮助用户判断目标平台应该走 API、静态解析、浏览器诊断、RPA、第三方工具还是人工导入，并把可执行路径沉淀为可审计的数据资产。
 
 ### 2.3 产品目标
 
-构建面向跨境电商、海外社媒、开源生态和竞品监控的情报平台。平台通过**多源数据采集 → 结构化清洗 → 确定信号检测 → 证据绑定情报生成 → 日报/预警交付**的完整闭环，帮助用户持续发现市场机会、竞品动作、商品趋势、社媒热点和技术变化。
+构建面向跨境电商、开源生态、公开网页、内容平台、社区趋势和授权 marketplace 数据的采集工作台。平台通过**授权确认 → 能力探测 → 结构诊断 → 采集计划 → 清洗计划 → Dataset → 漂移/导出/报告/告警**的闭环，帮助用户把一次性采集任务变成可重复、可验收、可交付的数据流程。
 
 ### 2.4 产品边界
 
-本平台**不是**单纯爬虫系统，**不是**通用 BI 工具，而是以"情报事件 + 证据链"为中心的数据采集与分析系统。
+本平台**不是**单纯爬虫系统，**不是**通用 BI 工具，**不是**反检测或登录绕过工具，而是以"授权路径 + 结构化数据资产 + 证据链"为中心的数据采集与分析系统。
 
-**MVP 能力矩阵：**
+**PRD 2.0 能力矩阵：**
 
-| 能力 | MVP | 说明 |
+| 能力 | 当前状态 | 说明 |
 |---|---|---|
-| 用户登录 | ✅ | 邮箱 + 密码 |
-| Workspace | ✅ | 单 workspace，简化隔离 |
-| Project | ✅ | 按业务主题创建监控项目 |
-| Source | ✅ | 四类数据源 |
-| Collector | ✅ | GitHub Repo / GitHub Topic / 通用网页 / 手动 JSON |
-| Task | ✅ | 手动运行 + APScheduler 定时 |
-| Raw Record | ✅ | 原始数据保存，含截图 URL |
-| Entity | ✅ | 统一结构化实体 |
-| Entity Snapshot | ✅ | 每次采集生成快照 |
-| Signal | ✅ | 确定性规则检测变化 |
-| Intelligence | ✅ | 证据绑定情报卡片 |
-| Dashboard | ✅ | 今日情报 + 数据质量 |
-| Report | ✅ | 日报生成 |
-| Alert | ✅ | 基础预警规则 |
-| 站内通知 | ✅ | 通知中心 |
-| 审计抽屉 | ✅ | 情报详情的证据溯源视图 |
-| Agent Research | ❌ | V1.5 |
-| 计费系统 | ❌ | V2 |
-| 社媒页面抓取 | ❌ | V2，高风险合规 |
-| 企业多租户 | ❌ | V2 |
-| 周报/月报 | ❌ | V2 |
+| 用户登录 / Workspace / Project | 已有 | 邮箱密码、单 workspace 和项目管理仍是 MVP 边界 |
+| Source / Task / TaskRun | 已有 | 采集源、采集任务和运行记录是正式写入链路 |
+| 稳定 Collector | 已有 | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` |
+| Platform Package | 已有第一版 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`；下一步做能力探测和版本化 |
+| SiteAnalysis / ExtractionPlan | 已有 | 公开 URL 分析、字段候选、采集计划和浏览器诊断导入 |
+| Browser diagnostic | 本地增强中 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`；不是生产无人值守采集 |
+| CleaningPlan | 已有 | 清洗规则草案、试跑和 DatasetVersion 追踪 |
+| Dataset / DatasetVersion | 已有 | 结构化交付资产，可从商品采集和 GitHub Tool Radar 进入 |
+| Dataset Export | 已有 | CSV/JSON/JSONL 导出，必须记录审计和 checksum |
+| Drift / Alert / Notification | 已有基础 | 漂移、告警规则、站内通知和邮件仍需按授权分层 |
+| Report Asset | 已有基础 | 工具雷达报告可保存为 Report 资产；保存不等于通知或邮件发送 |
+| CapabilityProbe | 待实现 | Agent Reach 风格的能力体检和后端候选路由，先做 no-read/no-write probe |
+| ExternalToolSnapshot | 待实现 | 外部工具 read/search 输出的人工审核导入资产 |
+| Marketplace API/import | 待实现 | Amazon 等优先 API、授权导出或人工导入 |
+| Social SOP/import-only | 待实现 | Twitter/X、小红书、Instagram、LinkedIn 等默认不做自动页面抓取 |
+| 企业多租户 / 计费 | 暂缓 | 非下一阶段平台采集优先级 |
 
 ### 2.5 核心设计原则
 
-**原则一：MVP 做"可闭环平台"，不做"全能平台"。**
+**原则一：先把低风险平台做成可验收闭环，不追求平台数量。**
 
-**原则二：全链路可追溯。** Intelligence → Signal → EntitySnapshot → RawRecord，每一步都可反向溯源。这是平台的核心灵魂。
+**原则二：全链路可追溯。** Report / Alert / Dataset → TaskRun / RawRecord / BrowserDiagnosticJobRun / ExternalToolSnapshot，每一步都可反向溯源。
 
-**原则三：AI 不直接决定事实。** LLM 只能基于结构化数据和证据生成摘要、解释和报告文本，禁止生成不存在的数据、URL 或指标。
+**原则三：AI 和外部工具不直接决定事实。** LLM、Agent Reach、browser-harness 或其他工具只能生成候选、诊断或摘要；正式事实必须进入采集、导入、Dataset 和证据链。
 
-**原则四：先规则，后 AI。** Signal 检测用确定性代码逻辑，Intelligence 生成用规则聚合 + LLM 摘要，评分全由公式计算。
+**原则四：先 API/import，后浏览器；先只读证据，后采集写入。** 对 marketplace/social/登录态平台默认走官方 API、授权导出、人工导入或 SOP。
 
-**原则五：前后端通过 OpenAPI 契约并行开发。** 前端支持 mock data 模式。
+**原则五：证据等级写清楚。** `docs-only`、`local dry-run`、`production read-only`、`authorized production E2E` 必须分层表述。
+
+**原则六：前后端通过 OpenAPI 契约并行开发。** 前端支持 mock data 模式，但 mock green 不能替代真实 API 或生产验收。
 
 ---
 
@@ -145,6 +224,10 @@ source: human+ai
 ### 故事四：工程维护人员
 
 > 某个采集任务连续失败 3 次，系统生成了 `data_quality_anomaly` 信号。我在 Dashboard 看到任务健康度下降，进入 Task 详情看到错误日志，发现是目标网站加了 Cloudflare 防护。我调整了数据源配置，重新启用任务。
+
+### 故事五：平台采集负责人
+
+> 我拿到一个新的平台采集需求，先在 `/automation` 输入目标 URL、API 或导入样本。系统告诉我该平台当前推荐路径是官方 API、静态解析、浏览器只读诊断、RPA、第三方工具还是人工导入，并展示能力探测结果、字段稳定性、风险边界和下一步 To do。我只在证据和授权充分时创建 Source/Task 或保存 Dataset；高风险平台只生成 SOP 或导入模板。
 
 ---
 
