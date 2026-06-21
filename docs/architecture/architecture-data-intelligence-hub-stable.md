@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-19
+updated: 2026-06-21
 owner: self
 source: human+ai
 ---
@@ -80,14 +80,14 @@ flowchart LR
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
 5. GitHub Topic Radar 运行记录已可保存为 `github_tool_radar` DatasetVersion，并可生成工具雷达只读报告、漂移快照和 `report_type=github_tool_radar` 的 Report 中心资产。
-6. 截至 production HEAD `80f0566`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产和生产浏览器链路已完成发布；后续重点是授权生产写入 E2E、browser-harness 真实浏览器执行器、更多平台包真实采集深度与长期运行可靠性。
+6. 截至 production HEAD `e9ccb81`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产、生产浏览器链路和 GitHub API-first 深化字段合同已完成发布；后续重点是授权生产写入 E2E、browser-harness 真实浏览器执行器、更多平台包真实采集深度与长期运行可靠性。
 
 当前平台包矩阵：
 
 | id | 分类 | 默认入口 | 执行边界 | 当前状态 |
 |---|---|---|---|---|
 | `shopify-independent-ecommerce` | ecommerce | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset |
-| `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集 |
+| `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段合同 |
 | `public-page-structure-preflight` | browser_preflight | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
 
 ## 数据闭环
@@ -235,3 +235,15 @@ flowchart LR
 5. `/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`、`/automation`、`/datasets` 均返回 200。
 6. Demo 账号 authenticated read-only API smoke 通过，覆盖 session、dashboard、tasks、reports、alert events、notifications。
 7. 本轮未执行生产写入 E2E、未创建测试用户、未触发 provider call、未发送邮件或外部通知。
+
+截至 2026-06-21，production HEAD `e9ccb81` 已验证：
+
+1. 生产运行目录 `/opt/data-achieve-scrapy/app` 已通过 git bundle fast-forward 更新到 `e9ccb814899231d49be2f130ed0a9ee9599c93fc`。
+2. 生产 Alembic schema 仍为 `202606110023`；M3 GitHub API-first 深化未新增 migration。
+3. 生产健康检查返回 `status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`。
+4. `api`、`db`、`web`、`edge` compose 服务均为 healthy，外层 gateway reload 和 dry-run check 均通过。
+5. `/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`、`/automation`、`/datasets` 均返回 200。
+6. Demo 账号 authenticated read-only API smoke 通过，覆盖 session、dashboard、tasks、reports、alert events、notifications。
+7. Authenticated read-only `GET /api/automation/platform-packages/github-api-first` 确认 `field_schema.required` 包含 `license_spdx_id`、`default_branch`、`latest_release_tag`、`latest_release_published_at`、`pushed_at`。
+8. Cross-domain regression：`video.lute-tlz-dddd.top=200`、`mkt.lute-tlz-dddd.top=200`、`voc.lute-tlz-dddd.top=302`，跟随 redirect 后到登录页返回 200；`scrapy.lute-tlz-dddd.top/api/health=200`。
+9. 本轮未执行生产写入 E2E、未创建测试用户/Source/Task/Dataset/Report、未触发 provider call、未发送邮件或外部通知、未执行 scheduler mutation。

@@ -112,13 +112,13 @@ To do：
 
 To do：
 
-| ID | 任务 | 建议文件 | 完成条件 |
-|---|---|---|---|
-| M3-1 | 扩展 GitHub 字段 schema | collector/service/schema/tests | 字段包含 release、README 摘要、license、default branch、issue activity、commit freshness |
-| M3-2 | Dataset schema 版本化 | dataset service + API docs | `github_tool_radar` DatasetVersion 可标识 schema version 和字段来源 |
-| M3-3 | Report 增强 | report response + frontend | 报告能显示维护风险、安装方式、适用采集场景、不适用边界 |
-| M3-4 | Drift 规则增强 | drift service/tests | 支持 stars/forks/issues/release freshness/field missingness |
-| M3-5 | 生产授权 E2E 和 cleanup | `tmp/` 证据脚本 | 经授权后执行；创建的 Source/Task/Dataset/Report 全部可 dry-run 清点并清理 |
+| ID | 任务 | 当前状态 | 建议文件 | 完成条件 / 下一步 |
+|---|---|---|---|---|
+| M3-1 | 扩展 GitHub 字段 schema | partial_done | collector/service/schema/tests | license、default branch、latest release、pushed_at 已随 production HEAD `e9ccb81` 发布；下一步补 README 摘要、issue activity、commit freshness |
+| M3-2 | Dataset schema 版本化 | partial_done | dataset service + API docs | 字段来源和缺失摘要已有第一版；下一步让 `github_tool_radar` DatasetVersion 显式标识 schema version 和 per-field source |
+| M3-3 | Report 增强 | partial_done | report response + frontend | 报告已显示 license/release/default branch/pushed_at summary；下一步补维护风险、安装方式、适用采集场景、不适用边界 |
+| M3-4 | Drift 规则增强 | todo | drift service/tests | 支持 stars/forks/issues/release freshness/field missingness 分层输出 |
+| M3-5 | 生产授权 E2E 和 cleanup | local_and_l3_readonly_done | `tmp/` 证据脚本 | 本地门禁和 production read-only smoke 已完成；生产写入需单独授权，创建的 Source/Task/Dataset/Report 必须可 dry-run 清点并清理 |
 
 默认事实源：
 
@@ -232,9 +232,11 @@ bash scripts/verify-mvp.sh --with-db
 | P0 | M2-3 | 本机 real CLI 授权公开页只读 smoke | blocked_local_daemon | 已对 `https://example.com/` 生成 `tmp/browser-harness-readonly-smoke-20260621.json`；本机 daemon 未响应，`browser_started=false` |
 | P0 | M2-4 | artifact retention 方案 | done | 已新增 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md`；当前阶段保持 `files_written=false` |
 | P0 | M2-5 | UI 结果面板升级 | done | 已展示 selector 求值、network metadata、promotion gate 和 redaction 边界 |
-| P0 | M3-1 | GitHub deep fields | todo | release、README、license、issue activity、freshness |
-| P0 | M3-2 | GitHub Dataset schema version | todo | 标明字段来源和版本 |
-| P0 | M3-3 | GitHub Tool Radar report 增强 | todo | 增加维护风险和适用/不适用边界 |
+| P0 | M3-1 | GitHub deep fields | partial_done | license、default branch、latest release、pushed_at 已上线；补 README、issue activity、commit freshness |
+| P0 | M3-2 | GitHub Dataset schema version | partial_done | 补 DatasetVersion 显式 schema version 和 per-field source |
+| P0 | M3-3 | GitHub Tool Radar report 增强 | partial_done | 增加维护风险、安装方式和适用/不适用边界 |
+| P0 | M3-4 | GitHub drift 规则增强 | todo | stars/forks/issues/release freshness/field missingness 分层输出 |
+| P0 | M3-5 | GitHub production write E2E | pending_authorization | 明确测试 workspace、写入范围、cleanup register 后才能执行 |
 | P0 | M4-1 | 独立站 discovery 深化 | todo | collection/listing/sitemap/canonical 去重 |
 | P0 | M4-2 | 独立站商品字段增强 | todo | variant、SKU、image、currency、availability |
 | P1 | M5-1 | Public Web/RSS/Docs 平台包 | todo | 先做公开 feed/docs fixture |
@@ -251,6 +253,7 @@ bash scripts/verify-mvp.sh --with-db
 2. `M2-1`、`M2-2`、`M2-4`、`M2-5` 已完成；`M2-3` 留作本机 daemon 修复后的重试项。
 3. `M2-3` 重试前需要先让 `browser-harness --doctor` 达到 `daemon alive` 和 active browser connection 可用；仍只允许 `https://example.com/` 或明确授权测试页。
 4. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
-5. 下一轮可进入 `M3-1` 到 `M3-3`，让 GitHub 成为 API-first 深化样板。
-6. 完成一轮本地门禁后，再选择 `M4` 独立站深化或 `M5-1` Public Web/RSS 作为第一个新增低风险平台包。
-7. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。
+5. 下一轮优先补 `M3-1` 到 `M3-4` 的剩余缺口：README metadata、issue activity、commit freshness、DatasetVersion schema/provenance 和 drift 分层规则。
+6. 若需要证明线上写入链路，先单独授权 `M3-5`，并在执行前确定测试 workspace、允许写入资源、cleanup register 和 dry-run/execute 命令。
+7. M3 剩余缺口完成一轮本地门禁后，再选择 `M4` 独立站深化或 `M5-1` Public Web/RSS 作为第一个新增低风险平台包。
+8. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。
