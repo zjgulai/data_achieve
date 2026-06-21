@@ -58,6 +58,19 @@ async def test_manual_json_collector_validates_tests_collects_and_normalizes() -
 async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(
+                200,
+                json={
+                    "tag_name": "v1.0.0",
+                    "name": "v1.0.0",
+                    "html_url": "https://github.com/openai/codex/releases/tag/v1.0.0",
+                    "published_at": "2026-06-12T00:00:00Z",
+                    "created_at": "2026-06-12T00:00:00Z",
+                    "prerelease": False,
+                    "draft": False,
+                },
+            )
         return httpx.Response(
             200,
             json={
@@ -70,6 +83,9 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
                 "open_issues_count": 12,
                 "watchers_count": 1000,
                 "default_branch": "main",
+                "language": "Python",
+                "topics": ["agent"],
+                "license": {"spdx_id": "Apache-2.0", "name": "Apache License 2.0"},
                 "pushed_at": "2026-06-11T00:00:00Z",
                 "updated_at": "2026-06-11T00:00:00Z",
                 "owner": {"login": "openai"},
@@ -87,18 +103,24 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
     assert isinstance(content, dict)
     assert raw_record.source_url == "https://github.com/openai/codex"
     assert content["full_name"] == "openai/codex"
+    assert content["license_spdx_id"] == "Apache-2.0"
+    assert content["latest_release_tag"] == "v1.0.0"
+    assert content["latest_release_published_at"] == "2026-06-12T00:00:00Z"
+    assert content["provenance"]["latest_release_found"] is True
     assert collector.normalize(raw_record) == []
 
 
 @pytest.mark.asyncio
 async def test_github_repo_collector_retries_transient_upstream_failure() -> None:
-    request_count = 0
+    repo_request_count = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal request_count
-        request_count += 1
+        nonlocal repo_request_count
         assert_request_policy(request)
-        if request_count == 1:
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        repo_request_count += 1
+        if repo_request_count == 1:
             return httpx.Response(502, json={"message": "bad gateway"})
         return httpx.Response(
             200,
@@ -114,10 +136,12 @@ async def test_github_repo_collector_retries_transient_upstream_failure() -> Non
         collector = GitHubRepoCollector({"owner": "openai", "repo": "codex"}, client)
         collect_result = await collector.collect()
 
-    assert request_count == 2
+    assert repo_request_count == 2
     content = collect_result.raw_records[0].content
     assert isinstance(content, dict)
     assert content["full_name"] == "openai/codex"
+    assert content["latest_release"] is None
+    assert content["provenance"]["latest_release_found"] is False
 
 
 @pytest.mark.asyncio
@@ -129,6 +153,8 @@ async def test_github_repo_collector_uses_github_token(
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["authorization"] == "Bearer test-token"
         assert request.headers["x-github-api-version"] == "2022-11-28"
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
         return httpx.Response(
             200,
             json={
@@ -157,11 +183,22 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
                 "total_count": 1,
                 "items": [
                     {
+                        "owner": {"login": "example", "type": "Organization"},
                         "full_name": "example/scraper",
                         "html_url": "https://github.com/example/scraper",
                         "description": "Scraper",
                         "stargazers_count": 42,
                         "forks_count": 3,
+                        "open_issues_count": 1,
+                        "watchers_count": 42,
+                        "language": "Python",
+                        "topics": ["crawler"],
+                        "license": {"spdx_id": "MIT", "name": "MIT License"},
+                        "default_branch": "main",
+                        "archived": False,
+                        "fork": False,
+                        "created_at": "2026-06-01T00:00:00Z",
+                        "pushed_at": "2026-06-10T00:00:00Z",
                         "updated_at": "2026-06-11T00:00:00Z",
                     }
                 ],
@@ -179,6 +216,11 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
     assert isinstance(content, dict)
     assert raw_record.record_type == "github_topic"
     assert content["repositories"][0]["full_name"] == "example/scraper"
+    assert content["repositories"][0]["license_spdx_id"] == "MIT"
+    assert content["repositories"][0]["default_branch"] == "main"
+    assert content["repositories"][0]["owner_login"] == "example"
+    assert content["schema_version"] == "github_topic.v2"
+    assert content["provenance"]["source"] == "github_search_api"
     assert collector.normalize(raw_record) == []
 
 

@@ -1061,8 +1061,15 @@ export type AutomationGitHubToolReportRepository = {
   stars: number;
   forks: number | null;
   openIssues: number | null;
+  watchers: number | null;
   language: string | null;
   topics: string[];
+  licenseSpdxId: string | null;
+  defaultBranch: string | null;
+  latestReleaseTag: string | null;
+  latestReleasePublishedAt: string | null;
+  archived: boolean | null;
+  fork: boolean | null;
   updatedAt: string | null;
   pushedAt: string | null;
 };
@@ -1076,6 +1083,10 @@ export type AutomationGitHubToolReport = {
     repositoryCount: number;
     totalStars: number;
     highValueRepositories: number;
+    licensedRepositories: number;
+    releaseTaggedRepositories: number;
+    archivedRepositories: number;
+    forkRepositories: number;
     languages: Record<string, number>;
     topTopics: Record<string, number>;
     reportCreated: boolean;

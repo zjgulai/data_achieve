@@ -280,13 +280,24 @@ DATASET_EXPORT_CONTENT_TYPES = {
 
 GITHUB_TOOL_FIELDS = (
     "repo_full_name",
+    "owner_login",
+    "owner_type",
     "description",
     "stars",
     "forks",
     "open_issues",
+    "watchers",
     "language",
     "topics",
+    "license_spdx_id",
+    "default_branch",
+    "latest_release_tag",
+    "latest_release_published_at",
+    "archived",
+    "fork",
     "html_url",
+    "homepage",
+    "created_at",
     "updated_at",
     "pushed_at",
 )
@@ -2940,6 +2951,26 @@ async def generate_github_tool_report(
         for repository in repositories
         if repository.stars >= payload.min_stars
     ])
+    licensed_count = len([
+        repository
+        for repository in repositories
+        if repository.license_spdx_id
+    ])
+    release_tagged_count = len([
+        repository
+        for repository in repositories
+        if repository.latest_release_tag
+    ])
+    archived_count = len([
+        repository
+        for repository in repositories
+        if repository.archived is True
+    ])
+    fork_count = len([
+        repository
+        for repository in repositories
+        if repository.fork is True
+    ])
     recommendations = _github_tool_report_recommendations(top_repositories, payload.min_stars)
 
     return AutomationGitHubToolReportResponse(
@@ -2951,6 +2982,10 @@ async def generate_github_tool_report(
             repository_count=len(repositories),
             total_stars=total_stars,
             high_value_repositories=high_value_count,
+            licensed_repositories=licensed_count,
+            release_tagged_repositories=release_tagged_count,
+            archived_repositories=archived_count,
+            fork_repositories=fork_count,
             languages=languages,
             top_topics=top_topics,
             report_created=False,
@@ -4891,6 +4926,46 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     cleaning_rule="normalize_tags",
                 ),
                 AutomationPlatformPackageFieldResponse(
+                    key="license_spdx_id",
+                    label="License SPDX",
+                    data_type="string",
+                    required=False,
+                    source="github_api",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="default_branch",
+                    label="默认分支",
+                    data_type="string",
+                    required=False,
+                    source="github_api",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="latest_release_tag",
+                    label="最新 release tag",
+                    data_type="string",
+                    required=False,
+                    source="github_api_releases",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="latest_release_published_at",
+                    label="最新 release 发布时间",
+                    data_type="datetime",
+                    required=False,
+                    source="github_api_releases",
+                    cleaning_rule="preserve_timestamp",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="pushed_at",
+                    label="最近推送时间",
+                    data_type="datetime",
+                    required=False,
+                    source="github_api",
+                    cleaning_rule="preserve_timestamp",
+                ),
+                AutomationPlatformPackageFieldResponse(
                     key="html_url",
                     label="仓库 URL",
                     data_type="url",
@@ -4919,11 +4994,25 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     operation="normalize_url",
                     description="规范仓库 URL。",
                 ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="license_spdx_id",
+                    operation="strip_text",
+                    description="保留 GitHub API 返回的 SPDX id，缺失时显式留空。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="latest_release_published_at",
+                    operation="fill_default",
+                    value="NO_RELEASE",
+                    description="单仓库 latest release 缺失时保留可审计空值标记，不阻断采集。",
+                ),
             ],
             operator_checklist=[
                 "确认 GitHub API rate limit、token 权限和 topic 范围。",
                 "优先使用官方 API，不解析登录态页面。",
-                "将 stars、topics、html_url 作为工具情报排序和溯源字段。",
+                (
+                    "将 stars、license、default_branch、release、pushed_at 和 "
+                    "html_url 作为工具情报排序与溯源字段。"
+                ),
             ],
             strategy_matrix=[
                 AutomationPlatformPackageStrategyResponse(
@@ -7219,7 +7308,12 @@ def _github_tool_dataset_fields(fields: list[str] | None) -> list[str]:
         "open_issues",
         "language",
         "topics",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "latest_release_published_at",
         "html_url",
+        "pushed_at",
         "updated_at",
     ]
     allowed = set(GITHUB_TOOL_FIELDS)
@@ -7295,21 +7389,60 @@ def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
     stars = repo.get("stargazers_count", repo.get("stars"))
     forks = repo.get("forks_count", repo.get("forks"))
     open_issues = repo.get("open_issues_count", repo.get("open_issues"))
+    watchers = repo.get("watchers_count", repo.get("watchers"))
     full_name = repo.get("full_name") or repo.get("repo_full_name")
     html_url = repo.get("html_url") or repo.get("url")
     topics = repo.get("topics")
+    owner_value = repo.get("owner")
+    owner_login = repo.get("owner_login")
+    owner_type = repo.get("owner_type")
+    if isinstance(owner_value, dict):
+        owner_login = owner_login or owner_value.get("login")
+        owner_type = owner_type or owner_value.get("type")
+    license_value = repo.get("license")
+    latest_release = repo.get("latest_release")
+    latest_release_values = latest_release if isinstance(latest_release, dict) else {}
     return {
         "repo_full_name": full_name,
+        "owner_login": owner_login,
+        "owner_type": owner_type,
         "description": repo.get("description"),
         "stars": stars,
         "forks": forks,
         "open_issues": open_issues,
+        "watchers": watchers,
         "language": repo.get("language"),
         "topics": topics if isinstance(topics, list) else [],
+        "license_spdx_id": (
+            repo.get("license_spdx_id")
+            or _license_spdx_id_from_value(license_value)
+        ),
+        "default_branch": repo.get("default_branch"),
+        "latest_release_tag": (
+            repo.get("latest_release_tag")
+            or latest_release_values.get("tag_name")
+        ),
+        "latest_release_published_at": (
+            repo.get("latest_release_published_at")
+            or latest_release_values.get("published_at")
+        ),
+        "archived": repo.get("archived"),
+        "fork": repo.get("fork"),
         "html_url": html_url,
+        "homepage": repo.get("homepage"),
+        "created_at": repo.get("created_at"),
         "updated_at": repo.get("updated_at"),
         "pushed_at": repo.get("pushed_at"),
     }
+
+
+def _license_spdx_id_from_value(value: object) -> str | None:
+    if isinstance(value, dict):
+        license_id = value.get("spdx_id") or value.get("key") or value.get("name")
+        return str(license_id) if license_id else None
+    if isinstance(value, str):
+        return value
+    return None
 
 
 def _github_tool_field_completeness_for_fields(
@@ -7556,11 +7689,16 @@ def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
     steps = [
         "strip repo_full_name and html_url",
         "normalize html_url as canonical repository URL",
-        "parse stars, forks and open_issues as integers when present",
+        "parse stars, forks, watchers and open_issues as integers when present",
         "normalize topics into lower-case tag arrays",
+        "preserve license_spdx_id, default_branch and release tag as source-of-record metadata",
         "keep missing values explicit as null for downstream review",
     ]
-    if "updated_at" in selected_fields or "pushed_at" in selected_fields:
+    if (
+        "updated_at" in selected_fields
+        or "pushed_at" in selected_fields
+        or "latest_release_published_at" in selected_fields
+    ):
         steps.append("preserve GitHub timestamps as ISO strings for freshness review")
     return steps
 
@@ -7633,8 +7771,17 @@ def _github_tool_report_repositories(
                 stars=_int_or_zero(values.get("stars")),
                 forks=_int_or_none(values.get("forks")),
                 open_issues=_int_or_none(values.get("open_issues")),
+                watchers=_int_or_none(values.get("watchers")),
                 language=_string_or_none(values.get("language")),
                 topics=topics,
+                license_spdx_id=_string_or_none(values.get("license_spdx_id")),
+                default_branch=_string_or_none(values.get("default_branch")),
+                latest_release_tag=_string_or_none(values.get("latest_release_tag")),
+                latest_release_published_at=_string_or_none(
+                    values.get("latest_release_published_at")
+                ),
+                archived=_bool_or_none(values.get("archived")),
+                fork=_bool_or_none(values.get("fork")),
                 updated_at=_string_or_none(values.get("updated_at")),
                 pushed_at=_string_or_none(values.get("pushed_at")),
             )
@@ -7677,8 +7824,15 @@ def _github_tool_report_recommendations(
             else f"未达到 {min_stars} stars 门槛"
         )
         topics = "、".join(repository.topics[:3]) if repository.topics else "未标注 topic"
+        release_note = (
+            f"最新 release {repository.latest_release_tag}"
+            if repository.latest_release_tag
+            else "未发现 latest release"
+        )
+        license_note = repository.license_spdx_id or "license 未声明"
         recommendations.append(
             f"{repository.repo_full_name} 具备 {repository.stars} stars，{threshold_note}；"
+            f"{license_note}，{release_note}；"
             f"可优先用于 {topics} 方向的数据采集工具培训与 SOP 编写。"
         )
     return recommendations
@@ -7688,18 +7842,22 @@ def _render_github_tool_report_asset_content(
     report: AutomationGitHubToolReportResponse,
 ) -> str:
     top_repository_lines = [
-        "| 仓库 | Stars | 语言 | Open issues | Topics | 链接 |",
-        "| --- | ---: | --- | ---: | --- | --- |",
+        "| 仓库 | Stars | 语言 | License | Release | 默认分支 | Open issues | Topics | 链接 |",
+        "| --- | ---: | --- | --- | --- | --- | ---: | --- | --- |",
     ]
     for repository in report.top_repositories:
         topics = "、".join(repository.topics[:5]) if repository.topics else "未标注"
         html_url = repository.html_url or ""
         open_issues = repository.open_issues if repository.open_issues is not None else "-"
+        release_tag = repository.latest_release_tag or "-"
         top_repository_lines.append(
             "| "
             f"{repository.repo_full_name} | "
             f"{repository.stars} | "
             f"{repository.language or '-'} | "
+            f"{repository.license_spdx_id or '-'} | "
+            f"{release_tag} | "
+            f"{repository.default_branch or '-'} | "
             f"{open_issues} | "
             f"{topics} | "
             f"{html_url} |"
@@ -7729,6 +7887,10 @@ def _render_github_tool_report_asset_content(
         f"- repository_count: {report.summary.repository_count}",
         f"- total_stars: {report.summary.total_stars}",
         f"- high_value_repositories: {report.summary.high_value_repositories}",
+        f"- licensed_repositories: {report.summary.licensed_repositories}",
+        f"- release_tagged_repositories: {report.summary.release_tagged_repositories}",
+        f"- archived_repositories: {report.summary.archived_repositories}",
+        f"- fork_repositories: {report.summary.fork_repositories}",
         f"- languages: {languages}",
         f"- top_topics: {topics}",
         "",
@@ -7776,6 +7938,18 @@ def _int_or_none(value: object) -> int | None:
             return int(float(text))
         except ValueError:
             return None
+    return None
+
+
+def _bool_or_none(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes"}:
+            return True
+        if normalized in {"false", "0", "no"}:
+            return False
     return None
 
 

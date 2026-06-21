@@ -1369,8 +1369,15 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "stargazers_count": 72000,
                         "forks_count": 8400,
                         "open_issues_count": 120,
+                        "watchers_count": 72000,
                         "language": "Python",
                         "topics": ["browser-automation", "ai-agent"],
+                        "license_spdx_id": "MIT",
+                        "default_branch": "main",
+                        "latest_release_tag": "v0.4.0",
+                        "latest_release_published_at": "2026-06-18T02:00:00Z",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": "2026-06-18T01:00:00Z",
                     },
@@ -1381,8 +1388,15 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "stargazers_count": 56000,
                         "forks_count": 11000,
                         "open_issues_count": 400,
+                        "watchers_count": 56000,
                         "language": "Python",
                         "topics": ["crawler", "scraping"],
+                        "license_spdx_id": "BSD-3-Clause",
+                        "default_branch": "master",
+                        "latest_release_tag": "2.12.0",
+                        "latest_release_published_at": "2026-06-17T02:00:00Z",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-17T00:00:00Z",
                         "updated_at": "2026-06-17T01:00:00Z",
                     },
@@ -1396,8 +1410,15 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "stargazers_count": 72000,
                         "forks_count": 8400,
                         "open_issues_count": 120,
+                        "watchers_count": 72000,
                         "language": "Python",
                         "topics": [],
+                        "license_spdx_id": "MIT",
+                        "default_branch": "main",
+                        "latest_release_tag": "v0.4.0",
+                        "latest_release_published_at": "2026-06-18T02:00:00Z",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": None,
                     }
@@ -1453,7 +1474,18 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         json={
             "authorized": True,
             "task_run_ids": [run["id"]],
-            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "fields": [
+                "repo_full_name",
+                "stars",
+                "html_url",
+                "language",
+                "topics",
+                "updated_at",
+                "license_spdx_id",
+                "default_branch",
+                "latest_release_tag",
+                "latest_release_published_at",
+            ],
             "max_rows": 10,
         },
     )
@@ -1468,9 +1500,15 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "language",
         "topics",
         "updated_at",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "latest_release_published_at",
     ]
     assert preview["rows"][0]["values"]["repo_full_name"] == "browser-use/browser-use"
     assert preview["rows"][0]["values"]["stars"] == 72000
+    assert preview["rows"][0]["values"]["license_spdx_id"] == "MIT"
+    assert preview["rows"][0]["values"]["latest_release_tag"] == "v0.4.0"
     assert preview["export_preview"]["schema"]["primary_key"] == "html_url"
 
     save_response = await client.post(
@@ -1480,7 +1518,18 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
             "name": "GitHub Tool Radar web-scraping",
             "description": "Tool radar dataset from GitHub topic.",
             "task_run_ids": [run["id"]],
-            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "fields": [
+                "repo_full_name",
+                "stars",
+                "html_url",
+                "language",
+                "topics",
+                "updated_at",
+                "license_spdx_id",
+                "default_branch",
+                "latest_release_tag",
+                "latest_release_published_at",
+            ],
             "max_rows": 10,
         },
     )
@@ -1495,6 +1544,10 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "language",
         "topics",
         "updated_at",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "latest_release_published_at",
     ]
 
     export_response = await client.post(
@@ -1548,8 +1601,8 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "alert_created": False,
     }
     assert drift["items"][0]["latest_run_id"] == second_run["id"]
-    assert drift["items"][0]["latest_completeness_percent"] == 67
-    assert drift["items"][0]["completeness_drop_percent"] == 33
+    assert drift["items"][0]["latest_completeness_percent"] == 80
+    assert drift["items"][0]["completeness_drop_percent"] == 20
     assert drift["items"][0]["new_missing_fields"] == ["topics", "updated_at"]
     assert drift["items"][0]["issues"] == [
         "completeness_drift_exceeded",
@@ -1604,6 +1657,10 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "repository_count": 2,
         "total_stars": 128000,
         "high_value_repositories": 2,
+        "licensed_repositories": 2,
+        "release_tagged_repositories": 2,
+        "archived_repositories": 0,
+        "fork_repositories": 0,
         "languages": {"Python": 2},
         "top_topics": {
             "ai-agent": 1,
@@ -1615,7 +1672,10 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "run_started": False,
     }
     assert report["top_repositories"][0]["repo_full_name"] == "browser-use/browser-use"
+    assert report["top_repositories"][0]["license_spdx_id"] == "MIT"
+    assert report["top_repositories"][0]["latest_release_tag"] == "v0.4.0"
     assert "browser-use/browser-use" in report["recommendations"][0]
+    assert "MIT" in report["recommendations"][0]
 
     report_asset_response = await client.post(
         "/api/automation/github-tool-report-assets",
@@ -1637,6 +1697,7 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     assert report_asset["report"]["status"] == "generated"
     assert "GitHub Tool Radar web-scraping" in report_asset["report"]["title"]
     assert "browser-use/browser-use" in report_asset["report"]["content"]
+    assert "v0.4.0" in report_asset["report"]["content"]
     assert "github_tool_radar" in report_asset["report"]["content"]
     assert any(
         event["event"] == "github_tool_report_asset_created"

@@ -859,15 +859,15 @@ class BaseCollector(ABC):
 
 - **输入**：`{owner: "org_or_user", repo: "repo_name"}`
 - **采集方式**：GitHub REST API（无需 token 可访问公开仓库基础信息）
-- **采集字段**：`full_name`, `description`, `stargazers_count`, `forks_count`, `open_issues_count`, `language`, `topics`, `pushed_at`, `latest_release` (tag_name, published_at, body)
+- **采集字段**：`full_name`, `owner_login`, `description`, `stargazers_count`, `forks_count`, `open_issues_count`, `watchers_count`, `language`, `topics`, `license_spdx_id`, `default_branch`, `archived`, `fork`, `pushed_at`, `updated_at`, `latest_release` (tag_name, published_at, html_url)
 - **输出 Entity**：`github_repo`
-- **关键指标**：`stars`, `forks`, `latest_release_tag`, `pushed_at`
+- **关键指标**：`stars`, `forks`, `license_spdx_id`, `default_branch`, `latest_release_tag`, `latest_release_published_at`, `pushed_at`
 
 #### GitHubTopicCollector
 
 - **输入**：`{topic: "web-scraping", max_results: 30}`
 - **采集方式**：GitHub Search API（按 topic 搜索仓库，按 stars 排序）
-- **采集字段**：top N 仓库的基础信息（同上）
+- **采集字段**：top N 仓库的基础信息（同上；`latest_release_*` 仅在单仓库 API 补强或上游结果已包含时出现）
 - **输出 Entity**：`github_repo[]`（仓库列表）
 - **用途**：发现新项目，可对其中感兴趣的 repo 再创建 GitHubRepoCollector 持续监控
 
