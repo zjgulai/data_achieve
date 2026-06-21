@@ -1864,6 +1864,9 @@ export function getMockAutomationProductDriftCheck(
       criticalTasks,
       staleTasks: 0,
       missingFieldTasks: criticalTasks,
+      driftLayers: criticalTasks
+        ? { completeness: criticalTasks, field_missingness: criticalTasks }
+        : {},
       runStarted: false,
       alertCreated: false,
     },
@@ -2573,6 +2576,7 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
       criticalTasks: 1,
       staleTasks: 0,
       missingFieldTasks: 1,
+      driftLayers: { completeness: 1, field_missingness: 1 },
       runStarted: false,
       alertCreated: false,
     },

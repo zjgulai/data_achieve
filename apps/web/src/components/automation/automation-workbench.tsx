@@ -107,16 +107,25 @@ const fieldLabels: Record<string, string> = {
   brand: "品牌",
   canonical_url: "规范 URL",
   currency: "货币",
+  default_branch: "默认分支",
   description: "描述",
   headings: "标题层级",
   image_url: "主图",
   forks: "Forks",
   meta_description: "页面描述",
   html_url: "仓库 URL",
+  issue_activity_open_count: "Issue 活跃数",
+  issue_activity_status: "Issue 活跃度",
   language: "语言",
+  latest_release_published_at: "Release 时间",
+  latest_release_tag: "Release",
+  license_spdx_id: "License",
   open_issues: "Open issues",
   page_title: "页面标题",
   price: "价格",
+  readme_detected: "README",
+  readme_html_url: "README URL",
+  readme_size: "README 大小",
   repo_full_name: "仓库全名",
   same_origin_links: "同源链接",
   sku: "SKU",
@@ -126,6 +135,8 @@ const fieldLabels: Record<string, string> = {
   topics: "Topics",
   updated_at: "更新时间",
   pushed_at: "最近推送",
+  commit_freshness_days: "推送距今天数",
+  commit_freshness_status: "推送新鲜度",
 };
 
 const githubToolFields = [
@@ -135,7 +146,17 @@ const githubToolFields = [
   "open_issues",
   "language",
   "topics",
+  "license_spdx_id",
+  "default_branch",
+  "latest_release_tag",
+  "latest_release_published_at",
+  "readme_detected",
+  "issue_activity_open_count",
+  "issue_activity_status",
+  "commit_freshness_days",
+  "commit_freshness_status",
   "html_url",
+  "pushed_at",
   "updated_at",
 ];
 
@@ -2705,6 +2726,9 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                           <Fact label="高价值仓库" value={String(toolReport.summary.highValueRepositories)} />
                           <Fact label="License 已声明" value={String(toolReport.summary.licensedRepositories)} />
                           <Fact label="Release 已识别" value={String(toolReport.summary.releaseTaggedRepositories)} />
+                          <Fact label="README 已识别" value={String(toolReport.summary.readmeDocumentedRepositories)} />
+                          <Fact label="Issue 活跃" value={String(toolReport.summary.issueActiveRepositories)} />
+                          <Fact label="Fresh commit" value={String(toolReport.summary.freshCommitRepositories)} />
                         </div>
                         <div className="grid gap-2">
                           {toolReport.topRepositories.slice(0, 3).map((repository) => (
@@ -2717,7 +2741,7 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                             >
                               <span className="font-semibold">{repository.repoFullName}</span>
                               <span className="text-xs text-[#6A625D]">
-                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.licenseSpdxId ?? "no license"} · {repository.latestReleaseTag ?? repository.defaultBranch ?? "no release"}
+                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.licenseSpdxId ?? "no license"} · {repository.latestReleaseTag ?? repository.defaultBranch ?? "no release"} · {repository.issueActivityOpenCount ?? repository.openIssues ?? "-"} issues · {repository.commitFreshnessStatus ?? "unknown freshness"}
                               </span>
                             </a>
                           ))}
@@ -2758,6 +2782,11 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                           <Fact label="字段缺失" value={String(toolDrift.summary.missingFieldTasks)} />
                           <Fact label="状态" value={toolDrift.summary.criticalTasks > 0 ? "critical" : "ok"} />
                         </div>
+                        {Object.keys(toolDrift.summary.driftLayers).length > 0 ? (
+                          <p className="rounded-xl border border-[#E0E8D5] bg-white px-3 py-2 text-xs font-semibold text-[#536B40]">
+                            分层漂移：{Object.entries(toolDrift.summary.driftLayers).map(([layer, count]) => `${layer}=${count}`).join("、")}
+                          </p>
+                        ) : null}
                         <div className="grid gap-2">
                           {toolDrift.items.map((item) => (
                             <div className="rounded-xl border border-[#E0E8D5] bg-[#FAFCF7] p-3 text-sm" key={item.taskId}>

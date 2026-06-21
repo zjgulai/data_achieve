@@ -52,7 +52,7 @@ class GitHubTopicCollector(BaseCollector):
         content: dict[str, Any] = {
             "provider": "github",
             "kind": "topic_search",
-            "schema_version": "github_topic.v2",
+            "schema_version": "github_topic.v3",
             "topic": config["topic"],
             "total_count": result.get("total_count"),
             "repositories": repositories,
@@ -118,6 +118,8 @@ async def _fetch_json(
 def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
     owner = repo.get("owner")
     license_value = repo.get("license")
+    issue_activity = _issue_activity_content(repo)
+    commit_freshness = _commit_freshness_content(repo.get("pushed_at"))
     return {
         "provider": "github",
         "kind": "repository_search_result",
@@ -142,7 +144,66 @@ def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
         "created_at": repo.get("created_at"),
         "pushed_at": repo.get("pushed_at"),
         "updated_at": repo.get("updated_at"),
+        "readme": None,
+        "readme_detected": None,
+        "readme_name": None,
+        "readme_path": None,
+        "readme_html_url": None,
+        "readme_download_url": None,
+        "readme_sha": None,
+        "readme_size": None,
+        "readme_source": "not_available_in_github_search_api",
+        "issue_activity": issue_activity,
+        "issue_activity_open_count": issue_activity.get("open_count"),
+        "issue_activity_status": issue_activity.get("status"),
+        "issue_activity_updated_at": issue_activity.get("updated_at"),
+        "commit_freshness": commit_freshness,
+        "commit_freshness_days": commit_freshness.get("days_since_push"),
+        "commit_freshness_status": commit_freshness.get("status"),
     }
+
+
+def _issue_activity_content(repo: dict[str, Any]) -> dict[str, Any]:
+    open_count = repo.get("open_issues_count")
+    if not isinstance(open_count, int):
+        open_count = repo.get("open_issues")
+    status = "unknown"
+    if isinstance(open_count, int):
+        status = "active" if open_count > 0 else "quiet"
+    return {
+        "open_count": open_count if isinstance(open_count, int) else None,
+        "status": status,
+        "updated_at": repo.get("updated_at"),
+    }
+
+
+def _commit_freshness_content(pushed_at: object) -> dict[str, Any]:
+    days_since_push = _days_since_iso(pushed_at)
+    if days_since_push is None:
+        status = "unknown"
+    elif days_since_push <= 30:
+        status = "fresh"
+    elif days_since_push <= 180:
+        status = "aging"
+    else:
+        status = "stale"
+    return {
+        "pushed_at": pushed_at if isinstance(pushed_at, str) else None,
+        "days_since_push": days_since_push,
+        "status": status,
+    }
+
+
+def _days_since_iso(value: object) -> int | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return max((datetime.now(UTC) - parsed.astimezone(UTC)).days, 0)
 
 
 def _license_spdx_id(license_value: object) -> str | None:

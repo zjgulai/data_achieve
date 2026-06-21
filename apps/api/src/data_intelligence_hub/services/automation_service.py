@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -278,6 +279,10 @@ DATASET_EXPORT_CONTENT_TYPES = {
     "jsonl": "application/x-ndjson; charset=utf-8",
 }
 
+GITHUB_TOOL_DATASET_SCHEMA_VERSION = "github_tool_radar.v2"
+GITHUB_TOOL_COLLECTOR_SCHEMA_VERSIONS = ("github_repo.v3", "github_topic.v3")
+GITHUB_TOOL_RELEASE_STALE_DAYS = 180
+
 GITHUB_TOOL_FIELDS = (
     "repo_full_name",
     "owner_login",
@@ -300,7 +305,68 @@ GITHUB_TOOL_FIELDS = (
     "created_at",
     "updated_at",
     "pushed_at",
+    "readme_detected",
+    "readme_name",
+    "readme_path",
+    "readme_html_url",
+    "readme_download_url",
+    "readme_sha",
+    "readme_size",
+    "issue_activity_open_count",
+    "issue_activity_status",
+    "issue_activity_updated_at",
+    "commit_freshness_days",
+    "commit_freshness_status",
 )
+
+GITHUB_TOOL_FIELD_SOURCES = {
+    "repo_full_name": "github.repository.full_name",
+    "owner_login": "github.repository.owner.login",
+    "owner_type": "github.repository.owner.type",
+    "description": "github.repository.description",
+    "stars": "github.repository.stargazers_count",
+    "forks": "github.repository.forks_count",
+    "open_issues": "github.repository.open_issues_count",
+    "watchers": "github.repository.watchers_count",
+    "language": "github.repository.language",
+    "topics": "github.repository.topics",
+    "license_spdx_id": "github.repository.license.spdx_id",
+    "default_branch": "github.repository.default_branch",
+    "latest_release_tag": "github.repository.releases.latest.tag_name",
+    "latest_release_published_at": "github.repository.releases.latest.published_at",
+    "archived": "github.repository.archived",
+    "fork": "github.repository.fork",
+    "html_url": "github.repository.html_url",
+    "homepage": "github.repository.homepage",
+    "created_at": "github.repository.created_at",
+    "updated_at": "github.repository.updated_at",
+    "pushed_at": "github.repository.pushed_at",
+    "readme_detected": "github.repository.readme.exists",
+    "readme_name": "github.repository.readme.name",
+    "readme_path": "github.repository.readme.path",
+    "readme_html_url": "github.repository.readme.html_url",
+    "readme_download_url": "github.repository.readme.download_url",
+    "readme_sha": "github.repository.readme.sha",
+    "readme_size": "github.repository.readme.size",
+    "issue_activity_open_count": "derived.github.repository.open_issues_count",
+    "issue_activity_status": "derived.github.repository.open_issues_count",
+    "issue_activity_updated_at": "github.repository.updated_at",
+    "commit_freshness_days": "derived.github.repository.pushed_at",
+    "commit_freshness_status": "derived.github.repository.pushed_at",
+}
+
+DRIFT_LAYER_BY_ISSUE = {
+    "latest_run_missing": "run_health",
+    "latest_run_failed": "run_health",
+    "completeness_drift_exceeded": "completeness",
+    "approved_fields_missing": "field_missingness",
+    "freshness_target_missed": "task_freshness",
+    "stars_changed": "stars",
+    "forks_changed": "forks",
+    "issue_activity_changed": "issue_activity",
+    "release_freshness_missing": "release_freshness",
+    "release_freshness_stale": "release_freshness",
+}
 
 
 def list_platform_packages() -> AutomationPlatformPackageListResponse:
@@ -1942,12 +2008,15 @@ async def save_github_tool_dataset_version(
         cleaning_script=preview.cleaning_script_draft,
         rows=[
             {
+                "schema_version": GITHUB_TOOL_DATASET_SCHEMA_VERSION,
                 "row_id": row.row_id,
                 "task_run_id": str(row.task_run_id),
                 "raw_record_id": str(row.raw_record_id),
                 "source_url": row.source_url,
                 "values": row.values,
                 "missing_fields": row.missing_fields,
+                "field_sources": _github_tool_field_sources(row.values.keys()),
+                "missing_field_sources": _github_tool_field_sources(row.missing_fields),
                 "completeness_percent": row.completeness_percent,
             }
             for row in preview.rows
@@ -1976,6 +2045,8 @@ async def save_github_tool_dataset_version(
                 "version_number": version.version_number,
                 "created_dataset": created_dataset,
                 "row_count": version.row_count,
+                "schema_version": GITHUB_TOOL_DATASET_SCHEMA_VERSION,
+                "collector_schema_versions": list(GITHUB_TOOL_COLLECTOR_SCHEMA_VERSIONS),
                 "run_started": False,
             }
         ],
@@ -2667,6 +2738,7 @@ async def check_github_tool_drift(
         completeness_drop_percent: int | None = None
         missing_fields: list[str] = []
         new_missing_fields: list[str] = []
+        layer_issues: list[str] = []
 
         if latest_run is None:
             issues.append("latest_run_missing")
@@ -2683,6 +2755,9 @@ async def check_github_tool_drift(
                 github_records,
                 approved_fields,
             )
+            latest_rows: list[AutomationProductDatasetRowResponse] = []
+            for raw_record in github_records:
+                latest_rows.extend(_github_tool_rows(raw_record, approved_fields))
             latest_completeness_percent = field_completeness.completeness_percent
             completeness_drop_percent = max(
                 version.average_completeness_percent - latest_completeness_percent,
@@ -2696,6 +2771,15 @@ async def check_github_tool_drift(
                 issues.append("completeness_drift_exceeded")
             if new_missing_fields:
                 issues.append("approved_fields_missing")
+            layer_issues = _github_tool_metric_drift_issues(
+                saved_rows=version.rows,
+                latest_rows=latest_rows,
+                selected_fields=approved_fields,
+                checked_at=checked_at,
+            )
+            for issue in layer_issues:
+                if issue not in issues:
+                    issues.append(issue)
 
         freshness_target_hours, stale_hours = _task_freshness_drift(
             task,
@@ -2732,6 +2816,8 @@ async def check_github_tool_drift(
                 "latest_run_id": str(latest_run.id) if latest_run else None,
                 "status": status,
                 "issues": issues,
+                "drift_layers": _drift_layer_counts_for_issues(issues),
+                "metric_issues": layer_issues,
                 "run_started": False,
                 "alert_created": False,
             }
@@ -2961,6 +3047,21 @@ async def generate_github_tool_report(
         for repository in repositories
         if repository.latest_release_tag
     ])
+    readme_documented_count = len([
+        repository
+        for repository in repositories
+        if repository.readme_detected is True
+    ])
+    issue_active_count = len([
+        repository
+        for repository in repositories
+        if repository.issue_activity_status == "active"
+    ])
+    fresh_commit_count = len([
+        repository
+        for repository in repositories
+        if repository.commit_freshness_status == "fresh"
+    ])
     archived_count = len([
         repository
         for repository in repositories
@@ -2984,6 +3085,9 @@ async def generate_github_tool_report(
             high_value_repositories=high_value_count,
             licensed_repositories=licensed_count,
             release_tagged_repositories=release_tagged_count,
+            readme_documented_repositories=readme_documented_count,
+            issue_active_repositories=issue_active_count,
+            fresh_commit_repositories=fresh_commit_count,
             archived_repositories=archived_count,
             fork_repositories=fork_count,
             languages=languages,
@@ -3001,6 +3105,9 @@ async def generate_github_tool_report(
                 "repository_count": len(repositories),
                 "top_limit": payload.top_limit,
                 "min_stars": payload.min_stars,
+                "readme_documented_repositories": readme_documented_count,
+                "issue_active_repositories": issue_active_count,
+                "fresh_commit_repositories": fresh_commit_count,
                 "report_created": False,
                 "run_started": False,
             }
@@ -6805,9 +6912,28 @@ def _product_drift_summary(
             if item.stale_hours is not None and item.stale_hours > 0
         ]),
         missing_field_tasks=len([item for item in checked_items if item.new_missing_fields]),
+        drift_layers=_drift_layer_counts(items),
         run_started=False,
         alert_created=False,
     )
+
+
+def _drift_layer_counts(items: list[AutomationProductDriftItemResponse]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        for layer, value in _drift_layer_counts_for_issues(item.issues).items():
+            counts[layer] = counts.get(layer, 0) + value
+    return counts
+
+
+def _drift_layer_counts_for_issues(issues: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for issue in issues:
+        layer = DRIFT_LAYER_BY_ISSUE.get(issue)
+        if layer is None:
+            continue
+        counts[layer] = counts.get(layer, 0) + 1
+    return counts
 
 
 def _drift_event_status(summary: AutomationProductDriftSummaryResponse) -> str:
@@ -7312,6 +7438,11 @@ def _github_tool_dataset_fields(fields: list[str] | None) -> list[str]:
         "default_branch",
         "latest_release_tag",
         "latest_release_published_at",
+        "readme_detected",
+        "issue_activity_open_count",
+        "issue_activity_status",
+        "commit_freshness_days",
+        "commit_freshness_status",
         "html_url",
         "pushed_at",
         "updated_at",
@@ -7319,6 +7450,22 @@ def _github_tool_dataset_fields(fields: list[str] | None) -> list[str]:
     allowed = set(GITHUB_TOOL_FIELDS)
     normalized = [field for field in requested if field in allowed]
     return normalized or list(GITHUB_TOOL_FIELDS)
+
+
+def _github_tool_field_sources(fields: object) -> dict[str, str]:
+    field_names: list[str] = []
+    if isinstance(fields, dict):
+        field_names = [str(field) for field in fields]
+    elif isinstance(fields, str):
+        field_names = []
+    elif isinstance(fields, Iterable):
+        field_names = [str(field) for field in fields]
+    else:
+        field_names = []
+    return {
+        field: GITHUB_TOOL_FIELD_SOURCES.get(field, "github.repository")
+        for field in field_names
+    }
 
 
 def _dataset_row(
@@ -7402,6 +7549,34 @@ def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
     license_value = repo.get("license")
     latest_release = repo.get("latest_release")
     latest_release_values = latest_release if isinstance(latest_release, dict) else {}
+    readme = repo.get("readme")
+    readme_values = readme if isinstance(readme, dict) else {}
+    issue_activity = repo.get("issue_activity")
+    issue_activity_values = issue_activity if isinstance(issue_activity, dict) else {}
+    commit_freshness = repo.get("commit_freshness")
+    commit_freshness_values = commit_freshness if isinstance(commit_freshness, dict) else {}
+    issue_activity_open_count = (
+        repo.get("issue_activity_open_count")
+        if _has_field_value(repo.get("issue_activity_open_count"))
+        else issue_activity_values.get("open_count")
+    )
+    if not _has_field_value(issue_activity_open_count):
+        issue_activity_open_count = open_issues
+    readme_detected = repo.get("readme_detected")
+    if readme_detected is None and readme_values:
+        readme_detected = True
+    commit_freshness_days = (
+        repo.get("commit_freshness_days")
+        if _has_field_value(repo.get("commit_freshness_days"))
+        else commit_freshness_values.get("days_since_push")
+    )
+    commit_freshness_status = (
+        repo.get("commit_freshness_status")
+        if _has_field_value(repo.get("commit_freshness_status"))
+        else commit_freshness_values.get("status")
+    )
+    if not _has_field_value(commit_freshness_status):
+        commit_freshness_status = _commit_freshness_status(repo.get("pushed_at"))
     return {
         "repo_full_name": full_name,
         "owner_login": owner_login,
@@ -7433,6 +7608,28 @@ def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
         "created_at": repo.get("created_at"),
         "updated_at": repo.get("updated_at"),
         "pushed_at": repo.get("pushed_at"),
+        "readme_detected": readme_detected,
+        "readme_name": repo.get("readme_name") or readme_values.get("name"),
+        "readme_path": repo.get("readme_path") or readme_values.get("path"),
+        "readme_html_url": repo.get("readme_html_url") or readme_values.get("html_url"),
+        "readme_download_url": (
+            repo.get("readme_download_url") or readme_values.get("download_url")
+        ),
+        "readme_sha": repo.get("readme_sha") or readme_values.get("sha"),
+        "readme_size": repo.get("readme_size") or readme_values.get("size"),
+        "issue_activity_open_count": issue_activity_open_count,
+        "issue_activity_status": (
+            repo.get("issue_activity_status")
+            or issue_activity_values.get("status")
+            or _issue_activity_status(issue_activity_open_count)
+        ),
+        "issue_activity_updated_at": (
+            repo.get("issue_activity_updated_at")
+            or issue_activity_values.get("updated_at")
+            or repo.get("updated_at")
+        ),
+        "commit_freshness_days": commit_freshness_days,
+        "commit_freshness_status": commit_freshness_status,
     }
 
 
@@ -7443,6 +7640,44 @@ def _license_spdx_id_from_value(value: object) -> str | None:
     if isinstance(value, str):
         return value
     return None
+
+
+def _issue_activity_status(value: object) -> str:
+    count = _int_or_none(value)
+    if count is None:
+        return "unknown"
+    return "active" if count > 0 else "quiet"
+
+
+def _commit_freshness_status(value: object) -> str:
+    days = _days_since_iso_datetime(value)
+    if days is None:
+        return "unknown"
+    if days <= 30:
+        return "fresh"
+    if days <= 180:
+        return "aging"
+    return "stale"
+
+
+def _days_since_iso_datetime(value: object, now: datetime | None = None) -> int | None:
+    parsed = _parse_iso_datetime(value)
+    if parsed is None:
+        return None
+    current = now or datetime.now(UTC)
+    return max((current - parsed).days, 0)
+
+
+def _parse_iso_datetime(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _github_tool_field_completeness_for_fields(
@@ -7481,6 +7716,91 @@ def _github_tool_field_completeness_for_fields(
         completeness_ratio=round(completeness_percent / 100, 4),
         completeness_percent=completeness_percent,
     )
+
+
+def _github_tool_metric_drift_issues(
+    saved_rows: list[dict[str, object]],
+    latest_rows: list[AutomationProductDatasetRowResponse],
+    selected_fields: list[str],
+    checked_at: datetime,
+) -> list[str]:
+    baseline_by_repo = _github_tool_baseline_values_by_repo(saved_rows)
+    selected = set(selected_fields)
+    issues: list[str] = []
+    for row in latest_rows:
+        repo_key = _github_tool_values_repo_key(row.values)
+        if repo_key is None:
+            continue
+        baseline = baseline_by_repo.get(repo_key)
+        if baseline is None:
+            continue
+        if "stars" in selected and _numeric_metric_changed(
+            baseline.get("stars"),
+            row.values.get("stars"),
+        ):
+            issues.append("stars_changed")
+        if "forks" in selected and _numeric_metric_changed(
+            baseline.get("forks"),
+            row.values.get("forks"),
+        ):
+            issues.append("forks_changed")
+        baseline_open_issues = baseline.get("issue_activity_open_count")
+        if not _has_field_value(baseline_open_issues):
+            baseline_open_issues = baseline.get("open_issues")
+        latest_open_issues = row.values.get("issue_activity_open_count")
+        if not _has_field_value(latest_open_issues):
+            latest_open_issues = row.values.get("open_issues")
+        if (
+            {"open_issues", "issue_activity_open_count"} & selected
+            and _numeric_metric_changed(baseline_open_issues, latest_open_issues)
+        ):
+            issues.append("issue_activity_changed")
+
+        if "latest_release_published_at" in selected:
+            release_published_at = row.values.get("latest_release_published_at")
+            if not _has_field_value(release_published_at):
+                issues.append("release_freshness_missing")
+            elif _release_is_stale(release_published_at, checked_at):
+                issues.append("release_freshness_stale")
+    return list(dict.fromkeys(issues))
+
+
+def _github_tool_baseline_values_by_repo(
+    saved_rows: list[dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    baseline: dict[str, dict[str, object]] = {}
+    for saved_row in saved_rows:
+        values = saved_row.get("values")
+        if not isinstance(values, dict):
+            continue
+        repo_key = _github_tool_values_repo_key(values)
+        if repo_key is None:
+            continue
+        baseline[repo_key] = values
+    return baseline
+
+
+def _github_tool_values_repo_key(values: dict[str, object]) -> str | None:
+    repo_full_name = values.get("repo_full_name")
+    if isinstance(repo_full_name, str) and repo_full_name.strip():
+        return repo_full_name.strip()
+    html_url = values.get("html_url")
+    if isinstance(html_url, str) and html_url.strip():
+        return html_url.strip()
+    return None
+
+
+def _numeric_metric_changed(baseline_value: object, latest_value: object) -> bool:
+    baseline_number = _int_or_none(baseline_value)
+    latest_number = _int_or_none(latest_value)
+    if baseline_number is None or latest_number is None:
+        return False
+    return baseline_number != latest_number
+
+
+def _release_is_stale(value: object, checked_at: datetime) -> bool:
+    days = _days_since_iso_datetime(value, checked_at)
+    return days is not None and days > GITHUB_TOOL_RELEASE_STALE_DAYS
 
 
 def _cleaning_plan_dry_run_row(
@@ -7692,6 +8012,7 @@ def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
         "parse stars, forks, watchers and open_issues as integers when present",
         "normalize topics into lower-case tag arrays",
         "preserve license_spdx_id, default_branch and release tag as source-of-record metadata",
+        "preserve README, issue activity and commit freshness fields with per-field provenance",
         "keep missing values explicit as null for downstream review",
     ]
     if (
@@ -7731,10 +8052,13 @@ def _github_tool_export_preview(
     return {
         "format": "json",
         "schema": {
+            "schema_version": GITHUB_TOOL_DATASET_SCHEMA_VERSION,
             "fields": selected_fields,
             "primary_key": "html_url",
             "missing_value_policy": "explicit_null",
             "dataset_type": "github_tool_radar",
+            "collector_schema_versions": list(GITHUB_TOOL_COLLECTOR_SCHEMA_VERSIONS),
+            "field_sources": _github_tool_field_sources(selected_fields),
         },
         "rows": [
             {
@@ -7784,6 +8108,15 @@ def _github_tool_report_repositories(
                 fork=_bool_or_none(values.get("fork")),
                 updated_at=_string_or_none(values.get("updated_at")),
                 pushed_at=_string_or_none(values.get("pushed_at")),
+                readme_detected=_bool_or_none(values.get("readme_detected")),
+                readme_html_url=_string_or_none(values.get("readme_html_url")),
+                readme_size=_int_or_none(values.get("readme_size")),
+                issue_activity_open_count=_int_or_none(
+                    values.get("issue_activity_open_count")
+                ),
+                issue_activity_status=_string_or_none(values.get("issue_activity_status")),
+                commit_freshness_days=_int_or_none(values.get("commit_freshness_days")),
+                commit_freshness_status=_string_or_none(values.get("commit_freshness_status")),
             )
         )
     return repositories
@@ -7830,9 +8163,17 @@ def _github_tool_report_recommendations(
             else "未发现 latest release"
         )
         license_note = repository.license_spdx_id or "license 未声明"
+        readme_note = "README 已识别" if repository.readme_detected is True else "README 未确认"
+        issue_note = (
+            f"open issues {repository.issue_activity_open_count}"
+            if repository.issue_activity_open_count is not None
+            else "issue 活跃度未知"
+        )
+        commit_note = repository.commit_freshness_status or "commit 新鲜度未知"
         recommendations.append(
             f"{repository.repo_full_name} 具备 {repository.stars} stars，{threshold_note}；"
             f"{license_note}，{release_note}；"
+            f"{readme_note}，{issue_note}，commit {commit_note}；"
             f"可优先用于 {topics} 方向的数据采集工具培训与 SOP 编写。"
         )
     return recommendations
@@ -7842,14 +8183,24 @@ def _render_github_tool_report_asset_content(
     report: AutomationGitHubToolReportResponse,
 ) -> str:
     top_repository_lines = [
-        "| 仓库 | Stars | 语言 | License | Release | 默认分支 | Open issues | Topics | 链接 |",
-        "| --- | ---: | --- | --- | --- | --- | ---: | --- | --- |",
+        (
+            "| 仓库 | Stars | 语言 | License | Release | README | Issues | "
+            "Commit freshness | Topics | 链接 |"
+        ),
+        "| --- | ---: | --- | --- | --- | --- | ---: | --- | --- | --- |",
     ]
     for repository in report.top_repositories:
         topics = "、".join(repository.topics[:5]) if repository.topics else "未标注"
         html_url = repository.html_url or ""
-        open_issues = repository.open_issues if repository.open_issues is not None else "-"
+        open_issues = (
+            repository.issue_activity_open_count
+            if repository.issue_activity_open_count is not None
+            else repository.open_issues
+        )
+        open_issues_text = open_issues if open_issues is not None else "-"
         release_tag = repository.latest_release_tag or "-"
+        readme = "yes" if repository.readme_detected is True else "unknown"
+        commit_freshness = repository.commit_freshness_status or "-"
         top_repository_lines.append(
             "| "
             f"{repository.repo_full_name} | "
@@ -7857,8 +8208,9 @@ def _render_github_tool_report_asset_content(
             f"{repository.language or '-'} | "
             f"{repository.license_spdx_id or '-'} | "
             f"{release_tag} | "
-            f"{repository.default_branch or '-'} | "
-            f"{open_issues} | "
+            f"{readme} | "
+            f"{open_issues_text} | "
+            f"{commit_freshness} | "
             f"{topics} | "
             f"{html_url} |"
         )
@@ -7889,6 +8241,9 @@ def _render_github_tool_report_asset_content(
         f"- high_value_repositories: {report.summary.high_value_repositories}",
         f"- licensed_repositories: {report.summary.licensed_repositories}",
         f"- release_tagged_repositories: {report.summary.release_tagged_repositories}",
+        f"- readme_documented_repositories: {report.summary.readme_documented_repositories}",
+        f"- issue_active_repositories: {report.summary.issue_active_repositories}",
+        f"- fresh_commit_repositories: {report.summary.fresh_commit_repositories}",
         f"- archived_repositories: {report.summary.archived_repositories}",
         f"- fork_repositories: {report.summary.fork_repositories}",
         f"- languages: {languages}",

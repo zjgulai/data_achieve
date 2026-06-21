@@ -1141,6 +1141,7 @@ class AutomationProductDriftSummaryResponse(BaseModel):
     critical_tasks: int
     stale_tasks: int
     missing_field_tasks: int
+    drift_layers: dict[str, int] = Field(default_factory=dict)
     run_started: bool
     alert_created: bool
 
@@ -1197,6 +1198,13 @@ class AutomationGitHubToolReportRepositoryResponse(BaseModel):
     fork: bool | None
     updated_at: str | None
     pushed_at: str | None
+    readme_detected: bool | None
+    readme_html_url: str | None
+    readme_size: int | None
+    issue_activity_open_count: int | None
+    issue_activity_status: str | None
+    commit_freshness_days: int | None
+    commit_freshness_status: str | None
 
 
 class AutomationGitHubToolReportSummaryResponse(BaseModel):
@@ -1205,6 +1213,9 @@ class AutomationGitHubToolReportSummaryResponse(BaseModel):
     high_value_repositories: int
     licensed_repositories: int
     release_tagged_repositories: int
+    readme_documented_repositories: int
+    issue_active_repositories: int
+    fresh_commit_repositories: int
     archived_repositories: int
     fork_repositories: int
     languages: dict[str, int]
