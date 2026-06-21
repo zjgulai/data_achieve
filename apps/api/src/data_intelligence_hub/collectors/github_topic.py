@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any, cast
 
 import httpx
@@ -47,12 +48,23 @@ class GitHubTopicCollector(BaseCollector):
             if isinstance(items, list)
             else []
         )
+        collected_at = datetime.now(UTC).isoformat()
         content: dict[str, Any] = {
             "provider": "github",
             "kind": "topic_search",
+            "schema_version": "github_topic.v2",
             "topic": config["topic"],
             "total_count": result.get("total_count"),
             "repositories": repositories,
+            "provenance": {
+                "source": "github_search_api",
+                "api_endpoint": "https://api.github.com/search/repositories",
+                "query": f"topic:{config['topic']}",
+                "sort": "stars",
+                "order": "desc",
+                "per_page": config["max_results"],
+                "collected_at": collected_at,
+            },
             "raw": result,
         }
         return CollectionResult(
@@ -104,15 +116,46 @@ async def _fetch_json(
 
 
 def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
+    owner = repo.get("owner")
+    license_value = repo.get("license")
     return {
+        "provider": "github",
+        "kind": "repository_search_result",
+        "owner_login": owner.get("login") if isinstance(owner, dict) else None,
+        "owner_type": owner.get("type") if isinstance(owner, dict) else None,
         "full_name": repo.get("full_name"),
         "html_url": repo.get("html_url"),
         "description": repo.get("description"),
         "stargazers_count": repo.get("stargazers_count"),
         "forks_count": repo.get("forks_count"),
         "open_issues_count": repo.get("open_issues_count"),
+        "watchers_count": repo.get("watchers_count"),
         "language": repo.get("language"),
         "topics": repo.get("topics"),
+        "license_spdx_id": _license_spdx_id(license_value),
+        "license_name": _license_name(license_value),
+        "default_branch": repo.get("default_branch"),
+        "homepage": repo.get("homepage"),
+        "archived": repo.get("archived"),
+        "fork": repo.get("fork"),
+        "visibility": repo.get("visibility"),
+        "created_at": repo.get("created_at"),
         "pushed_at": repo.get("pushed_at"),
         "updated_at": repo.get("updated_at"),
     }
+
+
+def _license_spdx_id(license_value: object) -> str | None:
+    if isinstance(license_value, dict):
+        value = license_value.get("spdx_id") or license_value.get("key")
+        return str(value) if value else None
+    if isinstance(license_value, str):
+        return license_value
+    return None
+
+
+def _license_name(license_value: object) -> str | None:
+    if isinstance(license_value, dict):
+        value = license_value.get("name")
+        return str(value) if value else None
+    return None

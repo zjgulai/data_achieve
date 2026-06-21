@@ -1186,8 +1186,15 @@ class AutomationGitHubToolReportRepositoryResponse(BaseModel):
     stars: int
     forks: int | None
     open_issues: int | None
+    watchers: int | None
     language: str | None
     topics: list[str]
+    license_spdx_id: str | None
+    default_branch: str | None
+    latest_release_tag: str | None
+    latest_release_published_at: str | None
+    archived: bool | None
+    fork: bool | None
     updated_at: str | None
     pushed_at: str | None
 
@@ -1196,6 +1203,10 @@ class AutomationGitHubToolReportSummaryResponse(BaseModel):
     repository_count: int
     total_stars: int
     high_value_repositories: int
+    licensed_repositories: int
+    release_tagged_repositories: int
+    archived_repositories: int
+    fork_repositories: int
     languages: dict[str, int]
     top_topics: dict[str, int]
     report_created: bool

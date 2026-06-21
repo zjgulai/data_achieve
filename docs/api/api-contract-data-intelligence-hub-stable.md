@@ -213,8 +213,16 @@ GitHub 工具数据集化：
 GitHub 工具数据集字段：
 
 ```text
-repo_full_name, description, stars, forks, open_issues, language, topics, html_url, updated_at, pushed_at
+repo_full_name, owner_login, owner_type, description, stars, forks, open_issues, watchers,
+language, topics, license_spdx_id, default_branch, latest_release_tag,
+latest_release_published_at, archived, fork, html_url, homepage, created_at, updated_at, pushed_at
 ```
+
+字段来源边界：
+
+1. `github_topic` 优先来自 GitHub Search API，可稳定获得仓库基础元数据、license、默认分支、公开 topic 和 freshness 字段；`latest_release_*` 对 topic 结果可能为空。
+2. `github_repo` 额外读取 GitHub REST `releases/latest`；公开仓库无 release 时保留 `latest_release=null`，不阻断基础仓库采集。
+3. 以上 endpoint 仍为 API-first/read-only 数据集化能力；预览不保存 DatasetVersion，报告生成不启动采集、不创建通知、不发送邮件。
 
 GitHub 工具数据集导出复用 Dataset Export：
 

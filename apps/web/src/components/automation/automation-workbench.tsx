@@ -2699,11 +2699,12 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                     ) : null}
                     {toolReport ? (
                       <div className="grid gap-3">
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                           <Fact label="仓库数" value={String(toolReport.summary.repositoryCount)} />
                           <Fact label="Stars 合计" value={String(toolReport.summary.totalStars)} />
                           <Fact label="高价值仓库" value={String(toolReport.summary.highValueRepositories)} />
-                          <Fact label="Top 语言" value={Object.entries(toolReport.summary.languages)[0]?.join(" x") ?? "未识别"} />
+                          <Fact label="License 已声明" value={String(toolReport.summary.licensedRepositories)} />
+                          <Fact label="Release 已识别" value={String(toolReport.summary.releaseTaggedRepositories)} />
                         </div>
                         <div className="grid gap-2">
                           {toolReport.topRepositories.slice(0, 3).map((repository) => (
@@ -2716,7 +2717,7 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                             >
                               <span className="font-semibold">{repository.repoFullName}</span>
                               <span className="text-xs text-[#6A625D]">
-                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.topics.slice(0, 3).join(" / ") || "no topic"}
+                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.licenseSpdxId ?? "no license"} · {repository.latestReleaseTag ?? repository.defaultBranch ?? "no release"}
                               </span>
                             </a>
                           ))}

@@ -929,6 +929,10 @@ type AutomationGitHubToolReportResponse = {
     repository_count: number;
     total_stars: number;
     high_value_repositories: number;
+    licensed_repositories: number;
+    release_tagged_repositories: number;
+    archived_repositories: number;
+    fork_repositories: number;
     languages: Record<string, number>;
     top_topics: Record<string, number>;
     report_created: boolean;
@@ -941,8 +945,15 @@ type AutomationGitHubToolReportResponse = {
     stars: number;
     forks: number | null;
     open_issues: number | null;
+    watchers: number | null;
     language: string | null;
     topics: string[];
+    license_spdx_id: string | null;
+    default_branch: string | null;
+    latest_release_tag: string | null;
+    latest_release_published_at: string | null;
+    archived: boolean | null;
+    fork: boolean | null;
     updated_at: string | null;
     pushed_at: string | null;
   }>;
@@ -3856,6 +3867,10 @@ function mapAutomationGitHubToolReport(
       repositoryCount: response.summary.repository_count,
       totalStars: response.summary.total_stars,
       highValueRepositories: response.summary.high_value_repositories,
+      licensedRepositories: response.summary.licensed_repositories,
+      releaseTaggedRepositories: response.summary.release_tagged_repositories,
+      archivedRepositories: response.summary.archived_repositories,
+      forkRepositories: response.summary.fork_repositories,
       languages: response.summary.languages,
       topTopics: response.summary.top_topics,
       reportCreated: response.summary.report_created,
@@ -3868,8 +3883,15 @@ function mapAutomationGitHubToolReport(
       stars: repository.stars,
       forks: repository.forks,
       openIssues: repository.open_issues,
+      watchers: repository.watchers,
       language: repository.language,
       topics: repository.topics,
+      licenseSpdxId: repository.license_spdx_id,
+      defaultBranch: repository.default_branch,
+      latestReleaseTag: repository.latest_release_tag,
+      latestReleasePublishedAt: repository.latest_release_published_at,
+      archived: repository.archived,
+      fork: repository.fork,
       updatedAt: repository.updated_at,
       pushedAt: repository.pushed_at,
     })),
@@ -3925,7 +3947,17 @@ function getMockAutomationGitHubToolReport(
       cleaningPlanId: null,
       versionNumber: 1,
       sourceTaskRunIds: [],
-      selectedFields: ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+      selectedFields: [
+        "repo_full_name",
+        "stars",
+        "html_url",
+        "language",
+        "topics",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "updated_at",
+      ],
       cleaningScript: [],
       rowCount: 2,
       averageCompletenessPercent: 100,
@@ -3937,6 +3969,10 @@ function getMockAutomationGitHubToolReport(
       repositoryCount: 2,
       totalStars: 128000,
       highValueRepositories: 2,
+      licensedRepositories: 2,
+      releaseTaggedRepositories: 2,
+      archivedRepositories: 0,
+      forkRepositories: 0,
       languages: { Python: 2 },
       topTopics: {
         "ai-agent": 1,
@@ -3955,14 +3991,21 @@ function getMockAutomationGitHubToolReport(
         stars: 72000,
         forks: 8400,
         openIssues: 120,
+        watchers: 72000,
         language: "Python",
         topics: ["browser-automation", "ai-agent"],
+        licenseSpdxId: "MIT",
+        defaultBranch: "main",
+        latestReleaseTag: "v0.4.0",
+        latestReleasePublishedAt: now,
+        archived: false,
+        fork: false,
         updatedAt: now,
         pushedAt: now,
       },
     ],
     recommendations: [
-      "browser-use/browser-use 具备 72000 stars，可优先用于 AI 浏览器自动化培训与 SOP 编写。",
+      "browser-use/browser-use 具备 72000 stars，MIT，最新 release v0.4.0；可优先用于 AI 浏览器自动化培训与 SOP 编写。",
     ],
     auditEvents: [],
     blockedReasons: ["Mock 报告不会启动采集、创建报告资产或发送通知。"],
