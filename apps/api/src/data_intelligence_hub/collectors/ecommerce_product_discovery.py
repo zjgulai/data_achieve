@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urldefrag, urljoin, urlparse
+from urllib.parse import urldefrag, urljoin, urlparse, urlunparse
 
 import httpx
 
@@ -98,6 +98,7 @@ class ProductUrlCandidate:
     title: str | None
     source: str
     confidence: float
+    canonical_url: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -105,6 +106,7 @@ class ProductUrlCandidate:
             "title": self.title,
             "source": self.source,
             "confidence": self.confidence,
+            "canonical_url": self.canonical_url,
         }
 
 
@@ -117,6 +119,9 @@ class DiscoveryPageStructure:
     product_link_count: int
     jsonld_url_count: int
     sitemap_url_count: int
+    pagination_url_count: int
+    duplicate_url_count: int
+    skipped_url_count: int
     script_count: int
     text_sample: str
 
@@ -129,6 +134,9 @@ class DiscoveryPageStructure:
             "product_link_count": self.product_link_count,
             "jsonld_url_count": self.jsonld_url_count,
             "sitemap_url_count": self.sitemap_url_count,
+            "pagination_url_count": self.pagination_url_count,
+            "duplicate_url_count": self.duplicate_url_count,
+            "skipped_url_count": self.skipped_url_count,
             "script_count": self.script_count,
             "text_sample": self.text_sample,
         }
@@ -185,11 +193,15 @@ def analyze_ecommerce_product_discovery(
     inspector.feed(html)
     jsonld_candidates = _jsonld_product_url_candidates(inspector.jsonld_documents, url)
     sitemap_candidates = _sitemap_product_url_candidates(html, url)
-    link_candidates = _link_product_url_candidates(inspector.links, url)
-    candidates = _dedupe_candidates(
-        [*jsonld_candidates, *sitemap_candidates, *link_candidates],
+    link_candidates, skip_counts = _link_product_url_candidates(inspector.links, url)
+    all_candidates = [*jsonld_candidates, *sitemap_candidates, *link_candidates]
+    candidates, duplicate_url_count = _dedupe_candidates(
+        all_candidates,
         max_products,
     )
+    if duplicate_url_count:
+        skip_counts["duplicate_canonical_url"] = duplicate_url_count
+    skipped_url_count = sum(skip_counts.values())
     structure = DiscoveryPageStructure(
         page_type=_page_type(url, inspector, sitemap_candidates, candidates),
         title=inspector.title,
@@ -198,6 +210,9 @@ def analyze_ecommerce_product_discovery(
         product_link_count=len([candidate for candidate in link_candidates if candidate.url]),
         jsonld_url_count=len(jsonld_candidates),
         sitemap_url_count=len(sitemap_candidates),
+        pagination_url_count=len(inspector.pagination_urls),
+        duplicate_url_count=duplicate_url_count,
+        skipped_url_count=skipped_url_count,
         script_count=inspector.script_count,
         text_sample=" ".join(inspector.text_parts).strip()[:360],
     )
@@ -213,6 +228,14 @@ def analyze_ecommerce_product_discovery(
             "candidate_count": len(candidates),
             "max_products": max_products,
             "fan_out_requires_review": True,
+            "pagination_urls": sorted(inspector.pagination_urls),
+            "dedupe_summary": {
+                "input_url_count": len(all_candidates),
+                "canonical_candidate_count": len(candidates),
+                "duplicate_url_count": duplicate_url_count,
+                "skipped_url_count": skipped_url_count,
+                "skipped_reasons": _skip_reasons(skip_counts),
+            },
         },
     )
 
@@ -225,6 +248,7 @@ class _ProductDiscoveryHtmlInspector(HTMLParser):
         self.title: str | None = None
         self.canonical_url: str | None = None
         self.links: list[tuple[str, str | None]] = []
+        self.pagination_urls: set[str] = set()
         self.jsonld_documents: list[Any] = []
         self.script_count = 0
         self.text_parts: list[str] = []
@@ -233,6 +257,7 @@ class _ProductDiscoveryHtmlInspector(HTMLParser):
         self._jsonld_parts: list[str] = []
         self._ignore_depth = 0
         self._anchor_href: str | None = None
+        self._anchor_rel: str = ""
         self._anchor_text_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -252,8 +277,11 @@ class _ProductDiscoveryHtmlInspector(HTMLParser):
             href = attrs_by_name.get("href", "").strip()
             if "canonical" in rel and href:
                 self.canonical_url = _clean_url(urljoin(self.final_url, href))
+            if href and _looks_like_pagination_link(href, None, rel):
+                self.pagination_urls.add(_clean_url(urljoin(self.final_url, href)))
         if tag_name == "a":
             self._anchor_href = attrs_by_name.get("href", "").strip() or None
+            self._anchor_rel = attrs_by_name.get("rel", "").lower()
             self._anchor_text_parts = []
 
     def handle_endtag(self, tag: str) -> None:
@@ -272,8 +300,12 @@ class _ProductDiscoveryHtmlInspector(HTMLParser):
             self._ignore_depth -= 1
         if tag_name == "a" and self._anchor_href:
             title = " ".join(self._anchor_text_parts).strip() or None
-            self.links.append((urljoin(self.final_url, self._anchor_href), title))
+            absolute_url = urljoin(self.final_url, self._anchor_href)
+            self.links.append((absolute_url, title))
+            if _looks_like_pagination_link(absolute_url, title, self._anchor_rel):
+                self.pagination_urls.add(_clean_url(absolute_url))
             self._anchor_href = None
+            self._anchor_rel = ""
             self._anchor_text_parts = []
 
     def handle_data(self, data: str) -> None:
@@ -310,10 +342,11 @@ def _jsonld_product_url_candidates(
             title = _text(item.get("name"))
             candidates.append(
                 ProductUrlCandidate(
-                    url=_clean_url(urljoin(base_url, url)),
+                    url=_canonical_product_url(urljoin(base_url, url)),
                     title=title,
                     source="json_ld",
                     confidence=0.9,
+                    canonical_url=_canonical_product_url(urljoin(base_url, url)),
                 )
             )
     return candidates
@@ -369,7 +402,7 @@ def _jsonld_url(item: dict[str, Any]) -> str | None:
 def _sitemap_product_url_candidates(html: str, base_url: str) -> list[ProductUrlCandidate]:
     candidates: list[ProductUrlCandidate] = []
     for match in re.finditer(r"<loc>\s*([^<]+?)\s*</loc>", html, flags=re.IGNORECASE):
-        candidate_url = _clean_url(urljoin(base_url, match.group(1).strip()))
+        candidate_url = _canonical_product_url(urljoin(base_url, match.group(1).strip()))
         if _looks_like_product_url(candidate_url):
             candidates.append(
                 ProductUrlCandidate(
@@ -377,6 +410,7 @@ def _sitemap_product_url_candidates(html: str, base_url: str) -> list[ProductUrl
                     title=None,
                     source="sitemap",
                     confidence=0.88,
+                    canonical_url=candidate_url,
                 )
             )
     return candidates
@@ -385,13 +419,22 @@ def _sitemap_product_url_candidates(html: str, base_url: str) -> list[ProductUrl
 def _link_product_url_candidates(
     links: list[tuple[str, str | None]],
     base_url: str,
-) -> list[ProductUrlCandidate]:
+) -> tuple[list[ProductUrlCandidate], dict[str, int]]:
     candidates: list[ProductUrlCandidate] = []
+    skip_counts: dict[str, int] = {}
     base_origin = _origin(base_url)
     for link_url, title in links:
         candidate_url = _clean_url(link_url)
-        if _origin(candidate_url) != base_origin or not _looks_like_product_url(candidate_url):
+        if not candidate_url:
+            _count_skip(skip_counts, "empty_url")
             continue
+        if _origin(candidate_url) != base_origin:
+            _count_skip(skip_counts, "cross_origin_url")
+            continue
+        if not _looks_like_product_url(candidate_url):
+            _count_skip(skip_counts, "non_product_url_pattern")
+            continue
+        canonical_url = _canonical_product_url(candidate_url)
         confidence = 0.86
         if "/collections/" in urlparse(candidate_url).path and "/products/" in urlparse(
             candidate_url
@@ -399,35 +442,41 @@ def _link_product_url_candidates(
             confidence = 0.9
         candidates.append(
             ProductUrlCandidate(
-                url=candidate_url,
+                url=canonical_url,
                 title=title,
                 source="anchor",
                 confidence=confidence,
+                canonical_url=canonical_url,
             )
         )
-    return candidates
+    return candidates, skip_counts
 
 
 def _dedupe_candidates(
     candidates: list[ProductUrlCandidate],
     max_products: int,
-) -> list[ProductUrlCandidate]:
+) -> tuple[list[ProductUrlCandidate], int]:
     best_by_url: dict[str, ProductUrlCandidate] = {}
+    duplicate_count = 0
     for candidate in candidates:
-        existing = best_by_url.get(candidate.url)
+        existing = best_by_url.get(candidate.canonical_url)
+        if existing is not None:
+            duplicate_count += 1
         if existing is None or candidate.confidence > existing.confidence:
-            best_by_url[candidate.url] = candidate
+            best_by_url[candidate.canonical_url] = candidate
         elif existing.title is None and candidate.title:
-            best_by_url[candidate.url] = ProductUrlCandidate(
-                url=existing.url,
+            best_by_url[candidate.canonical_url] = ProductUrlCandidate(
+                url=existing.canonical_url,
                 title=candidate.title,
                 source=existing.source,
                 confidence=existing.confidence,
+                canonical_url=existing.canonical_url,
             )
-    return sorted(
+    deduped = sorted(
         best_by_url.values(),
         key=lambda item: (-item.confidence, item.url),
     )[:max_products]
+    return deduped, duplicate_count
 
 
 def _platform_profile(
@@ -525,9 +574,34 @@ def _looks_like_product_url(value: str) -> bool:
     return bool(re.search(r"/products?[-_/][a-z0-9][a-z0-9-]{2,}", path))
 
 
+def _looks_like_pagination_link(
+    value: str,
+    title: str | None,
+    rel: str,
+) -> bool:
+    parsed = urlparse(value)
+    path_and_query = f"{parsed.path}?{parsed.query}".lower()
+    title_text = (title or "").strip().lower()
+    if any(token in rel for token in ("next", "prev", "pagination")):
+        return True
+    if re.search(r"(?:[?&]page=\d+|/page/\d+|/collections/[^?]+/page/\d+)", path_and_query):
+        return True
+    return title_text in {"next", "previous", "prev", "older", "newer", "下一页", "上一页"}
+
+
 def _clean_url(value: str) -> str:
     cleaned, _fragment = urldefrag(value.strip())
     return cleaned
+
+
+def _canonical_product_url(value: str) -> str:
+    cleaned = _clean_url(value)
+    parsed = urlparse(cleaned)
+    match = re.search(r"/products/([^/?#]+)", parsed.path, flags=re.IGNORECASE)
+    if match:
+        return urlunparse((parsed.scheme, parsed.netloc, f"/products/{match.group(1)}", "", "", ""))
+    path = parsed.path.rstrip("/") or "/"
+    return urlunparse((parsed.scheme, parsed.netloc, path, "", "", ""))
 
 
 def _origin(url: str) -> str:
@@ -543,3 +617,11 @@ def _text(value: Any) -> str | None:
         return None
     stripped = " ".join(value.split())
     return stripped or None
+
+
+def _count_skip(skip_counts: dict[str, int], reason: str) -> None:
+    skip_counts[reason] = skip_counts.get(reason, 0) + 1
+
+
+def _skip_reasons(skip_counts: dict[str, int]) -> list[str]:
+    return [f"{reason}:{count}" for reason, count in sorted(skip_counts.items())]

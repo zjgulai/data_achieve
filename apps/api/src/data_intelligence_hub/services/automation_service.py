@@ -4851,6 +4851,22 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     cleaning_rule="parse_decimal",
                 ),
                 AutomationPlatformPackageFieldResponse(
+                    key="price_min",
+                    label="最低价",
+                    data_type="decimal",
+                    required=False,
+                    source="json_ld_offer_list",
+                    cleaning_rule="parse_decimal",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="price_max",
+                    label="最高价",
+                    data_type="decimal",
+                    required=False,
+                    source="json_ld_offer_list",
+                    cleaning_rule="parse_decimal",
+                ),
+                AutomationPlatformPackageFieldResponse(
                     key="currency",
                     label="货币",
                     data_type="string",
@@ -4867,12 +4883,52 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     cleaning_rule="normalize_availability",
                 ),
                 AutomationPlatformPackageFieldResponse(
+                    key="availability_detail",
+                    label="库存明细",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_offer_list",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
                     key="sku",
                     label="SKU",
                     data_type="string",
                     required=False,
                     source="json_ld_or_dom",
                     cleaning_rule="fill_default",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="variant",
+                    label="变体",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_variant_or_offer",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="brand",
+                    label="品牌",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_or_meta",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="category",
+                    label="分类",
+                    data_type="string",
+                    required=False,
+                    source="json_ld_or_meta",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="image_url",
+                    label="主图",
+                    data_type="url",
+                    required=False,
+                    source="json_ld_or_meta",
+                    cleaning_rule="normalize_url",
                 ),
                 AutomationPlatformPackageFieldResponse(
                     key="canonical_url",
@@ -4910,6 +4966,22 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     description="将价格字段转换为可排序的 decimal number。",
                 ),
                 AutomationPlatformPackageCleaningRuleResponse(
+                    field="sku",
+                    operation="fill_default",
+                    value="UNKNOWN-SKU",
+                    description="缺失 SKU 时保留可审计默认值，避免主键生成断裂。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="price_min",
+                    operation="parse_decimal",
+                    description="从多 offer 或变体价格中提取最低 decimal number。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="price_max",
+                    operation="parse_decimal",
+                    description="从多 offer 或变体价格中提取最高 decimal number。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
                     field="currency",
                     operation="uppercase",
                     description="把货币代码统一为大写，便于跨站点合并。",
@@ -4920,10 +4992,24 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                     description="库存状态归一为 in_stock/out_of_stock/unknown。",
                 ),
                 AutomationPlatformPackageCleaningRuleResponse(
-                    field="sku",
-                    operation="fill_default",
-                    value="UNKNOWN-SKU",
-                    description="缺失 SKU 时保留可审计默认值，避免主键生成断裂。",
+                    field="availability_detail",
+                    operation="strip_text",
+                    description="保留变体或 offer 级库存状态，便于人工复核。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="variant",
+                    operation="strip_text",
+                    description="保留商品变体名称或维度摘要。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="category",
+                    operation="strip_text",
+                    description="保留商品分类层级，便于跨站点聚合。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="image_url",
+                    operation="normalize_url",
+                    description="规范主图 URL，便于证据回溯。",
                 ),
                 AutomationPlatformPackageCleaningRuleResponse(
                     field="canonical_url",
@@ -4933,11 +5019,12 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
             ],
             operator_checklist=[
                 "确认目标页面公开可访问，不依赖登录态、验证码或购物车状态。",
-                "优先从集合页发现 5-20 个候选商品 URL，再人工剔除无关链接。",
+                "优先从集合页或 sitemap 发现 5-20 个候选商品 URL，再人工剔除无关链接。",
                 (
-                    "保留 title、price、canonical_url 作为最小必选字段，"
-                    "SKU 缺失时用清洗规则标注默认值。"
+                    "保留 title、price、canonical_url 作为最小必选字段；"
+                    "SKU、variant、category、image_url 可作为质量加分字段。"
                 ),
+                "检查 pagination、canonical 去重和 skipped reason 后再 fan-out。",
                 "先执行清洗计划试跑，确认价格和库存字段正常后再保存数据集版本。",
             ],
             strategy_matrix=[

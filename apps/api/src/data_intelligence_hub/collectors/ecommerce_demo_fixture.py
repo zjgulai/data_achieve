@@ -54,7 +54,9 @@ def _summer_bags_collection_html() -> str:
         <h1>Summer Bags</h1>
         <p>Summer Bags Demo Carry Bag Weekend Tote</p>
         <a href="/products/demo-bag">Demo Carry Bag</a>
+        <a href="/collections/summer-bags/products/demo-bag?variant=black">Demo Carry Bag Black</a>
         <a href="/products/weekend-tote">Weekend Tote</a>
+        <a href="/collections/summer-bags?page=2" rel="next">Next</a>
         <a href="/pages/about">About</a>
       </body>
     </html>
@@ -75,14 +77,31 @@ def _demo_bag_product_html() -> str:
           "name": "Demo Carry Bag",
           "sku": "BAG-001",
           "brand": {"@type": "Brand", "name": "Demo Brand"},
+          "category": ["Bags", "Summer"],
           "description": "A compact product fixture.",
           "image": ["/cdn/demo.jpg"],
-          "offers": {
-            "@type": "Offer",
-            "price": "129.90",
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock"
-          }
+          "hasVariant": [
+            {"@type": "Product", "name": "Black", "sku": "BAG-001-BLK"},
+            {"@type": "Product", "name": "Sand", "sku": "BAG-001-SAND"}
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Black",
+              "sku": "BAG-001-BLK",
+              "price": "129.90",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock"
+            },
+            {
+              "@type": "Offer",
+              "name": "Sand",
+              "sku": "BAG-001-SAND",
+              "price": "139.90",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/OutOfStock"
+            }
+          ]
         }
         </script>
         <script src="https://cdn.shopify.com/theme.js"></script>
@@ -108,6 +127,7 @@ def _weekend_tote_product_html() -> str:
           "@type": "Product",
           "name": "Weekend Tote",
           "brand": {"@type": "Brand", "name": "Demo Brand"},
+          "category": "Bags",
           "description": "A tote fixture with intentionally incomplete commercial fields.",
           "image": ["/cdn/weekend-tote.jpg"],
           "offers": {

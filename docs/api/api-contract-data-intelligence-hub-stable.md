@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-21
+updated: 2026-06-22
 owner: self
 source: human+ai
 ---
@@ -86,6 +86,16 @@ osint, ecommerce, social, competitor, mixed
 | `manual_json` | `entity_type`、`json_data` | 人工或外部工具导入结构化样本 |
 | `ecommerce_product_discovery` | `url` | 从公开独立站 listing、collection 或 sitemap 发现商品 URL |
 | `ecommerce_product_page` | `url` | 从公开独立站商品页解析商品字段 |
+
+`ecommerce_product_page` 默认字段合同：
+
+| 字段 | 说明 |
+|---|---|
+| `title`、`price`、`currency`、`availability`、`sku`、`brand`、`description`、`image_url`、`canonical_url` | 基础商品字段 |
+| `price_min`、`price_max` | 从多 offer / variant price 中计算价格区间 |
+| `availability_detail` | 保留 offer / variant 级库存状态摘要 |
+| `variant` | 商品变体名称或变体维度摘要 |
+| `category` | 商品分类或分类层级 |
 
 ## Automation
 
@@ -260,6 +270,17 @@ GitHub 工具数据集导出复用 Dataset Export：
 1. 这些接口不支持登录态抓取、风控绕过或反检测能力。
 2. `product-fanout-preview` 只预览，不创建采集源或采集任务。
 3. `product-fanout-create` 会写入采集源/任务，必须用于授权页面或测试 fixture。
+
+`AutomationProductDiscoveryResponse` 关键字段：
+
+| 字段 | 说明 |
+|---|---|
+| `product_candidates[].canonical_url` | canonical 去重后的商品 URL；`url` 当前也使用 canonical URL 作为 fan-out 输入 |
+| `page_structure.pagination_url_count` | listing/collection 中识别到的分页 URL 数 |
+| `page_structure.duplicate_url_count` | 被 canonical 去重折叠的候选 URL 数 |
+| `page_structure.skipped_url_count` | 被跳过的 URL 数，包含非商品链接和重复 canonical URL |
+| `discovery_plan.pagination_urls` | 分页 URL 样本，供人工确认后继续扩展 |
+| `discovery_plan.dedupe_summary` | 输入 URL 数、规范候选数、重复数、跳过数和 `skipped_reasons` 汇总 |
 
 ### Batch Run And Dataset
 

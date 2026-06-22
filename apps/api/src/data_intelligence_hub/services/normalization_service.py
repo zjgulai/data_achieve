@@ -252,6 +252,8 @@ def _ecommerce_product_page_snapshot(
         snapshot_data=_clean_snapshot(content),
         metrics={
             "price": _number(field_data.get("price")),
+            "price_min": _number(field_data.get("price_min")),
+            "price_max": _number(field_data.get("price_max")),
             "field_count": len(field_data),
         },
         captured_at=raw_record.collected_at,
@@ -286,6 +288,9 @@ def _ecommerce_product_discovery_snapshot(
             "candidate_count": len(product_candidates),
             "link_count": _number(structure_data.get("link_count")),
             "product_link_count": _number(structure_data.get("product_link_count")),
+            "pagination_url_count": _number(structure_data.get("pagination_url_count")),
+            "duplicate_url_count": _number(structure_data.get("duplicate_url_count")),
+            "skipped_url_count": _number(structure_data.get("skipped_url_count")),
             "max_products": _number(plan_data.get("max_products")),
         },
         captured_at=raw_record.collected_at,

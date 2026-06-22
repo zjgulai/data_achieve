@@ -532,6 +532,7 @@ type AutomationProductCandidateResponse = {
   title: string | null;
   source: string;
   confidence: number;
+  canonical_url: string;
 };
 
 type AutomationProductDiscoveryResponse = {
@@ -552,6 +553,9 @@ type AutomationProductDiscoveryResponse = {
     product_link_count: number;
     jsonld_url_count: number;
     sitemap_url_count: number;
+    pagination_url_count: number;
+    duplicate_url_count: number;
+    skipped_url_count: number;
     script_count: number;
     text_sample: string;
   };
@@ -562,6 +566,14 @@ type AutomationProductDiscoveryResponse = {
     candidate_count: number;
     max_products: number;
     fan_out_requires_review: boolean;
+    pagination_urls: string[];
+    dedupe_summary: {
+      input_url_count: number;
+      canonical_candidate_count: number;
+      duplicate_url_count: number;
+      skipped_url_count: number;
+      skipped_reasons: string[];
+    };
   };
   source_draft: {
     type: string;
@@ -3289,6 +3301,9 @@ function mapAutomationProductDiscovery(
       productLinkCount: response.page_structure.product_link_count,
       jsonldUrlCount: response.page_structure.jsonld_url_count,
       sitemapUrlCount: response.page_structure.sitemap_url_count,
+      paginationUrlCount: response.page_structure.pagination_url_count,
+      duplicateUrlCount: response.page_structure.duplicate_url_count,
+      skippedUrlCount: response.page_structure.skipped_url_count,
       scriptCount: response.page_structure.script_count,
       textSample: response.page_structure.text_sample,
     },
@@ -3297,6 +3312,7 @@ function mapAutomationProductDiscovery(
       title: candidate.title,
       source: candidate.source,
       confidence: candidate.confidence,
+      canonicalUrl: candidate.canonical_url,
     })),
     toolRecommendations: response.tool_recommendations.map(mapToolRecommendation),
     discoveryPlan: {
@@ -3304,6 +3320,14 @@ function mapAutomationProductDiscovery(
       candidateCount: response.discovery_plan.candidate_count,
       maxProducts: response.discovery_plan.max_products,
       fanOutRequiresReview: response.discovery_plan.fan_out_requires_review,
+      paginationUrls: response.discovery_plan.pagination_urls,
+      dedupeSummary: {
+        inputUrlCount: response.discovery_plan.dedupe_summary.input_url_count,
+        canonicalCandidateCount: response.discovery_plan.dedupe_summary.canonical_candidate_count,
+        duplicateUrlCount: response.discovery_plan.dedupe_summary.duplicate_url_count,
+        skippedUrlCount: response.discovery_plan.dedupe_summary.skipped_url_count,
+        skippedReasons: response.discovery_plan.dedupe_summary.skipped_reasons,
+      },
     },
     sourceDraft: {
       type: response.source_draft.type,
