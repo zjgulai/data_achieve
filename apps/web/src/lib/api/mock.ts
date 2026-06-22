@@ -21,6 +21,7 @@ import type {
   AutomationProductDatasetVersionListInput,
   AutomationProductDriftCheck,
   AutomationProductDriftCheckInput,
+  AutomationProductDriftItem,
   AutomationProductDriftAlertPreview,
   AutomationProductDriftAlertPreviewInput,
   AutomationProductDriftAlertEventCreate,
@@ -1982,7 +1983,7 @@ export function getMockAutomationProductDriftCheck(
     createdAt: now,
     exportPreview: { format: "json" },
   };
-  const items = input.taskIds.map((taskId, index) => {
+  const items: AutomationProductDriftItem[] = input.taskIds.map((taskId, index) => {
     const isCritical = index === 1;
     const status: "critical" | "ok" = isCritical ? "critical" : "ok";
     return {
@@ -1998,6 +1999,10 @@ export function getMockAutomationProductDriftCheck(
       completenessDropPercent: isCritical ? 25 : 0,
       missingFields: isCritical ? ["price", "sku"] : [],
       newMissingFields: isCritical ? ["price", "sku"] : [],
+      rowChange: "unchanged",
+      addedRowCount: 0,
+      removedRowCount: 0,
+      priceChangePercent: null,
       freshnessTargetHours: 6,
       staleHours: 0,
       issues: isCritical
@@ -2020,6 +2025,9 @@ export function getMockAutomationProductDriftCheck(
       criticalTasks,
       staleTasks: 0,
       missingFieldTasks: criticalTasks,
+      addedRows: 0,
+      removedRows: 0,
+      priceChangedTasks: 0,
       driftLayers: criticalTasks
         ? { completeness: criticalTasks, field_missingness: criticalTasks }
         : {},
@@ -2732,6 +2740,9 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
       criticalTasks: 1,
       staleTasks: 0,
       missingFieldTasks: 1,
+      addedRows: 0,
+      removedRows: 0,
+      priceChangedTasks: 0,
       driftLayers: { completeness: 1, field_missingness: 1 },
       runStarted: false,
       alertCreated: false,
@@ -2750,6 +2761,10 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         completenessDropPercent: 0,
         missingFields: [],
         newMissingFields: [],
+        rowChange: "unchanged",
+        addedRowCount: 0,
+        removedRowCount: 0,
+        priceChangePercent: null,
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: [],
@@ -2767,6 +2782,10 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         completenessDropPercent: 25,
         missingFields: ["price", "sku"],
         newMissingFields: ["price", "sku"],
+        rowChange: "unchanged",
+        addedRowCount: 0,
+        removedRowCount: 0,
+        priceChangePercent: null,
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: ["completeness_drift_exceeded", "approved_fields_missing"],

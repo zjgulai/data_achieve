@@ -24,7 +24,8 @@ source: human+ai
 4. 本机当前未找到 `agent-reach` 命令。
 5. 本轮没有做业务代码修改，没有创建 Source/Task/TaskRun/Dataset/Report/Notification，没有 provider call，没有生产写入。
 6. 2026-06-22 已复核 `origin/main=71b52be`，PR #5 已合并 M3 GitHub provenance/drift 深化；API/Web Quality Gate 为 success，`Web Real API E2E (manual)` 在 workflow 中为 skipped。
-7. 当前 `codex/m4-independent-site-depth` 分支已完成 M4-1/M4-2 本地实现、合同同步和 `scripts/verify-mvp.sh`；不代表生产部署、生产写入 E2E 或授权测试站 E2E 已完成。
+7. `codex/m4-independent-site-depth` 已通过 PR #6 合并到 `main@67f611e`，覆盖 M4-1/M4-2 独立站 discovery 和商品字段增强；不代表生产写入 E2E 或授权测试站 E2E 已完成。
+8. 当前 `codex/m4-dataset-drift-samples` 分支补齐 M4-3 Dataset/drift 样例；新增/下架/价格变化已有本地 API 集成测试覆盖，且 `scripts/verify-mvp.sh` 已通过；仍需完成 PR、合并、部署和生产只读验收。
 
 ## 1. 执行总原则
 
@@ -136,9 +137,9 @@ To do：
 
 | ID | 任务 | 建议文件 | 完成条件 |
 |---|---|---|---|
-| M4-1 | collection/listing/sitemap 发现增强 | collector + automation service | 本地分支已实现 canonical、pagination、sitemap URL、去重和 skipped reasons；`scripts/verify-mvp.sh` 已通过，待 PR |
-| M4-2 | 商品字段增强 | collector/schema/tests | 本地分支已增加 variant、price range、availability detail、category，并保留 SKU、image、brand、currency、availability；`scripts/verify-mvp.sh` 已通过，待 PR |
-| M4-3 | Dataset 和 drift 样例 | tests + docs | 可展示新增/下架、价格变化、字段缺失 |
+| M4-1 | collection/listing/sitemap 发现增强 | collector + automation service | 已随 PR #6 合并到 `main@67f611e`，实现 canonical、pagination、sitemap URL、去重和 skipped reasons |
+| M4-2 | 商品字段增强 | collector/schema/tests | 已随 PR #6 合并到 `main@67f611e`，增加 variant、price range、availability detail、category，并保留 SKU、image、brand、currency、availability |
+| M4-3 | Dataset 和 drift 样例 | tests + docs | 当前分支本地已覆盖新增/下架、价格变化进入 `product-drift-check` 和 `product-drift-events`；`scripts/verify-mvp.sh` 已通过，PR、合并和部署仍待完成 |
 | M4-4 | 授权测试站 E2E | Playwright/API script | 能从 URL 到 Dataset/export/drift 完整跑通并清理 |
 
 禁止动作：
@@ -239,8 +240,9 @@ bash scripts/verify-mvp.sh --with-db
 | P0 | M3-3 | GitHub Tool Radar report 增强 | done_main_71b52be | 报告 summary 字段已合并 |
 | P0 | M3-4 | GitHub drift 规则增强 | done_main_71b52be | stars/forks/issues/release freshness/field missingness 分层输出已合并 |
 | P0 | M3-5 | GitHub production write E2E | pending_authorization | 明确测试 workspace、写入范围、cleanup register 后才能执行 |
-| P0 | M4-1 | 独立站 discovery 深化 | local_verified_pending_pr | collection/listing/sitemap/canonical 去重、pagination、skipped reasons |
-| P0 | M4-2 | 独立站商品字段增强 | local_verified_pending_pr | variant、price range、availability detail、category、SKU、image、currency、availability |
+| P0 | M4-1 | 独立站 discovery 深化 | done_main_67f611e | collection/listing/sitemap/canonical 去重、pagination、skipped reasons |
+| P0 | M4-2 | 独立站商品字段增强 | done_main_67f611e | variant、price range、availability detail、category、SKU、image、currency、availability |
+| P0 | M4-3 | Dataset/drift 样例 | local_verified_pending_pr | 新增/下架、价格变化进入 drift check/events；`scripts/verify-mvp.sh` 已通过，PR、部署待完成 |
 | P1 | M5-1 | Public Web/RSS/Docs 平台包 | todo | 先做公开 feed/docs fixture |
 | P1 | M5-2 | Video transcript import | todo | metadata/transcript 导入，不下载媒体 |
 | P1 | M5-3 | Public community trend | todo | 优先 V2EX 聚合趋势 |
@@ -256,5 +258,5 @@ bash scripts/verify-mvp.sh --with-db
 3. `M2-3` 重试前需要先让 `browser-harness --doctor` 达到 `daemon alive` 和 active browser connection 可用；仍只允许 `https://example.com/` 或明确授权测试页。
 4. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
 5. M3-1 到 M3-4 已随 PR #5 合并；M3-5 仍需单独生产写入授权，并在执行前确定测试 workspace、允许写入资源、cleanup register 和 dry-run/execute 命令。
-6. 当前下一步是为 `M4-1/M4-2` 创建 PR 并合并；随后进入 `M4-3` Dataset/drift 样例，或并行准备 `M5-1` Public Web/RSS。
+6. 当前下一步是为 `M4-3` 创建 PR、合并、部署和生产只读验收；之后进入 `M4-4` 授权测试站 E2E，或并行准备 `M5-1` Public Web/RSS。
 7. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。

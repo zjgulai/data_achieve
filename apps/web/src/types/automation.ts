@@ -998,6 +998,10 @@ export type AutomationProductDriftItem = {
   completenessDropPercent: number | null;
   missingFields: string[];
   newMissingFields: string[];
+  rowChange: "unchanged" | "added" | "removed" | "mixed";
+  addedRowCount: number;
+  removedRowCount: number;
+  priceChangePercent: number | null;
   freshnessTargetHours: number | null;
   staleHours: number | null;
   issues: string[];
@@ -1017,6 +1021,9 @@ export type AutomationProductDriftCheck = {
     criticalTasks: number;
     staleTasks: number;
     missingFieldTasks: number;
+    addedRows: number;
+    removedRows: number;
+    priceChangedTasks: number;
     driftLayers: Record<string, number>;
     runStarted: boolean;
     alertCreated: boolean;

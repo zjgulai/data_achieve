@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import uuid
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -361,12 +362,26 @@ DRIFT_LAYER_BY_ISSUE = {
     "completeness_drift_exceeded": "completeness",
     "approved_fields_missing": "field_missingness",
     "freshness_target_missed": "task_freshness",
+    "product_added": "catalog_presence",
+    "product_removed": "catalog_presence",
+    "price_changed": "price_change",
     "stars_changed": "stars",
     "forks_changed": "forks",
     "issue_activity_changed": "issue_activity",
     "release_freshness_missing": "release_freshness",
     "release_freshness_stale": "release_freshness",
 }
+
+ProductRowChange = Literal["unchanged", "added", "removed", "mixed"]
+
+
+@dataclass(frozen=True)
+class ProductRowDrift:
+    row_change: ProductRowChange
+    added_row_count: int
+    removed_row_count: int
+    price_change_percent: float | None
+    issues: list[str]
 
 
 def list_platform_packages() -> AutomationPlatformPackageListResponse:
@@ -2552,6 +2567,10 @@ async def check_product_drift(
         completeness_drop_percent: int | None = None
         missing_fields: list[str] = []
         new_missing_fields: list[str] = []
+        row_change = "unchanged"
+        added_row_count = 0
+        removed_row_count = 0
+        price_change_percent: float | None = None
         reused_deduplicated_records = False
 
         if latest_run is None:
@@ -2578,6 +2597,16 @@ async def check_product_drift(
             new_missing_fields = [
                 field for field in approved_fields if field in field_completeness.missing_fields
             ]
+            row_drift = _product_row_drift(
+                version,
+                product_records,
+                task,
+            )
+            row_change = row_drift.row_change
+            added_row_count = row_drift.added_row_count
+            removed_row_count = row_drift.removed_row_count
+            price_change_percent = row_drift.price_change_percent
+            issues.extend(row_drift.issues)
             if completeness_drop_percent > payload.completeness_drop_threshold_percent:
                 issues.append("completeness_drift_exceeded")
             if new_missing_fields:
@@ -2606,6 +2635,10 @@ async def check_product_drift(
                 completeness_drop_percent=completeness_drop_percent,
                 missing_fields=missing_fields,
                 new_missing_fields=new_missing_fields,
+                row_change=row_change,
+                added_row_count=added_row_count,
+                removed_row_count=removed_row_count,
+                price_change_percent=price_change_percent,
                 freshness_target_hours=freshness_target_hours,
                 stale_hours=stale_hours,
                 issues=issues,
@@ -2618,6 +2651,10 @@ async def check_product_drift(
                 "latest_run_id": str(latest_run.id) if latest_run else None,
                 "status": status,
                 "issues": issues,
+                "row_change": row_change,
+                "added_row_count": added_row_count,
+                "removed_row_count": removed_row_count,
+                "price_change_percent": price_change_percent,
                 "run_started": False,
                 "alert_created": False,
                 "deduplicated_source_records_reused": (
@@ -6947,6 +6984,128 @@ def _product_field_completeness_for_fields(
     )
 
 
+def _product_row_drift(
+    version: DatasetVersion,
+    raw_records: list[RawRecord],
+    task: CollectionTask,
+) -> ProductRowDrift:
+    task_source_url = _task_source_url(task)
+    baseline_rows = _dataset_version_rows_for_task_source(version, task_source_url)
+    current_by_key: dict[str, dict[str, object]] = {}
+    for raw_record in raw_records:
+        values = _raw_record_extracted_fields(raw_record)
+        key = _product_row_key(values, raw_record.source_url)
+        if key is not None:
+            current_by_key[key] = values
+
+    baseline_by_key: dict[str, dict[str, object]] = {}
+    for row in baseline_rows:
+        raw_values = row.get("values")
+        row_values: dict[str, object] = dict(raw_values) if isinstance(raw_values, dict) else {}
+        source_url = row.get("source_url")
+        key = _product_row_key(
+            row_values,
+            source_url if isinstance(source_url, str) else None,
+        )
+        if key is not None:
+            baseline_by_key[key] = row_values
+
+    baseline_keys = set(baseline_by_key)
+    current_keys = set(current_by_key)
+    added_count = len(current_keys - baseline_keys)
+    removed_count = len(baseline_keys - current_keys)
+    price_change_percent = _largest_price_change_percent(baseline_by_key, current_by_key)
+    issues: list[str] = []
+    if added_count:
+        issues.append("product_added")
+    if removed_count:
+        issues.append("product_removed")
+    if price_change_percent is not None:
+        issues.append("price_changed")
+
+    row_change: ProductRowChange = "unchanged"
+    if added_count and removed_count:
+        row_change = "mixed"
+    elif added_count:
+        row_change = "added"
+    elif removed_count:
+        row_change = "removed"
+
+    return ProductRowDrift(
+        row_change=row_change,
+        added_row_count=added_count,
+        removed_row_count=removed_count,
+        price_change_percent=price_change_percent,
+        issues=issues,
+    )
+
+
+def _dataset_version_rows_for_task_source(
+    version: DatasetVersion,
+    task_source_url: str | None,
+) -> list[dict[str, object]]:
+    rows = [row for row in version.rows if isinstance(row, dict)]
+    if task_source_url is None:
+        return rows
+    matched = [
+        row
+        for row in rows
+        if row.get("source_url") == task_source_url
+        or _row_values_canonical_url(row) == task_source_url
+    ]
+    return matched
+
+
+def _row_values_canonical_url(row: dict[str, object]) -> str | None:
+    values = row.get("values")
+    if not isinstance(values, dict):
+        return None
+    canonical_url = values.get("canonical_url")
+    return str(canonical_url).strip() if _has_field_value(canonical_url) else None
+
+
+def _product_row_key(values: dict[str, object], source_url: str | None) -> str | None:
+    for field in ("canonical_url", "sku", "title"):
+        value = values.get(field)
+        if _has_field_value(value):
+            return str(value).strip()
+    if source_url is not None and source_url.strip():
+        return source_url.strip()
+    return None
+
+
+def _largest_price_change_percent(
+    baseline_by_key: dict[str, dict[str, object]],
+    current_by_key: dict[str, dict[str, object]],
+) -> float | None:
+    changes: list[float] = []
+    for key in sorted(set(baseline_by_key) & set(current_by_key)):
+        baseline_price = _numeric_value(baseline_by_key[key].get("price"))
+        current_price = _numeric_value(current_by_key[key].get("price"))
+        if baseline_price is None or current_price is None or baseline_price == current_price:
+            continue
+        if baseline_price == 0:
+            changes.append(100.0)
+        else:
+            changes.append(round(((current_price - baseline_price) / baseline_price) * 100, 2))
+    if not changes:
+        return None
+    return max(changes, key=abs)
+
+
+def _numeric_value(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.replace(",", "").strip())
+        except ValueError:
+            return None
+    return None
+
+
 def _task_freshness_drift(
     task: CollectionTask,
     checked_at: datetime,
@@ -6971,7 +7130,11 @@ def _aware_datetime(value: datetime) -> datetime:
 
 
 def _drift_status(issues: list[str]) -> str:
-    critical_issues = {"latest_run_failed", "completeness_drift_exceeded"}
+    critical_issues = {
+        "latest_run_failed",
+        "completeness_drift_exceeded",
+        "product_removed",
+    }
     if any(issue in critical_issues for issue in issues):
         return "critical"
     if issues:
@@ -6999,6 +7162,11 @@ def _product_drift_summary(
             if item.stale_hours is not None and item.stale_hours > 0
         ]),
         missing_field_tasks=len([item for item in checked_items if item.new_missing_fields]),
+        added_rows=sum(item.added_row_count for item in checked_items),
+        removed_rows=sum(item.removed_row_count for item in checked_items),
+        price_changed_tasks=len([
+            item for item in checked_items if item.price_change_percent is not None
+        ]),
         drift_layers=_drift_layer_counts(items),
         run_started=False,
         alert_created=False,

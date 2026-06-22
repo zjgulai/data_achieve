@@ -890,6 +890,10 @@ type AutomationProductDriftCheckResponse = {
     completeness_drop_percent: number | null;
     missing_fields: string[];
     new_missing_fields: string[];
+    row_change: "unchanged" | "added" | "removed" | "mixed";
+    added_row_count: number;
+    removed_row_count: number;
+    price_change_percent: number | null;
     freshness_target_hours: number | null;
     stale_hours: number | null;
     issues: string[];
@@ -902,6 +906,9 @@ type AutomationProductDriftCheckResponse = {
     critical_tasks: number;
     stale_tasks: number;
     missing_field_tasks: number;
+    added_rows: number;
+    removed_rows: number;
+    price_changed_tasks: number;
     drift_layers: Record<string, number>;
     run_started: boolean;
     alert_created: boolean;
@@ -3804,6 +3811,10 @@ function mapAutomationProductDriftCheck(
       completenessDropPercent: item.completeness_drop_percent,
       missingFields: item.missing_fields,
       newMissingFields: item.new_missing_fields,
+      rowChange: item.row_change,
+      addedRowCount: item.added_row_count,
+      removedRowCount: item.removed_row_count,
+      priceChangePercent: item.price_change_percent,
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
@@ -3816,6 +3827,9 @@ function mapAutomationProductDriftCheck(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      addedRows: response.summary.added_rows,
+      removedRows: response.summary.removed_rows,
+      priceChangedTasks: response.summary.price_changed_tasks,
       driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
@@ -3864,6 +3878,9 @@ function mapAutomationProductDriftEvent(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      addedRows: response.summary.added_rows,
+      removedRows: response.summary.removed_rows,
+      priceChangedTasks: response.summary.price_changed_tasks,
       driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
@@ -3881,6 +3898,10 @@ function mapAutomationProductDriftEvent(
       completenessDropPercent: item.completeness_drop_percent,
       missingFields: item.missing_fields,
       newMissingFields: item.new_missing_fields,
+      rowChange: item.row_change,
+      addedRowCount: item.added_row_count,
+      removedRowCount: item.removed_row_count,
+      priceChangePercent: item.price_change_percent,
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
