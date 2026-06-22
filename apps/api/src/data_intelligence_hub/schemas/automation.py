@@ -796,6 +796,7 @@ class AutomationProductCandidateResponse(BaseModel):
     title: str | None
     source: str
     confidence: float
+    canonical_url: str
 
 
 class AutomationDiscoveryPageStructureResponse(BaseModel):
@@ -806,8 +807,19 @@ class AutomationDiscoveryPageStructureResponse(BaseModel):
     product_link_count: int
     jsonld_url_count: int
     sitemap_url_count: int
+    pagination_url_count: int
+    duplicate_url_count: int
+    skipped_url_count: int
     script_count: int
     text_sample: str
+
+
+class AutomationDiscoveryDedupeSummaryResponse(BaseModel):
+    input_url_count: int
+    canonical_candidate_count: int
+    duplicate_url_count: int
+    skipped_url_count: int
+    skipped_reasons: list[str]
 
 
 class AutomationDiscoveryPlanResponse(BaseModel):
@@ -815,6 +827,8 @@ class AutomationDiscoveryPlanResponse(BaseModel):
     candidate_count: int
     max_products: int
     fan_out_requires_review: bool
+    pagination_urls: list[str]
+    dedupe_summary: AutomationDiscoveryDedupeSummaryResponse
 
 
 class AutomationFanoutCandidateStatusResponse(BaseModel):

@@ -533,6 +533,7 @@ export type AutomationProductCandidate = {
   title: string | null;
   source: string;
   confidence: number;
+  canonicalUrl: string;
 };
 
 export type AutomationProductDiscovery = {
@@ -553,6 +554,9 @@ export type AutomationProductDiscovery = {
     productLinkCount: number;
     jsonldUrlCount: number;
     sitemapUrlCount: number;
+    paginationUrlCount: number;
+    duplicateUrlCount: number;
+    skippedUrlCount: number;
     scriptCount: number;
     textSample: string;
   };
@@ -563,6 +567,14 @@ export type AutomationProductDiscovery = {
     candidateCount: number;
     maxProducts: number;
     fanOutRequiresReview: boolean;
+    paginationUrls: string[];
+    dedupeSummary: {
+      inputUrlCount: number;
+      canonicalCandidateCount: number;
+      duplicateUrlCount: number;
+      skippedUrlCount: number;
+      skippedReasons: string[];
+    };
   };
   sourceDraft: {
     type: string;

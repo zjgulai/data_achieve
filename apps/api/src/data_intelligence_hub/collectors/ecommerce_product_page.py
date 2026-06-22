@@ -25,10 +25,15 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 ECOMMERCE_PRODUCT_FIELDS = (
     "title",
     "price",
+    "price_min",
+    "price_max",
     "currency",
     "availability",
+    "availability_detail",
     "sku",
+    "variant",
     "brand",
+    "category",
     "description",
     "image_url",
     "canonical_url",
@@ -377,7 +382,8 @@ def _extract_product_fields(
     inspector: _EcommerceHtmlInspector,
     url: str,
 ) -> dict[str, Any]:
-    offer = _first_dict(product.get("offers"))
+    offers = _dicts(product.get("offers"))
+    offer = offers[0] if offers else None
     brand = product.get("brand")
     if isinstance(brand, dict):
         brand_value: Any = brand.get("name")
@@ -386,31 +392,114 @@ def _extract_product_fields(
     image = product.get("image") or inspector.meta.get("og:image")
     if isinstance(image, list):
         image = next((item for item in image if isinstance(item, str)), None)
-    price = _number(offer.get("price") if offer else None)
+    offer_prices = [
+        price
+        for price in (_number(offer_data.get("price")) for offer_data in offers)
+        if price is not None
+    ]
+    price = offer_prices[0] if offer_prices else None
     if price is None:
         price = _number(inspector.meta.get("product:price:amount"))
+    price_range = offer_prices or ([price] if price is not None else [])
+    availability_values = [
+        normalized
+        for normalized in (
+            _availability(_text(offer_data.get("availability"))) for offer_data in offers
+        )
+        if normalized is not None
+    ]
+    availability = availability_values[0] if availability_values else None
     return {
         "title": _text(product.get("name"))
         or inspector.meta.get("og:title")
         or inspector.title,
         "price": price,
+        "price_min": min(price_range) if price_range else None,
+        "price_max": max(price_range) if price_range else None,
         "currency": _text(offer.get("priceCurrency") if offer else None)
         or inspector.meta.get("product:price:currency"),
-        "availability": _availability(_text(offer.get("availability") if offer else None)),
+        "availability": availability,
+        "availability_detail": _availability_detail(offers, availability),
         "sku": _text(product.get("sku")) or _text(product.get("mpn")),
+        "variant": _variant_summary(product, offers),
         "brand": _text(brand_value),
+        "category": _category_value(product, inspector),
         "description": _text(product.get("description")) or inspector.meta.get("og:description"),
         "image_url": urljoin(url, image) if isinstance(image, str) else None,
         "canonical_url": inspector.canonical_url or _text(product.get("url")) or url,
     }
 
 
-def _first_dict(value: Any) -> dict[str, Any] | None:
+def _dicts(value: Any) -> list[dict[str, Any]]:
     if isinstance(value, dict):
-        return value
+        return [value]
     if isinstance(value, list):
-        return next((item for item in value if isinstance(item, dict)), None)
-    return None
+        return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def _variant_summary(product: dict[str, Any], offers: list[dict[str, Any]]) -> str | None:
+    variant_names: list[str] = []
+    variants = product.get("hasVariant")
+    for variant in _dicts(variants):
+        name = _text(variant.get("name")) or _text(variant.get("sku"))
+        if name is not None:
+            variant_names.append(name)
+    offer_names = [
+        name
+        for name in (
+            _text(offer.get("name")) or _text(offer.get("sku")) for offer in offers
+        )
+        if name is not None
+    ]
+    variant_names.extend(offer_names)
+    if variant_names:
+        return ", ".join(dict.fromkeys(variant_names))
+    varies_by = product.get("variesBy")
+    if isinstance(varies_by, list):
+        values = [_text(item) for item in varies_by]
+        normalized = [item for item in values if item is not None]
+        if normalized:
+            return ", ".join(normalized)
+    varies_by_text = _text(varies_by)
+    if varies_by_text is not None:
+        return varies_by_text
+    parent = product.get("isVariantOf")
+    if isinstance(parent, dict):
+        return _text(parent.get("name")) or _text(parent.get("sku"))
+    return _text(parent)
+
+
+def _category_value(product: dict[str, Any], inspector: _EcommerceHtmlInspector) -> str | None:
+    category = product.get("category")
+    if isinstance(category, list):
+        values = [_text(item) for item in category]
+        normalized = [item for item in values if item is not None]
+        if normalized:
+            return " > ".join(normalized)
+    if isinstance(category, dict):
+        return _text(category.get("name"))
+    return (
+        _text(category)
+        or inspector.meta.get("product:category")
+        or inspector.meta.get("article:section")
+    )
+
+
+def _availability_detail(
+    offers: list[dict[str, Any]],
+    fallback: str | None,
+) -> str | None:
+    details: list[str] = []
+    for offer in offers:
+        status = _availability(_text(offer.get("availability")))
+        if status is None:
+            continue
+        label = _text(offer.get("name")) or _text(offer.get("sku"))
+        details.append(f"{label}: {status}" if label else status)
+    if details:
+        return "; ".join(dict.fromkeys(details))
+    return fallback
 
 
 def _field_candidates(
@@ -420,10 +509,15 @@ def _field_candidates(
     labels = {
         "title": "商品标题",
         "price": "价格",
+        "price_min": "最低价",
+        "price_max": "最高价",
         "currency": "货币",
         "availability": "库存状态",
+        "availability_detail": "库存明细",
         "sku": "SKU",
+        "variant": "变体",
         "brand": "品牌",
+        "category": "分类",
         "description": "描述",
         "image_url": "主图",
         "canonical_url": "规范 URL",
@@ -529,7 +623,7 @@ def _cleaning_plan(fields: list[FieldCandidate]) -> list[dict[str, str]]:
 
 
 def _cleaning_rule(key: str) -> str:
-    if key == "price":
+    if key in {"price", "price_min", "price_max"}:
         return "parse_decimal"
     if key in {"image_url", "canonical_url"}:
         return "normalize_url"
@@ -541,9 +635,12 @@ def _cleaning_rule(key: str) -> str:
 def _cleaning_description(key: str) -> str:
     descriptions = {
         "price": "去除货币符号和千分位，保存为 decimal number。",
+        "price_min": "从多 offer 或变体价格中提取最低 decimal number。",
+        "price_max": "从多 offer 或变体价格中提取最高 decimal number。",
         "image_url": "转为绝对 URL，去除空白和无效协议。",
         "canonical_url": "转为绝对 URL，用于去重和回溯。",
         "availability": "归一化为 in_stock、out_of_stock 或 unknown。",
+        "availability_detail": "保留变体或 offer 级库存状态，便于后续人工复核。",
     }
     return descriptions.get(key, "去除首尾空白，保留原始语义。")
 
@@ -568,7 +665,7 @@ def _availability(value: str | None) -> str | None:
 
 
 def _data_type(value: Any, key: str) -> str:
-    if key == "price":
+    if key in {"price", "price_min", "price_max"}:
         return "number"
     if key in {"image_url", "canonical_url"}:
         return "url"
@@ -582,8 +679,10 @@ def _data_type(value: Any, key: str) -> str:
 def _field_confidence(value: Any, key: str) -> float:
     if value is None:
         return 0.0
-    if key in {"title", "price", "canonical_url"}:
+    if key in {"title", "price", "price_min", "price_max", "canonical_url"}:
         return 0.92
+    if key in {"variant", "category", "availability_detail"}:
+        return 0.72
     return 0.78
 
 

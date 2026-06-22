@@ -93,10 +93,15 @@ import type {
 const defaultFields = [
   "title",
   "price",
+  "price_min",
+  "price_max",
   "currency",
   "availability",
+  "availability_detail",
   "sku",
+  "variant",
   "brand",
+  "category",
   "description",
   "image_url",
   "canonical_url",
@@ -104,7 +109,9 @@ const defaultFields = [
 
 const fieldLabels: Record<string, string> = {
   availability: "库存",
+  availability_detail: "库存明细",
   brand: "品牌",
+  category: "分类",
   canonical_url: "规范 URL",
   currency: "货币",
   default_branch: "默认分支",
@@ -123,6 +130,8 @@ const fieldLabels: Record<string, string> = {
   open_issues: "Open issues",
   page_title: "页面标题",
   price: "价格",
+  price_max: "最高价",
+  price_min: "最低价",
   readme_detected: "README",
   readme_html_url: "README URL",
   readme_size: "README 大小",
@@ -133,6 +142,7 @@ const fieldLabels: Record<string, string> = {
   text_sample: "正文样本",
   title: "标题",
   topics: "Topics",
+  variant: "变体",
   updated_at: "更新时间",
   pushed_at: "最近推送",
   commit_freshness_days: "推送距今天数",
@@ -3354,6 +3364,12 @@ function DiscoveryResult({
               <Fact label="JSON-LD URL" value={String(discovery.pageStructure.jsonldUrlCount)} />
               <Fact label="脚本数" value={String(discovery.pageStructure.scriptCount)} />
             </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Fact label="Sitemap URL" value={String(discovery.pageStructure.sitemapUrlCount)} />
+              <Fact label="分页 URL" value={String(discovery.pageStructure.paginationUrlCount)} />
+              <Fact label="重复 URL" value={String(discovery.pageStructure.duplicateUrlCount)} />
+              <Fact label="跳过 URL" value={String(discovery.pageStructure.skippedUrlCount)} />
+            </div>
             <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
               <p className="text-xs font-semibold uppercase text-[#B47767]">页面文本样本</p>
               <p className="mt-2 text-sm leading-6 text-[#7A625A]">
@@ -3478,7 +3494,30 @@ function DiscoveryResult({
                 label="批量展开"
                 value={discovery.discoveryPlan.fanOutRequiresReview ? "需人工确认" : "可自动展开"}
               />
+              <Fact label="输入 URL" value={String(discovery.discoveryPlan.dedupeSummary.inputUrlCount)} />
+              <Fact
+                label="规范候选"
+                value={String(discovery.discoveryPlan.dedupeSummary.canonicalCandidateCount)}
+              />
+              <Fact label="去重 URL" value={String(discovery.discoveryPlan.dedupeSummary.duplicateUrlCount)} />
+              <Fact label="跳过 URL" value={String(discovery.discoveryPlan.dedupeSummary.skippedUrlCount)} />
             </div>
+            {discovery.discoveryPlan.dedupeSummary.skippedReasons.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">跳过原因</p>
+                <p className="mt-2 break-words text-sm leading-6 text-[#7A625A]">
+                  {discovery.discoveryPlan.dedupeSummary.skippedReasons.join(" · ")}
+                </p>
+              </div>
+            ) : null}
+            {discovery.discoveryPlan.paginationUrls.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">分页 URL</p>
+                <p className="mt-2 break-all text-sm leading-6 text-[#7A625A]">
+                  {discovery.discoveryPlan.paginationUrls.slice(0, 3).join(" · ")}
+                </p>
+              </div>
+            ) : null}
           </Panel>
 
           <Panel icon={Database} label="采集源草稿" title="可入库数据源草稿">
