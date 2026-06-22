@@ -341,7 +341,7 @@ GitHub 工具漂移和报告：
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
 | `POST` | `/api/automation/product-schedule-approve` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、调度策略字段 | `AutomationProductScheduleApproveResponse` | 审批数据集关联采集任务的后续刷新策略 |
-| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查数据集版本与最新运行结果的字段漂移 |
+| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查数据集版本与最新运行结果的字段、目录 presence 和价格漂移 |
 | `POST` | `/api/automation/product-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 保存漂移快照 |
 | `GET` | `/api/automation/product-drift-events` | query: `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出漂移事件 |
 | `POST` | `/api/automation/product-drift-alert-preview` | `authorized`、`dataset_id`、`dataset_version_id?`、`min_status?`、`channel?` | `AutomationProductDriftAlertPreviewResponse` | 预览漂移告警规则 |
@@ -355,6 +355,8 @@ GitHub 工具漂移和报告：
 1. 漂移快照保存具备 fingerprint 复用，重复提交不会创建重复漂移事件。
 2. 漂移告警规则按项目、条件、渠道和启用状态复用既有规则。
 3. 采集运行失败日志已记录标准化 `failure_reason`。
+4. 商品漂移 item 返回 `row_change`、`added_row_count`、`removed_row_count`、`price_change_percent`；summary 返回 `added_rows`、`removed_rows`、`price_changed_tasks`。
+5. `drift_layers` 除 `completeness`、`field_missingness`、`task_freshness` 外，可返回 `catalog_presence` 和 `price_change`；`product_removed` 会使任务状态进入 `critical`。
 
 仍需扩展：
 

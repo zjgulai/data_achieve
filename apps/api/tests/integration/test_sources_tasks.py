@@ -1660,6 +1660,9 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "critical_tasks": 1,
         "stale_tasks": 0,
         "missing_field_tasks": 1,
+        "added_rows": 0,
+        "removed_rows": 0,
+        "price_changed_tasks": 0,
         "drift_layers": {
             "completeness": 1,
             "field_missingness": 1,
@@ -2773,6 +2776,9 @@ async def test_automation_product_batch_run_returns_field_completeness(
         "critical_tasks": 1,
         "stale_tasks": 0,
         "missing_field_tasks": 1,
+        "added_rows": 0,
+        "removed_rows": 0,
+        "price_changed_tasks": 0,
         "drift_layers": {
             "completeness": 1,
             "field_missingness": 1,
@@ -2786,11 +2792,19 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert first_drift["status"] == "ok"
     assert first_drift["latest_completeness_percent"] == 100
     assert first_drift["completeness_drop_percent"] == 0
+    assert first_drift["row_change"] == "unchanged"
+    assert first_drift["added_row_count"] == 0
+    assert first_drift["removed_row_count"] == 0
+    assert first_drift["price_change_percent"] is None
     assert first_drift["issues"] == []
     assert second_drift["status"] == "critical"
     assert second_drift["latest_completeness_percent"] == 50
     assert second_drift["completeness_drop_percent"] == 25
     assert second_drift["new_missing_fields"] == ["price", "sku"]
+    assert second_drift["row_change"] == "unchanged"
+    assert second_drift["added_row_count"] == 0
+    assert second_drift["removed_row_count"] == 0
+    assert second_drift["price_change_percent"] is None
     assert second_drift["issues"] == [
         "completeness_drift_exceeded",
         "approved_fields_missing",
@@ -3431,6 +3445,235 @@ async def test_automation_product_batch_run_returns_field_completeness(
         and event["cleaning_plan_id"] == cleaning_plan_result["cleaning_plan"]["id"]
         for event in cleaned_save["audit_events"]
     )
+
+
+@pytest.mark.asyncio
+async def test_product_drift_detects_m4_catalog_presence_and_price_layers(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    phase = "baseline"
+    task_url = "https://shop.example/products/catalog-watch"
+
+    def product_record(values: dict[str, object]) -> CollectorRawRecord:
+        return CollectorRawRecord(
+            record_type="ecommerce_product_page",
+            source_url=task_url,
+            content={
+                "provider": "ecommerce",
+                "kind": "product_page",
+                "url": task_url,
+                "extracted_fields": values,
+                "field_schema": [],
+                "cleaning_plan": [],
+                "platform_profile": {"platform_type": "shopify"},
+                "page_structure": {"page_type": "product_detail"},
+            },
+        )
+
+    class FixtureEcommerceCollector(EcommerceProductPageCollector):
+        async def collect(self) -> CollectionResult:
+            records = (
+                [
+                    product_record(
+                        {
+                            "title": "Demo Carry Bag",
+                            "price": 129.9,
+                            "sku": "BAG-001",
+                            "canonical_url": "https://shop.example/products/demo-bag",
+                        }
+                    ),
+                    product_record(
+                        {
+                            "title": "Legacy Tote",
+                            "price": 59.0,
+                            "sku": "BAG-LEGACY",
+                            "canonical_url": "https://shop.example/products/legacy-tote",
+                        }
+                    ),
+                ]
+                if phase == "baseline"
+                else [
+                    product_record(
+                        {
+                            "title": "Demo Carry Bag",
+                            "price": 119.9,
+                            "sku": "BAG-001",
+                            "canonical_url": "https://shop.example/products/demo-bag",
+                        }
+                    ),
+                    product_record(
+                        {
+                            "title": "City Sling",
+                            "price": 89.0,
+                            "sku": "BAG-CITY",
+                            "canonical_url": "https://shop.example/products/city-sling",
+                        }
+                    ),
+                ]
+            )
+            return CollectionResult(raw_records=records, logs=[], errors=[])
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "ecommerce_product_page",
+        FixtureEcommerceCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Catalog Watch Product Task",
+            "type": "ecommerce_product_page",
+            "config": {
+                "url": task_url,
+                "fields": ["title", "price", "sku", "canonical_url"],
+            },
+            "schedule_cron": None,
+        },
+    )
+    assert source_response.status_code == 201
+    enable_response = await client.post(f"/api/sources/{source_response.json()['id']}/enable")
+    assert enable_response.status_code == 200
+    task_id = enable_response.json()["id"]
+
+    baseline_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 1, "task_ids": [task_id]},
+    )
+    assert baseline_batch_response.status_code == 200
+    baseline_batch = baseline_batch_response.json()
+    baseline_run_item = baseline_batch["items"][0]
+    assert baseline_run_item["status"] == "run_completed"
+    assert baseline_run_item["records_count"] == 2
+    assert baseline_run_item["field_completeness"]["completeness_percent"] == 100
+
+    save_response = await client.post(
+        "/api/automation/product-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Catalog Presence Drift Dataset",
+            "description": "Baseline fixture for catalog presence and price drift.",
+            "task_run_ids": [baseline_run_item["run"]["id"]],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "max_rows": 10,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["version"]["row_count"] == 2
+    assert saved["version"]["average_completeness_percent"] == 100
+
+    schedule_response = await client.post(
+        "/api/automation/product-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "schedule_policy": "manual_refresh_only",
+            "freshness_target_hours": 24,
+            "minimum_completeness_percent": 100,
+            "note": "Approved for local M4 drift fixture.",
+        },
+    )
+    assert schedule_response.status_code == 200
+    assert schedule_response.json()["summary"] == {
+        "requested_tasks": 1,
+        "approved_tasks": 1,
+        "blocked_tasks": 0,
+        "run_started": False,
+    }
+
+    phase = "drift"
+    drift_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 1, "task_ids": [task_id]},
+    )
+    assert drift_batch_response.status_code == 200
+    drift_batch = drift_batch_response.json()
+    drift_run_item = drift_batch["items"][0]
+    assert drift_run_item["status"] == "run_completed"
+    assert drift_run_item["records_count"] == 2
+    assert drift_run_item["field_completeness"]["completeness_percent"] == 100
+
+    drift_response = await client.post(
+        "/api/automation/product-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["summary"] == {
+        "requested_tasks": 1,
+        "checked_tasks": 1,
+        "blocked_tasks": 0,
+        "warning_tasks": 0,
+        "critical_tasks": 1,
+        "stale_tasks": 0,
+        "missing_field_tasks": 0,
+        "added_rows": 1,
+        "removed_rows": 1,
+        "price_changed_tasks": 1,
+        "drift_layers": {
+            "catalog_presence": 2,
+            "price_change": 1,
+        },
+        "run_started": False,
+        "alert_created": False,
+    }
+    drift_item = drift["items"][0]
+    assert drift_item["status"] == "critical"
+    assert drift_item["row_change"] == "mixed"
+    assert drift_item["added_row_count"] == 1
+    assert drift_item["removed_row_count"] == 1
+    assert drift_item["price_change_percent"] == -7.7
+    assert drift_item["latest_completeness_percent"] == 100
+    assert drift_item["issues"] == ["product_added", "product_removed", "price_changed"]
+    assert any(
+        event["event"] == "product_drift_task_checked"
+        and event["row_change"] == "mixed"
+        and event["added_row_count"] == 1
+        and event["removed_row_count"] == 1
+        and event["price_change_percent"] == -7.7
+        for event in drift["audit_events"]
+    )
+
+    drift_event_response = await client.post(
+        "/api/automation/product-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "M4 catalog presence and price drift sample.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["status"] == "critical"
+    assert drift_event["summary"] == drift["summary"]
+    assert drift_event["items"][0]["row_change"] == "mixed"
+    assert drift_event["items"][0]["added_row_count"] == 1
+    assert drift_event["items"][0]["removed_row_count"] == 1
+    assert drift_event["items"][0]["price_change_percent"] == -7.7
+    assert drift_event["items"][0]["issues"] == [
+        "product_added",
+        "product_removed",
+        "price_changed",
+    ]
+    assert drift_event["run_started"] is False
+    assert drift_event["alert_created"] is False
 
 
 @pytest.mark.asyncio

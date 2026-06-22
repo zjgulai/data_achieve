@@ -1142,6 +1142,10 @@ class AutomationProductDriftItemResponse(BaseModel):
     completeness_drop_percent: int | None
     missing_fields: list[str]
     new_missing_fields: list[str]
+    row_change: Literal["unchanged", "added", "removed", "mixed"] = "unchanged"
+    added_row_count: int = 0
+    removed_row_count: int = 0
+    price_change_percent: float | None = None
     freshness_target_hours: int | None
     stale_hours: float | None
     issues: list[str]
@@ -1155,6 +1159,9 @@ class AutomationProductDriftSummaryResponse(BaseModel):
     critical_tasks: int
     stale_tasks: int
     missing_field_tasks: int
+    added_rows: int = 0
+    removed_rows: int = 0
+    price_changed_tasks: int = 0
     drift_layers: dict[str, int] = Field(default_factory=dict)
     run_started: bool
     alert_created: bool

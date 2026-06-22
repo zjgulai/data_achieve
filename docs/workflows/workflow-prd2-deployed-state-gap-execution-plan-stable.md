@@ -5,7 +5,7 @@ module: automation
 topic: prd2-deployed-state-gap
 status: stable
 created: 2026-06-21
-updated: 2026-06-21
+updated: 2026-06-22
 owner: self
 source: human+ai
 ---
@@ -14,7 +14,7 @@ source: human+ai
 
 ## 0. Evidence Boundary
 
-本文件盘点的是 2026-06-21 M3 GitHub API-first 深化发布后的“线上当前状态 vs PRD2/本地工作树目标”。本轮执行了 production deploy、authenticated read-only smoke 和 gateway/cross-domain read-only regression；没有执行生产写入、provider call、邮件发送、通知发送、调度变更或外部平台读取。
+本文件盘点的是 2026-06-21 M3 GitHub API-first 深化发布后的“线上当前状态 vs PRD2/本地工作树目标”。2026-06-22 增补 M4 源码分支状态：PR #6 已把 M4-1/M4-2 合并到 `main@67f611e`；当前 M4-3 本地分支已通过 `scripts/verify-mvp.sh`，但不代表 production deployed。本文所列生产证据没有执行生产写入、provider call、邮件发送、通知发送、调度变更或外部平台读取。
 
 | Evidence | Current fact | Boundary |
 |---|---|---|
@@ -66,7 +66,7 @@ source: human+ai
 | BrowserDiagnostic assets | BrowserDiagnosticRun/Job/JobRun 只读证据资产，selector/network/promotion/redaction 可审计 | 线上 schema head 已是 `202606110023` | migrations `021/022/023`、routes、service、UI、E2E 已随 `80f0566` 发布并保留在 `e9ccb81` | 资产表已上线；real browser local smoke 仍受 daemon 阻断；无生产 runner 授权 | M2-3 |
 | Browser artifact retention | metadata-only 当前阶段，截图/trace/HAR 需单独批准 | 生产未验证 | retention workflow 已定义 `files_written=false` 等不变量 | 缺自动 TTL/cleanup job；未实现 approved artifact retention mode | P1 |
 | GitHub Tool Radar | API-first 样板，能进入 Dataset/Export/Drift/Report | authenticated read-only 平台包字段合同已确认；本轮未生产写入 | E2E 覆盖 Topic Radar -> dataset -> report -> drift；M3 已补 license、default branch、latest release、pushed_at 等字段和 report summary | README metadata、issue activity、commit freshness、显式 schema version/provenance、生产写入 E2E 仍未闭合 | P0/M3 |
-| Independent site | Shopify-style 商品发现、fan-out、dataset、drift、export | 本轮未生产写入 | 平台包和 service 覆盖 title/price/currency/availability/sku/canonical_url | 缺 pagination/sitemap/canonical 去重增强；缺 variant/image/brand/category；授权测试站 E2E 未执行 | P0/M4 |
+| Independent site | Shopify-style 商品发现、fan-out、dataset、drift、export | 本轮未生产写入 | `main@67f611e` 已包含 M4-1/M4-2 discovery/字段增强；当前 M4-3 本地分支已通过 `scripts/verify-mvp.sh` | M4-3 PR/部署和 M4-4 授权测试站 E2E 未完成 | P0/M4 |
 | Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | 只有 page availability，不是采集链路 | `public-page-structure-preflight` 已有，generic_web 可作为基础 | RSS/Docs 还不是一等平台包；缺 feed parser、doc diff、dataset schema、drift/report | P1/M5 |
 | Video transcript import | YouTube/B 站公开视频 metadata/transcript import，不下载媒体 | 无 | PRD2 已定义边界 | 缺 import schema、source provenance、copyright/subtitle fields、UI flow | P1/M6 |
 | Public community trend | 聚合主题趋势，不做人级画像 | 无 | PRD2 已定义边界 | 缺 V2EX 等公开社区 package、aggregate schema、redaction/privacy guard | P1/P2 |
@@ -139,9 +139,9 @@ bash scripts/verify-mvp.sh --with-db
 
 | ID | To do | Suggested files | Acceptance |
 |---|---|---|---|
-| M4-1 | Discovery 增强 | ecommerce collectors、automation service | 支持 collection/listing/sitemap/pagination/canonical 去重和 skip reasons |
-| M4-2 | 商品字段增强 | collector/schema/tests/UI | 增加 variant、image、brand、category、price range、availability detail |
-| M4-3 | Dataset/drift 样例 | dataset/drift tests、docs | 新增/下架、价格变化、字段缺失能进入 DatasetDriftEvent |
+| M4-1 | Discovery 增强 | ecommerce collectors、automation service | done_main_67f611e：支持 collection/listing/sitemap/pagination/canonical 去重和 skip reasons |
+| M4-2 | 商品字段增强 | collector/schema/tests/UI | done_main_67f611e：增加 variant、image、brand、category、price range、availability detail |
+| M4-3 | Dataset/drift 样例 | dataset/drift tests、docs | local_verified_pending_pr：新增/下架、价格变化可进入 DatasetDriftEvent；`scripts/verify-mvp.sh` 已通过，PR 和部署仍待完成 |
 | M4-4 | 授权测试站 E2E | API script、Playwright | 从 URL 到 Dataset/export/drift 全链路可跑，并有 cleanup record |
 
 Boundary: 只处理授权公开页面；不处理登录墙、验证码、购物车态、反检测或 marketplace 页面。
