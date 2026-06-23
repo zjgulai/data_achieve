@@ -5,7 +5,7 @@ module: automation
 topic: prd2-r0-release-boundary
 status: stable
 created: 2026-06-21
-updated: 2026-06-21
+updated: 2026-06-23
 owner: self
 source: human+ai
 ---
@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration；生产写入 E2E、provider call、邮件发送、站内通知发送和调度变更仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -28,8 +28,9 @@ source: human+ai
 | R0-4 | Production read-only smoke | done | `/api/health`、`/automation`、`/datasets`、unauthenticated `/api/automation/platform-packages` |
 | R0-5 | Release branch setup and scoped staging | done | 已从 `main` 切到 `codex/prd2-r0-release-boundary`；RC1/RC2 已 staged，RC3 草稿未 staged；尚未 commit |
 | R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
-| R0-7 | Authorized production write E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
-| R0-8 | M3 post-R0 production release | done | production HEAD `e9ccb81`；schema 仍为 `202606110023`；GitHub API-first 字段合同 L3 read-only smoke passed |
+| R0-7 | Authorized production write E2E | done_scoped_m3 | M3 GitHub scope `topic=web-scraping`、`max_repositories=3`；真实 API E2E `2 passed`；cleanup recount 全 0 |
+| R0-8 | M3 post-R0 production release | done | production HEAD `f04c8ea77cc64f28d391e992012525e1704ec1a3`；schema 仍为 `202606110023`；GitHub API-first package gate passed |
+| R0-9 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -303,6 +304,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 ## 8. M3 Production Release Evidence
 
 M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
+This section is historical release evidence. Current production identity after the 2026-06-23 package gate is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`.
 
 ```text
 release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
@@ -391,7 +393,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 
 ## 9. Remaining Authorization Points
 
-Before production write E2E:
+Before any additional production write E2E outside the completed M3 GitHub scope:
 
 1. Confirm test account/workspace.
 2. Confirm allowed Source/Task/Dataset/Report write scope.
@@ -402,7 +404,63 @@ Before production write E2E:
 
 The next executable step is not another release-boundary pass. It is either:
 
-1. Authorized production write E2E with cleanup register; or
-2. Remaining M3 GitHub API-first deepening for README metadata, issue activity, commit freshness, explicit DatasetVersion schema/provenance and drift rules.
+1. M4 Independent site authorized test-site E2E with cleanup register; or
+2. M5 Public Web/RSS/Docs local package scaffold and tests; or
+3. A separate P5 gate for dataset export, provider call, email send, scheduler mutation, or production browser run.
 
-Do not claim L4 production write coverage until option 1 is explicitly authorized and completed.
+Do not claim broader L4 production write coverage until the specific option is explicitly authorized and completed.
+
+## 11. M3 GitHub API-first Production Package Gate
+
+M3 GitHub API-first production package gate was executed on 2026-06-23 after rebuilding the release candidate on top of production `origin/main`.
+
+Authorization envelope:
+
+```text
+scope_type=topic
+scope_value=web-scraping
+max_repositories=3
+allowed: Source/Task write, one GitHub API task run, Dataset save, report asset, drift snapshot
+denied: dataset export, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+stale direct candidate: c640ff4 was not fast-forward from production e97810a
+release base: origin/main merged into codex/prd2-r0-release-boundary
+backup branch: backup/pre-github-gate-20260623
+deployed SHA: f04c8ea77cc64f28d391e992012525e1704ec1a3
+remote HEAD: f04c8ea77cc64f28d391e992012525e1704ec1a3
+.deploy-sha: f04c8ea77cc64f28d391e992012525e1704ec1a3
+schema_revision: 202606110023
+schema_head: 202606110023
+```
+
+Production gate evidence:
+
+```text
+PLAYWRIGHT_BASE_URL=https://scrapy.lute-tlz-dddd.top PLAYWRIGHT_REAL_API=true pnpm --dir apps/web exec playwright test --grep "renders automation platform packages"
+result: 2 passed
+```
+
+Cleanup evidence:
+
+```text
+pre-cleanup dry-run:
+users=8
+workspaces=8
+workspace_members=16
+notifications=8
+dataset_versions=2
+dataset_drift_events=2
+report_audit_events=2
+
+cleanup execute: removed the same scoped residue
+post-cleanup recount: all scoped E2E fixture categories returned zero
+```
+
+Supported claim: production has been deployed to `f04c8ea`, schema remains `202606110023`, and the M3 GitHub API-first package has one authorized small-scope L4 production gate with cleanup evidence.
+
+Unsupported claim: broad recurring GitHub collection, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
