@@ -1552,6 +1552,11 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     assert preview["export_preview"]["schema"]["field_sources"]["readme_detected"] == (
         "github.repository.readme.exists"
     )
+    assert preview["export_preview"]["schema"]["provenance"]["lineage_fields"] == [
+        "source_task_run_ids",
+        "raw_record_id",
+        "source_url",
+    ]
 
     save_response = await client.post(
         "/api/automation/github-tool-dataset-save",

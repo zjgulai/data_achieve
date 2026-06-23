@@ -1943,7 +1943,7 @@ export function getMockAutomationGitHubToolDatasetPreview(
       format: "json",
       schema: {
         schema_version: "github_tool_radar.v2",
-        primary_key: "repo_full_name",
+        primary_key: "html_url",
         fields,
         collector_versions: {
           github_repo: "github_repo.v3",
@@ -1957,7 +1957,7 @@ export function getMockAutomationGitHubToolDatasetPreview(
         },
         provenance: {
           field_sources_recorded: true,
-          lineage_fields: ["task_run_id", "raw_record_id", "source_url"],
+          lineage_fields: ["source_task_run_ids", "raw_record_id", "source_url"],
         },
       },
       rows: rows.map((row) =>
@@ -2056,7 +2056,7 @@ export function getMockAutomationGitHubToolDatasetSave(
         format: "json",
         schema: {
           schema_version: "github_tool_radar.v2",
-          primary_key: "repo_full_name",
+          primary_key: "html_url",
           fields: selectedFields,
           collector_versions: {
             github_repo: "github_repo.v3",

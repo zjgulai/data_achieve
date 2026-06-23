@@ -4980,6 +4980,7 @@ function githubToolSchemaFacts(exportPreview: Record<string, unknown>) {
   const provenance = asRecord(schema.provenance);
   const lineage = stringArray(provenance?.lineage_fields);
   const collectorVersions = asRecord(schema.collector_versions);
+  const collectorSchemaVersions = stringArray(schema.collector_schema_versions);
   return [
     { label: "Schema", value: formatDatasetValue(schema.schema_version) },
     { label: "主键", value: formatDatasetValue(schema.primary_key) },
@@ -4989,7 +4990,7 @@ function githubToolSchemaFacts(exportPreview: Record<string, unknown>) {
         ? Object.entries(collectorVersions)
             .map(([key, value]) => `${key}:${String(value)}`)
             .join(" / ")
-        : "—",
+        : collectorSchemaVersions.join(" / ") || "—",
     },
     { label: "Lineage", value: lineage.join(" / ") || "—" },
   ].filter((item) => item.value !== "—");

@@ -8480,6 +8480,24 @@ def _github_tool_export_preview(
             "missing_value_policy": "explicit_null",
             "dataset_type": "github_tool_radar",
             "collector_schema_versions": list(GITHUB_TOOL_COLLECTOR_SCHEMA_VERSIONS),
+            "collector_versions": {
+                "github_repo": "github_repo.v3",
+                "github_topic": "github_topic.v3",
+            },
+            "endpoint_origins": {
+                "search": "GET /search/repositories",
+                "repo": "GET /repos/{owner}/{repo}",
+                "releases": "GET /repos/{owner}/{repo}/releases/latest",
+                "readme": "GET /repos/{owner}/{repo}/readme",
+            },
+            "provenance": {
+                "field_sources_recorded": True,
+                "lineage_fields": [
+                    "source_task_run_ids",
+                    "raw_record_id",
+                    "source_url",
+                ],
+            },
             "field_sources": _github_tool_field_sources(selected_fields),
         },
         "rows": [

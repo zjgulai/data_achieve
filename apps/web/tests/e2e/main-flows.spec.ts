@@ -975,8 +975,8 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("工具情报数据集", { exact: true })).toBeVisible();
     await expect(page.getByText("仓库行数")).toBeVisible();
     await expect(page.getByText("github_tool_radar.v2")).toBeVisible();
-    await expect(page.getByText("html_url", { exact: true })).toBeVisible();
-    await expect(page.getByText("task_run_id / raw_record_id / source_url")).toBeVisible();
+    await expect(page.getByText("html_url", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("source_task_run_ids / raw_record_id / source_url")).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Release 时间" })).toBeVisible();
     await expect(page.getByText("v0.7.0")).toBeVisible();
     await page.getByRole("button", { name: "保存工具数据集" }).click();
