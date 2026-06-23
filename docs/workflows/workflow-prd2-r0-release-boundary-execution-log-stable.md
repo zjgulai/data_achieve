@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -30,7 +30,8 @@ source: human+ai
 | R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
 | R0-7 | Authorized production write E2E | done_scoped_m3 | M3 GitHub scope `topic=web-scraping`、`max_repositories=3`；真实 API E2E `2 passed`；cleanup recount 全 0 |
 | R0-8 | M3 post-R0 production release | done | production HEAD `f04c8ea77cc64f28d391e992012525e1704ec1a3`；schema 仍为 `202606110023`；GitHub API-first package gate passed |
-| R0-9 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、production browser run 均未执行 |
+| R0-9 | M5 Public Content production package smoke | done_scoped_m5 | production HEAD `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`；`public_feed` RSS TaskRun success；`public_content_update` DatasetVersion row_count=5；drift/report read-only preview passed；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-10 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、Report asset creation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -304,7 +305,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 ## 8. M3 Production Release Evidence
 
 M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
-This section is historical release evidence. Current production identity after the 2026-06-23 package gate is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`.
+This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; current production identity after the M5 public content smoke is recorded in section 12 as `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`.
 
 ```text
 release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
@@ -464,3 +465,101 @@ post-cleanup recount: all scoped E2E fixture categories returned zero
 Supported claim: production has been deployed to `f04c8ea`, schema remains `202606110023`, and the M3 GitHub API-first package has one authorized small-scope L4 production gate with cleanup evidence.
 
 Unsupported claim: broad recurring GitHub collection, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 12. M5 Public Content Production Package Smoke
+
+M5 Public Web/RSS/Docs production package smoke was executed on 2026-06-23 after deploying the public content Dataset/drift/report slice.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, read-only drift check, read-only report preview
+denied: dataset export, Report asset creation, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: f04c8ea77cc64f28d391e992012525e1704ec1a3
+backup branch: backup/pre-public-content-gate-20260623-1915
+deployed SHA: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+remote HEAD: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+.deploy-sha: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Public page smoke returned `200` for:
+
+```text
+/dashboard
+/automation
+/datasets
+/tasks
+/sources
+/raw-records
+/reports
+/alerts
+/notifications
+/projects
+/signals
+/entities
+/toolkit
+```
+
+Production smoke evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift run_started: false
+Drift alert_created: false
+Report entry_count: 5
+Report report_created: false
+Report run_started: false
+```
+
+Cleanup evidence:
+
+```text
+exact cleanup dry-run before execute:
+users=1
+workspaces=1
+workspace_members=2
+notifications=1
+sources=1
+collection_tasks=1
+task_runs=1
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=0
+dataset_export_jobs=0
+
+exact cleanup execute: removed the same scoped objects
+post-cleanup exact-ID dry-run: all listed categories returned zero
+post-cleanup generic E2E dry-run: all categories returned zero
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-production-smoke-draft-20260623.md
+```
+
+Supported claim: production has been deployed to `e1359759`, and the M5 Public Web/RSS/Docs package has one authorized small-scope production smoke covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, and cleanup.
+
+Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, Report asset creation, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
