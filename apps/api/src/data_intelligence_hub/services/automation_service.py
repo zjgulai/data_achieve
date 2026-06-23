@@ -3711,7 +3711,7 @@ async def create_public_content_report_asset(
     report = Report(
         workspace_id=workspace.id,
         project_id=generated.dataset.project_id,
-        report_type="public_content_update",
+        report_type="public_content",
         title=title,
         content=_render_public_content_report_asset_content(generated),
         status="generated",

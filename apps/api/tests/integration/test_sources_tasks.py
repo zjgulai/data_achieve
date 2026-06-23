@@ -2169,7 +2169,8 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
     assert report_asset["summary"]["report_created"] is True
     assert report_asset["summary"]["run_started"] is False
     assert report_asset["notification_created"] is False
-    assert report_asset["report"]["report_type"] == "public_content_update"
+    assert report_asset["report"]["report_type"] == "public_content"
+    assert len(report_asset["report"]["report_type"]) <= 20
     assert report_asset["report"]["status"] == "generated"
     assert "Public Content Updates - Example Blog" in report_asset["report"]["title"]
     assert "Launch notes" in report_asset["report"]["content"]
@@ -2189,7 +2190,7 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
     stored_report_response = await client.get(f"/api/reports/{report_asset['report']['id']}")
     assert stored_report_response.status_code == 200
     stored_report = stored_report_response.json()
-    assert stored_report["report_type"] == "public_content_update"
+    assert stored_report["report_type"] == "public_content"
     assert "Launch notes" in stored_report["content"]
     assert "不会启动采集" in report["blocked_reasons"][0]
 
