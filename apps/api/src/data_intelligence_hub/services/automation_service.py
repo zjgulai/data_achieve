@@ -240,6 +240,13 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductScheduleApproveRequest,
     AutomationProductScheduleApproveResponse,
     AutomationProductScheduleApproveSummaryResponse,
+    AutomationPublicContentDatasetPreviewRequest,
+    AutomationPublicContentDatasetSaveRequest,
+    AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentReportEntryResponse,
+    AutomationPublicContentReportRequest,
+    AutomationPublicContentReportResponse,
+    AutomationPublicContentReportSummaryResponse,
     AutomationScheduleApprovedTaskResponse,
     AutomationScheduleBlockedTaskResponse,
     AutomationSiteAnalysisDetailResponse,
@@ -356,6 +363,39 @@ GITHUB_TOOL_FIELD_SOURCES = {
     "commit_freshness_status": "derived.github.repository.pushed_at",
 }
 
+PUBLIC_CONTENT_DATASET_SCHEMA_VERSION = "public_content_update.v1"
+PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS = ("public_feed.v1",)
+
+PUBLIC_CONTENT_FIELDS = (
+    "title",
+    "link",
+    "published_at",
+    "updated_at",
+    "author",
+    "tags",
+    "summary",
+    "content_hash",
+    "feed_url",
+    "feed_title",
+    "feed_type",
+    "site_url",
+)
+
+PUBLIC_CONTENT_FIELD_SOURCES = {
+    "title": "public_feed.entry.title",
+    "link": "public_feed.entry.link",
+    "published_at": "public_feed.entry.published_at",
+    "updated_at": "public_feed.entry.updated_at",
+    "author": "public_feed.entry.author",
+    "tags": "public_feed.entry.tags",
+    "summary": "public_feed.entry.summary",
+    "content_hash": "public_feed.entry.content_hash",
+    "feed_url": "public_feed.feed_url",
+    "feed_title": "public_feed.title",
+    "feed_type": "public_feed.feed_type",
+    "site_url": "public_feed.site_url",
+}
+
 DRIFT_LAYER_BY_ISSUE = {
     "latest_run_missing": "run_health",
     "latest_run_failed": "run_health",
@@ -370,6 +410,9 @@ DRIFT_LAYER_BY_ISSUE = {
     "issue_activity_changed": "issue_activity",
     "release_freshness_missing": "release_freshness",
     "release_freshness_stale": "release_freshness",
+    "content_added": "content_presence",
+    "content_removed": "content_presence",
+    "content_hash_changed": "content_hash",
 }
 
 ProductRowChange = Literal["unchanged", "added", "removed", "mixed"]
@@ -382,6 +425,23 @@ class ProductRowDrift:
     removed_row_count: int
     price_change_percent: float | None
     issues: list[str]
+
+
+@dataclass(frozen=True)
+class PublicContentRowDrift:
+    row_change: ProductRowChange
+    added_keys: list[str]
+    removed_keys: list[str]
+    changed_hash_keys: list[str]
+    issues: list[str]
+
+    @property
+    def added_row_count(self) -> int:
+        return len(self.added_keys)
+
+    @property
+    def removed_row_count(self) -> int:
+        return len(self.removed_keys)
 
 
 def list_platform_packages() -> AutomationPlatformPackageListResponse:
@@ -2071,6 +2131,193 @@ async def save_github_tool_dataset_version(
     )
 
 
+async def preview_public_content_dataset(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationPublicContentDatasetPreviewRequest,
+) -> AutomationProductDatasetPreviewResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    selected_fields = _public_content_dataset_fields(payload.fields)
+    rows: list[AutomationProductDatasetRowResponse] = []
+    matched_run_ids: set[uuid.UUID] = set()
+    audit_events: list[dict[str, object]] = [
+        {
+            "event": "public_content_dataset_preview_requested",
+            "requested_runs": len(payload.task_run_ids),
+            "max_rows": payload.max_rows,
+            "fields": selected_fields,
+            "schema_version": PUBLIC_CONTENT_DATASET_SCHEMA_VERSION,
+            "run_started": False,
+        }
+    ]
+
+    for task_run_id in payload.task_run_ids:
+        raw_records = await _public_feed_raw_records_for_task_run(
+            session=session,
+            workspace_id=workspace.id,
+            task_run_id=task_run_id,
+            limit=payload.max_rows,
+        )
+        if not raw_records:
+            audit_events.append(
+                {
+                    "event": "public_content_dataset_run_skipped",
+                    "task_run_id": str(task_run_id),
+                    "reason": "no_public_feed_records",
+                    "run_started": False,
+                }
+            )
+            continue
+        matched_run_ids.add(task_run_id)
+        for raw_record in raw_records:
+            for row in _public_content_rows(raw_record, selected_fields):
+                if len(rows) >= payload.max_rows:
+                    break
+                rows.append(row)
+            if len(rows) >= payload.max_rows:
+                break
+        if len(rows) >= payload.max_rows:
+            audit_events.append(
+                {
+                    "event": "public_content_dataset_row_limit_reached",
+                    "max_rows": payload.max_rows,
+                    "run_started": False,
+                }
+            )
+            break
+
+    summary = _dataset_summary(payload.task_run_ids, matched_run_ids, rows, selected_fields)
+    blocked_reasons: list[str] = []
+    if summary.rows_count == 0:
+        blocked_reasons.append("未找到可进入公开内容数据集的 public_feed 采集记录。")
+    if summary.rows_count >= payload.max_rows:
+        blocked_reasons.append("公开内容数据集预览已达到本次最大行数限制。")
+    blocked_reasons.append("当前为只读公开内容数据集预览，尚未保存 Dataset 或写出导出文件。")
+
+    return AutomationProductDatasetPreviewResponse(
+        created_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        rows=rows,
+        summary=summary,
+        cleaning_script_draft=_public_content_cleaning_script_draft(selected_fields),
+        export_preview=_public_content_export_preview(rows, selected_fields),
+        audit_events=audit_events,
+        blocked_reasons=blocked_reasons,
+    )
+
+
+async def save_public_content_dataset_version(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationPublicContentDatasetSaveRequest,
+) -> AutomationProductDatasetSaveResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    dataset_name = payload.name.strip()
+    if not dataset_name:
+        raise CollectorError("dataset_name_required")
+
+    preview = await preview_public_content_dataset(session, workspace, payload)
+    if not preview.rows:
+        raise CollectorError("dataset_preview_empty")
+
+    raw_records = await _dataset_public_content_raw_records(
+        session,
+        workspace.id,
+        payload.task_run_ids,
+        payload.max_rows,
+    )
+    project_ids = {raw_record.project_id for raw_record in raw_records}
+    if len(project_ids) != 1:
+        raise CollectorError("dataset_project_lineage_ambiguous")
+    project_id = next(iter(project_ids))
+
+    await _lock_workspace_for_dataset_save(session, workspace.id)
+    dataset = await get_dataset_by_name(session, workspace.id, dataset_name)
+    created_dataset = False
+    if dataset is None:
+        dataset = Dataset(
+            workspace_id=workspace.id,
+            project_id=project_id,
+            name=dataset_name,
+            dataset_type="public_content_update",
+            status="active",
+            description=payload.description.strip() if payload.description else None,
+        )
+        session.add(dataset)
+        await session.flush()
+        created_dataset = True
+    elif dataset.project_id != project_id:
+        raise CollectorError("dataset_project_lineage_conflict")
+    elif dataset.dataset_type != "public_content_update":
+        raise CollectorError("dataset_type_conflict")
+
+    latest_version = await get_latest_dataset_version(session, dataset.id)
+    next_version_number = 1 if latest_version is None else latest_version.version_number + 1
+    created_at = datetime.now(UTC)
+    version = DatasetVersion(
+        dataset_id=dataset.id,
+        workspace_id=workspace.id,
+        project_id=dataset.project_id,
+        created_by_user_id=user.id,
+        cleaning_plan_id=None,
+        version_number=next_version_number,
+        source_task_run_ids=[str(task_run_id) for task_run_id in payload.task_run_ids],
+        selected_fields=preview.summary.selected_fields,
+        cleaning_script=preview.cleaning_script_draft,
+        rows=[
+            {
+                "schema_version": PUBLIC_CONTENT_DATASET_SCHEMA_VERSION,
+                "row_id": row.row_id,
+                "task_run_id": str(row.task_run_id),
+                "raw_record_id": str(row.raw_record_id),
+                "source_url": row.source_url,
+                "values": row.values,
+                "missing_fields": row.missing_fields,
+                "field_sources": _public_content_field_sources(row.values.keys()),
+                "missing_field_sources": _public_content_field_sources(row.missing_fields),
+                "completeness_percent": row.completeness_percent,
+            }
+            for row in preview.rows
+        ],
+        export_preview=preview.export_preview,
+        row_count=len(preview.rows),
+        average_completeness_percent=preview.summary.average_completeness_percent,
+        status="saved",
+        created_at=created_at,
+    )
+    session.add(version)
+    await session.commit()
+    await session.refresh(dataset)
+    await session.refresh(version)
+
+    return AutomationProductDatasetSaveResponse(
+        saved_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        audit_events=[
+            {
+                "event": "public_content_dataset_version_saved",
+                "dataset_id": str(dataset.id),
+                "version_id": str(version.id),
+                "version_number": version.version_number,
+                "created_dataset": created_dataset,
+                "row_count": version.row_count,
+                "schema_version": PUBLIC_CONTENT_DATASET_SCHEMA_VERSION,
+                "collector_schema_versions": list(PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS),
+                "run_started": False,
+            }
+        ],
+        blocked_reasons=[
+            "公开内容 Dataset 版本已保存；尚未写出文件、创建漂移快照、生成报告资产或启动调度。"
+        ],
+    )
+
+
 async def dry_run_cleaning_plan(
     session: AsyncSession,
     workspace: Workspace,
@@ -2893,6 +3140,196 @@ async def check_github_tool_drift(
     )
 
 
+async def check_public_content_drift(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationPublicContentDriftCheckRequest,
+) -> AutomationProductDriftCheckResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    dataset = await get_dataset(session, workspace.id, payload.dataset_id)
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    if dataset is None or version is None:
+        raise CollectorError("dataset_version_not_found")
+    if dataset.dataset_type != "public_content_update":
+        raise CollectorError("dataset_type_not_public_content_update")
+
+    checked_at = datetime.now(UTC)
+    anchor_task_ids = await _dataset_version_task_ids(session, workspace, version)
+    items: list[AutomationProductDriftItemResponse] = []
+    audit_events: list[dict[str, object]] = [
+        {
+            "event": "public_content_drift_check_requested",
+            "dataset_id": str(dataset.id),
+            "dataset_version_id": str(version.id),
+            "requested_tasks": len(payload.task_ids),
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+            "run_started": False,
+            "alert_created": False,
+        }
+    ]
+    seen_task_ids: set[uuid.UUID] = set()
+
+    for task_id in payload.task_ids:
+        if task_id in seen_task_ids:
+            items.append(_blocked_drift_item(task_id, version, "duplicate_task_id"))
+            audit_events.append(
+                {
+                    "event": "public_content_drift_task_blocked",
+                    "task_id": str(task_id),
+                    "reason": "duplicate_task_id",
+                }
+            )
+            continue
+        seen_task_ids.add(task_id)
+
+        task = await get_task(session, workspace.id, task_id)
+        reason = _public_content_drift_task_block_reason(task, dataset, anchor_task_ids)
+        if reason is not None:
+            items.append(_blocked_drift_item(task_id, version, reason, task))
+            audit_events.append(
+                {
+                    "event": "public_content_drift_task_blocked",
+                    "task_id": str(task_id),
+                    "reason": reason,
+                }
+            )
+            continue
+
+        assert task is not None
+        latest_runs = await list_task_runs(session, workspace.id, task.id)
+        latest_run = latest_runs[0] if latest_runs else None
+        approved_fields = _public_content_dataset_fields(version.selected_fields)
+        issues: list[str] = []
+        latest_completeness_percent: int | None = None
+        completeness_drop_percent: int | None = None
+        missing_fields: list[str] = []
+        new_missing_fields: list[str] = []
+        row_change = "unchanged"
+        added_row_count = 0
+        removed_row_count = 0
+        signal_groups: dict[str, list[str]] = {}
+
+        if latest_run is None:
+            issues.append("latest_run_missing")
+        elif latest_run.status not in {"success", "partial_success"}:
+            issues.append("latest_run_failed")
+        else:
+            public_records = await _public_feed_raw_records_for_task_run(
+                session=session,
+                workspace_id=workspace.id,
+                task_run_id=latest_run.id,
+                limit=500,
+            )
+            field_completeness = _public_content_field_completeness_for_fields(
+                public_records,
+                approved_fields,
+            )
+            latest_rows: list[AutomationProductDatasetRowResponse] = []
+            for raw_record in public_records:
+                latest_rows.extend(_public_content_rows(raw_record, approved_fields))
+            latest_completeness_percent = field_completeness.completeness_percent
+            completeness_drop_percent = max(
+                version.average_completeness_percent - latest_completeness_percent,
+                0,
+            )
+            missing_fields = field_completeness.missing_fields
+            new_missing_fields = [
+                field for field in approved_fields if field in field_completeness.missing_fields
+            ]
+            if completeness_drop_percent > payload.completeness_drop_threshold_percent:
+                issues.append("completeness_drift_exceeded")
+            if new_missing_fields:
+                issues.append("approved_fields_missing")
+            content_drift = _public_content_row_drift(version.rows, latest_rows)
+            row_change = content_drift.row_change
+            added_row_count = content_drift.added_row_count
+            removed_row_count = content_drift.removed_row_count
+            for issue in content_drift.issues:
+                if issue not in issues:
+                    issues.append(issue)
+            signal_groups = _public_content_drift_signal_groups(
+                content_drift,
+                new_missing_fields,
+            )
+
+        freshness_target_hours, stale_hours = _task_freshness_drift(
+            task,
+            checked_at,
+            payload.freshness_grace_hours,
+        )
+        if stale_hours is not None and stale_hours > 0:
+            issues.append("freshness_target_missed")
+
+        status = _drift_status(issues)
+        items.append(
+            AutomationProductDriftItemResponse(
+                task_id=task.id,
+                task_name=task.name,
+                source_url=_task_source_url(task),
+                status=status,
+                blocked_reason=None,
+                latest_run_id=latest_run.id if latest_run else None,
+                latest_run_status=latest_run.status if latest_run else None,
+                dataset_version_completeness_percent=version.average_completeness_percent,
+                latest_completeness_percent=latest_completeness_percent,
+                completeness_drop_percent=completeness_drop_percent,
+                missing_fields=missing_fields,
+                new_missing_fields=new_missing_fields,
+                row_change=row_change,
+                added_row_count=added_row_count,
+                removed_row_count=removed_row_count,
+                price_change_percent=None,
+                freshness_target_hours=freshness_target_hours,
+                stale_hours=stale_hours,
+                issues=issues,
+                signal_groups=signal_groups,
+            )
+        )
+        audit_events.append(
+            {
+                "event": "public_content_drift_task_checked",
+                "task_id": str(task.id),
+                "latest_run_id": str(latest_run.id) if latest_run else None,
+                "status": status,
+                "issues": issues,
+                "row_change": row_change,
+                "added_row_count": added_row_count,
+                "removed_row_count": removed_row_count,
+                "signal_groups": signal_groups,
+                "run_started": False,
+                "alert_created": False,
+            }
+        )
+
+    summary = _product_drift_summary(payload.task_ids, items)
+    blocked_reasons = ["公开内容漂移检查为只读评估，不会启动采集、创建告警或发送通知。"]
+    if summary.blocked_tasks:
+        blocked_reasons.append("部分任务未通过公开内容数据集谱系或类型校验。")
+    if summary.critical_tasks:
+        blocked_reasons.append("存在关键公开内容漂移，请复核内容删除、字段缺失或基准版本。")
+    elif summary.warning_tasks:
+        blocked_reasons.append("存在公开内容更新、hash 改变或新鲜度风险，建议复核后再发布报告。")
+
+    return AutomationProductDriftCheckResponse(
+        checked_at=checked_at,
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        items=items,
+        summary=summary,
+        audit_events=audit_events,
+        blocked_reasons=blocked_reasons,
+    )
+
+
 async def save_product_drift_event(
     session: AsyncSession,
     workspace: Workspace,
@@ -3166,6 +3603,88 @@ async def generate_github_tool_report(
         ],
         blocked_reasons=[
             "GitHub 工具雷达报告为只读生成，不会启动采集、创建报告资产或发送通知。"
+        ],
+    )
+
+
+async def generate_public_content_report(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationPublicContentReportRequest,
+) -> AutomationPublicContentReportResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    dataset = await get_dataset(session, workspace.id, payload.dataset_id)
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    if dataset is None or version is None:
+        raise CollectorError("dataset_version_not_found")
+    if dataset.dataset_type != "public_content_update":
+        raise CollectorError("dataset_type_not_public_content_update")
+
+    entries = _public_content_report_entries(version.rows)
+    latest_entries = entries[: payload.top_limit]
+    feed_urls = {
+        entry.feed_url.strip()
+        for entry in entries
+        if isinstance(entry.feed_url, str) and entry.feed_url.strip()
+    }
+    authors = {
+        entry.author.strip()
+        for entry in entries
+        if isinstance(entry.author, str) and entry.author.strip()
+    }
+    content_hashes = {
+        entry.content_hash.strip()
+        for entry in entries
+        if isinstance(entry.content_hash, str) and entry.content_hash.strip()
+    }
+    tagged_count = len([entry for entry in entries if entry.tags])
+    summary_count = len([
+        entry
+        for entry in entries
+        if isinstance(entry.summary, str) and entry.summary.strip()
+    ])
+    risk_sections = _public_content_report_risk_sections(entries)
+
+    return AutomationPublicContentReportResponse(
+        generated_at=datetime.now(UTC),
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        summary=AutomationPublicContentReportSummaryResponse(
+            entry_count=len(entries),
+            feed_count=len(feed_urls),
+            unique_author_count=len(authors),
+            tagged_entry_count=tagged_count,
+            entries_with_summary=summary_count,
+            content_hash_count=len(content_hashes),
+            report_created=False,
+            run_started=False,
+        ),
+        latest_entries=latest_entries,
+        recommendations=_public_content_report_recommendations(entries),
+        risk_sections=risk_sections,
+        audit_events=[
+            {
+                "event": "public_content_report_generated",
+                "dataset_id": str(dataset.id),
+                "dataset_version_id": str(version.id),
+                "entry_count": len(entries),
+                "feed_count": len(feed_urls),
+                "top_limit": payload.top_limit,
+                "risk_sections": risk_sections,
+                "report_created": False,
+                "run_started": False,
+            }
+        ],
+        blocked_reasons=[
+            "公开内容报告为只读预览，不会启动采集、创建报告资产、写出文件或发送通知。"
         ],
     )
 
@@ -7089,6 +7608,22 @@ def _github_tool_drift_task_block_reason(
     return None
 
 
+def _public_content_drift_task_block_reason(
+    task: CollectionTask | None,
+    dataset: Dataset,
+    anchor_task_ids: set[uuid.UUID],
+) -> str | None:
+    if task is None:
+        return "task_not_found"
+    if task.project_id != dataset.project_id:
+        return "task_project_lineage_conflict"
+    if task.collector_type != "public_feed":
+        return "task_collector_type_not_public_feed"
+    if task.id not in anchor_task_ids:
+        return "task_dataset_lineage_unapproved"
+    return None
+
+
 def _blocked_drift_item(
     task_id: uuid.UUID,
     version: DatasetVersion,
@@ -7327,6 +7862,7 @@ def _drift_status(issues: list[str]) -> str:
         "latest_run_failed",
         "completeness_drift_exceeded",
         "product_removed",
+        "content_removed",
     }
     if any(issue in critical_issues for issue in issues):
         return "critical"
@@ -7916,6 +8452,38 @@ def _github_tool_field_sources(fields: object) -> dict[str, str]:
     }
 
 
+def _public_content_dataset_fields(fields: list[str] | None) -> list[str]:
+    requested = fields or [
+        "title",
+        "link",
+        "published_at",
+        "updated_at",
+        "author",
+        "tags",
+        "summary",
+        "content_hash",
+        "feed_url",
+        "feed_title",
+    ]
+    allowed = set(PUBLIC_CONTENT_FIELDS)
+    normalized = [field for field in requested if field in allowed]
+    return normalized or list(PUBLIC_CONTENT_FIELDS)
+
+
+def _public_content_field_sources(fields: object) -> dict[str, str]:
+    field_names: list[str] = []
+    if isinstance(fields, dict):
+        field_names = [str(field) for field in fields]
+    elif isinstance(fields, str):
+        field_names = []
+    elif isinstance(fields, Iterable):
+        field_names = [str(field) for field in fields]
+    return {
+        field: PUBLIC_CONTENT_FIELD_SOURCES.get(field, "public_feed.entry")
+        for field in field_names
+    }
+
+
 def _dataset_row(
     raw_record: RawRecord,
     selected_fields: list[str],
@@ -7978,6 +8546,70 @@ def _github_tool_rows(
             )
         )
     return rows
+
+
+def _public_content_rows(
+    raw_record: RawRecord,
+    selected_fields: list[str],
+) -> list[AutomationProductDatasetRowResponse]:
+    content = raw_record.content if isinstance(raw_record.content, dict) else {}
+    entry_items = content.get("entries")
+    entries = entry_items if isinstance(entry_items, list) else []
+    rows: list[AutomationProductDatasetRowResponse] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            continue
+        values_by_field = _public_content_values(entry, content)
+        values = {
+            field: values_by_field.get(field)
+            for field in selected_fields
+            if _has_field_value(values_by_field.get(field))
+        }
+        missing_fields = [field for field in selected_fields if field not in values]
+        ratio = len(values) / len(selected_fields) if selected_fields else 0
+        row_key = (
+            values_by_field.get("link")
+            or values_by_field.get("content_hash")
+            or values_by_field.get("title")
+            or index
+        )
+        rows.append(
+            AutomationProductDatasetRowResponse(
+                row_id=f"{raw_record.task_run_id}:{raw_record.id}:{row_key}",
+                task_run_id=raw_record.task_run_id,
+                raw_record_id=raw_record.id,
+                source_url=(
+                    str(values_by_field["link"])
+                    if _has_field_value(values_by_field.get("link"))
+                    else raw_record.source_url
+                ),
+                values=values,
+                missing_fields=missing_fields,
+                completeness_percent=round(ratio * 100),
+            )
+        )
+    return rows
+
+
+def _public_content_values(
+    entry: dict[str, object],
+    feed_content: dict[str, object],
+) -> dict[str, object]:
+    tags = entry.get("tags")
+    return {
+        "title": entry.get("title"),
+        "link": entry.get("link"),
+        "published_at": entry.get("published_at"),
+        "updated_at": entry.get("updated_at"),
+        "author": entry.get("author"),
+        "tags": tags if isinstance(tags, list) else [],
+        "summary": entry.get("summary"),
+        "content_hash": entry.get("content_hash"),
+        "feed_url": feed_content.get("feed_url"),
+        "feed_title": feed_content.get("title"),
+        "feed_type": feed_content.get("feed_type"),
+        "site_url": feed_content.get("site_url"),
+    }
 
 
 def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
@@ -8164,6 +8796,144 @@ def _github_tool_field_completeness_for_fields(
         completeness_ratio=round(completeness_percent / 100, 4),
         completeness_percent=completeness_percent,
     )
+
+
+def _public_content_field_completeness_for_fields(
+    raw_records: list[RawRecord],
+    configured_fields: list[str],
+) -> AutomationProductBatchFieldCompletenessResponse:
+    rows: list[AutomationProductDatasetRowResponse] = []
+    for raw_record in raw_records:
+        rows.extend(_public_content_rows(raw_record, configured_fields))
+
+    field_values: dict[str, object] = {}
+    missing_fields_set: set[str] = set()
+    for row in rows:
+        missing_fields_set.update(row.missing_fields)
+        for field in configured_fields:
+            if field in field_values:
+                continue
+            value = row.values.get(field)
+            if _has_field_value(value):
+                field_values[field] = value
+
+    if not rows:
+        missing_fields_set.update(configured_fields)
+        completeness_percent = 0
+    else:
+        completeness_percent = round(
+            sum(row.completeness_percent for row in rows) / len(rows)
+        )
+    missing_fields = [field for field in configured_fields if field in missing_fields_set]
+    extracted_fields = [field for field in configured_fields if field not in missing_fields_set]
+    return AutomationProductBatchFieldCompletenessResponse(
+        configured_fields=configured_fields,
+        extracted_fields=extracted_fields,
+        missing_fields=missing_fields,
+        field_values=field_values,
+        completeness_ratio=round(completeness_percent / 100, 4),
+        completeness_percent=completeness_percent,
+    )
+
+
+def _public_content_row_drift(
+    saved_rows: list[dict[str, object]],
+    latest_rows: list[AutomationProductDatasetRowResponse],
+) -> PublicContentRowDrift:
+    baseline_by_key = _public_content_values_by_key(
+        _public_content_saved_row_values(saved_rows)
+    )
+    latest_by_key = _public_content_values_by_key([
+        dict(row.values) for row in latest_rows
+    ])
+    baseline_keys = set(baseline_by_key)
+    latest_keys = set(latest_by_key)
+    added_keys = sorted(latest_keys - baseline_keys)
+    removed_keys = sorted(baseline_keys - latest_keys)
+    changed_hash_keys: list[str] = []
+    for key in sorted(baseline_keys & latest_keys):
+        baseline_hash = _string_or_none(baseline_by_key[key].get("content_hash"))
+        latest_hash = _string_or_none(latest_by_key[key].get("content_hash"))
+        if baseline_hash and latest_hash and baseline_hash != latest_hash:
+            changed_hash_keys.append(key)
+
+    row_change: ProductRowChange = "unchanged"
+    if added_keys and removed_keys:
+        row_change = "mixed"
+    elif added_keys:
+        row_change = "added"
+    elif removed_keys:
+        row_change = "removed"
+
+    issues: list[str] = []
+    if added_keys:
+        issues.append("content_added")
+    if removed_keys:
+        issues.append("content_removed")
+    if changed_hash_keys:
+        issues.append("content_hash_changed")
+
+    return PublicContentRowDrift(
+        row_change=row_change,
+        added_keys=added_keys,
+        removed_keys=removed_keys,
+        changed_hash_keys=changed_hash_keys,
+        issues=issues,
+    )
+
+
+def _public_content_values_by_key(
+    rows: list[dict[str, object]],
+) -> dict[str, dict[str, object]]:
+    keyed: dict[str, dict[str, object]] = {}
+    for values in rows:
+        key = _public_content_values_key(values)
+        if key is not None:
+            keyed[key] = values
+    return keyed
+
+
+def _public_content_values_key(values: dict[str, object]) -> str | None:
+    for field in ("link", "content_hash", "title"):
+        value = values.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _public_content_saved_row_values(
+    saved_rows: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for saved_row in saved_rows:
+        values = saved_row.get("values")
+        if isinstance(values, dict):
+            rows.append(dict(values))
+    return rows
+
+
+def _public_content_drift_signal_groups(
+    row_drift: PublicContentRowDrift,
+    new_missing_fields: list[str],
+) -> dict[str, list[str]]:
+    groups: dict[str, list[str]] = {}
+    if new_missing_fields:
+        groups["field_missingness"] = [
+            f"missing:{field}" for field in new_missing_fields
+        ]
+    if row_drift.added_keys:
+        groups.setdefault("content_presence", []).extend(
+            f"added:{key}" for key in row_drift.added_keys
+        )
+    if row_drift.removed_keys:
+        groups.setdefault("content_presence", []).extend(
+            f"removed:{key}" for key in row_drift.removed_keys
+        )
+    if row_drift.changed_hash_keys:
+        groups["content_hash"] = [
+            f"changed:{key}" for key in row_drift.changed_hash_keys
+        ]
+    return groups
 
 
 def _github_tool_metric_drift_issues(
@@ -8623,6 +9393,20 @@ def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
     return steps
 
 
+def _public_content_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
+    steps = [
+        "strip title, author and feed_title text fields",
+        "normalize link and feed_url as public URL strings",
+        "preserve published_at and updated_at as source timestamps",
+        "normalize tags into lower-case tag arrays",
+        "use content_hash as the content drift signal for unchanged links",
+        "keep missing values explicit as null for downstream review",
+    ]
+    if "summary" in selected_fields:
+        steps.append("collapse repeated whitespace in summary while preserving source meaning")
+    return steps
+
+
 def _dataset_export_preview(
     rows: list[AutomationProductDatasetRowResponse],
     selected_fields: list[str],
@@ -8676,6 +9460,42 @@ def _github_tool_export_preview(
                 ],
             },
             "field_sources": _github_tool_field_sources(selected_fields),
+        },
+        "rows": [
+            {
+                field: row.values.get(field)
+                for field in selected_fields
+            }
+            for row in rows[:10]
+        ],
+    }
+
+
+def _public_content_export_preview(
+    rows: list[AutomationProductDatasetRowResponse],
+    selected_fields: list[str],
+) -> dict[str, object]:
+    return {
+        "format": "json",
+        "schema": {
+            "schema_version": PUBLIC_CONTENT_DATASET_SCHEMA_VERSION,
+            "fields": selected_fields,
+            "primary_key": "link",
+            "missing_value_policy": "explicit_null",
+            "dataset_type": "public_content_update",
+            "collector_schema_versions": list(PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS),
+            "collector_versions": {"public_feed": "public_feed.v1"},
+            "endpoint_origins": {"feed": "public RSS/Atom feed URL"},
+            "provenance": {
+                "field_sources_recorded": True,
+                "lineage_fields": [
+                    "source_task_run_ids",
+                    "raw_record_id",
+                    "source_url",
+                ],
+                "drift_signal": "content_hash",
+            },
+            "field_sources": _public_content_field_sources(selected_fields),
         },
         "rows": [
             {
@@ -8928,6 +9748,99 @@ def _github_tool_report_risk_sections(
             "items": sorted(all_install_sources) or ["repository_url_missing"],
         },
     ]
+
+
+def _public_content_report_entries(
+    saved_rows: list[dict[str, object]],
+) -> list[AutomationPublicContentReportEntryResponse]:
+    entries: list[AutomationPublicContentReportEntryResponse] = []
+    for saved_row in saved_rows:
+        values = saved_row.get("values")
+        if not isinstance(values, dict):
+            continue
+        tags_value = values.get("tags")
+        tags = (
+            [
+                str(tag).strip()
+                for tag in tags_value
+                if str(tag).strip()
+            ]
+            if isinstance(tags_value, list)
+            else []
+        )
+        entries.append(
+            AutomationPublicContentReportEntryResponse(
+                title=_string_or_none(values.get("title")),
+                link=_string_or_none(values.get("link")),
+                feed_url=_string_or_none(values.get("feed_url")),
+                feed_title=_string_or_none(values.get("feed_title")),
+                published_at=_string_or_none(values.get("published_at")),
+                updated_at=_string_or_none(values.get("updated_at")),
+                author=_string_or_none(values.get("author")),
+                tags=tags,
+                summary=_string_or_none(values.get("summary")),
+                content_hash=_string_or_none(values.get("content_hash")),
+            )
+        )
+    return sorted(
+        entries,
+        key=lambda entry: entry.updated_at or entry.published_at or "",
+        reverse=True,
+    )
+
+
+def _public_content_report_risk_sections(
+    entries: list[AutomationPublicContentReportEntryResponse],
+) -> list[dict[str, object]]:
+    without_links = len([entry for entry in entries if not entry.link])
+    without_hashes = len([entry for entry in entries if not entry.content_hash])
+    feed_titles = {
+        entry.feed_title
+        for entry in entries
+        if isinstance(entry.feed_title, str) and entry.feed_title.strip()
+    }
+    sections: list[dict[str, object]] = [
+        {
+            "title": "内容主键与漂移信号",
+            "items": [
+                f"missing_link_entries={without_links}",
+                f"missing_content_hash_entries={without_hashes}",
+                "primary_key=link",
+                "drift_signal=content_hash",
+            ],
+        },
+        {
+            "title": "公开采集合规边界",
+            "items": [
+                "仅适用于公开 RSS/Atom 或公开文档更新源",
+                "不代表可采集登录态、私信、付费墙、验证码或账号后台页面",
+                "报告预览不会创建 Report 资产、发送通知或写出导出文件",
+            ],
+        },
+    ]
+    if feed_titles:
+        sections.append(
+            {
+                "title": "来源覆盖",
+                "items": sorted(feed_titles),
+            }
+        )
+    return sections
+
+
+def _public_content_report_recommendations(
+    entries: list[AutomationPublicContentReportEntryResponse],
+) -> list[str]:
+    if not entries:
+        return ["当前 DatasetVersion 没有公开内容条目，先复核 public_feed 采集记录。"]
+    recommendations = [
+        "使用 link 作为公开内容更新主键，使用 content_hash 识别同一链接下的正文变化。",
+        "将 RSS/Atom 内容更新用于公开 docs、release notes、blog、status page 的增量监控。",
+        "进入生产调度前，应先保存 drift 快照并明确导出、通知和报告资产的授权边界。",
+    ]
+    if any(not entry.content_hash for entry in entries):
+        recommendations.append("部分条目缺少 content_hash，建议先补齐 hash 生成策略再做漂移告警。")
+    return recommendations
 
 
 def _count_repository_languages(
@@ -9185,6 +10098,26 @@ async def _dataset_github_tool_raw_records(
     return records
 
 
+async def _dataset_public_content_raw_records(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_ids: list[uuid.UUID],
+    max_rows: int,
+) -> list[RawRecord]:
+    records: list[RawRecord] = []
+    for task_run_id in task_run_ids:
+        public_records = await _public_feed_raw_records_for_task_run(
+            session=session,
+            workspace_id=workspace_id,
+            task_run_id=task_run_id,
+            limit=max_rows,
+        )
+        records.extend(public_records)
+        if len(records) >= max_rows:
+            return records[:max_rows]
+    return records
+
+
 async def _single_project_id_for_task_runs(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -9222,6 +10155,26 @@ async def _github_tool_raw_records_for_task_run(
         raw_record
         for raw_record in raw_records
         if raw_record.record_type in {"github_topic", "github_repo"}
+    ]
+
+
+async def _public_feed_raw_records_for_task_run(
+    *,
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_run_id: uuid.UUID,
+    limit: int,
+) -> list[RawRecord]:
+    raw_records = await list_raw_records(
+        session=session,
+        workspace_id=workspace_id,
+        task_run_id=task_run_id,
+        limit=limit,
+    )
+    return [
+        raw_record
+        for raw_record in raw_records
+        if raw_record.record_type == "public_feed"
     ]
 
 

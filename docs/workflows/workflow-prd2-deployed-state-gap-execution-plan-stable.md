@@ -158,8 +158,8 @@ Boundary: 只处理授权公开页面；不处理登录墙、验证码、购物�
 |---|---|---|---|
 | M5-1 | 定义 `public-web-rss-docs` package | API contract、platform package catalog、TS types/UI | done_local_20260623：package 显示 URL/RSS/Docs targets，含 risk boundary |
 | M5-2 | RSS/Atom parser | collector + tests | done_local_20260623：`public_feed` 支持 title/link/published/updated/author/tags/content summary/hash |
-| M5-3 | Docs diff dataset | dataset service + drift service | 能比较 previous/current content hash、heading diff、link changes |
-| M5-4 | Report template | report service/UI | 生成“公开页面/文档更新摘要”并绑定 evidence |
+| M5-3 | Public content dataset/drift | dataset service + drift service | done_local_20260623：`public_feed` entries 可保存为 `public_content_update.v1` DatasetVersion，并用 `link` + `content_hash` 做 added/removed/hash changed drift check |
+| M5-4 | Report preview template | report service | done_local_20260623：`public-content-report` 可生成公开内容更新只读摘要、风险段和建议；不创建 Report asset |
 
 Boundary: 公开源、低频、保留 final URL/source timestamp/content hash；不覆盖原始事实。
 
@@ -218,9 +218,9 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 
 按当前证据，R0 release/schema 对齐和 M3 GitHub 小范围 L4 package gate 已完成；M4-1 到 M4-3 已进入 `main@8cd3e8f` 并通过 main CI，但 M4 生产写入验收仍未按测试站 URL、cleanup register 和 retention/export 边界执行。
 
-1. M5 下一步是 local-only Dataset/drift/report slice：把 `public_feed` raw record entries 转成 `public_content_update` DatasetVersion，再用 content_hash 做 drift。
+1. M5 local-only Dataset/drift/report slice 已完成；下一步可选择一个独立授权 gate：public content production package smoke、Report asset 持久化、Dataset export、scheduler approval 之一。
 2. 如继续 M4-4，需要明确测试站 URL、允许写入资源、cleanup register、是否允许 export file，以及 cleanup dry-run/execute。
-3. M5 仍不做生产写入、provider call、email、scheduler、dataset export 或 browser run，除非另起授权 gate。
+3. M5 仍不做生产写入、provider call、email、scheduler、dataset export、Report asset 或 browser run，除非另起授权 gate。
 
 ## 7. Definition Of Done
 

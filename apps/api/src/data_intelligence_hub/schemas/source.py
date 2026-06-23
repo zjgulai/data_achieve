@@ -10,6 +10,7 @@ SourceType = Literal[
     "github_repo",
     "github_topic",
     "generic_web",
+    "public_feed",
     "manual_json",
     "ecommerce_product_discovery",
     "ecommerce_product_page",

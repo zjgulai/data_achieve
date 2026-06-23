@@ -1865,6 +1865,298 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
 
 
 @pytest.mark.asyncio
+async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FixturePublicFeedCollector(BaseCollector):
+        collector_type = "public_feed"
+        collect_calls = 0
+
+        def validate_config(self) -> dict[str, object]:
+            return {
+                "url": self.config.get("url", "https://example.com/blog/feed.xml"),
+                "feed_type": self.config.get("feed_type", "rss"),
+                "max_items": self.config.get("max_items", 20),
+            }
+
+        async def test(self) -> CollectorTestResult:
+            return CollectorTestResult(status="ok", message="ok", logs=[])
+
+        async def collect(self) -> CollectionResult:
+            self.__class__.collect_calls += 1
+            if self.__class__.collect_calls == 1:
+                entries = [
+                    {
+                        "title": "Launch notes",
+                        "link": "https://example.com/blog/launch",
+                        "published_at": "2026-06-20T00:00:00Z",
+                        "updated_at": "2026-06-20T00:00:00Z",
+                        "author": "Docs Team",
+                        "tags": ["release", "docs"],
+                        "summary": "Initial launch notes.",
+                        "content_hash": "hash-launch-v1",
+                    },
+                    {
+                        "title": "Migration guide",
+                        "link": "https://example.com/blog/migration",
+                        "published_at": "2026-06-19T00:00:00Z",
+                        "updated_at": "2026-06-19T00:00:00Z",
+                        "author": "Docs Team",
+                        "tags": ["guide"],
+                        "summary": "Migration guide.",
+                        "content_hash": "hash-migration-v1",
+                    },
+                ]
+                feed_hash = "feed-hash-v1"
+            else:
+                entries = [
+                    {
+                        "title": "Launch notes",
+                        "link": "https://example.com/blog/launch",
+                        "published_at": "2026-06-20T00:00:00Z",
+                        "updated_at": "2026-06-21T00:00:00Z",
+                        "author": "Docs Team",
+                        "tags": ["release", "docs"],
+                        "summary": "Launch notes with a changed paragraph.",
+                        "content_hash": "hash-launch-v2",
+                    },
+                    {
+                        "title": "Third update",
+                        "link": "https://example.com/blog/third",
+                        "published_at": "2026-06-22T00:00:00Z",
+                        "updated_at": "2026-06-22T00:00:00Z",
+                        "author": "Docs Team",
+                        "tags": ["changelog"],
+                        "summary": "A new public update.",
+                        "content_hash": "hash-third-v1",
+                    },
+                ]
+                feed_hash = "feed-hash-v2"
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="public_feed",
+                        source_url="https://example.com/blog/feed.xml",
+                        content={
+                            "provider": "public_feed",
+                            "kind": "feed_snapshot",
+                            "schema_version": "public_feed.v1",
+                            "feed_url": "https://example.com/blog/feed.xml",
+                            "feed_type": "rss",
+                            "title": "Example Product Blog",
+                            "site_url": "https://example.com/blog",
+                            "description": "Public updates for Example Product.",
+                            "item_count": len(entries),
+                            "max_items": 20,
+                            "entries": entries,
+                            "feed_content_hash": feed_hash,
+                            "provenance": {
+                                "endpoint_origin": "https://example.com/blog/feed.xml",
+                                "parser": "fixture",
+                                "public_url_checked": True,
+                            },
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "public_feed",
+        FixturePublicFeedCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Example Product Blog Feed",
+            "type": "public_feed",
+            "config": {
+                "url": "https://example.com/blog/feed.xml",
+                "feed_type": "rss",
+                "max_items": 20,
+            },
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+    assert source["type"] == "public_feed"
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert run_response.status_code == 201
+    run = run_response.json()
+    assert run["status"] == "success"
+
+    fields = [
+        "title",
+        "link",
+        "published_at",
+        "updated_at",
+        "author",
+        "tags",
+        "summary",
+        "content_hash",
+        "feed_url",
+        "feed_title",
+    ]
+    preview_response = await client.post(
+        "/api/automation/public-content-dataset-preview",
+        json={
+            "authorized": True,
+            "task_run_ids": [run["id"]],
+            "fields": fields,
+            "max_rows": 10,
+        },
+    )
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    assert preview["summary"]["rows_count"] == 2
+    assert preview["summary"]["matched_runs"] == 1
+    assert preview["summary"]["selected_fields"] == fields
+    assert preview["rows"][0]["values"]["title"] == "Launch notes"
+    assert preview["rows"][0]["values"]["content_hash"] == "hash-launch-v1"
+    assert preview["rows"][0]["values"]["feed_title"] == "Example Product Blog"
+    assert preview["export_preview"]["schema"]["schema_version"] == (
+        "public_content_update.v1"
+    )
+    assert preview["export_preview"]["schema"]["primary_key"] == "link"
+    assert preview["export_preview"]["schema"]["field_sources"]["content_hash"] == (
+        "public_feed.entry.content_hash"
+    )
+    assert preview["export_preview"]["schema"]["provenance"]["drift_signal"] == (
+        "content_hash"
+    )
+
+    save_response = await client.post(
+        "/api/automation/public-content-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Public Content Updates - Example Blog",
+            "description": "Public RSS content update dataset.",
+            "task_run_ids": [run["id"]],
+            "fields": fields,
+            "max_rows": 10,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["dataset"]["dataset_type"] == "public_content_update"
+    assert saved["version"]["row_count"] == 2
+    assert saved["version"]["selected_fields"] == fields
+    assert saved["version"]["export_preview"]["schema"]["schema_version"] == (
+        "public_content_update.v1"
+    )
+    assert saved["version"]["export_preview"]["schema"]["collector_schema_versions"] == [
+        "public_feed.v1"
+    ]
+
+    second_run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert second_run_response.status_code == 201
+    second_run = second_run_response.json()
+    assert second_run["status"] == "success"
+
+    drift_response = await client.post(
+        "/api/automation/public-content-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["dataset"]["dataset_type"] == "public_content_update"
+    assert drift["summary"] == {
+        "requested_tasks": 1,
+        "checked_tasks": 1,
+        "blocked_tasks": 0,
+        "warning_tasks": 0,
+        "critical_tasks": 1,
+        "stale_tasks": 0,
+        "missing_field_tasks": 0,
+        "added_rows": 1,
+        "removed_rows": 1,
+        "price_changed_tasks": 0,
+        "drift_layers": {
+            "content_hash": 1,
+            "content_presence": 2,
+        },
+        "run_started": False,
+        "alert_created": False,
+    }
+    drift_item = drift["items"][0]
+    assert drift_item["latest_run_id"] == second_run["id"]
+    assert drift_item["row_change"] == "mixed"
+    assert drift_item["added_row_count"] == 1
+    assert drift_item["removed_row_count"] == 1
+    assert drift_item["issues"] == [
+        "content_added",
+        "content_removed",
+        "content_hash_changed",
+    ]
+    assert drift_item["signal_groups"]["content_presence"] == [
+        "added:https://example.com/blog/third",
+        "removed:https://example.com/blog/migration",
+    ]
+    assert drift_item["signal_groups"]["content_hash"] == [
+        "changed:https://example.com/blog/launch"
+    ]
+    assert any(
+        event["event"] == "public_content_drift_task_checked"
+        and event["run_started"] is False
+        and event["alert_created"] is False
+        for event in drift["audit_events"]
+    )
+    assert "不会启动采集" in drift["blocked_reasons"][0]
+
+    report_response = await client.post(
+        "/api/automation/public-content-report",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "top_limit": 5,
+        },
+    )
+    assert report_response.status_code == 200
+    report = report_response.json()
+    assert report["summary"] == {
+        "entry_count": 2,
+        "feed_count": 1,
+        "unique_author_count": 1,
+        "tagged_entry_count": 2,
+        "entries_with_summary": 2,
+        "content_hash_count": 2,
+        "report_created": False,
+        "run_started": False,
+    }
+    assert report["latest_entries"][0]["title"] == "Launch notes"
+    assert report["latest_entries"][0]["content_hash"] == "hash-launch-v1"
+    assert report["risk_sections"][0]["title"] == "内容主键与漂移信号"
+    assert "drift_signal=content_hash" in report["risk_sections"][0]["items"]
+    assert "RSS/Atom" in report["recommendations"][1]
+    assert any(
+        event["event"] == "public_content_report_generated"
+        and event["report_created"] is False
+        and event["run_started"] is False
+        for event in report["audit_events"]
+    )
+    assert "不会启动采集" in report["blocked_reasons"][0]
+
+
+@pytest.mark.asyncio
 async def test_source_update_syncs_derived_url_and_task_config(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 

@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-22
+updated: 2026-06-23
 owner: self
 source: human+ai
 ---
@@ -245,6 +245,39 @@ GitHub 工具数据集导出复用 Dataset Export：
 3. `GET /api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download`
 
 这些导出 endpoint 名称仍保留 `product` 历史命名，但底层按 Dataset/Version 权限和 `dataset_type` 工作；后续可再做无破坏的 alias。
+
+### Public Web/RSS/Docs Content Dataset Flow
+
+公开内容更新当前复用 Source/Task/Run API：
+
+| 步骤 | 接口 | 关键字段 | 说明 |
+|---|---|---|---|
+| 创建 Source | `POST /api/sources` | `type=public_feed`、`url`、`config.url`、`config.feed_type`、`config.max_items` | 创建公开 RSS/Atom 采集源 |
+| 启用 Task | `POST /api/sources/{source_id}/enable` | 无 | 创建或复用 `public_feed` 采集任务 |
+| 执行采集 | `POST /api/tasks/{task_id}/run` | 无 | 写入 TaskRun、RawRecord、Entity/Snapshot；不写 Dataset |
+
+公开内容数据集化：
+
+| 方法 | 路径 | 请求 | 响应 | 说明 |
+|---|---|---|---|---|
+| `POST` | `/api/automation/public-content-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从 `public_feed` raw record entries 生成公开内容数据集预览，不保存 DatasetVersion |
+| `POST` | `/api/automation/public-content-dataset-save` | preview request + `name`、`description?` | `AutomationProductDatasetSaveResponse` | 保存 `dataset_type=public_content_update`、`schema_version=public_content_update.v1` 的 DatasetVersion |
+| `POST` | `/api/automation/public-content-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、`completeness_drop_threshold_percent?`、`freshness_grace_hours?` | `AutomationProductDriftCheckResponse` | 只读比较最新 `public_feed` TaskRun；用 `link` 做主键、`content_hash` 做内容漂移信号 |
+| `POST` | `/api/automation/public-content-report` | `authorized`、`dataset_id`、`dataset_version_id`、`top_limit?` | `AutomationPublicContentReportResponse` | 从已保存 DatasetVersion 生成公开内容更新报告预览，不创建 Report 资产 |
+
+公开内容数据集字段：
+
+```text
+title, link, published_at, updated_at, author, tags, summary,
+content_hash, feed_url, feed_title, feed_type, site_url
+```
+
+公开内容边界：
+
+1. 只支持已授权公开 RSS/Atom feed 或公开文档更新源；不覆盖登录态、私信、付费墙、验证码或账号后台页面。
+2. `public-content-drift-check` 不启动采集、不创建 `DatasetDriftEvent`、不创建告警、不发送通知。
+3. `public-content-report` 只返回只读预览；不创建 Report 资产、不写导出文件、不发送邮件。
+4. Dataset export 仍需单独走 export gate；生产 Source/Task/TaskRun、scheduler 和 report asset 也需要独立授权。
 
 ### Public Page Structure Preflight
 
