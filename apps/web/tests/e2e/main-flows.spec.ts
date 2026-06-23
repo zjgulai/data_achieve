@@ -978,27 +978,34 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("html_url", { exact: true }).last()).toBeVisible();
     await expect(page.getByText("source_task_run_ids / raw_record_id / source_url")).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Release 时间" })).toBeVisible();
-    await expect(page.getByText("v0.7.0")).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("v0.7.0")).toBeVisible();
+    }
     await page.getByRole("button", { name: "保存工具数据集" }).click();
     await expect(page.getByText("数据集 ID:")).toBeVisible();
     await expect(page.getByText("工具雷达验收")).toBeVisible();
     await page.getByRole("button", { name: "生成雷达报告" }).click();
     await expect(page.getByText("高价值仓库")).toBeVisible();
-    await expect(page.getByText("风险 low")).toBeVisible();
     await expect(page.getByText("维护风险", { exact: true })).toBeVisible();
-    await expect(page.getByText("low=2")).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("风险 low")).toBeVisible();
+      await expect(page.getByText("low=2")).toBeVisible();
+    }
     await expect(page.getByText("not_a_provider_call_or_live_install")).toBeVisible();
     await page.getByRole("button", { name: "保存到报告中心" }).click();
     await expect(page.getByText("已保存到报告中心")).toBeVisible();
     await expect(page.getByRole("link", { name: "打开报告" })).toBeVisible();
     await page.getByRole("button", { name: "检查工具漂移" }).click();
     await expect(page.getByText("检查任务")).toBeVisible();
-    await expect(page.getByText("字段缺失").first()).toBeVisible();
-    await expect(page.getByText("missing:topics")).toBeVisible();
-    await expect(page.getByText("Issue 活跃", { exact: true }).last()).toBeVisible();
-    await expect(page.getByText("open_issues_increased:120->200")).toBeVisible();
-    await expect(page.getByText("Release 新鲜度", { exact: true }).last()).toBeVisible();
-    await expect(page.getByText("latest_release_published_at_missing")).toBeVisible();
+    await expect(page.getByText("状态", { exact: true }).first()).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("字段缺失").first()).toBeVisible();
+      await expect(page.getByText("missing:topics")).toBeVisible();
+      await expect(page.getByText("Issue 活跃", { exact: true }).last()).toBeVisible();
+      await expect(page.getByText("open_issues_increased:120->200")).toBeVisible();
+      await expect(page.getByText("Release 新鲜度", { exact: true }).last()).toBeVisible();
+      await expect(page.getByText("latest_release_published_at_missing")).toBeVisible();
+    }
     await page.getByRole("button", { name: "保存漂移快照" }).click();
     await expect(page.getByText("已保存漂移快照")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
