@@ -1159,6 +1159,57 @@ export type AutomationGitHubToolReportAssetInput = AutomationGitHubToolReportInp
   confirmCreate: boolean;
 };
 
+export type AutomationPublicContentReportEntry = {
+  title: string | null;
+  link: string | null;
+  feedUrl: string | null;
+  feedTitle: string | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  author: string | null;
+  tags: string[];
+  summary: string | null;
+  contentHash: string | null;
+};
+
+export type AutomationPublicContentReport = {
+  generatedAt: string;
+  authorizationConfirmed: boolean;
+  dataset: AutomationDataset;
+  version: AutomationDatasetVersion;
+  summary: {
+    entryCount: number;
+    feedCount: number;
+    uniqueAuthorCount: number;
+    taggedEntryCount: number;
+    entriesWithSummary: number;
+    contentHashCount: number;
+    reportCreated: boolean;
+    runStarted: boolean;
+  };
+  latestEntries: AutomationPublicContentReportEntry[];
+  recommendations: string[];
+  riskSections: AutomationGitHubToolReportRiskSection[];
+  auditEvents: Array<Record<string, unknown>>;
+  blockedReasons: string[];
+};
+
+export type AutomationPublicContentReportInput = {
+  authorized: boolean;
+  datasetId: string;
+  datasetVersionId: string;
+  topLimit?: number;
+};
+
+export type AutomationPublicContentReportAsset = AutomationPublicContentReport & {
+  report: Report;
+  notificationCreated: boolean;
+};
+
+export type AutomationPublicContentReportAssetInput = AutomationPublicContentReportInput & {
+  confirmCreate: boolean;
+};
+
 export type AutomationProductDatasetListItem = {
   dataset: AutomationDataset;
   latestVersion: AutomationDatasetVersion | null;

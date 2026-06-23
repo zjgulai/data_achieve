@@ -183,6 +183,10 @@ class AutomationGitHubToolReportAssetCreateRequest(AutomationGitHubToolReportReq
     confirm_create: bool
 
 
+class AutomationPublicContentReportAssetCreateRequest(AutomationPublicContentReportRequest):
+    confirm_create: bool
+
+
 class AutomationProductDriftAlertPreviewRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID
@@ -1326,6 +1330,11 @@ class AutomationPublicContentReportResponse(BaseModel):
     risk_sections: list[dict[str, Any]] = Field(default_factory=list)
     audit_events: list[dict[str, Any]]
     blocked_reasons: list[str]
+
+
+class AutomationPublicContentReportAssetResponse(AutomationPublicContentReportResponse):
+    report: ReportResponse
+    notification_created: bool
 
 
 class AutomationProductDatasetListItemResponse(BaseModel):

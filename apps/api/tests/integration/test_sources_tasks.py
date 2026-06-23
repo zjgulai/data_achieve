@@ -2153,6 +2153,44 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
         and event["run_started"] is False
         for event in report["audit_events"]
     )
+
+    report_asset_response = await client.post(
+        "/api/automation/public-content-report-assets",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "top_limit": 5,
+        },
+    )
+    assert report_asset_response.status_code == 201
+    report_asset = report_asset_response.json()
+    assert report_asset["summary"]["report_created"] is True
+    assert report_asset["summary"]["run_started"] is False
+    assert report_asset["notification_created"] is False
+    assert report_asset["report"]["report_type"] == "public_content_update"
+    assert report_asset["report"]["status"] == "generated"
+    assert "Public Content Updates - Example Blog" in report_asset["report"]["title"]
+    assert "Launch notes" in report_asset["report"]["content"]
+    assert "schema_version: public_content_update.v1" in report_asset["report"]["content"]
+    assert "collector_schema_versions: public_feed.v1" in report_asset["report"]["content"]
+    assert "内容风险与边界" in report_asset["report"]["content"]
+    assert "public_content_update" in report_asset["report"]["content"]
+    assert any(
+        event["event"] == "public_content_report_asset_created"
+        and event["report_created"] is True
+        and event["run_started"] is False
+        and event["notification_created"] is False
+        for event in report_asset["audit_events"]
+    )
+    assert "不会启动采集" in report_asset["blocked_reasons"][0]
+
+    stored_report_response = await client.get(f"/api/reports/{report_asset['report']['id']}")
+    assert stored_report_response.status_code == 200
+    stored_report = stored_report_response.json()
+    assert stored_report["report_type"] == "public_content_update"
+    assert "Launch notes" in stored_report["content"]
     assert "不会启动采集" in report["blocked_reasons"][0]
 
 

@@ -77,6 +77,8 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentDatasetPreviewRequest,
     AutomationPublicContentDatasetSaveRequest,
     AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentReportAssetCreateRequest,
+    AutomationPublicContentReportAssetResponse,
     AutomationPublicContentReportRequest,
     AutomationPublicContentReportResponse,
     AutomationSiteAnalysisDetailResponse,
@@ -99,6 +101,7 @@ from data_intelligence_hub.services.automation_service import (
     create_product_dataset_export,
     create_product_drift_alert_events,
     create_product_drift_alert_rule,
+    create_public_content_report_asset,
     create_reviewed_product_fanout,
     discover_products_for_collection,
     dry_run_browser_executable_spec,
@@ -915,6 +918,30 @@ async def create_github_tool_report_asset_route(
 ) -> AutomationGitHubToolReportAssetResponse:
     try:
         return await create_github_tool_report_asset(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/public-content-report-assets",
+    response_model=AutomationPublicContentReportAssetResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_public_content_report_asset_route(
+    payload: AutomationPublicContentReportAssetCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationPublicContentReportAssetResponse:
+    try:
+        return await create_public_content_report_asset(
             session,
             context.workspace,
             context.user,

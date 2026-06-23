@@ -243,6 +243,8 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentDatasetPreviewRequest,
     AutomationPublicContentDatasetSaveRequest,
     AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentReportAssetCreateRequest,
+    AutomationPublicContentReportAssetResponse,
     AutomationPublicContentReportEntryResponse,
     AutomationPublicContentReportRequest,
     AutomationPublicContentReportResponse,
@@ -3686,6 +3688,93 @@ async def generate_public_content_report(
         blocked_reasons=[
             "公开内容报告为只读预览，不会启动采集、创建报告资产、写出文件或发送通知。"
         ],
+    )
+
+
+async def create_public_content_report_asset(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    payload: AutomationPublicContentReportAssetCreateRequest,
+) -> AutomationPublicContentReportAssetResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_create:
+        raise CollectorError("public_content_report_asset_confirmation_required")
+
+    generated = await generate_public_content_report(session, workspace, payload)
+    created_at = datetime.now(UTC)
+    title = (
+        f"公开内容更新报告 - {generated.dataset.name} "
+        f"v{generated.version.version_number}"
+    )
+    report = Report(
+        workspace_id=workspace.id,
+        project_id=generated.dataset.project_id,
+        report_type="public_content_update",
+        title=title,
+        content=_render_public_content_report_asset_content(generated),
+        status="generated",
+        period_start=generated.version.created_at,
+        period_end=created_at,
+    )
+    await create_report(session, report)
+    await create_report_audit_event(
+        session,
+        ReportAuditEvent(
+            workspace_id=workspace.id,
+            report_id=report.id,
+            actor_id=user.id,
+            event_type="public_content_report_asset_created",
+            from_status=None,
+            to_status=report.status,
+            metadata_json=json.dumps(
+                {
+                    "dataset_id": str(generated.dataset.id),
+                    "dataset_version_id": str(generated.version.id),
+                    "entry_count": str(generated.summary.entry_count),
+                    "feed_count": str(generated.summary.feed_count),
+                    "top_limit": str(payload.top_limit),
+                    "report_created": "true",
+                    "run_started": "false",
+                    "notification_created": "false",
+                },
+                ensure_ascii=False,
+            ),
+            created_at=created_at,
+        ),
+    )
+    await session.commit()
+    await session.refresh(report)
+
+    summary = generated.summary.model_copy(update={"report_created": True})
+    audit_events = [
+        *generated.audit_events,
+        {
+            "event": "public_content_report_asset_created",
+            "dataset_id": str(generated.dataset.id),
+            "dataset_version_id": str(generated.version.id),
+            "report_id": str(report.id),
+            "report_created": True,
+            "run_started": False,
+            "notification_created": False,
+        },
+    ]
+    return AutomationPublicContentReportAssetResponse(
+        generated_at=created_at,
+        authorization_confirmed=generated.authorization_confirmed,
+        dataset=generated.dataset,
+        version=generated.version,
+        summary=summary,
+        latest_entries=generated.latest_entries,
+        recommendations=generated.recommendations,
+        risk_sections=generated.risk_sections,
+        audit_events=audit_events,
+        blocked_reasons=[
+            "公开内容报告资产已保存到 Report 中心；不会启动采集、创建通知、发送邮件或写出导出文件。"
+        ],
+        report=ReportResponse.from_model(report),
+        notification_created=False,
     )
 
 
@@ -9992,6 +10081,97 @@ def _render_github_tool_report_asset_content(
         "- 若用于培训材料，需要结合最新 drift check 复核字段完整度和新鲜度。",
     ]
     return "\n".join(sections).strip()
+
+
+def _render_public_content_report_asset_content(
+    report: AutomationPublicContentReportResponse,
+) -> str:
+    entry_lines = [
+        "| 标题 | 发布 | 作者 | Feed | Tags | Link | Content hash |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for entry in report.latest_entries:
+        tags = "、".join(entry.tags) if entry.tags else "-"
+        entry_lines.append(
+            "| "
+            f"{entry.title or '-'} | "
+            f"{entry.published_at or entry.updated_at or '-'} | "
+            f"{entry.author or '-'} | "
+            f"{entry.feed_title or entry.feed_url or '-'} | "
+            f"{tags} | "
+            f"{entry.link or '-'} | "
+            f"{entry.content_hash or '-'} |"
+        )
+
+    recommendation_lines = [
+        f"{index}. {recommendation}"
+        for index, recommendation in enumerate(report.recommendations, start=1)
+    ]
+    fields = "、".join(report.version.selected_fields)
+    schema = report.version.export_preview.get("schema", {})
+    schema_version = schema.get("schema_version") if isinstance(schema, dict) else None
+    collector_schema_versions = (
+        schema.get("collector_schema_versions") if isinstance(schema, dict) else None
+    )
+    collector_schema_text = (
+        "、".join(str(item) for item in collector_schema_versions)
+        if isinstance(collector_schema_versions, list)
+        else "unknown"
+    )
+    risk_section_lines = _render_public_content_risk_section_lines(report.risk_sections)
+
+    sections = [
+        f"# 公开内容更新报告 - {report.dataset.name}",
+        "",
+        "## 报告口径",
+        f"- dataset_type: {report.dataset.dataset_type}",
+        f"- dataset_id: {report.dataset.id}",
+        f"- dataset_version_id: {report.version.id}",
+        f"- version_number: {report.version.version_number}",
+        f"- schema_version: {schema_version or 'unknown'}",
+        f"- collector_schema_versions: {collector_schema_text}",
+        f"- selected_fields: {fields}",
+        f"- row_count: {report.version.row_count}",
+        f"- average_completeness_percent: {report.version.average_completeness_percent}",
+        "",
+        "## 内容更新概览",
+        f"- entry_count: {report.summary.entry_count}",
+        f"- feed_count: {report.summary.feed_count}",
+        f"- unique_author_count: {report.summary.unique_author_count}",
+        f"- tagged_entry_count: {report.summary.tagged_entry_count}",
+        f"- entries_with_summary: {report.summary.entries_with_summary}",
+        f"- content_hash_count: {report.summary.content_hash_count}",
+        "",
+        "## 最新条目",
+        *entry_lines,
+        "",
+        "## 内容风险与边界",
+        *risk_section_lines,
+        "",
+        "## 运营建议",
+        *recommendation_lines,
+        "",
+        "## 证据边界",
+        "- 本报告来自已保存的 public_content_update DatasetVersion。",
+        "- 保存报告不会启动采集、创建通知、发送邮件或写出导出文件。",
+        "- 若用于发布或调度，需要结合最新 drift check 复核内容 hash、字段完整度和来源授权。",
+    ]
+    return "\n".join(sections).strip()
+
+
+def _render_public_content_risk_section_lines(
+    risk_sections: list[dict[str, Any]],
+) -> list[str]:
+    lines: list[str] = []
+    for section in risk_sections:
+        title = _string_or_none(section.get("title")) or "未命名风险项"
+        lines.append(f"### {title}")
+        items = section.get("items")
+        if isinstance(items, list) and items:
+            lines.extend(f"- {item}" for item in items)
+        else:
+            lines.append("- 无")
+    return lines
 
 
 def _render_github_tool_risk_section_lines(
