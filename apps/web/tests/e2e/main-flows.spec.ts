@@ -985,7 +985,7 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: "生成雷达报告" }).click();
     await expect(page.getByText("高价值仓库")).toBeVisible();
     await expect(page.getByText("风险 low")).toBeVisible();
-    await expect(page.getByText("维护风险")).toBeVisible();
+    await expect(page.getByText("维护风险", { exact: true })).toBeVisible();
     await expect(page.getByText("low=2")).toBeVisible();
     await expect(page.getByText("not_a_provider_call_or_live_install")).toBeVisible();
     await page.getByRole("button", { name: "保存到报告中心" }).click();
@@ -995,9 +995,9 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("检查任务")).toBeVisible();
     await expect(page.getByText("字段缺失").first()).toBeVisible();
     await expect(page.getByText("missing:topics")).toBeVisible();
-    await expect(page.getByText("Issue 活跃")).toBeVisible();
+    await expect(page.getByText("Issue 活跃", { exact: true }).last()).toBeVisible();
     await expect(page.getByText("open_issues_increased:120->200")).toBeVisible();
-    await expect(page.getByText("Release 新鲜度")).toBeVisible();
+    await expect(page.getByText("Release 新鲜度", { exact: true }).last()).toBeVisible();
     await expect(page.getByText("latest_release_published_at_missing")).toBeVisible();
     await page.getByRole("button", { name: "保存漂移快照" }).click();
     await expect(page.getByText("已保存漂移快照")).toBeVisible();

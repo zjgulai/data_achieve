@@ -733,7 +733,6 @@ class AutomationBrowserLocalRunnerRequest(BaseModel):
     ] = "diagnostic_snapshot_replay"
     confirm_real_browser_probe: bool = False
     browser_harness_binary: str | None = Field(default=None, max_length=500)
-    browser_harness_cdp_url: str | None = Field(default=None, max_length=500)
     probe_timeout_seconds: int = Field(default=15, ge=3, le=45)
     artifact_retention_days: int = Field(default=7, ge=1, le=30)
     max_preview_rows: int = Field(default=20, ge=1, le=100)
@@ -797,6 +796,7 @@ class AutomationProductCandidateResponse(BaseModel):
     title: str | None
     source: str
     confidence: float
+    canonical_url: str
 
 
 class AutomationDiscoveryPageStructureResponse(BaseModel):
@@ -807,8 +807,19 @@ class AutomationDiscoveryPageStructureResponse(BaseModel):
     product_link_count: int
     jsonld_url_count: int
     sitemap_url_count: int
+    pagination_url_count: int
+    duplicate_url_count: int
+    skipped_url_count: int
     script_count: int
     text_sample: str
+
+
+class AutomationDiscoveryDedupeSummaryResponse(BaseModel):
+    input_url_count: int
+    canonical_candidate_count: int
+    duplicate_url_count: int
+    skipped_url_count: int
+    skipped_reasons: list[str]
 
 
 class AutomationDiscoveryPlanResponse(BaseModel):
@@ -816,6 +827,8 @@ class AutomationDiscoveryPlanResponse(BaseModel):
     candidate_count: int
     max_products: int
     fan_out_requires_review: bool
+    pagination_urls: list[str]
+    dedupe_summary: AutomationDiscoveryDedupeSummaryResponse
 
 
 class AutomationFanoutCandidateStatusResponse(BaseModel):
@@ -1129,6 +1142,10 @@ class AutomationProductDriftItemResponse(BaseModel):
     completeness_drop_percent: int | None
     missing_fields: list[str]
     new_missing_fields: list[str]
+    row_change: Literal["unchanged", "added", "removed", "mixed"] = "unchanged"
+    added_row_count: int = 0
+    removed_row_count: int = 0
+    price_change_percent: float | None = None
     freshness_target_hours: int | None
     stale_hours: float | None
     issues: list[str]
@@ -1143,6 +1160,10 @@ class AutomationProductDriftSummaryResponse(BaseModel):
     critical_tasks: int
     stale_tasks: int
     missing_field_tasks: int
+    added_rows: int = 0
+    removed_rows: int = 0
+    price_changed_tasks: int = 0
+    drift_layers: dict[str, int] = Field(default_factory=dict)
     run_started: bool
     alert_created: bool
 
@@ -1193,13 +1214,19 @@ class AutomationGitHubToolReportRepositoryResponse(BaseModel):
     topics: list[str]
     license_spdx_id: str | None
     default_branch: str | None
-    archived: bool | None
-    commit_freshness_days: int | None
     latest_release_tag: str | None
     latest_release_published_at: str | None
-    readme_present: bool | None
+    archived: bool | None
+    fork: bool | None
     updated_at: str | None
     pushed_at: str | None
+    readme_detected: bool | None
+    readme_html_url: str | None
+    readme_size: int | None
+    issue_activity_open_count: int | None
+    issue_activity_status: str | None
+    commit_freshness_days: int | None
+    commit_freshness_status: str | None
     maintenance_risk: Literal["low", "medium", "high", "unknown"] = "unknown"
     risk_signals: list[str] = Field(default_factory=list)
     install_sources: list[str] = Field(default_factory=list)
@@ -1211,6 +1238,13 @@ class AutomationGitHubToolReportSummaryResponse(BaseModel):
     repository_count: int
     total_stars: int
     high_value_repositories: int
+    licensed_repositories: int
+    release_tagged_repositories: int
+    readme_documented_repositories: int
+    issue_active_repositories: int
+    fresh_commit_repositories: int
+    archived_repositories: int
+    fork_repositories: int
     languages: dict[str, int]
     top_topics: dict[str, int]
     report_created: bool
@@ -1225,7 +1259,7 @@ class AutomationGitHubToolReportResponse(BaseModel):
     summary: AutomationGitHubToolReportSummaryResponse
     top_repositories: list[AutomationGitHubToolReportRepositoryResponse]
     recommendations: list[str]
-    risk_sections: list[dict[str, Any]]
+    risk_sections: list[dict[str, Any]] = Field(default_factory=list)
     audit_events: list[dict[str, Any]]
     blocked_reasons: list[str]
 

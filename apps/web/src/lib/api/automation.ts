@@ -4,7 +4,9 @@ import {
   getMockAutomationProductFanoutPreview,
   getMockAutomationProductBatchRun,
   getMockAutomationProductDatasetPreview,
+  getMockAutomationGitHubToolDatasetPreview,
   getMockAutomationProductDatasetSave,
+  getMockAutomationGitHubToolDatasetSave,
   getMockAutomationProductDatasetExportCreate,
   getMockAutomationProductDatasetExports,
   getMockAutomationProductDatasets,
@@ -16,6 +18,7 @@ import {
   getMockAutomationProductDriftAlertEmailSend,
   getMockAutomationProductDriftAlertRuleCreate,
   getMockAutomationProductDriftCheck,
+  getMockAutomationGitHubToolDriftCheck,
   getMockAutomationProductDriftEvents,
   getMockAutomationProductDriftEventSave,
   getMockAutomationProductScheduleApprove,
@@ -532,6 +535,7 @@ type AutomationProductCandidateResponse = {
   title: string | null;
   source: string;
   confidence: number;
+  canonical_url: string;
 };
 
 type AutomationProductDiscoveryResponse = {
@@ -552,6 +556,9 @@ type AutomationProductDiscoveryResponse = {
     product_link_count: number;
     jsonld_url_count: number;
     sitemap_url_count: number;
+    pagination_url_count: number;
+    duplicate_url_count: number;
+    skipped_url_count: number;
     script_count: number;
     text_sample: string;
   };
@@ -562,6 +569,14 @@ type AutomationProductDiscoveryResponse = {
     candidate_count: number;
     max_products: number;
     fan_out_requires_review: boolean;
+    pagination_urls: string[];
+    dedupe_summary: {
+      input_url_count: number;
+      canonical_candidate_count: number;
+      duplicate_url_count: number;
+      skipped_url_count: number;
+      skipped_reasons: string[];
+    };
   };
   source_draft: {
     type: string;
@@ -878,6 +893,10 @@ type AutomationProductDriftCheckResponse = {
     completeness_drop_percent: number | null;
     missing_fields: string[];
     new_missing_fields: string[];
+    row_change: "unchanged" | "added" | "removed" | "mixed";
+    added_row_count: number;
+    removed_row_count: number;
+    price_change_percent: number | null;
     freshness_target_hours: number | null;
     stale_hours: number | null;
     issues: string[];
@@ -891,6 +910,10 @@ type AutomationProductDriftCheckResponse = {
     critical_tasks: number;
     stale_tasks: number;
     missing_field_tasks: number;
+    added_rows: number;
+    removed_rows: number;
+    price_changed_tasks: number;
+    drift_layers: Record<string, number>;
     run_started: boolean;
     alert_created: boolean;
   };
@@ -930,6 +953,13 @@ type AutomationGitHubToolReportResponse = {
     repository_count: number;
     total_stars: number;
     high_value_repositories: number;
+    licensed_repositories: number;
+    release_tagged_repositories: number;
+    readme_documented_repositories: number;
+    issue_active_repositories: number;
+    fresh_commit_repositories: number;
+    archived_repositories: number;
+    fork_repositories: number;
     languages: Record<string, number>;
     top_topics: Record<string, number>;
     report_created: boolean;
@@ -947,13 +977,19 @@ type AutomationGitHubToolReportResponse = {
     topics: string[];
     license_spdx_id: string | null;
     default_branch: string | null;
-    archived: boolean | null;
-    commit_freshness_days: number | null;
     latest_release_tag: string | null;
     latest_release_published_at: string | null;
-    readme_present: boolean | null;
+    archived: boolean | null;
+    fork: boolean | null;
     updated_at: string | null;
     pushed_at: string | null;
+    readme_detected: boolean | null;
+    readme_html_url: string | null;
+    readme_size: number | null;
+    issue_activity_open_count: number | null;
+    issue_activity_status: string | null;
+    commit_freshness_days: number | null;
+    commit_freshness_status: string | null;
     maintenance_risk: "low" | "medium" | "high" | "unknown";
     risk_signals: string[];
     install_sources: string[];
@@ -1949,7 +1985,6 @@ export async function runAutomationBrowserDiagnosticJobLocal(
         run_mode: input.runMode ?? "diagnostic_snapshot_replay",
         confirm_real_browser_probe: input.confirmRealBrowserProbe ?? false,
         browser_harness_binary: input.browserHarnessBinary,
-        browser_harness_cdp_url: input.browserHarnessCdpUrl,
         probe_timeout_seconds: input.probeTimeoutSeconds ?? 15,
         artifact_retention_days: input.artifactRetentionDays ?? 7,
         max_preview_rows: input.maxPreviewRows ?? 20,
@@ -3287,6 +3322,9 @@ function mapAutomationProductDiscovery(
       productLinkCount: response.page_structure.product_link_count,
       jsonldUrlCount: response.page_structure.jsonld_url_count,
       sitemapUrlCount: response.page_structure.sitemap_url_count,
+      paginationUrlCount: response.page_structure.pagination_url_count,
+      duplicateUrlCount: response.page_structure.duplicate_url_count,
+      skippedUrlCount: response.page_structure.skipped_url_count,
       scriptCount: response.page_structure.script_count,
       textSample: response.page_structure.text_sample,
     },
@@ -3295,6 +3333,7 @@ function mapAutomationProductDiscovery(
       title: candidate.title,
       source: candidate.source,
       confidence: candidate.confidence,
+      canonicalUrl: candidate.canonical_url,
     })),
     toolRecommendations: response.tool_recommendations.map(mapToolRecommendation),
     discoveryPlan: {
@@ -3302,6 +3341,14 @@ function mapAutomationProductDiscovery(
       candidateCount: response.discovery_plan.candidate_count,
       maxProducts: response.discovery_plan.max_products,
       fanOutRequiresReview: response.discovery_plan.fan_out_requires_review,
+      paginationUrls: response.discovery_plan.pagination_urls,
+      dedupeSummary: {
+        inputUrlCount: response.discovery_plan.dedupe_summary.input_url_count,
+        canonicalCandidateCount: response.discovery_plan.dedupe_summary.canonical_candidate_count,
+        duplicateUrlCount: response.discovery_plan.dedupe_summary.duplicate_url_count,
+        skippedUrlCount: response.discovery_plan.dedupe_summary.skipped_url_count,
+        skippedReasons: response.discovery_plan.dedupe_summary.skipped_reasons,
+      },
     },
     sourceDraft: {
       type: response.source_draft.type,
@@ -3778,10 +3825,14 @@ function mapAutomationProductDriftCheck(
       completenessDropPercent: item.completeness_drop_percent,
       missingFields: item.missing_fields,
       newMissingFields: item.new_missing_fields,
+      rowChange: item.row_change,
+      addedRowCount: item.added_row_count,
+      removedRowCount: item.removed_row_count,
+      priceChangePercent: item.price_change_percent,
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
-      signalGroups: item.signal_groups,
+      signalGroups: item.signal_groups ?? {},
     })),
     summary: {
       requestedTasks: response.summary.requested_tasks,
@@ -3791,6 +3842,10 @@ function mapAutomationProductDriftCheck(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      addedRows: response.summary.added_rows,
+      removedRows: response.summary.removed_rows,
+      priceChangedTasks: response.summary.price_changed_tasks,
+      driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
     },
@@ -3838,6 +3893,10 @@ function mapAutomationProductDriftEvent(
       criticalTasks: response.summary.critical_tasks,
       staleTasks: response.summary.stale_tasks,
       missingFieldTasks: response.summary.missing_field_tasks,
+      addedRows: response.summary.added_rows,
+      removedRows: response.summary.removed_rows,
+      priceChangedTasks: response.summary.price_changed_tasks,
+      driftLayers: response.summary.drift_layers,
       runStarted: response.summary.run_started,
       alertCreated: response.summary.alert_created,
     },
@@ -3854,10 +3913,14 @@ function mapAutomationProductDriftEvent(
       completenessDropPercent: item.completeness_drop_percent,
       missingFields: item.missing_fields,
       newMissingFields: item.new_missing_fields,
+      rowChange: item.row_change,
+      addedRowCount: item.added_row_count,
+      removedRowCount: item.removed_row_count,
+      priceChangePercent: item.price_change_percent,
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
-      signalGroups: item.signal_groups,
+      signalGroups: item.signal_groups ?? {},
     })),
     auditEvents: response.audit_events,
     note: response.note,
@@ -3878,6 +3941,13 @@ function mapAutomationGitHubToolReport(
       repositoryCount: response.summary.repository_count,
       totalStars: response.summary.total_stars,
       highValueRepositories: response.summary.high_value_repositories,
+      licensedRepositories: response.summary.licensed_repositories,
+      releaseTaggedRepositories: response.summary.release_tagged_repositories,
+      readmeDocumentedRepositories: response.summary.readme_documented_repositories,
+      issueActiveRepositories: response.summary.issue_active_repositories,
+      freshCommitRepositories: response.summary.fresh_commit_repositories,
+      archivedRepositories: response.summary.archived_repositories,
+      forkRepositories: response.summary.fork_repositories,
       languages: response.summary.languages,
       topTopics: response.summary.top_topics,
       reportCreated: response.summary.report_created,
@@ -3895,25 +3965,27 @@ function mapAutomationGitHubToolReport(
       topics: repository.topics,
       licenseSpdxId: repository.license_spdx_id,
       defaultBranch: repository.default_branch,
-      archived: repository.archived,
-      commitFreshnessDays: repository.commit_freshness_days,
       latestReleaseTag: repository.latest_release_tag,
       latestReleasePublishedAt: repository.latest_release_published_at,
-      readmePresent: repository.readme_present,
+      archived: repository.archived,
+      fork: repository.fork,
       updatedAt: repository.updated_at,
       pushedAt: repository.pushed_at,
-      maintenanceRisk: repository.maintenance_risk,
-      riskSignals: repository.risk_signals,
-      installSources: repository.install_sources,
-      recommendedUseCases: repository.recommended_use_cases,
-      unsuitableBoundaries: repository.unsuitable_boundaries,
+      readmeDetected: repository.readme_detected,
+      readmeHtmlUrl: repository.readme_html_url,
+      readmeSize: repository.readme_size,
+      issueActivityOpenCount: repository.issue_activity_open_count,
+      issueActivityStatus: repository.issue_activity_status,
+      commitFreshnessDays: repository.commit_freshness_days,
+      commitFreshnessStatus: repository.commit_freshness_status,
+      maintenanceRisk: repository.maintenance_risk ?? "unknown",
+      riskSignals: repository.risk_signals ?? [],
+      installSources: repository.install_sources ?? [],
+      recommendedUseCases: repository.recommended_use_cases ?? [],
+      unsuitableBoundaries: repository.unsuitable_boundaries ?? [],
     })),
     recommendations: response.recommendations,
-    riskSections: response.risk_sections.map((section) => ({
-      title: section.title,
-      items: section.items,
-      evidenceFields: section.evidence_fields,
-    })),
+    riskSections: response.risk_sections ?? [],
     auditEvents: response.audit_events,
     blockedReasons: response.blocked_reasons,
   };
@@ -3944,351 +4016,6 @@ function mapReport(response: ReportResponse): Report {
   };
 }
 
-const githubToolMockRows = [
-  {
-    repo_full_name: "browser-use/browser-use",
-    html_url: "https://github.com/browser-use/browser-use",
-    description: "Make websites accessible for AI agents",
-    stars: 72000,
-    forks: 8400,
-    open_issues: 120,
-    watchers: 72000,
-    language: "Python",
-    topics: ["browser-automation", "ai-agent"],
-    license_spdx_id: "MIT",
-    default_branch: "main",
-    archived: false,
-    commit_freshness_days: 3,
-    latest_release_tag: "v0.7.0",
-    latest_release_published_at: "2026-06-16T00:00:00Z",
-    readme_present: true,
-    updated_at: "2026-06-20T10:00:00Z",
-    pushed_at: "2026-06-20T08:00:00Z",
-  },
-  {
-    repo_full_name: "unclecode/crawl4ai",
-    html_url: "https://github.com/unclecode/crawl4ai",
-    description: "Open-source LLM-friendly web crawler and scraper",
-    stars: 56000,
-    forks: 5200,
-    open_issues: 80,
-    watchers: 56000,
-    language: "Python",
-    topics: ["crawler", "scraping"],
-    license_spdx_id: "Apache-2.0",
-    default_branch: "main",
-    archived: false,
-    commit_freshness_days: 6,
-    latest_release_tag: "v0.8.0",
-    latest_release_published_at: "2026-06-15T00:00:00Z",
-    readme_present: true,
-    updated_at: "2026-06-19T09:00:00Z",
-    pushed_at: "2026-06-19T08:00:00Z",
-  },
-];
-
-function getMockGitHubToolExportPreview(
-  rows: AutomationProductDatasetPreview["rows"],
-  fields: string[],
-) {
-  return {
-    format: "json",
-    schema: {
-      schema_version: "github_tool_radar.v2",
-      fields,
-      primary_key: "html_url",
-      missing_value_policy: "explicit_null",
-      dataset_type: "github_tool_radar",
-      collector_versions: {
-        github_repo: "github_repo.collector.v2",
-        github_topic: "github_topic.collector.v2",
-      },
-      api_endpoint_origins: {
-        github_repo: [
-          "GET /repos/{owner}/{repo}",
-          "GET /repos/{owner}/{repo}/releases/latest",
-          "GET /repos/{owner}/{repo}/readme",
-        ],
-        github_topic: ["GET /search/repositories"],
-      },
-      field_sources: {
-        latest_release_published_at: {
-          source: "github_latest_release",
-          collector: "github_repo",
-        },
-        readme_present: {
-          source: "github_readme",
-          collector: "github_repo",
-        },
-        license_spdx_id: {
-          source: "github_repo",
-          collector: "github_repo",
-        },
-      },
-      provenance: {
-        produced_by: "data_intelligence_hub.automation.github_tool_dataset",
-        row_model: "AutomationProductDatasetRowResponse",
-        lineage_fields: ["task_run_id", "raw_record_id", "source_url"],
-        production_side_effects: {
-          run_started: false,
-          export_file_written: false,
-          notification_created: false,
-        },
-      },
-    },
-    rows: rows.map((row) =>
-      Object.fromEntries(fields.map((field) => [field, row.values[field] ?? null])),
-    ),
-  };
-}
-
-function getMockAutomationGitHubToolDatasetPreview(
-  input: AutomationProductDatasetPreviewInput,
-): AutomationProductDatasetPreview {
-  const fields = input.fields ?? [
-    "repo_full_name",
-    "stars",
-    "forks",
-    "open_issues",
-    "language",
-    "topics",
-    "html_url",
-    "license_spdx_id",
-    "default_branch",
-    "latest_release_tag",
-    "latest_release_published_at",
-    "readme_present",
-    "commit_freshness_days",
-    "updated_at",
-  ];
-  const rows = githubToolMockRows.slice(0, input.maxRows ?? 100).map((values, index) => {
-    const filteredValues = Object.fromEntries(
-      fields
-        .filter((field) => field in values)
-        .map((field) => [field, values[field as keyof typeof values]]),
-    );
-    const missingFields = fields.filter((field) => !(field in filteredValues));
-    return {
-      rowId: `github-tool-mock-row-${index + 1}`,
-      taskRunId: input.taskRunIds[index] ?? input.taskRunIds[0] ?? `run_github_topic_${index + 1}`,
-      rawRecordId: `raw_github_tool_${index + 1}`,
-      sourceUrl: String(values.html_url),
-      values: filteredValues,
-      missingFields,
-      completenessPercent: Math.round((Object.keys(filteredValues).length / fields.length) * 100),
-    };
-  });
-  const average = rows.length
-    ? Math.round(rows.reduce((total, row) => total + row.completenessPercent, 0) / rows.length)
-    : 0;
-  return {
-    createdAt: new Date().toISOString(),
-    authorizationConfirmed: input.authorized,
-    rows,
-    summary: {
-      requestedRuns: input.taskRunIds.length,
-      matchedRuns: Math.min(input.taskRunIds.length, rows.length),
-      rowsCount: rows.length,
-      selectedFields: fields,
-      averageCompletenessPercent: average,
-      exportFormat: "json",
-      exportReady: rows.length > 0,
-    },
-    cleaningScriptDraft: [
-      "strip repo_full_name and html_url",
-      "normalize html_url as canonical repository URL",
-      "preserve license and default_branch as provenance review fields",
-      "preserve release metadata for maintenance and freshness review",
-    ],
-    exportPreview: getMockGitHubToolExportPreview(rows, fields),
-    auditEvents: [
-      {
-        event: "github_tool_dataset_preview_requested",
-        requested_runs: input.taskRunIds.length,
-        schema_version: "github_tool_radar.v2",
-      },
-    ],
-    blockedReasons: ["当前为 GitHub 工具情报数据集预览，尚未写出导出文件或发送通知。"],
-  };
-}
-
-function getMockAutomationGitHubToolDatasetSave(
-  input: AutomationProductDatasetSaveInput,
-): AutomationProductDatasetSave {
-  const preview = getMockAutomationGitHubToolDatasetPreview(input);
-  const now = new Date().toISOString();
-  const normalizedName = input.name.trim() || "GitHub Tool Radar mock";
-  const datasetId = `dataset_${normalizedName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
-  return {
-    savedAt: now,
-    authorizationConfirmed: input.authorized,
-    dataset: {
-      id: datasetId,
-      projectId: "project_marketplace_price",
-      name: normalizedName,
-      datasetType: "github_tool_radar",
-      status: "active",
-      description: input.description ?? "Mock GitHub tool radar dataset.",
-    },
-    version: {
-      id: `${datasetId}_v1`,
-      datasetId,
-      cleaningPlanId: input.cleaningPlanId ?? null,
-      versionNumber: 1,
-      sourceTaskRunIds: input.taskRunIds,
-      selectedFields: preview.summary.selectedFields,
-      cleaningScript: preview.cleaningScriptDraft,
-      rowCount: preview.summary.rowsCount,
-      averageCompletenessPercent: preview.summary.averageCompletenessPercent,
-      status: "saved",
-      createdAt: now,
-      exportPreview: preview.exportPreview,
-    },
-    auditEvents: [
-      {
-        event: "github_tool_dataset_version_saved",
-        dataset_id: datasetId,
-        version_id: `${datasetId}_v1`,
-        schema_version: "github_tool_radar.v2",
-        export_file_written: false,
-      },
-    ],
-    blockedReasons: ["GitHub 工具数据集版本已保存；不会写出导出文件、发送通知或启动调度。"],
-  };
-}
-
-function getMockAutomationGitHubToolDriftCheck(
-  input: AutomationProductDriftCheckInput,
-): AutomationProductDriftCheck {
-  const now = new Date().toISOString();
-  const dataset = {
-    id: input.datasetId,
-    projectId: "project_marketplace_price",
-    name: "GitHub Tool Radar mock",
-    datasetType: "github_tool_radar",
-    status: "active",
-    description: "Mock GitHub tool radar dataset.",
-  };
-  const version = {
-    id: input.datasetVersionId,
-    datasetId: input.datasetId,
-    cleaningPlanId: null,
-    versionNumber: 1,
-    sourceTaskRunIds: ["run_github_topic_1"],
-    selectedFields: [
-      "repo_full_name",
-      "stars",
-      "forks",
-      "open_issues",
-      "language",
-      "topics",
-      "html_url",
-      "license_spdx_id",
-      "latest_release_published_at",
-      "updated_at",
-    ],
-    cleaningScript: [
-      "strip repo_full_name and html_url",
-      "preserve release metadata for maintenance and freshness review",
-    ],
-    rowCount: 2,
-    averageCompletenessPercent: 100,
-    status: "saved",
-    createdAt: now,
-    exportPreview: getMockGitHubToolExportPreview(
-      getMockAutomationGitHubToolDatasetPreview({
-        authorized: input.authorized,
-        taskRunIds: ["run_github_topic_1"],
-        fields: [
-          "repo_full_name",
-          "stars",
-          "forks",
-          "open_issues",
-          "language",
-          "topics",
-          "html_url",
-          "license_spdx_id",
-          "latest_release_published_at",
-          "updated_at",
-        ],
-      }).rows,
-      [
-        "repo_full_name",
-        "stars",
-        "forks",
-        "open_issues",
-        "language",
-        "topics",
-        "html_url",
-        "license_spdx_id",
-        "latest_release_published_at",
-        "updated_at",
-      ],
-    ),
-  };
-  const items = input.taskIds.map((taskId) => ({
-    taskId,
-    taskName: "GitHub Topic Radar: web-scraping",
-    sourceUrl: "https://github.com/topics/web-scraping",
-    status: "critical" as const,
-    blockedReason: null,
-    latestRunId: "run_github_topic_latest",
-    latestRunStatus: "success",
-    datasetVersionCompletenessPercent: 100,
-    latestCompletenessPercent: 79,
-    completenessDropPercent: 21,
-    missingFields: ["topics", "latest_release_published_at", "updated_at"],
-    newMissingFields: ["topics", "latest_release_published_at", "updated_at"],
-    freshnessTargetHours: null,
-    staleHours: null,
-    issues: [
-      "completeness_drift_exceeded",
-      "approved_fields_missing",
-      "issue_activity_increased",
-      "release_freshness_missing",
-      "repository_coverage_changed",
-    ],
-    signalGroups: {
-      field_missingness: [
-        "missing:topics",
-        "missing:latest_release_published_at",
-        "missing:updated_at",
-      ],
-      repository_coverage: ["row_count_decreased:2->1"],
-      popularity: ["stars_decreased:72000->70000"],
-      issue_activity: ["open_issues_increased:120->200"],
-      release_freshness: ["latest_release_published_at_missing"],
-      commit_freshness: ["commit_freshness_days_missing"],
-    },
-  }));
-  return {
-    checkedAt: now,
-    authorizationConfirmed: input.authorized,
-    dataset,
-    version,
-    items,
-    summary: {
-      requestedTasks: input.taskIds.length,
-      checkedTasks: input.taskIds.length,
-      blockedTasks: 0,
-      warningTasks: 0,
-      criticalTasks: items.length,
-      staleTasks: 0,
-      missingFieldTasks: items.length,
-      runStarted: false,
-      alertCreated: false,
-    },
-    auditEvents: [
-      {
-        event: "github_tool_drift_task_checked",
-        run_started: false,
-        alert_created: false,
-      },
-    ],
-    blockedReasons: ["GitHub 工具漂移检查只读取已保存 DatasetVersion 和最新任务结果，不启动新采集。"],
-  };
-}
-
 function getMockAutomationGitHubToolReport(
   input: AutomationGitHubToolReportInput,
 ): AutomationGitHubToolReport {
@@ -4310,43 +4037,35 @@ function getMockAutomationGitHubToolReport(
       cleaningPlanId: null,
       versionNumber: 1,
       sourceTaskRunIds: [],
-      selectedFields: ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+      selectedFields: [
+        "repo_full_name",
+        "stars",
+        "html_url",
+        "language",
+        "topics",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "updated_at",
+      ],
       cleaningScript: [],
       rowCount: 2,
       averageCompletenessPercent: 100,
       status: "saved",
       createdAt: now,
-      exportPreview: getMockGitHubToolExportPreview(
-        getMockAutomationGitHubToolDatasetPreview({
-          authorized: input.authorized,
-          taskRunIds: ["run_github_topic_1"],
-          fields: [
-            "repo_full_name",
-            "stars",
-            "html_url",
-            "language",
-            "topics",
-            "updated_at",
-            "license_spdx_id",
-            "latest_release_tag",
-          ],
-        }).rows,
-        [
-          "repo_full_name",
-          "stars",
-          "html_url",
-          "language",
-          "topics",
-          "updated_at",
-          "license_spdx_id",
-          "latest_release_tag",
-        ],
-      ),
+      exportPreview: {},
     },
     summary: {
       repositoryCount: 2,
       totalStars: 128000,
       highValueRepositories: 2,
+      licensedRepositories: 2,
+      releaseTaggedRepositories: 2,
+      readmeDocumentedRepositories: 2,
+      issueActiveRepositories: 2,
+      freshCommitRepositories: 2,
+      archivedRepositories: 0,
+      forkRepositories: 0,
       languages: { Python: 2 },
       topTopics: {
         "ai-agent": 1,
@@ -4370,31 +4089,37 @@ function getMockAutomationGitHubToolReport(
         topics: ["browser-automation", "ai-agent"],
         licenseSpdxId: "MIT",
         defaultBranch: "main",
+        latestReleaseTag: "v0.4.0",
+        latestReleasePublishedAt: now,
         archived: false,
-        commitFreshnessDays: 3,
-        latestReleaseTag: "v0.7.0",
-        latestReleasePublishedAt: "2026-06-16T00:00:00Z",
-        readmePresent: true,
+        fork: false,
         updatedAt: now,
         pushedAt: now,
+        readmeDetected: true,
+        readmeHtmlUrl: "https://github.com/browser-use/browser-use/blob/main/README.md",
+        readmeSize: 12000,
+        issueActivityOpenCount: 120,
+        issueActivityStatus: "active",
+        commitFreshnessDays: 0,
+        commitFreshnessStatus: "fresh",
         maintenanceRisk: "low",
         riskSignals: [],
-        installSources: ["latest_release", "readme_metadata", "repository_url"],
+        installSources: ["repository_url", "latest_release", "readme_metadata"],
         recommendedUseCases: [
-          "agent_browser_workflow_reference",
           "collection_tool_benchmark",
-          "high_adoption_training_candidate",
+          "agent_browser_workflow_reference",
           "python_collector_stack_reference",
+          "high_adoption_training_candidate",
         ],
         unsuitableBoundaries: [
           "not_a_license_clearance",
-          "not_a_provider_call_or_live_install",
           "not_a_security_audit",
+          "not_a_provider_call_or_live_install",
         ],
       },
     ],
     recommendations: [
-      "browser-use/browser-use 具备 72000 stars，可优先用于 AI 浏览器自动化培训与 SOP 编写。",
+      "browser-use/browser-use 具备 72000 stars，MIT，最新 release v0.4.0；维护风险=low；可优先用于 AI 浏览器自动化培训与 SOP 编写。",
     ],
     riskSections: [
       {
@@ -4404,32 +4129,21 @@ function getMockAutomationGitHubToolReport(
           "archived",
           "license_spdx_id",
           "latest_release_tag",
-          "readme_present",
+          "readme_detected",
           "commit_freshness_days",
-          "open_issues",
-          "stars",
         ],
       },
       {
         title: "适用采集场景",
-        items: [
-          "agent_browser_workflow_reference",
-          "collection_tool_benchmark",
-          "high_adoption_training_candidate",
-          "python_collector_stack_reference",
-        ],
+        items: ["collection_tool_benchmark", "agent_browser_workflow_reference"],
       },
       {
         title: "不适用边界",
         items: [
           "not_a_license_clearance",
-          "not_a_provider_call_or_live_install",
           "not_a_security_audit",
+          "not_a_provider_call_or_live_install",
         ],
-      },
-      {
-        title: "安装与溯源入口",
-        items: ["latest_release", "readme_metadata", "repository_url"],
       },
     ],
     auditEvents: [],

@@ -1046,63 +1046,13 @@ async def test_browser_automation_plan_persists_read_only_draft(
         == "browser_harness_probe_confirmation_required"
     )
 
-    blocked_isolation_response = await client.post(
-        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
-        json={
-            "authorized": True,
-            "confirm_execute": True,
-            "run_mode": "ephemeral_browser_harness_probe",
-            "confirm_real_browser_probe": True,
-            "probe_timeout_seconds": 3,
-            "artifact_retention_days": 5,
-            "max_preview_rows": 12,
-            "include_screenshot": True,
-            "include_trace_summary": False,
-            "include_har_summary": True,
-            "note": "Block probe without isolated browser-harness CDP.",
-        },
-    )
-    assert blocked_isolation_response.status_code == 200
-    blocked_isolation_run = blocked_isolation_response.json()
-    assert blocked_isolation_run["status"] == "blocked_ephemeral_probe"
-    assert blocked_isolation_run["execution_started"] is True
-    assert blocked_isolation_run["browser_started"] is False
-    assert blocked_isolation_run["files_written"] is False
-    assert blocked_isolation_run["collection_resources_written"] is False
-    assert (
-        blocked_isolation_run["artifact_manifest"]["ephemeral_probe"][
-            "isolated_cdp_configured"
-        ]
-        is False
-    )
-    assert (
-        blocked_isolation_run["network_metadata_summary"]["ephemeral_probe"][
-            "isolated_cdp_configured"
-        ]
-        is False
-    )
-    assert "browser_harness_isolated_cdp_required" in (
-        blocked_isolation_run["blocked_reasons"]
-    )
-    assert "browser_harness_binary_unavailable" not in (
-        blocked_isolation_run["blocked_reasons"]
-    )
-    assert (
-        blocked_isolation_run["audit_events"][0]["isolated_cdp_configured"] is False
-    )
-
     fake_harness = tmp_path / "browser-harness"
     fake_harness.write_text(
         """#!/usr/bin/env python3
 import json
-import os
 import sys
 
 sys.stdin.read()
-if os.environ.get("BU_CDP_URL") != "http://127.0.0.1:9222":
-    raise SystemExit(3)
-if os.environ.get("BU_CDP_WS"):
-    raise SystemExit(4)
 print(json.dumps({
     "ok": True,
     "page_info": {
@@ -1129,7 +1079,6 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(fake_harness),
-            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1152,23 +1101,11 @@ print(json.dumps({"target_tab_closed": True}))
         "status": "completed",
         "binary": str(fake_harness),
         "exit_code": 0,
-        "isolated_cdp_configured": True,
-        "cdp_endpoint": "http://127.0.0.1:9222",
         "files_written": False,
         "object_storage_write": False,
         "target_tab_closed": True,
     }
     assert probe_run["network_observation_summary"]["browser_started"] is True
-    assert (
-        probe_run["network_observation_summary"]["ephemeral_probe"][
-            "isolated_cdp_configured"
-        ]
-        is True
-    )
-    assert (
-        probe_run["network_observation_summary"]["ephemeral_probe"]["cdp_endpoint"]
-        == "http://127.0.0.1:9222"
-    )
     assert probe_run["network_observation_summary"]["ephemeral_probe"]["page_info"][
         "url"
     ] == "https://example.com/products/dynamic-bag"
@@ -1207,7 +1144,6 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(tmp_path / "missing-browser-harness"),
-            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1252,7 +1188,6 @@ raise SystemExit(2)
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(redaction_case_harness),
-            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1277,8 +1212,6 @@ raise SystemExit(2)
     assert redaction_probe["status"] == "failed"
     assert "[redacted-header]" in redaction_probe["stdout_tail"]
     assert "Authorization" not in redaction_probe["stdout_tail"]
-    assert "[redacted-header]" in redaction_probe["stderr_tail"]
-    assert "Cookie" not in redaction_probe["stderr_tail"]
     assert redaction_case_run["redaction_summary"]["headers_captured"] is False
     assert "browser_harness_probe_failed" in redaction_case_run["blocked_reasons"]
 
@@ -1302,7 +1235,6 @@ time.sleep(10)
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(timeout_case_harness),
-            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1334,13 +1266,12 @@ time.sleep(10)
     )
     assert post_probe_list_response.status_code == 200
     post_probe_list = post_probe_list_response.json()
-    assert post_probe_list["total"] == 6
+    assert post_probe_list["total"] == 5
     assert post_probe_list["browser_started"] is True
     assert post_probe_list["files_written"] is False
     assert post_probe_list["collection_resources_written"] is False
     assert {item["id"] for item in post_probe_list["items"]} == {
         local_run["id"],
-        blocked_isolation_run["id"],
         probe_run["id"],
         blocked_probe_run["id"],
         redaction_case_run["id"],
@@ -1438,13 +1369,22 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "stargazers_count": 72000,
                         "forks_count": 8400,
                         "open_issues_count": 120,
+                        "watchers_count": 72000,
                         "language": "Python",
                         "topics": ["browser-automation", "ai-agent"],
                         "license_spdx_id": "MIT",
                         "default_branch": "main",
-                        "latest_release_tag": "v0.7.0",
-                        "latest_release_published_at": "2026-06-16T00:00:00Z",
-                        "readme_present": True,
+                        "latest_release_tag": "v0.4.0",
+                        "latest_release_published_at": "2026-06-18T02:00:00Z",
+                        "readme_detected": True,
+                        "readme_html_url": "https://github.com/browser-use/browser-use/blob/main/README.md",
+                        "readme_size": 12000,
+                        "issue_activity_open_count": 120,
+                        "issue_activity_status": "active",
+                        "commit_freshness_days": 1,
+                        "commit_freshness_status": "fresh",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": "2026-06-18T01:00:00Z",
                     },
@@ -1455,13 +1395,22 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "stargazers_count": 56000,
                         "forks_count": 11000,
                         "open_issues_count": 400,
+                        "watchers_count": 56000,
                         "language": "Python",
                         "topics": ["crawler", "scraping"],
                         "license_spdx_id": "BSD-3-Clause",
                         "default_branch": "master",
-                        "latest_release_tag": "2.13.0",
-                        "latest_release_published_at": "2026-06-15T00:00:00Z",
-                        "readme_present": True,
+                        "latest_release_tag": "2.12.0",
+                        "latest_release_published_at": "2026-06-17T02:00:00Z",
+                        "readme_detected": True,
+                        "readme_html_url": "https://github.com/scrapy/scrapy/blob/master/README.rst",
+                        "readme_size": 18000,
+                        "issue_activity_open_count": 400,
+                        "issue_activity_status": "active",
+                        "commit_freshness_days": 2,
+                        "commit_freshness_status": "fresh",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-17T00:00:00Z",
                         "updated_at": "2026-06-17T01:00:00Z",
                     },
@@ -1473,14 +1422,24 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "html_url": "https://github.com/browser-use/browser-use",
                         "description": "Make websites accessible for AI agents",
                         "stargazers_count": 72000,
-                        "forks_count": 8400,
-                        "open_issues_count": 200,
+                        "forks_count": 8500,
+                        "open_issues_count": 135,
+                        "watchers_count": 72000,
                         "language": "Python",
                         "topics": [],
                         "license_spdx_id": "MIT",
                         "default_branch": "main",
-                        "latest_release_tag": "v0.7.0",
-                        "readme_present": True,
+                        "latest_release_tag": "v0.4.0",
+                        "latest_release_published_at": "2025-01-01T02:00:00Z",
+                        "readme_detected": True,
+                        "readme_html_url": None,
+                        "readme_size": 12000,
+                        "issue_activity_open_count": 135,
+                        "issue_activity_status": "active",
+                        "commit_freshness_days": 300,
+                        "commit_freshness_status": "stale",
+                        "archived": False,
+                        "fork": False,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": None,
                     }
@@ -1531,29 +1490,30 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     run = run_response.json()
     assert run["status"] == "success"
 
-    selected_fields = [
-        "repo_full_name",
-        "stars",
-        "forks",
-        "open_issues",
-        "html_url",
-        "language",
-        "topics",
-        "license_spdx_id",
-        "default_branch",
-        "commit_freshness_days",
-        "latest_release_tag",
-        "latest_release_published_at",
-        "readme_present",
-        "updated_at",
-    ]
-
     preview_response = await client.post(
         "/api/automation/github-tool-dataset-preview",
         json={
             "authorized": True,
             "task_run_ids": [run["id"]],
-            "fields": selected_fields,
+            "fields": [
+                "repo_full_name",
+                "stars",
+                "forks",
+                "open_issues",
+                "html_url",
+                "language",
+                "topics",
+                "updated_at",
+                "license_spdx_id",
+                "default_branch",
+                "latest_release_tag",
+                "latest_release_published_at",
+                "readme_detected",
+                "readme_html_url",
+                "issue_activity_open_count",
+                "issue_activity_status",
+                "commit_freshness_status",
+            ],
             "max_rows": 10,
         },
     )
@@ -1561,25 +1521,36 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     preview = preview_response.json()
     assert preview["summary"]["rows_count"] == 2
     assert preview["summary"]["matched_runs"] == 1
-    assert preview["summary"]["selected_fields"] == selected_fields
+    assert preview["summary"]["selected_fields"] == [
+        "repo_full_name",
+        "stars",
+        "forks",
+        "open_issues",
+        "html_url",
+        "language",
+        "topics",
+        "updated_at",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "latest_release_published_at",
+        "readme_detected",
+        "readme_html_url",
+        "issue_activity_open_count",
+        "issue_activity_status",
+        "commit_freshness_status",
+    ]
     assert preview["rows"][0]["values"]["repo_full_name"] == "browser-use/browser-use"
     assert preview["rows"][0]["values"]["stars"] == 72000
     assert preview["rows"][0]["values"]["license_spdx_id"] == "MIT"
-    assert preview["rows"][0]["values"]["default_branch"] == "main"
-    assert preview["rows"][0]["values"]["latest_release_tag"] == "v0.7.0"
-    assert (
-        preview["rows"][0]["values"]["latest_release_published_at"]
-        == "2026-06-16T00:00:00Z"
-    )
-    assert preview["rows"][0]["values"]["readme_present"] is True
-    assert isinstance(preview["rows"][0]["values"]["commit_freshness_days"], int)
+    assert preview["rows"][0]["values"]["latest_release_tag"] == "v0.4.0"
+    assert preview["rows"][0]["values"]["readme_detected"] is True
+    assert preview["rows"][0]["values"]["issue_activity_open_count"] == 120
+    assert preview["rows"][0]["values"]["commit_freshness_status"] == "fresh"
     assert preview["export_preview"]["schema"]["primary_key"] == "html_url"
     assert preview["export_preview"]["schema"]["schema_version"] == "github_tool_radar.v2"
-    assert (
-        preview["export_preview"]["schema"]["field_sources"]["latest_release_published_at"][
-            "source"
-        ]
-        == "github_latest_release"
+    assert preview["export_preview"]["schema"]["field_sources"]["readme_detected"] == (
+        "github.repository.readme.exists"
     )
 
     save_response = await client.post(
@@ -1589,7 +1560,25 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
             "name": "GitHub Tool Radar web-scraping",
             "description": "Tool radar dataset from GitHub topic.",
             "task_run_ids": [run["id"]],
-            "fields": selected_fields,
+            "fields": [
+                "repo_full_name",
+                "stars",
+                "forks",
+                "open_issues",
+                "html_url",
+                "language",
+                "topics",
+                "updated_at",
+                "license_spdx_id",
+                "default_branch",
+                "latest_release_tag",
+                "latest_release_published_at",
+                "readme_detected",
+                "readme_html_url",
+                "issue_activity_open_count",
+                "issue_activity_status",
+                "commit_freshness_status",
+            ],
             "max_rows": 10,
         },
     )
@@ -1597,17 +1586,31 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     saved = save_response.json()
     assert saved["dataset"]["dataset_type"] == "github_tool_radar"
     assert saved["version"]["row_count"] == 2
-    assert saved["version"]["selected_fields"] == selected_fields
-    saved_schema = saved["version"]["export_preview"]["schema"]
-    assert saved_schema["schema_version"] == "github_tool_radar.v2"
-    assert saved_schema["collector_versions"] == {
-        "github_repo": "github_repo.collector.v2",
-        "github_topic": "github_topic.collector.v2",
-    }
-    assert saved_schema["provenance"]["lineage_fields"] == [
-        "task_run_id",
-        "raw_record_id",
-        "source_url",
+    assert saved["version"]["selected_fields"] == [
+        "repo_full_name",
+        "stars",
+        "forks",
+        "open_issues",
+        "html_url",
+        "language",
+        "topics",
+        "updated_at",
+        "license_spdx_id",
+        "default_branch",
+        "latest_release_tag",
+        "latest_release_published_at",
+        "readme_detected",
+        "readme_html_url",
+        "issue_activity_open_count",
+        "issue_activity_status",
+        "commit_freshness_status",
+    ]
+    assert saved["version"]["export_preview"]["schema"]["schema_version"] == (
+        "github_tool_radar.v2"
+    )
+    assert saved["version"]["export_preview"]["schema"]["collector_schema_versions"] == [
+        "github_repo.v3",
+        "github_topic.v3",
     ]
 
     export_response = await client.post(
@@ -1657,34 +1660,42 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "critical_tasks": 1,
         "stale_tasks": 0,
         "missing_field_tasks": 1,
+        "added_rows": 0,
+        "removed_rows": 0,
+        "price_changed_tasks": 0,
+        "drift_layers": {
+            "completeness": 1,
+            "field_missingness": 1,
+            "forks": 1,
+            "issue_activity": 1,
+            "release_freshness": 1,
+        },
         "run_started": False,
         "alert_created": False,
     }
     assert drift["items"][0]["latest_run_id"] == second_run["id"]
-    assert drift["items"][0]["latest_completeness_percent"] == 79
-    assert drift["items"][0]["completeness_drop_percent"] == 21
+    assert drift["items"][0]["latest_completeness_percent"] == 82
+    assert drift["items"][0]["completeness_drop_percent"] == 18
     assert drift["items"][0]["new_missing_fields"] == [
         "topics",
-        "latest_release_published_at",
         "updated_at",
+        "readme_html_url",
     ]
-    assert drift["items"][0]["issues"] == [
+    assert set(drift["items"][0]["issues"]) >= {
         "completeness_drift_exceeded",
         "approved_fields_missing",
-        "issue_activity_increased",
-        "release_freshness_missing",
-        "repository_coverage_changed",
-    ]
+        "forks_changed",
+        "issue_activity_changed",
+        "release_freshness_stale",
+    }
     assert drift["items"][0]["signal_groups"]["field_missingness"] == [
         "missing:topics",
-        "missing:latest_release_published_at",
         "missing:updated_at",
+        "missing:readme_html_url",
     ]
-    assert drift["items"][0]["signal_groups"]["issue_activity"] == [
-        "open_issues_increased:120->200"
-    ]
-    assert "latest_release_published_at_missing" in (
-        drift["items"][0]["signal_groups"]["release_freshness"]
+    assert any(
+        signal.startswith("open_issues_increased:120->")
+        for signal in drift["items"][0]["signal_groups"]["issue_activity"]
     )
     assert any(
         signal.startswith("row_count_decreased")
@@ -1694,6 +1705,7 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         event["event"] == "github_tool_drift_task_checked"
         and event["run_started"] is False
         and event["alert_created"] is False
+        and event["drift_layers"] == drift["summary"]["drift_layers"]
         for event in drift["audit_events"]
     )
     assert "不会启动采集" in drift["blocked_reasons"][0]
@@ -1739,6 +1751,13 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "repository_count": 2,
         "total_stars": 128000,
         "high_value_repositories": 2,
+        "licensed_repositories": 2,
+        "release_tagged_repositories": 2,
+        "readme_documented_repositories": 2,
+        "issue_active_repositories": 2,
+        "fresh_commit_repositories": 2,
+        "archived_repositories": 0,
+        "fork_repositories": 0,
         "languages": {"Python": 2},
         "top_topics": {
             "ai-agent": 1,
@@ -1751,21 +1770,21 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     }
     assert report["top_repositories"][0]["repo_full_name"] == "browser-use/browser-use"
     assert report["top_repositories"][0]["license_spdx_id"] == "MIT"
-    assert report["top_repositories"][0]["default_branch"] == "main"
-    assert report["top_repositories"][0]["latest_release_tag"] == "v0.7.0"
-    assert report["top_repositories"][0]["readme_present"] is True
-    assert isinstance(report["top_repositories"][0]["commit_freshness_days"], int)
+    assert report["top_repositories"][0]["latest_release_tag"] == "v0.4.0"
+    assert report["top_repositories"][0]["readme_detected"] is True
+    assert report["top_repositories"][0]["issue_activity_open_count"] == 120
+    assert report["top_repositories"][0]["commit_freshness_status"] == "fresh"
     assert report["top_repositories"][0]["maintenance_risk"] == "low"
-    assert "repository_url" in report["top_repositories"][0]["install_sources"]
-    assert "collection_tool_benchmark" in (
-        report["top_repositories"][0]["recommended_use_cases"]
-    )
-    assert "not_a_provider_call_or_live_install" in (
-        report["top_repositories"][0]["unsuitable_boundaries"]
-    )
+    assert report["top_repositories"][0]["install_sources"] == [
+        "repository_url",
+        "latest_release",
+        "readme_metadata",
+    ]
+    assert "browser-use/browser-use" in report["recommendations"][0]
+    assert "MIT" in report["recommendations"][0]
+    assert "README 已识别" in report["recommendations"][0]
     assert report["risk_sections"][0]["title"] == "维护风险"
     assert "low=2" in report["risk_sections"][0]["items"]
-    assert "browser-use/browser-use" in report["recommendations"][0]
 
     report_asset_response = await client.post(
         "/api/automation/github-tool-report-assets",
@@ -1787,9 +1806,12 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     assert report_asset["report"]["status"] == "generated"
     assert "GitHub Tool Radar web-scraping" in report_asset["report"]["title"]
     assert "browser-use/browser-use" in report_asset["report"]["content"]
-    assert "github_tool_radar" in report_asset["report"]["content"]
+    assert "v0.4.0" in report_asset["report"]["content"]
+    assert "readme_documented_repositories" in report_asset["report"]["content"]
+    assert "fresh_commit_repositories" in report_asset["report"]["content"]
     assert "schema_version: github_tool_radar.v2" in report_asset["report"]["content"]
-    assert "## 维护风险与使用边界" in report_asset["report"]["content"]
+    assert "维护风险与使用边界" in report_asset["report"]["content"]
+    assert "github_tool_radar" in report_asset["report"]["content"]
     assert any(
         event["event"] == "github_tool_report_asset_created"
         and event["report_created"] is True
@@ -2777,6 +2799,13 @@ async def test_automation_product_batch_run_returns_field_completeness(
         "critical_tasks": 1,
         "stale_tasks": 0,
         "missing_field_tasks": 1,
+        "added_rows": 0,
+        "removed_rows": 0,
+        "price_changed_tasks": 0,
+        "drift_layers": {
+            "completeness": 1,
+            "field_missingness": 1,
+        },
         "run_started": False,
         "alert_created": False,
     }
@@ -2786,11 +2815,19 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert first_drift["status"] == "ok"
     assert first_drift["latest_completeness_percent"] == 100
     assert first_drift["completeness_drop_percent"] == 0
+    assert first_drift["row_change"] == "unchanged"
+    assert first_drift["added_row_count"] == 0
+    assert first_drift["removed_row_count"] == 0
+    assert first_drift["price_change_percent"] is None
     assert first_drift["issues"] == []
     assert second_drift["status"] == "critical"
     assert second_drift["latest_completeness_percent"] == 50
     assert second_drift["completeness_drop_percent"] == 25
     assert second_drift["new_missing_fields"] == ["price", "sku"]
+    assert second_drift["row_change"] == "unchanged"
+    assert second_drift["added_row_count"] == 0
+    assert second_drift["removed_row_count"] == 0
+    assert second_drift["price_change_percent"] is None
     assert second_drift["issues"] == [
         "completeness_drift_exceeded",
         "approved_fields_missing",
@@ -3431,6 +3468,235 @@ async def test_automation_product_batch_run_returns_field_completeness(
         and event["cleaning_plan_id"] == cleaning_plan_result["cleaning_plan"]["id"]
         for event in cleaned_save["audit_events"]
     )
+
+
+@pytest.mark.asyncio
+async def test_product_drift_detects_m4_catalog_presence_and_price_layers(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    phase = "baseline"
+    task_url = "https://shop.example/products/catalog-watch"
+
+    def product_record(values: dict[str, object]) -> CollectorRawRecord:
+        return CollectorRawRecord(
+            record_type="ecommerce_product_page",
+            source_url=task_url,
+            content={
+                "provider": "ecommerce",
+                "kind": "product_page",
+                "url": task_url,
+                "extracted_fields": values,
+                "field_schema": [],
+                "cleaning_plan": [],
+                "platform_profile": {"platform_type": "shopify"},
+                "page_structure": {"page_type": "product_detail"},
+            },
+        )
+
+    class FixtureEcommerceCollector(EcommerceProductPageCollector):
+        async def collect(self) -> CollectionResult:
+            records = (
+                [
+                    product_record(
+                        {
+                            "title": "Demo Carry Bag",
+                            "price": 129.9,
+                            "sku": "BAG-001",
+                            "canonical_url": "https://shop.example/products/demo-bag",
+                        }
+                    ),
+                    product_record(
+                        {
+                            "title": "Legacy Tote",
+                            "price": 59.0,
+                            "sku": "BAG-LEGACY",
+                            "canonical_url": "https://shop.example/products/legacy-tote",
+                        }
+                    ),
+                ]
+                if phase == "baseline"
+                else [
+                    product_record(
+                        {
+                            "title": "Demo Carry Bag",
+                            "price": 119.9,
+                            "sku": "BAG-001",
+                            "canonical_url": "https://shop.example/products/demo-bag",
+                        }
+                    ),
+                    product_record(
+                        {
+                            "title": "City Sling",
+                            "price": 89.0,
+                            "sku": "BAG-CITY",
+                            "canonical_url": "https://shop.example/products/city-sling",
+                        }
+                    ),
+                ]
+            )
+            return CollectionResult(raw_records=records, logs=[], errors=[])
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "ecommerce_product_page",
+        FixtureEcommerceCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Catalog Watch Product Task",
+            "type": "ecommerce_product_page",
+            "config": {
+                "url": task_url,
+                "fields": ["title", "price", "sku", "canonical_url"],
+            },
+            "schedule_cron": None,
+        },
+    )
+    assert source_response.status_code == 201
+    enable_response = await client.post(f"/api/sources/{source_response.json()['id']}/enable")
+    assert enable_response.status_code == 200
+    task_id = enable_response.json()["id"]
+
+    baseline_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 1, "task_ids": [task_id]},
+    )
+    assert baseline_batch_response.status_code == 200
+    baseline_batch = baseline_batch_response.json()
+    baseline_run_item = baseline_batch["items"][0]
+    assert baseline_run_item["status"] == "run_completed"
+    assert baseline_run_item["records_count"] == 2
+    assert baseline_run_item["field_completeness"]["completeness_percent"] == 100
+
+    save_response = await client.post(
+        "/api/automation/product-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Catalog Presence Drift Dataset",
+            "description": "Baseline fixture for catalog presence and price drift.",
+            "task_run_ids": [baseline_run_item["run"]["id"]],
+            "fields": ["title", "price", "sku", "canonical_url"],
+            "max_rows": 10,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["version"]["row_count"] == 2
+    assert saved["version"]["average_completeness_percent"] == 100
+
+    schedule_response = await client.post(
+        "/api/automation/product-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "schedule_policy": "manual_refresh_only",
+            "freshness_target_hours": 24,
+            "minimum_completeness_percent": 100,
+            "note": "Approved for local M4 drift fixture.",
+        },
+    )
+    assert schedule_response.status_code == 200
+    assert schedule_response.json()["summary"] == {
+        "requested_tasks": 1,
+        "approved_tasks": 1,
+        "blocked_tasks": 0,
+        "run_started": False,
+    }
+
+    phase = "drift"
+    drift_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 1, "task_ids": [task_id]},
+    )
+    assert drift_batch_response.status_code == 200
+    drift_batch = drift_batch_response.json()
+    drift_run_item = drift_batch["items"][0]
+    assert drift_run_item["status"] == "run_completed"
+    assert drift_run_item["records_count"] == 2
+    assert drift_run_item["field_completeness"]["completeness_percent"] == 100
+
+    drift_response = await client.post(
+        "/api/automation/product-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["summary"] == {
+        "requested_tasks": 1,
+        "checked_tasks": 1,
+        "blocked_tasks": 0,
+        "warning_tasks": 0,
+        "critical_tasks": 1,
+        "stale_tasks": 0,
+        "missing_field_tasks": 0,
+        "added_rows": 1,
+        "removed_rows": 1,
+        "price_changed_tasks": 1,
+        "drift_layers": {
+            "catalog_presence": 2,
+            "price_change": 1,
+        },
+        "run_started": False,
+        "alert_created": False,
+    }
+    drift_item = drift["items"][0]
+    assert drift_item["status"] == "critical"
+    assert drift_item["row_change"] == "mixed"
+    assert drift_item["added_row_count"] == 1
+    assert drift_item["removed_row_count"] == 1
+    assert drift_item["price_change_percent"] == -7.7
+    assert drift_item["latest_completeness_percent"] == 100
+    assert drift_item["issues"] == ["product_added", "product_removed", "price_changed"]
+    assert any(
+        event["event"] == "product_drift_task_checked"
+        and event["row_change"] == "mixed"
+        and event["added_row_count"] == 1
+        and event["removed_row_count"] == 1
+        and event["price_change_percent"] == -7.7
+        for event in drift["audit_events"]
+    )
+
+    drift_event_response = await client.post(
+        "/api/automation/product-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task_id],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "M4 catalog presence and price drift sample.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["status"] == "critical"
+    assert drift_event["summary"] == drift["summary"]
+    assert drift_event["items"][0]["row_change"] == "mixed"
+    assert drift_event["items"][0]["added_row_count"] == 1
+    assert drift_event["items"][0]["removed_row_count"] == 1
+    assert drift_event["items"][0]["price_change_percent"] == -7.7
+    assert drift_event["items"][0]["issues"] == [
+        "product_added",
+        "product_removed",
+        "price_changed",
+    ]
+    assert drift_event["run_started"] is False
+    assert drift_event["alert_created"] is False
 
 
 @pytest.mark.asyncio

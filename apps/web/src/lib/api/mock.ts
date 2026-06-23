@@ -21,6 +21,7 @@ import type {
   AutomationProductDatasetVersionListInput,
   AutomationProductDriftCheck,
   AutomationProductDriftCheckInput,
+  AutomationProductDriftItem,
   AutomationProductDriftAlertPreview,
   AutomationProductDriftAlertPreviewInput,
   AutomationProductDriftAlertEventCreate,
@@ -98,6 +99,22 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           cleaningRule: "parse_decimal",
         },
         {
+          key: "price_min",
+          label: "最低价",
+          dataType: "decimal",
+          required: false,
+          source: "json_ld_offer_list",
+          cleaningRule: "parse_decimal",
+        },
+        {
+          key: "price_max",
+          label: "最高价",
+          dataType: "decimal",
+          required: false,
+          source: "json_ld_offer_list",
+          cleaningRule: "parse_decimal",
+        },
+        {
           key: "currency",
           label: "货币",
           dataType: "string",
@@ -114,12 +131,52 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           cleaningRule: "normalize_availability",
         },
         {
+          key: "availability_detail",
+          label: "库存明细",
+          dataType: "string",
+          required: false,
+          source: "json_ld_offer_list",
+          cleaningRule: "strip_text",
+        },
+        {
           key: "sku",
           label: "SKU",
           dataType: "string",
           required: false,
           source: "json_ld_or_dom",
           cleaningRule: "fill_default",
+        },
+        {
+          key: "variant",
+          label: "变体",
+          dataType: "string",
+          required: false,
+          source: "json_ld_variant_or_offer",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "brand",
+          label: "品牌",
+          dataType: "string",
+          required: false,
+          source: "json_ld_or_meta",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "category",
+          label: "分类",
+          dataType: "string",
+          required: false,
+          source: "json_ld_or_meta",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "image_url",
+          label: "主图",
+          dataType: "url",
+          required: false,
+          source: "json_ld_or_meta",
+          cleaningRule: "normalize_url",
         },
         {
           key: "canonical_url",
@@ -157,6 +214,22 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           description: "将价格字段转换为可排序的 decimal number。",
         },
         {
+          field: "sku",
+          operation: "fill_default",
+          value: "UNKNOWN-SKU",
+          description: "缺失 SKU 时保留可审计默认值。",
+        },
+        {
+          field: "price_min",
+          operation: "parse_decimal",
+          description: "从多 offer 或变体价格中提取最低 decimal number。",
+        },
+        {
+          field: "price_max",
+          operation: "parse_decimal",
+          description: "从多 offer 或变体价格中提取最高 decimal number。",
+        },
+        {
           field: "currency",
           operation: "uppercase",
           description: "把货币代码统一为大写，便于跨站点合并。",
@@ -167,10 +240,24 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           description: "库存状态归一为 in_stock/out_of_stock/unknown。",
         },
         {
-          field: "sku",
-          operation: "fill_default",
-          value: "UNKNOWN-SKU",
-          description: "缺失 SKU 时保留可审计默认值。",
+          field: "availability_detail",
+          operation: "strip_text",
+          description: "保留变体或 offer 级库存状态，便于人工复核。",
+        },
+        {
+          field: "variant",
+          operation: "strip_text",
+          description: "保留商品变体名称或维度摘要。",
+        },
+        {
+          field: "category",
+          operation: "strip_text",
+          description: "保留商品分类层级，便于跨站点聚合。",
+        },
+        {
+          field: "image_url",
+          operation: "normalize_url",
+          description: "规范主图 URL，便于证据回溯。",
         },
         {
           field: "canonical_url",
@@ -180,8 +267,9 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       ],
       operatorChecklist: [
         "确认目标页面公开可访问，不依赖登录态、验证码或购物车状态。",
-        "优先从集合页发现 5-20 个候选商品 URL，再人工剔除无关链接。",
+        "优先从集合页或 sitemap 发现 5-20 个候选商品 URL，再人工剔除无关链接。",
         "保留 title、price、canonical_url 作为最小必选字段。",
+        "检查 pagination、canonical 去重和 skipped reason 后再 fan-out。",
         "先执行清洗计划试跑，确认价格和库存字段正常后再保存数据集版本。",
       ],
       strategyMatrix: [
@@ -247,6 +335,54 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           cleaningRule: "strip_text",
         },
         {
+          key: "stars",
+          label: "Star 数",
+          dataType: "integer",
+          required: false,
+          source: "github_api",
+          cleaningRule: "parse_integer",
+        },
+        {
+          key: "topics",
+          label: "Topic 标签",
+          dataType: "string_array",
+          required: false,
+          source: "github_api",
+          cleaningRule: "normalize_tags",
+        },
+        {
+          key: "license_spdx_id",
+          label: "License SPDX",
+          dataType: "string",
+          required: false,
+          source: "github_api",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "default_branch",
+          label: "默认分支",
+          dataType: "string",
+          required: false,
+          source: "github_api",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "latest_release_tag",
+          label: "最新 release tag",
+          dataType: "string",
+          required: false,
+          source: "github_api_releases",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "latest_release_published_at",
+          label: "最新 release 发布时间",
+          dataType: "datetime",
+          required: false,
+          source: "github_api_releases",
+          cleaningRule: "preserve_timestamp",
+        },
+        {
           key: "html_url",
           label: "仓库 URL",
           dataType: "url",
@@ -275,11 +411,16 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
           operation: "normalize_url",
           description: "规范仓库 URL。",
         },
+        {
+          field: "license_spdx_id",
+          operation: "strip_text",
+          description: "保留 GitHub API 返回的 SPDX id，缺失时显式留空。",
+        },
       ],
       operatorChecklist: [
         "确认 GitHub API rate limit、token 权限和 topic 范围。",
         "优先使用官方 API，不解析登录态页面。",
-        "将 stars、topics、html_url 作为工具情报排序和溯源字段。",
+        "将 stars、license、default_branch、release、pushed_at 和 html_url 作为工具情报排序与溯源字段。",
       ],
       strategyMatrix: [
         {
@@ -659,7 +800,20 @@ export function getMockSources(): Source[] {
       url: "https://shop.example/products/demo-bag",
       config: {
         url: "https://shop.example/products/demo-bag",
-        fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+        fields: [
+          "title",
+          "price",
+          "price_min",
+          "price_max",
+          "currency",
+          "availability",
+          "availability_detail",
+          "sku",
+          "variant",
+          "brand",
+          "category",
+          "canonical_url",
+        ],
         platform_hint: "shopify",
       },
       scheduleCron: "0 8 * * *",
@@ -1088,7 +1242,20 @@ export function getMockAutomationSiteAnalysis(url: string): AutomationSiteAnalys
     type: "ecommerce_product_page",
     config: {
       url: requestedUrl,
-      fields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+      fields: [
+        "title",
+        "price",
+        "price_min",
+        "price_max",
+        "currency",
+        "availability",
+        "availability_detail",
+        "sku",
+        "variant",
+        "brand",
+        "category",
+        "canonical_url",
+      ],
       platform_hint: "shopify",
     },
     suggestedName: "商品页采集：Demo Carry Bag",
@@ -1101,7 +1268,20 @@ export function getMockAutomationSiteAnalysis(url: string): AutomationSiteAnalys
     name: sourceDraft.suggestedName,
     versionNumber: 1,
     collectorType: sourceDraft.type,
-    selectedFields: ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"],
+    selectedFields: [
+      "title",
+      "price",
+      "price_min",
+      "price_max",
+      "currency",
+      "availability",
+      "availability_detail",
+      "sku",
+      "variant",
+      "brand",
+      "category",
+      "canonical_url",
+    ],
     sourceDraft,
     scheduleCron: sourceDraft.scheduleCron,
     status: "draft",
@@ -1290,6 +1470,9 @@ export function getMockAutomationProductDiscovery(url: string): AutomationProduc
       productLinkCount: 12,
       jsonldUrlCount: 3,
       sitemapUrlCount: 0,
+      paginationUrlCount: 2,
+      duplicateUrlCount: 1,
+      skippedUrlCount: 4,
       scriptCount: 8,
       textSample:
         "Summer Bags collection page exposes product cards, product links, titles, and canonical product URLs.",
@@ -1300,18 +1483,21 @@ export function getMockAutomationProductDiscovery(url: string): AutomationProduc
         title: "Demo Carry Bag",
         source: "json_ld",
         confidence: 0.9,
+        canonicalUrl: "https://shop.example/products/demo-bag",
       },
       {
         url: "https://shop.example/products/weekend-tote",
         title: "Weekend Tote",
         source: "anchor",
         confidence: 0.86,
+        canonicalUrl: "https://shop.example/products/weekend-tote",
       },
       {
-        url: "https://shop.example/collections/summer-bags/products/city-pack",
+        url: "https://shop.example/products/city-pack",
         title: "City Pack",
         source: "anchor",
         confidence: 0.9,
+        canonicalUrl: "https://shop.example/products/city-pack",
       },
     ],
     toolRecommendations: [
@@ -1335,6 +1521,17 @@ export function getMockAutomationProductDiscovery(url: string): AutomationProduc
       candidateCount: 3,
       maxProducts: 50,
       fanOutRequiresReview: true,
+      paginationUrls: [
+        "https://shop.example/collections/summer-bags?page=2",
+        "https://shop.example/collections/summer-bags?page=3",
+      ],
+      dedupeSummary: {
+        inputUrlCount: 4,
+        canonicalCandidateCount: 3,
+        duplicateUrlCount: 1,
+        skippedUrlCount: 4,
+        skippedReasons: ["duplicate_canonical_url:1", "non_product_url_pattern:4"],
+      },
     },
     sourceDraft: {
       type: "ecommerce_product_discovery",
@@ -1366,7 +1563,20 @@ export function getMockAutomationProductFanoutPreview(
     };
   });
   const readyCandidates = candidateStatuses.filter((candidate) => candidate.status === "ready");
-  const fields = input.fields ?? ["title", "price", "currency", "availability", "sku", "brand", "canonical_url"];
+  const fields = input.fields ?? [
+    "title",
+    "price",
+    "price_min",
+    "price_max",
+    "currency",
+    "availability",
+    "availability_detail",
+    "sku",
+    "variant",
+    "brand",
+    "category",
+    "canonical_url",
+  ];
   return {
     requestedParentUrl: input.parentUrl,
     analyzedAt: new Date().toISOString(),
@@ -1630,6 +1840,141 @@ export function getMockAutomationProductDatasetPreview(
   };
 }
 
+export function getMockAutomationGitHubToolDatasetPreview(
+  input: AutomationProductDatasetPreviewInput,
+): AutomationProductDatasetPreview {
+  const fields = input.fields ?? [
+    "repo_full_name",
+    "stars",
+    "html_url",
+    "language",
+    "topics",
+    "license_spdx_id",
+    "default_branch",
+    "latest_release_tag",
+    "latest_release_published_at",
+    "readme_detected",
+    "issue_activity_open_count",
+    "commit_freshness_days",
+  ];
+  const sourceRows: Array<Record<string, unknown>> = [
+    {
+      repo_full_name: "browser-use/browser-use",
+      stars: 72000,
+      forks: 8400,
+      open_issues: 120,
+      html_url: "https://github.com/browser-use/browser-use",
+      language: "Python",
+      topics: ["browser-automation", "ai-agent"],
+      license_spdx_id: "MIT",
+      default_branch: "main",
+      latest_release_tag: "v0.7.0",
+      latest_release_published_at: "2026-06-18T02:00:00Z",
+      readme_detected: true,
+      readme_html_url: "https://github.com/browser-use/browser-use/blob/main/README.md",
+      issue_activity_open_count: 120,
+      issue_activity_status: "active",
+      commit_freshness_days: 1,
+      commit_freshness_status: "fresh",
+      pushed_at: "2026-06-18T00:00:00Z",
+      updated_at: "2026-06-18T01:00:00Z",
+    },
+    {
+      repo_full_name: "scrapy/scrapy",
+      stars: 56000,
+      forks: 11000,
+      open_issues: 400,
+      html_url: "https://github.com/scrapy/scrapy",
+      language: "Python",
+      topics: ["crawler", "scraping"],
+      license_spdx_id: "BSD-3-Clause",
+      default_branch: "master",
+      latest_release_tag: "2.12.0",
+      latest_release_published_at: "2026-06-17T02:00:00Z",
+      readme_detected: true,
+      readme_html_url: "https://github.com/scrapy/scrapy/blob/master/README.rst",
+      issue_activity_open_count: 400,
+      issue_activity_status: "active",
+      commit_freshness_days: 2,
+      commit_freshness_status: "fresh",
+      pushed_at: "2026-06-17T00:00:00Z",
+      updated_at: "2026-06-17T01:00:00Z",
+    },
+  ];
+  const rows = sourceRows.slice(0, input.maxRows ?? 100).map((values, index) => {
+    const filteredValues = Object.fromEntries(
+      fields
+        .filter((field) => field in values)
+        .map((field) => [field, values[field]]),
+    );
+    const missingFields = fields.filter((field) => !(field in filteredValues));
+    return {
+      rowId: `github-tool-row-${index + 1}`,
+      taskRunId: input.taskRunIds[index] ?? input.taskRunIds[0] ?? `run_github_${index + 1}`,
+      rawRecordId: `raw_github_tool_${index + 1}`,
+      sourceUrl: String(values.html_url),
+      values: filteredValues,
+      missingFields,
+      completenessPercent: Math.round((Object.keys(filteredValues).length / fields.length) * 100),
+    };
+  });
+  const average = rows.length
+    ? Math.round(rows.reduce((total, row) => total + row.completenessPercent, 0) / rows.length)
+    : 0;
+  return {
+    createdAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    rows,
+    summary: {
+      requestedRuns: input.taskRunIds.length,
+      matchedRuns: Math.min(input.taskRunIds.length, rows.length),
+      rowsCount: rows.length,
+      selectedFields: fields,
+      averageCompletenessPercent: average,
+      exportFormat: "json",
+      exportReady: rows.length > 0,
+    },
+    cleaningScriptDraft: [
+      "normalize repo_full_name and html_url as repository identity",
+      "preserve field_sources and endpoint origins for provenance review",
+      "keep missing GitHub enrichment fields explicit as null",
+    ],
+    exportPreview: {
+      format: "json",
+      schema: {
+        schema_version: "github_tool_radar.v2",
+        primary_key: "repo_full_name",
+        fields,
+        collector_versions: {
+          github_repo: "github_repo.v3",
+          github_topic: "github_topic.v3",
+        },
+        endpoint_origins: {
+          search: "GET /search/repositories",
+          repo: "GET /repos/{owner}/{repo}",
+          releases: "GET /repos/{owner}/{repo}/releases/latest",
+          readme: "GET /repos/{owner}/{repo}/readme",
+        },
+        provenance: {
+          field_sources_recorded: true,
+          lineage_fields: ["task_run_id", "raw_record_id", "source_url"],
+        },
+      },
+      rows: rows.map((row) =>
+        Object.fromEntries(fields.map((field) => [field, row.values[field] ?? null])),
+      ),
+    },
+    auditEvents: [
+      {
+        event: "github_tool_dataset_preview_requested",
+        requested_runs: input.taskRunIds.length,
+        schema_version: "github_tool_radar.v2",
+      },
+    ],
+    blockedReasons: ["当前为 GitHub 工具数据集只读预览，尚未保存 Dataset 或写出导出文件。"],
+  };
+}
+
 export function getMockAutomationProductDatasetSave(
   input: AutomationProductDatasetSaveInput,
 ): AutomationProductDatasetSave {
@@ -1674,6 +2019,80 @@ export function getMockAutomationProductDatasetSave(
     ],
     blockedReasons: [
       "Dataset 版本已保存；mock 环境尚未写出文件、对象存储导出或自动调度。",
+    ],
+  };
+}
+
+export function getMockAutomationGitHubToolDatasetSave(
+  input: AutomationProductDatasetSaveInput,
+): AutomationProductDatasetSave {
+  const saved = getMockAutomationProductDatasetSave(input);
+  const selectedFields = input.fields?.length ? input.fields : [
+    "repo_full_name",
+    "stars",
+    "html_url",
+    "language",
+    "topics",
+    "license_spdx_id",
+    "default_branch",
+    "latest_release_tag",
+    "latest_release_published_at",
+    "readme_detected",
+    "issue_activity_open_count",
+    "commit_freshness_days",
+  ];
+  return {
+    ...saved,
+    dataset: {
+      ...saved.dataset,
+      projectId: "project_marketplace_price",
+      datasetType: "github_tool_radar",
+      description: input.description ?? "Mock GitHub tool radar dataset.",
+    },
+    version: {
+      ...saved.version,
+      selectedFields,
+      exportPreview: {
+        format: "json",
+        schema: {
+          schema_version: "github_tool_radar.v2",
+          primary_key: "repo_full_name",
+          fields: selectedFields,
+          collector_versions: {
+            github_repo: "github_repo.v3",
+            github_topic: "github_topic.v3",
+          },
+          endpoint_origins: {
+            search: "GET /search/repositories",
+            repo: "GET /repos/{owner}/{repo}",
+            releases: "GET /repos/{owner}/{repo}/releases/latest",
+            readme: "GET /repos/{owner}/{repo}/readme",
+          },
+          provenance: {
+            field_sources_recorded: true,
+            lineage_fields: ["source_task_run_ids", "raw_record_id", "source_url"],
+          },
+        },
+        rows: [
+          {
+            repo_full_name: "browser-use/browser-use",
+            stars: 72000,
+            html_url: "https://github.com/browser-use/browser-use",
+          },
+        ],
+      },
+    },
+    auditEvents: [
+      {
+        event: "github_tool_dataset_version_saved",
+        dataset_id: saved.dataset.id,
+        version_id: saved.version.id,
+        schema_version: "github_tool_radar.v2",
+        run_started: false,
+      },
+    ],
+    blockedReasons: [
+      "GitHub 工具 Dataset 版本已保存；mock 环境尚未写出文件、对象存储导出或自动调度。",
     ],
   };
 }
@@ -1773,7 +2192,7 @@ export function getMockAutomationProductDriftCheck(
     createdAt: now,
     exportPreview: { format: "json" },
   };
-  const items = input.taskIds.map((taskId, index) => {
+  const items: AutomationProductDriftItem[] = input.taskIds.map((taskId, index) => {
     const isCritical = index === 1;
     const status: "critical" | "ok" = isCritical ? "critical" : "ok";
     return {
@@ -1789,6 +2208,10 @@ export function getMockAutomationProductDriftCheck(
       completenessDropPercent: isCritical ? 25 : 0,
       missingFields: isCritical ? ["price", "sku"] : [],
       newMissingFields: isCritical ? ["price", "sku"] : [],
+      rowChange: "unchanged",
+      addedRowCount: 0,
+      removedRowCount: 0,
+      priceChangePercent: null,
       freshnessTargetHours: 6,
       staleHours: 0,
       issues: isCritical
@@ -1828,6 +2251,12 @@ export function getMockAutomationProductDriftCheck(
       criticalTasks,
       staleTasks: 0,
       missingFieldTasks: criticalTasks,
+      addedRows: 0,
+      removedRows: 0,
+      priceChangedTasks: 0,
+      driftLayers: criticalTasks
+        ? { completeness: criticalTasks, field_missingness: criticalTasks }
+        : {},
       runStarted: false,
       alertCreated: false,
     },
@@ -1841,6 +2270,103 @@ export function getMockAutomationProductDriftCheck(
       },
     ],
     blockedReasons: ["漂移检查为只读评估，不会启动采集、创建告警或发送通知。"],
+  };
+}
+
+export function getMockAutomationGitHubToolDriftCheck(
+  input: AutomationProductDriftCheckInput,
+): AutomationProductDriftCheck {
+  const checked = getMockAutomationProductDriftCheck(input);
+  return {
+    ...checked,
+    dataset: {
+      ...checked.dataset,
+      projectId: "project_marketplace_price",
+      name: "GitHub Tool Radar mock",
+      datasetType: "github_tool_radar",
+      description: "Mock GitHub tool radar dataset.",
+    },
+    version: {
+      ...checked.version,
+      selectedFields: [
+        "repo_full_name",
+        "stars",
+        "topics",
+        "open_issues",
+        "latest_release_published_at",
+        "commit_freshness_days",
+      ],
+      exportPreview: {
+        format: "json",
+        schema: {
+          schema_version: "github_tool_radar.v2",
+          primary_key: "repo_full_name",
+        },
+      },
+    },
+    items: checked.items.map((item, index) => {
+      if (index > 0) {
+        return {
+          ...item,
+          taskName: "GitHub Topic Radar: web-scraping",
+          sourceUrl: "https://github.com/topics/web-scraping",
+          missingFields: [],
+          newMissingFields: [],
+          issues: [],
+          signalGroups: {
+            field_missingness: [],
+            repository_coverage: [],
+            popularity: [],
+            issue_activity: [],
+            release_freshness: [],
+            commit_freshness: [],
+          },
+        };
+      }
+      return {
+        ...item,
+        taskName: "GitHub Topic Radar: web-scraping",
+        sourceUrl: "https://github.com/topics/web-scraping",
+        status: "critical",
+        missingFields: ["topics"],
+        newMissingFields: ["topics"],
+        issues: [
+          "approved_fields_missing",
+          "issue_activity_increased",
+          "release_freshness_missing",
+        ],
+        signalGroups: {
+          field_missingness: ["missing:topics"],
+          repository_coverage: [],
+          popularity: [],
+          issue_activity: ["open_issues_increased:120->200"],
+          release_freshness: ["latest_release_published_at_missing"],
+          commit_freshness: [],
+        },
+      };
+    }),
+    summary: {
+      ...checked.summary,
+      checkedTasks: input.taskIds.length,
+      criticalTasks: 1,
+      missingFieldTasks: 1,
+      driftLayers: {
+        field_missingness: 1,
+        issue_activity: 1,
+        release_freshness: 1,
+      },
+    },
+    auditEvents: [
+      {
+        event: "github_tool_drift_task_checked",
+        signal_groups: true,
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    blockedReasons: [
+      "GitHub 工具漂移检查为只读评估，不会启动采集、创建告警或发送通知。",
+    ],
   };
 }
 
@@ -2537,6 +3063,10 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
       criticalTasks: 1,
       staleTasks: 0,
       missingFieldTasks: 1,
+      addedRows: 0,
+      removedRows: 0,
+      priceChangedTasks: 0,
+      driftLayers: { completeness: 1, field_missingness: 1 },
       runStarted: false,
       alertCreated: false,
     },
@@ -2554,6 +3084,10 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         completenessDropPercent: 0,
         missingFields: [],
         newMissingFields: [],
+        rowChange: "unchanged",
+        addedRowCount: 0,
+        removedRowCount: 0,
+        priceChangePercent: null,
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: [],
@@ -2579,6 +3113,10 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         completenessDropPercent: 25,
         missingFields: ["price", "sku"],
         newMissingFields: ["price", "sku"],
+        rowChange: "unchanged",
+        addedRowCount: 0,
+        removedRowCount: 0,
+        priceChangePercent: null,
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: ["completeness_drift_exceeded", "approved_fields_missing"],

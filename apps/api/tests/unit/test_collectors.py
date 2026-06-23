@@ -58,19 +58,6 @@ async def test_manual_json_collector_validates_tests_collects_and_normalizes() -
 async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
-        if request.url.path.endswith("/releases/latest"):
-            return httpx.Response(
-                200,
-                json={
-                    "tag_name": "v1.2.0",
-                    "name": "v1.2.0",
-                    "html_url": "https://github.com/openai/codex/releases/tag/v1.2.0",
-                    "published_at": "2026-06-10T00:00:00Z",
-                    "created_at": "2026-06-09T00:00:00Z",
-                    "draft": False,
-                    "prerelease": False,
-                },
-            )
         if request.url.path.endswith("/readme"):
             return httpx.Response(
                 200,
@@ -78,10 +65,23 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
                     "name": "README.md",
                     "path": "README.md",
                     "sha": "abc123",
-                    "size": 2048,
                     "html_url": "https://github.com/openai/codex/blob/main/README.md",
                     "download_url": "https://raw.githubusercontent.com/openai/codex/main/README.md",
+                    "size": 2048,
                     "encoding": "base64",
+                },
+            )
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(
+                200,
+                json={
+                    "tag_name": "v1.0.0",
+                    "name": "v1.0.0",
+                    "html_url": "https://github.com/openai/codex/releases/tag/v1.0.0",
+                    "published_at": "2026-06-12T00:00:00Z",
+                    "created_at": "2026-06-12T00:00:00Z",
+                    "prerelease": False,
+                    "draft": False,
                 },
             )
         return httpx.Response(
@@ -95,20 +95,10 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
                 "forks_count": 50,
                 "open_issues_count": 12,
                 "watchers_count": 1000,
-                "subscribers_count": 900,
-                "network_count": 60,
-                "language": "Python",
-                "topics": ["agent", "coding"],
-                "license": {
-                    "key": "apache-2.0",
-                    "name": "Apache License 2.0",
-                    "spdx_id": "Apache-2.0",
-                },
                 "default_branch": "main",
-                "archived": False,
-                "disabled": False,
-                "visibility": "public",
-                "homepage": "https://openai.com/codex",
+                "language": "Python",
+                "topics": ["agent"],
+                "license": {"spdx_id": "Apache-2.0", "name": "Apache License 2.0"},
                 "pushed_at": "2026-06-11T00:00:00Z",
                 "updated_at": "2026-06-11T00:00:00Z",
                 "owner": {"login": "openai"},
@@ -127,24 +117,33 @@ async def test_github_repo_collector_uses_http_policy_and_collects_repo_snapshot
     assert raw_record.source_url == "https://github.com/openai/codex"
     assert content["full_name"] == "openai/codex"
     assert content["license_spdx_id"] == "Apache-2.0"
-    assert content["latest_release_tag"] == "v1.2.0"
-    assert content["latest_release_published_at"] == "2026-06-10T00:00:00Z"
-    assert content["readme_present"] is True
+    assert content["schema_version"] == "github_repo.v3"
+    assert content["latest_release_tag"] == "v1.0.0"
+    assert content["latest_release_published_at"] == "2026-06-12T00:00:00Z"
+    assert content["provenance"]["latest_release_found"] is True
+    assert content["provenance"]["readme_found"] is True
+    assert content["readme_detected"] is True
+    assert content["readme_name"] == "README.md"
     assert content["readme_size"] == 2048
+    assert content["issue_activity_open_count"] == 12
+    assert content["issue_activity_status"] == "active"
+    assert content["commit_freshness_status"] in {"fresh", "aging", "stale"}
     assert collector.normalize(raw_record) == []
 
 
 @pytest.mark.asyncio
 async def test_github_repo_collector_retries_transient_upstream_failure() -> None:
-    request_count = 0
+    repo_request_count = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal repo_request_count
         assert_request_policy(request)
-        if request.url.path.endswith("/releases/latest") or request.url.path.endswith("/readme"):
-            return httpx.Response(404, json={"message": "not found"})
-        nonlocal request_count
-        request_count += 1
-        if request_count == 1:
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        if request.url.path.endswith("/readme"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        repo_request_count += 1
+        if repo_request_count == 1:
             return httpx.Response(502, json={"message": "bad gateway"})
         return httpx.Response(
             200,
@@ -160,12 +159,14 @@ async def test_github_repo_collector_retries_transient_upstream_failure() -> Non
         collector = GitHubRepoCollector({"owner": "openai", "repo": "codex"}, client)
         collect_result = await collector.collect()
 
-    assert request_count == 2
+    assert repo_request_count == 2
     content = collect_result.raw_records[0].content
     assert isinstance(content, dict)
     assert content["full_name"] == "openai/codex"
     assert content["latest_release"] is None
-    assert content["readme_present"] is False
+    assert content["provenance"]["latest_release_found"] is False
+    assert content["readme_detected"] is False
+    assert content["provenance"]["readme_found"] is False
 
 
 @pytest.mark.asyncio
@@ -177,6 +178,10 @@ async def test_github_repo_collector_uses_github_token(
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["authorization"] == "Bearer test-token"
         assert request.headers["x-github-api-version"] == "2022-11-28"
+        if request.url.path.endswith("/releases/latest"):
+            return httpx.Response(404, json={"message": "Not Found"})
+        if request.url.path.endswith("/readme"):
+            return httpx.Response(404, json={"message": "Not Found"})
         return httpx.Response(
             200,
             json={
@@ -205,18 +210,22 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
                 "total_count": 1,
                 "items": [
                     {
+                        "owner": {"login": "example", "type": "Organization"},
                         "full_name": "example/scraper",
                         "html_url": "https://github.com/example/scraper",
                         "description": "Scraper",
                         "stargazers_count": 42,
                         "forks_count": 3,
-                        "open_issues_count": 4,
+                        "open_issues_count": 1,
                         "watchers_count": 42,
                         "language": "Python",
-                        "topics": ["scraping"],
-                        "license": {"key": "mit", "name": "MIT License", "spdx_id": "MIT"},
+                        "topics": ["crawler"],
+                        "license": {"spdx_id": "MIT", "name": "MIT License"},
                         "default_branch": "main",
                         "archived": False,
+                        "fork": False,
+                        "created_at": "2026-06-01T00:00:00Z",
+                        "pushed_at": "2026-06-10T00:00:00Z",
                         "updated_at": "2026-06-11T00:00:00Z",
                     }
                 ],
@@ -236,6 +245,14 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
     assert content["repositories"][0]["full_name"] == "example/scraper"
     assert content["repositories"][0]["license_spdx_id"] == "MIT"
     assert content["repositories"][0]["default_branch"] == "main"
+    assert content["repositories"][0]["owner_login"] == "example"
+    assert content["repositories"][0]["readme_detected"] is None
+    assert content["repositories"][0]["readme_source"] == "not_available_in_github_search_api"
+    assert content["repositories"][0]["issue_activity_open_count"] == 1
+    assert content["repositories"][0]["issue_activity_status"] == "active"
+    assert content["repositories"][0]["commit_freshness_status"] in {"fresh", "aging", "stale"}
+    assert content["schema_version"] == "github_topic.v3"
+    assert content["provenance"]["source"] == "github_search_api"
     assert collector.normalize(raw_record) == []
 
 
@@ -286,14 +303,31 @@ async def test_ecommerce_product_page_collector_extracts_product_fields(
           "name": "Demo Carry Bag",
           "sku": "BAG-001",
           "brand": {"@type": "Brand", "name": "Demo Brand"},
+          "category": ["Bags", "Summer"],
           "description": "A compact product fixture.",
           "image": ["/cdn/demo.jpg"],
-          "offers": {
-            "@type": "Offer",
-            "price": "129.90",
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock"
-          }
+          "hasVariant": [
+            {"@type": "Product", "name": "Black", "sku": "BAG-001-BLK"},
+            {"@type": "Product", "name": "Sand", "sku": "BAG-001-SAND"}
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Black",
+              "sku": "BAG-001-BLK",
+              "price": "129.90",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock"
+            },
+            {
+              "@type": "Offer",
+              "name": "Sand",
+              "sku": "BAG-001-SAND",
+              "price": "139.90",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/OutOfStock"
+            }
+          ]
         }
         </script>
         <script src="https://cdn.shopify.com/theme.js"></script>
@@ -322,9 +356,16 @@ async def test_ecommerce_product_page_collector_extracts_product_fields(
     assert content["platform_profile"]["platform_type"] == "shopify"
     assert content["extracted_fields"]["title"] == "Demo Carry Bag"
     assert content["extracted_fields"]["price"] == 129.9
+    assert content["extracted_fields"]["price_min"] == 129.9
+    assert content["extracted_fields"]["price_max"] == 139.9
     assert content["extracted_fields"]["currency"] == "USD"
     assert content["extracted_fields"]["sku"] == "BAG-001"
+    assert content["extracted_fields"]["variant"] == "Black, Sand"
+    assert content["extracted_fields"]["category"] == "Bags > Summer"
     assert content["extracted_fields"]["availability"] == "in_stock"
+    assert content["extracted_fields"]["availability_detail"] == (
+        "Black: in_stock; Sand: out_of_stock"
+    )
     assert content["extracted_fields"]["canonical_url"] == (
         "https://shop.example/products/demo-bag"
     )
@@ -345,6 +386,9 @@ async def test_ecommerce_product_page_collector_uses_demo_fixture_without_http_c
     assert isinstance(content, dict)
     assert content["extracted_fields"]["title"] == "Demo Carry Bag"
     assert content["extracted_fields"]["price"] == 129.9
+    assert content["extracted_fields"]["price_min"] == 129.9
+    assert content["extracted_fields"]["price_max"] == 139.9
+    assert content["extracted_fields"]["category"] == "Bags > Summer"
     assert content["page_structure"]["product_schema_count"] == 1
 
 
@@ -380,6 +424,7 @@ async def test_ecommerce_product_discovery_collector_detects_product_urls(
       <body>
         <a href="/collections/summer-bags/products/demo-bag">Demo Carry Bag</a>
         <a href="/products/weekend-tote">Weekend Tote</a>
+        <a href="/collections/summer-bags?page=2" rel="next">Next</a>
         <a href="/pages/about">About</a>
       </body>
     </html>
@@ -407,13 +452,29 @@ async def test_ecommerce_product_discovery_collector_detects_product_urls(
     candidate_urls = {candidate["url"] for candidate in candidates}
     assert candidate_urls == {
         "https://shop.example/products/demo-bag",
-        "https://shop.example/collections/summer-bags/products/demo-bag",
         "https://shop.example/products/weekend-tote",
     }
+    assert all(candidate["canonical_url"] == candidate["url"] for candidate in candidates)
     assert content["page_structure"]["page_type"] == "collection_listing"
     assert content["page_structure"]["product_link_count"] == 2
+    assert content["page_structure"]["pagination_url_count"] == 1
+    assert content["page_structure"]["duplicate_url_count"] == 1
+    assert content["page_structure"]["skipped_url_count"] == 3
+    assert content["discovery_plan"]["pagination_urls"] == [
+        "https://shop.example/collections/summer-bags?page=2"
+    ]
+    assert content["discovery_plan"]["dedupe_summary"] == {
+        "input_url_count": 3,
+        "canonical_candidate_count": 2,
+        "duplicate_url_count": 1,
+        "skipped_url_count": 3,
+        "skipped_reasons": [
+            "duplicate_canonical_url:1",
+            "non_product_url_pattern:2",
+        ],
+    }
     assert content["discovery_plan"]["next_collector_type"] == "ecommerce_product_page"
-    assert content["tool_recommendations"][0]["collector_type"] == (
+    assert content["tool_recommendations"][1]["collector_type"] == (
         "ecommerce_product_discovery"
     )
 
@@ -437,6 +498,8 @@ async def test_ecommerce_product_discovery_collector_uses_demo_fixture_without_h
         "https://shop.example/products/weekend-tote",
     ]
     assert content["page_structure"]["page_type"] == "collection_listing"
+    assert content["page_structure"]["pagination_url_count"] == 1
+    assert content["page_structure"]["duplicate_url_count"] == 3
 
 
 @pytest.mark.asyncio

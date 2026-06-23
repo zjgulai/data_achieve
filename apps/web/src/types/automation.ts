@@ -483,7 +483,6 @@ export type AutomationBrowserLocalRunnerInput = {
   runMode?: "diagnostic_snapshot_replay" | "ephemeral_browser_harness_probe";
   confirmRealBrowserProbe?: boolean;
   browserHarnessBinary?: string;
-  browserHarnessCdpUrl?: string;
   probeTimeoutSeconds?: number;
   artifactRetentionDays?: number;
   maxPreviewRows?: number;
@@ -534,6 +533,7 @@ export type AutomationProductCandidate = {
   title: string | null;
   source: string;
   confidence: number;
+  canonicalUrl: string;
 };
 
 export type AutomationProductDiscovery = {
@@ -554,6 +554,9 @@ export type AutomationProductDiscovery = {
     productLinkCount: number;
     jsonldUrlCount: number;
     sitemapUrlCount: number;
+    paginationUrlCount: number;
+    duplicateUrlCount: number;
+    skippedUrlCount: number;
     scriptCount: number;
     textSample: string;
   };
@@ -564,6 +567,14 @@ export type AutomationProductDiscovery = {
     candidateCount: number;
     maxProducts: number;
     fanOutRequiresReview: boolean;
+    paginationUrls: string[];
+    dedupeSummary: {
+      inputUrlCount: number;
+      canonicalCandidateCount: number;
+      duplicateUrlCount: number;
+      skippedUrlCount: number;
+      skippedReasons: string[];
+    };
   };
   sourceDraft: {
     type: string;
@@ -987,6 +998,10 @@ export type AutomationProductDriftItem = {
   completenessDropPercent: number | null;
   missingFields: string[];
   newMissingFields: string[];
+  rowChange: "unchanged" | "added" | "removed" | "mixed";
+  addedRowCount: number;
+  removedRowCount: number;
+  priceChangePercent: number | null;
   freshnessTargetHours: number | null;
   staleHours: number | null;
   issues: string[];
@@ -1007,6 +1022,10 @@ export type AutomationProductDriftCheck = {
     criticalTasks: number;
     staleTasks: number;
     missingFieldTasks: number;
+    addedRows: number;
+    removedRows: number;
+    priceChangedTasks: number;
+    driftLayers: Record<string, number>;
     runStarted: boolean;
     alertCreated: boolean;
   };
@@ -1068,13 +1087,19 @@ export type AutomationGitHubToolReportRepository = {
   topics: string[];
   licenseSpdxId: string | null;
   defaultBranch: string | null;
-  archived: boolean | null;
-  commitFreshnessDays: number | null;
   latestReleaseTag: string | null;
   latestReleasePublishedAt: string | null;
-  readmePresent: boolean | null;
+  archived: boolean | null;
+  fork: boolean | null;
   updatedAt: string | null;
   pushedAt: string | null;
+  readmeDetected: boolean | null;
+  readmeHtmlUrl: string | null;
+  readmeSize: number | null;
+  issueActivityOpenCount: number | null;
+  issueActivityStatus: string | null;
+  commitFreshnessDays: number | null;
+  commitFreshnessStatus: string | null;
   maintenanceRisk: "low" | "medium" | "high" | "unknown";
   riskSignals: string[];
   installSources: string[];
@@ -1097,6 +1122,13 @@ export type AutomationGitHubToolReport = {
     repositoryCount: number;
     totalStars: number;
     highValueRepositories: number;
+    licensedRepositories: number;
+    releaseTaggedRepositories: number;
+    readmeDocumentedRepositories: number;
+    issueActiveRepositories: number;
+    freshCommitRepositories: number;
+    archivedRepositories: number;
+    forkRepositories: number;
     languages: Record<string, number>;
     topTopics: Record<string, number>;
     reportCreated: boolean;

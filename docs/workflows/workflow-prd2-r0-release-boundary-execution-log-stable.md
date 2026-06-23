@@ -5,7 +5,7 @@ module: automation
 topic: prd2-r0-release-boundary
 status: stable
 created: 2026-06-21
-updated: 2026-06-22
+updated: 2026-06-21
 owner: self
 source: human+ai
 ---
@@ -14,9 +14,9 @@ source: human+ai
 
 ## 0. Scope
 
-本文件记录 2026-06-21 R0 release boundary 的实际执行结果，以及 2026-06-22 docs-only post-deploy closeout sync、P1/P2/P3 边界遗留执行结果。R0 目标是把本地 PRD2/M1/M2 工作树、生产部署、生产只读 smoke、authenticated API smoke 和生产写入 E2E 分层，不把本地通过、DB dry-run、public page smoke 或 authenticated API smoke 说成生产写入验收。
+本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-2026-06-22 本次文档同步没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更；它只记录上一轮 release closeout 已产生的部署和 smoke 证据。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration；生产写入 E2E、provider call、邮件发送、站内通知发送和调度变更仍未执行。
 
 ## 1. Task Orchestration
 
@@ -27,10 +27,9 @@ source: human+ai
 | R0-3 | Local DB/migration gate | done | `POSTGRES_PORT=15432 DATABASE_URL=postgresql+asyncpg://data_intel:<local-dev-password>@localhost:15432/data_intel bash scripts/verify-mvp.sh --with-db` |
 | R0-4 | Production read-only smoke | done | `/api/health`、`/automation`、`/datasets`、unauthenticated `/api/automation/platform-packages` |
 | R0-5 | Release branch setup and scoped staging | done | 已从 `main` 切到 `codex/prd2-r0-release-boundary`；RC1/RC2 已 staged，RC3 草稿未 staged；尚未 commit |
-| R0-6 | Authorized production E2E | done_scoped_p3 | `drafts/analysis/analysis-boundary-p3-production-write-e2e-draft-20260622.md`；targeted real API E2E `16 passed`，cleanup recount zero |
-| R0-7 | Production deploy closeout | done_previous_closeout | 上一轮 closeout 记录生产已部署到 `e97810adb86f39f16efe96b9f2b7f0760f5acf7e`，预快照 `lhsnap-erfd1c6c / pre-data-scrapy-deploy-20260622` |
-| R0-8 | Post-deploy smoke closeout | done_previous_closeout | 上一轮 closeout 记录 health `schema_revision/schema_head=202606110023`、public page smoke 200、authenticated API smoke passed |
-| R0-9 | Boundary leftovers plan | done_docs_only | `drafts/analysis/analysis-boundary-leftovers-execution-plan-draft-20260622.md` |
+| R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
+| R0-7 | Authorized production write E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
+| R0-8 | M3 post-R0 production release | done | production HEAD `e9ccb81`；schema 仍为 `202606110023`；GitHub API-first 字段合同 L3 read-only smoke passed |
 
 ## 2. Release Scope Inventory
 
@@ -192,11 +191,9 @@ Web Playwright E2E: 36 passed, 8 skipped
 
 Boundary: this post-staging refresh is local validation and does not prove production deployment. The local DB container used for this refresh was stopped after validation.
 
-## 6. Historical Production Read-only Smoke Before Deployment
+## 6. Production Read-only Smoke
 
-This 2026-06-21 section is historical pre-deploy evidence. It is retained to show why R0 deployment was needed; Section 7 records the later post-deploy closeout evidence.
-
-Production smoke was read-only and unauthenticated. No production mutation occurred during this historical smoke.
+Production smoke was read-only and unauthenticated. No production mutation occurred.
 
 ```text
 GET https://scrapy.lute-tlz-dddd.top/api/health
@@ -215,32 +212,59 @@ scheduler_enabled=true
 /api/automation/platform-packages status=401 content_type=application/json
 ```
 
-Historical supported claim at that time: production was healthy at schema `202606110020` and pages were reachable.
+Supported claim: current production is healthy at schema `202606110020` and pages are reachable.
 
-Historical unsupported claim at that time: BrowserDiagnosticRun/Job/JobRun schema `202606110021/022/023` was deployed to production. This was later superseded by the Section 7 post-deploy closeout record.
+Unsupported claim: BrowserDiagnosticRun/Job/JobRun schema `202606110021/022/023` is deployed to production.
 
-## 7. 2026-06-22 Post-Deploy Closeout Sync
+## 7. Post-merge Production Release Evidence
 
-This section supersedes the pre-deploy status lines in Section 6 for current planning, but it is still not a fresh live probe from this docs-only pass.
-
-### Recorded deployment evidence from prior closeout
+Production release was executed after PR #1 was merged into `main`.
 
 ```text
-production_sha=e97810adb86f39f16efe96b9f2b7f0760f5acf7e
-pre_snapshot=lhsnap-erfd1c6c / pre-data-scrapy-deploy-20260622
+release commit: 80f0566288ab1cab3348730c65df811bcfd42d9a
+previous production HEAD: d9b2a5e35274963c1804d200824d5767d2f4ae3d
+release method: git bundle upload + git merge --ff-only FETCH_HEAD
+preflight: passed
+image build: passed
+gateway reload: passed
+gateway dry-run: passed
+```
+
+Production Alembic migration:
+
+```text
+202606110020 -> 202606110021 browser diagnostic run assets
+202606110021 -> 202606110022 browser diagnostic job assets
+202606110022 -> 202606110023 browser diagnostic local run assets
+```
+
+Production health after release:
+
+```text
+environment=production
+status=ok
+database=connected
+schema=current
 schema_revision=202606110023
 schema_head=202606110023
-schema=current
 scheduler_enabled=true
 ```
 
-Public page smoke recorded in the prior closeout:
+Container state:
 
 ```text
-/api/health 200
+data_achieve_scrapy_api healthy
+data_achieve_scrapy_db healthy
+data_achieve_scrapy_edge healthy
+data_achieve_scrapy_web healthy
+```
+
+Public page smoke:
+
+```text
 /dashboard 200
-/automation 200
-/datasets 200
+/intelligence 200
+/reports 200
 /tasks 200
 /sources 200
 /alerts 200
@@ -249,205 +273,136 @@ Public page smoke recorded in the prior closeout:
 /signals 200
 /raw-records 200
 /entities 200
-/toolkit 200
+/automation 200
+/datasets 200
 ```
 
-Authenticated API smoke recorded in the prior closeout:
+Authenticated read-only API smoke passed for existing demo credentials:
 
 ```text
-health passed
-login passed
-session passed
-dashboard passed
-tasks passed
-reports passed
-alert-events passed
-notifications passed
+/api/auth/me passed
+/api/dashboard/overview passed
+/api/tasks non-empty
+/api/reports non-empty
+/api/alert-events non-empty
+/api/notifications non-empty
 ```
 
-### Evidence grade result
+Cross-domain gateway regression:
 
-| Claim | Grade | Status |
-|---|---|---|
-| PRD2 R0 release deployment was recorded to SHA `e97810a...` with schema `202606110023` | L3/L4 closeout evidence from prior operation | supported for release closeout |
-| Current live state at the moment of this docs-only pass | L0 in this pass | must be rechecked in P1 |
-| Public pages and authenticated API smoke passed in the prior closeout | L3 production smoke | supported |
-| Production write E2E passed | unsupported | still pending authorization |
-| Demo seed/cleanup execute ran after deploy | unsupported | still pending dry-run and possible execute authorization |
-| Provider call, email send, scheduler mutation, or production browser-harness run happened | unsupported | not executed |
+```text
+https://video.lute-tlz-dddd.top 200
+https://mkt.lute-tlz-dddd.top 200
+https://voc.lute-tlz-dddd.top 200
+```
 
-## 8. Remaining Authorization Points
+Supported claim: production has been deployed to `80f0566` and schema `202606110023`.
 
-Before any new production side effect:
+Unsupported claim: production write E2E is complete. No new production test user, Source, Task, Dataset, Report, notification, email, provider call, or scheduler mutation was created in this release pass.
 
-1. Recheck live SHA, health, schema, and compose state in read-only mode.
-2. Run demo cleanup and E2E fixture cleanup in dry-run mode first.
-3. Confirm no provider call, no external send, no scheduler mutation unless separately authorized.
+## 8. M3 Production Release Evidence
 
-Production write E2E status:
+M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
 
-1. P3 completed a scoped production write E2E with one-time `e2e-*@example.com` accounts/workspaces.
-2. P3 intentionally excluded full real suite cases that would send reports/emails, execute subscriptions, mutate schedule approval, write dataset export files, run GitHub Topic Radar, or start browser-harness.
-3. Any broader full-suite production E2E remains a separate authorization envelope because it would include those side effects.
+```text
+release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
+previous production HEAD: 80f0566288ab1cab3348730c65df811bcfd42d9a
+release method: git bundle upload + git merge --ff-only FETCH_HEAD
+preflight: passed
+api image build: passed
+web image build: passed
+gateway reload: passed
+gateway dry-run: passed
+```
 
-## 9. Next Execution Step
+Schema state after M3:
 
-This section was written before P1/P2/P3 execution and is retained as the historical sequencing decision. The P1/P2/P3 results below supersede it for current status.
+```text
+schema=current
+schema_revision=202606110023
+schema_head=202606110023
+```
 
-The current next executable step after Section 16 is platform collection deepening or another explicitly scoped P5 live gate. P5 B1 one-test-email has completed, and P4 local-only browser-harness adapter spike remains a local dedicated-CDP validation, not production browser execution.
+M3 did not add a migration; the production schema remained aligned with BrowserDiagnosticRun/Job/JobRun release head.
 
-## 10. 2026-06-22 P1 Production Inventory
+Container state:
 
-Evidence record: `drafts/analysis/analysis-boundary-p1-production-inventory-draft-20260622.md`.
+```text
+data_achieve_scrapy_api healthy
+data_achieve_scrapy_db healthy
+data_achieve_scrapy_edge healthy
+data_achieve_scrapy_web healthy
+```
 
-This pass was read-only / dry-run only. It did not execute cleanup, demo seed, production write E2E, provider call, email send, scheduler mutation, or real browser-harness run.
+Public page smoke:
 
-### Result summary
+```text
+/dashboard 200
+/intelligence 200
+/reports 200
+/tasks 200
+/sources 200
+/alerts 200
+/notifications 200
+/projects 200
+/signals 200
+/raw-records 200
+/entities 200
+/automation 200
+/datasets 200
+```
 
-| Check | Result | Evidence grade |
-|---|---|---|
-| Live SHA | `remote_head=e97810adb86f39f16efe96b9f2b7f0760f5acf7e`; `.deploy-sha` same | L3 production read-only |
-| Health/schema | `status=ok`, `database=connected`, `schema=current`, `schema_revision=schema_head=202606110023` | L3 production read-only |
-| Compose | `api`, `db`, `edge`, `web` healthy | L3 production read-only |
-| Public pages | `/api/health`, `/dashboard`, `/automation`, `/datasets`, `/tasks`, `/sources`, `/alerts`, `/notifications`, `/projects`, `/signals`, `/raw-records`, `/entities`, `/toolkit` all `200` | L3 production read-only |
-| Demo cleanup dry-run | non-zero candidates, including `task_runs=84`, `raw_records=34`, `entity_snapshots=42`, `notifications=42` | L2 dry-run |
-| E2E fixture cleanup dry-run | all counts zero with `--older-than-hours 0` | L2 dry-run |
-| Email channel config | `status=ready`, `configured=true`, `tls_mode=starttls`; no send attempted | L3 config-only |
+Authenticated read-only API smoke passed for existing demo credentials:
 
-### Updated next step
+```text
+/api/auth/me passed
+/api/dashboard/overview passed
+/api/tasks passed
+/api/reports passed
+/api/alert-events passed
+/api/notifications passed
+```
 
-P2 should decide whether to authorize `production demo cleanup --execute` against the P1 dry-run candidate counts. E2E fixture cleanup execute is not needed because its dry-run count is zero.
+GitHub API-first package field contract:
 
-## 11. 2026-06-22 P2 Demo Cleanup Execute
+```text
+GET /api/automation/platform-packages/github-api-first
+required fields include:
+- license_spdx_id
+- default_branch
+- latest_release_tag
+- latest_release_published_at
+- pushed_at
+```
 
-Evidence record: `drafts/analysis/analysis-boundary-p2-demo-cleanup-execution-draft-20260622.md`.
+Cross-domain gateway regression:
 
-User authorization: "同意执行 P2".
+```text
+https://video.lute-tlz-dddd.top 200
+https://mkt.lute-tlz-dddd.top 200
+https://voc.lute-tlz-dddd.top 302
+https://voc.lute-tlz-dddd.top/login/?next=%2Fsuperset%2Fwelcome%2F 200 after redirect
+https://scrapy.lute-tlz-dddd.top/api/health 200
+```
 
-This pass executed only production demo cleanup. It did not execute demo seed, E2E fixture cleanup execute, production write E2E, provider call, email send, scheduler mutation, or real browser-harness run.
+Supported claim: production has been deployed to `e9ccb81`, schema remains `202606110023`, and M3 GitHub API-first field contract is available through authenticated read-only API.
 
-### Result summary
+Unsupported claim: production write E2E is complete. No new production test user, Source, Task, Dataset, Report, notification, email, provider call, or scheduler mutation was created in this release pass.
 
-| Check | Result | Evidence grade |
-|---|---|---|
-| Demo cleanup execute | Completed with `dry_run=false`; cleaned P1 candidate set including `task_runs=84`, `raw_records=34`, `entity_snapshots=42`, `notifications=42`, `reports=14`, `sources=12`, `collection_tasks=12` | L4 authorized live cleanup |
-| Post-cleanup demo dry-run recount | all cleanup candidate counts zero | L2 dry-run |
-| Health/schema | `status=ok`, `database=connected`, `schema=current`, `schema_revision=schema_head=202606110023` | L3 production read-only |
-| Public pages | `/api/health`, `/dashboard`, `/automation`, `/datasets`, `/tasks`, `/sources`, `/alerts`, `/notifications`, `/projects`, `/signals`, `/raw-records`, `/entities`, `/toolkit` all `200` | L3 production read-only |
-| Compose | `api`, `db`, `edge`, `web` healthy | L3 production read-only |
+## 9. Remaining Authorization Points
 
-### Updated next step
+Before production write E2E:
 
-P3 should start with an authorization envelope for L4 production write E2E. It must use a one-time account/workspace and must include created IDs, cleanup dry-run, cleanup execute, and recount.
+1. Confirm test account/workspace.
+2. Confirm allowed Source/Task/Dataset/Report write scope.
+3. Confirm cleanup register fields and cleanup command.
+4. Confirm no provider call, no external send, no scheduler mutation unless separately authorized.
 
-## 12. 2026-06-22 P3 Scoped Production Write E2E
+## 10. Next Execution Step
 
-Evidence record: `drafts/analysis/analysis-boundary-p3-production-write-e2e-draft-20260622.md`.
+The next executable step is not another release-boundary pass. It is either:
 
-User authorization: "同意执行 P3".
+1. Authorized production write E2E with cleanup register; or
+2. Remaining M3 GitHub API-first deepening for README metadata, issue activity, commit freshness, explicit DatasetVersion schema/provenance and drift rules.
 
-This pass executed a scoped production write E2E and immediate fixture cleanup. It did not execute the full real Playwright suite, report send, external email send, provider call, scheduler mutation, dataset export, demo seed, or real browser-harness run.
-
-### Result summary
-
-| Check | Result | Evidence grade |
-|---|---|---|
-| Pre-run health/schema | `status=ok`, `database=connected`, `schema=current`, `schema_revision=schema_head=202606110023` | L3 production read-only |
-| Pre-run live SHA | `remote_head=e97810adb86f39f16efe96b9f2b7f0760f5acf7e`; `.deploy-sha` same | L3 production read-only |
-| Pre-run public pages | `/api/health`, `/dashboard`, `/automation`, `/datasets`, `/tasks`, `/sources`, `/alerts`, `/notifications`, `/projects`, `/signals`, `/raw-records`, `/entities`, `/toolkit` all `200` | L3 production read-only |
-| E2E selection | Targeted grep set excluded report send, subscription execution, GitHub Topic Radar, dataset export, schedule approval, and browser-harness probe controls | Boundary control |
-| Production write E2E | `16 passed (49.9s)` across desktop and mobile | L4 authorized live |
-| Cleanup dry-run | Found scoped E2E candidates: `users=4`, `workspaces=4`, `sources=8`, `collection_tasks=8`, `task_runs=8`, `raw_records=8`, `alert_events=7`, `notifications=4`; `reports=0`, `datasets=0`, `dataset_export_jobs=0` | L2 dry-run |
-| Cleanup execute | Removed the same scoped candidate set with `dry_run=false` | L4 authorized live cleanup |
-| Cleanup recount | all E2E fixture counts zero | L2 dry-run |
-| Post-run health/pages/compose | health current, all checked routes `200`, `api/db/edge/web` healthy | L3 production read-only |
-
-### Updated next step
-
-P4 completed as a local-only ephemeral browser-harness adapter spike. It keeps production unchanged, requires a dedicated CDP endpoint, and blocks default user Chrome profile reuse. It did not create Source, Task, TaskRun, Dataset, AlertEvent, Notification, email, export file, scheduler mutation, provider call, or production browser run.
-
-## 13. P4 Local Browser-Harness Spike
-
-P4 evidence: `drafts/analysis/analysis-boundary-p4-browser-harness-ephemeral-probe-draft-20260622.md`.
-
-Key result:
-
-- `ephemeral_browser_harness_probe` now requires `browser_harness_cdp_url`.
-- Missing dedicated CDP returns `blocked_ephemeral_probe` / `browser_harness_isolated_cdp_required`.
-- A local headless Chrome with a temporary profile exposed CDP at `127.0.0.1:9333`; browser-harness read `https://example.com/` page info and closed the target tab.
-- Validation passed: API full pytest `102 passed`, API ruff passed, web lint/unit/build passed, Playwright mock E2E `4 passed`, and `git diff --check` passed.
-
-This remains local validation only. It is not a production browser run and does not approve screenshot/trace/HAR file writes.
-
-## 14. P5 Provider Email Scheduler Gate Plan
-
-P5 plan: `drafts/analysis/analysis-boundary-p5-provider-email-scheduler-gate-plan-draft-20260622.md`.
-
-This pass created the gate plan only. It did not execute provider calls, email test sends, report sends, report subscription runs, scheduler mutations, scheduler ticks, dataset exports, production browser runs, or browser artifact file writes.
-
-### Gate summary
-
-| Gate | Plan result | Evidence grade |
-|---|---|---|
-| Provider | Split into A0 read-only config/adapter inventory, A1 fixture-only validation, A2 authorized live provider call | L1 planning evidence |
-| Email | Split into B0 read-only channel status, B1 max-one test email, B2 product email send; report send and subscription run are treated as separate send-capable paths | L1 planning evidence |
-| Scheduler | Split into C0 read-only overview, C1 schedule approval mutation, C2 actual scheduler tick / task / report subscription execution | L1 planning evidence |
-| Dataset export | Kept as a separate D gate because export writes artifact files and `DatasetExportJob` records | L1 planning evidence |
-
-### Updated next step
-
-Run P5 read-only inventory only:
-
-1. Provider A0 config/adapter inventory without outputting secrets and without calling a provider.
-2. Email B0 channel status refresh without sending test email.
-3. Scheduler C0 overview refresh without triggering a tick or mutating schedules.
-4. Dataset export D0 endpoint/candidate inventory without creating export jobs.
-
-## 15. P5 Read-only Inventory
-
-P5 inventory evidence: `drafts/analysis/analysis-boundary-p5-read-only-inventory-draft-20260623.md`.
-
-This pass executed only production read-only checks. It did not execute provider calls, email test sends, product email sends, report sends, report subscription runs, scheduler mutations, manual scheduler ticks, dataset export creation, production browser runs, or browser artifact file writes.
-
-### Result summary
-
-| Check | Result | Evidence grade |
-|---|---|---|
-| Health/schema | `environment=production`, `status=ok`, `database=connected`, `schema=current`, `schema_revision=schema_head=202606110023` | L3 production read-only |
-| Live SHA | `remote_head=e97810adb86f39f16efe96b9f2b7f0760f5acf7e`; `.deploy-sha` same | L3 production read-only |
-| Compose | `api`, `db`, `edge`, `web` running and healthy | L3 production read-only |
-| Provider A0 | `llm_provider=mock`, no model/key configured, default adapter `MockLLMAdapter`; no provider call | L3 production read-only/config-only |
-| Email B0 | channel `ready`, configured, `tls_mode=starttls`, no missing settings; no test email sent | L3 production read-only/config-only |
-| Scheduler C0 | enabled, poll interval `60.0s`, 75 enabled tasks, 0 cron tasks, 0 enabled report subscriptions; latest tick completed with `due=0`, `started=0` | L3 production read-only |
-| Dataset export D0 | export dir `/app/exports/datasets` exists; datasets=29, versions=5, export jobs=4, successful export jobs=4; no export created | L3 production read-only |
-
-### Updated next step
-
-Select one L4 live gate. The smallest controllable candidate is B1 one-test-email because channel readiness is true and scope can be constrained to one recipient and one send. Provider A2 remains blocked until a real provider/model/key/budget are configured; Scheduler C1 requires exact dataset/version/task IDs plus rollback; Dataset export D live requires exact dataset/version IDs plus retention or cleanup policy.
-
-## 16. P5 B1 One-test-email
-
-P5 B1 evidence: `drafts/analysis/analysis-boundary-p5-b1-email-test-send-draft-20260623.md`.
-
-User authorization: recipient `zhoujianaaa123@gmail.com`.
-
-This pass executed one authorized test email send. It did not execute provider calls, product drift alert email sends, report sends, report subscription runs, scheduler mutations, manual scheduler ticks, dataset exports, production browser runs, or browser artifact file writes.
-
-### Result summary
-
-| Check | Result | Evidence grade |
-|---|---|---|
-| Recipient | `zhoujianaaa123@gmail.com` | Authorization scope |
-| Max sends | `1` | Authorization scope |
-| Attempted sends | `1` | L4 authorized live email test |
-| Channel status before send | `ready`, configured, `tls_mode=starttls`, no missing settings | L3 config status |
-| Delivery result | `delivered=true`, `reason=null` | L4 authorized live email test |
-| Started/finished | `2026-06-23T07:27:18.928471+00:00` to `2026-06-23T07:27:23.503534+00:00` | Execution evidence |
-
-### Boundary
-
-This evidence supports only one authorized test email delivery. It does not validate product drift alert email delivery, report send email delivery, report subscription email delivery, bulk email delivery, scheduler-triggered email, provider calls, scheduler mutation, dataset export, or production browser execution.
-
-### Updated next step
-
-Recommended next step is to stop P5 email at B1 and return to platform collection deepening. If another P5 live gate is still needed, B2 product email requires exact DriftEvent/AlertEvent IDs, recipient, max sends, and audit/cleanup policy; Provider A2 remains blocked until real provider/model/key/budget are configured; Scheduler C1 requires exact dataset/version/task IDs and rollback; Dataset export D live requires exact dataset/version IDs plus retention or cleanup policy.
+Do not claim L4 production write coverage until option 1 is explicitly authorized and completed.

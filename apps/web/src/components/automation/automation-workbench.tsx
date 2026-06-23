@@ -93,10 +93,15 @@ import type {
 const defaultFields = [
   "title",
   "price",
+  "price_min",
+  "price_max",
   "currency",
   "availability",
+  "availability_detail",
   "sku",
+  "variant",
   "brand",
+  "category",
   "description",
   "image_url",
   "canonical_url",
@@ -104,25 +109,32 @@ const defaultFields = [
 
 const fieldLabels: Record<string, string> = {
   availability: "库存",
+  availability_detail: "库存明细",
   brand: "品牌",
+  category: "分类",
   canonical_url: "规范 URL",
-  commit_freshness_days: "Commit 新鲜度",
   currency: "货币",
-  description: "描述",
   default_branch: "默认分支",
+  description: "描述",
   headings: "标题层级",
   image_url: "主图",
   forks: "Forks",
-  latest_release_published_at: "Release 时间",
-  latest_release_tag: "Latest release",
-  license_spdx_id: "License",
   meta_description: "页面描述",
   html_url: "仓库 URL",
+  issue_activity_open_count: "Issue 活跃数",
+  issue_activity_status: "Issue 活跃度",
   language: "语言",
+  latest_release_published_at: "Release 时间",
+  latest_release_tag: "Release",
+  license_spdx_id: "License",
   open_issues: "Open issues",
   page_title: "页面标题",
   price: "价格",
-  readme_present: "README",
+  price_max: "最高价",
+  price_min: "最低价",
+  readme_detected: "README",
+  readme_html_url: "README URL",
+  readme_size: "README 大小",
   repo_full_name: "仓库全名",
   same_origin_links: "同源链接",
   sku: "SKU",
@@ -130,8 +142,11 @@ const fieldLabels: Record<string, string> = {
   text_sample: "正文样本",
   title: "标题",
   topics: "Topics",
+  variant: "变体",
   updated_at: "更新时间",
   pushed_at: "最近推送",
+  commit_freshness_days: "推送距今天数",
+  commit_freshness_status: "推送新鲜度",
 };
 
 const githubToolFields = [
@@ -141,13 +156,17 @@ const githubToolFields = [
   "open_issues",
   "language",
   "topics",
-  "html_url",
   "license_spdx_id",
   "default_branch",
   "latest_release_tag",
   "latest_release_published_at",
-  "readme_present",
+  "readme_detected",
+  "issue_activity_open_count",
+  "issue_activity_status",
   "commit_freshness_days",
+  "commit_freshness_status",
+  "html_url",
+  "pushed_at",
   "updated_at",
 ];
 
@@ -2596,12 +2615,22 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                 <Fact label="导出草稿" value={datasetPreview.summary.exportReady ? "已就绪" : "未就绪"} />
               </div>
               {githubToolSchemaFacts(datasetPreview.exportPreview).length > 0 ? (
-                <div className="grid gap-3 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {githubToolSchemaFacts(datasetPreview.exportPreview).map((item) => (
-                    <Fact key={item.label} label={item.label} value={item.value} />
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {githubToolSchemaFacts(datasetPreview.exportPreview).map((fact) => (
+                    <Fact label={fact.label} value={fact.value} key={fact.label} />
                   ))}
                 </div>
               ) : null}
+              <div className="flex flex-wrap gap-2">
+                {datasetPreview.summary.selectedFields.map((field) => (
+                  <span
+                    className="rounded-full border border-[#D9E2CC] bg-white px-2.5 py-1 text-xs font-semibold text-[#536B40]"
+                    key={field}
+                  >
+                    {field}
+                  </span>
+                ))}
+              </div>
               <div className="overflow-x-auto rounded-xl border border-[#D9E2CC] bg-white">
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead className="bg-[#ECF7EA] text-xs font-semibold uppercase text-[#4E7C45]">
@@ -2673,6 +2702,13 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                     <p className="break-all">版本 ID: {saveResult.version.id}</p>
                     <p>下一步可到数据集资产台导出 CSV、JSON 或 JSONL，并接入工具雷达报告。</p>
                   </div>
+                  {githubToolSchemaFacts(saveResult.version.exportPreview).length > 0 ? (
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                      {githubToolSchemaFacts(saveResult.version.exportPreview).map((fact) => (
+                        <Fact label={fact.label} value={fact.value} key={fact.label} />
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-3 rounded-xl border border-[#D9E2CC] bg-white p-3">
                     <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                       <div>
@@ -2727,11 +2763,15 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                     ) : null}
                     {toolReport ? (
                       <div className="grid gap-3">
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                           <Fact label="仓库数" value={String(toolReport.summary.repositoryCount)} />
                           <Fact label="Stars 合计" value={String(toolReport.summary.totalStars)} />
                           <Fact label="高价值仓库" value={String(toolReport.summary.highValueRepositories)} />
-                          <Fact label="Top 语言" value={Object.entries(toolReport.summary.languages)[0]?.join(" x") ?? "未识别"} />
+                          <Fact label="License 已声明" value={String(toolReport.summary.licensedRepositories)} />
+                          <Fact label="Release 已识别" value={String(toolReport.summary.releaseTaggedRepositories)} />
+                          <Fact label="README 已识别" value={String(toolReport.summary.readmeDocumentedRepositories)} />
+                          <Fact label="Issue 活跃" value={String(toolReport.summary.issueActiveRepositories)} />
+                          <Fact label="Fresh commit" value={String(toolReport.summary.freshCommitRepositories)} />
                         </div>
                         <div className="grid gap-2">
                           {toolReport.topRepositories.slice(0, 3).map((repository) => (
@@ -2744,10 +2784,7 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                             >
                               <span className="font-semibold">{repository.repoFullName}</span>
                               <span className="text-xs text-[#6A625D]">
-                                {repository.stars} stars · 风险 {repository.maintenanceRisk} · {repository.latestReleaseTag ?? "no release"} · {repository.licenseSpdxId ?? "no license"}
-                              </span>
-                              <span className="text-xs text-[#6A625D]">
-                                {repository.language ?? "unknown"} · {repository.topics.slice(0, 3).join(" / ") || "no topic"}
+                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.licenseSpdxId ?? "no license"} · {repository.latestReleaseTag ?? repository.defaultBranch ?? "no release"} · {repository.issueActivityOpenCount ?? repository.openIssues ?? "-"} issues · {repository.commitFreshnessStatus ?? "unknown freshness"} · 维护风险 {repository.maintenanceRisk}
                               </span>
                             </a>
                           ))}
@@ -2761,7 +2798,7 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                               >
                                 <p className="text-xs font-semibold text-[#B47767]">{section.title}</p>
                                 <p className="mt-2 text-xs leading-5 text-[#536B40]">
-                                  {section.items.slice(0, 4).join(" / ")}
+                                  {section.items.slice(0, 4).join("、") || "无"}
                                 </p>
                               </div>
                             ))}
@@ -2803,6 +2840,11 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                           <Fact label="字段缺失" value={String(toolDrift.summary.missingFieldTasks)} />
                           <Fact label="状态" value={toolDrift.summary.criticalTasks > 0 ? "critical" : "ok"} />
                         </div>
+                        {Object.keys(toolDrift.summary.driftLayers).length > 0 ? (
+                          <p className="rounded-xl border border-[#E0E8D5] bg-white px-3 py-2 text-xs font-semibold text-[#536B40]">
+                            分层漂移：{Object.entries(toolDrift.summary.driftLayers).map(([layer, count]) => `${layer}=${count}`).join("、")}
+                          </p>
+                        ) : null}
                         <div className="grid gap-2">
                           {toolDrift.items.map((item) => (
                             <div className="rounded-xl border border-[#E0E8D5] bg-[#FAFCF7] p-3 text-sm" key={item.taskId}>
@@ -2826,7 +2868,8 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                                       key={group.label}
                                     >
                                       <span className="font-semibold text-[#B47767]">{group.label}</span>
-                                      ：{group.value}
+                                      {" · "}
+                                      {group.value}
                                     </p>
                                   ))}
                                 </div>
@@ -3383,6 +3426,12 @@ function DiscoveryResult({
               <Fact label="JSON-LD URL" value={String(discovery.pageStructure.jsonldUrlCount)} />
               <Fact label="脚本数" value={String(discovery.pageStructure.scriptCount)} />
             </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <Fact label="Sitemap URL" value={String(discovery.pageStructure.sitemapUrlCount)} />
+              <Fact label="分页 URL" value={String(discovery.pageStructure.paginationUrlCount)} />
+              <Fact label="重复 URL" value={String(discovery.pageStructure.duplicateUrlCount)} />
+              <Fact label="跳过 URL" value={String(discovery.pageStructure.skippedUrlCount)} />
+            </div>
             <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
               <p className="text-xs font-semibold uppercase text-[#B47767]">页面文本样本</p>
               <p className="mt-2 text-sm leading-6 text-[#7A625A]">
@@ -3507,7 +3556,30 @@ function DiscoveryResult({
                 label="批量展开"
                 value={discovery.discoveryPlan.fanOutRequiresReview ? "需人工确认" : "可自动展开"}
               />
+              <Fact label="输入 URL" value={String(discovery.discoveryPlan.dedupeSummary.inputUrlCount)} />
+              <Fact
+                label="规范候选"
+                value={String(discovery.discoveryPlan.dedupeSummary.canonicalCandidateCount)}
+              />
+              <Fact label="去重 URL" value={String(discovery.discoveryPlan.dedupeSummary.duplicateUrlCount)} />
+              <Fact label="跳过 URL" value={String(discovery.discoveryPlan.dedupeSummary.skippedUrlCount)} />
             </div>
+            {discovery.discoveryPlan.dedupeSummary.skippedReasons.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">跳过原因</p>
+                <p className="mt-2 break-words text-sm leading-6 text-[#7A625A]">
+                  {discovery.discoveryPlan.dedupeSummary.skippedReasons.join(" · ")}
+                </p>
+              </div>
+            ) : null}
+            {discovery.discoveryPlan.paginationUrls.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <p className="text-xs font-semibold uppercase text-[#B47767]">分页 URL</p>
+                <p className="mt-2 break-all text-sm leading-6 text-[#7A625A]">
+                  {discovery.discoveryPlan.paginationUrls.slice(0, 3).join(" · ")}
+                </p>
+              </div>
+            ) : null}
           </Panel>
 
           <Panel icon={Database} label="采集源草稿" title="可入库数据源草稿">
@@ -5394,8 +5466,6 @@ function formatBrowserJobReason(value: string) {
     browser_diagnostic_job_created_no_runner: "任务已创建为只读资产，执行器尚未接入。",
     browser_harness_binary_unavailable: "browser-harness CLI 不可用。",
     browser_harness_ephemeral_probe_only: "本机探测仅读取临时 tab 页面元信息。",
-    browser_harness_isolated_cdp_required:
-      "需要 dedicated CDP 端点，不能复用用户 Chrome profile。",
     browser_harness_probe_failed: "browser-harness 探测未完成。",
     browser_local_runner_snapshot_replay_only: "本地 runner 仅回放已保存诊断快照。",
     m2_read_only_contract_no_direct_promotion:

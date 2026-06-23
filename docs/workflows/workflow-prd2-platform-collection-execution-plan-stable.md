@@ -5,7 +5,7 @@ module: automation
 topic: prd2-platform-collection
 status: stable
 created: 2026-06-21
-updated: 2026-06-21
+updated: 2026-06-22
 owner: self
 source: human+ai
 ---
@@ -20,9 +20,12 @@ source: human+ai
 
 1. `docs/product/product-prd-data-intelligence-hub-stable.md` 已调整为 PRD 2.0 当前源头版本。
 2. 生产只读 health 在 2026-06-21 返回 `production`、`ok`、`database=connected`、`schema=current`、`scheduler_enabled=true`。
-3. 本机 `browser-harness` 可执行；默认模式可能连接用户正在运行的 Chrome，因此产品 probe 已改为必须提供 dedicated CDP URL。
+3. 本机 `browser-harness` 可执行，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0。
 4. 本机当前未找到 `agent-reach` 命令。
-5. 当前 P4 已做业务代码窄改：新增 dedicated-CDP guard 和本地 isolated smoke；没有生产部署、生产写入、provider call、邮件发送或调度变更。
+5. 2026-06-22 已复核 `origin/main=8cd3e8f`，PR #7 已合并 M4-3 Dataset/drift 样例；main CI 的 API/Web Quality Gate 为 success，`Web Real API E2E (manual)` 在 workflow 中为 skipped。
+6. M4-3 本地和 CI 验证没有创建生产 Source/Task/TaskRun/Dataset/Report/Notification，没有 provider call，没有生产写入。
+7. `codex/m4-independent-site-depth` 已通过 PR #6 合并到 `main@67f611e`，覆盖 M4-1/M4-2 独立站 discovery 和商品字段增强；不代表生产写入 E2E 或授权测试站 E2E 已完成。
+8. M4-3 新增/下架/价格变化已有本地 API 集成测试覆盖，且 `scripts/verify-mvp.sh` 已通过；生产部署尝试被 `ssh 101.34.52.232:22` connection refused 阻断，生产 health 仍为既有 `schema=202606110023` 的只读健康状态。
 
 ## 1. 执行总原则
 
@@ -87,7 +90,7 @@ To do：
 
 ### Milestone 2：browser-harness 只读证据扩展
 
-目标：把当前 `ephemeral_browser_harness_probe` 从 page info 扩展到 selector 求值和 network metadata，用于判断“是否应该采集”，而不是直接采集。真实 probe 必须提供 dedicated `browser_harness_cdp_url`；缺失时保持 blocked，不能默认连接用户主 Chrome。
+目标：把当前 `ephemeral_browser_harness_probe` 从 page info 扩展到 selector 求值和 network metadata，用于判断“是否应该采集”，而不是直接采集。
 
 To do：
 
@@ -95,7 +98,7 @@ To do：
 |---|---|---|---|
 | M2-1 | 扩展 `BrowserDiagnosticJobRun` result contract | API docs、schema、model/migration 如需字段 | result 包含 `selector_evaluations`、`network_metadata_summary`、`promotion_gate`、`redaction_summary` |
 | M2-2 | fake CLI 覆盖 selector/network 成功与异常路径 | API tests | fixture 能覆盖 selector missing、network blocked、timeout_case、redaction_case |
-| M2-3 | real CLI 本机只读 smoke | `tmp/` 证据脚本 | 只对 `https://example.com/` 或明确授权测试页执行；必须使用临时 profile + dedicated CDP；输出不含 cookie/header/body |
+| M2-3 | real CLI 本机只读 smoke | `tmp/` 证据脚本 | 只对 `https://example.com/` 或明确授权测试页执行；输出不含 cookie/header/body |
 | M2-4 | artifact retention 方案 | workflow 或 architecture doc | 截图/trace/HAR 文件写入目录、TTL、清理命令、redaction 和生产持久化策略明确前，保持 `files_written=false` |
 | M2-5 | UI 结果面板升级 | `automation-workbench.tsx` | 明确区分 snapshot replay、real browser probe、blocked/failed 状态 |
 
@@ -112,13 +115,13 @@ To do：
 
 To do：
 
-| ID | 任务 | 建议文件 | 完成条件 |
-|---|---|---|---|
-| M3-1 | 扩展 GitHub 字段 schema | collector/service/schema/tests | 字段包含 release、README 摘要、license、default branch、issue activity、commit freshness |
-| M3-2 | Dataset schema 版本化 | dataset service + API docs | `github_tool_radar` DatasetVersion 可标识 schema version 和字段来源 |
-| M3-3 | Report 增强 | report response + frontend | 报告能显示维护风险、安装方式、适用采集场景、不适用边界 |
-| M3-4 | Drift 规则增强 | drift service/tests | 支持 stars/forks/issues/release freshness/field missingness |
-| M3-5 | 生产授权 E2E 和 cleanup | `tmp/` 证据脚本 | 经授权后执行；创建的 Source/Task/Dataset/Report 全部可 dry-run 清点并清理 |
+| ID | 任务 | 当前状态 | 建议文件 | 完成条件 / 下一步 |
+|---|---|---|---|---|
+| M3-1 | 扩展 GitHub 字段 schema | done_main_71b52be | collector/service/schema/tests | README 摘要、issue activity、commit freshness 已随 PR #5 合并 |
+| M3-2 | Dataset schema 版本化 | done_main_71b52be | dataset service + API docs | `github_tool_radar` schema version、collector schema versions、per-field source 已随 PR #5 合并 |
+| M3-3 | Report 增强 | done_main_71b52be | report response + frontend | README、issue activity、freshness summary 已随 PR #5 合并 |
+| M3-4 | Drift 规则增强 | done_main_71b52be | drift service/tests | stars/forks/issues/release freshness/field missingness 分层输出已随 PR #5 合并 |
+| M3-5 | 生产授权 E2E 和 cleanup | local_and_l3_readonly_done | `tmp/` 证据脚本 | 本地门禁和 production read-only smoke 已完成；生产写入需单独授权，创建的 Source/Task/Dataset/Report 必须可 dry-run 清点并清理 |
 
 默认事实源：
 
@@ -134,9 +137,9 @@ To do：
 
 | ID | 任务 | 建议文件 | 完成条件 |
 |---|---|---|---|
-| M4-1 | collection/listing/sitemap 发现增强 | collector + automation service | 支持 canonical、pagination、sitemap URL、去重和失败原因 |
-| M4-2 | 商品字段增强 | collector/schema/tests | 增加 variant、SKU、image、brand、currency、availability、category |
-| M4-3 | Dataset 和 drift 样例 | tests + docs | 可展示新增/下架、价格变化、字段缺失 |
+| M4-1 | collection/listing/sitemap 发现增强 | collector + automation service | 已随 PR #6 合并到 `main@67f611e`，实现 canonical、pagination、sitemap URL、去重和 skipped reasons |
+| M4-2 | 商品字段增强 | collector/schema/tests | 已随 PR #6 合并到 `main@67f611e`，增加 variant、price range、availability detail、category，并保留 SKU、image、brand、currency、availability |
+| M4-3 | Dataset 和 drift 样例 | tests + docs | 已随 PR #7 合并到 `main@8cd3e8f`，覆盖新增/下架、价格变化进入 `product-drift-check` 和 `product-drift-events`；生产部署被 SSH 连接阻断 |
 | M4-4 | 授权测试站 E2E | Playwright/API script | 能从 URL 到 Dataset/export/drift 完整跑通并清理 |
 
 禁止动作：
@@ -229,14 +232,17 @@ bash scripts/verify-mvp.sh --with-db
 | P0 | M1-5 | CapabilityProbe 测试覆盖 | done | 已覆盖 missing 和 fake installed doctor-only 路径 |
 | P0 | M2-1 | 扩展 `BrowserDiagnosticJobRun` result contract | done | 已新增 `selector_evaluations`、`network_metadata_summary`、`promotion_gate`、`redaction_summary`；无需 migration |
 | P0 | M2-2 | fake CLI selector/network 测试 | done | 已覆盖 snapshot replay、fake browser-harness success、selector missing、binary unavailable、timeout_case、redaction_case |
-| P0 | M2-3 | 本机 real CLI 授权公开页只读 smoke | done | P4 使用 headless Chrome 临时 profile + dedicated CDP 对 `https://example.com/` 完成 page_info smoke；旧 `blocked_local_daemon` 记录保留为历史 |
+| P0 | M2-3 | 本机 real CLI 授权公开页只读 smoke | blocked_local_daemon | 已对 `https://example.com/` 生成 `tmp/browser-harness-readonly-smoke-20260621.json`；本机 daemon 未响应，`browser_started=false` |
 | P0 | M2-4 | artifact retention 方案 | done | 已新增 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md`；当前阶段保持 `files_written=false` |
 | P0 | M2-5 | UI 结果面板升级 | done | 已展示 selector 求值、network metadata、promotion gate 和 redaction 边界 |
-| P0 | M3-1 | GitHub deep fields | todo | release、README、license、issue activity、freshness |
-| P0 | M3-2 | GitHub Dataset schema version | todo | 标明字段来源和版本 |
-| P0 | M3-3 | GitHub Tool Radar report 增强 | todo | 增加维护风险和适用/不适用边界 |
-| P0 | M4-1 | 独立站 discovery 深化 | todo | collection/listing/sitemap/canonical 去重 |
-| P0 | M4-2 | 独立站商品字段增强 | todo | variant、SKU、image、currency、availability |
+| P0 | M3-1 | GitHub deep fields | done_main_71b52be | README、issue activity、commit freshness 已合并 |
+| P0 | M3-2 | GitHub Dataset schema version | done_main_71b52be | schema version、collector schema versions、per-field source 已合并 |
+| P0 | M3-3 | GitHub Tool Radar report 增强 | done_main_71b52be | 报告 summary 字段已合并 |
+| P0 | M3-4 | GitHub drift 规则增强 | done_main_71b52be | stars/forks/issues/release freshness/field missingness 分层输出已合并 |
+| P0 | M3-5 | GitHub production write E2E | pending_authorization | 明确测试 workspace、写入范围、cleanup register 后才能执行 |
+| P0 | M4-1 | 独立站 discovery 深化 | done_main_67f611e | collection/listing/sitemap/canonical 去重、pagination、skipped reasons |
+| P0 | M4-2 | 独立站商品字段增强 | done_main_67f611e | variant、price range、availability detail、category、SKU、image、currency、availability |
+| P0 | M4-3 | Dataset/drift 样例 | done_main_8cd3e8f_deploy_blocked_ssh | 新增/下架、价格变化进入 drift check/events；main CI 已通过，生产发布待 SSH 恢复后重试 |
 | P1 | M5-1 | Public Web/RSS/Docs 平台包 | todo | 先做公开 feed/docs fixture |
 | P1 | M5-2 | Video transcript import | todo | metadata/transcript 导入，不下载媒体 |
 | P1 | M5-3 | Public community trend | todo | 优先 V2EX 聚合趋势 |
@@ -248,8 +254,9 @@ bash scripts/verify-mvp.sh --with-db
 ## 6. 下一轮推荐执行顺序
 
 1. `M1-1` 到 `M1-5` 已完成，能力探测合同已立住。
-2. `M2-1` 到 `M2-5` 已完成当前阶段；下一轮 browser 方向应扩展 dedicated-CDP selector DOM evaluation 和 network metadata summary。
-3. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
-4. 下一轮可进入 `M3-1` 到 `M3-3`，让 GitHub 成为 API-first 深化样板。
-5. 完成一轮本地门禁后，再选择 `M4` 独立站深化或 `M5-1` Public Web/RSS 作为第一个新增低风险平台包。
-6. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。
+2. `M2-1`、`M2-2`、`M2-4`、`M2-5` 已完成；`M2-3` 留作本机 daemon 修复后的重试项。
+3. `M2-3` 重试前需要先让 `browser-harness --doctor` 达到 `daemon alive` 和 active browser connection 可用；仍只允许 `https://example.com/` 或明确授权测试页。
+4. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
+5. M3-1 到 M3-4 已随 PR #5 合并；M3-5 仍需单独生产写入授权，并在执行前确定测试 workspace、允许写入资源、cleanup register 和 dry-run/execute 命令。
+6. 当前下一步是恢复或确认生产 SSH 发布入口，部署 `main@8cd3e8f` 并做生产只读验收；之后进入 `M4-4` 授权测试站 E2E，或并行准备 `M5-1` Public Web/RSS。
+7. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。

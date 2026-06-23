@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-21
+updated: 2026-06-22
 owner: self
 source: human+ai
 ---
@@ -86,6 +86,16 @@ osint, ecommerce, social, competitor, mixed
 | `manual_json` | `entity_type`、`json_data` | 人工或外部工具导入结构化样本 |
 | `ecommerce_product_discovery` | `url` | 从公开独立站 listing、collection 或 sitemap 发现商品 URL |
 | `ecommerce_product_page` | `url` | 从公开独立站商品页解析商品字段 |
+
+`ecommerce_product_page` 默认字段合同：
+
+| 字段 | 说明 |
+|---|---|
+| `title`、`price`、`currency`、`availability`、`sku`、`brand`、`description`、`image_url`、`canonical_url` | 基础商品字段 |
+| `price_min`、`price_max` | 从多 offer / variant price 中计算价格区间 |
+| `availability_detail` | 保留 offer / variant 级库存状态摘要 |
+| `variant` | 商品变体名称或变体维度摘要 |
+| `category` | 商品分类或分类层级 |
 
 ## Automation
 
@@ -214,8 +224,16 @@ GitHub 工具数据集化：
 GitHub 工具数据集字段：
 
 ```text
-repo_full_name, description, stars, forks, open_issues, language, topics, html_url, updated_at, pushed_at
+repo_full_name, owner_login, owner_type, description, stars, forks, open_issues, watchers,
+language, topics, license_spdx_id, default_branch, latest_release_tag,
+latest_release_published_at, archived, fork, html_url, homepage, created_at, updated_at, pushed_at
 ```
+
+字段来源边界：
+
+1. `github_topic` 优先来自 GitHub Search API，可稳定获得仓库基础元数据、license、默认分支、公开 topic 和 freshness 字段；`latest_release_*` 对 topic 结果可能为空。
+2. `github_repo` 额外读取 GitHub REST `releases/latest`；公开仓库无 release 时保留 `latest_release=null`，不阻断基础仓库采集。
+3. 以上 endpoint 仍为 API-first/read-only 数据集化能力；预览不保存 DatasetVersion，报告生成不启动采集、不创建通知、不发送邮件。
 
 GitHub 工具数据集导出复用 Dataset Export：
 
@@ -253,6 +271,17 @@ GitHub 工具数据集导出复用 Dataset Export：
 1. 这些接口不支持登录态抓取、风控绕过或反检测能力。
 2. `product-fanout-preview` 只预览，不创建采集源或采集任务。
 3. `product-fanout-create` 会写入采集源/任务，必须用于授权页面或测试 fixture。
+
+`AutomationProductDiscoveryResponse` 关键字段：
+
+| 字段 | 说明 |
+|---|---|
+| `product_candidates[].canonical_url` | canonical 去重后的商品 URL；`url` 当前也使用 canonical URL 作为 fan-out 输入 |
+| `page_structure.pagination_url_count` | listing/collection 中识别到的分页 URL 数 |
+| `page_structure.duplicate_url_count` | 被 canonical 去重折叠的候选 URL 数 |
+| `page_structure.skipped_url_count` | 被跳过的 URL 数，包含非商品链接和重复 canonical URL |
+| `discovery_plan.pagination_urls` | 分页 URL 样本，供人工确认后继续扩展 |
+| `discovery_plan.dedupe_summary` | 输入 URL 数、规范候选数、重复数、跳过数和 `skipped_reasons` 汇总 |
 
 ### Batch Run And Dataset
 
@@ -313,7 +342,7 @@ GitHub 工具漂移和报告：
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
 | `POST` | `/api/automation/product-schedule-approve` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、调度策略字段 | `AutomationProductScheduleApproveResponse` | 审批数据集关联采集任务的后续刷新策略 |
-| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查数据集版本与最新运行结果的字段漂移 |
+| `POST` | `/api/automation/product-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、阈值字段 | `AutomationProductDriftCheckResponse` | 检查数据集版本与最新运行结果的字段、目录 presence 和价格漂移 |
 | `POST` | `/api/automation/product-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 保存漂移快照 |
 | `GET` | `/api/automation/product-drift-events` | query: `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出漂移事件 |
 | `POST` | `/api/automation/product-drift-alert-preview` | `authorized`、`dataset_id`、`dataset_version_id?`、`min_status?`、`channel?` | `AutomationProductDriftAlertPreviewResponse` | 预览漂移告警规则 |
@@ -327,6 +356,8 @@ GitHub 工具漂移和报告：
 1. 漂移快照保存具备 fingerprint 复用，重复提交不会创建重复漂移事件。
 2. 漂移告警规则按项目、条件、渠道和启用状态复用既有规则。
 3. 采集运行失败日志已记录标准化 `failure_reason`。
+4. 商品漂移 item 返回 `row_change`、`added_row_count`、`removed_row_count`、`price_change_percent`；summary 返回 `added_rows`、`removed_rows`、`price_changed_tasks`。
+5. `drift_layers` 除 `completeness`、`field_missingness`、`task_freshness` 外，可返回 `catalog_presence` 和 `price_change`；`product_removed` 会使任务状态进入 `critical`。
 
 仍需扩展：
 
