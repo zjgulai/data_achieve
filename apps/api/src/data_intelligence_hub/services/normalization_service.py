@@ -148,6 +148,11 @@ def _github_repo_snapshot(
             "forks": _number(content.get("forks_count")),
             "open_issues": _number(content.get("open_issues_count")),
             "watchers": _number(content.get("watchers_count")),
+            "subscribers": _number(content.get("subscribers_count")),
+            "commit_freshness_days": _timestamp_age_days(
+                content.get("pushed_at"),
+                raw_record.collected_at,
+            ),
         },
         captured_at=raw_record.collected_at,
     )
@@ -181,6 +186,12 @@ def _github_topic_snapshots(
                 metrics={
                     "stars": _number(repository.get("stargazers_count")),
                     "forks": _number(repository.get("forks_count")),
+                    "open_issues": _number(repository.get("open_issues_count")),
+                    "watchers": _number(repository.get("watchers_count")),
+                    "commit_freshness_days": _timestamp_age_days(
+                        repository.get("pushed_at"),
+                        raw_record.collected_at,
+                    ),
                 },
                 captured_at=raw_record.collected_at,
             )
@@ -361,3 +372,18 @@ def _number(value: object) -> int | float | None:
     if isinstance(value, int | float):
         return value
     return None
+
+
+def _timestamp_age_days(value: object, reference: datetime) -> int | None:
+    text = _text(value)
+    if text is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    reference_utc = reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    delta = reference_utc.astimezone(UTC) - parsed.astimezone(UTC)
+    return max(delta.days, 0)

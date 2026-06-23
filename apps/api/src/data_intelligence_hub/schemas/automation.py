@@ -733,6 +733,7 @@ class AutomationBrowserLocalRunnerRequest(BaseModel):
     ] = "diagnostic_snapshot_replay"
     confirm_real_browser_probe: bool = False
     browser_harness_binary: str | None = Field(default=None, max_length=500)
+    browser_harness_cdp_url: str | None = Field(default=None, max_length=500)
     probe_timeout_seconds: int = Field(default=15, ge=3, le=45)
     artifact_retention_days: int = Field(default=7, ge=1, le=30)
     max_preview_rows: int = Field(default=20, ge=1, le=100)
@@ -1131,6 +1132,7 @@ class AutomationProductDriftItemResponse(BaseModel):
     freshness_target_hours: int | None
     stale_hours: float | None
     issues: list[str]
+    signal_groups: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class AutomationProductDriftSummaryResponse(BaseModel):
@@ -1186,10 +1188,23 @@ class AutomationGitHubToolReportRepositoryResponse(BaseModel):
     stars: int
     forks: int | None
     open_issues: int | None
+    watchers: int | None
     language: str | None
     topics: list[str]
+    license_spdx_id: str | None
+    default_branch: str | None
+    archived: bool | None
+    commit_freshness_days: int | None
+    latest_release_tag: str | None
+    latest_release_published_at: str | None
+    readme_present: bool | None
     updated_at: str | None
     pushed_at: str | None
+    maintenance_risk: Literal["low", "medium", "high", "unknown"] = "unknown"
+    risk_signals: list[str] = Field(default_factory=list)
+    install_sources: list[str] = Field(default_factory=list)
+    recommended_use_cases: list[str] = Field(default_factory=list)
+    unsuitable_boundaries: list[str] = Field(default_factory=list)
 
 
 class AutomationGitHubToolReportSummaryResponse(BaseModel):
@@ -1210,6 +1225,7 @@ class AutomationGitHubToolReportResponse(BaseModel):
     summary: AutomationGitHubToolReportSummaryResponse
     top_repositories: list[AutomationGitHubToolReportRepositoryResponse]
     recommendations: list[str]
+    risk_sections: list[dict[str, Any]]
     audit_events: list[dict[str, Any]]
     blocked_reasons: list[str]
 

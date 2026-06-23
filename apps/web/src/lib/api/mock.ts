@@ -1794,6 +1794,23 @@ export function getMockAutomationProductDriftCheck(
       issues: isCritical
         ? ["completeness_drift_exceeded", "approved_fields_missing"]
         : [],
+      signalGroups: isCritical
+        ? {
+            field_missingness: ["missing:price", "missing:sku"],
+            repository_coverage: [],
+            popularity: [],
+            issue_activity: [],
+            release_freshness: [],
+            commit_freshness: [],
+          }
+        : {
+            field_missingness: [],
+            repository_coverage: [],
+            popularity: [],
+            issue_activity: [],
+            release_freshness: [],
+            commit_freshness: [],
+          },
     };
   });
   const criticalTasks = items.filter((item) => item.status === "critical").length;
@@ -2540,6 +2557,14 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: [],
+        signalGroups: {
+          field_missingness: [],
+          repository_coverage: [],
+          popularity: [],
+          issue_activity: [],
+          release_freshness: [],
+          commit_freshness: [],
+        },
       },
       {
         taskId: "task_fanout_2",
@@ -2557,6 +2582,14 @@ function getDefaultMockProductDriftEvent(): AutomationProductDriftEvent {
         freshnessTargetHours: 6,
         staleHours: 0,
         issues: ["completeness_drift_exceeded", "approved_fields_missing"],
+        signalGroups: {
+          field_missingness: ["missing:price", "missing:sku"],
+          repository_coverage: [],
+          popularity: [],
+          issue_activity: [],
+          release_freshness: [],
+          commit_freshness: [],
+        },
       },
     ],
     auditEvents: [

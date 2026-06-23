@@ -94,8 +94,9 @@ audit event.
 
 ## Cleanup Guidance
 
-Current local evidence is intentionally limited to `tmp/browser-harness-*.json`
-and helper scripts under `tmp/`.
+Current local evidence is intentionally limited to `tmp/browser-harness-*.json`,
+helper scripts under `tmp/`, local command output, and P4 dedicated-CDP smoke
+notes.
 
 Cleanup should be explicit and reviewed. Do not use broad repository cleanup.
 Only remove the specific evidence files after the closeout has recorded their
@@ -111,6 +112,22 @@ target_url=https://example.com/
 status=blocked_local_daemon
 blocked_reason=browser_harness_cli_timeout_no_daemon_response
 browser_started=false
+collection_resources_written=false
+cookies_captured=false
+headers_captured=false
+bodies_captured=false
+```
+
+Latest P4 local isolated smoke:
+
+```text
+path=drafts/analysis/analysis-boundary-p4-browser-harness-ephemeral-probe-draft-20260622.md
+target_url=https://example.com/
+status=completed_local_isolated_cdp_smoke
+cdp_url=http://127.0.0.1:9333
+temporary_profile=/tmp/data-scrapy-p4-chrome-20260622T095755Z
+browser_started=true
+target_tab_closed=true
 collection_resources_written=false
 cookies_captured=false
 headers_captured=false

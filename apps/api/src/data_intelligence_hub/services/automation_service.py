@@ -284,8 +284,18 @@ GITHUB_TOOL_FIELDS = (
     "stars",
     "forks",
     "open_issues",
+    "watchers",
     "language",
     "topics",
+    "license_spdx_id",
+    "default_branch",
+    "archived",
+    "homepage",
+    "commit_freshness_days",
+    "latest_release_tag",
+    "latest_release_published_at",
+    "readme_present",
+    "readme_size",
     "html_url",
     "updated_at",
     "pushed_at",
@@ -1278,7 +1288,11 @@ async def run_browser_diagnostic_job_local(
             "no_files_written_no_collection_resources_created",
         ]
         if status == "blocked_ephemeral_probe":
-            blocked_reasons.append("browser_harness_binary_unavailable")
+            error_code = str(probe_result.get("error") or "")
+            if error_code == "browser_harness_isolated_cdp_required":
+                blocked_reasons.append("browser_harness_isolated_cdp_required")
+            else:
+                blocked_reasons.append("browser_harness_binary_unavailable")
         if status == "failed_ephemeral_probe":
             blocked_reasons.append("browser_harness_probe_failed")
         audit_event = {
@@ -1287,6 +1301,8 @@ async def run_browser_diagnostic_job_local(
             "run_mode": payload.run_mode,
             "probe_status": probe_result.get("status"),
             "probe_exit_code": probe_result.get("exit_code"),
+            "isolated_cdp_configured": probe_result.get("isolated_cdp_configured")
+            is True,
             "target_tab_closed": probe_result.get("target_tab_closed") is True,
             "preview_row_count": len(preview_rows),
             "selector_result_count": len(selector_results),
@@ -2656,6 +2672,7 @@ async def check_github_tool_drift(
         completeness_drop_percent: int | None = None
         missing_fields: list[str] = []
         new_missing_fields: list[str] = []
+        signal_groups: dict[str, list[str]] = {}
 
         if latest_run is None:
             issues.append("latest_run_missing")
@@ -2681,10 +2698,17 @@ async def check_github_tool_drift(
             new_missing_fields = [
                 field for field in approved_fields if field in field_completeness.missing_fields
             ]
+            signal_groups = _github_tool_drift_signal_groups(
+                version=version,
+                raw_records=github_records,
+                approved_fields=approved_fields,
+                new_missing_fields=new_missing_fields,
+            )
             if completeness_drop_percent > payload.completeness_drop_threshold_percent:
                 issues.append("completeness_drift_exceeded")
             if new_missing_fields:
                 issues.append("approved_fields_missing")
+            issues.extend(_github_tool_signal_group_issues(signal_groups))
 
         freshness_target_hours, stale_hours = _task_freshness_drift(
             task,
@@ -2712,6 +2736,7 @@ async def check_github_tool_drift(
                 freshness_target_hours=freshness_target_hours,
                 stale_hours=stale_hours,
                 issues=issues,
+                signal_groups=signal_groups,
             )
         )
         audit_events.append(
@@ -2721,6 +2746,7 @@ async def check_github_tool_drift(
                 "latest_run_id": str(latest_run.id) if latest_run else None,
                 "status": status,
                 "issues": issues,
+                "signal_groups": signal_groups,
                 "run_started": False,
                 "alert_created": False,
             }
@@ -2941,6 +2967,7 @@ async def generate_github_tool_report(
         if repository.stars >= payload.min_stars
     ])
     recommendations = _github_tool_report_recommendations(top_repositories, payload.min_stars)
+    risk_sections = _github_tool_report_risk_sections(repositories)
 
     return AutomationGitHubToolReportResponse(
         generated_at=datetime.now(UTC),
@@ -2958,6 +2985,7 @@ async def generate_github_tool_report(
         ),
         top_repositories=top_repositories,
         recommendations=recommendations,
+        risk_sections=risk_sections,
         audit_events=[
             {
                 "event": "github_tool_report_generated",
@@ -3053,6 +3081,7 @@ async def create_github_tool_report_asset(
         summary=summary,
         top_repositories=generated.top_repositories,
         recommendations=generated.recommendations,
+        risk_sections=generated.risk_sections,
         audit_events=audit_events,
         blocked_reasons=[
             "报告资产已保存到 Report 中心；不会启动采集、创建通知或发送邮件。"
@@ -5715,6 +5744,7 @@ def _browser_executor_runtime_isolation(job: BrowserDiagnosticJob) -> dict[str, 
         "mode": "local_ephemeral_browser_context",
         "runner": job.runner,
         "execution_mode": job.execution_mode,
+        "requires_dedicated_cdp_url": True,
         "reuse_user_profile": False,
         "cookie_export_allowed": False,
         "login_state_allowed": False,
@@ -6147,6 +6177,11 @@ def _browser_local_runner_network_metadata_summary(
             "schema_version": ephemeral_probe.get("schema_version"),
             "status": ephemeral_probe.get("status"),
             "target_url": ephemeral_probe.get("target_url"),
+            "isolated_cdp_configured": ephemeral_probe.get(
+                "isolated_cdp_configured"
+            )
+            is True,
+            "cdp_endpoint": ephemeral_probe.get("cdp_endpoint"),
             "page_info": ephemeral_probe.get("page_info") or {},
             "target_tab_closed": ephemeral_probe.get("target_tab_closed") is True,
             "redacted": True,
@@ -6222,12 +6257,36 @@ def _run_browser_harness_ephemeral_probe(
     job: BrowserDiagnosticJob,
     payload: AutomationBrowserLocalRunnerRequest,
 ) -> dict[str, Any]:
+    cdp_url = (
+        payload.browser_harness_cdp_url.strip()
+        if isinstance(payload.browser_harness_cdp_url, str)
+        and payload.browser_harness_cdp_url.strip()
+        else None
+    )
     binary = (
         payload.browser_harness_binary
         or os.environ.get("BROWSER_HARNESS_BIN")
         or "/Users/pray/.local/bin/browser-harness"
     )
+    if cdp_url is None:
+        return {
+            "status": "blocked",
+            "browser_started": False,
+            "target_tab_closed": False,
+            "exit_code": None,
+            "binary": _browser_harness_binary_label(binary),
+            "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "isolated_cdp_configured": False,
+            "cdp_endpoint": None,
+            "error": "browser_harness_isolated_cdp_required",
+            "stdout_tail": "",
+            "stderr_tail": "",
+        }
     script = _browser_harness_ephemeral_probe_script(job.requested_url)
+    env = os.environ.copy()
+    env["BU_CDP_URL"] = cdp_url
+    env["BU_NAME"] = f"data-scrapy-{job.id}"
+    env.pop("BU_CDP_WS", None)
     try:
         completed = subprocess.run(
             [binary],
@@ -6236,6 +6295,7 @@ def _run_browser_harness_ephemeral_probe(
             capture_output=True,
             timeout=payload.probe_timeout_seconds,
             check=False,
+            env=env,
         )
     except FileNotFoundError:
         return {
@@ -6245,6 +6305,8 @@ def _run_browser_harness_ephemeral_probe(
             "exit_code": None,
             "binary": _browser_harness_binary_label(binary),
             "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "isolated_cdp_configured": True,
+            "cdp_endpoint": _browser_harness_cdp_endpoint_label(cdp_url),
             "error": "browser_harness_binary_not_found",
             "stdout_tail": "",
             "stderr_tail": "",
@@ -6257,6 +6319,8 @@ def _run_browser_harness_ephemeral_probe(
             "exit_code": None,
             "binary": _browser_harness_binary_label(binary),
             "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "isolated_cdp_configured": True,
+            "cdp_endpoint": _browser_harness_cdp_endpoint_label(cdp_url),
             "error": "browser_harness_probe_timeout",
             "stdout_tail": _tail_text(exc.stdout),
             "stderr_tail": _tail_text(exc.stderr),
@@ -6271,6 +6335,8 @@ def _run_browser_harness_ephemeral_probe(
             "exit_code": completed.returncode,
             "binary": _browser_harness_binary_label(binary),
             "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "isolated_cdp_configured": True,
+            "cdp_endpoint": _browser_harness_cdp_endpoint_label(cdp_url),
             "error": "browser_harness_probe_nonzero_exit",
             "stdout_tail": _tail_text(completed.stdout),
             "stderr_tail": _tail_text(completed.stderr),
@@ -6283,6 +6349,8 @@ def _run_browser_harness_ephemeral_probe(
             "exit_code": completed.returncode,
             "binary": _browser_harness_binary_label(binary),
             "target_url": _browser_probe_sanitize_url(job.requested_url),
+            "isolated_cdp_configured": True,
+            "cdp_endpoint": _browser_harness_cdp_endpoint_label(cdp_url),
             "error": "browser_harness_probe_json_not_found",
             "stdout_tail": _tail_text(completed.stdout),
             "stderr_tail": _tail_text(completed.stderr),
@@ -6296,6 +6364,8 @@ def _run_browser_harness_ephemeral_probe(
         "exit_code": completed.returncode,
         "binary": _browser_harness_binary_label(binary),
         "target_url": _browser_probe_sanitize_url(job.requested_url),
+        "isolated_cdp_configured": True,
+        "cdp_endpoint": _browser_harness_cdp_endpoint_label(cdp_url),
         "page_info": _sanitize_browser_harness_page_info(page_info),
         "stdout_tail": "",
         "stderr_tail": _tail_text(completed.stderr),
@@ -6368,12 +6438,22 @@ def _browser_harness_binary_label(value: str) -> str:
     return path.name or "browser-harness"
 
 
+def _browser_harness_cdp_endpoint_label(value: str) -> str:
+    parsed = urlparse(value)
+    host = parsed.hostname or "unknown-host"
+    port = f":{parsed.port}" if parsed.port else ""
+    scheme = parsed.scheme or "http"
+    return f"{scheme}://{host}{port}"
+
+
 def _tail_text(value: str | bytes | None, limit: int = 600) -> str:
     text = value.decode("utf-8", errors="replace") if isinstance(value, bytes) else str(value or "")
     text = text.strip()
     if not text:
         return ""
-    redacted = text.replace("Authorization", "[redacted-header]")
+    redacted = text
+    for marker in ("Authorization", "Cookie", "Set-Cookie"):
+        redacted = redacted.replace(marker, "[redacted-header]")
     return redacted[-limit:]
 
 
@@ -6388,6 +6468,9 @@ def _browser_harness_probe_artifact_manifest(
             "status": probe_result.get("status"),
             "binary": probe_result.get("binary"),
             "exit_code": probe_result.get("exit_code"),
+            "isolated_cdp_configured": probe_result.get("isolated_cdp_configured")
+            is True,
+            "cdp_endpoint": probe_result.get("cdp_endpoint"),
             "files_written": False,
             "object_storage_write": False,
             "target_tab_closed": probe_result.get("target_tab_closed") is True,
@@ -6406,6 +6489,9 @@ def _browser_harness_probe_network_summary(
             "schema_version": "browser_harness_ephemeral_probe.v1",
             "status": probe_result.get("status"),
             "target_url": probe_result.get("target_url"),
+            "isolated_cdp_configured": probe_result.get("isolated_cdp_configured")
+            is True,
+            "cdp_endpoint": probe_result.get("cdp_endpoint"),
             "page_info": probe_result.get("page_info") or {},
             "target_tab_closed": probe_result.get("target_tab_closed") is True,
             "stdout_tail": probe_result.get("stdout_tail") or "",
@@ -7219,6 +7305,11 @@ def _github_tool_dataset_fields(fields: list[str] | None) -> list[str]:
         "open_issues",
         "language",
         "topics",
+        "license_spdx_id",
+        "default_branch",
+        "commit_freshness_days",
+        "latest_release_tag",
+        "readme_present",
         "html_url",
         "updated_at",
     ]
@@ -7264,7 +7355,7 @@ def _github_tool_rows(
     for index, repo in enumerate(repo_items):
         if not isinstance(repo, dict):
             continue
-        values_by_field = _github_tool_values(repo)
+        values_by_field = _github_tool_values(repo, raw_record.collected_at)
         values = {
             field: values_by_field.get(field)
             for field in selected_fields
@@ -7291,25 +7382,91 @@ def _github_tool_rows(
     return rows
 
 
-def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
+def _github_tool_values(repo: dict[str, object], collected_at: datetime) -> dict[str, object]:
     stars = repo.get("stargazers_count", repo.get("stars"))
     forks = repo.get("forks_count", repo.get("forks"))
     open_issues = repo.get("open_issues_count", repo.get("open_issues"))
+    watchers = repo.get("watchers_count", repo.get("watchers"))
     full_name = repo.get("full_name") or repo.get("repo_full_name")
     html_url = repo.get("html_url") or repo.get("url")
     topics = repo.get("topics")
+    license_spdx_id = _github_tool_license_spdx_id(repo)
+    latest_release_tag = _github_tool_latest_release_tag(repo)
+    latest_release_published_at = _github_tool_latest_release_published_at(repo)
+    readme_present = _github_tool_readme_present(repo)
+    readme_size = _github_tool_readme_size(repo)
     return {
         "repo_full_name": full_name,
         "description": repo.get("description"),
         "stars": stars,
         "forks": forks,
         "open_issues": open_issues,
+        "watchers": watchers,
         "language": repo.get("language"),
         "topics": topics if isinstance(topics, list) else [],
+        "license_spdx_id": license_spdx_id,
+        "default_branch": repo.get("default_branch"),
+        "archived": repo.get("archived"),
+        "homepage": repo.get("homepage"),
+        "commit_freshness_days": _timestamp_age_days(repo.get("pushed_at"), collected_at),
+        "latest_release_tag": latest_release_tag,
+        "latest_release_published_at": latest_release_published_at,
+        "readme_present": readme_present,
+        "readme_size": readme_size,
         "html_url": html_url,
         "updated_at": repo.get("updated_at"),
         "pushed_at": repo.get("pushed_at"),
     }
+
+
+def _github_tool_license_spdx_id(repo: dict[str, object]) -> object:
+    direct_value = repo.get("license_spdx_id")
+    if _has_field_value(direct_value):
+        return direct_value
+    license_value = repo.get("license")
+    if isinstance(license_value, dict):
+        return license_value.get("spdx_id") or license_value.get("key")
+    return None
+
+
+def _github_tool_latest_release_tag(repo: dict[str, object]) -> object:
+    direct_value = repo.get("latest_release_tag")
+    if _has_field_value(direct_value):
+        return direct_value
+    release = repo.get("latest_release")
+    if isinstance(release, dict):
+        return release.get("tag_name")
+    return None
+
+
+def _github_tool_latest_release_published_at(repo: dict[str, object]) -> object:
+    direct_value = repo.get("latest_release_published_at")
+    if _has_field_value(direct_value):
+        return direct_value
+    release = repo.get("latest_release")
+    if isinstance(release, dict):
+        return release.get("published_at")
+    return None
+
+
+def _github_tool_readme_present(repo: dict[str, object]) -> object:
+    direct_value = repo.get("readme_present")
+    if isinstance(direct_value, bool):
+        return direct_value
+    readme = repo.get("readme")
+    if isinstance(readme, dict):
+        return True
+    return None
+
+
+def _github_tool_readme_size(repo: dict[str, object]) -> object:
+    direct_value = repo.get("readme_size")
+    if _has_field_value(direct_value):
+        return direct_value
+    readme = repo.get("readme")
+    if isinstance(readme, dict):
+        return readme.get("size")
+    return None
 
 
 def _github_tool_field_completeness_for_fields(
@@ -7348,6 +7505,159 @@ def _github_tool_field_completeness_for_fields(
         completeness_ratio=round(completeness_percent / 100, 4),
         completeness_percent=completeness_percent,
     )
+
+
+def _github_tool_drift_signal_groups(
+    *,
+    version: DatasetVersion,
+    raw_records: list[RawRecord],
+    approved_fields: list[str],
+    new_missing_fields: list[str],
+) -> dict[str, list[str]]:
+    groups: dict[str, list[str]] = {}
+    if new_missing_fields:
+        groups["field_missingness"] = [
+            f"missing:{field}" for field in new_missing_fields
+        ]
+
+    baseline_rows = _github_tool_saved_row_values(version.rows)
+    latest_rows = _github_tool_latest_row_values(raw_records, approved_fields)
+    if baseline_rows and len(latest_rows) < len(baseline_rows):
+        groups.setdefault("repository_coverage", []).append(
+            f"row_count_decreased:{len(baseline_rows)}->{len(latest_rows)}"
+        )
+
+    latest_by_key = {
+        key: values
+        for values in latest_rows
+        if (key := _github_tool_row_identity(values)) is not None
+    }
+    for baseline in baseline_rows:
+        key = _github_tool_row_identity(baseline)
+        if key is None:
+            continue
+        latest = latest_by_key.get(key)
+        if latest is None:
+            groups.setdefault("repository_coverage", []).append(f"missing_repo:{key}")
+            continue
+        _append_github_tool_metric_drift(groups, baseline, latest)
+        _append_github_tool_release_drift(groups, baseline, latest)
+        _append_github_tool_commit_freshness_drift(groups, baseline, latest)
+    return groups
+
+
+def _github_tool_saved_row_values(saved_rows: list[dict[str, Any]]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for saved_row in saved_rows:
+        values = saved_row.get("values")
+        if isinstance(values, dict):
+            rows.append(dict(values))
+    return rows
+
+
+def _github_tool_latest_row_values(
+    raw_records: list[RawRecord],
+    approved_fields: list[str],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for raw_record in raw_records:
+        for row in _github_tool_rows(raw_record, approved_fields):
+            rows.append(dict(row.values))
+    return rows
+
+
+def _github_tool_row_identity(values: dict[str, object]) -> str | None:
+    for field in ("repo_full_name", "html_url"):
+        value = _string_or_none(values.get(field))
+        if value is not None:
+            return value
+    return None
+
+
+def _append_github_tool_metric_drift(
+    groups: dict[str, list[str]],
+    baseline: dict[str, object],
+    latest: dict[str, object],
+) -> None:
+    for field in ("stars", "forks"):
+        baseline_value = _int_or_none(baseline.get(field))
+        latest_value = _int_or_none(latest.get(field))
+        if baseline_value is None or latest_value is None:
+            continue
+        if latest_value < baseline_value:
+            groups.setdefault("popularity", []).append(
+                f"{field}_decreased:{baseline_value}->{latest_value}"
+            )
+
+    baseline_issues = _int_or_none(baseline.get("open_issues"))
+    latest_issues = _int_or_none(latest.get("open_issues"))
+    if baseline_issues is None or latest_issues is None:
+        return
+    issue_increase = latest_issues - baseline_issues
+    issue_threshold = max(10, round(baseline_issues * 0.25))
+    if issue_increase >= issue_threshold:
+        groups.setdefault("issue_activity", []).append(
+            f"open_issues_increased:{baseline_issues}->{latest_issues}"
+        )
+
+
+def _append_github_tool_release_drift(
+    groups: dict[str, list[str]],
+    baseline: dict[str, object],
+    latest: dict[str, object],
+) -> None:
+    baseline_tag = _string_or_none(baseline.get("latest_release_tag"))
+    latest_tag = _string_or_none(latest.get("latest_release_tag"))
+    if baseline_tag and not latest_tag:
+        groups.setdefault("release_freshness", []).append("latest_release_tag_missing")
+    elif baseline_tag and latest_tag and baseline_tag != latest_tag:
+        groups.setdefault("release_freshness", []).append(
+            f"latest_release_changed:{baseline_tag}->{latest_tag}"
+        )
+
+    baseline_published = _string_or_none(baseline.get("latest_release_published_at"))
+    latest_published = _string_or_none(latest.get("latest_release_published_at"))
+    if baseline_published and not latest_published:
+        groups.setdefault("release_freshness", []).append(
+            "latest_release_published_at_missing"
+        )
+
+
+def _append_github_tool_commit_freshness_drift(
+    groups: dict[str, list[str]],
+    baseline: dict[str, object],
+    latest: dict[str, object],
+) -> None:
+    baseline_days = _int_or_none(baseline.get("commit_freshness_days"))
+    latest_days = _int_or_none(latest.get("commit_freshness_days"))
+    if latest_days is None:
+        return
+    if latest_days > 180:
+        groups.setdefault("commit_freshness", []).append(
+            f"commit_freshness_stale:{latest_days}"
+        )
+    elif baseline_days is not None and latest_days - baseline_days > 30:
+        groups.setdefault("commit_freshness", []).append(
+            f"commit_freshness_regressed:{baseline_days}->{latest_days}"
+        )
+
+
+def _github_tool_signal_group_issues(signal_groups: dict[str, list[str]]) -> list[str]:
+    issues: list[str] = []
+    if signal_groups.get("popularity"):
+        issues.append("popularity_metrics_regressed")
+    if signal_groups.get("issue_activity"):
+        issues.append("issue_activity_increased")
+    if any(
+        signal.startswith("latest_release") and signal.endswith("missing")
+        for signal in signal_groups.get("release_freshness", [])
+    ):
+        issues.append("release_freshness_missing")
+    if signal_groups.get("commit_freshness"):
+        issues.append("commit_freshness_stale")
+    if signal_groups.get("repository_coverage"):
+        issues.append("repository_coverage_changed")
+    return issues
 
 
 def _cleaning_plan_dry_run_row(
@@ -7560,8 +7870,12 @@ def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
         "normalize topics into lower-case tag arrays",
         "keep missing values explicit as null for downstream review",
     ]
+    if _has_any_field(selected_fields, {"license_spdx_id", "default_branch"}):
+        steps.append("preserve license and default_branch as provenance review fields")
     if "updated_at" in selected_fields or "pushed_at" in selected_fields:
         steps.append("preserve GitHub timestamps as ISO strings for freshness review")
+    if _has_any_field(selected_fields, {"latest_release_tag", "latest_release_published_at"}):
+        steps.append("preserve release metadata for maintenance and freshness review")
     return steps
 
 
@@ -7593,10 +7907,34 @@ def _github_tool_export_preview(
     return {
         "format": "json",
         "schema": {
+            "schema_version": "github_tool_radar.v2",
             "fields": selected_fields,
             "primary_key": "html_url",
             "missing_value_policy": "explicit_null",
             "dataset_type": "github_tool_radar",
+            "collector_versions": {
+                "github_repo": "github_repo.collector.v2",
+                "github_topic": "github_topic.collector.v2",
+            },
+            "api_endpoint_origins": {
+                "github_repo": [
+                    "GET /repos/{owner}/{repo}",
+                    "GET /repos/{owner}/{repo}/releases/latest",
+                    "GET /repos/{owner}/{repo}/readme",
+                ],
+                "github_topic": ["GET /search/repositories"],
+            },
+            "field_sources": _github_tool_field_sources(selected_fields),
+            "provenance": {
+                "produced_by": "data_intelligence_hub.automation.github_tool_dataset",
+                "row_model": "AutomationProductDatasetRowResponse",
+                "lineage_fields": ["task_run_id", "raw_record_id", "source_url"],
+                "production_side_effects": {
+                    "run_started": False,
+                    "export_file_written": False,
+                    "notification_created": False,
+                },
+            },
         },
         "rows": [
             {
@@ -7606,6 +7944,116 @@ def _github_tool_export_preview(
             for row in rows[:10]
         ],
     }
+
+
+def _has_any_field(selected_fields: list[str], candidates: set[str]) -> bool:
+    return any(field in candidates for field in selected_fields)
+
+
+def _github_tool_field_sources(selected_fields: list[str]) -> dict[str, dict[str, object]]:
+    base_sources: dict[str, dict[str, object]] = {
+        "repo_full_name": {
+            "source": "github_repository",
+            "origin": "full_name",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "description": {
+            "source": "github_repository",
+            "origin": "description",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "stars": {
+            "source": "github_repository",
+            "origin": "stargazers_count",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "forks": {
+            "source": "github_repository",
+            "origin": "forks_count",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "open_issues": {
+            "source": "github_repository",
+            "origin": "open_issues_count",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "watchers": {
+            "source": "github_repository",
+            "origin": "watchers_count",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "language": {
+            "source": "github_repository",
+            "origin": "language",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "topics": {
+            "source": "github_repository",
+            "origin": "topics",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "license_spdx_id": {
+            "source": "github_repository.license",
+            "origin": "license.spdx_id",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "default_branch": {
+            "source": "github_repository",
+            "origin": "default_branch",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "archived": {
+            "source": "github_repository",
+            "origin": "archived",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "homepage": {
+            "source": "github_repository",
+            "origin": "homepage",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "commit_freshness_days": {
+            "source": "derived",
+            "origin": "collected_at - pushed_at",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "latest_release_tag": {
+            "source": "github_latest_release",
+            "origin": "latest_release.tag_name",
+            "collector_types": ["github_repo"],
+        },
+        "latest_release_published_at": {
+            "source": "github_latest_release",
+            "origin": "latest_release.published_at",
+            "collector_types": ["github_repo"],
+        },
+        "readme_present": {
+            "source": "github_readme",
+            "origin": "readme exists",
+            "collector_types": ["github_repo"],
+        },
+        "readme_size": {
+            "source": "github_readme",
+            "origin": "readme.size",
+            "collector_types": ["github_repo"],
+        },
+        "html_url": {
+            "source": "github_repository",
+            "origin": "html_url",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "updated_at": {
+            "source": "github_repository",
+            "origin": "updated_at",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+        "pushed_at": {
+            "source": "github_repository",
+            "origin": "pushed_at",
+            "collector_types": ["github_repo", "github_topic"],
+        },
+    }
+    return {field: base_sources[field] for field in selected_fields if field in base_sources}
 
 
 def _github_tool_report_repositories(
@@ -7625,21 +8073,207 @@ def _github_tool_report_repositories(
             for topic in topics_value
             if str(topic).strip()
         ] if isinstance(topics_value, list) else []
+        stars = _int_or_zero(values.get("stars"))
+        open_issues = _int_or_none(values.get("open_issues"))
+        archived = _bool_or_none(values.get("archived"))
+        commit_freshness_days = _int_or_none(values.get("commit_freshness_days"))
+        latest_release_tag = _string_or_none(values.get("latest_release_tag"))
+        license_spdx_id = _string_or_none(values.get("license_spdx_id"))
+        readme_present = _bool_or_none(values.get("readme_present"))
+        risk_signals = _github_tool_repository_risk_signals(
+            archived=archived,
+            license_spdx_id=license_spdx_id,
+            latest_release_tag=latest_release_tag,
+            readme_present=readme_present,
+            commit_freshness_days=commit_freshness_days,
+            open_issues=open_issues,
+            stars=stars,
+        )
         repositories.append(
             AutomationGitHubToolReportRepositoryResponse(
                 repo_full_name=repo_full_name,
                 html_url=_string_or_none(values.get("html_url")),
                 description=_string_or_none(values.get("description")),
-                stars=_int_or_zero(values.get("stars")),
+                stars=stars,
                 forks=_int_or_none(values.get("forks")),
-                open_issues=_int_or_none(values.get("open_issues")),
+                open_issues=open_issues,
+                watchers=_int_or_none(values.get("watchers")),
                 language=_string_or_none(values.get("language")),
                 topics=topics,
+                license_spdx_id=license_spdx_id,
+                default_branch=_string_or_none(values.get("default_branch")),
+                archived=archived,
+                commit_freshness_days=commit_freshness_days,
+                latest_release_tag=latest_release_tag,
+                latest_release_published_at=_string_or_none(
+                    values.get("latest_release_published_at")
+                ),
+                readme_present=readme_present,
                 updated_at=_string_or_none(values.get("updated_at")),
                 pushed_at=_string_or_none(values.get("pushed_at")),
+                maintenance_risk=_github_tool_maintenance_risk(risk_signals),
+                risk_signals=risk_signals,
+                install_sources=_github_tool_install_sources(
+                    html_url=_string_or_none(values.get("html_url")),
+                    latest_release_tag=latest_release_tag,
+                    readme_present=readme_present,
+                ),
+                recommended_use_cases=_github_tool_recommended_use_cases(
+                    language=_string_or_none(values.get("language")),
+                    topics=topics,
+                    stars=stars,
+                ),
+                unsuitable_boundaries=_github_tool_unsuitable_boundaries(
+                    risk_signals=risk_signals,
+                    license_spdx_id=license_spdx_id,
+                ),
             )
         )
     return repositories
+
+
+def _github_tool_repository_risk_signals(
+    *,
+    archived: bool | None,
+    license_spdx_id: str | None,
+    latest_release_tag: str | None,
+    readme_present: bool | None,
+    commit_freshness_days: int | None,
+    open_issues: int | None,
+    stars: int,
+) -> list[str]:
+    signals: list[str] = []
+    if archived is True:
+        signals.append("repository_archived")
+    if license_spdx_id is None:
+        signals.append("license_missing")
+    if latest_release_tag is None:
+        signals.append("release_missing")
+    if readme_present is False:
+        signals.append("readme_missing")
+    if commit_freshness_days is None:
+        signals.append("commit_freshness_unknown")
+    elif commit_freshness_days > 180:
+        signals.append("commit_stale_over_180_days")
+    elif commit_freshness_days > 90:
+        signals.append("commit_stale_over_90_days")
+    if open_issues is not None and stars > 0 and open_issues / stars > 0.05:
+        signals.append("high_open_issue_ratio")
+    return signals
+
+
+def _github_tool_maintenance_risk(
+    risk_signals: list[str],
+) -> Literal["low", "medium", "high", "unknown"]:
+    if "repository_archived" in risk_signals or "commit_stale_over_180_days" in risk_signals:
+        return "high"
+    medium_signals = {
+        "license_missing",
+        "release_missing",
+        "readme_missing",
+        "commit_stale_over_90_days",
+        "high_open_issue_ratio",
+    }
+    if any(signal in medium_signals for signal in risk_signals):
+        return "medium"
+    if "commit_freshness_unknown" in risk_signals:
+        return "unknown"
+    return "low"
+
+
+def _github_tool_install_sources(
+    *,
+    html_url: str | None,
+    latest_release_tag: str | None,
+    readme_present: bool | None,
+) -> list[str]:
+    sources: list[str] = []
+    if html_url is not None:
+        sources.append("repository_url")
+    if latest_release_tag is not None:
+        sources.append("latest_release")
+    if readme_present is True:
+        sources.append("readme_metadata")
+    return sources
+
+
+def _github_tool_recommended_use_cases(
+    *,
+    language: str | None,
+    topics: list[str],
+    stars: int,
+) -> list[str]:
+    use_cases: list[str] = []
+    normalized_topics = {topic.lower() for topic in topics}
+    if "browser-automation" in normalized_topics or "crawler" in normalized_topics:
+        use_cases.append("collection_tool_benchmark")
+    if "ai-agent" in normalized_topics:
+        use_cases.append("agent_browser_workflow_reference")
+    if language == "Python":
+        use_cases.append("python_collector_stack_reference")
+    if stars >= 10000:
+        use_cases.append("high_adoption_training_candidate")
+    return use_cases or ["manual_review_required"]
+
+
+def _github_tool_unsuitable_boundaries(
+    *,
+    risk_signals: list[str],
+    license_spdx_id: str | None,
+) -> list[str]:
+    boundaries = [
+        "not_a_license_clearance",
+        "not_a_security_audit",
+        "not_a_provider_call_or_live_install",
+    ]
+    if license_spdx_id is None:
+        boundaries.append("do_not_redistribute_until_license_reviewed")
+    if "repository_archived" in risk_signals:
+        boundaries.append("do_not_use_as_new_dependency_without_owner_review")
+    if "release_missing" in risk_signals:
+        boundaries.append("do_not_assume_stable_release_channel")
+    return boundaries
+
+
+def _github_tool_report_risk_sections(
+    repositories: list[AutomationGitHubToolReportRepositoryResponse],
+) -> list[dict[str, Any]]:
+    risk_counts: dict[str, int] = {"low": 0, "medium": 0, "high": 0, "unknown": 0}
+    all_use_cases: set[str] = set()
+    all_boundaries: set[str] = set()
+    all_install_sources: set[str] = set()
+    for repository in repositories:
+        risk_counts[repository.maintenance_risk] += 1
+        all_use_cases.update(repository.recommended_use_cases)
+        all_boundaries.update(repository.unsuitable_boundaries)
+        all_install_sources.update(repository.install_sources)
+    return [
+        {
+            "title": "维护风险",
+            "items": [f"{risk}={count}" for risk, count in risk_counts.items()],
+            "evidence_fields": [
+                "archived",
+                "license_spdx_id",
+                "latest_release_tag",
+                "readme_present",
+                "commit_freshness_days",
+                "open_issues",
+                "stars",
+            ],
+        },
+        {
+            "title": "适用采集场景",
+            "items": sorted(all_use_cases) or ["manual_review_required"],
+        },
+        {
+            "title": "不适用边界",
+            "items": sorted(all_boundaries),
+        },
+        {
+            "title": "安装与溯源入口",
+            "items": sorted(all_install_sources) or ["repository_url_missing"],
+        },
+    ]
 
 
 def _count_repository_languages(
@@ -7677,8 +8311,17 @@ def _github_tool_report_recommendations(
             else f"未达到 {min_stars} stars 门槛"
         )
         topics = "、".join(repository.topics[:3]) if repository.topics else "未标注 topic"
+        license_note = repository.license_spdx_id or "未标注 license"
+        release_note = repository.latest_release_tag or "未发现 release"
+        freshness_note = (
+            f"最近 commit 距采集 {repository.commit_freshness_days} 天"
+            if repository.commit_freshness_days is not None
+            else "commit 新鲜度未知"
+        )
+        risk_note = f"维护风险={repository.maintenance_risk}"
         recommendations.append(
             f"{repository.repo_full_name} 具备 {repository.stars} stars，{threshold_note}；"
+            f"{license_note}，{release_note}，{freshness_note}，{risk_note}；"
             f"可优先用于 {topics} 方向的数据采集工具培训与 SOP 编写。"
         )
     return recommendations
@@ -7687,19 +8330,31 @@ def _github_tool_report_recommendations(
 def _render_github_tool_report_asset_content(
     report: AutomationGitHubToolReportResponse,
 ) -> str:
+    repository_table_header = (
+        "| 仓库 | Stars | 语言 | License | Release | Commit freshness | "
+        "Open issues | Topics | 链接 |"
+    )
     top_repository_lines = [
-        "| 仓库 | Stars | 语言 | Open issues | Topics | 链接 |",
-        "| --- | ---: | --- | ---: | --- | --- |",
+        repository_table_header,
+        "| --- | ---: | --- | --- | --- | ---: | ---: | --- | --- |",
     ]
     for repository in report.top_repositories:
         topics = "、".join(repository.topics[:5]) if repository.topics else "未标注"
         html_url = repository.html_url or ""
         open_issues = repository.open_issues if repository.open_issues is not None else "-"
+        freshness = (
+            repository.commit_freshness_days
+            if repository.commit_freshness_days is not None
+            else "-"
+        )
         top_repository_lines.append(
             "| "
             f"{repository.repo_full_name} | "
             f"{repository.stars} | "
             f"{repository.language or '-'} | "
+            f"{repository.license_spdx_id or '-'} | "
+            f"{repository.latest_release_tag or '-'} | "
+            f"{freshness} | "
             f"{open_issues} | "
             f"{topics} | "
             f"{html_url} |"
@@ -7712,6 +8367,9 @@ def _render_github_tool_report_asset_content(
     languages = _format_github_tool_report_counts(report.summary.languages)
     topics = _format_github_tool_report_counts(report.summary.top_topics)
     fields = "、".join(report.version.selected_fields)
+    schema = report.version.export_preview.get("schema", {})
+    schema_version = schema.get("schema_version") if isinstance(schema, dict) else None
+    risk_section_lines = _render_github_tool_risk_section_lines(report.risk_sections)
 
     sections = [
         f"# GitHub 工具雷达报告 - {report.dataset.name}",
@@ -7721,6 +8379,7 @@ def _render_github_tool_report_asset_content(
         f"- dataset_id: {report.dataset.id}",
         f"- dataset_version_id: {report.version.id}",
         f"- version_number: {report.version.version_number}",
+        f"- schema_version: {schema_version or 'unknown'}",
         f"- selected_fields: {fields}",
         f"- row_count: {report.version.row_count}",
         f"- average_completeness_percent: {report.version.average_completeness_percent}",
@@ -7735,6 +8394,9 @@ def _render_github_tool_report_asset_content(
         "## Top 仓库",
         *top_repository_lines,
         "",
+        "## 维护风险与使用边界",
+        *risk_section_lines,
+        "",
         "## 培训应用建议",
         *recommendation_lines,
         "",
@@ -7744,6 +8406,21 @@ def _render_github_tool_report_asset_content(
         "- 若用于培训材料，需要结合最新 drift check 复核字段完整度和新鲜度。",
     ]
     return "\n".join(sections).strip()
+
+
+def _render_github_tool_risk_section_lines(
+    risk_sections: list[dict[str, Any]],
+) -> list[str]:
+    lines: list[str] = []
+    for section in risk_sections:
+        title = _string_or_none(section.get("title")) or "未命名风险项"
+        lines.append(f"### {title}")
+        items = section.get("items")
+        if isinstance(items, list) and items:
+            lines.extend(f"- {item}" for item in items)
+        else:
+            lines.append("- 无")
+    return lines
 
 
 def _format_github_tool_report_counts(counts: dict[str, int]) -> str:
@@ -7779,8 +8456,35 @@ def _int_or_none(value: object) -> int | None:
     return None
 
 
+def _bool_or_none(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"true", "1", "yes"}:
+            return True
+        if text in {"false", "0", "no"}:
+            return False
+    return None
+
+
 def _int_or_zero(value: object) -> int:
     return _int_or_none(value) or 0
+
+
+def _timestamp_age_days(value: object, reference: datetime) -> int | None:
+    text = _string_or_none(value)
+    if text is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    reference_utc = reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    delta = reference_utc.astimezone(UTC) - parsed.astimezone(UTC)
+    return max(delta.days, 0)
 
 
 async def _dataset_product_raw_records(

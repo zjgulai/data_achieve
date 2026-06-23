@@ -881,6 +881,7 @@ type AutomationProductDriftCheckResponse = {
     freshness_target_hours: number | null;
     stale_hours: number | null;
     issues: string[];
+    signal_groups: Record<string, string[]>;
   }>;
   summary: {
     requested_tasks: number;
@@ -941,12 +942,30 @@ type AutomationGitHubToolReportResponse = {
     stars: number;
     forks: number | null;
     open_issues: number | null;
+    watchers: number | null;
     language: string | null;
     topics: string[];
+    license_spdx_id: string | null;
+    default_branch: string | null;
+    archived: boolean | null;
+    commit_freshness_days: number | null;
+    latest_release_tag: string | null;
+    latest_release_published_at: string | null;
+    readme_present: boolean | null;
     updated_at: string | null;
     pushed_at: string | null;
+    maintenance_risk: "low" | "medium" | "high" | "unknown";
+    risk_signals: string[];
+    install_sources: string[];
+    recommended_use_cases: string[];
+    unsuitable_boundaries: string[];
   }>;
   recommendations: string[];
+  risk_sections: Array<{
+    title: string;
+    items: string[];
+    evidence_fields?: string[];
+  }>;
   audit_events: Array<Record<string, unknown>>;
   blocked_reasons: string[];
 };
@@ -1930,6 +1949,7 @@ export async function runAutomationBrowserDiagnosticJobLocal(
         run_mode: input.runMode ?? "diagnostic_snapshot_replay",
         confirm_real_browser_probe: input.confirmRealBrowserProbe ?? false,
         browser_harness_binary: input.browserHarnessBinary,
+        browser_harness_cdp_url: input.browserHarnessCdpUrl,
         probe_timeout_seconds: input.probeTimeoutSeconds ?? 15,
         artifact_retention_days: input.artifactRetentionDays ?? 7,
         max_preview_rows: input.maxPreviewRows ?? 20,
@@ -2195,7 +2215,7 @@ export async function previewAutomationGitHubToolDataset(
   input: AutomationProductDatasetPreviewInput,
 ): Promise<AutomationProductDatasetPreview> {
   if (mockApiEnabled) {
-    return getMockAutomationProductDatasetPreview(input);
+    return getMockAutomationGitHubToolDatasetPreview(input);
   }
   const response = await apiFetch<AutomationProductDatasetPreviewResponse>(
     "/api/automation/github-tool-dataset-preview",
@@ -2309,7 +2329,7 @@ export async function saveAutomationGitHubToolDataset(
   input: AutomationProductDatasetSaveInput,
 ): Promise<AutomationProductDatasetSave> {
   if (mockApiEnabled) {
-    return getMockAutomationProductDatasetSave(input);
+    return getMockAutomationGitHubToolDatasetSave(input);
   }
   const response = await apiFetch<AutomationProductDatasetSaveResponse>(
     "/api/automation/github-tool-dataset-save",
@@ -2403,7 +2423,7 @@ export async function checkAutomationGitHubToolDrift(
   input: AutomationProductDriftCheckInput,
 ): Promise<AutomationProductDriftCheck> {
   if (mockApiEnabled) {
-    return getMockAutomationProductDriftCheck(input);
+    return getMockAutomationGitHubToolDriftCheck(input);
   }
   const response = await apiFetch<AutomationProductDriftCheckResponse>(
     "/api/automation/github-tool-drift-check",
@@ -3761,6 +3781,7 @@ function mapAutomationProductDriftCheck(
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
+      signalGroups: item.signal_groups,
     })),
     summary: {
       requestedTasks: response.summary.requested_tasks,
@@ -3836,6 +3857,7 @@ function mapAutomationProductDriftEvent(
       freshnessTargetHours: item.freshness_target_hours,
       staleHours: item.stale_hours,
       issues: item.issues,
+      signalGroups: item.signal_groups,
     })),
     auditEvents: response.audit_events,
     note: response.note,
@@ -3868,12 +3890,30 @@ function mapAutomationGitHubToolReport(
       stars: repository.stars,
       forks: repository.forks,
       openIssues: repository.open_issues,
+      watchers: repository.watchers,
       language: repository.language,
       topics: repository.topics,
+      licenseSpdxId: repository.license_spdx_id,
+      defaultBranch: repository.default_branch,
+      archived: repository.archived,
+      commitFreshnessDays: repository.commit_freshness_days,
+      latestReleaseTag: repository.latest_release_tag,
+      latestReleasePublishedAt: repository.latest_release_published_at,
+      readmePresent: repository.readme_present,
       updatedAt: repository.updated_at,
       pushedAt: repository.pushed_at,
+      maintenanceRisk: repository.maintenance_risk,
+      riskSignals: repository.risk_signals,
+      installSources: repository.install_sources,
+      recommendedUseCases: repository.recommended_use_cases,
+      unsuitableBoundaries: repository.unsuitable_boundaries,
     })),
     recommendations: response.recommendations,
+    riskSections: response.risk_sections.map((section) => ({
+      title: section.title,
+      items: section.items,
+      evidenceFields: section.evidence_fields,
+    })),
     auditEvents: response.audit_events,
     blockedReasons: response.blocked_reasons,
   };
@@ -3904,6 +3944,351 @@ function mapReport(response: ReportResponse): Report {
   };
 }
 
+const githubToolMockRows = [
+  {
+    repo_full_name: "browser-use/browser-use",
+    html_url: "https://github.com/browser-use/browser-use",
+    description: "Make websites accessible for AI agents",
+    stars: 72000,
+    forks: 8400,
+    open_issues: 120,
+    watchers: 72000,
+    language: "Python",
+    topics: ["browser-automation", "ai-agent"],
+    license_spdx_id: "MIT",
+    default_branch: "main",
+    archived: false,
+    commit_freshness_days: 3,
+    latest_release_tag: "v0.7.0",
+    latest_release_published_at: "2026-06-16T00:00:00Z",
+    readme_present: true,
+    updated_at: "2026-06-20T10:00:00Z",
+    pushed_at: "2026-06-20T08:00:00Z",
+  },
+  {
+    repo_full_name: "unclecode/crawl4ai",
+    html_url: "https://github.com/unclecode/crawl4ai",
+    description: "Open-source LLM-friendly web crawler and scraper",
+    stars: 56000,
+    forks: 5200,
+    open_issues: 80,
+    watchers: 56000,
+    language: "Python",
+    topics: ["crawler", "scraping"],
+    license_spdx_id: "Apache-2.0",
+    default_branch: "main",
+    archived: false,
+    commit_freshness_days: 6,
+    latest_release_tag: "v0.8.0",
+    latest_release_published_at: "2026-06-15T00:00:00Z",
+    readme_present: true,
+    updated_at: "2026-06-19T09:00:00Z",
+    pushed_at: "2026-06-19T08:00:00Z",
+  },
+];
+
+function getMockGitHubToolExportPreview(
+  rows: AutomationProductDatasetPreview["rows"],
+  fields: string[],
+) {
+  return {
+    format: "json",
+    schema: {
+      schema_version: "github_tool_radar.v2",
+      fields,
+      primary_key: "html_url",
+      missing_value_policy: "explicit_null",
+      dataset_type: "github_tool_radar",
+      collector_versions: {
+        github_repo: "github_repo.collector.v2",
+        github_topic: "github_topic.collector.v2",
+      },
+      api_endpoint_origins: {
+        github_repo: [
+          "GET /repos/{owner}/{repo}",
+          "GET /repos/{owner}/{repo}/releases/latest",
+          "GET /repos/{owner}/{repo}/readme",
+        ],
+        github_topic: ["GET /search/repositories"],
+      },
+      field_sources: {
+        latest_release_published_at: {
+          source: "github_latest_release",
+          collector: "github_repo",
+        },
+        readme_present: {
+          source: "github_readme",
+          collector: "github_repo",
+        },
+        license_spdx_id: {
+          source: "github_repo",
+          collector: "github_repo",
+        },
+      },
+      provenance: {
+        produced_by: "data_intelligence_hub.automation.github_tool_dataset",
+        row_model: "AutomationProductDatasetRowResponse",
+        lineage_fields: ["task_run_id", "raw_record_id", "source_url"],
+        production_side_effects: {
+          run_started: false,
+          export_file_written: false,
+          notification_created: false,
+        },
+      },
+    },
+    rows: rows.map((row) =>
+      Object.fromEntries(fields.map((field) => [field, row.values[field] ?? null])),
+    ),
+  };
+}
+
+function getMockAutomationGitHubToolDatasetPreview(
+  input: AutomationProductDatasetPreviewInput,
+): AutomationProductDatasetPreview {
+  const fields = input.fields ?? [
+    "repo_full_name",
+    "stars",
+    "forks",
+    "open_issues",
+    "language",
+    "topics",
+    "html_url",
+    "license_spdx_id",
+    "default_branch",
+    "latest_release_tag",
+    "latest_release_published_at",
+    "readme_present",
+    "commit_freshness_days",
+    "updated_at",
+  ];
+  const rows = githubToolMockRows.slice(0, input.maxRows ?? 100).map((values, index) => {
+    const filteredValues = Object.fromEntries(
+      fields
+        .filter((field) => field in values)
+        .map((field) => [field, values[field as keyof typeof values]]),
+    );
+    const missingFields = fields.filter((field) => !(field in filteredValues));
+    return {
+      rowId: `github-tool-mock-row-${index + 1}`,
+      taskRunId: input.taskRunIds[index] ?? input.taskRunIds[0] ?? `run_github_topic_${index + 1}`,
+      rawRecordId: `raw_github_tool_${index + 1}`,
+      sourceUrl: String(values.html_url),
+      values: filteredValues,
+      missingFields,
+      completenessPercent: Math.round((Object.keys(filteredValues).length / fields.length) * 100),
+    };
+  });
+  const average = rows.length
+    ? Math.round(rows.reduce((total, row) => total + row.completenessPercent, 0) / rows.length)
+    : 0;
+  return {
+    createdAt: new Date().toISOString(),
+    authorizationConfirmed: input.authorized,
+    rows,
+    summary: {
+      requestedRuns: input.taskRunIds.length,
+      matchedRuns: Math.min(input.taskRunIds.length, rows.length),
+      rowsCount: rows.length,
+      selectedFields: fields,
+      averageCompletenessPercent: average,
+      exportFormat: "json",
+      exportReady: rows.length > 0,
+    },
+    cleaningScriptDraft: [
+      "strip repo_full_name and html_url",
+      "normalize html_url as canonical repository URL",
+      "preserve license and default_branch as provenance review fields",
+      "preserve release metadata for maintenance and freshness review",
+    ],
+    exportPreview: getMockGitHubToolExportPreview(rows, fields),
+    auditEvents: [
+      {
+        event: "github_tool_dataset_preview_requested",
+        requested_runs: input.taskRunIds.length,
+        schema_version: "github_tool_radar.v2",
+      },
+    ],
+    blockedReasons: ["当前为 GitHub 工具情报数据集预览，尚未写出导出文件或发送通知。"],
+  };
+}
+
+function getMockAutomationGitHubToolDatasetSave(
+  input: AutomationProductDatasetSaveInput,
+): AutomationProductDatasetSave {
+  const preview = getMockAutomationGitHubToolDatasetPreview(input);
+  const now = new Date().toISOString();
+  const normalizedName = input.name.trim() || "GitHub Tool Radar mock";
+  const datasetId = `dataset_${normalizedName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  return {
+    savedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset: {
+      id: datasetId,
+      projectId: "project_marketplace_price",
+      name: normalizedName,
+      datasetType: "github_tool_radar",
+      status: "active",
+      description: input.description ?? "Mock GitHub tool radar dataset.",
+    },
+    version: {
+      id: `${datasetId}_v1`,
+      datasetId,
+      cleaningPlanId: input.cleaningPlanId ?? null,
+      versionNumber: 1,
+      sourceTaskRunIds: input.taskRunIds,
+      selectedFields: preview.summary.selectedFields,
+      cleaningScript: preview.cleaningScriptDraft,
+      rowCount: preview.summary.rowsCount,
+      averageCompletenessPercent: preview.summary.averageCompletenessPercent,
+      status: "saved",
+      createdAt: now,
+      exportPreview: preview.exportPreview,
+    },
+    auditEvents: [
+      {
+        event: "github_tool_dataset_version_saved",
+        dataset_id: datasetId,
+        version_id: `${datasetId}_v1`,
+        schema_version: "github_tool_radar.v2",
+        export_file_written: false,
+      },
+    ],
+    blockedReasons: ["GitHub 工具数据集版本已保存；不会写出导出文件、发送通知或启动调度。"],
+  };
+}
+
+function getMockAutomationGitHubToolDriftCheck(
+  input: AutomationProductDriftCheckInput,
+): AutomationProductDriftCheck {
+  const now = new Date().toISOString();
+  const dataset = {
+    id: input.datasetId,
+    projectId: "project_marketplace_price",
+    name: "GitHub Tool Radar mock",
+    datasetType: "github_tool_radar",
+    status: "active",
+    description: "Mock GitHub tool radar dataset.",
+  };
+  const version = {
+    id: input.datasetVersionId,
+    datasetId: input.datasetId,
+    cleaningPlanId: null,
+    versionNumber: 1,
+    sourceTaskRunIds: ["run_github_topic_1"],
+    selectedFields: [
+      "repo_full_name",
+      "stars",
+      "forks",
+      "open_issues",
+      "language",
+      "topics",
+      "html_url",
+      "license_spdx_id",
+      "latest_release_published_at",
+      "updated_at",
+    ],
+    cleaningScript: [
+      "strip repo_full_name and html_url",
+      "preserve release metadata for maintenance and freshness review",
+    ],
+    rowCount: 2,
+    averageCompletenessPercent: 100,
+    status: "saved",
+    createdAt: now,
+    exportPreview: getMockGitHubToolExportPreview(
+      getMockAutomationGitHubToolDatasetPreview({
+        authorized: input.authorized,
+        taskRunIds: ["run_github_topic_1"],
+        fields: [
+          "repo_full_name",
+          "stars",
+          "forks",
+          "open_issues",
+          "language",
+          "topics",
+          "html_url",
+          "license_spdx_id",
+          "latest_release_published_at",
+          "updated_at",
+        ],
+      }).rows,
+      [
+        "repo_full_name",
+        "stars",
+        "forks",
+        "open_issues",
+        "language",
+        "topics",
+        "html_url",
+        "license_spdx_id",
+        "latest_release_published_at",
+        "updated_at",
+      ],
+    ),
+  };
+  const items = input.taskIds.map((taskId) => ({
+    taskId,
+    taskName: "GitHub Topic Radar: web-scraping",
+    sourceUrl: "https://github.com/topics/web-scraping",
+    status: "critical" as const,
+    blockedReason: null,
+    latestRunId: "run_github_topic_latest",
+    latestRunStatus: "success",
+    datasetVersionCompletenessPercent: 100,
+    latestCompletenessPercent: 79,
+    completenessDropPercent: 21,
+    missingFields: ["topics", "latest_release_published_at", "updated_at"],
+    newMissingFields: ["topics", "latest_release_published_at", "updated_at"],
+    freshnessTargetHours: null,
+    staleHours: null,
+    issues: [
+      "completeness_drift_exceeded",
+      "approved_fields_missing",
+      "issue_activity_increased",
+      "release_freshness_missing",
+      "repository_coverage_changed",
+    ],
+    signalGroups: {
+      field_missingness: [
+        "missing:topics",
+        "missing:latest_release_published_at",
+        "missing:updated_at",
+      ],
+      repository_coverage: ["row_count_decreased:2->1"],
+      popularity: ["stars_decreased:72000->70000"],
+      issue_activity: ["open_issues_increased:120->200"],
+      release_freshness: ["latest_release_published_at_missing"],
+      commit_freshness: ["commit_freshness_days_missing"],
+    },
+  }));
+  return {
+    checkedAt: now,
+    authorizationConfirmed: input.authorized,
+    dataset,
+    version,
+    items,
+    summary: {
+      requestedTasks: input.taskIds.length,
+      checkedTasks: input.taskIds.length,
+      blockedTasks: 0,
+      warningTasks: 0,
+      criticalTasks: items.length,
+      staleTasks: 0,
+      missingFieldTasks: items.length,
+      runStarted: false,
+      alertCreated: false,
+    },
+    auditEvents: [
+      {
+        event: "github_tool_drift_task_checked",
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    blockedReasons: ["GitHub 工具漂移检查只读取已保存 DatasetVersion 和最新任务结果，不启动新采集。"],
+  };
+}
+
 function getMockAutomationGitHubToolReport(
   input: AutomationGitHubToolReportInput,
 ): AutomationGitHubToolReport {
@@ -3931,7 +4316,32 @@ function getMockAutomationGitHubToolReport(
       averageCompletenessPercent: 100,
       status: "saved",
       createdAt: now,
-      exportPreview: {},
+      exportPreview: getMockGitHubToolExportPreview(
+        getMockAutomationGitHubToolDatasetPreview({
+          authorized: input.authorized,
+          taskRunIds: ["run_github_topic_1"],
+          fields: [
+            "repo_full_name",
+            "stars",
+            "html_url",
+            "language",
+            "topics",
+            "updated_at",
+            "license_spdx_id",
+            "latest_release_tag",
+          ],
+        }).rows,
+        [
+          "repo_full_name",
+          "stars",
+          "html_url",
+          "language",
+          "topics",
+          "updated_at",
+          "license_spdx_id",
+          "latest_release_tag",
+        ],
+      ),
     },
     summary: {
       repositoryCount: 2,
@@ -3955,14 +4365,72 @@ function getMockAutomationGitHubToolReport(
         stars: 72000,
         forks: 8400,
         openIssues: 120,
+        watchers: 72000,
         language: "Python",
         topics: ["browser-automation", "ai-agent"],
+        licenseSpdxId: "MIT",
+        defaultBranch: "main",
+        archived: false,
+        commitFreshnessDays: 3,
+        latestReleaseTag: "v0.7.0",
+        latestReleasePublishedAt: "2026-06-16T00:00:00Z",
+        readmePresent: true,
         updatedAt: now,
         pushedAt: now,
+        maintenanceRisk: "low",
+        riskSignals: [],
+        installSources: ["latest_release", "readme_metadata", "repository_url"],
+        recommendedUseCases: [
+          "agent_browser_workflow_reference",
+          "collection_tool_benchmark",
+          "high_adoption_training_candidate",
+          "python_collector_stack_reference",
+        ],
+        unsuitableBoundaries: [
+          "not_a_license_clearance",
+          "not_a_provider_call_or_live_install",
+          "not_a_security_audit",
+        ],
       },
     ],
     recommendations: [
       "browser-use/browser-use 具备 72000 stars，可优先用于 AI 浏览器自动化培训与 SOP 编写。",
+    ],
+    riskSections: [
+      {
+        title: "维护风险",
+        items: ["low=2", "medium=0", "high=0", "unknown=0"],
+        evidenceFields: [
+          "archived",
+          "license_spdx_id",
+          "latest_release_tag",
+          "readme_present",
+          "commit_freshness_days",
+          "open_issues",
+          "stars",
+        ],
+      },
+      {
+        title: "适用采集场景",
+        items: [
+          "agent_browser_workflow_reference",
+          "collection_tool_benchmark",
+          "high_adoption_training_candidate",
+          "python_collector_stack_reference",
+        ],
+      },
+      {
+        title: "不适用边界",
+        items: [
+          "not_a_license_clearance",
+          "not_a_provider_call_or_live_install",
+          "not_a_security_audit",
+        ],
+      },
+      {
+        title: "安装与溯源入口",
+        items: ["latest_release", "readme_metadata", "repository_url"],
+      },
     ],
     auditEvents: [],
     blockedReasons: ["Mock 报告不会启动采集、创建报告资产或发送通知。"],
@@ -3998,7 +4466,7 @@ function getMockAutomationGitHubToolReportAsset(
       projectId: "project_marketplace_price",
       reportType: "github_tool_radar",
       title: "GitHub 工具雷达报告 - GitHub Tool Radar mock v1",
-      content: "github_tool_radar\nbrowser-use/browser-use",
+      content: "github_tool_radar\nschema_version: github_tool_radar.v2\n## 维护风险与使用边界\nbrowser-use/browser-use",
       status: "generated",
       periodStart: now,
       periodEnd: now,

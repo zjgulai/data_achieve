@@ -106,17 +106,23 @@ const fieldLabels: Record<string, string> = {
   availability: "库存",
   brand: "品牌",
   canonical_url: "规范 URL",
+  commit_freshness_days: "Commit 新鲜度",
   currency: "货币",
   description: "描述",
+  default_branch: "默认分支",
   headings: "标题层级",
   image_url: "主图",
   forks: "Forks",
+  latest_release_published_at: "Release 时间",
+  latest_release_tag: "Latest release",
+  license_spdx_id: "License",
   meta_description: "页面描述",
   html_url: "仓库 URL",
   language: "语言",
   open_issues: "Open issues",
   page_title: "页面标题",
   price: "价格",
+  readme_present: "README",
   repo_full_name: "仓库全名",
   same_origin_links: "同源链接",
   sku: "SKU",
@@ -136,8 +142,23 @@ const githubToolFields = [
   "language",
   "topics",
   "html_url",
+  "license_spdx_id",
+  "default_branch",
+  "latest_release_tag",
+  "latest_release_published_at",
+  "readme_present",
+  "commit_freshness_days",
   "updated_at",
 ];
+
+const signalGroupLabels: Record<string, string> = {
+  commit_freshness: "Commit 新鲜度",
+  field_missingness: "字段缺失",
+  issue_activity: "Issue 活跃",
+  popularity: "热度",
+  release_freshness: "Release 新鲜度",
+  repository_coverage: "仓库覆盖",
+};
 
 type GitHubTopicRunState = {
   source: Source;
@@ -2574,6 +2595,13 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                 <Fact label="平均完整度" value={`${datasetPreview.summary.averageCompletenessPercent}%`} />
                 <Fact label="导出草稿" value={datasetPreview.summary.exportReady ? "已就绪" : "未就绪"} />
               </div>
+              {githubToolSchemaFacts(datasetPreview.exportPreview).length > 0 ? (
+                <div className="grid gap-3 rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] p-3 sm:grid-cols-2 xl:grid-cols-4">
+                  {githubToolSchemaFacts(datasetPreview.exportPreview).map((item) => (
+                    <Fact key={item.label} label={item.label} value={item.value} />
+                  ))}
+                </div>
+              ) : null}
               <div className="overflow-x-auto rounded-xl border border-[#D9E2CC] bg-white">
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead className="bg-[#ECF7EA] text-xs font-semibold uppercase text-[#4E7C45]">
@@ -2716,11 +2744,29 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                             >
                               <span className="font-semibold">{repository.repoFullName}</span>
                               <span className="text-xs text-[#6A625D]">
-                                {repository.stars} stars · {repository.language ?? "unknown"} · {repository.topics.slice(0, 3).join(" / ") || "no topic"}
+                                {repository.stars} stars · 风险 {repository.maintenanceRisk} · {repository.latestReleaseTag ?? "no release"} · {repository.licenseSpdxId ?? "no license"}
+                              </span>
+                              <span className="text-xs text-[#6A625D]">
+                                {repository.language ?? "unknown"} · {repository.topics.slice(0, 3).join(" / ") || "no topic"}
                               </span>
                             </a>
                           ))}
                         </div>
+                        {toolReport.riskSections.length > 0 ? (
+                          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                            {toolReport.riskSections.map((section) => (
+                              <div
+                                className="rounded-xl border border-[#D9E2CC] bg-white p-3"
+                                key={section.title}
+                              >
+                                <p className="text-xs font-semibold text-[#B47767]">{section.title}</p>
+                                <p className="mt-2 text-xs leading-5 text-[#536B40]">
+                                  {section.items.slice(0, 4).join(" / ")}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                         <div className="grid gap-2 text-xs leading-5 text-[#536B40]">
                           {toolReport.recommendations.slice(0, 3).map((recommendation) => (
                             <p className="rounded-xl bg-[#ECF7EA] px-3 py-2" key={recommendation}>
@@ -2771,6 +2817,19 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
                                 <p className="mt-1 text-xs font-semibold text-[#B85F4F]">
                                   缺失字段：{item.newMissingFields.map((field) => fieldLabels[field] ?? field).join("、")}
                                 </p>
+                              ) : null}
+                              {formatSignalGroupEntries(item.signalGroups).length > 0 ? (
+                                <div className="mt-3 grid gap-2">
+                                  {formatSignalGroupEntries(item.signalGroups).map((group) => (
+                                    <p
+                                      className="rounded-xl border border-[#E0E8D5] bg-white px-3 py-2 text-xs leading-5 text-[#536B40]"
+                                      key={group.label}
+                                    >
+                                      <span className="font-semibold text-[#B47767]">{group.label}</span>
+                                      ：{group.value}
+                                    </p>
+                                  ))}
+                                </div>
                               ) : null}
                             </div>
                           ))}
@@ -4827,6 +4886,52 @@ function formatDatasetValue(value: unknown) {
   return String(value);
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
+function stringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.map((item) => String(item)).filter(Boolean);
+}
+
+function githubToolSchemaFacts(exportPreview: Record<string, unknown>) {
+  const schema = asRecord(exportPreview.schema);
+  if (!schema) {
+    return [];
+  }
+  const provenance = asRecord(schema.provenance);
+  const lineage = stringArray(provenance?.lineage_fields);
+  const collectorVersions = asRecord(schema.collector_versions);
+  return [
+    { label: "Schema", value: formatDatasetValue(schema.schema_version) },
+    { label: "主键", value: formatDatasetValue(schema.primary_key) },
+    {
+      label: "Collector",
+      value: collectorVersions
+        ? Object.entries(collectorVersions)
+            .map(([key, value]) => `${key}:${String(value)}`)
+            .join(" / ")
+        : "—",
+    },
+    { label: "Lineage", value: lineage.join(" / ") || "—" },
+  ].filter((item) => item.value !== "—");
+}
+
+function formatSignalGroupEntries(groups: Record<string, string[]>) {
+  return Object.entries(groups)
+    .filter(([, items]) => items.length > 0)
+    .map(([group, items]) => ({
+      label: signalGroupLabels[group] ?? group,
+      value: items.slice(0, 3).join(" / "),
+    }));
+}
+
 function EmptyAnalysisState({ mode }: { mode: AutomationMode }) {
   const title =
     mode === "product_discovery"
@@ -5289,6 +5394,8 @@ function formatBrowserJobReason(value: string) {
     browser_diagnostic_job_created_no_runner: "任务已创建为只读资产，执行器尚未接入。",
     browser_harness_binary_unavailable: "browser-harness CLI 不可用。",
     browser_harness_ephemeral_probe_only: "本机探测仅读取临时 tab 页面元信息。",
+    browser_harness_isolated_cdp_required:
+      "需要 dedicated CDP 端点，不能复用用户 Chrome profile。",
     browser_harness_probe_failed: "browser-harness 探测未完成。",
     browser_local_runner_snapshot_replay_only: "本地 runner 仅回放已保存诊断快照。",
     m2_read_only_contract_no_direct_promotion:

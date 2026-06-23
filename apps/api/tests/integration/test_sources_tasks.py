@@ -1046,13 +1046,63 @@ async def test_browser_automation_plan_persists_read_only_draft(
         == "browser_harness_probe_confirmation_required"
     )
 
+    blocked_isolation_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "run_mode": "ephemeral_browser_harness_probe",
+            "confirm_real_browser_probe": True,
+            "probe_timeout_seconds": 3,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": True,
+            "note": "Block probe without isolated browser-harness CDP.",
+        },
+    )
+    assert blocked_isolation_response.status_code == 200
+    blocked_isolation_run = blocked_isolation_response.json()
+    assert blocked_isolation_run["status"] == "blocked_ephemeral_probe"
+    assert blocked_isolation_run["execution_started"] is True
+    assert blocked_isolation_run["browser_started"] is False
+    assert blocked_isolation_run["files_written"] is False
+    assert blocked_isolation_run["collection_resources_written"] is False
+    assert (
+        blocked_isolation_run["artifact_manifest"]["ephemeral_probe"][
+            "isolated_cdp_configured"
+        ]
+        is False
+    )
+    assert (
+        blocked_isolation_run["network_metadata_summary"]["ephemeral_probe"][
+            "isolated_cdp_configured"
+        ]
+        is False
+    )
+    assert "browser_harness_isolated_cdp_required" in (
+        blocked_isolation_run["blocked_reasons"]
+    )
+    assert "browser_harness_binary_unavailable" not in (
+        blocked_isolation_run["blocked_reasons"]
+    )
+    assert (
+        blocked_isolation_run["audit_events"][0]["isolated_cdp_configured"] is False
+    )
+
     fake_harness = tmp_path / "browser-harness"
     fake_harness.write_text(
         """#!/usr/bin/env python3
 import json
+import os
 import sys
 
 sys.stdin.read()
+if os.environ.get("BU_CDP_URL") != "http://127.0.0.1:9222":
+    raise SystemExit(3)
+if os.environ.get("BU_CDP_WS"):
+    raise SystemExit(4)
 print(json.dumps({
     "ok": True,
     "page_info": {
@@ -1079,6 +1129,7 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(fake_harness),
+            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1101,11 +1152,23 @@ print(json.dumps({"target_tab_closed": True}))
         "status": "completed",
         "binary": str(fake_harness),
         "exit_code": 0,
+        "isolated_cdp_configured": True,
+        "cdp_endpoint": "http://127.0.0.1:9222",
         "files_written": False,
         "object_storage_write": False,
         "target_tab_closed": True,
     }
     assert probe_run["network_observation_summary"]["browser_started"] is True
+    assert (
+        probe_run["network_observation_summary"]["ephemeral_probe"][
+            "isolated_cdp_configured"
+        ]
+        is True
+    )
+    assert (
+        probe_run["network_observation_summary"]["ephemeral_probe"]["cdp_endpoint"]
+        == "http://127.0.0.1:9222"
+    )
     assert probe_run["network_observation_summary"]["ephemeral_probe"]["page_info"][
         "url"
     ] == "https://example.com/products/dynamic-bag"
@@ -1144,6 +1207,7 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(tmp_path / "missing-browser-harness"),
+            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1188,6 +1252,7 @@ raise SystemExit(2)
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(redaction_case_harness),
+            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1212,6 +1277,8 @@ raise SystemExit(2)
     assert redaction_probe["status"] == "failed"
     assert "[redacted-header]" in redaction_probe["stdout_tail"]
     assert "Authorization" not in redaction_probe["stdout_tail"]
+    assert "[redacted-header]" in redaction_probe["stderr_tail"]
+    assert "Cookie" not in redaction_probe["stderr_tail"]
     assert redaction_case_run["redaction_summary"]["headers_captured"] is False
     assert "browser_harness_probe_failed" in redaction_case_run["blocked_reasons"]
 
@@ -1235,6 +1302,7 @@ time.sleep(10)
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(timeout_case_harness),
+            "browser_harness_cdp_url": "http://127.0.0.1:9222",
             "probe_timeout_seconds": 3,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
@@ -1266,12 +1334,13 @@ time.sleep(10)
     )
     assert post_probe_list_response.status_code == 200
     post_probe_list = post_probe_list_response.json()
-    assert post_probe_list["total"] == 5
+    assert post_probe_list["total"] == 6
     assert post_probe_list["browser_started"] is True
     assert post_probe_list["files_written"] is False
     assert post_probe_list["collection_resources_written"] is False
     assert {item["id"] for item in post_probe_list["items"]} == {
         local_run["id"],
+        blocked_isolation_run["id"],
         probe_run["id"],
         blocked_probe_run["id"],
         redaction_case_run["id"],
@@ -1371,6 +1440,11 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "open_issues_count": 120,
                         "language": "Python",
                         "topics": ["browser-automation", "ai-agent"],
+                        "license_spdx_id": "MIT",
+                        "default_branch": "main",
+                        "latest_release_tag": "v0.7.0",
+                        "latest_release_published_at": "2026-06-16T00:00:00Z",
+                        "readme_present": True,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": "2026-06-18T01:00:00Z",
                     },
@@ -1383,6 +1457,11 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "open_issues_count": 400,
                         "language": "Python",
                         "topics": ["crawler", "scraping"],
+                        "license_spdx_id": "BSD-3-Clause",
+                        "default_branch": "master",
+                        "latest_release_tag": "2.13.0",
+                        "latest_release_published_at": "2026-06-15T00:00:00Z",
+                        "readme_present": True,
                         "pushed_at": "2026-06-17T00:00:00Z",
                         "updated_at": "2026-06-17T01:00:00Z",
                     },
@@ -1395,9 +1474,13 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
                         "description": "Make websites accessible for AI agents",
                         "stargazers_count": 72000,
                         "forks_count": 8400,
-                        "open_issues_count": 120,
+                        "open_issues_count": 200,
                         "language": "Python",
                         "topics": [],
+                        "license_spdx_id": "MIT",
+                        "default_branch": "main",
+                        "latest_release_tag": "v0.7.0",
+                        "readme_present": True,
                         "pushed_at": "2026-06-18T00:00:00Z",
                         "updated_at": None,
                     }
@@ -1448,12 +1531,29 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     run = run_response.json()
     assert run["status"] == "success"
 
+    selected_fields = [
+        "repo_full_name",
+        "stars",
+        "forks",
+        "open_issues",
+        "html_url",
+        "language",
+        "topics",
+        "license_spdx_id",
+        "default_branch",
+        "commit_freshness_days",
+        "latest_release_tag",
+        "latest_release_published_at",
+        "readme_present",
+        "updated_at",
+    ]
+
     preview_response = await client.post(
         "/api/automation/github-tool-dataset-preview",
         json={
             "authorized": True,
             "task_run_ids": [run["id"]],
-            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "fields": selected_fields,
             "max_rows": 10,
         },
     )
@@ -1461,17 +1561,26 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     preview = preview_response.json()
     assert preview["summary"]["rows_count"] == 2
     assert preview["summary"]["matched_runs"] == 1
-    assert preview["summary"]["selected_fields"] == [
-        "repo_full_name",
-        "stars",
-        "html_url",
-        "language",
-        "topics",
-        "updated_at",
-    ]
+    assert preview["summary"]["selected_fields"] == selected_fields
     assert preview["rows"][0]["values"]["repo_full_name"] == "browser-use/browser-use"
     assert preview["rows"][0]["values"]["stars"] == 72000
+    assert preview["rows"][0]["values"]["license_spdx_id"] == "MIT"
+    assert preview["rows"][0]["values"]["default_branch"] == "main"
+    assert preview["rows"][0]["values"]["latest_release_tag"] == "v0.7.0"
+    assert (
+        preview["rows"][0]["values"]["latest_release_published_at"]
+        == "2026-06-16T00:00:00Z"
+    )
+    assert preview["rows"][0]["values"]["readme_present"] is True
+    assert isinstance(preview["rows"][0]["values"]["commit_freshness_days"], int)
     assert preview["export_preview"]["schema"]["primary_key"] == "html_url"
+    assert preview["export_preview"]["schema"]["schema_version"] == "github_tool_radar.v2"
+    assert (
+        preview["export_preview"]["schema"]["field_sources"]["latest_release_published_at"][
+            "source"
+        ]
+        == "github_latest_release"
+    )
 
     save_response = await client.post(
         "/api/automation/github-tool-dataset-save",
@@ -1480,7 +1589,7 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
             "name": "GitHub Tool Radar web-scraping",
             "description": "Tool radar dataset from GitHub topic.",
             "task_run_ids": [run["id"]],
-            "fields": ["repo_full_name", "stars", "html_url", "language", "topics", "updated_at"],
+            "fields": selected_fields,
             "max_rows": 10,
         },
     )
@@ -1488,13 +1597,17 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     saved = save_response.json()
     assert saved["dataset"]["dataset_type"] == "github_tool_radar"
     assert saved["version"]["row_count"] == 2
-    assert saved["version"]["selected_fields"] == [
-        "repo_full_name",
-        "stars",
-        "html_url",
-        "language",
-        "topics",
-        "updated_at",
+    assert saved["version"]["selected_fields"] == selected_fields
+    saved_schema = saved["version"]["export_preview"]["schema"]
+    assert saved_schema["schema_version"] == "github_tool_radar.v2"
+    assert saved_schema["collector_versions"] == {
+        "github_repo": "github_repo.collector.v2",
+        "github_topic": "github_topic.collector.v2",
+    }
+    assert saved_schema["provenance"]["lineage_fields"] == [
+        "task_run_id",
+        "raw_record_id",
+        "source_url",
     ]
 
     export_response = await client.post(
@@ -1548,13 +1661,35 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "alert_created": False,
     }
     assert drift["items"][0]["latest_run_id"] == second_run["id"]
-    assert drift["items"][0]["latest_completeness_percent"] == 67
-    assert drift["items"][0]["completeness_drop_percent"] == 33
-    assert drift["items"][0]["new_missing_fields"] == ["topics", "updated_at"]
+    assert drift["items"][0]["latest_completeness_percent"] == 79
+    assert drift["items"][0]["completeness_drop_percent"] == 21
+    assert drift["items"][0]["new_missing_fields"] == [
+        "topics",
+        "latest_release_published_at",
+        "updated_at",
+    ]
     assert drift["items"][0]["issues"] == [
         "completeness_drift_exceeded",
         "approved_fields_missing",
+        "issue_activity_increased",
+        "release_freshness_missing",
+        "repository_coverage_changed",
     ]
+    assert drift["items"][0]["signal_groups"]["field_missingness"] == [
+        "missing:topics",
+        "missing:latest_release_published_at",
+        "missing:updated_at",
+    ]
+    assert drift["items"][0]["signal_groups"]["issue_activity"] == [
+        "open_issues_increased:120->200"
+    ]
+    assert "latest_release_published_at_missing" in (
+        drift["items"][0]["signal_groups"]["release_freshness"]
+    )
+    assert any(
+        signal.startswith("row_count_decreased")
+        for signal in drift["items"][0]["signal_groups"]["repository_coverage"]
+    )
     assert any(
         event["event"] == "github_tool_drift_task_checked"
         and event["run_started"] is False
@@ -1615,6 +1750,21 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         "run_started": False,
     }
     assert report["top_repositories"][0]["repo_full_name"] == "browser-use/browser-use"
+    assert report["top_repositories"][0]["license_spdx_id"] == "MIT"
+    assert report["top_repositories"][0]["default_branch"] == "main"
+    assert report["top_repositories"][0]["latest_release_tag"] == "v0.7.0"
+    assert report["top_repositories"][0]["readme_present"] is True
+    assert isinstance(report["top_repositories"][0]["commit_freshness_days"], int)
+    assert report["top_repositories"][0]["maintenance_risk"] == "low"
+    assert "repository_url" in report["top_repositories"][0]["install_sources"]
+    assert "collection_tool_benchmark" in (
+        report["top_repositories"][0]["recommended_use_cases"]
+    )
+    assert "not_a_provider_call_or_live_install" in (
+        report["top_repositories"][0]["unsuitable_boundaries"]
+    )
+    assert report["risk_sections"][0]["title"] == "维护风险"
+    assert "low=2" in report["risk_sections"][0]["items"]
     assert "browser-use/browser-use" in report["recommendations"][0]
 
     report_asset_response = await client.post(
@@ -1638,6 +1788,8 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     assert "GitHub Tool Radar web-scraping" in report_asset["report"]["title"]
     assert "browser-use/browser-use" in report_asset["report"]["content"]
     assert "github_tool_radar" in report_asset["report"]["content"]
+    assert "schema_version: github_tool_radar.v2" in report_asset["report"]["content"]
+    assert "## 维护风险与使用边界" in report_asset["report"]["content"]
     assert any(
         event["event"] == "github_tool_report_asset_created"
         and event["report_created"] is True

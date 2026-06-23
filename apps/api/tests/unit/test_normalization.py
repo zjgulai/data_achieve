@@ -7,8 +7,12 @@ from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.services.normalization_service import build_snapshot_drafts
 
 
-def make_raw_record(record_type: str, content: dict[str, object]) -> RawRecord:
-    now = datetime.now(UTC)
+def make_raw_record(
+    record_type: str,
+    content: dict[str, object],
+    collected_at: datetime | None = None,
+) -> RawRecord:
+    now = collected_at or datetime.now(UTC)
     return RawRecord(
         workspace_id=uuid.uuid4(),
         project_id=uuid.uuid4(),
@@ -25,6 +29,7 @@ def make_raw_record(record_type: str, content: dict[str, object]) -> RawRecord:
 
 
 def test_build_snapshot_drafts_for_github_repo() -> None:
+    collected_at = datetime(2026, 6, 20, tzinfo=UTC)
     raw_record = make_raw_record(
         "github_repo",
         {
@@ -33,7 +38,13 @@ def test_build_snapshot_drafts_for_github_repo() -> None:
             "stargazers_count": 100,
             "forks_count": 5,
             "open_issues_count": 2,
+            "watchers_count": 100,
+            "subscribers_count": 30,
+            "pushed_at": "2026-06-18T00:00:00Z",
+            "license_spdx_id": "Apache-2.0",
+            "default_branch": "main",
         },
+        collected_at=collected_at,
     )
 
     drafts = build_snapshot_drafts(raw_record, "osint")
@@ -42,9 +53,13 @@ def test_build_snapshot_drafts_for_github_repo() -> None:
     assert drafts[0].entity_type == "github_repo"
     assert drafts[0].external_id == "openai/codex"
     assert drafts[0].metrics["stars"] == 100
+    assert drafts[0].metrics["subscribers"] == 30
+    assert drafts[0].metrics["commit_freshness_days"] == 2
+    assert drafts[0].snapshot_data["license_spdx_id"] == "Apache-2.0"
 
 
 def test_build_snapshot_drafts_for_github_topic() -> None:
+    collected_at = datetime(2026, 6, 20, tzinfo=UTC)
     raw_record = make_raw_record(
         "github_topic",
         {
@@ -55,9 +70,14 @@ def test_build_snapshot_drafts_for_github_topic() -> None:
                     "html_url": "https://github.com/example/scraper",
                     "stargazers_count": 42,
                     "forks_count": 3,
+                    "open_issues_count": 4,
+                    "watchers_count": 42,
+                    "pushed_at": "2026-06-19T00:00:00Z",
+                    "license_spdx_id": "MIT",
                 }
             ],
         },
+        collected_at=collected_at,
     )
 
     drafts = build_snapshot_drafts(raw_record, "osint")
@@ -65,6 +85,8 @@ def test_build_snapshot_drafts_for_github_topic() -> None:
     assert len(drafts) == 1
     assert drafts[0].external_id == "example/scraper"
     assert drafts[0].snapshot_data["topic"] == "web-scraping"
+    assert drafts[0].metrics["open_issues"] == 4
+    assert drafts[0].metrics["commit_freshness_days"] == 1
 
 
 def test_build_snapshot_drafts_for_generic_web() -> None:

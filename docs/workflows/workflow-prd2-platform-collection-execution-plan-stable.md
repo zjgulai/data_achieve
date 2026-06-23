@@ -20,9 +20,9 @@ source: human+ai
 
 1. `docs/product/product-prd-data-intelligence-hub-stable.md` 已调整为 PRD 2.0 当前源头版本。
 2. 生产只读 health 在 2026-06-21 返回 `production`、`ok`、`database=connected`、`schema=current`、`scheduler_enabled=true`。
-3. 本机 `browser-harness` 可执行，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0。
+3. 本机 `browser-harness` 可执行；默认模式可能连接用户正在运行的 Chrome，因此产品 probe 已改为必须提供 dedicated CDP URL。
 4. 本机当前未找到 `agent-reach` 命令。
-5. 本轮没有做业务代码修改，没有创建 Source/Task/TaskRun/Dataset/Report/Notification，没有 provider call，没有生产写入。
+5. 当前 P4 已做业务代码窄改：新增 dedicated-CDP guard 和本地 isolated smoke；没有生产部署、生产写入、provider call、邮件发送或调度变更。
 
 ## 1. 执行总原则
 
@@ -87,7 +87,7 @@ To do：
 
 ### Milestone 2：browser-harness 只读证据扩展
 
-目标：把当前 `ephemeral_browser_harness_probe` 从 page info 扩展到 selector 求值和 network metadata，用于判断“是否应该采集”，而不是直接采集。
+目标：把当前 `ephemeral_browser_harness_probe` 从 page info 扩展到 selector 求值和 network metadata，用于判断“是否应该采集”，而不是直接采集。真实 probe 必须提供 dedicated `browser_harness_cdp_url`；缺失时保持 blocked，不能默认连接用户主 Chrome。
 
 To do：
 
@@ -95,7 +95,7 @@ To do：
 |---|---|---|---|
 | M2-1 | 扩展 `BrowserDiagnosticJobRun` result contract | API docs、schema、model/migration 如需字段 | result 包含 `selector_evaluations`、`network_metadata_summary`、`promotion_gate`、`redaction_summary` |
 | M2-2 | fake CLI 覆盖 selector/network 成功与异常路径 | API tests | fixture 能覆盖 selector missing、network blocked、timeout_case、redaction_case |
-| M2-3 | real CLI 本机只读 smoke | `tmp/` 证据脚本 | 只对 `https://example.com/` 或明确授权测试页执行；输出不含 cookie/header/body |
+| M2-3 | real CLI 本机只读 smoke | `tmp/` 证据脚本 | 只对 `https://example.com/` 或明确授权测试页执行；必须使用临时 profile + dedicated CDP；输出不含 cookie/header/body |
 | M2-4 | artifact retention 方案 | workflow 或 architecture doc | 截图/trace/HAR 文件写入目录、TTL、清理命令、redaction 和生产持久化策略明确前，保持 `files_written=false` |
 | M2-5 | UI 结果面板升级 | `automation-workbench.tsx` | 明确区分 snapshot replay、real browser probe、blocked/failed 状态 |
 
@@ -229,7 +229,7 @@ bash scripts/verify-mvp.sh --with-db
 | P0 | M1-5 | CapabilityProbe 测试覆盖 | done | 已覆盖 missing 和 fake installed doctor-only 路径 |
 | P0 | M2-1 | 扩展 `BrowserDiagnosticJobRun` result contract | done | 已新增 `selector_evaluations`、`network_metadata_summary`、`promotion_gate`、`redaction_summary`；无需 migration |
 | P0 | M2-2 | fake CLI selector/network 测试 | done | 已覆盖 snapshot replay、fake browser-harness success、selector missing、binary unavailable、timeout_case、redaction_case |
-| P0 | M2-3 | 本机 real CLI 授权公开页只读 smoke | blocked_local_daemon | 已对 `https://example.com/` 生成 `tmp/browser-harness-readonly-smoke-20260621.json`；本机 daemon 未响应，`browser_started=false` |
+| P0 | M2-3 | 本机 real CLI 授权公开页只读 smoke | done | P4 使用 headless Chrome 临时 profile + dedicated CDP 对 `https://example.com/` 完成 page_info smoke；旧 `blocked_local_daemon` 记录保留为历史 |
 | P0 | M2-4 | artifact retention 方案 | done | 已新增 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md`；当前阶段保持 `files_written=false` |
 | P0 | M2-5 | UI 结果面板升级 | done | 已展示 selector 求值、network metadata、promotion gate 和 redaction 边界 |
 | P0 | M3-1 | GitHub deep fields | todo | release、README、license、issue activity、freshness |
@@ -248,9 +248,8 @@ bash scripts/verify-mvp.sh --with-db
 ## 6. 下一轮推荐执行顺序
 
 1. `M1-1` 到 `M1-5` 已完成，能力探测合同已立住。
-2. `M2-1`、`M2-2`、`M2-4`、`M2-5` 已完成；`M2-3` 留作本机 daemon 修复后的重试项。
-3. `M2-3` 重试前需要先让 `browser-harness --doctor` 达到 `daemon alive` 和 active browser connection 可用；仍只允许 `https://example.com/` 或明确授权测试页。
-4. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
-5. 下一轮可进入 `M3-1` 到 `M3-3`，让 GitHub 成为 API-first 深化样板。
-6. 完成一轮本地门禁后，再选择 `M4` 独立站深化或 `M5-1` Public Web/RSS 作为第一个新增低风险平台包。
-7. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。
+2. `M2-1` 到 `M2-5` 已完成当前阶段；下一轮 browser 方向应扩展 dedicated-CDP selector DOM evaluation 和 network metadata summary。
+3. 当前 browser evidence runner 继续保持 `files_written=false`，不保存截图/trace/HAR 新文件。
+4. 下一轮可进入 `M3-1` 到 `M3-3`，让 GitHub 成为 API-first 深化样板。
+5. 完成一轮本地门禁后，再选择 `M4` 独立站深化或 `M5-1` Public Web/RSS 作为第一个新增低风险平台包。
+6. P2/P3 只在 P0/P1 证据链稳定后进入，且默认以 API/import/SOP 为主。

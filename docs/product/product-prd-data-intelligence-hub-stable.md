@@ -22,13 +22,13 @@ source: human+ai
 
 | 事项 | 当前事实 | 证据边界 |
 |---|---|---|
-| 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；本轮没有做业务代码修改 |
+| 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；当前 P4 只做 browser-harness dedicated-CDP guard 窄改 |
 | 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码和 API contract 可见 |
 | 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；本轮只做生产 health 只读复核 |
 | GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产 | 历史验收已记录；本轮未重新跑生产 GitHub 采集 |
-| Browser diagnostic | 本地已有 `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun`、`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 第一切片 | 当前仍是本地/受控诊断链路，不等于生产浏览器执行器已上线 |
+| Browser diagnostic | 本地已有 `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun`、`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 第一切片；真实 probe 需要 dedicated CDP，缺失时 blocked | 当前仍是本地/受控诊断链路，不等于生产浏览器执行器已上线 |
 | 生产 health | 2026-06-21 只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`scheduler_enabled=true` | 只证明服务健康，不证明本轮重新验收采集全链路 |
-| 外部能力环境 | 本机 `browser-harness` 存在，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
+| 外部能力环境 | 本机 `browser-harness` 存在；默认 browser-harness 会连接用户正在运行的 Chrome，因此产品 probe 必须使用 dedicated CDP；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
 
 ### 本轮修订目的
 
@@ -179,7 +179,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 | 稳定 Collector | 已有 | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` |
 | Platform Package | 已有第一版 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`；下一步做能力探测和版本化 |
 | SiteAnalysis / ExtractionPlan | 已有 | 公开 URL 分析、字段候选、采集计划和浏览器诊断导入 |
-| Browser diagnostic | 本地增强中 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`；不是生产无人值守采集 |
+| Browser diagnostic | 本地增强中 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`；probe 必须使用 dedicated CDP，不能默认复用用户 Chrome；不是生产无人值守采集 |
 | CleaningPlan | 已有 | 清洗规则草案、试跑和 DatasetVersion 追踪 |
 | Dataset / DatasetVersion | 已有 | 结构化交付资产，可从商品采集和 GitHub Tool Radar 进入 |
 | Dataset Export | 已有 | CSV/JSON/JSONL 导出，必须记录审计和 checksum |

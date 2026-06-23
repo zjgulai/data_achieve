@@ -104,6 +104,7 @@ async def _fetch_json(
 
 
 def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
+    license_summary = _license_summary(repo.get("license"))
     return {
         "full_name": repo.get("full_name"),
         "html_url": repo.get("html_url"),
@@ -111,8 +112,29 @@ def _repo_summary(repo: dict[str, Any]) -> dict[str, Any]:
         "stargazers_count": repo.get("stargazers_count"),
         "forks_count": repo.get("forks_count"),
         "open_issues_count": repo.get("open_issues_count"),
+        "watchers_count": repo.get("watchers_count"),
         "language": repo.get("language"),
         "topics": repo.get("topics"),
+        "license": license_summary,
+        "license_spdx_id": (
+            license_summary.get("spdx_id") if isinstance(license_summary, dict) else None
+        ),
+        "default_branch": repo.get("default_branch"),
+        "archived": repo.get("archived"),
+        "disabled": repo.get("disabled"),
+        "visibility": repo.get("visibility"),
+        "homepage": repo.get("homepage"),
         "pushed_at": repo.get("pushed_at"),
         "updated_at": repo.get("updated_at"),
+    }
+
+
+def _license_summary(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        "key": value.get("key"),
+        "name": value.get("name"),
+        "spdx_id": value.get("spdx_id"),
+        "url": value.get("url"),
     }

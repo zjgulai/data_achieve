@@ -483,6 +483,7 @@ export type AutomationBrowserLocalRunnerInput = {
   runMode?: "diagnostic_snapshot_replay" | "ephemeral_browser_harness_probe";
   confirmRealBrowserProbe?: boolean;
   browserHarnessBinary?: string;
+  browserHarnessCdpUrl?: string;
   probeTimeoutSeconds?: number;
   artifactRetentionDays?: number;
   maxPreviewRows?: number;
@@ -989,6 +990,7 @@ export type AutomationProductDriftItem = {
   freshnessTargetHours: number | null;
   staleHours: number | null;
   issues: string[];
+  signalGroups: Record<string, string[]>;
 };
 
 export type AutomationProductDriftCheck = {
@@ -1061,10 +1063,29 @@ export type AutomationGitHubToolReportRepository = {
   stars: number;
   forks: number | null;
   openIssues: number | null;
+  watchers: number | null;
   language: string | null;
   topics: string[];
+  licenseSpdxId: string | null;
+  defaultBranch: string | null;
+  archived: boolean | null;
+  commitFreshnessDays: number | null;
+  latestReleaseTag: string | null;
+  latestReleasePublishedAt: string | null;
+  readmePresent: boolean | null;
   updatedAt: string | null;
   pushedAt: string | null;
+  maintenanceRisk: "low" | "medium" | "high" | "unknown";
+  riskSignals: string[];
+  installSources: string[];
+  recommendedUseCases: string[];
+  unsuitableBoundaries: string[];
+};
+
+export type AutomationGitHubToolReportRiskSection = {
+  title: string;
+  items: string[];
+  evidenceFields?: string[];
 };
 
 export type AutomationGitHubToolReport = {
@@ -1083,6 +1104,7 @@ export type AutomationGitHubToolReport = {
   };
   topRepositories: AutomationGitHubToolReportRepository[];
   recommendations: string[];
+  riskSections: AutomationGitHubToolReportRiskSection[];
   auditEvents: Array<Record<string, unknown>>;
   blockedReasons: string[];
 };

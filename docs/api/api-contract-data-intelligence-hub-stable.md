@@ -168,7 +168,7 @@ raw_summary
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/browser-diagnostic-jobs/{job_id}/local-run` | `authorized`、`confirm_execute`、`run_mode`、`confirm_real_browser_probe?` | `AutomationBrowserLocalRunnerResultResponse` | 只读回放或本机临时 tab 探测；不创建 Source/Task/TaskRun/Dataset |
+| `POST` | `/api/automation/browser-diagnostic-jobs/{job_id}/local-run` | `authorized`、`confirm_execute`、`run_mode`、`confirm_real_browser_probe?`、`browser_harness_cdp_url?` | `AutomationBrowserLocalRunnerResultResponse` | 只读回放或本机 dedicated-CDP 临时 tab 探测；不创建 Source/Task/TaskRun/Dataset |
 | `GET` | `/api/automation/browser-diagnostic-job-runs` | query: `project_id?`、`diagnostic_job_id?` | `AutomationBrowserLocalRunnerResultListResponse` | 返回本地诊断运行历史和只读副作用汇总 |
 
 `AutomationBrowserLocalRunnerResultResponse` 在兼容旧字段的基础上新增 M2 证据字段：
@@ -190,7 +190,8 @@ M2 字段约束：
 2. `network_metadata_summary` 只允许保留 metadata：`capture_headers=false`、`capture_body=false`、`redacted=true`；URL 必须移除 query 和 fragment。
 3. `promotion_gate.can_create_collection_resources=false`，并包含 `m2_read_only_contract_no_direct_promotion`，直到另一个经授权的创建链路接管。
 4. `redaction_summary` 必须显式声明 `cookies_captured=false`、`headers_captured=false`、`bodies_captured=false`、`query_parameters_retained=false`。
-5. `run_mode=ephemeral_browser_harness_probe` 可以使 `browser_started=true`，但仍保持 `files_written=false` 和 `collection_resources_written=false`。
+5. `run_mode=ephemeral_browser_harness_probe` 只有在提供 dedicated `browser_harness_cdp_url` 时才可进入 browser-harness；缺少该字段必须返回 `blocked_ephemeral_probe` / `browser_harness_isolated_cdp_required`，不得默认连接用户主 Chrome。
+6. `run_mode=ephemeral_browser_harness_probe` 可以使 `browser_started=true`，但仍保持 `files_written=false` 和 `collection_resources_written=false`。
 6. Artifact retention 规则以 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md` 为准；PRD2 M2 当前阶段只允许 metadata 和 `tmp/` 本地验证 JSON。
 
 ### GitHub/API-first Topic Radar Flow
