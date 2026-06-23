@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -31,7 +31,8 @@ source: human+ai
 | R0-7 | Authorized production write E2E | done_scoped_m3 | M3 GitHub scope `topic=web-scraping`、`max_repositories=3`；真实 API E2E `2 passed`；cleanup recount 全 0 |
 | R0-8 | M3 post-R0 production release | done | production HEAD `f04c8ea77cc64f28d391e992012525e1704ec1a3`；schema 仍为 `202606110023`；GitHub API-first package gate passed |
 | R0-9 | M5 Public Content production package smoke | done_scoped_m5 | production HEAD `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`；`public_feed` RSS TaskRun success；`public_content_update` DatasetVersion row_count=5；drift/report read-only preview passed；exact-ID 和 generic cleanup dry-run 全 0 |
-| R0-10 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、Report asset creation、production browser run 均未执行 |
+| R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-11 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -305,7 +306,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 ## 8. M3 Production Release Evidence
 
 M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
-This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; current production identity after the M5 public content smoke is recorded in section 12 as `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`.
+This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; current production identity after the M5 Report asset gate is recorded in section 13 as `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`.
 
 ```text
 release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
@@ -560,6 +561,83 @@ Evidence draft:
 drafts/analysis/analysis-boundary-m5-public-content-production-smoke-draft-20260623.md
 ```
 
-Supported claim: production has been deployed to `e1359759`, and the M5 Public Web/RSS/Docs package has one authorized small-scope production smoke covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, and cleanup.
+Supported claim: production had been deployed to `e1359759` for this smoke, and the M5 Public Web/RSS/Docs package has one authorized small-scope production smoke covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, and cleanup.
 
-Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, Report asset creation, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 13. M5 Public Content Report Asset Gate
+
+M5 Public Content Report asset gate was executed on 2026-06-23 after the prior production package smoke. The first run exposed a production-only database length constraint, then a hotfix was deployed and the gate was rerun successfully.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one public_content Report asset, one ReportAuditEvent
+denied: dataset export, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment and hotfix evidence:
+
+```text
+initial deployed SHA: 2ebbe4a584c6e1122ba3b180998e6548667de0f9
+initial backup branch: backup/pre-public-content-report-asset-gate-20260623115056
+initial failure: POST /api/automation/public-content-report-assets returned 500
+root cause: reports.report_type is VARCHAR(20); public_content_update is 21 characters
+fix: Report.report_type uses public_content; Dataset.dataset_type and report content schema remain public_content_update
+hotfix SHA: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+hotfix backup branch: backup/pre-public-content-report-asset-hotfix-20260623115906
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Successful production gate evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift run_started: false
+Drift alert_created: false
+Report preview report_created: false
+Report asset report_created: true
+Report asset report_type: public_content
+Report asset report_status: generated
+Report asset notification_created: false
+reports.detail status: generated
+```
+
+Cleanup evidence:
+
+```text
+failed first-run cleanup:
+pre-cleanup users=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, reports=0, report_audit_events=0
+post-cleanup exact-ID dry-run: all categories returned zero
+
+successful run cleanup:
+pre-cleanup users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, reports=1, report_audit_events=1
+cleanup execute: removed the same scoped objects
+post-cleanup exact-ID dry-run: all categories returned zero
+post-cleanup generic E2E dry-run: all categories returned zero
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-report-asset-gate-draft-20260623.md
+```
+
+Supported claim: production has been deployed to `fb05c61`, and M5 Public Content has one authorized Report asset gate covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, Report asset creation, Report detail retrieval, and cleanup.
+
+Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
