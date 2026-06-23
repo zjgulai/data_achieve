@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -33,7 +33,8 @@ source: human+ai
 | R0-9 | M5 Public Content production package smoke | done_scoped_m5 | production HEAD `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`；`public_feed` RSS TaskRun success；`public_content_update` DatasetVersion row_count=5；drift/report read-only preview passed；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-11 | M5 Public Content Dataset export gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；CSV DatasetExportJob `success`；artifact_size_bytes=4900；download 校验通过；exact-ID 和 generic cleanup dry-run 全 0 |
-| R0-12 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
+| R0-12 | M5 Public Content retained lifecycle gate | done_retained_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；retained account/source/task/run/dataset/version/report/export/artifact 均保留；重登录 list/detail/download 校验通过；generic E2E cleanup dry-run 仍为 0 |
+| R0-13 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -719,3 +720,134 @@ drafts/analysis/analysis-boundary-m5-public-content-export-gate-draft-20260623.m
 Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one authorized Dataset export gate covering public RSS collection, DatasetVersion save, CSV DatasetExportJob creation, export artifact file write, authenticated export download, exact-ID cleanup, artifact deletion, and generic cleanup recount.
 
 Unsupported claim: recurring RSS monitoring, retained dataset/export lifecycle, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 15. M5 Public Content Retained Lifecycle Gate
+
+M5 Public Content retained lifecycle gate was executed on 2026-06-23 against the already deployed `fb05c61` production code point. No production deployment was performed for this gate. Unlike the previous cleanup-after-evidence gates, this one intentionally retained a small named canary asset set.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one retained user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one read-only drift check, one public_content Report asset, one CSV DatasetExportJob, one export artifact file, post-login visibility checks
+denied: cleanup execution, provider call, email send, scheduler mutation, production browser run, browser artifact write, drift event persistence
+retention: retained_no_cleanup
+```
+
+Retained asset manifest:
+
+```text
+actor_email: retained-public-content-20260623123816-90w0q7@example.com
+source_id: c86b280c-0315-4d93-bcd7-37786996a22b
+task_id: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task_run_id: 1f684c04-0aab-48b7-ae4b-824526efaadc
+dataset_id: ee4a4a7a-1ea8-4864-b10d-031b365e5efb
+dataset_version_id: 6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8
+report_id: 38a0f8ce-59ed-46da-a9ae-968c6a020e57
+export_job_id: 3f43b866-1312-47d0-95b6-90322a2c7ee5
+```
+
+Production gate evidence:
+
+```text
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift warning_tasks: 1
+Drift critical_tasks: 0
+Drift run_started: false
+Drift alert_created: false
+Drift event persisted: false
+Report asset report_type: public_content
+Report asset report_status: generated
+Report asset notification_created: false
+Export status: success
+Export filename: retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+Export artifact_size_bytes: 4344
+Export row_count: 5
+Export checksum_sha256: 0253d01911bd63a4ef529ce53001e958fe1fab7570037b1c072863b4418b322a
+```
+
+Retention verification:
+
+```text
+cookie reset and relogin: passed
+source_found: true
+task_found: true
+task_run_found: true
+dataset_found: true
+dataset version_found: true
+report_found: true
+export_found: true
+export download content_type: text/csv; charset=utf-8
+export download byte_length: 4344
+download contains title/link/published_at header: true
+download contains content_hash: true
+download contains feed_url: true
+```
+
+Read-only DB/volume inventory:
+
+```text
+status: ready
+violations: []
+cleanup_executed: false
+users=1
+workspaces=1
+workspace_members=2
+notifications=1
+sources=1
+collection_tasks=1
+task_runs=1
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=0
+reports=1
+report_audit_events=1
+dataset_export_jobs=1
+export_artifact_files=1
+```
+
+Export artifact path:
+
+```text
+/app/exports/datasets/bf51c6a8-fba5-5528-ac91-89ffd84f85c2/ee4a4a7a-1ea8-4864-b10d-031b365e5efb/6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8/retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+```
+
+Generic cleanup dry-run:
+
+```text
+scripts/cleanup-e2e-fixtures.sh --older-than-hours 0
+dry_run: true
+all categories: 0
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-retained-lifecycle-gate-draft-20260623.md
+```
+
+Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one retained production canary covering public RSS collection, DatasetVersion save, read-only drift check, Report asset persistence, DatasetExportJob persistence, export artifact retention, post-login list/detail visibility, export download, and read-only DB/volume inventory.
+
+Unsupported claim: multi-day retention, automated TTL, automatic cleanup job, scheduler refresh, persisted public-content-specific drift event type, provider enrichment, product/report/subscription email, production browser execution, or browser artifact retention is complete.
