@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；provider call、product/report/subscription email、scheduler mutation、dataset export、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -32,7 +32,8 @@ source: human+ai
 | R0-8 | M3 post-R0 production release | done | production HEAD `f04c8ea77cc64f28d391e992012525e1704ec1a3`；schema 仍为 `202606110023`；GitHub API-first package gate passed |
 | R0-9 | M5 Public Content production package smoke | done_scoped_m5 | production HEAD `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`；`public_feed` RSS TaskRun success；`public_content_update` DatasetVersion row_count=5；drift/report read-only preview passed；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
-| R0-11 | Remaining live side-effect gates | pending_separate_authorization | dataset export、provider call、email send、scheduler mutation、production browser run 均未执行 |
+| R0-11 | M5 Public Content Dataset export gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；CSV DatasetExportJob `success`；artifact_size_bytes=4900；download 校验通过；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-12 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -641,3 +642,80 @@ drafts/analysis/analysis-boundary-m5-public-content-report-asset-gate-draft-2026
 Supported claim: production has been deployed to `fb05c61`, and M5 Public Content has one authorized Report asset gate covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, Report asset creation, Report detail retrieval, and cleanup.
 
 Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 14. M5 Public Content Dataset Export Gate
+
+M5 Public Content Dataset export gate was executed on 2026-06-23 against the already deployed `fb05c61` production code point. No production deployment was performed for this gate.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one CSV DatasetExportJob, one export artifact file, one authenticated export download
+denied: Report asset, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Production baseline:
+
+```text
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Successful production gate evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Export endpoint: POST /api/automation/product-dataset-exports
+Export format: csv
+Export status: success
+Export filename: e2e-public-content-export-dataset-20260623121345-v1-1ad76121.csv
+Export content_type: text/csv; charset=utf-8
+Export artifact_size_bytes: 4900
+Export checksum_sha256: d64474f7cc844de9be1faf48f5e597043dd5cb27318dbeb57a4ab1a78b4995f0
+Export audit event: product_dataset_export_file_written
+Export run_started: false
+Export history total: 1
+Export history export_created: false
+Export history run_started: false
+Download content_type: text/csv; charset=utf-8
+Download byte_length: 4900
+Download contains title/link/published_at header: true
+Download contains content_hash: true
+Download contains feed_url: true
+```
+
+Cleanup evidence:
+
+```text
+pre-cleanup users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, dataset_export_jobs=1, export_artifact_files=1
+cleanup execute: removed the same scoped database objects and the export artifact file
+post-cleanup exact-ID dry-run: all categories returned zero, including export_artifact_files=0
+post-cleanup generic E2E dry-run: all categories returned zero
+temporary remote cleanup script: removed from host /tmp and container /tmp
+post-cleanup production pages: /dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, and /toolkit returned 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-export-gate-draft-20260623.md
+```
+
+Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one authorized Dataset export gate covering public RSS collection, DatasetVersion save, CSV DatasetExportJob creation, export artifact file write, authenticated export download, exact-ID cleanup, artifact deletion, and generic cleanup recount.
+
+Unsupported claim: recurring RSS monitoring, retained dataset/export lifecycle, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
