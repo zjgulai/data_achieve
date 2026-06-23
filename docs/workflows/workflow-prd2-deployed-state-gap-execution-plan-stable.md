@@ -63,7 +63,7 @@ source: human+ai
 |---|---|---|---|---|---|
 | Product shell | `/automation` 作为平台化采集工作台主入口，`/datasets` 作为数据资产池 | `/automation=200`、`/datasets=200` | Web app 有 automation/datasets routes 和 E2E 覆盖 | 生产页面内交互未登录验证；根路径 `307` 只说明有跳转 | P0 release evidence |
 | Auth/workspace boundary | 业务接口绑定登录态、workspace、current user | 未认证业务 API 返回 401；authenticated read-only smoke 通过 | API contract 明确 cookie auth；routes 使用 `get_auth_context` | 缺少 authorized production write E2E 和 cleanup evidence | P0 evidence |
-| Stable collectors | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 本轮未重新运行生产采集 | API docs、collector tests、Automation service 可见 | 稳定 collector 需要在 release 后做授权生产 smoke 和 cleanup register | P0 release |
+| Stable collectors | `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 本轮未重新运行生产采集 | API docs、collector tests、Automation service 可见；`public_feed` 为 M5 local-only scaffold 新增 | 稳定 collector 需要在 release 后做授权生产 smoke 和 cleanup register | P0 release |
 | PlatformPackage | 3 个可解释、可验收平台包：independent site、GitHub API-first、public page preflight | 未认证平台包接口返回 401；authenticated read-only 已确认 `github-api-first` M3 字段合同 | `list_platform_packages()` 返回 3 个 package；E2E 覆盖应用平台包 | 平台包仍是静态 catalog；缺 version、owner、acceptance registry | P0/P1 |
 | CapabilityProbe | Agent Reach 风格 no-read/no-write doctor，区分 backend candidates 和 forbidden actions | 生产未登录未验证 | `list_capability_probes()`、`_probe_agent_reach_channel()`、TS types/UI 可见 | 线上未证明；缺 probe run history、probe evidence asset、operator remediation UI | P0 |
 | Agent Reach fusion | 作为能力路由和 doctor，不直接读平台内容 | 线上未知 | 本地逻辑只允许 `agent-reach doctor --json`，缺失时返回 `missing_tool` | 未安装/线上运行态未知；尚未沉淀 channel-level evidence | P0/P1 |
@@ -71,7 +71,7 @@ source: human+ai
 | Browser artifact retention | metadata-only 当前阶段，截图/trace/HAR 需单独批准 | 生产未验证 | retention workflow 已定义 `files_written=false` 等不变量 | 缺自动 TTL/cleanup job；未实现 approved artifact retention mode | P1 |
 | GitHub Tool Radar | API-first 样板，能进入 Dataset/Export/Drift/Report | 2026-06-23 小范围 L4 gate 已跑通 Topic Radar -> GitHub API TaskRun -> Dataset save -> report asset -> drift snapshot -> cleanup | E2E 覆盖 Topic Radar -> dataset -> report -> drift；M3 已补 license、default branch、latest release、README metadata、pushed_at、schema/provenance、report risk sections 和 drift signal groups | 大 scope rate-limit、retained dataset、scheduler、export、provider/email 仍未闭合 | Done/M3 |
 | Independent site | Shopify-style 商品发现、fan-out、dataset、drift、export | 本轮未执行 M4 授权测试站写入 E2E | `origin/main=e97810a` 基线已随 `f04c8ea` 生产发布进入当前代码点 | M4-4 授权测试站 E2E 未完成；需要测试站 URL、cleanup register 和 export/retention 边界 | P0/M4 |
-| Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | 只有 page availability，不是采集链路 | `public-page-structure-preflight` 已有，generic_web 可作为基础 | RSS/Docs 还不是一等平台包；缺 feed parser、doc diff、dataset schema、drift/report | P1/M5 |
+| Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | 只有 page availability，不是采集链路 | M5 local scaffold 已新增 `public-web-rss-docs` package、`public_feed` collector、RSS/Atom parser、API/Web contract 和测试 | Dataset/drift/report、docs diff、production write、scheduler/export 仍未闭合 | P1/M5 |
 | Video transcript import | YouTube/B 站公开视频 metadata/transcript import，不下载媒体 | 无 | PRD2 已定义边界 | 缺 import schema、source provenance、copyright/subtitle fields、UI flow | P1/M6 |
 | Public community trend | 聚合主题趋势，不做人级画像 | 无 | PRD2 已定义边界 | 缺 V2EX 等公开社区 package、aggregate schema、redaction/privacy guard | P1/P2 |
 | Marketplace | Amazon/marketplace 走官方 API、授权导出或人工导入优先 | 无 | PRD2 已定义边界 | 缺 import template、API credential boundary、sample dataset、cleanup/audit | P2 |
@@ -156,8 +156,8 @@ Boundary: 只处理授权公开页面；不处理登录墙、验证码、购物�
 
 | ID | To do | Suggested files | Acceptance |
 |---|---|---|---|
-| M5-1 | 定义 `public-web-rss-docs` package | API contract、platform package catalog、TS types/UI | package 显示 URL/RSS/Docs 三种 entrypoint，含 risk boundary |
-| M5-2 | RSS/Atom parser | collector + tests | 支持 title/link/published/updated/author/tags/content summary/hash |
+| M5-1 | 定义 `public-web-rss-docs` package | API contract、platform package catalog、TS types/UI | done_local_20260623：package 显示 URL/RSS/Docs targets，含 risk boundary |
+| M5-2 | RSS/Atom parser | collector + tests | done_local_20260623：`public_feed` 支持 title/link/published/updated/author/tags/content summary/hash |
 | M5-3 | Docs diff dataset | dataset service + drift service | 能比较 previous/current content hash、heading diff、link changes |
 | M5-4 | Report template | report service/UI | 生成“公开页面/文档更新摘要”并绑定 evidence |
 
@@ -207,7 +207,7 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 | Done | Release boundary, migration to `023`, M3 GitHub package gate | production HEAD `f04c8ea`，schema `202606110023`，小范围 L4 GitHub package gate 和 cleanup 完成 | release/evidence |
 | P0 | GitHub API-first scale/retention gates | 官方 API、低风险、已有 collector/Dataset/Report path；下一步只扩 scope、retention、export 或 scheduler，不重复证明小范围链路 | API collector |
 | P0 | Independent site / Shopify-style | 已有业务闭环，能产生电商 dataset/drift | public page collector |
-| P1 | Public Web/RSS/Docs | 低风险、高复用，适合训练/竞品/文档更新 | URL/feed/docs collector |
+| P1 | Public Web/RSS/Docs | M5-1/M5-2 local scaffold 已完成；下一步补 Dataset/drift/report，不做生产写入 | URL/feed/docs collector |
 | P1 | Video transcript import | 内容趋势价值高，但应 import metadata/transcript | import |
 | P1/P2 | Public community trend | 可做聚合趋势，不做人级画像 | aggregate import/collector |
 | P2 | Marketplace | 商业价值高，平台政策和账号边界复杂 | API/import first |
@@ -218,9 +218,9 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 
 按当前证据，R0 release/schema 对齐和 M3 GitHub 小范围 L4 package gate 已完成；M4-1 到 M4-3 已进入 `main@8cd3e8f` 并通过 main CI，但 M4 生产写入验收仍未按测试站 URL、cleanup register 和 retention/export 边界执行。
 
-1. 优先选择下一平台包：M4 Independent site 授权测试站 E2E，或 M5 Public Web/RSS/Docs local package scaffold。
+1. M5 下一步是 local-only Dataset/drift/report slice：把 `public_feed` raw record entries 转成 `public_content_update` DatasetVersion，再用 content_hash 做 drift。
 2. 如继续 M4-4，需要明确测试站 URL、允许写入资源、cleanup register、是否允许 export file，以及 cleanup dry-run/execute。
-3. 如选择 M5，先做 local-only package/API schema/RSS parser/dataset drift，不做生产写入、provider call、email、scheduler 或 browser run。
+3. M5 仍不做生产写入、provider call、email、scheduler、dataset export 或 browser run，除非另起授权 gate。
 
 ## 7. Definition Of Done
 

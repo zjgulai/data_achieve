@@ -60,6 +60,12 @@ const recordTypeTone: Record<
     surface: "border-[#D9E2CC] bg-[#F7FBF1]",
     text: "text-[#536B40]",
   },
+  public_feed: {
+    label: "Public Feed",
+    accent: "bg-[#4F85A8]",
+    surface: "border-[#D8E4F0] bg-[#F4FAFF]",
+    text: "text-[#45677E]",
+  },
   manual_json: {
     label: "Manual JSON",
     accent: "bg-[#8D75A8]",

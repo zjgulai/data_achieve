@@ -7,6 +7,7 @@ import {
   Database,
   Github,
   Globe2,
+  Rss,
   Link2,
   Pencil,
   PlayCircle,
@@ -50,6 +51,7 @@ const collectorTypeLabels: Record<CollectorType, string> = {
   github_topic: "GitHub Topic",
   generic_web: "Generic Web",
   manual_json: "Manual JSON",
+  public_feed: "Public Feed",
 };
 
 const collectorShortLabels: Record<CollectorType, string> = {
@@ -59,6 +61,7 @@ const collectorShortLabels: Record<CollectorType, string> = {
   github_topic: "Topic",
   generic_web: "Web",
   manual_json: "JSON",
+  public_feed: "Feed",
 };
 
 const collectorVisuals: Record<
@@ -105,6 +108,13 @@ const collectorVisuals: Record<
     tone: "border-[#D9E2CC] bg-[#F7FBF1]",
     accent: "bg-[#7D9A68]",
     text: "text-[#536B40]",
+  },
+  public_feed: {
+    icon: Rss,
+    eyebrow: "RSS/Atom 更新",
+    tone: "border-[#D8E4F0] bg-[#F4FAFF]",
+    accent: "bg-[#4F85A8]",
+    text: "text-[#45677E]",
   },
   manual_json: {
     icon: UploadCloud,
@@ -210,6 +220,7 @@ export function SourcesWorkspace() {
         github_topic: 0,
         generic_web: 0,
         manual_json: 0,
+        public_feed: 0,
       },
     );
   }, [sources]);
@@ -246,6 +257,7 @@ export function SourcesWorkspace() {
       if (editingSourceId) {
         const sourceUrl =
           collectorType === "generic_web" ||
+          collectorType === "public_feed" ||
           collectorType === "ecommerce_product_page" ||
           collectorType === "ecommerce_product_discovery"
             ? url
@@ -274,6 +286,7 @@ export function SourcesWorkspace() {
       }
       const sourceUrl =
         collectorType === "generic_web" ||
+        collectorType === "public_feed" ||
         collectorType === "ecommerce_product_page" ||
         collectorType === "ecommerce_product_discovery"
           ? url
@@ -379,6 +392,9 @@ export function SourcesWorkspace() {
     if (collectorType === "generic_web") {
       return { url, extract_mode: "main_content" };
     }
+    if (collectorType === "public_feed") {
+      return { url, feed_type: "auto", max_items: 20 };
+    }
     if (collectorType === "ecommerce_product_page") {
       return {
         url,
@@ -408,6 +424,7 @@ export function SourcesWorkspace() {
     }
     if (
       source.type === "generic_web" ||
+      source.type === "public_feed" ||
       source.type === "ecommerce_product_page" ||
       source.type === "ecommerce_product_discovery"
     ) {
@@ -692,6 +709,7 @@ function DynamicConfigFields(props: DynamicConfigFieldsProps) {
   }
   if (
     props.collectorType === "generic_web" ||
+    props.collectorType === "public_feed" ||
     props.collectorType === "ecommerce_product_page" ||
     props.collectorType === "ecommerce_product_discovery"
   ) {
@@ -1015,6 +1033,11 @@ function getSourceConfigSummary(source: Source): string {
   if (source.type === "generic_web") {
     return formatConfigValue(source.config.extract_mode) || "main_content";
   }
+  if (source.type === "public_feed") {
+    return `${formatConfigValue(source.config.feed_type) || "auto"} · ${
+      formatConfigValue(source.config.max_items) || "20"
+    } items`;
+  }
   if (source.type === "ecommerce_product_page") {
     const fields = source.config.fields;
     const count = Array.isArray(fields) ? fields.length : 0;
@@ -1049,6 +1072,9 @@ function getSourceEndpointLabel(source: Source): string {
   }
   if (source.type === "ecommerce_product_discovery") {
     return formatConfigValue(source.config.url) || source.url || "集合页 URL";
+  }
+  if (source.type === "public_feed") {
+    return formatConfigValue(source.config.url) || source.url || "Feed URL";
   }
   return "No URL";
 }

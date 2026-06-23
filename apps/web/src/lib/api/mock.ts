@@ -591,6 +591,131 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       executionBoundary: "executable",
       runStarted: false,
     },
+    {
+      id: "public-web-rss-docs",
+      name: "Public Web / RSS / Docs 更新监控",
+      category: "public_content",
+      summary: "面向公开网页、RSS/Atom feed 和公开文档更新监控；优先使用 feed 或内容 hash。",
+      supportedTargets: ["rss_feed", "atom_feed", "public_web_page", "public_docs"],
+      collectorTypes: ["public_feed", "generic_web"],
+      fieldSchema: [
+        {
+          key: "feed_url",
+          label: "Feed URL",
+          dataType: "url",
+          required: true,
+          source: "operator_input",
+          cleaningRule: "normalize_url",
+        },
+        {
+          key: "title",
+          label: "标题",
+          dataType: "string",
+          required: true,
+          source: "rss_atom_xml",
+          cleaningRule: "strip_text",
+        },
+        {
+          key: "link",
+          label: "原文链接",
+          dataType: "url",
+          required: true,
+          source: "rss_atom_xml",
+          cleaningRule: "normalize_url",
+        },
+        {
+          key: "published_at",
+          label: "发布时间",
+          dataType: "datetime",
+          required: false,
+          source: "rss_atom_xml",
+          cleaningRule: "preserve_timestamp",
+        },
+        {
+          key: "content_hash",
+          label: "内容 Hash",
+          dataType: "string",
+          required: true,
+          source: "collector_generated",
+          cleaningRule: "hash_content",
+        },
+      ],
+      defaultEntrypoint: "source-create",
+      sampleUrls: [
+        {
+          label: "RSS feed 样例",
+          entrypoint: "source-create",
+          url: "https://example.com/feed.xml",
+          description: "创建 public_feed 采集源，读取公开 RSS/Atom 更新条目。",
+        },
+      ],
+      cleaningRules: [
+        {
+          field: "feed_url",
+          operation: "normalize_url",
+          description: "规范 feed URL，拒绝私网、账号参数和非 HTTP(S) 地址。",
+        },
+        {
+          field: "content_hash",
+          operation: "hash_content",
+          description: "对条目标题、链接、时间戳和摘要生成稳定 hash。",
+        },
+      ],
+      operatorChecklist: [
+        "确认 feed/docs 来源公开可访问，不需要账号、cookie、验证码或代理。",
+        "优先使用 RSS/Atom feed；没有 feed 时才退回 generic_web 页面 hash。",
+        "保留 title、link、published_at/updated_at、summary、content_hash 作为最小字段合同。",
+        "docs diff、report 和定时刷新需要独立授权；本地 scaffold 不创建生产任务。",
+      ],
+      strategyMatrix: [
+        {
+          id: "public-feed-monitor",
+          label: "RSS/Atom feed 更新监控",
+          entrypoint: "source-create",
+          collectorType: "public_feed",
+          fit: "high",
+          canStartFromAutomation: true,
+          reviewRequired: true,
+          description: "创建 public_feed 采集源并读取公开 feed 条目。",
+        },
+        {
+          id: "public-docs-hash-monitor",
+          label: "公开 docs hash 监控",
+          entrypoint: "preflight",
+          collectorType: "generic_web",
+          fit: "medium",
+          canStartFromAutomation: true,
+          reviewRequired: true,
+          description: "对无 feed 的公开文档页先做结构预检，再用 generic_web 监控内容 hash。",
+        },
+      ],
+      riskBoundaries: [
+        {
+          condition: "RSS/Atom 或公开文档页可匿名访问",
+          severity: "info",
+          guidance: "可在授权确认后进入本地 source-create 或 preflight 验证。",
+        },
+        {
+          condition: "Feed 指向私网、登录态、付费墙、个人消息或评论区",
+          severity: "blocked",
+          guidance: "停止自动采集，改用官方 API、人工导入或明确授权导出。",
+        },
+      ],
+      sopLinks: [
+        {
+          label: "公开内容监控 SOP",
+          href: "/toolkit?category=platform_method&platform=public-web-rss-docs",
+        },
+        { label: "采集源配置", href: "/sources" },
+      ],
+      sampleFixture: {
+        fixtureType: "rss_atom_fixture",
+        available: true,
+        description: "单元测试使用固定 RSS/Atom XML 验证 feed 解析、条目 hash 和边界。",
+      },
+      executionBoundary: "executable",
+      runStarted: false,
+    },
   ];
 }
 
@@ -763,6 +888,14 @@ export function getMockCollectors(): Collector[] {
       name: "Generic Web Page",
       description: "Monitor a single public page.",
       configSchema: { required: ["url"] },
+      enabled: true,
+    },
+    {
+      id: "collector_public_feed",
+      type: "public_feed",
+      name: "Public RSS/Atom Feed",
+      description: "Monitor a public RSS or Atom feed.",
+      configSchema: { required: ["url"], optional: ["feed_type", "max_items"] },
       enabled: true,
     },
     {

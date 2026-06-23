@@ -20,7 +20,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
+3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
@@ -89,6 +89,7 @@ flowchart LR
 | `shopify-independent-ecommerce` | ecommerce | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset |
 | `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段合同 |
 | `public-page-structure-preflight` | browser_preflight | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
+| `public-web-rss-docs` | public_content | `source-create` | `executable` | M5 local scaffold 已新增 `public_feed` RSS/Atom collector；Dataset/drift/report 和生产运行仍待后续 gate |
 
 ## 数据闭环
 
@@ -176,6 +177,7 @@ flowchart LR
 | `github_repo` | 监控公开 GitHub 仓库指标 |
 | `github_topic` | 按公开 topic 发现 GitHub 仓库 |
 | `generic_web` | 采集公开网页快照 |
+| `public_feed` | 采集公开 RSS/Atom feed 更新条目 |
 | `manual_json` | 导入人工或外部工具结构化样本 |
 | `ecommerce_product_discovery` | 从独立站列表页或 sitemap 发现商品 URL |
 | `ecommerce_product_page` | 从公开独立站商品页解析结构化商品字段 |

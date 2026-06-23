@@ -116,6 +116,8 @@ const fieldLabels: Record<string, string> = {
   currency: "货币",
   default_branch: "默认分支",
   description: "描述",
+  content_hash: "内容 Hash",
+  feed_url: "Feed URL",
   headings: "标题层级",
   image_url: "主图",
   forks: "Forks",
@@ -129,6 +131,8 @@ const fieldLabels: Record<string, string> = {
   license_spdx_id: "License",
   open_issues: "Open issues",
   page_title: "页面标题",
+  published_at: "发布时间",
+  link: "链接",
   price: "价格",
   price_max: "最高价",
   price_min: "最低价",
@@ -924,6 +928,11 @@ export function AutomationWorkbench() {
       if (osintProject) {
         setSelectedProjectId(osintProject.id);
       }
+      return;
+    }
+    if (executableStrategy.collectorType === "public_feed") {
+      setMode("structure_preflight");
+      setUrl(sampleUrl?.url ?? "https://example.com/feed.xml");
       return;
     }
     if (executableStrategy.entrypoint === "product-discovery") {

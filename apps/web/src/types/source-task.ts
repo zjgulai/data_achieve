@@ -6,7 +6,8 @@ export type CollectorType =
   | "generic_web"
   | "github_repo"
   | "github_topic"
-  | "manual_json";
+  | "manual_json"
+  | "public_feed";
 
 export type Collector = {
   id: string;
@@ -140,4 +141,5 @@ export const sourceDomainDefaults: Record<CollectorType, ProjectDomain> = {
   github_topic: "osint",
   generic_web: "competitor",
   manual_json: "mixed",
+  public_feed: "competitor",
 };

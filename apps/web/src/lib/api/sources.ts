@@ -216,6 +216,9 @@ function inferCollectorTypeFromSourceId(sourceId: string): CollectorType {
   if (sourceId.includes("generic_web")) {
     return "generic_web";
   }
+  if (sourceId.includes("public_feed")) {
+    return "public_feed";
+  }
   if (sourceId.includes("manual_json")) {
     return "manual_json";
   }

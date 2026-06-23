@@ -92,6 +92,7 @@ class AutomationCleaningRuleInput(BaseModel):
         "uppercase",
         "normalize_availability",
         "fill_default",
+        "hash_content",
     ]
     value: str | int | float | bool | None = None
     description: str | None = Field(default=None, max_length=500)
@@ -286,6 +287,7 @@ class AutomationPlatformPackageCleaningRuleResponse(BaseModel):
         "uppercase",
         "normalize_availability",
         "fill_default",
+        "hash_content",
     ]
     value: str | int | float | bool | None = None
     description: str

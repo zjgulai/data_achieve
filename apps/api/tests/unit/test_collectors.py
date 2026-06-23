@@ -19,6 +19,7 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
 
 TestIpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
@@ -282,6 +283,96 @@ async def test_generic_web_collector_collects_html_snapshot(
     assert content["title"] == "Demo"
     assert "Hello" in content["text_content"]
     assert collector.normalize(raw_record) == []
+
+
+@pytest.mark.asyncio
+async def test_public_feed_collector_collects_rss_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    rss_xml = """
+    <rss version="2.0">
+      <channel>
+        <title>Demo Updates</title>
+        <link>https://example.com/blog</link>
+        <description>Public changelog feed</description>
+        <item>
+          <title>New scraper guide</title>
+          <link>https://example.com/blog/scraper-guide</link>
+          <pubDate>Tue, 23 Jun 2026 08:00:00 GMT</pubDate>
+          <author>editor@example.com</author>
+          <category>docs</category>
+          <description>Guide summary</description>
+        </item>
+      </channel>
+    </rss>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(200, text=rss_xml)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = PublicFeedCollector({"url": "https://example.com/feed.xml"}, client)
+        test_result = await collector.test()
+        collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    raw_record = collect_result.raw_records[0]
+    content = raw_record.content
+    assert isinstance(content, dict)
+    assert raw_record.record_type == "public_feed"
+    assert content["schema_version"] == "public_feed.v1"
+    assert content["feed_type"] == "rss"
+    assert content["item_count"] == 1
+    assert content["entries"][0]["title"] == "New scraper guide"
+    assert content["entries"][0]["link"] == "https://example.com/blog/scraper-guide"
+    assert content["entries"][0]["tags"] == ["docs"]
+    assert content["entries"][0]["content_hash"]
+    assert content["provenance"]["public_url_checked"] is True
+    assert collector.normalize(raw_record) == []
+
+
+@pytest.mark.asyncio
+async def test_public_feed_collector_collects_atom_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    atom_xml = """
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <title>Docs Feed</title>
+      <link href="https://example.com/docs" rel="alternate"/>
+      <entry>
+        <title>API contract updated</title>
+        <link href="https://example.com/docs/api" rel="alternate"/>
+        <updated>2026-06-23T09:00:00Z</updated>
+        <author><name>Docs Team</name></author>
+        <category term="api"/>
+        <summary>API summary</summary>
+      </entry>
+    </feed>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(200, text=atom_xml)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = PublicFeedCollector(
+            {"url": "https://example.com/atom.xml", "feed_type": "atom", "max_items": 10},
+            client,
+        )
+        collect_result = await collector.collect()
+
+    content = collect_result.raw_records[0].content
+    assert isinstance(content, dict)
+    assert content["feed_type"] == "atom"
+    assert content["site_url"] == "https://example.com/docs"
+    assert content["entries"][0]["updated_at"] == "2026-06-23T09:00:00Z"
+    assert content["entries"][0]["author"] == "Docs Team"
+    assert content["entries"][0]["tags"] == ["api"]
 
 
 @pytest.mark.asyncio

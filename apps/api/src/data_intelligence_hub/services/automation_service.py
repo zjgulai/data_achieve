@@ -5488,6 +5488,183 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
             execution_boundary="executable",
             run_started=False,
         ),
+        AutomationPlatformPackageResponse(
+            id="public-web-rss-docs",
+            name="Public Web / RSS / Docs 更新监控",
+            category="public_content",
+            summary=(
+                "面向公开网页、RSS/Atom feed 和公开文档更新监控；"
+                "优先使用 feed 或静态网页内容 hash，不进入登录态、评论区或个人画像采集。"
+            ),
+            supported_targets=["rss_feed", "atom_feed", "public_web_page", "public_docs"],
+            collector_types=["public_feed", "generic_web"],
+            field_schema=[
+                AutomationPlatformPackageFieldResponse(
+                    key="feed_url",
+                    label="Feed URL",
+                    data_type="url",
+                    required=True,
+                    source="operator_input",
+                    cleaning_rule="normalize_url",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="title",
+                    label="标题",
+                    data_type="string",
+                    required=True,
+                    source="rss_atom_xml",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="link",
+                    label="原文链接",
+                    data_type="url",
+                    required=True,
+                    source="rss_atom_xml",
+                    cleaning_rule="normalize_url",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="published_at",
+                    label="发布时间",
+                    data_type="datetime",
+                    required=False,
+                    source="rss_atom_xml",
+                    cleaning_rule="preserve_timestamp",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="updated_at",
+                    label="更新时间",
+                    data_type="datetime",
+                    required=False,
+                    source="rss_atom_xml",
+                    cleaning_rule="preserve_timestamp",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="summary",
+                    label="摘要",
+                    data_type="text",
+                    required=False,
+                    source="rss_atom_xml",
+                    cleaning_rule="strip_text",
+                ),
+                AutomationPlatformPackageFieldResponse(
+                    key="content_hash",
+                    label="内容 Hash",
+                    data_type="string",
+                    required=True,
+                    source="collector_generated",
+                    cleaning_rule="hash_content",
+                ),
+            ],
+            default_entrypoint="source-create",
+            sample_urls=[
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="RSS feed 样例",
+                    entrypoint="source-create",
+                    url="https://example.com/feed.xml",
+                    description="用于创建 public_feed 采集源，读取公开 RSS/Atom 更新条目。",
+                ),
+                AutomationPlatformPackageSampleUrlResponse(
+                    label="公开 docs 样例",
+                    entrypoint="preflight",
+                    url="https://example.com/docs",
+                    description="先做公开页面结构预检，再决定是否进入 generic_web hash 监控。",
+                ),
+            ],
+            cleaning_rules=[
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="feed_url",
+                    operation="normalize_url",
+                    description="规范 feed URL，拒绝私网、账号参数和非 HTTP(S) 地址。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="title",
+                    operation="strip_text",
+                    description="清理 feed 和条目标题空白。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="link",
+                    operation="normalize_url",
+                    description="保留条目原文 URL，作为后续 Dataset 和 report provenance。",
+                ),
+                AutomationPlatformPackageCleaningRuleResponse(
+                    field="content_hash",
+                    operation="hash_content",
+                    description="对条目标题、链接、时间戳和摘要生成稳定 hash，用于 drift/diff。",
+                ),
+            ],
+            operator_checklist=[
+                "确认 feed/docs 来源公开可访问，不需要账号、cookie、验证码或代理。",
+                "优先使用 RSS/Atom feed；没有 feed 时才退回 generic_web 页面 hash。",
+                (
+                    "保留 title、link、published_at/updated_at、summary、"
+                    "content_hash 作为最小字段合同。"
+                ),
+                "docs diff、report 和定时刷新需要独立授权；本地 scaffold 不创建生产任务。",
+            ],
+            strategy_matrix=[
+                AutomationPlatformPackageStrategyResponse(
+                    id="public-feed-monitor",
+                    label="RSS/Atom feed 更新监控",
+                    entrypoint="source-create",
+                    collector_type="public_feed",
+                    fit="high",
+                    can_start_from_automation=True,
+                    review_required=True,
+                    description=(
+                        "创建 public_feed 采集源并读取公开 feed 条目，"
+                        "适合公告、博客和文档更新。"
+                    ),
+                ),
+                AutomationPlatformPackageStrategyResponse(
+                    id="public-docs-hash-monitor",
+                    label="公开 docs hash 监控",
+                    entrypoint="preflight",
+                    collector_type="generic_web",
+                    fit="medium",
+                    can_start_from_automation=True,
+                    review_required=True,
+                    description=(
+                        "对无 feed 的公开文档页先做结构预检，"
+                        "再用 generic_web 监控内容 hash。"
+                    ),
+                ),
+            ],
+            risk_boundaries=[
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="RSS/Atom 或公开文档页可匿名访问",
+                    severity="info",
+                    guidance="可在授权确认后进入本地 source-create 或 preflight 验证。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="Feed 指向私网、登录态、付费墙、个人消息或评论区",
+                    severity="blocked",
+                    guidance="停止自动采集，改用官方 API、人工导入或明确授权导出。",
+                ),
+                AutomationPlatformPackageRiskBoundaryResponse(
+                    condition="无 feed 且页面强依赖交互脚本",
+                    severity="warning",
+                    guidance="先进入公开页面结构预检，不直接升级到生产浏览器运行。",
+                ),
+            ],
+            sop_links=[
+                AutomationPlatformPackageSopLinkResponse(
+                    label="公开内容监控 SOP",
+                    href="/toolkit?category=platform_method&platform=public-web-rss-docs",
+                ),
+                AutomationPlatformPackageSopLinkResponse(
+                    label="采集源配置",
+                    href="/sources",
+                ),
+            ],
+            sample_fixture=AutomationPlatformPackageFixtureResponse(
+                fixture_type="rss_atom_fixture",
+                available=True,
+                description="单元测试使用固定 RSS/Atom XML 验证 feed 解析、条目 hash 和边界。",
+            ),
+            execution_boundary="executable",
+            run_started=False,
+        ),
     ]
 
 

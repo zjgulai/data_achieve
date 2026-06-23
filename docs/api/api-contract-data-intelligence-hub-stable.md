@@ -83,6 +83,7 @@ osint, ecommerce, social, competitor, mixed
 | `github_repo` | `owner`、`repo` | GitHub 仓库指标 |
 | `github_topic` | `topic` | GitHub topic 趋势 |
 | `generic_web` | `url` | 公开网页快照 |
+| `public_feed` | `url` | 公开 RSS/Atom feed 更新条目 |
 | `manual_json` | `entity_type`、`json_data` | 人工或外部工具导入结构化样本 |
 | `ecommerce_product_discovery` | `url` | 从公开独立站 listing、collection 或 sitemap 发现商品 URL |
 | `ecommerce_product_page` | `url` | 从公开独立站商品页解析商品字段 |
@@ -115,12 +116,14 @@ osint, ecommerce, social, competitor, mixed
 | `shopify-independent-ecommerce` | `executable` | `product-discovery` | 独立站/Shopify-style 商品采集，从集合页或商品页进入 Automation 主链路 |
 | `github-api-first` | `executable` | `source-create` | GitHub topic 工具情报采集，使用官方 API 创建 Source、启用 Task 并运行一次 |
 | `public-page-structure-preflight` | `executable` | `preflight` | 授权公开网页结构预检，先输出 gate 和结构诊断，再决定是否创建 `generic_web` Source |
+| `public-web-rss-docs` | `executable` | `source-create` | 公开 RSS/Atom feed 与 docs/page hash 更新监控；首轮本地 scaffold 只打通 `public_feed` collector |
 
 平台包不变量：
 
 1. `execution_boundary=executable` 只表示可以从界面启动其声明的低风险路径，不代表绕过授权、rate limit 或平台政策。
 2. GitHub/API-first 当前可执行路径是 `github_topic` Topic Radar；单仓库 `github_repo` 仍建议通过 Sources 创建重点仓库监控。
 3. `public-page-structure-preflight` 使用 Toolkit preflight，不是 Source collector；只有用户确认后才可继续创建 `generic_web` Source。
+4. `public-web-rss-docs` 首轮只覆盖本地 RSS/Atom collector、字段合同和 public URL guard；Dataset/drift/report、生产写入、scheduler 和 export 仍需后续授权 gate。
 
 ### Capability Probe Contract
 

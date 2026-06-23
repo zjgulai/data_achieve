@@ -787,7 +787,8 @@ export type AutomationCleaningRule = {
     | "normalize_url"
     | "uppercase"
     | "normalize_availability"
-    | "fill_default";
+    | "fill_default"
+    | "hash_content";
   value?: string | number | boolean | null;
   description?: string | null;
 };

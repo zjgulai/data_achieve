@@ -93,6 +93,7 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
         "github_repo",
         "github_topic",
         "generic_web",
+        "public_feed",
         "manual_json",
         "ecommerce_product_discovery",
         "ecommerce_product_page",
@@ -115,6 +116,7 @@ async def test_automation_platform_packages_expose_collection_contract(
     assert "shopify-independent-ecommerce" in packages_by_id
     assert "github-api-first" in packages_by_id
     assert "public-page-structure-preflight" in packages_by_id
+    assert "public-web-rss-docs" in packages_by_id
 
     ecommerce_package = packages_by_id["shopify-independent-ecommerce"]
     assert ecommerce_package["category"] == "ecommerce"
@@ -198,6 +200,29 @@ async def test_automation_platform_packages_expose_collection_contract(
     assert any(
         boundary["severity"] == "blocked" and "验证码" in boundary["condition"]
         for boundary in preflight_package["risk_boundaries"]
+    )
+
+    public_content_package = packages_by_id["public-web-rss-docs"]
+    assert public_content_package["category"] == "public_content"
+    assert public_content_package["execution_boundary"] == "executable"
+    assert public_content_package["default_entrypoint"] == "source-create"
+    assert public_content_package["collector_types"] == ["public_feed", "generic_web"]
+    assert {field["key"] for field in public_content_package["field_schema"]} >= {
+        "feed_url",
+        "title",
+        "link",
+        "published_at",
+        "content_hash",
+    }
+    assert any(
+        strategy["entrypoint"] == "source-create"
+        and strategy["collector_type"] == "public_feed"
+        and strategy["can_start_from_automation"] is True
+        for strategy in public_content_package["strategy_matrix"]
+    )
+    assert any(
+        boundary["severity"] == "blocked" and "登录态" in boundary["condition"]
+        for boundary in public_content_package["risk_boundaries"]
     )
 
     detail_response = await client.get(

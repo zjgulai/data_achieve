@@ -922,7 +922,8 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
     await expect(page.getByText("公开网页结构解析预检", { exact: true })).toBeVisible();
-    await expect(page.getByText("可执行", { exact: true })).toHaveCount(3);
+    await expect(page.getByText("Public Web / RSS / Docs 更新监控", { exact: true })).toBeVisible();
+    await expect(page.getByText("可执行", { exact: true })).toHaveCount(4);
 
     await page
       .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })
@@ -934,14 +935,19 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByLabel("集合页 / 列表页 URL")).toHaveValue(
       "https://shop.example/collections/summer-bags",
     );
-    await expect(page.getByText("已应用平台包：独立站 / Shopify-style 商品采集")).toBeVisible();
-    await expect(page.getByText("操作清单")).toBeVisible();
-    await expect(page.getByText("默认清洗规则")).toBeVisible();
-    await expect(page.getByText("标题", { exact: true })).toBeVisible();
-    await expect(page.getByText("价格", { exact: true })).toBeVisible();
-    await expect(page.getByText("SKU", { exact: true })).toBeVisible();
-    await expect(page.getByText("SKU: fill_default")).toBeVisible();
-    await expect(page.getByText("规范 URL", { exact: true }).first()).toBeVisible();
+    const appliedPackagePanel = page.locator("section").filter({
+      hasText: "已应用平台包：独立站 / Shopify-style 商品采集",
+    });
+    await expect(
+      appliedPackagePanel.getByText("已应用平台包：独立站 / Shopify-style 商品采集"),
+    ).toBeVisible();
+    await expect(appliedPackagePanel.getByText("操作清单")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("默认清洗规则")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("标题", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("价格", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("SKU", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("SKU: fill_default")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("规范 URL", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "应用公开网页结构解析预检" }).click();
     await expect(page.getByRole("button", { name: "结构预检", exact: true })).toHaveAttribute(
