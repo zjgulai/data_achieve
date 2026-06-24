@@ -139,6 +139,10 @@ class AutomationProductScheduleApproveRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class AutomationPublicContentScheduleApproveRequest(AutomationProductScheduleApproveRequest):
+    pass
+
+
 class AutomationProductDriftCheckRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID

@@ -250,6 +250,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentReportRequest,
     AutomationPublicContentReportResponse,
     AutomationPublicContentReportSummaryResponse,
+    AutomationPublicContentScheduleApproveRequest,
     AutomationScheduleApprovedTaskResponse,
     AutomationScheduleBlockedTaskResponse,
     AutomationSiteAnalysisDetailResponse,
@@ -2761,6 +2762,122 @@ async def approve_product_schedule(
                 "approved_tasks": len(approved_tasks),
                 "blocked_tasks": len(blocked_tasks),
                 "run_started": False,
+            }
+        ],
+        blocked_reasons=blocked_reasons,
+    )
+
+
+async def approve_public_content_schedule(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationPublicContentScheduleApproveRequest,
+) -> AutomationProductScheduleApproveResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+
+    dataset = await get_dataset(session, workspace.id, payload.dataset_id)
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        payload.dataset_id,
+        payload.dataset_version_id,
+    )
+    if dataset is None or version is None:
+        raise CollectorError("dataset_version_not_found")
+    if dataset.dataset_type != "public_content_update":
+        raise CollectorError("dataset_type_not_public_content_update")
+    if version.average_completeness_percent < payload.minimum_completeness_percent:
+        raise CollectorError("dataset_quality_gate_failed")
+
+    schedule_cron = payload.schedule_cron.strip() if payload.schedule_cron else None
+    if schedule_cron is not None:
+        try:
+            cron_interval(schedule_cron)
+        except UnsupportedCronExpression as exc:
+            raise CollectorError("schedule_cron_unsupported") from exc
+
+    approved_at = datetime.now(UTC)
+    anchor_task_ids = await _dataset_version_task_ids(session, workspace, version)
+    approved_tasks: list[AutomationScheduleApprovedTaskResponse] = []
+    blocked_tasks: list[AutomationScheduleBlockedTaskResponse] = []
+    seen_task_ids: set[uuid.UUID] = set()
+
+    for task_id in payload.task_ids:
+        if task_id in seen_task_ids:
+            blocked_tasks.append(
+                AutomationScheduleBlockedTaskResponse(
+                    task_id=task_id,
+                    reason="duplicate_task_id",
+                )
+            )
+            continue
+        seen_task_ids.add(task_id)
+        task = await get_task(session, workspace.id, task_id)
+        reason = _public_content_schedule_task_block_reason(
+            task,
+            dataset,
+            anchor_task_ids,
+        )
+        if reason is not None:
+            blocked_tasks.append(
+                AutomationScheduleBlockedTaskResponse(task_id=task_id, reason=reason)
+            )
+            continue
+
+        assert task is not None
+        task.schedule_cron = schedule_cron
+        task.config = _approved_schedule_config(
+            task.config,
+            dataset=dataset,
+            version=version,
+            payload=payload,
+            approved_at=approved_at,
+        )
+        approved_tasks.append(
+            AutomationScheduleApprovedTaskResponse(
+                task_id=task.id,
+                task_name=task.name,
+                status=task.status,
+                schedule_cron=task.schedule_cron,
+                schedule_policy=payload.schedule_policy,
+                freshness_target_hours=payload.freshness_target_hours,
+                dataset_id=dataset.id,
+                dataset_version_id=version.id,
+                approved_at=approved_at,
+            )
+        )
+
+    await session.commit()
+
+    blocked_reasons = ["公开内容调度审批只更新任务配置，不会立即启动采集运行。"]
+    if blocked_tasks:
+        blocked_reasons.append("部分任务未通过公开内容数据集谱系、类型或状态校验。")
+    if not approved_tasks:
+        blocked_reasons.append("没有任务进入公开内容已审批调度状态。")
+
+    return AutomationProductScheduleApproveResponse(
+        approved_at=approved_at,
+        authorization_confirmed=payload.authorized,
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        approved_tasks=approved_tasks,
+        blocked_tasks=blocked_tasks,
+        summary=AutomationProductScheduleApproveSummaryResponse(
+            requested_tasks=len(payload.task_ids),
+            approved_tasks=len(approved_tasks),
+            blocked_tasks=len(blocked_tasks),
+            run_started=False,
+        ),
+        audit_events=[
+            {
+                "event": "public_content_schedule_approved",
+                "dataset_id": str(dataset.id),
+                "dataset_version_id": str(version.id),
+                "approved_tasks": len(approved_tasks),
+                "blocked_tasks": len(blocked_tasks),
+                "run_started": False,
+                "scheduler_tick_started": False,
             }
         ],
         blocked_reasons=blocked_reasons,
@@ -7810,6 +7927,20 @@ def _public_content_drift_task_block_reason(
         return "task_collector_type_not_public_content"
     if task.id not in anchor_task_ids:
         return "task_dataset_lineage_unapproved"
+    return None
+
+
+def _public_content_schedule_task_block_reason(
+    task: CollectionTask | None,
+    dataset: Dataset,
+    anchor_task_ids: set[uuid.UUID],
+) -> str | None:
+    reason = _public_content_drift_task_block_reason(task, dataset, anchor_task_ids)
+    if reason is not None:
+        return reason
+    assert task is not None
+    if task.status != "enabled":
+        return "task_not_enabled"
     return None
 
 

@@ -2278,6 +2278,215 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
 
 
 @pytest.mark.asyncio
+async def test_public_content_schedule_approval_updates_public_task_without_running(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FixturePublicFeedCollector(BaseCollector):
+        collector_type = "public_feed"
+
+        def validate_config(self) -> dict[str, object]:
+            return {
+                "url": self.config.get("url", "https://example.com/blog/feed.xml"),
+                "feed_type": self.config.get("feed_type", "rss"),
+                "max_items": self.config.get("max_items", 20),
+            }
+
+        async def test(self) -> CollectorTestResult:
+            return CollectorTestResult(status="ok", message="ok", logs=[])
+
+        async def collect(self) -> CollectionResult:
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="public_feed",
+                        source_url="https://example.com/blog/feed.xml",
+                        content={
+                            "provider": "public_feed",
+                            "kind": "feed_snapshot",
+                            "schema_version": "public_feed.v1",
+                            "feed_url": "https://example.com/blog/feed.xml",
+                            "feed_type": "rss",
+                            "title": "Example Product Blog",
+                            "site_url": "https://example.com/blog",
+                            "description": "Public updates for Example Product.",
+                            "item_count": 1,
+                            "max_items": 20,
+                            "entries": [
+                                {
+                                    "title": "Launch notes",
+                                    "link": "https://example.com/blog/launch",
+                                    "published_at": "2026-06-20T00:00:00Z",
+                                    "updated_at": "2026-06-20T00:00:00Z",
+                                    "author": "Docs Team",
+                                    "tags": ["release", "docs"],
+                                    "summary": "Initial launch notes.",
+                                    "content_hash": "hash-launch-v1",
+                                }
+                            ],
+                            "feed_content_hash": "feed-hash-v1",
+                            "provenance": {
+                                "endpoint_origin": "https://example.com/blog/feed.xml",
+                                "parser": "fixture",
+                                "public_url_checked": True,
+                            },
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "public_feed",
+        FixturePublicFeedCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Example Product Blog Feed Schedule",
+            "type": "public_feed",
+            "config": {
+                "url": "https://example.com/blog/feed.xml",
+                "feed_type": "rss",
+                "max_items": 20,
+            },
+        },
+    )
+    assert source_response.status_code == 201
+    enable_response = await client.post(f"/api/sources/{source_response.json()['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert run_response.status_code == 201
+    run = run_response.json()
+    assert run["status"] == "success"
+
+    fields = [
+        "title",
+        "link",
+        "summary",
+        "content_hash",
+        "feed_url",
+        "feed_title",
+        "text_length",
+    ]
+    save_response = await client.post(
+        "/api/automation/public-content-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Public Content Schedule Dataset",
+            "description": "Baseline public content dataset for schedule approval.",
+            "task_run_ids": [run["id"]],
+            "fields": fields,
+            "max_rows": 5,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["dataset"]["dataset_type"] == "public_content_update"
+    assert saved["version"]["average_completeness_percent"] == 86
+
+    quality_gate_response = await client.post(
+        "/api/automation/public-content-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "schedule_policy": "manual_refresh_only",
+            "freshness_target_hours": 24,
+            "minimum_completeness_percent": 90,
+        },
+    )
+    assert quality_gate_response.status_code == 400
+    assert quality_gate_response.json()["detail"] == "dataset_quality_gate_failed"
+
+    unsupported_cron_response = await client.post(
+        "/api/automation/public-content-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "schedule_policy": "manual_refresh_only",
+            "schedule_cron": "0 8 1 * *",
+            "freshness_target_hours": 24,
+            "minimum_completeness_percent": 80,
+        },
+    )
+    assert unsupported_cron_response.status_code == 400
+    assert unsupported_cron_response.json()["detail"] == "schedule_cron_unsupported"
+
+    runs_before_response = await client.get(f"/api/tasks/{task['id']}/runs")
+    assert runs_before_response.status_code == 200
+    runs_before_count = len(runs_before_response.json())
+
+    schedule_response = await client.post(
+        "/api/automation/public-content-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"], task["id"]],
+            "schedule_policy": "manual_refresh_only",
+            "freshness_target_hours": 72,
+            "minimum_completeness_percent": 80,
+            "note": "Approved for public content schedule gate.",
+        },
+    )
+    assert schedule_response.status_code == 200
+    schedule = schedule_response.json()
+    assert schedule["summary"] == {
+        "requested_tasks": 2,
+        "approved_tasks": 1,
+        "blocked_tasks": 1,
+        "run_started": False,
+    }
+    assert schedule["dataset"]["dataset_type"] == "public_content_update"
+    assert schedule["approved_tasks"][0]["task_id"] == task["id"]
+    assert schedule["approved_tasks"][0]["schedule_policy"] == "manual_refresh_only"
+    assert schedule["approved_tasks"][0]["schedule_cron"] is None
+    assert schedule["approved_tasks"][0]["freshness_target_hours"] == 72
+    assert schedule["blocked_tasks"][0] == {
+        "task_id": task["id"],
+        "reason": "duplicate_task_id",
+    }
+    assert any(
+        event["event"] == "public_content_schedule_approved"
+        and event["run_started"] is False
+        and event["scheduler_tick_started"] is False
+        for event in schedule["audit_events"]
+    )
+    assert "不会立即启动采集运行" in schedule["blocked_reasons"][0]
+
+    approved_task_response = await client.get(f"/api/tasks/{task['id']}")
+    assert approved_task_response.status_code == 200
+    approved_task = approved_task_response.json()
+    assert approved_task["schedule_policy"] == "manual_refresh_only"
+    assert approved_task["freshness_target_hours"] == 72
+    assert approved_task["schedule_cron"] is None
+    assert approved_task["config"]["approved_dataset_id"] == saved["dataset"]["id"]
+    assert approved_task["config"]["approved_dataset_version_id"] == saved["version"]["id"]
+    assert approved_task["config"]["schedule_boundary"] == "approved_no_immediate_run"
+    assert approved_task["config"]["schedule_quality_gate"] == {
+        "minimum_completeness_percent": 80,
+        "actual_completeness_percent": 86,
+        "row_count": 1,
+        "selected_fields": fields,
+    }
+
+    runs_after_response = await client.get(f"/api/tasks/{task['id']}/runs")
+    assert runs_after_response.status_code == 200
+    assert len(runs_after_response.json()) == runs_before_count
+
+
+@pytest.mark.asyncio
 async def test_generic_web_docs_snapshot_saves_public_content_dataset_and_reports_hash_drift(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,

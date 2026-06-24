@@ -82,6 +82,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentReportAssetResponse,
     AutomationPublicContentReportRequest,
     AutomationPublicContentReportResponse,
+    AutomationPublicContentScheduleApproveRequest,
     AutomationSiteAnalysisDetailResponse,
     AutomationSiteAnalysisListResponse,
     AutomationSiteAnalysisRequest,
@@ -90,6 +91,7 @@ from data_intelligence_hub.schemas.automation import (
 from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
+    approve_public_content_schedule,
     build_browser_executor_contract,
     cancel_browser_diagnostic_job_asset,
     check_github_tool_drift,
@@ -762,6 +764,24 @@ async def approve_product_schedule_route(
 ) -> AutomationProductScheduleApproveResponse:
     try:
         return await approve_product_schedule(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/public-content-schedule-approve",
+    response_model=AutomationProductScheduleApproveResponse,
+)
+async def approve_public_content_schedule_route(
+    payload: AutomationPublicContentScheduleApproveRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductScheduleApproveResponse:
+    try:
+        return await approve_public_content_schedule(session, context.workspace, payload)
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
