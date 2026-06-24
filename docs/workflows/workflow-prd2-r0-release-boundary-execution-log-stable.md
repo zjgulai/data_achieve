@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice，并部署 production SHA `af23cefc92aa9fec336f632a5b1561623811c2fd` 完成 scoped production docs/page gate：`generic_web` docs/page snapshot 进入 `public_content_update` Dataset/drift/report/event/report-asset 链路，并在取证后清理 scoped fixtures 至零。之后部署 production SHA `a81154426fd4e942fc9439de3dcbd9c816122562` 完成 scoped public-content scheduler approval gate：批准一个 public-content Task 的 schedule metadata，验证未启动 scheduler tick 或新 TaskRun，并在取证后清理 scoped fixtures 至零。provider call、product/report/subscription email、scheduler tick execution、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice，并部署 production SHA `af23cefc92aa9fec336f632a5b1561623811c2fd` 完成 scoped production docs/page gate：`generic_web` docs/page snapshot 进入 `public_content_update` Dataset/drift/report/event/report-asset 链路，并在取证后清理 scoped fixtures 至零。之后部署 production SHA `a81154426fd4e942fc9439de3dcbd9c816122562` 完成 scoped public-content scheduler approval gate：批准一个 public-content Task 的 schedule metadata，验证未启动 scheduler tick 或新 TaskRun，并在取证后清理 scoped fixtures 至零。随后本地完成 M5 retained public-content TTL/cleanup policy slice，新增 dry-run/execute 维护入口与 export artifact root safety checks；该 slice 未部署生产、未运行 production cleanup dry-run/execute，也未删除 retained canary。provider call、product/report/subscription email、scheduler tick execution、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -39,7 +39,8 @@ source: human+ai
 | R0-15 | M5 Public Content docs diff local slice | done_local_m5 | `generic_web.v1` docs/page snapshot 可保存 `public_content_update` DatasetVersion、hash-only drift、`public_content_drift` event、public content report/asset；API full pytest `107 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；生产 gate 见 R0-16 |
 | R0-16 | M5 Public Content docs/page production gate | done_scoped_m5 | production HEAD `.deploy-sha=af23cefc92aa9fec336f632a5b1561623811c2fd`；生产 `generic_web` docs/page TaskRun success；`public_content_update` DatasetVersion `row_count=1` 且 `collector_schema_versions=["generic_web.v1"]`；`public_content_drift` DatasetDriftEvent `05847c1a-5013-4fc8-8d1f-5bec747d0408` 创建/复用；Report asset `9b2ec052-0ba8-482f-9902-209da8c51885` 创建；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
 | R0-17 | M5 Public Content scheduler approval production gate | done_scoped_m5 | production HEAD `.deploy-sha=a81154426fd4e942fc9439de3dcbd9c816122562`；生产 `public_feed` TaskRun success；`public_content_update` DatasetVersion `1a9ce0f2-b7e3-4437-bb4e-a1c45c1a78b7`；Task `6338d234-554d-4527-9f51-5f695e646bdf` 写入 `manual_refresh_only`、`schedule_cron=null`、`freshness_target_hours=72`；`public_content_schedule_approved`；`run_started=false`；`scheduler_tick_started=false`；approval 前后 TaskRun 不变；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
-| R0-18 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler tick execution、production browser run、multi-day TTL/cleanup policy 均未执行 |
+| R0-18 | M5 Public Content retained TTL/cleanup policy local slice | done_local_m5 | 本地新增 `data_intelligence_hub.maintenance.public_content_retention` 与 `scripts/cleanup-retained-public-content.sh`；默认 dry-run，限定 `retained-public-content-*@example.com`，覆盖 public-content Source/Task/Run/Dataset/DriftEvent/Report/Export graph，带 export artifact root validation；targeted retention tests `2 passed`、retention plus E2E cleanup tests `4 passed`、API full pytest `110 passed`、ruff、script help 和 `git diff --check` 通过；无 production deploy、production cleanup dry-run/execute、retained canary deletion |
+| R0-19 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler tick execution、production browser run、production retained cleanup dry-run/execute、multi-day TTL 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -1238,3 +1239,65 @@ drafts/analysis/analysis-boundary-m5-public-content-scheduler-gate-draft-2026062
 Supported claim: production now includes the public-content scheduler approval path, and one scoped production gate proved schedule approval metadata mutation for a `public_content_update` DatasetVersion lineage with no scheduler tick and no new TaskRun after approval.
 
 Unsupported claim: the retained public-content canary has been updated, scheduler tick execution is active, recurring monitoring is active, provider enrichment ran, email was sent, a Dataset export file was written in this gate, a Report asset was created in this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained TTL Cleanup Policy Local Slice - 2026-06-24
+
+M5 retained public-content TTL/cleanup policy was completed as a local code/test/docs slice after the scheduler approval production gate. It provides an explicit cleanup policy tool for retained public-content canaries, but it did not deploy or run against production.
+
+Scope:
+
+```text
+scope_type=retained_public_content_cleanup_policy
+matched_accounts=retained-public-content-*@example.com
+default_mode=dry-run
+default_retention_hours=168
+allowed local behavior: inspect scoped retained public-content asset graph, classify export artifacts under dataset_export_dir, execute deletion only when --execute is passed and artifact paths stay under export root
+denied behavior: production deploy, production cleanup dry-run, production cleanup execute, retained canary deletion, scheduler tick, provider call, email send, production browser run, browser artifact write
+```
+
+Implementation evidence:
+
+```text
+module: apps/api/src/data_intelligence_hub/maintenance/public_content_retention.py
+script: scripts/cleanup-retained-public-content.sh
+safe email prefix: retained-public-content-
+safe email domain: example.com
+source types: public_feed, generic_web
+dataset type: public_content_update
+report type: public_content
+artifact safety: export artifact paths must stay under dataset_export_dir before execute
+script default: dry-run
+script docker mode: SCRAPY_CLEANUP_USE_DOCKER=1
+```
+
+Local validation evidence:
+
+```text
+cd apps/api && uv run pytest tests/unit/test_public_content_retention.py -q
+result: 2 passed
+
+cd apps/api && uv run pytest tests/unit/test_public_content_retention.py tests/unit/test_e2e_cleanup.py -q
+result: 4 passed
+
+cd apps/api && uv run pytest -q
+result: 110 passed, 1 warning
+
+cd apps/api && uv run ruff check src tests
+result: All checks passed
+
+scripts/cleanup-retained-public-content.sh --help
+result: help text printed with dry-run default and --execute boundary
+
+git diff --check
+result: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-retention-cleanup-local-slice-draft-20260624.md
+```
+
+Supported claim: local repo now has a dry-run-by-default retained public-content cleanup policy, scoped to retained public-content accounts and public-content assets, with export artifact root safety checks and regression coverage against the generic E2E cleanup path.
+
+Unsupported claim: production has this cleanup tool deployed, production retained cleanup dry-run or execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
