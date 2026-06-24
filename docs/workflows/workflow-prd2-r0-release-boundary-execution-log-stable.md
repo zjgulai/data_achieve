@@ -40,7 +40,8 @@ source: human+ai
 | R0-16 | M5 Public Content docs/page production gate | done_scoped_m5 | production HEAD `.deploy-sha=af23cefc92aa9fec336f632a5b1561623811c2fd`；生产 `generic_web` docs/page TaskRun success；`public_content_update` DatasetVersion `row_count=1` 且 `collector_schema_versions=["generic_web.v1"]`；`public_content_drift` DatasetDriftEvent `05847c1a-5013-4fc8-8d1f-5bec747d0408` 创建/复用；Report asset `9b2ec052-0ba8-482f-9902-209da8c51885` 创建；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
 | R0-17 | M5 Public Content scheduler approval production gate | done_scoped_m5 | production HEAD `.deploy-sha=a81154426fd4e942fc9439de3dcbd9c816122562`；生产 `public_feed` TaskRun success；`public_content_update` DatasetVersion `1a9ce0f2-b7e3-4437-bb4e-a1c45c1a78b7`；Task `6338d234-554d-4527-9f51-5f695e646bdf` 写入 `manual_refresh_only`、`schedule_cron=null`、`freshness_target_hours=72`；`public_content_schedule_approved`；`run_started=false`；`scheduler_tick_started=false`；approval 前后 TaskRun 不变；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
 | R0-18 | M5 Public Content retained TTL/cleanup policy local slice | done_local_m5 | 本地新增 `data_intelligence_hub.maintenance.public_content_retention` 与 `scripts/cleanup-retained-public-content.sh`；默认 dry-run，限定 `retained-public-content-*@example.com`，覆盖 public-content Source/Task/Run/Dataset/DriftEvent/Report/Export graph，带 export artifact root validation；targeted retention tests `2 passed`、retention plus E2E cleanup tests `4 passed`、API full pytest `110 passed`、ruff、script help 和 `git diff --check` 通过；无 production deploy、production cleanup dry-run/execute、retained canary deletion |
-| R0-19 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler tick execution、production browser run、production retained cleanup dry-run/execute、multi-day TTL 均未执行 |
+| R0-19 | M5 Public Content retained cleanup production dry-run gate | done_dry_run_m5 | production HEAD `.deploy-sha=d11d5a477ea3125649f7674495bfca5b93148e32`；首次 `c321a52` dry-run 暴露 member workspace lineage gap 且未 execute；修复后 `--older-than-hours 0` dry-run 命中 retained canary Source/Task/Run/Dataset/Version/Report/Export artifact plan，`export_artifact_path_violations=0`；默认 168 小时 dry-run 全 0；无 cleanup execute、canary deletion、provider/email/scheduler/browser side effect |
+| R0-20 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler tick execution、production browser run、production retained cleanup execute、multi-day TTL 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -1301,3 +1302,122 @@ drafts/analysis/analysis-boundary-m5-public-content-retention-cleanup-local-slic
 Supported claim: local repo now has a dry-run-by-default retained public-content cleanup policy, scoped to retained public-content accounts and public-content assets, with export artifact root safety checks and regression coverage against the generic E2E cleanup path.
 
 Unsupported claim: production has this cleanup tool deployed, production retained cleanup dry-run or execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained Cleanup Production Dry-Run Gate - 2026-06-24
+
+M5 retained cleanup production dry-run gate deployed the cleanup policy tooling and ran dry-run only. It did not pass `--execute`, did not delete retained assets, and did not mutate scheduler/provider/email/browser state.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_cleanup_dry_run
+allowed: deploy cleanup tooling, run production dry-run with --older-than-hours 0, run default production dry-run, record counts and artifact path safety
+denied: cleanup execute, retained canary deletion, provider call, email send, scheduler tick execution, production browser run, browser artifact write
+cleanup_policy: dry_run_only
+```
+
+Initial deployment and dry-run:
+
+```text
+deployed HEAD: c321a5212bf6f1f51f63bf35dd1a522b4ebd6d90
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: first attempt stopped while edge health was starting; retry passed after edge became healthy
+production health: production/ok/connected/current
+```
+
+The first production dry-run at `c321a52` returned `dry_run=true`, `retention_hours=0`, `cleanup_ready=true`, and `export_artifact_path_violations=0`, but it did not include the retained canary Source/Task/TaskRun/Dataset/Report graph. It only reported:
+
+```text
+users=1
+workspaces=1
+workspace_members=2
+dataset_versions=1
+dataset_export_jobs=1
+report_audit_events=1
+notifications=1
+export_artifact_files=1
+sources=0
+collection_tasks=0
+task_runs=0
+datasets=0
+reports=0
+```
+
+No cleanup execute was run. Read-only diagnosis showed the retained assets were attached to a workspace where the retained user was a member, while `DatasetVersion.created_by_user_id` and `ReportAuditEvent.actor_id` still pointed to the retained user. The cleanup policy was fixed to follow DatasetVersion source TaskRun lineage and ReportAuditEvent report lineage without broadly deleting shared workspace/project rows.
+
+Lineage fix validation:
+
+```text
+commit: d11d5a477ea3125649f7674495bfca5b93148e32
+targeted retention tests: 3 passed
+retention plus generic E2E cleanup tests: 5 passed
+API full pytest: 111 passed, 1 warning
+API ruff: All checks passed
+git diff --check: passed
+```
+
+Final deployment evidence:
+
+```text
+previous production HEAD: c321a5212bf6f1f51f63bf35dd1a522b4ebd6d90
+deployed HEAD: d11d5a477ea3125649f7674495bfca5b93148e32
+.deploy-sha: d11d5a477ea3125649f7674495bfca5b93148e32
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: passed after edge became healthy
+```
+
+Final production dry-run with `--older-than-hours 0`:
+
+```text
+dry_run: true
+retention_hours: 0
+cleanup_ready: true
+export_artifact_path_violations: 0
+users: 1
+workspaces: 1
+workspace_members: 2
+sources: 1
+collection_tasks: 1
+task_runs: 1
+raw_records: 0
+entities: 0
+entity_snapshots: 0
+datasets: 1
+dataset_versions: 1
+dataset_drift_events: 0
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+notifications: 1
+export_artifact_files: 1
+sample user: retained-public-content-20260623123816-90w0q7@example.com
+sample artifact: /app/exports/datasets/bf51c6a8-fba5-5528-ac91-89ffd84f85c2/ee4a4a7a-1ea8-4864-b10d-031b365e5efb/6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8/retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+```
+
+Default TTL dry-run:
+
+```text
+command: SCRAPY_CLEANUP_USE_DOCKER=1 scripts/cleanup-retained-public-content.sh
+dry_run: true
+retention_hours: 168
+all cleanup candidate counts: 0
+export_artifact_path_violations: 0
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Supported claim: production now has retained public-content cleanup tooling deployed, and dry-run verifies the retained canary cleanup plan, export artifact root safety, and default TTL cutoff without deleting data.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
