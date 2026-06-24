@@ -153,6 +153,8 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
+    # Only user-owned workspaces/projects are deleted. Assets in shared workspaces are
+    # reached through DatasetVersion/ReportAuditEvent lineage, not broad workspace scope.
     workspace_ids = _unique_ids(
         await _fetch_ids(session, select(Workspace.id).where(Workspace.owner_id.in_(user_ids)))
     )
@@ -164,7 +166,7 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
-    source_ids = _unique_ids(
+    initial_source_ids = _unique_ids(
         await _fetch_ids(
             session,
             select(Source.id).where(
@@ -173,7 +175,7 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
-    task_ids = _unique_ids(
+    initial_task_ids = _unique_ids(
         await _fetch_ids(
             session,
             select(CollectionTask.id).where(
@@ -181,16 +183,82 @@ async def _collect_retained_public_content_ids(
                 or_(
                     CollectionTask.workspace_id.in_(workspace_ids),
                     CollectionTask.project_id.in_(project_ids),
-                    CollectionTask.source_id.in_(source_ids),
+                    CollectionTask.source_id.in_(initial_source_ids),
                 ),
             ),
         )
     )
-    run_ids = _unique_ids(
+    initial_run_ids = _unique_ids(
         await _fetch_ids(
             session,
             select(TaskRun.id).where(
-                or_(TaskRun.workspace_id.in_(workspace_ids), TaskRun.task_id.in_(task_ids))
+                or_(TaskRun.workspace_id.in_(workspace_ids), TaskRun.task_id.in_(initial_task_ids))
+            ),
+        )
+    )
+    initial_dataset_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Dataset.id).where(
+                Dataset.dataset_type == PUBLIC_CONTENT_DATASET_TYPE,
+                or_(Dataset.workspace_id.in_(workspace_ids), Dataset.project_id.in_(project_ids)),
+            ),
+        )
+    )
+    dataset_version_rows = (
+        await session.execute(
+            select(
+                DatasetVersion.id,
+                DatasetVersion.dataset_id,
+                DatasetVersion.source_task_run_ids,
+            ).where(
+                or_(
+                    DatasetVersion.workspace_id.in_(workspace_ids),
+                    DatasetVersion.project_id.in_(project_ids),
+                    DatasetVersion.dataset_id.in_(initial_dataset_ids),
+                    DatasetVersion.created_by_user_id.in_(user_ids),
+                ),
+            )
+        )
+    ).all()
+    dataset_ids = _unique_ids(
+        initial_dataset_ids + [row.dataset_id for row in dataset_version_rows]
+    )
+    dataset_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Dataset.id).where(
+                Dataset.id.in_(dataset_ids),
+                Dataset.dataset_type == PUBLIC_CONTENT_DATASET_TYPE,
+            ),
+        )
+    )
+    dataset_id_set = set(dataset_ids)
+    dataset_version_rows = [row for row in dataset_version_rows if row.dataset_id in dataset_id_set]
+    dataset_version_ids = _unique_ids([row.id for row in dataset_version_rows])
+    lineage_run_ids = _uuid_values_from_strings(
+        source_task_run_id
+        for row in dataset_version_rows
+        for source_task_run_id in (row.source_task_run_ids or [])
+    )
+    run_ids = _unique_ids(initial_run_ids + lineage_run_ids)
+    task_ids = _unique_ids(
+        initial_task_ids
+        + await _fetch_ids(
+            session,
+            select(TaskRun.task_id).where(
+                TaskRun.id.in_(run_ids),
+                TaskRun.task_id.is_not(None),
+            ),
+        )
+    )
+    source_ids = _unique_ids(
+        initial_source_ids
+        + await _fetch_ids(
+            session,
+            select(CollectionTask.source_id).where(
+                CollectionTask.id.in_(task_ids),
+                CollectionTask.source_id.is_not(None),
             ),
         )
     )
@@ -208,7 +276,7 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
-    entity_ids = _unique_ids(
+    initial_entity_ids = _unique_ids(
         await _fetch_ids(
             session,
             select(Entity.id).where(
@@ -216,42 +284,21 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
-    snapshot_ids = _unique_ids(
-        await _fetch_ids(
-            session,
-            select(EntitySnapshot.id)
+    snapshot_rows = (
+        await session.execute(
+            select(EntitySnapshot.id, EntitySnapshot.entity_id)
             .join(Entity, EntitySnapshot.entity_id == Entity.id)
             .where(
                 or_(
                     Entity.workspace_id.in_(workspace_ids),
-                    EntitySnapshot.entity_id.in_(entity_ids),
+                    EntitySnapshot.entity_id.in_(initial_entity_ids),
                     EntitySnapshot.raw_record_id.in_(raw_record_ids),
                 ),
-            ),
+            )
         )
-    )
-    dataset_ids = _unique_ids(
-        await _fetch_ids(
-            session,
-            select(Dataset.id).where(
-                Dataset.dataset_type == PUBLIC_CONTENT_DATASET_TYPE,
-                or_(Dataset.workspace_id.in_(workspace_ids), Dataset.project_id.in_(project_ids)),
-            ),
-        )
-    )
-    dataset_version_ids = _unique_ids(
-        await _fetch_ids(
-            session,
-            select(DatasetVersion.id).where(
-                or_(
-                    DatasetVersion.workspace_id.in_(workspace_ids),
-                    DatasetVersion.project_id.in_(project_ids),
-                    DatasetVersion.dataset_id.in_(dataset_ids),
-                    DatasetVersion.created_by_user_id.in_(user_ids),
-                ),
-            ),
-        )
-    )
+    ).all()
+    snapshot_ids = _unique_ids([row.id for row in snapshot_rows])
+    entity_ids = _unique_ids(initial_entity_ids + [row.entity_id for row in snapshot_rows])
     dataset_drift_event_ids = _unique_ids(
         await _fetch_ids(
             session,
@@ -279,12 +326,31 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
-    report_ids = _unique_ids(
+    actor_report_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(ReportAuditEvent.report_id).where(
+                ReportAuditEvent.actor_id.in_(user_ids),
+                ReportAuditEvent.report_id.is_not(None),
+            ),
+        )
+    )
+    owned_report_ids = _unique_ids(
         await _fetch_ids(
             session,
             select(Report.id).where(
                 Report.report_type == PUBLIC_CONTENT_REPORT_TYPE,
                 or_(Report.workspace_id.in_(workspace_ids), Report.project_id.in_(project_ids)),
+            ),
+        )
+    )
+    report_ids = _unique_ids(actor_report_ids + owned_report_ids)
+    report_ids = _unique_ids(
+        await _fetch_ids(
+            session,
+            select(Report.id).where(
+                Report.id.in_(report_ids),
+                Report.report_type == PUBLIC_CONTENT_REPORT_TYPE,
             ),
         )
     )
@@ -392,6 +458,16 @@ def _classify_export_artifacts(
         else:
             missing.append(candidate)
     return {"existing": existing, "missing": missing, "violations": violations}
+
+
+def _uuid_values_from_strings(values: Any) -> list[uuid.UUID]:
+    parsed: list[uuid.UUID] = []
+    for value in values:
+        try:
+            parsed.append(uuid.UUID(str(value)))
+        except (TypeError, ValueError):
+            continue
+    return _unique_ids(parsed)
 
 
 async def _fetch_ids(session: AsyncSession, statement: Any) -> list[uuid.UUID]:

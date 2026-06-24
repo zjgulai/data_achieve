@@ -183,6 +183,84 @@ async def test_retained_public_content_cleanup_blocks_export_artifact_outside_ro
         assert await session.get(DatasetExportJob, fixture["export_job_id"]) is not None
 
 
+@pytest.mark.asyncio
+async def test_retained_public_content_cleanup_follows_member_workspace_lineage(
+    tmp_path: Path,
+) -> None:
+    session_factory = await _create_session_factory()
+    now = datetime.now(UTC)
+    export_root = tmp_path / "exports"
+    export_root.mkdir()
+
+    async with session_factory() as session:
+        fixture = await _create_public_content_fixture(
+            session,
+            email="retained-public-content-member@example.com",
+            slug="retained-member",
+            created_at=now - timedelta(days=8),
+            export_root=export_root,
+            workspace_owner_email="shared-owner@example.com",
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        report = await cleanup_retained_public_content_assets(
+            session,
+            dry_run=True,
+            older_than_hours=24 * 7,
+            export_root=export_root,
+        )
+
+    assert report.counts["users"] == 1
+    assert report.counts["workspaces"] == 0
+    assert report.counts["workspace_members"] == 1
+    assert report.counts["projects"] == 0
+    assert report.counts["sources"] == 1
+    assert report.counts["collection_tasks"] == 1
+    assert report.counts["task_runs"] == 1
+    assert report.counts["raw_records"] == 1
+    assert report.counts["entities"] == 1
+    assert report.counts["entity_snapshots"] == 1
+    assert report.counts["datasets"] == 1
+    assert report.counts["dataset_versions"] == 1
+    assert report.counts["dataset_export_jobs"] == 1
+    assert report.counts["reports"] == 1
+    assert report.counts["report_audit_events"] == 1
+    assert report.counts["notifications"] == 1
+
+    async with session_factory() as session:
+        report = await cleanup_retained_public_content_assets(
+            session,
+            dry_run=False,
+            older_than_hours=24 * 7,
+            export_root=export_root,
+        )
+        await session.commit()
+
+    assert report.dry_run is False
+    assert not fixture["artifact_path"].exists()
+    async with session_factory() as session:
+        assert await session.get(User, fixture["user_id"]) is None
+        assert await session.get(WorkspaceMember, fixture["member_id"]) is None
+        assert await session.get(Source, fixture["source_id"]) is None
+        assert await session.get(CollectionTask, fixture["task_id"]) is None
+        assert await session.get(TaskRun, fixture["task_run_id"]) is None
+        assert await session.get(RawRecord, fixture["raw_record_id"]) is None
+        assert await session.get(Entity, fixture["entity_id"]) is None
+        assert await session.get(EntitySnapshot, fixture["snapshot_id"]) is None
+        assert await session.get(Dataset, fixture["dataset_id"]) is None
+        assert await session.get(DatasetVersion, fixture["dataset_version_id"]) is None
+        assert await session.get(DatasetExportJob, fixture["export_job_id"]) is None
+        assert await session.get(Report, fixture["report_id"]) is None
+        assert await session.get(ReportAuditEvent, fixture["report_audit_event_id"]) is None
+        assert await session.get(Notification, fixture["notification_id"]) is None
+
+        assert await session.get(User, fixture["workspace_owner_id"]) is not None
+        assert await session.get(Workspace, fixture["workspace_id"]) is not None
+        assert await session.get(Project, fixture["project_id"]) is not None
+        assert await session.get(WorkspaceMember, fixture["owner_member_id"]) is not None
+
+
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
@@ -209,6 +287,7 @@ async def _create_public_content_fixture(
     created_at: datetime,
     export_root: Path,
     artifact_path: Path | None = None,
+    workspace_owner_email: str | None = None,
 ) -> dict[str, Any]:
     user = User(
         email=email,
@@ -221,20 +300,42 @@ async def _create_public_content_fixture(
     session.add(user)
     await session.flush()
 
+    workspace_owner = user
+    owner_member = None
+    if workspace_owner_email is not None:
+        workspace_owner = User(
+            email=workspace_owner_email,
+            password_hash="hashed-password",
+            name="Shared Workspace Owner",
+            status="active",
+            created_at=created_at,
+            updated_at=created_at,
+        )
+        session.add(workspace_owner)
+        await session.flush()
+
     workspace = Workspace(
         name=f"Workspace {slug}",
         slug=slug,
-        owner_id=user.id,
+        owner_id=workspace_owner.id,
         created_at=created_at,
         updated_at=created_at,
     )
     session.add(workspace)
     await session.flush()
 
+    if workspace_owner.id != user.id:
+        owner_member = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=workspace_owner.id,
+            role="owner",
+            created_at=created_at,
+            updated_at=created_at,
+        )
     member = WorkspaceMember(
         workspace_id=workspace.id,
         user_id=user.id,
-        role="owner",
+        role="owner" if workspace_owner.id == user.id else "member",
         created_at=created_at,
         updated_at=created_at,
     )
@@ -244,11 +345,11 @@ async def _create_public_content_fixture(
         description=None,
         domain="osint",
         status="active",
-        owner_id=user.id,
+        owner_id=workspace_owner.id,
         created_at=created_at,
         updated_at=created_at,
     )
-    session.add_all([member, project])
+    session.add_all([item for item in (owner_member, member, project) if item is not None])
     await session.flush()
 
     source = Source(
@@ -467,7 +568,10 @@ async def _create_public_content_fixture(
 
     return {
         "user_id": user.id,
+        "workspace_owner_id": workspace_owner.id,
         "workspace_id": workspace.id,
+        "member_id": member.id,
+        "owner_member_id": owner_member.id if owner_member is not None else member.id,
         "project_id": project.id,
         "source_id": source.id,
         "task_id": task.id,
