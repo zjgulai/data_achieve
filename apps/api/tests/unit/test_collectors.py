@@ -282,6 +282,11 @@ async def test_generic_web_collector_collects_html_snapshot(
     assert raw_record.record_type == "generic_web"
     assert content["title"] == "Demo"
     assert "Hello" in content["text_content"]
+    assert content["schema_version"] == "generic_web.v1"
+    assert content["kind"] == "html_snapshot"
+    assert content["content_hash"]
+    assert content["text_length"] >= len("Demo Hello")
+    assert content["provenance"]["public_url_checked"] is True
     assert collector.normalize(raw_record) == []
 
 

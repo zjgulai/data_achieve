@@ -2278,6 +2278,243 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
 
 
 @pytest.mark.asyncio
+async def test_generic_web_docs_snapshot_saves_public_content_dataset_and_reports_hash_drift(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FixtureGenericDocsCollector(BaseCollector):
+        collector_type = "generic_web"
+        collect_calls = 0
+
+        def validate_config(self) -> dict[str, object]:
+            return {
+                "url": self.config.get("url", "https://example.com/docs/install"),
+                "extract_mode": self.config.get("extract_mode", "main_content"),
+            }
+
+        async def test(self) -> CollectorTestResult:
+            return CollectorTestResult(status="ok", message="ok", logs=[])
+
+        async def collect(self) -> CollectionResult:
+            self.__class__.collect_calls += 1
+            changed = self.__class__.collect_calls > 1
+            text_content = (
+                "Install guide version 2 adds a new public configuration section."
+                if changed
+                else "Install guide version 1 covers public setup steps."
+            )
+            content_hash = "docs-install-hash-v2" if changed else "docs-install-hash-v1"
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="generic_web",
+                        source_url="https://example.com/docs/install",
+                        content={
+                            "provider": "generic_web",
+                            "kind": "html_snapshot",
+                            "schema_version": "generic_web.v1",
+                            "url": "https://example.com/docs/install",
+                            "title": "Install guide",
+                            "text_content": text_content,
+                            "text_length": len(text_content),
+                            "content_hash": content_hash,
+                            "extract_mode": "main_content",
+                            "html_content": (
+                                "<html><title>Install guide</title><body>"
+                                f"{text_content}</body></html>"
+                            ),
+                            "provenance": {
+                                "endpoint_origin": "https://example.com/docs/install",
+                                "extractor": "fixture",
+                                "public_url_checked": True,
+                            },
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "generic_web",
+        FixtureGenericDocsCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Example Docs Install Page",
+            "type": "generic_web",
+            "config": {
+                "url": "https://example.com/docs/install",
+                "extract_mode": "main_content",
+            },
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+    assert source["type"] == "generic_web"
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert run_response.status_code == 201
+    run = run_response.json()
+    assert run["status"] == "success"
+
+    fields = [
+        "title",
+        "link",
+        "updated_at",
+        "summary",
+        "content_hash",
+        "source_type",
+        "content_kind",
+        "site_url",
+        "text_length",
+    ]
+    preview_response = await client.post(
+        "/api/automation/public-content-dataset-preview",
+        json={
+            "authorized": True,
+            "task_run_ids": [run["id"]],
+            "fields": fields,
+            "max_rows": 5,
+        },
+    )
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    assert preview["summary"]["rows_count"] == 1
+    assert preview["summary"]["matched_runs"] == 1
+    row_values = preview["rows"][0]["values"]
+    assert row_values["title"] == "Install guide"
+    assert row_values["link"] == "https://example.com/docs/install"
+    assert row_values["content_hash"] == "docs-install-hash-v1"
+    assert row_values["source_type"] == "generic_web"
+    assert row_values["content_kind"] == "html_snapshot"
+    assert row_values["site_url"] == "https://example.com"
+    assert "version 1" in row_values["summary"]
+    assert preview["export_preview"]["schema"]["collector_schema_versions"] == [
+        "generic_web.v1"
+    ]
+    assert preview["export_preview"]["schema"]["collector_versions"]["generic_web"] == (
+        "generic_web.v1"
+    )
+    assert preview["export_preview"]["schema"]["field_sources"]["source_type"] == (
+        "raw_record.record_type"
+    )
+
+    save_response = await client.post(
+        "/api/automation/public-content-dataset-save",
+        json={
+            "authorized": True,
+            "name": "Public Content Updates - Example Docs",
+            "description": "Public docs page content hash dataset.",
+            "task_run_ids": [run["id"]],
+            "fields": fields,
+            "max_rows": 5,
+        },
+    )
+    assert save_response.status_code == 200
+    saved = save_response.json()
+    assert saved["dataset"]["dataset_type"] == "public_content_update"
+    assert saved["version"]["row_count"] == 1
+    assert saved["version"]["export_preview"]["schema"]["collector_schema_versions"] == [
+        "generic_web.v1"
+    ]
+
+    second_run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert second_run_response.status_code == 201
+    second_run = second_run_response.json()
+    assert second_run["status"] == "success"
+
+    drift_response = await client.post(
+        "/api/automation/public-content-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["summary"]["checked_tasks"] == 1
+    assert drift["summary"]["warning_tasks"] == 1
+    assert drift["summary"]["critical_tasks"] == 0
+    assert drift["summary"]["added_rows"] == 0
+    assert drift["summary"]["removed_rows"] == 0
+    assert drift["summary"]["drift_layers"] == {"content_hash": 1}
+    drift_item = drift["items"][0]
+    assert drift_item["latest_run_id"] == second_run["id"]
+    assert drift_item["row_change"] == "unchanged"
+    assert drift_item["issues"] == ["content_hash_changed"]
+    assert drift_item["signal_groups"]["content_hash"] == [
+        "changed:https://example.com/docs/install"
+    ]
+
+    drift_event_response = await client.post(
+        "/api/automation/public-content-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "Saved from public docs diff review.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["event_type"] == "public_content_drift"
+    assert drift_event["status"] == "warning"
+    assert drift_event["run_started"] is False
+    assert drift_event["alert_created"] is False
+
+    report_response = await client.post(
+        "/api/automation/public-content-report",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "top_limit": 5,
+        },
+    )
+    assert report_response.status_code == 200
+    report = report_response.json()
+    assert report["summary"]["entry_count"] == 1
+    assert report["summary"]["feed_count"] == 0
+    assert report["summary"]["entries_with_summary"] == 1
+    assert report["summary"]["content_hash_count"] == 1
+    assert report["latest_entries"][0]["title"] == "Install guide"
+    assert "generic_web" in report["recommendations"][1]
+
+    report_asset_response = await client.post(
+        "/api/automation/public-content-report-assets",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "top_limit": 5,
+        },
+    )
+    assert report_asset_response.status_code == 201
+    report_asset = report_asset_response.json()
+    assert report_asset["report"]["report_type"] == "public_content"
+    assert "collector_schema_versions: generic_web.v1" in report_asset["report"]["content"]
+    assert report_asset["notification_created"] is False
+
+
+@pytest.mark.asyncio
 async def test_source_update_syncs_derived_url_and_task_config(client: AsyncClient) -> None:
     project_id = await register_and_create_project(client)
 

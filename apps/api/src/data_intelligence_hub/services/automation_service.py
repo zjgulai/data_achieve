@@ -367,7 +367,12 @@ GITHUB_TOOL_FIELD_SOURCES = {
 }
 
 PUBLIC_CONTENT_DATASET_SCHEMA_VERSION = "public_content_update.v1"
-PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS = ("public_feed.v1",)
+PUBLIC_CONTENT_RECORD_TYPES = {"public_feed", "generic_web"}
+PUBLIC_CONTENT_TASK_COLLECTOR_TYPES = {"public_feed", "generic_web"}
+PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSION_BY_RECORD_TYPE = {
+    "public_feed": "public_feed.v1",
+    "generic_web": "generic_web.v1",
+}
 
 PUBLIC_CONTENT_FIELDS = (
     "title",
@@ -382,6 +387,9 @@ PUBLIC_CONTENT_FIELDS = (
     "feed_title",
     "feed_type",
     "site_url",
+    "source_type",
+    "content_kind",
+    "text_length",
 )
 
 PUBLIC_CONTENT_FIELD_SOURCES = {
@@ -397,6 +405,9 @@ PUBLIC_CONTENT_FIELD_SOURCES = {
     "feed_title": "public_feed.title",
     "feed_type": "public_feed.feed_type",
     "site_url": "public_feed.site_url",
+    "source_type": "raw_record.record_type",
+    "content_kind": "raw_record.content.kind",
+    "text_length": "generic_web.text_length",
 }
 
 DRIFT_LAYER_BY_ISSUE = {
@@ -2145,6 +2156,7 @@ async def preview_public_content_dataset(
     selected_fields = _public_content_dataset_fields(payload.fields)
     rows: list[AutomationProductDatasetRowResponse] = []
     matched_run_ids: set[uuid.UUID] = set()
+    matched_raw_records: list[RawRecord] = []
     audit_events: list[dict[str, object]] = [
         {
             "event": "public_content_dataset_preview_requested",
@@ -2157,7 +2169,7 @@ async def preview_public_content_dataset(
     ]
 
     for task_run_id in payload.task_run_ids:
-        raw_records = await _public_feed_raw_records_for_task_run(
+        raw_records = await _public_content_raw_records_for_task_run(
             session=session,
             workspace_id=workspace.id,
             task_run_id=task_run_id,
@@ -2168,12 +2180,13 @@ async def preview_public_content_dataset(
                 {
                     "event": "public_content_dataset_run_skipped",
                     "task_run_id": str(task_run_id),
-                    "reason": "no_public_feed_records",
+                    "reason": "no_public_content_records",
                     "run_started": False,
                 }
             )
             continue
         matched_run_ids.add(task_run_id)
+        matched_raw_records.extend(raw_records)
         for raw_record in raw_records:
             for row in _public_content_rows(raw_record, selected_fields):
                 if len(rows) >= payload.max_rows:
@@ -2194,7 +2207,7 @@ async def preview_public_content_dataset(
     summary = _dataset_summary(payload.task_run_ids, matched_run_ids, rows, selected_fields)
     blocked_reasons: list[str] = []
     if summary.rows_count == 0:
-        blocked_reasons.append("未找到可进入公开内容数据集的 public_feed 采集记录。")
+        blocked_reasons.append("未找到可进入公开内容数据集的 public_feed/generic_web 采集记录。")
     if summary.rows_count >= payload.max_rows:
         blocked_reasons.append("公开内容数据集预览已达到本次最大行数限制。")
     blocked_reasons.append("当前为只读公开内容数据集预览，尚未保存 Dataset 或写出导出文件。")
@@ -2205,7 +2218,11 @@ async def preview_public_content_dataset(
         rows=rows,
         summary=summary,
         cleaning_script_draft=_public_content_cleaning_script_draft(selected_fields),
-        export_preview=_public_content_export_preview(rows, selected_fields),
+        export_preview=_public_content_export_preview(
+            rows,
+            selected_fields,
+            matched_raw_records,
+        ),
         audit_events=audit_events,
         blocked_reasons=blocked_reasons,
     )
@@ -2311,7 +2328,9 @@ async def save_public_content_dataset_version(
                 "created_dataset": created_dataset,
                 "row_count": version.row_count,
                 "schema_version": PUBLIC_CONTENT_DATASET_SCHEMA_VERSION,
-                "collector_schema_versions": list(PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS),
+                "collector_schema_versions": _public_content_collector_schema_versions(
+                    raw_records
+                ),
                 "run_started": False,
             }
         ],
@@ -3225,7 +3244,7 @@ async def check_public_content_drift(
         elif latest_run.status not in {"success", "partial_success"}:
             issues.append("latest_run_failed")
         else:
-            public_records = await _public_feed_raw_records_for_task_run(
+            public_records = await _public_content_raw_records_for_task_run(
                 session=session,
                 workspace_id=workspace.id,
                 task_run_id=latest_run.id,
@@ -7787,8 +7806,8 @@ def _public_content_drift_task_block_reason(
         return "task_not_found"
     if task.project_id != dataset.project_id:
         return "task_project_lineage_conflict"
-    if task.collector_type != "public_feed":
-        return "task_collector_type_not_public_feed"
+    if task.collector_type not in PUBLIC_CONTENT_TASK_COLLECTOR_TYPES:
+        return "task_collector_type_not_public_content"
     if task.id not in anchor_task_ids:
         return "task_dataset_lineage_unapproved"
     return None
@@ -8649,7 +8668,7 @@ def _public_content_field_sources(fields: object) -> dict[str, str]:
     elif isinstance(fields, Iterable):
         field_names = [str(field) for field in fields]
     return {
-        field: PUBLIC_CONTENT_FIELD_SOURCES.get(field, "public_feed.entry")
+        field: PUBLIC_CONTENT_FIELD_SOURCES.get(field, "public_content.record")
         for field in field_names
     }
 
@@ -8723,13 +8742,44 @@ def _public_content_rows(
     selected_fields: list[str],
 ) -> list[AutomationProductDatasetRowResponse]:
     content = raw_record.content if isinstance(raw_record.content, dict) else {}
+    if raw_record.record_type == "generic_web":
+        values_by_field = _public_content_generic_web_values(content, raw_record)
+        values = {
+            field: values_by_field.get(field)
+            for field in selected_fields
+            if _has_field_value(values_by_field.get(field))
+        }
+        missing_fields = [field for field in selected_fields if field not in values]
+        ratio = len(values) / len(selected_fields) if selected_fields else 0
+        row_key = (
+            values_by_field.get("link")
+            or values_by_field.get("content_hash")
+            or values_by_field.get("title")
+            or raw_record.id
+        )
+        return [
+            AutomationProductDatasetRowResponse(
+                row_id=f"{raw_record.task_run_id}:{raw_record.id}:{row_key}",
+                task_run_id=raw_record.task_run_id,
+                raw_record_id=raw_record.id,
+                source_url=(
+                    str(values_by_field["link"])
+                    if _has_field_value(values_by_field.get("link"))
+                    else raw_record.source_url
+                ),
+                values=values,
+                missing_fields=missing_fields,
+                completeness_percent=round(ratio * 100),
+            )
+        ]
+
     entry_items = content.get("entries")
     entries = entry_items if isinstance(entry_items, list) else []
     rows: list[AutomationProductDatasetRowResponse] = []
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
             continue
-        values_by_field = _public_content_values(entry, content)
+        values_by_field = _public_content_feed_values(entry, content)
         values = {
             field: values_by_field.get(field)
             for field in selected_fields
@@ -8761,7 +8811,7 @@ def _public_content_rows(
     return rows
 
 
-def _public_content_values(
+def _public_content_feed_values(
     entry: dict[str, object],
     feed_content: dict[str, object],
 ) -> dict[str, object]:
@@ -8779,7 +8829,44 @@ def _public_content_values(
         "feed_title": feed_content.get("title"),
         "feed_type": feed_content.get("feed_type"),
         "site_url": feed_content.get("site_url"),
+        "source_type": "public_feed",
+        "content_kind": feed_content.get("kind"),
     }
+
+
+def _public_content_generic_web_values(
+    content: dict[str, object],
+    raw_record: RawRecord,
+) -> dict[str, object]:
+    page_url = _string_or_none(content.get("url")) or raw_record.source_url
+    return {
+        "title": content.get("title"),
+        "link": page_url,
+        "updated_at": raw_record.collected_at.isoformat(),
+        "summary": _public_content_summary_text(content.get("text_content")),
+        "content_hash": content.get("content_hash") or raw_record.content_hash,
+        "site_url": _public_content_site_origin(page_url),
+        "source_type": "generic_web",
+        "content_kind": content.get("kind"),
+        "text_length": content.get("text_length"),
+    }
+
+
+def _public_content_summary_text(value: object, limit: int = 500) -> str | None:
+    text = _string_or_none(value)
+    if text is None:
+        return None
+    normalized = " ".join(text.split())
+    return normalized[:limit]
+
+
+def _public_content_site_origin(url: str | None) -> str | None:
+    if url is None:
+        return None
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def _github_tool_values(repo: dict[str, object]) -> dict[str, object]:
@@ -9566,10 +9653,11 @@ def _github_tool_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
 def _public_content_cleaning_script_draft(selected_fields: list[str]) -> list[str]:
     steps = [
         "strip title, author and feed_title text fields",
-        "normalize link and feed_url as public URL strings",
-        "preserve published_at and updated_at as source timestamps",
+        "normalize link and feed_url as public URL strings when present",
+        "preserve published_at and updated_at as source or collection timestamps",
         "normalize tags into lower-case tag arrays",
         "use content_hash as the content drift signal for unchanged links",
+        "preserve source_type and content_kind for feed versus docs/page provenance",
         "keep missing values explicit as null for downstream review",
     ]
     if "summary" in selected_fields:
@@ -9644,7 +9732,9 @@ def _github_tool_export_preview(
 def _public_content_export_preview(
     rows: list[AutomationProductDatasetRowResponse],
     selected_fields: list[str],
+    raw_records: list[RawRecord] | None = None,
 ) -> dict[str, object]:
+    collector_schema_versions = _public_content_collector_schema_versions(raw_records or [])
     return {
         "format": "json",
         "schema": {
@@ -9653,9 +9743,15 @@ def _public_content_export_preview(
             "primary_key": "link",
             "missing_value_policy": "explicit_null",
             "dataset_type": "public_content_update",
-            "collector_schema_versions": list(PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSIONS),
-            "collector_versions": {"public_feed": "public_feed.v1"},
-            "endpoint_origins": {"feed": "public RSS/Atom feed URL"},
+            "collector_schema_versions": collector_schema_versions,
+            "collector_versions": {
+                "public_feed": "public_feed.v1",
+                "generic_web": "generic_web.v1",
+            },
+            "endpoint_origins": {
+                "feed": "public RSS/Atom feed URL",
+                "page": "public docs/page URL",
+            },
             "provenance": {
                 "field_sources_recorded": True,
                 "lineage_fields": [
@@ -9675,6 +9771,19 @@ def _public_content_export_preview(
             for row in rows[:10]
         ],
     }
+
+
+def _public_content_collector_schema_versions(raw_records: list[RawRecord]) -> list[str]:
+    versions: list[str] = []
+    for raw_record in raw_records:
+        version = PUBLIC_CONTENT_COLLECTOR_SCHEMA_VERSION_BY_RECORD_TYPE.get(
+            raw_record.record_type
+        )
+        if version is not None and version not in versions:
+            versions.append(version)
+    if versions:
+        return versions
+    return ["public_feed.v1"]
 
 
 def _github_tool_report_repositories(
@@ -10002,10 +10111,13 @@ def _public_content_report_recommendations(
     entries: list[AutomationPublicContentReportEntryResponse],
 ) -> list[str]:
     if not entries:
-        return ["当前 DatasetVersion 没有公开内容条目，先复核 public_feed 采集记录。"]
+        return ["当前 DatasetVersion 没有公开内容条目，先复核 public_feed/generic_web 采集记录。"]
     recommendations = [
         "使用 link 作为公开内容更新主键，使用 content_hash 识别同一链接下的正文变化。",
-        "将 RSS/Atom 内容更新用于公开 docs、release notes、blog、status page 的增量监控。",
+        (
+            "将 RSS/Atom 或 generic_web 页面快照用于公开 docs、release notes、"
+            "blog、status page 的增量监控。"
+        ),
         "进入生产调度前，应先保存 drift 快照并明确导出、通知和报告资产的授权边界。",
     ]
     if any(not entry.content_hash for entry in entries):
@@ -10367,7 +10479,7 @@ async def _dataset_public_content_raw_records(
 ) -> list[RawRecord]:
     records: list[RawRecord] = []
     for task_run_id in task_run_ids:
-        public_records = await _public_feed_raw_records_for_task_run(
+        public_records = await _public_content_raw_records_for_task_run(
             session=session,
             workspace_id=workspace_id,
             task_run_id=task_run_id,
@@ -10419,7 +10531,7 @@ async def _github_tool_raw_records_for_task_run(
     ]
 
 
-async def _public_feed_raw_records_for_task_run(
+async def _public_content_raw_records_for_task_run(
     *,
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -10435,7 +10547,7 @@ async def _public_feed_raw_records_for_task_run(
     return [
         raw_record
         for raw_record in raw_records
-        if raw_record.record_type == "public_feed"
+        if raw_record.record_type in PUBLIC_CONTENT_RECORD_TYPES
     ]
 
 

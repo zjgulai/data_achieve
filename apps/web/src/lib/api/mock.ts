@@ -665,7 +665,7 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         "确认 feed/docs 来源公开可访问，不需要账号、cookie、验证码或代理。",
         "优先使用 RSS/Atom feed；没有 feed 时才退回 generic_web 页面 hash。",
         "保留 title、link、published_at/updated_at、summary、content_hash 作为最小字段合同。",
-        "docs diff、report 和定时刷新需要独立授权；本地 scaffold 不创建生产任务。",
+        "docs diff 可进入本地 Dataset/drift/report 预览；生产调度、导出、报告资产和通知仍需独立授权。",
       ],
       strategyMatrix: [
         {

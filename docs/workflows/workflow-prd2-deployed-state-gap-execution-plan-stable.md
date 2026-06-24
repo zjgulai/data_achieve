@@ -45,7 +45,7 @@ source: human+ai
 2. 当前线上 API 未认证访问会返回 401，这和 API contract 中“登录、注册以外业务接口都要求当前用户和 workspace”的设计一致；既有 demo 账号 authenticated read-only smoke 已通过。
 3. PRD2 的产品中心已经从通用情报平台收敛为“平台化采集工作台”，主链路是授权确认、能力探测、结构/浏览器诊断、字段候选、采集/清洗计划、Dataset、Export、Drift、Report、Alert、Evidence。
 4. 生产 HEAD `68c27e0f9c62d542149eedc5b18439938103b4bb` 已包含 PRD2/M1/M2/M3/M5 的多项实现：平台包、CapabilityProbe、BrowserDiagnosticRun/Job/JobRun、browser local runner、GitHub Tool Radar 深化字段、schema/provenance、report risk sections、drift signal groups、独立站 dataset/export/drift/report、`public_feed`、`public_content_update.v1` Dataset/drift/report preview、`public_content` Report asset 持久化，以及 `public_content_drift` DatasetDriftEvent save/list/reuse。
-5. 生产 Alembic head 已到 `202606110023`，PRD2 R0 release/schema gap 已闭合；M3 GitHub API-first 小范围生产 package gate 已完成并清理；M5 public content 小范围生产 package smoke、Report asset gate、Dataset export gate 已完成并清理；M5 retained lifecycle gate 已保留一组 canary Dataset/Report/Export asset；public-content drift event 专用持久化已完成生产 scoped gate 并清理。剩余 gap 转为更大 scope rate-limit、多日 TTL/自动清理、scheduler/provider/email、docs diff 等独立 gate。
+5. 生产 Alembic head 已到 `202606110023`，PRD2 R0 release/schema gap 已闭合；M3 GitHub API-first 小范围生产 package gate 已完成并清理；M5 public content 小范围生产 package smoke、Report asset gate、Dataset export gate 已完成并清理；M5 retained lifecycle gate 已保留一组 canary Dataset/Report/Export asset；public-content drift event 专用持久化已完成生产 scoped gate 并清理；docs/page hash diff 已完成本地 slice 但未生产部署。剩余 gap 转为更大 scope rate-limit、多日 TTL/自动清理、scheduler/provider/email、production docs/page gate 等独立 gate。
 
 ### Inferences
 
@@ -75,7 +75,7 @@ source: human+ai
 | Browser artifact retention | metadata-only 当前阶段，截图/trace/HAR 需单独批准 | 生产未验证 | retention workflow 已定义 `files_written=false` 等不变量 | 缺自动 TTL/cleanup job；未实现 approved artifact retention mode | P1 |
 | GitHub Tool Radar | API-first 样板，能进入 Dataset/Export/Drift/Report | 2026-06-23 小范围 L4 gate 已跑通 Topic Radar -> GitHub API TaskRun -> Dataset save -> report asset -> drift snapshot -> cleanup | E2E 覆盖 Topic Radar -> dataset -> report -> drift；M3 已补 license、default branch、latest release、README metadata、pushed_at、schema/provenance、report risk sections 和 drift signal groups | 大 scope rate-limit、retained dataset、scheduler、export、provider/email 仍未闭合 | Done/M3 |
 | Independent site | Shopify-style 商品发现、fan-out、dataset、drift、export | 本轮未执行 M4 授权测试站写入 E2E | `origin/main=e97810a` 基线已随当前 `68c27e0f9c62d542149eedc5b18439938103b4bb` 生产代码点保留 | M4-4 授权测试站 E2E 未完成；需要测试站 URL、cleanup register 和 export/retention 边界 | P0/M4 |
-| Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | M5 production smoke 已跑通 `public_feed` RSS TaskRun、`public_content_update` DatasetVersion、read-only drift/report preview；Report asset、Dataset export、retained lifecycle canary 和 scoped `public_content_drift` event gate 均已完成 | M5 local scaffold、Dataset/drift/report slice、Report asset/API/Web client/export contract、public-content drift event persistence 和测试已完成 | docs diff、recurring monitoring、scheduler、多日 TTL/自动清理仍未闭合；retained canary 未被 drift-event gate 更新 | Done/M5 |
+| Public Web/RSS/Docs | 公开网页、RSS/Atom、docs 更新监控平台包 | M5 production smoke 已跑通 `public_feed` RSS TaskRun、`public_content_update` DatasetVersion、read-only drift/report preview；Report asset、Dataset export、retained lifecycle canary 和 scoped `public_content_drift` event gate 均已完成 | M5 local scaffold、Dataset/drift/report slice、Report asset/API/Web client/export contract、public-content drift event persistence、`generic_web` docs/page hash diff local slice 和测试已完成 | production docs/page gate、recurring monitoring、scheduler、多日 TTL/自动清理仍未闭合；retained canary 未被 drift-event gate 更新 | Done/M5 |
 | Video transcript import | YouTube/B 站公开视频 metadata/transcript import，不下载媒体 | 无 | PRD2 已定义边界 | 缺 import schema、source provenance、copyright/subtitle fields、UI flow | P1/M6 |
 | Public community trend | 聚合主题趋势，不做人级画像 | 无 | PRD2 已定义边界 | 缺 V2EX 等公开社区 package、aggregate schema、redaction/privacy guard | P1/P2 |
 | Marketplace | Amazon/marketplace 走官方 API、授权导出或人工导入优先 | 无 | PRD2 已定义边界 | 缺 import template、API credential boundary、sample dataset、cleanup/audit | P2 |
@@ -168,6 +168,7 @@ Boundary: 只处理授权公开页面；不处理登录墙、验证码、购物�
 | M5-6 | Dataset export gate | existing export service + production smoke | done_export_gate_20260623：`product-dataset-exports` 可从 `public_content_update` DatasetVersion 创建 CSV DatasetExportJob、写入受控 export artifact、下载校验，并完成 exact-ID cleanup 与 artifact deletion |
 | M5-7 | Retained lifecycle canary | existing source/task/dataset/report/export list APIs | done_retained_gate_20260623：retained user/source/task/run/dataset/version/report/export artifact 保留；重登录后 list/detail/download 校验通过；generic E2E cleanup dry-run 不命中 retained canary |
 | M5-8 | Drift event production gate | public-content drift-event endpoints + production smoke | done_drift_event_gate_20260624：production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb`；`public_content_drift` DatasetDriftEvent 创建/复用通过；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
+| M5-9 | Docs/page hash diff local slice | `generic_web` collector + public-content dataset/drift/report service + tests | done_local_20260624：`generic_web.v1` docs/page snapshot 可进入 `public_content_update` DatasetVersion、hash-only drift、`public_content_drift` event 和 public-content report/asset 本地链路；API full pytest `107 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；未生产部署 |
 
 Boundary: 公开源、低频、保留 final URL/source timestamp/content hash；不覆盖原始事实。
 
@@ -215,7 +216,7 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 | Done | Release boundary, migration to `023`, M3 GitHub package gate, M5 public content smoke, M5 Report asset gate, M5 Dataset export gate, M5 retained lifecycle gate, M5 public-content drift event production gate | production HEAD `68c27e0f`，schema `202606110023`，小范围 L4 GitHub package gate、M5 public content smoke、M5 Report asset gate、M5 Dataset export gate、M5 retained canary、public-content drift event save/reuse 和 cleanup/retention evidence 完成 | release/evidence |
 | P0 | GitHub API-first scale/retention gates | 官方 API、低风险、已有 collector/Dataset/Report path；下一步只扩 scope、retention、export 或 scheduler，不重复证明小范围链路 | API collector |
 | P0 | Independent site / Shopify-style | 已有业务闭环，能产生电商 dataset/drift | public page collector |
-| P1 | Public Web/RSS/Docs next gates | M5 base production smoke、Report asset gate、Dataset export gate、retained lifecycle gate 和 production drift-event gate 已完成；下一步只剩 docs diff、scheduler、多日 TTL/cleanup policy 等独立 gate | URL/feed/docs collector |
+| P1 | Public Web/RSS/Docs next gates | M5 base production smoke、Report asset gate、Dataset export gate、retained lifecycle gate、production drift-event gate 和 docs/page hash diff local slice 已完成；下一步只剩 production docs/page gate、scheduler、多日 TTL/cleanup policy 等独立 gate | URL/feed/docs collector |
 | P1 | Video transcript import | 内容趋势价值高，但应 import metadata/transcript | import |
 | P1/P2 | Public community trend | 可做聚合趋势，不做人级画像 | aggregate import/collector |
 | P2 | Marketplace | 商业价值高，平台政策和账号边界复杂 | API/import first |
@@ -226,7 +227,7 @@ Boundary: API/import/SOP first；不复用主账号 cookie；不绕过登录态�
 
 按当前证据，R0 release/schema 对齐和 M3 GitHub 小范围 L4 package gate 已完成；M4-1 到 M4-3 已进入 `main@8cd3e8f` 并通过 main CI，但 M4 生产写入验收仍未按测试站 URL、cleanup register 和 retention/export 边界执行。
 
-1. M5 public content production package smoke、Report asset gate、Dataset export gate、retained lifecycle gate 和 production drift-event gate 已完成；下一步可选择一个独立授权 gate：scheduler approval、docs diff 或多日 TTL/cleanup policy 之一。
+1. M5 public content production package smoke、Report asset gate、Dataset export gate、retained lifecycle gate、production drift-event gate 和 docs/page hash diff local slice 已完成；下一步可选择一个独立授权 gate：production docs/page gate、scheduler approval 或多日 TTL/cleanup policy 之一。
 2. 如继续 M4-4，需要明确测试站 URL、允许写入资源、cleanup register、是否允许 export file，以及 cleanup dry-run/execute。
 3. M5 已完成小范围生产写入、Report asset 创建、Dataset export 创建/下载/删除、retained canary 保留、public-content drift event 创建/复用和清理边界验证；仍不做 provider call、email、scheduler 或 browser run，除非另起授权 gate。
 

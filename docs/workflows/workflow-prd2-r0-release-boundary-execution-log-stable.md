@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice：`generic_web` docs/page snapshot 可进入 `public_content_update` Dataset/drift/report 链路，但尚未生产部署或生产运行 docs/page gate。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -36,7 +36,8 @@ source: human+ai
 | R0-12 | M5 Public Content retained lifecycle gate | done_retained_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；retained account/source/task/run/dataset/version/report/export/artifact 均保留；重登录 list/detail/download 校验通过；generic E2E cleanup dry-run 仍为 0 |
 | R0-13 | M5 Public Content drift event persistence local slice | done_local_m5 | 本地新增 `public-content-drift-events` save/list、`event_type=public_content_drift`、saved/reused audit events；API full pytest `106 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过 |
 | R0-14 | M5 Public Content drift-event production gate | done_scoped_m5 | production HEAD `.deploy-sha=68c27e0f9c62d542149eedc5b18439938103b4bb`；生产创建 `public_content_drift` DatasetDriftEvent `6acbd871-e0f8-4580-a7c7-b3d2459962f1`；重复提交复用同一 ID；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
-| R0-15 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
+| R0-15 | M5 Public Content docs diff local slice | done_local_m5 | `generic_web.v1` docs/page snapshot 可保存 `public_content_update` DatasetVersion、hash-only drift、`public_content_drift` event、public content report/asset；API full pytest `107 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；未生产部署 |
+| R0-16 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run、production docs/page gate 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -997,3 +998,47 @@ drafts/analysis/analysis-boundary-m5-public-content-drift-event-production-gate-
 Supported claim: production now includes the dedicated public-content drift-event persistence path, and one scoped production gate proved `public_content_drift` DatasetDriftEvent save/list/idempotent reuse with cleanup-after-evidence.
 
 Unsupported claim: the retained public-content canary has been updated with a drift event, recurring monitoring is active, scheduler refresh is configured, provider enrichment ran, email was sent, a Report asset was created in this gate, a Dataset export file was written in this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Docs Diff Local Slice - 2026-06-24
+
+M5 Public Content docs diff local slice was implemented after the scoped production drift-event gate. This was a local code/test/docs pass only; production remains deployed at `68c27e0f9c62d542149eedc5b18439938103b4bb` until a separate deploy/gate is authorized.
+
+Scope:
+
+```text
+allowed: generic_web.v1 schema metadata, page content_hash, public-content Dataset preview/save for generic_web records, hash drift check, public_content_drift save/reuse, report preview, Report asset local path, API/Web/docs sync
+denied: production deploy, production Source/Task/TaskRun/DatasetVersion/DatasetDriftEvent/Report write, retained canary mutation, provider call, email send, scheduler mutation/tick, Dataset export file write, production browser run, browser artifact write
+```
+
+Implementation evidence:
+
+```text
+generic_web content schema: generic_web.v1
+generic_web docs/page row fields: title, link, updated_at, summary, content_hash, source_type, content_kind, site_url, text_length
+public-content accepted record_types: public_feed, generic_web
+public-content accepted task collector_types: public_feed, generic_web
+export preview collector_schema_versions: actual source records, e.g. generic_web.v1
+```
+
+Validation evidence:
+
+```text
+targeted pytest: 3 passed, 1 warning
+ruff: All checks passed
+Web TypeScript: passed
+Web lint: passed
+API full pytest: 107 passed, 1 warning
+Web unit: 8 passed
+Web build: passed
+git diff --check: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-docs-diff-local-slice-draft-20260624.md
+```
+
+Supported claim: the local codebase can now use `generic_web` public docs/page snapshots as public-content Dataset rows, detect docs/page content hash changes, save/reuse `public_content_drift` events, and generate public-content report output without starting drift/report collectors.
+
+Unsupported claim: production has been deployed with docs diff, a production docs/page TaskRun has been created, recurring monitoring is active, scheduler refresh is configured, provider enrichment ran, email was sent, a Dataset export file was written in this gate, a production browser ran, or browser artifacts were written.

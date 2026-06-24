@@ -116,14 +116,14 @@ osint, ecommerce, social, competitor, mixed
 | `shopify-independent-ecommerce` | `executable` | `product-discovery` | 独立站/Shopify-style 商品采集，从集合页或商品页进入 Automation 主链路 |
 | `github-api-first` | `executable` | `source-create` | GitHub topic 工具情报采集，使用官方 API 创建 Source、启用 Task 并运行一次 |
 | `public-page-structure-preflight` | `executable` | `preflight` | 授权公开网页结构预检，先输出 gate 和结构诊断，再决定是否创建 `generic_web` Source |
-| `public-web-rss-docs` | `executable` | `source-create` | 公开 RSS/Atom feed 与 docs/page hash 更新监控；首轮本地 scaffold 只打通 `public_feed` collector |
+| `public-web-rss-docs` | `executable` | `source-create` | 公开 RSS/Atom feed 与 docs/page hash 更新监控；本地链路支持 `public_feed` 与 `generic_web` 进入 `public_content_update` Dataset/drift/report |
 
 平台包不变量：
 
 1. `execution_boundary=executable` 只表示可以从界面启动其声明的低风险路径，不代表绕过授权、rate limit 或平台政策。
 2. GitHub/API-first 当前可执行路径是 `github_topic` Topic Radar；单仓库 `github_repo` 仍建议通过 Sources 创建重点仓库监控。
 3. `public-page-structure-preflight` 使用 Toolkit preflight，不是 Source collector；只有用户确认后才可继续创建 `generic_web` Source。
-4. `public-web-rss-docs` 首轮只覆盖本地 RSS/Atom collector、字段合同和 public URL guard；Dataset/drift/report、生产写入、scheduler 和 export 仍需后续授权 gate。
+4. `public-web-rss-docs` 本地链路已覆盖 RSS/Atom 与 docs/page snapshot 的 Dataset preview/save、content-hash drift、drift event save/list、report preview 和 Report asset；生产调度、provider/email、生产浏览器运行和新增生产写入仍需后续授权 gate。
 
 ### Capability Probe Contract
 
@@ -252,32 +252,37 @@ GitHub 工具数据集导出复用 Dataset Export：
 
 | 步骤 | 接口 | 关键字段 | 说明 |
 |---|---|---|---|
-| 创建 Source | `POST /api/sources` | `type=public_feed`、`url`、`config.url`、`config.feed_type`、`config.max_items` | 创建公开 RSS/Atom 采集源 |
-| 启用 Task | `POST /api/sources/{source_id}/enable` | 无 | 创建或复用 `public_feed` 采集任务 |
+| 创建 Source | `POST /api/sources` | `type=public_feed` 或 `type=generic_web`、`url`、`config.url`、`config.feed_type?`、`config.max_items?`、`config.extract_mode?` | 创建公开 RSS/Atom 或公开 docs/page 采集源 |
+| 启用 Task | `POST /api/sources/{source_id}/enable` | 无 | 创建或复用 `public_feed` / `generic_web` 采集任务 |
 | 执行采集 | `POST /api/tasks/{task_id}/run` | 无 | 写入 TaskRun、RawRecord、Entity/Snapshot；不写 Dataset |
 
 公开内容数据集化：
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/public-content-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从 `public_feed` raw record entries 生成公开内容数据集预览，不保存 DatasetVersion |
+| `POST` | `/api/automation/public-content-dataset-preview` | `authorized`、`task_run_ids`、`fields?`、`max_rows?` | `AutomationProductDatasetPreviewResponse` | 从 `public_feed` entries 或 `generic_web` docs/page snapshot 生成公开内容数据集预览，不保存 DatasetVersion |
 | `POST` | `/api/automation/public-content-dataset-save` | preview request + `name`、`description?` | `AutomationProductDatasetSaveResponse` | 保存 `dataset_type=public_content_update`、`schema_version=public_content_update.v1` 的 DatasetVersion |
-| `POST` | `/api/automation/public-content-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、`completeness_drop_threshold_percent?`、`freshness_grace_hours?` | `AutomationProductDriftCheckResponse` | 只读比较最新 `public_feed` TaskRun；用 `link` 做主键、`content_hash` 做内容漂移信号 |
+| `POST` | `/api/automation/public-content-drift-check` | `authorized`、`dataset_id`、`dataset_version_id`、`task_ids`、`completeness_drop_threshold_percent?`、`freshness_grace_hours?` | `AutomationProductDriftCheckResponse` | 只读比较最新 `public_feed` / `generic_web` TaskRun；用 `link` 做主键、`content_hash` 做内容漂移信号 |
+| `POST` | `/api/automation/public-content-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 从只读 drift check 保存或复用 `event_type=public_content_drift` 的 DatasetDriftEvent |
+| `GET` | `/api/automation/public-content-drift-events` | `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出公开内容 DatasetDriftEvent；不启动采集、不创建告警 |
 | `POST` | `/api/automation/public-content-report` | `authorized`、`dataset_id`、`dataset_version_id`、`top_limit?` | `AutomationPublicContentReportResponse` | 从已保存 DatasetVersion 生成公开内容更新报告预览，不创建 Report 资产 |
+| `POST` | `/api/automation/public-content-report-assets` | report request + `confirm_create` | `AutomationPublicContentReportAssetResponse` | 在明确确认后创建 `report_type=public_content` Report 资产；不发送通知、不写导出文件 |
 
 公开内容数据集字段：
 
 ```text
 title, link, published_at, updated_at, author, tags, summary,
-content_hash, feed_url, feed_title, feed_type, site_url
+content_hash, feed_url, feed_title, feed_type, site_url,
+source_type, content_kind, text_length
 ```
 
 公开内容边界：
 
 1. 只支持已授权公开 RSS/Atom feed 或公开文档更新源；不覆盖登录态、私信、付费墙、验证码或账号后台页面。
 2. `public-content-drift-check` 不启动采集、不创建 `DatasetDriftEvent`、不创建告警、不发送通知。
-3. `public-content-report` 只返回只读预览；不创建 Report 资产、不写导出文件、不发送邮件。
-4. Dataset export 仍需单独走 export gate；生产 Source/Task/TaskRun、scheduler 和 report asset 也需要独立授权。
+3. `public-content-drift-events` 只保存/复用 drift 快照，不启动采集、不创建告警、不发送通知。
+4. `public-content-report` 只返回只读预览；`public-content-report-assets` 只在 `confirm_create=true` 后创建 Report 资产，不写导出文件、不发送邮件。
+5. Dataset export、生产 Source/Task/TaskRun、scheduler、provider/email 和生产浏览器运行仍需独立授权。
 
 ### Public Page Structure Preflight
 
