@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 本地完成 public-content drift event persistence slice，但未部署生产、未写入生产 `DatasetDriftEvent`，retained canary 仍未包含 drift event。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -34,8 +34,9 @@ source: human+ai
 | R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-11 | M5 Public Content Dataset export gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；CSV DatasetExportJob `success`；artifact_size_bytes=4900；download 校验通过；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-12 | M5 Public Content retained lifecycle gate | done_retained_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；retained account/source/task/run/dataset/version/report/export/artifact 均保留；重登录 list/detail/download 校验通过；generic E2E cleanup dry-run 仍为 0 |
-| R0-13 | M5 Public Content drift event persistence local slice | done_local_m5 | 本地新增 `public-content-drift-events` save/list、`event_type=public_content_drift`、saved/reused audit events；API full pytest `106 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；未部署生产 |
-| R0-14 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
+| R0-13 | M5 Public Content drift event persistence local slice | done_local_m5 | 本地新增 `public-content-drift-events` save/list、`event_type=public_content_drift`、saved/reused audit events；API full pytest `106 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过 |
+| R0-14 | M5 Public Content drift-event production gate | done_scoped_m5 | production HEAD `.deploy-sha=68c27e0f9c62d542149eedc5b18439938103b4bb`；生产创建 `public_content_drift` DatasetDriftEvent `6acbd871-e0f8-4580-a7c7-b3d2459962f1`；重复提交复用同一 ID；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
+| R0-15 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -309,7 +310,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 ## 8. M3 Production Release Evidence
 
 M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
-This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; current production identity after the M5 Report asset gate is recorded in section 13 as `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`.
+This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; the current production identity after the M5 drift-event production gate is recorded in section 17 as `68c27e0f9c62d542149eedc5b18439938103b4bb`.
 
 ```text
 release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
@@ -905,4 +906,94 @@ drafts/analysis/analysis-boundary-m5-public-content-drift-event-local-slice-draf
 
 Supported claim: the local codebase now has a dedicated public-content drift event persistence path that saves and lists `public_content_drift` snapshots from the existing read-only drift check and keeps collector, alert, notification, scheduler, export, provider, and browser side effects disabled.
 
-Unsupported claim: production has persisted a public-content drift event, the retained canary has been updated, scheduler refresh is active, or a production deploy/gate has completed for this slice.
+Unsupported claim: this local-slice validation alone proves production behavior, the retained canary has been updated, scheduler refresh is active, or recurring monitoring is enabled. The separate production gate is recorded in section 17.
+
+## 17. M5 Public Content Drift Event Production Gate
+
+M5 Public Content drift-event production gate was executed on 2026-06-24 after explicit authorization. This gate deployed the local drift-event persistence slice and used a new scoped fixture; it did not mutate the retained canary from 2026-06-23.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: deploy, one scoped user/workspace, one public_feed Source, one enabled Task, one manual RSS TaskRun, one public_content_update DatasetVersion, one read-only drift check, one public_content_drift DatasetDriftEvent save, one repeated save to verify reuse, exact cleanup
+denied: provider call, email send, scheduler mutation/tick, Dataset export file write, Report asset creation, production browser run, browser artifact write, retained canary mutation
+cleanup_policy: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+deployed HEAD: 68c27e0f9c62d542149eedc5b18439938103b4bb
+.deploy-sha: 68c27e0f9c62d542149eedc5b18439938103b4bb
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: retry passed after edge became healthy
+```
+
+Production gate evidence:
+
+```text
+actor_email: e2e-public-drift-event-20260624010551-nj20wh@example.com
+source_id: d46bbd8e-cbeb-434c-a351-af4ec680e8d9
+task_id: 73af3237-414e-4cfe-b39c-57935f2216f4
+task_run_id: e4a4f1bb-c21e-4378-8abe-d0ada033b1e6
+dataset_id: acc585e5-0388-4cfe-847c-90e490e68056
+dataset_version_id: 961eb51d-ae1e-407f-9cbb-46dfd02bf8a7
+drift_event_id: 6acbd871-e0f8-4580-a7c7-b3d2459962f1
+repeated_drift_event_id: 6acbd871-e0f8-4580-a7c7-b3d2459962f1
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+DriftEvent event_type: public_content_drift
+DriftEvent status: warning
+Drift signal_groups: field_missingness -> missing:tags
+Drift run_started: false
+Drift alert_created: false
+history before save: total=0
+history after save: total=1
+saved audit: public_content_drift_event_saved
+reused audit: public_content_drift_event_reused
+```
+
+Cleanup evidence:
+
+```text
+initial exact dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entity_snapshots=1, entities=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=0, export_artifact_files=0
+first cleanup execute: blocked by EntitySnapshot -> Entity foreign key before commit
+post-failure dry-run: scoped fixture still present
+patched exact dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=2, entity_snapshots=2, entities=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=0, export_artifact_files=0
+cleanup execute: succeeded
+post-cleanup exact dry-run: all categories zero
+generic E2E cleanup dry-run: all categories zero
+temporary host cleanup script: removed
+temporary container cleanup script: removed with root user after default user lacked permission
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: 68c27e0f9c62d542149eedc5b18439938103b4bb
+.deploy-sha: 68c27e0f9c62d542149eedc5b18439938103b4bb
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-drift-event-production-gate-draft-20260624.md
+```
+
+Supported claim: production now includes the dedicated public-content drift-event persistence path, and one scoped production gate proved `public_content_drift` DatasetDriftEvent save/list/idempotent reuse with cleanup-after-evidence.
+
+Unsupported claim: the retained public-content canary has been updated with a drift event, recurring monitoring is active, scheduler refresh is configured, provider enrichment ran, email was sent, a Report asset was created in this gate, a Dataset export file was written in this gate, a production browser ran, or browser artifacts were written.
