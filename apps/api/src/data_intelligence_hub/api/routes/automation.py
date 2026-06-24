@@ -77,6 +77,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentDatasetPreviewRequest,
     AutomationPublicContentDatasetSaveRequest,
     AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentDriftEventSaveRequest,
     AutomationPublicContentReportAssetCreateRequest,
     AutomationPublicContentReportAssetResponse,
     AutomationPublicContentReportRequest,
@@ -137,6 +138,7 @@ from data_intelligence_hub.services.automation_service import (
     save_product_dataset_version,
     save_product_drift_event,
     save_public_content_dataset_version,
+    save_public_content_drift_event,
     send_product_drift_alert_emails,
     send_product_drift_alert_notifications,
 )
@@ -842,6 +844,21 @@ async def save_github_tool_drift_event_route(
         ) from exc
 
 
+@router.post("/public-content-drift-events", response_model=AutomationProductDriftEventResponse)
+async def save_public_content_drift_event_route(
+    payload: AutomationPublicContentDriftEventSaveRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDriftEventResponse:
+    try:
+        return await save_public_content_drift_event(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
 @router.get("/product-drift-events", response_model=AutomationProductDriftEventListResponse)
 async def list_product_drift_events_route(
     session: SessionDep,
@@ -861,6 +878,23 @@ async def list_product_drift_events_route(
 
 @router.get("/github-tool-drift-events", response_model=AutomationProductDriftEventListResponse)
 async def list_github_tool_drift_events_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    dataset_id: uuid.UUID | None = None,
+    dataset_version_id: uuid.UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AutomationProductDriftEventListResponse:
+    return await list_product_drift_events(
+        session,
+        context.workspace,
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        limit=limit,
+    )
+
+
+@router.get("/public-content-drift-events", response_model=AutomationProductDriftEventListResponse)
+async def list_public_content_drift_events_route(
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
     dataset_id: uuid.UUID | None = None,

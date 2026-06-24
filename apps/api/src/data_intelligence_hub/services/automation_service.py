@@ -243,6 +243,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationPublicContentDatasetPreviewRequest,
     AutomationPublicContentDatasetSaveRequest,
     AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentDriftEventSaveRequest,
     AutomationPublicContentReportAssetCreateRequest,
     AutomationPublicContentReportAssetResponse,
     AutomationPublicContentReportEntryResponse,
@@ -3476,6 +3477,86 @@ async def save_github_tool_drift_event(
         dataset_id=checked.dataset.id,
         dataset_version_id=checked.version.id,
         event_type="github_tool_radar_drift",
+        status=event_status,
+        thresholds={
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+        },
+        summary={**summary_json, "idempotency_key": idempotency_key},
+        items=items_json,
+        audit_events=audit_events,
+        note=payload.note.strip() if payload.note and payload.note.strip() else None,
+        created_at=created_at,
+    )
+    saved_event = await create_dataset_drift_event(session, event)
+    return _drift_event_response(saved_event, checked.dataset, checked.version)
+
+
+async def save_public_content_drift_event(
+    session: AsyncSession,
+    workspace: Workspace,
+    payload: AutomationPublicContentDriftEventSaveRequest,
+) -> AutomationProductDriftEventResponse:
+    checked = await check_public_content_drift(session, workspace, payload)
+    created_at = datetime.now(UTC)
+    event_status = _drift_event_status(checked.summary)
+    summary_json = checked.summary.model_dump(mode="json")
+    items_json = [item.model_dump(mode="json") for item in checked.items]
+    idempotency_key = _dataset_drift_event_idempotency_key(
+        event_type="public_content_drift",
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        task_ids=payload.task_ids,
+        thresholds={
+            "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,
+            "freshness_grace_hours": payload.freshness_grace_hours,
+        },
+        summary=summary_json,
+        items=items_json,
+        note=payload.note,
+    )
+    existing_event = await _existing_product_drift_event(
+        session=session,
+        workspace=workspace,
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        idempotency_key=idempotency_key,
+    )
+    if existing_event is not None:
+        existing_event.audit_events = [
+            *existing_event.audit_events,
+            {
+                "event": "public_content_drift_event_reused",
+                "dataset_id": str(checked.dataset.id),
+                "dataset_version_id": str(checked.version.id),
+                "status": existing_event.status,
+                "idempotency_key": idempotency_key,
+                "run_started": False,
+                "alert_created": False,
+            },
+        ]
+        await session.commit()
+        await session.refresh(existing_event)
+        return _drift_event_response(existing_event, checked.dataset, checked.version)
+
+    audit_events = [
+        *checked.audit_events,
+        {
+            "event": "public_content_drift_event_saved",
+            "dataset_id": str(checked.dataset.id),
+            "dataset_version_id": str(checked.version.id),
+            "status": event_status,
+            "idempotency_key": idempotency_key,
+            "run_started": False,
+            "alert_created": False,
+        },
+    ]
+    event = DatasetDriftEvent(
+        workspace_id=workspace.id,
+        project_id=checked.dataset.project_id,
+        dataset_id=checked.dataset.id,
+        dataset_version_id=checked.version.id,
+        event_type="public_content_drift",
         status=event_status,
         thresholds={
             "completeness_drop_threshold_percent": payload.completeness_drop_threshold_percent,

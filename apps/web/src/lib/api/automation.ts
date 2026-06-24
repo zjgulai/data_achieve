@@ -19,8 +19,10 @@ import {
   getMockAutomationProductDriftAlertRuleCreate,
   getMockAutomationProductDriftCheck,
   getMockAutomationGitHubToolDriftCheck,
+  getMockAutomationPublicContentDriftCheck,
   getMockAutomationProductDriftEvents,
   getMockAutomationProductDriftEventSave,
+  getMockAutomationPublicContentDriftEventSave,
   getMockAutomationProductScheduleApprove,
   getMockAutomationCapabilityProbes,
   getMockAutomationPlatformPackages,
@@ -2523,6 +2525,29 @@ export async function checkAutomationGitHubToolDrift(
   return mapAutomationProductDriftCheck(response);
 }
 
+export async function checkAutomationPublicContentDrift(
+  input: AutomationProductDriftCheckInput,
+): Promise<AutomationProductDriftCheck> {
+  if (mockApiEnabled) {
+    return getMockAutomationPublicContentDriftCheck(input);
+  }
+  const response = await apiFetch<AutomationProductDriftCheckResponse>(
+    "/api/automation/public-content-drift-check",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        task_ids: input.taskIds,
+        completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+        freshness_grace_hours: input.freshnessGraceHours ?? 0,
+      }),
+    },
+  );
+  return mapAutomationProductDriftCheck(response);
+}
+
 export async function saveAutomationProductDriftEvent(
   input: AutomationProductDriftEventSaveInput,
 ): Promise<AutomationProductDriftEvent> {
@@ -2555,6 +2580,30 @@ export async function saveAutomationGitHubToolDriftEvent(
   }
   const response = await apiFetch<AutomationProductDriftEventResponse>(
     "/api/automation/github-tool-drift-events",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        task_ids: input.taskIds,
+        completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+        freshness_grace_hours: input.freshnessGraceHours ?? 0,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationProductDriftEvent(response);
+}
+
+export async function saveAutomationPublicContentDriftEvent(
+  input: AutomationProductDriftEventSaveInput,
+): Promise<AutomationProductDriftEvent> {
+  if (mockApiEnabled) {
+    return getMockAutomationPublicContentDriftEventSave(input);
+  }
+  const response = await apiFetch<AutomationProductDriftEventResponse>(
+    "/api/automation/public-content-drift-events",
     {
       method: "POST",
       body: JSON.stringify({

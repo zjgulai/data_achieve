@@ -2503,6 +2503,90 @@ export function getMockAutomationGitHubToolDriftCheck(
   };
 }
 
+export function getMockAutomationPublicContentDriftCheck(
+  input: AutomationProductDriftCheckInput,
+): AutomationProductDriftCheck {
+  const checked = getMockAutomationProductDriftCheck(input);
+  return {
+    ...checked,
+    dataset: {
+      ...checked.dataset,
+      projectId: "project_public_content",
+      name: "Public Content Updates mock",
+      datasetType: "public_content_update",
+      description: "Mock public content update dataset.",
+    },
+    version: {
+      ...checked.version,
+      selectedFields: ["title", "link", "published_at", "summary", "content_hash"],
+      rowCount: 2,
+      averageCompletenessPercent: 90,
+      exportPreview: {
+        format: "json",
+        schema: {
+          schema_version: "public_content_update.v1",
+          primary_key: "link",
+          provenance: { drift_signal: "content_hash" },
+        },
+      },
+    },
+    items: checked.items.map((item, index) => ({
+      ...item,
+      taskName: `公开内容监控任务 ${index + 1}`,
+      sourceUrl: "https://example.com/feed.xml",
+      datasetVersionCompletenessPercent: 90,
+      latestCompletenessPercent: 90,
+      completenessDropPercent: 0,
+      missingFields: [],
+      newMissingFields: [],
+      rowChange: index === 0 ? "mixed" : "unchanged",
+      addedRowCount: index === 0 ? 1 : 0,
+      removedRowCount: index === 0 ? 1 : 0,
+      priceChangePercent: null,
+      issues:
+        index === 0
+          ? ["content_added", "content_removed", "content_hash_changed"]
+          : [],
+      signalGroups:
+        index === 0
+          ? {
+              content_presence: [
+                "added:https://example.com/blog/new",
+                "removed:https://example.com/blog/old",
+              ],
+              content_hash: ["changed:https://example.com/blog/launch"],
+            }
+          : { content_presence: [], content_hash: [] },
+      status: index === 0 ? "critical" : "ok",
+    })),
+    summary: {
+      ...checked.summary,
+      criticalTasks: input.taskIds.length > 0 ? 1 : 0,
+      missingFieldTasks: 0,
+      addedRows: input.taskIds.length > 0 ? 1 : 0,
+      removedRows: input.taskIds.length > 0 ? 1 : 0,
+      priceChangedTasks: 0,
+      driftLayers:
+        input.taskIds.length > 0 ? { content_hash: 1, content_presence: 2 } : {},
+      runStarted: false,
+      alertCreated: false,
+    },
+    auditEvents: [
+      {
+        event: "public_content_drift_task_checked",
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        signal_groups: true,
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    blockedReasons: [
+      "公开内容漂移检查为只读评估，不会启动采集、创建告警或发送通知。",
+    ],
+  };
+}
+
 const mockAutomationDriftEvents: AutomationProductDriftEvent[] = [];
 const mockAutomationDatasetExportJobs: AutomationProductDatasetExportJob[] = [
   getDefaultMockDatasetExportJob(),
@@ -2537,6 +2621,45 @@ export function getMockAutomationProductDriftEventSave(
       ...checked.auditEvents,
       {
         event: "product_drift_event_saved",
+        dataset_id: input.datasetId,
+        dataset_version_id: input.datasetVersionId,
+        run_started: false,
+        alert_created: false,
+      },
+    ],
+    note: input.note?.trim() || null,
+    runStarted: false,
+    alertCreated: false,
+  };
+  mockAutomationDriftEvents.unshift(event);
+  return event;
+}
+
+export function getMockAutomationPublicContentDriftEventSave(
+  input: AutomationProductDriftEventSaveInput,
+): AutomationProductDriftEvent {
+  const checked = getMockAutomationPublicContentDriftCheck(input);
+  const criticalTasks = checked.summary.criticalTasks;
+  const warningTasks = checked.summary.warningTasks + checked.summary.blockedTasks;
+  const status: AutomationProductDriftEvent["status"] =
+    criticalTasks > 0 ? "critical" : warningTasks > 0 ? "warning" : "ok";
+  const event: AutomationProductDriftEvent = {
+    id: `public_content_drift_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: new Date().toISOString(),
+    dataset: checked.dataset,
+    version: checked.version,
+    eventType: "public_content_drift",
+    status,
+    thresholds: {
+      completeness_drop_threshold_percent: input.completenessDropThresholdPercent ?? 10,
+      freshness_grace_hours: input.freshnessGraceHours ?? 0,
+    },
+    summary: checked.summary,
+    items: checked.items,
+    auditEvents: [
+      ...checked.auditEvents,
+      {
+        event: "public_content_drift_event_saved",
         dataset_id: input.datasetId,
         dataset_version_id: input.datasetVersionId,
         run_started: false,

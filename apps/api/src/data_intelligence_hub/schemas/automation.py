@@ -164,6 +164,10 @@ class AutomationPublicContentDriftCheckRequest(AutomationProductDriftCheckReques
     pass
 
 
+class AutomationPublicContentDriftEventSaveRequest(AutomationPublicContentDriftCheckRequest):
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AutomationGitHubToolReportRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID

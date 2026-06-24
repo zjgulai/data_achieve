@@ -2121,6 +2121,88 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
     )
     assert "不会启动采集" in drift["blocked_reasons"][0]
 
+    drift_history_before_response = await client.get(
+        "/api/automation/public-content-drift-events",
+        params={
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+        },
+    )
+    assert drift_history_before_response.status_code == 200
+    assert drift_history_before_response.json() == {
+        "items": [],
+        "total": 0,
+        "run_started": False,
+        "alert_created": False,
+    }
+
+    drift_event_response = await client.post(
+        "/api/automation/public-content-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "Saved from public content review.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["event_type"] == "public_content_drift"
+    assert drift_event["status"] == "critical"
+    assert drift_event["summary"] == drift["summary"]
+    assert drift_event["thresholds"] == {
+        "completeness_drop_threshold_percent": 10,
+        "freshness_grace_hours": 24,
+    }
+    assert drift_event["note"] == "Saved from public content review."
+    assert drift_event["run_started"] is False
+    assert drift_event["alert_created"] is False
+    assert drift_event["items"][0]["signal_groups"] == drift_item["signal_groups"]
+    assert any(
+        event["event"] == "public_content_drift_event_saved"
+        and event["run_started"] is False
+        and event["alert_created"] is False
+        for event in drift_event["audit_events"]
+    )
+
+    repeated_drift_event_response = await client.post(
+        "/api/automation/public-content-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "task_ids": [task["id"]],
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "Saved from public content review.",
+        },
+    )
+    assert repeated_drift_event_response.status_code == 200
+    repeated_drift_event = repeated_drift_event_response.json()
+    assert repeated_drift_event["id"] == drift_event["id"]
+    assert any(
+        event["event"] == "public_content_drift_event_reused"
+        for event in repeated_drift_event["audit_events"]
+    )
+
+    drift_history_after_response = await client.get(
+        "/api/automation/public-content-drift-events",
+        params={
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+        },
+    )
+    assert drift_history_after_response.status_code == 200
+    drift_history = drift_history_after_response.json()
+    assert drift_history["total"] == 1
+    assert drift_history["run_started"] is False
+    assert drift_history["alert_created"] is False
+    assert drift_history["items"][0]["id"] == drift_event["id"]
+    assert drift_history["items"][0]["event_type"] == "public_content_drift"
+
     report_response = await client.post(
         "/api/automation/public-content-report",
         json={

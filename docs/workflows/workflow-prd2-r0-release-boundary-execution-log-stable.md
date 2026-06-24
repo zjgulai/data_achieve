@@ -5,7 +5,7 @@ module: automation
 topic: prd2-r0-release-boundary
 status: stable
 created: 2026-06-21
-updated: 2026-06-23
+updated: 2026-06-24
 owner: self
 source: human+ai
 ---
@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 本地完成 public-content drift event persistence slice，但未部署生产、未写入生产 `DatasetDriftEvent`，retained canary 仍未包含 drift event。provider call、product/report/subscription email、scheduler mutation、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -34,7 +34,8 @@ source: human+ai
 | R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-11 | M5 Public Content Dataset export gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；CSV DatasetExportJob `success`；artifact_size_bytes=4900；download 校验通过；exact-ID 和 generic cleanup dry-run 全 0 |
 | R0-12 | M5 Public Content retained lifecycle gate | done_retained_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；retained account/source/task/run/dataset/version/report/export/artifact 均保留；重登录 list/detail/download 校验通过；generic E2E cleanup dry-run 仍为 0 |
-| R0-13 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
+| R0-13 | M5 Public Content drift event persistence local slice | done_local_m5 | 本地新增 `public-content-drift-events` save/list、`event_type=public_content_drift`、saved/reused audit events；API full pytest `106 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；未部署生产 |
+| R0-14 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler mutation、production browser run 均未执行 |
 
 ## 2. Release Scope Inventory
 
@@ -850,4 +851,58 @@ drafts/analysis/analysis-boundary-m5-public-content-retained-lifecycle-gate-draf
 
 Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one retained production canary covering public RSS collection, DatasetVersion save, read-only drift check, Report asset persistence, DatasetExportJob persistence, export artifact retention, post-login list/detail visibility, export download, and read-only DB/volume inventory.
 
-Unsupported claim: multi-day retention, automated TTL, automatic cleanup job, scheduler refresh, persisted public-content-specific drift event type, provider enrichment, product/report/subscription email, production browser execution, or browser artifact retention is complete.
+Unsupported claim: multi-day retention, automated TTL, automatic cleanup job, scheduler refresh, production-persisted public-content-specific drift event, provider enrichment, product/report/subscription email, production browser execution, or browser artifact retention is complete.
+
+## 16. M5 Public Content Drift Event Persistence Local Slice
+
+M5 Public Content drift event persistence was implemented locally on 2026-06-24 after the retained lifecycle gate showed `dataset_drift_events=0` for the retained canary inventory. This slice did not deploy production and did not write a production drift event.
+
+Implemented local code paths:
+
+```text
+POST /api/automation/public-content-drift-events
+GET /api/automation/public-content-drift-events
+event_type: public_content_drift
+audit saved: public_content_drift_event_saved
+audit reused: public_content_drift_event_reused
+run_started: false
+alert_created: false
+```
+
+Validation:
+
+```text
+uv run pytest tests/integration/test_sources_tasks.py -k public_feed
+result: 1 passed, 20 deselected
+
+uv run pytest
+result: 106 passed, 1 warning
+
+uv run ruff check src tests
+result: passed
+
+pnpm --dir apps/web exec tsc --noEmit
+result: passed
+
+pnpm lint:web
+result: passed
+
+pnpm test:web
+result: 8 passed
+
+pnpm --dir apps/web build
+result: passed
+
+git diff --check
+result: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-drift-event-local-slice-draft-20260624.md
+```
+
+Supported claim: the local codebase now has a dedicated public-content drift event persistence path that saves and lists `public_content_drift` snapshots from the existing read-only drift check and keeps collector, alert, notification, scheduler, export, provider, and browser side effects disabled.
+
+Unsupported claim: production has persisted a public-content drift event, the retained canary has been updated, scheduler refresh is active, or a production deploy/gate has completed for this slice.
