@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import type {
   ToolkitAuthorizationChecklist,
   ToolkitBrowserLab,
@@ -261,6 +261,9 @@ type ToolkitMethodCardDraftListResponse = {
 };
 
 export async function getToolkitOverview(): Promise<ToolkitOverview> {
+  if (mockApiEnabled) {
+    return getMockToolkitOverview();
+  }
   const response = await apiFetch<ToolkitOverviewResponse>("/api/toolkit");
   return {
     dataset: response.dataset,
@@ -285,6 +288,9 @@ export async function runToolkitPreflight(
   url: string,
   authorized: boolean,
 ): Promise<ToolkitPreflightReport> {
+  if (mockApiEnabled) {
+    return getMockToolkitPreflightReport(url, authorized);
+  }
   const response = await apiFetch<ToolkitPreflightReportResponse>("/api/toolkit/preflight", {
     method: "POST",
     body: JSON.stringify({ url, authorized }),
@@ -293,6 +299,9 @@ export async function runToolkitPreflight(
 }
 
 export async function getToolkitMethodCardDrafts(): Promise<ToolkitMethodCardDraft[]> {
+  if (mockApiEnabled) {
+    return [];
+  }
   const response = await apiFetch<ToolkitMethodCardDraftListResponse>(
     "/api/toolkit/method-card-drafts",
   );
@@ -304,6 +313,26 @@ export async function saveToolkitMethodCardDraft(
   status: ToolkitMethodCardDraftStatus,
   reviewNote: string,
 ): Promise<ToolkitMethodCardDraft> {
+  if (mockApiEnabled) {
+    return {
+      id: "mock-method-card-draft",
+      title: report.collectionStrategy.label,
+      methodId: report.collectionStrategy.recommendedPath,
+      sourceUrl: report.finalUrl,
+      status,
+      manualConfirmState: status,
+      riskLevel: report.authorizationGate.riskLevel,
+      recommendedCollector: report.collectionStrategy.recommendedPath,
+      dataTypes: ["public_page", "dom", "network_summary"],
+      boundary: report.authorizationGate.allowedToContinue
+        ? "仅用于 mock 模式下的公开页面预检演示。"
+        : "授权确认未完成，保留为复核草稿。",
+      trainingTakeaway: "先确认授权边界，再选择采集路径和字段契约。",
+      reviewNote: reviewNote.trim() || null,
+      createdAt: "2026-06-25T00:00:00Z",
+      lastSavedAt: "2026-06-25T00:00:00Z",
+    };
+  }
   const response = await apiFetch<ToolkitMethodCardDraftResponse>(
     "/api/toolkit/method-card-drafts",
     {
@@ -564,6 +593,281 @@ function mapPreflightHttpResource(
     available: response.available,
     summary: response.summary,
   };
+}
+
+function getMockToolkitOverview(): ToolkitOverview {
+  return {
+    dataset: "mock-toolkit-overview",
+    generatedAt: "2026-06-25T00:00:00Z",
+    metrics: {
+      sourceCount: 6,
+      toolCount: 4,
+      methodCount: 4,
+      intelligenceCount: 3,
+      evidenceCount: 12,
+      lastCollectedAt: "2026-06-25T00:00:00Z",
+    },
+    learningPaths: [
+      {
+        id: "mock-public-collection-path",
+        title: "公开来源采集工作流",
+        stage: "operator",
+        focus: "授权预检、字段契约、结构化保存和漂移监控",
+        riskLevel: "low",
+        toolCount: 4,
+        methodCount: 4,
+        intelligenceCount: 3,
+        evidenceCount: 12,
+        tools: ["browser-harness", "Playwright", "GitHub API", "RSS/Atom"],
+        methods: ["公开页面预检", "GitHub API-first", "RSS/Atom 更新", "浏览器诊断资产"],
+        acceptanceCriteria: [
+          "目标来源通过授权边界确认",
+          "字段候选和清洗规则可复核",
+          "保存后的数据集版本带有来源和质量指标",
+        ],
+        sourceUrls: ["https://example.com"],
+      },
+    ],
+    lecturePlaybooks: [
+      {
+        id: "mock-collection-operator-brief",
+        intelligenceId: "mock-public-collection-intel",
+        title: "公开来源采集操作说明",
+        audience: "采集运营和数据产品负责人",
+        level: "starter",
+        durationMinutes: 30,
+        claim: "先做授权和结构预检，再进入字段选择、保存和监控。",
+        teachingSequence: ["确认目标", "运行预检", "选择字段", "保存数据集", "观察漂移"],
+        handsOnSteps: ["输入公开 URL", "查看 robots/DOM/network 摘要", "生成采集计划"],
+        verificationSteps: ["检查授权状态", "检查字段完整率", "检查漂移事件"],
+        riskBoundaries: ["不复用登录态", "不绕过验证码", "不采集授权范围外页面"],
+        classroomExercise: "使用 example.com 完成一次 mock 预检。",
+        evidenceUrls: ["https://example.com"],
+        evidenceCount: 3,
+        finalScore: 82,
+      },
+    ],
+    imageAnchorDiagnostics: [
+      {
+        id: "mock-image-anchor",
+        imageLabel: "公开页面截图证据",
+        extractedClaim: "截图只能证明页面结构样例，不能代表生产写入已发生。",
+        sourceTitle: "Mock public page",
+        sourceUrl: "https://example.com",
+        sourceType: "public_page",
+        classification: "evidence_boundary",
+        riskLevel: "low",
+        valueJudgement: "适合作为结构诊断证据。",
+        collectionUse: "辅助字段候选复核。",
+        trainingTakeaway: "截图证据要和数据写入证据分开记录。",
+        relatedTools: ["Playwright"],
+        evidenceUrls: ["https://example.com"],
+      },
+    ],
+    browserLabs: [
+      {
+        id: "mock-browser-lab",
+        title: "浏览器证据适配器诊断",
+        focus: "只读页面结构、选择器和网络摘要",
+        riskLevel: "medium",
+        inspectionTargets: ["DOM 标题", "链接数量", "表单数量"],
+        playwrightChecks: ["页面可打开", "主要选择器可定位"],
+        evidenceOutputs: ["截图摘要", "选择器预览", "网络摘要"],
+        trainingTask: "使用隔离浏览器完成公开页面只读诊断。",
+        acceptanceCriteria: ["browserStarted 记录清楚", "filesWritten 状态清楚"],
+      },
+    ],
+    authorizationChecklists: [
+      {
+        id: "mock-public-url-checklist",
+        title: "公开 URL 授权检查",
+        riskLevel: "medium",
+        requiredChecks: ["确认页面公开可访问", "确认不需要账号登录", "确认不访问个人数据"],
+        blockedConditions: ["验证码绕过", "私网页面", "支付或个人消息页面"],
+        evidenceRequired: ["目标 URL", "预检摘要", "操作者确认"],
+        approvalRule: "未确认授权时只允许保存草稿。",
+      },
+    ],
+    tools: [
+      {
+        id: "mock-browser-harness",
+        name: "browser-harness",
+        category: "browser_automation",
+        riskLevel: "medium",
+        collectorType: "browser_automation",
+        sourceTitle: "Browser Harness",
+        sourceUrl: null,
+        description: "隔离浏览器只读诊断适配器。",
+        language: "TypeScript",
+        license: "MIT",
+        stars: null,
+        forks: null,
+        openIssues: null,
+        updatedAt: null,
+        collectedAt: "2026-06-25T00:00:00Z",
+        sourceCredibilityScore: 80,
+        sourceCredibilityLevel: "high",
+        sourceCredibilityFactors: ["local_smoke", "read_only_boundary"],
+      },
+      {
+        id: "mock-github-api",
+        name: "GitHub API",
+        category: "official_api",
+        riskLevel: "low",
+        collectorType: "github_topic",
+        sourceTitle: "GitHub REST API",
+        sourceUrl: "https://docs.github.com/rest",
+        description: "优先用于公开仓库元数据采集。",
+        language: null,
+        license: null,
+        stars: null,
+        forks: null,
+        openIssues: null,
+        updatedAt: null,
+        collectedAt: "2026-06-25T00:00:00Z",
+        sourceCredibilityScore: 90,
+        sourceCredibilityLevel: "high",
+        sourceCredibilityFactors: ["official_api", "structured_response"],
+      },
+    ],
+    methods: [
+      {
+        id: "mock-generic-web-method",
+        title: "公开页面结构预检",
+        category: "platform_method",
+        riskLevel: "low",
+        collectorType: "toolkit_preflight",
+        sourceUrl: "https://example.com",
+        platform: "Public Web",
+        recommendedCollector: "generic_web",
+        dataTypes: ["title", "description", "headings", "links"],
+        boundary: "只读取公开页面结构，不访问登录态或私有页面。",
+        trainingTakeaway: "先跑预检，再决定字段和采集路径。",
+        collectedAt: "2026-06-25T00:00:00Z",
+      },
+      {
+        id: "mock-github-topic-method",
+        title: "GitHub 主题雷达",
+        category: "platform_method",
+        riskLevel: "low",
+        collectorType: "github_topic",
+        sourceUrl: "https://docs.github.com/rest/search/search",
+        platform: "GitHub",
+        recommendedCollector: "github_topic",
+        dataTypes: ["stars", "forks", "license", "release", "freshness"],
+        boundary: "遵守 API 频控，只采集公开仓库元数据。",
+        trainingTakeaway: "API-first 路径优先于浏览器 DOM 抓取。",
+        collectedAt: "2026-06-25T00:00:00Z",
+      },
+    ],
+    intelligenceItems: [
+      {
+        id: "mock-public-collection-intel",
+        title: "公开来源采集路径优先级",
+        summary: "官方 API 或 RSS 可用时优先使用结构化入口；浏览器诊断用于补充页面结构证据。",
+        domain: "platform",
+        intelligenceType: "collection_method",
+        finalScore: 82,
+        evidenceCount: 3,
+        updatedAt: "2026-06-25T00:00:00Z",
+      },
+    ],
+  };
+}
+
+function getMockToolkitPreflightReport(
+  url: string,
+  authorized: boolean,
+): ToolkitPreflightReport {
+  const normalizedUrl = normalizeMockUrl(url);
+  return {
+    requestedUrl: url,
+    finalUrl: normalizedUrl,
+    checkedAt: "2026-06-25T00:00:00Z",
+    authorizationConfirmed: authorized,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+    },
+    redirects: [],
+    robots: {
+      url: `${new URL(normalizedUrl).origin}/robots.txt`,
+      statusCode: 200,
+      contentType: "text/plain",
+      contentLength: 128,
+      available: true,
+      summary: "mock 模式下的 robots 摘要。",
+    },
+    sitemap: {
+      url: `${new URL(normalizedUrl).origin}/sitemap.xml`,
+      statusCode: 200,
+      contentType: "application/xml",
+      contentLength: 512,
+      available: true,
+      summary: "mock 模式下的 sitemap 摘要。",
+    },
+    securityTxt: {
+      url: `${new URL(normalizedUrl).origin}/.well-known/security.txt`,
+      statusCode: null,
+      contentType: null,
+      contentLength: null,
+      available: false,
+      summary: "mock 模式未发现 security.txt。",
+    },
+    dom: {
+      title: "Mock public page",
+      description: "本地 mock 模式公开页面预检样例。",
+      canonicalUrl: normalizedUrl,
+      metaRobots: "index,follow",
+      headings: ["Mock public page", "Collection evidence"],
+      linkCount: 12,
+      scriptCount: 2,
+      stylesheetCount: 1,
+      imageCount: 3,
+      formCount: 0,
+      textSample: "Mock content for local design and workflow verification.",
+    },
+    network: {
+      requestMethod: "GET",
+      finalStatusCode: 200,
+      finalContentType: "text/html; charset=utf-8",
+      redirectCount: 0,
+      sameOriginLinks: 10,
+      externalLinks: 2,
+      scriptCount: 2,
+      stylesheetCount: 1,
+      imageCount: 3,
+      formCount: 0,
+    },
+    authorizationGate: {
+      allowedToContinue: authorized,
+      riskLevel: authorized ? "low" : "medium",
+      blockedReasons: authorized ? [] : ["authorization_not_confirmed"],
+      requiredNextActions: authorized
+        ? ["复核字段候选", "选择采集路径"]
+        : ["确认目标 URL 授权边界"],
+    },
+    collectionStrategy: {
+      recommendedPath: authorized ? "generic_web" : "manual_review",
+      label: authorized ? "公开页面结构预检" : "授权复核后继续",
+      fit: authorized ? "medium" : "blocked",
+      confidence: authorized ? 0.72 : 0.32,
+      fieldStability: "medium",
+      reasons: ["mock 模式下使用本地预检样例，未访问远端 API。"],
+      nextSteps: authorized
+        ? ["保存方法卡草稿", "进入字段候选复核"]
+        : ["先补充授权依据"],
+      cleaningNotes: ["去除空白", "保留 canonical URL", "记录内容哈希"],
+    },
+    recommendations: ["mock 模式只用于本地 UI 和流程检查。"],
+  };
+}
+
+function normalizeMockUrl(url: string): string {
+  try {
+    return new URL(url).toString();
+  } catch {
+    return "https://example.com/";
+  }
 }
 
 function toPreflightReportRequest(

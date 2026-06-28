@@ -56,6 +56,15 @@ import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
+import {
+  WorkbenchFact as Fact,
+  WorkbenchPanel as Panel,
+  WorkbenchEmptyState,
+  WorkbenchMetricPill,
+  WorkflowLane,
+  WorkflowLaneRail,
+  type WorkflowLaneItem,
+} from "@/components/common/workbench-ui";
 import type {
   BrowserDiagnosticActionPlan,
   BrowserStructureDiagnostic,
@@ -105,6 +114,14 @@ const defaultFields = [
   "description",
   "image_url",
   "canonical_url",
+];
+
+const automationWorkflowLanes: WorkflowLaneItem[] = [
+  { id: "intake", title: "采集入口", caption: "目标与授权" },
+  { id: "review", title: "复核", caption: "字段与策略" },
+  { id: "persist", title: "持久化", caption: "资产写入" },
+  { id: "monitor", title: "监控", caption: "质量与漂移" },
+  { id: "diagnostics", title: "诊断", caption: "浏览器证据" },
 ];
 
 const fieldLabels: Record<string, string> = {
@@ -432,7 +449,7 @@ export function AutomationWorkbench() {
 
   async function runGitHubTopicRadar() {
     if (!selectedProjectId) {
-      setError("请选择写入项目后再创建 GitHub Topic Radar。");
+      setError("请选择写入项目后再创建 GitHub 主题雷达。");
       return;
     }
     const topic = normalizeGitHubTopic(githubTopic);
@@ -461,7 +478,7 @@ export function AutomationWorkbench() {
       setPreflightReport(null);
       setGenericWebRun(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "GitHub Topic Radar run failed");
+      setError(caught instanceof Error ? caught.message : "GitHub 主题雷达运行暂不可用");
     } finally {
       setLoading(false);
     }
@@ -946,22 +963,43 @@ export function AutomationWorkbench() {
 
   return (
     <div className="grid min-w-0 gap-5">
-      <section className="overflow-hidden rounded-2xl border border-[#EDDCD3] bg-[#FFF8F4] shadow-[0_18px_60px_rgba(115,70,58,0.08)]">
-        <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_400px]">
+      <WorkflowLaneRail
+        activeLane={activeWorkflowLane(mode, {
+          analysis,
+          discovery,
+          githubRun,
+          preflightReport,
+        })}
+        lanes={automationWorkflowLanes}
+      />
+
+      <WorkflowLane
+        description="选择目标平台、确认公开授权边界，并启动结构分析或 API-first 采集。"
+        icon={Search}
+        label="01 采集入口"
+        title="采集入口与授权边界"
+      >
+        <section className="max-w-full overflow-hidden rounded-2xl border border-[#EDDCD3] bg-[#FFF8F4] shadow-[0_18px_60px_rgba(115,70,58,0.08)]">
+        <div className="grid min-w-0 max-w-full gap-5 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_400px]">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#E8D4CB] bg-white/75 px-3 py-1 text-xs font-semibold text-[#9E5C4D]">
               <Search size={14} aria-hidden="true" />
-              Automation Intake
+              采集入口
             </div>
             <h2 className="mt-4 text-2xl font-semibold tracking-normal text-[#2E201C] sm:text-3xl">
               URL 到结构化采集计划
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7A625A]">
-              针对公开网页、电商页面和 GitHub API-first topic 先做结构解析。结构预检用于判断授权与 DOM 基础字段，商品发现用于提取候选 URL，Topic Radar 用于把公开仓库元数据写入采集源、任务和运行结果。
+              针对公开网页、电商页面和 GitHub API-first 主题先做结构解析。结构预检用于判断授权与 DOM 基础字段，商品发现用于提取候选 URL，GitHub 主题雷达用于把公开仓库元数据写入采集源、任务和运行结果。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <MetricPill icon={ShieldCheck} label="授权边界" value={authorized ? "已确认" : "待确认"} />
-              <MetricPill
+              <WorkbenchMetricPill
+                icon={ShieldCheck}
+                label="授权边界"
+                value={authorized ? "已确认" : "待确认"}
+                valueSize="large"
+              />
+              <WorkbenchMetricPill
                 icon={SlidersHorizontal}
                 label={
                   mode === "github_topic_radar"
@@ -981,8 +1019,9 @@ export function AutomationWorkbench() {
                       ? `${maxProducts || "50"} 条`
                       : `${fields.length} 个`
                 }
+                valueSize="large"
               />
-              <MetricPill
+              <WorkbenchMetricPill
                 icon={Database}
                 label="结构保存"
                 value={
@@ -1004,31 +1043,32 @@ export function AutomationWorkbench() {
                       ? `${selectedFieldCount} 字段`
                       : "待分析"
                 }
+                valueSize="large"
               />
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
+          <div className="min-w-0 max-w-full rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
             <form
-              className="grid gap-4"
+              className="grid min-w-0 gap-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 void submitAutomation();
               }}
             >
-              <div className="grid grid-cols-2 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1 sm:grid-cols-4">
+              <div className="grid min-w-0 grid-cols-2 gap-2 rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] p-1 sm:grid-cols-4">
                 {(
                   [
                     { mode: "product_page", label: "商品页分析" },
                     { mode: "product_discovery", label: "商品发现" },
-                    { mode: "github_topic_radar", label: "Topic Radar" },
+                    { mode: "github_topic_radar", label: "GitHub 主题" },
                     { mode: "structure_preflight", label: "结构预检" },
                   ] as const
                 ).map((item) => (
                   <button
                     aria-pressed={mode === item.mode}
                     className={cn(
-                      "h-9 rounded-lg px-2 text-xs font-semibold transition",
+                      "min-h-11 min-w-0 whitespace-normal rounded-lg px-2 text-xs font-semibold leading-tight transition",
                       mode === item.mode
                         ? "bg-[#C96F5C] text-white shadow-[0_8px_18px_rgba(201,111,92,0.2)]"
                         : "text-[#7D4F43] hover:bg-[#FFF0EA]",
@@ -1247,7 +1287,7 @@ export function AutomationWorkbench() {
                 {loading
                   ? "处理中"
                   : mode === "github_topic_radar"
-                    ? "创建并运行 Topic Radar"
+                    ? "创建并运行 GitHub 主题雷达"
                     : mode === "structure_preflight"
                       ? "生成结构预检"
                     : mode === "product_discovery"
@@ -1260,119 +1300,151 @@ export function AutomationWorkbench() {
                 {error}
               </p>
             ) : null}
-            {mode === "product_page" ? (
-              <AnalysisHistoryPanel
-                error={historyError}
-                items={analysisHistory}
-                loading={historyLoading}
-              />
-            ) : mode === "structure_preflight" ? (
-              <div className="grid gap-3">
-                <BrowserDiagnosticHistoryPanel
-                  error={historyError}
-                  items={browserDiagnosticHistory}
-                  loading={historyLoading}
-                />
-                <AnalysisHistoryPanel
-                  description="已保存的 browser automation 方案会显示 selector、等待条件和 API 候选等执行规格。"
-                  emptyText="暂无自动化方案历史。保存只读自动化方案后，执行规格会出现在这里。"
-                  error={historyError}
-                  items={analysisHistory}
-                  loading={historyLoading}
-                  browserJobLoading={browserJobLoading}
-                  onBrowserJobCreate={(result) => void createBrowserDiagnosticJob(result)}
-                  onBrowserSpecDryRun={(item) => void validateBrowserExecutableSpec(item)}
-                  specDryRunError={browserSpecDryRunError}
-                  specDryRunLoading={browserSpecDryRunLoading}
-                  specDryRunResult={browserSpecDryRun}
-                  title="自动化方案历史"
-                />
-                <BrowserDiagnosticJobHistoryPanel
-                  error={browserJobError}
-                  items={browserDiagnosticJobs}
-                  loading={browserJobLoading}
-                  onCancel={(jobId) => void cancelBrowserDiagnosticJob(jobId)}
-                  onBuildContract={(jobId) => void buildBrowserExecutorContract(jobId)}
-                  contractLoading={browserExecutorLoading}
-                />
-                <BrowserExecutorContractPanel
-                  contract={browserExecutorContract}
-                  error={browserExecutorError}
-                  loading={browserExecutorLoading}
-                  onRunHarnessProbe={(jobId) =>
-                    void runBrowserLocalRunner(jobId, "ephemeral_browser_harness_probe")
-                  }
-                  onRunLocal={(jobId) =>
-                    void runBrowserLocalRunner(jobId, "diagnostic_snapshot_replay")
-                  }
-                  runLoading={browserLocalRunLoading}
-                />
-                <BrowserLocalRunnerResultPanel
-                  error={browserLocalRunError}
-                  items={browserLocalRuns}
-                  loading={browserLocalRunLoading}
-                  result={browserLocalRunResult}
-                />
-              </div>
-            ) : null}
           </div>
         </div>
       </section>
+      </WorkflowLane>
 
-      <CapabilityProbePanel
-        error={capabilityProbeError}
-        items={capabilityProbes}
-        loading={capabilityProbeLoading}
-      />
+      <WorkflowLane
+        description="先看能力边界和平台包，再决定当前目标应走结构预检、商品发现、GitHub API 或后续浏览器诊断。"
+        icon={SlidersHorizontal}
+        label="02 复核"
+        title="能力评估与平台包选择"
+      >
+        <CapabilityProbePanel
+          error={capabilityProbeError}
+          items={capabilityProbes}
+          loading={capabilityProbeLoading}
+        />
 
-      <PlatformPackageMatrix
-        appliedPackage={appliedPlatformPackage}
-        error={platformPackageError}
-        loading={platformPackageLoading}
-        onApply={applyPlatformPackage}
-        packages={platformPackages}
-      />
+        <PlatformPackageMatrix
+          appliedPackage={appliedPlatformPackage}
+          error={platformPackageError}
+          loading={platformPackageLoading}
+          onApply={applyPlatformPackage}
+          packages={platformPackages}
+        />
+      </WorkflowLane>
 
-      {mode === "github_topic_radar" ? (
-        githubRun ? (
-          <GitHubTopicRunResult result={githubRun} />
-        ) : (
-          <EmptyAnalysisState mode={mode} />
-        )
-      ) : mode === "structure_preflight" ? (
-        preflightReport ? (
-          <StructurePreflightResult
-            authorized={authorized}
-            browserActionPlan={browserActionPlan}
-            browserPlanSaveLoading={browserPlanSaveLoading}
-            browserPlanSaveMessage={browserPlanSaveMessage}
-            genericWebRun={genericWebRun}
-            loading={loading}
-            onBrowserActionPlanChange={setBrowserActionPlan}
-            onBrowserDiagnosticChange={setBrowserDiagnostic}
-            onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
-            onSaveBrowserAutomationPlan={saveBrowserAutomationPlanFromDiagnostic}
-            report={preflightReport}
-            selectedProjectId={selectedProjectId}
+      {mode === "product_page" ? (
+        <WorkflowLane
+          description="回看已保存的站点分析与采集计划，避免重复创建低质量草稿。"
+          icon={ClipboardList}
+          label="02 复核"
+          title="历史采集方案"
+        >
+          <AnalysisHistoryPanel
+            error={historyError}
+            items={analysisHistory}
+            loading={historyLoading}
           />
+        </WorkflowLane>
+      ) : null}
+
+      {mode === "structure_preflight" ? (
+        <WorkflowLane
+          description="把 browser-harness 诊断、执行规格校验、只读诊断任务和本地回放证据集中在独立诊断 lane。"
+          icon={ShieldCheck}
+          label="05 诊断证据"
+          title="浏览器诊断与执行器边界"
+        >
+          <div className="grid gap-3">
+            <BrowserDiagnosticHistoryPanel
+              error={historyError}
+              items={browserDiagnosticHistory}
+              loading={historyLoading}
+            />
+            <AnalysisHistoryPanel
+              description="已保存的 browser automation 方案会显示 selector、等待条件和 API 候选等执行规格。"
+              emptyText="暂无自动化方案历史。保存只读自动化方案后，执行规格会出现在这里。"
+              error={historyError}
+              items={analysisHistory}
+              loading={historyLoading}
+              browserJobLoading={browserJobLoading}
+              onBrowserJobCreate={(result) => void createBrowserDiagnosticJob(result)}
+              onBrowserSpecDryRun={(item) => void validateBrowserExecutableSpec(item)}
+              specDryRunError={browserSpecDryRunError}
+              specDryRunLoading={browserSpecDryRunLoading}
+              specDryRunResult={browserSpecDryRun}
+              title="自动化方案历史"
+            />
+            <BrowserDiagnosticJobHistoryPanel
+              error={browserJobError}
+              items={browserDiagnosticJobs}
+              loading={browserJobLoading}
+              onCancel={(jobId) => void cancelBrowserDiagnosticJob(jobId)}
+              onBuildContract={(jobId) => void buildBrowserExecutorContract(jobId)}
+              contractLoading={browserExecutorLoading}
+            />
+            <BrowserExecutorContractPanel
+              contract={browserExecutorContract}
+              error={browserExecutorError}
+              loading={browserExecutorLoading}
+              onRunHarnessProbe={(jobId) =>
+                void runBrowserLocalRunner(jobId, "ephemeral_browser_harness_probe")
+              }
+              onRunLocal={(jobId) =>
+                void runBrowserLocalRunner(jobId, "diagnostic_snapshot_replay")
+              }
+              runLoading={browserLocalRunLoading}
+            />
+            <BrowserLocalRunnerResultPanel
+              error={browserLocalRunError}
+              items={browserLocalRuns}
+              loading={browserLocalRunLoading}
+              result={browserLocalRunResult}
+            />
+          </div>
+        </WorkflowLane>
+      ) : null}
+
+      <WorkflowLane
+        description={workflowResultDescription(mode)}
+        icon={workflowResultIcon(mode)}
+        label={workflowResultLabel(mode)}
+        title={workflowResultTitle(mode)}
+      >
+        {mode === "github_topic_radar" ? (
+          githubRun ? (
+            <GitHubTopicRunResult result={githubRun} />
+          ) : (
+            <EmptyAnalysisState mode={mode} />
+          )
+        ) : mode === "structure_preflight" ? (
+          preflightReport ? (
+            <StructurePreflightResult
+              authorized={authorized}
+              browserActionPlan={browserActionPlan}
+              browserPlanSaveLoading={browserPlanSaveLoading}
+              browserPlanSaveMessage={browserPlanSaveMessage}
+              genericWebRun={genericWebRun}
+              loading={loading}
+              onBrowserActionPlanChange={setBrowserActionPlan}
+              onBrowserDiagnosticChange={setBrowserDiagnostic}
+              onCreateGenericWebSource={() => void createGenericWebSourceFromPreflight()}
+              onSaveBrowserAutomationPlan={saveBrowserAutomationPlanFromDiagnostic}
+              report={preflightReport}
+              selectedProjectId={selectedProjectId}
+            />
+          ) : (
+            <EmptyAnalysisState mode={mode} />
+          )
+        ) : mode === "product_discovery" ? (
+          discovery ? (
+            <DiscoveryResult
+              key={discovery.analyzedAt}
+              packageCleaningRules={appliedPlatformPackage?.cleaningRules ?? []}
+              discovery={discovery}
+              selectedProjectId={selectedProjectId}
+              selectedFields={fields}
+            />
+          ) : (
+            <EmptyAnalysisState mode={mode} />
+          )
         ) : (
-          <EmptyAnalysisState mode={mode} />
-        )
-      ) : mode === "product_discovery" ? (
-        discovery ? (
-          <DiscoveryResult
-            key={discovery.analyzedAt}
-            packageCleaningRules={appliedPlatformPackage?.cleaningRules ?? []}
-            discovery={discovery}
-            selectedProjectId={selectedProjectId}
-            selectedFields={fields}
-          />
-        ) : (
-          <EmptyAnalysisState mode={mode} />
-        )
-      ) : (
-        analysis ? <AnalysisResult analysis={analysis} /> : <EmptyAnalysisState mode={mode} />
-      )}
+          analysis ? <AnalysisResult analysis={analysis} /> : <EmptyAnalysisState mode={mode} />
+        )}
+      </WorkflowLane>
     </div>
   );
 }
@@ -2534,7 +2606,7 @@ function GitHubTopicRunResult({ result }: { result: GitHubTopicRunState }) {
 
   return (
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Panel icon={Activity} label="GitHub Topic Radar" title="公开仓库情报采集结果">
+      <Panel icon={Activity} label="GitHub 主题雷达" title="公开仓库情报采集结果">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Fact label="Topic" value={result.topic} />
           <Fact label="仓库上限" value={String(result.maxResults)} />
@@ -4496,14 +4568,25 @@ function DatasetPreviewResult({
             <div className="mt-4 rounded-xl border border-[#D9E2CC] bg-white p-3">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase text-[#4E7C45]">Schedule Approval</p>
+                  <p className="text-xs font-semibold uppercase text-[#4E7C45]">调度变更 Gate</p>
                   <h3 className="mt-1 text-sm font-semibold text-[#2E201C]">质量通过后审批自动保鲜</h3>
                   <p className="mt-1 text-xs leading-5 text-[#5F5757]">
-                    仅写入任务调度元数据，不会立即启动采集运行。
+                    只写入任务调度配置；审批动作不启动采集运行，也不触发 scheduler tick。
                   </p>
                 </div>
                 <span className="rounded-full bg-[#ECF7EA] px-3 py-1 text-xs font-semibold text-[#4E7C45]">
                   {taskIds.length} 个任务
+                </span>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <span className="rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 py-2 text-xs font-semibold text-[#536B40]">
+                  写入：任务调度配置
+                </span>
+                <span className="rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 py-2 text-xs font-semibold text-[#536B40]">
+                  run_started=false
+                </span>
+                <span className="rounded-xl border border-[#D9E2CC] bg-[#FAFCF7] px-3 py-2 text-xs font-semibold text-[#536B40]">
+                  scheduler_tick_started=false
                 </span>
               </div>
               <div className="mt-3 grid gap-3 lg:grid-cols-4">
@@ -5019,7 +5102,7 @@ function EmptyAnalysisState({ mode }: { mode: AutomationMode }) {
     mode === "product_discovery"
       ? "等待商品 URL 发现"
       : mode === "github_topic_radar"
-        ? "等待 Topic Radar 运行"
+        ? "等待 GitHub 主题雷达运行"
         : mode === "structure_preflight"
           ? "等待结构预检"
           : "等待 URL 分析";
@@ -5028,76 +5111,88 @@ function EmptyAnalysisState({ mode }: { mode: AutomationMode }) {
       ? "从集合页、分类页或 sitemap 中提取候选商品 URL，确认后再进入商品详情页字段采集。"
       : mode === "github_topic_radar"
         ? "从公开 GitHub topic 创建 API-first 采集源，运行后会生成仓库工具情报记录。"
-        : mode === "structure_preflight"
-          ? "先确认公开授权，再检查 HTTP、robots、sitemap、DOM、链接和表单，判断是否可以进入 generic_web 或浏览器采集。"
-          : "商品页分析会明确字段能否结构化保存，以及是否需要浏览器运行时复核。";
-  return (
-    <section className="rounded-2xl border border-dashed border-[#DDBEAF] bg-white/70 p-8">
-      <div className="mx-auto max-w-2xl text-center">
-        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#FFF0EA] text-[#C96F5C]">
-          <Link2 size={22} aria-hidden="true" />
-        </span>
-        <h2 className="mt-4 text-lg font-semibold text-[#2E201C]">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-[#7A625A]">{body}</p>
-      </div>
-    </section>
-  );
+      : mode === "structure_preflight"
+        ? "先确认公开授权，再检查 HTTP、robots、sitemap、DOM、链接和表单，判断是否可以进入 generic_web 或浏览器采集。"
+        : "商品页分析会明确字段能否结构化保存，以及是否需要浏览器运行时复核。";
+  return <WorkbenchEmptyState icon={Link2} text={body} title={title} />;
 }
 
-function Panel({
-  icon: Icon,
-  label,
-  title,
-  children,
-}: {
-  icon: typeof Activity;
-  label: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="min-w-0 rounded-2xl border border-[#EDDCD3] bg-white p-4 shadow-[0_16px_48px_rgba(72,45,38,0.07)] sm:p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-            <Icon size={14} aria-hidden="true" />
-            {label}
-          </p>
-          <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">{title}</h2>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
+type WorkflowLaneId = "intake" | "review" | "persist" | "monitor" | "diagnostics";
+
+function activeWorkflowLane(
+  mode: AutomationMode,
+  state: {
+    analysis: AutomationSiteAnalysis | null;
+    discovery: AutomationProductDiscovery | null;
+    githubRun: GitHubTopicRunState | null;
+    preflightReport: ToolkitPreflightReport | null;
+  },
+): WorkflowLaneId {
+  if (mode === "structure_preflight" && state.preflightReport) {
+    return "diagnostics";
+  }
+  if (mode === "github_topic_radar" && state.githubRun) {
+    return "monitor";
+  }
+  if (mode === "product_discovery" && state.discovery) {
+    return "persist";
+  }
+  if (mode === "product_page" && state.analysis) {
+    return "review";
+  }
+  return "intake";
 }
 
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Activity;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 text-2xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
+function workflowResultLabel(mode: AutomationMode) {
+  if (mode === "github_topic_radar") {
+    return "03-04 持久化 / 监控";
+  }
+  if (mode === "product_discovery") {
+    return "02-03 复核 / 持久化";
+  }
+  if (mode === "structure_preflight") {
+    return "02-03 复核 / 持久化";
+  }
+  return "02 复核";
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <p className="text-xs font-semibold text-[#B47767]">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#3B2924]">{value}</p>
-    </div>
-  );
+function workflowResultTitle(mode: AutomationMode) {
+  if (mode === "github_topic_radar") {
+    return "工具情报持久化与监控";
+  }
+  if (mode === "product_discovery") {
+    return "候选商品复核与批量持久化";
+  }
+  if (mode === "structure_preflight") {
+    return "结构预检结果与采集入口";
+  }
+  return "字段候选与采集源草稿";
+}
+
+function workflowResultDescription(mode: AutomationMode) {
+  if (mode === "github_topic_radar") {
+    return "展示 GitHub API-first 采集结果、工具数据集、报告资产和漂移监控动作。";
+  }
+  if (mode === "product_discovery") {
+    return "从候选 URL 到采集源预览、小批量运行、数据集保存和漂移检查保持一条连续证据链。";
+  }
+  if (mode === "structure_preflight") {
+    return "先用公开页面预检判断后续路径；创建 generic_web 采集源仍需显式授权动作。";
+  }
+  return "复核字段、工具建议、清洗草稿和可入库采集源草稿。";
+}
+
+function workflowResultIcon(mode: AutomationMode) {
+  if (mode === "github_topic_radar") {
+    return Activity;
+  }
+  if (mode === "product_discovery") {
+    return Link2;
+  }
+  if (mode === "structure_preflight") {
+    return ShieldCheck;
+  }
+  return ClipboardList;
 }
 
 function FieldCandidateCard({ field }: { field: AutomationFieldCandidate }) {
