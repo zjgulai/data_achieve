@@ -183,9 +183,9 @@ def _parse_atom_feed(root: ElementTree.Element, max_items: int) -> ParsedFeed:
         if author_element is not None:
             author = _child_text(author_element, "name")
         tags = [
-            _clean_text(child.attrib.get("term"))
+            cleaned
             for child in _children(entry, "category")
-            if _clean_text(child.attrib.get("term"))
+            if (cleaned := _clean_text(child.attrib.get("term"))) is not None
         ]
         entries.append(
             _entry_payload(

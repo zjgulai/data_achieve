@@ -778,7 +778,10 @@ test.describe("MVP workspace routes", () => {
       await expect(reportIntelligenceLink).toBeVisible();
     }
 
-    await page.getByRole("link", { name: "打开详情页" }).first().click();
+    const selectedReportDetail = page.locator("section").filter({
+      hasText: "派发状态",
+    });
+    await selectedReportDetail.getByRole("link", { name: "打开详情页" }).click();
     await expect(page).toHaveURL(/\/reports\/.+/);
     await expect(page.getByRole("heading", { name: "报告详情" })).toBeVisible();
     await expect(page.getByText("审计记录").first()).toBeVisible();
