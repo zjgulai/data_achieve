@@ -24,6 +24,11 @@ import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-
 import { isTrainingSignal } from "@/lib/training-data";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchDetailRow,
+  WorkbenchKeyValueRow,
+  WorkbenchMetricPill,
+} from "@/components/common/workbench-ui";
 import type { Signal } from "@/types/signal";
 
 type SeverityFilter = "all" | string;
@@ -194,11 +199,11 @@ export function SignalsWorkspace() {
               把实体快照差异转成确定性信号，保留触发规则、严重度、置信度和前后快照绑定。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
-              <MetricPill icon={Activity} label="信号数" value={String(stats.total)} />
-              <MetricPill icon={ShieldAlert} label="高风险" value={String(stats.highRisk)} />
-              <MetricPill icon={Gauge} label="平均置信" value={`${stats.averageConfidence}`} />
-              <MetricPill icon={Target} label="影响实体" value={String(stats.uniqueEntities)} />
-              <MetricPill icon={BookOpenCheck} label="培训信号" value={String(stats.trainingSignals)} />
+              <WorkbenchMetricPill icon={Activity} label="信号数" value={String(stats.total)} />
+              <WorkbenchMetricPill icon={ShieldAlert} label="高风险" value={String(stats.highRisk)} />
+              <WorkbenchMetricPill icon={Gauge} label="平均置信" value={`${stats.averageConfidence}`} />
+              <WorkbenchMetricPill icon={Target} label="影响实体" value={String(stats.uniqueEntities)} />
+              <WorkbenchMetricPill icon={BookOpenCheck} label="培训信号" value={String(stats.trainingSignals)} />
             </div>
           </div>
 
@@ -476,9 +481,9 @@ function SignalDetail({ signal }: { signal: Signal }) {
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="关联实体" value={formatShortTraceId(signal.entityId)} />
-          <DetailRow label="所属项目" value={formatShortTraceId(signal.projectId)} />
-          <DetailRow label="检测批次" value={formatShortTraceId(signal.id)} />
+          <WorkbenchDetailRow label="关联实体" value={formatShortTraceId(signal.entityId)} />
+          <WorkbenchDetailRow label="所属项目" value={formatShortTraceId(signal.projectId)} />
+          <WorkbenchDetailRow label="检测批次" value={formatShortTraceId(signal.id)} />
         </div>
       </div>
 
@@ -515,36 +520,18 @@ function SignalDetail({ signal }: { signal: Signal }) {
   );
 }
 
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Activity;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
 function SeverityRow({ severity, count }: { severity: string; count: number }) {
   const tone = getSeverityTone(severity);
   return (
-    <div className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <span className="inline-flex items-center gap-2 text-sm font-medium text-[#3B2924]">
-        <span className={cn("h-2.5 w-2.5 rounded-full", tone.accent)} />
-        {tone.label}
-      </span>
-      <span className="text-sm font-semibold text-[#3B2924]">{count}</span>
-    </div>
+    <WorkbenchKeyValueRow
+      labelSlot={
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#3B2924]">
+          <span className={cn("h-2.5 w-2.5 rounded-full", tone.accent)} />
+          {tone.label}
+        </span>
+      }
+      value={String(count)}
+    />
   );
 }
 
@@ -568,15 +555,6 @@ function ScoreCard({ label, value }: { label: string; value: string }) {
         {value}
         {label === "delta" ? <DeltaIcon value={value} /> : null}
       </p>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-sm">
-      <span className="text-xs font-semibold uppercase text-[#B47767]">{label}</span>
-      <p className="mt-1 break-all font-semibold text-[#3B2924]">{value}</p>
     </div>
   );
 }

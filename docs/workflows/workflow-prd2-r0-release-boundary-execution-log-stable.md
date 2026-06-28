@@ -5,7 +5,7 @@ module: automation
 topic: prd2-r0-release-boundary
 status: stable
 created: 2026-06-21
-updated: 2026-06-21
+updated: 2026-06-25
 owner: self
 source: human+ai
 ---
@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration；生产写入 E2E、provider call、邮件发送、站内通知发送和调度变更仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice，并部署 production SHA `af23cefc92aa9fec336f632a5b1561623811c2fd` 完成 scoped production docs/page gate：`generic_web` docs/page snapshot 进入 `public_content_update` Dataset/drift/report/event/report-asset 链路，并在取证后清理 scoped fixtures 至零。之后部署 production SHA `a81154426fd4e942fc9439de3dcbd9c816122562` 完成 scoped public-content scheduler approval gate：批准一个 public-content Task 的 schedule metadata，验证未启动 scheduler tick 或新 TaskRun，并在取证后清理 scoped fixtures 至零。随后本地完成 M5 retained public-content TTL/cleanup policy slice，新增 dry-run/execute 维护入口与 export artifact root safety checks；之后已完成 production retained cleanup dry-run、scoped scheduler tick、retained canary scheduler/drift refresh、retained TTL observation baseline 和 deploy marker diagnosis。当前 active app marker 与 app `HEAD=3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` 匹配；父级 marker/current symlink 是旧 release-directory 路径残留。2026-06-25 已把未来 production identity probe 标准化到 `.codex/commands.md`：当前 compose 布局读取 `/opt/data-achieve-scrapy/app/.deploy-sha`，父级 marker/current symlink 只作为单独 housekeeping gate 处理。同日完成 retained TTL midpoint observation：preflight 证明 retained canary 仍在，Task 保持 `manual_refresh_only` / `schedule_cron=null`；default 168h 与 48h dry-run 均为 0，0h dry-run 覆盖完整 retained graph，仍未执行 cleanup。provider call、product/report/subscription email、production retained cleanup execute、default 168h multi-day TTL conclusion、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -28,8 +28,43 @@ source: human+ai
 | R0-4 | Production read-only smoke | done | `/api/health`、`/automation`、`/datasets`、unauthenticated `/api/automation/platform-packages` |
 | R0-5 | Release branch setup and scoped staging | done | 已从 `main` 切到 `codex/prd2-r0-release-boundary`；RC1/RC2 已 staged，RC3 草稿未 staged；尚未 commit |
 | R0-6 | Post-merge production release | done | production HEAD `80f0566`；migration `202606110020 -> 202606110023`；L3 read-only smoke passed |
-| R0-7 | Authorized production write E2E | pending_authorization | 需要专用测试账号/workspace、明确写入范围和 cleanup register |
-| R0-8 | M3 post-R0 production release | done | production HEAD `e9ccb81`；schema 仍为 `202606110023`；GitHub API-first 字段合同 L3 read-only smoke passed |
+| R0-7 | Authorized production write E2E | done_scoped_m3 | M3 GitHub scope `topic=web-scraping`、`max_repositories=3`；真实 API E2E `2 passed`；cleanup recount 全 0 |
+| R0-8 | M3 post-R0 production release | done | production HEAD `f04c8ea77cc64f28d391e992012525e1704ec1a3`；schema 仍为 `202606110023`；GitHub API-first package gate passed |
+| R0-9 | M5 Public Content production package smoke | done_scoped_m5 | production HEAD `e1359759aa1cab157bb98ec8abda4ff580cbfe7d`；`public_feed` RSS TaskRun success；`public_content_update` DatasetVersion row_count=5；drift/report read-only preview passed；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-10 | M5 Public Content Report asset gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；Report asset `report_type=public_content` created；`notification_created=false`；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-11 | M5 Public Content Dataset export gate | done_scoped_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；CSV DatasetExportJob `success`；artifact_size_bytes=4900；download 校验通过；exact-ID 和 generic cleanup dry-run 全 0 |
+| R0-12 | M5 Public Content retained lifecycle gate | done_retained_m5 | production HEAD `fb05c61ab137b1c1cb7519b661d98a97ae0cead6`；retained account/source/task/run/dataset/version/report/export/artifact 均保留；重登录 list/detail/download 校验通过；generic E2E cleanup dry-run 仍为 0 |
+| R0-13 | M5 Public Content drift event persistence local slice | done_local_m5 | 本地新增 `public-content-drift-events` save/list、`event_type=public_content_drift`、saved/reused audit events；API full pytest `106 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过 |
+| R0-14 | M5 Public Content drift-event production gate | done_scoped_m5 | production HEAD `.deploy-sha=68c27e0f9c62d542149eedc5b18439938103b4bb`；生产创建 `public_content_drift` DatasetDriftEvent `6acbd871-e0f8-4580-a7c7-b3d2459962f1`；重复提交复用同一 ID；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
+| R0-15 | M5 Public Content docs diff local slice | done_local_m5 | `generic_web.v1` docs/page snapshot 可保存 `public_content_update` DatasetVersion、hash-only drift、`public_content_drift` event、public content report/asset；API full pytest `107 passed`、ruff、Web TypeScript/lint/unit/build、`git diff --check` 均通过；生产 gate 见 R0-16 |
+| R0-16 | M5 Public Content docs/page production gate | done_scoped_m5 | production HEAD `.deploy-sha=af23cefc92aa9fec336f632a5b1561623811c2fd`；生产 `generic_web` docs/page TaskRun success；`public_content_update` DatasetVersion `row_count=1` 且 `collector_schema_versions=["generic_web.v1"]`；`public_content_drift` DatasetDriftEvent `05847c1a-5013-4fc8-8d1f-5bec747d0408` 创建/复用；Report asset `9b2ec052-0ba8-482f-9902-209da8c51885` 创建；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
+| R0-17 | M5 Public Content scheduler approval production gate | done_scoped_m5 | production HEAD `.deploy-sha=a81154426fd4e942fc9439de3dcbd9c816122562`；生产 `public_feed` TaskRun success；`public_content_update` DatasetVersion `1a9ce0f2-b7e3-4437-bb4e-a1c45c1a78b7`；Task `6338d234-554d-4527-9f51-5f695e646bdf` 写入 `manual_refresh_only`、`schedule_cron=null`、`freshness_target_hours=72`；`public_content_schedule_approved`；`run_started=false`；`scheduler_tick_started=false`；approval 前后 TaskRun 不变；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
+| R0-18 | M5 Public Content retained TTL/cleanup policy local slice | done_local_m5 | 本地新增 `data_intelligence_hub.maintenance.public_content_retention` 与 `scripts/cleanup-retained-public-content.sh`；默认 dry-run，限定 `retained-public-content-*@example.com`，覆盖 public-content Source/Task/Run/Dataset/DriftEvent/Report/Export graph，带 export artifact root validation；targeted retention tests `2 passed`、retention plus E2E cleanup tests `4 passed`、API full pytest `110 passed`、ruff、script help 和 `git diff --check` 通过；无 production deploy、production cleanup dry-run/execute、retained canary deletion |
+| R0-19 | M5 Public Content retained cleanup production dry-run gate | done_dry_run_m5 | production HEAD `.deploy-sha=d11d5a477ea3125649f7674495bfca5b93148e32`；首次 `c321a52` dry-run 暴露 member workspace lineage gap 且未 execute；修复后 `--older-than-hours 0` dry-run 命中 retained canary Source/Task/Run/Dataset/Version/Report/Export artifact plan，`export_artifact_path_violations=0`；默认 168 小时 dry-run 全 0；无 cleanup execute、canary deletion、provider/email/scheduler/browser side effect |
+| R0-20 | M5 Public Content scheduler tick / recurring monitoring production gate | done_scoped_m5 | scoped `public_feed` Task 临时 approved `auto_freshness` + `* * * * *`；background tick `47356df1-8f5e-442c-883b-f46ec51c6bbc` 返回 `due=1`、`started=1`；scheduled TaskRun `258b2265-5f5a-4505-a9f7-400aee863259` success；read-only drift check completed；exact cleanup returned scoped fixture to zero |
+| R0-21 | M5 Public Content retained canary scheduler/drift refresh gate | done_retained_m5 | retained Task `b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6` 临时 approved `auto_freshness` + `* * * * *`；tick `b1fa40d1-215a-469c-b2b7-f841fb8edcab` returned `due=1`、`started=1`；retained TaskRun `fb2dc909-f125-402e-8759-7443e0214e55` success；task restored to `manual_refresh_only` / `schedule_cron=null`；retained `public_content_drift` event `73fbce88-ea11-4cc6-8c61-c6088d1ccaec` saved；cleanup lineage fix dry-run returned `task_runs=2`、`dataset_drift_events=1`、`export_artifact_path_violations=0` |
+| R0-22 | M5 Public Content retained TTL observation baseline | done_dry_run_m5 | production health ok and `api/db/edge/web` healthy；initial identity check read stale parent `../.deploy-sha=dda2786638d4aac8647bbff8b3694b05113678f3`; follow-up diagnosis confirmed active app marker `/opt/data-achieve-scrapy/app/.deploy-sha=3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` matches active app `HEAD`; default 168h dry-run returned all zero；24h and 0h dry-runs matched full retained canary graph with `task_runs=2`、`dataset_drift_events=1`、`export_artifact_files=1`、`cleanup_ready=true`、`export_artifact_path_violations=0`; no cleanup execute |
+| R0-23 | Deploy marker diagnosis | done_read_only | active app working tree and `/opt/data-achieve-scrapy/app/.deploy-sha` both `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331`; running containers use compose working directory `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`; parent `/opt/data-achieve-scrapy/.deploy-sha=dda2786638d4aac8647bbff8b3694b05113678f3` and `current -> releases/20260619190523-dda2786638d4` are stale release-directory markers; no marker rewrite, symlink rewrite, deploy, restart, cleanup execute, provider/email/scheduler/browser side effect |
+| R0-24 | Production identity probe standardization | done_docs | `.codex/commands.md` now defines active app marker probe: `cd /opt/data-achieve-scrapy/app`, `git rev-parse HEAD`, `cat .deploy-sha`, API/Web compose working directory inspect, and health check；parent marker/current symlink housekeeping remains separate |
+| R0-25 | M5 retained TTL midpoint observation | done_dry_run_m5 | 2026-06-25 identity probe still `3c92fcbf`；retained preflight found user/source/task/dataset/version present；Task `b8a4cb3f` remains `manual_refresh_only` with `schedule_cron=null`；default 168h dry-run all zero；48h dry-run all zero；0h dry-run matched retained graph with `task_runs=2`、`dataset_drift_events=1`、`dataset_export_jobs=1`、`export_artifact_files=1`、`cleanup_ready=true`、`export_artifact_path_violations=0`; no cleanup execute |
+| R0-26 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、production browser run、production retained cleanup execute、default 168h multi-day TTL conclusion、production marker/symlink housekeeping 均未执行 |
+
+## 1.1 Production Identity Probe Standard
+
+Use this probe for future production closeout and release identity checks under the current compose deployment layout:
+
+```bash
+cd /opt/data-achieve-scrapy/app
+git rev-parse HEAD
+cat .deploy-sha
+docker inspect data_achieve_scrapy_api --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'
+docker inspect data_achieve_scrapy_web --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'
+curl -fsS https://scrapy.lute-tlz-dddd.top/api/health
+```
+
+Supported claim: current production identity is the active app working tree `HEAD` plus `/opt/data-achieve-scrapy/app/.deploy-sha`. Both were last verified at `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` in the 2026-06-24 diagnosis.
+
+Do not use `/opt/data-achieve-scrapy/.deploy-sha` or `/opt/data-achieve-scrapy/current` as current identity evidence unless the release-directory symlink deployment path is deliberately restored. Rewriting those parent markers is a separate production housekeeping task, not part of read-only identity probing.
 
 ## 2. Release Scope Inventory
 
@@ -303,6 +338,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 ## 8. M3 Production Release Evidence
 
 M3 GitHub API-first deepening production release was executed after PR #3 was merged into `main`.
+This section is historical release evidence. The M3 GitHub package gate production identity is recorded in section 11 as `f04c8ea77cc64f28d391e992012525e1704ec1a3`; the current production identity after the M5 scheduler approval production gate is recorded near the end of this log as `a81154426fd4e942fc9439de3dcbd9c816122562`.
 
 ```text
 release commit: e9ccb814899231d49be2f130ed0a9ee9599c93fc
@@ -391,7 +427,7 @@ Unsupported claim: production write E2E is complete. No new production test user
 
 ## 9. Remaining Authorization Points
 
-Before production write E2E:
+Before any additional production write E2E outside the completed M3 GitHub scope:
 
 1. Confirm test account/workspace.
 2. Confirm allowed Source/Task/Dataset/Report write scope.
@@ -402,7 +438,1253 @@ Before production write E2E:
 
 The next executable step is not another release-boundary pass. It is either:
 
-1. Authorized production write E2E with cleanup register; or
-2. Remaining M3 GitHub API-first deepening for README metadata, issue activity, commit freshness, explicit DatasetVersion schema/provenance and drift rules.
+1. M4 Independent site authorized test-site E2E with cleanup register; or
+2. M5 Public Web/RSS/Docs local package scaffold and tests; or
+3. A separate P5 gate for dataset export, provider call, email send, scheduler mutation, or production browser run.
 
-Do not claim L4 production write coverage until option 1 is explicitly authorized and completed.
+Do not claim broader L4 production write coverage until the specific option is explicitly authorized and completed.
+
+## 11. M3 GitHub API-first Production Package Gate
+
+M3 GitHub API-first production package gate was executed on 2026-06-23 after rebuilding the release candidate on top of production `origin/main`.
+
+Authorization envelope:
+
+```text
+scope_type=topic
+scope_value=web-scraping
+max_repositories=3
+allowed: Source/Task write, one GitHub API task run, Dataset save, report asset, drift snapshot
+denied: dataset export, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+stale direct candidate: c640ff4 was not fast-forward from production e97810a
+release base: origin/main merged into codex/prd2-r0-release-boundary
+backup branch: backup/pre-github-gate-20260623
+deployed SHA: f04c8ea77cc64f28d391e992012525e1704ec1a3
+remote HEAD: f04c8ea77cc64f28d391e992012525e1704ec1a3
+.deploy-sha: f04c8ea77cc64f28d391e992012525e1704ec1a3
+schema_revision: 202606110023
+schema_head: 202606110023
+```
+
+Production gate evidence:
+
+```text
+PLAYWRIGHT_BASE_URL=https://scrapy.lute-tlz-dddd.top PLAYWRIGHT_REAL_API=true pnpm --dir apps/web exec playwright test --grep "renders automation platform packages"
+result: 2 passed
+```
+
+Cleanup evidence:
+
+```text
+pre-cleanup dry-run:
+users=8
+workspaces=8
+workspace_members=16
+notifications=8
+dataset_versions=2
+dataset_drift_events=2
+report_audit_events=2
+
+cleanup execute: removed the same scoped residue
+post-cleanup recount: all scoped E2E fixture categories returned zero
+```
+
+Supported claim: production has been deployed to `f04c8ea`, schema remains `202606110023`, and the M3 GitHub API-first package has one authorized small-scope L4 production gate with cleanup evidence.
+
+Unsupported claim: broad recurring GitHub collection, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 12. M5 Public Content Production Package Smoke
+
+M5 Public Web/RSS/Docs production package smoke was executed on 2026-06-23 after deploying the public content Dataset/drift/report slice.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, read-only drift check, read-only report preview
+denied: dataset export, Report asset creation, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: f04c8ea77cc64f28d391e992012525e1704ec1a3
+backup branch: backup/pre-public-content-gate-20260623-1915
+deployed SHA: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+remote HEAD: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+.deploy-sha: e1359759aa1cab157bb98ec8abda4ff580cbfe7d
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Public page smoke returned `200` for:
+
+```text
+/dashboard
+/automation
+/datasets
+/tasks
+/sources
+/raw-records
+/reports
+/alerts
+/notifications
+/projects
+/signals
+/entities
+/toolkit
+```
+
+Production smoke evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift run_started: false
+Drift alert_created: false
+Report entry_count: 5
+Report report_created: false
+Report run_started: false
+```
+
+Cleanup evidence:
+
+```text
+exact cleanup dry-run before execute:
+users=1
+workspaces=1
+workspace_members=2
+notifications=1
+sources=1
+collection_tasks=1
+task_runs=1
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=0
+dataset_export_jobs=0
+
+exact cleanup execute: removed the same scoped objects
+post-cleanup exact-ID dry-run: all listed categories returned zero
+post-cleanup generic E2E dry-run: all categories returned zero
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-production-smoke-draft-20260623.md
+```
+
+Supported claim: production had been deployed to `e1359759` for this smoke, and the M5 Public Web/RSS/Docs package has one authorized small-scope production smoke covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, and cleanup.
+
+Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 13. M5 Public Content Report Asset Gate
+
+M5 Public Content Report asset gate was executed on 2026-06-23 after the prior production package smoke. The first run exposed a production-only database length constraint, then a hotfix was deployed and the gate was rerun successfully.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one public_content Report asset, one ReportAuditEvent
+denied: dataset export, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Deployment and hotfix evidence:
+
+```text
+initial deployed SHA: 2ebbe4a584c6e1122ba3b180998e6548667de0f9
+initial backup branch: backup/pre-public-content-report-asset-gate-20260623115056
+initial failure: POST /api/automation/public-content-report-assets returned 500
+root cause: reports.report_type is VARCHAR(20); public_content_update is 21 characters
+fix: Report.report_type uses public_content; Dataset.dataset_type and report content schema remain public_content_update
+hotfix SHA: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+hotfix backup branch: backup/pre-public-content-report-asset-hotfix-20260623115906
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Successful production gate evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift run_started: false
+Drift alert_created: false
+Report preview report_created: false
+Report asset report_created: true
+Report asset report_type: public_content
+Report asset report_status: generated
+Report asset notification_created: false
+reports.detail status: generated
+```
+
+Cleanup evidence:
+
+```text
+failed first-run cleanup:
+pre-cleanup users=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, reports=0, report_audit_events=0
+post-cleanup exact-ID dry-run: all categories returned zero
+
+successful run cleanup:
+pre-cleanup users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, reports=1, report_audit_events=1
+cleanup execute: removed the same scoped objects
+post-cleanup exact-ID dry-run: all categories returned zero
+post-cleanup generic E2E dry-run: all categories returned zero
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-report-asset-gate-draft-20260623.md
+```
+
+Supported claim: production has been deployed to `fb05c61`, and M5 Public Content has one authorized Report asset gate covering public RSS collection, DatasetVersion save, read-only drift check, read-only report preview, Report asset creation, Report detail retrieval, and cleanup.
+
+Unsupported claim: recurring RSS monitoring, retained dataset lifecycle, dataset export, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 14. M5 Public Content Dataset Export Gate
+
+M5 Public Content Dataset export gate was executed on 2026-06-23 against the already deployed `fb05c61` production code point. No production deployment was performed for this gate.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one temporary e2e user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one CSV DatasetExportJob, one export artifact file, one authenticated export download
+denied: Report asset, provider call, email send, scheduler mutation, production browser run, browser artifact write
+retention: cleanup_after_evidence
+```
+
+Production baseline:
+
+```text
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+```
+
+Successful production gate evidence:
+
+```text
+feed_url: https://hnrss.org/frontpage
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Export endpoint: POST /api/automation/product-dataset-exports
+Export format: csv
+Export status: success
+Export filename: e2e-public-content-export-dataset-20260623121345-v1-1ad76121.csv
+Export content_type: text/csv; charset=utf-8
+Export artifact_size_bytes: 4900
+Export checksum_sha256: d64474f7cc844de9be1faf48f5e597043dd5cb27318dbeb57a4ab1a78b4995f0
+Export audit event: product_dataset_export_file_written
+Export run_started: false
+Export history total: 1
+Export history export_created: false
+Export history run_started: false
+Download content_type: text/csv; charset=utf-8
+Download byte_length: 4900
+Download contains title/link/published_at header: true
+Download contains content_hash: true
+Download contains feed_url: true
+```
+
+Cleanup evidence:
+
+```text
+pre-cleanup users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, dataset_export_jobs=1, export_artifact_files=1
+cleanup execute: removed the same scoped database objects and the export artifact file
+post-cleanup exact-ID dry-run: all categories returned zero, including export_artifact_files=0
+post-cleanup generic E2E dry-run: all categories returned zero
+temporary remote cleanup script: removed from host /tmp and container /tmp
+post-cleanup production pages: /dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, and /toolkit returned 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-export-gate-draft-20260623.md
+```
+
+Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one authorized Dataset export gate covering public RSS collection, DatasetVersion save, CSV DatasetExportJob creation, export artifact file write, authenticated export download, exact-ID cleanup, artifact deletion, and generic cleanup recount.
+
+Unsupported claim: recurring RSS monitoring, retained dataset/export lifecycle, provider enrichment, product/report/subscription email, scheduler mutation, production browser execution, or browser artifact retention is complete.
+
+## 15. M5 Public Content Retained Lifecycle Gate
+
+M5 Public Content retained lifecycle gate was executed on 2026-06-23 against the already deployed `fb05c61` production code point. No production deployment was performed for this gate. Unlike the previous cleanup-after-evidence gates, this one intentionally retained a small named canary asset set.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: one retained user, one public_feed Source, one enabled Task, one RSS TaskRun, one public_content_update DatasetVersion, one read-only drift check, one public_content Report asset, one CSV DatasetExportJob, one export artifact file, post-login visibility checks
+denied: cleanup execution, provider call, email send, scheduler mutation, production browser run, browser artifact write, drift event persistence
+retention: retained_no_cleanup
+```
+
+Retained asset manifest:
+
+```text
+actor_email: retained-public-content-20260623123816-90w0q7@example.com
+source_id: c86b280c-0315-4d93-bcd7-37786996a22b
+task_id: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task_run_id: 1f684c04-0aab-48b7-ae4b-824526efaadc
+dataset_id: ee4a4a7a-1ea8-4864-b10d-031b365e5efb
+dataset_version_id: 6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8
+report_id: 38a0f8ce-59ed-46da-a9ae-968c6a020e57
+export_job_id: 3f43b866-1312-47d0-95b6-90322a2c7ee5
+```
+
+Production gate evidence:
+
+```text
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+Drift checked_tasks: 1
+Drift warning_tasks: 1
+Drift critical_tasks: 0
+Drift run_started: false
+Drift alert_created: false
+Drift event persisted: false
+Report asset report_type: public_content
+Report asset report_status: generated
+Report asset notification_created: false
+Export status: success
+Export filename: retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+Export artifact_size_bytes: 4344
+Export row_count: 5
+Export checksum_sha256: 0253d01911bd63a4ef529ce53001e958fe1fab7570037b1c072863b4418b322a
+```
+
+Retention verification:
+
+```text
+cookie reset and relogin: passed
+source_found: true
+task_found: true
+task_run_found: true
+dataset_found: true
+dataset version_found: true
+report_found: true
+export_found: true
+export download content_type: text/csv; charset=utf-8
+export download byte_length: 4344
+download contains title/link/published_at header: true
+download contains content_hash: true
+download contains feed_url: true
+```
+
+Read-only DB/volume inventory:
+
+```text
+status: ready
+violations: []
+cleanup_executed: false
+users=1
+workspaces=1
+workspace_members=2
+notifications=1
+sources=1
+collection_tasks=1
+task_runs=1
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=0
+reports=1
+report_audit_events=1
+dataset_export_jobs=1
+export_artifact_files=1
+```
+
+Export artifact path:
+
+```text
+/app/exports/datasets/bf51c6a8-fba5-5528-ac91-89ffd84f85c2/ee4a4a7a-1ea8-4864-b10d-031b365e5efb/6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8/retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+```
+
+Generic cleanup dry-run:
+
+```text
+scripts/cleanup-e2e-fixtures.sh --older-than-hours 0
+dry_run: true
+all categories: 0
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+.deploy-sha: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-retained-lifecycle-gate-draft-20260623.md
+```
+
+Supported claim: production remains deployed to `fb05c61`, and M5 Public Content has one retained production canary covering public RSS collection, DatasetVersion save, read-only drift check, Report asset persistence, DatasetExportJob persistence, export artifact retention, post-login list/detail visibility, export download, and read-only DB/volume inventory.
+
+Unsupported claim: multi-day retention, automated TTL, automatic cleanup job, scheduler refresh, production-persisted public-content-specific drift event, provider enrichment, product/report/subscription email, production browser execution, or browser artifact retention is complete.
+
+## 16. M5 Public Content Drift Event Persistence Local Slice
+
+M5 Public Content drift event persistence was implemented locally on 2026-06-24 after the retained lifecycle gate showed `dataset_drift_events=0` for the retained canary inventory. This slice did not deploy production and did not write a production drift event.
+
+Implemented local code paths:
+
+```text
+POST /api/automation/public-content-drift-events
+GET /api/automation/public-content-drift-events
+event_type: public_content_drift
+audit saved: public_content_drift_event_saved
+audit reused: public_content_drift_event_reused
+run_started: false
+alert_created: false
+```
+
+Validation:
+
+```text
+uv run pytest tests/integration/test_sources_tasks.py -k public_feed
+result: 1 passed, 20 deselected
+
+uv run pytest
+result: 106 passed, 1 warning
+
+uv run ruff check src tests
+result: passed
+
+pnpm --dir apps/web exec tsc --noEmit
+result: passed
+
+pnpm lint:web
+result: passed
+
+pnpm test:web
+result: 8 passed
+
+pnpm --dir apps/web build
+result: passed
+
+git diff --check
+result: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-drift-event-local-slice-draft-20260624.md
+```
+
+Supported claim: the local codebase now has a dedicated public-content drift event persistence path that saves and lists `public_content_drift` snapshots from the existing read-only drift check and keeps collector, alert, notification, scheduler, export, provider, and browser side effects disabled.
+
+Unsupported claim: this local-slice validation alone proves production behavior, the retained canary has been updated, scheduler refresh is active, or recurring monitoring is enabled. The separate production gate is recorded in section 17.
+
+## 17. M5 Public Content Drift Event Production Gate
+
+M5 Public Content drift-event production gate was executed on 2026-06-24 after explicit authorization. This gate deployed the local drift-event persistence slice and used a new scoped fixture; it did not mutate the retained canary from 2026-06-23.
+
+Authorization envelope:
+
+```text
+scope_type=public_rss_feed
+scope_value=https://hnrss.org/frontpage
+allowed: deploy, one scoped user/workspace, one public_feed Source, one enabled Task, one manual RSS TaskRun, one public_content_update DatasetVersion, one read-only drift check, one public_content_drift DatasetDriftEvent save, one repeated save to verify reuse, exact cleanup
+denied: provider call, email send, scheduler mutation/tick, Dataset export file write, Report asset creation, production browser run, browser artifact write, retained canary mutation
+cleanup_policy: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: fb05c61ab137b1c1cb7519b661d98a97ae0cead6
+deployed HEAD: 68c27e0f9c62d542149eedc5b18439938103b4bb
+.deploy-sha: 68c27e0f9c62d542149eedc5b18439938103b4bb
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: retry passed after edge became healthy
+```
+
+Production gate evidence:
+
+```text
+actor_email: e2e-public-drift-event-20260624010551-nj20wh@example.com
+source_id: d46bbd8e-cbeb-434c-a351-af4ec680e8d9
+task_id: 73af3237-414e-4cfe-b39c-57935f2216f4
+task_run_id: e4a4f1bb-c21e-4378-8abe-d0ada033b1e6
+dataset_id: acc585e5-0388-4cfe-847c-90e490e68056
+dataset_version_id: 961eb51d-ae1e-407f-9cbb-46dfd02bf8a7
+drift_event_id: 6acbd871-e0f8-4580-a7c7-b3d2459962f1
+repeated_drift_event_id: 6acbd871-e0f8-4580-a7c7-b3d2459962f1
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+feed entries collected: 5
+Dataset type: public_content_update
+DatasetVersion schema_version: public_content_update.v1
+DatasetVersion row_count: 5
+DatasetVersion average_completeness_percent: 90
+DriftEvent event_type: public_content_drift
+DriftEvent status: warning
+Drift signal_groups: field_missingness -> missing:tags
+Drift run_started: false
+Drift alert_created: false
+history before save: total=0
+history after save: total=1
+saved audit: public_content_drift_event_saved
+reused audit: public_content_drift_event_reused
+```
+
+Cleanup evidence:
+
+```text
+initial exact dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entity_snapshots=1, entities=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=0, export_artifact_files=0
+first cleanup execute: blocked by EntitySnapshot -> Entity foreign key before commit
+post-failure dry-run: scoped fixture still present
+patched exact dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=2, entity_snapshots=2, entities=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=0, export_artifact_files=0
+cleanup execute: succeeded
+post-cleanup exact dry-run: all categories zero
+generic E2E cleanup dry-run: all categories zero
+temporary host cleanup script: removed
+temporary container cleanup script: removed with root user after default user lacked permission
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: 68c27e0f9c62d542149eedc5b18439938103b4bb
+.deploy-sha: 68c27e0f9c62d542149eedc5b18439938103b4bb
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-drift-event-production-gate-draft-20260624.md
+```
+
+Supported claim: production now includes the dedicated public-content drift-event persistence path, and one scoped production gate proved `public_content_drift` DatasetDriftEvent save/list/idempotent reuse with cleanup-after-evidence.
+
+Unsupported claim: the retained public-content canary has been updated with a drift event, recurring monitoring is active, scheduler refresh is configured, provider enrichment ran, email was sent, a Report asset was created in this gate, a Dataset export file was written in this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Docs Diff Local Slice - 2026-06-24
+
+M5 Public Content docs diff local slice was implemented after the scoped production drift-event gate. This section records the local code/test/docs pass that preceded the separate production docs/page gate recorded in the next section.
+
+Scope:
+
+```text
+allowed: generic_web.v1 schema metadata, page content_hash, public-content Dataset preview/save for generic_web records, hash drift check, public_content_drift save/reuse, report preview, Report asset local path, API/Web/docs sync
+denied: production deploy, production Source/Task/TaskRun/DatasetVersion/DatasetDriftEvent/Report write, retained canary mutation, provider call, email send, scheduler mutation/tick, Dataset export file write, production browser run, browser artifact write
+```
+
+Implementation evidence:
+
+```text
+generic_web content schema: generic_web.v1
+generic_web docs/page row fields: title, link, updated_at, summary, content_hash, source_type, content_kind, site_url, text_length
+public-content accepted record_types: public_feed, generic_web
+public-content accepted task collector_types: public_feed, generic_web
+export preview collector_schema_versions: actual source records, e.g. generic_web.v1
+```
+
+Validation evidence:
+
+```text
+targeted pytest: 3 passed, 1 warning
+ruff: All checks passed
+Web TypeScript: passed
+Web lint: passed
+API full pytest: 107 passed, 1 warning
+Web unit: 8 passed
+Web build: passed
+git diff --check: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-docs-diff-local-slice-draft-20260624.md
+```
+
+Supported claim: the local codebase can now use `generic_web` public docs/page snapshots as public-content Dataset rows, detect docs/page content hash changes, save/reuse `public_content_drift` events, and generate public-content report output without starting drift/report collectors.
+
+Unsupported claim for this local slice alone: production behavior, recurring monitoring, scheduler refresh, provider enrichment, email delivery, Dataset export, production browser execution, or browser artifact writing. Production docs/page behavior is recorded separately in the next section.
+
+## M5 Public Content Docs Page Production Gate - 2026-06-24
+
+M5 Public Content docs/page production gate was executed after the local docs diff slice and explicit continuation authorization. This gate deployed the local `generic_web` public-content path and used a new scoped fixture; it did not mutate the retained canary from 2026-06-23.
+
+Authorization envelope:
+
+```text
+scope_type=public_docs_page
+scope_value=https://www.iana.org/help/example-domains
+allowed: deploy, one scoped user/workspace, one generic_web Source, one enabled Task, one manual docs/page TaskRun, one public_content_update DatasetVersion, one read-only drift check, one public_content_drift DatasetDriftEvent save, one repeated save to verify reuse, one public_content Report asset, exact cleanup
+denied: retained canary mutation, provider call, email send, scheduler mutation/tick, Dataset export file write, production browser run, browser artifact write
+cleanup_policy: cleanup_after_evidence
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: 68c27e0f9c62d542149eedc5b18439938103b4bb
+deployed HEAD: af23cefc92aa9fec336f632a5b1561623811c2fd
+.deploy-sha: af23cefc92aa9fec336f632a5b1561623811c2fd
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: first attempt stopped while edge health was starting, retry passed after edge became healthy
+```
+
+Production gate evidence:
+
+```text
+actor_email: e2e-public-docs-page-20260624034856-8vyj7q@example.com
+docs_url: https://www.iana.org/help/example-domains
+source_id: a3d15d9c-6301-42a7-a55d-8e3021717662
+task_id: 003abf09-e28c-4947-9631-d7d680212f0a
+task_run_id: a8317d82-fa1d-49b1-a834-18eafdc47ea1
+dataset_id: dc577ed3-a6e1-40be-aab8-e64069c8b965
+dataset_version_id: 9f4d3da5-2d87-45bd-8d15-5ef3d8b7a73d
+drift_event_id: 05847c1a-5013-4fc8-8d1f-5bec747d0408
+repeated_drift_event_id: 05847c1a-5013-4fc8-8d1f-5bec747d0408
+report_id: 9b2ec052-0ba8-482f-9902-209da8c51885
+TaskRun status: success
+TaskRun records_count: 1
+TaskRun entities_count: 1
+Dataset type: public_content_update
+DatasetVersion row_count: 1
+DatasetVersion average_completeness_percent: 100
+collector_schema_versions: generic_web.v1
+row source_type: generic_web
+row content_kind: html_snapshot
+row content_hash: d3362b3fe187484e529f2504d628e6b9f0f5c8a2ef10fc09efddcc1631d0be21
+row text_length: 1217
+DriftEvent event_type: public_content_drift
+DriftEvent status: ok
+Drift run_started: false
+Drift alert_created: false
+history before save: total=0
+history after save: total=1
+repeated save reused same ID: true
+Report asset report_type: public_content
+Report asset status: generated
+Report notification_created: false
+stored report detail: passed
+```
+
+Cleanup evidence:
+
+```text
+initial script attempt: failed because second identical static-page TaskRun was successfully deduplicated to records_count=0
+initial partial fixture cleanup: exact execute succeeded and post-cleanup dry-run returned all zero
+successful gate exact dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entity_snapshots=1, entities=1, datasets=1, dataset_versions=1, dataset_drift_events=1, reports=1, report_audit_events=1, dataset_export_jobs=0
+cleanup execute: succeeded
+post-cleanup exact dry-run: all categories zero
+generic E2E cleanup dry-run: all categories zero
+temporary host/container cleanup scripts and remote bundle: removed
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: af23cefc92aa9fec336f632a5b1561623811c2fd
+.deploy-sha: af23cefc92aa9fec336f632a5b1561623811c2fd
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-docs-page-production-gate-draft-20260624.md
+```
+
+Supported claim: production now includes the `generic_web` docs/page public-content path, and one scoped production gate proved docs/page TaskRun, `public_content_update` DatasetVersion, read-only drift, `public_content_drift` DatasetDriftEvent save/list/idempotent reuse, `public_content` Report asset creation, and cleanup-after-evidence.
+
+Unsupported claim: the retained public-content canary has been updated, recurring monitoring is active, scheduler refresh is configured, provider enrichment ran, email was sent, a Dataset export file was written in this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Scheduler Approval Production Gate - 2026-06-24
+
+M5 Public Content scheduler approval production gate was executed after the docs/page production gate and explicit continuation authorization. This gate deployed the public-content schedule approval path and used a new scoped fixture; it did not mutate the retained canary from 2026-06-23.
+
+Authorization envelope:
+
+```text
+scope_type=public_feed_schedule_approval
+scope_value=https://hnrss.org/frontpage
+allowed: deploy, one scoped user/workspace, one public_feed Source, one enabled Task, one manual public feed TaskRun, one public_content_update DatasetVersion, one public-content schedule approval mutation, exact cleanup
+denied: retained canary mutation, provider call, email send, scheduler tick execution, Dataset export file write, Report asset creation, production browser run, browser artifact write
+cleanup_policy: cleanup_after_evidence
+```
+
+Local implementation and validation evidence:
+
+```text
+new route: POST /api/automation/public-content-schedule-approve
+new request schema: AutomationPublicContentScheduleApproveRequest
+service: approve_public_content_schedule()
+quality gate: required
+cron validation: unsupported cron returns schedule_cron_unsupported
+task lineage: requires DatasetVersion source TaskRuns
+accepted task collector types: public_feed, generic_web
+focused integration before full gate: 3 passed, 20 deselected, 1 warning
+focused scheduler approval regression: 1 passed, 22 deselected, 1 warning
+API full pytest: 108 passed, 1 warning
+API ruff: All checks passed
+Web lint: passed
+Web unit: 8 passed
+Web build: passed
+git diff --check: passed
+```
+
+Deployment evidence:
+
+```text
+previous production HEAD: af23cefc92aa9fec336f632a5b1561623811c2fd
+deployed HEAD: a81154426fd4e942fc9439de3dcbd9c816122562
+.deploy-sha: a81154426fd4e942fc9439de3dcbd9c816122562
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: corrected command passed after edge became healthy
+```
+
+Production gate evidence:
+
+```text
+actor_email: e2e-public-schedule-20260624042715-5vkxnc@example.com
+feed_url: https://hnrss.org/frontpage
+source_id: 9f43899f-7578-4df7-a157-62cc14b5b93b
+task_id: 6338d234-554d-4527-9f51-5f695e646bdf
+task_run_id: 758783cc-4eb0-43f7-b229-bf9ab749cbd7
+dataset_id: 1a9f6b26-d1e2-4f8a-8611-4efb42c359b8
+dataset_version_id: 1a9ce0f2-b7e3-4437-bb4e-a1c45c1a78b7
+schedule_policy: manual_refresh_only
+schedule_cron: null
+freshness_target_hours: 72
+approved schedules: 1
+blocked schedules: 0
+audit event: public_content_schedule_approved
+run_started: false
+scheduler_tick_started: false
+task runs before approval: 1
+task runs after approval: 1
+task run IDs unchanged: true
+```
+
+Cleanup evidence:
+
+```text
+exact cleanup dry-run: users=1, workspaces=1, workspace_members=2, notifications=1, sources=1, collection_tasks=1, task_runs=1, raw_records=1, entity_snapshots=1, entities=1, datasets=1, dataset_versions=1
+cleanup execute: succeeded
+post-cleanup exact dry-run: all categories zero
+generic E2E cleanup dry-run: all categories zero
+temporary host/container cleanup scripts and remote bundle: removed
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+remote HEAD: a81154426fd4e942fc9439de3dcbd9c816122562
+.deploy-sha: a81154426fd4e942fc9439de3dcbd9c816122562
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-scheduler-gate-draft-20260624.md
+```
+
+Supported claim: production now includes the public-content scheduler approval path, and one scoped production gate proved schedule approval metadata mutation for a `public_content_update` DatasetVersion lineage with no scheduler tick and no new TaskRun after approval.
+
+Unsupported claim: the retained public-content canary has been updated, scheduler tick execution is active, recurring monitoring is active, provider enrichment ran, email was sent, a Dataset export file was written in this gate, a Report asset was created in this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained TTL Cleanup Policy Local Slice - 2026-06-24
+
+M5 retained public-content TTL/cleanup policy was completed as a local code/test/docs slice after the scheduler approval production gate. It provides an explicit cleanup policy tool for retained public-content canaries, but it did not deploy or run against production.
+
+Scope:
+
+```text
+scope_type=retained_public_content_cleanup_policy
+matched_accounts=retained-public-content-*@example.com
+default_mode=dry-run
+default_retention_hours=168
+allowed local behavior: inspect scoped retained public-content asset graph, classify export artifacts under dataset_export_dir, execute deletion only when --execute is passed and artifact paths stay under export root
+denied behavior: production deploy, production cleanup dry-run, production cleanup execute, retained canary deletion, scheduler tick, provider call, email send, production browser run, browser artifact write
+```
+
+Implementation evidence:
+
+```text
+module: apps/api/src/data_intelligence_hub/maintenance/public_content_retention.py
+script: scripts/cleanup-retained-public-content.sh
+safe email prefix: retained-public-content-
+safe email domain: example.com
+source types: public_feed, generic_web
+dataset type: public_content_update
+report type: public_content
+artifact safety: export artifact paths must stay under dataset_export_dir before execute
+script default: dry-run
+script docker mode: SCRAPY_CLEANUP_USE_DOCKER=1
+```
+
+Local validation evidence:
+
+```text
+cd apps/api && uv run pytest tests/unit/test_public_content_retention.py -q
+result: 2 passed
+
+cd apps/api && uv run pytest tests/unit/test_public_content_retention.py tests/unit/test_e2e_cleanup.py -q
+result: 4 passed
+
+cd apps/api && uv run pytest -q
+result: 110 passed, 1 warning
+
+cd apps/api && uv run ruff check src tests
+result: All checks passed
+
+scripts/cleanup-retained-public-content.sh --help
+result: help text printed with dry-run default and --execute boundary
+
+git diff --check
+result: passed
+```
+
+Evidence draft:
+
+```text
+drafts/analysis/analysis-boundary-m5-public-content-retention-cleanup-local-slice-draft-20260624.md
+```
+
+Supported claim: local repo now has a dry-run-by-default retained public-content cleanup policy, scoped to retained public-content accounts and public-content assets, with export artifact root safety checks and regression coverage against the generic E2E cleanup path.
+
+Unsupported claim: production has this cleanup tool deployed, production retained cleanup dry-run or execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained Refresh Drift Scheduler Gate - 2026-06-24
+
+This gate updated the existing retained public-content canary rather than creating and cleaning a new scoped fixture. It added one retained scheduler TaskRun and one retained public-content drift event, then fixed the retained cleanup dry-run graph so the later scheduler run is covered by future cleanup planning.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_scheduler_drift_refresh
+allowed: temporary retained schedule approval, one background scheduler TaskRun, restore manual schedule, save one retained public_content_drift event, deploy cleanup lineage fix, dry-run retained cleanup
+denied: cleanup execute, retained canary deletion, provider call, email send, Dataset export create, Report asset create, production browser run, browser artifact write
+cleanup_policy: retained_no_cleanup
+```
+
+Refresh evidence:
+
+```text
+preflight artifact: tmp/outputs/retained-public-content-preflight-20260624.json
+live artifact: tmp/outputs/retained-public-content-scheduler-drift-refresh-20260624.json
+retained task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+temporary schedule: auto_freshness, * * * * *, freshness_target_hours=1
+scheduler tick: b1fa40d1-215a-469c-b2b7-f841fb8edcab
+tick metrics: due=1, started=1, task_errors=0, report_subscriptions_due=0
+new retained TaskRun: fb2dc909-f125-402e-8759-7443e0214e55
+TaskRun status: success
+records_count: 1
+restored schedule: manual_refresh_only, schedule_cron=null, freshness_target_hours=72
+retained drift event: 73fbce88-ea11-4cc6-8c61-c6088d1ccaec
+drift status: critical
+drift summary: checked_tasks=1, added_rows=5, removed_rows=5, run_started=false, alert_created=false
+postflight retained counts: task_runs=2, dataset_drift_events=1, dataset_export_jobs=1, reports=1
+```
+
+Cleanup lineage fix:
+
+```text
+finding: post-refresh retained cleanup dry-run counted dataset_drift_events=1 but task_runs=1 while retained postflight had task_runs=2
+fix: include all TaskRuns for retained task IDs reached through retained lineage
+local tests: retained tests 3 passed; retained plus E2E cleanup 5 passed; API full pytest 111 passed, 1 warning; ruff passed
+production commit: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+.deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+health: production/ok/connected/current
+containers: api/db/edge/web healthy
+route smoke: /dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit all 200
+```
+
+Final retained cleanup dry-run after fix:
+
+```text
+artifact: tmp/outputs/retained-public-content-cleanup-dryrun-after-lineage-fix-20260624.json
+dry_run=true
+retention_hours=0
+cleanup_ready=true
+export_artifact_path_violations=0
+users=1
+workspaces=1
+workspace_members=2
+sources=1
+collection_tasks=1
+task_runs=2
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=1
+dataset_export_jobs=1
+reports=1
+report_audit_events=1
+notifications=1
+export_artifact_files=1
+```
+
+Supported claim: production has one retained public-content canary refreshed through scheduler execution, one retained `public_content_drift` event, and a retained cleanup dry-run graph that includes both retained TaskRuns.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, multi-day TTL has been observed, provider enrichment ran, email was sent, a Dataset export or Report asset was created by this gate, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained Cleanup Production Dry-Run Gate - 2026-06-24
+
+M5 retained cleanup production dry-run gate deployed the cleanup policy tooling and ran dry-run only. It did not pass `--execute`, did not delete retained assets, and did not mutate scheduler/provider/email/browser state.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_cleanup_dry_run
+allowed: deploy cleanup tooling, run production dry-run with --older-than-hours 0, run default production dry-run, record counts and artifact path safety
+denied: cleanup execute, retained canary deletion, provider call, email send, scheduler tick execution, production browser run, browser artifact write
+cleanup_policy: dry_run_only
+```
+
+Initial deployment and dry-run:
+
+```text
+deployed HEAD: c321a5212bf6f1f51f63bf35dd1a522b4ebd6d90
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: first attempt stopped while edge health was starting; retry passed after edge became healthy
+production health: production/ok/connected/current
+```
+
+The first production dry-run at `c321a52` returned `dry_run=true`, `retention_hours=0`, `cleanup_ready=true`, and `export_artifact_path_violations=0`, but it did not include the retained canary Source/Task/TaskRun/Dataset/Report graph. It only reported:
+
+```text
+users=1
+workspaces=1
+workspace_members=2
+dataset_versions=1
+dataset_export_jobs=1
+report_audit_events=1
+notifications=1
+export_artifact_files=1
+sources=0
+collection_tasks=0
+task_runs=0
+datasets=0
+reports=0
+```
+
+No cleanup execute was run. Read-only diagnosis showed the retained assets were attached to a workspace where the retained user was a member, while `DatasetVersion.created_by_user_id` and `ReportAuditEvent.actor_id` still pointed to the retained user. The cleanup policy was fixed to follow DatasetVersion source TaskRun lineage and ReportAuditEvent report lineage without broadly deleting shared workspace/project rows.
+
+Lineage fix validation:
+
+```text
+commit: d11d5a477ea3125649f7674495bfca5b93148e32
+targeted retention tests: 3 passed
+retention plus generic E2E cleanup tests: 5 passed
+API full pytest: 111 passed, 1 warning
+API ruff: All checks passed
+git diff --check: passed
+```
+
+Final deployment evidence:
+
+```text
+previous production HEAD: c321a5212bf6f1f51f63bf35dd1a522b4ebd6d90
+deployed HEAD: d11d5a477ea3125649f7674495bfca5b93148e32
+.deploy-sha: d11d5a477ea3125649f7674495bfca5b93148e32
+preflight: passed
+docker build: passed
+alembic upgrade head: completed, schema stayed 202606110023
+gateway reload: passed after edge became healthy
+```
+
+Final production dry-run with `--older-than-hours 0`:
+
+```text
+dry_run: true
+retention_hours: 0
+cleanup_ready: true
+export_artifact_path_violations: 0
+users: 1
+workspaces: 1
+workspace_members: 2
+sources: 1
+collection_tasks: 1
+task_runs: 1
+raw_records: 0
+entities: 0
+entity_snapshots: 0
+datasets: 1
+dataset_versions: 1
+dataset_drift_events: 0
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+notifications: 1
+export_artifact_files: 1
+sample user: retained-public-content-20260623123816-90w0q7@example.com
+sample artifact: /app/exports/datasets/bf51c6a8-fba5-5528-ac91-89ffd84f85c2/ee4a4a7a-1ea8-4864-b10d-031b365e5efb/6e2cbc17-4df3-44c3-b5ab-a5fd9e89cbd8/retained-public-content-lifecycle-20260623123816-v1-3f43b866.csv
+```
+
+Default TTL dry-run:
+
+```text
+command: SCRAPY_CLEANUP_USE_DOCKER=1 scripts/cleanup-retained-public-content.sh
+dry_run: true
+retention_hours: 168
+all cleanup candidate counts: 0
+export_artifact_path_violations: 0
+```
+
+Post-gate smoke:
+
+```text
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+containers: api/db/edge/web healthy
+/dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit: 200
+```
+
+Supported claim: production now has retained public-content cleanup tooling deployed, and dry-run verifies the retained canary cleanup plan, export artifact root safety, and default TTL cutoff without deleting data.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained TTL Observation Baseline - 2026-06-24
+
+This pass retained the existing canary and ran production read-only/dry-run checks only. It did not pass `--execute`, did not delete retained assets, and did not mutate provider/email/scheduler/browser state.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_ttl_observation
+allowed: production health check, retained preflight, retained cleanup dry-run with default 168h, 24h, and 0h windows
+denied: cleanup execute, retained canary deletion, provider call, email send, scheduler mutation, Dataset export creation, Report asset creation, production browser run, browser artifact write
+cleanup_policy: retained_no_cleanup
+```
+
+Fresh production baseline:
+
+```text
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+scheduler_enabled: true
+remote working tree HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app .deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+parent ../.deploy-sha: dda2786638d4aac8647bbff8b3694b05113678f3
+deploy identity note: active app marker matches HEAD; parent marker is stale release-directory metadata
+containers: api/db/edge/web healthy
+```
+
+Preflight:
+
+```text
+artifact: tmp/outputs/retained-public-content-ttl-observation-preflight-20260624.json
+retained account: retained-public-content-20260623123816-90w0q7@example.com
+source: c86b280c-0315-4d93-bcd7-37786996a22b
+task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task schedule: manual_refresh_only, schedule_cron=null
+task_runs: 2
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+latest scheduler tick: due=0, started=0, task_errors=0, report_subscriptions_due=0
+```
+
+Default 168h dry-run:
+
+```text
+artifact: tmp/outputs/retained-public-content-ttl-observation-default-168h-20260624.json
+dry_run: true
+retention_hours: 168
+cleanup_ready: true
+all cleanup candidate counts: 0
+provider_call: false
+email_sent: false
+scheduler_tick_started: false
+```
+
+24h and 0h dry-runs:
+
+```text
+artifacts:
+  tmp/outputs/retained-public-content-ttl-observation-24h-20260624.json
+  tmp/outputs/retained-public-content-ttl-observation-0h-20260624.json
+dry_run: true
+cleanup_ready: true
+users: 1
+workspaces: 1
+workspace_members: 2
+sources: 1
+collection_tasks: 1
+task_runs: 2
+raw_records: 1
+entities: 1
+entity_snapshots: 1
+datasets: 1
+dataset_versions: 1
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+notifications: 1
+export_artifact_files: 1
+export_artifact_path_violations: 0
+```
+
+Supported claim: the retained canary is now beyond a 24h TTL observation threshold, the 24h dry-run matches the full retained public-content graph, and default 168h TTL still returns zero candidates.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, default 168h multi-day TTL has completed, provider enrichment ran, email was sent, a Dataset export or Report asset was created by this pass, a production browser ran, or browser artifacts were written.
+
+## Deploy Marker Diagnosis - 2026-06-24
+
+This pass clarified the deploy marker path after the retained TTL baseline initially read parent `../.deploy-sha`. It was read-only and did not rewrite marker files or restart services.
+
+Fresh evidence:
+
+```text
+health: production/ok/connected/current
+active app working tree: /opt/data-achieve-scrapy/app
+active app HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app marker: /opt/data-achieve-scrapy/app/.deploy-sha = 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+parent marker: /opt/data-achieve-scrapy/.deploy-sha = dda2786638d4aac8647bbff8b3694b05113678f3
+parent current symlink: /opt/data-achieve-scrapy/current -> /opt/data-achieve-scrapy/releases/20260619190523-dda2786638d4
+api compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+web compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+api image: sha256:1df3dd1c2b877a048a102f3ecc4e5af948967eccfc7c490b3f85896182d9814d
+web image: sha256:6835637a20996bfd842c17b774ee4d6e5868d24b337fbd1ba6ce9291531f61d4
+```
+
+Supported claim: current production identity for the active compose layout is app `HEAD` plus `/opt/data-achieve-scrapy/app/.deploy-sha`, both at `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331`.
+
+Unsupported claim: parent `/opt/data-achieve-scrapy/.deploy-sha` or `current` symlink was repaired, a deploy was executed, containers were restarted, cleanup ran, or any provider/email/scheduler/browser side effect occurred.
+
+## M5 Public Content Retained TTL Midpoint Observation - 2026-06-25
+
+This pass kept the retained canary in place and ran production read-only/dry-run checks only. It did not pass `--execute`, did not delete retained assets, did not mutate schedule state, and did not run providers, email, browser, or export creation.
+
+Artifacts:
+
+```text
+tmp/outputs/retained-public-content-ttl-midpoint-identity-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-preflight-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-default-168h-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-48h-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-0h-20260625.json
+```
+
+Identity and health:
+
+```text
+checked_at_utc: 2026-06-25T00:51:59Z
+active app HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app .deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+api/web compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+scheduler_enabled: true
+```
+
+Retained preflight:
+
+```text
+retained account: retained-public-content-20260623123816-90w0q7@example.com
+source present: true
+task present: true
+dataset present: true
+dataset_version present: true
+task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task status: enabled
+task schedule_policy: manual_refresh_only
+task schedule_cron: null
+task_runs: 2
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+```
+
+Dry-run results:
+
+```text
+default 168h dry-run: all cleanup candidate counts 0
+48h dry-run: all cleanup candidate counts 0
+0h graph dry-run: users=1, workspaces=1, workspace_members=2, sources=1, collection_tasks=1, task_runs=2, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=1, reports=1, report_audit_events=1, notifications=1, export_artifact_files=1, export_artifact_path_violations=0
+```
+
+Supported claim: on 2026-06-25, the retained canary remains intact, default 168h and 48h windows do not yet match the canary, and 0h still proves full cleanup graph coverage.
+
+Unsupported claim: default 168h multi-day TTL is complete, cleanup execute has run, retained assets were deleted, providers ran, email was sent, scheduler state was mutated, a production browser ran, or browser artifacts were written.

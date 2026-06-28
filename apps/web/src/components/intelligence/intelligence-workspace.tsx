@@ -25,6 +25,7 @@ import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import { getTrainingSummaryLine } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
+import { WorkbenchDistributionRow, WorkbenchTraceDetailRow } from "@/components/common/workbench-ui";
 import type {
   Evidence,
   FeedbackType,
@@ -405,8 +406,8 @@ export function IntelligenceWorkspace() {
                 <ScoreBar label="Urgency" value={selectedItem.urgencyScore} />
               </div>
               <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                <DetailRow label="Created" value={formatDateTime(selectedItem.createdAt)} />
-                <DetailRow label="Updated" value={formatDateTime(selectedItem.updatedAt)} />
+                <WorkbenchTraceDetailRow label="Created" value={formatDateTime(selectedItem.createdAt)} />
+                <WorkbenchTraceDetailRow label="Updated" value={formatDateTime(selectedItem.updatedAt)} />
               </div>
             </div>
 
@@ -592,18 +593,13 @@ function MiniScore({ label, value }: { label: string; value: number }) {
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-semibold text-[#5F5757]">{label}</span>
-        <span className="text-[#86868B]">{value.toFixed(1)}</span>
-      </div>
-      <div className="h-2 rounded-full bg-[#F5EDE8]">
-        <div
-          className="h-2 rounded-full bg-[#C25B6E]"
-          style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
-        />
-      </div>
-    </div>
+    <WorkbenchDistributionRow
+      label={label}
+      size="compact"
+      tone="rose"
+      value={value.toFixed(1)}
+      width={value}
+    />
   );
 }
 
@@ -623,32 +619,32 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
       </div>
       {evidence ? (
         <div className="grid min-w-0 grid-cols-1 gap-3">
-          <DetailRow label="证据类型" value={evidence.evidenceType} />
+          <WorkbenchTraceDetailRow label="证据类型" value={evidence.evidenceType} />
           {evidence.signal ? (
             <TraceSection title="Signal">
-              <DetailRow label="Type" value={evidence.signal.signalType} />
-              <DetailRow label="Severity" value={evidence.signal.severity} />
-              <DetailRow label="Delta" value={formatTraceValue(evidence.signal.delta)} />
-              <DetailRow label="Confidence" value={formatTraceValue(evidence.signal.confidence)} />
+              <WorkbenchTraceDetailRow label="Type" value={evidence.signal.signalType} />
+              <WorkbenchTraceDetailRow label="Severity" value={evidence.signal.severity} />
+              <WorkbenchTraceDetailRow label="Delta" value={formatTraceValue(evidence.signal.delta)} />
+              <WorkbenchTraceDetailRow label="Confidence" value={formatTraceValue(evidence.signal.confidence)} />
             </TraceSection>
           ) : null}
           {evidence.entity ? (
             <TraceSection title="Entity">
-              <DetailRow label="Name" value={evidence.entity.name} />
-              <DetailRow label="Type" value={evidence.entity.entityType} />
-              <DetailRow label="External ID" value={evidence.entity.externalId} />
+              <WorkbenchTraceDetailRow label="Name" value={evidence.entity.name} />
+              <WorkbenchTraceDetailRow label="Type" value={evidence.entity.entityType} />
+              <WorkbenchTraceDetailRow label="External ID" value={evidence.entity.externalId} />
             </TraceSection>
           ) : null}
           {evidence.source ? (
             <TraceSection title="Source">
-              <DetailRow label="Name" value={evidence.source.name} />
-              <DetailRow label="Collector" value={evidence.source.type} />
+              <WorkbenchTraceDetailRow label="Name" value={evidence.source.name} />
+              <WorkbenchTraceDetailRow label="Collector" value={evidence.source.type} />
             </TraceSection>
           ) : null}
           {evidence.taskRun ? (
             <TraceSection title="采集运行">
-              <DetailRow label="Status" value={evidence.taskRun.status} />
-              <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
+              <WorkbenchTraceDetailRow label="Status" value={evidence.taskRun.status} />
+              <WorkbenchTraceDetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
                 href={`/tasks?run=${evidence.taskRun.id}`}
@@ -659,8 +655,8 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.rawRecord ? (
             <TraceSection title="原始事实">
-              <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
-              <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
+              <WorkbenchTraceDetailRow label="Record Type" value={evidence.rawRecord.recordType} />
+              <WorkbenchTraceDetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
                 href={`/raw-records?record=${evidence.rawRecord.id}`}
@@ -717,7 +713,7 @@ function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string 
     <TraceSection title={title}>
       <div className="grid min-w-0 grid-cols-1 gap-2">
         {facts.map((fact) => (
-          <DetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+          <WorkbenchTraceDetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
         ))}
       </div>
     </TraceSection>
@@ -729,15 +725,6 @@ function TraceSection({ children, title }: { children: ReactNode; title: string 
     <div className="grid min-w-0 grid-cols-1 gap-2 rounded-xl border border-[#EDE6DF] bg-white p-3">
       <p className="text-xs font-semibold uppercase text-[#86868B]">{title}</p>
       <div className="grid min-w-0 grid-cols-1 gap-2">{children}</div>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-white px-3 py-2 text-sm">
-      <span className="text-[#86868B]">{label}</span>
-      <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
     </div>
   );
 }

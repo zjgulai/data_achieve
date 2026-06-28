@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
 import socket
 from html.parser import HTMLParser
@@ -52,14 +53,23 @@ class GenericWebCollector(BaseCollector):
         config = self.validate_config()
         html = await self._get_html(config["url"])
         extracted = _extract_text(html)
+        text_for_hash = extracted.text or html
         content: dict[str, Any] = {
             "provider": "generic_web",
             "kind": "html_snapshot",
+            "schema_version": "generic_web.v1",
             "url": config["url"],
             "title": extracted.title,
             "text_content": extracted.text,
+            "text_length": len(extracted.text),
+            "content_hash": _stable_text_hash(text_for_hash),
             "extract_mode": config["extract_mode"],
             "html_content": html,
+            "provenance": {
+                "endpoint_origin": config["url"],
+                "extractor": "html.parser.HTMLParser",
+                "public_url_checked": True,
+            },
         }
         return CollectionResult(
             raw_records=[
@@ -212,3 +222,8 @@ def _extract_text(html: str) -> ExtractedHtml:
     title = " ".join(parser.title_parts).strip() or None
     text = " ".join(parser.text_parts).strip()
     return ExtractedHtml(title=title, text=text)
+
+
+def _stable_text_hash(text: str) -> str:
+    normalized = " ".join(text.split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()

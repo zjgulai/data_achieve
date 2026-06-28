@@ -21,7 +21,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 
 import {
@@ -30,6 +29,11 @@ import {
   listReportEvidenceReferences,
 } from "@/lib/api/reports";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchStatusPill,
+  WorkbenchTag,
+  type WorkbenchStatusTone,
+} from "@/components/common/workbench-ui";
 import type { Evidence } from "@/types/intelligence";
 import type {
   Report,
@@ -181,11 +185,11 @@ export function ReportDetailPanel({
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <StatusPill status={report.status} />
-              <Pill tone="neutral">{report.reportType}</Pill>
-              <Pill tone="rose">
+              <ReportStatusPill status={report.status} />
+              <WorkbenchTag shape="pill" tone="muted">{report.reportType}</WorkbenchTag>
+              <WorkbenchTag shape="pill" tone="roseStrong">
                 {estimateReadingMinutes(report.content)} min read
-              </Pill>
+              </WorkbenchTag>
             </div>
             <h2 className="break-words text-xl font-semibold tracking-tight text-[#1D1D1F] [overflow-wrap:anywhere]">
               {report.title}
@@ -607,44 +611,17 @@ function SideFact({
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const className =
-    status === "sent"
-      ? "bg-[#EAF8EE] text-[#2EBA62]"
-      : status === "generated"
-        ? "bg-[#FFF4DE] text-[#FF9800]"
-        : "bg-[#FBF8F5] text-[#86868B]";
-  const label =
-    status === "sent" ? "已发送" : status === "generated" ? "待发送" : status;
-  return (
-    <span
-      className={cn("rounded-lg px-2.5 py-1 text-xs font-semibold", className)}
-    >
-      {label}
-    </span>
-  );
-}
-
-function Pill({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "neutral" | "rose";
-}) {
-  const toneClasses = {
-    neutral: "bg-[#FBF8F5] text-[#86868B]",
-    rose: "bg-[#FCEBF0] text-[#C25B6E]",
+function ReportStatusPill({ status }: { status: string }) {
+  const statusMeta: Record<string, { label: string; tone: WorkbenchStatusTone }> = {
+    generated: { label: "待发送", tone: "amber" },
+    sent: { label: "已发送", tone: "green" },
   };
+  const meta = statusMeta[status] ?? { label: status, tone: "neutral" };
+
   return (
-    <span
-      className={cn(
-        "rounded-full px-3 py-1 text-xs font-semibold",
-        toneClasses[tone],
-      )}
-    >
-      {children}
-    </span>
+    <WorkbenchStatusPill status={status} tone={meta.tone}>
+      {meta.label}
+    </WorkbenchStatusPill>
   );
 }
 

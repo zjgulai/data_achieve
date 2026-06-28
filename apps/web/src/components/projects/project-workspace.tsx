@@ -30,6 +30,7 @@ import { createProject, listProjects } from "@/lib/api/projects";
 import { isTrainingProjectDomain } from "@/lib/training-data";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
+import { WorkbenchMetricPill } from "@/components/common/workbench-ui";
 import type { Project, ProjectDomain, ProjectStatus } from "@/types/project";
 
 type DomainFilter = ProjectDomain | "all";
@@ -322,11 +323,11 @@ export function ProjectWorkspace() {
               按业务域组织监控主题，把数据源、采集任务、信号和情报回收到同一个项目语境。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
-              <MetricPill icon={FolderKanban} label="项目数" value={String(stats.total)} />
-              <MetricPill icon={CheckCircle2} label="Active" value={String(stats.active)} />
-              <MetricPill icon={Archive} label="Archived" value={String(stats.archived)} />
-              <MetricPill icon={Sparkles} label="情报数" value={String(stats.intelligence)} />
-              <MetricPill icon={BookOpenCheck} label="培训域" value={String(stats.trainingProjects)} />
+              <WorkbenchMetricPill icon={FolderKanban} label="项目数" value={String(stats.total)} />
+              <WorkbenchMetricPill icon={CheckCircle2} label="Active" value={String(stats.active)} />
+              <WorkbenchMetricPill icon={Archive} label="Archived" value={String(stats.archived)} />
+              <WorkbenchMetricPill icon={Sparkles} label="情报数" value={String(stats.intelligence)} />
+              <WorkbenchMetricPill icon={BookOpenCheck} label="培训域" value={String(stats.trainingProjects)} />
             </div>
           </div>
 
@@ -865,26 +866,6 @@ function ProjectCreateModal({
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof FolderKanban;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">{value}</p>
     </div>
   );
 }

@@ -74,6 +74,15 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductFanoutPreviewResponse,
     AutomationProductScheduleApproveRequest,
     AutomationProductScheduleApproveResponse,
+    AutomationPublicContentDatasetPreviewRequest,
+    AutomationPublicContentDatasetSaveRequest,
+    AutomationPublicContentDriftCheckRequest,
+    AutomationPublicContentDriftEventSaveRequest,
+    AutomationPublicContentReportAssetCreateRequest,
+    AutomationPublicContentReportAssetResponse,
+    AutomationPublicContentReportRequest,
+    AutomationPublicContentReportResponse,
+    AutomationPublicContentScheduleApproveRequest,
     AutomationSiteAnalysisDetailResponse,
     AutomationSiteAnalysisListResponse,
     AutomationSiteAnalysisRequest,
@@ -82,10 +91,12 @@ from data_intelligence_hub.schemas.automation import (
 from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
+    approve_public_content_schedule,
     build_browser_executor_contract,
     cancel_browser_diagnostic_job_asset,
     check_github_tool_drift,
     check_product_drift,
+    check_public_content_drift,
     create_browser_diagnostic_job_asset,
     create_cleaning_plan_asset,
     create_extraction_plan_from_site_analysis,
@@ -93,11 +104,13 @@ from data_intelligence_hub.services.automation_service import (
     create_product_dataset_export,
     create_product_drift_alert_events,
     create_product_drift_alert_rule,
+    create_public_content_report_asset,
     create_reviewed_product_fanout,
     discover_products_for_collection,
     dry_run_browser_executable_spec,
     dry_run_cleaning_plan,
     generate_github_tool_report,
+    generate_public_content_report,
     get_browser_diagnostic_job_asset,
     get_platform_package,
     get_product_dataset_export_file,
@@ -118,6 +131,7 @@ from data_intelligence_hub.services.automation_service import (
     preview_product_dataset,
     preview_product_drift_alert_rule,
     preview_product_fanout,
+    preview_public_content_dataset,
     run_browser_diagnostic_job_local,
     run_reviewed_product_batch,
     save_browser_automation_plan,
@@ -125,6 +139,8 @@ from data_intelligence_hub.services.automation_service import (
     save_github_tool_drift_event,
     save_product_dataset_version,
     save_product_drift_event,
+    save_public_content_dataset_version,
+    save_public_content_drift_event,
     send_product_drift_alert_emails,
     send_product_drift_alert_notifications,
 )
@@ -617,6 +633,24 @@ async def preview_github_tool_dataset_route(
         ) from exc
 
 
+@router.post(
+    "/public-content-dataset-preview",
+    response_model=AutomationProductDatasetPreviewResponse,
+)
+async def preview_public_content_dataset_route(
+    payload: AutomationPublicContentDatasetPreviewRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDatasetPreviewResponse:
+    try:
+        return await preview_public_content_dataset(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/cleaning-plan-dry-run", response_model=AutomationCleaningPlanDryRunResponse)
 async def dry_run_cleaning_plan_route(
     payload: AutomationCleaningPlanDryRunRequest,
@@ -702,6 +736,26 @@ async def save_github_tool_dataset_route(
         ) from exc
 
 
+@router.post("/public-content-dataset-save", response_model=AutomationProductDatasetSaveResponse)
+async def save_public_content_dataset_route(
+    payload: AutomationPublicContentDatasetSaveRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDatasetSaveResponse:
+    try:
+        return await save_public_content_dataset_version(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/product-schedule-approve", response_model=AutomationProductScheduleApproveResponse)
 async def approve_product_schedule_route(
     payload: AutomationProductScheduleApproveRequest,
@@ -710,6 +764,24 @@ async def approve_product_schedule_route(
 ) -> AutomationProductScheduleApproveResponse:
     try:
         return await approve_product_schedule(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/public-content-schedule-approve",
+    response_model=AutomationProductScheduleApproveResponse,
+)
+async def approve_public_content_schedule_route(
+    payload: AutomationPublicContentScheduleApproveRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductScheduleApproveResponse:
+    try:
+        return await approve_public_content_schedule(session, context.workspace, payload)
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -747,6 +819,21 @@ async def check_github_tool_drift_route(
         ) from exc
 
 
+@router.post("/public-content-drift-check", response_model=AutomationProductDriftCheckResponse)
+async def check_public_content_drift_route(
+    payload: AutomationPublicContentDriftCheckRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDriftCheckResponse:
+    try:
+        return await check_public_content_drift(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/product-drift-events", response_model=AutomationProductDriftEventResponse)
 async def save_product_drift_event_route(
     payload: AutomationProductDriftEventSaveRequest,
@@ -770,6 +857,21 @@ async def save_github_tool_drift_event_route(
 ) -> AutomationProductDriftEventResponse:
     try:
         return await save_github_tool_drift_event(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/public-content-drift-events", response_model=AutomationProductDriftEventResponse)
+async def save_public_content_drift_event_route(
+    payload: AutomationPublicContentDriftEventSaveRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDriftEventResponse:
+    try:
+        return await save_public_content_drift_event(session, context.workspace, payload)
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -811,6 +913,23 @@ async def list_github_tool_drift_events_route(
     )
 
 
+@router.get("/public-content-drift-events", response_model=AutomationProductDriftEventListResponse)
+async def list_public_content_drift_events_route(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    dataset_id: uuid.UUID | None = None,
+    dataset_version_id: uuid.UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AutomationProductDriftEventListResponse:
+    return await list_product_drift_events(
+        session,
+        context.workspace,
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        limit=limit,
+    )
+
+
 @router.post("/github-tool-report", response_model=AutomationGitHubToolReportResponse)
 async def generate_github_tool_report_route(
     payload: AutomationGitHubToolReportRequest,
@@ -819,6 +938,21 @@ async def generate_github_tool_report_route(
 ) -> AutomationGitHubToolReportResponse:
     try:
         return await generate_github_tool_report(session, context.workspace, payload)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/public-content-report", response_model=AutomationPublicContentReportResponse)
+async def generate_public_content_report_route(
+    payload: AutomationPublicContentReportRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationPublicContentReportResponse:
+    try:
+        return await generate_public_content_report(session, context.workspace, payload)
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -838,6 +972,30 @@ async def create_github_tool_report_asset_route(
 ) -> AutomationGitHubToolReportAssetResponse:
     try:
         return await create_github_tool_report_asset(
+            session,
+            context.workspace,
+            context.user,
+            payload,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/public-content-report-assets",
+    response_model=AutomationPublicContentReportAssetResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_public_content_report_asset_route(
+    payload: AutomationPublicContentReportAssetCreateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationPublicContentReportAssetResponse:
+    try:
+        return await create_public_content_report_asset(
             session,
             context.workspace,
             context.user,

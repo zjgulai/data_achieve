@@ -24,6 +24,7 @@ import {
 import { getSignalSnapshotCompare } from "@/lib/api/signals";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { cn } from "@/lib/utils";
+import { WorkbenchDistributionRow, WorkbenchTraceDetailRow } from "@/components/common/workbench-ui";
 import type {
   Evidence,
   FeedbackType,
@@ -395,39 +396,39 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
       </div>
       {evidence ? (
         <div className="grid gap-3">
-          <DetailRow label="证据类型" value={evidence.evidenceType} />
+          <WorkbenchTraceDetailRow surface="warm" label="证据类型" value={evidence.evidenceType} />
           {evidence.entity ? (
             <TraceSection title="Entity">
-              <DetailRow label="Name" value={evidence.entity.name} />
-              <DetailRow label="Type" value={evidence.entity.entityType} />
-              <DetailRow label="External ID" value={evidence.entity.externalId} />
-              <DetailRow label="Domain" value={evidence.entity.domain} />
+              <WorkbenchTraceDetailRow surface="warm" label="Name" value={evidence.entity.name} />
+              <WorkbenchTraceDetailRow surface="warm" label="Type" value={evidence.entity.entityType} />
+              <WorkbenchTraceDetailRow surface="warm" label="External ID" value={evidence.entity.externalId} />
+              <WorkbenchTraceDetailRow surface="warm" label="Domain" value={evidence.entity.domain} />
             </TraceSection>
           ) : null}
           {evidence.signal ? (
             <TraceSection title="Signal">
-              <DetailRow label="Type" value={evidence.signal.signalType} />
-              <DetailRow label="Severity" value={evidence.signal.severity} />
-              <DetailRow label="Previous" value={formatValue(evidence.signal.previousValue)} />
-              <DetailRow label="Current" value={formatValue(evidence.signal.currentValue)} />
-              <DetailRow label="Delta" value={formatValue(evidence.signal.delta)} />
-              <DetailRow label="Confidence" value={formatValue(evidence.signal.confidence)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Type" value={evidence.signal.signalType} />
+              <WorkbenchTraceDetailRow surface="warm" label="Severity" value={evidence.signal.severity} />
+              <WorkbenchTraceDetailRow surface="warm" label="Previous" value={formatValue(evidence.signal.previousValue)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Current" value={formatValue(evidence.signal.currentValue)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Delta" value={formatValue(evidence.signal.delta)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Confidence" value={formatValue(evidence.signal.confidence)} />
             </TraceSection>
           ) : null}
           {evidence.source ? (
             <TraceSection title="Source">
-              <DetailRow label="Name" value={evidence.source.name} />
-              <DetailRow label="Collector" value={evidence.source.type} />
-              <DetailRow label="Enabled" value={evidence.source.enabled ? "是" : "否"} />
+              <WorkbenchTraceDetailRow surface="warm" label="Name" value={evidence.source.name} />
+              <WorkbenchTraceDetailRow surface="warm" label="Collector" value={evidence.source.type} />
+              <WorkbenchTraceDetailRow surface="warm" label="Enabled" value={evidence.source.enabled ? "是" : "否"} />
             </TraceSection>
           ) : null}
           {evidence.taskRun ? (
             <TraceSection title="采集运行">
-              <DetailRow label="Status" value={evidence.taskRun.status} />
-              <DetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
-              <DetailRow label="Entities" value={String(evidence.taskRun.entitiesCount)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Status" value={evidence.taskRun.status} />
+              <WorkbenchTraceDetailRow surface="warm" label="Records" value={String(evidence.taskRun.recordsCount)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Entities" value={String(evidence.taskRun.entitiesCount)} />
               {evidence.taskRun.startedAt ? (
-                <DetailRow label="Started" value={formatDateTime(evidence.taskRun.startedAt)} />
+                <WorkbenchTraceDetailRow surface="warm" label="Started" value={formatDateTime(evidence.taskRun.startedAt)} />
               ) : null}
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
@@ -439,8 +440,8 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
           ) : null}
           {evidence.rawRecord ? (
             <TraceSection title="原始事实">
-              <DetailRow label="Record Type" value={evidence.rawRecord.recordType} />
-              <DetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
+              <WorkbenchTraceDetailRow surface="warm" label="Record Type" value={evidence.rawRecord.recordType} />
+              <WorkbenchTraceDetailRow surface="warm" label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
                 href={`/raw-records?record=${evidence.rawRecord.id}`}
@@ -497,7 +498,7 @@ function AuditFactSection({ facts, title }: { facts: AuditFact[]; title: string 
     <TraceSection title={title}>
       <div className="grid gap-2">
         {facts.map((fact) => (
-          <DetailRow key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+          <WorkbenchTraceDetailRow surface="warm" key={`${title}-${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
         ))}
       </div>
     </TraceSection>
@@ -524,27 +525,13 @@ function ScoreBadge({ score }: { score: number }) {
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-semibold text-[#5F5757]">{label}</span>
-        <span className="text-[#86868B]">{value.toFixed(1)}</span>
-      </div>
-      <div className="h-2 rounded-full bg-[#F5EDE8]">
-        <div
-          className="h-2 rounded-full bg-[#C25B6E]"
-          style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-[#FBF8F5] px-3 py-2 text-sm">
-      <span className="text-[#86868B]">{label}</span>
-      <p className="mt-1 break-all font-medium text-[#1D1D1F]">{value}</p>
-    </div>
+    <WorkbenchDistributionRow
+      label={label}
+      size="compact"
+      tone="rose"
+      value={value.toFixed(1)}
+      width={value}
+    />
   );
 }
 

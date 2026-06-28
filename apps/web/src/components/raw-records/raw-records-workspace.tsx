@@ -28,6 +28,11 @@ import {
   trainingRiskLabel,
 } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchDetailRow,
+  WorkbenchKeyValueRow,
+  WorkbenchMetricPill,
+} from "@/components/common/workbench-ui";
 import type { RawRecord } from "@/types/raw-record";
 
 type RecordFilter = "all" | string;
@@ -59,6 +64,12 @@ const recordTypeTone: Record<
     accent: "bg-[#7D9A68]",
     surface: "border-[#D9E2CC] bg-[#F7FBF1]",
     text: "text-[#536B40]",
+  },
+  public_feed: {
+    label: "Public Feed",
+    accent: "bg-[#4F85A8]",
+    surface: "border-[#D8E4F0] bg-[#F4FAFF]",
+    text: "text-[#45677E]",
   },
   manual_json: {
     label: "Manual JSON",
@@ -180,10 +191,10 @@ export function RawRecordsWorkspace() {
               每条原始事实都保留来源、采集时间和可校验指纹，用于回看实体、信号、证据的事实出处。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-4">
-              <MetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
-              <MetricPill icon={BookOpenCheck} label="培训证据" value={`${stats.trainingRecords}/${stats.total}`} />
-              <MetricPill icon={Globe2} label="来源数" value={String(stats.uniqueSources)} />
-              <MetricPill icon={Clock3} label="最近采集" value={stats.latest} />
+              <WorkbenchMetricPill icon={FileJson2} label="记录数" value={String(stats.total)} />
+              <WorkbenchMetricPill icon={BookOpenCheck} label="培训证据" value={`${stats.trainingRecords}/${stats.total}`} />
+              <WorkbenchMetricPill icon={Globe2} label="来源数" value={String(stats.uniqueSources)} />
+              <WorkbenchMetricPill icon={Clock3} label="最近采集" value={stats.latest} />
             </div>
           </div>
 
@@ -198,9 +209,9 @@ export function RawRecordsWorkspace() {
               </span>
             </div>
             <div className="mt-4 grid gap-2">
-              <IntegrityRow label="校验覆盖" value={`${rawRecords.length}/${rawRecords.length}`} />
-              <IntegrityRow label="可追溯采集" value={`${rawRecords.length}/${rawRecords.length}`} />
-              <IntegrityRow label="可回看来源" value={`${rawRecords.filter((record) => record.sourceUrl).length}`} />
+              <WorkbenchKeyValueRow label="校验覆盖" value={`${rawRecords.length}/${rawRecords.length}`} />
+              <WorkbenchKeyValueRow label="可追溯采集" value={`${rawRecords.length}/${rawRecords.length}`} />
+              <WorkbenchKeyValueRow label="可回看来源" value={`${rawRecords.filter((record) => record.sourceUrl).length}`} />
             </div>
           </div>
         </div>
@@ -419,15 +430,15 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="采集类型" value={tone.label} />
-          <DetailRow label="采集时间" value={formatDate(rawRecord.collectedAt)} />
-          <DetailRow label="事实字段" value={`${facts.length} fields`} />
-          <DetailRow label="内容大小" value={`${contentSize} chars`} />
+          <WorkbenchDetailRow label="采集类型" value={tone.label} />
+          <WorkbenchDetailRow label="采集时间" value={formatDate(rawRecord.collectedAt)} />
+          <WorkbenchDetailRow label="事实字段" value={`${facts.length} fields`} />
+          <WorkbenchDetailRow label="内容大小" value={`${contentSize} chars`} />
           {training ? (
             <>
-              <DetailRow label="训练源 ID" value={getTrainingSourceId(rawRecord.content)} />
-              <DetailRow label="训练分类" value={trainingCategoryLabel(getTrainingCategory(rawRecord.content))} />
-              <DetailRow label="风险边界" value={trainingRiskLabel(getTrainingRiskLevel(rawRecord.content))} />
+              <WorkbenchDetailRow label="训练源 ID" value={getTrainingSourceId(rawRecord.content)} />
+              <WorkbenchDetailRow label="训练分类" value={trainingCategoryLabel(getTrainingCategory(rawRecord.content))} />
+              <WorkbenchDetailRow label="风险边界" value={trainingRiskLabel(getTrainingRiskLevel(rawRecord.content))} />
             </>
           ) : null}
         </div>
@@ -476,7 +487,7 @@ function FactGrid({ facts }: { facts: AuditFact[] }) {
   return (
     <div className="grid gap-2">
       {facts.map((fact) => (
-        <DetailRow key={`${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
+        <WorkbenchDetailRow key={`${fact.label}-${fact.value}`} label={fact.label} value={fact.value} />
       ))}
     </div>
   );
@@ -490,49 +501,11 @@ function EmptyFacts() {
   );
 }
 
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof FileJson2;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
-function IntegrityRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <span className="text-sm font-medium text-[#7A625A]">{label}</span>
-      <span className="text-sm font-semibold text-[#3B2924]">{value}</span>
-    </div>
-  );
-}
-
 function RecordFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/80 bg-white/70 px-3 py-2">
       <p className="text-xs font-semibold text-[#B47767]">{label}</p>
       <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#3B2924]">{value}</p>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-sm">
-      <span className="text-xs font-semibold uppercase text-[#B47767]">{label}</span>
-      <p className="mt-1 break-all font-semibold text-[#3B2924]">{value}</p>
     </div>
   );
 }

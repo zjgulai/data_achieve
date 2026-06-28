@@ -272,6 +272,8 @@ async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
   await expect(
     page.getByRole("heading", { name: "URL 到结构化采集计划" }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "采集入口与授权边界" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "能力评估与平台包选择" })).toBeVisible();
   await page.getByRole("button", { name: "商品发现" }).click();
   await page
     .getByLabel(
@@ -302,7 +304,8 @@ async function createAutomationDatasetAsset(page: Page, datasetName?: string) {
     await page.getByLabel("数据集名称").fill(datasetName);
   }
   await page.getByRole("button", { name: "保存数据集版本" }).click();
-  await expect(page.getByText("Schedule Approval")).toBeVisible();
+  await expect(page.getByText("调度变更 Gate")).toBeVisible();
+  await expect(page.getByText("scheduler_tick_started=false")).toBeVisible();
   await page.getByRole("button", { name: "审批调度" }).click();
   await expect(page.getByText("Drift Check")).toBeVisible();
   await page.getByRole("button", { name: "检查漂移" }).click();
@@ -775,7 +778,10 @@ test.describe("MVP workspace routes", () => {
       await expect(reportIntelligenceLink).toBeVisible();
     }
 
-    await page.getByRole("link", { name: "打开详情页" }).first().click();
+    const selectedReportDetail = page.locator("section").filter({
+      hasText: "派发状态",
+    });
+    await selectedReportDetail.getByRole("link", { name: "打开详情页" }).click();
     await expect(page).toHaveURL(/\/reports\/.+/);
     await expect(page.getByRole("heading", { name: "报告详情" })).toBeVisible();
     await expect(page.getByText("审计记录").first()).toBeVisible();
@@ -916,13 +922,18 @@ test.describe("MVP workspace routes", () => {
     page,
   }) => {
     await page.goto("/automation");
+    await expect(page.getByRole("heading", { name: "采集入口与授权边界" })).toBeVisible();
+    await expect(page.getByText("持久化").first()).toBeVisible();
+    await expect(page.getByText("监控").first()).toBeVisible();
+    await expect(page.getByText("诊断").first()).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "平台包矩阵" }),
     ).toBeVisible();
     await expect(page.getByText("独立站 / Shopify-style 商品采集", { exact: true })).toBeVisible();
     await expect(page.getByText("GitHub API-first 工具情报采集", { exact: true })).toBeVisible();
     await expect(page.getByText("公开网页结构解析预检", { exact: true })).toBeVisible();
-    await expect(page.getByText("可执行", { exact: true })).toHaveCount(3);
+    await expect(page.getByText("Public Web / RSS / Docs 更新监控", { exact: true })).toBeVisible();
+    await expect(page.getByText("可执行", { exact: true })).toHaveCount(4);
 
     await page
       .getByRole("button", { name: "应用独立站 / Shopify-style 商品采集" })
@@ -934,14 +945,19 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByLabel("集合页 / 列表页 URL")).toHaveValue(
       "https://shop.example/collections/summer-bags",
     );
-    await expect(page.getByText("已应用平台包：独立站 / Shopify-style 商品采集")).toBeVisible();
-    await expect(page.getByText("操作清单")).toBeVisible();
-    await expect(page.getByText("默认清洗规则")).toBeVisible();
-    await expect(page.getByText("标题", { exact: true })).toBeVisible();
-    await expect(page.getByText("价格", { exact: true })).toBeVisible();
-    await expect(page.getByText("SKU", { exact: true })).toBeVisible();
-    await expect(page.getByText("SKU: fill_default")).toBeVisible();
-    await expect(page.getByText("规范 URL", { exact: true }).first()).toBeVisible();
+    const appliedPackagePanel = page.locator("section").filter({
+      hasText: "已应用平台包：独立站 / Shopify-style 商品采集",
+    });
+    await expect(
+      appliedPackagePanel.getByText("已应用平台包：独立站 / Shopify-style 商品采集"),
+    ).toBeVisible();
+    await expect(appliedPackagePanel.getByText("操作清单")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("默认清洗规则")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("标题", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("价格", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("SKU", { exact: true }).first()).toBeVisible();
+    await expect(appliedPackagePanel.getByText("SKU: fill_default")).toBeVisible();
+    await expect(appliedPackagePanel.getByText("规范 URL", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "应用公开网页结构解析预检" }).click();
     await expect(page.getByRole("button", { name: "结构预检", exact: true })).toHaveAttribute(
@@ -956,7 +972,7 @@ test.describe("MVP workspace routes", () => {
     ).toBeVisible();
 
     await page.getByRole("button", { name: "应用GitHub API-first 工具情报采集" }).click();
-    await expect(page.getByRole("button", { name: "Topic Radar", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: "GitHub 主题", exact: true })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -965,7 +981,7 @@ test.describe("MVP workspace routes", () => {
       .getByLabel("我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
       .check();
     await page.getByLabel("最多仓库").fill("3");
-    await page.getByRole("button", { name: "创建并运行 Topic Radar" }).click();
+    await page.getByRole("button", { name: "创建并运行 GitHub 主题雷达" }).click();
     await expect(page.getByRole("heading", { name: "公开仓库情报采集结果" })).toBeVisible();
     await expect(page.getByText("采集源与任务已创建")).toBeVisible();
     await expect(page.getByText("GitHub Topic Radar: web-scraping")).toBeVisible();
@@ -974,16 +990,38 @@ test.describe("MVP workspace routes", () => {
     await page.getByRole("button", { name: "生成工具数据集预览" }).click();
     await expect(page.getByText("工具情报数据集", { exact: true })).toBeVisible();
     await expect(page.getByText("仓库行数")).toBeVisible();
+    await expect(page.getByText("github_tool_radar.v2")).toBeVisible();
+    await expect(page.getByText("html_url", { exact: true }).last()).toBeVisible();
+    await expect(page.getByText("source_task_run_ids / raw_record_id / source_url")).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Release 时间" })).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("v0.7.0")).toBeVisible();
+    }
     await page.getByRole("button", { name: "保存工具数据集" }).click();
     await expect(page.getByText("数据集 ID:")).toBeVisible();
     await expect(page.getByText("工具雷达验收")).toBeVisible();
     await page.getByRole("button", { name: "生成雷达报告" }).click();
     await expect(page.getByText("高价值仓库")).toBeVisible();
+    await expect(page.getByText("维护风险", { exact: true })).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("风险 low")).toBeVisible();
+      await expect(page.getByText("low=2")).toBeVisible();
+    }
+    await expect(page.getByText("not_a_provider_call_or_live_install")).toBeVisible();
     await page.getByRole("button", { name: "保存到报告中心" }).click();
     await expect(page.getByText("已保存到报告中心")).toBeVisible();
     await expect(page.getByRole("link", { name: "打开报告" })).toBeVisible();
     await page.getByRole("button", { name: "检查工具漂移" }).click();
     await expect(page.getByText("检查任务")).toBeVisible();
+    await expect(page.getByText("状态", { exact: true }).first()).toBeVisible();
+    if (!realApiMode) {
+      await expect(page.getByText("字段缺失").first()).toBeVisible();
+      await expect(page.getByText("missing:topics")).toBeVisible();
+      await expect(page.getByText("Issue 活跃", { exact: true }).last()).toBeVisible();
+      await expect(page.getByText("open_issues_increased:120->200")).toBeVisible();
+      await expect(page.getByText("Release 新鲜度", { exact: true }).last()).toBeVisible();
+      await expect(page.getByText("latest_release_published_at_missing")).toBeVisible();
+    }
     await page.getByRole("button", { name: "保存漂移快照" }).click();
     await expect(page.getByText("已保存漂移快照")).toBeVisible();
     await expectNoVisibleTechnicalNoise(page);
@@ -1074,6 +1112,7 @@ test.describe("MVP workspace routes", () => {
     });
     await page.goto("/automation");
     await page.getByRole("button", { name: "结构预检", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "浏览器诊断与执行器边界" })).toBeVisible();
     await page
       .getByLabel("我确认目标为公开可访问页面或公开 API，采集分析不涉及登录态、验证码绕过或未授权数据访问。")
       .check();
@@ -1140,6 +1179,12 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByRole("heading", { name: "版本字段与清洗规则" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "数据集导出" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
+    await expect(page.getByText("文件写出 Gate")).toBeVisible();
+    await expect(page.getByText("只读预览 Gate")).toBeVisible();
+    await expect(page.getByText("策略写入 Gate")).toBeVisible();
+    await expect(page.getByText("事件桥接 Gate")).toBeVisible();
+    await expect(page.getByText("站内通知发送 Gate")).toBeVisible();
+    await expect(page.getByText("外部邮件发送 Gate")).toBeVisible();
     await expect(page.getByText("数据行预览")).toBeVisible();
     await expect(page.getByText("Demo Carry Bag", { exact: true }).first()).toBeVisible();
 
@@ -1173,6 +1218,9 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByRole("heading", { name: "数据集导出" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "漂移历史" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "漂移告警策略" })).toBeVisible();
+    await expect(page.getByText("文件写出 Gate")).toBeVisible();
+    await expect(page.getByText("事件桥接 Gate")).toBeVisible();
+    await expect(page.getByText("外部邮件发送 Gate")).toBeVisible();
     await expect(page.getByText("Version 2")).toBeVisible();
     await expect(page.getByText("cast price to decimal when present").first()).toBeVisible();
     await expect(page.getByText("数据行预览")).toBeVisible();
@@ -1467,7 +1515,7 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText(/已选 1 条/)).toBeVisible();
     await page.getByRole("button", { name: "批量标记已读" }).click();
     await expect(
-      page.getByText(/selected notifications marked read/),
+      page.getByText(/已标记 1 条通知为已读/),
     ).toBeVisible();
     if (!realApiMode) {
       await expect(
@@ -1487,6 +1535,7 @@ test.describe("mobile layout guard", () => {
     "/tasks",
     "/sources",
     "/datasets",
+    "/automation",
   ]) {
     test(`${route} does not overflow horizontally`, async ({
       page,

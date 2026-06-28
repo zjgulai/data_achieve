@@ -81,6 +81,15 @@ class AutomationGitHubToolDatasetSaveRequest(AutomationGitHubToolDatasetPreviewR
     description: str | None = Field(default=None, max_length=1000)
 
 
+class AutomationPublicContentDatasetPreviewRequest(AutomationProductDatasetPreviewRequest):
+    pass
+
+
+class AutomationPublicContentDatasetSaveRequest(AutomationPublicContentDatasetPreviewRequest):
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+
+
 class AutomationCleaningRuleInput(BaseModel):
     field: str = Field(min_length=1, max_length=80)
     operation: Literal[
@@ -92,6 +101,7 @@ class AutomationCleaningRuleInput(BaseModel):
         "uppercase",
         "normalize_availability",
         "fill_default",
+        "hash_content",
     ]
     value: str | int | float | bool | None = None
     description: str | None = Field(default=None, max_length=500)
@@ -129,6 +139,10 @@ class AutomationProductScheduleApproveRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class AutomationPublicContentScheduleApproveRequest(AutomationProductScheduleApproveRequest):
+    pass
+
+
 class AutomationProductDriftCheckRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID
@@ -150,6 +164,14 @@ class AutomationGitHubToolDriftEventSaveRequest(AutomationGitHubToolDriftCheckRe
     note: str | None = Field(default=None, max_length=500)
 
 
+class AutomationPublicContentDriftCheckRequest(AutomationProductDriftCheckRequest):
+    pass
+
+
+class AutomationPublicContentDriftEventSaveRequest(AutomationPublicContentDriftCheckRequest):
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AutomationGitHubToolReportRequest(BaseModel):
     authorized: bool
     dataset_id: uuid.UUID
@@ -158,7 +180,18 @@ class AutomationGitHubToolReportRequest(BaseModel):
     top_limit: int = Field(default=10, ge=1, le=50)
 
 
+class AutomationPublicContentReportRequest(BaseModel):
+    authorized: bool
+    dataset_id: uuid.UUID
+    dataset_version_id: uuid.UUID
+    top_limit: int = Field(default=10, ge=1, le=50)
+
+
 class AutomationGitHubToolReportAssetCreateRequest(AutomationGitHubToolReportRequest):
+    confirm_create: bool
+
+
+class AutomationPublicContentReportAssetCreateRequest(AutomationPublicContentReportRequest):
     confirm_create: bool
 
 
@@ -286,6 +319,7 @@ class AutomationPlatformPackageCleaningRuleResponse(BaseModel):
         "uppercase",
         "normalize_availability",
         "fill_default",
+        "hash_content",
     ]
     value: str | int | float | bool | None = None
     description: str
@@ -1149,6 +1183,7 @@ class AutomationProductDriftItemResponse(BaseModel):
     freshness_target_hours: int | None
     stale_hours: float | None
     issues: list[str]
+    signal_groups: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class AutomationProductDriftSummaryResponse(BaseModel):
@@ -1226,6 +1261,11 @@ class AutomationGitHubToolReportRepositoryResponse(BaseModel):
     issue_activity_status: str | None
     commit_freshness_days: int | None
     commit_freshness_status: str | None
+    maintenance_risk: Literal["low", "medium", "high", "unknown"] = "unknown"
+    risk_signals: list[str] = Field(default_factory=list)
+    install_sources: list[str] = Field(default_factory=list)
+    recommended_use_cases: list[str] = Field(default_factory=list)
+    unsuitable_boundaries: list[str] = Field(default_factory=list)
 
 
 class AutomationGitHubToolReportSummaryResponse(BaseModel):
@@ -1253,11 +1293,54 @@ class AutomationGitHubToolReportResponse(BaseModel):
     summary: AutomationGitHubToolReportSummaryResponse
     top_repositories: list[AutomationGitHubToolReportRepositoryResponse]
     recommendations: list[str]
+    risk_sections: list[dict[str, Any]] = Field(default_factory=list)
     audit_events: list[dict[str, Any]]
     blocked_reasons: list[str]
 
 
 class AutomationGitHubToolReportAssetResponse(AutomationGitHubToolReportResponse):
+    report: ReportResponse
+    notification_created: bool
+
+
+class AutomationPublicContentReportEntryResponse(BaseModel):
+    title: str | None
+    link: str | None
+    feed_url: str | None
+    feed_title: str | None
+    published_at: str | None
+    updated_at: str | None
+    author: str | None
+    tags: list[str]
+    summary: str | None
+    content_hash: str | None
+
+
+class AutomationPublicContentReportSummaryResponse(BaseModel):
+    entry_count: int
+    feed_count: int
+    unique_author_count: int
+    tagged_entry_count: int
+    entries_with_summary: int
+    content_hash_count: int
+    report_created: bool
+    run_started: bool
+
+
+class AutomationPublicContentReportResponse(BaseModel):
+    generated_at: datetime
+    authorization_confirmed: bool
+    dataset: AutomationDatasetResponse
+    version: AutomationDatasetVersionResponse
+    summary: AutomationPublicContentReportSummaryResponse
+    latest_entries: list[AutomationPublicContentReportEntryResponse]
+    recommendations: list[str]
+    risk_sections: list[dict[str, Any]] = Field(default_factory=list)
+    audit_events: list[dict[str, Any]]
+    blocked_reasons: list[str]
+
+
+class AutomationPublicContentReportAssetResponse(AutomationPublicContentReportResponse):
     report: ReportResponse
     notification_created: bool
 

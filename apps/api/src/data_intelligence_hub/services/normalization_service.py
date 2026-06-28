@@ -76,6 +76,8 @@ def build_snapshot_drafts(
         return _github_topic_snapshots(content, raw_record, project_domain)
     if record_type == "generic_web":
         return [_generic_web_snapshot(content, raw_record, project_domain)]
+    if record_type == "public_feed":
+        return [_public_feed_snapshot(content, raw_record, project_domain)]
     if record_type == "ecommerce_product_page":
         return [_ecommerce_product_page_snapshot(content, raw_record, project_domain)]
     if record_type == "ecommerce_product_discovery":
@@ -148,6 +150,11 @@ def _github_repo_snapshot(
             "forks": _number(content.get("forks_count")),
             "open_issues": _number(content.get("open_issues_count")),
             "watchers": _number(content.get("watchers_count")),
+            "subscribers": _number(content.get("subscribers_count")),
+            "commit_freshness_days": _timestamp_age_days(
+                content.get("pushed_at"),
+                raw_record.collected_at,
+            ),
         },
         captured_at=raw_record.collected_at,
     )
@@ -181,6 +188,12 @@ def _github_topic_snapshots(
                 metrics={
                     "stars": _number(repository.get("stargazers_count")),
                     "forks": _number(repository.get("forks_count")),
+                    "open_issues": _number(repository.get("open_issues_count")),
+                    "watchers": _number(repository.get("watchers_count")),
+                    "commit_freshness_days": _timestamp_age_days(
+                        repository.get("pushed_at"),
+                        raw_record.collected_at,
+                    ),
                 },
                 captured_at=raw_record.collected_at,
             )
@@ -208,6 +221,31 @@ def _generic_web_snapshot(
             "text_length": len(text_content),
             "html_length": len(html_content),
             "content_hash": raw_record.content_hash,
+        },
+        captured_at=raw_record.collected_at,
+    )
+
+
+def _public_feed_snapshot(
+    content: dict[str, Any],
+    raw_record: RawRecord,
+    project_domain: str,
+) -> NormalizedSnapshotDraft:
+    feed_url = _text(content.get("feed_url")) or raw_record.source_url or raw_record.id.hex
+    title = _text(content.get("title")) or feed_url
+    entries = content.get("entries")
+    entry_count = len(entries) if isinstance(entries, list) else 0
+    return NormalizedSnapshotDraft(
+        entity_type="public_feed",
+        external_id=feed_url,
+        canonical_url=feed_url,
+        name=title,
+        domain=project_domain,
+        snapshot_data=_clean_snapshot(content),
+        metrics={
+            "item_count": _number(content.get("item_count")) or entry_count,
+            "max_items": _number(content.get("max_items")),
+            "feed_content_hash": _text(content.get("feed_content_hash")),
         },
         captured_at=raw_record.collected_at,
     )
@@ -366,3 +404,18 @@ def _number(value: object) -> int | float | None:
     if isinstance(value, int | float):
         return value
     return None
+
+
+def _timestamp_age_days(value: object, reference: datetime) -> int | None:
+    text = _text(value)
+    if text is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    reference_utc = reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    delta = reference_utc.astimezone(UTC) - parsed.astimezone(UTC)
+    return max(delta.days, 0)

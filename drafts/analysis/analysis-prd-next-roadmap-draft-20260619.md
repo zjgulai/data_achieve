@@ -5,7 +5,7 @@ module: product
 topic: prd-next-roadmap
 status: draft
 created: 2026-06-19
-updated: 2026-06-19
+updated: 2026-06-22
 owner: self
 source: human+ai
 ---
@@ -30,7 +30,7 @@ source: human+ai
 -> 报告、告警、通知与导出
 ```
 
-状态修正：采集计划、清洗计划、首批平台包和重复动作基础保护已经完成一轮生产部署与验收。GitHub/API-first 已完成 Topic Radar 的可执行基础链路；公开网页结构解析预检已作为第三个平台包上线。下一阶段优先级应从“补齐骨架”切换为“扩大真实平台采集深度”，尤其是 GitHub 工具情报数据集化、浏览器结构解析诊断深化、独立站 collection/sitemap 深化，以及 marketplace/social 的授权导入或 API 路线。
+状态修正：采集计划、清洗计划、首批平台包和重复动作基础保护已经完成一轮生产部署与验收。GitHub/API-first 已完成 Topic Radar 的可执行基础链路；公开网页结构解析预检已作为第三个平台包上线。本地最新增量已把浏览器结构诊断升级为可复用 `BrowserDiagnosticRun` 资产，为 `browser_automation_executable_spec.v1` 增加 no-run 校验，完成 `BrowserDiagnosticJob` 只读任务队列第一切片，补上隔离浏览器执行器合同，完成本地 `diagnostic_snapshot_replay` result 资产，并新增受控 `ephemeral_browser_harness_probe` adapter spike。下一阶段优先级应从“补齐骨架”切换为“扩大真实平台采集深度”，尤其是 browser-harness selector/HAR 有界证据、GitHub 工具情报深度字段、独立站 collection/sitemap 深化，以及 marketplace/social 的授权导入或 API 路线。
 
 ## 2. 事实基线
 
@@ -50,6 +50,11 @@ source: human+ai
 10. 清洗计划已升级为可保存、可试跑、可追踪到数据集版本的正式草案资产。
 11. 当前 Platform Package 已覆盖 `shopify-independent-ecommerce`、`github-api-first` 与 `public-page-structure-preflight`，三者均为 `executable` 边界。
 12. 最新生产部署 commit 为 `d9b2a5e35274963c1804d200824d5767d2f4ae3d`，生产真实 API E2E 已验证 `/automation` 主链路、平台包应用链路、GitHub 工具雷达 Dataset/导出/漂移/报告闭环，以及结构预检采集路径建议的 API 返回。
+13. 本地 Phase 15 已完成浏览器诊断资产化、执行规格生成和 no-run 校验；该事实不代表生产已部署，也不代表真实浏览器已经被后端自动执行。
+14. 本地 Phase 16 已完成 `BrowserDiagnosticJob` create/list/detail/cancel 第一切片；该 job 仍然是只读任务意图资产，不启动 browser-harness，不创建 Source/Task/TaskRun/Dataset 或调度。
+15. 本地 Phase 17A 已完成浏览器执行器合同层；该合同定义 adapter、隔离 runtime、artifact retention、允许动作、禁止动作和 readiness checks，但仍不启动 browser-harness、不打开浏览器、不写文件、不创建任何采集资源。
+16. 本地 Phase 17B 已完成 `BrowserDiagnosticJobRun` result 资产和 `diagnostic_snapshot_replay`；它只回放已保存诊断快照来生成字段预览和证据 manifest，不启动真实浏览器，不写文件，不创建采集资源。
+17. 本地 Phase 18A 已完成 `ephemeral_browser_harness_probe` 第一切片；该模式需要显式 `confirm_real_browser_probe=true` 和 dedicated `browser_harness_cdp_url`，缺少 CDP 时返回 `browser_harness_isolated_cdp_required`，避免默认连接用户主 Chrome。自动化验收使用 fake CLI 覆盖成功路径；另有一次本机 isolated headless Chrome + browser-harness CLI 对 `https://example.com/` 的只读 `page_info()` 探测，证明本机 dedicated CDP 链路可用，但不等同生产或 API route 生产浏览器验收。该能力不写文件、不写采集资源、不复用登录态、不导出 cookie，且尚未代表生产部署。
 
 ### 2.2 文档与实现不一致
 
@@ -249,12 +254,28 @@ P2 是平台稳定后的增强能力。
 
 目标：把 browser-harness 的真实浏览器能力用于只读结构诊断，帮助判断目标站点适合 API、静态解析、浏览器自动化、RPA 还是人工导入。
 
+2026-06-21 本地状态：
+
+1. 已完成诊断资产层：保存 `browser_automation` 计划时会持久化 `BrowserDiagnosticRun`。
+2. 已完成执行规格层：计划中包含选择器、等待条件、分页假设、API 候选、guardrails、dry-run limits 和人工复核要求。
+3. 已完成 no-run 校验层：显式校验 saved executable spec 的 lineage、selector、wait、API 候选和边界，不启动真实浏览器。
+4. 已完成只读任务队列层：`BrowserDiagnosticJob` 可在校验后显式创建、查看、取消。
+5. 已完成执行器合同层：已审核 job 可生成 `browser_executor_adapter_contract.v1`，明确本地隔离 runtime、artifact retention、允许动作、禁止动作和 readiness checks。
+6. 已完成本地 result 资产第一切片：已审核 job 可执行 `diagnostic_snapshot_replay`，生成字段预览、selector 结果、network 摘要、artifact manifest 和脱敏错误摘要。
+7. 已完成受控 browser-harness adapter spike：已审核 job 只有在提供 dedicated CDP 时才可执行 `ephemeral_browser_harness_probe`，通过临时 tab 读取页面元信息并关闭 tab，结果沉淀到 `BrowserDiagnosticJobRun`；缺少 dedicated CDP 时 fail-closed。
+8. 尚未完成完整真实浏览器执行层：还没有截图/trace/HAR 文件产物、selector DOM 真实求值、资源下载、Source/Task/TaskRun/Dataset 创建或调度。
+
 任务：
 
-1. 设计只读页面能力探测：渲染方式、关键字段来源、分页方式、登录态需求、反爬风险信号。
-2. 将探测结果写入站点分析或采集计划建议。
-3. UI 展示“推荐采集路径”和“不建议自动采集原因”。
-4. 明确不实现登录绕过、反检测或风控规避。
+1. 已完成：设计只读页面能力探测：渲染方式、关键字段来源、分页方式、登录态需求、反爬风险信号。
+2. 已完成：将探测结果写入站点分析、采集计划建议和浏览器诊断资产。
+3. 已完成：UI 展示“推荐采集路径”、诊断历史、执行规格摘要和 no-run 校验结果。
+4. 已完成：新增显式授权的浏览器诊断任务队列，记录 job intent、URL scope、selector scope、network-observation policy、artifact policy 和 cancel/blocked 状态。
+5. 已完成：新增隔离执行器合同，生成 no-run adapter contract、runtime isolation、artifact retention、allowed/denied actions 和 readiness checks。
+6. 已完成：新增本地只读 runner result 原型，`diagnostic_snapshot_replay` 只消费保存过的诊断快照，不启动真实浏览器。
+7. 已完成第一版：新增 `ephemeral_browser_harness_probe`，只处理授权公开页面和 dedicated CDP，输出有界 page_info 证据资产，缺少 CDP 或执行失败显式记录为 blocked/failed。
+8. 下一步：扩展 browser-harness 有界证据，优先做真实 selector 求值、网络元数据摘要和 artifact retention 的文件写入策略，但不直接创建采集资源。
+9. 持续边界：不实现登录绕过、反检测或风控规避。
 
 验收：
 
@@ -317,14 +338,15 @@ P2 是平台稳定后的增强能力。
 
 ## 9. 下一步执行建议
 
-当前轮次已完成 Phase B 后的文档和状态同步，并完成 Phase C-1 结构预检采集路径建议。
+当前轮次已完成 Phase B 后的文档和状态同步，并完成 Phase C 浏览器结构预检的诊断资产、执行规格、no-run 校验、只读 job lifecycle、隔离执行器合同、本地快照回放 result 资产和受控 browser-harness 临时探测第一切片。
 
 状态同步后的下一轮建议：
 
-1. 继续 Phase C-2：browser-harness 支撑的真实浏览器结构解析诊断深化。
-2. 将当前静态 preflight 的策略建议与 browser-harness 的可见文本、accessibility snapshot、network 摘要和截图证据对齐。
-3. 只处理授权公开页面，不做登录绕过、反检测或风控规避。
-4. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
+1. 继续 Phase C-5：把 `ephemeral_browser_harness_probe` 从 page_info 扩展到 selector 求值和网络元数据摘要，不直接进入生产执行。
+2. 将 `BrowserDiagnosticJob.status=ready_for_manual_execution`、`browser_executor_adapter_contract.v1` 与 `BrowserDiagnosticJobRun` result contract 同时作为输入和输出约束。
+3. 真实 adapter 下一步只输出有界证据资产：selector preview rows、network/HAR 元数据摘要、运行状态和脱敏错误；截图/trace 文件写入需先定义 retention 和清理策略。
+4. 真实浏览器执行器只处理授权公开页面，不复用用户 Chrome profile、不导出 cookie、不做登录绕过、反检测或风控规避。
+5. 每一轮都按“实现一轮、测试一轮、验收一轮、生产边界说明一轮”闭环。
 
 ## 10. 不确定项
 
@@ -332,6 +354,6 @@ P2 是平台稳定后的增强能力。
 
 1. Dataset Export 在生产容器中的文件持久化目录和备份策略。
 2. GitHub/API-first 下一步增强优先级：repo release/README 解析、issue 活跃度、license/default branch 画像和 topic 长期监控。
-3. browser-harness 结构解析预检是否仅做本地/生产 E2E 工具，还是进入后端服务能力。
+3. browser-harness 结构解析预检是否仅做本地/生产 E2E 工具，还是进入后端服务能力；当前建议是先进入后端 job lifecycle，不直接进入自动执行器。
 4. marketplace 和 social 平台采集的授权边界和数据来源。
 5. 是否在 P2 前提前引入 COS/S3，还是继续使用本地 volume。

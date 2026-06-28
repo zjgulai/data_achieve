@@ -30,6 +30,10 @@ import {
 import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-display";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchKeyValueRow,
+  WorkbenchMetricPill,
+} from "@/components/common/workbench-ui";
 import type { AlertChannel, AlertEvent, AlertRule } from "@/types/alert";
 
 const fieldOptions = ["severity", "final_score", "domain", "intelligence_type", "status"];
@@ -217,11 +221,11 @@ export function AlertsWorkspace() {
               当情报信号命中规则后生成预警事件，并按站内、邮件或双通道推送给团队。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
-              <MetricPill icon={SlidersHorizontal} label="规则数" value={String(stats.rules)} />
-              <MetricPill icon={CheckCircle2} label="启用规则" value={`${stats.enabledRules}/${stats.rules}`} />
-              <MetricPill icon={BellRing} label="事件数" value={String(stats.events)} />
-              <MetricPill icon={Send} label="已发送" value={String(stats.sentEvents)} />
-              <MetricPill
+              <WorkbenchMetricPill icon={SlidersHorizontal} label="规则数" value={String(stats.rules)} />
+              <WorkbenchMetricPill icon={CheckCircle2} label="启用规则" value={`${stats.enabledRules}/${stats.rules}`} />
+              <WorkbenchMetricPill icon={BellRing} label="事件数" value={String(stats.events)} />
+              <WorkbenchMetricPill icon={Send} label="已发送" value={String(stats.sentEvents)} />
+              <WorkbenchMetricPill
                 icon={BookOpenCheck}
                 label="培训证据"
                 value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)}
@@ -603,26 +607,6 @@ function EventActionButton({
   );
 }
 
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof BellRing;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
 function ChannelRow({
   tone,
   count,
@@ -632,15 +616,17 @@ function ChannelRow({
 }) {
   const Icon = tone.icon;
   return (
-    <div className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <span className="inline-flex items-center gap-2 text-sm font-medium text-[#3B2924]">
-        <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-full text-white", tone.accent)}>
-          <Icon size={14} aria-hidden="true" />
+    <WorkbenchKeyValueRow
+      labelSlot={
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-[#3B2924]">
+          <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-full text-white", tone.accent)}>
+            <Icon size={14} aria-hidden="true" />
+          </span>
+          {tone.label}
         </span>
-        {tone.label}
-      </span>
-      <span className="text-sm font-semibold text-[#3B2924]">{count}</span>
-    </div>
+      }
+      value={String(count)}
+    />
   );
 }
 

@@ -13,6 +13,7 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
 
 CollectorClass = type[BaseCollector]
 
@@ -21,6 +22,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     GitHubTopicCollector.collector_type: GitHubTopicCollector,
     GenericWebCollector.collector_type: GenericWebCollector,
     ManualJsonCollector.collector_type: ManualJsonCollector,
+    PublicFeedCollector.collector_type: PublicFeedCollector,
     EcommerceProductDiscoveryCollector.collector_type: EcommerceProductDiscoveryCollector,
     EcommerceProductPageCollector.collector_type: EcommerceProductPageCollector,
 }

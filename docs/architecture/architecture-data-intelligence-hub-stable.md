@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-21
+updated: 2026-06-23
 owner: self
 source: human+ai
 ---
@@ -20,7 +20,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
+3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
@@ -80,7 +80,8 @@ flowchart LR
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
 5. GitHub Topic Radar 运行记录已可保存为 `github_tool_radar` DatasetVersion，并可生成工具雷达只读报告、漂移快照和 `report_type=github_tool_radar` 的 Report 中心资产。
-6. 截至 production HEAD `e9ccb81`，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产、生产浏览器链路和 GitHub API-first 深化字段合同已完成发布；后续重点是授权生产写入 E2E、browser-harness 真实浏览器执行器、更多平台包真实采集深度与长期运行可靠性。
+6. Public Web/RSS/Docs 本地切片已可从 `public_feed` raw record entries 与 `generic_web` docs/page snapshot 保存 `public_content_update` DatasetVersion，并提供 content-hash drift check、`public_content_drift` 事件保存/复用、只读 report preview 与 Report asset 创建路径；生产调度、provider/email、生产浏览器运行和新增生产写入仍需单独 gate。
+7. 截至 2026-06-24 本地 M5 docs diff 切片，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、公开 RSS/Atom 与 docs/page Dataset/drift/report preview、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产、生产浏览器链路和 GitHub API-first 深化字段合同已形成产品骨架；后续重点是更多平台包真实采集深度与长期运行可靠性。
 
 当前平台包矩阵：
 
@@ -89,6 +90,7 @@ flowchart LR
 | `shopify-independent-ecommerce` | ecommerce | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset |
 | `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段合同 |
 | `public-page-structure-preflight` | browser_preflight | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
+| `public-web-rss-docs` | public_content | `source-create` | `executable` | M5 local slice 已新增 `public_feed` RSS/Atom collector 与 `generic_web` docs/page snapshot 入库，支持 `public_content_update` Dataset save、content-hash drift、drift event、只读 report preview 和 Report asset；scheduler、provider/email、生产浏览器运行和新增生产 gate 仍待单独授权 |
 
 ## 数据闭环
 
@@ -175,7 +177,8 @@ flowchart LR
 |---|---|
 | `github_repo` | 监控公开 GitHub 仓库指标 |
 | `github_topic` | 按公开 topic 发现 GitHub 仓库 |
-| `generic_web` | 采集公开网页快照 |
+| `generic_web` | 采集公开网页或 docs/page 快照，并为 public-content docs diff 提供页面级 content hash |
+| `public_feed` | 采集公开 RSS/Atom feed 更新条目 |
 | `manual_json` | 导入人工或外部工具结构化样本 |
 | `ecommerce_product_discovery` | 从独立站列表页或 sitemap 发现商品 URL |
 | `ecommerce_product_page` | 从公开独立站商品页解析结构化商品字段 |

@@ -81,6 +81,7 @@ const collectorLabels: Record<CollectorType, string> = {
   github_topic: "GitHub Topic",
   generic_web: "网页",
   manual_json: "手动 JSON",
+  public_feed: "RSS/Atom",
 };
 
 export function TasksWorkspace() {

@@ -34,6 +34,7 @@ import {
 import { isTrainingNotification } from "@/lib/training-data";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
+import { WorkbenchEmptyState, WorkbenchFact, WorkbenchMetric } from "@/components/common/workbench-ui";
 import type {
   EmailChannelStatus,
   NotificationItem,
@@ -156,7 +157,7 @@ export function NotificationsWorkspace() {
           setError(
             caught instanceof Error
               ? caught.message
-              : "Failed to load notifications",
+              : "通知列表暂不可用",
           );
         }
       })
@@ -347,12 +348,12 @@ export function NotificationsWorkspace() {
       setSelectedId((current) =>
         current && selectedSet.has(current) ? null : current,
       );
-      setMessage(`${count} selected notifications marked read`);
+      setMessage(`已标记 ${count} 条通知为已读`);
     } catch (caught) {
       setError(
         caught instanceof Error
           ? caught.message
-          : "Failed to mark notifications read",
+          : "通知已读状态更新暂不可用",
       );
     } finally {
       setBulkLoading(false);
@@ -421,7 +422,7 @@ export function NotificationsWorkspace() {
       quietHoursEnabled: false,
       digestTime: "09:00",
     }));
-    setMessage("已套用培训通知模板：报告、告警和证据链均开启站内与邮件交付。");
+    setMessage("已套用通知交付模板：报告、告警和证据链均开启站内与邮件交付。");
   }
 
   return (
@@ -440,30 +441,35 @@ export function NotificationsWorkspace() {
               汇总预警、日报和任务异常通知，保留关联对象入口，让团队能从消息直接回到证据链。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
-              <MetricPill
+              <WorkbenchMetric
                 icon={Bell}
                 label="通知数"
                 value={String(stats.total)}
+                size="large"
               />
-              <MetricPill
+              <WorkbenchMetric
                 icon={BellRing}
                 label="未读"
                 value={String(stats.unreadCount)}
+                size="large"
               />
-              <MetricPill
+              <WorkbenchMetric
                 icon={ShieldAlert}
                 label="预警"
                 value={String(stats.alertCount)}
+                size="large"
               />
-              <MetricPill
+              <WorkbenchMetric
                 icon={Megaphone}
                 label="任务异常"
                 value={String(stats.taskCount)}
+                size="large"
               />
-              <MetricPill
+              <WorkbenchMetric
                 icon={BookOpenCheck}
                 label="培训通知"
                 value={String(stats.trainingCount)}
+                size="large"
               />
             </div>
           </div>
@@ -483,19 +489,19 @@ export function NotificationsWorkspace() {
               </span>
             </div>
             <div className="mt-4 grid gap-2">
-              <InboxRow
+              <WorkbenchFact
                 label="展示通知"
                 value={String(filteredNotifications.length)}
               />
-              <InboxRow
+              <WorkbenchFact
                 label="通知类型"
                 value={String(notificationTypes.length)}
               />
-              <InboxRow
+              <WorkbenchFact
                 label="当前选中"
                 value={selectedNotification?.referenceType ?? "—"}
               />
-              <InboxRow
+              <WorkbenchFact
                 label="培训证据"
                 value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)}
               />
@@ -658,9 +664,7 @@ export function NotificationsWorkspace() {
           </div>
 
           {loading ? (
-            <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-              加载通知中
-            </div>
+            <WorkbenchEmptyState compact text="加载通知中" />
           ) : null}
           <StatusNotice error={error} message={message} />
 
@@ -679,9 +683,7 @@ export function NotificationsWorkspace() {
               />
             ))}
             {!loading && filteredNotifications.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-                暂无通知。
-              </div>
+              <WorkbenchEmptyState compact text="暂无通知。" />
             ) : null}
           </div>
         </section>
@@ -725,9 +727,7 @@ export function NotificationsWorkspace() {
           {selectedNotification ? (
             <NotificationDetail notification={selectedNotification} />
           ) : (
-            <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-              选择一条通知查看详情。
-            </div>
+            <WorkbenchEmptyState compact text="选择一条通知查看详情。" />
           )}
         </aside>
       </div>
@@ -1018,9 +1018,9 @@ function NotificationDetail({
     <div className="grid gap-4">
       {training ? (
         <div className="rounded-2xl border border-[#F1D9A8] bg-[#FFF9E9] p-4">
-          <p className="text-xs font-semibold uppercase text-[#8C6824]">Training Notification</p>
+          <p className="text-xs font-semibold text-[#8C6824]">通知交付样例</p>
           <p className="mt-1 text-sm leading-6 text-[#87611B]">
-            该通知用于演示培训交付链路：报告、告警和证据准备状态会进入站内收件箱，并可进一步连接邮件通道。
+            该通知用于演示交付链路：报告、告警和证据准备状态会进入站内收件箱，并可进一步连接邮件通道。
           </p>
         </div>
       ) : null}
@@ -1052,10 +1052,10 @@ function NotificationDetail({
       </div>
 
       <div className="grid gap-2">
-        <DetailRow label="Notification ID" value={notification.id} />
-        <DetailRow label="Reference Type" value={notification.referenceType} />
-        <DetailRow label="Reference ID" value={notification.referenceId} />
-        <DetailRow
+        <WorkbenchFact label="Notification ID" value={notification.id} />
+        <WorkbenchFact label="Reference Type" value={notification.referenceType} />
+        <WorkbenchFact label="Reference ID" value={notification.referenceId} />
+        <WorkbenchFact
           label="Read State"
           value={notification.isRead ? "read" : "unread"}
         />
@@ -1068,48 +1068,6 @@ function NotificationDetail({
         <ExternalLink size={16} aria-hidden="true" />
         打开关联对象
       </Link>
-    </div>
-  );
-}
-
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Bell;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function InboxRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <span className="text-sm font-medium text-[#7A625A]">{label}</span>
-      <span className="text-sm font-semibold text-[#3B2924]">{value}</span>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#E8D4CB] bg-[#FFFDFC] px-3 py-2 text-sm">
-      <span className="text-xs font-semibold uppercase text-[#B47767]">
-        {label}
-      </span>
-      <p className="mt-1 break-all font-semibold text-[#3B2924]">{value}</p>
     </div>
   );
 }

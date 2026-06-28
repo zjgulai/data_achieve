@@ -38,6 +38,11 @@ import {
 } from "@/lib/api/reports";
 import { isTrainingReportType } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchStatusPill,
+  WorkbenchTag,
+  type WorkbenchStatusTone,
+} from "@/components/common/workbench-ui";
 import { ReportDetailPanel } from "@/components/reports/report-detail-panel";
 import type { Project } from "@/types/project";
 import type { EmailChannelStatus } from "@/types/notification";
@@ -511,17 +516,17 @@ export function ReportsWorkspace() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 marker:hidden">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Pill tone="rose">Daily Report</Pill>
-              <Pill tone="neutral">
+              <WorkbenchTag shape="pill" tone="roseStrong">Daily Report</WorkbenchTag>
+              <WorkbenchTag shape="pill" tone="muted">
                 {summary.latestReport
                   ? `${formatDate(summary.latestReport.periodStart)} 至 ${formatDate(summary.latestReport.periodEnd)}`
                   : "暂无周期"}
-              </Pill>
-              <Pill tone={summary.generatedCount > 0 ? "amber" : "green"}>
+              </WorkbenchTag>
+              <WorkbenchTag shape="pill" tone={summary.generatedCount > 0 ? "amber" : "green"}>
                 {summary.generatedCount > 0
                   ? `${summary.generatedCount} 份待发送`
                   : "发送队列清爽"}
-              </Pill>
+              </WorkbenchTag>
             </div>
             <h2 className="text-base font-semibold text-[#1D1D1F]">报告生成</h2>
             <p className="mt-1 text-sm leading-6 text-[#86868B]">
@@ -540,17 +545,17 @@ export function ReportsWorkspace() {
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
             <div className="min-w-0">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <Pill tone="rose">Daily Report</Pill>
-                <Pill tone="neutral">
+                <WorkbenchTag shape="pill" tone="roseStrong">Daily Report</WorkbenchTag>
+                <WorkbenchTag shape="pill" tone="muted">
                   {summary.latestReport
                     ? `${formatDate(summary.latestReport.periodStart)} 至 ${formatDate(summary.latestReport.periodEnd)}`
                     : "暂无周期"}
-                </Pill>
-                <Pill tone={summary.generatedCount > 0 ? "amber" : "green"}>
+                </WorkbenchTag>
+                <WorkbenchTag shape="pill" tone={summary.generatedCount > 0 ? "amber" : "green"}>
                   {summary.generatedCount > 0
                     ? `${summary.generatedCount} 份待发送`
                     : "发送队列清爽"}
-                </Pill>
+                </WorkbenchTag>
               </div>
               <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">
                 报告阅读工作台
@@ -764,7 +769,7 @@ export function ReportsWorkspace() {
                     <p className="text-sm font-semibold text-[#1D1D1F]">
                       邮件通道诊断
                     </p>
-                    <StatusPill status={emailChannel?.status ?? "checking"} />
+                    <ReportStatusPill status={emailChannel?.status ?? "checking"} />
                   </div>
                   <p className="mt-2 text-xs leading-5 text-[#86868B]">
                     {loadingEmailChannel
@@ -784,22 +789,22 @@ export function ReportsWorkspace() {
               </div>
               {emailChannel ? (
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
-                  <Tag>
+                  <WorkbenchTag className="bg-white text-[#86868B]">
                     {emailChannel.hostConfigured
                       ? "SMTP host 已配置"
                       : "缺少 SMTP host"}
-                  </Tag>
-                  <Tag>
+                  </WorkbenchTag>
+                  <WorkbenchTag className="bg-white text-[#86868B]">
                     {emailChannel.senderConfigured
                       ? "发件人已配置"
                       : "缺少发件人"}
-                  </Tag>
-                  <Tag>
+                  </WorkbenchTag>
+                  <WorkbenchTag className="bg-white text-[#86868B]">
                     {emailChannel.authConfigured ? "认证已配置" : "未启用认证"}
-                  </Tag>
-                  <Tag>
+                  </WorkbenchTag>
+                  <WorkbenchTag className="bg-white text-[#86868B]">
                     {emailChannel.tlsMode.toUpperCase()} · {emailChannel.port}
-                  </Tag>
+                  </WorkbenchTag>
                 </div>
               ) : null}
               {emailChannelNotice ? (
@@ -820,15 +825,16 @@ export function ReportsWorkspace() {
           <div className="min-w-0 rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[#1D1D1F]">已配置订阅</p>
-              <Pill
+              <WorkbenchTag
+                shape="pill"
                 tone={
                   subscriptions.some((item) => item.enabled)
                     ? "green"
-                    : "neutral"
+                    : "muted"
                 }
               >
                 {subscriptions.filter((item) => item.enabled).length} 个启用
-              </Pill>
+              </WorkbenchTag>
             </div>
             <div className="mt-3 grid gap-2">
               {loadingSubscriptions ? (
@@ -854,7 +860,7 @@ export function ReportsWorkspace() {
                           : " · 已暂停"}
                       </p>
                     </div>
-                    <StatusPill
+                    <ReportStatusPill
                       status={subscription.enabled ? "enabled" : "paused"}
                     />
                   </div>
@@ -863,7 +869,7 @@ export function ReportsWorkspace() {
                       <p className="text-xs font-semibold text-[#86868B]">
                         最近执行
                       </p>
-                      <StatusPill
+                      <ReportStatusPill
                         status={subscription.latestRun?.status ?? "not_run"}
                       />
                     </div>
@@ -938,7 +944,7 @@ export function ReportsWorkspace() {
                                     {runDeliverySummary(run)}
                                   </p>
                                 </div>
-                                <StatusPill status={run.status} />
+                                <ReportStatusPill status={run.status} />
                               </div>
                               {run.errorMessage ? (
                                 <p className="mt-1 text-xs leading-5 text-[#C25B6E]">
@@ -1107,16 +1113,16 @@ export function ReportsWorkspace() {
                         {formatDate(report.periodEnd)}
                       </p>
                     </div>
-                    <StatusPill status={report.status} />
+                    <ReportStatusPill status={report.status} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
-                    <Tag>{projectName(projects, report.projectId)}</Tag>
-                    <Tag>{report.reportType}</Tag>
-                    {isTrainingReportType(report.reportType) ? <Tag>培训周报</Tag> : null}
-                    <Tag>{estimateReadingMinutes(report.content)} min read</Tag>
-                    <Tag>
+                    <WorkbenchTag className="bg-white text-[#86868B]">{projectName(projects, report.projectId)}</WorkbenchTag>
+                    <WorkbenchTag className="bg-white text-[#86868B]">{report.reportType}</WorkbenchTag>
+                    {isTrainingReportType(report.reportType) ? <WorkbenchTag className="bg-white text-[#86868B]">培训周报</WorkbenchTag> : null}
+                    <WorkbenchTag className="bg-white text-[#86868B]">{estimateReadingMinutes(report.content)} min read</WorkbenchTag>
+                    <WorkbenchTag className="bg-white text-[#86868B]">
                       {countEvidenceMentions(report.content)} evidence refs
-                    </Tag>
+                    </WorkbenchTag>
                   </div>
                 </button>
                 <Link
@@ -1198,74 +1204,29 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const statusMeta: Record<string, { className: string; label: string }> = {
-    checking: { className: "bg-[#FBF8F5] text-[#86868B]", label: "检查中" },
-    enabled: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "启用" },
-    failed: { className: "bg-[#FFF7F8] text-[#C25B6E]", label: "失败" },
-    generated: { className: "bg-[#FFF4DE] text-[#FF9800]", label: "待发送" },
-    misconfigured: {
-      className: "bg-[#FFF4DE] text-[#FF9800]",
-      label: "配置不完整",
-    },
-    not_run: { className: "bg-[#FBF8F5] text-[#86868B]", label: "未执行" },
-    not_configured: {
-      className: "bg-[#FFF7F8] text-[#C25B6E]",
-      label: "未配置",
-    },
-    partial_success: {
-      className: "bg-[#FFF4DE] text-[#FF9800]",
-      label: "部分成功",
-    },
-    paused: { className: "bg-[#FBF8F5] text-[#86868B]", label: "暂停" },
-    ready: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "可测试" },
-    running: { className: "bg-[#F5F0FF] text-[#6E5CF6]", label: "执行中" },
-    sent: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "已发送" },
-    success: { className: "bg-[#EAF8EE] text-[#2EBA62]", label: "成功" },
+function ReportStatusPill({ status }: { status: string }) {
+  const statusMeta: Record<string, { label: string; tone: WorkbenchStatusTone }> = {
+    checking: { label: "检查中", tone: "neutral" },
+    enabled: { label: "启用", tone: "green" },
+    failed: { label: "失败", tone: "rose" },
+    generated: { label: "待发送", tone: "amber" },
+    misconfigured: { label: "配置不完整", tone: "amber" },
+    not_run: { label: "未执行", tone: "neutral" },
+    not_configured: { label: "未配置", tone: "rose" },
+    partial_success: { label: "部分成功", tone: "amber" },
+    paused: { label: "暂停", tone: "neutral" },
+    ready: { label: "可测试", tone: "green" },
+    running: { label: "执行中", tone: "violet" },
+    sent: { label: "已发送", tone: "green" },
+    success: { label: "成功", tone: "green" },
   };
-  const meta = statusMeta[status] ?? {
-    className: "bg-[#FBF8F5] text-[#86868B]",
-    label: status,
-  };
+  const meta = statusMeta[status] ?? { label: status, tone: "neutral" };
+
   return (
-    <span
-      className={cn(
-        "rounded-lg px-2.5 py-1 text-xs font-semibold",
-        meta.className,
-      )}
-    >
+    <WorkbenchStatusPill status={status} tone={meta.tone}>
       {meta.label}
-    </span>
+    </WorkbenchStatusPill>
   );
-}
-
-function Pill({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "amber" | "green" | "neutral" | "rose";
-}) {
-  const toneClasses = {
-    amber: "bg-[#FFF4DE] text-[#FF9800]",
-    green: "bg-[#EAF8EE] text-[#2EBA62]",
-    neutral: "bg-[#FBF8F5] text-[#86868B]",
-    rose: "bg-[#FCEBF0] text-[#C25B6E]",
-  };
-  return (
-    <span
-      className={cn(
-        "rounded-full px-3 py-1 text-xs font-semibold",
-        toneClasses[tone],
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded-lg bg-white px-2 py-1">{children}</span>;
 }
 
 function buildGeneratePayload({

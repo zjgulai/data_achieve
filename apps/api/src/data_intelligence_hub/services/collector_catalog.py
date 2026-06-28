@@ -47,6 +47,15 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         },
     ),
     CollectorDefinition(
+        type="public_feed",
+        name="Public RSS/Atom Feed",
+        description="Monitor a public RSS or Atom feed.",
+        config_schema={
+            "required": ["url"],
+            "properties": {"url": "string", "feed_type": "string", "max_items": "integer"},
+        },
+    ),
+    CollectorDefinition(
         type="manual_json",
         name="Manual JSON",
         description="Import structured JSON payloads manually.",
@@ -117,6 +126,8 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_github_topic_config(config)
     if collector_type == "generic_web":
         return _validate_generic_web_config(config)
+    if collector_type == "public_feed":
+        return _validate_public_feed_config(config)
     if collector_type == "manual_json":
         return _validate_manual_json_config(config)
     if collector_type == "ecommerce_product_page":
@@ -165,6 +176,26 @@ def _validate_generic_web_config(config: dict[str, Any]) -> dict[str, Any]:
 
         raise CollectorConfigError
     return {"url": url, "extract_mode": extract_mode}
+
+
+def _validate_public_feed_config(config: dict[str, Any]) -> dict[str, Any]:
+    url = _require_text(config, "url")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    feed_type = config.get("feed_type", "auto")
+    if feed_type not in {"auto", "rss", "atom"}:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    max_items = config.get("max_items", 20)
+    if not isinstance(max_items, int) or max_items < 1 or max_items > 100:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    return {"url": url, "feed_type": feed_type, "max_items": max_items}
 
 
 def _validate_manual_json_config(config: dict[str, Any]) -> dict[str, Any]:
