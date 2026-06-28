@@ -23,6 +23,11 @@ import { buildAuditFacts, getAuditFactCount, type AuditFact } from "@/lib/audit-
 import { isTrainingEntity } from "@/lib/training-data";
 import { useTrainingOverview } from "@/lib/use-training-overview";
 import { cn } from "@/lib/utils";
+import {
+  WorkbenchDetailRow,
+  WorkbenchKeyValueRow,
+  WorkbenchMetricPill,
+} from "@/components/common/workbench-ui";
 import type { Entity, EntitySnapshot } from "@/types/entity";
 import type { Signal } from "@/types/signal";
 
@@ -212,11 +217,11 @@ export function EntitiesWorkspace() {
               把采集事实标准化为可持续追踪的实体画像，保留快照指标、来源批次和触发信号。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-5">
-              <MetricPill icon={PackageSearch} label="实体数" value={String(stats.total)} />
-              <MetricPill icon={Layers3} label="类型数" value={String(stats.typedEntities)} />
-              <MetricPill icon={Globe2} label="链接实体" value={String(stats.linkedEntities)} />
-              <MetricPill icon={Radar} label="覆盖域" value={String(stats.activeDomains)} />
-              <MetricPill icon={BookOpenCheck} label="培训实体" value={String(stats.trainingEntities)} />
+              <WorkbenchMetricPill icon={PackageSearch} label="实体数" value={String(stats.total)} />
+              <WorkbenchMetricPill icon={Layers3} label="类型数" value={String(stats.typedEntities)} />
+              <WorkbenchMetricPill icon={Globe2} label="链接实体" value={String(stats.linkedEntities)} />
+              <WorkbenchMetricPill icon={Radar} label="覆盖域" value={String(stats.activeDomains)} />
+              <WorkbenchMetricPill icon={BookOpenCheck} label="培训实体" value={String(stats.trainingEntities)} />
             </div>
           </div>
 
@@ -233,10 +238,13 @@ export function EntitiesWorkspace() {
               </span>
             </div>
             <div className="mt-4 grid gap-2">
-              <IntegrityRow label="快照数" value={String(snapshots.length)} />
-              <IntegrityRow label="关联信号" value={String(signals.length)} />
-              <IntegrityRow label="培训证据" value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)} />
-              <IntegrityRow
+              <WorkbenchKeyValueRow label="快照数" value={String(snapshots.length)} />
+              <WorkbenchKeyValueRow label="关联信号" value={String(signals.length)} />
+              <WorkbenchKeyValueRow
+                label="培训证据"
+                value={String(trainingOverview.overview?.metrics.evidenceCount ?? 0)}
+              />
+              <WorkbenchKeyValueRow
                 label="最新采集"
                 value={latestSnapshot ? formatDate(latestSnapshot.capturedAt) : "—"}
               />
@@ -473,9 +481,9 @@ function EntityDetail({
           </span>
         </div>
         <div className="mt-4 grid gap-2">
-          <DetailRow label="实体批次" value={formatShortTraceId(entity.id)} />
-          <DetailRow label="所属项目" value={formatShortTraceId(entity.projectId)} />
-          <DetailRow label="最新快照" value={formatShortTraceId(entity.latestSnapshotId)} />
+          <WorkbenchDetailRow label="实体批次" value={formatShortTraceId(entity.id)} />
+          <WorkbenchDetailRow label="所属项目" value={formatShortTraceId(entity.projectId)} />
+          <WorkbenchDetailRow label="最新快照" value={formatShortTraceId(entity.latestSnapshotId)} />
         </div>
       </div>
 
@@ -590,49 +598,11 @@ function SnapshotCard({ snapshot, latest }: { snapshot: EntitySnapshot; latest: 
   );
 }
 
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof PackageSearch;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 break-words text-xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
-function IntegrityRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2">
-      <span className="text-sm font-medium text-[#7A625A]">{label}</span>
-      <span className="text-sm font-semibold text-[#3B2924]">{value}</span>
-    </div>
-  );
-}
-
 function EntityFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/80 bg-white/70 px-3 py-2">
       <p className="text-xs font-semibold text-[#B47767]">{label}</p>
       <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#3B2924]">{value}</p>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-white/80 bg-white/75 px-3 py-2 text-sm">
-      <span className="text-xs font-semibold uppercase text-[#B47767]">{label}</span>
-      <p className="mt-1 break-all font-semibold text-[#3B2924]">{value}</p>
     </div>
   );
 }

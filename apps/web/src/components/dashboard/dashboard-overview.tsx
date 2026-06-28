@@ -13,19 +13,23 @@ import {
   RadioTower,
   ShieldAlert,
   Sparkles,
-  type LucideIcon,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { getDashboardOverview } from "@/lib/api/dashboard";
 import { useTrainingOverview } from "@/lib/use-training-overview";
-import { cn } from "@/lib/utils";
+import {
+  WorkbenchDomainCard,
+  WorkbenchDistributionRow,
+  WorkbenchMetric,
+  WorkbenchPanel,
+  WorkbenchStatusRow,
+  WorkbenchTag,
+} from "@/components/common/workbench-ui";
 import type { DashboardSummary } from "@/types/dashboard";
 import type { ToolkitOverview } from "@/types/toolkit";
-
-type MetricTone = "amber" | "green" | "red" | "rose" | "violet";
 
 const domainLabels: Record<string, string> = {
   competitor: "竞品守望",
@@ -65,7 +69,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load dashboard");
+          setError(caught instanceof Error ? caught.message : "仪表盘数据暂不可用");
         }
       })
       .finally(() => {
@@ -93,7 +97,7 @@ export function DashboardOverview({ domain }: { domain?: string }) {
   if (error || !dashboard) {
     return (
       <div className="rounded-2xl border border-[#FFD7DF] bg-[#FFF7F8] px-4 py-3 text-sm text-[#C25B6E]">
-        {error ?? "Dashboard data not available"}
+        {error ?? "仪表盘数据暂不可用"}
       </div>
     );
   }
@@ -109,19 +113,19 @@ export function DashboardOverview({ domain }: { domain?: string }) {
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Pill tone="rose">实时概览</Pill>
-              <Pill tone="neutral">生成 {formatDateTime(dashboard.freshness.generatedAt)}</Pill>
-              <Pill tone={dashboard.freshness.latestCollectionAt ? "green" : "red"}>
+              <WorkbenchTag tone="rose">实时概览</WorkbenchTag>
+              <WorkbenchTag tone="neutral">生成 {formatDateTime(dashboard.freshness.generatedAt)}</WorkbenchTag>
+              <WorkbenchTag tone={dashboard.freshness.latestCollectionAt ? "green" : "red"}>
                 {latestCollectionLabel}
-              </Pill>
-              <Pill tone={dashboard.freshness.staleEnabledTasks > 0 ? "red" : "green"}>
+              </WorkbenchTag>
+              <WorkbenchTag tone={dashboard.freshness.staleEnabledTasks > 0 ? "red" : "green"}>
                 {dashboard.freshness.staleEnabledTasks > 0
                   ? `${dashboard.freshness.staleEnabledTasks} 个启用任务过期`
                   : "启用任务新鲜度正常"}
-              </Pill>
-              <Pill tone={dashboard.activeAlerts > 0 ? "red" : "green"}>
+              </WorkbenchTag>
+              <WorkbenchTag tone={dashboard.activeAlerts > 0 ? "red" : "green"}>
                 {dashboard.activeAlerts > 0 ? `${dashboard.activeAlerts} 条活跃预警` : "暂无活跃预警"}
-              </Pill>
+              </WorkbenchTag>
             </div>
             <h2 className="text-2xl font-semibold tracking-tight text-[#1D1D1F]">{context.title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#86868B]">{context.description}</p>
@@ -161,51 +165,52 @@ export function DashboardOverview({ domain }: { domain?: string }) {
       />
 
       <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <MetricCard
-          delta={latestCollectionLabel}
+        <WorkbenchMetric
+          caption={latestCollectionLabel}
           icon={RadioTower}
           label="情报总量"
           tone="rose"
-          value={dashboard.intelligenceCount}
+          value={String(dashboard.intelligenceCount)}
         />
-        <MetricCard
-          delta="采集链路"
+        <WorkbenchMetric
+          caption="采集链路"
           icon={CheckCircle2}
           label="任务成功率"
           tone="green"
           value={`${formatNumber(dashboard.taskSuccessRate)}%`}
         />
-        <MetricCard
-          delta="结构化字段"
+        <WorkbenchMetric
+          caption="结构化字段"
           icon={Database}
           label="字段完整率"
           tone="violet"
           value={`${formatNumber(dashboard.fieldCompleteness)}%`}
         />
-        <MetricCard
-          delta={`${dashboard.sourceCount} sources`}
+        <WorkbenchMetric
+          caption={`${dashboard.sourceCount} sources`}
           icon={Bell}
           label="活跃预警"
           tone={dashboard.activeAlerts > 0 ? "red" : "amber"}
-          value={dashboard.activeAlerts}
+          value={String(dashboard.activeAlerts)}
         />
-        <MetricCard
-          delta={`${dashboard.taskHealth.enabledTasks} enabled`}
+        <WorkbenchMetric
+          caption={`${dashboard.taskHealth.enabledTasks} enabled`}
           icon={AlertTriangle}
           label="失败任务"
           tone={dashboard.failedTasks > 0 ? "red" : "green"}
-          value={dashboard.failedTasks}
+          value={String(dashboard.failedTasks)}
         />
       </section>
 
       <section className="grid min-w-0 grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
-        <Panel
+        <WorkbenchPanel
           action={
             <Link className="text-xs font-semibold text-[#C25B6E]" href="/intelligence">
               查看全部
             </Link>
           }
           icon={FileText}
+          label="情报"
           subtitle="按 final score 排序，优先处理有证据链的信号"
           title="Top Intelligence"
         >
@@ -233,11 +238,11 @@ export function DashboardOverview({ domain }: { domain?: string }) {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#86868B]">
-                  <Tag>{domainLabels[item.domain] ?? item.domain}</Tag>
-                  <Tag>{item.type}</Tag>
-                  <Tag>{item.status}</Tag>
-                  <Tag>{item.evidenceCount} evidence</Tag>
-                  <Tag>更新 {formatRelativeTime(item.updatedAt)}</Tag>
+                  <WorkbenchTag>{domainLabels[item.domain] ?? item.domain}</WorkbenchTag>
+                  <WorkbenchTag>{item.type}</WorkbenchTag>
+                  <WorkbenchTag>{item.status}</WorkbenchTag>
+                  <WorkbenchTag>{item.evidenceCount} evidence</WorkbenchTag>
+                  <WorkbenchTag>更新 {formatRelativeTime(item.updatedAt)}</WorkbenchTag>
                 </div>
               </Link>
             ))}
@@ -247,13 +252,13 @@ export function DashboardOverview({ domain }: { domain?: string }) {
               </div>
             ) : null}
           </div>
-        </Panel>
+        </WorkbenchPanel>
 
         <div className="grid min-w-0 grid-cols-1 gap-5">
-          <Panel icon={RadioTower} subtitle="类型占比与当前情报结构" title="情报类型">
-            <div className="grid min-w-0 grid-cols-1 gap-4">
+        <WorkbenchPanel icon={RadioTower} label="情报" subtitle="类型占比与当前情报结构" title="情报类型">
+              <div className="grid min-w-0 grid-cols-1 gap-4">
               {dashboard.typeBreakdown.map((item) => (
-                <DistributionRow
+                <WorkbenchDistributionRow
                   key={item.type}
                   label={item.type}
                   tone="rose"
@@ -265,21 +270,25 @@ export function DashboardOverview({ domain }: { domain?: string }) {
                 <p className="text-sm text-[#86868B]">暂无类型分布</p>
               ) : null}
             </div>
-          </Panel>
+          </WorkbenchPanel>
 
-          <Panel icon={ShieldAlert} subtitle="任务可用性与数据源覆盖" title="任务健康">
+        <WorkbenchPanel icon={ShieldAlert} label="任务" subtitle="任务可用性与数据源覆盖" title="任务健康">
             <div className="grid min-w-0 grid-cols-1 gap-2 text-sm">
-              <StatusRow label="任务总数" value={dashboard.taskHealth.totalTasks} />
-              <StatusRow label="启用任务" value={dashboard.taskHealth.enabledTasks} />
-              <StatusRow label="失败任务" tone={dashboard.taskHealth.failedTasks > 0 ? "red" : "green"} value={dashboard.taskHealth.failedTasks} />
-              <StatusRow
+              <WorkbenchStatusRow label="任务总数" value={dashboard.taskHealth.totalTasks} />
+              <WorkbenchStatusRow label="启用任务" value={dashboard.taskHealth.enabledTasks} />
+              <WorkbenchStatusRow
+                label="失败任务"
+                tone={dashboard.taskHealth.failedTasks > 0 ? "red" : "green"}
+                value={dashboard.taskHealth.failedTasks}
+              />
+              <WorkbenchStatusRow
                 label="过期启用任务"
                 tone={dashboard.freshness.staleEnabledTasks > 0 ? "red" : "green"}
                 value={dashboard.freshness.staleEnabledTasks}
               />
-              <StatusRow label="最近运行记录" value={dashboard.taskHealth.recentRuns} />
-              <StatusRow label="数据源数量" value={dashboard.sourceCount} />
-              <StatusRow label="最近采集" value={latestCollectionLabel} />
+              <WorkbenchStatusRow label="最近运行记录" value={dashboard.taskHealth.recentRuns} />
+              <WorkbenchStatusRow label="数据源数量" value={dashboard.sourceCount} />
+              <WorkbenchStatusRow label="最近采集" value={latestCollectionLabel} />
             </div>
             {dashboard.freshness.staleTasks.length > 0 ? (
               <div className="mt-4 grid min-w-0 grid-cols-1 gap-2">
@@ -308,15 +317,20 @@ export function DashboardOverview({ domain }: { domain?: string }) {
                 ))}
               </div>
             ) : null}
-          </Panel>
+          </WorkbenchPanel>
         </div>
       </section>
 
       <section className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel icon={ChartNoAxesCombined} subtitle="四域情报、信号与项目分布" title="业务域拆解">
+        <WorkbenchPanel
+          icon={ChartNoAxesCombined}
+          label="业务"
+          subtitle="四域情报、信号与项目分布"
+          title="业务域拆解"
+        >
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
             {dashboard.domainBreakdown.map((item) => (
-              <DomainCard
+              <WorkbenchDomainCard
                 intelligenceCount={item.intelligenceCount}
                 key={item.domain}
                 label={domainLabels[item.domain] ?? item.domain}
@@ -328,16 +342,36 @@ export function DashboardOverview({ domain }: { domain?: string }) {
               <p className="text-sm text-[#86868B]">暂无域内数据</p>
             ) : null}
           </div>
-        </Panel>
+        </WorkbenchPanel>
 
-        <Panel icon={Gauge} subtitle="从采集到报告的闭环状态" title="闭环进度">
+        <WorkbenchPanel icon={Gauge} label="闭环" subtitle="从采集到报告的闭环状态" title="闭环进度">
           <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-4">
-            <WorkflowStep label="采集" tone="green" value={`${dashboard.taskHealth.enabledTasks} 个启用任务`} />
-            <WorkflowStep label="信号" tone="rose" value={`${dashboard.domainBreakdown.reduce((sum, item) => sum + item.signalCount, 0)} 条信号`} />
-            <WorkflowStep label="情报" tone="violet" value={`${dashboard.intelligenceCount} 条情报`} />
-            <WorkflowStep label="报告" tone="amber" value={`${dashboard.recentRuns} 次运行`} />
+            <WorkbenchMetric
+              label="采集"
+              size="compact"
+              tone="green"
+              value={`${dashboard.taskHealth.enabledTasks} 个启用任务`}
+            />
+            <WorkbenchMetric
+              label="信号"
+              size="compact"
+              tone="rose"
+              value={`${dashboard.domainBreakdown.reduce((sum, item) => sum + item.signalCount, 0)} 条信号`}
+            />
+            <WorkbenchMetric
+              label="情报"
+              size="compact"
+              tone="violet"
+              value={`${dashboard.intelligenceCount} 条情报`}
+            />
+            <WorkbenchMetric
+              label="报告"
+              size="compact"
+              tone="amber"
+              value={`${dashboard.recentRuns} 次运行`}
+            />
           </div>
-        </Panel>
+        </WorkbenchPanel>
       </section>
     </div>
   );
@@ -359,40 +393,46 @@ function TrainingOverviewPanel({
         <div className="min-w-0">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF4DE] px-3 py-1 text-xs font-semibold text-[#8C6824]">
             <BookOpenCheck size={14} aria-hidden="true" />
-            培训内容资产
+            采集方法资产
           </div>
-          <h2 className="text-base font-semibold text-[#1D1D1F]">当下数据采集工具与平台方法库</h2>
+          <h2 className="text-base font-semibold text-[#1D1D1F]">数据采集工具与平台方法库</h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-[#5F5757]">
-            面向培训场景，把 AI 采集工具、Agent/Skill/MCP、爬虫框架、平台采集 SOP、合规边界和证据链集中成可讲解资产。
+            汇总 AI 采集工具、Agent/Skill/MCP、爬虫框架、平台采集 SOP、合规边界和证据链，作为采集方案设计和复核的参考资产。
           </p>
           {error ? (
             <p className="mt-2 text-xs font-semibold text-[#C25B6E]">{error}</p>
           ) : null}
         </div>
         <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-5 xl:min-w-[520px]">
-          <TrainingMetric label="源" value={loading ? "..." : metrics?.sourceCount ?? 0} />
-          <TrainingMetric label="工具" value={loading ? "..." : metrics?.toolCount ?? 0} />
-          <TrainingMetric label="方法" value={loading ? "..." : metrics?.methodCount ?? 0} />
-          <TrainingMetric label="情报" value={loading ? "..." : metrics?.intelligenceCount ?? 0} />
-          <TrainingMetric label="证据" value={loading ? "..." : metrics?.evidenceCount ?? 0} />
+          <WorkbenchMetric
+            label="源"
+            value={loading ? "..." : String(metrics?.sourceCount ?? 0)}
+          />
+          <WorkbenchMetric
+            label="工具"
+            value={loading ? "..." : String(metrics?.toolCount ?? 0)}
+          />
+          <WorkbenchMetric
+            label="方法"
+            value={loading ? "..." : String(metrics?.methodCount ?? 0)}
+          />
+          <WorkbenchMetric
+            label="情报"
+            value={loading ? "..." : String(metrics?.intelligenceCount ?? 0)}
+          />
+          <WorkbenchMetric
+            label="证据"
+            value={loading ? "..." : String(metrics?.evidenceCount ?? 0)}
+          />
         </div>
       </div>
       <div className="mt-4 grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-4">
         <TrainingLink href="/toolkit" label="打开工具库" />
-        <TrainingLink href="/sources" label="查看培训源" />
+        <TrainingLink href="/sources" label="查看采集源" />
         <TrainingLink href="/raw-records" label="查看证据" />
-        <TrainingLink href="/reports" label="查看培训报告" />
+        <TrainingLink href="/reports" label="查看报告" />
       </div>
     </section>
-  );
-}
-
-function TrainingMetric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2">
-      <p className="text-xs font-semibold text-[#86868B]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-[#1D1D1F]">{value}</p>
-    </div>
   );
 }
 
@@ -419,206 +459,6 @@ function DashboardSkeleton() {
       <div className="h-96 animate-pulse rounded-2xl border border-[#E9E5E2] bg-white" />
     </div>
   );
-}
-
-function MetricCard({
-  delta,
-  icon: Icon,
-  label,
-  tone,
-  value,
-}: {
-  delta: string;
-  icon: LucideIcon;
-  label: string;
-  tone: MetricTone;
-  value: string | number;
-}) {
-  const toneClasses: Record<MetricTone, string> = {
-    amber: "bg-[#FFF4DE] text-[#FF9800]",
-    green: "bg-[#EAF8EE] text-[#2EBA62]",
-    red: "bg-[#FFE5E2] text-[#FF3B30]",
-    rose: "bg-[#FCEBF0] text-[#C25B6E]",
-    violet: "bg-[#F5F0FF] text-[#6E5CF6]",
-  };
-
-  return (
-    <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium text-[#86868B]">{label}</p>
-          <p className="mt-1 text-[11px] font-semibold text-[#C25B6E]">{delta}</p>
-        </div>
-        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", toneClasses[tone])}>
-          <Icon size={18} aria-hidden="true" />
-        </span>
-      </div>
-      <p className="text-3xl font-semibold tracking-tight text-[#1D1D1F]">{value}</p>
-    </div>
-  );
-}
-
-function Panel({
-  action,
-  children,
-  icon: Icon,
-  subtitle,
-  title,
-}: {
-  action?: ReactNode;
-  children: ReactNode;
-  icon: LucideIcon;
-  subtitle: string;
-  title: string;
-}) {
-  return (
-    <section className="min-w-0 rounded-2xl border border-[#E9E5E2] bg-white p-5">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-[#1D1D1F]">{title}</h2>
-          <p className="mt-1 text-sm text-[#86868B]">{subtitle}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {action ? <span className="whitespace-nowrap">{action}</span> : null}
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FBF8F5] text-[#86868B]">
-            <Icon size={16} aria-hidden="true" />
-          </span>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function DistributionRow({
-  label,
-  tone,
-  value,
-  width,
-}: {
-  label: string;
-  tone: "rose";
-  value: string;
-  width: number;
-}) {
-  const barColor = tone === "rose" ? "bg-[#C25B6E]" : "bg-[#C25B6E]";
-  return (
-    <div className="grid min-w-0 grid-cols-1 gap-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-[#5F5757]">{label}</span>
-        <span className="font-semibold text-[#1D1D1F]">{value}</span>
-      </div>
-      <div className="h-2 rounded-full bg-[#F5EDE8]">
-        <div className={cn("h-2 rounded-full", barColor)} style={{ width: `${clampPercent(width)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function DomainCard({
-  intelligenceCount,
-  label,
-  projectCount,
-  signalCount,
-}: {
-  intelligenceCount: number;
-  label: string;
-  projectCount: number;
-  signalCount: number;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-[#1D1D1F]">{label}</p>
-        <span className="rounded-lg bg-white px-2 py-1 text-xs font-semibold text-[#C25B6E]">
-          {intelligenceCount} intelligence
-        </span>
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-xl bg-white px-3 py-2">
-          <p className="text-[#86868B]">Signals</p>
-          <p className="mt-1 text-lg font-semibold text-[#1D1D1F]">{signalCount}</p>
-        </div>
-        <div className="rounded-xl bg-white px-3 py-2">
-          <p className="text-[#86868B]">Projects</p>
-          <p className="mt-1 text-lg font-semibold text-[#1D1D1F]">{projectCount}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function WorkflowStep({
-  label,
-  tone,
-  value,
-}: {
-  label: string;
-  tone: MetricTone;
-  value: string;
-}) {
-  const toneClasses: Record<MetricTone, string> = {
-    amber: "bg-[#FFF4DE] text-[#FF9800]",
-    green: "bg-[#EAF8EE] text-[#2EBA62]",
-    red: "bg-[#FFE5E2] text-[#FF3B30]",
-    rose: "bg-[#FCEBF0] text-[#C25B6E]",
-    violet: "bg-[#F5F0FF] text-[#6E5CF6]",
-  };
-  return (
-    <div className="rounded-2xl bg-[#FBF8F5] p-4">
-      <span className={cn("mb-3 inline-flex rounded-lg px-2 py-1 text-xs font-semibold", toneClasses[tone])}>
-        {label}
-      </span>
-      <p className="text-sm font-semibold text-[#1D1D1F]">{value}</p>
-    </div>
-  );
-}
-
-function StatusRow({
-  label,
-  tone = "neutral",
-  value,
-}: {
-  label: string;
-  tone?: "green" | "neutral" | "red";
-  value: string | number;
-}) {
-  const valueClass = {
-    green: "text-[#2EBA62]",
-    neutral: "text-[#1D1D1F]",
-    red: "text-[#FF3B30]",
-  }[tone];
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-[#FBF8F5] px-3 py-2">
-      <span className="text-[#86868B]">{label}</span>
-      <span className={cn("font-semibold", valueClass)}>{value}</span>
-    </div>
-  );
-}
-
-function Pill({ children, tone }: { children: ReactNode; tone: "green" | "neutral" | "red" | "rose" }) {
-  const toneClasses = {
-    green: "bg-[#EAF8EE] text-[#2EBA62]",
-    neutral: "bg-[#FBF8F5] text-[#86868B]",
-    red: "bg-[#FFE5E2] text-[#FF3B30]",
-    rose: "bg-[#FCEBF0] text-[#C25B6E]",
-  };
-  return (
-    <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-semibold", toneClasses[tone])}>
-      {children}
-    </span>
-  );
-}
-
-function Tag({ children }: { children: ReactNode }) {
-  return <span className="rounded-lg bg-white px-2 py-1">{children}</span>;
-}
-
-function clampPercent(value: number) {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(100, value));
 }
 
 function formatNumber(value: number) {

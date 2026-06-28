@@ -41,6 +41,7 @@ import {
   trainingRiskLabel,
 } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
+import { WorkbenchMetricPill } from "@/components/common/workbench-ui";
 import type { Project } from "@/types/project";
 import type { CollectionTask, Collector, CollectorType, Source } from "@/types/source-task";
 
@@ -451,13 +452,29 @@ export function SourcesWorkspace() {
               先验证配置，再启用调度任务；所有采集结果进入原始事实层，后续再生成实体快照、信号和情报。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricPill icon={Link2} label="数据源" value={String(sources.length)} />
-              <MetricPill icon={ShieldCheck} label="已启用" value={`${enabledCount}/${sources.length}`} />
-              <MetricPill icon={BookOpenCheck} label="培训源" value={`${trainingSources.length}/${sources.length}`} />
-              <MetricPill
+              <WorkbenchMetricPill
+                icon={Link2}
+                label="数据源"
+                value={String(sources.length)}
+                valueSize="large"
+              />
+              <WorkbenchMetricPill
+                icon={ShieldCheck}
+                label="已启用"
+                value={`${enabledCount}/${sources.length}`}
+                valueSize="large"
+              />
+              <WorkbenchMetricPill
+                icon={BookOpenCheck}
+                label="培训源"
+                value={`${trainingSources.length}/${sources.length}`}
+                valueSize="large"
+              />
+              <WorkbenchMetricPill
                 icon={Activity}
                 label="最近采集"
                 value={latestTaskRunAt ? formatRelativeTime(latestTaskRunAt) : "无"}
+                valueSize="large"
               />
             </div>
             {latestFailedRunCount > 0 ? (
@@ -726,26 +743,6 @@ function DynamicConfigFields(props: DynamicConfigFieldsProps) {
           value={props.jsonText}
         />
       </label>
-    </div>
-  );
-}
-
-function MetricPill({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Database;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={14} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 text-2xl font-semibold text-[#2E201C]">{value}</p>
     </div>
   );
 }

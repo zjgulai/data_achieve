@@ -17,10 +17,9 @@ import {
   ShieldAlert,
   ShieldCheck,
   TableProperties,
-  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   createAutomationProductDatasetExport,
@@ -36,6 +35,13 @@ import {
   sendAutomationProductDriftAlertNotifications,
 } from "@/lib/api/automation";
 import { cn } from "@/lib/utils";
+import {
+  ActionGate,
+  WorkbenchFact as Fact,
+  WorkbenchPanel as Panel,
+  WorkbenchEmptyState,
+  WorkbenchMetric,
+} from "@/components/common/workbench-ui";
 import type {
   AutomationDatasetExportFormat,
   AutomationDatasetVersion,
@@ -89,7 +95,7 @@ export function DatasetsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load datasets");
+          setError(caught instanceof Error ? caught.message : "数据集列表暂不可用");
         }
       })
       .finally(() => {
@@ -126,7 +132,7 @@ export function DatasetsWorkspace() {
       })
       .catch((caught) => {
         if (mounted) {
-          setError(caught instanceof Error ? caught.message : "Failed to load dataset detail");
+          setError(caught instanceof Error ? caught.message : "数据集详情暂不可用");
         }
       })
       .finally(() => {
@@ -186,7 +192,7 @@ export function DatasetsWorkspace() {
       ]);
       setExportMessage(`已生成导出文件：${result.filename}`);
     } catch (caught) {
-      setExportError(caught instanceof Error ? caught.message : "Dataset export failed");
+      setExportError(caught instanceof Error ? caught.message : "数据集导出暂不可用");
     } finally {
       setExportLoading(false);
     }
@@ -212,7 +218,7 @@ export function DatasetsWorkspace() {
       });
       setAlertPreview(result);
     } catch (caught) {
-      setAlertError(caught instanceof Error ? caught.message : "Alert policy preview failed");
+      setAlertError(caught instanceof Error ? caught.message : "告警策略预览暂不可用");
     } finally {
       setAlertLoading(false);
     }
@@ -243,7 +249,7 @@ export function DatasetsWorkspace() {
       setAlertNotificationSend(null);
       setAlertEmailSend(null);
     } catch (caught) {
-      setAlertError(caught instanceof Error ? caught.message : "Alert policy create failed");
+      setAlertError(caught instanceof Error ? caught.message : "告警策略创建暂不可用");
     } finally {
       setAlertLoading(false);
     }
@@ -268,7 +274,7 @@ export function DatasetsWorkspace() {
       setAlertNotificationSend(null);
       setAlertEmailSend(null);
     } catch (caught) {
-      setAlertError(caught instanceof Error ? caught.message : "Alert event bridge failed");
+      setAlertError(caught instanceof Error ? caught.message : "告警事件生成暂不可用");
     } finally {
       setAlertLoading(false);
     }
@@ -297,7 +303,7 @@ export function DatasetsWorkspace() {
       });
       setAlertNotificationSend(result);
     } catch (caught) {
-      setAlertError(caught instanceof Error ? caught.message : "Alert notification send failed");
+      setAlertError(caught instanceof Error ? caught.message : "站内通知发送暂不可用");
       setAlertEmailSend(null);
     } finally {
       setAlertLoading(false);
@@ -331,7 +337,7 @@ export function DatasetsWorkspace() {
       });
       setAlertEmailSend(result);
     } catch (caught) {
-      setAlertError(caught instanceof Error ? caught.message : "Alert email send failed");
+      setAlertError(caught instanceof Error ? caught.message : "邮件告警发送暂不可用");
       setAlertEmailSend(null);
     } finally {
       setAlertLoading(false);
@@ -368,13 +374,13 @@ export function DatasetsWorkspace() {
               数据集资产池
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#7A625A]">
-              这里管理已经从采集运行沉淀下来的结构化数据集。你可以回看每个版本的字段、清洗规则、行数、完整率和漂移事件，判断它是否适合进入培训、调度或后续导出。
+              这里管理已经从采集运行沉淀下来的结构化数据集。你可以回看每个版本的字段、清洗规则、行数、完整率和漂移事件，判断它是否适合进入调度、复核或下游交付。
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <Metric icon={Layers3} label="数据集" value={String(datasets.length)} />
-            <Metric icon={TableProperties} label="版本" value={String(totalVersions)} />
-            <Metric icon={AlertTriangle} label="漂移事件" value={String(totalDriftEvents)} />
+            <WorkbenchMetric icon={Layers3} label="数据集" size="large" value={String(datasets.length)} />
+            <WorkbenchMetric icon={TableProperties} label="版本" size="large" value={String(totalVersions)} />
+            <WorkbenchMetric icon={AlertTriangle} label="漂移事件" size="large" value={String(totalDriftEvents)} />
           </div>
         </div>
       </section>
@@ -423,12 +429,13 @@ export function DatasetsWorkspace() {
                   {item.dataset.description ?? "暂无数据集说明"}
                 </p>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  <MiniStat label="版本" value={String(item.versionCount)} />
-                  <MiniStat
+                  <WorkbenchMetric label="版本" size="compact" value={String(item.versionCount)} />
+                  <WorkbenchMetric
                     label="行数"
+                    size="compact"
                     value={item.latestVersion ? String(item.latestVersion.rowCount) : "0"}
                   />
-                  <MiniStat label="漂移" value={String(item.driftEventCount)} />
+                  <WorkbenchMetric label="漂移" size="compact" value={String(item.driftEventCount)} />
                 </div>
               </button>
             ))}
@@ -474,7 +481,7 @@ export function DatasetsWorkspace() {
                     ))}
                   </div>
                 ) : (
-                  <EmptyDetail text="当前数据集还没有保存版本。先在自动采集工作台完成数据集预览并保存数据集版本。" />
+                  <WorkbenchEmptyState compact text="当前数据集还没有保存版本。先在自动采集工作台完成数据集预览并保存数据集版本。" />
                 )}
               </Panel>
 
@@ -519,7 +526,7 @@ export function DatasetsWorkspace() {
                     <DatasetRowsPreview version={activeVersion} />
                   </div>
                 ) : (
-                  <EmptyDetail text="暂无可展示的字段和清洗规则。" />
+                  <WorkbenchEmptyState compact text="暂无可展示的字段和清洗规则。" />
                 )}
               </Panel>
             </div>
@@ -527,42 +534,51 @@ export function DatasetsWorkspace() {
             <Panel icon={FileDown} title="数据集导出">
               {activeVersion ? (
                 <div className="grid gap-4">
-                  <p className="text-sm leading-6 text-[#7A625A]">
-                    将当前数据集版本写出为受控导出文件。导出不会启动采集任务，也不会修改数据集版本；历史文件可直接下载用于培训、复盘或下游导入。
-                  </p>
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,180px)_auto_1fr] md:items-end">
-                    <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
-                      导出格式
-                      <select
-                        className="h-10 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
-                        onChange={(event) =>
-                          setExportFormat(event.target.value as AutomationDatasetExportFormat)
-                        }
-                        value={exportFormat}
+                  <ActionGate
+                    boundary={[
+                      "写入：导出任务记录与导出文件",
+                      "不启动采集，不修改数据集版本",
+                      "可用下载文件与 SHA256 复核",
+                    ]}
+                    description="将当前数据集版本写出为受控文件，用于交付、复核或下游导入。"
+                    icon={FileDown}
+                    title="文件写出 Gate"
+                    tone="export"
+                  >
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,180px)_auto_1fr] md:items-end">
+                      <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
+                        导出格式
+                        <select
+                          className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
+                          onChange={(event) =>
+                            setExportFormat(event.target.value as AutomationDatasetExportFormat)
+                          }
+                          value={exportFormat}
+                        >
+                          <option value="csv">CSV 表格</option>
+                          <option value="json">JSON 数组</option>
+                          <option value="jsonl">JSONL 行式</option>
+                        </select>
+                      </label>
+                      <button
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={exportLoading || !selectedDataset || !activeVersion}
+                        onClick={createDatasetExport}
+                        type="button"
                       >
-                        <option value="csv">CSV 表格</option>
-                        <option value="json">JSON 数组</option>
-                        <option value="jsonl">JSONL 行式</option>
-                      </select>
-                    </label>
-                    <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={exportLoading || !selectedDataset || !activeVersion}
-                      onClick={createDatasetExport}
-                      type="button"
-                    >
-                      {exportLoading ? (
-                        <Loader2 className="animate-spin" size={15} aria-hidden="true" />
-                      ) : (
-                        <FileDown size={15} aria-hidden="true" />
-                      )}
-                      生成导出文件
-                    </button>
-                    <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-xs leading-5 text-[#7A625A]">
-                      当前版本 v{activeVersion.versionNumber}，字段{" "}
-                      {activeVersion.selectedFields.join(", ")}。
+                        {exportLoading ? (
+                          <Loader2 className="animate-spin" size={15} aria-hidden="true" />
+                        ) : (
+                          <FileDown size={15} aria-hidden="true" />
+                        )}
+                        生成导出文件
+                      </button>
+                      <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-3 py-2 text-xs leading-5 text-[#7A625A]">
+                        当前版本 v{activeVersion.versionNumber}，字段{" "}
+                        {activeVersion.selectedFields.join(", ")}。
+                      </div>
                     </div>
-                  </div>
+                  </ActionGate>
 
                   {exportError ? (
                     <p className="rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] p-3 text-sm font-semibold text-[#B85F4F]">
@@ -621,11 +637,11 @@ export function DatasetsWorkspace() {
                       ))}
                     </div>
                   ) : (
-                    <EmptyDetail text="当前数据集还没有导出文件。选择格式后生成导出文件，即可在这里下载。" />
+                    <WorkbenchEmptyState compact text="当前数据集还没有导出文件。选择格式后生成导出文件，即可在这里下载。" />
                   )}
                 </div>
               ) : (
-                <EmptyDetail text="暂无可导出的数据集版本。" />
+                <WorkbenchEmptyState compact text="暂无可导出的数据集版本。" />
               )}
             </Panel>
 
@@ -637,90 +653,155 @@ export function DatasetsWorkspace() {
                   ))}
                 </div>
               ) : (
-                <EmptyDetail text="尚未保存漂移快照。完成调度审批和漂移检查后，可在自动采集工作台保存快照。" />
+                <WorkbenchEmptyState compact text="尚未保存漂移快照。完成调度审批和漂移检查后，可在自动采集工作台保存快照。" />
               )}
             </Panel>
 
             <Panel icon={ShieldAlert} title="漂移告警策略">
               <div className="grid gap-4">
                 <p className="text-sm leading-6 text-[#7A625A]">
-                  基于已保存的漂移快照预览未来告警策略。预览不会写入任何数据；
-                  确认后只创建策略，不回放历史事件、不生成告警事件，也不发送通知。
+                  告警链路按动作拆分审批：先只读预览，再写策略、桥接事件，最后再选择站内或邮件发送。
                 </p>
 
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] md:items-end">
-                  <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
-                    触发阈值
-                    <select
-                      className="h-10 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
-                      onChange={(event) =>
-                        setAlertMinStatus(event.target.value as "critical" | "warning")
-                      }
-                      value={alertMinStatus}
+                <ActionGate
+                  boundary={[
+                    "只读：读取已保存漂移快照",
+                    "不创建策略、事件或通知",
+                    "预览通过后才开放策略写入",
+                  ]}
+                  description="调整阈值和通道，先确认会命中的漂移范围。"
+                  icon={ShieldCheck}
+                  title="只读预览 Gate"
+                  tone="preview"
+                >
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+                    <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
+                      触发阈值
+                      <select
+                        className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
+                        onChange={(event) =>
+                          setAlertMinStatus(event.target.value as "critical" | "warning")
+                        }
+                        value={alertMinStatus}
+                      >
+                        <option value="critical">只看 critical</option>
+                        <option value="warning">warning + critical</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
+                      通知通道
+                      <select
+                        className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
+                        onChange={(event) =>
+                          setAlertChannel(event.target.value as "in_app" | "email" | "both")
+                        }
+                        value={alertChannel}
+                      >
+                        <option value="in_app">站内通知</option>
+                        <option value="email">邮件</option>
+                        <option value="both">站内 + 邮件</option>
+                      </select>
+                    </label>
+                    <button
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#E8D4CB] bg-white px-4 text-sm font-semibold text-[#7D4F43] hover:border-[#C96F5C] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={alertLoading || !selectedDataset}
+                      onClick={previewAlertPolicy}
+                      type="button"
                     >
-                      <option value="critical">只看 critical</option>
-                      <option value="warning">warning + critical</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm font-semibold text-[#2E201C]">
-                    通知通道
-                    <select
-                      className="h-10 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-medium text-[#2E201C] outline-none focus:border-[#C96F5C]"
-                      onChange={(event) =>
-                        setAlertChannel(event.target.value as "in_app" | "email" | "both")
-                      }
-                      value={alertChannel}
+                      {alertLoading ? (
+                        <Loader2 className="animate-spin" size={15} aria-hidden="true" />
+                      ) : null}
+                      预览告警策略
+                    </button>
+                  </div>
+                </ActionGate>
+
+                <div className="grid gap-3 xl:grid-cols-2">
+                  <ActionGate
+                    boundary={[
+                      "写入：告警策略",
+                      "不回放历史事件",
+                      "不生成告警事件或通知",
+                    ]}
+                    description="把预览策略固化为后续漂移匹配规则。"
+                    icon={ShieldAlert}
+                    title="策略写入 Gate"
+                    tone="write"
+                  >
+                    <button
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={alertLoading || !alertPreview}
+                      onClick={createAlertPolicy}
+                      type="button"
                     >
-                      <option value="in_app">站内通知</option>
-                      <option value="email">邮件</option>
-                      <option value="both">站内 + 邮件</option>
-                    </select>
-                  </label>
-                  <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#E8D4CB] bg-white px-4 text-sm font-semibold text-[#7D4F43] hover:border-[#C96F5C] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={alertLoading || !selectedDataset}
-                    onClick={previewAlertPolicy}
-                    type="button"
+                      确认创建策略
+                    </button>
+                  </ActionGate>
+
+                  <ActionGate
+                    boundary={[
+                      "写入：漂移信号与告警事件",
+                      "依赖已创建策略和漂移快照",
+                      "不发送站内通知或邮件",
+                    ]}
+                    description="把数据集漂移转为告警事件，供后续发送动作使用。"
+                    icon={AlertTriangle}
+                    title="事件桥接 Gate"
+                    tone="write"
                   >
-                    {alertLoading ? (
-                      <Loader2 className="animate-spin" size={15} aria-hidden="true" />
-                    ) : null}
-                    预览告警策略
-                  </button>
-                  <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={alertLoading || !alertPreview}
-                    onClick={createAlertPolicy}
-                    type="button"
+                    <button
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-4 text-sm font-semibold text-white hover:bg-[#4C332B] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={alertLoading || !alertRuleCreate || !activeDriftEvent}
+                      onClick={createAlertEvents}
+                      type="button"
+                    >
+                      生成告警事件
+                    </button>
+                  </ActionGate>
+
+                  <ActionGate
+                    boundary={[
+                      "发送：站内通知",
+                      "依赖本次生成的告警事件",
+                      "不触发邮件发送",
+                    ]}
+                    description="向工作区通知队列投递站内告警。"
+                    icon={BellRing}
+                    title="站内通知发送 Gate"
+                    tone="send"
                   >
-                    确认创建策略
-                  </button>
-                  <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#2E201C] px-4 text-sm font-semibold text-white hover:bg-[#4C332B] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={alertLoading || !alertRuleCreate || !activeDriftEvent}
-                    onClick={createAlertEvents}
-                    type="button"
+                    <button
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#287A45] px-4 text-sm font-semibold text-white hover:bg-[#22683B] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={alertLoading || !alertEventCreate?.alertEvents.length}
+                      onClick={sendAlertNotifications}
+                      type="button"
+                    >
+                      <BellRing size={15} aria-hidden="true" />
+                      发送站内通知
+                    </button>
+                  </ActionGate>
+
+                  <ActionGate
+                    boundary={[
+                      "发送：外部邮件",
+                      "仅在通道包含邮件时可用",
+                      "不创建新的告警事件",
+                    ]}
+                    description="对已生成的告警事件执行一次邮件投递。"
+                    icon={Mail}
+                    title="外部邮件发送 Gate"
+                    tone="send"
                   >
-                    生成告警事件
-                  </button>
-                  <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#287A45] px-4 text-sm font-semibold text-white hover:bg-[#22683B] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={alertLoading || !alertEventCreate?.alertEvents.length}
-                    onClick={sendAlertNotifications}
-                    type="button"
-                  >
-                    <BellRing size={15} aria-hidden="true" />
-                    发送站内通知
-                  </button>
-                  <button
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#7A5A3E] px-4 text-sm font-semibold text-white hover:bg-[#674A35] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={alertLoading || !alertEventCreate?.alertEvents.length}
-                    onClick={sendAlertEmails}
-                    type="button"
-                  >
-                    <Mail size={15} aria-hidden="true" />
-                    发送邮件告警
-                  </button>
+                    <button
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#7A5A3E] px-4 text-sm font-semibold text-white hover:bg-[#674A35] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={alertLoading || !alertEventCreate?.alertEvents.length}
+                      onClick={sendAlertEmails}
+                      type="button"
+                    >
+                      <Mail size={15} aria-hidden="true" />
+                      发送邮件告警
+                    </button>
+                  </ActionGate>
                 </div>
 
                 {alertError ? (
@@ -746,15 +827,18 @@ export function DatasetsWorkspace() {
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-3">
-                      <MiniStat
+                      <WorkbenchMetric
+                        size="compact"
                         label="匹配漂移快照"
                         value={String(alertPreview.summary.matchedEvents)}
                       />
-                      <MiniStat
+                      <WorkbenchMetric
+                        size="compact"
                         label="critical"
                         value={String(alertPreview.summary.criticalEvents)}
                       />
-                      <MiniStat
+                      <WorkbenchMetric
+                        size="compact"
                         label="warning"
                         value={String(alertPreview.summary.warningEvents)}
                       />
@@ -819,66 +903,6 @@ export function DatasetsWorkspace() {
   );
 }
 
-function Metric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#E8D4CB] bg-white/85 p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase text-[#B47767]">
-        <Icon size={15} aria-hidden="true" />
-        {label}
-      </div>
-      <p className="mt-2 text-2xl font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
-function Panel({
-  children,
-  icon: Icon,
-  title,
-}: {
-  children: ReactNode;
-  icon: LucideIcon;
-  title: string;
-}) {
-  return (
-    <section className="min-w-0 rounded-2xl border border-[#F0E1D9] bg-white p-4">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#FFF1EC] text-[#C96F5C]">
-          <Icon size={17} aria-hidden="true" />
-        </span>
-        <h2 className="text-base font-semibold text-[#2E201C]">{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] px-2 py-2">
-      <p className="text-xs font-semibold text-[#B47767]">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
-      <p className="text-xs font-semibold uppercase text-[#B47767]">{label}</p>
-      <p className="mt-1 break-words text-sm font-semibold text-[#2E201C]">{value}</p>
-    </div>
-  );
-}
-
 function VersionCard({ version }: { version: AutomationDatasetVersion }) {
   return (
     <article className="rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
@@ -892,9 +916,9 @@ function VersionCard({ version }: { version: AutomationDatasetVersion }) {
         </span>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <MiniStat label="行数" value={String(version.rowCount)} />
-        <MiniStat label="完整率" value={`${version.averageCompletenessPercent}%`} />
-        <MiniStat label="运行数" value={String(version.sourceTaskRunIds.length)} />
+        <WorkbenchMetric size="compact" label="行数" value={String(version.rowCount)} />
+        <WorkbenchMetric size="compact" label="完整率" value={`${version.averageCompletenessPercent}%`} />
+        <WorkbenchMetric size="compact" label="运行数" value={String(version.sourceTaskRunIds.length)} />
       </div>
     </article>
   );
@@ -965,9 +989,9 @@ function DriftEventCard({ event }: { event: AutomationProductDriftEvent }) {
           ) : null}
         </div>
         <div className="grid grid-cols-3 gap-2 sm:w-72">
-          <MiniStat label="检查" value={String(event.summary.checkedTasks)} />
-          <MiniStat label="关键" value={String(event.summary.criticalTasks)} />
-          <MiniStat label="缺字段" value={String(event.summary.missingFieldTasks)} />
+          <WorkbenchMetric size="compact" label="检查" value={String(event.summary.checkedTasks)} />
+          <WorkbenchMetric size="compact" label="关键" value={String(event.summary.criticalTasks)} />
+          <WorkbenchMetric size="compact" label="缺字段" value={String(event.summary.missingFieldTasks)} />
         </div>
       </div>
       <div className="mt-3 grid gap-2">
@@ -1005,14 +1029,6 @@ function StatusBadge({ status }: { status: string }) {
       <Icon size={13} aria-hidden="true" />
       {status}
     </span>
-  );
-}
-
-function EmptyDetail({ text }: { text: string }) {
-  return (
-    <p className="rounded-xl border border-dashed border-[#E8D4CB] bg-[#FFFDFC] p-4 text-sm leading-6 text-[#7A625A]">
-      {text}
-    </p>
   );
 }
 
