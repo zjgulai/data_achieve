@@ -200,6 +200,7 @@ async def test_retained_public_content_cleanup_follows_member_workspace_lineage(
             created_at=now - timedelta(days=8),
             export_root=export_root,
             workspace_owner_email="shared-owner@example.com",
+            include_refresh_run=True,
         )
         await session.commit()
 
@@ -217,10 +218,10 @@ async def test_retained_public_content_cleanup_follows_member_workspace_lineage(
     assert report.counts["projects"] == 0
     assert report.counts["sources"] == 1
     assert report.counts["collection_tasks"] == 1
-    assert report.counts["task_runs"] == 1
-    assert report.counts["raw_records"] == 1
-    assert report.counts["entities"] == 1
-    assert report.counts["entity_snapshots"] == 1
+    assert report.counts["task_runs"] == 2
+    assert report.counts["raw_records"] == 2
+    assert report.counts["entities"] == 2
+    assert report.counts["entity_snapshots"] == 2
     assert report.counts["datasets"] == 1
     assert report.counts["dataset_versions"] == 1
     assert report.counts["dataset_export_jobs"] == 1
@@ -245,9 +246,13 @@ async def test_retained_public_content_cleanup_follows_member_workspace_lineage(
         assert await session.get(Source, fixture["source_id"]) is None
         assert await session.get(CollectionTask, fixture["task_id"]) is None
         assert await session.get(TaskRun, fixture["task_run_id"]) is None
+        assert await session.get(TaskRun, fixture["refresh_task_run_id"]) is None
         assert await session.get(RawRecord, fixture["raw_record_id"]) is None
+        assert await session.get(RawRecord, fixture["refresh_raw_record_id"]) is None
         assert await session.get(Entity, fixture["entity_id"]) is None
+        assert await session.get(Entity, fixture["refresh_entity_id"]) is None
         assert await session.get(EntitySnapshot, fixture["snapshot_id"]) is None
+        assert await session.get(EntitySnapshot, fixture["refresh_snapshot_id"]) is None
         assert await session.get(Dataset, fixture["dataset_id"]) is None
         assert await session.get(DatasetVersion, fixture["dataset_version_id"]) is None
         assert await session.get(DatasetExportJob, fixture["export_job_id"]) is None
@@ -288,6 +293,7 @@ async def _create_public_content_fixture(
     export_root: Path,
     artifact_path: Path | None = None,
     workspace_owner_email: str | None = None,
+    include_refresh_run: bool = False,
 ) -> dict[str, Any]:
     user = User(
         email=email,
@@ -446,6 +452,80 @@ async def _create_public_content_fixture(
     await session.flush()
     entity.latest_snapshot_id = snapshot.id
 
+    refresh_task_run = None
+    refresh_raw_record = None
+    refresh_entity = None
+    refresh_snapshot = None
+    if include_refresh_run:
+        refresh_created_at = created_at + timedelta(minutes=5)
+        refresh_task_run = TaskRun(
+            task_id=task.id,
+            workspace_id=workspace.id,
+            status="success",
+            started_at=refresh_created_at,
+            finished_at=refresh_created_at,
+            records_count=1,
+            entities_count=1,
+            error_message=None,
+            error_traceback=None,
+            logs=[],
+            created_at=refresh_created_at,
+        )
+        session.add(refresh_task_run)
+        await session.flush()
+
+        refresh_raw_record = RawRecord(
+            workspace_id=workspace.id,
+            project_id=project.id,
+            source_id=source.id,
+            task_run_id=refresh_task_run.id,
+            record_type="public_feed",
+            source_url="https://hnrss.org/frontpage",
+            content={
+                "entries": [
+                    {
+                        "title": f"{slug} refresh",
+                        "link": f"https://example.com/{slug}/refresh",
+                    }
+                ]
+            },
+            content_hash=f"{slug}-refresh-hash",
+            screenshot_url=None,
+            collected_at=refresh_created_at,
+            created_at=refresh_created_at,
+        )
+        session.add(refresh_raw_record)
+        await session.flush()
+
+        refresh_entity = Entity(
+            workspace_id=workspace.id,
+            project_id=project.id,
+            entity_type="public_content",
+            external_id=f"https://example.com/{slug}/refresh",
+            canonical_url=f"https://example.com/{slug}/refresh",
+            name=f"{slug} refresh",
+            domain="osint",
+            latest_snapshot_id=None,
+            first_seen_at=refresh_created_at,
+            last_seen_at=refresh_created_at,
+            created_at=refresh_created_at,
+            updated_at=refresh_created_at,
+        )
+        session.add(refresh_entity)
+        await session.flush()
+
+        refresh_snapshot = EntitySnapshot(
+            entity_id=refresh_entity.id,
+            raw_record_id=refresh_raw_record.id,
+            snapshot_data={"title": f"{slug} refresh"},
+            metrics={"row_count": 1},
+            captured_at=refresh_created_at,
+            created_at=refresh_created_at,
+        )
+        session.add(refresh_snapshot)
+        await session.flush()
+        refresh_entity.latest_snapshot_id = refresh_snapshot.id
+
     dataset = Dataset(
         workspace_id=workspace.id,
         project_id=project.id,
@@ -576,9 +656,17 @@ async def _create_public_content_fixture(
         "source_id": source.id,
         "task_id": task.id,
         "task_run_id": task_run.id,
+        "refresh_task_run_id": refresh_task_run.id if refresh_task_run is not None else task_run.id,
         "raw_record_id": raw_record.id,
+        "refresh_raw_record_id": (
+            refresh_raw_record.id if refresh_raw_record is not None else raw_record.id
+        ),
         "entity_id": entity.id,
+        "refresh_entity_id": refresh_entity.id if refresh_entity is not None else entity.id,
         "snapshot_id": snapshot.id,
+        "refresh_snapshot_id": (
+            refresh_snapshot.id if refresh_snapshot is not None else snapshot.id
+        ),
         "dataset_id": dataset.id,
         "dataset_version_id": dataset_version.id,
         "drift_event_id": drift_event.id,

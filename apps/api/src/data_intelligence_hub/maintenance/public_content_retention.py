@@ -252,6 +252,13 @@ async def _collect_retained_public_content_ids(
             ),
         )
     )
+    run_ids = _unique_ids(
+        run_ids
+        + await _fetch_ids(
+            session,
+            select(TaskRun.id).where(TaskRun.task_id.in_(task_ids)),
+        )
+    )
     source_ids = _unique_ids(
         initial_source_ids
         + await _fetch_ids(
