@@ -5,7 +5,7 @@ module: automation
 topic: prd2-r0-release-boundary
 status: stable
 created: 2026-06-21
-updated: 2026-06-24
+updated: 2026-06-25
 owner: self
 source: human+ai
 ---
@@ -16,7 +16,7 @@ source: human+ai
 
 本文件记录 2026-06-21 R0 release boundary 的实际执行结果。R0 目标是把本地 PRD2/M1/M2 工作树和当前生产部署状态分层，不把本地通过、DB dry-run 或生产只读 smoke 说成生产写入验收。
 
-初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice，并部署 production SHA `af23cefc92aa9fec336f632a5b1561623811c2fd` 完成 scoped production docs/page gate：`generic_web` docs/page snapshot 进入 `public_content_update` Dataset/drift/report/event/report-asset 链路，并在取证后清理 scoped fixtures 至零。之后部署 production SHA `a81154426fd4e942fc9439de3dcbd9c816122562` 完成 scoped public-content scheduler approval gate：批准一个 public-content Task 的 schedule metadata，验证未启动 scheduler tick 或新 TaskRun，并在取证后清理 scoped fixtures 至零。随后本地完成 M5 retained public-content TTL/cleanup policy slice，新增 dry-run/execute 维护入口与 export artifact root safety checks；该 slice 未部署生产、未运行 production cleanup dry-run/execute，也未删除 retained canary。provider call、product/report/subscription email、scheduler tick execution、生产浏览器运行和浏览器 artifact 写入仍未执行。
+初始 R0 release-boundary pass 没有执行生产部署、生产数据库 migration、生产写入、登录态操作、provider call、邮件发送、站内通知发送或调度变更。2026-06-21 后续 post-merge release 已在明确授权后执行生产部署和 Alembic migration。2026-06-23 已完成一次明确授权的小范围 M3 GitHub API-first production package gate，并在取证后清理 scoped fixtures；同日已完成 M5 Public Web/RSS/Docs production package smoke，允许一次公开 RSS TaskRun、DatasetVersion save、read-only drift/report preview，并在取证后清理 scoped fixtures；之后又完成 M5 Public Content Report asset gate，允许创建一个 `public_content` Report asset 并清理 scoped fixtures；随后完成 M5 Public Content Dataset export gate，允许创建一个 CSV DatasetExportJob、写出一个受控导出文件、下载校验并清理 scoped fixtures 与导出文件；之后完成 M5 Public Content retained lifecycle gate，保留一组 public content canary 资产并验证重登录后 Dataset/Report/Export 可读。2026-06-24 先本地完成 public-content drift event persistence slice，随后在明确授权后部署 production SHA `68c27e0f9c62d542149eedc5b18439938103b4bb` 并完成 scoped production drift-event gate：创建一个 `public_content_drift` DatasetDriftEvent、重复提交复用同一 ID，并在取证后清理 scoped fixtures 至零；retained canary 未被修改。同日随后本地完成 M5 Public Content docs diff slice，并部署 production SHA `af23cefc92aa9fec336f632a5b1561623811c2fd` 完成 scoped production docs/page gate：`generic_web` docs/page snapshot 进入 `public_content_update` Dataset/drift/report/event/report-asset 链路，并在取证后清理 scoped fixtures 至零。之后部署 production SHA `a81154426fd4e942fc9439de3dcbd9c816122562` 完成 scoped public-content scheduler approval gate：批准一个 public-content Task 的 schedule metadata，验证未启动 scheduler tick 或新 TaskRun，并在取证后清理 scoped fixtures 至零。随后本地完成 M5 retained public-content TTL/cleanup policy slice，新增 dry-run/execute 维护入口与 export artifact root safety checks；之后已完成 production retained cleanup dry-run、scoped scheduler tick、retained canary scheduler/drift refresh、retained TTL observation baseline 和 deploy marker diagnosis。当前 active app marker 与 app `HEAD=3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` 匹配；父级 marker/current symlink 是旧 release-directory 路径残留。2026-06-25 已把未来 production identity probe 标准化到 `.codex/commands.md`：当前 compose 布局读取 `/opt/data-achieve-scrapy/app/.deploy-sha`，父级 marker/current symlink 只作为单独 housekeeping gate 处理。同日完成 retained TTL midpoint observation：preflight 证明 retained canary 仍在，Task 保持 `manual_refresh_only` / `schedule_cron=null`；default 168h 与 48h dry-run 均为 0，0h dry-run 覆盖完整 retained graph，仍未执行 cleanup。provider call、product/report/subscription email、production retained cleanup execute、default 168h multi-day TTL conclusion、生产浏览器运行和浏览器 artifact 写入仍未执行。
 
 ## 1. Task Orchestration
 
@@ -41,7 +41,30 @@ source: human+ai
 | R0-17 | M5 Public Content scheduler approval production gate | done_scoped_m5 | production HEAD `.deploy-sha=a81154426fd4e942fc9439de3dcbd9c816122562`；生产 `public_feed` TaskRun success；`public_content_update` DatasetVersion `1a9ce0f2-b7e3-4437-bb4e-a1c45c1a78b7`；Task `6338d234-554d-4527-9f51-5f695e646bdf` 写入 `manual_refresh_only`、`schedule_cron=null`、`freshness_target_hours=72`；`public_content_schedule_approved`；`run_started=false`；`scheduler_tick_started=false`；approval 前后 TaskRun 不变；exact-ID cleanup 和 generic cleanup dry-run 全 0 |
 | R0-18 | M5 Public Content retained TTL/cleanup policy local slice | done_local_m5 | 本地新增 `data_intelligence_hub.maintenance.public_content_retention` 与 `scripts/cleanup-retained-public-content.sh`；默认 dry-run，限定 `retained-public-content-*@example.com`，覆盖 public-content Source/Task/Run/Dataset/DriftEvent/Report/Export graph，带 export artifact root validation；targeted retention tests `2 passed`、retention plus E2E cleanup tests `4 passed`、API full pytest `110 passed`、ruff、script help 和 `git diff --check` 通过；无 production deploy、production cleanup dry-run/execute、retained canary deletion |
 | R0-19 | M5 Public Content retained cleanup production dry-run gate | done_dry_run_m5 | production HEAD `.deploy-sha=d11d5a477ea3125649f7674495bfca5b93148e32`；首次 `c321a52` dry-run 暴露 member workspace lineage gap 且未 execute；修复后 `--older-than-hours 0` dry-run 命中 retained canary Source/Task/Run/Dataset/Version/Report/Export artifact plan，`export_artifact_path_violations=0`；默认 168 小时 dry-run 全 0；无 cleanup execute、canary deletion、provider/email/scheduler/browser side effect |
-| R0-20 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、scheduler tick execution、production browser run、production retained cleanup execute、multi-day TTL 均未执行 |
+| R0-20 | M5 Public Content scheduler tick / recurring monitoring production gate | done_scoped_m5 | scoped `public_feed` Task 临时 approved `auto_freshness` + `* * * * *`；background tick `47356df1-8f5e-442c-883b-f46ec51c6bbc` 返回 `due=1`、`started=1`；scheduled TaskRun `258b2265-5f5a-4505-a9f7-400aee863259` success；read-only drift check completed；exact cleanup returned scoped fixture to zero |
+| R0-21 | M5 Public Content retained canary scheduler/drift refresh gate | done_retained_m5 | retained Task `b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6` 临时 approved `auto_freshness` + `* * * * *`；tick `b1fa40d1-215a-469c-b2b7-f841fb8edcab` returned `due=1`、`started=1`；retained TaskRun `fb2dc909-f125-402e-8759-7443e0214e55` success；task restored to `manual_refresh_only` / `schedule_cron=null`；retained `public_content_drift` event `73fbce88-ea11-4cc6-8c61-c6088d1ccaec` saved；cleanup lineage fix dry-run returned `task_runs=2`、`dataset_drift_events=1`、`export_artifact_path_violations=0` |
+| R0-22 | M5 Public Content retained TTL observation baseline | done_dry_run_m5 | production health ok and `api/db/edge/web` healthy；initial identity check read stale parent `../.deploy-sha=dda2786638d4aac8647bbff8b3694b05113678f3`; follow-up diagnosis confirmed active app marker `/opt/data-achieve-scrapy/app/.deploy-sha=3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` matches active app `HEAD`; default 168h dry-run returned all zero；24h and 0h dry-runs matched full retained canary graph with `task_runs=2`、`dataset_drift_events=1`、`export_artifact_files=1`、`cleanup_ready=true`、`export_artifact_path_violations=0`; no cleanup execute |
+| R0-23 | Deploy marker diagnosis | done_read_only | active app working tree and `/opt/data-achieve-scrapy/app/.deploy-sha` both `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331`; running containers use compose working directory `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`; parent `/opt/data-achieve-scrapy/.deploy-sha=dda2786638d4aac8647bbff8b3694b05113678f3` and `current -> releases/20260619190523-dda2786638d4` are stale release-directory markers; no marker rewrite, symlink rewrite, deploy, restart, cleanup execute, provider/email/scheduler/browser side effect |
+| R0-24 | Production identity probe standardization | done_docs | `.codex/commands.md` now defines active app marker probe: `cd /opt/data-achieve-scrapy/app`, `git rev-parse HEAD`, `cat .deploy-sha`, API/Web compose working directory inspect, and health check；parent marker/current symlink housekeeping remains separate |
+| R0-25 | M5 retained TTL midpoint observation | done_dry_run_m5 | 2026-06-25 identity probe still `3c92fcbf`；retained preflight found user/source/task/dataset/version present；Task `b8a4cb3f` remains `manual_refresh_only` with `schedule_cron=null`；default 168h dry-run all zero；48h dry-run all zero；0h dry-run matched retained graph with `task_runs=2`、`dataset_drift_events=1`、`dataset_export_jobs=1`、`export_artifact_files=1`、`cleanup_ready=true`、`export_artifact_path_violations=0`; no cleanup execute |
+| R0-26 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、production browser run、production retained cleanup execute、default 168h multi-day TTL conclusion、production marker/symlink housekeeping 均未执行 |
+
+## 1.1 Production Identity Probe Standard
+
+Use this probe for future production closeout and release identity checks under the current compose deployment layout:
+
+```bash
+cd /opt/data-achieve-scrapy/app
+git rev-parse HEAD
+cat .deploy-sha
+docker inspect data_achieve_scrapy_api --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'
+docker inspect data_achieve_scrapy_web --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'
+curl -fsS https://scrapy.lute-tlz-dddd.top/api/health
+```
+
+Supported claim: current production identity is the active app working tree `HEAD` plus `/opt/data-achieve-scrapy/app/.deploy-sha`. Both were last verified at `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331` in the 2026-06-24 diagnosis.
+
+Do not use `/opt/data-achieve-scrapy/.deploy-sha` or `/opt/data-achieve-scrapy/current` as current identity evidence unless the release-directory symlink deployment path is deliberately restored. Rewriting those parent markers is a separate production housekeeping task, not part of read-only identity probing.
 
 ## 2. Release Scope Inventory
 
@@ -1303,6 +1326,82 @@ Supported claim: local repo now has a dry-run-by-default retained public-content
 
 Unsupported claim: production has this cleanup tool deployed, production retained cleanup dry-run or execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
 
+## M5 Public Content Retained Refresh Drift Scheduler Gate - 2026-06-24
+
+This gate updated the existing retained public-content canary rather than creating and cleaning a new scoped fixture. It added one retained scheduler TaskRun and one retained public-content drift event, then fixed the retained cleanup dry-run graph so the later scheduler run is covered by future cleanup planning.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_scheduler_drift_refresh
+allowed: temporary retained schedule approval, one background scheduler TaskRun, restore manual schedule, save one retained public_content_drift event, deploy cleanup lineage fix, dry-run retained cleanup
+denied: cleanup execute, retained canary deletion, provider call, email send, Dataset export create, Report asset create, production browser run, browser artifact write
+cleanup_policy: retained_no_cleanup
+```
+
+Refresh evidence:
+
+```text
+preflight artifact: tmp/outputs/retained-public-content-preflight-20260624.json
+live artifact: tmp/outputs/retained-public-content-scheduler-drift-refresh-20260624.json
+retained task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+temporary schedule: auto_freshness, * * * * *, freshness_target_hours=1
+scheduler tick: b1fa40d1-215a-469c-b2b7-f841fb8edcab
+tick metrics: due=1, started=1, task_errors=0, report_subscriptions_due=0
+new retained TaskRun: fb2dc909-f125-402e-8759-7443e0214e55
+TaskRun status: success
+records_count: 1
+restored schedule: manual_refresh_only, schedule_cron=null, freshness_target_hours=72
+retained drift event: 73fbce88-ea11-4cc6-8c61-c6088d1ccaec
+drift status: critical
+drift summary: checked_tasks=1, added_rows=5, removed_rows=5, run_started=false, alert_created=false
+postflight retained counts: task_runs=2, dataset_drift_events=1, dataset_export_jobs=1, reports=1
+```
+
+Cleanup lineage fix:
+
+```text
+finding: post-refresh retained cleanup dry-run counted dataset_drift_events=1 but task_runs=1 while retained postflight had task_runs=2
+fix: include all TaskRuns for retained task IDs reached through retained lineage
+local tests: retained tests 3 passed; retained plus E2E cleanup 5 passed; API full pytest 111 passed, 1 warning; ruff passed
+production commit: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+.deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+health: production/ok/connected/current
+containers: api/db/edge/web healthy
+route smoke: /dashboard, /automation, /datasets, /tasks, /sources, /raw-records, /reports, /alerts, /notifications, /projects, /signals, /entities, /toolkit all 200
+```
+
+Final retained cleanup dry-run after fix:
+
+```text
+artifact: tmp/outputs/retained-public-content-cleanup-dryrun-after-lineage-fix-20260624.json
+dry_run=true
+retention_hours=0
+cleanup_ready=true
+export_artifact_path_violations=0
+users=1
+workspaces=1
+workspace_members=2
+sources=1
+collection_tasks=1
+task_runs=2
+raw_records=1
+entities=1
+entity_snapshots=1
+datasets=1
+dataset_versions=1
+dataset_drift_events=1
+dataset_export_jobs=1
+reports=1
+report_audit_events=1
+notifications=1
+export_artifact_files=1
+```
+
+Supported claim: production has one retained public-content canary refreshed through scheduler execution, one retained `public_content_drift` event, and a retained cleanup dry-run graph that includes both retained TaskRuns.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, multi-day TTL has been observed, provider enrichment ran, email was sent, a Dataset export or Report asset was created by this gate, a production browser ran, or browser artifacts were written.
+
 ## M5 Public Content Retained Cleanup Production Dry-Run Gate - 2026-06-24
 
 M5 retained cleanup production dry-run gate deployed the cleanup policy tooling and ran dry-run only. It did not pass `--execute`, did not delete retained assets, and did not mutate scheduler/provider/email/browser state.
@@ -1421,3 +1520,171 @@ containers: api/db/edge/web healthy
 Supported claim: production now has retained public-content cleanup tooling deployed, and dry-run verifies the retained canary cleanup plan, export artifact root safety, and default TTL cutoff without deleting data.
 
 Unsupported claim: cleanup execute has run, retained canary assets were deleted, multi-day TTL has been observed, scheduler recurring monitoring is active, provider enrichment ran, email was sent, a production browser ran, or browser artifacts were written.
+
+## M5 Public Content Retained TTL Observation Baseline - 2026-06-24
+
+This pass retained the existing canary and ran production read-only/dry-run checks only. It did not pass `--execute`, did not delete retained assets, and did not mutate provider/email/scheduler/browser state.
+
+Authorization envelope:
+
+```text
+scope_type=retained_public_content_ttl_observation
+allowed: production health check, retained preflight, retained cleanup dry-run with default 168h, 24h, and 0h windows
+denied: cleanup execute, retained canary deletion, provider call, email send, scheduler mutation, Dataset export creation, Report asset creation, production browser run, browser artifact write
+cleanup_policy: retained_no_cleanup
+```
+
+Fresh production baseline:
+
+```text
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+scheduler_enabled: true
+remote working tree HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app .deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+parent ../.deploy-sha: dda2786638d4aac8647bbff8b3694b05113678f3
+deploy identity note: active app marker matches HEAD; parent marker is stale release-directory metadata
+containers: api/db/edge/web healthy
+```
+
+Preflight:
+
+```text
+artifact: tmp/outputs/retained-public-content-ttl-observation-preflight-20260624.json
+retained account: retained-public-content-20260623123816-90w0q7@example.com
+source: c86b280c-0315-4d93-bcd7-37786996a22b
+task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task schedule: manual_refresh_only, schedule_cron=null
+task_runs: 2
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+latest scheduler tick: due=0, started=0, task_errors=0, report_subscriptions_due=0
+```
+
+Default 168h dry-run:
+
+```text
+artifact: tmp/outputs/retained-public-content-ttl-observation-default-168h-20260624.json
+dry_run: true
+retention_hours: 168
+cleanup_ready: true
+all cleanup candidate counts: 0
+provider_call: false
+email_sent: false
+scheduler_tick_started: false
+```
+
+24h and 0h dry-runs:
+
+```text
+artifacts:
+  tmp/outputs/retained-public-content-ttl-observation-24h-20260624.json
+  tmp/outputs/retained-public-content-ttl-observation-0h-20260624.json
+dry_run: true
+cleanup_ready: true
+users: 1
+workspaces: 1
+workspace_members: 2
+sources: 1
+collection_tasks: 1
+task_runs: 2
+raw_records: 1
+entities: 1
+entity_snapshots: 1
+datasets: 1
+dataset_versions: 1
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+notifications: 1
+export_artifact_files: 1
+export_artifact_path_violations: 0
+```
+
+Supported claim: the retained canary is now beyond a 24h TTL observation threshold, the 24h dry-run matches the full retained public-content graph, and default 168h TTL still returns zero candidates.
+
+Unsupported claim: cleanup execute has run, retained canary assets were deleted, default 168h multi-day TTL has completed, provider enrichment ran, email was sent, a Dataset export or Report asset was created by this pass, a production browser ran, or browser artifacts were written.
+
+## Deploy Marker Diagnosis - 2026-06-24
+
+This pass clarified the deploy marker path after the retained TTL baseline initially read parent `../.deploy-sha`. It was read-only and did not rewrite marker files or restart services.
+
+Fresh evidence:
+
+```text
+health: production/ok/connected/current
+active app working tree: /opt/data-achieve-scrapy/app
+active app HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app marker: /opt/data-achieve-scrapy/app/.deploy-sha = 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+parent marker: /opt/data-achieve-scrapy/.deploy-sha = dda2786638d4aac8647bbff8b3694b05113678f3
+parent current symlink: /opt/data-achieve-scrapy/current -> /opt/data-achieve-scrapy/releases/20260619190523-dda2786638d4
+api compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+web compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+api image: sha256:1df3dd1c2b877a048a102f3ecc4e5af948967eccfc7c490b3f85896182d9814d
+web image: sha256:6835637a20996bfd842c17b774ee4d6e5868d24b337fbd1ba6ce9291531f61d4
+```
+
+Supported claim: current production identity for the active compose layout is app `HEAD` plus `/opt/data-achieve-scrapy/app/.deploy-sha`, both at `3c92fcbf2230e1b0b4eef71afea2b8e7547d3331`.
+
+Unsupported claim: parent `/opt/data-achieve-scrapy/.deploy-sha` or `current` symlink was repaired, a deploy was executed, containers were restarted, cleanup ran, or any provider/email/scheduler/browser side effect occurred.
+
+## M5 Public Content Retained TTL Midpoint Observation - 2026-06-25
+
+This pass kept the retained canary in place and ran production read-only/dry-run checks only. It did not pass `--execute`, did not delete retained assets, did not mutate schedule state, and did not run providers, email, browser, or export creation.
+
+Artifacts:
+
+```text
+tmp/outputs/retained-public-content-ttl-midpoint-identity-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-preflight-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-default-168h-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-48h-20260625.json
+tmp/outputs/retained-public-content-ttl-midpoint-0h-20260625.json
+```
+
+Identity and health:
+
+```text
+checked_at_utc: 2026-06-25T00:51:59Z
+active app HEAD: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+active app .deploy-sha: 3c92fcbf2230e1b0b4eef71afea2b8e7547d3331
+api/web compose working_dir: /opt/data-achieve-scrapy/app/configs/deploy/scrapy
+health: production/ok/connected/current
+schema_revision: 202606110023
+schema_head: 202606110023
+scheduler_enabled: true
+```
+
+Retained preflight:
+
+```text
+retained account: retained-public-content-20260623123816-90w0q7@example.com
+source present: true
+task present: true
+dataset present: true
+dataset_version present: true
+task: b8a4cb3f-abe9-48f6-bb66-7ff4962bcdc6
+task status: enabled
+task schedule_policy: manual_refresh_only
+task schedule_cron: null
+task_runs: 2
+dataset_drift_events: 1
+dataset_export_jobs: 1
+reports: 1
+report_audit_events: 1
+```
+
+Dry-run results:
+
+```text
+default 168h dry-run: all cleanup candidate counts 0
+48h dry-run: all cleanup candidate counts 0
+0h graph dry-run: users=1, workspaces=1, workspace_members=2, sources=1, collection_tasks=1, task_runs=2, raw_records=1, entities=1, entity_snapshots=1, datasets=1, dataset_versions=1, dataset_drift_events=1, dataset_export_jobs=1, reports=1, report_audit_events=1, notifications=1, export_artifact_files=1, export_artifact_path_violations=0
+```
+
+Supported claim: on 2026-06-25, the retained canary remains intact, default 168h and 48h windows do not yet match the canary, and 0h still proves full cleanup graph coverage.
+
+Unsupported claim: default 168h multi-day TTL is complete, cleanup execute has run, retained assets were deleted, providers ran, email was sent, scheduler state was mutated, a production browser ran, or browser artifacts were written.
