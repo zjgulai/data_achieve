@@ -31,7 +31,7 @@ export function useTrainingOverview(): TrainingOverviewState {
           setState({
             overview: null,
             loading: false,
-            error: caught instanceof Error ? caught.message : "Failed to load training overview",
+            error: caught instanceof Error ? caught.message : "采集工具概览暂不可用",
           });
         }
       });
