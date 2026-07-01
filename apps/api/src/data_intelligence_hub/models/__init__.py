@@ -21,7 +21,12 @@ from data_intelligence_hub.models.intelligence import (
     IntelligenceFeedback,
     IntelligenceItem,
 )
-from data_intelligence_hub.models.notification import Notification
+from data_intelligence_hub.models.notification import (
+    EmailChannelTestRun,
+    EmailProviderLiveGateRun,
+    EmailProviderLiveSendRun,
+    Notification,
+)
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.report import (
@@ -55,6 +60,9 @@ __all__ = [
     "EntitySnapshot",
     "ExtractionPlan",
     "Evidence",
+    "EmailChannelTestRun",
+    "EmailProviderLiveGateRun",
+    "EmailProviderLiveSendRun",
     "IntelligenceFeedback",
     "IntelligenceItem",
     "Notification",

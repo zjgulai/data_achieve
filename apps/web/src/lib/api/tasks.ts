@@ -27,6 +27,9 @@ type CollectionTaskResponse = {
   next_run_at?: string | null;
   retry_after_at?: string | null;
   retry_delay_minutes?: number;
+  max_retry_attempts?: number;
+  retry_attempts_used?: number;
+  retry_budget_exhausted?: boolean;
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
@@ -42,6 +45,7 @@ type CollectionTaskResponse = {
 type TaskRunResponse = {
   id: string;
   task_id: string;
+  workspace_id: string;
   status: string;
   started_at: string | null;
   finished_at: string | null;
@@ -50,6 +54,9 @@ type TaskRunResponse = {
   error_message: string | null;
   logs: TaskRun["logs"];
   created_at: string;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type SchedulerTickResponse = {
@@ -95,11 +102,15 @@ export async function getSchedulerOverview(): Promise<SchedulerOverview> {
   return mapSchedulerOverview(response);
 }
 
-export async function runTask(taskId: string): Promise<TaskRun> {
+export async function runTask(
+  taskId: string,
+  options: { idempotencyKey?: string } = {},
+): Promise<TaskRun> {
   if (mockApiEnabled) {
     return getMockTaskRun(taskId);
   }
   const response = await apiFetch<TaskRunResponse>(`/api/tasks/${taskId}/run`, {
+    headers: options.idempotencyKey ? { "Idempotency-Key": options.idempotencyKey } : undefined,
     method: "POST",
   });
   return mapTaskRun(response);
@@ -163,6 +174,9 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     nextRunAt: response.next_run_at ?? null,
     retryAfterAt: response.retry_after_at ?? null,
     retryDelayMinutes: response.retry_delay_minutes ?? 15,
+    maxRetryAttempts: response.max_retry_attempts ?? 3,
+    retryAttemptsUsed: response.retry_attempts_used ?? 0,
+    retryBudgetExhausted: response.retry_budget_exhausted ?? false,
     successCount: response.success_count,
     failureCount: response.failure_count,
     lastRunAt: response.last_run_at,
@@ -180,6 +194,7 @@ function mapTaskRun(response: TaskRunResponse): TaskRun {
   return {
     id: response.id,
     taskId: response.task_id,
+    workspaceId: response.workspace_id,
     status: response.status,
     startedAt: response.started_at,
     finishedAt: response.finished_at,
@@ -188,6 +203,9 @@ function mapTaskRun(response: TaskRunResponse): TaskRun {
     errorMessage: response.error_message,
     logs: response.logs,
     createdAt: response.created_at,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 

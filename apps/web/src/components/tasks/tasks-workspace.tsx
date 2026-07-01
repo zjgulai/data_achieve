@@ -1290,7 +1290,11 @@ function getTaskHealth(task: CollectionTask): StatusFilter {
   if (task.status === "paused" || task.status === "disabled") {
     return "paused";
   }
-  if (task.freshnessStatus === "failed" || task.latestRunStatus === "failed") {
+  if (
+    task.freshnessStatus === "failed" ||
+    task.freshnessStatus === "retry_exhausted" ||
+    task.latestRunStatus === "failed"
+  ) {
     return "failed";
   }
   if (task.freshnessStatus === "stale" || task.freshnessStatus === "never_run") {
@@ -1474,6 +1478,7 @@ function freshnessStatusLabel(task: CollectionTask) {
     fresh: "数据新鲜",
     never_run: "尚未运行",
     paused: "已暂停",
+    retry_exhausted: "重试耗尽",
     running: "运行中",
     stale: "数据过期",
     unknown: "状态未知",
@@ -1503,6 +1508,12 @@ function getTaskIssue(task: CollectionTask) {
   }
   if (task.freshnessStatus === "never_run") {
     return { title: "尚未运行", detail: "任务已启用，但还没有产生任何采集运行记录。" };
+  }
+  if (task.freshnessStatus === "retry_exhausted" || task.retryBudgetExhausted) {
+    return {
+      title: "重试预算耗尽",
+      detail: `自动重试已使用 ${task.retryAttemptsUsed}/${task.maxRetryAttempts} 次，需要人工检查后再恢复运行。`,
+    };
   }
   return null;
 }

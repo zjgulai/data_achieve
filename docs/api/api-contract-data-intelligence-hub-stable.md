@@ -86,7 +86,7 @@ osint, ecommerce, social, competitor, mixed
 | `public_feed` | `url` | 公开 RSS/Atom feed 更新条目 |
 | `manual_json` | `entity_type`、`json_data` | 人工或外部工具导入结构化样本 |
 | `ecommerce_product_discovery` | `url` | 从公开独立站 listing、collection 或 sitemap 发现商品 URL |
-| `ecommerce_product_page` | `url` | 从公开独立站商品页解析商品字段 |
+| `ecommerce_product_page` | `url` | 从公开独立站商品页解析商品字段；优先 JSON-LD/Product，兼容静态 schema.org microdata `itemprop` 字段 |
 
 `ecommerce_product_page` 默认字段合同：
 
@@ -97,6 +97,8 @@ osint, ecommerce, social, competitor, mixed
 | `availability_detail` | 保留 offer / variant 级库存状态摘要 |
 | `variant` | 商品变体名称或变体维度摘要 |
 | `category` | 商品分类或分类层级 |
+
+字段来源优先级：JSON-LD Product / Offer 仍是最高优先级；当真实静态测试站没有 JSON-LD 时，`ecommerce_product_page` 可从 schema.org microdata 的 `itemprop=name/price/priceCurrency/description/image` 中提取基础字段；站点级 `og:image` 不覆盖商品级 microdata image。
 
 ## Automation
 
@@ -109,14 +111,27 @@ osint, ecommerce, social, competitor, mixed
 | `GET` | `/api/automation/platform-packages` | 无 | `AutomationPlatformPackageListResponse` | 返回当前平台包矩阵 |
 | `GET` | `/api/automation/platform-packages/{package_id}` | path: `package_id` | `AutomationPlatformPackageResponse` | 返回单个平台包合同，未知 id 返回 `404` |
 
+`AutomationPlatformPackageResponse` 除字段 contract、SOP 和策略矩阵外，还必须返回治理字段：
+
+```text
+version
+owner
+lifecycle_status
+evidence_grade
+authorization_required
+acceptance_registry[]
+cleanup_policy
+forbidden_actions[]
+```
+
 当前平台包：
 
-| id | execution boundary | default entrypoint | 说明 |
-|---|---|---|---|
-| `shopify-independent-ecommerce` | `executable` | `product-discovery` | 独立站/Shopify-style 商品采集，从集合页或商品页进入 Automation 主链路 |
-| `github-api-first` | `executable` | `source-create` | GitHub topic 工具情报采集，使用官方 API 创建 Source、启用 Task 并运行一次 |
-| `public-page-structure-preflight` | `executable` | `preflight` | 授权公开网页结构预检，先输出 gate 和结构诊断，再决定是否创建 `generic_web` Source |
-| `public-web-rss-docs` | `executable` | `source-create` | 公开 RSS/Atom feed 与 docs/page hash 更新监控；本地链路支持 `public_feed` 与 `generic_web` 进入 `public_content_update` Dataset/drift/report |
+| id | version | execution boundary | evidence grade | default entrypoint | 说明 |
+|---|---|---|---|---|---|
+| `shopify-independent-ecommerce` | `2026.06.m4` | `executable` | `L2-fixture-or-dry-run` | `product-discovery` | 独立站/Shopify-style 商品采集，从集合页或商品页进入 Automation 主链路；本地 fixture 和公开测试站 local API E2E 已登记，production/customer-site gate 待授权 |
+| `github-api-first` | `2026.06.m3` | `executable` | `L4-authorized-live` | `source-create` | GitHub topic 工具情报采集，使用官方 API 创建 Source、启用 Task 并运行一次；L4 仅代表已授权的小范围 package gate |
+| `public-page-structure-preflight` | `2026.06.preflight` | `executable` | `L2-fixture-or-dry-run` | `preflight` | 授权公开网页结构预检，先输出 gate 和结构诊断，再决定是否创建 `generic_web` Source |
+| `public-web-rss-docs` | `2026.06.m5` | `executable` | `L4-authorized-live` | `source-create` | 公开 RSS/Atom feed 与 docs/page hash 更新监控；L4 仅代表已完成的 scoped public-content gates 和 retained canary |
 
 平台包不变量：
 
@@ -124,6 +139,7 @@ osint, ecommerce, social, competitor, mixed
 2. GitHub/API-first 当前可执行路径是 `github_topic` Topic Radar；单仓库 `github_repo` 仍建议通过 Sources 创建重点仓库监控。
 3. `public-page-structure-preflight` 使用 Toolkit preflight，不是 Source collector；只有用户确认后才可继续创建 `generic_web` Source。
 4. `public-web-rss-docs` 本地链路已覆盖 RSS/Atom 与 docs/page snapshot 的 Dataset preview/save、content-hash drift、drift event save/list、report preview 和 Report asset；生产调度、provider/email、生产浏览器运行和新增生产写入仍需后续授权 gate。
+5. `acceptance_registry[]` 是验收登记，不会自动升级平台状态；`L4-authorized-live` 仍必须按登记项的 scoped 范围理解。
 
 ### Capability Probe Contract
 
@@ -148,7 +164,10 @@ forbidden_actions[]
 next_actions[]
 run_started=false
 collection_resources_written=false
+evidence_asset
 ```
+
+`AutomationCapabilityProbeListResponse.evidence_assets[]` 聚合每个 probe 的 `evidence_asset`。`evidence_asset.schema_version=evidence_asset_reference.v1`，`evidence_boundary=no_read_no_search_no_write`，只表示本次 doctor/catalog 结果可被报告或 Evidence 引用；它不表示平台读取、采集运行或写入已发生。
 
 `AutomationAgentReachChannelProbeResponse` 最小字段：
 
@@ -174,14 +193,19 @@ raw_summary
 3. `browser-harness` 能力只作为 read-only probe 候选，不得直接创建 Source/Task/TaskRun/Dataset。
 4. `execution_boundary=sop_only` 或 `import_only` 的平台不得在 UI 中出现默认自动采集按钮。
 5. 所有 response 必须保持 `run_started=false`、`collection_resources_written=false`，直到进入单独授权的采集写入链路。
+6. CapabilityProbe evidence reference 必须保持 `credentials_captured=false`、`cookies_captured=false`、`headers_captured=false`、`bodies_captured=false`，且 `read_invoked=false`、`search_invoked=false`。
 
-### Browser Local Runner Evidence Contract
+### Browser Diagnostic Evidence Contract
 
-浏览器本地诊断运行仍属于 `BrowserDiagnosticJobRun` 证据资产，不等于正式采集任务。
+浏览器诊断 gate 与本地诊断运行都属于证据资产链路，不代表正式采集任务。
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
+| `POST` | `/api/automation/browser-diagnostic-jobs/{job_id}/production-metadata-run-gate` | `authorized`、`confirm_review`、`confirm_production_readonly`、`confirm_metadata_only`、`confirm_no_file_write`、`confirm_no_collection_write`、`target_environment=production`、`max_metadata_events?` | `AutomationBrowserProductionMetadataRunGateResponse` | 只生成生产 metadata-only 手工只读运行预检；`evidence_grade=L2-fixture-or-dry-run`，`run_started=false`、`browser_started=false`、`files_written=false`、`collection_resources_written=false`、`provider_called=false` |
 | `POST` | `/api/automation/browser-diagnostic-jobs/{job_id}/local-run` | `authorized`、`confirm_execute`、`run_mode`、`confirm_real_browser_probe?`、`browser_harness_cdp_url?` | `AutomationBrowserLocalRunnerResultResponse` | 只读回放或本机 dedicated-CDP 临时 tab 探测；不创建 Source/Task/TaskRun/Dataset |
+| `POST` | `/api/automation/browser-diagnostic-job-runs/{job_run_id}/promotion-preview` | `authorized`、`confirm_review`、`target_source_type`、`enable_task_preview?` | `AutomationBrowserPromotionPreviewResponse` | 只根据本地 run 生成 Source/Task 候选包和阻断原因；不创建 Source/Task/TaskRun/Dataset |
+| `POST` | `/api/automation/browser-diagnostic-job-runs/{job_run_id}/promotion-execution-dry-run` | `authorized`、`confirm_review`、`confirm_no_write`、`target_source_type`、`source_name?`、`schedule_cron?` | `AutomationBrowserPromotionExecutionDryRunResponse` | 复用正式 collector config 校验生成执行前预检计划；强制 no-write，不创建 Source/Task/TaskRun/Dataset |
+| `POST` | `/api/automation/browser-diagnostic-job-runs/{job_run_id}/promotion-execution` | `authorized`、`confirm_review`、`confirm_write`、`confirm_create_collection_resources`、`confirm_no_task_run`、`target_source_type`、`source_name?`、`schedule_cron?`、`confirm_schedule?`、`idempotency_key` | `AutomationBrowserPromotionExecutionResponse` | 显式授权后创建 Source+Task；强制不启动 TaskRun，不创建 Dataset；同一 idempotency key replay，同 URL/type 不同 key 阻断 |
 | `GET` | `/api/automation/browser-diagnostic-job-runs` | query: `project_id?`、`diagnostic_job_id?` | `AutomationBrowserLocalRunnerResultListResponse` | 返回本地诊断运行历史和只读副作用汇总 |
 
 `AutomationBrowserLocalRunnerResultResponse` 在兼容旧字段的基础上新增 M2 证据字段：
@@ -193,6 +217,7 @@ network_observation_summary
 network_metadata_summary
 promotion_gate
 redaction_summary
+evidence_asset
 files_written=false
 collection_resources_written=false
 ```
@@ -201,11 +226,17 @@ M2 字段约束：
 
 1. `selector_evaluations[]` 是 `selector_results[]` 的规范化视图，包含 `field`、`selector_hint`、`match_count`、`sample_text`、`missing_reason` 和 `browser_started`。
 2. `network_metadata_summary` 只允许保留 metadata：`capture_headers=false`、`capture_body=false`、`redacted=true`；URL 必须移除 query 和 fragment。
-3. `promotion_gate.can_create_collection_resources=false`，并包含 `m2_read_only_contract_no_direct_promotion`，直到另一个经授权的创建链路接管。
+3. `promotion_gate.can_create_collection_resources=false`，并包含 `m2_read_only_contract_no_direct_promotion`；只有独立的 `promotion-execution` 写 gate 可在显式授权和 idempotency key 下接管 Source+Task 创建。
 4. `redaction_summary` 必须显式声明 `cookies_captured=false`、`headers_captured=false`、`bodies_captured=false`、`query_parameters_retained=false`。
 5. `run_mode=ephemeral_browser_harness_probe` 只有在提供 dedicated `browser_harness_cdp_url` 时才可进入 browser-harness；缺少该字段必须返回 `blocked_ephemeral_probe` / `browser_harness_isolated_cdp_required`，不得默认连接用户主 Chrome。
 6. `run_mode=ephemeral_browser_harness_probe` 可以使 `browser_started=true`，但仍保持 `files_written=false` 和 `collection_resources_written=false`。
-6. Artifact retention 规则以 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md` 为准；PRD2 M2 当前阶段只允许 metadata 和 `tmp/` 本地验证 JSON。
+7. `AutomationBrowserDiagnosticRunResponse`、`AutomationBrowserDiagnosticJobResponse`、`AutomationBrowserLocalRunnerResultResponse` 及对应 list response 必须携带 `evidence_asset` / `evidence_assets[]`；这些引用只保存 metadata、ID、脱敏 URL 和边界声明，不内嵌 screenshot、trace、HAR、headers、body 或 cookie。
+8. `promotion-preview` 必须保持 `can_promote=false`、`source_created=false`、`task_created=false`、`task_run_started=false`、`collection_resources_written=false`；`source_draft` 和 `task_draft` 只供人工复核，不能作为自动写入证据。
+9. `promotion-execution-dry-run` 必须要求 `confirm_no_write=true`，并保持 `dry_run=true`、`write_allowed=false`、`can_execute=false`、`source_created=false`、`task_created=false`、`task_run_started=false`、`collection_resources_written=false`；即使 collector config 校验通过，也不能升级为正式执行证据。
+10. `promotion-execution` 必须要求 `confirm_write=true`、`confirm_create_collection_resources=true`、`confirm_no_task_run=true` 和 `idempotency_key`；成功时只允许 `source_created=true`、`task_created=true`、`task_run_started=false`，并在 `BrowserDiagnosticJobRun.audit_events` 记录 `browser_promotion_execution_resources_created`、`idempotency_scope=browser_promotion_execution` 和 `idempotency_key_hash`。
+11. `promotion-execution` 的重复提交规则：同一 `idempotency_key` 返回 `idempotency_replayed=true` 且不再写入；不同 key 命中同一 `target_source_type + url` 必须返回 `browser_promotion_target_source_already_exists`；缺少必填 selector、collector config invalid 或证据边界异常时必须返回 400。
+12. `production-metadata-run-gate` 是 no-run L2 预检；必须保持 `production_read_only_observed=false`、`run_started=false`、`browser_started=false`、`execution_started=false`、`files_written=false`、`collection_resources_written=false`、`provider_called=false`、`source_created=false`、`task_created=false`、`task_run_started=false`、`dataset_created=false`，直到另起授权 L3/L4 gate。
+13. Artifact retention 规则以 `docs/workflows/workflow-browser-evidence-artifact-retention-stable.md` 为准；PRD2 M2 当前阶段只允许 metadata 和 `tmp/` 本地验证 JSON。
 
 ### GitHub/API-first Topic Radar Flow
 
@@ -266,7 +297,7 @@ GitHub 工具数据集导出复用 Dataset Export：
 | `POST` | `/api/automation/public-content-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 从只读 drift check 保存或复用 `event_type=public_content_drift` 的 DatasetDriftEvent |
 | `GET` | `/api/automation/public-content-drift-events` | `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出公开内容 DatasetDriftEvent；不启动采集、不创建告警 |
 | `POST` | `/api/automation/public-content-report` | `authorized`、`dataset_id`、`dataset_version_id`、`top_limit?` | `AutomationPublicContentReportResponse` | 从已保存 DatasetVersion 生成公开内容更新报告预览，不创建 Report 资产 |
-| `POST` | `/api/automation/public-content-report-assets` | report request + `confirm_create` | `AutomationPublicContentReportAssetResponse` | 在明确确认后创建 `report_type=public_content` Report 资产；不发送通知、不写导出文件 |
+| `POST` | `/api/automation/public-content-report-assets` | report request + `confirm_create`; optional header: `Idempotency-Key` | `AutomationPublicContentReportAssetResponse` | 在明确确认后创建 `report_type=public_content` Report 资产；同 key 重放返回原 Report，不发送通知、不写导出文件 |
 
 公开内容数据集字段：
 
@@ -281,7 +312,7 @@ source_type, content_kind, text_length
 1. 只支持已授权公开 RSS/Atom feed 或公开文档更新源；不覆盖登录态、私信、付费墙、验证码或账号后台页面。
 2. `public-content-drift-check` 不启动采集、不创建 `DatasetDriftEvent`、不创建告警、不发送通知。
 3. `public-content-drift-events` 只保存/复用 drift 快照，不启动采集、不创建告警、不发送通知。
-4. `public-content-report` 只返回只读预览；`public-content-report-assets` 只在 `confirm_create=true` 后创建 Report 资产，不写导出文件、不发送邮件。
+4. `public-content-report` 只返回只读预览；`public-content-report-assets` 只在 `confirm_create=true` 后创建或重放 Report 资产，不写导出文件、不发送邮件；`Idempotency-Key` hash 绑定 `workspace_id`、`dataset_id`、`dataset_version_id` 与 `top_limit`，原始 key 不写入审计事件。
 5. Dataset export、生产 Source/Task/TaskRun、scheduler、provider/email 和生产浏览器运行仍需独立授权。
 
 ### Public Page Structure Preflight
@@ -348,7 +379,7 @@ source_type, content_kind, text_length
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/product-dataset-exports` | `authorized`、`confirm_create`、`dataset_id`、`dataset_version_id`、`export_format` | `AutomationProductDatasetExportJobResponse` | 生成受控导出文件，格式支持 `csv`、`json`、`jsonl` |
+| `POST` | `/api/automation/product-dataset-exports` | body: `authorized`、`confirm_create`、`dataset_id`、`dataset_version_id`、`export_format`; optional header: `Idempotency-Key` | `AutomationProductDatasetExportJobResponse` | 生成受控导出文件，格式支持 `csv`、`json`、`jsonl`；同 key 重放返回原 job |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/exports` | query: `dataset_version_id?`、`limit?` | `AutomationProductDatasetExportListResponse` | 查看导出历史 |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download` | 无 | 文件响应 | 下载导出文件 |
 
@@ -357,6 +388,7 @@ source_type, content_kind, text_length
 1. 未传 `confirm_create=true` 时必须拒绝导出。
 2. ExportJob 必须记录 `filename`、`content_type`、`artifact_size_bytes`、`row_count`、`checksum_sha256`、`audit_events`。
 3. 下载接口必须限制 artifact 位于 `Settings.dataset_export_dir` 内，避免路径穿越。
+4. `Idempotency-Key` hash 绑定 `workspace_id`、`dataset_id`、`dataset_version_id` 和 `export_format`；首次写入返回 `idempotency_replayed=false`，重复请求返回 `idempotency_replayed=true` 和同一个 `download_url`。
 
 GitHub 工具漂移和报告：
 
@@ -366,17 +398,18 @@ GitHub 工具漂移和报告：
 | `POST` | `/api/automation/github-tool-drift-events` | drift check request + `note?` | `AutomationProductDriftEventResponse` | 保存 `event_type=github_tool_radar_drift` 的漂移快照 |
 | `GET` | `/api/automation/github-tool-drift-events` | query: `dataset_id?`、`dataset_version_id?`、`limit?` | `AutomationProductDriftEventListResponse` | 列出 GitHub 工具数据集漂移事件 |
 | `POST` | `/api/automation/github-tool-report` | `authorized`、`dataset_id`、`dataset_version_id`、`min_stars?`、`top_limit?` | `AutomationGitHubToolReportResponse` | 基于已保存版本生成只读工具雷达报告 |
-| `POST` | `/api/automation/github-tool-report-assets` | report request + `confirm_create=true` | `AutomationGitHubToolReportAssetResponse` | 将工具雷达报告保存为 `report_type=github_tool_radar` 的 Report 中心资产，成功返回 `201` |
+| `POST` | `/api/automation/github-tool-report-assets` | report request + `confirm_create=true`; optional header: `Idempotency-Key` | `AutomationGitHubToolReportAssetResponse` | 将工具雷达报告保存为 `report_type=github_tool_radar` 的 Report 中心资产，成功返回 `201`；同 key 重放返回原 Report |
 
 `AutomationGitHubToolReportResponse.summary` 包含 `repository_count`、`total_stars`、`high_value_repositories`、`languages`、`top_topics`、`report_created=false`、`run_started=false`。
 
-`AutomationGitHubToolReportAssetResponse` 继承只读报告 response，并额外返回 `report` 与 `notification_created=false`；`summary.report_created=true` 仅表示已写入 Report 资产，不表示发送或创建通知。
+`AutomationGitHubToolReportAssetResponse` 继承只读报告 response，并额外返回 `report`、`notification_created=false`、`idempotency_replayed`、`idempotency_scope` 与 `idempotency_key_hash`；`summary.report_created=true` 仅表示已写入或命中既有 Report 资产，不表示发送或创建通知。
 
 边界：
 
 1. GitHub 工具漂移检查只允许与 DatasetVersion `source_task_run_ids` 同源的 `github_topic` / `github_repo` task 进入比较。
 2. GitHub 工具漂移和只读报告接口均不启动采集、不创建告警、不发送通知。
 3. `github-tool-report-assets` 只创建 Report 中心资产和审计事件；不会启动采集、创建站内通知或发送邮件。
+4. `github-tool-report-assets` 的 `Idempotency-Key` hash 绑定 `workspace_id`、`dataset_id`、`dataset_version_id`、`min_stars` 与 `top_limit`；重复请求返回原 Report，原始 key 不写入审计事件。
 
 ### Schedule, Drift And Dataset Alerts
 
@@ -389,8 +422,8 @@ GitHub 工具漂移和报告：
 | `POST` | `/api/automation/product-drift-alert-preview` | `authorized`、`dataset_id`、`dataset_version_id?`、`min_status?`、`channel?` | `AutomationProductDriftAlertPreviewResponse` | 预览漂移告警规则 |
 | `POST` | `/api/automation/product-drift-alert-rules` | preview request + `confirm_create` | `AutomationProductDriftAlertRuleCreateResponse` | 创建漂移告警规则 |
 | `POST` | `/api/automation/product-drift-alert-events` | `authorized`、`confirm_create`、`dataset_id`、`dataset_version_id`、`drift_event_id` | `AutomationProductDriftAlertEventCreateResponse` | 从漂移事件创建 Signal 和 AlertEvent |
-| `POST` | `/api/automation/product-drift-alert-notifications` | `authorized`、`confirm_send`、`dataset_id`、`dataset_version_id`、`drift_event_id`、`alert_event_ids` | `AutomationProductDriftAlertNotificationSendResponse` | 发送站内通知 |
-| `POST` | `/api/automation/product-drift-alert-emails` | notification request + `recipient_email?` | `AutomationProductDriftAlertEmailSendResponse` | 发送邮件告警 |
+| `POST` | `/api/automation/product-drift-alert-notifications` | body: `authorized`、`confirm_send`、`dataset_id`、`dataset_version_id`、`drift_event_id`、`alert_event_ids`; optional header: `Idempotency-Key` | `AutomationProductDriftAlertNotificationSendResponse` | 发送站内通知；同 key 重放返回既有通知 |
+| `POST` | `/api/automation/product-drift-alert-emails` | notification request + `recipient_email?`; optional header: `Idempotency-Key` | `AutomationProductDriftAlertEmailSendResponse` | 发送邮件告警；同 key 重放返回既有发送结果且不再次调用 SMTP/provider |
 
 当前已硬化：
 
@@ -400,10 +433,26 @@ GitHub 工具漂移和报告：
 4. 商品漂移 item 返回 `row_change`、`added_row_count`、`removed_row_count`、`price_change_percent`；summary 返回 `added_rows`、`removed_rows`、`price_changed_tasks`。
 5. `drift_layers` 除 `completeness`、`field_missingness`、`task_freshness` 外，可返回 `catalog_presence` 和 `price_change`；`product_removed` 会使任务状态进入 `critical`。
 
+当前已补：
+
+1. 前端主提交按钮有 submitting / in-flight guard。
+2. 采集任务执行有 task row lock、collector `run_timeout_seconds`、scheduler running-task skip。
+3. auto freshness 失败重试有 `max_retry_attempts` / `retry_attempts_used` 预算字段；预算耗尽后 `next_run_at=null`，`freshness_status=retry_exhausted`。
+4. 手动 Task run 支持 `Idempotency-Key` 首个本地合同：同一 workspace/task/key hash 的重复请求返回原 `TaskRun`，不再启动 collector；原始 key 不写入日志，只保留 `idempotency_key_hash` 证据。
+5. Dataset export create 支持 `Idempotency-Key` 本地合同：同一 workspace/dataset/version/export_format/key hash 的重复请求返回原 `DatasetExportJob`，不再重写导出文件；原始 key 不写入 `audit_events`。
+6. Report send 支持 `authorized` + `confirm_send` + optional `Idempotency-Key` 本地合同：同一 workspace/report/channels/key hash 的重复请求返回原发送结果，不再创建重复站内通知；原始 key 不写入审计事件。
+7. Drift alert notification/email send 支持 optional `Idempotency-Key` 本地合同：站内通知重放返回既有 notification；邮件重放读取 AlertEvent delivery audit，跳过 `send_email_notification` / SMTP/provider 调用；原始 key 不写入 payload。
+8. Report asset create 支持 optional `Idempotency-Key` 本地合同：`github-tool-report-assets` 与 `public-content-report-assets` 重放返回原 Report 资产，不重复创建 Report、通知、邮件或导出文件；原始 key 不写入审计事件。
+9. Report subscription run/retry 必须显式 `authorized=true` 与 `confirm_run=true` / `confirm_retry=true`，并支持 optional `Idempotency-Key` replay：重复请求返回原 `ReportSubscriptionRun`，不重复生成 Report、不重复创建站内通知或触发 email provider 尝试；原始 key 不写入审计事件。
+10. Email channel test 必须显式 `authorized=true` 与 `confirm_send=true`，并支持 optional `Idempotency-Key` replay：重复请求返回原 `EmailChannelTestRun`，不重复调用 SMTP/provider；原始 key 不写入 payload 或测试记录。
+11. Email provider-live gate preflight 必须显式 `authorized=true` 与 `confirm_prepare=true`，并支持 optional `Idempotency-Key` replay：重复请求返回原 `EmailProviderLiveGateRun`，始终返回 `provider_call_allowed=false`、`email_send_allowed=false`、`production_write_allowed=false` 和 `provider_call_attempted=false`，不触发 SMTP/provider。
+12. Email provider live-send readiness 提供只读清单：返回 `send_enabled`、allowlist 是否配置、allowlist 计数、channel 状态、必填授权字段和 `provider_call_attempted=false`，不触发 SMTP/provider，也不创建 run。
+13. Email provider live-send gate 必须显式 `authorized=true`、`confirm_send=true`、`gate_run_id`、`approval_id` 和 `Idempotency-Key`；默认 `EMAIL_LIVE_SEND_ENABLED=false` 且 allowlist 为空时只创建 `EmailProviderLiveSendRun` deny 审计记录，返回 `provider_call_attempted=false`，原始 key 不写入 payload 或 run 记录。
+
 仍需扩展：
 
-1. 前端提交中状态和更完整的重复点击交互反馈。
-2. 采集任务运行锁、重试预算和超时策略。
+1. provider 真实生产发送和调度触发的审批记录、生产只读清单、side-effect 日志；L4 邮件发送 runbook 已有本地文档，生产执行证据仍待授权。
+2. Retry budget 的生产门禁和更完整的 operator UI。
 
 ## Task And Run
 
@@ -411,7 +460,7 @@ GitHub 工具漂移和报告：
 |---|---|---|---|
 | `GET` | `/api/tasks` | query: `project_id`、`status`、`collector_type` | `CollectionTaskResponse[]` |
 | `GET` | `/api/tasks/{task_id}` | 无 | `CollectionTaskResponse` |
-| `POST` | `/api/tasks/{task_id}/run` | 无 | `TaskRunResponse` |
+| `POST` | `/api/tasks/{task_id}/run` | optional header: `Idempotency-Key` | `TaskRunResponse` |
 | `POST` | `/api/tasks/{task_id}/pause` | 无 | `CollectionTaskResponse` |
 | `POST` | `/api/tasks/{task_id}/resume` | 无 | `CollectionTaskResponse` |
 | `GET` | `/api/tasks/{task_id}/runs` | 无 | `TaskRunResponse[]` |
@@ -421,6 +470,8 @@ GitHub 工具漂移和报告：
 1. `run` 会创建 TaskRun，并把采集、归一化、信号、情报链路串起。
 2. 失败 run 必须记录 `error_message` 和 logs。
 3. pause/resume 只改变 task 状态，不删除历史 run。
+4. `CollectionTaskResponse` 暴露 `retry_delay_minutes`、`max_retry_attempts`、`retry_attempts_used`、`retry_budget_exhausted`；这些字段来自 `CollectionTask.config`，当前属于本地运行安全合同，不等于生产调度门禁已完成。
+5. `POST /api/tasks/{task_id}/run` 带相同 `Idempotency-Key` 重放时返回 `200` 和原 `TaskRun`，`idempotency_replayed=true`；首次执行仍返回 `201`，并在 `TaskRun.logs` 中记录 `idempotency_key_recorded`、`scope=task_manual_run`、`raw_key_stored=false` 和 hash。
 
 ## Raw Record, Entity, Signal
 
@@ -466,14 +517,15 @@ GitHub 工具漂移和报告：
 | `POST` | `/api/reports/generate` | `project_id?`、`report_type`、`period_hours?` | `ReportResponse` |
 | `GET` | `/api/reports/subscriptions` | 无 | `ReportSubscriptionResponse[]` |
 | `POST` | `/api/reports/subscriptions` | 订阅配置 | `ReportSubscriptionResponse` |
-| `POST` | `/api/reports/subscriptions/{subscription_id}/run` | 无 | `ReportSubscriptionResponse` |
+| `POST` | `/api/reports/subscriptions/{subscription_id}/run` | body: `authorized`、`confirm_run`; optional header: `Idempotency-Key` | `ReportSubscriptionResponse` |
 | `GET` | `/api/reports/subscriptions/{subscription_id}/runs` | 无 | `ReportSubscriptionRunResponse[]` |
+| `POST` | `/api/reports/subscriptions/{subscription_id}/runs/{run_id}/retry` | body: `authorized`、`confirm_retry`; optional header: `Idempotency-Key` | `ReportSubscriptionResponse` |
 | `GET` | `/api/reports/{report_id}/evidence-references` | 无 | `ReportEvidenceReferenceResponse[]` |
 | `GET` | `/api/reports/{report_id}/download.md` | 无 | Markdown 文件 |
 | `GET` | `/api/reports/{report_id}/audit-events` | 无 | `ReportAuditEventResponse[]` |
 | `POST` | `/api/reports/{report_id}/audit-events` | 审计事件 | `ReportAuditEventResponse` |
 | `GET` | `/api/reports/{report_id}` | 无 | `ReportResponse` |
-| `POST` | `/api/reports/{report_id}/send` | 无 | `ReportResponse` |
+| `POST` | `/api/reports/{report_id}/send` | body: `authorized`、`confirm_send`、`channels?`; optional header: `Idempotency-Key` | `ReportResponse` |
 
 ## Alert And Notification
 
@@ -487,13 +539,22 @@ GitHub 工具漂移和报告：
 | `PATCH` | `/api/alert-events/{event_id}` | `status` | `AlertEventResponse` |
 | `GET` | `/api/notifications` | query: `unread_only`、`type` | `NotificationResponse[]` |
 | `GET` | `/api/notifications/email-channel` | 无 | `EmailChannelStatusResponse` |
-| `POST` | `/api/notifications/email-channel/test` | 无 | `EmailChannelTestResponse` |
+| `POST` | `/api/notifications/email-channel/test` | body: `authorized`、`confirm_send`; optional header: `Idempotency-Key` | `EmailChannelTestResponse` |
+| `POST` | `/api/notifications/email-channel/provider-live-gate` | body: `authorized`、`confirm_prepare`、`operation`、`recipient_email?`、`max_provider_calls?`; optional header: `Idempotency-Key` | `EmailProviderLiveGateResponse` |
+| `GET` | `/api/notifications/email-channel/live-send-readiness` | 无 | `EmailProviderLiveSendReadinessResponse` |
+| `POST` | `/api/notifications/email-channel/live-send` | body: `authorized`、`confirm_send`、`gate_run_id`、`approval_id`、`operation`、`recipient_email?`; required header: `Idempotency-Key` | `EmailProviderLiveSendResponse` |
 | `PATCH` | `/api/notifications/{notification_id}/read` | 无 | `NotificationResponse` |
 | `POST` | `/api/notifications/read-all` | 无 | `NotificationReadAllResponse` |
 | `POST` | `/api/notifications/read-bulk` | `notification_ids` | `NotificationReadAllResponse` |
 
 通知规则：
 
-1. report send 会进入通知链路。
-2. alert match 会生成 alert event，并按 rule channel 生成站内通知。
-3. email channel 必须通过环境变量配置，未配置时接口返回禁用状态。
+1. report send 必须显式 `authorized=true`、`confirm_send=true`；带同一 `Idempotency-Key` 重放时返回 `idempotency_replayed=true` 和原 `delivered_channels` / `skipped_channels`，不会重复创建站内通知。
+2. report subscription run/retry 必须显式授权与确认；带同一 `Idempotency-Key` 重放时返回同一个 `latest_run`，不会重复生成 Report、创建站内通知或触发 email provider 尝试。
+3. email channel test 必须显式授权与确认；带同一 `Idempotency-Key` 重放时返回同一个测试记录，`idempotency_replayed=true`，不会重复调用 SMTP/provider。未配置 SMTP 时 `provider_call_attempted=false`。
+4. email provider-live gate preflight 必须显式授权与确认；带同一 `Idempotency-Key` 重放时返回同一个 gate run，`provider_call_allowed=false`、`email_send_allowed=false`、`production_write_allowed=false`、`provider_call_attempted=false`，只形成本地预授权审计包，不发送邮件。
+5. email provider live-send readiness 是只读 inventory endpoint；`status=blocked` 表示仍缺配置或 allowlist，`status=ready_pending_l4_authorization` 只表示具备进入人工审批的前置条件，不表示已允许发送。
+6. email provider live-send gate 必须引用同 workspace/user 的 gate run，并显式提供 `approval_id` 与 `Idempotency-Key`；默认配置下返回 `blocked`，记录 `send_enabled=false`、`recipient_allowlisted=false`、`provider_call_attempted=false`。只有配置显式开启、recipient 命中 exact allowlist、gate ready、SMTP ready 且审批存在时才允许 sender 分支；测试仅用 fake sender 覆盖该分支。
+7. alert match 会生成 alert event，并按 rule channel 生成站内通知。
+8. Drift alert notification/email send 支持 `Idempotency-Key` replay；邮件 replay 不再次调用 SMTP/provider。
+9. email channel 必须通过环境变量配置，未配置时接口返回禁用状态。

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from collections.abc import Sequence
@@ -44,12 +45,21 @@ from data_intelligence_hub.repositories.reports import (
 )
 from data_intelligence_hub.schemas.report import (
     ReportGenerateRequest,
+    ReportSendRequest,
+    ReportSubscriptionRetryRequest,
+    ReportSubscriptionRunRequest,
     ReportSubscriptionUpsertRequest,
 )
 from data_intelligence_hub.services.exceptions import (
     ProjectNotFoundError,
     ReportNotFoundError,
+    ReportSendAuthorizationError,
+    ReportSendConfirmationRequiredError,
     ReportSubscriptionNotFoundError,
+    ReportSubscriptionRetryAuthorizationError,
+    ReportSubscriptionRetryConfirmationRequiredError,
+    ReportSubscriptionRunAuthorizationError,
+    ReportSubscriptionRunConfirmationRequiredError,
     ReportSubscriptionRunNotFoundError,
     ReportSubscriptionRunRetryNotAllowedError,
 )
@@ -72,6 +82,15 @@ class ReportDispatchResult:
 
 
 @dataclass(frozen=True)
+class ReportSendResult:
+    report: Report
+    delivered_channels: list[str]
+    skipped_channels: dict[str, str]
+    idempotency_replayed: bool = False
+    idempotency_key_hash: str | None = None
+
+
+@dataclass(frozen=True)
 class ReportSubscriptionExecutionResult:
     report: Report | None
     run: ReportSubscriptionRun
@@ -84,6 +103,14 @@ class ReportSubscriptionExecutionResult:
 class ReportSubscriptionWithLatestRun:
     subscription: ReportSubscription
     latest_run: ReportSubscriptionRun | None
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
+
+
+REPORT_SEND_IDEMPOTENCY_SCOPE = "report_send"
+REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE = "report_subscription_run"
+REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE = "report_subscription_retry"
 
 
 async def get_reports(
@@ -216,10 +243,41 @@ async def run_report_subscription_now(
     workspace: Workspace,
     user: User,
     subscription_id: uuid.UUID,
+    payload: ReportSubscriptionRunRequest,
+    idempotency_key: str | None = None,
 ) -> ReportSubscriptionWithLatestRun:
+    if not payload.authorized:
+        raise ReportSubscriptionRunAuthorizationError
+    if not payload.confirm_run:
+        raise ReportSubscriptionRunConfirmationRequiredError
+
     subscription = await get_report_subscription(session, workspace.id, user.id, subscription_id)
     if subscription is None:
         raise ReportSubscriptionNotFoundError
+    idempotency_key_hash = _report_subscription_execution_idempotency_key_hash(
+        scope=REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE,
+        workspace=workspace,
+        user=user,
+        subscription=subscription,
+        idempotency_key=idempotency_key,
+    )
+    if idempotency_key_hash is not None:
+        existing_run = await _get_report_subscription_idempotency_run(
+            session=session,
+            workspace=workspace,
+            subscription=subscription,
+            scope=REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_run is not None:
+            return ReportSubscriptionWithLatestRun(
+                subscription=subscription,
+                latest_run=existing_run,
+                idempotency_replayed=True,
+                idempotency_scope=REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE,
+                idempotency_key_hash=idempotency_key_hash,
+            )
+
     result = await execute_report_subscription(
         session=session,
         subscription=subscription,
@@ -227,7 +285,26 @@ async def run_report_subscription_now(
         user=user,
         trigger_type="manual",
     )
-    return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
+    if idempotency_key_hash is not None and result.report is not None:
+        await _record_report_subscription_idempotency_event(
+            session=session,
+            workspace=workspace,
+            user=user,
+            subscription=subscription,
+            result=result,
+            scope=REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+    return ReportSubscriptionWithLatestRun(
+        subscription=subscription,
+        latest_run=result.run,
+        idempotency_scope=(
+            REPORT_SUBSCRIPTION_RUN_IDEMPOTENCY_SCOPE
+            if idempotency_key_hash is not None
+            else None
+        ),
+        idempotency_key_hash=idempotency_key_hash,
+    )
 
 
 async def get_report_subscription_run_history(
@@ -254,13 +331,44 @@ async def retry_report_subscription_run(
     user: User,
     subscription_id: uuid.UUID,
     run_id: uuid.UUID,
+    payload: ReportSubscriptionRetryRequest,
+    idempotency_key: str | None = None,
 ) -> ReportSubscriptionWithLatestRun:
+    if not payload.authorized:
+        raise ReportSubscriptionRetryAuthorizationError
+    if not payload.confirm_retry:
+        raise ReportSubscriptionRetryConfirmationRequiredError
+
     subscription = await get_report_subscription(session, workspace.id, user.id, subscription_id)
     if subscription is None:
         raise ReportSubscriptionNotFoundError
     run = await get_report_subscription_run(session, workspace.id, subscription.id, run_id)
     if run is None:
         raise ReportSubscriptionRunNotFoundError
+    idempotency_key_hash = _report_subscription_execution_idempotency_key_hash(
+        scope=REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE,
+        workspace=workspace,
+        user=user,
+        subscription=subscription,
+        idempotency_key=idempotency_key,
+        original_run_id=run.id,
+    )
+    if idempotency_key_hash is not None:
+        existing_run = await _get_report_subscription_idempotency_run(
+            session=session,
+            workspace=workspace,
+            subscription=subscription,
+            scope=REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_run is not None:
+            return ReportSubscriptionWithLatestRun(
+                subscription=subscription,
+                latest_run=existing_run,
+                idempotency_replayed=True,
+                idempotency_scope=REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE,
+                idempotency_key_hash=idempotency_key_hash,
+            )
     if not _can_retry_subscription_run(run.status):
         raise ReportSubscriptionRunRetryNotAllowedError
     if run.report_id is not None and run.skipped_channels:
@@ -271,7 +379,27 @@ async def retry_report_subscription_run(
             user=user,
             original_run=run,
         )
-        return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
+        if idempotency_key_hash is not None and result.report is not None:
+            await _record_report_subscription_idempotency_event(
+                session=session,
+                workspace=workspace,
+                user=user,
+                subscription=subscription,
+                result=result,
+                scope=REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE,
+                idempotency_key_hash=idempotency_key_hash,
+                original_run_id=run.id,
+            )
+        return ReportSubscriptionWithLatestRun(
+            subscription=subscription,
+            latest_run=result.run,
+            idempotency_scope=(
+                REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE
+                if idempotency_key_hash is not None
+                else None
+            ),
+            idempotency_key_hash=idempotency_key_hash,
+        )
     result = await execute_report_subscription(
         session=session,
         subscription=subscription,
@@ -279,7 +407,27 @@ async def retry_report_subscription_run(
         user=user,
         trigger_type="retry",
     )
-    return ReportSubscriptionWithLatestRun(subscription=subscription, latest_run=result.run)
+    if idempotency_key_hash is not None and result.report is not None:
+        await _record_report_subscription_idempotency_event(
+            session=session,
+            workspace=workspace,
+            user=user,
+            subscription=subscription,
+            result=result,
+            scope=REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+            original_run_id=run.id,
+        )
+    return ReportSubscriptionWithLatestRun(
+        subscription=subscription,
+        latest_run=result.run,
+        idempotency_scope=(
+            REPORT_SUBSCRIPTION_RETRY_IDEMPOTENCY_SCOPE
+            if idempotency_key_hash is not None
+            else None
+        ),
+        idempotency_key_hash=idempotency_key_hash,
+    )
 
 
 async def retry_report_subscription_delivery(
@@ -566,15 +714,91 @@ async def send_report(
     workspace: Workspace,
     user: User,
     report_id: uuid.UUID,
-) -> Report:
+) -> ReportSendResult:
+    payload = ReportSendRequest(authorized=True, confirm_send=True, channels=["in_app"])
+    return await send_report_with_payload(
+        session=session,
+        workspace=workspace,
+        user=user,
+        report_id=report_id,
+        payload=payload,
+        idempotency_key=None,
+    )
+
+
+async def send_report_with_payload(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    report_id: uuid.UUID,
+    payload: ReportSendRequest,
+    idempotency_key: str | None = None,
+) -> ReportSendResult:
+    if not payload.authorized:
+        raise ReportSendAuthorizationError
+    if not payload.confirm_send:
+        raise ReportSendConfirmationRequiredError
+
+    report = await get_report_or_raise(session, workspace, report_id)
+    idempotency_key_hash = _report_send_idempotency_key_hash(
+        workspace_id=workspace.id,
+        report_id=report_id,
+        channels=payload.channels,
+        idempotency_key=idempotency_key,
+    )
+    if idempotency_key_hash is not None:
+        existing_event = await _get_report_send_idempotency_event(
+            session=session,
+            workspace=workspace,
+            report_id=report_id,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_event is not None:
+            metadata = _report_audit_event_metadata(existing_event)
+            return ReportSendResult(
+                report=report,
+                delivered_channels=_split_metadata_list(metadata.get("delivered_channels")),
+                skipped_channels=_metadata_skipped_channels(metadata),
+                idempotency_replayed=True,
+                idempotency_key_hash=idempotency_key_hash,
+            )
+
     dispatch_result = await dispatch_report(
         session=session,
         workspace=workspace,
         user=user,
         report_id=report_id,
-        channels=["in_app"],
+        channels=payload.channels,
     )
-    return dispatch_result.report
+    if idempotency_key_hash is not None:
+        await _create_report_audit_event(
+            session=session,
+            workspace_id=workspace.id,
+            report_id=dispatch_result.report.id,
+            actor_id=user.id,
+            event_type="idempotency_key_recorded",
+            from_status=dispatch_result.report.status,
+            to_status=dispatch_result.report.status,
+            metadata={
+                "scope": REPORT_SEND_IDEMPOTENCY_SCOPE,
+                "idempotency_key_hash": idempotency_key_hash,
+                "raw_key_stored": "false",
+                "delivered_channels": ",".join(dispatch_result.delivered_channels),
+                "skipped_channels": ",".join(
+                    f"{channel}:{reason}"
+                    for channel, reason in sorted(dispatch_result.skipped_channels.items())
+                ),
+            },
+        )
+        await session.commit()
+        await session.refresh(dispatch_result.report)
+    return ReportSendResult(
+        report=dispatch_result.report,
+        delivered_channels=dispatch_result.delivered_channels,
+        skipped_channels=dispatch_result.skipped_channels,
+        idempotency_replayed=False,
+        idempotency_key_hash=idempotency_key_hash,
+    )
 
 
 async def dispatch_report(
@@ -693,6 +917,182 @@ async def _create_report_audit_event(
         created_at=datetime.now(UTC),
     )
     return await create_report_audit_event(session, event)
+
+
+async def _record_report_subscription_idempotency_event(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    subscription: ReportSubscription,
+    result: ReportSubscriptionExecutionResult,
+    scope: str,
+    idempotency_key_hash: str,
+    original_run_id: uuid.UUID | None = None,
+) -> None:
+    if result.report is None:
+        return
+    metadata = {
+        "scope": scope,
+        "idempotency_key_hash": idempotency_key_hash,
+        "raw_key_stored": "false",
+        "subscription_id": str(subscription.id),
+        "run_id": str(result.run.id),
+        "trigger_type": result.run.trigger_type,
+        "delivered_channels": ",".join(result.delivered_channels),
+        "skipped_channels": ",".join(
+            f"{channel}:{reason}" for channel, reason in sorted(result.skipped_channels.items())
+        ),
+    }
+    if original_run_id is not None:
+        metadata["retry_of_run_id"] = str(original_run_id)
+    await _create_report_audit_event(
+        session=session,
+        workspace_id=workspace.id,
+        report_id=result.report.id,
+        actor_id=user.id,
+        event_type="idempotency_key_recorded",
+        from_status=result.report.status,
+        to_status=result.report.status,
+        metadata=metadata,
+    )
+    await session.commit()
+    await session.refresh(result.run)
+    await session.refresh(result.report)
+
+
+async def _get_report_subscription_idempotency_run(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    subscription: ReportSubscription,
+    scope: str,
+    idempotency_key_hash: str,
+) -> ReportSubscriptionRun | None:
+    runs = await list_report_subscription_runs(
+        session=session,
+        workspace_id=workspace.id,
+        subscription_id=subscription.id,
+        limit=100,
+    )
+    for run in runs:
+        if run.report_id is None:
+            continue
+        events = await list_report_audit_events(session, workspace.id, run.report_id)
+        for event in events:
+            metadata = _report_audit_event_metadata(event)
+            if event.event_type != "idempotency_key_recorded":
+                continue
+            if metadata.get("scope") != scope:
+                continue
+            if metadata.get("idempotency_key_hash") != idempotency_key_hash:
+                continue
+            if metadata.get("subscription_id") != str(subscription.id):
+                continue
+            if metadata.get("run_id") != str(run.id):
+                continue
+            return run
+    return None
+
+
+async def _get_report_send_idempotency_event(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    report_id: uuid.UUID,
+    idempotency_key_hash: str,
+) -> ReportAuditEvent | None:
+    events = await list_report_audit_events(session, workspace.id, report_id)
+    for event in events:
+        metadata = _report_audit_event_metadata(event)
+        if event.event_type != "idempotency_key_recorded":
+            continue
+        if metadata.get("scope") != REPORT_SEND_IDEMPOTENCY_SCOPE:
+            continue
+        if metadata.get("idempotency_key_hash") == idempotency_key_hash:
+            return event
+    return None
+
+
+def _report_subscription_execution_idempotency_key_hash(
+    *,
+    scope: str,
+    workspace: Workspace,
+    user: User,
+    subscription: ReportSubscription,
+    idempotency_key: str | None,
+    original_run_id: uuid.UUID | None = None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    return _stable_json_hash(
+        {
+            "scope": scope,
+            "workspace_id": str(workspace.id),
+            "user_id": str(user.id),
+            "subscription_id": str(subscription.id),
+            "project_id": (
+                str(subscription.project_id) if subscription.project_id is not None else None
+            ),
+            "report_type": subscription.report_type,
+            "channels": list(subscription.channels),
+            "original_run_id": str(original_run_id) if original_run_id is not None else None,
+            "idempotency_key": normalized_key,
+        }
+    )
+
+
+def _report_send_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    report_id: uuid.UUID,
+    channels: Sequence[str],
+    idempotency_key: str | None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    return _stable_json_hash(
+        {
+            "scope": REPORT_SEND_IDEMPOTENCY_SCOPE,
+            "workspace_id": str(workspace_id),
+            "report_id": str(report_id),
+            "channels": list(dict.fromkeys(channels)),
+            "idempotency_key": normalized_key,
+        }
+    )
+
+
+def _report_audit_event_metadata(event: ReportAuditEvent) -> dict[str, str]:
+    if not event.metadata_json:
+        return {}
+    parsed = json.loads(event.metadata_json)
+    return {str(key): str(value) for key, value in parsed.items()}
+
+
+def _split_metadata_list(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item for item in value.split(",") if item]
+
+
+def _metadata_skipped_channels(metadata: dict[str, str]) -> dict[str, str]:
+    skipped: dict[str, str] = {}
+    for item in _split_metadata_list(metadata.get("skipped_channels")):
+        channel, _, reason = item.partition(":")
+        if channel:
+            skipped[channel] = reason
+    return skipped
+
+
+def _stable_json_hash(value: dict[str, object]) -> str:
+    encoded = json.dumps(value, sort_keys=True, ensure_ascii=True).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _compute_next_run_at(schedule_time: str, timezone_name: str, now: datetime) -> datetime:

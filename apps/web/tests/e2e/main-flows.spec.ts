@@ -144,9 +144,18 @@ type RealApiCredentials = {
 };
 
 let generatedRealApiCredentials: RealApiCredentials | null = null;
+const cleanupCompatibleE2eEmail = /^e2e-[^@]+@example\.com$/;
 
 function realApiBaseUrl() {
   return process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+}
+
+function assertCleanupCompatibleE2eEmail(email: string, source: string) {
+  if (!cleanupCompatibleE2eEmail.test(email)) {
+    throw new Error(
+      `${source} must be a cleanup-compatible one-time E2E email matching e2e-*@example.com`,
+    );
+  }
 }
 
 function generatedCredentials(): RealApiCredentials {
@@ -158,16 +167,31 @@ function generatedCredentials(): RealApiCredentials {
     email: `e2e-real-api-${stamp}@example.com`,
     password: `E2ePass-${stamp}`,
   };
+  assertCleanupCompatibleE2eEmail(generatedRealApiCredentials.email, "Generated credentials");
   return generatedRealApiCredentials;
+}
+
+function configuredCredentials(): RealApiCredentials | null {
+  const email = process.env.SCRAPY_DEMO_EMAIL;
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!email && !password) {
+    return null;
+  }
+  if (!email || !password) {
+    throw new Error(
+      "SCRAPY_DEMO_EMAIL and SCRAPY_DEMO_PASSWORD must be set together for real API E2E.",
+    );
+  }
+  assertCleanupCompatibleE2eEmail(email, "SCRAPY_DEMO_EMAIL");
+  return { email, password };
 }
 
 async function authenticateRealApiRequest(request: APIRequestContext) {
   const baseUrl = realApiBaseUrl();
-  const configuredPassword = process.env.SCRAPY_DEMO_PASSWORD;
-  if (configuredPassword) {
-    const email = process.env.SCRAPY_DEMO_EMAIL ?? "owner@example.com";
+  const configured = configuredCredentials();
+  if (configured) {
     const response = await request.post(`${baseUrl}/api/auth/login`, {
-      data: { email, password: configuredPassword },
+      data: configured,
     });
     assertAuthResponse(response, "Real API login");
     return { baseUrl, cookieText: extractCookieText(response, "login") };
@@ -540,6 +564,10 @@ async function createNotificationFixture(request: APIRequestContext) {
   const report = (await reportResponse.json()) as { id: string };
   const sendResponse = await request.post(
     `${baseUrl}/api/reports/${report.id}/send`,
+    {
+      data: { authorized: true, confirm_send: true, channels: ["in_app"] },
+      headers: { "Idempotency-Key": `report-send-${report.id}` },
+    },
   );
   if (!sendResponse.ok()) {
     throw new Error(
@@ -1544,7 +1572,8 @@ test.describe("mobile layout guard", () => {
         testInfo.project.name !== "mobile",
         "mobile-only layout assertion",
       );
-      await page.goto(route);
+      await page.goto(route, { waitUntil: "domcontentloaded" });
+      await page.locator("main").waitFor({ state: "visible" });
       const overflow = await page.evaluate(() => {
         return (
           document.documentElement.scrollWidth -

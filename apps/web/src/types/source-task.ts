@@ -59,6 +59,7 @@ export type CollectionTaskFreshnessStatus =
   | "fresh"
   | "never_run"
   | "paused"
+  | "retry_exhausted"
   | "running"
   | "stale"
   | "unknown";
@@ -82,6 +83,9 @@ export type CollectionTask = {
   nextRunAt: string | null;
   retryAfterAt: string | null;
   retryDelayMinutes: number;
+  maxRetryAttempts: number;
+  retryAttemptsUsed: number;
+  retryBudgetExhausted: boolean;
   successCount: number;
   failureCount: number;
   lastRunAt: string | null;
@@ -97,14 +101,25 @@ export type CollectionTask = {
 export type TaskRun = {
   id: string;
   taskId: string;
+  workspaceId: string;
   status: string;
   startedAt: string | null;
   finishedAt: string | null;
   recordsCount: number;
   entitiesCount: number;
   errorMessage: string | null;
-  logs: Array<{ step: string; message: string; timestamp?: string }>;
+  logs: Array<{
+    step: string;
+    message: string;
+    timestamp?: string;
+    scope?: string;
+    idempotency_key_hash?: string;
+    raw_key_stored?: boolean;
+  }>;
   createdAt: string;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type SchedulerTick = {

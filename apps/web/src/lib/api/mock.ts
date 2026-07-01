@@ -47,6 +47,11 @@ import type {
   AutomationSiteAnalysis,
 } from "@/types/automation";
 import type {
+  EmailProviderLiveGateInput,
+  EmailProviderLiveGateResult,
+  EmailProviderLiveSendInput,
+  EmailProviderLiveSendReadiness,
+  EmailProviderLiveSendResult,
   EmailChannelStatus,
   EmailChannelTestResult,
   NotificationItem,
@@ -79,6 +84,11 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       name: "独立站 / Shopify-style 商品采集",
       category: "ecommerce",
       summary: "面向公开商品详情页和集合页，优先读取 Product JSON-LD、页面结构和同源商品链接。",
+      version: "2026.06.m4",
+      owner: "data-intelligence-platform",
+      lifecycleStatus: "active",
+      evidenceGrade: "L2-fixture-or-dry-run",
+      authorizationRequired: true,
       supportedTargets: ["ecommerce_product", "ecommerce_product_collection"],
       collectorTypes: ["ecommerce_product_discovery", "ecommerce_product_page"],
       fieldSchema: [
@@ -316,6 +326,44 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         description: "E2E 使用固定商品页和集合页 fixture 验证。",
       },
       executionBoundary: "executable",
+      acceptanceRegistry: [
+        {
+          id: "m4-4a-local-fixture-e2e",
+          label: "本地 deterministic fixture E2E",
+          evidenceGrade: "L2-fixture-or-dry-run",
+          status: "local_done",
+          evidence:
+            "Integration test covers package, discovery, fan-out, batch, dataset version, export/download, drift validation/event and history.",
+          nextAction: null,
+        },
+        {
+          id: "m4-4b-public-test-site-local-e2e",
+          label: "WebScraper.io 公开测试站 local API E2E",
+          evidenceGrade: "L2-fixture-or-dry-run",
+          status: "local_external_done",
+          evidence:
+            "2026-06-29 local API run produced row_count=2, completeness=100%, CSV export=966 bytes and drift status=ok; production unchanged.",
+          nextAction: "Production/customer-site gate requires authorized URL scope and cleanup register.",
+        },
+        {
+          id: "m4-production-customer-site-gate",
+          label: "授权生产/客户站写入门禁",
+          evidenceGrade: "L0-unverified",
+          status: "todo",
+          evidence: "No authorized production/customer-site write gate has been run.",
+          nextAction: "Collect target URL scope, production write approval and cleanup decision.",
+        },
+      ],
+      cleanupPolicy:
+        "Local fixture/test-site exports may stay under tmp for manual review; production writes require exact-ID cleanup or retained lifecycle register.",
+      forbiddenActions: [
+        "login_wall_collection",
+        "captcha_bypass",
+        "cookie_export",
+        "anti_detect",
+        "marketplace_page_scraping",
+        "production_write_without_cleanup_register",
+      ],
       runStarted: false,
     },
     {
@@ -323,6 +371,11 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       name: "GitHub API-first 工具情报采集",
       category: "developer_platform",
       summary: "面向 GitHub topic、repo 和开源采集工具情报；优先使用官方 API。",
+      version: "2026.06.m3",
+      owner: "data-intelligence-platform",
+      lifecycleStatus: "active",
+      evidenceGrade: "L4-authorized-live",
+      authorizationRequired: true,
       supportedTargets: ["tool_repository", "topic_radar", "release_monitor"],
       collectorTypes: ["github_topic", "github_repo"],
       fieldSchema: [
@@ -454,6 +507,36 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         description: "单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
       },
       executionBoundary: "executable",
+      acceptanceRegistry: [
+        {
+          id: "m3-field-contract-local",
+          label: "GitHub API-first 字段合同",
+          evidenceGrade: "L2-fixture-or-dry-run",
+          status: "local_done",
+          evidence:
+            "Local tests cover license, default_branch, release, pushed_at and provenance fields.",
+          nextAction: null,
+        },
+        {
+          id: "m3-scoped-production-package-gate",
+          label: "小范围授权生产 package gate",
+          evidenceGrade: "L4-authorized-live",
+          status: "done_scoped_l4",
+          evidence:
+            "Scoped topic=web-scraping, max_repositories=3 production gate was authorized, logged and cleaned by exact IDs.",
+          nextAction:
+            "Larger scope, retained dataset, export and scheduler gates remain separate authorization envelopes.",
+        },
+      ],
+      cleanupPolicy:
+        "Scoped production test resources must be cleaned by exact IDs unless a retained dataset lifecycle is approved.",
+      forbiddenActions: [
+        "login_wall_collection",
+        "cookie_export",
+        "private_repo_collection",
+        "issue_comment_person_profile",
+        "rate_limit_amplification_retry",
+      ],
       runStarted: false,
     },
     {
@@ -461,6 +544,11 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       name: "公开网页结构解析预检",
       category: "browser_preflight",
       summary: "面向任意公开网页的采集前置诊断；先检查授权、robots、DOM 摘要和链接结构。",
+      version: "2026.06.preflight",
+      owner: "data-intelligence-platform",
+      lifecycleStatus: "active",
+      evidenceGrade: "L2-fixture-or-dry-run",
+      authorizationRequired: true,
       supportedTargets: ["public_web_page", "site_structure", "field_contract_draft"],
       collectorTypes: ["toolkit_preflight", "generic_web"],
       fieldSchema: [
@@ -589,6 +677,35 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         description: "单元测试使用固定 HTML、robots 和 sitemap 响应验证预检报告。",
       },
       executionBoundary: "executable",
+      acceptanceRegistry: [
+        {
+          id: "preflight-local-contract",
+          label: "公开 URL 结构预检本地合同",
+          evidenceGrade: "L2-fixture-or-dry-run",
+          status: "local_done",
+          evidence:
+            "Local fixture coverage validates authorization gate, robots/sitemap clues, DOM summary and generic_web handoff recommendations.",
+          nextAction: null,
+        },
+        {
+          id: "preflight-production-readonly-or-write-gate",
+          label: "生产只读或 generic_web 写入门禁",
+          evidenceGrade: "L0-unverified",
+          status: "todo",
+          evidence: "No broad production preflight-to-generic_web package gate is claimed.",
+          nextAction:
+            "Run a scoped read-only or authorized write gate with URL scope and cleanup decision.",
+        },
+      ],
+      cleanupPolicy:
+        "Preflight reports are read-only until the operator creates generic_web resources; any write needs scoped cleanup or retained decision.",
+      forbiddenActions: [
+        "login_wall_collection",
+        "captcha_bypass",
+        "private_network_probe",
+        "cookie_export",
+        "browser_artifact_write_without_retention",
+      ],
       runStarted: false,
     },
     {
@@ -596,6 +713,11 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
       name: "Public Web / RSS / Docs 更新监控",
       category: "public_content",
       summary: "面向公开网页、RSS/Atom feed 和公开文档更新监控；优先使用 feed 或内容 hash。",
+      version: "2026.06.m5",
+      owner: "data-intelligence-platform",
+      lifecycleStatus: "active",
+      evidenceGrade: "L4-authorized-live",
+      authorizationRequired: true,
       supportedTargets: ["rss_feed", "atom_feed", "public_web_page", "public_docs"],
       collectorTypes: ["public_feed", "generic_web"],
       fieldSchema: [
@@ -714,6 +836,45 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
         description: "单元测试使用固定 RSS/Atom XML 验证 feed 解析、条目 hash 和边界。",
       },
       executionBoundary: "executable",
+      acceptanceRegistry: [
+        {
+          id: "m5-public-feed-production-smoke",
+          label: "公开 RSS production package smoke",
+          evidenceGrade: "L4-authorized-live",
+          status: "done_scoped_l4",
+          evidence:
+            "Scoped public_feed production smoke covered collection run, dataset version, read-only drift/report preview and cleanup evidence.",
+          nextAction: null,
+        },
+        {
+          id: "m5-docs-page-production-gate",
+          label: "公开 docs/page production gate",
+          evidenceGrade: "L4-authorized-live",
+          status: "done_scoped_l4",
+          evidence:
+            "Scoped generic_web docs/page gate wrote public content assets and cleaned scoped fixtures to zero.",
+          nextAction: null,
+        },
+        {
+          id: "m5-retained-lifecycle-canary",
+          label: "Retained public-content lifecycle canary",
+          evidenceGrade: "L4-authorized-live",
+          status: "retained_l4",
+          evidence:
+            "A named canary dataset/report/export asset set was retained and checked by lifecycle observations.",
+          nextAction: "Default 168h TTL conclusion and cleanup execute decision remain separate gates.",
+        },
+      ],
+      cleanupPolicy:
+        "Cleanup-after-evidence gates use exact-ID cleanup; retained canary assets remain only under the documented lifecycle register.",
+      forbiddenActions: [
+        "login_wall_collection",
+        "paid_wall_collection",
+        "personal_profile_enrichment",
+        "provider_call_without_authorization",
+        "email_send_without_confirm_send",
+        "cleanup_execute_without_register",
+      ],
       runStarted: false,
     },
   ];
@@ -1199,6 +1360,9 @@ type MockTaskSeed = Omit<
   | "freshnessTargetHours"
   | "nextRunAt"
   | "retryAfterAt"
+  | "maxRetryAttempts"
+  | "retryAttemptsUsed"
+  | "retryBudgetExhausted"
   | "retryDelayMinutes"
   | "schedulePolicy"
   | "staleHours"
@@ -1231,6 +1395,9 @@ function withMockTaskFreshness(task: MockTaskSeed): CollectionTask {
     nextRunAt,
     retryAfterAt,
     retryDelayMinutes: 15,
+    maxRetryAttempts: 3,
+    retryAttemptsUsed: freshnessStatus === "failed" ? 1 : 0,
+    retryBudgetExhausted: false,
     staleHours: 0,
     latestRunStatus: freshnessStatus === "failed" ? "failed" : "success",
     latestRunErrorMessage:
@@ -1265,6 +1432,7 @@ export function getMockAutomationCapabilityProbes(): AutomationCapabilityProbeLi
     runStarted: false,
     collectionResourcesWritten: false,
     total: 3,
+    evidenceAssets: [],
     items: [
       {
         schemaVersion: "capability_probe.v1",
@@ -2763,6 +2931,9 @@ export function getMockAutomationProductDatasetExportCreate(
     blockedReasons: [
       "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。",
     ],
+    idempotencyReplayed: false,
+    idempotencyScope: input.idempotencyKey ? "product_dataset_export" : null,
+    idempotencyKeyHash: input.idempotencyKey ? "mock".padEnd(64, "1") : null,
   };
   if (input.confirmCreate) {
     mockAutomationDatasetExportJobs.unshift(job);
@@ -3053,6 +3224,9 @@ export function getMockAutomationProductDriftAlertNotificationSend(
     blockedReasons: [
       "本次只发送已生成 AlertEvent 的站内通知；不会启动采集、创建 TaskRun、发送邮件、修改调度或写出文件。",
     ],
+    idempotencyReplayed: false,
+    idempotencyScope: "product_drift_alert_notification_send",
+    idempotencyKeyHash: "mock-drift-alert-notification-key-hash",
   };
 }
 
@@ -3090,6 +3264,9 @@ export function getMockAutomationProductDriftAlertEmailSend(
         runStarted: false,
       },
       blockedReasons: ["未检测到匹配的 AlertEvent，未发起邮件告警。"],
+      idempotencyReplayed: false,
+      idempotencyScope: "product_drift_alert_email_send",
+      idempotencyKeyHash: "mock-drift-alert-email-key-hash",
     };
   }
 
@@ -3149,6 +3326,9 @@ export function getMockAutomationProductDriftAlertEmailSend(
     blockedReasons: [
       "本次只发送已生成 AlertEvent 的邮件告警；不会启动采集、创建 TaskRun、发送站内通知、修改调度或写出文件。",
     ],
+    idempotencyReplayed: false,
+    idempotencyScope: "product_drift_alert_email_send",
+    idempotencyKeyHash: "mock-drift-alert-email-key-hash",
   };
 }
 
@@ -3294,6 +3474,9 @@ function getDefaultMockDatasetExportJob(): AutomationProductDatasetExportJob {
     blockedReasons: [
       "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。",
     ],
+    idempotencyReplayed: false,
+    idempotencyScope: null,
+    idempotencyKeyHash: null,
   };
 }
 
@@ -3434,6 +3617,7 @@ export function getMockTaskRun(taskId: string): TaskRun {
     return {
       id: `run_${Date.now()}`,
       taskId,
+      workspaceId: "workspace_demo",
       status: "success",
       startedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString(),
@@ -3441,6 +3625,9 @@ export function getMockTaskRun(taskId: string): TaskRun {
       entitiesCount: 20,
       errorMessage: null,
       createdAt: new Date().toISOString(),
+      idempotencyReplayed: false,
+      idempotencyScope: null,
+      idempotencyKeyHash: null,
       logs: [
         { step: "task_run_created", message: "Manual GitHub topic run requested." },
         { step: "github_topic_collected", message: "Collected public repositories for topic web-scraping." },
@@ -3453,6 +3640,7 @@ export function getMockTaskRun(taskId: string): TaskRun {
     return {
       id: `run_${Date.now()}`,
       taskId,
+      workspaceId: "workspace_demo",
       status: "success",
       startedAt: new Date().toISOString(),
       finishedAt: new Date().toISOString(),
@@ -3460,6 +3648,9 @@ export function getMockTaskRun(taskId: string): TaskRun {
       entitiesCount: 12,
       errorMessage: null,
       createdAt: new Date().toISOString(),
+      idempotencyReplayed: false,
+      idempotencyScope: null,
+      idempotencyKeyHash: null,
       logs: [
         { step: "task_run_created", message: "Manual retry requested for LinkedIn company feed." },
         { step: "rate_limit_window_checked", message: "Previous 429 window has expired." },
@@ -3472,6 +3663,7 @@ export function getMockTaskRun(taskId: string): TaskRun {
   return {
     id: `run_${Date.now()}`,
     taskId,
+    workspaceId: "workspace_demo",
     status: "success",
     startedAt: new Date().toISOString(),
     finishedAt: new Date().toISOString(),
@@ -3479,6 +3671,9 @@ export function getMockTaskRun(taskId: string): TaskRun {
     entitiesCount: 1,
     errorMessage: null,
     createdAt: new Date().toISOString(),
+    idempotencyReplayed: false,
+    idempotencyScope: null,
+    idempotencyKeyHash: null,
     logs: [
       { step: "task_run_created", message: "Manual run requested." },
       { step: "manual_json_collected", message: "Collected manual JSON payload." },
@@ -4096,6 +4291,11 @@ export function getMockReports(): Report[] {
       periodStart: "2026-06-11T00:00:00.000Z",
       periodEnd: "2026-06-11T08:30:00.000Z",
       createdAt: "2026-06-11T08:30:00.000Z",
+      deliveredChannels: [],
+      skippedChannels: {},
+      idempotencyReplayed: false,
+      idempotencyScope: null,
+      idempotencyKeyHash: null,
     },
   ];
 }
@@ -4340,6 +4540,9 @@ function executeMockReportSubscription(
           : "No delivery channel completed.",
     startedAt: now,
     finishedAt: now,
+    idempotencyReplayed: false,
+    idempotencyScope: null,
+    idempotencyKeyHash: null,
   };
   mockReportSubscriptionRuns.push(run);
   subscription.latestRun = run;
@@ -4532,6 +4735,131 @@ export function testMockEmailChannel(): EmailChannelTestResult {
     status: getMockEmailChannelStatus(),
     reason: "smtp_not_configured",
     testedAt: new Date().toISOString(),
+    providerCallAttempted: false,
+    idempotencyReplayed: false,
+    idempotencyScope: "email_channel_test",
+    idempotencyKeyHash: "mock-email-channel-test-key-hash",
+  };
+}
+
+export function prepareMockEmailProviderLiveGate(
+  input: EmailProviderLiveGateInput = {},
+): EmailProviderLiveGateResult {
+  return {
+    id: "mock_email_provider_live_gate_run",
+    operation: input.operation ?? "email_channel_test",
+    status: "blocked",
+    recipientEmail: input.recipientEmail ?? "demo@example.com",
+    channelStatus: getMockEmailChannelStatus(),
+    blockedReasons: ["smtp_not_configured"],
+    providerCallAllowed: false,
+    emailSendAllowed: false,
+    productionWriteAllowed: false,
+    providerCallAttempted: false,
+    maxProviderCalls: input.maxProviderCalls ?? 1,
+    auditFields: [
+      "workspace_id",
+      "user_id",
+      "operation",
+      "recipient_email",
+      "max_provider_calls",
+      "status_snapshot",
+      "decision_snapshot",
+      "provider_call_allowed",
+      "email_send_allowed",
+      "production_write_allowed",
+      "provider_call_attempted",
+      "idempotency_scope",
+      "idempotency_key_hash",
+    ],
+    nextRequiredAuthorization: "L4_authorized_live_email_send",
+    preparedAt: new Date().toISOString(),
+    expiresAt: input.expiresAt ?? null,
+    idempotencyReplayed: false,
+    idempotencyScope: "email_provider_live_gate",
+    idempotencyKeyHash: "mock-email-provider-live-gate-key-hash".padEnd(64, "0"),
+  };
+}
+
+export function getMockEmailProviderLiveSendReadiness(): EmailProviderLiveSendReadiness {
+  return {
+    status: "blocked",
+    channelStatus: getMockEmailChannelStatus(),
+    blockedReasons: [
+      "email_live_send_disabled",
+      "recipient_allowlist_empty",
+      "smtp_not_configured",
+    ],
+    sendEnabled: false,
+    liveApprovalRequired: true,
+    recipientAllowlistConfigured: false,
+    recipientAllowlistCount: 0,
+    providerCallAllowed: false,
+    emailSendAllowed: false,
+    productionWriteAllowed: false,
+    providerCallAttempted: false,
+    requiredAuthorization: "L4_authorized_live_email_send",
+    requiredRequestFields: [
+      "authorized",
+      "confirm_send",
+      "gate_run_id",
+      "approval_id",
+      "operation",
+      "Idempotency-Key",
+    ],
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+export function executeMockEmailProviderLiveSendGate(
+  input: EmailProviderLiveSendInput,
+): EmailProviderLiveSendResult {
+  return {
+    id: "mock_email_provider_live_send_run",
+    gateRunId: input.gateRunId,
+    approvalId: input.approvalId,
+    operation: input.operation ?? "email_channel_test",
+    status: "blocked",
+    delivered: false,
+    recipientEmail: input.recipientEmail ?? "demo@example.com",
+    channelStatus: getMockEmailChannelStatus(),
+    blockedReasons: [
+      "email_live_send_disabled",
+      "recipient_not_allowlisted",
+      "smtp_not_configured",
+    ],
+    reason: "email_live_send_disabled",
+    sendEnabled: false,
+    liveApprovalRequired: true,
+    recipientAllowlisted: false,
+    providerCallAllowed: false,
+    emailSendAllowed: false,
+    productionWriteAllowed: false,
+    providerCallAttempted: false,
+    auditFields: [
+      "workspace_id",
+      "user_id",
+      "gate_run_id",
+      "approval_id",
+      "operation",
+      "recipient_email",
+      "status_snapshot",
+      "decision_snapshot",
+      "send_enabled",
+      "live_approval_required",
+      "recipient_allowlisted",
+      "provider_call_allowed",
+      "email_send_allowed",
+      "production_write_allowed",
+      "provider_call_attempted",
+      "idempotency_scope",
+      "idempotency_key_hash",
+    ],
+    nextRequiredAuthorization: "manual_review_before_wider_live_send",
+    sentAt: new Date().toISOString(),
+    idempotencyReplayed: false,
+    idempotencyScope: "email_provider_live_send",
+    idempotencyKeyHash: "mock-email-provider-live-send-key-hash".padEnd(64, "0"),
   };
 }
 

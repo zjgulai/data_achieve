@@ -469,6 +469,81 @@ async def test_ecommerce_product_page_collector_extracts_product_fields(
 
 
 @pytest.mark.asyncio
+async def test_ecommerce_product_page_collector_extracts_static_microdata_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+
+    html = """
+    <html>
+      <head>
+        <title>Static test product</title>
+        <link rel="canonical" href="/test-sites/e-commerce/static/product/100">
+        <meta property="og:image" content="/logo.png">
+      </head>
+      <body>
+        <nav itemscope itemtype="https://schema.org/SiteNavigationElement">
+          <span itemprop="name">Home</span>
+        </nav>
+        <article class="product-wrapper" itemscope itemtype="https://schema.org/Product">
+          <img class="image" itemprop="image" src="/images/test-sites/item.png">
+          <h4 class="price" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+            <span itemprop="price">$1110.14</span>
+            <meta itemprop="priceCurrency" content="USD">
+          </h4>
+          <h4 class="title card-title" itemprop="name">Dell Latitude 5480</h4>
+          <p class="description card-text" itemprop="description">
+            Dell Latitude 5480, 14&quot; FHD, Core i5-7300U.
+          </p>
+        </article>
+      </body>
+    </html>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert_request_policy(request)
+        return httpx.Response(200, text=html)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        collector = EcommerceProductPageCollector(
+            {
+                "url": "https://webscraper.io/test-sites/e-commerce/static/product/100",
+                "fields": [
+                    "title",
+                    "price",
+                    "price_min",
+                    "price_max",
+                    "currency",
+                    "description",
+                    "image_url",
+                    "canonical_url",
+                ],
+            },
+            client,
+        )
+        test_result = await collector.test()
+        collect_result = await collector.collect()
+
+    assert test_result.status == "ok"
+    content = collect_result.raw_records[0].content
+    assert isinstance(content, dict)
+    assert content["page_structure"]["page_type"] == "product_detail"
+    assert content["page_structure"]["product_schema_count"] == 0
+    assert content["extracted_fields"] == {
+        "title": "Dell Latitude 5480",
+        "price": 1110.14,
+        "price_min": 1110.14,
+        "price_max": 1110.14,
+        "currency": "USD",
+        "description": 'Dell Latitude 5480, 14" FHD, Core i5-7300U.',
+        "image_url": "https://webscraper.io/images/test-sites/item.png",
+        "canonical_url": (
+            "https://webscraper.io/test-sites/e-commerce/static/product/100"
+        ),
+    }
+
+
+@pytest.mark.asyncio
 async def test_ecommerce_product_page_collector_uses_demo_fixture_without_http_client() -> None:
     collector = EcommerceProductPageCollector(
         {"url": "https://shop.example/products/demo-bag"},

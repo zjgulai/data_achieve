@@ -14,12 +14,13 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   analyzeAutomationSite,
   approveAutomationProductSchedule,
   buildAutomationBrowserExecutorContract,
+  buildAutomationBrowserProductionMetadataRunGate,
   checkAutomationGitHubToolDrift,
   checkAutomationProductDrift,
   cancelAutomationBrowserDiagnosticJob,
@@ -29,7 +30,9 @@ import {
   createAutomationProductFanout,
   discoverAutomationProducts,
   dryRunAutomationBrowserExecutableSpec,
+  dryRunAutomationBrowserPromotionExecution,
   dryRunAutomationCleaningPlan,
+  executeAutomationBrowserPromotion,
   generateAutomationGitHubToolReport,
   listAutomationBrowserDiagnosticJobs,
   listAutomationBrowserDiagnosticJobRuns,
@@ -40,6 +43,7 @@ import {
   listAutomationProductDriftEvents,
   previewAutomationProductDataset,
   previewAutomationProductFanout,
+  previewAutomationBrowserPromotion,
   previewAutomationGitHubToolDataset,
   runAutomationBrowserDiagnosticJobLocal,
   runAutomationProductBatch,
@@ -93,6 +97,10 @@ import type {
   AutomationBrowserDiagnosticJob,
   AutomationBrowserExecutorContract,
   AutomationBrowserLocalRunnerResult,
+  AutomationBrowserProductionMetadataRunGate,
+  AutomationBrowserPromotionExecution,
+  AutomationBrowserPromotionExecutionDryRun,
+  AutomationBrowserPromotionPreview,
   AutomationBrowserDiagnosticRun,
   AutomationBrowserExecutableSpecDryRun,
   AutomationSiteAnalysis,
@@ -295,6 +303,12 @@ export function AutomationWorkbench() {
     useState<AutomationBrowserExecutorContract | null>(null);
   const [browserExecutorLoading, setBrowserExecutorLoading] = useState(false);
   const [browserExecutorError, setBrowserExecutorError] = useState<string | null>(null);
+  const [browserProductionMetadataGate, setBrowserProductionMetadataGate] =
+    useState<AutomationBrowserProductionMetadataRunGate | null>(null);
+  const [browserProductionMetadataLoading, setBrowserProductionMetadataLoading] =
+    useState(false);
+  const [browserProductionMetadataError, setBrowserProductionMetadataError] =
+    useState<string | null>(null);
   const [browserLocalRuns, setBrowserLocalRuns] = useState<
     AutomationBrowserLocalRunnerResult[]
   >([]);
@@ -302,6 +316,22 @@ export function AutomationWorkbench() {
     useState<AutomationBrowserLocalRunnerResult | null>(null);
   const [browserLocalRunLoading, setBrowserLocalRunLoading] = useState(false);
   const [browserLocalRunError, setBrowserLocalRunError] = useState<string | null>(null);
+  const [browserPromotionPreview, setBrowserPromotionPreview] =
+    useState<AutomationBrowserPromotionPreview | null>(null);
+  const [browserPromotionPreviewLoading, setBrowserPromotionPreviewLoading] = useState(false);
+  const [browserPromotionPreviewError, setBrowserPromotionPreviewError] =
+    useState<string | null>(null);
+  const [browserPromotionExecutionDryRun, setBrowserPromotionExecutionDryRun] =
+    useState<AutomationBrowserPromotionExecutionDryRun | null>(null);
+  const [browserPromotionExecution, setBrowserPromotionExecution] =
+    useState<AutomationBrowserPromotionExecution | null>(null);
+  const [browserPromotionExecutionLoading, setBrowserPromotionExecutionLoading] =
+    useState(false);
+  const [browserPromotionExecutionError, setBrowserPromotionExecutionError] =
+    useState<string | null>(null);
+  const [browserPromotionWriteLoading, setBrowserPromotionWriteLoading] = useState(false);
+  const [browserPromotionWriteError, setBrowserPromotionWriteError] =
+    useState<string | null>(null);
   const [genericWebRun, setGenericWebRun] = useState<GenericWebRunState | null>(null);
   const [fields, setFields] = useState<string[]>([
     "title",
@@ -316,6 +346,8 @@ export function AutomationWorkbench() {
   const [discovery, setDiscovery] = useState<AutomationProductDiscovery | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitAction, setSubmitAction] = useState<AutomationMode | null>(null);
+  const submitInFlightRef = useRef(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [analysisHistory, setAnalysisHistory] = useState<AutomationSiteAnalysisHistoryItem[]>([]);
@@ -421,6 +453,10 @@ export function AutomationWorkbench() {
       setBrowserExecutorContract(null);
       setBrowserLocalRuns([]);
       setBrowserLocalRunResult(null);
+      setBrowserPromotionPreview(null);
+      setBrowserPromotionExecutionDryRun(null);
+      setBrowserPromotionExecution(null);
+      setBrowserPromotionWriteError(null);
       return;
     }
     void refreshAnalysisHistory(
@@ -430,6 +466,10 @@ export function AutomationWorkbench() {
     if (mode === "structure_preflight") {
       setBrowserLocalRuns([]);
       setBrowserLocalRunResult(null);
+      setBrowserPromotionPreview(null);
+      setBrowserPromotionExecutionDryRun(null);
+      setBrowserPromotionExecution(null);
+      setBrowserPromotionWriteError(null);
       void refreshBrowserDiagnosticHistory(selectedProjectId);
       void refreshBrowserDiagnosticJobs(selectedProjectId);
       void refreshBrowserDiagnosticJobRuns(selectedProjectId);
@@ -439,6 +479,10 @@ export function AutomationWorkbench() {
       setBrowserExecutorContract(null);
       setBrowserLocalRuns([]);
       setBrowserLocalRunResult(null);
+      setBrowserPromotionPreview(null);
+      setBrowserPromotionExecutionDryRun(null);
+      setBrowserPromotionExecution(null);
+      setBrowserPromotionWriteError(null);
     }
   }, [mode, selectedProjectId]);
 
@@ -446,6 +490,7 @@ export function AutomationWorkbench() {
     () => analysis?.fieldCandidates.filter((field) => field.selected).length ?? fields.length,
     [analysis, fields.length],
   );
+  const isPrimarySubmitting = loading || submitAction !== null;
 
   async function runGitHubTopicRadar() {
     if (!selectedProjectId) {
@@ -622,23 +667,42 @@ export function AutomationWorkbench() {
   }
 
   async function submitAutomation() {
+    if (submitInFlightRef.current) {
+      return;
+    }
     setError(null);
     if (!authorized) {
       setError("请先确认目标为公开页面或公开 API，且你有权进行采集分析。");
       return;
     }
     if (mode === "github_topic_radar") {
-      await runGitHubTopicRadar();
+      submitInFlightRef.current = true;
+      setSubmitAction(mode);
+      try {
+        await runGitHubTopicRadar();
+      } finally {
+        submitInFlightRef.current = false;
+        setSubmitAction(null);
+      }
       return;
     }
     if (mode === "structure_preflight") {
-      await runStructurePreflight();
+      submitInFlightRef.current = true;
+      setSubmitAction(mode);
+      try {
+        await runStructurePreflight();
+      } finally {
+        submitInFlightRef.current = false;
+        setSubmitAction(null);
+      }
       return;
     }
     if (!url.trim()) {
       setError(mode === "product_discovery" ? "请填写待发现的集合页 URL。" : "请填写待分析的商品页 URL。");
       return;
     }
+    submitInFlightRef.current = true;
+    setSubmitAction(mode);
     setLoading(true);
     try {
       if (mode === "product_discovery") {
@@ -672,6 +736,8 @@ export function AutomationWorkbench() {
       setError(caught instanceof Error ? caught.message : "Automation analysis failed");
     } finally {
       setLoading(false);
+      submitInFlightRef.current = false;
+      setSubmitAction(null);
     }
   }
 
@@ -831,6 +897,8 @@ export function AutomationWorkbench() {
     }
     setBrowserExecutorLoading(true);
     setBrowserExecutorError(null);
+    setBrowserProductionMetadataGate(null);
+    setBrowserProductionMetadataError(null);
     try {
       const contract = await buildAutomationBrowserExecutorContract(jobId, {
         authorized,
@@ -852,6 +920,35 @@ export function AutomationWorkbench() {
     }
   }
 
+  async function buildBrowserProductionMetadataGate(jobId: string) {
+    if (!authorized) {
+      setBrowserProductionMetadataError("请先确认授权边界后再生成生产只读预检。");
+      return;
+    }
+    setBrowserProductionMetadataLoading(true);
+    setBrowserProductionMetadataError(null);
+    try {
+      const gate = await buildAutomationBrowserProductionMetadataRunGate(jobId, {
+        authorized,
+        confirmReview: true,
+        confirmProductionReadonly: true,
+        confirmMetadataOnly: true,
+        confirmNoFileWrite: true,
+        confirmNoCollectionWrite: true,
+        targetEnvironment: "production",
+        maxMetadataEvents: 100,
+        note: "Build production metadata-only gate from automation workbench.",
+      });
+      setBrowserProductionMetadataGate(gate);
+    } catch (caught) {
+      setBrowserProductionMetadataError(
+        caught instanceof Error ? caught.message : "生产只读预检生成未完成",
+      );
+    } finally {
+      setBrowserProductionMetadataLoading(false);
+    }
+  }
+
   async function runBrowserLocalRunner(
     jobId: string,
     runMode: "diagnostic_snapshot_replay" | "ephemeral_browser_harness_probe" =
@@ -863,6 +960,14 @@ export function AutomationWorkbench() {
     }
     setBrowserLocalRunLoading(true);
     setBrowserLocalRunError(null);
+    setBrowserPromotionPreview(null);
+    setBrowserPromotionPreviewError(null);
+    setBrowserPromotionExecutionDryRun(null);
+    setBrowserPromotionExecution(null);
+    setBrowserPromotionExecutionError(null);
+    setBrowserPromotionWriteError(null);
+    setBrowserProductionMetadataGate(null);
+    setBrowserProductionMetadataError(null);
     try {
       const result = await runAutomationBrowserDiagnosticJobLocal(jobId, {
         authorized,
@@ -890,6 +995,96 @@ export function AutomationWorkbench() {
       );
     } finally {
       setBrowserLocalRunLoading(false);
+    }
+  }
+
+  async function previewBrowserPromotion(runId: string) {
+    if (!authorized) {
+      setBrowserPromotionPreviewError("请先确认授权边界后再生成候选包。");
+      return;
+    }
+    setBrowserPromotionPreviewLoading(true);
+    setBrowserPromotionPreviewError(null);
+    setBrowserPromotionExecutionDryRun(null);
+    setBrowserPromotionExecution(null);
+    setBrowserPromotionExecutionError(null);
+    setBrowserPromotionWriteError(null);
+    try {
+      const result = await previewAutomationBrowserPromotion(runId, {
+        authorized,
+        confirmReview: true,
+        targetSourceType: "generic_web",
+        enableTaskPreview: true,
+        note: "Build local browser promotion preview from automation workbench.",
+      });
+      setBrowserPromotionPreview(result);
+    } catch (caught) {
+      setBrowserPromotionPreviewError(
+        caught instanceof Error ? caught.message : "候选包预览生成未完成",
+      );
+    } finally {
+      setBrowserPromotionPreviewLoading(false);
+    }
+  }
+
+  async function dryRunBrowserPromotionExecution(runId: string) {
+    if (!authorized) {
+      setBrowserPromotionExecutionError("请先确认授权边界后再执行预检。");
+      return;
+    }
+    setBrowserPromotionExecutionLoading(true);
+    setBrowserPromotionExecutionError(null);
+    setBrowserPromotionExecution(null);
+    setBrowserPromotionWriteError(null);
+    try {
+      const result = await dryRunAutomationBrowserPromotionExecution(runId, {
+        authorized,
+        confirmReview: true,
+        confirmNoWrite: true,
+        targetSourceType: "generic_web",
+        sourceName: browserPromotionPreview?.sourceDraft.suggestedName ?? null,
+        scheduleCron: null,
+        enableTaskPreview: true,
+        note: "Dry-run browser promotion execution from automation workbench.",
+      });
+      setBrowserPromotionExecutionDryRun(result);
+    } catch (caught) {
+      setBrowserPromotionExecutionError(
+        caught instanceof Error ? caught.message : "执行前预检未完成",
+      );
+    } finally {
+      setBrowserPromotionExecutionLoading(false);
+    }
+  }
+
+  async function executeBrowserPromotion(runId: string) {
+    if (!authorized) {
+      setBrowserPromotionWriteError("请先确认授权边界后再创建采集资源。");
+      return;
+    }
+    setBrowserPromotionWriteLoading(true);
+    setBrowserPromotionWriteError(null);
+    try {
+      const result = await executeAutomationBrowserPromotion(runId, {
+        authorized,
+        confirmReview: true,
+        confirmWrite: true,
+        confirmCreateCollectionResources: true,
+        confirmNoTaskRun: true,
+        targetSourceType: "generic_web",
+        sourceName: browserPromotionPreview?.sourceDraft.suggestedName ?? null,
+        scheduleCron: null,
+        confirmSchedule: false,
+        idempotencyKey: `browser-promotion:${runId}:generic_web`,
+        note: "Create local source and task from automation workbench; do not start task run.",
+      });
+      setBrowserPromotionExecution(result);
+    } catch (caught) {
+      setBrowserPromotionWriteError(
+        caught instanceof Error ? caught.message : "授权创建未完成",
+      );
+    } finally {
+      setBrowserPromotionWriteLoading(false);
     }
   }
 
@@ -1280,11 +1475,11 @@ export function AutomationWorkbench() {
 
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#C96F5C] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(201,111,92,0.24)] transition hover:bg-[#B85F4F] disabled:cursor-not-allowed disabled:bg-[#D8C8C0]"
-                disabled={loading}
+                disabled={isPrimarySubmitting}
                 type="submit"
               >
-                {loading ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
-                {loading
+                {isPrimarySubmitting ? <Loader2 className="animate-spin" size={16} aria-hidden="true" /> : <Search size={16} aria-hidden="true" />}
+                {isPrimarySubmitting
                   ? "处理中"
                   : mode === "github_topic_radar"
                     ? "创建并运行 GitHub 主题雷达"
@@ -1379,7 +1574,13 @@ export function AutomationWorkbench() {
             <BrowserExecutorContractPanel
               contract={browserExecutorContract}
               error={browserExecutorError}
+              productionGate={browserProductionMetadataGate}
+              productionGateError={browserProductionMetadataError}
+              productionGateLoading={browserProductionMetadataLoading}
               loading={browserExecutorLoading}
+              onBuildProductionGate={(jobId) =>
+                void buildBrowserProductionMetadataGate(jobId)
+              }
               onRunHarnessProbe={(jobId) =>
                 void runBrowserLocalRunner(jobId, "ephemeral_browser_harness_probe")
               }
@@ -1392,6 +1593,20 @@ export function AutomationWorkbench() {
               error={browserLocalRunError}
               items={browserLocalRuns}
               loading={browserLocalRunLoading}
+              onExecutePromotion={(runId) => void executeBrowserPromotion(runId)}
+              onDryRunPromotionExecution={(runId) =>
+                void dryRunBrowserPromotionExecution(runId)
+              }
+              onPreviewPromotion={(runId) => void previewBrowserPromotion(runId)}
+              promotionExecution={browserPromotionExecution}
+              promotionExecutionDryRun={browserPromotionExecutionDryRun}
+              promotionExecutionError={browserPromotionExecutionError}
+              promotionExecutionLoading={browserPromotionExecutionLoading}
+              promotionWriteError={browserPromotionWriteError}
+              promotionWriteLoading={browserPromotionWriteLoading}
+              promotionPreview={browserPromotionPreview}
+              promotionPreviewError={browserPromotionPreviewError}
+              promotionPreviewLoading={browserPromotionPreviewLoading}
               result={browserLocalRunResult}
             />
           </div>
@@ -1603,6 +1818,11 @@ function BrowserDiagnosticHistoryPanel({
                 <span>{item.evidenceSource}</span>
                 <span>{formatShortDate(item.createdAt)}</span>
               </div>
+              {item.evidenceAsset ? (
+                <p className="mt-2 truncate text-xs font-semibold text-[#6F7F52]">
+                  Evidence {item.evidenceAsset.assetId}
+                </p>
+              ) : null}
               {item.blockedReasons.length > 0 ? (
                 <p className="mt-2 rounded-lg bg-[#FFF8F4] px-2 py-1 text-xs leading-5 text-[#7A625A]">
                   {item.blockedReasons[0]}
@@ -1671,6 +1891,11 @@ function BrowserDiagnosticJobHistoryPanel({
                 <span>{item.waitPolicy.length} 等待条件</span>
                 <span>{formatShortDate(item.createdAt)}</span>
               </div>
+              {item.evidenceAsset ? (
+                <p className="mt-2 truncate text-xs font-semibold text-[#6F7F52]">
+                  Evidence {item.evidenceAsset.assetId}
+                </p>
+              ) : null}
               {item.blockedReasons.length > 0 ? (
                 <p className="mt-2 rounded-lg bg-[#FFF8F4] px-2 py-1 text-xs leading-5 text-[#7A625A]">
                   {formatBrowserJobReason(item.blockedReasons[0])}
@@ -1722,6 +1947,10 @@ function BrowserExecutorContractPanel({
   contract,
   error,
   loading,
+  productionGate,
+  productionGateError,
+  productionGateLoading,
+  onBuildProductionGate,
   onRunHarnessProbe,
   onRunLocal,
   runLoading,
@@ -1729,11 +1958,15 @@ function BrowserExecutorContractPanel({
   contract: AutomationBrowserExecutorContract | null;
   error: string | null;
   loading: boolean;
+  productionGate: AutomationBrowserProductionMetadataRunGate | null;
+  productionGateError: string | null;
+  productionGateLoading: boolean;
+  onBuildProductionGate: (jobId: string) => void;
   onRunHarnessProbe: (jobId: string) => void;
   onRunLocal: (jobId: string) => void;
   runLoading: boolean;
 }) {
-  if (!contract && !error && !loading) {
+  if (!contract && !error && !loading && !productionGateError && !productionGateLoading) {
     return null;
   }
   const adapterName = readString(contract?.adapter.adapter_name) ?? "browser_harness_read_only_local";
@@ -1742,6 +1975,17 @@ function BrowserExecutorContractPanel({
   const passedChecks = contract?.readinessChecks.filter((item) => item.status === "passed").length ?? 0;
   const reviewChecks = contract?.readinessChecks.filter((item) => item.status === "review").length ?? 0;
   const blockedChecks = contract?.readinessChecks.filter((item) => item.status === "blocked").length ?? 0;
+  const gateRecord = readRecord(productionGate?.gate);
+  const executionPolicy = readRecord(productionGate?.executionPolicy);
+  const metadataPlan = readRecord(productionGate?.metadataPlan);
+  const networkObservation = readRecord(metadataPlan?.network_observation);
+  const artifactCapture = readRecord(metadataPlan?.artifact_capture);
+  const collectionSideEffects = readRecord(metadataPlan?.collection_side_effects);
+  const gateStatus = readString(gateRecord?.status) ?? "pending";
+  const metadataEventLimit =
+    typeof metadataPlan?.max_metadata_events === "number"
+      ? metadataPlan.max_metadata_events
+      : "-";
   return (
     <div className="rounded-2xl border border-[#D7E8D7] bg-[#F3FBF3] p-3">
       <div className="flex items-center justify-between gap-3">
@@ -1795,6 +2039,19 @@ function BrowserExecutorContractPanel({
             </button>
             <button
               className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#AFC9E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#284E7A] transition hover:border-[#6A91BE] disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={productionGateLoading || blockedChecks > 0}
+              onClick={() => onBuildProductionGate(contract.job.id)}
+              type="button"
+            >
+              {productionGateLoading ? (
+                <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+              ) : (
+                <ShieldCheck size={14} aria-hidden="true" />
+              )}
+              生产只读预检
+            </button>
+            <button
+              className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#AFC9E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#284E7A] transition hover:border-[#6A91BE] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={runLoading || blockedChecks > 0}
               onClick={() => onRunHarnessProbe(contract.job.id)}
               type="button"
@@ -1807,6 +2064,38 @@ function BrowserExecutorContractPanel({
               运行本机浏览器探测
             </button>
           </div>
+          {productionGateError ? (
+            <p className="rounded-xl border border-[#F0C8C0] bg-[#FFF2EF] px-3 py-2 text-xs font-semibold text-[#B85F4F]">
+              {productionGateError}
+            </p>
+          ) : null}
+          {productionGate ? (
+            <div className="rounded-xl border border-[#AFC9E8] bg-white p-3 text-[#284E7A]">
+              <div className="flex flex-wrap items-center gap-2 font-semibold">
+                <span>生产只读预检</span>
+                <span>{productionGate.evidenceGrade}</span>
+                <span>{gateStatus}</span>
+                <span>上限 {metadataEventLimit} 条元数据事件</span>
+              </div>
+              <div className="mt-2 grid gap-1 text-xs leading-5 sm:grid-cols-2">
+                <span>自动 worker: {String(executionPolicy?.automatic_api_worker_start)}</span>
+                <span>浏览器启动: {String(productionGate.browserStarted)}</span>
+                <span>运行启动: {String(productionGate.runStarted)}</span>
+                <span>文件写入: {String(productionGate.filesWritten)}</span>
+                <span>采集资源写入: {String(productionGate.collectionResourcesWritten)}</span>
+                <span>provider 调用: {String(productionGate.providerCalled)}</span>
+                <span>网络范围: metadata-only {String(networkObservation?.metadata_only)}</span>
+                <span>headers/body: {String(networkObservation?.capture_headers)} / {String(networkObservation?.capture_body)}</span>
+                <span>截图/trace/HAR: {String(artifactCapture?.screenshot)} / {String(artifactCapture?.trace)} / {String(artifactCapture?.har)}</span>
+                <span>采集对象创建: {String(collectionSideEffects?.source_created)} / {String(collectionSideEffects?.task_created)} / {String(collectionSideEffects?.dataset_created)}</span>
+              </div>
+              {productionGate.blockedReasons.length ? (
+                <p className="mt-2 text-xs font-semibold text-[#B85F4F]">
+                  {productionGate.blockedReasons.join(" / ")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -1817,11 +2106,35 @@ function BrowserLocalRunnerResultPanel({
   error,
   items,
   loading,
+  onDryRunPromotionExecution,
+  onExecutePromotion,
+  onPreviewPromotion,
+  promotionExecution,
+  promotionExecutionDryRun,
+  promotionExecutionError,
+  promotionExecutionLoading,
+  promotionWriteError,
+  promotionWriteLoading,
+  promotionPreview,
+  promotionPreviewError,
+  promotionPreviewLoading,
   result,
 }: {
   error: string | null;
   items: AutomationBrowserLocalRunnerResult[];
   loading: boolean;
+  onDryRunPromotionExecution?: (runId: string) => void;
+  onExecutePromotion?: (runId: string) => void;
+  onPreviewPromotion?: (runId: string) => void;
+  promotionExecution: AutomationBrowserPromotionExecution | null;
+  promotionExecutionDryRun: AutomationBrowserPromotionExecutionDryRun | null;
+  promotionExecutionError: string | null;
+  promotionExecutionLoading: boolean;
+  promotionWriteError: string | null;
+  promotionWriteLoading: boolean;
+  promotionPreview: AutomationBrowserPromotionPreview | null;
+  promotionPreviewError: string | null;
+  promotionPreviewLoading: boolean;
   result: AutomationBrowserLocalRunnerResult | null;
 }) {
   const visibleResult = result ?? items[0] ?? null;
@@ -1859,6 +2172,20 @@ function BrowserLocalRunnerResultPanel({
       ? "已完成浏览器只读探测"
       : "已启动浏览器"
     : "未启动真实浏览器";
+  const previewGate = readRecord(promotionPreview?.promotionGate);
+  const previewReasons = readArray(previewGate?.reasons)
+    .map((item) => (typeof item === "string" ? item : null))
+    .filter((item): item is string => item !== null)
+    .slice(0, 4);
+  const executionGate = readRecord(promotionExecutionDryRun?.promotionGate);
+  const executionReasons = readArray(executionGate?.reasons)
+    .map((item) => (typeof item === "string" ? item : null))
+    .filter((item): item is string => item !== null)
+    .slice(0, 4);
+  const visibleExecutionChecks = promotionExecutionDryRun?.validationChecks.slice(0, 5) ?? [];
+  const dryRunHasBlockedCheck =
+    promotionExecutionDryRun?.validationChecks.some((check) => check.status === "blocked") ??
+    true;
   return (
     <div className="rounded-2xl border border-[#D7E0EF] bg-[#F7FAFF] p-3">
       <div className="flex items-center justify-between gap-3">
@@ -1975,6 +2302,177 @@ function BrowserLocalRunnerResultPanel({
               ) : null}
             </div>
           ) : null}
+          <div className="rounded-xl border border-[#C5D6ED] bg-white p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold text-[#284E7A]">采集候选预览</p>
+                <p className="mt-1">
+                  仅生成候选包和阻断原因；不创建采集源、任务或任务运行。
+                </p>
+              </div>
+              {onPreviewPromotion ? (
+                <button
+                  className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#AFC9E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#284E7A] transition hover:border-[#6A91BE] disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={promotionPreviewLoading}
+                  onClick={() => onPreviewPromotion(visibleResult.id)}
+                  type="button"
+                >
+                  {promotionPreviewLoading ? (
+                    <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                  ) : (
+                    <ClipboardList size={14} aria-hidden="true" />
+                  )}
+                  生成候选包
+                </button>
+              ) : null}
+            </div>
+            {promotionPreviewError ? (
+              <p className="mt-2 rounded-lg border border-[#F0C8C0] bg-[#FFF2EF] px-2.5 py-2 font-semibold text-[#B85F4F]">
+                {promotionPreviewError}
+              </p>
+            ) : null}
+            {promotionPreview ? (
+              <div className="mt-2 grid gap-2">
+                <div className="grid gap-1">
+                  <p>
+                    <span className="font-semibold">采集源候选：</span>
+                    {promotionPreview.sourceDraft.suggestedName} · {promotionPreview.sourceDraft.type}
+                  </p>
+                  <p>
+                    <span className="font-semibold">任务候选：</span>
+                    {promotionPreview.taskDraft
+                      ? `${promotionPreview.taskDraft.status} · ${promotionPreview.taskDraft.schedulePolicy}`
+                      : "未生成"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">证据：</span>
+                    {promotionPreview.evidenceAsset.assetId}
+                  </p>
+                </div>
+                {previewReasons.length > 0 ? (
+                  <div className="grid gap-1">
+                    {previewReasons.map((reason) => (
+                      <p key={reason}>{formatBrowserJobReason(reason)}</p>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap gap-2 font-semibold">
+                  <span>{promotionPreview.sourceCreated ? "已创建采集源" : "未创建采集源"}</span>
+                  <span>{promotionPreview.taskCreated ? "已创建任务" : "未创建任务"}</span>
+                  <span>
+                    {promotionPreview.taskRunStarted ? "已启动任务运行" : "未启动任务运行"}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-[#D7E0EF] bg-[#F7FAFF] p-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-[#284E7A]">执行前预检</p>
+                    {onDryRunPromotionExecution ? (
+                      <button
+                        className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#AFC9E8] bg-white px-3 py-1.5 text-xs font-semibold text-[#284E7A] transition hover:border-[#6A91BE] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={promotionExecutionLoading}
+                        onClick={() => onDryRunPromotionExecution(visibleResult.id)}
+                        type="button"
+                      >
+                        {promotionExecutionLoading ? (
+                          <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                        ) : (
+                          <ShieldCheck size={14} aria-hidden="true" />
+                        )}
+                        运行预检
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1">复用正式配置校验，但仍不写入采集源、任务或任务运行。</p>
+                  {promotionExecutionError ? (
+                    <p className="mt-2 rounded-lg border border-[#F0C8C0] bg-[#FFF2EF] px-2.5 py-2 font-semibold text-[#B85F4F]">
+                      {promotionExecutionError}
+                    </p>
+                  ) : null}
+                  {promotionExecutionDryRun ? (
+                    <div className="mt-2 grid gap-2">
+                      <div className="flex flex-wrap gap-2 font-semibold">
+                        <span>{promotionExecutionDryRun.writeAllowed ? "允许写入" : "不允许写入"}</span>
+                        <span>{promotionExecutionDryRun.canExecute ? "可执行" : "不可直接执行"}</span>
+                        <span>
+                          {promotionExecutionDryRun.collectionResourcesWritten
+                            ? "已写采集资源"
+                            : "未写采集资源"}
+                        </span>
+                      </div>
+                      {visibleExecutionChecks.length > 0 ? (
+                        <div className="grid gap-1">
+                          {visibleExecutionChecks.map((check) => (
+                            <p key={check.key}>
+                              <span className="font-semibold">
+                                {formatBrowserPromotionCheckStatus(check.status)}：
+                              </span>
+                              {formatBrowserJobReason(check.message)}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                      {executionReasons.length > 0 ? (
+                        <div className="grid gap-1">
+                          {executionReasons.map((reason) => (
+                            <p key={reason}>{formatBrowserJobReason(reason)}</p>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {onExecutePromotion ? (
+                          <button
+                            className="inline-flex w-fit items-center gap-2 rounded-lg border border-[#B8D8BA] bg-white px-3 py-1.5 text-xs font-semibold text-[#2F6B3A] transition hover:border-[#6AA772] disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={promotionWriteLoading || dryRunHasBlockedCheck}
+                            onClick={() => onExecutePromotion(visibleResult.id)}
+                            type="button"
+                          >
+                            {promotionWriteLoading ? (
+                              <Loader2 className="animate-spin" size={14} aria-hidden="true" />
+                            ) : (
+                              <Database size={14} aria-hidden="true" />
+                            )}
+                            授权创建采集资源
+                          </button>
+                        ) : null}
+                        <span>
+                          {dryRunHasBlockedCheck
+                            ? "仍有阻断项，不能创建。"
+                            : "可创建采集源和任务，但不会启动任务运行。"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {promotionWriteError ? (
+                    <p className="mt-2 rounded-lg border border-[#F0C8C0] bg-[#FFF2EF] px-2.5 py-2 font-semibold text-[#B85F4F]">
+                      {promotionWriteError}
+                    </p>
+                  ) : null}
+                  {promotionExecution ? (
+                    <div className="mt-2 grid gap-1 border-t border-[#D7E0EF] pt-2">
+                      <p className="font-semibold text-[#2F6B3A]">
+                        {promotionExecution.idempotencyReplayed
+                          ? "已复用上次创建结果"
+                          : "已创建采集资源"}
+                      </p>
+                      <p>
+                        <span className="font-semibold">采集源：</span>
+                        {promotionExecution.source?.name ?? "未返回"} ·{" "}
+                        {promotionExecution.source?.type ?? "未知类型"}
+                      </p>
+                      <p>
+                        <span className="font-semibold">任务：</span>
+                        {promotionExecution.task?.status ?? "未返回"} · 未启动任务运行
+                      </p>
+                      <p>
+                        <span className="font-semibold">幂等：</span>
+                        {promotionExecution.idempotencyScope}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
@@ -2148,6 +2646,12 @@ function CapabilityProbePanel({
                   {primaryCandidate?.label ?? "待定义"} ·{" "}
                   {formatCapabilityStatus(primaryCandidate?.status ?? "unknown")}
                 </p>
+                {item.evidenceAsset ? (
+                  <p>
+                    <span className="font-semibold text-[#2E201C]">证据：</span>
+                    {item.evidenceAsset.assetId}
+                  </p>
+                ) : null}
               </div>
 
               <div>
@@ -2234,6 +2738,12 @@ function PlatformPackageMatrix({
       {appliedPackage ? (
         <div className="mt-4 grid gap-3 rounded-xl border border-[#D7E8D7] bg-[#F3FBF3] p-3 text-sm text-[#2F6B3A]">
           <p className="font-semibold">已应用平台包：{appliedPackage.name}</p>
+          <div className="flex flex-wrap gap-2 text-xs font-semibold text-[#4F7F56]">
+            <span>version {appliedPackage.version}</span>
+            <span>{formatPackageLifecycleStatus(appliedPackage.lifecycleStatus)}</span>
+            <span>{appliedPackage.evidenceGrade}</span>
+            <span>{formatAuthorizationRequired(appliedPackage.authorizationRequired)}</span>
+          </div>
           <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div>
               <p className="text-xs font-semibold uppercase text-[#4F7F56]">操作清单</p>
@@ -2281,6 +2791,12 @@ function PlatformPackageMatrix({
                   <p className="mt-1 text-sm leading-6 text-[#7A625A]">
                     {platformPackage.summary}
                   </p>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-[#7D4F43]">
+                    <span>v{platformPackage.version}</span>
+                    <span>{formatPackageLifecycleStatus(platformPackage.lifecycleStatus)}</span>
+                    <span>{platformPackage.evidenceGrade}</span>
+                    <span>{formatAuthorizationRequired(platformPackage.authorizationRequired)}</span>
+                  </div>
                 </div>
                 <span
                   className={cn(
@@ -2357,6 +2873,58 @@ function PlatformPackageMatrix({
                   {platformPackage.riskBoundaries[0]?.condition ?? "待补充边界"}：
                   {platformPackage.riskBoundaries[0]?.guidance ?? "需要人工确认。"}
                 </p>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-[#B47767]">
+                    Acceptance Registry
+                  </p>
+                  <div className="mt-2 grid gap-2">
+                    {platformPackage.acceptanceRegistry.slice(0, 3).map((gate) => (
+                      <div
+                        className="grid gap-1 border-b border-[#F5E9E3] pb-2 last:border-0 last:pb-0"
+                        key={gate.id}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-[#2E201C]">{gate.label}</p>
+                          <span className="rounded-full bg-[#FFF0EA] px-2 py-1 text-xs font-semibold text-[#9E5C4D]">
+                            {formatAcceptanceStatus(gate.status)}
+                          </span>
+                        </div>
+                        <p className="text-xs leading-5 text-[#7A625A]">
+                          {gate.evidenceGrade} · {gate.evidence}
+                        </p>
+                        {gate.nextAction ? (
+                          <p className="text-xs leading-5 text-[#9E5C4D]">{gate.nextAction}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[#F0E1D9] bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-[#B47767]">Governance</p>
+                  <div className="mt-2 grid gap-2 text-xs leading-5 text-[#7A625A]">
+                    <p>
+                      <span className="font-semibold text-[#2E201C]">Owner：</span>
+                      {platformPackage.owner}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-[#2E201C]">Cleanup：</span>
+                      {platformPackage.cleanupPolicy}
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {platformPackage.forbiddenActions.slice(0, 6).map((action) => (
+                      <span
+                        className="rounded-full border border-[#F0C8C0] bg-[#FFF2EF] px-2 py-1 text-xs font-semibold text-[#B85F4F]"
+                        key={action}
+                      >
+                        {action}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -5335,6 +5903,40 @@ function formatExecutionBoundary(value: AutomationPlatformPackage["executionBoun
   return labels[value];
 }
 
+function formatAuthorizationRequired(value: boolean) {
+  return value ? "需授权" : "无需额外授权";
+}
+
+function formatPackageLifecycleStatus(value: AutomationPlatformPackage["lifecycleStatus"]) {
+  const labels: Record<AutomationPlatformPackage["lifecycleStatus"], string> = {
+    active: "Active",
+    beta: "Beta",
+    deprecated: "Deprecated",
+    draft: "Draft",
+    import_only: "Import only",
+    sop_only: "SOP only",
+  };
+  return labels[value];
+}
+
+function formatAcceptanceStatus(
+  value: AutomationPlatformPackage["acceptanceRegistry"][number]["status"],
+) {
+  const labels: Record<
+    AutomationPlatformPackage["acceptanceRegistry"][number]["status"],
+    string
+  > = {
+    blocked: "Blocked",
+    done_scoped_l4: "Scoped L4",
+    local_done: "Local done",
+    local_external_done: "Local external",
+    manual_review: "Manual review",
+    retained_l4: "Retained L4",
+    todo: "Todo",
+  };
+  return labels[value];
+}
+
 function formatTaskRunStatus(value: string) {
   const labels: Record<string, string> = {
     disabled: "已停用",
@@ -5572,7 +6174,21 @@ function formatBrowserJobReason(value: string) {
     browser_harness_binary_unavailable: "browser-harness CLI 不可用。",
     browser_harness_ephemeral_probe_only: "本机探测仅读取临时 tab 页面元信息。",
     browser_harness_probe_failed: "browser-harness 探测未完成。",
+    browser_automation_runtime_not_registered:
+      "浏览器自动化运行时尚未注册为正式采集器。",
+    browser_evidence_boundary_clean: "证据边界干净，未写文件或采集资源。",
+    browser_evidence_boundary_has_side_effect: "证据资产出现写入痕迹，需停止晋级。",
     browser_local_runner_snapshot_replay_only: "本地 runner 仅回放已保存诊断快照。",
+    browser_promotion_no_write_confirmed: "已确认本次只是预检，不执行写入。",
+    browser_runtime_strategy_manual_review_required:
+      "运行时策略仍需人工复核后才能进入写入链路。",
+    collector_config_dry_run_valid: "采集配置预检通过。",
+    collector_config_invalid: "采集配置预检未通过。",
+    collector_not_registered: "目标采集器未注册。",
+    execution_dry_run_no_write: "当前只是执行前预检，没有写入。",
+    generic_web_may_not_reproduce_browser_runtime:
+      "Generic Web 采集器可能无法复现浏览器运行态字段。",
+    manual_review_required: "需要人工确认目标类型、字段和保留策略。",
     m2_read_only_contract_no_direct_promotion:
       "当前阶段仅沉淀只读证据，不能直接创建采集资源。",
     no_files_written_no_collection_resources_created: "未写文件，未创建采集资源。",
@@ -5580,7 +6196,21 @@ function formatBrowserJobReason(value: string) {
       "未启动真实浏览器，未写文件，未创建采集资源。",
     no_source_task_taskrun_dataset_notification_or_scheduler_side_effect:
       "未创建采集源、任务、运行、数据集、通知或调度。",
+    preview_only_no_source_task_write: "当前仅生成候选包，没有写入采集资源。",
+    product_page_collector_static_runtime_only:
+      "商品页采集器为静态运行时，需复核动态字段可复现性。",
+    required_selectors_observed: "必需字段已观测到。",
     required_selector_missing: "必需 selector 仍有缺失，需复核后再进入后续链路。",
+    separate_write_authorization_required: "正式写入需要单独授权。",
+  };
+  return labels[value] ?? value;
+}
+
+function formatBrowserPromotionCheckStatus(value: string) {
+  const labels: Record<string, string> = {
+    blocked: "阻断",
+    passed: "通过",
+    review: "复核",
   };
   return labels[value] ?? value;
 }

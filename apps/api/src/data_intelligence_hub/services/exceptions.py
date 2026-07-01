@@ -69,12 +69,36 @@ class ReportNotFoundError(ServiceError):
     message = "Report not found"
 
 
+class ReportSendAuthorizationError(ServiceError):
+    message = "report_send_authorization_required"
+
+
+class ReportSendConfirmationRequiredError(ServiceError):
+    message = "report_send_confirmation_required"
+
+
 class ReportSubscriptionNotFoundError(ServiceError):
     message = "Report subscription not found"
 
 
 class ReportSubscriptionRunNotFoundError(ServiceError):
     message = "Report subscription run not found"
+
+
+class ReportSubscriptionRunAuthorizationError(ServiceError):
+    message = "report_subscription_run_authorization_required"
+
+
+class ReportSubscriptionRunConfirmationRequiredError(ServiceError):
+    message = "report_subscription_run_confirmation_required"
+
+
+class ReportSubscriptionRetryAuthorizationError(ServiceError):
+    message = "report_subscription_retry_authorization_required"
+
+
+class ReportSubscriptionRetryConfirmationRequiredError(ServiceError):
+    message = "report_subscription_retry_confirmation_required"
 
 
 class ReportSubscriptionRunRetryNotAllowedError(ServiceError):
@@ -91,3 +115,35 @@ class AlertEventNotFoundError(ServiceError):
 
 class NotificationNotFoundError(ServiceError):
     message = "Notification not found"
+
+
+class EmailChannelTestAuthorizationError(ServiceError):
+    message = "email_channel_test_authorization_required"
+
+
+class EmailChannelTestConfirmationRequiredError(ServiceError):
+    message = "email_channel_test_confirmation_required"
+
+
+class EmailProviderLiveGateAuthorizationError(ServiceError):
+    message = "email_provider_live_gate_authorization_required"
+
+
+class EmailProviderLiveGateConfirmationRequiredError(ServiceError):
+    message = "email_provider_live_gate_confirmation_required"
+
+
+class EmailProviderLiveSendAuthorizationError(ServiceError):
+    message = "email_provider_live_send_authorization_required"
+
+
+class EmailProviderLiveSendConfirmationRequiredError(ServiceError):
+    message = "email_provider_live_send_confirmation_required"
+
+
+class EmailProviderLiveSendIdempotencyRequiredError(ServiceError):
+    message = "email_provider_live_send_idempotency_key_required"
+
+
+class EmailProviderLiveGateRunNotFoundError(ServiceError):
+    message = "email_provider_live_gate_run_not_found"

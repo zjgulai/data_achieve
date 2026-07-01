@@ -18,6 +18,7 @@ from data_intelligence_hub.repositories.reports import list_due_report_subscript
 from data_intelligence_hub.repositories.scheduler import create_scheduler_tick
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, is_schedule_due
 from data_intelligence_hub.services.collector_service import execute_collection_task
+from data_intelligence_hub.services.exceptions import TaskAlreadyRunningError
 from data_intelligence_hub.services.report_service import execute_report_subscription
 from data_intelligence_hub.services.task_schedule_policy import is_task_due
 
@@ -155,6 +156,8 @@ class CollectionScheduler:
                 try:
                     await execute_collection_task(session, workspace, task)
                     started += 1
+                except TaskAlreadyRunningError:
+                    skipped_running += 1
                 except Exception:
                     task_errors += 1
                     logger.exception("collection_scheduler_task_failed", task_id=str(task.id))

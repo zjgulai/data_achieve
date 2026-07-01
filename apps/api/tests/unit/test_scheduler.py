@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.models import (
     Base,
     CollectionTask,
@@ -31,6 +33,7 @@ from data_intelligence_hub.scheduler.cron import (
     is_schedule_due,
 )
 from data_intelligence_hub.scheduler.service import CollectionScheduler
+from data_intelligence_hub.services.exceptions import TaskAlreadyRunningError
 
 
 def test_cron_interval_supports_mvp_schedules() -> None:
@@ -205,7 +208,9 @@ async def test_scheduler_tick_retries_failed_auto_freshness_task_after_delay() -
             last_run_at=failed_at,
             task_config={
                 "freshness_target_hours": 6,
+                "max_retry_attempts": 2,
                 "retry_delay_minutes": 15,
+                "retry_attempts_used": 1,
                 "schedule_policy": "auto_freshness",
             },
         )
@@ -243,6 +248,140 @@ async def test_scheduler_tick_retries_failed_auto_freshness_task_after_delay() -
     assert len(runs) == 2
     assert {run.status for run in runs} == {"failed", "success"}
     assert task.success_count == 1
+    assert task.config is not None
+    assert task.config["retry_attempts_used"] == 0
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_skips_auto_freshness_task_after_retry_budget() -> None:
+    now = datetime(2026, 6, 14, 10, 0, tzinfo=UTC)
+    failed_at = now - timedelta(minutes=20)
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        task = await _create_collection_task(
+            session,
+            schedule_cron=None,
+            last_run_at=failed_at,
+            task_config={
+                "freshness_target_hours": 6,
+                "max_retry_attempts": 2,
+                "retry_attempts_used": 2,
+                "retry_delay_minutes": 15,
+                "schedule_policy": "auto_freshness",
+            },
+        )
+        session.add(
+            TaskRun(
+                task_id=task.id,
+                workspace_id=task.workspace_id,
+                status="failed",
+                started_at=failed_at - timedelta(seconds=3),
+                finished_at=failed_at,
+                records_count=0,
+                entities_count=0,
+                error_message="upstream failed",
+                error_traceback=None,
+                logs=[],
+                created_at=failed_at,
+            )
+        )
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: now,
+    )
+    result = await scheduler.tick()
+
+    assert result.scanned == 1
+    assert result.due == 0
+    assert result.started == 0
+
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+        task = (await session.execute(select(CollectionTask))).scalar_one()
+
+    assert len(runs) == 1
+    assert task.config is not None
+    assert task.config["retry_attempts_used"] == 2
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_counts_task_lock_conflict_as_skipped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(session, schedule_cron="* * * * *")
+        await session.commit()
+
+    async def raise_running(*_args: object, **_kwargs: object) -> None:
+        raise TaskAlreadyRunningError
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.scheduler.service.execute_collection_task",
+        raise_running,
+    )
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.due == 1
+    assert result.started == 0
+    assert result.skipped_running == 1
+    assert result.task_errors == 0
+
+
+@pytest.mark.asyncio
+async def test_scheduler_tick_fails_task_run_after_collector_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        await _create_collection_task(
+            session,
+            schedule_cron="* * * * *",
+            task_config={
+                "entity_type": "product",
+                "json_data": {"name": "Slow Demo", "price": 12},
+                "run_timeout_seconds": 0.1,
+            },
+        )
+        await session.commit()
+
+    async def slow_collect(_self: ManualJsonCollector) -> object:
+        await asyncio.sleep(1)
+        raise AssertionError("slow collector should time out before returning")
+
+    monkeypatch.setattr(ManualJsonCollector, "collect", slow_collect)
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.due == 1
+    assert result.started == 1
+    assert result.task_errors == 0
+
+    async with session_factory() as session:
+        run = (await session.execute(select(TaskRun))).scalar_one()
+        task = (await session.execute(select(CollectionTask))).scalar_one()
+
+    assert run.status == "failed"
+    assert run.error_message == "collection_timeout: collector exceeded 0.1s"
+    assert any(log.get("failure_reason") == "timeout" for log in run.logs)
+    assert task.status == "enabled"
+    assert task.failure_count == 1
+    assert task.config is not None
+    assert task.config["retry_attempts_used"] == 1
 
 
 @pytest.mark.asyncio

@@ -48,6 +48,7 @@ from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.report import Report, ReportAuditEvent
 from data_intelligence_hub.models.signal import Signal
+from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
@@ -71,6 +72,7 @@ from data_intelligence_hub.repositories.automation_plans import (
     create_site_analysis,
     get_browser_diagnostic_job,
     get_browser_diagnostic_job_by_fingerprint,
+    get_browser_diagnostic_job_run,
     get_browser_diagnostic_run,
     get_extraction_plan,
     get_latest_extraction_plan,
@@ -116,9 +118,14 @@ from data_intelligence_hub.repositories.entities import (
 from data_intelligence_hub.repositories.notifications import get_notification_by_reference
 from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.raw_records import list_raw_records
-from data_intelligence_hub.repositories.reports import create_report, create_report_audit_event
+from data_intelligence_hub.repositories.reports import (
+    create_report,
+    create_report_audit_event,
+    list_report_audit_events,
+    list_reports,
+)
 from data_intelligence_hub.repositories.signals import get_signal, list_signals
-from data_intelligence_hub.repositories.sources import get_source_by_type_url
+from data_intelligence_hub.repositories.sources import get_source, get_source_by_type_url
 from data_intelligence_hub.repositories.tasks import get_task, list_task_runs
 from data_intelligence_hub.repositories.users import get_user_by_id
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, cron_interval
@@ -148,6 +155,16 @@ from data_intelligence_hub.schemas.automation import (
     AutomationBrowserLocalRunnerRequest,
     AutomationBrowserLocalRunnerResultListResponse,
     AutomationBrowserLocalRunnerResultResponse,
+    AutomationBrowserProductionMetadataRunGateRequest,
+    AutomationBrowserProductionMetadataRunGateResponse,
+    AutomationBrowserPromotionExecutionCheckResponse,
+    AutomationBrowserPromotionExecutionDryRunRequest,
+    AutomationBrowserPromotionExecutionDryRunResponse,
+    AutomationBrowserPromotionExecutionRequest,
+    AutomationBrowserPromotionExecutionResponse,
+    AutomationBrowserPromotionPreviewRequest,
+    AutomationBrowserPromotionPreviewResponse,
+    AutomationBrowserPromotionTaskDraftResponse,
     AutomationCapabilityProbeBackendCandidateResponse,
     AutomationCapabilityProbeListResponse,
     AutomationCapabilityProbeResponse,
@@ -165,6 +182,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationDatasetVersionResponse,
     AutomationDiscoveryPageStructureResponse,
     AutomationDiscoveryPlanResponse,
+    AutomationEvidenceAssetReferenceResponse,
     AutomationExtractionPlanCreateRequest,
     AutomationExtractionPlanResponse,
     AutomationFanoutBatchPlanResponse,
@@ -183,6 +201,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationGitHubToolReportResponse,
     AutomationGitHubToolReportSummaryResponse,
     AutomationPageStructureResponse,
+    AutomationPlatformPackageAcceptanceGateResponse,
     AutomationPlatformPackageCleaningRuleResponse,
     AutomationPlatformPackageFieldResponse,
     AutomationPlatformPackageFixtureResponse,
@@ -272,7 +291,13 @@ from data_intelligence_hub.services.alert_service import (
 from data_intelligence_hub.services.alert_service import (
     match_alert_rules_for_signal,
 )
+from data_intelligence_hub.services.collector_catalog import (
+    require_collector,
+    validate_collector_config,
+)
 from data_intelligence_hub.services.exceptions import (
+    CollectorConfigError,
+    CollectorNotFoundError,
     ProjectNotFoundError,
     TaskAlreadyRunningError,
     TaskNotFoundError,
@@ -290,6 +315,12 @@ DATASET_EXPORT_CONTENT_TYPES = {
     "json": "application/json; charset=utf-8",
     "jsonl": "application/x-ndjson; charset=utf-8",
 }
+DATASET_EXPORT_IDEMPOTENCY_SCOPE = "product_dataset_export"
+GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE = "github_tool_report_asset"
+PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE = "public_content_report_asset"
+DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE = "product_drift_alert_notification_send"
+DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE = "product_drift_alert_email_send"
+BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE = "browser_promotion_execution"
 
 GITHUB_TOOL_DATASET_SCHEMA_VERSION = "github_tool_radar.v2"
 GITHUB_TOOL_COLLECTOR_SCHEMA_VERSIONS = ("github_repo.v3", "github_topic.v3")
@@ -479,6 +510,7 @@ def list_capability_probes(platform_id: str | None = None) -> AutomationCapabili
     generated_at = datetime.now(UTC).isoformat()
     agent_reach = _probe_agent_reach_channel()
     probes = _capability_probe_catalog(generated_at, agent_reach)
+    probes = [_capability_probe_with_evidence_asset(probe) for probe in probes]
     if platform_id:
         probes = [probe for probe in probes if probe.platform_id == platform_id]
         if not probes:
@@ -489,6 +521,68 @@ def list_capability_probes(platform_id: str | None = None) -> AutomationCapabili
         total=len(probes),
         run_started=False,
         collection_resources_written=False,
+        evidence_assets=[
+            probe.evidence_asset
+            for probe in probes
+            if probe.evidence_asset is not None
+        ],
+    )
+
+
+def _capability_probe_with_evidence_asset(
+    probe: AutomationCapabilityProbeResponse,
+) -> AutomationCapabilityProbeResponse:
+    return probe.model_copy(update={"evidence_asset": _capability_probe_evidence_asset(probe)})
+
+
+def _capability_probe_evidence_asset(
+    probe: AutomationCapabilityProbeResponse,
+) -> AutomationEvidenceAssetReferenceResponse:
+    agent_reach_read_invoked = (
+        probe.agent_reach.read_invoked if probe.agent_reach is not None else False
+    )
+    agent_reach_search_invoked = (
+        probe.agent_reach.search_invoked if probe.agent_reach is not None else False
+    )
+    return AutomationEvidenceAssetReferenceResponse(
+        asset_id=f"capability_probe:{probe.platform_id}",
+        asset_type="capability_probe",
+        reference_type="platform_id",
+        reference_id=probe.platform_id,
+        evidence_level="L1-repo-or-runtime",
+        evidence_boundary="no_read_no_search_no_write",
+        source="capability_probe_catalog",
+        label=f"{probe.platform_label} capability probe",
+        summary={
+            "platform_id": probe.platform_id,
+            "doctor_status": probe.doctor_status,
+            "execution_boundary": probe.execution_boundary,
+            "risk_level": probe.risk_level,
+            "backend_candidate_count": len(probe.backend_candidates),
+            "allowed_outputs": probe.allowed_outputs,
+            "run_started": probe.run_started,
+            "collection_resources_written": probe.collection_resources_written,
+        },
+        redaction_summary={
+            "credentials_captured": False,
+            "cookies_captured": False,
+            "headers_captured": False,
+            "bodies_captured": False,
+            "read_invoked": agent_reach_read_invoked,
+            "search_invoked": agent_reach_search_invoked,
+            "files_written": False,
+            "collection_resources_written": probe.collection_resources_written,
+        },
+        forbidden_actions=probe.forbidden_actions,
+        promotion_required=True,
+        promotion_required_fields=[
+            "reviewer",
+            "target_platform",
+            "intended_output",
+            "authorization_boundary",
+            "cleanup_or_retention_plan",
+        ],
+        created_at=probe.generated_at,
     )
 
 
@@ -966,6 +1060,7 @@ async def list_browser_diagnostics(
         items=[_browser_diagnostic_run_response(run) for run in runs],
         total=total,
         run_started=False,
+        evidence_assets=[_browser_diagnostic_run_evidence_asset(run) for run in runs],
     )
 
 
@@ -1202,6 +1297,7 @@ async def list_browser_diagnostic_job_assets(
         items=[_browser_diagnostic_job_response(job) for job in jobs],
         total=total,
         run_started=False,
+        evidence_assets=[_browser_diagnostic_job_evidence_asset(job) for job in jobs],
     )
 
 
@@ -1300,6 +1396,82 @@ async def build_browser_executor_contract(
     )
 
 
+async def build_browser_production_metadata_run_gate(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserProductionMetadataRunGateRequest,
+) -> AutomationBrowserProductionMetadataRunGateResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_production_metadata_review_required")
+    if not payload.confirm_production_readonly:
+        raise CollectorError("browser_production_metadata_readonly_confirmation_required")
+    if not payload.confirm_metadata_only:
+        raise CollectorError("browser_production_metadata_only_confirmation_required")
+    if not payload.confirm_no_file_write:
+        raise CollectorError("browser_production_metadata_no_file_write_required")
+    if not payload.confirm_no_collection_write:
+        raise CollectorError("browser_production_metadata_no_collection_write_required")
+
+    job = await get_browser_diagnostic_job(session, workspace.id, diagnostic_job_id)
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+
+    readiness_checks = _browser_production_metadata_readiness_checks(job)
+    blocked_reasons = [
+        check.message for check in readiness_checks if check.status == "blocked"
+    ]
+    gate_status = "blocked" if blocked_reasons else "ready_for_manual_read_only_run"
+    now = datetime.now(UTC)
+    audit_event = {
+        "event": "browser_production_metadata_run_gate_built",
+        "job_id": str(job.id),
+        "target_environment": payload.target_environment,
+        "status": gate_status,
+        "evidence_grade": "L2-fixture-or-dry-run",
+        "production_read_only_observed": False,
+        "run_started": False,
+        "execution_started": False,
+        "browser_started": False,
+        "files_written": False,
+        "collection_resources_written": False,
+        "provider_called": False,
+        "created_at": now.isoformat(),
+    }
+    if isinstance(payload.note, str) and payload.note.strip():
+        audit_event["note"] = payload.note.strip()
+    return AutomationBrowserProductionMetadataRunGateResponse(
+        job=_browser_diagnostic_job_response(job),
+        target_environment=payload.target_environment,
+        gate=_browser_production_metadata_gate(
+            status=gate_status,
+            blocked_reasons=blocked_reasons,
+            readiness_checks=readiness_checks,
+        ),
+        execution_policy=_browser_production_metadata_execution_policy(job),
+        metadata_plan=_browser_production_metadata_plan(
+            job,
+            max_metadata_events=payload.max_metadata_events,
+        ),
+        readiness_checks=readiness_checks,
+        blocked_reasons=blocked_reasons,
+        audit_events=[audit_event],
+        production_read_only_observed=False,
+        run_started=False,
+        execution_started=False,
+        browser_started=False,
+        files_written=False,
+        collection_resources_written=False,
+        provider_called=False,
+        source_created=False,
+        task_created=False,
+        task_run_started=False,
+        dataset_created=False,
+    )
+
+
 async def list_browser_diagnostic_job_run_assets(
     session: AsyncSession,
     workspace: Workspace,
@@ -1331,6 +1503,416 @@ async def list_browser_diagnostic_job_run_assets(
         collection_resources_written=any(
             item.collection_resources_written for item in items
         ),
+        evidence_assets=[_browser_job_run_evidence_asset(item) for item in items],
+    )
+
+
+async def preview_browser_diagnostic_promotion(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionPreviewRequest,
+) -> AutomationBrowserPromotionPreviewResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_promotion_review_confirmation_required")
+
+    run_asset = await get_browser_diagnostic_job_run(
+        session,
+        workspace.id,
+        diagnostic_job_run_id,
+    )
+    if run_asset is None:
+        raise CollectorError("browser_diagnostic_job_run_not_found")
+    job = await get_browser_diagnostic_job(
+        session,
+        workspace.id,
+        run_asset.browser_diagnostic_job_id,
+    )
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+
+    source_draft = _browser_promotion_source_draft(
+        run_asset=run_asset,
+        job=job,
+        target_source_type=payload.target_source_type,
+    )
+    task_draft = (
+        _browser_promotion_task_draft(source_draft, run_asset)
+        if payload.enable_task_preview
+        else None
+    )
+    promotion_gate = _browser_promotion_preview_gate(
+        run_asset=run_asset,
+        target_source_type=payload.target_source_type,
+    )
+    blocked_reasons = list(
+        dict.fromkeys(
+            [
+                *promotion_gate["reasons"],
+                "manual_promotion_required_no_collection_resource_write",
+            ]
+        )
+    )
+    audit_event = {
+        "event": "browser_promotion_preview_built",
+        "browser_diagnostic_job_run_id": str(run_asset.id),
+        "browser_diagnostic_job_id": str(job.id),
+        "target_source_type": payload.target_source_type,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    if isinstance(payload.note, str) and payload.note.strip():
+        audit_event["note"] = payload.note.strip()
+
+    return AutomationBrowserPromotionPreviewResponse(
+        diagnostic_job_run_id=run_asset.id,
+        diagnostic_job_id=job.id,
+        project_id=run_asset.project_id,
+        evidence_asset=_browser_job_run_evidence_asset(run_asset),
+        source_draft=source_draft,
+        task_draft=task_draft,
+        promotion_gate=promotion_gate,
+        blocked_reasons=blocked_reasons,
+        audit_events=[audit_event],
+        can_promote=False,
+        run_started=False,
+        source_created=False,
+        task_created=False,
+        task_run_started=False,
+        collection_resources_written=False,
+    )
+
+
+async def dry_run_browser_promotion_execution(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionExecutionDryRunRequest,
+) -> AutomationBrowserPromotionExecutionDryRunResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_promotion_review_confirmation_required")
+    if not payload.confirm_no_write:
+        raise CollectorError("browser_promotion_no_write_confirmation_required")
+
+    run_asset = await get_browser_diagnostic_job_run(
+        session,
+        workspace.id,
+        diagnostic_job_run_id,
+    )
+    if run_asset is None:
+        raise CollectorError("browser_diagnostic_job_run_not_found")
+    job = await get_browser_diagnostic_job(
+        session,
+        workspace.id,
+        run_asset.browser_diagnostic_job_id,
+    )
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+
+    source_draft = _browser_promotion_source_draft(
+        run_asset=run_asset,
+        job=job,
+        target_source_type=payload.target_source_type,
+    )
+    if isinstance(payload.source_name, str) and payload.source_name.strip():
+        source_draft = source_draft.model_copy(
+            update={"suggested_name": payload.source_name.strip()}
+        )
+    if payload.schedule_cron is not None:
+        source_draft = source_draft.model_copy(
+            update={"schedule_cron": payload.schedule_cron}
+        )
+    task_draft = (
+        _browser_promotion_task_draft(source_draft, run_asset)
+        if payload.enable_task_preview
+        else None
+    )
+    validated_source_config, config_block_reason = _browser_promotion_validated_config(
+        source_draft
+    )
+    checks = _browser_promotion_execution_checks(
+        run_asset=run_asset,
+        source_draft=source_draft,
+        validated_source_config=validated_source_config,
+        config_block_reason=config_block_reason,
+    )
+    promotion_gate = _browser_promotion_execution_gate(
+        run_asset=run_asset,
+        target_source_type=payload.target_source_type,
+        checks=checks,
+    )
+    blocked_reasons = list(
+        dict.fromkeys(
+            [
+                *promotion_gate["reasons"],
+                *[check.message for check in checks if check.status == "blocked"],
+            ]
+        )
+    )
+    audit_event = {
+        "event": "browser_promotion_execution_dry_run_built",
+        "browser_diagnostic_job_run_id": str(run_asset.id),
+        "browser_diagnostic_job_id": str(job.id),
+        "target_source_type": payload.target_source_type,
+        "dry_run": True,
+        "write_allowed": False,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    if isinstance(payload.note, str) and payload.note.strip():
+        audit_event["note"] = payload.note.strip()
+
+    return AutomationBrowserPromotionExecutionDryRunResponse(
+        diagnostic_job_run_id=run_asset.id,
+        diagnostic_job_id=job.id,
+        project_id=run_asset.project_id,
+        evidence_asset=_browser_job_run_evidence_asset(run_asset),
+        source_draft=source_draft,
+        task_draft=task_draft,
+        validated_source_config=validated_source_config,
+        execution_plan=_browser_promotion_execution_plan(
+            source_draft=source_draft,
+            task_draft=task_draft,
+            checks=checks,
+        ),
+        promotion_gate=promotion_gate,
+        validation_checks=checks,
+        blocked_reasons=blocked_reasons,
+        audit_events=[audit_event],
+        dry_run=True,
+        write_allowed=False,
+        can_execute=False,
+        source_created=False,
+        task_created=False,
+        task_run_started=False,
+        collection_resources_written=False,
+    )
+
+
+async def execute_browser_diagnostic_promotion(
+    session: AsyncSession,
+    workspace: Workspace,
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionExecutionRequest,
+) -> AutomationBrowserPromotionExecutionResponse:
+    if not payload.authorized:
+        raise CollectorError("automation_authorization_required")
+    if not payload.confirm_review:
+        raise CollectorError("browser_promotion_review_confirmation_required")
+    if not payload.confirm_write:
+        raise CollectorError("browser_promotion_write_confirmation_required")
+    if not payload.confirm_create_collection_resources:
+        raise CollectorError("browser_promotion_collection_resource_confirmation_required")
+    if not payload.confirm_no_task_run:
+        raise CollectorError("browser_promotion_no_task_run_confirmation_required")
+    if payload.schedule_cron is not None and not payload.confirm_schedule:
+        raise CollectorError("browser_promotion_schedule_confirmation_required")
+
+    run_asset = await get_browser_diagnostic_job_run(
+        session,
+        workspace.id,
+        diagnostic_job_run_id,
+    )
+    if run_asset is None:
+        raise CollectorError("browser_diagnostic_job_run_not_found")
+    job = await get_browser_diagnostic_job(
+        session,
+        workspace.id,
+        run_asset.browser_diagnostic_job_id,
+    )
+    if job is None:
+        raise CollectorError("browser_diagnostic_job_not_found")
+
+    idempotency_key_hash = _browser_promotion_execution_idempotency_key_hash(
+        workspace_id=workspace.id,
+        diagnostic_job_run_id=run_asset.id,
+        target_source_type=payload.target_source_type,
+        idempotency_key=payload.idempotency_key,
+    )
+    source_draft = _browser_promotion_source_draft(
+        run_asset=run_asset,
+        job=job,
+        target_source_type=payload.target_source_type,
+    )
+    if isinstance(payload.source_name, str) and payload.source_name.strip():
+        source_draft = source_draft.model_copy(
+            update={"suggested_name": payload.source_name.strip()}
+        )
+    if payload.schedule_cron is not None:
+        source_draft = source_draft.model_copy(
+            update={"schedule_cron": payload.schedule_cron}
+        )
+    validated_source_config, config_block_reason = _browser_promotion_validated_config(
+        source_draft
+    )
+    task_draft = _browser_promotion_task_draft(source_draft, run_asset).model_copy(
+        update={
+            "status": "enabled",
+            "schedule_cron": source_draft.schedule_cron,
+            "config": {
+                **validated_source_config,
+                "schedule_policy": "manual_refresh_only",
+                "task_boundary": "authorized_create_no_task_run",
+            },
+        }
+    )
+    replayed_event = _browser_promotion_execution_idempotency_event(
+        run_asset,
+        idempotency_key_hash,
+    )
+    target_url = str(validated_source_config["url"]) if "url" in validated_source_config else None
+    if replayed_event is None and target_url is not None:
+        existing_source = await get_source_by_type_url(
+            session,
+            workspace.id,
+            run_asset.project_id,
+            source_draft.type,
+            target_url,
+        )
+        if existing_source is not None:
+            raise CollectorError("browser_promotion_target_source_already_exists")
+    checks = _browser_promotion_write_execution_checks(
+        run_asset=run_asset,
+        source_draft=source_draft,
+        validated_source_config=validated_source_config,
+        config_block_reason=config_block_reason,
+        allow_existing_collection_resources=replayed_event is not None,
+    )
+    promotion_gate = _browser_promotion_write_execution_gate(
+        run_asset=run_asset,
+        target_source_type=payload.target_source_type,
+        checks=checks,
+    )
+    blocked_reasons = [
+        check.message for check in checks if check.status == "blocked"
+    ]
+    if blocked_reasons:
+        raise CollectorError(
+            f"browser_promotion_execution_blocked:{blocked_reasons[0]}"
+        )
+
+    if replayed_event is not None:
+        return await _browser_promotion_execution_replay_response(
+            session=session,
+            workspace=workspace,
+            run_asset=run_asset,
+            job=job,
+            source_draft=source_draft,
+            task_draft=task_draft,
+            validated_source_config=validated_source_config,
+            checks=checks,
+            promotion_gate=promotion_gate,
+            idempotency_key_hash=idempotency_key_hash,
+            event=replayed_event,
+        )
+
+    if target_url is None:
+        raise CollectorError("browser_promotion_execution_blocked:collector_config_invalid")
+
+    await require_collector(session, source_draft.type)
+    source = Source(
+        workspace_id=workspace.id,
+        project_id=run_asset.project_id,
+        name=source_draft.suggested_name.strip(),
+        type=source_draft.type,
+        url=target_url,
+        config=validated_source_config,
+        schedule_cron=source_draft.schedule_cron,
+        enabled=True,
+    )
+    task = CollectionTask(
+        workspace_id=workspace.id,
+        project_id=run_asset.project_id,
+        source=source,
+        collector_type=source.type,
+        name=source.name,
+        schedule_cron=source.schedule_cron,
+        status="enabled",
+        config={
+            **validated_source_config,
+            "schedule_policy": "manual_refresh_only",
+        },
+    )
+    created_at = datetime.now(UTC)
+    audit_event = {
+        "event": "browser_promotion_execution_resources_created",
+        "browser_diagnostic_job_run_id": str(run_asset.id),
+        "browser_diagnostic_job_id": str(job.id),
+        "target_source_type": payload.target_source_type,
+        "source_id": None,
+        "task_id": None,
+        "dry_run": False,
+        "write_allowed": True,
+        "source_created": True,
+        "task_created": True,
+        "task_run_started": False,
+        "collection_resources_written": True,
+        "idempotency_scope": BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE,
+        "idempotency_key_hash": idempotency_key_hash,
+        "created_at": created_at.isoformat(),
+    }
+    if isinstance(payload.note, str) and payload.note.strip():
+        audit_event["note"] = payload.note.strip()
+
+    try:
+        session.add(source)
+        session.add(task)
+        await session.flush()
+        audit_event["source_id"] = str(source.id)
+        audit_event["task_id"] = str(task.id)
+        run_asset.collection_resources_written = True
+        run_asset.audit_events = [*run_asset.audit_events, audit_event]
+        await session.commit()
+        await session.refresh(source)
+        await session.refresh(task)
+        await session.refresh(run_asset)
+    except Exception:
+        await session.rollback()
+        raise
+
+    return AutomationBrowserPromotionExecutionResponse(
+        diagnostic_job_run_id=run_asset.id,
+        diagnostic_job_id=job.id,
+        project_id=run_asset.project_id,
+        evidence_asset=_browser_job_run_evidence_asset(run_asset),
+        source_draft=source_draft,
+        task_draft=task_draft,
+        validated_source_config=validated_source_config,
+        source=SourceResponse.model_validate(source),
+        task=CollectionTaskResponse.from_task(
+            task,
+            source_name=source.name,
+            source_url=source.url,
+        ),
+        execution_plan=_browser_promotion_write_execution_plan(
+            source_created=True,
+            task_created=True,
+            idempotency_replayed=False,
+        ),
+        promotion_gate=promotion_gate,
+        validation_checks=checks,
+        blocked_reasons=[],
+        audit_events=[audit_event],
+        dry_run=False,
+        write_allowed=True,
+        can_execute=True,
+        idempotency_replayed=False,
+        idempotency_scope=BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE,
+        idempotency_key_hash=idempotency_key_hash,
+        source_created=True,
+        task_created=True,
+        task_run_started=False,
+        collection_resources_written=True,
     )
 
 
@@ -1809,7 +2391,8 @@ async def run_reviewed_product_batch(
             continue
 
         try:
-            run = await run_task_now(session, workspace, task.id)
+            run_result = await run_task_now(session, workspace, task.id)
+            run = run_result.run
         except (TaskAlreadyRunningError, TaskNotRunnableError) as exc:
             items.append(_blocked_batch_item_from_task(task, exc.message))
             audit_events.append(
@@ -3913,6 +4496,7 @@ async def create_public_content_report_asset(
     workspace: Workspace,
     user: User,
     payload: AutomationPublicContentReportAssetCreateRequest,
+    idempotency_key: str | None = None,
 ) -> AutomationPublicContentReportAssetResponse:
     if not payload.authorized:
         raise CollectorError("automation_authorization_required")
@@ -3921,6 +4505,57 @@ async def create_public_content_report_asset(
 
     generated = await generate_public_content_report(session, workspace, payload)
     created_at = datetime.now(UTC)
+    idempotency_key_hash = _public_content_report_asset_idempotency_key_hash(
+        workspace_id=workspace.id,
+        dataset_id=generated.dataset.id,
+        dataset_version_id=generated.version.id,
+        top_limit=payload.top_limit,
+        idempotency_key=idempotency_key,
+    )
+    if idempotency_key_hash is not None:
+        existing_report = await _existing_report_asset_by_idempotency_key_hash(
+            session=session,
+            workspace=workspace,
+            project_id=generated.dataset.project_id,
+            scope=PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_report is not None:
+            summary = generated.summary.model_copy(update={"report_created": True})
+            return AutomationPublicContentReportAssetResponse(
+                generated_at=created_at,
+                authorization_confirmed=generated.authorization_confirmed,
+                dataset=generated.dataset,
+                version=generated.version,
+                summary=summary,
+                latest_entries=generated.latest_entries,
+                recommendations=generated.recommendations,
+                risk_sections=generated.risk_sections,
+                audit_events=[
+                    *generated.audit_events,
+                    {
+                        "event": "public_content_report_asset_idempotency_replayed",
+                        "scope": PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                        "idempotency_key_hash": idempotency_key_hash,
+                        "raw_key_stored": False,
+                        "report_id": str(existing_report.id),
+                        "report_created": False,
+                        "run_started": False,
+                        "notification_created": False,
+                    },
+                ],
+                blocked_reasons=[
+                    (
+                        "Idempotency replay 返回已存在的公开内容 Report 资产；"
+                        "不会重复创建 Report、启动采集、创建通知、发送邮件或写出导出文件。"
+                    )
+                ],
+                report=ReportResponse.from_model(existing_report),
+                notification_created=False,
+                idempotency_replayed=True,
+                idempotency_scope=PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                idempotency_key_hash=idempotency_key_hash,
+            )
     title = (
         f"公开内容更新报告 - {generated.dataset.name} "
         f"v{generated.version.version_number}"
@@ -3961,6 +4596,32 @@ async def create_public_content_report_asset(
             created_at=created_at,
         ),
     )
+    if idempotency_key_hash is not None:
+        await create_report_audit_event(
+            session,
+            ReportAuditEvent(
+                workspace_id=workspace.id,
+                report_id=report.id,
+                actor_id=user.id,
+                event_type="idempotency_key_recorded",
+                from_status=report.status,
+                to_status=report.status,
+                metadata_json=json.dumps(
+                    {
+                        "scope": PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                        "idempotency_key_hash": idempotency_key_hash,
+                        "raw_key_stored": "false",
+                        "dataset_id": str(generated.dataset.id),
+                        "dataset_version_id": str(generated.version.id),
+                        "top_limit": str(payload.top_limit),
+                        "run_started": "false",
+                        "notification_created": "false",
+                    },
+                    ensure_ascii=False,
+                ),
+                created_at=created_at,
+            ),
+        )
     await session.commit()
     await session.refresh(report)
 
@@ -3977,6 +4638,17 @@ async def create_public_content_report_asset(
             "notification_created": False,
         },
     ]
+    if idempotency_key_hash is not None:
+        audit_events.append(
+            {
+                "event": "public_content_report_asset_idempotency_key_recorded",
+                "scope": PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                "idempotency_key_hash": idempotency_key_hash,
+                "raw_key_stored": False,
+                "run_started": False,
+                "notification_created": False,
+            }
+        )
     return AutomationPublicContentReportAssetResponse(
         generated_at=created_at,
         authorization_confirmed=generated.authorization_confirmed,
@@ -3992,6 +4664,13 @@ async def create_public_content_report_asset(
         ],
         report=ReportResponse.from_model(report),
         notification_created=False,
+        idempotency_replayed=False,
+        idempotency_scope=(
+            PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE
+            if idempotency_key_hash is not None
+            else None
+        ),
+        idempotency_key_hash=idempotency_key_hash,
     )
 
 
@@ -4000,6 +4679,7 @@ async def create_github_tool_report_asset(
     workspace: Workspace,
     user: User,
     payload: AutomationGitHubToolReportAssetCreateRequest,
+    idempotency_key: str | None = None,
 ) -> AutomationGitHubToolReportAssetResponse:
     if not payload.authorized:
         raise CollectorError("automation_authorization_required")
@@ -4008,6 +4688,58 @@ async def create_github_tool_report_asset(
 
     generated = await generate_github_tool_report(session, workspace, payload)
     created_at = datetime.now(UTC)
+    idempotency_key_hash = _github_tool_report_asset_idempotency_key_hash(
+        workspace_id=workspace.id,
+        dataset_id=generated.dataset.id,
+        dataset_version_id=generated.version.id,
+        min_stars=payload.min_stars,
+        top_limit=payload.top_limit,
+        idempotency_key=idempotency_key,
+    )
+    if idempotency_key_hash is not None:
+        existing_report = await _existing_report_asset_by_idempotency_key_hash(
+            session=session,
+            workspace=workspace,
+            project_id=generated.dataset.project_id,
+            scope=GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_report is not None:
+            summary = generated.summary.model_copy(update={"report_created": True})
+            return AutomationGitHubToolReportAssetResponse(
+                generated_at=created_at,
+                authorization_confirmed=generated.authorization_confirmed,
+                dataset=generated.dataset,
+                version=generated.version,
+                summary=summary,
+                top_repositories=generated.top_repositories,
+                recommendations=generated.recommendations,
+                risk_sections=generated.risk_sections,
+                audit_events=[
+                    *generated.audit_events,
+                    {
+                        "event": "github_tool_report_asset_idempotency_replayed",
+                        "scope": GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                        "idempotency_key_hash": idempotency_key_hash,
+                        "raw_key_stored": False,
+                        "report_id": str(existing_report.id),
+                        "report_created": False,
+                        "run_started": False,
+                        "notification_created": False,
+                    },
+                ],
+                blocked_reasons=[
+                    (
+                        "Idempotency replay 返回已存在的 GitHub 工具 Report 资产；"
+                        "不会重复创建 Report、启动采集、创建通知或发送邮件。"
+                    )
+                ],
+                report=ReportResponse.from_model(existing_report),
+                notification_created=False,
+                idempotency_replayed=True,
+                idempotency_scope=GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                idempotency_key_hash=idempotency_key_hash,
+            )
     title = (
         f"GitHub 工具雷达报告 - {generated.dataset.name} "
         f"v{generated.version.version_number}"
@@ -4048,6 +4780,33 @@ async def create_github_tool_report_asset(
             created_at=created_at,
         ),
     )
+    if idempotency_key_hash is not None:
+        await create_report_audit_event(
+            session,
+            ReportAuditEvent(
+                workspace_id=workspace.id,
+                report_id=report.id,
+                actor_id=user.id,
+                event_type="idempotency_key_recorded",
+                from_status=report.status,
+                to_status=report.status,
+                metadata_json=json.dumps(
+                    {
+                        "scope": GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                        "idempotency_key_hash": idempotency_key_hash,
+                        "raw_key_stored": "false",
+                        "dataset_id": str(generated.dataset.id),
+                        "dataset_version_id": str(generated.version.id),
+                        "min_stars": str(payload.min_stars),
+                        "top_limit": str(payload.top_limit),
+                        "run_started": "false",
+                        "notification_created": "false",
+                    },
+                    ensure_ascii=False,
+                ),
+                created_at=created_at,
+            ),
+        )
     await session.commit()
     await session.refresh(report)
 
@@ -4064,6 +4823,17 @@ async def create_github_tool_report_asset(
             "notification_created": False,
         },
     ]
+    if idempotency_key_hash is not None:
+        audit_events.append(
+            {
+                "event": "github_tool_report_asset_idempotency_key_recorded",
+                "scope": GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+                "idempotency_key_hash": idempotency_key_hash,
+                "raw_key_stored": False,
+                "run_started": False,
+                "notification_created": False,
+            }
+        )
     return AutomationGitHubToolReportAssetResponse(
         generated_at=created_at,
         authorization_confirmed=generated.authorization_confirmed,
@@ -4079,6 +4849,13 @@ async def create_github_tool_report_asset(
         ],
         report=ReportResponse.from_model(report),
         notification_created=False,
+        idempotency_replayed=False,
+        idempotency_scope=(
+            GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE
+            if idempotency_key_hash is not None
+            else None
+        ),
+        idempotency_key_hash=idempotency_key_hash,
     )
 
 
@@ -4202,6 +4979,7 @@ async def create_product_dataset_export(
     workspace: Workspace,
     user: User,
     payload: AutomationProductDatasetExportCreateRequest,
+    idempotency_key: str | None = None,
 ) -> AutomationProductDatasetExportJobResponse:
     if not payload.authorized:
         raise CollectorError("automation_authorization_required")
@@ -4215,6 +4993,30 @@ async def create_product_dataset_export(
         payload.dataset_version_id,
     )
     export_format = payload.export_format
+    idempotency_key_hash = _dataset_export_idempotency_key_hash(
+        workspace_id=workspace.id,
+        dataset_id=dataset.id,
+        dataset_version_id=version.id,
+        export_format=export_format,
+        idempotency_key=idempotency_key,
+    )
+    if idempotency_key_hash is not None:
+        existing_job = await _existing_dataset_export_job_by_idempotency_key_hash(
+            session=session,
+            workspace=workspace,
+            dataset_id=dataset.id,
+            dataset_version_id=version.id,
+            export_format=export_format,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing_job is not None:
+            return _dataset_export_job_response(
+                existing_job,
+                dataset,
+                version,
+                idempotency_replayed=True,
+                idempotency_key_hash=idempotency_key_hash,
+            )
     job_id = uuid.uuid4()
     created_at = datetime.now(UTC)
     filename = _dataset_export_filename(dataset, version, job_id, export_format)
@@ -4234,6 +5036,16 @@ async def create_product_dataset_export(
             "run_started": False,
         }
     ]
+    if idempotency_key_hash is not None:
+        audit_events.append(
+            {
+                "event": "product_dataset_export_idempotency_key_recorded",
+                "scope": DATASET_EXPORT_IDEMPOTENCY_SCOPE,
+                "idempotency_key_hash": idempotency_key_hash,
+                "raw_key_stored": False,
+                "run_started": False,
+            }
+        )
 
     content = _render_dataset_export(dataset, version, export_format)
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -4272,7 +5084,12 @@ async def create_product_dataset_export(
         finished_at=finished_at,
     )
     created_job = await create_dataset_export_job(session, export_job)
-    return _dataset_export_job_response(created_job, dataset, version)
+    return _dataset_export_job_response(
+        created_job,
+        dataset,
+        version,
+        idempotency_key_hash=idempotency_key_hash,
+    )
 
 
 async def list_product_dataset_exports(
@@ -4573,6 +5390,7 @@ async def send_product_drift_alert_notifications(
     session: AsyncSession,
     workspace: Workspace,
     payload: AutomationProductDriftAlertNotificationSendRequest,
+    idempotency_key: str | None = None,
 ) -> AutomationProductDriftAlertNotificationSendResponse:
     if not payload.authorized:
         raise CollectorError("automation_authorization_required")
@@ -4600,11 +5418,18 @@ async def send_product_drift_alert_notifications(
     if drift_event.dataset_id != dataset.id or drift_event.dataset_version_id != version.id:
         raise CollectorError("dataset_drift_event_lineage_mismatch")
 
+    requested_alert_event_ids = list(dict.fromkeys(payload.alert_event_ids))
+    idempotency_key_hash = _drift_alert_notification_idempotency_key_hash(
+        workspace_id=workspace.id,
+        dataset_id=dataset.id,
+        dataset_version_id=version.id,
+        drift_event_id=drift_event.id,
+        alert_event_ids=requested_alert_event_ids,
+        idempotency_key=idempotency_key,
+    )
     alert_events = []
-    notifications = []
-    notification_created = False
-    now = datetime.now(UTC)
-    for alert_event_id in list(dict.fromkeys(payload.alert_event_ids)):
+    alert_event_rules: dict[uuid.UUID, AlertRule] = {}
+    for alert_event_id in requested_alert_event_ids:
         event = await get_alert_event(session, workspace.id, alert_event_id)
         if event is None:
             raise CollectorError("alert_event_not_found")
@@ -4622,7 +5447,66 @@ async def send_product_drift_alert_notifications(
             raise CollectorError("alert_event_rule_not_found")
         if rule.channel not in {"in_app", "both"}:
             raise CollectorError("alert_event_channel_not_in_app")
+        alert_events.append(event)
+        alert_event_rules[event.id] = rule
 
+    if idempotency_key_hash is not None and all(
+        _alert_event_delivery_idempotency_event(
+            event,
+            scope=DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        is not None
+        for event in alert_events
+    ):
+        notifications = []
+        for event in alert_events:
+            notification = await get_notification_by_reference(
+                session=session,
+                user_id=workspace.owner_id,
+                reference_type="alert_event",
+                reference_id=event.id,
+                notification_type="alert",
+            )
+            if notification is None:
+                raise CollectorError("alert_notification_idempotency_record_incomplete")
+            notifications.append(notification)
+        return AutomationProductDriftAlertNotificationSendResponse(
+            generated_at=datetime.now(UTC),
+            authorization_confirmed=payload.authorized,
+            dataset=_dataset_response(dataset),
+            version=_dataset_version_response(version),
+            drift_event=_drift_event_response(drift_event, dataset, version),
+            alert_events=[AlertEventResponse.from_model(event) for event in alert_events],
+            notifications=[
+                NotificationResponse.from_model(notification) for notification in notifications
+            ],
+            summary=AutomationProductDriftAlertSummaryResponse(
+                matched_events=len(alert_events),
+                critical_events=len(alert_events) if drift_event.status == "critical" else 0,
+                warning_events=len(alert_events) if drift_event.status == "warning" else 0,
+                alert_rule_created=False,
+                signal_created=False,
+                alert_event_created=False,
+                notification_created=False,
+                run_started=False,
+            ),
+            blocked_reasons=[
+                (
+                    "Idempotency-Key 命中既有站内通知发送记录；本次只返回已有结果，"
+                    "不会创建重复通知、启动采集、发送邮件、修改调度或写出文件。"
+                ),
+            ],
+            idempotency_replayed=True,
+            idempotency_scope=DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+
+    notifications = []
+    notification_created = False
+    now = datetime.now(UTC)
+    for event in alert_events:
+        rule = alert_event_rules[event.id]
         notification = await get_notification_by_reference(
             session=session,
             user_id=workspace.owner_id,
@@ -4647,7 +5531,19 @@ async def send_product_drift_alert_notifications(
         event.status = "sent"
         if event.sent_at is None:
             event.sent_at = now
-        alert_events.append(event)
+        if idempotency_key_hash is not None:
+            _append_alert_event_delivery_idempotency_event(
+                event,
+                {
+                    "scope": DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE,
+                    "idempotency_key_hash": idempotency_key_hash,
+                    "raw_key_stored": False,
+                    "channel": "in_app",
+                    "notification_id": str(notification.id),
+                    "delivered": True,
+                    "delivered_at": event.sent_at.isoformat() if event.sent_at else now.isoformat(),
+                },
+            )
         notifications.append(notification)
 
     await session.commit()
@@ -4682,6 +5578,11 @@ async def send_product_drift_alert_notifications(
                 "创建 TaskRun、发送邮件、修改调度或写出文件。"
             ),
         ],
+        idempotency_replayed=False,
+        idempotency_scope=(
+            DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE if idempotency_key_hash else None
+        ),
+        idempotency_key_hash=idempotency_key_hash,
     )
 
 
@@ -4689,6 +5590,7 @@ async def send_product_drift_alert_emails(
     session: AsyncSession,
     workspace: Workspace,
     payload: AutomationProductDriftAlertEmailSendRequest,
+    idempotency_key: str | None = None,
 ) -> AutomationProductDriftAlertEmailSendResponse:
     if not payload.authorized:
         raise CollectorError("automation_authorization_required")
@@ -4721,10 +5623,19 @@ async def send_product_drift_alert_emails(
         raise CollectorError("workspace_owner_not_found")
     recipient_email = payload.recipient_email or owner.email
 
-    email_deliveries: list[AutomationProductDriftAlertEmailDeliveryResponse] = []
+    requested_alert_event_ids = list(dict.fromkeys(payload.alert_event_ids))
+    idempotency_key_hash = _drift_alert_email_idempotency_key_hash(
+        workspace_id=workspace.id,
+        dataset_id=dataset.id,
+        dataset_version_id=version.id,
+        drift_event_id=drift_event.id,
+        alert_event_ids=requested_alert_event_ids,
+        recipient_email=recipient_email,
+        idempotency_key=idempotency_key,
+    )
     alert_events: list[AlertEvent] = []
-    now = datetime.now(UTC)
-    for alert_event_id in list(dict.fromkeys(payload.alert_event_ids)):
+    alert_event_rules: dict[uuid.UUID, AlertRule] = {}
+    for alert_event_id in requested_alert_event_ids:
         event = await get_alert_event(session, workspace.id, alert_event_id)
         if event is None:
             raise CollectorError("alert_event_not_found")
@@ -4742,7 +5653,63 @@ async def send_product_drift_alert_emails(
             raise CollectorError("alert_event_rule_not_found")
         if rule.channel not in {"email", "both"}:
             raise CollectorError("alert_event_channel_not_email")
+        alert_events.append(event)
+        alert_event_rules[event.id] = rule
 
+    if idempotency_key_hash is not None and all(
+        _alert_event_delivery_idempotency_event(
+            event,
+            scope=DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        is not None
+        for event in alert_events
+    ):
+        replay_email_deliveries = [
+            _email_delivery_response_from_idempotency_event(
+                event,
+                _alert_event_delivery_idempotency_event(
+                    event,
+                    scope=DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE,
+                    idempotency_key_hash=idempotency_key_hash,
+                ),
+                fallback_recipient_email=recipient_email,
+            )
+            for event in alert_events
+        ]
+        return AutomationProductDriftAlertEmailSendResponse(
+            generated_at=datetime.now(UTC),
+            authorization_confirmed=payload.authorized,
+            dataset=_dataset_response(dataset),
+            version=_dataset_version_response(version),
+            drift_event=_drift_event_response(drift_event, dataset, version),
+            alert_events=[AlertEventResponse.from_model(event) for event in alert_events],
+            email_deliveries=replay_email_deliveries,
+            summary=AutomationProductDriftAlertSummaryResponse(
+                matched_events=len(alert_events),
+                critical_events=len(alert_events) if drift_event.status == "critical" else 0,
+                warning_events=len(alert_events) if drift_event.status == "warning" else 0,
+                alert_rule_created=False,
+                signal_created=False,
+                alert_event_created=False,
+                notification_created=False,
+                run_started=False,
+            ),
+            blocked_reasons=[
+                (
+                    "Idempotency-Key 命中既有邮件发送记录；本次只返回已有结果，"
+                    "不会再次调用 SMTP/provider、启动采集、创建站内通知、修改调度或写出文件。"
+                ),
+            ],
+            idempotency_replayed=True,
+            idempotency_scope=DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+
+    email_deliveries: list[AutomationProductDriftAlertEmailDeliveryResponse] = []
+    now = datetime.now(UTC)
+    for event in alert_events:
+        rule = alert_event_rules[event.id]
         email_result = await send_email_notification(
             recipient_email=recipient_email,
             subject=f"数据集漂移告警：{dataset.name}",
@@ -4760,7 +5727,25 @@ async def send_product_drift_alert_emails(
                 reason=email_result.reason,
             )
         )
-        alert_events.append(event)
+        if idempotency_key_hash is not None:
+            _append_alert_event_delivery_idempotency_event(
+                event,
+                {
+                    "scope": DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE,
+                    "idempotency_key_hash": idempotency_key_hash,
+                    "raw_key_stored": False,
+                    "channel": "email",
+                    "recipient_email": recipient_email,
+                    "delivered": email_result.delivered,
+                    "delivered_at": now.isoformat() if email_result.delivered else None,
+                    "reason": email_result.reason,
+                },
+            )
+
+    if idempotency_key_hash is not None:
+        await session.commit()
+        for event in alert_events:
+            await session.refresh(event)
 
     return AutomationProductDriftAlertEmailSendResponse(
         generated_at=datetime.now(UTC),
@@ -4786,6 +5771,9 @@ async def send_product_drift_alert_emails(
                 "创建 TaskRun、发送站内通知、修改调度或写出文件。"
             ),
         ],
+        idempotency_replayed=False,
+        idempotency_scope=DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE if idempotency_key_hash else None,
+        idempotency_key_hash=idempotency_key_hash,
     )
 
 
@@ -5709,6 +6697,11 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 "面向公开商品详情页和集合页，优先读取 Product JSON-LD、"
                 "页面结构和同源商品链接，适合作为电商平台自动化采集首个可执行包。"
             ),
+            version="2026.06.m4",
+            owner="data-intelligence-platform",
+            lifecycle_status="active",
+            evidence_grade="L2-fixture-or-dry-run",
+            authorization_required=True,
             supported_targets=["ecommerce_product", "ecommerce_product_collection"],
             collector_types=["ecommerce_product_discovery", "ecommerce_product_page"],
             field_schema=[
@@ -5960,6 +6953,56 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 description="E2E 使用固定商品页和集合页 fixture 验证 discovery、fan-out、dataset。",
             ),
             execution_boundary="executable",
+            acceptance_registry=[
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m4-4a-local-fixture-e2e",
+                    label="本地 deterministic fixture E2E",
+                    evidence_grade="L2-fixture-or-dry-run",
+                    status="local_done",
+                    evidence=(
+                        "Integration test covers package, discovery, fan-out, batch, "
+                        "dataset version, export/download, drift validation/event and history."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m4-4b-public-test-site-local-e2e",
+                    label="WebScraper.io 公开测试站 local API E2E",
+                    evidence_grade="L2-fixture-or-dry-run",
+                    status="local_external_done",
+                    evidence=(
+                        "2026-06-29 local API run against public test site produced "
+                        "row_count=2, completeness=100%, CSV export=966 bytes and "
+                        "drift status=ok; production unchanged."
+                    ),
+                    next_action=(
+                        "Production/customer-site gate requires authorized URL scope and "
+                        "cleanup or retained lifecycle register."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m4-production-customer-site-gate",
+                    label="授权生产/客户站写入门禁",
+                    evidence_grade="L0-unverified",
+                    status="todo",
+                    evidence="No authorized production/customer-site write gate has been run.",
+                    next_action=(
+                        "Collect target URL scope, production write approval and exact-ID "
+                        "cleanup or retained lifecycle decision."
+                    ),
+                ),
+            ],
+            cleanup_policy=(
+                "Local fixture/test-site exports may stay under tmp for manual review; "
+                "production writes require exact-ID cleanup or retained lifecycle register."
+            ),
+            forbidden_actions=[
+                "login_wall_collection",
+                "captcha_bypass",
+                "cookie_export",
+                "anti_detect",
+                "marketplace_page_scraping",
+                "production_write_without_cleanup_register",
+            ],
             run_started=False,
         ),
         AutomationPlatformPackageResponse(
@@ -5970,6 +7013,11 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 "面向 GitHub topic、repo 和开源采集工具情报；优先使用官方 API、"
                 "限速信息和公开仓库元数据，不默认进入网页抓取。"
             ),
+            version="2026.06.m3",
+            owner="data-intelligence-platform",
+            lifecycle_status="active",
+            evidence_grade="L4-authorized-live",
+            authorization_required=True,
             supported_targets=["tool_repository", "topic_radar", "release_monitor"],
             collector_types=["github_topic", "github_repo"],
             field_schema=[
@@ -6147,6 +7195,43 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 description="单元测试覆盖 GitHub collector 配置校验和 API 响应解析。",
             ),
             execution_boundary="executable",
+            acceptance_registry=[
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m3-field-contract-local",
+                    label="GitHub API-first 字段合同",
+                    evidence_grade="L2-fixture-or-dry-run",
+                    status="local_done",
+                    evidence=(
+                        "Local tests cover license, default_branch, release, pushed_at "
+                        "and provenance fields for API-first tool radar."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m3-scoped-production-package-gate",
+                    label="小范围授权生产 package gate",
+                    evidence_grade="L4-authorized-live",
+                    status="done_scoped_l4",
+                    evidence=(
+                        "A scoped topic=web-scraping, max_repositories=3 production gate "
+                        "was authorized, logged and cleaned by exact IDs."
+                    ),
+                    next_action=(
+                        "Larger topic scope, rate-limit behavior, retained dataset, export "
+                        "and scheduler gates remain separate authorization envelopes."
+                    ),
+                ),
+            ],
+            cleanup_policy=(
+                "Scoped production test resources must be cleaned by exact IDs unless a "
+                "retained dataset lifecycle is approved."
+            ),
+            forbidden_actions=[
+                "login_wall_collection",
+                "cookie_export",
+                "private_repo_collection",
+                "issue_comment_person_profile",
+                "rate_limit_amplification_retry",
+            ],
             run_started=False,
         ),
         AutomationPlatformPackageResponse(
@@ -6158,6 +7243,11 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 "sitemap、重定向、DOM 摘要和链接结构，再决定是否进入 generic_web "
                 "或浏览器自动化采集。"
             ),
+            version="2026.06.preflight",
+            owner="data-intelligence-platform",
+            lifecycle_status="active",
+            evidence_grade="L2-fixture-or-dry-run",
+            authorization_required=True,
             supported_targets=["public_web_page", "site_structure", "field_contract_draft"],
             collector_types=["toolkit_preflight", "generic_web"],
             field_schema=[
@@ -6311,6 +7401,43 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 description="单元测试使用固定 HTML、robots 和 sitemap 响应验证预检报告。",
             ),
             execution_boundary="executable",
+            acceptance_registry=[
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="preflight-local-contract",
+                    label="公开 URL 结构预检本地合同",
+                    evidence_grade="L2-fixture-or-dry-run",
+                    status="local_done",
+                    evidence=(
+                        "Local fixture coverage validates authorization gate, robots/sitemap "
+                        "clues, DOM summary and generic_web handoff recommendations."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="preflight-production-readonly-or-write-gate",
+                    label="生产只读或 generic_web 写入门禁",
+                    evidence_grade="L0-unverified",
+                    status="todo",
+                    evidence=(
+                        "No broad production preflight-to-generic_web package gate is claimed "
+                        "by this package contract."
+                    ),
+                    next_action=(
+                        "Run a target-scoped read-only or authorized write gate with explicit "
+                        "URL scope and cleanup/retention decision."
+                    ),
+                ),
+            ],
+            cleanup_policy=(
+                "Preflight reports are read-only until the operator creates generic_web resources; "
+                "any source/task/dataset write needs a scoped cleanup or retained decision."
+            ),
+            forbidden_actions=[
+                "login_wall_collection",
+                "captcha_bypass",
+                "private_network_probe",
+                "cookie_export",
+                "browser_artifact_write_without_retention",
+            ],
             run_started=False,
         ),
         AutomationPlatformPackageResponse(
@@ -6321,6 +7448,11 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 "面向公开网页、RSS/Atom feed 和公开文档更新监控；"
                 "优先使用 feed 或静态网页内容 hash，不进入登录态、评论区或个人画像采集。"
             ),
+            version="2026.06.m5",
+            owner="data-intelligence-platform",
+            lifecycle_status="active",
+            evidence_grade="L4-authorized-live",
+            authorization_required=True,
             supported_targets=["rss_feed", "atom_feed", "public_web_page", "public_docs"],
             collector_types=["public_feed", "generic_web"],
             field_schema=[
@@ -6488,6 +7620,55 @@ def _platform_packages() -> list[AutomationPlatformPackageResponse]:
                 description="单元测试使用固定 RSS/Atom XML 验证 feed 解析、条目 hash 和边界。",
             ),
             execution_boundary="executable",
+            acceptance_registry=[
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m5-public-feed-production-smoke",
+                    label="公开 RSS production package smoke",
+                    evidence_grade="L4-authorized-live",
+                    status="done_scoped_l4",
+                    evidence=(
+                        "Scoped public_feed production smoke covered collection run, "
+                        "dataset version, read-only drift/report preview and cleanup evidence."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m5-docs-page-production-gate",
+                    label="公开 docs/page production gate",
+                    evidence_grade="L4-authorized-live",
+                    status="done_scoped_l4",
+                    evidence=(
+                        "Scoped generic_web docs/page gate wrote public content assets "
+                        "and cleaned scoped fixtures to zero."
+                    ),
+                ),
+                AutomationPlatformPackageAcceptanceGateResponse(
+                    id="m5-retained-lifecycle-canary",
+                    label="Retained public-content lifecycle canary",
+                    evidence_grade="L4-authorized-live",
+                    status="retained_l4",
+                    evidence=(
+                        "A named canary dataset/report/export asset set was retained and "
+                        "checked by read-only/dry-run lifecycle observations."
+                    ),
+                    next_action=(
+                        "Default 168h multi-day TTL conclusion and cleanup execute decision "
+                        "remain separate gates."
+                    ),
+                ),
+            ],
+            cleanup_policy=(
+                "Cleanup-after-evidence gates use exact-ID cleanup; retained canary assets "
+                "remain only under the documented lifecycle register. Cleanup execute, "
+                "provider and email gates require separate authorization."
+            ),
+            forbidden_actions=[
+                "login_wall_collection",
+                "paid_wall_collection",
+                "personal_profile_enrichment",
+                "provider_call_without_authorization",
+                "email_send_without_confirm_send",
+                "cleanup_execute_without_register",
+            ],
             run_started=False,
         ),
     ]
@@ -7260,6 +8441,180 @@ def _browser_executor_readiness_checks(
     ]
 
 
+def _browser_production_metadata_readiness_checks(
+    job: BrowserDiagnosticJob,
+) -> list[AutomationBrowserExecutorReadinessCheckResponse]:
+    network_policy = dict(job.network_observation_policy)
+    artifact_policy = dict(job.artifact_policy)
+    checks = list(_browser_executor_readiness_checks(job))
+    checks.extend(
+        [
+            _executor_check(
+                "production-api-autostart",
+                "生产启动方式",
+                "passed",
+                "API 只生成生产只读运行计划，不自动启动浏览器。",
+                {
+                    "automatic_api_worker_start": False,
+                    "manual_operator_required": True,
+                },
+            ),
+            _executor_check(
+                "production-metadata-only",
+                "生产元数据范围",
+                (
+                    "passed"
+                    if network_policy.get("capture_body") is False
+                    and network_policy.get("capture_headers") is False
+                    and network_policy.get("write_allowed") is False
+                    else "blocked"
+                ),
+                (
+                    "生产只读计划只允许网络元数据，不捕获 headers 或 body。"
+                    if network_policy.get("capture_body") is False
+                    and network_policy.get("capture_headers") is False
+                    and network_policy.get("write_allowed") is False
+                    else "生产网络策略超出 metadata-only 边界。"
+                ),
+                network_policy,
+            ),
+            _executor_check(
+                "production-no-artifact-write",
+                "生产产物写入",
+                (
+                    "passed"
+                    if artifact_policy.get("write_files") is False
+                    and artifact_policy.get("object_storage_write") is False
+                    else "blocked"
+                ),
+                (
+                    "生产只读计划不写截图、trace、HAR、文件或对象存储。"
+                    if artifact_policy.get("write_files") is False
+                    and artifact_policy.get("object_storage_write") is False
+                    else "生产产物策略仍允许文件或对象存储写入。"
+                ),
+                artifact_policy,
+            ),
+            _executor_check(
+                "production-no-collection-write",
+                "采集资源写入",
+                "passed",
+                "生产只读计划不创建采集源、任务、任务运行或数据集。",
+                {
+                    "source_created": False,
+                    "task_created": False,
+                    "task_run_started": False,
+                    "dataset_created": False,
+                },
+            ),
+        ]
+    )
+    return checks
+
+
+def _browser_production_metadata_gate(
+    *,
+    status: str,
+    blocked_reasons: list[str],
+    readiness_checks: list[AutomationBrowserExecutorReadinessCheckResponse],
+) -> dict[str, Any]:
+    review_reasons = [
+        check.message for check in readiness_checks if check.status == "review"
+    ]
+    return {
+        "schema_version": "browser_production_metadata_run_gate.v1",
+        "status": status,
+        "evidence_grade": "L2-fixture-or-dry-run",
+        "can_start_manual_browser": not blocked_reasons,
+        "automatic_api_worker_start": False,
+        "production_read_only_observed": False,
+        "metadata_only": True,
+        "write_allowed": False,
+        "files_written": False,
+        "collection_resources_written": False,
+        "provider_called": False,
+        "blocked_checks": len(blocked_reasons),
+        "review_checks": len(review_reasons),
+        "reasons": blocked_reasons,
+        "review_reasons": review_reasons,
+        "required_confirmations": [
+            "confirm_review",
+            "confirm_production_readonly",
+            "confirm_metadata_only",
+            "confirm_no_file_write",
+            "confirm_no_collection_write",
+        ],
+    }
+
+
+def _browser_production_metadata_execution_policy(
+    job: BrowserDiagnosticJob,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_production_metadata_execution_policy.v1",
+        "target_url": _browser_probe_sanitize_url(job.final_url),
+        "target_environment": "production",
+        "manual_operator_required": True,
+        "automatic_api_worker_start": False,
+        "reuse_user_profile": False,
+        "login_state_allowed": False,
+        "cookie_export_allowed": False,
+        "private_page_allowed": False,
+        "read_only": True,
+        "metadata_only": True,
+        "capture_headers": False,
+        "capture_body": False,
+        "capture_cookies": False,
+        "submit_forms": False,
+        "click_purchase_or_publish_actions": False,
+        "run_started": False,
+        "browser_started": False,
+        "write_allowed": False,
+    }
+
+
+def _browser_production_metadata_plan(
+    job: BrowserDiagnosticJob,
+    *,
+    max_metadata_events: int,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_production_metadata_plan.v1",
+        "job_id": str(job.id),
+        "target_url": _browser_probe_sanitize_url(job.final_url),
+        "selector_count": len(job.selector_scope),
+        "wait_condition_count": len(job.wait_policy),
+        "max_metadata_events": max_metadata_events,
+        "network_observation": {
+            "mode": job.network_observation_policy.get("mode", "metadata_only"),
+            "same_origin_only": job.network_observation_policy.get(
+                "same_origin_only"
+            )
+            is True,
+            "metadata_only": True,
+            "capture_headers": False,
+            "capture_body": False,
+            "capture_cookies": False,
+            "redacted": True,
+        },
+        "artifact_capture": {
+            "screenshot": False,
+            "trace": False,
+            "har": False,
+            "filesystem_write": False,
+            "object_storage_write": False,
+        },
+        "collection_side_effects": {
+            "source_created": False,
+            "task_created": False,
+            "task_run_started": False,
+            "dataset_created": False,
+            "notification_sent": False,
+            "scheduler_mutated": False,
+        },
+    }
+
+
 def _browser_local_runner_selector_results(
     job: BrowserDiagnosticJob,
     diagnostic_run: BrowserDiagnosticRun,
@@ -7537,6 +8892,604 @@ def _browser_local_runner_promotion_gate(
         "files_written": run_asset.files_written,
         "collection_resources_written": run_asset.collection_resources_written,
     }
+
+
+def _browser_promotion_source_draft(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    job: BrowserDiagnosticJob,
+    target_source_type: Literal["generic_web", "ecommerce_product_page"],
+) -> AutomationSourceDraftResponse:
+    selector_evaluations = _browser_local_runner_selector_evaluations(
+        run_asset.selector_results
+    )
+    selected_fields = [
+        str(item["field"])
+        for item in selector_evaluations
+        if int(item.get("match_count") or 0) > 0
+    ]
+    required_missing_fields = [
+        str(item["field"])
+        for item in selector_evaluations
+        if item.get("required") is True and int(item.get("match_count") or 0) < 1
+    ]
+    final_url = _browser_probe_sanitize_url(run_asset.final_url)
+    config: dict[str, Any] = {
+        "url": final_url,
+        "requested_url": _browser_probe_sanitize_url(run_asset.requested_url),
+        "promotion_source": "browser_diagnostic_job_run",
+        "browser_diagnostic_job_run_id": str(run_asset.id),
+        "browser_diagnostic_job_id": str(job.id),
+        "browser_diagnostic_run_id": str(run_asset.browser_diagnostic_run_id),
+        "evidence_asset_id": f"browser_diagnostic_job_run:{run_asset.id}",
+        "fields": selected_fields,
+        "required_missing_fields": required_missing_fields,
+        "selector_evaluations": selector_evaluations,
+        "preview_row_count": len(run_asset.preview_rows),
+        "network_metadata_summary": _browser_local_runner_network_metadata_summary(
+            run_asset.network_observation_summary
+        ),
+        "promotion_boundary": "preview_only_no_source_task_write",
+        "manual_review_required": True,
+        "run_started": False,
+        "collection_resources_written": False,
+    }
+    if target_source_type == "ecommerce_product_page":
+        config["collector_runtime_warning"] = (
+            "browser evidence may not be reproducible by static product page collector"
+        )
+    else:
+        config["collector_runtime_warning"] = (
+            "generic web collector may not reproduce dynamic browser fields"
+        )
+    return AutomationSourceDraftResponse(
+        type=target_source_type,
+        config=config,
+        suggested_name=f"Promotion Candidate: {_browser_plan_host_label(final_url)}",
+        schedule_cron=None,
+    )
+
+
+def _browser_promotion_task_draft(
+    source_draft: AutomationSourceDraftResponse,
+    run_asset: BrowserDiagnosticJobRun,
+) -> AutomationBrowserPromotionTaskDraftResponse:
+    promotion_gate = _browser_local_runner_promotion_gate(run_asset)
+    status: Literal["disabled", "blocked"] = (
+        "blocked"
+        if promotion_gate["reasons"] != ["m2_read_only_contract_no_direct_promotion"]
+        else "disabled"
+    )
+    config = {
+        **source_draft.config,
+        "schedule_policy": "manual_refresh_only",
+        "task_boundary": "preview_only_no_task_created",
+    }
+    return AutomationBrowserPromotionTaskDraftResponse(
+        collector_type=source_draft.type,
+        name=source_draft.suggested_name,
+        status=status,
+        schedule_cron=None,
+        schedule_policy="manual_refresh_only",
+        config=config,
+    )
+
+
+def _browser_promotion_preview_gate(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    target_source_type: Literal["generic_web", "ecommerce_product_page"],
+) -> dict[str, Any]:
+    base_gate = _browser_local_runner_promotion_gate(run_asset)
+    reasons = list(base_gate["reasons"])
+    reasons.extend(
+        [
+            "manual_review_required",
+            "browser_automation_runtime_not_registered",
+            "preview_only_no_source_task_write",
+        ]
+    )
+    if target_source_type == "generic_web":
+        reasons.append("generic_web_may_not_reproduce_browser_runtime")
+    if target_source_type == "ecommerce_product_page":
+        reasons.append("product_page_collector_static_runtime_only")
+    return {
+        **base_gate,
+        "schema_version": "browser_promotion_preview_gate.v1",
+        "status": "blocked",
+        "target_source_type": target_source_type,
+        "can_promote": False,
+        "can_create_collection_resources": False,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "reasons": list(dict.fromkeys(reasons)),
+        "required_approvals": [
+            "reviewer",
+            "target_source_type",
+            "field_contract",
+            "runtime_collector_strategy",
+            "cleanup_or_retention_plan",
+        ],
+    }
+
+
+def _browser_promotion_validated_config(
+    source_draft: AutomationSourceDraftResponse,
+) -> tuple[dict[str, Any], str | None]:
+    try:
+        return validate_collector_config(source_draft.type, dict(source_draft.config)), None
+    except CollectorConfigError:
+        return {}, "collector_config_invalid"
+    except CollectorNotFoundError:
+        return {}, "collector_not_registered"
+
+
+def _browser_promotion_execution_checks(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    source_draft: AutomationSourceDraftResponse,
+    validated_source_config: dict[str, Any],
+    config_block_reason: str | None,
+) -> list[AutomationBrowserPromotionExecutionCheckResponse]:
+    required_missing_fields = _string_list(
+        source_draft.config.get("required_missing_fields")
+    )
+    checks = [
+        _browser_promotion_execution_check(
+            key="no-write-confirmed",
+            label="No-write boundary",
+            status="passed",
+            message="browser_promotion_no_write_confirmed",
+            evidence={
+                "write_allowed": False,
+                "source_created": False,
+                "task_created": False,
+                "task_run_started": False,
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="evidence-boundary",
+            label="Evidence boundary",
+            status="blocked"
+            if run_asset.files_written or run_asset.collection_resources_written
+            else "passed",
+            message="browser_evidence_boundary_clean"
+            if not run_asset.files_written and not run_asset.collection_resources_written
+            else "browser_evidence_boundary_has_side_effect",
+            evidence={
+                "browser_started": run_asset.browser_started,
+                "files_written": run_asset.files_written,
+                "collection_resources_written": run_asset.collection_resources_written,
+                "evidence_asset_id": f"browser_diagnostic_job_run:{run_asset.id}",
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="collector-config",
+            label="Collector config",
+            status="blocked" if config_block_reason else "passed",
+            message=config_block_reason or "collector_config_dry_run_valid",
+            evidence={
+                "target_source_type": source_draft.type,
+                "validated_config_keys": sorted(validated_source_config),
+                "config_write": False,
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="required-selectors",
+            label="Required selectors",
+            status="blocked" if required_missing_fields else "passed",
+            message="required_selector_missing"
+            if required_missing_fields
+            else "required_selectors_observed",
+            evidence={"required_missing_fields": required_missing_fields},
+        ),
+        _browser_promotion_execution_check(
+            key="runtime-strategy",
+            label="Runtime strategy",
+            status="review",
+            message="browser_runtime_strategy_manual_review_required",
+            evidence={
+                "browser_automation_runtime_registered": False,
+                "target_source_type": source_draft.type,
+                "collector_runtime_warning": source_draft.config.get(
+                    "collector_runtime_warning"
+                ),
+            },
+        ),
+    ]
+    return checks
+
+
+def _browser_promotion_execution_check(
+    *,
+    key: str,
+    label: str,
+    status: Literal["passed", "review", "blocked"],
+    message: str,
+    evidence: dict[str, Any],
+) -> AutomationBrowserPromotionExecutionCheckResponse:
+    return AutomationBrowserPromotionExecutionCheckResponse(
+        key=key,
+        label=label,
+        status=status,
+        message=message,
+        evidence=evidence,
+    )
+
+
+def _browser_promotion_execution_plan(
+    *,
+    source_draft: AutomationSourceDraftResponse,
+    task_draft: AutomationBrowserPromotionTaskDraftResponse | None,
+    checks: list[AutomationBrowserPromotionExecutionCheckResponse],
+) -> dict[str, Any]:
+    has_blocked_check = any(check.status == "blocked" for check in checks)
+    source_payload = {
+        "name": source_draft.suggested_name,
+        "type": source_draft.type,
+        "url": source_draft.config.get("url"),
+        "config": source_draft.config,
+        "schedule_cron": source_draft.schedule_cron,
+    }
+    return {
+        "schema_version": "browser_promotion_execution_plan.v1",
+        "dry_run": True,
+        "write_allowed": False,
+        "source_create": {
+            "would_execute_if_authorized": not has_blocked_check,
+            "status": "blocked" if has_blocked_check else "ready_for_authorized_write",
+            "payload": source_payload,
+            "write_performed": False,
+        },
+        "task_enable": {
+            "would_execute_if_authorized": task_draft is not None and not has_blocked_check,
+            "status": "blocked"
+            if task_draft is None or has_blocked_check
+            else "ready_for_authorized_write",
+            "payload": task_draft.model_dump(mode="json") if task_draft else None,
+            "write_performed": False,
+        },
+        "task_run": {
+            "would_execute_if_authorized": False,
+            "status": "separate_manual_run_required",
+            "write_performed": False,
+        },
+    }
+
+
+def _browser_promotion_execution_gate(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    target_source_type: Literal["generic_web", "ecommerce_product_page"],
+    checks: list[AutomationBrowserPromotionExecutionCheckResponse],
+) -> dict[str, Any]:
+    preview_gate = _browser_promotion_preview_gate(
+        run_asset=run_asset,
+        target_source_type=target_source_type,
+    )
+    blocked_messages = [check.message for check in checks if check.status == "blocked"]
+    review_messages = [check.message for check in checks if check.status == "review"]
+    reasons = [
+        *preview_gate["reasons"],
+        "execution_dry_run_no_write",
+        "separate_write_authorization_required",
+        *blocked_messages,
+        *review_messages,
+    ]
+    return {
+        **preview_gate,
+        "schema_version": "browser_promotion_execution_gate.v1",
+        "status": "blocked",
+        "target_source_type": target_source_type,
+        "dry_run": True,
+        "write_allowed": False,
+        "can_execute": False,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "blocked_checks": len(blocked_messages),
+        "review_checks": len(review_messages),
+        "reasons": list(dict.fromkeys(reasons)),
+        "required_approvals": [
+            "reviewer",
+            "target_source_type",
+            "field_contract",
+            "runtime_collector_strategy",
+            "cleanup_or_retention_plan",
+            "write_authorization",
+        ],
+    }
+
+
+def _browser_promotion_write_execution_checks(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    source_draft: AutomationSourceDraftResponse,
+    validated_source_config: dict[str, Any],
+    config_block_reason: str | None,
+    allow_existing_collection_resources: bool = False,
+) -> list[AutomationBrowserPromotionExecutionCheckResponse]:
+    required_missing_fields = _string_list(
+        source_draft.config.get("required_missing_fields")
+    )
+    evidence_boundary_blocked = run_asset.files_written or (
+        run_asset.collection_resources_written
+        and not allow_existing_collection_resources
+    )
+    return [
+        _browser_promotion_execution_check(
+            key="write-authorization",
+            label="Write authorization",
+            status="passed",
+            message="browser_promotion_write_authorization_confirmed",
+            evidence={
+                "write_allowed": True,
+                "target_source_type": source_draft.type,
+                "resource_scope": "source_task_only",
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="no-task-run",
+            label="No task run",
+            status="passed",
+            message="browser_promotion_no_task_run_confirmed",
+            evidence={
+                "task_run_started": False,
+                "task_run_requires_separate_manual_request": True,
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="evidence-boundary",
+            label="Evidence boundary",
+            status="blocked" if evidence_boundary_blocked else "passed",
+            message="browser_promotion_idempotency_replay_boundary"
+            if allow_existing_collection_resources
+            else (
+                "browser_evidence_boundary_clean"
+                if not run_asset.files_written
+                and not run_asset.collection_resources_written
+                else "browser_evidence_boundary_has_side_effect"
+            ),
+            evidence={
+                "browser_started": run_asset.browser_started,
+                "files_written": run_asset.files_written,
+                "collection_resources_written": run_asset.collection_resources_written,
+                "evidence_asset_id": f"browser_diagnostic_job_run:{run_asset.id}",
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="collector-config",
+            label="Collector config",
+            status="blocked" if config_block_reason else "passed",
+            message=config_block_reason or "collector_config_write_valid",
+            evidence={
+                "target_source_type": source_draft.type,
+                "validated_config_keys": sorted(validated_source_config),
+                "config_write": True,
+            },
+        ),
+        _browser_promotion_execution_check(
+            key="required-selectors",
+            label="Required selectors",
+            status="blocked" if required_missing_fields else "passed",
+            message="required_selector_missing"
+            if required_missing_fields
+            else "required_selectors_observed",
+            evidence={"required_missing_fields": required_missing_fields},
+        ),
+        _browser_promotion_execution_check(
+            key="runtime-strategy",
+            label="Runtime strategy",
+            status="review",
+            message="browser_runtime_strategy_manual_review_confirmed",
+            evidence={
+                "browser_automation_runtime_registered": False,
+                "target_source_type": source_draft.type,
+                "collector_runtime_warning": source_draft.config.get(
+                    "collector_runtime_warning"
+                ),
+            },
+        ),
+    ]
+
+
+def _browser_promotion_write_execution_gate(
+    *,
+    run_asset: BrowserDiagnosticJobRun,
+    target_source_type: Literal["generic_web", "ecommerce_product_page"],
+    checks: list[AutomationBrowserPromotionExecutionCheckResponse],
+) -> dict[str, Any]:
+    required_missing_fields = _browser_local_runner_promotion_gate(run_asset)[
+        "required_missing_fields"
+    ]
+    blocked_messages = [check.message for check in checks if check.status == "blocked"]
+    review_messages = [check.message for check in checks if check.status == "review"]
+    can_execute = not blocked_messages
+    review_reasons = [
+        "task_run_requires_separate_manual_request",
+        *review_messages,
+    ]
+    if target_source_type == "generic_web":
+        review_reasons.append("generic_web_may_not_reproduce_browser_runtime")
+    if target_source_type == "ecommerce_product_page":
+        review_reasons.append("product_page_collector_static_runtime_only")
+    return {
+        "schema_version": "browser_promotion_write_gate.v1",
+        "status": "ready" if can_execute else "blocked",
+        "target_source_type": target_source_type,
+        "dry_run": False,
+        "write_allowed": True,
+        "can_execute": can_execute,
+        "can_create_collection_resources": can_execute,
+        "can_start_task_run": False,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "blocked_checks": len(blocked_messages),
+        "review_checks": len(review_messages),
+        "reasons": list(dict.fromkeys(blocked_messages)),
+        "review_reasons": list(dict.fromkeys(review_reasons)),
+        "required_missing_fields": required_missing_fields,
+        "required_approvals": [
+            "reviewer",
+            "target_source_type",
+            "field_contract",
+            "runtime_collector_strategy",
+            "cleanup_or_retention_plan",
+            "write_authorization",
+            "idempotency_key",
+            "no_task_run_confirmation",
+        ],
+    }
+
+
+def _browser_promotion_write_execution_plan(
+    *,
+    source_created: bool,
+    task_created: bool,
+    idempotency_replayed: bool,
+) -> dict[str, Any]:
+    if idempotency_replayed:
+        source_status = "idempotency_replayed"
+        task_status = "idempotency_replayed"
+    else:
+        source_status = "created" if source_created else "blocked"
+        task_status = "enabled" if task_created else "blocked"
+    return {
+        "schema_version": "browser_promotion_write_execution_plan.v1",
+        "dry_run": False,
+        "write_allowed": True,
+        "idempotency_replayed": idempotency_replayed,
+        "source_create": {
+            "status": source_status,
+            "write_performed": source_created,
+        },
+        "task_enable": {
+            "status": task_status,
+            "write_performed": task_created,
+        },
+        "task_run": {
+            "status": "separate_manual_run_required",
+            "write_performed": False,
+        },
+    }
+
+
+def _browser_promotion_execution_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    diagnostic_job_run_id: uuid.UUID,
+    target_source_type: str,
+    idempotency_key: str,
+) -> str:
+    return _stable_json_hash(
+        {
+            "scope": BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE,
+            "workspace_id": str(workspace_id),
+            "diagnostic_job_run_id": str(diagnostic_job_run_id),
+            "target_source_type": target_source_type,
+            "idempotency_key": idempotency_key.strip(),
+        }
+    )
+
+
+def _browser_promotion_execution_idempotency_event(
+    run_asset: BrowserDiagnosticJobRun,
+    idempotency_key_hash: str,
+) -> dict[str, Any] | None:
+    for event in run_asset.audit_events:
+        if event.get("event") != "browser_promotion_execution_resources_created":
+            continue
+        if event.get("idempotency_scope") != BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE:
+            continue
+        if event.get("idempotency_key_hash") == idempotency_key_hash:
+            return event
+    return None
+
+
+async def _browser_promotion_execution_replay_response(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    run_asset: BrowserDiagnosticJobRun,
+    job: BrowserDiagnosticJob,
+    source_draft: AutomationSourceDraftResponse,
+    task_draft: AutomationBrowserPromotionTaskDraftResponse,
+    validated_source_config: dict[str, Any],
+    checks: list[AutomationBrowserPromotionExecutionCheckResponse],
+    promotion_gate: dict[str, Any],
+    idempotency_key_hash: str,
+    event: dict[str, Any],
+) -> AutomationBrowserPromotionExecutionResponse:
+    source_id = _uuid_from_event(event.get("source_id"))
+    task_id = _uuid_from_event(event.get("task_id"))
+    if source_id is None or task_id is None:
+        raise CollectorError("browser_promotion_idempotency_resource_missing")
+    source = await get_source(session, workspace.id, source_id)
+    task = await get_task(session, workspace.id, task_id)
+    if source is None or task is None:
+        raise CollectorError("browser_promotion_idempotency_resource_missing")
+    replay_event = {
+        "event": "browser_promotion_execution_idempotency_replayed",
+        "browser_diagnostic_job_run_id": str(run_asset.id),
+        "browser_diagnostic_job_id": str(job.id),
+        "source_id": str(source.id),
+        "task_id": str(task.id),
+        "idempotency_scope": BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE,
+        "idempotency_key_hash": idempotency_key_hash,
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "collection_resources_written": False,
+        "created_at": datetime.now(UTC).isoformat(),
+    }
+    return AutomationBrowserPromotionExecutionResponse(
+        diagnostic_job_run_id=run_asset.id,
+        diagnostic_job_id=job.id,
+        project_id=run_asset.project_id,
+        evidence_asset=_browser_job_run_evidence_asset(run_asset),
+        source_draft=source_draft,
+        task_draft=task_draft,
+        validated_source_config=validated_source_config,
+        source=SourceResponse.model_validate(source),
+        task=CollectionTaskResponse.from_task(
+            task,
+            source_name=source.name,
+            source_url=source.url,
+        ),
+        execution_plan=_browser_promotion_write_execution_plan(
+            source_created=False,
+            task_created=False,
+            idempotency_replayed=True,
+        ),
+        promotion_gate=promotion_gate,
+        validation_checks=checks,
+        blocked_reasons=[],
+        audit_events=[replay_event],
+        dry_run=False,
+        write_allowed=True,
+        can_execute=True,
+        idempotency_replayed=True,
+        idempotency_scope=BROWSER_PROMOTION_EXECUTION_IDEMPOTENCY_SCOPE,
+        idempotency_key_hash=idempotency_key_hash,
+        source_created=False,
+        task_created=False,
+        task_run_started=False,
+        collection_resources_written=False,
+    )
+
+
+def _uuid_from_event(value: Any) -> uuid.UUID | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        return None
 
 
 def _browser_local_runner_redaction_summary(
@@ -8299,6 +10252,165 @@ def _extraction_plan_response(
     )
 
 
+def _browser_diagnostic_redaction_summary(
+    *,
+    files_written: bool,
+    collection_resources_written: bool,
+) -> dict[str, Any]:
+    return {
+        "schema_version": "browser_evidence_redaction_summary.v1",
+        "cookies_captured": False,
+        "headers_captured": False,
+        "bodies_captured": False,
+        "query_parameters_retained": False,
+        "url_query_fragment_removed": True,
+        "screenshots_embedded": False,
+        "trace_embedded": False,
+        "har_embedded": False,
+        "files_written": files_written,
+        "collection_resources_written": collection_resources_written,
+    }
+
+
+def _browser_diagnostic_run_evidence_asset(
+    diagnostic_run: BrowserDiagnosticRun,
+) -> AutomationEvidenceAssetReferenceResponse:
+    return AutomationEvidenceAssetReferenceResponse(
+        asset_id=f"browser_diagnostic_run:{diagnostic_run.id}",
+        asset_type="browser_diagnostic_run",
+        reference_type="browser_diagnostic_run_id",
+        reference_id=str(diagnostic_run.id),
+        evidence_level="L1-repo-or-runtime",
+        evidence_boundary="metadata_only_no_files",
+        source=diagnostic_run.evidence_source,
+        label="Browser diagnostic metadata-only evidence",
+        summary={
+            "requested_url": _browser_probe_sanitize_url(diagnostic_run.requested_url),
+            "final_url": _browser_probe_sanitize_url(diagnostic_run.final_url),
+            "recommended_path": diagnostic_run.recommended_path,
+            "confidence": diagnostic_run.confidence,
+            "field_stability": diagnostic_run.field_stability,
+            "run_started": diagnostic_run.run_started,
+            "blocked_reasons": diagnostic_run.blocked_reasons,
+        },
+        redaction_summary=_browser_diagnostic_redaction_summary(
+            files_written=False,
+            collection_resources_written=False,
+        ),
+        forbidden_actions=[
+            "cookie_export",
+            "headers_capture",
+            "body_capture",
+            "screenshot_embedding",
+            "trace_or_har_retention",
+            "direct_source_task_creation",
+        ],
+        promotion_required=True,
+        promotion_required_fields=[
+            "reviewer",
+            "target_source_type",
+            "allowed_pages",
+            "field_contract",
+            "cleanup_or_retention_plan",
+        ],
+        created_at=diagnostic_run.created_at.isoformat(),
+    )
+
+
+def _browser_diagnostic_job_evidence_asset(
+    diagnostic_job: BrowserDiagnosticJob,
+) -> AutomationEvidenceAssetReferenceResponse:
+    return AutomationEvidenceAssetReferenceResponse(
+        asset_id=f"browser_diagnostic_job:{diagnostic_job.id}",
+        asset_type="browser_diagnostic_job",
+        reference_type="browser_diagnostic_job_id",
+        reference_id=str(diagnostic_job.id),
+        evidence_level="L2-fixture-or-dry-run",
+        evidence_boundary="reviewed_no_runner",
+        source=diagnostic_job.runner,
+        label="Browser diagnostic reviewed job evidence",
+        summary={
+            "requested_url": _browser_probe_sanitize_url(diagnostic_job.requested_url),
+            "final_url": _browser_probe_sanitize_url(diagnostic_job.final_url),
+            "status": diagnostic_job.status,
+            "execution_mode": diagnostic_job.execution_mode,
+            "selector_count": len(diagnostic_job.selector_scope),
+            "wait_condition_count": len(diagnostic_job.wait_policy),
+            "run_started": diagnostic_job.run_started,
+            "blocked_reasons": diagnostic_job.blocked_reasons,
+        },
+        redaction_summary=_browser_diagnostic_redaction_summary(
+            files_written=False,
+            collection_resources_written=False,
+        ),
+        forbidden_actions=[
+            "automatic_runner_start",
+            "cookie_export",
+            "headers_capture",
+            "body_capture",
+            "direct_source_task_creation",
+        ],
+        promotion_required=True,
+        promotion_required_fields=[
+            "reviewer",
+            "target_source_type",
+            "allowed_pages",
+            "selector_review",
+            "cleanup_or_retention_plan",
+        ],
+        created_at=diagnostic_job.created_at.isoformat(),
+    )
+
+
+def _browser_job_run_evidence_asset(
+    run_asset: BrowserDiagnosticJobRun,
+) -> AutomationEvidenceAssetReferenceResponse:
+    return AutomationEvidenceAssetReferenceResponse(
+        asset_id=f"browser_diagnostic_job_run:{run_asset.id}",
+        asset_type="browser_diagnostic_job_run",
+        reference_type="browser_diagnostic_job_run_id",
+        reference_id=str(run_asset.id),
+        evidence_level="L2-fixture-or-dry-run",
+        evidence_boundary="local_snapshot_replay_no_files"
+        if run_asset.run_mode == "diagnostic_snapshot_replay"
+        else "local_ephemeral_probe_no_files",
+        source=run_asset.runner,
+        label="Browser diagnostic local-run evidence",
+        summary={
+            "requested_url": _browser_probe_sanitize_url(run_asset.requested_url),
+            "final_url": _browser_probe_sanitize_url(run_asset.final_url),
+            "status": run_asset.status,
+            "run_mode": run_asset.run_mode,
+            "selector_result_count": len(run_asset.selector_results),
+            "preview_row_count": len(run_asset.preview_rows),
+            "browser_started": run_asset.browser_started,
+            "files_written": run_asset.files_written,
+            "collection_resources_written": run_asset.collection_resources_written,
+            "blocked_reasons": run_asset.blocked_reasons,
+        },
+        redaction_summary=_browser_diagnostic_redaction_summary(
+            files_written=run_asset.files_written,
+            collection_resources_written=run_asset.collection_resources_written,
+        ),
+        forbidden_actions=[
+            "cookie_export",
+            "headers_capture",
+            "body_capture",
+            "file_retention_without_approval",
+            "direct_source_task_creation",
+        ],
+        promotion_required=True,
+        promotion_required_fields=[
+            "reviewer",
+            "target_source_type",
+            "field_contract",
+            "required_selector_review",
+            "cleanup_or_retention_plan",
+        ],
+        created_at=run_asset.created_at.isoformat(),
+    )
+
+
 def _browser_diagnostic_run_response(
     diagnostic_run: BrowserDiagnosticRun,
 ) -> AutomationBrowserDiagnosticRunResponse:
@@ -8325,6 +10437,7 @@ def _browser_diagnostic_run_response(
         blocked_reasons=diagnostic_run.blocked_reasons,
         created_at=diagnostic_run.created_at,
         run_started=diagnostic_run.run_started,
+        evidence_asset=_browser_diagnostic_run_evidence_asset(diagnostic_run),
     )
 
 
@@ -8356,6 +10469,7 @@ def _browser_diagnostic_job_response(
         updated_at=diagnostic_job.updated_at,
         cancelled_at=diagnostic_job.cancelled_at,
         run_started=diagnostic_job.run_started,
+        evidence_asset=_browser_diagnostic_job_evidence_asset(diagnostic_job),
     )
 
 
@@ -8392,6 +10506,7 @@ def _browser_local_runner_result_response(
         browser_started=run_asset.browser_started,
         files_written=run_asset.files_written,
         collection_resources_written=run_asset.collection_resources_written,
+        evidence_asset=_browser_job_run_evidence_asset(run_asset),
     )
 
 
@@ -8476,11 +10591,100 @@ async def _get_dataset_and_version(
     return dataset, version
 
 
+async def _existing_report_asset_by_idempotency_key_hash(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID | None,
+    scope: str,
+    idempotency_key_hash: str,
+) -> Report | None:
+    reports = await list_reports(session, workspace.id, project_id=project_id)
+    for report in reports:
+        events = await list_report_audit_events(session, workspace.id, report.id)
+        for event in events:
+            metadata = _report_audit_event_metadata(event)
+            if event.event_type != "idempotency_key_recorded":
+                continue
+            if metadata.get("scope") != scope:
+                continue
+            if metadata.get("idempotency_key_hash") == idempotency_key_hash:
+                return report
+    return None
+
+
+def _github_tool_report_asset_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    min_stars: int,
+    top_limit: int,
+    idempotency_key: str | None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    return _stable_json_hash(
+        {
+            "scope": GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+            "workspace_id": str(workspace_id),
+            "dataset_id": str(dataset_id),
+            "dataset_version_id": str(dataset_version_id),
+            "min_stars": min_stars,
+            "top_limit": top_limit,
+            "idempotency_key": normalized_key,
+        }
+    )
+
+
+def _public_content_report_asset_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    top_limit: int,
+    idempotency_key: str | None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    return _stable_json_hash(
+        {
+            "scope": PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE,
+            "workspace_id": str(workspace_id),
+            "dataset_id": str(dataset_id),
+            "dataset_version_id": str(dataset_version_id),
+            "top_limit": top_limit,
+            "idempotency_key": normalized_key,
+        }
+    )
+
+
+def _report_audit_event_metadata(event: ReportAuditEvent) -> dict[str, str]:
+    if not event.metadata_json:
+        return {}
+    parsed = json.loads(event.metadata_json)
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(key): str(value) for key, value in parsed.items()}
+
+
 def _dataset_export_job_response(
     export_job: DatasetExportJob,
     dataset: Dataset,
     version: DatasetVersion,
+    *,
+    idempotency_replayed: bool = False,
+    idempotency_key_hash: str | None = None,
 ) -> AutomationProductDatasetExportJobResponse:
+    detected_key_hash = idempotency_key_hash or _dataset_export_job_idempotency_key_hash(
+        export_job.audit_events
+    )
     download_url = None
     if export_job.status == "success":
         download_url = (
@@ -8506,6 +10710,208 @@ def _dataset_export_job_response(
         blocked_reasons=[
             "导出文件已写入受控目录；下载接口会再次校验当前账号的数据集权限。"
         ],
+        idempotency_replayed=idempotency_replayed,
+        idempotency_scope=DATASET_EXPORT_IDEMPOTENCY_SCOPE if detected_key_hash else None,
+        idempotency_key_hash=detected_key_hash,
+    )
+
+
+async def _existing_dataset_export_job_by_idempotency_key_hash(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    export_format: str,
+    idempotency_key_hash: str,
+) -> DatasetExportJob | None:
+    jobs = await list_dataset_export_jobs(
+        session,
+        workspace.id,
+        dataset_id,
+        dataset_version_id=dataset_version_id,
+        limit=100,
+    )
+    for job in jobs:
+        if job.export_format != export_format:
+            continue
+        if _dataset_export_job_idempotency_key_hash(job.audit_events) == idempotency_key_hash:
+            return job
+    return None
+
+
+def _dataset_export_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    export_format: str,
+    idempotency_key: str | None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    return _stable_json_hash(
+        {
+            "scope": DATASET_EXPORT_IDEMPOTENCY_SCOPE,
+            "workspace_id": str(workspace_id),
+            "dataset_id": str(dataset_id),
+            "dataset_version_id": str(dataset_version_id),
+            "export_format": export_format,
+            "idempotency_key": normalized_key,
+        }
+    )
+
+
+def _dataset_export_job_idempotency_key_hash(
+    audit_events: list[dict[str, Any]],
+) -> str | None:
+    for event in audit_events:
+        if event.get("event") != "product_dataset_export_idempotency_key_recorded":
+            continue
+        if event.get("scope") != DATASET_EXPORT_IDEMPOTENCY_SCOPE:
+            continue
+        idempotency_key_hash = event.get("idempotency_key_hash")
+        if isinstance(idempotency_key_hash, str) and idempotency_key_hash:
+            return idempotency_key_hash
+    return None
+
+
+def _drift_alert_notification_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    drift_event_id: uuid.UUID,
+    alert_event_ids: list[uuid.UUID],
+    idempotency_key: str | None,
+) -> str | None:
+    return _drift_alert_send_idempotency_key_hash(
+        scope=DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE,
+        workspace_id=workspace_id,
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        drift_event_id=drift_event_id,
+        alert_event_ids=alert_event_ids,
+        recipient_email=None,
+        idempotency_key=idempotency_key,
+    )
+
+
+def _drift_alert_email_idempotency_key_hash(
+    *,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    drift_event_id: uuid.UUID,
+    alert_event_ids: list[uuid.UUID],
+    recipient_email: str,
+    idempotency_key: str | None,
+) -> str | None:
+    return _drift_alert_send_idempotency_key_hash(
+        scope=DRIFT_ALERT_EMAIL_IDEMPOTENCY_SCOPE,
+        workspace_id=workspace_id,
+        dataset_id=dataset_id,
+        dataset_version_id=dataset_version_id,
+        drift_event_id=drift_event_id,
+        alert_event_ids=alert_event_ids,
+        recipient_email=recipient_email,
+        idempotency_key=idempotency_key,
+    )
+
+
+def _drift_alert_send_idempotency_key_hash(
+    *,
+    scope: str,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    drift_event_id: uuid.UUID,
+    alert_event_ids: list[uuid.UUID],
+    recipient_email: str | None,
+    idempotency_key: str | None,
+) -> str | None:
+    if idempotency_key is None:
+        return None
+    normalized_key = idempotency_key.strip()
+    if not normalized_key:
+        return None
+    payload: dict[str, object] = {
+        "scope": scope,
+        "workspace_id": str(workspace_id),
+        "dataset_id": str(dataset_id),
+        "dataset_version_id": str(dataset_version_id),
+        "drift_event_id": str(drift_event_id),
+        "alert_event_ids": sorted(str(alert_event_id) for alert_event_id in alert_event_ids),
+        "idempotency_key": normalized_key,
+    }
+    if recipient_email is not None:
+        payload["recipient_email"] = recipient_email.strip().lower()
+    return _stable_json_hash(payload)
+
+
+def _alert_event_delivery_idempotency_event(
+    event: AlertEvent,
+    *,
+    scope: str,
+    idempotency_key_hash: str,
+) -> dict[str, Any] | None:
+    for audit_event in _alert_event_delivery_audit_events(event):
+        if audit_event.get("scope") != scope:
+            continue
+        if audit_event.get("idempotency_key_hash") == idempotency_key_hash:
+            return audit_event
+    return None
+
+
+def _append_alert_event_delivery_idempotency_event(
+    event: AlertEvent,
+    audit_event: dict[str, Any],
+) -> None:
+    delivery_events = _alert_event_delivery_audit_events(event)
+    delivery_events.append(audit_event)
+    event.payload = {
+        **event.payload,
+        "delivery_audit_events": delivery_events,
+    }
+
+
+def _alert_event_delivery_audit_events(event: AlertEvent) -> list[dict[str, Any]]:
+    raw_events = event.payload.get("delivery_audit_events")
+    if not isinstance(raw_events, list):
+        return []
+    delivery_events: list[dict[str, Any]] = []
+    for raw_event in raw_events:
+        if isinstance(raw_event, dict):
+            delivery_events.append(dict(raw_event))
+    return delivery_events
+
+
+def _email_delivery_response_from_idempotency_event(
+    event: AlertEvent,
+    audit_event: dict[str, Any] | None,
+    *,
+    fallback_recipient_email: str,
+) -> AutomationProductDriftAlertEmailDeliveryResponse:
+    delivered_at = None
+    delivered_at_text = audit_event.get("delivered_at") if audit_event else None
+    if isinstance(delivered_at_text, str) and delivered_at_text:
+        delivered_at = datetime.fromisoformat(delivered_at_text)
+    recipient_email = audit_event.get("recipient_email") if audit_event else None
+    return AutomationProductDriftAlertEmailDeliveryResponse(
+        alert_event_id=event.id,
+        recipient_email=(
+            recipient_email if isinstance(recipient_email, str) else fallback_recipient_email
+        ),
+        delivered=bool(audit_event.get("delivered")) if audit_event else False,
+        delivered_at=delivered_at,
+        reason=(
+            str(audit_event["reason"])
+            if audit_event and audit_event.get("reason") is not None
+            else None
+        ),
     )
 
 

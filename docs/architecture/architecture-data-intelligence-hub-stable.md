@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-23
+updated: 2026-06-29
 owner: self
 source: human+ai
 ---
@@ -20,7 +20,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
+3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；商品页 collector 支持 JSON-LD Product 和静态 schema.org microdata 基础字段；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
@@ -80,17 +80,17 @@ flowchart LR
 3. `Dataset`、`DatasetVersion`、`DatasetDriftEvent`、`DatasetExportJob` 已有后端模型与 `/datasets` 前端入口。
 4. Dataset 导出文件写入 `Settings.dataset_export_dir`，默认值为 `tmp/dataset-exports`；生产持久化目录和对象存储策略需要在部署层单独核验。
 5. GitHub Topic Radar 运行记录已可保存为 `github_tool_radar` DatasetVersion，并可生成工具雷达只读报告、漂移快照和 `report_type=github_tool_radar` 的 Report 中心资产。
-6. Public Web/RSS/Docs 本地切片已可从 `public_feed` raw record entries 与 `generic_web` docs/page snapshot 保存 `public_content_update` DatasetVersion，并提供 content-hash drift check、`public_content_drift` 事件保存/复用、只读 report preview 与 Report asset 创建路径；生产调度、provider/email、生产浏览器运行和新增生产写入仍需单独 gate。
-7. 截至 2026-06-24 本地 M5 docs diff 切片，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、公开 RSS/Atom 与 docs/page Dataset/drift/report preview、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产、生产浏览器链路和 GitHub API-first 深化字段合同已形成产品骨架；后续重点是更多平台包真实采集深度与长期运行可靠性。
+6. Public Web/RSS/Docs 已从本地切片推进到小范围生产门禁：`public_feed` RSS、`generic_web` docs/page、`public_content_update` DatasetVersion、content-hash drift、`public_content_drift` 事件、只读 report preview、Report asset、Dataset export、scheduler approval/tick、retained canary refresh、cleanup dry-run 和 default 168h TTL final observation 均有历史证据；provider/email、production browser run、browser artifact write、cleanup execute 和 post-cleanup recount 仍需单独 gate。
+7. 截至 2026-06-30，Automation 平台包、采集计划、清洗计划、数据集保存、GitHub Topic Radar、公开网页结构预检、公开 RSS/Atom 与 docs/page Dataset/drift/report preview、工具雷达 Report 资产、BrowserDiagnosticRun/Job/JobRun 只读证据资产、CapabilityProbe/BrowserDiagnostic computed evidence reference、BrowserDiagnostic Source/Task 候选 preview gate、BrowserDiagnostic no-write execution dry-run、BrowserDiagnostic 显式授权 Source+Task 写 gate、BrowserDiagnostic production metadata-only no-run gate、生产浏览器链路合同和 GitHub API-first 深化字段合同已形成产品骨架；运行安全本地切片已补齐 task row lock、collector timeout、scheduler running-task skip、前端 submitting guard、auto freshness retry budget、手动 Task run、Dataset export create、Report send、drift alert notification/email send、Report asset create、subscription run/retry、email-channel test、email provider-live gate preflight、email provider live-send readiness 和 email provider live-send gate default-deny 的 `Idempotency-Key` replay 合同；Batch 3 已把 PlatformPackage 本地 API/UI 合同补成 version、owner、lifecycle status、evidence grade、authorization required、acceptance registry、cleanup policy 和 forbidden actions；后续重点是按 L4 runbook 执行真实 provider 生产发送证据、平台包持久化/自定义层、更多平台包真实采集深度与长期运行可靠性。
 
 当前平台包矩阵：
 
-| id | 分类 | 默认入口 | 执行边界 | 当前状态 |
-|---|---|---|---|---|
-| `shopify-independent-ecommerce` | ecommerce | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset |
-| `github-api-first` | developer_platform | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段合同 |
-| `public-page-structure-preflight` | browser_preflight | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
-| `public-web-rss-docs` | public_content | `source-create` | `executable` | M5 local slice 已新增 `public_feed` RSS/Atom collector 与 `generic_web` docs/page snapshot 入库，支持 `public_content_update` Dataset save、content-hash drift、drift event、只读 report preview 和 Report asset；scheduler、provider/email、生产浏览器运行和新增生产 gate 仍待单独授权 |
+| id | 分类 | version | evidence grade | 默认入口 | 执行边界 | 当前状态 |
+|---|---|---|---|---|---|---|
+| `shopify-independent-ecommerce` | ecommerce | `2026.06.m4` | `L2-fixture-or-dry-run` | `product-discovery` | `executable` | 可从集合页发现商品、fan-out、批量运行并保存 Dataset；WebScraper.io 公开测试站 local API E2E 已验证静态 microdata 商品页到 export/drift；生产/客户站 gate 待授权 |
+| `github-api-first` | developer_platform | `2026.06.m3` | `L4-authorized-live` | `source-create` | `executable` | 可从 `/automation` 创建 GitHub topic Source、启用 Task 并执行一次公开 API 采集；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段合同；L4 仅指 scoped package gate |
+| `public-page-structure-preflight` | browser_preflight | `2026.06.preflight` | `L2-fixture-or-dry-run` | `preflight` | `executable` | 可对授权公开网页做结构预检，并在允许时转入 `generic_web` 采集源 |
+| `public-web-rss-docs` | public_content | `2026.06.m5` | `L4-authorized-live` | `source-create` | `executable` | 已完成小范围 `public_feed` RSS 与 `generic_web` docs/page 生产门禁，支持 `public_content_update` Dataset save、content-hash drift、drift event、只读 report preview、Report asset、Dataset export、scheduler tick、retained canary refresh 和 default 168h TTL final observation；provider/email、生产浏览器运行、cleanup execute 和 post-cleanup recount 仍待单独授权 |
 
 ## 数据闭环
 
@@ -152,9 +152,10 @@ flowchart LR
 
 后续应新增或拆分：
 
-1. `PlatformPackage` 持久化和自定义层，用于 Shopify、GitHub/API-first、marketplace、social 等平台包的版本管理和交付验收。
+1. `PlatformPackage` 持久化和自定义层，用于 Shopify、GitHub/API-first、marketplace、social 等平台包的版本管理和交付验收；当前版本/owner/验收登记仍来自代码内 catalog。
 2. 清洗计划规则编辑器和更完整的 before/after 预览。
-3. 前端提交中状态、采集任务运行锁、重试预算和超时策略。
+3. Operator UI 中展示 retry budget 耗尽原因、重置入口和下一次可运行状态。
+4. Side-effect endpoint 的统一幂等键或等价去重策略，用于防止重复点击、scheduler 并发或网络重试造成重复资源；当前手动 Task run、Dataset export create、Report send、drift alert notification/email send、Report asset create、subscription run/retry、email-channel test、email provider-live gate preflight、email provider live-send readiness 和 email provider live-send gate default-deny 已有本地合同，真实 provider 生产发送仍需按 L4 runbook 获取审批和 side-effect 证据。
 
 ## 采集与调度
 
@@ -181,7 +182,7 @@ flowchart LR
 | `public_feed` | 采集公开 RSS/Atom feed 更新条目 |
 | `manual_json` | 导入人工或外部工具结构化样本 |
 | `ecommerce_product_discovery` | 从独立站列表页或 sitemap 发现商品 URL |
-| `ecommerce_product_page` | 从公开独立站商品页解析结构化商品字段 |
+| `ecommerce_product_page` | 从公开独立站商品页解析结构化商品字段；优先 JSON-LD Product / Offer，兼容静态 schema.org microdata |
 
 平台边界：
 
@@ -208,6 +209,15 @@ flowchart LR
 
 ## 生产验收事实
 
+当前基线，截至 2026-06-29，已验证：
+
+1. 生产只读 health 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true`。
+2. 生产 active app working tree `/opt/data-achieve-scrapy/app` 的 `HEAD` 为 `42851929d59d82708c9380d36347ca721979297d`。
+3. 生产 active app marker `/opt/data-achieve-scrapy/app/.deploy-sha` 为 `42851929d59d82708c9380d36347ca721979297d`，与 active app `HEAD` 匹配。
+4. `data_achieve_scrapy_api` 和 `data_achieve_scrapy_web` 的 compose working directory 均为 `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`。
+5. 本地 main worktree 与 `origin/main` 均指向 `42851929d59d82708c9380d36347ca721979297d`。
+6. 本次只读核验不执行 production write、provider call、email send、cleanup execute、scheduler mutation、production browser run 或 browser artifact write。
+
 历史基线，截至 2026-06-14，已验证：
 
 1. 本地 `bash scripts/verify-mvp.sh` 通过：API `45 passed`，Web build 通过，Playwright `17 passed, 5 skipped`。
@@ -222,7 +232,7 @@ flowchart LR
 2. `DatasetExportJob` 模型、导出服务、导出历史接口和下载接口已存在。
 3. 前端 `/datasets` 已存在生成导出文件和下载导出文件的交互。
 4. `/api/automation/platform-packages` 在生产返回 3 个平台包，包含 `public-page-structure-preflight`，且 `github-api-first` 已是可执行平台包。
-5. 生产运行目录为 `/opt/data-achieve-scrapy/app`，该目录当前 HEAD 为 `d9b2a5e`；远程 GitHub fetch 曾遇到传输失败，本次部署采用本地已推送 commit 的 git bundle fast-forward。
+5. 生产运行目录为 `/opt/data-achieve-scrapy/app`，该轮目录 HEAD 为 `d9b2a5e`；远程 GitHub fetch 曾遇到传输失败，该次部署采用本地已推送 commit 的 git bundle fast-forward。
 6. 生产健康检查返回 `status=ok`、`database=connected`、`schema_revision=202606110020`、`schema_head=202606110020`。
 7. 生产真实 API E2E 通过：Playwright `34 passed / 8 skipped`。
 8. E2E 与 demo 噪音清理已执行，后续 dry-run 计数为 0。

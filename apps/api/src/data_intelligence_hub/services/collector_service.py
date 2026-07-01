@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import traceback
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -17,24 +19,38 @@ from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.raw_records import get_raw_record_by_hash
 from data_intelligence_hub.repositories.sources import get_source
+from data_intelligence_hub.services.exceptions import TaskAlreadyRunningError, TaskNotRunnableError
 from data_intelligence_hub.services.normalization_service import normalize_raw_record
 from data_intelligence_hub.services.signal_service import (
     detect_data_quality_anomaly,
     detect_signals_for_snapshots,
 )
+from data_intelligence_hub.services.task_schedule_policy import update_retry_state_after_run
+
+DEFAULT_COLLECTION_TIMEOUT_SECONDS = 300.0
+MAX_COLLECTION_TIMEOUT_SECONDS = 1800.0
+MIN_COLLECTION_TIMEOUT_SECONDS = 0.1
 
 
 async def execute_collection_task(
     session: AsyncSession,
     workspace: Workspace,
     task: CollectionTask,
+    idempotency_key_hash: str | None = None,
 ) -> TaskRun:
     started_at = datetime.now(UTC)
     workspace_id = workspace.id
+    task = await _lock_task_for_run_or_raise(session, workspace, task)
     previous_task_status = task.status
+    timeout_seconds = _collection_timeout_seconds(task.config)
     logs = [
         collector_log("task_run_created", "Manual run requested."),
+        *_task_run_idempotency_logs(idempotency_key_hash),
         collector_log("collector_execution_started", f"Starting collector {task.collector_type}."),
+        collector_log(
+            "collector_timeout_configured",
+            f"Collector run timeout set to {timeout_seconds:g}s.",
+        ),
         collector_log("task_status_running", "Task status changed to running."),
     ]
     task.status = "running"
@@ -67,7 +83,12 @@ async def execute_collection_task(
         collector = build_collector(task.collector_type, _collector_config(source, task))
         collector.validate_config()
         logs.append(collector_log("collector_config_valid", "Collector config validated."))
-        result = await collector.collect()
+        try:
+            result = await asyncio.wait_for(collector.collect(), timeout=timeout_seconds)
+        except TimeoutError as exc:
+            raise CollectorError(
+                f"collection_timeout: collector exceeded {timeout_seconds:g}s"
+            ) from exc
         logs.extend(result.logs)
         for error in result.errors:
             logs.append(collector_log("collector_warning", error, level="warning"))
@@ -112,6 +133,10 @@ async def execute_collection_task(
         task.failure_count += 1
     else:
         task.success_count += 1
+    next_task_config = update_retry_state_after_run(task.config, status)
+    if next_task_config != task.config:
+        task.config = next_task_config
+        flag_modified(task, "config")
     task.status = previous_task_status
     logs.append(collector_log("task_status_restored", f"Task status restored to {task.status}."))
     await session.flush()
@@ -128,6 +153,26 @@ async def execute_collection_task(
     await session.commit()
     await session.refresh(run)
     return run
+
+
+async def _lock_task_for_run_or_raise(
+    session: AsyncSession,
+    workspace: Workspace,
+    task: CollectionTask,
+) -> CollectionTask:
+    result = await session.execute(
+        select(CollectionTask)
+        .where(CollectionTask.id == task.id, CollectionTask.workspace_id == workspace.id)
+        .with_for_update()
+    )
+    locked_task = result.scalar_one_or_none()
+    if locked_task is None:
+        raise CollectorError("Task is missing")
+    if locked_task.status == "running":
+        raise TaskAlreadyRunningError
+    if locked_task.status != "enabled":
+        raise TaskNotRunnableError
+    return locked_task
 
 
 async def _get_task_source_or_raise(
@@ -205,11 +250,40 @@ def raw_record_content_hash(raw_record: CollectorRawRecord) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _task_run_idempotency_logs(idempotency_key_hash: str | None) -> list[dict[str, Any]]:
+    if idempotency_key_hash is None:
+        return []
+    log = collector_log(
+        "idempotency_key_recorded",
+        "Recorded manual task run idempotency key hash.",
+    )
+    log.update(
+        {
+            "scope": "task_manual_run",
+            "idempotency_key_hash": idempotency_key_hash,
+            "raw_key_stored": False,
+        }
+    )
+    return [log]
+
+
 def _collector_config(source: Source, task: CollectionTask) -> dict[str, Any]:
     config = dict(source.config)
     if task.config:
         config.update(task.config)
     return config
+
+
+def _collection_timeout_seconds(config: dict[str, Any] | None) -> float:
+    if not config:
+        return DEFAULT_COLLECTION_TIMEOUT_SECONDS
+    value = config.get("run_timeout_seconds")
+    if not isinstance(value, int | float):
+        return DEFAULT_COLLECTION_TIMEOUT_SECONDS
+    return max(
+        MIN_COLLECTION_TIMEOUT_SECONDS,
+        min(float(value), MAX_COLLECTION_TIMEOUT_SECONDS),
+    )
 
 
 def _run_status(result_errors: list[str], created_records: int) -> str:
@@ -222,7 +296,7 @@ def _run_status(result_errors: list[str], created_records: int) -> str:
 
 def _collection_failure_reason(message: str) -> str:
     normalized = message.strip().lower()
-    if normalized.startswith("http_timeout"):
+    if normalized.startswith("http_timeout") or normalized.startswith("collection_timeout"):
         return "timeout"
     if normalized.startswith("http_rate_limited"):
         return "rate_limited"

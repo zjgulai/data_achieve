@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
@@ -13,14 +13,23 @@ from data_intelligence_hub.schemas.report import (
     ReportEvidenceReferenceResponse,
     ReportGenerateRequest,
     ReportResponse,
+    ReportSendRequest,
     ReportSubscriptionResponse,
+    ReportSubscriptionRetryRequest,
+    ReportSubscriptionRunRequest,
     ReportSubscriptionRunResponse,
     ReportSubscriptionUpsertRequest,
 )
 from data_intelligence_hub.services.exceptions import (
     ProjectNotFoundError,
     ReportNotFoundError,
+    ReportSendAuthorizationError,
+    ReportSendConfirmationRequiredError,
     ReportSubscriptionNotFoundError,
+    ReportSubscriptionRetryAuthorizationError,
+    ReportSubscriptionRetryConfirmationRequiredError,
+    ReportSubscriptionRunAuthorizationError,
+    ReportSubscriptionRunConfirmationRequiredError,
     ReportSubscriptionRunNotFoundError,
     ReportSubscriptionRunRetryNotAllowedError,
 )
@@ -35,7 +44,7 @@ from data_intelligence_hub.services.report_service import (
     record_report_share_event,
     retry_report_subscription_run,
     run_report_subscription_now,
-    send_report,
+    send_report_with_payload,
     upsert_report_subscription,
 )
 
@@ -102,8 +111,10 @@ async def upsert_report_subscription_item(
 @router.post("/subscriptions/{subscription_id}/run", response_model=ReportSubscriptionResponse)
 async def run_report_subscription_item(
     subscription_id: uuid.UUID,
+    payload: ReportSubscriptionRunRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportSubscriptionResponse:
     try:
         item = await run_report_subscription_now(
@@ -111,10 +122,23 @@ async def run_report_subscription_item(
             workspace=context.workspace,
             user=context.user,
             subscription_id=subscription_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
         )
     except ReportSubscriptionNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
+    except (
+        ReportSubscriptionRunAuthorizationError,
+        ReportSubscriptionRunConfirmationRequiredError,
+    ) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+    return ReportSubscriptionResponse.from_model(
+        item.subscription,
+        latest_run=item.latest_run,
+        idempotency_replayed=item.idempotency_replayed,
+        idempotency_scope=item.idempotency_scope,
+        idempotency_key_hash=item.idempotency_key_hash,
+    )
 
 
 @router.get(
@@ -147,8 +171,10 @@ async def list_report_subscription_run_items(
 async def retry_report_subscription_run_item(
     subscription_id: uuid.UUID,
     run_id: uuid.UUID,
+    payload: ReportSubscriptionRetryRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportSubscriptionResponse:
     try:
         item = await retry_report_subscription_run(
@@ -157,6 +183,8 @@ async def retry_report_subscription_run_item(
             user=context.user,
             subscription_id=subscription_id,
             run_id=run_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
         )
     except (
         ReportNotFoundError,
@@ -164,9 +192,20 @@ async def retry_report_subscription_run_item(
         ReportSubscriptionRunNotFoundError,
     ) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except (
+        ReportSubscriptionRetryAuthorizationError,
+        ReportSubscriptionRetryConfirmationRequiredError,
+    ) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
     except ReportSubscriptionRunRetryNotAllowedError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    return ReportSubscriptionResponse.from_model(item.subscription, latest_run=item.latest_run)
+    return ReportSubscriptionResponse.from_model(
+        item.subscription,
+        latest_run=item.latest_run,
+        idempotency_replayed=item.idempotency_replayed,
+        idempotency_scope=item.idempotency_scope,
+        idempotency_key_hash=item.idempotency_key_hash,
+    )
 
 
 @router.get(
@@ -260,11 +299,31 @@ async def get_report_item(
 @router.post("/{report_id}/send", response_model=ReportResponse)
 async def send_report_item(
     report_id: uuid.UUID,
+    payload: ReportSendRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportResponse:
     try:
-        report = await send_report(session, context.workspace, context.user, report_id)
+        result = await send_report_with_payload(
+            session=session,
+            workspace=context.workspace,
+            user=context.user,
+            report_id=report_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+        )
     except ReportNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return ReportResponse.from_model(report)
+    except (ReportSendAuthorizationError, ReportSendConfirmationRequiredError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+    return ReportResponse.from_model(
+        result.report,
+        delivered_channels=result.delivered_channels,
+        skipped_channels=result.skipped_channels,
+        idempotency_replayed=result.idempotency_replayed,
+        idempotency_scope=(
+            "report_send" if result.idempotency_key_hash is not None else None
+        ),
+        idempotency_key_hash=result.idempotency_key_hash,
+    )

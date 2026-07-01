@@ -22,9 +22,12 @@ import type {
   ReportAuditEvent,
   ReportEvidenceReference,
   ReportGenerateInput,
+  ReportSendInput,
   ReportSubscription,
   ReportSubscriptionInput,
+  ReportSubscriptionRetryInput,
   ReportSubscriptionRun,
+  ReportSubscriptionRunInput,
 } from "@/types/report";
 
 type ReportResponse = {
@@ -38,6 +41,11 @@ type ReportResponse = {
   period_start: string;
   period_end: string;
   created_at: string;
+  delivered_channels?: Array<"in_app" | "email">;
+  skipped_channels?: Record<string, string>;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type ReportEvidenceReferenceResponse = {
@@ -86,6 +94,9 @@ type ReportSubscriptionRunResponse = {
   error_message: string | null;
   started_at: string;
   finished_at: string | null;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 export async function listReports(projectId?: string): Promise<Report[]> {
@@ -129,14 +140,38 @@ export async function generateReport(input: ReportGenerateInput = {}): Promise<R
   return mapReport(response);
 }
 
-export async function sendReport(reportId: string): Promise<Report> {
+export async function sendReport(
+  reportId: string,
+  input: ReportSendInput = {
+    authorized: true,
+    confirmSend: true,
+    channels: ["in_app"],
+  },
+): Promise<Report> {
+  const idempotencyKey = input.idempotencyKey ?? `report-send-${reportId}`;
   if (mockApiEnabled) {
     const report = getMockReports().find((item) => item.id === reportId) ?? getMockReports()[0];
     createMockReportAuditEvent(reportId, "sent", { channel: "in_app" });
-    return { ...report, status: "sent" };
+    return {
+      ...report,
+      status: "sent",
+      deliveredChannels: input.channels ?? ["in_app"],
+      skippedChannels: {},
+      idempotencyReplayed: false,
+      idempotencyScope: "report_send",
+      idempotencyKeyHash: "mock-report-send-key-hash",
+    };
   }
+  const headers: Record<string, string> = {};
+  headers["Idempotency-Key"] = idempotencyKey;
   const response = await apiFetch<ReportResponse>(`/api/reports/${reportId}/send`, {
     method: "POST",
+    headers,
+    body: JSON.stringify({
+      authorized: input.authorized,
+      channels: input.channels ?? ["in_app"],
+      confirm_send: input.confirmSend,
+    }),
   });
   return mapReport(response);
 }
@@ -212,13 +247,25 @@ export async function upsertReportSubscription(
   return mapReportSubscription(response);
 }
 
-export async function runReportSubscription(subscriptionId: string): Promise<ReportSubscription> {
+export async function runReportSubscription(
+  subscriptionId: string,
+  input: ReportSubscriptionRunInput = {},
+): Promise<ReportSubscription> {
   if (mockApiEnabled) {
     return runMockReportSubscription(subscriptionId);
   }
+  const idempotencyKey =
+    input.idempotencyKey ?? createClientIdempotencyKey("report-subscription-run", subscriptionId);
   const response = await apiFetch<ReportSubscriptionResponse>(
     `/api/reports/subscriptions/${subscriptionId}/run`,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({
+        authorized: input.authorized ?? true,
+        confirm_run: input.confirmRun ?? true,
+      }),
+    },
   );
   return mapReportSubscription(response);
 }
@@ -238,13 +285,24 @@ export async function listReportSubscriptionRuns(
 export async function retryReportSubscriptionRun(
   subscriptionId: string,
   runId: string,
+  input: ReportSubscriptionRetryInput = {},
 ): Promise<ReportSubscription> {
   if (mockApiEnabled) {
     return retryMockReportSubscriptionRun(subscriptionId, runId);
   }
+  const idempotencyKey =
+    input.idempotencyKey ??
+    createClientIdempotencyKey("report-subscription-retry", `${subscriptionId}:${runId}`);
   const response = await apiFetch<ReportSubscriptionResponse>(
     `/api/reports/subscriptions/${subscriptionId}/runs/${runId}/retry`,
-    { method: "POST" },
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({
+        authorized: input.authorized ?? true,
+        confirm_retry: input.confirmRetry ?? true,
+      }),
+    },
   );
   return mapReportSubscription(response);
 }
@@ -261,6 +319,11 @@ function mapReport(response: ReportResponse): Report {
     periodStart: response.period_start,
     periodEnd: response.period_end,
     createdAt: response.created_at,
+    deliveredChannels: response.delivered_channels ?? [],
+    skippedChannels: response.skipped_channels ?? {},
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -310,5 +373,12 @@ function mapReportSubscriptionRun(response: ReportSubscriptionRunResponse): Repo
     errorMessage: response.error_message,
     startedAt: response.started_at,
     finishedAt: response.finished_at,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
+}
+
+function createClientIdempotencyKey(scope: string, identifier: string): string {
+  return [scope, identifier, Date.now(), Math.random().toString(36).slice(2)].join(":");
 }

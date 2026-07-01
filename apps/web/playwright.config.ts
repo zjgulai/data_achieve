@@ -20,7 +20,7 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `NEXT_PUBLIC_MOCK_API=true pnpm exec next dev --port ${port}`,
+          command: `NEXT_PUBLIC_MOCK_API=true corepack pnpm exec next dev --port ${port}`,
           url: localBaseUrl,
           reuseExistingServer: true,
           timeout: 60_000,

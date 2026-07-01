@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from: str | None = None
 
+    email_live_send_enabled: bool = False
+    email_live_recipient_allowlist: list[str] = []
+    email_live_approval_required: bool = True
+
     s3_endpoint: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
@@ -48,9 +52,9 @@ class Settings(BaseSettings):
     scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
     cors_origins: list[str] = ["http://localhost:3000"]
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "email_live_recipient_allowlist", mode="before")
     @classmethod
-    def parse_cors_origins(cls, value: str | list[str]) -> list[str]:
+    def parse_string_list(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
