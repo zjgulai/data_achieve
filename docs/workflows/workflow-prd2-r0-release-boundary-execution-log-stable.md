@@ -53,7 +53,7 @@ source: human+ai
 | R0-29 | Loop 33 remaining live gate prioritization | done_docs | selected docs/state sync before retained cleanup execute, real API E2E, production browser, independent-site/GitHub scale, or provider/email live gates |
 | R0-30 | Remaining live side-effect gates | pending_separate_authorization | provider call、product/report/subscription email、production browser run、production retained cleanup execute、production marker/symlink housekeeping、scheduler mutation、real API E2E 和 main merge 均未执行 |
 | R0-31 | Loop 35 source-control decision | done_source_control_read_only | remote refs: `origin/codex/release-3b-on-428=b81a4be2a47f387d381293db7c4b2932128f6708`, `origin/main=42851929d59d82708c9380d36347ca721979297d`; `main` and `origin/main` are ancestors of `HEAD`; `main..HEAD=1`, `HEAD..main=0`; no GitHub PR currently exists for `codex/release-3b-on-428 -> main`; no PR creation or merge |
-| R0-32 | Loop 36 draft PR creation | done_draft_pr | docs-only source-control state sync commit `9e3d2077a3903b627b8f0a489caf8b1acf897616` pushed to `origin/codex/release-3b-on-428`; draft PR #10 created against `main`; first observation `OPEN` / `isDraft=true` / `mergeable=MERGEABLE`; API/Web quality gates in progress; no merge |
+| R0-32 | Loop 36 draft PR creation | done_draft_pr | docs-only source-control state sync commit `9e3d2077a3903b627b8f0a489caf8b1acf897616` and PR-state docs commit `d96c0b32193e4b4ff4302b7b3b11a770b0b8c6fd` pushed to `origin/codex/release-3b-on-428`; draft PR #10 created against `main`; current observation `OPEN` / `isDraft=true` / `mergeable=MERGEABLE` / no checks reported on final branch head; no merge |
 
 ## 1.1 Production Identity Probe Standard
 

@@ -21,7 +21,7 @@ source: human+ai
 1. `docs/product/product-prd-data-intelligence-hub-stable.md` 已调整为 PRD 2.0 当前源头版本。
 2. 生产只读 health 在 2026-07-02 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110026`、`schema_head=202606110026`、`scheduler_enabled=true`。
 3. 2026-07-02 active app working tree `/opt/data-achieve-scrapy/app` 的 `HEAD` 与 `/opt/data-achieve-scrapy/app/.deploy-sha` 均为 `b81a4be2a47f387d381293db7c4b2932128f6708`，API/Web compose working directory 仍沿用 `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`。
-4. 本地 `codex/release-3b-on-428` 与 `origin/codex/release-3b-on-428` 已推进到 docs-only follow-up commit `9e3d2077a3903b627b8f0a489caf8b1acf897616`；生产仍运行 release commit `b81a4be2a47f387d381293db7c4b2932128f6708`；`main` 与 `origin/main` 仍为 `42851929d59d82708c9380d36347ca721979297d`；Loop 36 已创建 draft PR #10，后续 merge 仍是单独 source-control gate。
+4. 本地 `codex/release-3b-on-428` 与 `origin/codex/release-3b-on-428` 已推进到 docs-only follow-up commit `d96c0b32193e4b4ff4302b7b3b11a770b0b8c6fd`；生产仍运行 release commit `b81a4be2a47f387d381293db7c4b2932128f6708`；`main` 与 `origin/main` 仍为 `42851929d59d82708c9380d36347ca721979297d`；Loop 36 已创建 draft PR #10，最终 branch-head 检查观测为 no checks reported，后续 merge 仍是单独 source-control gate。
 5. 后续历史记录显示 M3 GitHub API-first 已完成一次小范围 production package gate 并清理；下一步是更大 scope、retention/export/scheduler gate。
 6. 后续历史记录显示 M5 Public Web/RSS/Docs 已完成 RSS/docs/page Dataset、drift、report、export、scheduler tick、retained canary refresh、cleanup dry-run 与 default 168h TTL final observation；剩余 cleanup execute、provider/email/browser runtime。
 7. M4 独立站 collector 和 Dataset/drift 样例已进入当前生产代码基线；2026-06-29 已补本地 deterministic fixture E2E gate，但真实授权测试站 L4 仍未执行。
