@@ -5,7 +5,7 @@ module: automation
 topic: prd2-loop-engineering
 status: stable
 created: 2026-07-01
-updated: 2026-07-01
+updated: 2026-07-02
 owner: self
 source: human+ai
 evidence_boundary: "docs/local/read-only loop by default; production write, cleanup execute, provider call, email send, scheduler mutation, production browser run, and browser artifact write require separate explicit authorization"
@@ -20,7 +20,8 @@ This plan starts a bounded engineering loop for the remaining PRD2 work. It does
 Fresh current-state inputs:
 
 - Product context: Data Intelligence Hub is a traceable data collection and analysis platform with the core chain `RawRecord -> EntitySnapshot -> Signal -> Intelligence -> Evidence -> Report / Alert`.
-- Current production identity evidence: active app `HEAD` and `.deploy-sha` are `42851929d59d82708c9380d36347ca721979297d`; production health is `production/ok/connected/current` with schema `202606110023`.
+- Current production identity evidence: active app `HEAD` and `.deploy-sha` are `b81a4be2a47f387d381293db7c4b2932128f6708`; production health is `production/ok/connected/current` with schema `202606110026`.
+- Current source-control evidence: local branch `codex/release-3b-on-428` and `origin/codex/release-3b-on-428` both point to `b81a4be2a47f387d381293db7c4b2932128f6708`; `main` and `origin/main` remain at `42851929d59d82708c9380d36347ca721979297d`; `main`/`origin/main` are ancestors of the release branch, the branch is one commit ahead, and no GitHub PR currently exists for `codex/release-3b-on-428 -> main`.
 - M5 retained public-content final 168h observation is complete: default 168h dry-run now matches the retained graph with `cleanup_ready=true` and `export_artifact_path_violations=0`; cleanup execute remains separate.
 - Existing `.Codex/ralph-loop.local.md` and `TODO.md` represented an older closed loop that was already marked complete; this document supersedes that loop for PRD2 remaining-task execution.
 

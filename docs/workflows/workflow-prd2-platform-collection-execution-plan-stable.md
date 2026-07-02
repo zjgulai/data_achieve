@@ -5,7 +5,7 @@ module: automation
 topic: prd2-platform-collection
 status: stable
 created: 2026-06-21
-updated: 2026-07-01
+updated: 2026-07-02
 owner: self
 source: human+ai
 ---
@@ -19,9 +19,9 @@ source: human+ai
 当前已复核事实：
 
 1. `docs/product/product-prd-data-intelligence-hub-stable.md` 已调整为 PRD 2.0 当前源头版本。
-2. 生产只读 health 在 2026-06-29 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true`。
-3. 2026-06-29 active app working tree `/opt/data-achieve-scrapy/app` 的 `HEAD` 与 `/opt/data-achieve-scrapy/app/.deploy-sha` 均为 `42851929d59d82708c9380d36347ca721979297d`，API/Web compose working directory 均为 `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`。
-4. 本地 main worktree 与 `origin/main` 均为 `42851929d59d82708c9380d36347ca721979297d`；当前 feature branch 的文档修改尚未合并到 main。
+2. 生产只读 health 在 2026-07-02 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110026`、`schema_head=202606110026`、`scheduler_enabled=true`。
+3. 2026-07-02 active app working tree `/opt/data-achieve-scrapy/app` 的 `HEAD` 与 `/opt/data-achieve-scrapy/app/.deploy-sha` 均为 `b81a4be2a47f387d381293db7c4b2932128f6708`，API/Web compose working directory 仍沿用 `/opt/data-achieve-scrapy/app/configs/deploy/scrapy`。
+4. 本地 `codex/release-3b-on-428` 与 `origin/codex/release-3b-on-428` 均为 `b81a4be2a47f387d381293db7c4b2932128f6708`；`main` 与 `origin/main` 仍为 `42851929d59d82708c9380d36347ca721979297d`；Loop 35 已验证 release 分支相对 main 为 fast-forward-capable、领先 1 个提交且当前无 GitHub PR，后续 PR/merge 仍是单独 source-control gate。
 5. 后续历史记录显示 M3 GitHub API-first 已完成一次小范围 production package gate 并清理；下一步是更大 scope、retention/export/scheduler gate。
 6. 后续历史记录显示 M5 Public Web/RSS/Docs 已完成 RSS/docs/page Dataset、drift、report、export、scheduler tick、retained canary refresh、cleanup dry-run 与 default 168h TTL final observation；剩余 cleanup execute、provider/email/browser runtime。
 7. M4 独立站 collector 和 Dataset/drift 样例已进入当前生产代码基线；2026-06-29 已补本地 deterministic fixture E2E gate，但真实授权测试站 L4 仍未执行。
@@ -248,7 +248,7 @@ bash scripts/verify-mvp.sh --with-db
 | P0 | M3-5 | GitHub production write E2E | done_scoped_l4_small | 已完成一次 `topic=web-scraping`、`max_repositories=3` 小范围 package gate 并清理；下一步是大 scope rate-limit、retention/export/scheduler |
 | P0 | M4-1 | 独立站 discovery 深化 | done_main_67f611e | collection/listing/sitemap/canonical 去重、pagination、skipped reasons |
 | P0 | M4-2 | 独立站商品字段增强 | done_main_67f611e | variant、price range、availability detail、category、SKU、image、currency、availability |
-| P0 | M4-3 | Dataset/drift 样例 | done_current_code_baseline | 新增/下架、价格变化进入 drift check/events；当前生产代码基线已更新到 `42851929` |
+| P0 | M4-3 | Dataset/drift 样例 | done_current_code_baseline | 新增/下架、价格变化进入 drift check/events；当前生产 release 已更新到 `b81a4be`，`main/origin/main` 仍停在 `42851929` |
 | P0 | M4-4a | 授权测试站点本地 fixture E2E | local_done | 已新增 API integration gate：platform package -> discovery -> fan-out -> batch -> DatasetVersion -> export/download -> drift event -> history；未触发生产写入 |
 | P0 | M4-4b | 真实授权测试站点 E2E | local_external_done | 已用 WebScraper.io 公开测试站完成 local API E2E；证据等级为 `L2 local validation + public test-site read`，未触发生产写入、provider call、email send、production browser run 或 cleanup execute |
 | P0 | RUN-1 | 运行安全第一切片 | local_done | 已通过本地 `verify-mvp`；task lock、timeout、前端 submitting guard 已完成本地验证 |
