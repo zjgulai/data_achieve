@@ -291,11 +291,13 @@ def test_social_provider_source_template_returns_manual_json_candidate_without_w
     assert template.credential_read_attempted is False
     assert template.production_write_allowed is False
     assert template.fixture_only is True
-    assert template.source_create_payload["name"] == "Reddit search fixture source"
-    assert template.source_create_payload["type"] == "manual_json"
-    assert template.source_create_payload["config"]["entity_type"] == "social_provider_fixture"
-    assert template.source_create_payload["config"]["json_data"]["provider_call"] is False
-    assert template.source_create_payload["config"]["json_data"]["endpoints"] == ["search"]
+    source_create_payload = template.source_create_payload
+    assert source_create_payload is not None
+    assert source_create_payload["name"] == "Reddit search fixture source"
+    assert source_create_payload["type"] == "manual_json"
+    assert source_create_payload["config"]["entity_type"] == "social_provider_fixture"
+    assert source_create_payload["config"]["json_data"]["provider_call"] is False
+    assert source_create_payload["config"]["json_data"]["endpoints"] == ["search"]
     assert template.next_required_authorization == "L4_social_api_source_create_gate_required"
 
 
