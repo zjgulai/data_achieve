@@ -95,7 +95,7 @@ source: codex
 - [x] Run targeted `mypy` on touched Python files.
 - [x] Run scoped pytest for social provider runtime/routes.
 - [x] Run `py_compile`, `uv lock --check`, and `git diff --check`.
-- [ ] Commit and push the branch, then re-check PR #11 CI status.
+- [x] Commit and push the branch, then re-check PR #11 CI status.
 
 ## Review Notes
 
