@@ -17,6 +17,8 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderLiveApprovalTemplateResponse,
     SocialProviderReadinessRequest,
     SocialProviderReadinessResponse,
+    SocialProviderSourceTemplateRequest,
+    SocialProviderSourceTemplateResponse,
     SocialRawPreviewRequest,
     SocialRawPreviewResponse,
 )
@@ -32,6 +34,7 @@ from data_intelligence_hub.services.social_provider import (
     prepare_social_provider_gate,
     prepare_social_provider_live_approval_template,
     prepare_social_provider_readiness,
+    prepare_social_provider_source_template,
     prepare_social_raw_preview,
 )
 
@@ -123,6 +126,21 @@ async def prepare_social_provider_adapter_plan_item(
     _ = context
     try:
         return prepare_social_provider_adapter_plan(payload)
+    except SocialProviderUnknownPlatformError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+
+@router.post(
+    "/social-provider-source-template",
+    response_model=SocialProviderSourceTemplateResponse,
+)
+async def prepare_social_provider_source_template_item(
+    payload: SocialProviderSourceTemplateRequest,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> SocialProviderSourceTemplateResponse:
+    _ = context
+    try:
+        return prepare_social_provider_source_template(payload)
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
 

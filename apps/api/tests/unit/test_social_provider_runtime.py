@@ -8,6 +8,7 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderGateRequest,
     SocialProviderLiveApprovalTemplateRequest,
     SocialProviderReadinessRequest,
+    SocialProviderSourceTemplateRequest,
     SocialRawPreviewRequest,
 )
 from data_intelligence_hub.services.exceptions import (
@@ -21,6 +22,7 @@ from data_intelligence_hub.services.social_provider import (
     prepare_social_provider_gate,
     prepare_social_provider_live_approval_template,
     prepare_social_provider_readiness,
+    prepare_social_provider_source_template,
     prepare_social_raw_preview,
 )
 
@@ -266,6 +268,54 @@ def test_social_provider_adapter_plan_blocks_unknown_endpoint() -> None:
     assert plan.provider_call_allowed is False
     assert plan.planned_operations == []
     assert "scope_missing:videos.invalid" in plan.blocked_reasons
+
+
+def test_social_provider_source_template_returns_manual_json_candidate_without_write() -> None:
+    template = prepare_social_provider_source_template(
+        SocialProviderSourceTemplateRequest(
+            platform="reddit",
+            endpoints=["search"],
+            source_name="Reddit search fixture source",
+        ),
+    )
+
+    assert template.schema_version == "social_provider_source_template.v1"
+    assert template.platform == "reddit"
+    assert template.provider_id == "reddit.praw"
+    assert template.source_type == "manual_json"
+    assert template.template_strategy == "manual_json_authorized_import"
+    assert template.source_create_allowed is False
+    assert template.source_created is False
+    assert template.task_created is False
+    assert template.provider_call_attempted is False
+    assert template.credential_read_attempted is False
+    assert template.production_write_allowed is False
+    assert template.fixture_only is True
+    assert template.source_create_payload["name"] == "Reddit search fixture source"
+    assert template.source_create_payload["type"] == "manual_json"
+    assert template.source_create_payload["config"]["entity_type"] == "social_provider_fixture"
+    assert template.source_create_payload["config"]["json_data"]["provider_call"] is False
+    assert template.source_create_payload["config"]["json_data"]["endpoints"] == ["search"]
+    assert template.next_required_authorization == "L4_social_api_source_create_gate_required"
+
+
+def test_social_provider_source_template_blocks_unknown_endpoint_and_live_fields() -> None:
+    template = prepare_social_provider_source_template(
+        SocialProviderSourceTemplateRequest(
+            platform="youtube",
+            endpoints=["videos.invalid"],
+            authorized=True,
+            approval_id="approval-ignored",
+            credential_reference="env:YOUTUBE_API_KEY",
+        ),
+    )
+
+    assert template.source_create_allowed is False
+    assert template.source_create_payload is None
+    assert "scope_missing:videos.invalid" in template.blocked_reasons
+    assert "authorized_ignored_for_source_template_preview" in template.blocked_reasons
+    assert "approval_id_ignored_for_source_template_preview" in template.blocked_reasons
+    assert "credential_reference_ignored_for_source_template_preview" in template.blocked_reasons
 
 
 def test_social_raw_preview_returns_fixture_records_without_provider_call() -> None:

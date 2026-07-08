@@ -189,6 +189,38 @@ Expected:
 
 `mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
 
+### Step 7: Source Template Preview
+
+Call:
+
+```http
+POST /api/automation/social-provider-source-template
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoints": ["search"],
+  "source_name": "Reddit search fixture source",
+  "authorized": false
+}
+```
+
+Expected:
+
+- returns a SourceCreate-shaped payload using `type=manual_json`
+- `template_strategy=manual_json_authorized_import`
+- `source_create_allowed=false`
+- `source_created=false`
+- `task_created=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `production_write_allowed=false`
+
+This step is not a source creation gate. It produces a reviewable candidate payload for a later L4 `/api/sources` authorization.
+
 ## 3. Platform-Specific Phase 2 Plan
 
 ### YouTube
@@ -235,6 +267,7 @@ Fixture stage is accepted only when:
 - raw preview produces deterministic fixture records
 - approval template and dependency gate return no-side-effect plans
 - adapter plan returns deterministic fixture operations without reading credentials or creating SDK clients
+- source template returns a deterministic `manual_json` candidate without creating Source or Task rows
 - `git diff --check` passes
 - live adapter dependency installation execution remains unstarted unless separately authorized
 

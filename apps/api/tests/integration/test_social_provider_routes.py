@@ -245,6 +245,35 @@ async def test_social_provider_adapter_plan_route_returns_fixture_plan(
 
 
 @pytest.mark.asyncio
+async def test_social_provider_source_template_route_returns_no_write_payload(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+
+    response = await client.post(
+        "/api/automation/social-provider-source-template",
+        json={
+            "platform": "reddit",
+            "endpoints": ["search"],
+            "source_name": "Reddit search fixture source",
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["schema_version"] == "social_provider_source_template.v1"
+    assert payload["source_type"] == "manual_json"
+    assert payload["source_create_allowed"] is False
+    assert payload["source_created"] is False
+    assert payload["task_created"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["production_write_allowed"] is False
+    assert payload["source_create_payload"]["type"] == "manual_json"
+    assert payload["source_create_payload"]["config"]["json_data"]["provider_call"] is False
+
+
+@pytest.mark.asyncio
 async def test_social_raw_preview_route_returns_fixture_records(client: AsyncClient) -> None:
     await register_and_login(client)
 

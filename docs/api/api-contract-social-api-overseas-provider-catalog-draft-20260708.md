@@ -28,9 +28,11 @@ source: codex
   - `POST /api/automation/social-provider-live-approval-template`
   - `POST /api/automation/social-provider-dependency-gate`
   - `POST /api/automation/social-provider-adapter-plan`
+  - `POST /api/automation/social-provider-source-template`
 - `social-provider-catalog` 支持 `data-domain` 与 `resource-group` 两套筛选，方便与 `ProviderRegistry` 的 resource_group 映射打通。
 - `social-raw-preview` 只生成 `social_raw.v1` fixture records，不创建 Source/Task/RawRecord，不读取 credential，不执行 live comparison。
 - `social-provider-adapter-plan` 只检查 catalog SDK selection、`data_intelligence_hub.social_api.*` 本地 adapter module 映射与可选依赖 import spec，不 import SDK live client、不读取 credential、不发生 provider call。
+- `social-provider-source-template` 只生成 `manual_json` SourceCreate 候选 payload，不调用 `/api/sources`，不创建 Source/Task，不写 DB。
 - 基准 catalog 已落地在 `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`，路由在 `apps/api/src/data_intelligence_hub/api/routes/social_provider.py`，服务与 schema 在 `apps/api/src/data_intelligence_hub/services/social_provider.py`。
 
 ### 推断
@@ -410,6 +412,48 @@ Response 不变量：
 - `approval_id_ignored_for_fixture_adapter_plan`
 - `credential_reference_ignored_for_fixture_adapter_plan`
 
+## 4.5 API 合同补充：`social-provider-source-template`
+
+用途：生成海外 provider source 创建候选 payload，作为 owner 审核和后续 L4 source-create gate 的输入。本接口复用现有 `manual_json` 作为稳定导入兜底，不新增 live `social_api` collector，不调用 `/api/sources`。
+
+Request:
+
+```json
+{
+  "platform": "reddit",
+  "provider_id": "reddit.praw",
+  "endpoints": ["search"],
+  "source_name": "Reddit search fixture source",
+  "project_id": null,
+  "authorized": false,
+  "approval_id": null,
+  "credential_reference": null,
+  "fixture_limit": 3
+}
+```
+
+Response 不变量：
+
+- `schema_version=social_provider_source_template.v1`
+- `source_type=manual_json`
+- `template_strategy=manual_json_authorized_import`
+- `fixture_only=true`
+- `source_create_allowed=false`
+- `source_created=false`
+- `task_created=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `production_write_allowed=false`
+- `source_create_payload.type=manual_json`
+- `source_create_payload.config.entity_type=social_provider_fixture`
+- `source_create_payload.config.json_data.provider_call=false`
+
+`authorized=true`、`approval_id` 或 `credential_reference` 只会进入 blocker，例如：
+
+- `authorized_ignored_for_source_template_preview`
+- `approval_id_ignored_for_source_template_preview`
+- `credential_reference_ignored_for_source_template_preview`
+
 ---
 
 ## 5. 验收清单（本批）与失败态
@@ -434,6 +478,7 @@ Response 不变量：
 - `social_provider` 路由与 catalog contract 可正常返回（含六大平台）。
 - 约束级别测试通过：未认证、超预算、policy 禁止、未知平台都可复现阻断原因。
 - adapter plan 可返回 YouTube/Reddit fixture operation，并保持 `credential_read_attempted=false` 与 `live_client_created=false`。
+- source template 可返回 no-write `manual_json` SourceCreate 候选 payload，并保持 `source_created=false` 与 `task_created=false`。
 - 计划书输出可直接挂载到运行手册，不触发对外 provider call。
 
 ### 当前不在本批的失败态

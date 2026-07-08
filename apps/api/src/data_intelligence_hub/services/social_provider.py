@@ -25,6 +25,8 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderReadinessRequest,
     SocialProviderReadinessResponse,
     SocialProviderSdkSelection,
+    SocialProviderSourceTemplateRequest,
+    SocialProviderSourceTemplateResponse,
     SocialRawPreviewRecord,
     SocialRawPreviewRequest,
     SocialRawPreviewResponse,
@@ -698,6 +700,85 @@ def prepare_social_provider_adapter_plan(
         planned_operations=planned_operations,
         blocked_reasons=blocked_reasons,
         next_required_authorization="L4_social_api_live_adapter_gate_required",
+    )
+
+
+def _default_source_name(provider: SocialProviderCatalogItem, endpoints: list[str]) -> str:
+    endpoint_label = ",".join(endpoints[:3])
+    return f"{provider.platform} social fixture source: {endpoint_label}"
+
+
+def _source_template_payload(
+    provider: SocialProviderCatalogItem,
+    endpoints: list[str],
+    source_name: str,
+    project_id: str | None,
+    fixture_limit: int,
+) -> dict[str, Any]:
+    return {
+        "project_id": project_id,
+        "name": source_name,
+        "type": "manual_json",
+        "url": None,
+        "config": {
+            "entity_type": "social_provider_fixture",
+            "json_data": {
+                "schema_version": "social_provider_source_template_payload.v1",
+                "platform": provider.platform,
+                "provider_id": provider.provider_id,
+                "endpoints": endpoints,
+                "fixture_limit": fixture_limit,
+                "provider_call": False,
+                "provider_call_attempted": False,
+                "credential_read_attempted": False,
+                "production_write_allowed": False,
+                "author_policy": "hashed",
+                "source_mode": "manual_json_authorized_import",
+                "blocked_actions": provider.blocked_actions,
+            },
+        },
+        "schedule_cron": None,
+    }
+
+
+def prepare_social_provider_source_template(
+    payload: SocialProviderSourceTemplateRequest,
+) -> SocialProviderSourceTemplateResponse:
+    provider = _find_provider(_normalize_platform(payload.platform), payload.provider_id)
+    normalized_endpoints = [endpoint.strip() for endpoint in payload.endpoints if endpoint.strip()]
+    missing_scope = _missing_endpoints(provider, normalized_endpoints)
+
+    blocked_reasons = _as_blocker_reasons("scope", missing_scope)
+    if payload.authorized:
+        blocked_reasons.append("authorized_ignored_for_source_template_preview")
+    if payload.approval_id is not None:
+        blocked_reasons.append("approval_id_ignored_for_source_template_preview")
+    if payload.credential_reference is not None:
+        blocked_reasons.append("credential_reference_ignored_for_source_template_preview")
+
+    source_name = (
+        payload.source_name.strip()
+        if payload.source_name is not None and payload.source_name.strip()
+        else _default_source_name(provider, normalized_endpoints)
+    )
+    source_create_payload = (
+        _source_template_payload(
+            provider=provider,
+            endpoints=normalized_endpoints,
+            source_name=source_name,
+            project_id=payload.project_id,
+            fixture_limit=payload.fixture_limit,
+        )
+        if not missing_scope
+        else None
+    )
+
+    return SocialProviderSourceTemplateResponse(
+        platform=provider.platform,
+        provider_id=provider.provider_id,
+        source_create_payload=source_create_payload,
+        blocked_reasons=blocked_reasons,
+        next_required_authorization="L4_social_api_source_create_gate_required",
     )
 
 

@@ -241,6 +241,37 @@ class SocialProviderAdapterPlanResponse(BaseModel):
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class SocialProviderSourceTemplateRequest(BaseModel):
+    platform: str
+    endpoints: list[str] = Field(min_length=1, max_length=40)
+    provider_id: str | None = None
+    source_name: str | None = Field(default=None, min_length=1, max_length=200)
+    project_id: str | None = Field(default=None, max_length=120)
+    authorized: bool = False
+    approval_id: str | None = Field(default=None, max_length=120)
+    credential_reference: str | None = Field(default=None, max_length=200)
+    fixture_limit: int = Field(default=3, ge=1, le=10)
+
+
+class SocialProviderSourceTemplateResponse(BaseModel):
+    schema_version: str = "social_provider_source_template.v1"
+    platform: str
+    provider_id: str
+    source_type: Literal["manual_json"] = "manual_json"
+    template_strategy: Literal["manual_json_authorized_import"] = "manual_json_authorized_import"
+    fixture_only: bool = True
+    source_create_allowed: bool = False
+    source_created: bool = False
+    task_created: bool = False
+    provider_call_attempted: bool = False
+    credential_read_attempted: bool = False
+    production_write_allowed: bool = False
+    source_create_payload: dict[str, Any] | None
+    blocked_reasons: list[str]
+    next_required_authorization: str
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class SocialRawPreviewRequest(BaseModel):
     platform: str
     endpoint: str = Field(min_length=1, max_length=120)
