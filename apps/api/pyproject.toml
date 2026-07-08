@@ -21,6 +21,18 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
 ]
 
+[project.optional-dependencies]
+social-youtube = [
+    "google-api-python-client>=2.198.0",
+]
+social-reddit = [
+    "asyncpraw>=8.0.2",
+]
+social-overseas-live = [
+    "google-api-python-client>=2.198.0",
+    "asyncpraw>=8.0.2",
+]
+
 [dependency-groups]
 dev = [
     "aiosqlite>=0.20.0",

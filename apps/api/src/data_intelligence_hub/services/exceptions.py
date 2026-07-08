@@ -147,3 +147,19 @@ class EmailProviderLiveSendIdempotencyRequiredError(ServiceError):
 
 class EmailProviderLiveGateRunNotFoundError(ServiceError):
     message = "email_provider_live_gate_run_not_found"
+
+
+class SocialProviderCatalogLoadError(ServiceError):
+    message = "social_provider_catalog_load_failed"
+
+
+class SocialProviderUnknownPlatformError(ServiceError):
+    message = "social_provider_unknown_platform"
+
+
+class SocialProviderReadinessAuthorizationError(ServiceError):
+    message = "social_provider_readiness_authorization_required"
+
+
+class SocialProviderGateAuthorizationError(ServiceError):
+    message = "social_provider_gate_authorization_required"

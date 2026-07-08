@@ -1,0 +1,1 @@
+"""YouTube fixture adapter shell."""

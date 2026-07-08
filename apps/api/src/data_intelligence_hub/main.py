@@ -22,6 +22,7 @@ from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
 from data_intelligence_hub.api.routes.reports import router as reports_router
 from data_intelligence_hub.api.routes.signals import router as signals_router
+from data_intelligence_hub.api.routes.social_provider import router as social_provider_router
 from data_intelligence_hub.api.routes.sources import router as sources_router
 from data_intelligence_hub.api.routes.tasks import router as tasks_router
 from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
@@ -78,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(signals_router, prefix="/api/signals")
     app.include_router(intelligence_router, prefix="/api/intelligence")
     app.include_router(automation_router, prefix="/api/automation")
+    app.include_router(social_provider_router, prefix="/api/automation")
     app.include_router(toolkit_router, prefix="/api/toolkit")
     app.include_router(reports_router, prefix="/api/reports")
     app.include_router(alert_rules_router, prefix="/api/alert-rules")
