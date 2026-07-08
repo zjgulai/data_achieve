@@ -454,6 +454,48 @@ Response 不变量：
 - `approval_id_ignored_for_source_template_preview`
 - `credential_reference_ignored_for_source_template_preview`
 
+## 4.6 API 合同补充：`social-normalization-preview`
+
+用途：把 `social-raw-preview` 的本地 fixture raw records 转成标准化草稿对象，供 owner 审核 `social_post.v1`、`social_comment.v1`、`social_voc_item.v1` 的字段形态。本接口只做内存预览，不写 RawRecord、EntitySnapshot、Dataset 或报告。
+
+Request:
+
+```json
+{
+  "platform": "reddit",
+  "provider_id": "reddit.praw",
+  "endpoint": "comments.new",
+  "fixture_limit": 1,
+  "include_voc": true,
+  "include_live_comparison": false,
+  "authorized": false,
+  "approval_id": null,
+  "author_policy": "hashed"
+}
+```
+
+Response 不变量：
+
+- `schema_version=social_normalization_preview.v1`
+- `fixture_only=true`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `production_write_allowed=false`
+- `normalization_write_allowed=false`
+- `dataset_write_allowed=false`
+- `raw_records[*].schema_version=social_raw.v1`
+- `normalized_items[*].raw_record_id` 必须回指 raw record
+- `normalized_items[*].evidence_ref` 必须回指 fixture evidence
+- `social_voc_item.v1.payload.llm_call_attempted=false`
+
+`authorized=true`、`approval_id`、live comparison 或明文作者保留只会进入 blocker，例如：
+
+- `authorized_ignored_for_normalization_preview`
+- `approval_id_ignored_for_normalization_preview`
+- `live_comparison_requires_separate_l4_authorization`
+- `author_retention_requires_separate_l4_authorization`
+
 ---
 
 ## 5. 验收清单（本批）与失败态
@@ -479,6 +521,7 @@ Response 不变量：
 - 约束级别测试通过：未认证、超预算、policy 禁止、未知平台都可复现阻断原因。
 - adapter plan 可返回 YouTube/Reddit fixture operation，并保持 `credential_read_attempted=false` 与 `live_client_created=false`。
 - source template 可返回 no-write `manual_json` SourceCreate 候选 payload，并保持 `source_created=false` 与 `task_created=false`。
+- normalization preview 可返回 no-write `social_post.v1` / `social_comment.v1` / `social_voc_item.v1` 草稿项，并保持 `normalization_write_allowed=false` 与 `dataset_write_allowed=false`。
 - 计划书输出可直接挂载到运行手册，不触发对外 provider call。
 
 ### 当前不在本批的失败态

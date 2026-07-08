@@ -309,3 +309,53 @@ class SocialRawPreviewResponse(BaseModel):
     sdk_selection: SocialProviderSdkSelection | None = None
     next_required_authorization: str
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SocialNormalizationPreviewRequest(BaseModel):
+    platform: str
+    endpoint: str = Field(min_length=1, max_length=120)
+    provider_id: str | None = None
+    fixture_limit: int = Field(default=3, ge=1, le=10)
+    include_voc: bool = True
+    include_live_comparison: bool = False
+    authorized: bool = False
+    approval_id: str | None = Field(default=None, max_length=120)
+    author_policy: Literal["hashed", "dropped", "retained_with_approval"] = "hashed"
+
+
+class SocialNormalizedPreviewItem(BaseModel):
+    schema_version: Literal[
+        "social_post.v1",
+        "social_comment.v1",
+        "social_creator_snapshot.v1",
+        "social_topic_trend.v1",
+        "social_voc_item.v1",
+    ]
+    item_id: str
+    provider_id: str
+    platform: str
+    raw_record_id: str
+    evidence_ref: str
+    author_policy: Literal["hashed", "dropped", "retained_with_approval"] = "hashed"
+    payload: dict[str, Any]
+
+
+class SocialNormalizationPreviewResponse(BaseModel):
+    schema_version: str = "social_normalization_preview.v1"
+    platform: str
+    provider_id: str
+    endpoint: str
+    fixture_only: bool = True
+    provider_call_allowed: bool = False
+    provider_call_attempted: bool = False
+    credential_read_attempted: bool = False
+    production_write_allowed: bool = False
+    normalization_write_allowed: bool = False
+    dataset_write_allowed: bool = False
+    live_comparison_available: bool = False
+    blocked_reasons: list[str]
+    raw_records: list[SocialRawPreviewRecord]
+    normalized_items: list[SocialNormalizedPreviewItem]
+    sdk_selection: SocialProviderSdkSelection | None = None
+    next_required_authorization: str
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -31,6 +31,8 @@ Current execution state:
 - `credential_read_attempted=false`
 - `live_client_created=false`
 - `source_created=false`
+- `normalization_write_allowed=false`
+- `dataset_write_allowed=false`
 - `task_run_started=false`
 
 ## 1. Mature SDK Selection
@@ -112,7 +114,39 @@ Expected:
 - `provider_call_attempted=false`
 - `production_write_allowed=false`
 
-### Step 4: L4 Live Gate Packet
+### Step 4: Fixture Normalization Preview
+
+Call:
+
+```http
+POST /api/automation/social-normalization-preview
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 1,
+  "include_voc": true,
+  "author_policy": "hashed"
+}
+```
+
+Expected:
+
+- `schema_version=social_normalization_preview.v1`
+- raw records still use `social_raw.v1`
+- normalized items use `social_post.v1`, `social_comment.v1`, or `social_voc_item.v1`
+- every normalized item carries `raw_record_id` and `evidence_ref`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `normalization_write_allowed=false`
+- `dataset_write_allowed=false`
+- `production_write_allowed=false`
+
+### Step 5: L4 Live Gate Packet
 
 Call template generator:
 
@@ -135,7 +169,7 @@ Required fields before any live adapter work:
 
 This packet is not created in the current docs/fixture pass.
 
-### Step 5: Optional Dependency Gate
+### Step 6: Optional Dependency Gate
 
 Call:
 
@@ -153,7 +187,7 @@ Expected:
 - `live_adapter_enabled=false`
 - `production_write_allowed=false`
 
-### Step 6: Fixture Adapter Plan
+### Step 7: Fixture Adapter Plan
 
 Call:
 
@@ -189,7 +223,7 @@ Expected:
 
 `mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
 
-### Step 7: Source Template Preview
+### Step 8: Source Template Preview
 
 Call:
 

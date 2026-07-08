@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from data_intelligence_hub.schemas.social_provider import (
+    SocialNormalizationPreviewRequest,
+    SocialNormalizationPreviewResponse,
+    SocialNormalizedPreviewItem,
     SocialProviderAdapterPlanRequest,
     SocialProviderAdapterPlanResponse,
     SocialProviderCatalogItem,
@@ -878,4 +881,195 @@ def prepare_social_raw_preview(payload: SocialRawPreviewRequest) -> SocialRawPre
         records=records,
         sdk_selection=provider.sdk_selection,
         next_required_authorization="L4_social_raw_live_preview_gate_required",
+    )
+
+
+def _payload_text(payload: dict[str, Any]) -> str | None:
+    for key in ("title", "body", "text", "caption", "description"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _fixture_index(payload: dict[str, Any]) -> int:
+    value = payload.get("fixture_index")
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return 1
+    return value
+
+
+def _external_post_id(record: SocialRawPreviewRecord) -> str:
+    for key in ("content_id", "post_id", "media_id", "video_id", "post_urn"):
+        value = record.payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return record.raw_record_id
+
+
+def _social_metrics(payload: dict[str, Any]) -> dict[str, Any]:
+    metrics: dict[str, Any] = {}
+    for key in ("comment_count", "social_actions_count"):
+        value = payload.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            metrics[key] = value
+    public_metrics = payload.get("public_metrics")
+    if isinstance(public_metrics, dict):
+        metrics["public_metrics"] = public_metrics
+    return metrics
+
+
+def _effective_author_policy(
+    requested: str,
+) -> tuple[str, list[str]]:
+    if requested == "retained_with_approval":
+        return "hashed", ["author_retention_requires_separate_l4_authorization"]
+    if requested == "dropped":
+        return "dropped", []
+    return "hashed", []
+
+
+def _is_comment_endpoint(endpoint: str) -> bool:
+    return "comment" in endpoint.lower()
+
+
+def _build_social_post_item(
+    record: SocialRawPreviewRecord,
+    author_policy: str,
+) -> SocialNormalizedPreviewItem:
+    external_post_id = _external_post_id(record)
+    title = _payload_text(record.payload)
+    return SocialNormalizedPreviewItem(
+        schema_version="social_post.v1",
+        item_id=f"social_post:{record.provider_id}:{external_post_id}",
+        provider_id=record.provider_id,
+        platform=record.platform,
+        raw_record_id=record.raw_record_id,
+        evidence_ref=record.evidence_ref,
+        author_policy=author_policy,
+        payload={
+            "external_post_id": external_post_id,
+            "title": title,
+            "body": title,
+            "source_ref": record.source_ref,
+            "source_url": None,
+            "metrics": _social_metrics(record.payload),
+            "collected_from_endpoint": record.endpoint,
+            "provider_call": False,
+        },
+    )
+
+
+def _build_social_comment_item(
+    record: SocialRawPreviewRecord,
+    author_policy: str,
+) -> SocialNormalizedPreviewItem:
+    external_post_id = _external_post_id(record)
+    fixture_index = _fixture_index(record.payload)
+    body = _payload_text(record.payload) or f"{record.platform} fixture comment {fixture_index}"
+    external_comment_id = f"{external_post_id}:comment:{fixture_index}"
+    return SocialNormalizedPreviewItem(
+        schema_version="social_comment.v1",
+        item_id=f"social_comment:{record.provider_id}:{external_comment_id}",
+        provider_id=record.provider_id,
+        platform=record.platform,
+        raw_record_id=record.raw_record_id,
+        evidence_ref=record.evidence_ref,
+        author_policy=author_policy,
+        payload={
+            "external_comment_id": external_comment_id,
+            "external_post_id": external_post_id,
+            "parent_comment_id": None,
+            "body": body,
+            "source_ref": record.source_ref,
+            "metrics": _social_metrics(record.payload),
+            "collected_from_endpoint": record.endpoint,
+            "provider_call": False,
+        },
+    )
+
+
+def _build_social_voc_item(
+    source_item: SocialNormalizedPreviewItem,
+    text: str,
+    author_policy: str,
+) -> SocialNormalizedPreviewItem:
+    return SocialNormalizedPreviewItem(
+        schema_version="social_voc_item.v1",
+        item_id=f"social_voc:{source_item.item_id}",
+        provider_id=source_item.provider_id,
+        platform=source_item.platform,
+        raw_record_id=source_item.raw_record_id,
+        evidence_ref=source_item.evidence_ref,
+        author_policy=author_policy,
+        payload={
+            "source_item_schema": source_item.schema_version,
+            "source_item_id": source_item.item_id,
+            "raw_record_id": source_item.raw_record_id,
+            "evidence_ref": source_item.evidence_ref,
+            "text_excerpt": text[:500],
+            "labels": [],
+            "sentiment": None,
+            "confidence_source": "fixture_rule",
+            "llm_provider": None,
+            "llm_model": None,
+            "llm_call_attempted": False,
+            "provider_call": False,
+        },
+    )
+
+
+def prepare_social_normalization_preview(
+    payload: SocialNormalizationPreviewRequest,
+) -> SocialNormalizationPreviewResponse:
+    raw_preview = prepare_social_raw_preview(
+        SocialRawPreviewRequest(
+            platform=payload.platform,
+            endpoint=payload.endpoint,
+            provider_id=payload.provider_id,
+            fixture_limit=payload.fixture_limit,
+            include_live_comparison=False,
+            authorized=False,
+            approval_id=None,
+        ),
+    )
+    author_policy, author_blockers = _effective_author_policy(payload.author_policy)
+
+    blocked_reasons = list(raw_preview.blocked_reasons)
+    blocked_reasons.extend(author_blockers)
+    if payload.include_live_comparison:
+        blocked_reasons.append("live_comparison_requires_separate_l4_authorization")
+    if payload.authorized:
+        blocked_reasons.append("authorized_ignored_for_normalization_preview")
+    if payload.approval_id is not None:
+        blocked_reasons.append("approval_id_ignored_for_normalization_preview")
+
+    normalized_items: list[SocialNormalizedPreviewItem] = []
+    for record in raw_preview.records:
+        source_item = (
+            _build_social_comment_item(record, author_policy)
+            if _is_comment_endpoint(raw_preview.endpoint)
+            else _build_social_post_item(record, author_policy)
+        )
+        normalized_items.append(source_item)
+
+        text = _payload_text(source_item.payload)
+        if payload.include_voc and text is not None:
+            normalized_items.append(
+                _build_social_voc_item(
+                    source_item=source_item,
+                    text=text,
+                    author_policy=author_policy,
+                )
+            )
+
+    return SocialNormalizationPreviewResponse(
+        platform=raw_preview.platform,
+        provider_id=raw_preview.provider_id,
+        endpoint=raw_preview.endpoint,
+        blocked_reasons=blocked_reasons,
+        raw_records=raw_preview.records,
+        normalized_items=normalized_items,
+        sdk_selection=raw_preview.sdk_selection,
+        next_required_authorization="L4_social_normalization_write_gate_required",
     )

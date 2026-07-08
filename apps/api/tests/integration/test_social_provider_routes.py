@@ -319,6 +319,42 @@ async def test_social_raw_preview_route_blocks_live_comparison(client: AsyncClie
 
 
 @pytest.mark.asyncio
+async def test_social_normalization_preview_route_returns_fixture_items(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+
+    response = await client.post(
+        "/api/automation/social-normalization-preview",
+        json={
+            "platform": "reddit",
+            "endpoint": "comments.new",
+            "fixture_limit": 1,
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["schema_version"] == "social_normalization_preview.v1"
+    assert payload["fixture_only"] is True
+    assert payload["provider_call_allowed"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["production_write_allowed"] is False
+    assert payload["normalization_write_allowed"] is False
+    assert payload["dataset_write_allowed"] is False
+    assert len(payload["raw_records"]) == 1
+    assert {item["schema_version"] for item in payload["normalized_items"]} == {
+        "social_comment.v1",
+        "social_voc_item.v1",
+    }
+    assert (
+        payload["normalized_items"][0]["raw_record_id"]
+        == payload["raw_records"][0]["raw_record_id"]
+    )
+
+
+@pytest.mark.asyncio
 async def test_social_provider_readiness_unknown_platform_returns_404(client: AsyncClient) -> None:
     await register_and_login(client)
 

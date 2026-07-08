@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from data_intelligence_hub.schemas.social_provider import (
+    SocialNormalizationPreviewRequest,
     SocialProviderAdapterPlanRequest,
     SocialProviderDependencyGateRequest,
     SocialProviderGateRequest,
@@ -17,6 +18,7 @@ from data_intelligence_hub.services.exceptions import (
 )
 from data_intelligence_hub.services.social_provider import (
     get_social_provider_catalog,
+    prepare_social_normalization_preview,
     prepare_social_provider_adapter_plan,
     prepare_social_provider_dependency_gate,
     prepare_social_provider_gate,
@@ -365,6 +367,98 @@ def test_social_raw_preview_rejects_live_comparison_by_default() -> None:
     assert preview.provider_call_attempted is False
     assert "live_comparison_requires_separate_l4_authorization" in preview.blocked_reasons
     assert "approval_id_ignored_for_fixture_preview" in preview.blocked_reasons
+
+
+def test_social_normalization_preview_youtube_post_and_voc_no_side_effects() -> None:
+    preview = prepare_social_normalization_preview(
+        SocialNormalizationPreviewRequest(
+            platform="youtube",
+            endpoint="videos.list",
+            fixture_limit=1,
+        ),
+    )
+
+    assert preview.schema_version == "social_normalization_preview.v1"
+    assert preview.platform == "youtube"
+    assert preview.provider_id == "youtube.v3"
+    assert preview.fixture_only is True
+    assert preview.provider_call_allowed is False
+    assert preview.provider_call_attempted is False
+    assert preview.credential_read_attempted is False
+    assert preview.production_write_allowed is False
+    assert preview.normalization_write_allowed is False
+    assert preview.dataset_write_allowed is False
+    assert len(preview.raw_records) == 1
+
+    post_items = [
+        item for item in preview.normalized_items if item.schema_version == "social_post.v1"
+    ]
+    voc_items = [
+        item for item in preview.normalized_items if item.schema_version == "social_voc_item.v1"
+    ]
+
+    assert len(post_items) == 1
+    assert len(voc_items) == 1
+    assert post_items[0].raw_record_id == preview.raw_records[0].raw_record_id
+    assert post_items[0].evidence_ref == preview.raw_records[0].evidence_ref
+    assert post_items[0].author_policy == "hashed"
+    assert post_items[0].payload["external_post_id"] == "yt_fixture_video_1"
+    assert voc_items[0].payload["source_item_schema"] == "social_post.v1"
+    assert voc_items[0].payload["raw_record_id"] == preview.raw_records[0].raw_record_id
+    assert voc_items[0].payload["llm_call_attempted"] is False
+
+
+def test_social_normalization_preview_reddit_comments_make_comment_and_voc() -> None:
+    preview = prepare_social_normalization_preview(
+        SocialNormalizationPreviewRequest(
+            platform="reddit",
+            endpoint="comments.new",
+            fixture_limit=1,
+        ),
+    )
+
+    comment_items = [
+        item for item in preview.normalized_items if item.schema_version == "social_comment.v1"
+    ]
+    voc_items = [
+        item for item in preview.normalized_items if item.schema_version == "social_voc_item.v1"
+    ]
+
+    assert preview.provider_call_attempted is False
+    assert preview.production_write_allowed is False
+    assert len(comment_items) == 1
+    assert len(voc_items) == 1
+    assert comment_items[0].raw_record_id == preview.raw_records[0].raw_record_id
+    assert comment_items[0].payload["external_post_id"] == "reddit_fixture_post_1"
+    assert comment_items[0].payload["external_comment_id"] == "reddit_fixture_post_1:comment:1"
+    assert comment_items[0].payload["body"] == "Reddit fixture post 1"
+    assert voc_items[0].payload["source_item_schema"] == "social_comment.v1"
+    assert voc_items[0].evidence_ref == preview.raw_records[0].evidence_ref
+
+
+def test_social_normalization_preview_blocks_live_and_retained_author_fields() -> None:
+    preview = prepare_social_normalization_preview(
+        SocialNormalizationPreviewRequest(
+            platform="reddit",
+            endpoint="search",
+            authorized=True,
+            approval_id="approval-ignored",
+            include_live_comparison=True,
+            author_policy="retained_with_approval",
+        ),
+    )
+
+    assert preview.provider_call_allowed is False
+    assert preview.provider_call_attempted is False
+    assert preview.credential_read_attempted is False
+    assert preview.production_write_allowed is False
+    assert preview.normalization_write_allowed is False
+    assert preview.dataset_write_allowed is False
+    assert "live_comparison_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert "authorized_ignored_for_normalization_preview" in preview.blocked_reasons
+    assert "approval_id_ignored_for_normalization_preview" in preview.blocked_reasons
+    assert "author_retention_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert {item.author_policy for item in preview.normalized_items} == {"hashed"}
 
 
 def test_social_provider_unknown_platform_is_rejected() -> None:

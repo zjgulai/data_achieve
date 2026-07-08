@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.schemas.social_provider import (
+    SocialNormalizationPreviewRequest,
+    SocialNormalizationPreviewResponse,
     SocialProviderAdapterPlanRequest,
     SocialProviderAdapterPlanResponse,
     SocialProviderCatalogResponse,
@@ -29,6 +31,7 @@ from data_intelligence_hub.services.exceptions import (
 )
 from data_intelligence_hub.services.social_provider import (
     get_social_provider_catalog,
+    prepare_social_normalization_preview,
     prepare_social_provider_adapter_plan,
     prepare_social_provider_dependency_gate,
     prepare_social_provider_gate,
@@ -153,5 +156,20 @@ async def prepare_social_raw_preview_item(
     _ = context
     try:
         return prepare_social_raw_preview(payload)
+    except SocialProviderUnknownPlatformError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+
+@router.post(
+    "/social-normalization-preview",
+    response_model=SocialNormalizationPreviewResponse,
+)
+async def prepare_social_normalization_preview_item(
+    payload: SocialNormalizationPreviewRequest,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> SocialNormalizationPreviewResponse:
+    _ = context
+    try:
+        return prepare_social_normalization_preview(payload)
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
