@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from data_intelligence_hub.schemas.social_provider import (
+    SocialDatasetPreviewRequest,
     SocialNormalizationPreviewRequest,
     SocialProviderAdapterPlanRequest,
     SocialProviderDependencyGateRequest,
@@ -18,6 +19,7 @@ from data_intelligence_hub.services.exceptions import (
 )
 from data_intelligence_hub.services.social_provider import (
     get_social_provider_catalog,
+    prepare_social_dataset_preview,
     prepare_social_normalization_preview,
     prepare_social_provider_adapter_plan,
     prepare_social_provider_dependency_gate,
@@ -459,6 +461,93 @@ def test_social_normalization_preview_blocks_live_and_retained_author_fields() -
     assert "approval_id_ignored_for_normalization_preview" in preview.blocked_reasons
     assert "author_retention_requires_separate_l4_authorization" in preview.blocked_reasons
     assert {item.author_policy for item in preview.normalized_items} == {"hashed"}
+
+
+def test_social_dataset_preview_reddit_comments_returns_voc_rows() -> None:
+    preview = prepare_social_dataset_preview(
+        SocialDatasetPreviewRequest(
+            platform="reddit",
+            endpoint="comments.new",
+            fixture_limit=2,
+            dataset_name="Reddit comments VOC fixture",
+        ),
+    )
+
+    assert preview.schema_version == "social_dataset_preview.v1"
+    assert preview.platform == "reddit"
+    assert preview.provider_id == "reddit.praw"
+    assert preview.dataset_name == "Reddit comments VOC fixture"
+    assert preview.dataset_type == "social_voc_fixture_preview"
+    assert preview.dataset_schema_version == "social_voc_dataset.v1"
+    assert preview.fixture_only is True
+    assert preview.provider_call_allowed is False
+    assert preview.provider_call_attempted is False
+    assert preview.credential_read_attempted is False
+    assert preview.production_write_allowed is False
+    assert preview.dataset_write_allowed is False
+    assert preview.dataset_created is False
+    assert preview.dataset_version_created is False
+    assert preview.export_created is False
+    assert preview.row_count == 2
+    assert preview.truncated is False
+    assert len(preview.rows) == 2
+    assert len(preview.normalized_items) == 4
+    assert preview.rows[0].source_schema_version == "social_voc_item.v1"
+    assert preview.rows[0].raw_record_id == preview.normalized_items[1].raw_record_id
+    assert preview.rows[0].evidence_ref == preview.normalized_items[1].evidence_ref
+    assert preview.rows[0].payload["text_excerpt"] == "Reddit fixture post 1"
+    assert preview.rows[0].payload["provider_call"] is False
+    assert preview.rows[0].payload["llm_call_attempted"] is False
+
+
+def test_social_dataset_preview_youtube_limits_rows_without_write() -> None:
+    preview = prepare_social_dataset_preview(
+        SocialDatasetPreviewRequest(
+            platform="youtube",
+            endpoint="videos.list",
+            fixture_limit=3,
+            max_rows=2,
+        ),
+    )
+
+    assert preview.row_count == 2
+    assert preview.source_item_count == 3
+    assert preview.truncated is True
+    assert preview.rows[0].payload["platform"] == "youtube"
+    assert preview.rows[0].payload["raw_record_id"] == preview.rows[0].raw_record_id
+    assert preview.dataset_write_allowed is False
+    assert preview.production_write_allowed is False
+
+
+def test_social_dataset_preview_blocks_save_export_live_and_retained_author() -> None:
+    preview = prepare_social_dataset_preview(
+        SocialDatasetPreviewRequest(
+            platform="reddit",
+            endpoint="search",
+            authorized=True,
+            approval_id="approval-ignored",
+            include_live_comparison=True,
+            author_policy="retained_with_approval",
+            save_requested=True,
+            export_requested=True,
+        ),
+    )
+
+    assert preview.provider_call_allowed is False
+    assert preview.provider_call_attempted is False
+    assert preview.credential_read_attempted is False
+    assert preview.production_write_allowed is False
+    assert preview.dataset_write_allowed is False
+    assert preview.dataset_created is False
+    assert preview.dataset_version_created is False
+    assert preview.export_created is False
+    assert "authorized_ignored_for_dataset_preview" in preview.blocked_reasons
+    assert "approval_id_ignored_for_dataset_preview" in preview.blocked_reasons
+    assert "live_comparison_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert "dataset_save_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert "dataset_export_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert "author_retention_requires_separate_l4_authorization" in preview.blocked_reasons
+    assert {row.author_policy for row in preview.rows} == {"hashed"}
 
 
 def test_social_provider_unknown_platform_is_rejected() -> None:

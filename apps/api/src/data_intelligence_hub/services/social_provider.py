@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from data_intelligence_hub.schemas.social_provider import (
+    SocialDatasetPreviewRequest,
+    SocialDatasetPreviewResponse,
+    SocialDatasetPreviewRow,
     SocialNormalizationPreviewRequest,
     SocialNormalizationPreviewResponse,
     SocialNormalizedPreviewItem,
@@ -1072,4 +1075,103 @@ def prepare_social_normalization_preview(
         normalized_items=normalized_items,
         sdk_selection=raw_preview.sdk_selection,
         next_required_authorization="L4_social_normalization_write_gate_required",
+    )
+
+
+def _default_dataset_name(platform: str, endpoint: str) -> str:
+    return f"{platform} social VOC fixture dataset: {endpoint}"
+
+
+def _build_social_dataset_row(
+    source_item: SocialNormalizedPreviewItem,
+    row_index: int,
+) -> SocialDatasetPreviewRow:
+    return SocialDatasetPreviewRow(
+        row_id=f"social_dataset_row:{source_item.provider_id}:{row_index}",
+        provider_id=source_item.provider_id,
+        platform=source_item.platform,
+        raw_record_id=source_item.raw_record_id,
+        evidence_ref=source_item.evidence_ref,
+        source_item_id=source_item.item_id,
+        source_schema_version="social_voc_item.v1",
+        author_policy=source_item.author_policy,
+        payload={
+            "platform": source_item.platform,
+            "provider_id": source_item.provider_id,
+            "raw_record_id": source_item.raw_record_id,
+            "evidence_ref": source_item.evidence_ref,
+            "source_item_id": source_item.item_id,
+            "source_item_schema": source_item.schema_version,
+            "source_normalized_item_id": source_item.payload.get("source_item_id"),
+            "source_normalized_schema": source_item.payload.get("source_item_schema"),
+            "text_excerpt": source_item.payload.get("text_excerpt"),
+            "labels": source_item.payload.get("labels", []),
+            "sentiment": source_item.payload.get("sentiment"),
+            "author_policy": source_item.author_policy,
+            "llm_provider": source_item.payload.get("llm_provider"),
+            "llm_model": source_item.payload.get("llm_model"),
+            "llm_call_attempted": False,
+            "provider_call": False,
+        },
+    )
+
+
+def prepare_social_dataset_preview(
+    payload: SocialDatasetPreviewRequest,
+) -> SocialDatasetPreviewResponse:
+    normalization_preview = prepare_social_normalization_preview(
+        SocialNormalizationPreviewRequest(
+            platform=payload.platform,
+            endpoint=payload.endpoint,
+            provider_id=payload.provider_id,
+            fixture_limit=payload.fixture_limit,
+            include_voc=True,
+            include_live_comparison=False,
+            authorized=False,
+            approval_id=None,
+            author_policy=payload.author_policy,
+        ),
+    )
+
+    blocked_reasons = list(normalization_preview.blocked_reasons)
+    if payload.include_live_comparison:
+        blocked_reasons.append("live_comparison_requires_separate_l4_authorization")
+    if payload.authorized:
+        blocked_reasons.append("authorized_ignored_for_dataset_preview")
+    if payload.approval_id is not None:
+        blocked_reasons.append("approval_id_ignored_for_dataset_preview")
+    if payload.save_requested:
+        blocked_reasons.append("dataset_save_requires_separate_l4_authorization")
+    if payload.export_requested:
+        blocked_reasons.append("dataset_export_requires_separate_l4_authorization")
+
+    source_items = [
+        item
+        for item in normalization_preview.normalized_items
+        if item.schema_version == "social_voc_item.v1"
+    ]
+    rows = [
+        _build_social_dataset_row(source_item=source_item, row_index=index)
+        for index, source_item in enumerate(source_items[: payload.max_rows], start=1)
+    ]
+    dataset_name = (
+        payload.dataset_name.strip()
+        if payload.dataset_name is not None and payload.dataset_name.strip()
+        else _default_dataset_name(normalization_preview.platform, normalization_preview.endpoint)
+    )
+
+    return SocialDatasetPreviewResponse(
+        platform=normalization_preview.platform,
+        provider_id=normalization_preview.provider_id,
+        endpoint=normalization_preview.endpoint,
+        dataset_name=dataset_name,
+        blocked_reasons=blocked_reasons,
+        source_item_count=len(source_items),
+        row_count=len(rows),
+        max_rows=payload.max_rows,
+        truncated=len(source_items) > len(rows),
+        rows=rows,
+        normalized_items=normalization_preview.normalized_items,
+        sdk_selection=normalization_preview.sdk_selection,
+        next_required_authorization="L4_social_dataset_save_gate_required",
     )

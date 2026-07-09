@@ -359,3 +359,60 @@ class SocialNormalizationPreviewResponse(BaseModel):
     sdk_selection: SocialProviderSdkSelection | None = None
     next_required_authorization: str
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SocialDatasetPreviewRequest(BaseModel):
+    platform: str
+    endpoint: str = Field(min_length=1, max_length=120)
+    provider_id: str | None = None
+    fixture_limit: int = Field(default=3, ge=1, le=10)
+    dataset_name: str | None = Field(default=None, min_length=1, max_length=200)
+    max_rows: int = Field(default=100, ge=1, le=1000)
+    include_live_comparison: bool = False
+    authorized: bool = False
+    approval_id: str | None = Field(default=None, max_length=120)
+    author_policy: Literal["hashed", "dropped", "retained_with_approval"] = "hashed"
+    save_requested: bool = False
+    export_requested: bool = False
+
+
+class SocialDatasetPreviewRow(BaseModel):
+    row_id: str
+    provider_id: str
+    platform: str
+    raw_record_id: str
+    evidence_ref: str
+    source_item_id: str
+    source_schema_version: Literal["social_voc_item.v1"]
+    author_policy: Literal["hashed", "dropped", "retained_with_approval"] = "hashed"
+    payload: dict[str, Any]
+
+
+class SocialDatasetPreviewResponse(BaseModel):
+    schema_version: str = "social_dataset_preview.v1"
+    platform: str
+    provider_id: str
+    endpoint: str
+    dataset_name: str
+    dataset_type: Literal["social_voc_fixture_preview"] = "social_voc_fixture_preview"
+    dataset_schema_version: Literal["social_voc_dataset.v1"] = "social_voc_dataset.v1"
+    fixture_only: bool = True
+    provider_call_allowed: bool = False
+    provider_call_attempted: bool = False
+    credential_read_attempted: bool = False
+    production_write_allowed: bool = False
+    dataset_write_allowed: bool = False
+    dataset_created: bool = False
+    dataset_version_created: bool = False
+    export_created: bool = False
+    live_comparison_available: bool = False
+    blocked_reasons: list[str]
+    source_item_count: int
+    row_count: int
+    max_rows: int
+    truncated: bool
+    rows: list[SocialDatasetPreviewRow]
+    normalized_items: list[SocialNormalizedPreviewItem]
+    sdk_selection: SocialProviderSdkSelection | None = None
+    next_required_authorization: str
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

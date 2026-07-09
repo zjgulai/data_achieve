@@ -33,6 +33,9 @@ Current execution state:
 - `source_created=false`
 - `normalization_write_allowed=false`
 - `dataset_write_allowed=false`
+- `dataset_created=false`
+- `dataset_version_created=false`
+- `export_created=false`
 - `task_run_started=false`
 
 ## 1. Mature SDK Selection
@@ -146,7 +149,43 @@ Expected:
 - `dataset_write_allowed=false`
 - `production_write_allowed=false`
 
-### Step 5: L4 Live Gate Packet
+### Step 5: Fixture Dataset Preview
+
+Call:
+
+```http
+POST /api/automation/social-dataset-preview
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "max_rows": 100,
+  "author_policy": "hashed"
+}
+```
+
+Expected:
+
+- `schema_version=social_dataset_preview.v1`
+- `dataset_type=social_voc_fixture_preview`
+- `dataset_schema_version=social_voc_dataset.v1`
+- rows use `social_voc_item.v1` as source schema
+- every row carries `raw_record_id`, `evidence_ref`, and `source_item_id`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `dataset_write_allowed=false`
+- `dataset_created=false`
+- `dataset_version_created=false`
+- `export_created=false`
+- `production_write_allowed=false`
+
+### Step 6: L4 Live Gate Packet
 
 Call template generator:
 
@@ -169,7 +208,7 @@ Required fields before any live adapter work:
 
 This packet is not created in the current docs/fixture pass.
 
-### Step 6: Optional Dependency Gate
+### Step 7: Optional Dependency Gate
 
 Call:
 
@@ -187,7 +226,7 @@ Expected:
 - `live_adapter_enabled=false`
 - `production_write_allowed=false`
 
-### Step 7: Fixture Adapter Plan
+### Step 8: Fixture Adapter Plan
 
 Call:
 
@@ -223,7 +262,7 @@ Expected:
 
 `mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
 
-### Step 8: Source Template Preview
+### Step 9: Source Template Preview
 
 Call:
 

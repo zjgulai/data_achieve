@@ -496,6 +496,56 @@ Response 不变量：
 - `live_comparison_requires_separate_l4_authorization`
 - `author_retention_requires_separate_l4_authorization`
 
+## 4.7 API 合同补充：`social-dataset-preview`
+
+用途：把 `social-normalization-preview` 中的 `social_voc_item.v1` 草稿项投影成 `social_voc_dataset.v1` 预览 rows，供 owner 审核字段、证据引用和后续 DatasetVersion 保存授权范围。本接口只返回内存预览，不保存 Dataset、DatasetVersion，也不创建 DatasetExportJob 或文件。
+
+Request:
+
+```json
+{
+  "platform": "reddit",
+  "provider_id": "reddit.praw",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "max_rows": 100,
+  "include_live_comparison": false,
+  "authorized": false,
+  "approval_id": null,
+  "author_policy": "hashed",
+  "save_requested": false,
+  "export_requested": false
+}
+```
+
+Response 不变量：
+
+- `schema_version=social_dataset_preview.v1`
+- `dataset_type=social_voc_fixture_preview`
+- `dataset_schema_version=social_voc_dataset.v1`
+- `fixture_only=true`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `production_write_allowed=false`
+- `dataset_write_allowed=false`
+- `dataset_created=false`
+- `dataset_version_created=false`
+- `export_created=false`
+- `rows[*].source_schema_version=social_voc_item.v1`
+- `rows[*].raw_record_id` 和 `rows[*].evidence_ref` 必须回指源 fixture evidence
+- `rows[*].payload.llm_call_attempted=false`
+
+`authorized=true`、`approval_id`、live comparison、保存、导出或明文作者保留只会进入 blocker，例如：
+
+- `authorized_ignored_for_dataset_preview`
+- `approval_id_ignored_for_dataset_preview`
+- `live_comparison_requires_separate_l4_authorization`
+- `dataset_save_requires_separate_l4_authorization`
+- `dataset_export_requires_separate_l4_authorization`
+- `author_retention_requires_separate_l4_authorization`
+
 ---
 
 ## 5. 验收清单（本批）与失败态
@@ -522,6 +572,7 @@ Response 不变量：
 - adapter plan 可返回 YouTube/Reddit fixture operation，并保持 `credential_read_attempted=false` 与 `live_client_created=false`。
 - source template 可返回 no-write `manual_json` SourceCreate 候选 payload，并保持 `source_created=false` 与 `task_created=false`。
 - normalization preview 可返回 no-write `social_post.v1` / `social_comment.v1` / `social_voc_item.v1` 草稿项，并保持 `normalization_write_allowed=false` 与 `dataset_write_allowed=false`。
+- dataset preview 可返回 no-write `social_voc_dataset.v1` 预览 rows，并保持 `dataset_created=false`、`dataset_version_created=false` 与 `export_created=false`。
 - 计划书输出可直接挂载到运行手册，不触发对外 provider call。
 
 ### 当前不在本批的失败态

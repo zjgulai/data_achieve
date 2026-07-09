@@ -355,6 +355,42 @@ async def test_social_normalization_preview_route_returns_fixture_items(
 
 
 @pytest.mark.asyncio
+async def test_social_dataset_preview_route_returns_no_write_rows(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+
+    response = await client.post(
+        "/api/automation/social-dataset-preview",
+        json={
+            "platform": "reddit",
+            "endpoint": "comments.new",
+            "fixture_limit": 1,
+            "dataset_name": "Reddit comments VOC fixture",
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["schema_version"] == "social_dataset_preview.v1"
+    assert payload["dataset_type"] == "social_voc_fixture_preview"
+    assert payload["dataset_schema_version"] == "social_voc_dataset.v1"
+    assert payload["fixture_only"] is True
+    assert payload["provider_call_allowed"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["production_write_allowed"] is False
+    assert payload["dataset_write_allowed"] is False
+    assert payload["dataset_created"] is False
+    assert payload["dataset_version_created"] is False
+    assert payload["export_created"] is False
+    assert payload["row_count"] == 1
+    assert len(payload["rows"]) == 1
+    assert payload["rows"][0]["source_schema_version"] == "social_voc_item.v1"
+    assert payload["rows"][0]["raw_record_id"] == payload["rows"][0]["payload"]["raw_record_id"]
+
+
+@pytest.mark.asyncio
 async def test_social_provider_readiness_unknown_platform_returns_404(client: AsyncClient) -> None:
     await register_and_login(client)
 
