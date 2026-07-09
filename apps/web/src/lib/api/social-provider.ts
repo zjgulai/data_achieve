@@ -1,9 +1,11 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
+import { getSocialProviderUiConfig } from "@/lib/social-provider-config";
 import type {
   SocialDatasetPreviewRow,
   SocialDatasetPreviewRowDto,
   SocialExecutionDryRun,
   SocialExecutionDryRunInput,
+  SocialExecutionDryRunRequestDto,
   SocialExecutionDryRunResponseDto,
   SocialExecutionDryRunStage,
   SocialExecutionDryRunStageDto,
@@ -19,34 +21,40 @@ export async function runSocialExecutionDryRun(
   const response = await apiFetch<SocialExecutionDryRunResponseDto>(
     "/api/automation/social-execution-dry-run",
     {
-      body: JSON.stringify({
-        platform: input.platform,
-        endpoint: input.endpoint,
-        fixture_limit: input.fixtureLimit,
-        intended_use: input.intendedUse,
-        dataset_name: input.datasetName,
-        source_name: input.sourceName,
-        task_name: input.taskName,
-        credential_reference: input.credentialReference,
-        credentials_ready: false,
-        authorized: false,
-        include_live_comparison: false,
-        dataset_save_requested: false,
-        export_requested: false,
-        allow_ai_training: false,
-        max_requests: input.maxRequests ?? 5,
-        max_items: input.maxItems ?? 20,
-        max_rows: input.maxRows ?? 20,
-        max_cost_usd: 0,
-        retention_hours: 24,
-        author_policy: "hashed",
-        cleanup_policy: "cleanup_after_evidence",
-      }),
+      body: JSON.stringify(buildSocialExecutionDryRunRequestBody(input)),
       method: "POST",
     },
   );
 
   return mapSocialExecutionDryRunResponse(response);
+}
+
+export function buildSocialExecutionDryRunRequestBody(
+  input: SocialExecutionDryRunInput,
+): SocialExecutionDryRunRequestDto {
+  return {
+    platform: input.platform,
+    endpoint: input.endpoint,
+    fixture_limit: input.fixtureLimit,
+    intended_use: input.intendedUse,
+    dataset_name: input.datasetName,
+    source_name: input.sourceName,
+    task_name: input.taskName,
+    credential_reference: input.credentialReference,
+    credentials_ready: false,
+    authorized: false,
+    include_live_comparison: false,
+    dataset_save_requested: false,
+    export_requested: false,
+    allow_ai_training: false,
+    max_requests: input.maxRequests ?? 5,
+    max_items: input.maxItems ?? 20,
+    max_rows: input.maxRows ?? 20,
+    max_cost_usd: 0,
+    retention_hours: 24,
+    author_policy: "hashed",
+    cleanup_policy: "cleanup_after_evidence",
+  };
 }
 
 export function mapSocialExecutionDryRunResponse(
@@ -137,7 +145,7 @@ function booleanValue(value: unknown): boolean {
 function mockSocialExecutionDryRunResponse(
   input: SocialExecutionDryRunInput,
 ): SocialExecutionDryRunResponseDto {
-  const providerId = input.platform === "youtube" ? "youtube.v3" : "reddit.praw";
+  const providerId = getSocialProviderUiConfig(input.platform).providerId;
   const datasetName = input.datasetName ?? `${input.platform} social VOC fixture dataset`;
   return {
     schema_version: "social_execution_dry_run.v1",

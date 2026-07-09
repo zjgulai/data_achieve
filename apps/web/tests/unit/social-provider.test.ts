@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { mapSocialExecutionDryRunResponse } from "@/lib/api/social-provider";
+import {
+  buildSocialExecutionDryRunRequestBody,
+  mapSocialExecutionDryRunResponse,
+} from "@/lib/api/social-provider";
+import {
+  getSocialProviderUiConfig,
+  socialProviderUiConfigs,
+} from "@/lib/social-provider-config";
 import type { SocialExecutionDryRunResponseDto } from "@/types/social-provider";
 
 const response: SocialExecutionDryRunResponseDto = {
@@ -136,5 +143,56 @@ describe("mapSocialExecutionDryRunResponse", () => {
     expect(mapped.datasetPreview.rowCount).toBe(2);
     expect(mapped.datasetPreview.rows[0]?.textExcerpt).toBe("Reddit fixture post 1");
     expect(mapped.taskRunApprovalTemplate.approvalPacket.task_run).toBe(false);
+  });
+});
+
+describe("social provider UI config", () => {
+  it("exposes the full first-batch overseas social platform catalog", () => {
+    expect(socialProviderUiConfigs.map((config) => config.platform)).toEqual([
+      "youtube",
+      "reddit",
+      "x",
+      "instagram",
+      "threads",
+      "tiktok",
+      "linkedin",
+    ]);
+
+    for (const config of socialProviderUiConfigs) {
+      expect(config.endpoints.length).toBeGreaterThan(0);
+    }
+    expect(getSocialProviderUiConfig("x").providerId).toBe("x.v2");
+    expect(getSocialProviderUiConfig("tiktok").providerId).toBe("tiktok_research");
+    expect(getSocialProviderUiConfig("linkedin").providerId).toBe("linkedin.mcdm");
+  });
+});
+
+describe("buildSocialExecutionDryRunRequestBody", () => {
+  it("keeps non-P0 platform dry-run requests fixture-only and no-write", () => {
+    const body = buildSocialExecutionDryRunRequestBody({
+      platform: "linkedin",
+      endpoint: "ugcPosts",
+      fixtureLimit: 3,
+      intendedUse: "fixture-only linkedin ugcPosts social review",
+      datasetName: "LinkedIn ugcPosts VOC fixture",
+      sourceName: "LinkedIn ugcPosts fixture source",
+      taskName: "LinkedIn ugcPosts fixture task",
+      credentialReference: "vault:overseas-social-readonly",
+      maxItems: 20,
+      maxRequests: 5,
+      maxRows: 20,
+    });
+
+    expect(body.platform).toBe("linkedin");
+    expect(body.endpoint).toBe("ugcPosts");
+    expect(body.credentials_ready).toBe(false);
+    expect(body.authorized).toBe(false);
+    expect(body.include_live_comparison).toBe(false);
+    expect(body.dataset_save_requested).toBe(false);
+    expect(body.export_requested).toBe(false);
+    expect(body.allow_ai_training).toBe(false);
+    expect(body.max_cost_usd).toBe(0);
+    expect(body.author_policy).toBe("hashed");
+    expect(body.cleanup_policy).toBe("cleanup_after_evidence");
   });
 });

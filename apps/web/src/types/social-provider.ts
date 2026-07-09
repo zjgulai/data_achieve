@@ -1,4 +1,11 @@
-export type SocialProviderPlatform = "youtube" | "reddit";
+export type SocialProviderPlatform =
+  | "youtube"
+  | "reddit"
+  | "x"
+  | "instagram"
+  | "threads"
+  | "tiktok"
+  | "linkedin";
 
 export type SocialExecutionDryRunInput = {
   platform: SocialProviderPlatform;
@@ -12,6 +19,30 @@ export type SocialExecutionDryRunInput = {
   maxRequests?: number;
   maxItems?: number;
   maxRows?: number;
+};
+
+export type SocialExecutionDryRunRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoint: string;
+  fixture_limit: number;
+  intended_use: string;
+  dataset_name?: string;
+  source_name?: string;
+  task_name?: string;
+  credential_reference?: string;
+  credentials_ready: false;
+  authorized: false;
+  include_live_comparison: false;
+  dataset_save_requested: false;
+  export_requested: false;
+  allow_ai_training: false;
+  max_requests: number;
+  max_items: number;
+  max_rows: number;
+  max_cost_usd: 0;
+  retention_hours: 24;
+  author_policy: "hashed";
+  cleanup_policy: "cleanup_after_evidence";
 };
 
 export type SocialExecutionStageName =

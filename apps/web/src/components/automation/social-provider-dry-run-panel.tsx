@@ -13,6 +13,11 @@ import {
 import { useMemo, useState } from "react";
 
 import { runSocialExecutionDryRun } from "@/lib/api/social-provider";
+import {
+  getDefaultEndpointForPlatform,
+  getSocialProviderUiConfig,
+  socialProviderUiConfigs,
+} from "@/lib/social-provider-config";
 import { cn } from "@/lib/utils";
 import {
   WorkbenchFact,
@@ -25,26 +30,6 @@ import type {
   SocialProviderPlatform,
 } from "@/types/social-provider";
 
-const endpointOptions: Record<SocialProviderPlatform, Array<{ label: string; value: string }>> = {
-  reddit: [
-    { label: "comments.new", value: "comments.new" },
-    { label: "search", value: "search" },
-    { label: "hot.list", value: "hot.list" },
-    { label: "new.list", value: "new.list" },
-  ],
-  youtube: [
-    { label: "videos.list", value: "videos.list" },
-    { label: "search.list", value: "search.list" },
-    { label: "channels.list", value: "channels.list" },
-    { label: "commentThreads.list", value: "commentThreads.list" },
-  ],
-};
-
-const platformLabels: Record<SocialProviderPlatform, string> = {
-  reddit: "Reddit",
-  youtube: "YouTube",
-};
-
 const stageLabels: Record<SocialExecutionDryRun["executionPlan"][number]["stage"], string> = {
   dataset_preview: "Dataset Preview",
   normalization_preview: "Normalization",
@@ -55,8 +40,8 @@ const stageLabels: Record<SocialExecutionDryRun["executionPlan"][number]["stage"
 };
 
 export function SocialProviderDryRunPanel() {
-  const [platform, setPlatform] = useState<SocialProviderPlatform>("reddit");
-  const [endpoint, setEndpoint] = useState("comments.new");
+  const [platform, setPlatform] = useState<SocialProviderPlatform>("youtube");
+  const [endpoint, setEndpoint] = useState(getDefaultEndpointForPlatform("youtube"));
   const [fixtureLimit, setFixtureLimit] = useState("2");
   const [credentialReference, setCredentialReference] = useState(
     "vault:overseas-social-readonly",
@@ -65,7 +50,7 @@ export function SocialProviderDryRunPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentEndpointOptions = endpointOptions[platform];
+  const selectedProviderConfig = getSocialProviderUiConfig(platform);
   const sideEffectFacts = useMemo(() => {
     if (!result) {
       return [];
@@ -89,9 +74,9 @@ export function SocialProviderDryRunPanel() {
         endpoint,
         fixtureLimit: Number.isFinite(parsedFixtureLimit) ? parsedFixtureLimit : 2,
         intendedUse: `fixture-only ${platform} ${endpoint} social review`,
-        datasetName: `${platformLabels[platform]} ${endpoint} VOC fixture`,
-        sourceName: `${platformLabels[platform]} ${endpoint} fixture source`,
-        taskName: `${platformLabels[platform]} ${endpoint} fixture task`,
+        datasetName: `${selectedProviderConfig.label} ${endpoint} VOC fixture`,
+        sourceName: `${selectedProviderConfig.label} ${endpoint} fixture source`,
+        taskName: `${selectedProviderConfig.label} ${endpoint} fixture task`,
         credentialReference: credentialReference.trim() || undefined,
         maxItems: 20,
         maxRequests: 5,
@@ -110,7 +95,7 @@ export function SocialProviderDryRunPanel() {
       action={<WorkbenchTag tone="green">provider_call=false</WorkbenchTag>}
       icon={Globe2}
       label="Social API"
-      subtitle="YouTube / Reddit fixture-only execution review"
+      subtitle="Overseas official API fixture-only execution review"
       title="海外社媒采集预案"
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
@@ -129,12 +114,15 @@ export function SocialProviderDryRunPanel() {
                 onChange={(event) => {
                   const nextPlatform = event.target.value as SocialProviderPlatform;
                   setPlatform(nextPlatform);
-                  setEndpoint(endpointOptions[nextPlatform][0]?.value ?? "");
+                  setEndpoint(getDefaultEndpointForPlatform(nextPlatform));
                 }}
                 value={platform}
               >
-                <option value="reddit">Reddit</option>
-                <option value="youtube">YouTube</option>
+                {socialProviderUiConfigs.map((config) => (
+                  <option key={config.platform} value={config.platform}>
+                    {config.label}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -145,7 +133,7 @@ export function SocialProviderDryRunPanel() {
                 onChange={(event) => setEndpoint(event.target.value)}
                 value={endpoint}
               >
-                {currentEndpointOptions.map((option) => (
+                {selectedProviderConfig.endpoints.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -215,7 +203,7 @@ export function SocialProviderDryRunPanel() {
                 />
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {sideEffectFacts.map(([label, value]) => (
                   <WorkbenchFact key={label} label={label} value={value} />
                 ))}
