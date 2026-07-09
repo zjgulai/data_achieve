@@ -730,6 +730,35 @@ test.describe("MVP workspace routes", () => {
     await expectNoVisibleTechnicalNoise(page);
   });
 
+  test("renders API market list and endpoint detail without live calls", async ({
+    page,
+  }) => {
+    await page.goto("/api-market");
+    await expect(page.getByRole("heading", { name: "API市场" })).toBeVisible();
+    await expect(page.getByText("provider_call=false")).toBeVisible();
+    await expect(page.getByText("credential_read_attempted")).toHaveCount(0);
+
+    await expect(page.getByLabel("搜索 API、平台、endpoint 或 policy flag")).toBeVisible();
+    await page.getByLabel("搜索 API、平台、endpoint 或 policy flag").fill("commentThreads");
+    const youtubeCommentCard = visibleArticleByText(page, "YouTube Comment Threads");
+    await expect(youtubeCommentCard).toBeVisible();
+    await expect(youtubeCommentCard.getByText("commentThreads.list")).toBeVisible();
+    await youtubeCommentCard.getByRole("link", { name: "查看详情" }).click();
+
+    await expect(page).toHaveURL(/\/api-market\/youtube-v3-commentthreads-list$/);
+    await expect(page.getByRole("heading", { name: "API市场详情" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "请求合同与参数" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Fixture 响应预览" })).toBeVisible();
+    await expect(page.getByText("provider_call_attempted")).toBeVisible();
+    await expect(page.getByText("credential_read_attempted")).toBeVisible();
+    await expect(page.getByText("live_client_created")).toBeVisible();
+    await expect(page.getByText("production_write_allowed")).toBeVisible();
+    await expect(page.getByText("false").first()).toBeVisible();
+    await expect(page.getByText("social_comment.v1")).toBeVisible();
+    await expect(page.getByText("fixture://youtube.v3/commentThreads.list/1")).toBeVisible();
+    await expect(page.getByRole("button", { name: "复制 fixture" })).toBeVisible();
+  });
+
   test("generates and sends a report", async ({ page, request }, testInfo) => {
     await createReportFixture(request, testInfo.project.name);
     await page.goto("/reports");
@@ -1564,6 +1593,8 @@ test.describe("mobile layout guard", () => {
     "/sources",
     "/datasets",
     "/automation",
+    "/api-market",
+    "/api-market/youtube-v3-commentthreads-list",
   ]) {
     test(`${route} does not overflow horizontally`, async ({
       page,
