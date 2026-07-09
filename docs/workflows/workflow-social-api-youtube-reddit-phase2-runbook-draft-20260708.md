@@ -37,6 +37,7 @@ Current execution state:
 - `dataset_version_created=false`
 - `export_created=false`
 - `task_run_started=false`
+- `execution_dry_run_only=true`
 
 ## 1. Mature SDK Selection
 
@@ -228,7 +229,51 @@ Expected:
 
 This step is still not execution authorization. It prepares a reviewable packet for a later owner-approved L4 request.
 
-### Step 7: L4 Live Gate Packet
+### Step 7: Fixture Execution Dry Run
+
+Call dry-run bundle:
+
+```http
+POST /api/automation/social-execution-dry-run
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "intended_use": "small scoped Reddit comments fixture dry-run",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "allow_ai_training": false
+}
+```
+
+Expected:
+
+- `schema_version=social_execution_dry_run.v1`
+- stage order is `readiness -> raw_preview -> normalization_preview -> dataset_preview -> source_template -> task_run_approval_template`
+- each stage keeps `provider_call=false` and `production_write=false`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+
+This step is the last fixture-only bundle before a human reviews whether a separate L4 live request is justified.
+
+### Step 8: L4 Live Gate Packet
 
 Call template generator:
 
@@ -251,7 +296,7 @@ Required fields before any live adapter work:
 
 This packet is not created in the current docs/fixture pass.
 
-### Step 8: Optional Dependency Gate
+### Step 9: Optional Dependency Gate
 
 Call:
 
@@ -269,7 +314,7 @@ Expected:
 - `live_adapter_enabled=false`
 - `production_write_allowed=false`
 
-### Step 9: Fixture Adapter Plan
+### Step 10: Fixture Adapter Plan
 
 Call:
 
@@ -305,7 +350,7 @@ Expected:
 
 `mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
 
-### Step 10: Source Template Preview
+### Step 11: Source Template Preview
 
 Call:
 
@@ -382,6 +427,7 @@ Fixture stage is accepted only when:
 - readiness/gate tests pass without provider calls
 - raw preview produces deterministic fixture records
 - approval template and dependency gate return no-side-effect plans
+- execution dry-run returns the ordered no-write fixture bundle
 - adapter plan returns deterministic fixture operations without reading credentials or creating SDK clients
 - source template returns a deterministic `manual_json` candidate without creating Source or Task rows
 - `git diff --check` passes

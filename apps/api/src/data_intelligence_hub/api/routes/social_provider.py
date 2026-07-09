@@ -8,6 +8,8 @@ from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.schemas.social_provider import (
     SocialDatasetPreviewRequest,
     SocialDatasetPreviewResponse,
+    SocialExecutionDryRunRequest,
+    SocialExecutionDryRunResponse,
     SocialNormalizationPreviewRequest,
     SocialNormalizationPreviewResponse,
     SocialProviderAdapterPlanRequest,
@@ -36,6 +38,7 @@ from data_intelligence_hub.services.exceptions import (
 from data_intelligence_hub.services.social_provider import (
     get_social_provider_catalog,
     prepare_social_dataset_preview,
+    prepare_social_execution_dry_run,
     prepare_social_normalization_preview,
     prepare_social_provider_adapter_plan,
     prepare_social_provider_dependency_gate,
@@ -207,5 +210,20 @@ async def prepare_social_task_run_approval_template_item(
     _ = context
     try:
         return prepare_social_task_run_approval_template(payload)
+    except SocialProviderUnknownPlatformError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+
+@router.post(
+    "/social-execution-dry-run",
+    response_model=SocialExecutionDryRunResponse,
+)
+async def prepare_social_execution_dry_run_item(
+    payload: SocialExecutionDryRunRequest,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> SocialExecutionDryRunResponse:
+    _ = context
+    try:
+        return prepare_social_execution_dry_run(payload)
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc

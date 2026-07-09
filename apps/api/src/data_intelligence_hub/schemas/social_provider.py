@@ -459,3 +459,74 @@ class SocialTaskRunApprovalTemplateResponse(BaseModel):
     production_write_allowed: bool = False
     next_required_authorization: str
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SocialExecutionDryRunRequest(BaseModel):
+    platform: str
+    endpoint: str = Field(min_length=1, max_length=120)
+    provider_id: str | None = None
+    fixture_limit: int = Field(default=3, ge=1, le=10)
+    dataset_name: str | None = Field(default=None, min_length=1, max_length=200)
+    source_name: str | None = Field(default=None, min_length=1, max_length=200)
+    task_name: str | None = Field(default=None, min_length=1, max_length=200)
+    intended_use: str = Field(min_length=3, max_length=300)
+    credential_reference: str | None = Field(default=None, max_length=200)
+    credentials_ready: bool | dict[str, bool] = False
+    authorized: bool = False
+    approval_id: str | None = Field(default=None, max_length=120)
+    include_live_comparison: bool = False
+    dataset_save_requested: bool = False
+    export_requested: bool = False
+    allow_ai_training: bool = False
+    max_requests: int = Field(default=10, ge=1, le=1000)
+    max_items: int = Field(default=50, ge=1, le=5000)
+    max_rows: int = Field(default=100, ge=1, le=10000)
+    max_cost_usd: float | None = Field(default=0, ge=0)
+    retention_hours: int = Field(default=24, ge=1, le=8760)
+    author_policy: Literal["hashed", "dropped", "retained_with_approval"] = "hashed"
+    cleanup_policy: str = Field(default="cleanup_after_evidence", max_length=200)
+
+
+class SocialExecutionDryRunStage(BaseModel):
+    stage: Literal[
+        "readiness",
+        "raw_preview",
+        "normalization_preview",
+        "dataset_preview",
+        "source_template",
+        "task_run_approval_template",
+    ]
+    status: Literal["ready", "blocked", "previewed"]
+    blocked_reasons: list[str]
+    provider_call: bool = False
+    credential_read: bool = False
+    production_write: bool = False
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class SocialExecutionDryRunResponse(BaseModel):
+    schema_version: str = "social_execution_dry_run.v1"
+    platform: str
+    provider_id: str
+    endpoint: str
+    fixture_only: bool = True
+    provider_call_allowed: bool = False
+    provider_call_attempted: bool = False
+    credential_read_attempted: bool = False
+    source_create_allowed: bool = False
+    task_create_allowed: bool = False
+    task_run_allowed: bool = False
+    dataset_write_allowed: bool = False
+    export_allowed: bool = False
+    production_write_allowed: bool = False
+    live_comparison_available: bool = False
+    blocked_reasons: list[str]
+    execution_plan: list[SocialExecutionDryRunStage]
+    readiness: SocialProviderReadinessResponse
+    raw_preview: SocialRawPreviewResponse
+    normalization_preview: SocialNormalizationPreviewResponse
+    dataset_preview: SocialDatasetPreviewResponse
+    source_template: SocialProviderSourceTemplateResponse
+    task_run_approval_template: SocialTaskRunApprovalTemplateResponse
+    next_required_authorization: str
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -29,6 +29,11 @@ source: codex
   - `POST /api/automation/social-provider-dependency-gate`
   - `POST /api/automation/social-provider-adapter-plan`
   - `POST /api/automation/social-provider-source-template`
+  - `POST /api/automation/social-raw-preview`
+  - `POST /api/automation/social-normalization-preview`
+  - `POST /api/automation/social-dataset-preview`
+  - `POST /api/automation/social-task-run-approval-template`
+  - `POST /api/automation/social-execution-dry-run`
 - `social-provider-catalog` 支持 `data-domain` 与 `resource-group` 两套筛选，方便与 `ProviderRegistry` 的 resource_group 映射打通。
 - `social-raw-preview` 只生成 `social_raw.v1` fixture records，不创建 Source/Task/RawRecord，不读取 credential，不执行 live comparison。
 - `social-provider-adapter-plan` 只检查 catalog SDK selection、`data_intelligence_hub.social_api.*` 本地 adapter module 映射与可选依赖 import spec，不 import SDK live client、不读取 credential、不发生 provider call。
@@ -604,6 +609,68 @@ Response 不变量：
 - `dataset_export_requires_separate_l4_authorization`
 - `credential_reference_required_before_task_run`
 
+## 4.9 API 合同补充：`social-execution-dry-run`
+
+用途：把 readiness、raw preview、normalization preview、dataset preview、source template 与 task run approval template 串成一个可审阅的 fixture-only 执行预案。本接口不调用 provider、不读取 credential、不创建 Source/Task/TaskRun/RawRecord/Dataset/Export，也不授予 live 权限。
+
+Request:
+
+```json
+{
+  "platform": "reddit",
+  "provider_id": "reddit.praw",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "intended_use": "small scoped Reddit comments fixture dry-run",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "credentials_ready": false,
+  "authorized": false,
+  "approval_id": null,
+  "include_live_comparison": false,
+  "dataset_save_requested": false,
+  "export_requested": false,
+  "allow_ai_training": false,
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "max_cost_usd": 0,
+  "retention_hours": 24,
+  "author_policy": "hashed",
+  "cleanup_policy": "cleanup_after_evidence"
+}
+```
+
+Response 不变量：
+
+- `schema_version=social_execution_dry_run.v1`
+- `fixture_only=true`
+- `execution_plan[*].provider_call=false`
+- `execution_plan[*].credential_read=false`
+- `execution_plan[*].production_write=false`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+- `readiness`、`raw_preview`、`normalization_preview`、`dataset_preview`、`source_template`、`task_run_approval_template` 保留各自原合同与 blocker。
+
+`authorized=true`、`approval_id`、live comparison、Dataset save、export、AI training 或明文作者保留只会进入 blocker，例如：
+
+- `authorized_ignored_for_execution_dry_run`
+- `approval_id_ignored_for_execution_dry_run`
+- `live_comparison_requires_separate_l4_authorization`
+- `dataset_save_requires_separate_l4_authorization`
+- `dataset_export_requires_separate_l4_authorization`
+- `allow_ai_training_must_be_false`
+- `author_retention_requires_separate_l4_authorization`
+
 ---
 
 ## 5. 验收清单（本批）与失败态
@@ -632,6 +699,7 @@ Response 不变量：
 - normalization preview 可返回 no-write `social_post.v1` / `social_comment.v1` / `social_voc_item.v1` 草稿项，并保持 `normalization_write_allowed=false` 与 `dataset_write_allowed=false`。
 - dataset preview 可返回 no-write `social_voc_dataset.v1` 预览 rows，并保持 `dataset_created=false`、`dataset_version_created=false` 与 `export_created=false`。
 - task run approval template 可返回 no-write L4 execution packet，并保持 `source_create_allowed=false`、`task_run_allowed=false`、`dataset_write_allowed=false` 与 `provider_call_attempted=false`。
+- execution dry-run 可返回跨阶段 no-write 执行预案，并保持 `provider_call_attempted=false`、`credential_read_attempted=false`、`task_run_allowed=false`、`dataset_write_allowed=false` 与 `production_write_allowed=false`。
 - 计划书输出可直接挂载到运行手册，不触发对外 provider call。
 
 ### 当前不在本批的失败态

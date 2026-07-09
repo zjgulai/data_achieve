@@ -4,6 +4,7 @@ import pytest
 
 from data_intelligence_hub.schemas.social_provider import (
     SocialDatasetPreviewRequest,
+    SocialExecutionDryRunRequest,
     SocialNormalizationPreviewRequest,
     SocialProviderAdapterPlanRequest,
     SocialProviderDependencyGateRequest,
@@ -21,6 +22,7 @@ from data_intelligence_hub.services.exceptions import (
 from data_intelligence_hub.services.social_provider import (
     get_social_provider_catalog,
     prepare_social_dataset_preview,
+    prepare_social_execution_dry_run,
     prepare_social_normalization_preview,
     prepare_social_provider_adapter_plan,
     prepare_social_provider_dependency_gate,
@@ -649,6 +651,109 @@ def test_social_task_run_approval_template_records_requested_live_fields_without
     assert "allow_ai_training_must_be_false" in template.blocked_reasons
     assert "dataset_save_requires_separate_l4_authorization" in template.blocked_reasons
     assert "dataset_export_requires_separate_l4_authorization" in template.blocked_reasons
+
+
+def test_social_execution_dry_run_reddit_fixture_bundle_no_write() -> None:
+    dry_run = prepare_social_execution_dry_run(
+        SocialExecutionDryRunRequest(
+            platform="reddit",
+            endpoint="comments.new",
+            fixture_limit=2,
+            dataset_name="Reddit comments VOC fixture",
+            source_name="Reddit comments fixture source",
+            task_name="Reddit comments fixture task",
+            intended_use="small scoped Reddit comments fixture dry-run",
+            credential_reference="secret:reddit-oauth-readonly",
+            max_requests=5,
+            max_items=20,
+            max_rows=20,
+        ),
+    )
+
+    assert dry_run.schema_version == "social_execution_dry_run.v1"
+    assert dry_run.platform == "reddit"
+    assert dry_run.provider_id == "reddit.praw"
+    assert dry_run.fixture_only is True
+    assert dry_run.provider_call_allowed is False
+    assert dry_run.provider_call_attempted is False
+    assert dry_run.credential_read_attempted is False
+    assert dry_run.source_create_allowed is False
+    assert dry_run.task_create_allowed is False
+    assert dry_run.task_run_allowed is False
+    assert dry_run.dataset_write_allowed is False
+    assert dry_run.export_allowed is False
+    assert dry_run.production_write_allowed is False
+    assert [stage.stage for stage in dry_run.execution_plan] == [
+        "readiness",
+        "raw_preview",
+        "normalization_preview",
+        "dataset_preview",
+        "source_template",
+        "task_run_approval_template",
+    ]
+    assert all(stage.provider_call is False for stage in dry_run.execution_plan)
+    assert all(stage.production_write is False for stage in dry_run.execution_plan)
+    assert dry_run.raw_preview.records[0].schema_version == "social_raw.v1"
+    assert dry_run.normalization_preview.normalized_items
+    assert dry_run.dataset_preview.row_count == 2
+    assert dry_run.dataset_preview.dataset_write_allowed is False
+    assert dry_run.source_template.source_create_payload is not None
+    assert dry_run.source_template.source_create_allowed is False
+    assert dry_run.task_run_approval_template.approval_packet["task_run"] is False
+    assert dry_run.task_run_approval_template.approval_packet["dataset_save"] is False
+    assert dry_run.next_required_authorization == "L4_social_execution_authorization_required"
+
+
+def test_social_execution_dry_run_blocks_unknown_endpoint_without_execution() -> None:
+    dry_run = prepare_social_execution_dry_run(
+        SocialExecutionDryRunRequest(
+            platform="youtube",
+            endpoint="videos.invalid",
+            intended_use="small scoped YouTube fixture dry-run",
+        ),
+    )
+
+    assert dry_run.provider_call_allowed is False
+    assert dry_run.provider_call_attempted is False
+    assert dry_run.credential_read_attempted is False
+    assert dry_run.raw_preview.records == []
+    assert dry_run.normalization_preview.raw_records == []
+    assert dry_run.dataset_preview.rows == []
+    assert dry_run.source_template.source_create_payload is None
+    assert "scope_missing:videos.invalid" in dry_run.blocked_reasons
+    assert "credential_missing:api_key" in dry_run.blocked_reasons
+
+
+def test_social_execution_dry_run_records_live_intent_as_blockers() -> None:
+    dry_run = prepare_social_execution_dry_run(
+        SocialExecutionDryRunRequest(
+            platform="reddit",
+            endpoint="search",
+            intended_use="future owner-approved Reddit search run",
+            credential_reference="env:REDDIT_READONLY_OAUTH",
+            authorized=True,
+            approval_id="approval-recorded-only",
+            include_live_comparison=True,
+            dataset_save_requested=True,
+            export_requested=True,
+            allow_ai_training=True,
+            author_policy="retained_with_approval",
+        ),
+    )
+
+    assert dry_run.provider_call_allowed is False
+    assert dry_run.provider_call_attempted is False
+    assert dry_run.source_create_allowed is False
+    assert dry_run.task_run_allowed is False
+    assert dry_run.dataset_write_allowed is False
+    assert dry_run.export_allowed is False
+    assert "authorized_ignored_for_execution_dry_run" in dry_run.blocked_reasons
+    assert "approval_id_ignored_for_execution_dry_run" in dry_run.blocked_reasons
+    assert "live_comparison_requires_separate_l4_authorization" in dry_run.blocked_reasons
+    assert "allow_ai_training_must_be_false" in dry_run.blocked_reasons
+    assert "dataset_save_requires_separate_l4_authorization" in dry_run.blocked_reasons
+    assert "dataset_export_requires_separate_l4_authorization" in dry_run.blocked_reasons
+    assert "author_retention_requires_separate_l4_authorization" in dry_run.blocked_reasons
 
 
 def test_social_provider_unknown_platform_is_rejected() -> None:

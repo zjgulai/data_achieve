@@ -5,12 +5,15 @@ import importlib.util
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from data_intelligence_hub.schemas.social_provider import (
     SocialDatasetPreviewRequest,
     SocialDatasetPreviewResponse,
     SocialDatasetPreviewRow,
+    SocialExecutionDryRunRequest,
+    SocialExecutionDryRunResponse,
+    SocialExecutionDryRunStage,
     SocialNormalizationPreviewRequest,
     SocialNormalizationPreviewResponse,
     SocialNormalizedPreviewItem,
@@ -1302,4 +1305,212 @@ def prepare_social_task_run_approval_template(
         required_confirmations=TASK_RUN_APPROVAL_REQUIRED_CONFIRMATIONS,
         blocked_reasons=blocked_reasons,
         next_required_authorization="L4_social_task_run_authorization_required",
+    )
+
+
+def _merge_blockers(*groups: list[str]) -> list[str]:
+    blockers: list[str] = []
+    seen: set[str] = set()
+    for group in groups:
+        for blocker in group:
+            if blocker in seen:
+                continue
+            seen.add(blocker)
+            blockers.append(blocker)
+    return blockers
+
+
+def _stage_status(
+    blocked_reasons: list[str], previewed: bool = False
+) -> Literal["ready", "blocked", "previewed"]:
+    if blocked_reasons:
+        return "blocked"
+    if previewed:
+        return "previewed"
+    return "ready"
+
+
+def prepare_social_execution_dry_run(
+    payload: SocialExecutionDryRunRequest,
+) -> SocialExecutionDryRunResponse:
+    endpoint = payload.endpoint.strip()
+    endpoints = [endpoint]
+
+    readiness = prepare_social_provider_readiness(
+        SocialProviderReadinessRequest(
+            platform=payload.platform,
+            endpoints=endpoints,
+            credentials_ready=payload.credentials_ready,
+            dry_run=True,
+        ),
+    )
+    raw_preview = prepare_social_raw_preview(
+        SocialRawPreviewRequest(
+            platform=payload.platform,
+            endpoint=endpoint,
+            provider_id=payload.provider_id,
+            fixture_limit=payload.fixture_limit,
+            include_live_comparison=payload.include_live_comparison,
+            authorized=False,
+            approval_id=None,
+        ),
+    )
+    normalization_preview = prepare_social_normalization_preview(
+        SocialNormalizationPreviewRequest(
+            platform=payload.platform,
+            endpoint=endpoint,
+            provider_id=payload.provider_id,
+            fixture_limit=payload.fixture_limit,
+            include_voc=True,
+            include_live_comparison=payload.include_live_comparison,
+            authorized=False,
+            approval_id=None,
+            author_policy=payload.author_policy,
+        ),
+    )
+    dataset_preview = prepare_social_dataset_preview(
+        SocialDatasetPreviewRequest(
+            platform=payload.platform,
+            endpoint=endpoint,
+            provider_id=payload.provider_id,
+            fixture_limit=payload.fixture_limit,
+            dataset_name=payload.dataset_name,
+            max_rows=payload.max_rows,
+            include_live_comparison=payload.include_live_comparison,
+            authorized=False,
+            approval_id=None,
+            author_policy=payload.author_policy,
+            save_requested=payload.dataset_save_requested,
+            export_requested=payload.export_requested,
+        ),
+    )
+    source_template = prepare_social_provider_source_template(
+        SocialProviderSourceTemplateRequest(
+            platform=payload.platform,
+            endpoints=endpoints,
+            provider_id=payload.provider_id,
+            source_name=payload.source_name,
+            authorized=False,
+            approval_id=None,
+            credential_reference=None,
+            fixture_limit=payload.fixture_limit,
+        ),
+    )
+    task_run_template = prepare_social_task_run_approval_template(
+        SocialTaskRunApprovalTemplateRequest(
+            platform=payload.platform,
+            endpoints=endpoints,
+            provider_id=payload.provider_id,
+            intended_use=payload.intended_use,
+            source_name=payload.source_name,
+            task_name=payload.task_name,
+            dataset_name=payload.dataset_name,
+            credential_reference=payload.credential_reference,
+            authorized=payload.authorized,
+            approval_id=payload.approval_id,
+            max_requests=payload.max_requests,
+            max_items=payload.max_items,
+            max_rows=payload.max_rows,
+            max_cost_usd=payload.max_cost_usd,
+            retention_hours=payload.retention_hours,
+            allow_ai_training=payload.allow_ai_training,
+            dataset_save_requested=payload.dataset_save_requested,
+            export_requested=payload.export_requested,
+            cleanup_policy=payload.cleanup_policy,
+        ),
+    )
+
+    execution_blockers: list[str] = []
+    if payload.authorized:
+        execution_blockers.append("authorized_ignored_for_execution_dry_run")
+    if payload.approval_id is not None:
+        execution_blockers.append("approval_id_ignored_for_execution_dry_run")
+
+    blocked_reasons = _merge_blockers(
+        readiness.blocked_reasons,
+        raw_preview.blocked_reasons,
+        normalization_preview.blocked_reasons,
+        dataset_preview.blocked_reasons,
+        source_template.blocked_reasons,
+        task_run_template.blocked_reasons,
+        execution_blockers,
+    )
+    execution_plan = [
+        SocialExecutionDryRunStage(
+            stage="readiness",
+            status=_stage_status(readiness.blocked_reasons),
+            blocked_reasons=readiness.blocked_reasons,
+            details={
+                "missing_credentials": readiness.missing_credentials,
+                "missing_scope": readiness.missing_scope,
+                "provider_call_allowed": readiness.provider_call_allowed,
+            },
+        ),
+        SocialExecutionDryRunStage(
+            stage="raw_preview",
+            status=_stage_status(raw_preview.blocked_reasons, previewed=bool(raw_preview.records)),
+            blocked_reasons=raw_preview.blocked_reasons,
+            details={"record_count": len(raw_preview.records)},
+        ),
+        SocialExecutionDryRunStage(
+            stage="normalization_preview",
+            status=_stage_status(
+                normalization_preview.blocked_reasons,
+                previewed=bool(normalization_preview.normalized_items),
+            ),
+            blocked_reasons=normalization_preview.blocked_reasons,
+            details={"normalized_item_count": len(normalization_preview.normalized_items)},
+        ),
+        SocialExecutionDryRunStage(
+            stage="dataset_preview",
+            status=_stage_status(
+                dataset_preview.blocked_reasons, previewed=bool(dataset_preview.rows)
+            ),
+            blocked_reasons=dataset_preview.blocked_reasons,
+            details={
+                "row_count": dataset_preview.row_count,
+                "source_item_count": dataset_preview.source_item_count,
+                "truncated": dataset_preview.truncated,
+            },
+        ),
+        SocialExecutionDryRunStage(
+            stage="source_template",
+            status=_stage_status(
+                source_template.blocked_reasons,
+                previewed=source_template.source_create_payload is not None,
+            ),
+            blocked_reasons=source_template.blocked_reasons,
+            details={
+                "source_type": source_template.source_type,
+                "source_payload_present": source_template.source_create_payload is not None,
+            },
+        ),
+        SocialExecutionDryRunStage(
+            stage="task_run_approval_template",
+            status=_stage_status(
+                task_run_template.blocked_reasons,
+                previewed=bool(task_run_template.approval_packet),
+            ),
+            blocked_reasons=task_run_template.blocked_reasons,
+            details={
+                "approval_packet_schema": task_run_template.approval_packet.get("schema_version"),
+                "task_run": task_run_template.approval_packet.get("task_run"),
+                "dataset_save": task_run_template.approval_packet.get("dataset_save"),
+            },
+        ),
+    ]
+
+    return SocialExecutionDryRunResponse(
+        platform=raw_preview.platform,
+        provider_id=raw_preview.provider_id,
+        endpoint=endpoint,
+        blocked_reasons=blocked_reasons,
+        execution_plan=execution_plan,
+        readiness=readiness,
+        raw_preview=raw_preview,
+        normalization_preview=normalization_preview,
+        dataset_preview=dataset_preview,
+        source_template=source_template,
+        task_run_approval_template=task_run_template,
+        next_required_authorization="L4_social_execution_authorization_required",
     )

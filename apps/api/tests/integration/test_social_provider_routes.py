@@ -428,6 +428,53 @@ async def test_social_task_run_approval_template_route_returns_packet(
 
 
 @pytest.mark.asyncio
+async def test_social_execution_dry_run_route_returns_fixture_bundle(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+
+    response = await client.post(
+        "/api/automation/social-execution-dry-run",
+        json={
+            "platform": "reddit",
+            "endpoint": "comments.new",
+            "fixture_limit": 1,
+            "dataset_name": "Reddit comments VOC fixture",
+            "source_name": "Reddit comments fixture source",
+            "task_name": "Reddit comments fixture task",
+            "intended_use": "small scoped Reddit comments fixture dry-run",
+            "credential_reference": "secret:reddit-oauth-readonly",
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["schema_version"] == "social_execution_dry_run.v1"
+    assert payload["fixture_only"] is True
+    assert payload["provider_call_allowed"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["source_create_allowed"] is False
+    assert payload["task_create_allowed"] is False
+    assert payload["task_run_allowed"] is False
+    assert payload["dataset_write_allowed"] is False
+    assert payload["export_allowed"] is False
+    assert payload["production_write_allowed"] is False
+    assert [stage["stage"] for stage in payload["execution_plan"]] == [
+        "readiness",
+        "raw_preview",
+        "normalization_preview",
+        "dataset_preview",
+        "source_template",
+        "task_run_approval_template",
+    ]
+    assert payload["raw_preview"]["records"][0]["schema_version"] == "social_raw.v1"
+    assert payload["dataset_preview"]["row_count"] == 1
+    assert payload["source_template"]["source_create_allowed"] is False
+    assert payload["task_run_approval_template"]["task_run_allowed"] is False
+
+
+@pytest.mark.asyncio
 async def test_social_provider_readiness_unknown_platform_returns_404(client: AsyncClient) -> None:
     await register_and_login(client)
 
