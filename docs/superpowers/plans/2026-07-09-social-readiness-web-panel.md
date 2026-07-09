@@ -157,7 +157,7 @@ git status --short --branch
 **Files:**
 - Commit only files modified in this plan.
 
-- [ ] **Step 1: Stage exact owned files**
+- [x] **Step 1: Stage exact owned files**
 
 Stage:
 
@@ -170,7 +170,7 @@ git add -- \
   docs/superpowers/plans/2026-07-09-social-readiness-web-panel.md
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 Run:
 
@@ -178,7 +178,7 @@ Run:
 git commit -m "feat: add social readiness review panel"
 ```
 
-- [ ] **Step 3: Push and observe PR**
+- [x] **Step 3: Push and observe PR**
 
 Run:
 
