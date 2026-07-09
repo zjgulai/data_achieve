@@ -190,7 +190,7 @@ git add -- \
   docs/superpowers/plans/2026-07-09-social-preview-chain-web-panel.md
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 Run:
 
@@ -198,7 +198,7 @@ Run:
 git commit -m "feat: add social preview chain panel"
 ```
 
-- [ ] **Step 3: Push and observe PR**
+- [x] **Step 3: Push and observe PR**
 
 Run:
 
