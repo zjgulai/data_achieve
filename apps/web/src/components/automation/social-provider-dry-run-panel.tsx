@@ -15,6 +15,7 @@ import { useMemo, useState } from "react";
 import {
   checkSocialProviderReadiness,
   getSocialProviderCatalog,
+  previewSocialProviderAdapterPlan,
   previewSocialDataset,
   previewSocialProviderSourceTemplate,
   previewSocialTaskRunApprovalTemplate,
@@ -35,6 +36,7 @@ import {
 import type {
   SocialDatasetPreview,
   SocialExecutionDryRun,
+  SocialProviderAdapterPlan,
   SocialProviderCatalogItem,
   SocialProviderPlatform,
   SocialProviderReadiness,
@@ -60,6 +62,7 @@ export function SocialProviderDryRunPanel() {
   );
   const [catalogProvider, setCatalogProvider] = useState<SocialProviderCatalogItem | null>(null);
   const [readiness, setReadiness] = useState<SocialProviderReadiness | null>(null);
+  const [adapterPlan, setAdapterPlan] = useState<SocialProviderAdapterPlan | null>(null);
   const [datasetPreview, setDatasetPreview] = useState<SocialDatasetPreview | null>(null);
   const [sourceTemplate, setSourceTemplate] = useState<SocialProviderSourceTemplate | null>(null);
   const [approvalTemplate, setApprovalTemplate] = useState<SocialTaskRunApprovalTemplate | null>(
@@ -108,6 +111,22 @@ export function SocialProviderDryRunPanel() {
       ["auth_mode", catalogProvider.authMode],
     ];
   }, [catalogProvider]);
+  const adapterPlanFacts = useMemo(() => {
+    if (!adapterPlan) {
+      return [];
+    }
+    return [
+      ["provider_id", adapterPlan.providerId],
+      ["sdk_package", adapterPlan.sdkSelection?.package ?? "none"],
+      ["dependency_present", String(adapterPlan.dependencyPresent)],
+      ["adapter_ready", String(adapterPlan.adapterReady)],
+      ["fixture_replay_supported", String(adapterPlan.fixtureReplaySupported)],
+      ["live_client_created", String(adapterPlan.liveClientCreated)],
+      ["provider_call_attempted", String(adapterPlan.providerCallAttempted)],
+      ["credential_read_attempted", String(adapterPlan.credentialReadAttempted)],
+      ["production_write_allowed", String(adapterPlan.productionWriteAllowed)],
+    ];
+  }, [adapterPlan]);
   const datasetGateFacts = useMemo(() => {
     if (!datasetPreview) {
       return [];
@@ -167,6 +186,13 @@ export function SocialProviderDryRunPanel() {
         endpoints: [endpoint],
       });
       setReadiness(nextReadiness);
+      const nextAdapterPlan = await previewSocialProviderAdapterPlan({
+        platform,
+        endpoints: [endpoint],
+        fixtureLimit: safeFixtureLimit,
+        maxRequests: 5,
+      });
+      setAdapterPlan(nextAdapterPlan);
       const nextDatasetPreview = await previewSocialDataset({
         platform,
         endpoint,
@@ -221,6 +247,7 @@ export function SocialProviderDryRunPanel() {
     setEndpoint(getDefaultEndpointForPlatform(nextPlatform));
     setCatalogProvider(null);
     setReadiness(null);
+    setAdapterPlan(null);
     setDatasetPreview(null);
     setSourceTemplate(null);
     setApprovalTemplate(null);
@@ -236,19 +263,19 @@ export function SocialProviderDryRunPanel() {
       subtitle="Overseas official API fixture-only execution review"
       title="海外社媒采集预案"
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <form
-          className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3"
+          className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3"
           onSubmit={(event) => {
             event.preventDefault();
             void submitDryRun();
           }}
         >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#3B2924]">
               <span>平台</span>
               <select
-                className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                className="h-11 w-full min-w-0 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
                 onChange={(event) => {
                   selectPlatform(event.target.value as SocialProviderPlatform);
                 }}
@@ -262,10 +289,10 @@ export function SocialProviderDryRunPanel() {
               </select>
             </label>
 
-            <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#3B2924]">
               <span>Endpoint</span>
               <select
-                className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+                className="h-11 w-full min-w-0 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
                 onChange={(event) => setEndpoint(event.target.value)}
                 value={endpoint}
               >
@@ -278,10 +305,10 @@ export function SocialProviderDryRunPanel() {
             </label>
           </div>
 
-          <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#3B2924]">
             <span>Fixture limit</span>
             <input
-              className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+              className="h-11 w-full min-w-0 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
               max={10}
               min={1}
               onChange={(event) => setFixtureLimit(event.target.value)}
@@ -290,10 +317,10 @@ export function SocialProviderDryRunPanel() {
             />
           </label>
 
-          <label className="grid gap-2 text-sm font-semibold text-[#3B2924]">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-[#3B2924]">
             <span>Credential reference</span>
             <input
-              className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
+              className="h-11 w-full min-w-0 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
               onChange={(event) => setCredentialReference(event.target.value)}
               value={credentialReference}
             />
@@ -309,7 +336,7 @@ export function SocialProviderDryRunPanel() {
           </button>
         </form>
 
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           {error ? (
             <div className="rounded-xl border border-[#FFD0C8] bg-[#FFF1EC] p-3 text-sm font-semibold text-[#B85F4F]">
               {error}
@@ -318,26 +345,26 @@ export function SocialProviderDryRunPanel() {
 
           {result ? (
             <>
-              <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+              <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[#2E201C]">Readiness Review</p>
                   <WorkbenchTag tone={readiness?.ready ? "green" : "amber"}>
                     {readiness?.dryRun ? "dry_run=true" : "dry_run=pending"}
                   </WorkbenchTag>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {readinessFacts.map(([label, value]) => (
                     <WorkbenchFact key={label} label={label} value={value} />
                   ))}
                 </div>
               </div>
 
-              <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
+              <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[#2E201C]">Catalog Boundary</p>
                   <WorkbenchTag tone="neutral">provider_call=false</WorkbenchTag>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {catalogFacts.map(([label, value]) => (
                     <WorkbenchFact key={label} label={label} value={value} />
                   ))}
@@ -353,8 +380,48 @@ export function SocialProviderDryRunPanel() {
                 ) : null}
               </div>
 
+              {adapterPlan ? (
+                <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="break-words text-sm font-semibold text-[#2E201C]">
+                      Adapter Plan Gate
+                    </p>
+                    <WorkbenchTag tone="neutral">live_client_created=false</WorkbenchTag>
+                  </div>
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {adapterPlanFacts.map(([label, value]) => (
+                      <WorkbenchFact key={label} label={label} value={value} />
+                    ))}
+                  </div>
+                  {adapterPlan.adapterModule ? (
+                    <p className="break-all text-xs font-semibold text-[#7A625A]">
+                      {adapterPlan.adapterModule}
+                    </p>
+                  ) : null}
+                  <div className="grid min-w-0 gap-2">
+                    {adapterPlan.plannedOperations.slice(0, 3).map((operation, index) => (
+                      <div
+                        className="grid min-w-0 gap-2 rounded-lg bg-white px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px]"
+                        key={`${operation.endpoint}-${index}`}
+                      >
+                        <p className="break-words text-sm font-semibold text-[#3B2924]">
+                          {operation.operation || "fixture_replay"}
+                        </p>
+                        <p className="break-words text-sm text-[#7A625A]">
+                          {operation.endpoint || "unknown endpoint"}
+                        </p>
+                        <p className="text-xs font-semibold text-[#B47767]">
+                          {operation.mode || "fixture"} / provider_call=
+                          {String(operation.providerCall)} / limit={operation.fixtureLimit}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {datasetPreview ? (
-                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="break-words text-sm font-semibold text-[#2E201C]">
                       Dataset Preview Gate
@@ -364,12 +431,12 @@ export function SocialProviderDryRunPanel() {
                   <p className="break-words text-sm font-semibold text-[#3B2924]">
                     {datasetPreview.datasetName}
                   </p>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-4">
                     {datasetGateFacts.map(([label, value]) => (
                       <WorkbenchFact key={label} label={label} value={value} />
                     ))}
                   </div>
-                  <div className="grid gap-2">
+                  <div className="grid min-w-0 gap-2">
                     {datasetPreview.rows.slice(0, 3).map((row) => (
                       <div className="rounded-lg bg-white px-3 py-2" key={row.rowId}>
                         <p className="break-words text-sm font-semibold text-[#3B2924]">
@@ -385,14 +452,14 @@ export function SocialProviderDryRunPanel() {
               ) : null}
 
               {sourceTemplate ? (
-                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
+                <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="break-words text-sm font-semibold text-[#2E201C]">
                       Source Template Gate
                     </p>
                     <WorkbenchTag tone="neutral">source_created=false</WorkbenchTag>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {sourceTemplateFacts.map(([label, value]) => (
                       <WorkbenchFact key={label} label={label} value={value} />
                     ))}
@@ -410,14 +477,14 @@ export function SocialProviderDryRunPanel() {
               ) : null}
 
               {approvalTemplate ? (
-                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="break-words text-sm font-semibold text-[#2E201C]">
                       L4 Approval Packet Gate
                     </p>
                     <WorkbenchTag tone="amber">review_only</WorkbenchTag>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {approvalTemplateFacts.map(([label, value]) => (
                       <WorkbenchFact key={label} label={label} value={value} />
                     ))}
@@ -432,7 +499,7 @@ export function SocialProviderDryRunPanel() {
                 </div>
               ) : null}
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-3">
                 <WorkbenchMetricPill
                   icon={ClipboardCheck}
                   label="阶段"
@@ -453,16 +520,16 @@ export function SocialProviderDryRunPanel() {
                 />
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {sideEffectFacts.map(([label, value]) => (
                   <WorkbenchFact key={label} label={label} value={value} />
                 ))}
               </div>
 
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 {result.executionPlan.map((stage) => (
                   <div
-                    className="grid gap-2 rounded-xl border border-[#F0E1D9] bg-white px-3 py-2 sm:grid-cols-[160px_96px_minmax(0,1fr)] sm:items-center"
+                    className="grid min-w-0 gap-2 rounded-xl border border-[#F0E1D9] bg-white px-3 py-2 sm:grid-cols-[160px_96px_minmax(0,1fr)] sm:items-center"
                     key={stage.stage}
                   >
                     <span className="text-sm font-semibold text-[#2E201C]">
@@ -492,7 +559,7 @@ export function SocialProviderDryRunPanel() {
                 ))}
               </div>
 
-              <div className="grid gap-2 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+              <div className="grid min-w-0 gap-2 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[#2E201C]">
                     {result.datasetPreview.datasetName}

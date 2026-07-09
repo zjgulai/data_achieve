@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSocialProviderAdapterPlanRequestBody,
   buildSocialDatasetPreviewRequestBody,
   buildSocialProviderReadinessRequestBody,
   buildSocialProviderSourceTemplateRequestBody,
   buildSocialTaskRunApprovalTemplateRequestBody,
   buildSocialExecutionDryRunRequestBody,
+  mapSocialProviderAdapterPlanResponse,
   mapSocialDatasetPreviewResponse,
   mapSocialProviderCatalogResponse,
   mapSocialProviderReadinessResponse,
@@ -87,6 +89,43 @@ const readinessResponse = {
   provider_call_allowed: false,
   provider_call_attempted: false,
   dry_run: true,
+} as const;
+
+const adapterPlanResponse = {
+  schema_version: "social_provider_adapter_plan.v1",
+  platform: "youtube",
+  provider_id: "youtube.v3",
+  sdk_selection: {
+    package: "google-api-python-client",
+    import_name: "googleapiclient",
+    source_url: "https://github.com/googleapis/google-api-python-client",
+    status: "selected",
+    reason: "Official Google discovery-based API client after gate approval.",
+  },
+  adapter_module: "data_intelligence_hub.social_api.youtube.google_api_client",
+  dependency_present: false,
+  dependency_import_name: "googleapiclient",
+  adapter_ready: true,
+  provider_call_allowed: false,
+  provider_call_attempted: false,
+  credential_read_attempted: false,
+  live_client_created: false,
+  production_write_allowed: false,
+  fixture_replay_supported: true,
+  planned_operations: [
+    {
+      operation: "fixture_replay",
+      endpoint: "videos.list",
+      mode: "fixture",
+      provider_call: false,
+      credential_read: false,
+      production_write: false,
+      live_client_created: false,
+      fixture_limit: 2,
+    },
+  ],
+  blocked_reasons: ["dependency_not_installed:google-api-python-client"],
+  next_required_authorization: "L4_social_provider_live_adapter_authorization_required",
 } as const;
 
 const datasetPreviewResponse = {
@@ -417,6 +456,23 @@ describe("social provider catalog and readiness mappers", () => {
   });
 });
 
+describe("social provider adapter plan mapper", () => {
+  it("maps adapter plan metadata without creating live clients", () => {
+    const mapped = mapSocialProviderAdapterPlanResponse(adapterPlanResponse);
+
+    expect(mapped.schemaVersion).toBe("social_provider_adapter_plan.v1");
+    expect(mapped.providerId).toBe("youtube.v3");
+    expect(mapped.sdkSelection?.package).toBe("google-api-python-client");
+    expect(mapped.dependencyPresent).toBe(false);
+    expect(mapped.adapterReady).toBe(true);
+    expect(mapped.fixtureReplaySupported).toBe(true);
+    expect(mapped.providerCallAttempted).toBe(false);
+    expect(mapped.credentialReadAttempted).toBe(false);
+    expect(mapped.liveClientCreated).toBe(false);
+    expect(mapped.plannedOperations[0]?.providerCall).toBe(false);
+  });
+});
+
 describe("social preview chain mappers", () => {
   it("maps dataset preview rows without upgrading write evidence", () => {
     const mapped = mapSocialDatasetPreviewResponse(datasetPreviewResponse);
@@ -514,6 +570,22 @@ describe("social preview chain request builders", () => {
     expect(body.max_cost_usd).toBe(0);
     expect(body.retention_hours).toBe(24);
     expect(body.cleanup_policy).toBe("cleanup_after_evidence");
+  });
+});
+
+describe("buildSocialProviderAdapterPlanRequestBody", () => {
+  it("keeps adapter planning fixture-only and credential-free", () => {
+    const body = buildSocialProviderAdapterPlanRequestBody({
+      platform: "youtube",
+      endpoints: ["videos.list"],
+      fixtureLimit: 2,
+    });
+
+    expect(body.platform).toBe("youtube");
+    expect(body.endpoints).toEqual(["videos.list"]);
+    expect(body.authorized).toBe(false);
+    expect(body.fixture_limit).toBe(2);
+    expect(body.credential_reference).toBeUndefined();
   });
 });
 

@@ -86,6 +86,13 @@ export type SocialProviderReadinessInput = {
   endpoints: string[];
 };
 
+export type SocialProviderAdapterPlanInput = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  fixtureLimit?: number;
+  maxRequests?: number;
+};
+
 export type SocialDatasetPreviewInput = {
   platform: SocialProviderPlatform;
   endpoint: string;
@@ -125,6 +132,16 @@ export type SocialProviderReadinessRequestDto = {
     allow_login_state_collection: false;
     max_retention_hours: 24;
   };
+};
+
+export type SocialProviderAdapterPlanRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  mode: "fixture_replay";
+  authorized: false;
+  credential_reference?: undefined;
+  max_requests: number;
+  fixture_limit: number;
 };
 
 export type SocialDatasetPreviewRequestDto = {
@@ -193,6 +210,38 @@ export type SocialProviderRateLimitProfileDto = {
   budget_status: string;
   effective_limits: Record<string, unknown>;
   estimated_cost_usd: number | null;
+};
+
+export type SocialProviderPlannedOperationDto = {
+  operation?: string;
+  endpoint?: string;
+  mode?: string;
+  provider_call?: boolean;
+  credential_read?: boolean;
+  production_write?: boolean;
+  live_client_created?: boolean;
+  fixture_limit?: number;
+};
+
+export type SocialProviderAdapterPlanResponseDto = {
+  schema_version: "social_provider_adapter_plan.v1";
+  platform: string;
+  provider_id: string;
+  sdk_selection: SocialProviderSdkSelectionDto | null;
+  adapter_module: string | null;
+  dependency_present: boolean;
+  dependency_import_name: string | null;
+  adapter_ready: boolean;
+  provider_call_allowed: boolean;
+  provider_call_attempted: boolean;
+  credential_read_attempted: boolean;
+  live_client_created: boolean;
+  production_write_allowed: boolean;
+  fixture_replay_supported: boolean;
+  planned_operations: SocialProviderPlannedOperationDto[];
+  blocked_reasons: string[];
+  next_required_authorization: string;
+  checked_at?: string;
 };
 
 export type SocialDatasetPreviewResponseDto = {
@@ -323,6 +372,37 @@ export type SocialProviderRateLimitProfile = {
   budgetStatus: string;
   effectiveLimits: Record<string, unknown>;
   estimatedCostUsd: number | null;
+};
+
+export type SocialProviderPlannedOperation = {
+  operation: string;
+  endpoint: string;
+  mode: string;
+  providerCall: boolean;
+  credentialRead: boolean;
+  productionWrite: boolean;
+  liveClientCreated: boolean;
+  fixtureLimit: number;
+};
+
+export type SocialProviderAdapterPlan = {
+  schemaVersion: "social_provider_adapter_plan.v1";
+  platform: string;
+  providerId: string;
+  sdkSelection: SocialProviderSdkSelection | null;
+  adapterModule: string | null;
+  dependencyPresent: boolean;
+  dependencyImportName: string | null;
+  adapterReady: boolean;
+  providerCallAllowed: boolean;
+  providerCallAttempted: boolean;
+  credentialReadAttempted: boolean;
+  liveClientCreated: boolean;
+  productionWriteAllowed: boolean;
+  fixtureReplaySupported: boolean;
+  plannedOperations: SocialProviderPlannedOperation[];
+  blockedReasons: string[];
+  nextRequiredAuthorization: string;
 };
 
 export type SocialDatasetPreview = {

@@ -13,11 +13,17 @@ import type {
   SocialExecutionDryRunResponseDto,
   SocialExecutionDryRunStage,
   SocialExecutionDryRunStageDto,
+  SocialProviderAdapterPlan,
+  SocialProviderAdapterPlanInput,
+  SocialProviderAdapterPlanRequestDto,
+  SocialProviderAdapterPlanResponseDto,
   SocialProviderCatalog,
   SocialProviderCatalogItem,
   SocialProviderCatalogItemDto,
   SocialProviderCatalogResponseDto,
   SocialProviderPlatform,
+  SocialProviderPlannedOperation,
+  SocialProviderPlannedOperationDto,
   SocialProviderReadiness,
   SocialProviderReadinessInput,
   SocialProviderReadinessRequestDto,
@@ -63,6 +69,23 @@ export async function checkSocialProviderReadiness(
     },
   );
   return mapSocialProviderReadinessResponse(response);
+}
+
+export async function previewSocialProviderAdapterPlan(
+  input: SocialProviderAdapterPlanInput,
+): Promise<SocialProviderAdapterPlan> {
+  if (mockApiEnabled) {
+    return mapSocialProviderAdapterPlanResponse(mockSocialProviderAdapterPlanResponse(input));
+  }
+
+  const response = await apiFetch<SocialProviderAdapterPlanResponseDto>(
+    "/api/automation/social-provider-adapter-plan",
+    {
+      body: JSON.stringify(buildSocialProviderAdapterPlanRequestBody(input)),
+      method: "POST",
+    },
+  );
+  return mapSocialProviderAdapterPlanResponse(response);
 }
 
 export async function previewSocialDataset(
@@ -153,6 +176,19 @@ export function buildSocialProviderReadinessRequestBody(
   };
 }
 
+export function buildSocialProviderAdapterPlanRequestBody(
+  input: SocialProviderAdapterPlanInput,
+): SocialProviderAdapterPlanRequestDto {
+  return {
+    platform: input.platform,
+    endpoints: input.endpoints,
+    mode: "fixture_replay",
+    authorized: false,
+    max_requests: input.maxRequests ?? 5,
+    fixture_limit: input.fixtureLimit ?? 3,
+  };
+}
+
 export function buildSocialDatasetPreviewRequestBody(
   input: SocialDatasetPreviewInput,
 ): SocialDatasetPreviewRequestDto {
@@ -231,6 +267,30 @@ export function buildSocialExecutionDryRunRequestBody(
     retention_hours: 24,
     author_policy: "hashed",
     cleanup_policy: "cleanup_after_evidence",
+  };
+}
+
+export function mapSocialProviderAdapterPlanResponse(
+  response: SocialProviderAdapterPlanResponseDto,
+): SocialProviderAdapterPlan {
+  return {
+    schemaVersion: response.schema_version,
+    platform: response.platform,
+    providerId: response.provider_id,
+    sdkSelection: response.sdk_selection ? mapSdkSelection(response.sdk_selection) : null,
+    adapterModule: response.adapter_module,
+    dependencyPresent: response.dependency_present,
+    dependencyImportName: response.dependency_import_name,
+    adapterReady: response.adapter_ready,
+    providerCallAllowed: response.provider_call_allowed,
+    providerCallAttempted: response.provider_call_attempted,
+    credentialReadAttempted: response.credential_read_attempted,
+    liveClientCreated: response.live_client_created,
+    productionWriteAllowed: response.production_write_allowed,
+    fixtureReplaySupported: response.fixture_replay_supported,
+    plannedOperations: response.planned_operations.map(mapPlannedOperation),
+    blockedReasons: response.blocked_reasons,
+    nextRequiredAuthorization: response.next_required_authorization,
   };
 }
 
@@ -462,8 +522,27 @@ function mapDatasetRow(row: SocialDatasetPreviewRowDto): SocialDatasetPreviewRow
   };
 }
 
+function mapPlannedOperation(
+  operation: SocialProviderPlannedOperationDto,
+): SocialProviderPlannedOperation {
+  return {
+    operation: stringValue(operation.operation),
+    endpoint: stringValue(operation.endpoint),
+    mode: stringValue(operation.mode),
+    providerCall: booleanValue(operation.provider_call),
+    credentialRead: booleanValue(operation.credential_read),
+    productionWrite: booleanValue(operation.production_write),
+    liveClientCreated: booleanValue(operation.live_client_created),
+    fixtureLimit: numberValue(operation.fixture_limit),
+  };
+}
+
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown): number {
+  return typeof value === "number" ? value : 0;
 }
 
 function booleanValue(value: unknown): boolean {
@@ -537,6 +616,44 @@ function mockSocialProviderReadinessResponse(
     provider_call_allowed: false,
     provider_call_attempted: false,
     dry_run: true,
+  };
+}
+
+function mockSocialProviderAdapterPlanResponse(
+  input: SocialProviderAdapterPlanInput,
+): SocialProviderAdapterPlanResponseDto {
+  const catalogItem = mockCatalogItem(input.platform);
+  const fixtureLimit = input.fixtureLimit ?? 3;
+  const dependencyImportName = catalogItem.sdk_selection?.import_name ?? null;
+  return {
+    schema_version: "social_provider_adapter_plan.v1",
+    platform: input.platform,
+    provider_id: catalogItem.provider_id,
+    sdk_selection: catalogItem.sdk_selection,
+    adapter_module: adapterModuleForPlatform(input.platform),
+    dependency_present: false,
+    dependency_import_name: dependencyImportName,
+    adapter_ready: Boolean(catalogItem.sdk_selection),
+    provider_call_allowed: false,
+    provider_call_attempted: false,
+    credential_read_attempted: false,
+    live_client_created: false,
+    production_write_allowed: false,
+    fixture_replay_supported: true,
+    planned_operations: input.endpoints.map((endpoint) => ({
+      operation: "fixture_replay",
+      endpoint,
+      mode: "fixture",
+      provider_call: false,
+      credential_read: false,
+      production_write: false,
+      live_client_created: false,
+      fixture_limit: fixtureLimit,
+    })),
+    blocked_reasons: catalogItem.sdk_selection
+      ? [`dependency_not_installed:${catalogItem.sdk_selection.package}`]
+      : ["adapter_metadata_missing"],
+    next_required_authorization: "L4_social_provider_live_adapter_authorization_required",
   };
 }
 
@@ -812,6 +929,16 @@ function mockStage(
     production_write: false,
     details,
   };
+}
+
+function adapterModuleForPlatform(platform: SocialProviderPlatform): string | null {
+  if (platform === "youtube") {
+    return "data_intelligence_hub.social_api.youtube.google_api_client";
+  }
+  if (platform === "reddit") {
+    return "data_intelligence_hub.social_api.reddit.asyncpraw";
+  }
+  return null;
 }
 
 const mockProviderMetadata: Record<
