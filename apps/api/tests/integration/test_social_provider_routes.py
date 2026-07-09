@@ -391,6 +391,43 @@ async def test_social_dataset_preview_route_returns_no_write_rows(
 
 
 @pytest.mark.asyncio
+async def test_social_task_run_approval_template_route_returns_packet(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+
+    response = await client.post(
+        "/api/automation/social-task-run-approval-template",
+        json={
+            "platform": "reddit",
+            "endpoints": ["comments.new"],
+            "intended_use": "small scoped Reddit comments VOC fixture run",
+            "credential_reference": "secret:reddit-oauth-readonly",
+            "source_name": "Reddit comments fixture source",
+            "task_name": "Reddit comments fixture task",
+            "dataset_name": "Reddit comments VOC fixture",
+        },
+    )
+    assert response.status_code == 200
+
+    payload = response.json()
+    assert payload["schema_version"] == "social_task_run_approval_template.v1"
+    assert payload["provider_call_allowed"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["source_create_allowed"] is False
+    assert payload["task_create_allowed"] is False
+    assert payload["task_run_allowed"] is False
+    assert payload["dataset_write_allowed"] is False
+    assert payload["export_allowed"] is False
+    assert payload["production_write_allowed"] is False
+    assert payload["approval_packet"]["schema_version"] == "social_task_run_l4_approval_packet.v1"
+    assert payload["approval_packet"]["provider_call"] is False
+    assert payload["approval_packet"]["scope"]["endpoints"] == ["comments.new"]
+    assert "confirm_no_provider_call_without_live_gate" in payload["required_confirmations"]
+
+
+@pytest.mark.asyncio
 async def test_social_provider_readiness_unknown_platform_returns_404(client: AsyncClient) -> None:
     await register_and_login(client)
 

@@ -36,6 +36,8 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialRawPreviewRecord,
     SocialRawPreviewRequest,
     SocialRawPreviewResponse,
+    SocialTaskRunApprovalTemplateRequest,
+    SocialTaskRunApprovalTemplateResponse,
 )
 from data_intelligence_hub.services.exceptions import (
     SocialProviderCatalogLoadError,
@@ -67,6 +69,21 @@ LIVE_APPROVAL_REQUIRED_CONFIRMATIONS = [
     "retention_hours_set",
     "delete_policy_set",
     "allow_ai_training=false",
+]
+
+TASK_RUN_APPROVAL_REQUIRED_CONFIRMATIONS = [
+    "authorized=true",
+    "approval_id_present",
+    "credential_reference_secret_manager_or_env",
+    "scope_limited_endpoints",
+    "max_requests_and_max_items_set",
+    "max_cost_usd_set",
+    "retention_hours_set",
+    "cleanup_policy_set",
+    "confirm_no_ai_training",
+    "confirm_no_private_messages_or_login_state",
+    "confirm_no_provider_call_without_live_gate",
+    "confirm_source_task_task_run_dataset_scope",
 ]
 
 
@@ -1174,4 +1191,115 @@ def prepare_social_dataset_preview(
         normalized_items=normalization_preview.normalized_items,
         sdk_selection=normalization_preview.sdk_selection,
         next_required_authorization="L4_social_dataset_save_gate_required",
+    )
+
+
+def _default_task_name(provider: SocialProviderCatalogItem, endpoints: list[str]) -> str:
+    endpoint_label = ",".join(endpoints[:3])
+    return f"{provider.platform} social fixture task: {endpoint_label}"
+
+
+def _default_approval_dataset_name(
+    provider: SocialProviderCatalogItem, endpoints: list[str]
+) -> str:
+    endpoint_label = ",".join(endpoints[:3])
+    return f"{provider.platform} social VOC fixture dataset: {endpoint_label}"
+
+
+def prepare_social_task_run_approval_template(
+    payload: SocialTaskRunApprovalTemplateRequest,
+) -> SocialTaskRunApprovalTemplateResponse:
+    provider = _find_provider(_normalize_platform(payload.platform), payload.provider_id)
+    normalized_endpoints = [endpoint.strip() for endpoint in payload.endpoints if endpoint.strip()]
+    missing_scope = _missing_endpoints(provider, normalized_endpoints)
+
+    blocked_reasons = _as_blocker_reasons("scope", missing_scope)
+    if payload.credential_reference is None or not payload.credential_reference.strip():
+        blocked_reasons.append("credential_reference_required_before_task_run")
+    if payload.authorized:
+        blocked_reasons.append("authorized_recorded_but_not_executed")
+    if payload.allow_ai_training:
+        blocked_reasons.append("allow_ai_training_must_be_false")
+    if payload.dataset_save_requested:
+        blocked_reasons.append("dataset_save_requires_separate_l4_authorization")
+    if payload.export_requested:
+        blocked_reasons.append("dataset_export_requires_separate_l4_authorization")
+
+    source_name = (
+        payload.source_name.strip()
+        if payload.source_name is not None and payload.source_name.strip()
+        else _default_source_name(provider, normalized_endpoints)
+    )
+    task_name = (
+        payload.task_name.strip()
+        if payload.task_name is not None and payload.task_name.strip()
+        else _default_task_name(provider, normalized_endpoints)
+    )
+    dataset_name = (
+        payload.dataset_name.strip()
+        if payload.dataset_name is not None and payload.dataset_name.strip()
+        else _default_approval_dataset_name(provider, normalized_endpoints)
+    )
+
+    approval_packet = {
+        "schema_version": "social_task_run_l4_approval_packet.v1",
+        "authorized": False,
+        "requested_authorized": payload.authorized,
+        "approval_id": payload.approval_id,
+        "platform": provider.platform,
+        "provider_id": provider.provider_id,
+        "intended_use": payload.intended_use.strip(),
+        "credential_reference": payload.credential_reference,
+        "scope": {
+            "endpoints": normalized_endpoints,
+            "blocked_actions": provider.blocked_actions,
+            "policy_flags": provider.policy_flags,
+        },
+        "source": {
+            "name": source_name,
+            "type": "manual_json",
+            "create": False,
+        },
+        "task": {
+            "name": task_name,
+            "create": False,
+            "run": False,
+        },
+        "dataset": {
+            "name": dataset_name,
+            "type": "social_voc_fixture_preview",
+            "schema_version": "social_voc_dataset.v1",
+            "save": False,
+        },
+        "budget": {
+            "max_requests": payload.max_requests,
+            "max_items": payload.max_items,
+            "max_rows": payload.max_rows,
+            "max_cost_usd": payload.max_cost_usd,
+        },
+        "retention": {
+            "retention_hours": payload.retention_hours,
+            "cleanup_policy": payload.cleanup_policy,
+        },
+        "requested_dataset_save": payload.dataset_save_requested,
+        "requested_export": payload.export_requested,
+        "allow_ai_training": payload.allow_ai_training,
+        "provider_call": False,
+        "source_create": False,
+        "task_create": False,
+        "task_run": False,
+        "dataset_save": False,
+        "export_create": False,
+        "cleanup_required": True,
+        "production_write": False,
+    }
+
+    return SocialTaskRunApprovalTemplateResponse(
+        platform=provider.platform,
+        provider_id=provider.provider_id,
+        sdk_selection=provider.sdk_selection,
+        approval_packet=approval_packet,
+        required_confirmations=TASK_RUN_APPROVAL_REQUIRED_CONFIRMATIONS,
+        blocked_reasons=blocked_reasons,
+        next_required_authorization="L4_social_task_run_authorization_required",
     )

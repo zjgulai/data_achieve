@@ -12,6 +12,7 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderReadinessRequest,
     SocialProviderSourceTemplateRequest,
     SocialRawPreviewRequest,
+    SocialTaskRunApprovalTemplateRequest,
 )
 from data_intelligence_hub.services.exceptions import (
     SocialProviderGateAuthorizationError,
@@ -28,6 +29,7 @@ from data_intelligence_hub.services.social_provider import (
     prepare_social_provider_readiness,
     prepare_social_provider_source_template,
     prepare_social_raw_preview,
+    prepare_social_task_run_approval_template,
 )
 
 
@@ -548,6 +550,105 @@ def test_social_dataset_preview_blocks_save_export_live_and_retained_author() ->
     assert "dataset_export_requires_separate_l4_authorization" in preview.blocked_reasons
     assert "author_retention_requires_separate_l4_authorization" in preview.blocked_reasons
     assert {row.author_policy for row in preview.rows} == {"hashed"}
+
+
+def test_social_task_run_approval_template_reddit_packet_no_write() -> None:
+    template = prepare_social_task_run_approval_template(
+        SocialTaskRunApprovalTemplateRequest(
+            platform="reddit",
+            endpoints=["comments.new"],
+            intended_use="small scoped Reddit comments VOC fixture run",
+            source_name="Reddit comments fixture source",
+            task_name="Reddit comments fixture task",
+            dataset_name="Reddit comments VOC fixture",
+            credential_reference="secret:reddit-oauth-readonly",
+            max_requests=5,
+            max_items=20,
+            max_rows=20,
+            max_cost_usd=0,
+        ),
+    )
+
+    assert template.schema_version == "social_task_run_approval_template.v1"
+    assert template.platform == "reddit"
+    assert template.provider_id == "reddit.praw"
+    assert template.provider_call_allowed is False
+    assert template.provider_call_attempted is False
+    assert template.credential_read_attempted is False
+    assert template.source_create_allowed is False
+    assert template.task_create_allowed is False
+    assert template.task_run_allowed is False
+    assert template.dataset_write_allowed is False
+    assert template.export_allowed is False
+    assert template.production_write_allowed is False
+    assert template.blocked_reasons == []
+    packet = template.approval_packet
+    assert packet["schema_version"] == "social_task_run_l4_approval_packet.v1"
+    assert packet["authorized"] is False
+    assert packet["provider_call"] is False
+    assert packet["source_create"] is False
+    assert packet["task_create"] is False
+    assert packet["task_run"] is False
+    assert packet["dataset_save"] is False
+    assert packet["export_create"] is False
+    assert packet["cleanup_required"] is True
+    assert packet["credential_reference"] == "secret:reddit-oauth-readonly"
+    assert packet["scope"]["endpoints"] == ["comments.new"]
+    assert packet["budget"]["max_requests"] == 5
+    assert packet["dataset"]["name"] == "Reddit comments VOC fixture"
+    assert "confirm_no_ai_training" in template.required_confirmations
+    assert template.next_required_authorization == "L4_social_task_run_authorization_required"
+
+
+def test_social_task_run_approval_template_blocks_unknown_endpoint_and_missing_credential() -> None:
+    template = prepare_social_task_run_approval_template(
+        SocialTaskRunApprovalTemplateRequest(
+            platform="youtube",
+            endpoints=["videos.invalid"],
+            intended_use="small scoped YouTube fixture run",
+        ),
+    )
+
+    assert template.provider_call_allowed is False
+    assert template.provider_call_attempted is False
+    assert template.credential_read_attempted is False
+    assert template.approval_packet["credential_reference"] is None
+    assert "scope_missing:videos.invalid" in template.blocked_reasons
+    assert "credential_reference_required_before_task_run" in template.blocked_reasons
+
+
+def test_social_task_run_approval_template_records_requested_live_fields_without_execution() -> (
+    None
+):
+    template = prepare_social_task_run_approval_template(
+        SocialTaskRunApprovalTemplateRequest(
+            platform="reddit",
+            endpoints=["search"],
+            intended_use="future owner-approved Reddit search run",
+            credential_reference="env:REDDIT_READONLY_OAUTH",
+            authorized=True,
+            approval_id="approval-recorded-only",
+            allow_ai_training=True,
+            dataset_save_requested=True,
+            export_requested=True,
+        ),
+    )
+
+    assert template.provider_call_allowed is False
+    assert template.provider_call_attempted is False
+    assert template.source_create_allowed is False
+    assert template.task_run_allowed is False
+    assert template.dataset_write_allowed is False
+    assert template.export_allowed is False
+    assert template.approval_packet["authorized"] is False
+    assert template.approval_packet["requested_authorized"] is True
+    assert template.approval_packet["approval_id"] == "approval-recorded-only"
+    assert template.approval_packet["requested_dataset_save"] is True
+    assert template.approval_packet["requested_export"] is True
+    assert "authorized_recorded_but_not_executed" in template.blocked_reasons
+    assert "allow_ai_training_must_be_false" in template.blocked_reasons
+    assert "dataset_save_requires_separate_l4_authorization" in template.blocked_reasons
+    assert "dataset_export_requires_separate_l4_authorization" in template.blocked_reasons
 
 
 def test_social_provider_unknown_platform_is_rejected() -> None:

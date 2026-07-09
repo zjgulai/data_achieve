@@ -185,7 +185,50 @@ Expected:
 - `export_created=false`
 - `production_write_allowed=false`
 
-### Step 6: L4 Live Gate Packet
+### Step 6: TaskRun Approval Template
+
+Call template generator:
+
+```http
+POST /api/automation/social-task-run-approval-template
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoints": ["comments.new"],
+  "intended_use": "small scoped Reddit comments VOC fixture run",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "dataset_name": "Reddit comments VOC fixture",
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "allow_ai_training": false
+}
+```
+
+Expected:
+
+- `schema_version=social_task_run_approval_template.v1`
+- `approval_packet.schema_version=social_task_run_l4_approval_packet.v1`
+- approval packet records source, task, task run, dataset, export, budget, retention, and cleanup scope
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+
+This step is still not execution authorization. It prepares a reviewable packet for a later owner-approved L4 request.
+
+### Step 7: L4 Live Gate Packet
 
 Call template generator:
 
@@ -208,7 +251,7 @@ Required fields before any live adapter work:
 
 This packet is not created in the current docs/fixture pass.
 
-### Step 7: Optional Dependency Gate
+### Step 8: Optional Dependency Gate
 
 Call:
 
@@ -226,7 +269,7 @@ Expected:
 - `live_adapter_enabled=false`
 - `production_write_allowed=false`
 
-### Step 8: Fixture Adapter Plan
+### Step 9: Fixture Adapter Plan
 
 Call:
 
@@ -262,7 +305,7 @@ Expected:
 
 `mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
 
-### Step 9: Source Template Preview
+### Step 10: Source Template Preview
 
 Call:
 

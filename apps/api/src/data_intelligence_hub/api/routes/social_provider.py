@@ -25,6 +25,8 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderSourceTemplateResponse,
     SocialRawPreviewRequest,
     SocialRawPreviewResponse,
+    SocialTaskRunApprovalTemplateRequest,
+    SocialTaskRunApprovalTemplateResponse,
 )
 from data_intelligence_hub.services.exceptions import (
     SocialProviderCatalogLoadError,
@@ -42,6 +44,7 @@ from data_intelligence_hub.services.social_provider import (
     prepare_social_provider_readiness,
     prepare_social_provider_source_template,
     prepare_social_raw_preview,
+    prepare_social_task_run_approval_template,
 )
 
 router = APIRouter(tags=["automation"])
@@ -189,5 +192,20 @@ async def prepare_social_dataset_preview_item(
     _ = context
     try:
         return prepare_social_dataset_preview(payload)
+    except SocialProviderUnknownPlatformError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+
+
+@router.post(
+    "/social-task-run-approval-template",
+    response_model=SocialTaskRunApprovalTemplateResponse,
+)
+async def prepare_social_task_run_approval_template_item(
+    payload: SocialTaskRunApprovalTemplateRequest,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> SocialTaskRunApprovalTemplateResponse:
+    _ = context
+    try:
+        return prepare_social_task_run_approval_template(payload)
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc

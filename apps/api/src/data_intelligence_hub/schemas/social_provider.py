@@ -416,3 +416,46 @@ class SocialDatasetPreviewResponse(BaseModel):
     sdk_selection: SocialProviderSdkSelection | None = None
     next_required_authorization: str
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SocialTaskRunApprovalTemplateRequest(BaseModel):
+    platform: str
+    endpoints: list[str] = Field(min_length=1, max_length=40)
+    provider_id: str | None = None
+    intended_use: str = Field(min_length=3, max_length=300)
+    source_name: str | None = Field(default=None, min_length=1, max_length=200)
+    task_name: str | None = Field(default=None, min_length=1, max_length=200)
+    dataset_name: str | None = Field(default=None, min_length=1, max_length=200)
+    credential_reference: str | None = Field(default=None, max_length=200)
+    authorized: bool = False
+    approval_id: str | None = Field(default=None, max_length=120)
+    max_requests: int = Field(default=10, ge=1, le=1000)
+    max_items: int = Field(default=50, ge=1, le=5000)
+    max_rows: int = Field(default=100, ge=1, le=10000)
+    max_cost_usd: float | None = Field(default=0, ge=0)
+    retention_hours: int = Field(default=24, ge=1, le=8760)
+    allow_ai_training: bool = False
+    dataset_save_requested: bool = False
+    export_requested: bool = False
+    cleanup_policy: str = Field(default="cleanup_after_evidence", max_length=200)
+
+
+class SocialTaskRunApprovalTemplateResponse(BaseModel):
+    schema_version: str = "social_task_run_approval_template.v1"
+    platform: str
+    provider_id: str
+    sdk_selection: SocialProviderSdkSelection | None = None
+    approval_packet: dict[str, Any]
+    required_confirmations: list[str]
+    blocked_reasons: list[str]
+    provider_call_allowed: bool = False
+    provider_call_attempted: bool = False
+    credential_read_attempted: bool = False
+    source_create_allowed: bool = False
+    task_create_allowed: bool = False
+    task_run_allowed: bool = False
+    dataset_write_allowed: bool = False
+    export_allowed: bool = False
+    production_write_allowed: bool = False
+    next_required_authorization: str
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

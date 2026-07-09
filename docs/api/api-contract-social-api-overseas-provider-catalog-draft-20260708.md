@@ -546,6 +546,64 @@ Response 不变量：
 - `dataset_export_requires_separate_l4_authorization`
 - `author_retention_requires_separate_l4_authorization`
 
+## 4.8 API 合同补充：`social-task-run-approval-template`
+
+用途：为后续真正创建 Source、Task、TaskRun、DatasetVersion 或 DatasetExportJob 的 L4 执行申请生成审批包。本接口只返回 `social_task_run_l4_approval_packet.v1` 草稿，不创建资源、不启动采集、不读取 credential、不调用 provider。
+
+Request:
+
+```json
+{
+  "platform": "reddit",
+  "provider_id": "reddit.praw",
+  "endpoints": ["comments.new"],
+  "intended_use": "small scoped Reddit comments VOC fixture run",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "dataset_name": "Reddit comments VOC fixture",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "authorized": false,
+  "approval_id": null,
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "max_cost_usd": 0,
+  "retention_hours": 24,
+  "allow_ai_training": false,
+  "dataset_save_requested": false,
+  "export_requested": false,
+  "cleanup_policy": "cleanup_after_evidence"
+}
+```
+
+Response 不变量：
+
+- `schema_version=social_task_run_approval_template.v1`
+- `approval_packet.schema_version=social_task_run_l4_approval_packet.v1`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+- `approval_packet.provider_call=false`
+- `approval_packet.source_create=false`
+- `approval_packet.task_create=false`
+- `approval_packet.task_run=false`
+- `approval_packet.dataset_save=false`
+- `approval_packet.export_create=false`
+
+`authorized=true`、AI 训练、Dataset save 或 export 请求只会被记录为未来申请意图，不会执行，例如：
+
+- `authorized_recorded_but_not_executed`
+- `allow_ai_training_must_be_false`
+- `dataset_save_requires_separate_l4_authorization`
+- `dataset_export_requires_separate_l4_authorization`
+- `credential_reference_required_before_task_run`
+
 ---
 
 ## 5. 验收清单（本批）与失败态
@@ -573,6 +631,7 @@ Response 不变量：
 - source template 可返回 no-write `manual_json` SourceCreate 候选 payload，并保持 `source_created=false` 与 `task_created=false`。
 - normalization preview 可返回 no-write `social_post.v1` / `social_comment.v1` / `social_voc_item.v1` 草稿项，并保持 `normalization_write_allowed=false` 与 `dataset_write_allowed=false`。
 - dataset preview 可返回 no-write `social_voc_dataset.v1` 预览 rows，并保持 `dataset_created=false`、`dataset_version_created=false` 与 `export_created=false`。
+- task run approval template 可返回 no-write L4 execution packet，并保持 `source_create_allowed=false`、`task_run_allowed=false`、`dataset_write_allowed=false` 与 `provider_call_attempted=false`。
 - 计划书输出可直接挂载到运行手册，不触发对外 provider call。
 
 ### 当前不在本批的失败态
