@@ -757,6 +757,22 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("social_comment.v1")).toBeVisible();
     await expect(page.getByText("fixture://youtube.v3/commentThreads.list/1")).toBeVisible();
     await expect(page.getByRole("button", { name: "复制 fixture" })).toBeVisible();
+
+    await page.getByRole("button", { name: "生成本页预案" }).click();
+    await expect(page.getByRole("heading", { name: "Readiness Review" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Adapter Plan Gate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dataset Preview Gate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Source Template Gate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "L4 Approval Packet Gate" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Execution Dry Run" })).toBeVisible();
+    await expect(page.getByText("provider_call_attempted=false").first()).toBeVisible();
+    await expect(page.getByText("credential_read_attempted=false").first()).toBeVisible();
+    await expect(page.getByText("live_client_created=false").first()).toBeVisible();
+    await expect(page.getByText("production_write_allowed=false").first()).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
   });
 
   test("generates and sends a report", async ({ page, request }, testInfo) => {

@@ -1,28 +1,66 @@
 "use client";
 
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   Check,
   Clipboard,
+  ClipboardCheck,
+  Database,
   DatabaseZap,
   FileJson2,
   KeyRound,
   LockKeyhole,
+  Loader2,
   Route as RouteIcon,
   ShieldCheck,
   SlidersHorizontal,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import type { Route } from "next";
-import { WorkbenchFact, WorkbenchPanel, WorkbenchTag } from "@/components/common/workbench-ui";
+import {
+  WorkbenchFact,
+  WorkbenchMetricPill,
+  WorkbenchPanel,
+  WorkbenchTag,
+} from "@/components/common/workbench-ui";
+import { buildApiMarketPreviewChainInputs } from "@/lib/api-market-preview-chain";
+import {
+  checkSocialProviderReadiness,
+  previewSocialDataset,
+  previewSocialProviderAdapterPlan,
+  previewSocialProviderSourceTemplate,
+  previewSocialTaskRunApprovalTemplate,
+  runSocialExecutionDryRun,
+} from "@/lib/api/social-provider";
 import type { ApiMarketEndpoint } from "@/types/api-market";
+import type {
+  SocialDatasetPreview,
+  SocialExecutionDryRun,
+  SocialProviderAdapterPlan,
+  SocialProviderReadiness,
+  SocialProviderSourceTemplate,
+  SocialTaskRunApprovalTemplate,
+} from "@/types/social-provider";
+
+type ApiMarketPreviewChainState = {
+  adapterPlan: SocialProviderAdapterPlan;
+  datasetPreview: SocialDatasetPreview;
+  dryRun: SocialExecutionDryRun;
+  readiness: SocialProviderReadiness;
+  sourceTemplate: SocialProviderSourceTemplate;
+  taskRunApprovalTemplate: SocialTaskRunApprovalTemplate;
+};
 
 export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndpoint }) {
   const [copied, setCopied] = useState(false);
+  const [previewChain, setPreviewChain] = useState<ApiMarketPreviewChainState | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const responsePreview = useMemo(
     () => JSON.stringify(endpoint.responsePreview.sample, null, 2),
     [endpoint.responsePreview.sample],
@@ -38,6 +76,43 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
     await navigator.clipboard.writeText(responsePreview);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
+  }
+
+  async function generatePreviewChain() {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      const inputs = buildApiMarketPreviewChainInputs(endpoint, { fixtureLimit: 2 });
+      const [
+        readiness,
+        adapterPlan,
+        datasetPreview,
+        sourceTemplate,
+        taskRunApprovalTemplate,
+        dryRun,
+      ] = await Promise.all([
+        checkSocialProviderReadiness(inputs.readiness),
+        previewSocialProviderAdapterPlan(inputs.adapterPlan),
+        previewSocialDataset(inputs.datasetPreview),
+        previewSocialProviderSourceTemplate(inputs.sourceTemplate),
+        previewSocialTaskRunApprovalTemplate(inputs.taskRunApprovalTemplate),
+        runSocialExecutionDryRun(inputs.executionDryRun),
+      ]);
+      setPreviewChain({
+        adapterPlan,
+        datasetPreview,
+        dryRun,
+        readiness,
+        sourceTemplate,
+        taskRunApprovalTemplate,
+      });
+    } catch (caught) {
+      setPreviewError(
+        caught instanceof Error ? caught.message : "api market preview chain unavailable",
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
   }
 
   return (
@@ -85,6 +160,50 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
           <WorkbenchTag tone="neutral">{endpoint.executionMode}</WorkbenchTag>
           <WorkbenchTag tone="rose">{endpoint.sdkStatus}</WorkbenchTag>
         </div>
+      </WorkbenchPanel>
+
+      <WorkbenchPanel
+        action={
+          <button
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#C96F5C] px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#D9B3AA]"
+            disabled={previewLoading}
+            onClick={generatePreviewChain}
+            type="button"
+          >
+            {previewLoading ? (
+              <Loader2 className="animate-spin" size={15} aria-hidden="true" />
+            ) : (
+              <ClipboardCheck size={15} aria-hidden="true" />
+            )}
+            生成本页预案
+          </button>
+        }
+        icon={ClipboardCheck}
+        label="Preview Chain"
+        subtitle="复用现有 social-provider fixture endpoints，生成本页 readiness、adapter、dataset、source 和 approval 预览"
+        title="API Market Preview Chain"
+      >
+        {previewError ? (
+          <div className="mb-3 rounded-xl border border-[#FFD0C8] bg-[#FFF1EC] p-3 text-sm font-semibold text-[#B85F4F]">
+            {previewError}
+          </div>
+        ) : null}
+
+        {previewChain ? (
+          <PreviewChainReview chain={previewChain} />
+        ) : (
+          <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-[#E8D4CB] bg-[#FFFDFC] p-5 text-center">
+            <div>
+              <ShieldCheck className="mx-auto text-[#C96F5C]" size={26} aria-hidden="true" />
+              <p className="mt-3 text-sm font-semibold text-[#2E201C]">
+                fixture-only review bundle
+              </p>
+              <p className="mt-1 text-sm text-[#7A625A]">
+                provider_call=false / credential_read=false / production_write=false
+              </p>
+            </div>
+          </div>
+        )}
       </WorkbenchPanel>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -256,6 +375,220 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
   );
 }
 
+function PreviewChainReview({ chain }: { chain: ApiMarketPreviewChainState }) {
+  return (
+    <div className="grid min-w-0 gap-4">
+      <div className="flex flex-wrap gap-2">
+        <WorkbenchTag tone="neutral">
+          provider_call_attempted={String(chain.dryRun.providerCallAttempted)}
+        </WorkbenchTag>
+        <WorkbenchTag tone="neutral">
+          credential_read_attempted={String(chain.dryRun.credentialReadAttempted)}
+        </WorkbenchTag>
+        <WorkbenchTag tone="neutral">
+          live_client_created={String(chain.adapterPlan.liveClientCreated)}
+        </WorkbenchTag>
+        <WorkbenchTag tone="neutral">
+          production_write_allowed={String(chain.dryRun.productionWriteAllowed)}
+        </WorkbenchTag>
+      </div>
+
+      <div className="grid min-w-0 gap-3 sm:grid-cols-3">
+        <WorkbenchMetricPill
+          icon={ClipboardCheck}
+          label="阶段"
+          value={String(chain.dryRun.executionPlan.length)}
+          valueSize="large"
+        />
+        <WorkbenchMetricPill
+          icon={Database}
+          label="预览行"
+          value={String(chain.datasetPreview.rowCount)}
+          valueSize="large"
+        />
+        <WorkbenchMetricPill
+          icon={AlertTriangle}
+          label="阻断项"
+          value={String(chain.dryRun.blockedReasons.length)}
+          valueSize="large"
+        />
+      </div>
+
+      <PreviewCard tag="dry_run=true" title="Readiness Review">
+        <FactGrid
+          facts={[
+            ["readiness", String(chain.readiness.ready)],
+            ["provider_id", chain.readiness.providerId],
+            ["provider_call_allowed", String(chain.readiness.providerCallAllowed)],
+            ["provider_call_attempted", String(chain.readiness.providerCallAttempted)],
+            ["missing_credentials", joinOrNone(chain.readiness.missingCredentials)],
+            ["missing_scope", joinOrNone(chain.readiness.missingScope)],
+          ]}
+        />
+      </PreviewCard>
+
+      <PreviewCard tag="live_client_created=false" title="Adapter Plan Gate">
+        <FactGrid
+          facts={[
+            ["provider_id", chain.adapterPlan.providerId],
+            ["sdk_package", chain.adapterPlan.sdkSelection?.package ?? "none"],
+            ["dependency_present", String(chain.adapterPlan.dependencyPresent)],
+            ["adapter_ready", String(chain.adapterPlan.adapterReady)],
+            ["fixture_replay_supported", String(chain.adapterPlan.fixtureReplaySupported)],
+            ["provider_call_attempted", String(chain.adapterPlan.providerCallAttempted)],
+          ]}
+        />
+        {chain.adapterPlan.adapterModule ? (
+          <p className="mt-2 break-all text-xs font-semibold text-[#7A625A]">
+            {chain.adapterPlan.adapterModule}
+          </p>
+        ) : null}
+        <div className="mt-2 grid min-w-0 gap-2">
+          {chain.adapterPlan.plannedOperations.slice(0, 3).map((operation, index) => (
+            <div
+              className="grid min-w-0 gap-2 rounded-lg bg-white px-3 py-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_130px]"
+              key={`${operation.endpoint}-${index}`}
+            >
+              <p className="break-words text-sm font-semibold text-[#3B2924]">
+                {operation.operation || "fixture_replay"}
+              </p>
+              <p className="break-words text-sm text-[#7A625A]">
+                {operation.endpoint || "unknown endpoint"}
+              </p>
+              <p className="text-xs font-semibold text-[#B47767]">
+                {operation.mode || "fixture"} / provider_call=
+                {String(operation.providerCall)} / limit={operation.fixtureLimit}
+              </p>
+            </div>
+          ))}
+        </div>
+      </PreviewCard>
+
+      <PreviewCard tag="dataset_write_allowed=false" title="Dataset Preview Gate">
+        <FactGrid
+          facts={[
+            ["dataset_name", chain.datasetPreview.datasetName],
+            ["row_count", String(chain.datasetPreview.rowCount)],
+            ["source_item_count", String(chain.datasetPreview.sourceItemCount)],
+            ["dataset_write_allowed", String(chain.datasetPreview.datasetWriteAllowed)],
+            ["dataset_created", String(chain.datasetPreview.datasetCreated)],
+            ["export_created", String(chain.datasetPreview.exportCreated)],
+          ]}
+        />
+        <div className="mt-2 grid min-w-0 gap-2">
+          {chain.datasetPreview.rows.slice(0, 2).map((row) => (
+            <div className="rounded-lg bg-white px-3 py-2" key={row.rowId}>
+              <p className="break-words text-sm font-semibold text-[#3B2924]">
+                {row.textExcerpt || row.sourceSchemaVersion}
+              </p>
+              <p className="mt-1 break-all text-xs text-[#86868B]">
+                {row.rawRecordId} / {row.evidenceRef}
+              </p>
+            </div>
+          ))}
+        </div>
+      </PreviewCard>
+
+      <PreviewCard tag="source_created=false" title="Source Template Gate">
+        <FactGrid
+          facts={[
+            ["source_type", chain.sourceTemplate.sourceType],
+            ["template_strategy", chain.sourceTemplate.templateStrategy],
+            ["source_create_allowed", String(chain.sourceTemplate.sourceCreateAllowed)],
+            ["source_created", String(chain.sourceTemplate.sourceCreated)],
+            ["task_created", String(chain.sourceTemplate.taskCreated)],
+            ["payload_present", String(chain.sourceTemplate.payloadPresent)],
+          ]}
+        />
+      </PreviewCard>
+
+      <PreviewCard tag="review_only" title="L4 Approval Packet Gate">
+        <FactGrid
+          facts={[
+            ["task_run_allowed", String(chain.taskRunApprovalTemplate.taskRunAllowed)],
+            ["dataset_write_allowed", String(chain.taskRunApprovalTemplate.datasetWriteAllowed)],
+            ["export_allowed", String(chain.taskRunApprovalTemplate.exportAllowed)],
+            ["production_write_allowed", String(chain.taskRunApprovalTemplate.productionWriteAllowed)],
+            [
+              "packet_schema",
+              recordString(chain.taskRunApprovalTemplate.approvalPacket, "schema_version"),
+            ],
+            ["next_authorization", chain.taskRunApprovalTemplate.nextRequiredAuthorization],
+          ]}
+        />
+        <div className="mt-2 flex flex-wrap gap-2">
+          {chain.taskRunApprovalTemplate.requiredConfirmations.slice(0, 4).map((confirmation) => (
+            <WorkbenchTag key={confirmation} tone="rose">
+              {confirmation}
+            </WorkbenchTag>
+          ))}
+        </div>
+      </PreviewCard>
+
+      <PreviewCard tag="execution_dry_run" title="Execution Dry Run">
+        <FactGrid
+          facts={[
+            ["raw_record_count", String(chain.dryRun.rawRecordCount)],
+            ["normalized_item_count", String(chain.dryRun.normalizedItemCount)],
+            ["task_run_allowed", String(chain.dryRun.taskRunAllowed)],
+            ["dataset_write_allowed", String(chain.dryRun.datasetWriteAllowed)],
+            ["export_allowed", String(chain.dryRun.exportAllowed)],
+            ["next_authorization", chain.dryRun.nextRequiredAuthorization],
+          ]}
+        />
+        <div className="mt-2 grid min-w-0 gap-2">
+          {chain.dryRun.executionPlan.map((stage) => (
+            <div
+              className="grid min-w-0 gap-2 rounded-lg bg-white px-3 py-2 sm:grid-cols-[150px_90px_minmax(0,1fr)] sm:items-center"
+              key={stage.stage}
+            >
+              <p className="break-words text-sm font-semibold text-[#3B2924]">{stage.stage}</p>
+              <WorkbenchTag tone={stage.status === "blocked" ? "amber" : "green"}>
+                {stage.status}
+              </WorkbenchTag>
+              <p className="break-words text-xs text-[#7A625A]">
+                {stage.blockedReasons.length
+                  ? stage.blockedReasons.join(" / ")
+                  : "provider_call=false / production_write=false"}
+              </p>
+            </div>
+          ))}
+        </div>
+      </PreviewCard>
+    </div>
+  );
+}
+
+function PreviewCard({
+  children,
+  tag,
+  title,
+}: {
+  children: ReactNode;
+  tag: string;
+  title: string;
+}) {
+  return (
+    <section className="grid min-w-0 gap-2 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="break-words text-sm font-semibold text-[#2E201C]">{title}</h3>
+        <WorkbenchTag tone="neutral">{tag}</WorkbenchTag>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function FactGrid({ facts }: { facts: Array<[string, string]> }) {
+  return (
+    <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+      {facts.map(([label, value]) => (
+        <WorkbenchFact key={label} label={label} value={value} />
+      ))}
+    </div>
+  );
+}
+
 function BoundaryRow({
   label,
   tone,
@@ -307,6 +640,15 @@ function TagList({
       ))}
     </div>
   );
+}
+
+function joinOrNone(values: string[]): string {
+  return values.length > 0 ? values.join(" / ") : "none";
+}
+
+function recordString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  return typeof value === "string" ? value : "unknown";
 }
 
 function stabilityTone(stability: ApiMarketEndpoint["stability"]): "amber" | "green" | "rose" {
