@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { runSocialExecutionDryRun } from "@/lib/api/social-provider";
+import {
+  checkSocialProviderReadiness,
+  getSocialProviderCatalog,
+  runSocialExecutionDryRun,
+} from "@/lib/api/social-provider";
 import {
   getDefaultEndpointForPlatform,
   getSocialProviderUiConfig,
@@ -27,7 +31,9 @@ import {
 } from "@/components/common/workbench-ui";
 import type {
   SocialExecutionDryRun,
+  SocialProviderCatalogItem,
   SocialProviderPlatform,
+  SocialProviderReadiness,
 } from "@/types/social-provider";
 
 const stageLabels: Record<SocialExecutionDryRun["executionPlan"][number]["stage"], string> = {
@@ -46,6 +52,8 @@ export function SocialProviderDryRunPanel() {
   const [credentialReference, setCredentialReference] = useState(
     "vault:overseas-social-readonly",
   );
+  const [catalogProvider, setCatalogProvider] = useState<SocialProviderCatalogItem | null>(null);
+  const [readiness, setReadiness] = useState<SocialProviderReadiness | null>(null);
   const [result, setResult] = useState<SocialExecutionDryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +71,45 @@ export function SocialProviderDryRunPanel() {
       ["production_write_allowed", String(result.productionWriteAllowed)],
     ];
   }, [result]);
+  const readinessFacts = useMemo(() => {
+    if (!readiness) {
+      return [];
+    }
+    return [
+      ["readiness", String(readiness.ready)],
+      ["provider_call_allowed", String(readiness.providerCallAllowed)],
+      ["provider_call_attempted", String(readiness.providerCallAttempted)],
+      ["missing_credentials", joinOrNone(readiness.missingCredentials)],
+      ["missing_scope", joinOrNone(readiness.missingScope)],
+      ["budget_status", readiness.rateLimitProfile.budgetStatus],
+    ];
+  }, [readiness]);
+  const catalogFacts = useMemo(() => {
+    if (!catalogProvider) {
+      return [];
+    }
+    return [
+      ["provider_id", catalogProvider.providerId],
+      ["stability", catalogProvider.stability],
+      ["self_host_priority", catalogProvider.selfHostPriority],
+      ["sdk_status", catalogProvider.sdkSelection?.status ?? "none"],
+      ["api_version", catalogProvider.apiVersion],
+      ["auth_mode", catalogProvider.authMode],
+    ];
+  }, [catalogProvider]);
 
   async function submitDryRun() {
     setLoading(true);
     setError(null);
     try {
       const parsedFixtureLimit = Number.parseInt(fixtureLimit, 10);
+      const catalog = await getSocialProviderCatalog(platform);
+      setCatalogProvider(catalog.providers[0] ?? null);
+      const nextReadiness = await checkSocialProviderReadiness({
+        platform,
+        endpoints: [endpoint],
+      });
+      setReadiness(nextReadiness);
       const dryRun = await runSocialExecutionDryRun({
         platform,
         endpoint,
@@ -88,6 +129,15 @@ export function SocialProviderDryRunPanel() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function selectPlatform(nextPlatform: SocialProviderPlatform) {
+    setPlatform(nextPlatform);
+    setEndpoint(getDefaultEndpointForPlatform(nextPlatform));
+    setCatalogProvider(null);
+    setReadiness(null);
+    setResult(null);
+    setError(null);
   }
 
   return (
@@ -112,9 +162,7 @@ export function SocialProviderDryRunPanel() {
               <select
                 className="h-11 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm outline-none transition focus:border-[#C96F5C] focus:ring-4 focus:ring-[#F3D7CE]"
                 onChange={(event) => {
-                  const nextPlatform = event.target.value as SocialProviderPlatform;
-                  setPlatform(nextPlatform);
-                  setEndpoint(getDefaultEndpointForPlatform(nextPlatform));
+                  selectPlatform(event.target.value as SocialProviderPlatform);
                 }}
                 value={platform}
               >
@@ -182,6 +230,41 @@ export function SocialProviderDryRunPanel() {
 
           {result ? (
             <>
+              <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[#2E201C]">Readiness Review</p>
+                  <WorkbenchTag tone={readiness?.ready ? "green" : "amber"}>
+                    {readiness?.dryRun ? "dry_run=true" : "dry_run=pending"}
+                  </WorkbenchTag>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {readinessFacts.map(([label, value]) => (
+                    <WorkbenchFact key={label} label={label} value={value} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[#2E201C]">Catalog Boundary</p>
+                  <WorkbenchTag tone="neutral">provider_call=false</WorkbenchTag>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {catalogFacts.map(([label, value]) => (
+                    <WorkbenchFact key={label} label={label} value={value} />
+                  ))}
+                </div>
+                {catalogProvider?.policyFlags.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {catalogProvider.policyFlags.slice(0, 4).map((flag) => (
+                      <WorkbenchTag key={flag} tone="rose">
+                        {flag}
+                      </WorkbenchTag>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-3">
                 <WorkbenchMetricPill
                   icon={ClipboardCheck}
@@ -280,4 +363,8 @@ export function SocialProviderDryRunPanel() {
       </div>
     </WorkbenchPanel>
   );
+}
+
+function joinOrNone(values: string[]): string {
+  return values.length > 0 ? values.join(" / ") : "none";
 }

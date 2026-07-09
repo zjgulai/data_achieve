@@ -9,7 +9,49 @@ import type {
   SocialExecutionDryRunResponseDto,
   SocialExecutionDryRunStage,
   SocialExecutionDryRunStageDto,
+  SocialProviderCatalog,
+  SocialProviderCatalogItem,
+  SocialProviderCatalogItemDto,
+  SocialProviderCatalogResponseDto,
+  SocialProviderPlatform,
+  SocialProviderReadiness,
+  SocialProviderReadinessInput,
+  SocialProviderReadinessRequestDto,
+  SocialProviderReadinessResponseDto,
+  SocialProviderSdkSelection,
+  SocialProviderSdkSelectionDto,
 } from "@/types/social-provider";
+
+export async function getSocialProviderCatalog(
+  platform: SocialProviderPlatform,
+): Promise<SocialProviderCatalog> {
+  if (mockApiEnabled) {
+    return mapSocialProviderCatalogResponse(mockSocialProviderCatalogResponse(platform));
+  }
+
+  const query = new URLSearchParams({ platform });
+  const response = await apiFetch<SocialProviderCatalogResponseDto>(
+    `/api/automation/social-provider-catalog?${query}`,
+  );
+  return mapSocialProviderCatalogResponse(response);
+}
+
+export async function checkSocialProviderReadiness(
+  input: SocialProviderReadinessInput,
+): Promise<SocialProviderReadiness> {
+  if (mockApiEnabled) {
+    return mapSocialProviderReadinessResponse(mockSocialProviderReadinessResponse(input));
+  }
+
+  const response = await apiFetch<SocialProviderReadinessResponseDto>(
+    "/api/automation/social-provider-readiness",
+    {
+      body: JSON.stringify(buildSocialProviderReadinessRequestBody(input)),
+      method: "POST",
+    },
+  );
+  return mapSocialProviderReadinessResponse(response);
+}
 
 export async function runSocialExecutionDryRun(
   input: SocialExecutionDryRunInput,
@@ -27,6 +69,23 @@ export async function runSocialExecutionDryRun(
   );
 
   return mapSocialExecutionDryRunResponse(response);
+}
+
+export function buildSocialProviderReadinessRequestBody(
+  input: SocialProviderReadinessInput,
+): SocialProviderReadinessRequestDto {
+  return {
+    platform: input.platform,
+    endpoints: input.endpoints,
+    credentials_ready: false,
+    dry_run: true,
+    policy_context: {
+      allow_ai_training: false,
+      allow_private_profile_merge: false,
+      allow_login_state_collection: false,
+      max_retention_hours: 24,
+    },
+  };
 }
 
 export function buildSocialExecutionDryRunRequestBody(
@@ -54,6 +113,45 @@ export function buildSocialExecutionDryRunRequestBody(
     retention_hours: 24,
     author_policy: "hashed",
     cleanup_policy: "cleanup_after_evidence",
+  };
+}
+
+export function mapSocialProviderCatalogResponse(
+  response: SocialProviderCatalogResponseDto,
+): SocialProviderCatalog {
+  return {
+    schemaVersion: response.schema_version,
+    evidenceLevel: response.evidence_level,
+    providerCall: response.provider_call,
+    generatedAt: response.generated_at,
+    providers: response.providers.map(mapCatalogItem),
+  };
+}
+
+export function mapSocialProviderReadinessResponse(
+  response: SocialProviderReadinessResponseDto,
+): SocialProviderReadiness {
+  return {
+    schemaVersion: response.schema_version,
+    platform: response.platform,
+    providerId: response.provider_id,
+    ready: response.readiness,
+    missingCredentials: response.missing_credentials,
+    missingScope: response.missing_scope,
+    blockedReasons: response.blocked_reasons,
+    policyBlockers: response.policy_blockers,
+    forbiddenActions: response.forbidden_actions,
+    rateLimitProfile: {
+      providerId: response.rate_limit_profile.provider_id,
+      requested: response.rate_limit_profile.requested,
+      catalogHint: response.rate_limit_profile.catalog_hint,
+      budgetStatus: response.rate_limit_profile.budget_status,
+      effectiveLimits: response.rate_limit_profile.effective_limits,
+      estimatedCostUsd: response.rate_limit_profile.estimated_cost_usd,
+    },
+    providerCallAllowed: response.provider_call_allowed,
+    providerCallAttempted: response.provider_call_attempted,
+    dryRun: response.dry_run,
   };
 }
 
@@ -110,6 +208,37 @@ export function mapSocialExecutionDryRunResponse(
   };
 }
 
+function mapCatalogItem(item: SocialProviderCatalogItemDto): SocialProviderCatalogItem {
+  return {
+    providerId: item.provider_id,
+    platform: item.platform,
+    dataDomain: item.data_domain,
+    resourceGroups: item.resource_groups,
+    officialDocs: item.official_docs,
+    sdkSelection: item.sdk_selection ? mapSdkSelection(item.sdk_selection) : null,
+    liveAdapterStrategy: item.live_adapter_strategy,
+    authMode: item.auth_mode,
+    quotaHint: item.quota_hint,
+    policyFlags: item.policy_flags,
+    blockedActions: item.blocked_actions,
+    stability: item.stability,
+    selfHostPriority: item.self_host_priority,
+    apiVersion: item.api_version,
+    requiredCredentials: item.required_credentials,
+    supportedEndpoints: item.supported_endpoints,
+  };
+}
+
+function mapSdkSelection(selection: SocialProviderSdkSelectionDto): SocialProviderSdkSelection {
+  return {
+    package: selection.package,
+    importName: selection.import_name,
+    sourceUrl: selection.source_url,
+    status: selection.status,
+    reason: selection.reason,
+  };
+}
+
 function mapStage(stage: SocialExecutionDryRunStageDto): SocialExecutionDryRunStage {
   return {
     stage: stage.stage,
@@ -140,6 +269,76 @@ function stringValue(value: unknown): string {
 
 function booleanValue(value: unknown): boolean {
   return typeof value === "boolean" ? value : false;
+}
+
+function mockSocialProviderCatalogResponse(
+  platform: SocialProviderPlatform,
+): SocialProviderCatalogResponseDto {
+  return {
+    schema_version: "external_provider_catalog.v1",
+    evidence_level: "L1-public-or-runtime",
+    provider_call: false,
+    generated_at: "2026-07-08",
+    providers: [mockCatalogItem(platform)],
+  };
+}
+
+function mockCatalogItem(platform: SocialProviderPlatform): SocialProviderCatalogItemDto {
+  const config = getSocialProviderUiConfig(platform);
+  const metadata = mockProviderMetadata[platform];
+  return {
+    provider_id: config.providerId,
+    platform,
+    data_domain: metadata.dataDomain,
+    resource_groups: metadata.resourceGroups,
+    official_docs: metadata.officialDocs,
+    sdk_selection: metadata.sdkSelection,
+    live_adapter_strategy: metadata.liveAdapterStrategy,
+    auth_mode: metadata.authMode,
+    quota_hint: metadata.quotaHint,
+    policy_flags: metadata.policyFlags,
+    blocked_actions: metadata.blockedActions,
+    stability: metadata.stability,
+    self_host_priority: metadata.selfHostPriority,
+    api_version: metadata.apiVersion,
+    required_credentials: metadata.requiredCredentials,
+    supported_endpoints: config.endpoints.map((endpoint) => endpoint.value),
+    endpoint_contracts: [],
+  };
+}
+
+function mockSocialProviderReadinessResponse(
+  input: SocialProviderReadinessInput,
+): SocialProviderReadinessResponseDto {
+  const catalogItem = mockCatalogItem(input.platform);
+  return {
+    schema_version: "social_provider_readiness.v1",
+    platform: input.platform,
+    provider_id: catalogItem.provider_id,
+    readiness: false,
+    missing_credentials: catalogItem.required_credentials,
+    missing_scope: input.endpoints.filter(
+      (endpoint) => !catalogItem.supported_endpoints.includes(endpoint),
+    ),
+    blocked_reasons: catalogItem.required_credentials.map(
+      (credential) => `credential_missing:${credential}`,
+    ),
+    policy_blockers: catalogItem.policy_flags.includes("no_ai_training")
+      ? ["policy:no_ai_training"]
+      : [],
+    forbidden_actions: catalogItem.blocked_actions,
+    rate_limit_profile: {
+      provider_id: catalogItem.provider_id,
+      requested: {},
+      catalog_hint: catalogItem.quota_hint,
+      budget_status: "within_default_catalog_hint",
+      effective_limits: catalogItem.quota_hint,
+      estimated_cost_usd: null,
+    },
+    provider_call_allowed: false,
+    provider_call_attempted: false,
+    dry_run: true,
+  };
 }
 
 function mockSocialExecutionDryRunResponse(
@@ -259,3 +458,170 @@ function mockStage(
     details,
   };
 }
+
+const mockProviderMetadata: Record<
+  SocialProviderPlatform,
+  {
+    dataDomain: string[];
+    resourceGroups: string[];
+    officialDocs: string[];
+    sdkSelection: SocialProviderSdkSelectionDto;
+    liveAdapterStrategy: string;
+    authMode: string;
+    quotaHint: Record<string, unknown>;
+    policyFlags: string[];
+    blockedActions: string[];
+    stability: string;
+    selfHostPriority: string;
+    apiVersion: string;
+    requiredCredentials: string[];
+  }
+> = {
+  youtube: {
+    dataDomain: ["content_search", "video_detail", "comment_threads"],
+    resourceGroups: ["content_search", "video_detail", "comment_threads"],
+    officialDocs: ["https://developers.google.com/youtube/v3/docs"],
+    sdkSelection: {
+      package: "google-api-python-client",
+      import_name: "googleapiclient",
+      source_url: "https://github.com/googleapis/google-api-python-client",
+      status: "selected",
+      reason: "Official Google discovery-based API client after gate approval.",
+    },
+    liveAdapterStrategy: "use_google_api_python_client_after_l4_gate",
+    authMode: "Google OAuth2 / API Key",
+    quotaHint: { default_daily_requests: 10000, period: "day" },
+    policyFlags: ["no_login_state", "no_ai_training_from_raw_source_without_governance"],
+    blockedActions: ["private_message", "login_cookie_capture", "unauthorized_video_download"],
+    stability: "high",
+    selfHostPriority: "p0",
+    apiVersion: "v3",
+    requiredCredentials: ["api_key"],
+  },
+  reddit: {
+    dataDomain: ["post_search", "subreddit_snapshot", "comment_snapshot"],
+    resourceGroups: ["post_search", "subreddit_snapshot", "comment_snapshot"],
+    officialDocs: ["https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki"],
+    sdkSelection: {
+      package: "asyncpraw",
+      import_name: "asyncpraw",
+      source_url: "https://github.com/praw-dev/asyncpraw",
+      status: "selected",
+      reason: "Mature async Reddit API wrapper after policy gate approval.",
+    },
+    liveAdapterStrategy: "use_asyncpraw_after_l4_gate_with_policy_gate",
+    authMode: "OAuth2 Bearer + User-Agent + App credentials",
+    quotaHint: { default_requests_per_minute: 100, period: "minute" },
+    policyFlags: ["no_ai_training", "compliance_contract_required"],
+    blockedActions: ["private_data_scrape", "login_state_capture", "captcha_bypass"],
+    stability: "medium",
+    selfHostPriority: "p1",
+    apiVersion: "OAuth2",
+    requiredCredentials: ["oauth_token", "client_id", "client_secret"],
+  },
+  x: {
+    dataDomain: ["post_search", "user_profile", "post_lookup"],
+    resourceGroups: ["post_search", "user_profile", "post_lookup"],
+    officialDocs: ["https://docs.x.com/x-api/introduction"],
+    sdkSelection: {
+      package: "tweepy[async]",
+      import_name: "tweepy",
+      source_url: "https://github.com/tweepy/tweepy",
+      status: "candidate",
+      reason: "Enable only after paid tier and max_cost_usd gate are approved.",
+    },
+    liveAdapterStrategy: "use_tweepy_recent_search_only_after_cost_gate",
+    authMode: "OAuth2 Bearer / Paid product key",
+    quotaHint: { default_requests_per_minute: 300, period: "minute" },
+    policyFlags: ["commercial_use_requires_paywall_terms", "no_ai_training"],
+    blockedActions: ["private_message", "dm", "login_cookie_capture"],
+    stability: "medium",
+    selfHostPriority: "p2",
+    apiVersion: "v2",
+    requiredCredentials: ["bearer_token", "app_id", "app_secret"],
+  },
+  instagram: {
+    dataDomain: ["media_feed", "mentions", "comments"],
+    resourceGroups: ["media_feed", "mentions", "comments"],
+    officialDocs: ["https://developers.facebook.com/docs/instagram-api"],
+    sdkSelection: {
+      package: "facebook-business",
+      import_name: "facebook_business",
+      source_url: "https://github.com/facebook/facebook-python-business-sdk",
+      status: "candidate",
+      reason: "Requires app review and authorized business assets.",
+    },
+    liveAdapterStrategy: "use_meta_business_sdk_or_graph_httpx_for_authorized_business_assets",
+    authMode: "Meta App Token + Page/Business token + permissions",
+    quotaHint: { default_requests_per_hour: 200, period: "hour" },
+    policyFlags: ["business_account_required", "page_level_authorization", "no_ai_training"],
+    blockedActions: ["consumer_dm_capture", "private_profile_deep_scrape", "login_state_collection"],
+    stability: "medium",
+    selfHostPriority: "p2",
+    apiVersion: "v19",
+    requiredCredentials: ["access_token", "app_secret", "page_access_token"],
+  },
+  threads: {
+    dataDomain: ["thread_feed", "mentions", "replies"],
+    resourceGroups: ["thread_feed", "mentions", "replies"],
+    officialDocs: ["https://developers.facebook.com/docs/threads"],
+    sdkSelection: {
+      package: "httpx",
+      import_name: "httpx",
+      source_url: "https://www.python-httpx.org/",
+      status: "selected",
+      reason: "Reuse existing HTTP client after authorized Threads app review.",
+    },
+    liveAdapterStrategy: "use_existing_httpx_graph_adapter_for_authorized_threads_assets",
+    authMode: "Meta threads scope + app review",
+    quotaHint: { default_requests_per_hour: 120, period: "hour" },
+    policyFlags: ["strict_permissions_required", "no_ai_training"],
+    blockedActions: ["login_state_capture", "private_account_enumeration"],
+    stability: "low",
+    selfHostPriority: "p3",
+    apiVersion: "threads",
+    requiredCredentials: ["app_id", "app_secret", "access_token", "scope"],
+  },
+  tiktok: {
+    dataDomain: ["video_snapshot", "video_comment", "search"],
+    resourceGroups: ["video_snapshot", "video_comment", "search"],
+    officialDocs: ["https://developers.tiktok.com/doc/research-api-get-started"],
+    sdkSelection: {
+      package: "TikTokResearchApi",
+      import_name: "tiktok_research_api",
+      source_url: "https://github.com/tiktok/tiktok-research-api-wrapper",
+      status: "manual_review",
+      reason: "Qualification, region, purpose, and release maturity must be reviewed first.",
+    },
+    liveAdapterStrategy: "research_wrapper_test_only_after_qualification",
+    authMode: "OAuth2 Bearer + VCE qualification",
+    quotaHint: { default_requests_per_day: 1000, period: "day" },
+    policyFlags: ["research_only", "no_ai_training"],
+    blockedActions: ["private_message", "login_state_capture", "captcha_bypass"],
+    stability: "low",
+    selfHostPriority: "p3",
+    apiVersion: "research",
+    requiredCredentials: ["access_token", "app_id", "app_secret"],
+  },
+  linkedin: {
+    dataDomain: ["company_updates", "ugc_posts", "social_actions"],
+    resourceGroups: ["company_updates", "ugc_posts", "social_actions"],
+    officialDocs: ["https://developer.linkedin.com/product-catalog"],
+    sdkSelection: {
+      package: "linkedin-api-client",
+      import_name: "linkedin_api_client",
+      source_url: "https://github.com/linkedin-developers/linkedin-api-python-client",
+      status: "manual_review",
+      reason: "Official Rest.li client is beta and tier review is required.",
+    },
+    liveAdapterStrategy: "official_restli_client_after_tier_review",
+    authMode: "LinkedIn MDP/MCM OAuth + app tier",
+    quotaHint: { default_requests_per_day: 50000, period: "day" },
+    policyFlags: ["official_api_only", "version_tier_review_required", "no_ai_training"],
+    blockedActions: ["private_message", "contact_graph_expansion", "member_profile_broad_scan"],
+    stability: "medium",
+    selfHostPriority: "p3",
+    apiVersion: "v2",
+    requiredCredentials: ["client_id", "client_secret", "access_token"],
+  },
+};

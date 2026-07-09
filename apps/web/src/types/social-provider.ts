@@ -45,6 +45,146 @@ export type SocialExecutionDryRunRequestDto = {
   cleanup_policy: "cleanup_after_evidence";
 };
 
+export type SocialProviderCatalogResponseDto = {
+  schema_version: "external_provider_catalog.v1";
+  evidence_level: string;
+  provider_call: boolean;
+  generated_at: string;
+  providers: SocialProviderCatalogItemDto[];
+};
+
+export type SocialProviderCatalogItemDto = {
+  provider_id: string;
+  platform: string;
+  data_domain: string[];
+  resource_groups: string[];
+  official_docs: string[];
+  sdk_selection: SocialProviderSdkSelectionDto | null;
+  live_adapter_strategy: string;
+  auth_mode: string;
+  quota_hint: Record<string, unknown>;
+  policy_flags: string[];
+  blocked_actions: string[];
+  stability: string;
+  self_host_priority: string;
+  api_version: string;
+  required_credentials: string[];
+  supported_endpoints: string[];
+  endpoint_contracts?: Array<Record<string, unknown>>;
+};
+
+export type SocialProviderSdkSelectionDto = {
+  package: string;
+  import_name: string | null;
+  source_url: string;
+  status: "selected" | "candidate" | "manual_review" | "blocked";
+  reason: string;
+};
+
+export type SocialProviderReadinessInput = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+};
+
+export type SocialProviderReadinessRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  credentials_ready: false;
+  dry_run: true;
+  policy_context: {
+    allow_ai_training: false;
+    allow_private_profile_merge: false;
+    allow_login_state_collection: false;
+    max_retention_hours: 24;
+  };
+};
+
+export type SocialProviderReadinessResponseDto = {
+  schema_version: "social_provider_readiness.v1";
+  platform: string;
+  provider_id: string;
+  readiness: boolean;
+  missing_credentials: string[];
+  missing_scope: string[];
+  blocked_reasons: string[];
+  policy_blockers: string[];
+  forbidden_actions: string[];
+  rate_limit_profile: SocialProviderRateLimitProfileDto;
+  provider_call_allowed: boolean;
+  provider_call_attempted: boolean;
+  dry_run: boolean;
+  checked_at?: string;
+};
+
+export type SocialProviderRateLimitProfileDto = {
+  provider_id: string;
+  requested: Record<string, unknown>;
+  catalog_hint: Record<string, unknown>;
+  budget_status: string;
+  effective_limits: Record<string, unknown>;
+  estimated_cost_usd: number | null;
+};
+
+export type SocialProviderCatalog = {
+  schemaVersion: "external_provider_catalog.v1";
+  evidenceLevel: string;
+  providerCall: boolean;
+  generatedAt: string;
+  providers: SocialProviderCatalogItem[];
+};
+
+export type SocialProviderCatalogItem = {
+  providerId: string;
+  platform: string;
+  dataDomain: string[];
+  resourceGroups: string[];
+  officialDocs: string[];
+  sdkSelection: SocialProviderSdkSelection | null;
+  liveAdapterStrategy: string;
+  authMode: string;
+  quotaHint: Record<string, unknown>;
+  policyFlags: string[];
+  blockedActions: string[];
+  stability: string;
+  selfHostPriority: string;
+  apiVersion: string;
+  requiredCredentials: string[];
+  supportedEndpoints: string[];
+};
+
+export type SocialProviderSdkSelection = {
+  package: string;
+  importName: string | null;
+  sourceUrl: string;
+  status: "selected" | "candidate" | "manual_review" | "blocked";
+  reason: string;
+};
+
+export type SocialProviderReadiness = {
+  schemaVersion: "social_provider_readiness.v1";
+  platform: string;
+  providerId: string;
+  ready: boolean;
+  missingCredentials: string[];
+  missingScope: string[];
+  blockedReasons: string[];
+  policyBlockers: string[];
+  forbiddenActions: string[];
+  rateLimitProfile: SocialProviderRateLimitProfile;
+  providerCallAllowed: boolean;
+  providerCallAttempted: boolean;
+  dryRun: boolean;
+};
+
+export type SocialProviderRateLimitProfile = {
+  providerId: string;
+  requested: Record<string, unknown>;
+  catalogHint: Record<string, unknown>;
+  budgetStatus: string;
+  effectiveLimits: Record<string, unknown>;
+  estimatedCostUsd: number | null;
+};
+
 export type SocialExecutionStageName =
   | "readiness"
   | "raw_preview"
