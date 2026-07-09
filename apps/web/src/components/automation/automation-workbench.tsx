@@ -60,6 +60,7 @@ import { runTask } from "@/lib/api/tasks";
 import { runToolkitPreflight } from "@/lib/api/toolkit";
 import { cn } from "@/lib/utils";
 import { BrowserDiagnosticImportPanel } from "@/components/common/browser-diagnostic-import-panel";
+import { SocialProviderDryRunPanel } from "@/components/automation/social-provider-dry-run-panel";
 import {
   WorkbenchFact as Fact,
   WorkbenchPanel as Panel,
@@ -1167,6 +1168,8 @@ export function AutomationWorkbench() {
         })}
         lanes={automationWorkflowLanes}
       />
+
+      <SocialProviderDryRunPanel />
 
       <WorkflowLane
         description="选择目标平台、确认公开授权边界，并启动结构分析或 API-first 采集。"
