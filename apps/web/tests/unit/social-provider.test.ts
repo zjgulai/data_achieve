@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildSocialDatasetPreviewRequestBody,
   buildSocialProviderReadinessRequestBody,
+  buildSocialProviderSourceTemplateRequestBody,
+  buildSocialTaskRunApprovalTemplateRequestBody,
   buildSocialExecutionDryRunRequestBody,
+  mapSocialDatasetPreviewResponse,
   mapSocialProviderCatalogResponse,
   mapSocialProviderReadinessResponse,
+  mapSocialProviderSourceTemplateResponse,
+  mapSocialTaskRunApprovalTemplateResponse,
   mapSocialExecutionDryRunResponse,
 } from "@/lib/api/social-provider";
 import {
@@ -81,6 +87,124 @@ const readinessResponse = {
   provider_call_allowed: false,
   provider_call_attempted: false,
   dry_run: true,
+} as const;
+
+const datasetPreviewResponse = {
+  schema_version: "social_dataset_preview.v1",
+  platform: "reddit",
+  provider_id: "reddit.praw",
+  endpoint: "comments.new",
+  dataset_name: "Reddit comments VOC fixture",
+  dataset_type: "social_voc_fixture_preview",
+  dataset_schema_version: "social_voc_dataset.v1",
+  fixture_only: true,
+  provider_call_allowed: false,
+  provider_call_attempted: false,
+  credential_read_attempted: false,
+  production_write_allowed: false,
+  dataset_write_allowed: false,
+  dataset_created: false,
+  dataset_version_created: false,
+  export_created: false,
+  live_comparison_available: false,
+  blocked_reasons: [],
+  source_item_count: 1,
+  row_count: 1,
+  max_rows: 20,
+  truncated: false,
+  rows: [
+    {
+      row_id: "social_dataset_row:reddit.praw:1",
+      provider_id: "reddit.praw",
+      platform: "reddit",
+      raw_record_id: "fixture:reddit.praw:comments.new:1",
+      evidence_ref: "fixture://reddit.praw/comments.new/1",
+      source_item_id: "social_voc_item:reddit.praw:1",
+      source_schema_version: "social_voc_item.v1",
+      author_policy: "hashed",
+      payload: {
+        raw_record_id: "fixture:reddit.praw:comments.new:1",
+        evidence_ref: "fixture://reddit.praw/comments.new/1",
+        text_excerpt: "Reddit fixture comment",
+        provider_call: false,
+        llm_call_attempted: false,
+      },
+    },
+  ],
+  normalized_items: [
+    {
+      schema_version: "social_voc_item.v1",
+      item_id: "social_voc_item:reddit.praw:1",
+      provider_id: "reddit.praw",
+      platform: "reddit",
+      raw_record_id: "fixture:reddit.praw:comments.new:1",
+      evidence_ref: "fixture://reddit.praw/comments.new/1",
+      author_policy: "hashed",
+      payload: {
+        text_excerpt: "Reddit fixture comment",
+      },
+    },
+  ],
+  sdk_selection: null,
+  next_required_authorization: "L4_social_dataset_save_authorization_required",
+} as const;
+
+const sourceTemplateResponse = {
+  schema_version: "social_provider_source_template.v1",
+  platform: "reddit",
+  provider_id: "reddit.praw",
+  source_type: "manual_json",
+  template_strategy: "manual_json_authorized_import",
+  fixture_only: true,
+  source_create_allowed: false,
+  source_created: false,
+  task_created: false,
+  provider_call_attempted: false,
+  credential_read_attempted: false,
+  production_write_allowed: false,
+  source_create_payload: {
+    name: "Reddit comments fixture source",
+    type: "manual_json",
+    config: {
+      json_data: {
+        provider_call: false,
+      },
+    },
+  },
+  blocked_reasons: ["source_create_requires_separate_l4_authorization"],
+  next_required_authorization: "L4_social_source_task_authorization_required",
+} as const;
+
+const approvalTemplateResponse = {
+  schema_version: "social_task_run_approval_template.v1",
+  platform: "reddit",
+  provider_id: "reddit.praw",
+  sdk_selection: null,
+  approval_packet: {
+    schema_version: "social_task_run_l4_approval_packet.v1",
+    provider_call: false,
+    task_run: false,
+    dataset_save: false,
+    export: false,
+    scope: {
+      endpoints: ["comments.new"],
+    },
+  },
+  required_confirmations: [
+    "confirm_no_provider_call_without_live_gate",
+    "confirm_no_ai_training",
+  ],
+  blocked_reasons: ["provider_call_requires_l4_authorization"],
+  provider_call_allowed: false,
+  provider_call_attempted: false,
+  credential_read_attempted: false,
+  source_create_allowed: false,
+  task_create_allowed: false,
+  task_run_allowed: false,
+  dataset_write_allowed: false,
+  export_allowed: false,
+  production_write_allowed: false,
+  next_required_authorization: "L4_social_execution_authorization_required",
 } as const;
 
 const response: SocialExecutionDryRunResponseDto = {
@@ -290,6 +414,106 @@ describe("social provider catalog and readiness mappers", () => {
     expect(mapped.providerCallAttempted).toBe(false);
     expect(mapped.missingCredentials).toEqual(["access_token", "app_secret"]);
     expect(mapped.rateLimitProfile.budgetStatus).toBe("within_default_catalog_hint");
+  });
+});
+
+describe("social preview chain mappers", () => {
+  it("maps dataset preview rows without upgrading write evidence", () => {
+    const mapped = mapSocialDatasetPreviewResponse(datasetPreviewResponse);
+
+    expect(mapped.schemaVersion).toBe("social_dataset_preview.v1");
+    expect(mapped.datasetName).toBe("Reddit comments VOC fixture");
+    expect(mapped.datasetWriteAllowed).toBe(false);
+    expect(mapped.datasetCreated).toBe(false);
+    expect(mapped.exportCreated).toBe(false);
+    expect(mapped.rows[0]?.rawRecordId).toBe("fixture:reddit.praw:comments.new:1");
+    expect(mapped.rows[0]?.providerCall).toBe(false);
+  });
+
+  it("maps source template preview as no-write manual_json candidate", () => {
+    const mapped = mapSocialProviderSourceTemplateResponse(sourceTemplateResponse);
+
+    expect(mapped.schemaVersion).toBe("social_provider_source_template.v1");
+    expect(mapped.sourceType).toBe("manual_json");
+    expect(mapped.sourceCreateAllowed).toBe(false);
+    expect(mapped.sourceCreated).toBe(false);
+    expect(mapped.taskCreated).toBe(false);
+    expect(mapped.payloadPresent).toBe(true);
+    expect(mapped.blockedReasons).toContain("source_create_requires_separate_l4_authorization");
+  });
+
+  it("maps task approval template without enabling execution", () => {
+    const mapped = mapSocialTaskRunApprovalTemplateResponse(approvalTemplateResponse);
+
+    expect(mapped.schemaVersion).toBe("social_task_run_approval_template.v1");
+    expect(mapped.taskRunAllowed).toBe(false);
+    expect(mapped.datasetWriteAllowed).toBe(false);
+    expect(mapped.exportAllowed).toBe(false);
+    expect(mapped.productionWriteAllowed).toBe(false);
+    expect(mapped.requiredConfirmations).toContain("confirm_no_provider_call_without_live_gate");
+    expect(mapped.approvalPacket.task_run).toBe(false);
+  });
+});
+
+describe("social preview chain request builders", () => {
+  it("keeps dataset preview fixture-only and no-write", () => {
+    const body = buildSocialDatasetPreviewRequestBody({
+      platform: "reddit",
+      endpoint: "comments.new",
+      fixtureLimit: 2,
+      datasetName: "Reddit comments VOC fixture",
+      maxRows: 20,
+    });
+
+    expect(body.platform).toBe("reddit");
+    expect(body.endpoint).toBe("comments.new");
+    expect(body.fixture_limit).toBe(2);
+    expect(body.include_live_comparison).toBe(false);
+    expect(body.authorized).toBe(false);
+    expect(body.author_policy).toBe("hashed");
+    expect(body.save_requested).toBe(false);
+    expect(body.export_requested).toBe(false);
+  });
+
+  it("keeps source template preview from creating source or task", () => {
+    const body = buildSocialProviderSourceTemplateRequestBody({
+      platform: "reddit",
+      endpoints: ["comments.new"],
+      sourceName: "Reddit comments fixture source",
+      fixtureLimit: 2,
+    });
+
+    expect(body.platform).toBe("reddit");
+    expect(body.endpoints).toEqual(["comments.new"]);
+    expect(body.source_name).toBe("Reddit comments fixture source");
+    expect(body.authorized).toBe(false);
+    expect(body.fixture_limit).toBe(2);
+    expect(body.credential_reference).toBeUndefined();
+  });
+
+  it("keeps task approval template as a review packet only", () => {
+    const body = buildSocialTaskRunApprovalTemplateRequestBody({
+      platform: "reddit",
+      endpoints: ["comments.new"],
+      intendedUse: "fixture-only approval review",
+      sourceName: "Reddit comments fixture source",
+      taskName: "Reddit comments fixture task",
+      datasetName: "Reddit comments VOC fixture",
+      credentialReference: "vault:overseas-social-readonly",
+      maxRequests: 5,
+      maxItems: 20,
+      maxRows: 20,
+    });
+
+    expect(body.platform).toBe("reddit");
+    expect(body.endpoints).toEqual(["comments.new"]);
+    expect(body.authorized).toBe(false);
+    expect(body.allow_ai_training).toBe(false);
+    expect(body.dataset_save_requested).toBe(false);
+    expect(body.export_requested).toBe(false);
+    expect(body.max_cost_usd).toBe(0);
+    expect(body.retention_hours).toBe(24);
+    expect(body.cleanup_policy).toBe("cleanup_after_evidence");
   });
 });
 

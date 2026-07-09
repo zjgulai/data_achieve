@@ -86,6 +86,34 @@ export type SocialProviderReadinessInput = {
   endpoints: string[];
 };
 
+export type SocialDatasetPreviewInput = {
+  platform: SocialProviderPlatform;
+  endpoint: string;
+  fixtureLimit: number;
+  datasetName?: string;
+  maxRows?: number;
+};
+
+export type SocialProviderSourceTemplateInput = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  sourceName?: string;
+  fixtureLimit?: number;
+};
+
+export type SocialTaskRunApprovalTemplateInput = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  intendedUse: string;
+  sourceName?: string;
+  taskName?: string;
+  datasetName?: string;
+  credentialReference?: string;
+  maxRequests?: number;
+  maxItems?: number;
+  maxRows?: number;
+};
+
 export type SocialProviderReadinessRequestDto = {
   platform: SocialProviderPlatform;
   endpoints: string[];
@@ -97,6 +125,48 @@ export type SocialProviderReadinessRequestDto = {
     allow_login_state_collection: false;
     max_retention_hours: 24;
   };
+};
+
+export type SocialDatasetPreviewRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoint: string;
+  fixture_limit: number;
+  dataset_name?: string;
+  max_rows: number;
+  include_live_comparison: false;
+  authorized: false;
+  author_policy: "hashed";
+  save_requested: false;
+  export_requested: false;
+};
+
+export type SocialProviderSourceTemplateRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  source_name?: string;
+  authorized: false;
+  fixture_limit: number;
+  credential_reference?: undefined;
+};
+
+export type SocialTaskRunApprovalTemplateRequestDto = {
+  platform: SocialProviderPlatform;
+  endpoints: string[];
+  intended_use: string;
+  source_name?: string;
+  task_name?: string;
+  dataset_name?: string;
+  credential_reference?: string;
+  authorized: false;
+  max_requests: number;
+  max_items: number;
+  max_rows: number;
+  max_cost_usd: 0;
+  retention_hours: 24;
+  allow_ai_training: false;
+  dataset_save_requested: false;
+  export_requested: false;
+  cleanup_policy: "cleanup_after_evidence";
 };
 
 export type SocialProviderReadinessResponseDto = {
@@ -123,6 +193,76 @@ export type SocialProviderRateLimitProfileDto = {
   budget_status: string;
   effective_limits: Record<string, unknown>;
   estimated_cost_usd: number | null;
+};
+
+export type SocialDatasetPreviewResponseDto = {
+  schema_version: "social_dataset_preview.v1";
+  platform: string;
+  provider_id: string;
+  endpoint: string;
+  dataset_name: string;
+  dataset_type: "social_voc_fixture_preview";
+  dataset_schema_version: "social_voc_dataset.v1";
+  fixture_only: boolean;
+  provider_call_allowed: boolean;
+  provider_call_attempted: boolean;
+  credential_read_attempted: boolean;
+  production_write_allowed: boolean;
+  dataset_write_allowed: boolean;
+  dataset_created: boolean;
+  dataset_version_created: boolean;
+  export_created: boolean;
+  live_comparison_available: boolean;
+  blocked_reasons: string[];
+  source_item_count: number;
+  row_count: number;
+  max_rows: number;
+  truncated: boolean;
+  rows: SocialDatasetPreviewRowDto[];
+  normalized_items: Array<Record<string, unknown>>;
+  sdk_selection: SocialProviderSdkSelectionDto | null;
+  next_required_authorization: string;
+  checked_at?: string;
+};
+
+export type SocialProviderSourceTemplateResponseDto = {
+  schema_version: "social_provider_source_template.v1";
+  platform: string;
+  provider_id: string;
+  source_type: "manual_json";
+  template_strategy: "manual_json_authorized_import";
+  fixture_only: boolean;
+  source_create_allowed: boolean;
+  source_created: boolean;
+  task_created: boolean;
+  provider_call_attempted: boolean;
+  credential_read_attempted: boolean;
+  production_write_allowed: boolean;
+  source_create_payload: Record<string, unknown> | null;
+  blocked_reasons: string[];
+  next_required_authorization: string;
+  checked_at?: string;
+};
+
+export type SocialTaskRunApprovalTemplateResponseDto = {
+  schema_version: "social_task_run_approval_template.v1";
+  platform: string;
+  provider_id: string;
+  sdk_selection: SocialProviderSdkSelectionDto | null;
+  approval_packet: Record<string, unknown>;
+  required_confirmations: string[];
+  blocked_reasons: string[];
+  provider_call_allowed: boolean;
+  provider_call_attempted: boolean;
+  credential_read_attempted: boolean;
+  source_create_allowed: boolean;
+  task_create_allowed: boolean;
+  task_run_allowed: boolean;
+  dataset_write_allowed: boolean;
+  export_allowed: boolean;
+  production_write_allowed: boolean;
+  next_required_authorization: string;
+  checked_at?: string;
 };
 
 export type SocialProviderCatalog = {
@@ -183,6 +323,71 @@ export type SocialProviderRateLimitProfile = {
   budgetStatus: string;
   effectiveLimits: Record<string, unknown>;
   estimatedCostUsd: number | null;
+};
+
+export type SocialDatasetPreview = {
+  schemaVersion: "social_dataset_preview.v1";
+  platform: string;
+  providerId: string;
+  endpoint: string;
+  datasetName: string;
+  datasetType: "social_voc_fixture_preview";
+  datasetSchemaVersion: "social_voc_dataset.v1";
+  fixtureOnly: boolean;
+  providerCallAllowed: boolean;
+  providerCallAttempted: boolean;
+  credentialReadAttempted: boolean;
+  productionWriteAllowed: boolean;
+  datasetWriteAllowed: boolean;
+  datasetCreated: boolean;
+  datasetVersionCreated: boolean;
+  exportCreated: boolean;
+  liveComparisonAvailable: boolean;
+  blockedReasons: string[];
+  sourceItemCount: number;
+  rowCount: number;
+  maxRows: number;
+  truncated: boolean;
+  rows: SocialDatasetPreviewRow[];
+  nextRequiredAuthorization: string;
+};
+
+export type SocialProviderSourceTemplate = {
+  schemaVersion: "social_provider_source_template.v1";
+  platform: string;
+  providerId: string;
+  sourceType: "manual_json";
+  templateStrategy: "manual_json_authorized_import";
+  fixtureOnly: boolean;
+  sourceCreateAllowed: boolean;
+  sourceCreated: boolean;
+  taskCreated: boolean;
+  providerCallAttempted: boolean;
+  credentialReadAttempted: boolean;
+  productionWriteAllowed: boolean;
+  sourceCreatePayload: Record<string, unknown> | null;
+  payloadPresent: boolean;
+  blockedReasons: string[];
+  nextRequiredAuthorization: string;
+};
+
+export type SocialTaskRunApprovalTemplate = {
+  schemaVersion: "social_task_run_approval_template.v1";
+  platform: string;
+  providerId: string;
+  approvalPacket: Record<string, unknown>;
+  requiredConfirmations: string[];
+  blockedReasons: string[];
+  providerCallAllowed: boolean;
+  providerCallAttempted: boolean;
+  credentialReadAttempted: boolean;
+  sourceCreateAllowed: boolean;
+  taskCreateAllowed: boolean;
+  taskRunAllowed: boolean;
+  datasetWriteAllowed: boolean;
+  exportAllowed: boolean;
+  productionWriteAllowed: boolean;
+  nextRequiredAuthorization: string;
 };
 
 export type SocialExecutionStageName =
@@ -277,17 +482,25 @@ export type SocialExecutionDryRunResponseDto = {
 
 export type SocialDatasetPreviewRowDto = {
   row_id: string;
+  provider_id?: string;
+  platform?: string;
   raw_record_id: string;
   evidence_ref: string;
+  source_item_id?: string;
   source_schema_version: string;
+  author_policy?: "hashed" | "dropped" | "retained_with_approval";
   payload: Record<string, unknown>;
 };
 
 export type SocialDatasetPreviewRow = {
   rowId: string;
+  providerId: string;
+  platform: string;
   rawRecordId: string;
   evidenceRef: string;
+  sourceItemId: string;
   sourceSchemaVersion: string;
+  authorPolicy: "hashed" | "dropped" | "retained_with_approval";
   textExcerpt: string;
   providerCall: boolean;
   llmCallAttempted: boolean;

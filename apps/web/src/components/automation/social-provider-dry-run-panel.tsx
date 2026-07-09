@@ -15,6 +15,9 @@ import { useMemo, useState } from "react";
 import {
   checkSocialProviderReadiness,
   getSocialProviderCatalog,
+  previewSocialDataset,
+  previewSocialProviderSourceTemplate,
+  previewSocialTaskRunApprovalTemplate,
   runSocialExecutionDryRun,
 } from "@/lib/api/social-provider";
 import {
@@ -30,10 +33,13 @@ import {
   WorkbenchTag,
 } from "@/components/common/workbench-ui";
 import type {
+  SocialDatasetPreview,
   SocialExecutionDryRun,
   SocialProviderCatalogItem,
   SocialProviderPlatform,
   SocialProviderReadiness,
+  SocialProviderSourceTemplate,
+  SocialTaskRunApprovalTemplate,
 } from "@/types/social-provider";
 
 const stageLabels: Record<SocialExecutionDryRun["executionPlan"][number]["stage"], string> = {
@@ -54,6 +60,11 @@ export function SocialProviderDryRunPanel() {
   );
   const [catalogProvider, setCatalogProvider] = useState<SocialProviderCatalogItem | null>(null);
   const [readiness, setReadiness] = useState<SocialProviderReadiness | null>(null);
+  const [datasetPreview, setDatasetPreview] = useState<SocialDatasetPreview | null>(null);
+  const [sourceTemplate, setSourceTemplate] = useState<SocialProviderSourceTemplate | null>(null);
+  const [approvalTemplate, setApprovalTemplate] = useState<SocialTaskRunApprovalTemplate | null>(
+    null,
+  );
   const [result, setResult] = useState<SocialExecutionDryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,12 +108,58 @@ export function SocialProviderDryRunPanel() {
       ["auth_mode", catalogProvider.authMode],
     ];
   }, [catalogProvider]);
+  const datasetGateFacts = useMemo(() => {
+    if (!datasetPreview) {
+      return [];
+    }
+    return [
+      ["row_count", String(datasetPreview.rowCount)],
+      ["source_item_count", String(datasetPreview.sourceItemCount)],
+      ["max_rows", String(datasetPreview.maxRows)],
+      ["truncated", String(datasetPreview.truncated)],
+      ["dataset_write_allowed", String(datasetPreview.datasetWriteAllowed)],
+      ["dataset_created", String(datasetPreview.datasetCreated)],
+      ["export_created", String(datasetPreview.exportCreated)],
+      ["provider_call_attempted", String(datasetPreview.providerCallAttempted)],
+    ];
+  }, [datasetPreview]);
+  const sourceTemplateFacts = useMemo(() => {
+    if (!sourceTemplate) {
+      return [];
+    }
+    return [
+      ["source_type", sourceTemplate.sourceType],
+      ["template_strategy", sourceTemplate.templateStrategy],
+      ["source_create_allowed", String(sourceTemplate.sourceCreateAllowed)],
+      ["source_created", String(sourceTemplate.sourceCreated)],
+      ["task_created", String(sourceTemplate.taskCreated)],
+      ["payload_present", String(sourceTemplate.payloadPresent)],
+    ];
+  }, [sourceTemplate]);
+  const approvalTemplateFacts = useMemo(() => {
+    if (!approvalTemplate) {
+      return [];
+    }
+    return [
+      ["task_run_allowed", String(approvalTemplate.taskRunAllowed)],
+      ["dataset_write_allowed", String(approvalTemplate.datasetWriteAllowed)],
+      ["export_allowed", String(approvalTemplate.exportAllowed)],
+      ["production_write_allowed", String(approvalTemplate.productionWriteAllowed)],
+      ["packet_schema", recordString(approvalTemplate.approvalPacket, "schema_version")],
+      ["next_authorization", approvalTemplate.nextRequiredAuthorization],
+    ];
+  }, [approvalTemplate]);
 
   async function submitDryRun() {
     setLoading(true);
     setError(null);
     try {
       const parsedFixtureLimit = Number.parseInt(fixtureLimit, 10);
+      const safeFixtureLimit = Number.isFinite(parsedFixtureLimit) ? parsedFixtureLimit : 2;
+      const datasetName = `${selectedProviderConfig.label} ${endpoint} VOC fixture`;
+      const sourceName = `${selectedProviderConfig.label} ${endpoint} fixture source`;
+      const taskName = `${selectedProviderConfig.label} ${endpoint} fixture task`;
+      const credentialRef = credentialReference.trim() || undefined;
       const catalog = await getSocialProviderCatalog(platform);
       setCatalogProvider(catalog.providers[0] ?? null);
       const nextReadiness = await checkSocialProviderReadiness({
@@ -110,15 +167,43 @@ export function SocialProviderDryRunPanel() {
         endpoints: [endpoint],
       });
       setReadiness(nextReadiness);
+      const nextDatasetPreview = await previewSocialDataset({
+        platform,
+        endpoint,
+        fixtureLimit: safeFixtureLimit,
+        datasetName,
+        maxRows: 20,
+      });
+      setDatasetPreview(nextDatasetPreview);
+      const nextSourceTemplate = await previewSocialProviderSourceTemplate({
+        platform,
+        endpoints: [endpoint],
+        sourceName,
+        fixtureLimit: safeFixtureLimit,
+      });
+      setSourceTemplate(nextSourceTemplate);
+      const nextApprovalTemplate = await previewSocialTaskRunApprovalTemplate({
+        platform,
+        endpoints: [endpoint],
+        intendedUse: `fixture-only ${platform} ${endpoint} social review`,
+        sourceName,
+        taskName,
+        datasetName,
+        credentialReference: credentialRef,
+        maxItems: 20,
+        maxRequests: 5,
+        maxRows: 20,
+      });
+      setApprovalTemplate(nextApprovalTemplate);
       const dryRun = await runSocialExecutionDryRun({
         platform,
         endpoint,
-        fixtureLimit: Number.isFinite(parsedFixtureLimit) ? parsedFixtureLimit : 2,
+        fixtureLimit: safeFixtureLimit,
         intendedUse: `fixture-only ${platform} ${endpoint} social review`,
-        datasetName: `${selectedProviderConfig.label} ${endpoint} VOC fixture`,
-        sourceName: `${selectedProviderConfig.label} ${endpoint} fixture source`,
-        taskName: `${selectedProviderConfig.label} ${endpoint} fixture task`,
-        credentialReference: credentialReference.trim() || undefined,
+        datasetName,
+        sourceName,
+        taskName,
+        credentialReference: credentialRef,
         maxItems: 20,
         maxRequests: 5,
         maxRows: 20,
@@ -136,6 +221,9 @@ export function SocialProviderDryRunPanel() {
     setEndpoint(getDefaultEndpointForPlatform(nextPlatform));
     setCatalogProvider(null);
     setReadiness(null);
+    setDatasetPreview(null);
+    setSourceTemplate(null);
+    setApprovalTemplate(null);
     setResult(null);
     setError(null);
   }
@@ -265,6 +353,85 @@ export function SocialProviderDryRunPanel() {
                 ) : null}
               </div>
 
+              {datasetPreview ? (
+                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="break-words text-sm font-semibold text-[#2E201C]">
+                      Dataset Preview Gate
+                    </p>
+                    <WorkbenchTag tone="neutral">dataset_write=false</WorkbenchTag>
+                  </div>
+                  <p className="break-words text-sm font-semibold text-[#3B2924]">
+                    {datasetPreview.datasetName}
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                    {datasetGateFacts.map(([label, value]) => (
+                      <WorkbenchFact key={label} label={label} value={value} />
+                    ))}
+                  </div>
+                  <div className="grid gap-2">
+                    {datasetPreview.rows.slice(0, 3).map((row) => (
+                      <div className="rounded-lg bg-white px-3 py-2" key={row.rowId}>
+                        <p className="break-words text-sm font-semibold text-[#3B2924]">
+                          {row.textExcerpt || row.sourceSchemaVersion}
+                        </p>
+                        <p className="mt-1 break-all text-xs text-[#86868B]">
+                          {row.rawRecordId} / {row.evidenceRef}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {sourceTemplate ? (
+                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-white p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="break-words text-sm font-semibold text-[#2E201C]">
+                      Source Template Gate
+                    </p>
+                    <WorkbenchTag tone="neutral">source_created=false</WorkbenchTag>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {sourceTemplateFacts.map(([label, value]) => (
+                      <WorkbenchFact key={label} label={label} value={value} />
+                    ))}
+                  </div>
+                  {sourceTemplate.blockedReasons.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {sourceTemplate.blockedReasons.slice(0, 4).map((reason) => (
+                        <WorkbenchTag key={reason} tone="amber">
+                          {reason}
+                        </WorkbenchTag>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {approvalTemplate ? (
+                <div className="grid gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="break-words text-sm font-semibold text-[#2E201C]">
+                      L4 Approval Packet Gate
+                    </p>
+                    <WorkbenchTag tone="amber">review_only</WorkbenchTag>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {approvalTemplateFacts.map(([label, value]) => (
+                      <WorkbenchFact key={label} label={label} value={value} />
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {approvalTemplate.requiredConfirmations.slice(0, 4).map((confirmation) => (
+                      <WorkbenchTag key={confirmation} tone="rose">
+                        {confirmation}
+                      </WorkbenchTag>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid gap-3 sm:grid-cols-3">
                 <WorkbenchMetricPill
                   icon={ClipboardCheck}
@@ -367,4 +534,9 @@ export function SocialProviderDryRunPanel() {
 
 function joinOrNone(values: string[]): string {
   return values.length > 0 ? values.join(" / ") : "none";
+}
+
+function recordString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  return typeof value === "string" ? value : "unknown";
 }

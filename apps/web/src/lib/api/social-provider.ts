@@ -1,6 +1,10 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import { getSocialProviderUiConfig } from "@/lib/social-provider-config";
 import type {
+  SocialDatasetPreview,
+  SocialDatasetPreviewInput,
+  SocialDatasetPreviewRequestDto,
+  SocialDatasetPreviewResponseDto,
   SocialDatasetPreviewRow,
   SocialDatasetPreviewRowDto,
   SocialExecutionDryRun,
@@ -20,6 +24,14 @@ import type {
   SocialProviderReadinessResponseDto,
   SocialProviderSdkSelection,
   SocialProviderSdkSelectionDto,
+  SocialProviderSourceTemplate,
+  SocialProviderSourceTemplateInput,
+  SocialProviderSourceTemplateRequestDto,
+  SocialProviderSourceTemplateResponseDto,
+  SocialTaskRunApprovalTemplate,
+  SocialTaskRunApprovalTemplateInput,
+  SocialTaskRunApprovalTemplateRequestDto,
+  SocialTaskRunApprovalTemplateResponseDto,
 } from "@/types/social-provider";
 
 export async function getSocialProviderCatalog(
@@ -51,6 +63,59 @@ export async function checkSocialProviderReadiness(
     },
   );
   return mapSocialProviderReadinessResponse(response);
+}
+
+export async function previewSocialDataset(
+  input: SocialDatasetPreviewInput,
+): Promise<SocialDatasetPreview> {
+  if (mockApiEnabled) {
+    return mapSocialDatasetPreviewResponse(mockSocialDatasetPreviewResponse(input));
+  }
+
+  const response = await apiFetch<SocialDatasetPreviewResponseDto>(
+    "/api/automation/social-dataset-preview",
+    {
+      body: JSON.stringify(buildSocialDatasetPreviewRequestBody(input)),
+      method: "POST",
+    },
+  );
+  return mapSocialDatasetPreviewResponse(response);
+}
+
+export async function previewSocialProviderSourceTemplate(
+  input: SocialProviderSourceTemplateInput,
+): Promise<SocialProviderSourceTemplate> {
+  if (mockApiEnabled) {
+    return mapSocialProviderSourceTemplateResponse(mockSocialProviderSourceTemplateResponse(input));
+  }
+
+  const response = await apiFetch<SocialProviderSourceTemplateResponseDto>(
+    "/api/automation/social-provider-source-template",
+    {
+      body: JSON.stringify(buildSocialProviderSourceTemplateRequestBody(input)),
+      method: "POST",
+    },
+  );
+  return mapSocialProviderSourceTemplateResponse(response);
+}
+
+export async function previewSocialTaskRunApprovalTemplate(
+  input: SocialTaskRunApprovalTemplateInput,
+): Promise<SocialTaskRunApprovalTemplate> {
+  if (mockApiEnabled) {
+    return mapSocialTaskRunApprovalTemplateResponse(
+      mockSocialTaskRunApprovalTemplateResponse(input),
+    );
+  }
+
+  const response = await apiFetch<SocialTaskRunApprovalTemplateResponseDto>(
+    "/api/automation/social-task-run-approval-template",
+    {
+      body: JSON.stringify(buildSocialTaskRunApprovalTemplateRequestBody(input)),
+      method: "POST",
+    },
+  );
+  return mapSocialTaskRunApprovalTemplateResponse(response);
 }
 
 export async function runSocialExecutionDryRun(
@@ -88,6 +153,59 @@ export function buildSocialProviderReadinessRequestBody(
   };
 }
 
+export function buildSocialDatasetPreviewRequestBody(
+  input: SocialDatasetPreviewInput,
+): SocialDatasetPreviewRequestDto {
+  return {
+    platform: input.platform,
+    endpoint: input.endpoint,
+    fixture_limit: input.fixtureLimit,
+    dataset_name: input.datasetName,
+    max_rows: input.maxRows ?? 20,
+    include_live_comparison: false,
+    authorized: false,
+    author_policy: "hashed",
+    save_requested: false,
+    export_requested: false,
+  };
+}
+
+export function buildSocialProviderSourceTemplateRequestBody(
+  input: SocialProviderSourceTemplateInput,
+): SocialProviderSourceTemplateRequestDto {
+  return {
+    platform: input.platform,
+    endpoints: input.endpoints,
+    source_name: input.sourceName,
+    authorized: false,
+    fixture_limit: input.fixtureLimit ?? 3,
+  };
+}
+
+export function buildSocialTaskRunApprovalTemplateRequestBody(
+  input: SocialTaskRunApprovalTemplateInput,
+): SocialTaskRunApprovalTemplateRequestDto {
+  return {
+    platform: input.platform,
+    endpoints: input.endpoints,
+    intended_use: input.intendedUse,
+    source_name: input.sourceName,
+    task_name: input.taskName,
+    dataset_name: input.datasetName,
+    credential_reference: input.credentialReference,
+    authorized: false,
+    max_requests: input.maxRequests ?? 5,
+    max_items: input.maxItems ?? 20,
+    max_rows: input.maxRows ?? 20,
+    max_cost_usd: 0,
+    retention_hours: 24,
+    allow_ai_training: false,
+    dataset_save_requested: false,
+    export_requested: false,
+    cleanup_policy: "cleanup_after_evidence",
+  };
+}
+
 export function buildSocialExecutionDryRunRequestBody(
   input: SocialExecutionDryRunInput,
 ): SocialExecutionDryRunRequestDto {
@@ -113,6 +231,83 @@ export function buildSocialExecutionDryRunRequestBody(
     retention_hours: 24,
     author_policy: "hashed",
     cleanup_policy: "cleanup_after_evidence",
+  };
+}
+
+export function mapSocialDatasetPreviewResponse(
+  response: SocialDatasetPreviewResponseDto,
+): SocialDatasetPreview {
+  return {
+    schemaVersion: response.schema_version,
+    platform: response.platform,
+    providerId: response.provider_id,
+    endpoint: response.endpoint,
+    datasetName: response.dataset_name,
+    datasetType: response.dataset_type,
+    datasetSchemaVersion: response.dataset_schema_version,
+    fixtureOnly: response.fixture_only,
+    providerCallAllowed: response.provider_call_allowed,
+    providerCallAttempted: response.provider_call_attempted,
+    credentialReadAttempted: response.credential_read_attempted,
+    productionWriteAllowed: response.production_write_allowed,
+    datasetWriteAllowed: response.dataset_write_allowed,
+    datasetCreated: response.dataset_created,
+    datasetVersionCreated: response.dataset_version_created,
+    exportCreated: response.export_created,
+    liveComparisonAvailable: response.live_comparison_available,
+    blockedReasons: response.blocked_reasons,
+    sourceItemCount: response.source_item_count,
+    rowCount: response.row_count,
+    maxRows: response.max_rows,
+    truncated: response.truncated,
+    rows: response.rows.map(mapDatasetRow),
+    nextRequiredAuthorization: response.next_required_authorization,
+  };
+}
+
+export function mapSocialProviderSourceTemplateResponse(
+  response: SocialProviderSourceTemplateResponseDto,
+): SocialProviderSourceTemplate {
+  return {
+    schemaVersion: response.schema_version,
+    platform: response.platform,
+    providerId: response.provider_id,
+    sourceType: response.source_type,
+    templateStrategy: response.template_strategy,
+    fixtureOnly: response.fixture_only,
+    sourceCreateAllowed: response.source_create_allowed,
+    sourceCreated: response.source_created,
+    taskCreated: response.task_created,
+    providerCallAttempted: response.provider_call_attempted,
+    credentialReadAttempted: response.credential_read_attempted,
+    productionWriteAllowed: response.production_write_allowed,
+    sourceCreatePayload: response.source_create_payload,
+    payloadPresent: response.source_create_payload !== null,
+    blockedReasons: response.blocked_reasons,
+    nextRequiredAuthorization: response.next_required_authorization,
+  };
+}
+
+export function mapSocialTaskRunApprovalTemplateResponse(
+  response: SocialTaskRunApprovalTemplateResponseDto,
+): SocialTaskRunApprovalTemplate {
+  return {
+    schemaVersion: response.schema_version,
+    platform: response.platform,
+    providerId: response.provider_id,
+    approvalPacket: response.approval_packet,
+    requiredConfirmations: response.required_confirmations,
+    blockedReasons: response.blocked_reasons,
+    providerCallAllowed: response.provider_call_allowed,
+    providerCallAttempted: response.provider_call_attempted,
+    credentialReadAttempted: response.credential_read_attempted,
+    sourceCreateAllowed: response.source_create_allowed,
+    taskCreateAllowed: response.task_create_allowed,
+    taskRunAllowed: response.task_run_allowed,
+    datasetWriteAllowed: response.dataset_write_allowed,
+    exportAllowed: response.export_allowed,
+    productionWriteAllowed: response.production_write_allowed,
+    nextRequiredAuthorization: response.next_required_authorization,
   };
 }
 
@@ -254,9 +449,13 @@ function mapStage(stage: SocialExecutionDryRunStageDto): SocialExecutionDryRunSt
 function mapDatasetRow(row: SocialDatasetPreviewRowDto): SocialDatasetPreviewRow {
   return {
     rowId: row.row_id,
+    providerId: row.provider_id ?? "",
+    platform: row.platform ?? "",
     rawRecordId: row.raw_record_id,
     evidenceRef: row.evidence_ref,
+    sourceItemId: row.source_item_id ?? "",
     sourceSchemaVersion: row.source_schema_version,
+    authorPolicy: row.author_policy ?? "hashed",
     textExcerpt: stringValue(row.payload.text_excerpt),
     providerCall: booleanValue(row.payload.provider_call),
     llmCallAttempted: booleanValue(row.payload.llm_call_attempted),
@@ -341,6 +540,147 @@ function mockSocialProviderReadinessResponse(
   };
 }
 
+function mockSocialDatasetPreviewResponse(
+  input: SocialDatasetPreviewInput,
+): SocialDatasetPreviewResponseDto {
+  const providerId = getSocialProviderUiConfig(input.platform).providerId;
+  const rowCount = Math.min(input.fixtureLimit, input.maxRows ?? 20);
+  const rows = Array.from({ length: rowCount }, (_, index) =>
+    mockDatasetRow(input.platform, providerId, input.endpoint, index + 1),
+  );
+  return {
+    schema_version: "social_dataset_preview.v1",
+    platform: input.platform,
+    provider_id: providerId,
+    endpoint: input.endpoint,
+    dataset_name: input.datasetName ?? `${input.platform} social VOC fixture dataset`,
+    dataset_type: "social_voc_fixture_preview",
+    dataset_schema_version: "social_voc_dataset.v1",
+    fixture_only: true,
+    provider_call_allowed: false,
+    provider_call_attempted: false,
+    credential_read_attempted: false,
+    production_write_allowed: false,
+    dataset_write_allowed: false,
+    dataset_created: false,
+    dataset_version_created: false,
+    export_created: false,
+    live_comparison_available: false,
+    blocked_reasons: [],
+    source_item_count: rowCount,
+    row_count: rowCount,
+    max_rows: input.maxRows ?? 20,
+    truncated: input.fixtureLimit > (input.maxRows ?? 20),
+    rows,
+    normalized_items: rows.map((row) => ({
+      schema_version: "social_voc_item.v1",
+      item_id: row.source_item_id ?? row.row_id,
+      provider_id: providerId,
+      platform: input.platform,
+      raw_record_id: row.raw_record_id,
+      evidence_ref: row.evidence_ref,
+      author_policy: "hashed",
+      payload: {
+        text_excerpt: row.payload.text_excerpt,
+      },
+    })),
+    sdk_selection: null,
+    next_required_authorization: "L4_social_dataset_save_authorization_required",
+  };
+}
+
+function mockSocialProviderSourceTemplateResponse(
+  input: SocialProviderSourceTemplateInput,
+): SocialProviderSourceTemplateResponseDto {
+  const providerId = getSocialProviderUiConfig(input.platform).providerId;
+  return {
+    schema_version: "social_provider_source_template.v1",
+    platform: input.platform,
+    provider_id: providerId,
+    source_type: "manual_json",
+    template_strategy: "manual_json_authorized_import",
+    fixture_only: true,
+    source_create_allowed: false,
+    source_created: false,
+    task_created: false,
+    provider_call_attempted: false,
+    credential_read_attempted: false,
+    production_write_allowed: false,
+    source_create_payload: {
+      name: input.sourceName ?? `${input.platform} social fixture source`,
+      type: "manual_json",
+      config: {
+        json_data: {
+          schema_version: "social_provider_source_template_payload.v1",
+          provider_id: providerId,
+          platform: input.platform,
+          endpoints: input.endpoints,
+          provider_call: false,
+          credential_read: false,
+          production_write: false,
+        },
+      },
+    },
+    blocked_reasons: ["source_create_requires_separate_l4_authorization"],
+    next_required_authorization: "L4_social_source_task_authorization_required",
+  };
+}
+
+function mockSocialTaskRunApprovalTemplateResponse(
+  input: SocialTaskRunApprovalTemplateInput,
+): SocialTaskRunApprovalTemplateResponseDto {
+  const providerId = getSocialProviderUiConfig(input.platform).providerId;
+  const blockedReasons = ["provider_call_requires_l4_authorization"];
+  if (!input.credentialReference) {
+    blockedReasons.push("credential_reference_required_for_l4_approval");
+  }
+  return {
+    schema_version: "social_task_run_approval_template.v1",
+    platform: input.platform,
+    provider_id: providerId,
+    sdk_selection: null,
+    approval_packet: {
+      schema_version: "social_task_run_l4_approval_packet.v1",
+      provider_call: false,
+      source_create: false,
+      task_create: false,
+      task_run: false,
+      dataset_save: false,
+      export: false,
+      allow_ai_training: false,
+      scope: {
+        platform: input.platform,
+        provider_id: providerId,
+        endpoints: input.endpoints,
+        max_requests: input.maxRequests ?? 5,
+        max_items: input.maxItems ?? 20,
+        max_rows: input.maxRows ?? 20,
+      },
+      retention: {
+        hours: 24,
+        cleanup_policy: "cleanup_after_evidence",
+      },
+    },
+    required_confirmations: [
+      "confirm_no_provider_call_without_live_gate",
+      "confirm_no_ai_training",
+      "confirm_retention_and_cleanup_policy",
+      "confirm_scope_and_budget",
+    ],
+    blocked_reasons: blockedReasons,
+    provider_call_allowed: false,
+    provider_call_attempted: false,
+    credential_read_attempted: false,
+    source_create_allowed: false,
+    task_create_allowed: false,
+    task_run_allowed: false,
+    dataset_write_allowed: false,
+    export_allowed: false,
+    production_write_allowed: false,
+    next_required_authorization: "L4_social_execution_authorization_required",
+  };
+}
+
 function mockSocialExecutionDryRunResponse(
   input: SocialExecutionDryRunInput,
 ): SocialExecutionDryRunResponseDto {
@@ -406,17 +746,7 @@ function mockSocialExecutionDryRunResponse(
       source_item_count: 1,
       truncated: false,
       rows: [
-        {
-          row_id: `social_dataset_row:${providerId}:1`,
-          raw_record_id: `fixture:${providerId}:${input.endpoint}:1`,
-          evidence_ref: `fixture://${providerId}/${input.endpoint}/1`,
-          source_schema_version: "social_voc_item.v1",
-          payload: {
-            text_excerpt: `${input.platform} fixture review item`,
-            provider_call: false,
-            llm_call_attempted: false,
-          },
-        },
+        mockDatasetRow(input.platform, providerId, input.endpoint, 1),
       ],
     },
     source_template: {
@@ -439,6 +769,31 @@ function mockSocialExecutionDryRunResponse(
       },
     },
     next_required_authorization: "L4_social_execution_authorization_required",
+  };
+}
+
+function mockDatasetRow(
+  platform: SocialProviderPlatform,
+  providerId: string,
+  endpoint: string,
+  index: number,
+): SocialDatasetPreviewRowDto {
+  return {
+    row_id: `social_dataset_row:${providerId}:${index}`,
+    provider_id: providerId,
+    platform,
+    raw_record_id: `fixture:${providerId}:${endpoint}:${index}`,
+    evidence_ref: `fixture://${providerId}/${endpoint}/${index}`,
+    source_item_id: `social_voc_item:${providerId}:${index}`,
+    source_schema_version: "social_voc_item.v1",
+    author_policy: "hashed",
+    payload: {
+      raw_record_id: `fixture:${providerId}:${endpoint}:${index}`,
+      evidence_ref: `fixture://${providerId}/${endpoint}/${index}`,
+      text_excerpt: `${platform} fixture review item ${index}`,
+      provider_call: false,
+      llm_call_attempted: false,
+    },
   };
 }
 
