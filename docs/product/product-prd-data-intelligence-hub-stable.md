@@ -3,20 +3,23 @@ title: Data Intelligence Hub PRD 2.0 平台化采集工作台
 doc_type: prd
 module: product
 topic: data-intelligence-hub
-status: stable
+status: historical
 created: 2026-06-11
-updated: 2026-06-29
+updated: 2026-07-10
 owner: self
 source: human+ai
+superseded_by: product-prd-social-media-automation-platform-v2.md
 ---
 
 # Data Intelligence Hub PRD 2.0 — 平台化采集工作台
 
-> **当前状态**：PRD 2.0 当前源头版本 · **版本日期**：2026-06-29
->
-> 本版本将早期“跨平台数据采集情报平台”收敛为“平台化数据采集工作台”。旧 PRD 的数据闭环、证据链、Collector、Report、Alert 等详细规格仍作为历史详细规格保留；本文件顶部的 PRD 2.0 控制面用于指导下一阶段平台采集实现、优先级和验收边界。
+> **历史状态**：本文保留 2026-06-29 平台化采集工作台的产品与执行基线。当前 V2.0 目标源头已经迁移到 [全社媒自动化数据采集与能力发现平台 PRD](product-prd-social-media-automation-platform-v2.md)。后续新 Goal、范围决策和验收以新 PRD 为准。
 
-## PRD 2.0 当前控制面
+> **历史快照**：PRD 2.0 平台化采集工作台基线 · **版本日期**：2026-06-29
+>
+> 本历史版本曾将早期“跨平台数据采集情报平台”收敛为“平台化数据采集工作台”。其中的数据闭环、证据链、Collector、Report、Alert 等详细规格继续作为历史依据保留，不再作为新 Goal 的目标源头。
+
+## 历史 PRD 2.0 控制面
 
 ### 事实基线
 
@@ -119,7 +122,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 
 ## 目录
 
-- [PRD 2.0 当前控制面](#prd-20-当前控制面)
+- [历史 PRD 2.0 控制面](#历史-prd-20-控制面)
 - [PRD 2.0 产品规格摘要](#prd-20-产品规格摘要)
 - [能力融合与平台优先级](#能力融合与平台优先级)
 - [证据与验收边界](#证据与验收边界)

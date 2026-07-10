@@ -3,10 +3,11 @@ title: 全社媒自动化数据采集平台 V2 总体设计
 doc_type: design_spec
 module: product-and-system
 topic: social-media-automation-platform-v2
-status: draft
-review_status: awaiting_written_user_review
+status: stable
+review_status: approved
 created: 2026-07-10
 updated: 2026-07-10
+approved: 2026-07-10
 owner: self
 source: human+ai
 evidence_level: L1-public-or-runtime
@@ -17,7 +18,7 @@ private_deploy_boundary: self_hosted_collectors
 
 # 全社媒自动化数据采集平台 V2 总体设计
 
-> 本文是 V2 产品与系统重构的书面设计规格。设计方向已在对话中逐段确认，当前等待用户对书面版本复核。
+> 本文是 V2 产品与系统重构的稳定设计规格，已于 2026-07-10 完成用户书面确认。
 >
 > 本文不授权外部 Provider 调用、Actor 运行、生产写入、部署、数据库迁移或真实社媒采集。当前边界固定为 `provider_call=false`、`production unchanged`。
 
