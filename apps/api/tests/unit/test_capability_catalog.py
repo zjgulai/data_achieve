@@ -171,7 +171,7 @@ def test_capability_catalog_rejects_unknown_evidence_reference() -> None:
         CapabilityCatalog.model_validate(payload)
 
 
-def test_capability_catalog_rejects_duplicate_assertion_id() -> None:
+def test_capability_catalog_rejects_duplicate_ids() -> None:
     duplicate_cases = (
         ("implementations", "duplicate implementation_id"),
         ("assertions", "duplicate assertion_id"),
