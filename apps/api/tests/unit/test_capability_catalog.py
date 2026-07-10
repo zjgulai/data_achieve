@@ -106,10 +106,42 @@ def test_capability_taxonomy_is_locked_to_prd_v2() -> None:
     assert {item.value for item in PlatformId} == {
         "youtube", "reddit", "x", "instagram", "threads", "tiktok", "linkedin"
     }
-    assert len(ResourceType) == 8
-    assert len(CapabilityOperation) == 7
-    assert len(CapabilityStatus) == 7
-    assert len(AccessChannel) == 6
+    assert {item.value for item in ResourceType} == {
+        "content",
+        "conversation",
+        "creator",
+        "topic",
+        "metrics",
+        "media_live",
+        "commerce_ads",
+        "relationship_graph",
+    }
+    assert {item.value for item in CapabilityOperation} == {
+        "resolve_detail",
+        "search_discover",
+        "list_enumerate",
+        "monitor_incremental",
+        "backfill_history",
+        "batch_parse",
+        "export_download",
+    }
+    assert {item.value for item in CapabilityStatus} == {
+        "unknown",
+        "candidate",
+        "verified",
+        "partial",
+        "blocked",
+        "unsupported",
+        "deprecated",
+    }
+    assert {item.value for item in AccessChannel} == {
+        "official_authorized_api",
+        "licensed_partner_data_service",
+        "public_web_feed",
+        "authorized_browser",
+        "managed_opaque_collector",
+        "authorized_export_import",
+    }
 
 
 def test_capability_catalog_accepts_valid_references() -> None:
@@ -117,6 +149,12 @@ def test_capability_catalog_accepts_valid_references() -> None:
     assert catalog.provider_call is False
     assert catalog.production_write_allowed is False
     assert catalog.assertions[0].evidence_refs == ["evidence:youtube-docs"]
+
+    for field_name in ("provider_call", "production_write_allowed"):
+        payload = catalog.model_dump(mode="json")
+        payload[field_name] = True
+        with pytest.raises(ValidationError, match=field_name):
+            CapabilityCatalog.model_validate(payload)
 
 
 def test_capability_catalog_rejects_unknown_implementation_reference() -> None:
@@ -134,7 +172,13 @@ def test_capability_catalog_rejects_unknown_evidence_reference() -> None:
 
 
 def test_capability_catalog_rejects_duplicate_assertion_id() -> None:
-    payload = build_catalog().model_dump(mode="json")
-    payload["assertions"].append(payload["assertions"][0])
-    with pytest.raises(ValidationError, match="duplicate assertion_id"):
-        CapabilityCatalog.model_validate(payload)
+    duplicate_cases = (
+        ("implementations", "duplicate implementation_id"),
+        ("assertions", "duplicate assertion_id"),
+        ("evidence", "duplicate evidence_id"),
+    )
+    for collection_name, error_message in duplicate_cases:
+        payload = build_catalog().model_dump(mode="json")
+        payload[collection_name].append(payload[collection_name][0])
+        with pytest.raises(ValidationError, match=error_message):
+            CapabilityCatalog.model_validate(payload)
