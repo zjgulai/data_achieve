@@ -21,6 +21,14 @@ from data_intelligence_hub.schemas.capability_catalog import (
     PlatformId,
     ResourceType,
 )
+from data_intelligence_hub.services.capability_catalog import (
+    clear_capability_catalog_cache,
+    get_capability_catalog,
+)
+from data_intelligence_hub.services.exceptions import (
+    CapabilityCatalogLoadError,
+    CapabilityCatalogUnknownPlatformError,
+)
 
 CAPABILITY_FIXTURE = (
     Path(__file__).resolve().parents[2]
@@ -235,3 +243,36 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
         if item.implementation_id == "threads.graph.v1"
     )
     assert threads.delivery_form is DeliveryForm.ENDPOINT
+
+
+def test_capability_catalog_loader_filters_platform_and_prunes_references() -> None:
+    catalog = get_capability_catalog(platform="youtube")
+    assert catalog.implementations
+    assert {item.platform for item in catalog.implementations} == {PlatformId.YOUTUBE}
+    assert {item.implementation_id for item in catalog.assertions} == {"youtube.v3"}
+    referenced_evidence = {
+        ref for assertion in catalog.assertions for ref in assertion.evidence_refs
+    }
+    assert {item.evidence_id for item in catalog.evidence} == referenced_evidence
+
+
+def test_capability_catalog_loader_rejects_unknown_platform() -> None:
+    with pytest.raises(CapabilityCatalogUnknownPlatformError):
+        get_capability_catalog(platform="missing-platform")
+
+
+def test_capability_catalog_loader_wraps_invalid_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from data_intelligence_hub.services import capability_catalog as service
+
+    invalid_fixture = tmp_path / "invalid.json"
+    invalid_fixture.write_text('{"schema_version":"invalid"}', encoding="utf-8")
+    monkeypatch.setattr(service, "CATALOG_PATH", invalid_fixture)
+    clear_capability_catalog_cache()
+    try:
+        with pytest.raises(CapabilityCatalogLoadError):
+            get_capability_catalog()
+    finally:
+        clear_capability_catalog_cache()

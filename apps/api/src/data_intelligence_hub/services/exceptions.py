@@ -149,6 +149,14 @@ class EmailProviderLiveGateRunNotFoundError(ServiceError):
     message = "email_provider_live_gate_run_not_found"
 
 
+class CapabilityCatalogLoadError(ServiceError):
+    message = "capability_catalog_load_failed"
+
+
+class CapabilityCatalogUnknownPlatformError(ServiceError):
+    message = "capability_catalog_unknown_platform"
+
+
 class SocialProviderCatalogLoadError(ServiceError):
     message = "social_provider_catalog_load_failed"
 
