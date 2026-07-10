@@ -9,6 +9,12 @@ from data_intelligence_hub.schemas.capability_catalog import (
     CapabilityCatalog,
     PlatformId,
 )
+from data_intelligence_hub.schemas.social_provider import (
+    SocialProviderCatalogItem,
+    SocialProviderCatalogResponse,
+    SocialProviderEndpointItem,
+    SocialProviderSdkSelection,
+)
 from data_intelligence_hub.services.exceptions import (
     CapabilityCatalogLoadError,
     CapabilityCatalogUnknownPlatformError,
@@ -71,4 +77,50 @@ def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
             "assertions": assertions,
             "evidence": evidence,
         }
+    )
+
+
+def project_external_provider_catalog_v1() -> SocialProviderCatalogResponse:
+    catalog = get_capability_catalog()
+    providers: list[SocialProviderCatalogItem] = []
+    for item in catalog.implementations:
+        sdk_selection = None
+        if item.sdk_selection is not None:
+            sdk_selection = SocialProviderSdkSelection(
+                package=item.sdk_selection.package,
+                import_name=item.sdk_selection.import_name,
+                source_url=item.sdk_selection.source_url,
+                status=item.sdk_selection.status,
+                reason=item.sdk_selection.reason,
+            )
+        providers.append(
+            SocialProviderCatalogItem(
+                provider_id=item.provider_id,
+                platform=item.platform.value,
+                data_domain=item.data_domains,
+                resource_groups=item.resource_groups,
+                official_docs=item.official_docs,
+                sdk_selection=sdk_selection,
+                live_adapter_strategy=item.live_adapter_strategy,
+                auth_mode=item.auth_mode,
+                quota_hint=item.quota_hint,
+                policy_flags=item.policy_flags,
+                blocked_actions=item.blocked_actions,
+                stability=item.stability,
+                self_host_priority=item.self_host_priority,
+                api_version=item.api_version,
+                required_credentials=item.required_credentials,
+                supported_endpoints=item.supported_endpoints,
+                endpoint_contracts=[
+                    SocialProviderEndpointItem(endpoint_id=endpoint)
+                    for endpoint in item.supported_endpoints
+                ],
+            )
+        )
+    return SocialProviderCatalogResponse(
+        schema_version="external_provider_catalog.v1",
+        evidence_level=catalog.evidence_level,
+        provider_call=False,
+        generated_at=catalog.generated_at.date().isoformat(),
+        providers=providers,
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from data_intelligence_hub.schemas.capability_catalog import (
 from data_intelligence_hub.services.capability_catalog import (
     clear_capability_catalog_cache,
     get_capability_catalog,
+    project_external_provider_catalog_v1,
 )
 from data_intelligence_hub.services.exceptions import (
     CapabilityCatalogLoadError,
@@ -33,6 +35,10 @@ from data_intelligence_hub.services.exceptions import (
 CAPABILITY_FIXTURE = (
     Path(__file__).resolve().parents[2]
     / "src/data_intelligence_hub/services/fixtures/capability_catalog_overseas_v2.json"
+)
+LEGACY_FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures/external_provider_catalog_v1.json"
 )
 
 
@@ -243,6 +249,61 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
         if item.implementation_id == "threads.graph.v1"
     )
     assert threads.delivery_form is DeliveryForm.ENDPOINT
+
+
+def test_external_provider_catalog_v1_projection_preserves_provider_contract() -> None:
+    legacy = json.loads(LEGACY_FIXTURE.read_text(encoding="utf-8"))
+    projected = project_external_provider_catalog_v1()
+    projected_payload = projected.model_dump(mode="json")
+
+    top_level_fields = (
+        "schema_version",
+        "evidence_level",
+        "provider_call",
+        "generated_at",
+    )
+    assert {field: projected_payload[field] for field in top_level_fields} == {
+        field: legacy[field] for field in top_level_fields
+    }
+
+    legacy_providers = legacy["catalog"]["providers"]
+    assert [item.provider_id for item in projected.providers] == [
+        item["provider_id"] for item in legacy_providers
+    ]
+    preserved_fields = (
+        "provider_id",
+        "platform",
+        "data_domain",
+        "resource_groups",
+        "official_docs",
+        "sdk_selection",
+        "live_adapter_strategy",
+        "auth_mode",
+        "quota_hint",
+        "policy_flags",
+        "blocked_actions",
+        "stability",
+        "self_host_priority",
+        "api_version",
+        "required_credentials",
+        "supported_endpoints",
+    )
+    for actual, expected in zip(
+        projected.providers,
+        legacy_providers,
+        strict=True,
+    ):
+        expected_payload = {field: expected[field] for field in preserved_fields}
+        expected_payload["endpoint_contracts"] = [
+            {
+                "endpoint_id": endpoint,
+                "auth_scope": None,
+                "methods": [],
+                "data_domain": [],
+            }
+            for endpoint in expected["supported_endpoints"]
+        ]
+        assert actual.model_dump(mode="json") == expected_payload
 
 
 def test_capability_catalog_loader_filters_platform_and_prunes_references() -> None:

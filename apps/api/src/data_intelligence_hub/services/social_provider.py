@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
-import json
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Literal
 
 from data_intelligence_hub.schemas.social_provider import (
@@ -23,7 +20,6 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderCatalogResponse,
     SocialProviderDependencyGateRequest,
     SocialProviderDependencyGateResponse,
-    SocialProviderEndpointItem,
     SocialProviderGateRequest,
     SocialProviderGateResponse,
     SocialProviderLiveApprovalTemplateRequest,
@@ -33,7 +29,6 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialProviderRateLimitProfile,
     SocialProviderReadinessRequest,
     SocialProviderReadinessResponse,
-    SocialProviderSdkSelection,
     SocialProviderSourceTemplateRequest,
     SocialProviderSourceTemplateResponse,
     SocialRawPreviewRecord,
@@ -42,14 +37,14 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialTaskRunApprovalTemplateRequest,
     SocialTaskRunApprovalTemplateResponse,
 )
+from data_intelligence_hub.services.capability_catalog import (
+    project_external_provider_catalog_v1,
+)
 from data_intelligence_hub.services.exceptions import (
+    CapabilityCatalogLoadError,
     SocialProviderCatalogLoadError,
     SocialProviderGateAuthorizationError,
     SocialProviderUnknownPlatformError,
-)
-
-CATALOG_PATH = (
-    Path(__file__).resolve().parent / "fixtures" / "social_provider_catalog_overseas.json"
 )
 
 OPTIONAL_DEPENDENCY_EXTRAS: dict[str, str] = {
@@ -90,34 +85,8 @@ TASK_RUN_APPROVAL_REQUIRED_CONFIRMATIONS = [
 ]
 
 
-@dataclass(frozen=True)
-class _CatalogEnvelope:
-    schema_version: str
-    evidence_level: str
-    provider_call: bool
-    generated_at: str
-    providers: tuple[SocialProviderCatalogItem, ...]
-
-
-_CATALOG_CACHE: _CatalogEnvelope | None = None
-
-
 def _normalize_platform(platform: str) -> str:
     return platform.strip().lower()
-
-
-def _to_text_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-
-    normalized: list[str] = []
-    for item in value:
-        if not isinstance(item, str):
-            continue
-        normalized_item = item.strip()
-        if normalized_item:
-            normalized.append(normalized_item)
-    return normalized
 
 
 def _coerce_bool_map(
@@ -153,110 +122,15 @@ def _coerce_float(value: Any) -> float | None:
     return None
 
 
-def _to_endpoint_items(endpoints: list[str]) -> list[SocialProviderEndpointItem]:
-    return [SocialProviderEndpointItem(endpoint_id=endpoint) for endpoint in endpoints]
-
-
-def _build_sdk_selection(raw: dict[str, Any]) -> SocialProviderSdkSelection | None:
-    sdk_block = raw.get("sdk_selection")
-    if not isinstance(sdk_block, dict):
-        return None
-    package = sdk_block.get("package")
-    source_url = sdk_block.get("source_url")
-    if not isinstance(package, str) or not isinstance(source_url, str):
-        return None
-    return SocialProviderSdkSelection(
-        package=package,
-        import_name=(
-            sdk_block["import_name"] if isinstance(sdk_block.get("import_name"), str) else None
-        ),
-        source_url=source_url,
-        status=(
-            sdk_block["status"]
-            if sdk_block.get("status") in {"selected", "candidate", "manual_review", "blocked"}
-            else "manual_review"
-        ),
-        reason=str(sdk_block.get("reason", "")),
-    )
-
-
-def _build_catalog_item(raw: dict[str, Any]) -> SocialProviderCatalogItem:
-    required_fields = {
-        "provider_id",
-        "platform",
-        "quota_hint",
-        "policy_flags",
-        "blocked_actions",
-        "stability",
-        "self_host_priority",
-        "api_version",
-    }
-    if not required_fields.issubset(raw):
-        raise SocialProviderCatalogLoadError
-
-    required_credentials = _to_text_list(raw.get("required_credentials"))
-    supported_endpoints = _to_text_list(raw.get("supported_endpoints"))
-    resource_groups = _to_text_list(raw.get("resource_groups"))
-    if not resource_groups:
-        resource_groups = _to_text_list(raw.get("data_domain"))
-
-    return SocialProviderCatalogItem(
-        provider_id=str(raw["provider_id"]),
-        platform=_normalize_platform(str(raw["platform"])),
-        data_domain=_to_text_list(raw.get("data_domain")),
-        resource_groups=resource_groups,
-        official_docs=_to_text_list(raw.get("official_docs")),
-        sdk_selection=_build_sdk_selection(raw),
-        live_adapter_strategy=str(raw.get("live_adapter_strategy", "manual_review")),
-        auth_mode=str(raw.get("auth_mode", "")),
-        quota_hint=dict(raw.get("quota_hint", {})),
-        policy_flags=_to_text_list(raw.get("policy_flags")),
-        blocked_actions=_to_text_list(raw.get("blocked_actions")),
-        stability=str(raw["stability"]),
-        self_host_priority=str(raw["self_host_priority"]),
-        api_version=str(raw["api_version"]),
-        required_credentials=required_credentials,
-        supported_endpoints=supported_endpoints,
-        endpoint_contracts=_to_endpoint_items(supported_endpoints),
-    )
-
-
-def _load_catalog() -> _CatalogEnvelope:
-    global _CATALOG_CACHE
-    if _CATALOG_CACHE is not None:
-        return _CATALOG_CACHE
-
-    try:
-        raw = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-        catalog = raw["catalog"]
-        providers_block = catalog.get("providers")
-        if not isinstance(providers_block, list):
-            raise SocialProviderCatalogLoadError
-        providers = tuple(
-            _build_catalog_item(item) for item in providers_block if isinstance(item, dict)
-        )
-    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
-        raise SocialProviderCatalogLoadError from exc
-
-    if not providers:
-        raise SocialProviderCatalogLoadError
-
-    _CATALOG_CACHE = _CatalogEnvelope(
-        schema_version=str(raw.get("schema_version", "external_provider_catalog.v1")),
-        evidence_level=str(raw.get("evidence_level", "L1-public-or-runtime")),
-        provider_call=bool(raw.get("provider_call", False)),
-        generated_at=str(raw.get("generated_at", "")),
-        providers=providers,
-    )
-    return _CATALOG_CACHE
-
-
 def get_social_provider_catalog(
     platform: str | None = None,
     data_domain: str | None = None,
     resource_group: str | None = None,
 ) -> SocialProviderCatalogResponse:
-    catalog = _load_catalog()
+    try:
+        catalog = project_external_provider_catalog_v1()
+    except CapabilityCatalogLoadError as exc:
+        raise SocialProviderCatalogLoadError from exc
     filtered = list(catalog.providers)
 
     if platform is not None:
@@ -280,13 +154,7 @@ def get_social_provider_catalog(
             if requested_resource_group in {group.lower() for group in item.resource_groups}
         ]
 
-    return SocialProviderCatalogResponse(
-        schema_version=catalog.schema_version,
-        evidence_level=catalog.evidence_level,
-        provider_call=catalog.provider_call,
-        generated_at=catalog.generated_at,
-        providers=filtered,
-    )
+    return catalog.model_copy(update={"providers": filtered})
 
 
 def _find_provider(platform: str, provider_id: str | None = None) -> SocialProviderCatalogItem:

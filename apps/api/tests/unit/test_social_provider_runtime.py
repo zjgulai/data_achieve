@@ -16,6 +16,8 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialTaskRunApprovalTemplateRequest,
 )
 from data_intelligence_hub.services.exceptions import (
+    CapabilityCatalogLoadError,
+    SocialProviderCatalogLoadError,
     SocialProviderGateAuthorizationError,
     SocialProviderUnknownPlatformError,
 )
@@ -49,6 +51,32 @@ def test_social_provider_catalog_contains_overseas_targets() -> None:
         "tiktok",
         "linkedin",
     }
+
+
+def test_social_provider_catalog_is_projected_from_v2_without_live_side_effects() -> None:
+    catalog = get_social_provider_catalog()
+
+    assert catalog.schema_version == "external_provider_catalog.v1"
+    assert catalog.provider_call is False
+    assert len(catalog.providers) == 7
+    assert all(provider.endpoint_contracts for provider in catalog.providers)
+
+
+def test_social_provider_catalog_preserves_legacy_load_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from data_intelligence_hub.services import social_provider as service
+
+    def raise_v2_load_error() -> None:
+        raise CapabilityCatalogLoadError
+
+    monkeypatch.setattr(
+        service,
+        "project_external_provider_catalog_v1",
+        raise_v2_load_error,
+    )
+    with pytest.raises(SocialProviderCatalogLoadError):
+        get_social_provider_catalog()
 
 
 def test_social_provider_catalog_filter_platform_keeps_request_scope() -> None:
