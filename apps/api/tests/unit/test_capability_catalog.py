@@ -246,7 +246,7 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
 
 
 def test_capability_catalog_loader_filters_platform_and_prunes_references() -> None:
-    catalog = get_capability_catalog(platform="youtube")
+    catalog = get_capability_catalog(platform=" YouTube ")
     assert catalog.implementations
     assert {item.platform for item in catalog.implementations} == {PlatformId.YOUTUBE}
     assert {item.implementation_id for item in catalog.assertions} == {"youtube.v3"}
@@ -254,6 +254,23 @@ def test_capability_catalog_loader_filters_platform_and_prunes_references() -> N
         ref for assertion in catalog.assertions for ref in assertion.evidence_refs
     }
     assert {item.evidence_id for item in catalog.evidence} == referenced_evidence
+
+    catalog.implementations[0].resource_groups.append("filtered-mutation")
+    filtered_again = get_capability_catalog(platform="youtube")
+    assert "filtered-mutation" not in filtered_again.implementations[0].resource_groups
+
+    unfiltered = get_capability_catalog()
+    youtube = next(
+        item for item in unfiltered.implementations if item.implementation_id == "youtube.v3"
+    )
+    youtube.resource_groups.append("unfiltered-mutation")
+    unfiltered_again = get_capability_catalog()
+    youtube_again = next(
+        item
+        for item in unfiltered_again.implementations
+        if item.implementation_id == "youtube.v3"
+    )
+    assert "unfiltered-mutation" not in youtube_again.resource_groups
 
 
 def test_capability_catalog_loader_rejects_unknown_platform() -> None:
@@ -267,12 +284,21 @@ def test_capability_catalog_loader_wraps_invalid_fixture(
 ) -> None:
     from data_intelligence_hub.services import capability_catalog as service
 
-    invalid_fixture = tmp_path / "invalid.json"
-    invalid_fixture.write_text('{"schema_version":"invalid"}', encoding="utf-8")
-    monkeypatch.setattr(service, "CATALOG_PATH", invalid_fixture)
-    clear_capability_catalog_cache()
-    try:
-        with pytest.raises(CapabilityCatalogLoadError):
-            get_capability_catalog()
-    finally:
+    invalid_schema = tmp_path / "invalid-schema.json"
+    invalid_schema.write_text('{"schema_version":"invalid"}', encoding="utf-8")
+    invalid_utf8 = tmp_path / "invalid-utf8.json"
+    invalid_utf8.write_bytes(b"\xff\xfe")
+    invalid_cases: tuple[tuple[Path, type[BaseException]], ...] = (
+        (invalid_schema, ValidationError),
+        (invalid_utf8, UnicodeDecodeError),
+    )
+
+    for invalid_fixture, expected_cause in invalid_cases:
+        monkeypatch.setattr(service, "CATALOG_PATH", invalid_fixture)
         clear_capability_catalog_cache()
+        try:
+            with pytest.raises(CapabilityCatalogLoadError) as exc_info:
+                get_capability_catalog()
+            assert isinstance(exc_info.value.__cause__, expected_cause)
+        finally:
+            clear_capability_catalog_cache()

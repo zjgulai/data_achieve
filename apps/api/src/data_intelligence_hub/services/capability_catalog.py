@@ -27,7 +27,7 @@ def _load_capability_catalog() -> CapabilityCatalog:
         return CapabilityCatalog.model_validate_json(
             CATALOG_PATH.read_text(encoding="utf-8")
         )
-    except (OSError, ValidationError) as exc:
+    except (OSError, UnicodeDecodeError, ValidationError) as exc:
         raise CapabilityCatalogLoadError from exc
 
 
@@ -36,7 +36,7 @@ def clear_capability_catalog_cache() -> None:
 
 
 def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
-    catalog = _load_capability_catalog()
+    catalog = _load_capability_catalog().model_copy(deep=True)
     if platform is None:
         return catalog
 
