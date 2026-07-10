@@ -98,7 +98,7 @@ GOAL-V2-01 只完成文件型能力合同底座：
 - `docs/api/api-contract-social-api-overseas-provider-catalog-draft-20260708.md`
   - 记录 V2 单一事实源与兼容关系。
 
-**Move:**
+**Move（Task 4 切换 Loader 时原子完成）：**
 
 - From: `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`
 - To: `apps/api/tests/fixtures/external_provider_catalog_v1.json`
@@ -517,7 +517,7 @@ git commit -m "feat: define capability catalog contracts"
 
 **Files:**
 
-- Move: `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`
+- Copy for regression: `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`
   to `apps/api/tests/fixtures/external_provider_catalog_v1.json`
 - Create: `apps/api/src/data_intelligence_hub/services/fixtures/capability_catalog_overseas_v2.json`
 - Modify: `apps/api/tests/unit/test_capability_catalog.py`
@@ -568,12 +568,14 @@ uv run pytest tests/unit/test_capability_catalog.py::test_overseas_capability_fi
 
 Expected: test stops because `capability_catalog_overseas_v2.json` is absent.
 
-- [ ] **Step 3: 移动历史 V1 Fixture**
+- [ ] **Step 3: 复制历史 V1 Fixture，暂时保留旧运行时文件**
 
 ```bash
 mkdir -p apps/api/tests/fixtures
-git mv apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json apps/api/tests/fixtures/external_provider_catalog_v1.json
+cp apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json apps/api/tests/fixtures/external_provider_catalog_v1.json
 ```
+
+此时不删除旧运行时 Fixture，确保 Task 2 和 Task 3 的中间提交仍能通过既有 Social Provider 回归。Task 4 在兼容投影接管 Loader 的同一提交中删除旧文件，完成最终 move。
 
 - [ ] **Step 4: 创建一次性迁移脚本**
 
@@ -831,7 +833,7 @@ Expected: 6 tests pass; generated catalog has 7 implementations and 35 candidate
 
 - [ ] **Step 6: 删除一次性迁移脚本**
 
-使用 `apply_patch` 删除 `scripts/migrate-capability-catalog-v2.py`。运行时和后续编辑只允许读取或修改 `capability_catalog_overseas_v2.json`；历史 V1 文件仅用于兼容回归。
+使用 `apply_patch` 删除 `scripts/migrate-capability-catalog-v2.py`。新 Capability Catalog 服务只允许读取或修改 `capability_catalog_overseas_v2.json`；旧 Social Provider Loader 在 Task 4 切换前仍临时读取历史运行时 Fixture，随后该文件被删除并仅保留测试副本。
 
 - [ ] **Step 7: 提交规范化 Fixture**
 
@@ -1026,6 +1028,7 @@ git commit -m "feat: load canonical capability catalog"
 
 - Modify: `apps/api/src/data_intelligence_hub/services/capability_catalog.py`
 - Modify: `apps/api/src/data_intelligence_hub/services/social_provider.py`
+- Delete: `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`
 - Modify: `apps/api/tests/unit/test_capability_catalog.py`
 - Modify: `apps/api/tests/unit/test_social_provider_runtime.py`
 - Test: `apps/api/tests/integration/test_social_provider_routes.py`
@@ -1236,6 +1239,8 @@ def get_social_provider_catalog(
     return catalog.model_copy(update={"providers": filtered})
 ```
 
+5. 使用 `apply_patch` 删除 `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`。只有在兼容投影与现有 Social Provider 回归测试均可运行后才执行删除。
+
 - [ ] **Step 5: 运行兼容与现有社媒测试**
 
 Run:
@@ -1262,7 +1267,7 @@ Expected: both commands exit 0.
 - [ ] **Step 7: 提交兼容层切片**
 
 ```bash
-git add apps/api/src/data_intelligence_hub/services/capability_catalog.py apps/api/src/data_intelligence_hub/services/social_provider.py apps/api/tests/unit/test_capability_catalog.py apps/api/tests/unit/test_social_provider_runtime.py
+git add -- apps/api/src/data_intelligence_hub/services/capability_catalog.py apps/api/src/data_intelligence_hub/services/social_provider.py apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json apps/api/tests/unit/test_capability_catalog.py apps/api/tests/unit/test_social_provider_runtime.py
 git diff --cached --check
 git commit -m "refactor: project social providers from capability catalog"
 ```
