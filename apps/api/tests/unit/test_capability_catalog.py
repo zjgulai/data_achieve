@@ -195,6 +195,7 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
         CAPABILITY_FIXTURE.read_text(encoding="utf-8")
     )
     assert catalog.schema_version == "capability_catalog.v1"
+    assert catalog.evidence_level == "L1-public-or-runtime"
     assert catalog.provider_call is False
     assert catalog.production_write_allowed is False
     assert len(catalog.implementations) == 7
@@ -215,7 +216,7 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
     } == implementation_resource_groups
     assert all(item.evidence_refs for item in catalog.assertions)
     assert {item.evidence_grade for item in catalog.evidence} == {
-        "L1-public-or-runtime"
+        catalog.evidence_level
     }
     assert {item.hash_scope for item in catalog.evidence} == {
         "source_reference_only"
