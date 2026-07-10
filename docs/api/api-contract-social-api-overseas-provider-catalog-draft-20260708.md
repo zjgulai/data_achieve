@@ -8,7 +8,7 @@ provider_call: false
 production_boundary: production unchanged
 private_deploy_boundary: self_hosted_collectors
 created: 2026-07-08
-updated: 2026-07-08
+updated: 2026-07-10
 owner: self
 source: codex
 ---
@@ -38,7 +38,17 @@ source: codex
 - `social-raw-preview` 只生成 `social_raw.v1` fixture records，不创建 Source/Task/RawRecord，不读取 credential，不执行 live comparison。
 - `social-provider-adapter-plan` 只检查 catalog SDK selection、`data_intelligence_hub.social_api.*` 本地 adapter module 映射与可选依赖 import spec，不 import SDK live client、不读取 credential、不发生 provider call。
 - `social-provider-source-template` 只生成 `manual_json` SourceCreate 候选 payload，不调用 `/api/sources`，不创建 Source/Task，不写 DB。
-- 基准 catalog 已落地在 `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`，路由在 `apps/api/src/data_intelligence_hub/api/routes/social_provider.py`，服务与 schema 在 `apps/api/src/data_intelligence_hub/services/social_provider.py`。
+- V2 运行时 catalog 已迁移到 `apps/api/src/data_intelligence_hub/services/fixtures/capability_catalog_overseas_v2.json`。
+- `GET /api/automation/social-provider-catalog` 由兼容投影返回 `external_provider_catalog.v1`，不会直接读取 `social_provider_catalog_overseas.json` 运行时文件。
+- 历史 `social_provider_catalog_overseas.json` 的 `V1` 兼容数据仅保留在 `apps/api/tests/fixtures/external_provider_catalog_v1.json`，用于回归测试。
+
+### V2.0 Catalog 迁移
+
+- 运行时单一事实源：`services/fixtures/capability_catalog_overseas_v2.json`。
+- 规范合同：`capability_catalog.v1`。
+- 现有 `GET /api/automation/social-provider-catalog` 继续返回 `external_provider_catalog.v1`，由 V2 Catalog 投影生成。
+- 历史 V1 Fixture 只保留在 `tests/fixtures/external_provider_catalog_v1.json`，用于兼容回归。
+- GOAL-V2-01 不新增数据库表、API route、Provider Client 或 Credential 读取。
 
 ### 推断
 

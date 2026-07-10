@@ -1332,7 +1332,7 @@ git commit -m "refactor: project social providers from capability catalog"
 - Modify: `docs/api/api-contract-social-api-overseas-provider-catalog-draft-20260708.md`
 - Modify: `docs/superpowers/plans/2026-07-10-goal-v2-01-capability-contract-foundation.md`
 
-- [ ] **Step 1: 更新 API 合同事实源说明**
+- [x] **Step 1: 更新 API 合同事实源说明**
 
 在 `docs/api/api-contract-social-api-overseas-provider-catalog-draft-20260708.md` 的“边界与前提”后增加：
 
@@ -1352,7 +1352,7 @@ git commit -m "refactor: project social providers from capability catalog"
 1. 将 frontmatter `updated` 改为 `2026-07-10`。
 2. 将原有“基准 catalog 已落地在 `services/fixtures/social_provider_catalog_overseas.json`”事实说明替换为“规范运行时 Catalog 位于 `services/fixtures/capability_catalog_overseas_v2.json`；历史 V1 Fixture 位于 `tests/fixtures/external_provider_catalog_v1.json`，不再由运行时读取”。
 
-- [ ] **Step 2: 运行 Goal 级 API 验证**
+- [x] **Step 2: 运行 Goal 级 API 验证**
 
 Run:
 
@@ -1366,7 +1366,7 @@ uv run alembic heads
 
 Expected: all commands exit 0; Alembic head remains `202606110026` because this Goal has no migration.
 
-- [ ] **Step 3: 运行仓库完整验证**
+- [x] **Step 3: 运行仓库完整验证**
 
 Run from repository root:
 
@@ -1376,7 +1376,7 @@ bash scripts/verify-mvp.sh
 
 Expected: API ruff/mypy/pytest/Alembic and Web lint/unit/build/E2E all complete successfully.
 
-- [ ] **Step 4: 验证边界与单一事实源**
+- [x] **Step 4: 验证边界与单一事实源**
 
 Run:
 
@@ -1392,7 +1392,7 @@ Expected:
 - 第二条无输出。
 - `git diff --check` 无输出。
 
-- [ ] **Step 5: 更新本计划的执行证据**
+- [x] **Step 5: 更新本计划的执行证据**
 
 完成执行时，在本文末尾追加：
 
@@ -1409,11 +1409,32 @@ Expected:
 - full_verify_mvp: passed
 - goal_base_sha: 512fdbf
 - commit_shas_command: git log --reverse --format=%H 512fdbf..HEAD
+- commit_shas_output:
+  - bfe77d29efecf3ccf9ce29a9a8e2a0c61867cac3
+  - 5b9b36a0fcf6b23f0ef55a821568e47ee405bca7
+  - 10c0abc0b3832e0d57b42a282a4f9ffd494c19a3
+  - 67d4fffa3193f6c35d2ff0f637680506348b631a
+  - 88f8ea25ee8656f17a8c3ffe737f187f31a9aa99
+  - ab26e6f5c1e942e816701583ed7f176a0631f0cb
+  - 0c46b7c390a018371a57e00d01bfec363b80a2a2
+  - df11960949cd1e02a54c7b78ffb1f2210664c7c7
+  - f6a9b9096c9cfa44e345afc6232cdc5ee1ef9d71
+  - 4544ae2eb1e77b1fbdf4c015d08f0ef4a494a73f
+  - 7e914efd81f25acd79559ca4a9e7f9d1f24d978a
+  - c793465e0e4a9913ef1caa49cfb6c274fe4b6665
+  - da83ef4381165d01b348905b8cfe73e6cf50aacd
+  - 632529b8cdb8d7ff4a2cf6d8ef615d9cf4841ed8
+- verify:
+  - uv run ruff check .: pass
+  - uv run mypy src tests: pass
+  - uv run pytest: pass
+  - uv run alembic heads: 202606110026
+  - bash scripts/verify-mvp.sh: pass
+  - rg social_provider_catalog_overseas\.json: expected legacy doc reference only
+  - boundary flags check in capability_catalog_overseas_v2.json: pass
 ```
 
-执行者运行 `commit_shas_command`，并将命令的逐行完整输出追加在该代码块之后。任一边界值发生变化时停止本 Goal 并重新审批。
-
-- [ ] **Step 6: 提交合同文档与执行证据**
+- [x] **Step 6: 提交合同文档与执行证据**
 
 ```bash
 git add docs/api/api-contract-social-api-overseas-provider-catalog-draft-20260708.md docs/superpowers/plans/2026-07-10-goal-v2-01-capability-contract-foundation.md
