@@ -392,7 +392,7 @@
       "provider_id": "threads.graph.v1",
       "platform": "threads",
       "access_channel": "official_authorized_api",
-      "delivery_form": "sdk",
+      "delivery_form": "endpoint",
       "deployment_mode": "official_cloud",
       "data_domains": [
         "thread_feed",
@@ -4306,7 +4306,7 @@
     {
       "schema_version": "capability_evidence.v1",
       "evidence_id": "evidence:e78cfb443c8dc52ebbe3",
-      "evidence_type": "official_doc",
+      "evidence_type": "repository",
       "source_url": "https://github.com/tiktok/tiktok-research-api-wrapper",
       "source_version": "research",
       "observed_at": "2026-07-08T00:00:00Z",
@@ -4366,7 +4366,7 @@
     {
       "schema_version": "capability_evidence.v1",
       "evidence_id": "evidence:29e12946b9166fc31299",
-      "evidence_type": "official_doc",
+      "evidence_type": "repository",
       "source_url": "https://github.com/facebook/facebook-python-business-sdk",
       "source_version": "v19",
       "observed_at": "2026-07-08T00:00:00Z",
@@ -4426,7 +4426,7 @@
     {
       "schema_version": "capability_evidence.v1",
       "evidence_id": "evidence:84ee5504525c48fd7c73",
-      "evidence_type": "official_doc",
+      "evidence_type": "repository",
       "source_url": "https://github.com/linkedin-developers/linkedin-api-python-client",
       "source_version": "v2",
       "observed_at": "2026-07-08T00:00:00Z",
