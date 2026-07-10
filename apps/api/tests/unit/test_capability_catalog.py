@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -19,6 +20,11 @@ from data_intelligence_hub.schemas.capability_catalog import (
     EvidenceType,
     PlatformId,
     ResourceType,
+)
+
+CAPABILITY_FIXTURE = (
+    Path(__file__).resolve().parents[2]
+    / "src/data_intelligence_hub/services/fixtures/capability_catalog_overseas_v2.json"
 )
 
 
@@ -182,3 +188,23 @@ def test_capability_catalog_rejects_duplicate_ids() -> None:
         payload[collection_name].append(payload[collection_name][0])
         with pytest.raises(ValidationError, match=error_message):
             CapabilityCatalog.model_validate(payload)
+
+
+def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
+    catalog = CapabilityCatalog.model_validate_json(
+        CAPABILITY_FIXTURE.read_text(encoding="utf-8")
+    )
+    assert catalog.schema_version == "capability_catalog.v1"
+    assert catalog.provider_call is False
+    assert catalog.production_write_allowed is False
+    assert len(catalog.implementations) == 7
+    assert len(catalog.assertions) == 35
+    assert {item.platform for item in catalog.implementations} == set(PlatformId)
+    assert {item.support_status for item in catalog.assertions} == {
+        CapabilityStatus.CANDIDATE
+    }
+    assert all(item.evidence_refs for item in catalog.assertions)
+    assert all(not item.provider_call_attempted for item in catalog.evidence)
+    assert all(not item.credential_read_attempted for item in catalog.evidence)
+    assert all(not item.live_client_created for item in catalog.evidence)
+    assert all(not item.production_write_attempted for item in catalog.evidence)
