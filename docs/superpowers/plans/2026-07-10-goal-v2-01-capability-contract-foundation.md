@@ -546,15 +546,41 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
     assert catalog.production_write_allowed is False
     assert len(catalog.implementations) == 7
     assert len(catalog.assertions) == 35
+    assert len(catalog.evidence) == 14
     assert {item.platform for item in catalog.implementations} == set(PlatformId)
     assert {item.support_status for item in catalog.assertions} == {
         CapabilityStatus.CANDIDATE
     }
+    implementation_resource_groups = {
+        (implementation.implementation_id, resource_group)
+        for implementation in catalog.implementations
+        for resource_group in implementation.resource_groups
+    }
+    assert {
+        (assertion.implementation_id, assertion.source_resource_group)
+        for assertion in catalog.assertions
+    } == implementation_resource_groups
     assert all(item.evidence_refs for item in catalog.assertions)
+    assert {item.evidence_grade for item in catalog.evidence} == {
+        "L1-public-or-runtime"
+    }
+    assert {item.hash_scope for item in catalog.evidence} == {
+        "source_reference_only"
+    }
+    assert {item.evidence_type for item in catalog.evidence} == {
+        EvidenceType.OFFICIAL_DOC,
+        EvidenceType.REPOSITORY,
+    }
     assert all(not item.provider_call_attempted for item in catalog.evidence)
     assert all(not item.credential_read_attempted for item in catalog.evidence)
     assert all(not item.live_client_created for item in catalog.evidence)
     assert all(not item.production_write_attempted for item in catalog.evidence)
+    threads = next(
+        item
+        for item in catalog.implementations
+        if item.implementation_id == "threads.graph.v1"
+    )
+    assert threads.delivery_form is DeliveryForm.ENDPOINT
 ```
 
 - [ ] **Step 2: 运行测试，确认 V2 Fixture 尚未存在**
@@ -589,6 +615,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/api/src"))
@@ -716,7 +743,11 @@ def main() -> None:
                 "provider_id": provider["provider_id"],
                 "platform": provider["platform"],
                 "access_channel": "official_authorized_api",
-                "delivery_form": "sdk" if sdk else "endpoint",
+                "delivery_form": (
+                    "endpoint"
+                    if sdk is None or sdk["package"] == "httpx"
+                    else "sdk"
+                ),
                 "deployment_mode": "official_cloud",
                 "data_domains": provider["data_domain"],
                 "resource_groups": provider["resource_groups"],
@@ -746,7 +777,11 @@ def main() -> None:
             evidence_by_id[item_id] = {
                 "schema_version": "capability_evidence.v1",
                 "evidence_id": item_id,
-                "evidence_type": "official_doc",
+                "evidence_type": (
+                    "repository"
+                    if urlparse(source_url).hostname == "github.com"
+                    else "official_doc"
+                ),
                 "source_url": source_url,
                 "source_version": provider["api_version"],
                 "observed_at": generated_at,
