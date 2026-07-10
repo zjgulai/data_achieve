@@ -903,13 +903,22 @@ from data_intelligence_hub.services.exceptions import (
 
 
 def test_capability_catalog_loader_filters_platform_and_prunes_references() -> None:
-    catalog = get_capability_catalog(platform="youtube")
+    catalog = get_capability_catalog(platform=" YouTube ")
     assert [item.platform for item in catalog.implementations] == [PlatformId.YOUTUBE]
     assert {item.implementation_id for item in catalog.assertions} == {"youtube.v3"}
     referenced_evidence = {
         ref for assertion in catalog.assertions for ref in assertion.evidence_refs
     }
     assert {item.evidence_id for item in catalog.evidence} == referenced_evidence
+
+    catalog.implementations[0].policy_flags.append("caller_mutation")
+    fresh_filtered = get_capability_catalog(platform="youtube")
+    assert "caller_mutation" not in fresh_filtered.implementations[0].policy_flags
+
+    full_catalog = get_capability_catalog()
+    full_catalog.implementations[0].policy_flags.append("caller_mutation")
+    fresh_full = get_capability_catalog()
+    assert "caller_mutation" not in fresh_full.implementations[0].policy_flags
 
 
 def test_capability_catalog_loader_rejects_unknown_platform() -> None:
@@ -924,12 +933,20 @@ def test_capability_catalog_loader_wraps_invalid_fixture(
     from data_intelligence_hub.services import capability_catalog as service
 
     invalid_fixture = tmp_path / "invalid.json"
-    invalid_fixture.write_text('{"schema_version":"invalid"}', encoding="utf-8")
     monkeypatch.setattr(service, "CATALOG_PATH", invalid_fixture)
-    clear_capability_catalog_cache()
-    with pytest.raises(CapabilityCatalogLoadError):
-        get_capability_catalog()
-    clear_capability_catalog_cache()
+    invalid_cases = (
+        (b'{"schema_version":"invalid"}', ValidationError),
+        (b"\xff", UnicodeDecodeError),
+    )
+    for payload, cause_type in invalid_cases:
+        invalid_fixture.write_bytes(payload)
+        clear_capability_catalog_cache()
+        try:
+            with pytest.raises(CapabilityCatalogLoadError) as error:
+                get_capability_catalog()
+            assert isinstance(error.value.__cause__, cause_type)
+        finally:
+            clear_capability_catalog_cache()
 ```
 
 - [ ] **Step 2: 运行测试，确认 Service 尚未存在**
@@ -990,7 +1007,7 @@ def _load_capability_catalog() -> CapabilityCatalog:
         return CapabilityCatalog.model_validate_json(
             CATALOG_PATH.read_text(encoding="utf-8")
         )
-    except (OSError, ValidationError) as exc:
+    except (OSError, UnicodeDecodeError, ValidationError) as exc:
         raise CapabilityCatalogLoadError from exc
 
 
@@ -999,7 +1016,7 @@ def clear_capability_catalog_cache() -> None:
 
 
 def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
-    catalog = _load_capability_catalog()
+    catalog = _load_capability_catalog().model_copy(deep=True)
     if platform is None:
         return catalog
 
