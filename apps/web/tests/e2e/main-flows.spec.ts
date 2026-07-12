@@ -734,19 +734,40 @@ test.describe("MVP workspace routes", () => {
     page,
   }) => {
     await page.goto("/api-market");
-    await expect(page.getByRole("heading", { name: "API市场" })).toBeVisible();
-    await expect(page.getByText("provider_call=false")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: "能力市场" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("provider_call=false", { exact: true }).first(),
+    ).toBeVisible();
     await expect(page.getByText("credential_read_attempted")).toHaveCount(0);
 
-    await expect(page.getByLabel("搜索 API、平台、endpoint 或 policy flag")).toBeVisible();
-    await page.getByLabel("搜索 API、平台、endpoint 或 policy flag").fill("commentThreads");
-    const youtubeCommentCard = visibleArticleByText(page, "YouTube Comment Threads");
-    await expect(youtubeCommentCard).toBeVisible();
-    await expect(youtubeCommentCard.getByText("commentThreads.list")).toBeVisible();
-    await youtubeCommentCard.getByRole("link", { name: "查看详情" }).click();
+    await page.getByRole("button", { name: "列表视图" }).click();
+    await page.getByTestId("capability-filter-platform").selectOption("youtube");
+    const youtubeImplementation = page.locator(
+      'article[data-implementation-id="youtube.v3"]',
+    );
+    await expect(youtubeImplementation).toBeVisible();
+    await youtubeImplementation
+      .getByRole("button", { name: "能力详情" })
+      .click();
+    const capabilityDialog = page.getByRole("dialog", { name: "能力详情" });
+    await expect(capabilityDialog).toContainText(
+      "credential_read_attempted",
+    );
+    await capabilityDialog
+      .getByRole("link", {
+        name: "Fixture Review: YouTube Comment Threads",
+      })
+      .click();
 
     await expect(page).toHaveURL(/\/api-market\/youtube-v3-commentthreads-list$/);
-    await expect(page.getByRole("heading", { name: "API市场详情" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: "YouTube Comment Threads",
+      }),
+    ).toBeVisible();
     await expect(page.getByRole("heading", { name: "请求合同与参数" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Fixture 响应预览" })).toBeVisible();
     await expect(page.getByText("provider_call_attempted")).toBeVisible();
@@ -1600,6 +1621,134 @@ test.describe("MVP workspace routes", () => {
   });
 });
 
+test("capability market switches views and opens evidence detail", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize(
+    testInfo.project.name === "mobile"
+      ? { width: 375, height: 812 }
+      : { width: 1440, height: 900 },
+  );
+
+  const blockedOrigins: string[] = [];
+  await page.route("**/*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (
+      (requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
+      requestUrl.hostname !== "localhost" &&
+      requestUrl.hostname !== "127.0.0.1"
+    ) {
+      blockedOrigins.push(requestUrl.origin);
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/api-market?view=scenarios&project_id=p1");
+  await expect(page.getByRole("heading", { name: "能力市场" })).toBeVisible();
+  const scenarioCards = page.getByTestId("capability-scenario");
+  await expect(scenarioCards).toHaveCount(8);
+  await expect(
+    scenarioCards.getByText("候选，尚不可执行", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    scenarioCards.getByText("L2-fixture", { exact: true }).first(),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "矩阵视图" }).click();
+  await expect(page).toHaveURL(/\/api-market\?(?=.*view=matrix)(?=.*project_id=p1)/);
+
+  const visibleMatrixCells = page.locator(
+    '[data-testid="capability-matrix-cell"]:visible',
+  );
+  if (testInfo.project.name === "mobile") {
+    const platformSelect = page.getByTestId("capability-platform-select");
+    await expect(platformSelect.locator("option")).toHaveCount(7);
+    for (const platform of [
+      "youtube",
+      "reddit",
+      "x",
+      "instagram",
+      "threads",
+      "tiktok",
+      "linkedin",
+    ]) {
+      await platformSelect.selectOption(platform);
+      await expect(visibleMatrixCells).toHaveCount(6);
+    }
+    await platformSelect.selectOption("youtube");
+  } else {
+    await expect(visibleMatrixCells).toHaveCount(42);
+    const dimensions = await visibleMatrixCells.evaluateAll((cells) =>
+      cells.map((cell) => {
+        const box = cell.getBoundingClientRect();
+        return { height: box.height, width: box.width };
+      }),
+    );
+    const widths = dimensions.map(({ width }) => width);
+    const heights = dimensions.map(({ height }) => height);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(2);
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(2);
+  }
+
+  const officialYoutubeCell = page.locator(
+    '[data-testid="capability-matrix-cell"][data-platform="youtube"][data-access-channel="official_authorized_api"]:visible',
+  );
+  await officialYoutubeCell.click();
+  const detailDialog = page.getByRole("dialog", { name: "能力详情" });
+  await expect(detailDialog).toBeVisible();
+  await expect(
+    detailDialog.getByText("候选，尚不可执行", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    detailDialog.getByText("provider_call=false", { exact: true }),
+  ).toBeVisible();
+  await expect(detailDialog.getByText("youtube.v3", { exact: true }).first()).toBeVisible();
+  await expect(detailDialog.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await expect(
+    detailDialog.getByRole("link", { name: /Fixture Review/ }).first(),
+  ).toBeVisible();
+  const detailCloseButton = detailDialog.getByRole("button", {
+    name: "关闭能力详情",
+  });
+  await expect(detailCloseButton).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(detailDialog.locator(":focus")).toHaveCount(1);
+  await page.keyboard.press("Tab");
+  await expect(detailCloseButton).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(detailDialog).toHaveCount(0);
+  await expect(officialYoutubeCell).toBeFocused();
+
+  await page.getByRole("button", { name: "列表视图" }).click();
+  await page.getByTestId("capability-filter-platform").selectOption("reddit");
+  await expect(page).toHaveURL(/\/api-market\?(?=.*view=list)(?=.*platform=reddit)(?=.*project_id=p1)/);
+  await page.reload();
+  await expect(page.getByTestId("capability-filter-platform")).toHaveValue("reddit");
+  await expect(page.locator('article[data-implementation-id="reddit.praw"]')).toHaveCount(1);
+  await expect(page.locator("[data-implementation-id]")).toHaveCount(1);
+  const redditCard = page.locator('article[data-implementation-id="reddit.praw"]');
+  await expect(
+    redditCard.getByText("候选，尚不可执行", { exact: true }),
+  ).toBeVisible();
+  await expect(redditCard.getByText("L2-fixture", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "比较实现" })).toBeDisabled();
+  await expect(
+    page.getByText("当前平台只有一个实现，暂无可比较项", { exact: true }),
+  ).toBeVisible();
+
+  await page.goto("/api-market/youtube-v3-commentthreads-list");
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "YouTube Comment Threads",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("provider_call=false", { exact: true }).first()).toBeVisible();
+  expect(blockedOrigins).toEqual([]);
+});
+
 test.describe("mobile layout guard", () => {
   for (const route of [
     "/reports",
@@ -1630,4 +1779,109 @@ test.describe("mobile layout guard", () => {
       expect(overflow).toBeLessThanOrEqual(1);
     });
   }
+});
+
+test("six-entry navigation is complete on desktop and mobile", async ({
+  page,
+}, testInfo) => {
+  const mobile = testInfo.project.name === "mobile";
+  await page.setViewportSize(
+    mobile ? { width: 375, height: 812 } : { width: 1440, height: 900 },
+  );
+
+  const blockedOrigins: string[] = [];
+  await page.route("**/*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (
+      (requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
+      requestUrl.hostname !== "localhost" &&
+      requestUrl.hostname !== "127.0.0.1"
+    ) {
+      blockedOrigins.push(requestUrl.origin);
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/dashboard");
+  expect(["localhost", "127.0.0.1"]).toContain(new URL(page.url()).hostname);
+
+  if (mobile) {
+    const opener = page.getByRole("button", { name: "打开导航" });
+    await opener.click();
+    const drawer = page.getByRole("dialog", { name: "移动主导航" });
+    const closeButton = drawer.getByRole("button", { name: "关闭导航" });
+    await expect(drawer).toHaveAttribute("aria-modal", "true");
+    await expect(
+      page.getByRole("button", { name: "关闭导航遮罩" }),
+    ).toHaveAttribute("tabindex", "-1");
+    await expect(drawer.getByTestId("mobile-primary-nav-link")).toHaveCount(6);
+    await expect(drawer.getByRole("link", { name: "采集工具库" })).toBeVisible();
+    await expect(closeButton).toBeFocused();
+
+    await page.keyboard.press("Shift+Tab");
+    await expect(
+      drawer.getByRole("link", { name: "能力市场", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(closeButton).toBeFocused();
+
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(opener).toBeFocused();
+    await opener.click();
+    await page
+      .getByRole("dialog", { name: "移动主导航" })
+      .getByRole("link", { name: "数据资产", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/datasets$/);
+  } else {
+    const primaryLinks = page.getByTestId("primary-nav-link");
+    await expect(primaryLinks).toHaveCount(6);
+    await expect(primaryLinks).toHaveText([
+      "工作台",
+      "监测项目",
+      "采集工作流",
+      "数据资产",
+      "洞察与交付",
+      "能力市场",
+    ]);
+    await expect(
+      page.getByRole("link", { name: "工作台", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await page.getByRole("link", { name: "能力市场", exact: true }).click();
+    await expect(page).toHaveURL(/\/api-market(?:\?.*)?$/);
+  }
+
+  const selector = page.getByTestId("global-project-selector");
+  await expect(selector.locator("option").nth(1)).toBeAttached();
+  const projectId = await selector.locator("option").nth(1).getAttribute("value");
+  expect(projectId).toBeTruthy();
+  await selector.selectOption(projectId!);
+  await page.reload();
+  await expect(page.getByTestId("global-project-selector")).toHaveValue(
+    projectId!,
+  );
+  await expect(
+    page.getByText("当前页面未应用项目过滤（全局数据）"),
+  ).toBeVisible();
+  await expect(page.locator('[data-project-filter-applied="false"]')).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.entries(window.localStorage).filter(([key]) =>
+          key.startsWith("data-intelligence-hub:selected-project"),
+        ),
+      ),
+    )
+    .toEqual([["data-intelligence-hub:selected-project-id", projectId]]);
+
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+  expect(blockedOrigins).toEqual([]);
 });

@@ -1,15 +1,35 @@
 import { ApiMarketWorkspace } from "@/components/api-market/api-market-workspace";
 import { AppShell } from "@/components/layout/app-shell";
+import {
+  parseCapabilityMarketFilters,
+  parseCapabilityMarketView,
+} from "@/lib/capability-market";
 
-export default function ApiMarketPage() {
+type ApiMarketPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function ApiMarketPage({ searchParams }: ApiMarketPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    const firstValue = Array.isArray(value) ? value[0] : value;
+    if (firstValue !== undefined) {
+      query.set(key, firstValue);
+    }
+  }
+
   return (
     <AppShell
-      title="API市场"
-      description="官方/授权 API 能力、私有化部署入口和 fixture-only 预案"
-      brief="API市场把海外社媒官方 API、授权边界、SDK 选型、成本/限流和数据合同放在同一页复核；默认只做 fixture 预案，不读取凭据、不调用平台、不写生产。"
-      signals={["官方 API 优先", "私有化部署", "fixture-only", "合规边界"]}
+      title="能力市场"
+      description="7×6 能力矩阵、Implementation、Constraint 与 Evidence"
+      brief="按场景、平台和访问通道审查规范能力事实；Candidate 不代表可执行。"
+      signals={["42 个显式矩阵格", "Candidate 不可执行", "provider_call=false"]}
     >
-      <ApiMarketWorkspace />
+      <ApiMarketWorkspace
+        initialFilters={parseCapabilityMarketFilters(query.toString())}
+        initialView={parseCapabilityMarketView(query.get("view"))}
+      />
     </AppShell>
   );
 }

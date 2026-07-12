@@ -558,3 +558,18 @@ GitHub 工具漂移和报告：
 7. alert match 会生成 alert event，并按 rule channel 生成站内通知。
 8. Drift alert notification/email send 支持 `Idempotency-Key` replay；邮件 replay 不再次调用 SMTP/provider。
 9. email channel 必须通过环境变量配置，未配置时接口返回禁用状态。
+
+## Capability Read API
+
+All routes require the existing authenticated session and are read-only.
+
+| Method | Route | Filters / result |
+|---|---|---|
+| GET | `/api/capabilities/matrix` | `capability_matrix.v1`; 7 platforms, 6 channels, 42 explicit cells |
+| GET | `/api/capabilities/assertions` | `platform`, `access_channel`, `resource_type`, `operation`, `support_status`; valid zero result is `[]` |
+| GET | `/api/capabilities/implementations` | `platform`, `access_channel`; valid zero result is `[]` |
+| GET | `/api/capabilities/implementations/{implementation_id}` | Implementation + owned Assertions + referenced Evidence |
+
+Invalid enum query values return `422`. A missing Implementation returns `404` with `capability_implementation_not_found`. Catalog load/parse/validation failure returns `500` with `capability_catalog_load_failed`; there is no static-data fallback.
+
+Every Matrix response carries `provider_call=false` and `production_write_allowed=false`. Evidence retains `provider_call_attempted=false`, `credential_read_attempted=false`, `live_client_created=false`, and `production_write_attempted=false`.

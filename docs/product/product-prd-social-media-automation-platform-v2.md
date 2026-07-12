@@ -770,9 +770,15 @@ allow_ai_training=false
 
 ## 19. `/Goal` 分批执行包
 
-以下 Goal 仅定义目标与退出条件。当前状态均为 `ready_for_goal_activation`，本 PRD 本身不自动创建或启动 Goal。
+以下 Goal 由独立规格、计划和证据推进；状态不代表部署或生产验收。
+
+- GOAL-V2-01: complete (local contract evidence)
+- GOAL-V2-02: locally_complete (local validation and mock E2E only)
+- GOAL-V2-03 及后续 Goal: queued, not activated
 
 ### GOAL-V2-01：产品与能力合同底座
+
+**Status**: complete
 
 **Objective**：建立 V2.0 词表、Schema、Catalog 与兼容层。
 
@@ -786,6 +792,8 @@ allow_ai_training=false
 **Exit Gate**：Catalog 单一事实源、迁移方案和全部契约测试通过。
 
 ### GOAL-V2-02：能力矩阵与网站导航
+
+**Status**: locally_complete
 
 **Objective**：交付矩阵产品和六入口信息架构。
 

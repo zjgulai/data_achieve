@@ -157,6 +157,10 @@ class CapabilityCatalogUnknownPlatformError(ServiceError):
     message = "capability_catalog_unknown_platform"
 
 
+class CapabilityImplementationNotFoundError(ServiceError):
+    message = "capability_implementation_not_found"
+
+
 class SocialProviderCatalogLoadError(ServiceError):
     message = "social_provider_catalog_load_failed"
 

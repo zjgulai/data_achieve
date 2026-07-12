@@ -260,3 +260,17 @@ flowchart LR
 7. Authenticated read-only `GET /api/automation/platform-packages/github-api-first` 确认 `field_schema.required` 包含 `license_spdx_id`、`default_branch`、`latest_release_tag`、`latest_release_published_at`、`pushed_at`。
 8. Cross-domain regression：`video.lute-tlz-dddd.top=200`、`mkt.lute-tlz-dddd.top=200`、`voc.lute-tlz-dddd.top=302`，跟随 redirect 后到登录页返回 200；`scrapy.lute-tlz-dddd.top/api/health=200`。
 9. 本轮未执行生产写入 E2E、未创建测试用户/Source/Task/Dataset/Report、未触发 provider call、未发送邮件或外部通知、未执行 scheduler mutation。
+
+## Capability Catalog And Matrix
+
+`capability_catalog_overseas_v2.json` is the only runtime Capability fact source for GOAL-V2-02. The Matrix is an in-memory read projection and is never persisted:
+
+```text
+capability_catalog.v1
+-> strict cached loader with deep-copy isolation
+-> Capability Matrix Read Model (PlatformId x AccessChannel = 42 cells)
+-> authenticated read-only /api/capabilities/*
+-> Capability Market scenario / matrix / list / detail views
+```
+
+The Web keeps only keyed Endpoint presentation enhancements. Capability facts, status, constraints, scores, Evidence, Provider metadata, policy, cost, quota, and boundaries come from the Capability API. No SQLAlchemy model, Alembic revision, Provider client, Credential read, or production write is introduced.

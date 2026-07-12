@@ -19,7 +19,15 @@ import {
   getSocialProviderUiConfig,
   socialProviderUiConfigs,
 } from "@/lib/social-provider-config";
-import type { SocialExecutionDryRunResponseDto } from "@/types/social-provider";
+import type {
+  SocialDatasetPreviewResponseDto,
+  SocialExecutionDryRunResponseDto,
+  SocialProviderAdapterPlanResponseDto,
+  SocialProviderCatalogResponseDto,
+  SocialProviderReadinessResponseDto,
+  SocialProviderSourceTemplateResponseDto,
+  SocialTaskRunApprovalTemplateResponseDto,
+} from "@/types/social-provider";
 
 const catalogResponse = {
   schema_version: "external_provider_catalog.v1",
@@ -56,7 +64,7 @@ const catalogResponse = {
       endpoint_contracts: [],
     },
   ],
-} as const;
+} satisfies SocialProviderCatalogResponseDto;
 
 const readinessResponse = {
   schema_version: "social_provider_readiness.v1",
@@ -89,7 +97,7 @@ const readinessResponse = {
   provider_call_allowed: false,
   provider_call_attempted: false,
   dry_run: true,
-} as const;
+} satisfies SocialProviderReadinessResponseDto;
 
 const adapterPlanResponse = {
   schema_version: "social_provider_adapter_plan.v1",
@@ -126,7 +134,7 @@ const adapterPlanResponse = {
   ],
   blocked_reasons: ["dependency_not_installed:google-api-python-client"],
   next_required_authorization: "L4_social_provider_live_adapter_authorization_required",
-} as const;
+} satisfies SocialProviderAdapterPlanResponseDto;
 
 const datasetPreviewResponse = {
   schema_version: "social_dataset_preview.v1",
@@ -186,7 +194,7 @@ const datasetPreviewResponse = {
   ],
   sdk_selection: null,
   next_required_authorization: "L4_social_dataset_save_authorization_required",
-} as const;
+} satisfies SocialDatasetPreviewResponseDto;
 
 const sourceTemplateResponse = {
   schema_version: "social_provider_source_template.v1",
@@ -212,7 +220,7 @@ const sourceTemplateResponse = {
   },
   blocked_reasons: ["source_create_requires_separate_l4_authorization"],
   next_required_authorization: "L4_social_source_task_authorization_required",
-} as const;
+} satisfies SocialProviderSourceTemplateResponseDto;
 
 const approvalTemplateResponse = {
   schema_version: "social_task_run_approval_template.v1",
@@ -244,7 +252,7 @@ const approvalTemplateResponse = {
   export_allowed: false,
   production_write_allowed: false,
   next_required_authorization: "L4_social_execution_authorization_required",
-} as const;
+} satisfies SocialTaskRunApprovalTemplateResponseDto;
 
 const response: SocialExecutionDryRunResponseDto = {
   schema_version: "social_execution_dry_run.v1",

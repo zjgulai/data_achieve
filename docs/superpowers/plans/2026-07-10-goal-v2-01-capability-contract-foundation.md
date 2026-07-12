@@ -2,7 +2,8 @@
 title: GOAL-V2-01 能力合同与 Catalog 底座 Implementation Plan
 doc_type: implementation_plan
 topic: goal-v2-01-capability-contract-foundation
-status: approved
+status: complete
+review_status: local_verified
 evidence_level: L1-public-or-runtime
 provider_call: false
 production_boundary: production unchanged
@@ -110,7 +111,7 @@ GOAL-V2-01 只完成文件型能力合同底座：
 - Create: `apps/api/src/data_intelligence_hub/schemas/capability_catalog.py`
 - Create: `apps/api/tests/unit/test_capability_catalog.py`
 
-- [ ] **Step 1: 写入枚举和引用完整性测试**
+- [x] **Step 1: 写入枚举和引用完整性测试**
 
 创建 `apps/api/tests/unit/test_capability_catalog.py`：
 
@@ -257,7 +258,7 @@ def test_capability_catalog_rejects_duplicate_assertion_id() -> None:
         CapabilityCatalog.model_validate(payload)
 ```
 
-- [ ] **Step 2: 运行测试，确认合同模块尚未存在**
+- [x] **Step 2: 运行测试，确认合同模块尚未存在**
 
 Run:
 
@@ -268,7 +269,7 @@ uv run pytest tests/unit/test_capability_catalog.py -q
 
 Expected: collection stops because `data_intelligence_hub.schemas.capability_catalog` does not exist.
 
-- [ ] **Step 3: 实现完整 Pydantic 合同**
+- [x] **Step 3: 实现完整 Pydantic 合同**
 
 创建 `apps/api/src/data_intelligence_hub/schemas/capability_catalog.py`：
 
@@ -492,7 +493,7 @@ class CapabilityCatalog(ContractModel):
         return self
 ```
 
-- [ ] **Step 4: 运行合同测试**
+- [x] **Step 4: 运行合同测试**
 
 Run:
 
@@ -505,7 +506,7 @@ uv run mypy src/data_intelligence_hub/schemas/capability_catalog.py tests/unit/t
 
 Expected: 5 tests pass; ruff and mypy exit 0.
 
-- [ ] **Step 5: 提交合同切片**
+- [x] **Step 5: 提交合同切片**
 
 ```bash
 git add apps/api/src/data_intelligence_hub/schemas/capability_catalog.py apps/api/tests/unit/test_capability_catalog.py
@@ -523,7 +524,7 @@ git commit -m "feat: define capability catalog contracts"
 - Modify: `apps/api/tests/unit/test_capability_catalog.py`
 - Temporary: `scripts/migrate-capability-catalog-v2.py`，生成后删除
 
-- [ ] **Step 1: 增加规范化 Fixture 测试**
+- [x] **Step 1: 增加规范化 Fixture 测试**
 
 在 `apps/api/tests/unit/test_capability_catalog.py` 追加：
 
@@ -584,7 +585,7 @@ def test_overseas_capability_fixture_is_complete_and_side_effect_free() -> None:
     assert threads.delivery_form is DeliveryForm.ENDPOINT
 ```
 
-- [ ] **Step 2: 运行测试，确认 V2 Fixture 尚未存在**
+- [x] **Step 2: 运行测试，确认 V2 Fixture 尚未存在**
 
 Run:
 
@@ -595,7 +596,7 @@ uv run pytest tests/unit/test_capability_catalog.py::test_overseas_capability_fi
 
 Expected: test stops because `capability_catalog_overseas_v2.json` is absent.
 
-- [ ] **Step 3: 复制历史 V1 Fixture，暂时保留旧运行时文件**
+- [x] **Step 3: 复制历史 V1 Fixture，暂时保留旧运行时文件**
 
 ```bash
 mkdir -p apps/api/tests/fixtures
@@ -604,7 +605,7 @@ cp apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_
 
 此时不删除旧运行时 Fixture，确保 Task 2 和 Task 3 的中间提交仍能通过既有 Social Provider 回归。Task 4 在兼容投影接管 Loader 的同一提交中删除旧文件，完成最终 move。
 
-- [ ] **Step 4: 创建一次性迁移脚本**
+- [x] **Step 4: 创建一次性迁移脚本**
 
 创建 `scripts/migrate-capability-catalog-v2.py`：
 
@@ -855,7 +856,7 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 5: 生成并验证 V2 Fixture**
+- [x] **Step 5: 生成并验证 V2 Fixture**
 
 Run:
 
@@ -867,11 +868,11 @@ uv run pytest tests/unit/test_capability_catalog.py -q
 
 Expected: 6 tests pass; generated catalog has 7 implementations and 35 candidate assertions.
 
-- [ ] **Step 6: 删除一次性迁移脚本**
+- [x] **Step 6: 删除一次性迁移脚本**
 
 使用 `apply_patch` 删除 `scripts/migrate-capability-catalog-v2.py`。新 Capability Catalog 服务只允许读取或修改 `capability_catalog_overseas_v2.json`；旧 Social Provider Loader 在 Task 4 切换前仍临时读取历史运行时 Fixture，随后该文件被删除并仅保留测试副本。
 
-- [ ] **Step 7: 提交规范化 Fixture**
+- [x] **Step 7: 提交规范化 Fixture**
 
 ```bash
 git add apps/api/src/data_intelligence_hub/services/fixtures/capability_catalog_overseas_v2.json apps/api/tests/fixtures/external_provider_catalog_v1.json apps/api/tests/unit/test_capability_catalog.py
@@ -887,7 +888,7 @@ git commit -m "feat: add canonical capability catalog fixture"
 - Modify: `apps/api/src/data_intelligence_hub/services/exceptions.py`
 - Modify: `apps/api/tests/unit/test_capability_catalog.py`
 
-- [ ] **Step 1: 增加 Loader、过滤和无效 Fixture 测试**
+- [x] **Step 1: 增加 Loader、过滤和无效 Fixture 测试**
 
 在 `apps/api/tests/unit/test_capability_catalog.py` 追加：
 
@@ -949,7 +950,7 @@ def test_capability_catalog_loader_wraps_invalid_fixture(
             clear_capability_catalog_cache()
 ```
 
-- [ ] **Step 2: 运行测试，确认 Service 尚未存在**
+- [x] **Step 2: 运行测试，确认 Service 尚未存在**
 
 Run:
 
@@ -960,7 +961,7 @@ uv run pytest tests/unit/test_capability_catalog.py -q
 
 Expected: collection stops because `data_intelligence_hub.services.capability_catalog` does not exist.
 
-- [ ] **Step 3: 增加专用 Service 异常**
+- [x] **Step 3: 增加专用 Service 异常**
 
 在 `apps/api/src/data_intelligence_hub/services/exceptions.py` 的 Social Provider 异常前加入：
 
@@ -973,7 +974,7 @@ class CapabilityCatalogUnknownPlatformError(ServiceError):
     message = "capability_catalog_unknown_platform"
 ```
 
-- [ ] **Step 4: 实现 Loader 与过滤**
+- [x] **Step 4: 实现 Loader 与过滤**
 
 创建 `apps/api/src/data_intelligence_hub/services/capability_catalog.py`：
 
@@ -1054,7 +1055,7 @@ def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
     )
 ```
 
-- [ ] **Step 5: 运行 Loader 测试和静态检查**
+- [x] **Step 5: 运行 Loader 测试和静态检查**
 
 Run:
 
@@ -1067,7 +1068,7 @@ uv run mypy src/data_intelligence_hub/services/capability_catalog.py tests/unit/
 
 Expected: 9 tests pass; ruff and mypy exit 0.
 
-- [ ] **Step 6: 提交 Loader 切片**
+- [x] **Step 6: 提交 Loader 切片**
 
 ```bash
 git add apps/api/src/data_intelligence_hub/services/capability_catalog.py apps/api/src/data_intelligence_hub/services/exceptions.py apps/api/tests/unit/test_capability_catalog.py
@@ -1086,7 +1087,7 @@ git commit -m "feat: load canonical capability catalog"
 - Modify: `apps/api/tests/unit/test_social_provider_runtime.py`
 - Test: `apps/api/tests/integration/test_social_provider_routes.py`
 
-- [ ] **Step 1: 增加 V1 历史 Fixture 对等测试**
+- [x] **Step 1: 增加 V1 历史 Fixture 对等测试**
 
 在 `apps/api/tests/unit/test_capability_catalog.py` 追加：
 
@@ -1158,7 +1159,7 @@ def test_social_provider_catalog_preserves_legacy_load_error(
         get_social_provider_catalog()
 ```
 
-- [ ] **Step 2: 运行测试，确认兼容投影尚未实现**
+- [x] **Step 2: 运行测试，确认兼容投影尚未实现**
 
 Run:
 
@@ -1169,7 +1170,7 @@ uv run pytest tests/unit/test_capability_catalog.py::test_external_provider_cata
 
 Expected: collection stops because `project_external_provider_catalog_v1` does not exist or the moved V1 runtime Fixture can no longer be loaded.
 
-- [ ] **Step 3: 实现 V1 投影函数**
+- [x] **Step 3: 实现 V1 投影函数**
 
 在 `apps/api/src/data_intelligence_hub/services/capability_catalog.py` 增加 imports：
 
@@ -1231,7 +1232,7 @@ def project_external_provider_catalog_v1() -> SocialProviderCatalogResponse:
     )
 ```
 
-- [ ] **Step 4: 将 Social Provider Service 改为兼容投影**
+- [x] **Step 4: 将 Social Provider Service 改为兼容投影**
 
 在 `apps/api/src/data_intelligence_hub/services/social_provider.py`：
 
@@ -1294,7 +1295,7 @@ def get_social_provider_catalog(
 
 5. 使用 `apply_patch` 删除 `apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json`。只有在兼容投影与现有 Social Provider 回归测试均可运行后才执行删除。
 
-- [ ] **Step 5: 运行兼容与现有社媒测试**
+- [x] **Step 5: 运行兼容与现有社媒测试**
 
 Run:
 
@@ -1305,7 +1306,7 @@ uv run pytest tests/unit/test_capability_catalog.py tests/unit/test_social_provi
 
 Expected: all selected tests pass;现有 Route 的 schema、provider 数量、筛选、Readiness 和 Gate 行为保持一致。
 
-- [ ] **Step 6: 运行静态检查**
+- [x] **Step 6: 运行静态检查**
 
 Run:
 
@@ -1317,7 +1318,7 @@ uv run mypy src/data_intelligence_hub/services/capability_catalog.py src/data_in
 
 Expected: both commands exit 0.
 
-- [ ] **Step 7: 提交兼容层切片**
+- [x] **Step 7: 提交兼容层切片**
 
 ```bash
 git add -- apps/api/src/data_intelligence_hub/services/capability_catalog.py apps/api/src/data_intelligence_hub/services/social_provider.py apps/api/src/data_intelligence_hub/services/fixtures/social_provider_catalog_overseas.json apps/api/tests/unit/test_capability_catalog.py apps/api/tests/unit/test_social_provider_runtime.py

@@ -19,7 +19,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import type { Route } from "next";
 import {
@@ -28,7 +28,15 @@ import {
   WorkbenchPanel,
   WorkbenchTag,
 } from "@/components/common/workbench-ui";
+import {
+  composeApiMarketEndpoints,
+  findApiMarketEndpointById,
+} from "@/lib/api-market-catalog";
 import { buildApiMarketPreviewChainInputs } from "@/lib/api-market-preview-chain";
+import {
+  getCapabilityImplementationDetail,
+  listCapabilityImplementations,
+} from "@/lib/api/capabilities";
 import {
   checkSocialProviderReadiness,
   previewSocialDataset,
@@ -37,7 +45,11 @@ import {
   previewSocialTaskRunApprovalTemplate,
   runSocialExecutionDryRun,
 } from "@/lib/api/social-provider";
-import type { ApiMarketEndpoint } from "@/types/api-market";
+import { capabilityStatusLabel } from "@/lib/capability-market";
+import type {
+  ApiMarketEndpointPresentation,
+  ApiMarketEnhancedEndpoint,
+} from "@/types/api-market";
 import type {
   SocialDatasetPreview,
   SocialExecutionDryRun,
@@ -56,7 +68,92 @@ type ApiMarketPreviewChainState = {
   taskRunApprovalTemplate: SocialTaskRunApprovalTemplate;
 };
 
-export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndpoint }) {
+export function ApiMarketDetailWorkspace({
+  presentation,
+}: {
+  presentation: ApiMarketEndpointPresentation;
+}) {
+  const [endpoint, setEndpoint] = useState<ApiMarketEnhancedEndpoint | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setEndpoint(null);
+    setError(null);
+    void (async () => {
+      try {
+        const implementations = await listCapabilityImplementations();
+        const matches = implementations.filter(
+          (implementation) =>
+            implementation.providerId === presentation.providerId,
+        );
+        if (matches.length !== 1) {
+          throw new Error("api_market_presentation_implementation_not_found");
+        }
+
+        const detail = await getCapabilityImplementationDetail(
+          matches[0].implementationId,
+        );
+        const composed = composeApiMarketEndpoints(
+          [presentation],
+          [detail.implementation],
+          detail.assertions,
+        );
+        const selected = findApiMarketEndpointById(composed, presentation.id);
+        if (selected?.presentationMode !== "enhanced") {
+          throw new Error("api_market_enhanced_endpoint_not_found");
+        }
+
+        if (!cancelled) {
+          setEndpoint(selected);
+        }
+      } catch (cause: unknown) {
+        if (!cancelled) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "api_market_detail_unavailable",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [presentation]);
+
+  if (error) {
+    return (
+      <div className="grid min-w-0 gap-5">
+        <ApiMarketBackLink />
+        <section className="rounded-2xl border border-[#FFD0C8] bg-[#FFF1EC] p-4 text-sm font-semibold text-[#B85F4F]">
+          <p role="alert">{error}</p>
+        </section>
+      </div>
+    );
+  }
+
+  if (!endpoint) {
+    return (
+      <div className="grid min-w-0 gap-5">
+        <ApiMarketBackLink />
+        <section className="rounded-2xl border border-[#E8D4CB] bg-white p-4 text-sm font-semibold text-[#7A625A]">
+          <p role="status">正在加载规范能力事实…</p>
+        </section>
+      </div>
+    );
+  }
+
+  return <ApiMarketEnhancedDetail endpoint={endpoint} />;
+}
+
+function ApiMarketEnhancedDetail({
+  endpoint,
+}: {
+  endpoint: ApiMarketEnhancedEndpoint;
+}) {
   const [copied, setCopied] = useState(false);
   const [previewChain, setPreviewChain] = useState<ApiMarketPreviewChainState | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -157,8 +254,10 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
             {endpoint.stability}
           </WorkbenchTag>
           <WorkbenchTag tone="muted">{endpoint.category}</WorkbenchTag>
-          <WorkbenchTag tone="neutral">{endpoint.executionMode}</WorkbenchTag>
-          <WorkbenchTag tone="rose">{endpoint.sdkStatus}</WorkbenchTag>
+          <WorkbenchTag tone="neutral">
+            {capabilityStatusLabel(endpoint.supportStatus)}
+          </WorkbenchTag>
+          <WorkbenchTag tone="rose">{endpoint.sdkStatus ?? "none"}</WorkbenchTag>
         </div>
       </WorkbenchPanel>
 
@@ -350,9 +449,21 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
             title="开源复用候选"
           >
             <div className="grid gap-2">
-              <BoundaryRow label="package" value={endpoint.sdkPackage} tone="neutral" />
-              <BoundaryRow label="status" value={endpoint.sdkStatus} tone="neutral" />
-              <BoundaryRow label="data_domain" value={endpoint.dataDomain.join(", ")} tone="neutral" />
+              <BoundaryRow
+                label="package"
+                value={endpoint.sdkPackage ?? "none"}
+                tone="neutral"
+              />
+              <BoundaryRow
+                label="status"
+                value={endpoint.sdkStatus ?? "none"}
+                tone="neutral"
+              />
+              <BoundaryRow
+                label="data_domain"
+                value={endpoint.dataDomains.join(", ")}
+                tone="neutral"
+              />
             </div>
             <div className="mt-4 grid gap-2">
               {endpoint.officialDocs.map((doc) => (
@@ -372,6 +483,18 @@ export function ApiMarketDetailWorkspace({ endpoint }: { endpoint: ApiMarketEndp
         </aside>
       </div>
     </div>
+  );
+}
+
+function ApiMarketBackLink() {
+  return (
+    <Link
+      className="inline-flex min-h-10 w-fit items-center gap-2 rounded-xl border border-[#E8D4CB] bg-white px-3 text-sm font-semibold text-[#7A625A]"
+      href="/api-market"
+    >
+      <ArrowLeft size={15} aria-hidden="true" />
+      返回 API市场
+    </Link>
   );
 }
 
@@ -456,7 +579,7 @@ function PreviewChainReview({ chain }: { chain: ApiMarketPreviewChainState }) {
                 {operation.endpoint || "unknown endpoint"}
               </p>
               <p className="text-xs font-semibold text-[#B47767]">
-                {operation.mode || "fixture"} / provider_call=
+                {operation["mode"] || "fixture"} / provider_call=
                 {String(operation.providerCall)} / limit={operation.fixtureLimit}
               </p>
             </div>
@@ -651,7 +774,9 @@ function recordString(record: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value : "unknown";
 }
 
-function stabilityTone(stability: ApiMarketEndpoint["stability"]): "amber" | "green" | "rose" {
+function stabilityTone(
+  stability: ApiMarketEnhancedEndpoint["stability"],
+): "amber" | "green" | "rose" {
   if (stability === "high") {
     return "green";
   }

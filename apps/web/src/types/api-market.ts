@@ -1,11 +1,10 @@
-export type ApiMarketPlatform =
-  | "youtube"
-  | "reddit"
-  | "x"
-  | "instagram"
-  | "threads"
-  | "tiktok"
-  | "linkedin";
+import type {
+  CapabilityAccessChannel,
+  CapabilityPlatform,
+  CapabilityStatus,
+} from "@/types/capability";
+
+export type ApiMarketPlatform = CapabilityPlatform;
 
 export type ApiMarketCategory =
   | "content_search"
@@ -22,8 +21,6 @@ export type ApiMarketCategory =
 
 export type ApiMarketPriority = "p0" | "p1" | "p2" | "p3";
 export type ApiMarketStability = "high" | "medium" | "low";
-export type ApiMarketExecutionMode = "fixture_ready" | "adapter_planned" | "live_gated";
-export type ApiMarketSdkStatus = "candidate" | "manual_review" | "selected";
 export type ApiMarketMethod = "GET" | "POST" | "READ";
 
 export type ApiMarketParameter = {
@@ -35,59 +32,96 @@ export type ApiMarketParameter = {
   type: "array" | "boolean" | "number" | "object" | "string";
 };
 
-export type ApiMarketEndpoint = {
-  apiVersion: string;
-  authMode: string;
-  blockedActions: string[];
+type ApiMarketRequest = {
+  parameters: ApiMarketParameter[];
+  requestBodyExample?: Record<string, unknown>;
+};
+
+type ApiMarketResponsePreview = {
+  sample: Record<string, unknown>;
+  schemaVersion: string;
+};
+
+export type ApiMarketEndpointPresentation = {
   category: ApiMarketCategory;
-  costHint: string;
-  credentialReadAttempted: false;
-  dataDomain: string[];
-  endpoint: string;
-  executionMode: ApiMarketExecutionMode;
+  endpointId: string;
   id: string;
-  liveClientCreated: false;
   method: ApiMarketMethod;
-  officialDocs: string[];
-  platform: ApiMarketPlatform;
-  platformLabel: string;
-  policyFlags: string[];
   priority: ApiMarketPriority;
-  productionWriteAllowed: false;
-  providerCall: false;
-  providerCallAttempted: false;
   providerId: string;
-  quotaHint: string;
-  request: {
-    parameters: ApiMarketParameter[];
-    requestBodyExample?: Record<string, unknown>;
-  };
-  requiredCredentials: string[];
-  responsePreview: {
-    sample: Record<string, unknown>;
-    schemaVersion: string;
-  };
-  sdkPackage: string;
-  sdkStatus: ApiMarketSdkStatus;
-  stability: ApiMarketStability;
+  request: ApiMarketRequest;
+  responsePreview: ApiMarketResponsePreview;
   summary: string;
   title: string;
 };
 
+type ApiMarketCapabilityFields = {
+  accessChannel: CapabilityAccessChannel;
+  apiVersion: string;
+  authMode: string;
+  blockedActions: string[];
+  costHint: string;
+  credentialReadAttempted: false;
+  dataDomains: string[];
+  endpoint: string;
+  id: string;
+  liveClientCreated: false;
+  officialDocs: string[];
+  platform: CapabilityPlatform;
+  platformLabel: string;
+  policyFlags: string[];
+  providerCall: false;
+  providerCallAttempted: false;
+  providerId: string;
+  productionWriteAllowed: false;
+  quotaHint: string;
+  requiredCredentials: string[];
+  sdkPackage: string | null;
+  sdkStatus: "selected" | "candidate" | "manual_review" | "blocked" | null;
+  stability: ApiMarketStability;
+  summary: string;
+  supportStatus: CapabilityStatus;
+  title: string;
+};
+
+export type ApiMarketEnhancedEndpoint = ApiMarketCapabilityFields & {
+  category: ApiMarketCategory;
+  method: ApiMarketMethod;
+  presentationMode: "enhanced";
+  presentation: ApiMarketEndpointPresentation;
+  priority: ApiMarketPriority;
+  request: ApiMarketRequest;
+  responsePreview: ApiMarketResponsePreview;
+};
+
+export type ApiMarketGenericEndpoint = ApiMarketCapabilityFields & {
+  category: null;
+  method: null;
+  presentationMode: "generic";
+  presentation: null;
+  priority: null;
+  request: null;
+  responsePreview: null;
+};
+
+export type ApiMarketEndpoint =
+  | ApiMarketEnhancedEndpoint
+  | ApiMarketGenericEndpoint;
+
 export type ApiMarketFilterState = {
+  accessChannel: CapabilityAccessChannel | "all";
   category: ApiMarketCategory | "all";
-  executionMode: ApiMarketExecutionMode | "all";
-  platform: ApiMarketPlatform | "all";
+  platform: CapabilityPlatform | "all";
   priority: ApiMarketPriority | "all";
   query: string;
-  stability: ApiMarketStability | "all";
+  status: CapabilityStatus | "all";
 };
 
 export type ApiMarketStats = {
+  candidateCount: number;
   endpointCount: number;
-  fixtureReadyCount: number;
-  liveGatedCount: number;
-  p0Count: number;
   platformCount: number;
   providerCallAttempted: false;
+  unknownCount: number;
+  verifiedCount: number;
 };
