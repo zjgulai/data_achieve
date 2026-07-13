@@ -58,6 +58,99 @@ describe("primary navigation", () => {
     expect(isNavigationItemActive("/tasks", "", workflow!)).toBe(true);
   });
 
+  it("adds the two planner modes under the workflow entry", () => {
+    const workflow = primaryNavigation.find(
+      (item) => item.href === "/automation",
+    );
+    expect(workflow?.children).toEqual(
+      expect.arrayContaining([
+        {
+          href: "/automation/planner?mode=periodic_monitoring",
+          label: "创建监测项目",
+        },
+        {
+          href: "/automation/planner?mode=batch_research",
+          label: "批量检索与解析",
+        },
+      ]),
+    );
+  });
+
+  it("adds Saved Plans under workflow and keeps dynamic Plan details in that parent", () => {
+    const workflow = primaryNavigation.find(
+      (item) => item.href === "/automation",
+    );
+
+    expect(workflow?.children).toEqual(
+      expect.arrayContaining([
+        {
+          href: "/automation/plans",
+          label: "已保存计划",
+        },
+      ]),
+    );
+    expect(
+      isNavigationItemActive(
+        "/automation/projects/project-a/plans/plan-a",
+        "",
+        workflow!,
+      ),
+    ).toBe(true);
+  });
+
+  it("uses the planner mode query to activate exactly one workflow child", () => {
+    const workflow = primaryNavigation.find(
+      (item) => item.href === "/automation",
+    )!;
+    const periodic = workflow.children.find(
+      (item) =>
+        String(item.href) === "/automation/planner?mode=periodic_monitoring",
+    )!;
+    const batch = workflow.children.find(
+      (item) => String(item.href) === "/automation/planner?mode=batch_research",
+    )!;
+
+    expect(
+      isNavigationChildActive(
+        "/automation/planner",
+        "mode=periodic_monitoring",
+        periodic,
+      ),
+    ).toBe(true);
+    expect(
+      isNavigationChildActive(
+        "/automation/planner",
+        "mode=periodic_monitoring",
+        batch,
+      ),
+    ).toBe(false);
+    expect(
+      isNavigationChildActive(
+        "/automation/planner",
+        "mode=batch_research",
+        batch,
+      ),
+    ).toBe(true);
+    expect(
+      isNavigationChildActive(
+        "/automation/planner",
+        "mode=batch_research",
+        periodic,
+      ),
+    ).toBe(false);
+    expect(isNavigationChildActive("/automation/planner", "", periodic)).toBe(
+      false,
+    );
+    expect(
+      isNavigationItemActive(
+        "/automation/planner",
+        "mode=batch_research",
+        workflow,
+      ),
+    ).toBe(true);
+    expect(isNavigationItemActive("/automation", "", workflow)).toBe(true);
+  });
+
   it("does not mark unrelated routes active", () => {
     expect(
       isNavigationItemActive("/api-market", "", primaryNavigation[0]!),
@@ -65,7 +158,9 @@ describe("primary navigation", () => {
   });
 
   it("uses query values to highlight exactly one capability child", () => {
-    const market = primaryNavigation.find((item) => item.href === "/api-market")!;
+    const market = primaryNavigation.find(
+      (item) => item.href === "/api-market",
+    )!;
     const [scenarios, matrix, list] = market.children;
     expect(isNavigationChildActive("/api-market", "view=matrix", matrix!)).toBe(
       true,

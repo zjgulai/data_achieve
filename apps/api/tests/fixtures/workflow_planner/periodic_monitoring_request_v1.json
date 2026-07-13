@@ -1,0 +1,46 @@
+{
+  "flow_mode": "periodic_monitoring",
+  "scopes": [
+    {
+      "scope_ref": "scope-1",
+      "scope_type": "brand",
+      "canonical_term": "Acme",
+      "aliases": ["ACME"],
+      "include_terms": ["running shoes"],
+      "exclude_terms": ["jobs"],
+      "official_accounts": ["@acme"],
+      "seed_urls": ["https://www.youtube.com/watch?v=demo"],
+      "languages": ["en"],
+      "regions": ["US"],
+      "platforms": ["youtube"],
+      "match_mode": "phrase"
+    },
+    {
+      "scope_ref": "scope-2",
+      "scope_type": "category",
+      "canonical_term": "running shoes",
+      "aliases": ["running footwear"],
+      "include_terms": ["trail shoes"],
+      "exclude_terms": ["jobs"],
+      "official_accounts": [],
+      "seed_urls": [],
+      "languages": [],
+      "regions": [],
+      "platforms": [],
+      "match_mode": null
+    }
+  ],
+  "default_languages": ["en"],
+  "default_regions": ["US"],
+  "default_platforms": ["youtube"],
+  "schedule_intent": {"cadence": "daily", "timezone": "UTC"},
+  "delivery_intent": {"outputs": ["brief"]},
+  "policy_profile": "market_monitoring_balanced",
+  "purpose": "market_research",
+  "required_fields": ["id", "url", "text", "published_at"],
+  "optional_fields": ["author", "metrics"],
+  "budget_ceiling": null,
+  "rate_limit_intent": null,
+  "retention_intent": {"days": 30},
+  "allow_partial_degradation": false
+}

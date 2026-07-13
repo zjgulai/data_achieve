@@ -27,6 +27,9 @@ from data_intelligence_hub.api.routes.social_provider import router as social_pr
 from data_intelligence_hub.api.routes.sources import router as sources_router
 from data_intelligence_hub.api.routes.tasks import router as tasks_router
 from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
+from data_intelligence_hub.api.routes.workflow_plans import (
+    router as workflow_plans_router,
+)
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.scheduler import CollectionScheduler
@@ -73,6 +76,7 @@ def create_app() -> FastAPI:
     app.include_router(dashboard_router, prefix="/api/dashboard")
     app.include_router(collectors_router, prefix="/api/collectors")
     app.include_router(projects_router, prefix="/api/projects")
+    app.include_router(workflow_plans_router, prefix="/api/projects")
     app.include_router(capabilities_router, prefix="/api/capabilities")
     app.include_router(sources_router, prefix="/api/sources")
     app.include_router(tasks_router, prefix="/api/tasks")

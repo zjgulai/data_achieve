@@ -1,0 +1,34 @@
+{
+  "flow_mode": "batch_research",
+  "scopes": [
+    {
+      "scope_ref": "scope-1",
+      "scope_type": "topic",
+      "canonical_term": "running shoes",
+      "aliases": [],
+      "include_terms": ["trail shoes"],
+      "exclude_terms": ["jobs"],
+      "official_accounts": [],
+      "seed_urls": [
+        "https://www.reddit.com/r/running/comments/demo",
+        "https://example.com/research/demo"
+      ],
+      "languages": ["en"],
+      "regions": ["US"],
+      "platforms": ["reddit"],
+      "match_mode": "hybrid"
+    }
+  ],
+  "default_languages": ["en"],
+  "default_regions": ["US"],
+  "default_platforms": ["reddit"],
+  "delivery_intent": {"outputs": ["dataset"]},
+  "policy_profile": "market_monitoring_balanced",
+  "purpose": "market_research",
+  "required_fields": ["id", "url", "text"],
+  "optional_fields": ["author", "published_at", "metrics"],
+  "budget_ceiling": null,
+  "rate_limit_intent": null,
+  "retention_intent": {"days": 30},
+  "allow_partial_degradation": false
+}

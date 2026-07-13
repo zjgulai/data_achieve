@@ -7,7 +7,7 @@ version: "2.0"
 status: stable
 review_status: approved
 created: 2026-07-10
-updated: 2026-07-10
+updated: 2026-07-13
 approved: 2026-07-10
 owner: self
 source: human+ai
@@ -16,7 +16,7 @@ design_spec: ../superpowers/specs/2026-07-10-social-media-automation-platform-v2
 evidence_level: L1-public-or-runtime
 provider_call: false
 production_boundary: production unchanged
-goal_execution: ready_for_goal_activation
+goal_execution: phase_1_locally_complete
 ---
 
 # Data Intelligence Hub PRD V2.0
@@ -25,7 +25,7 @@ goal_execution: ready_for_goal_activation
 
 > **文档状态**：V2.0 稳定目标基线，已于 2026-07-10 获得用户确认。
 >
-> **当前执行边界**：`provider_call=false`、`production unchanged`、`goal_execution=ready_for_goal_activation`。
+> **当前执行边界**：`GOAL-V2-03 status=phase_1_locally_complete`、`provider_call=false`、`database_write=false`、`migration_applied=false`、`production unchanged`；这只是本地 L2 Preview closeout，阶段二持久化仍未授权。
 >
 > **技术设计**：[全社媒自动化数据采集平台 V2 总体设计](../superpowers/specs/2026-07-10-social-media-automation-platform-v2-design.md)
 
@@ -407,6 +407,12 @@ Alert / VOC / Brief
 | WFL-007 | P0 | 用户可查看完整计划 | 自动模式也能查看选路和替代路线 |
 | WFL-008 | P1 | 支持计划克隆和版本比较 | 可显示关键词、平台、路线和预算差异 |
 
+#### 当前 GOAL-V2-03 实现边界（2026-07-13）
+
+已实现的是 Project-scoped WorkflowPlan 资产保存与不可变 Version 历史：用户先获得服务端确定性 Preview，再显式 Save；服务端重算输入并校验 Fingerprint，保存 v1 或后续 Version。当前 Version 相同语义返回 `semantic_no_op`，A→B→A 创建新 Version；历史 Version 不被覆盖。用户可查看 Saved Plans、当前 Preview、Version history 和服务端结构化 Compare。
+
+此状态只满足 WFL-002、WFL-003、WFL-004、WFL-005、WFL-006、WFL-007 的规划/资产部分，以及 WFL-008 的版本比较部分。`WorkflowRun`、Plan clone、Activate、Run、Pause、Schedule、Archive、Provider 调用和自动 Fallback 执行仍是后续授权范围，不能从“已保存”推导为“可执行”。
+
 ### 10.5 执行、Fallback 与 Shadow
 
 | ID | Priority | 需求 | 验收标准 |
@@ -585,6 +591,8 @@ unknown
 ```text
 draft -> previewed -> approved -> active -> paused -> archived
 ```
+
+这是 V2.0 完整产品生命周期目标。当前 GOAL-V2-03 只持久化 `previewed`：不保存编辑中的 `draft`，不实现 `approved`、`active`、`paused` 或 `archived` 的状态转换，也不创建 WorkflowRun。`planning_status=resolved | partially_resolved | held` 是 Version 的规划结果，不等于 Plan 生命周期；`partial` 只属于 Route/Step 层。
 
 ### 13.3 WorkflowRun 状态
 
@@ -774,7 +782,8 @@ allow_ai_training=false
 
 - GOAL-V2-01: complete (local contract evidence)
 - GOAL-V2-02: locally_complete (local validation and mock E2E only)
-- GOAL-V2-03 及后续 Goal: queued, not activated
+- GOAL-V2-03: phase_1_locally_complete (local L2 Preview gates only; Phase 2 unauthorized)
+- GOAL-V2-04 及后续 Goal: queued, not activated
 
 ### GOAL-V2-01：产品与能力合同底座
 
@@ -808,7 +817,24 @@ allow_ai_training=false
 
 ### GOAL-V2-03：MonitoringScope 与 Workflow Planner
 
-**Objective**：从品牌词、品类词和 Seed URL 生成可执行计划。
+**Control State**：
+
+    GOAL-V2-03 status=phase_2_persistence_in_progress
+    current_batch=phase_2_task_15_full_gate
+    checkpoint_reference=1e4cc4863c9629e2ff249edc0f7722dafaaf6831
+    database_write=local_disposable_postgres_only
+    migration_applied=disposable_pg_027_then_026_then_027
+    provider_call=false
+    actor_run=false
+    browser_run=false
+    llm_call=false
+    workflow_run_created=false
+    production unchanged
+    phase_1_web_mock_e2e=passed
+    phase_2_web_mock_e2e=passed
+    GOAL-V2-03 phase_2_implementation_authorization=true
+
+**Objective**：从品牌词、品类词和 Seed URL 生成可解释 Preview，并将已验证的 Preview 保存为可审计、可比较但不可执行的规划资产。
 
 **Scope**：
 
@@ -818,7 +844,24 @@ allow_ai_training=false
 - Capability Resolver 与场景策略
 - RoutePlan、Fallback 和 Shadow 规则
 
-**Exit Gate**：两个核心 Flow 可在 Fixture 下生成确定性计划并完整解释。
+**Phase 1 历史基线（L2 Fixture / Mock）**：
+
+- 已实现并注册 write-free `POST /api/projects/{project_id}/workflow-plans/preview`；它只读取当前 workspace 可见且 active 的 Project 与 canonical Capability Catalog，不保存 MonitoringScope、WorkflowPlan、WorkflowVersion 或 WorkflowRun。
+- 当前流水线为 `MonitoringScopeDraft -> normalize -> Query Compiler -> periodic_monitoring.v1 / batch_research.v1 template -> Capability Resolver -> Catalog Snapshot -> Preview Fingerprint -> WorkflowPlanPreview`。
+- canonical Catalog 的 Assertion 仍为 candidate，因此产品路径返回可解释 `held`，不虚构 Primary；Primary、Fallback、Shadow 与 partial 只由测试专用 synthetic Fixture 证明，不写回 canonical Catalog。
+- Web 已交付同一 Planner 的周期监测与批量研究双模式向导；简单/高级视图消费同一个后端响应与 Fingerprint，不在前端重算路线。
+- Project Selector 仅在一次成功的 Project-scoped Preview（包括 `held` 200）被接受后显示 applied；输入、mode 或 Project 变化会立即恢复为 false。
+- 2026-07-13 Phase 1 exit gate：API targeted `240 passed`、API full `439 passed`、Web unit `151 passed`、Web mock E2E `58 passed / 12 expected skipped`、Preview `p95=5.287ms`、Alembic head `202606110026`。这些数字仅是 Phase 1 基线，不替代当前 Phase 2 证据。
+
+**Phase 2 当前实现（本地进行中）**：
+
+- 已提供显式 Save、Plan/Version 只读查询、History、Compare 和 Project-scoped MonitoringScope 读取。首次保存创建 `previewed` Plan/v1；后续保存只能新增不可变 Version，Plan 名称和 flow mode 不可变。
+- 保存使用 `Idempotency-Key`，服务端重算 Preview 和 Fingerprint；同语义返回 `semantic_no_op`，并发冲突、stale Preview 与 archived Project 保存失败不会覆盖历史或本地草稿。
+- MonitoringScope 在 Project 内按语义复用，Version–Scope 关联冻结顺序，QueryTerm 是 Version 级快照。迁移/约束测试仅在已授权 disposable PostgreSQL 15 数据库运行。
+- Web 已提供 Save Preview、Saved Plans、Version history 和服务端 Compare；本地 mock E2E 已验证保存/历史/Compare/stale-conflict/dirty guard 响应式路径。real API persistence E2E 明确未执行。
+- 不存在 Activate、Run、Schedule、Archive、WorkflowRun、Provider、Actor、Browser 或 LLM 产品操作；`held` 只是可审计规划状态，不是执行批准。
+
+**Exit Gate**：Task 15 的全量本地 exit gate 尚未运行。当前只可表述为 `phase_2_persistence_in_progress`，不代表 real API、CI、deploy、共享/生产数据库或 Provider 验收。
 
 ### GOAL-V2-04：浏览器能力发现
 

@@ -40,6 +40,14 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workflow_plan import (
+    MonitoringScope,
+    QueryTerm,
+    WorkflowPlan,
+    WorkflowPlanSaveRequest,
+    WorkflowVersion,
+    WorkflowVersionScope,
+)
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 
 __all__ = [
@@ -65,8 +73,10 @@ __all__ = [
     "EmailProviderLiveSendRun",
     "IntelligenceFeedback",
     "IntelligenceItem",
+    "MonitoringScope",
     "Notification",
     "Project",
+    "QueryTerm",
     "RawRecord",
     "Report",
     "ReportAuditEvent",
@@ -81,4 +91,8 @@ __all__ = [
     "User",
     "Workspace",
     "WorkspaceMember",
+    "WorkflowPlan",
+    "WorkflowPlanSaveRequest",
+    "WorkflowVersion",
+    "WorkflowVersionScope",
 ]

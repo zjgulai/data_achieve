@@ -1,89 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
-import { listProjects } from "@/lib/api/projects";
+import { useProjectSelection } from "@/components/layout/project-selection-provider";
 import {
-  readSelectedProjectPreference,
-  resolveSelectedProjectId,
-  writeSelectedProjectId,
+  projectFilterStatusMessage,
+  resolveRouteScopedProjectId,
 } from "@/lib/project-selection";
-import type { Project } from "@/types/project";
-
-const projectListUnavailableMessage = "项目列表暂不可用";
-const projectPreferenceUnavailableMessage =
-  "项目偏好暂不可用；当前选择未保存";
 
 export function ProjectSelector() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [preferenceError, setPreferenceError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    listProjects()
-      .then((items) => {
-        if (cancelled) {
-          return;
-        }
-        const active = items.filter((item) => item.status === "active");
-        const preference = readSelectedProjectPreference();
-        const resolved = resolveSelectedProjectId(items, preference.value);
-        let preferenceAvailable = preference.available;
-        if (
-          preferenceAvailable &&
-          resolved !== preference.value &&
-          !writeSelectedProjectId(resolved)
-        ) {
-          preferenceAvailable = false;
-        }
-        setProjects(active);
-        setSelectedId(resolved);
-        setError(null);
-        setPreferenceError(
-          preferenceAvailable ? null : projectPreferenceUnavailableMessage,
-        );
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setProjects([]);
-          setSelectedId(null);
-          setError(projectListUnavailableMessage);
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  function select(value: string) {
-    const next = value || null;
-    if (writeSelectedProjectId(next)) {
-      setSelectedId(next);
-      setPreferenceError(null);
-    } else {
-      setPreferenceError(projectPreferenceUnavailableMessage);
-    }
-  }
+  const pathname = usePathname();
+  const {
+    projects,
+    selectedProjectId,
+    loading,
+    projectListError,
+    preferenceError,
+    filterApplied,
+    selectProject,
+  } = useProjectSelection();
+  const routeProjectId = resolveRouteScopedProjectId(pathname);
+  const statusMessage = projectFilterStatusMessage({
+    pathname,
+    selectedProjectId,
+    filterApplied,
+  });
 
   return (
     <div
       className="min-w-0 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2"
-      data-project-filter-applied="false"
+      data-project-filter-applied={String(filterApplied)}
+      data-route-project-id={routeProjectId ?? undefined}
     >
       <label className="flex min-w-0 items-center gap-2 text-xs font-semibold text-[#5F5757]">
-        <span className="shrink-0">项目</span>
+        <span className="shrink-0">{routeProjectId ? "项目偏好" : "项目"}</span>
         <select
           aria-describedby="global-project-filter-status"
           className="min-w-0 max-w-48 bg-transparent text-sm font-medium text-[#2E201C] outline-none disabled:cursor-not-allowed disabled:opacity-60"
           data-testid="global-project-selector"
-          disabled={loading || Boolean(error)}
-          onChange={(event) => select(event.target.value)}
-          value={selectedId ?? ""}
+          disabled={loading || Boolean(projectListError)}
+          onChange={(event) => selectProject(event.target.value || null)}
+          value={selectedProjectId ?? ""}
         >
           <option value="">全部项目</option>
           {projects.map((project) => (
@@ -97,11 +54,11 @@ export function ProjectSelector() {
         className="mt-1 text-[11px] leading-4 text-[#8B7770]"
         id="global-project-filter-status"
       >
-        当前页面未应用项目过滤（全局数据）
+        {statusMessage}
       </p>
-      {error ? (
+      {projectListError ? (
         <p className="mt-1 text-xs font-semibold text-[#B85F4F]" role="alert">
-          {error}
+          {projectListError}
         </p>
       ) : null}
       {preferenceError ? (

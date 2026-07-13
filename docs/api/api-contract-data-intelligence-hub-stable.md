@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-23
+updated: 2026-07-13
 owner: self
 source: human+ai
 ---
@@ -62,6 +62,145 @@ Base URL：
 ```text
 osint, ecommerce, social, competitor, mixed
 ```
+
+## Workflow Planner（GOAL-V2-03）
+
+当前执行状态为 `phase_2_persistence_in_progress`。Phase One 的 Project-scoped write-free Preview 合同保持不变；Phase Two 在同一 Project/Workspace 边界内增加显式 Save、不可变 Version、历史、Compare 和只读 Scope 查询。以下 Preview 小节记录仍受保护的 Phase One 合同。
+
+### Phase One Preview（保持 write-free）
+
+| 方法 | 路径 | 请求 | 响应 | 副作用边界 |
+|---|---|---|---|---|
+| `POST` | `/api/projects/{project_id}/workflow-plans/preview` | `PlanningInput` | `WorkflowPlanPreview` | 只读 active Project 与 canonical Capability Catalog；不保存、不激活、不运行 |
+
+### 请求合同
+
+`PlanningInput` 禁止 extra 字段，`project_id` 只来自 URL path。请求体包含：
+
+```text
+flow_mode=periodic_monitoring|batch_research
+scopes[]: MonitoringScopeDraft
+default_languages[]
+default_regions[]
+default_platforms[]
+schedule_intent?
+delivery_intent?
+policy_profile=market_monitoring_balanced
+purpose
+required_fields[]
+optional_fields[]
+budget_ceiling?
+rate_limit_intent?
+retention_intent?
+allow_partial_degradation=false
+```
+
+`MonitoringScopeDraft` 包含 `scope_ref`、`scope_type`、`canonical_term?`、`aliases[]`、`include_terms[]`、`exclude_terms[]`、`official_accounts[]`、`seed_urls[]`、`languages[]`、`regions[]`、`platforms[]` 和 `match_mode?`。服务端生成 `scope_key`；请求体提交 `project_id`、`scope_key`、readiness snapshot 或其他未知字段返回 `422`。
+
+模式约束：
+
+1. `periodic_monitoring` 必须有 `schedule_intent`，每个 Scope 必须有声明平台或可分类 Seed URL。
+2. `batch_research` 不接受 `schedule_intent`，至少包含关键词、账号或 Seed URL 输入。
+3. Seed URL 只做字符串规范化和已知 host 分类，不发送 HTTP 请求；unclassified URL 保留在 diagnostics。
+
+### 响应合同
+
+`WorkflowPlanPreview` 返回同一份后端事实，至少包括：
+
+```text
+schema_version=workflow_plan_preview.v1
+planner_contract_version
+project_id
+flow_mode
+planning_status=resolved|partially_resolved|held
+normalized_input
+scope_ref_map
+query_terms
+compiled_queries
+steps
+route_requirements
+route_plans
+coverage
+budget_summary
+limitations
+decision_trace
+attribution_contract
+catalog_snapshot_id
+policy_version
+mode_template_version
+query_versions
+preview_fingerprint
+generated_at
+request_id
+```
+
+响应边界固定为：
+
+```text
+execution_authorized=false
+provider_call=false
+actor_run=false
+browser_run=false
+llm_call=false
+workflow_run_created=false
+database_write=false
+```
+
+canonical Catalog 当前只有 candidate Assertion，因此正常产品请求可以返回 `200` + `planning_status=held`；`held` 不是 HTTP 错误。Primary、Fallback、Shadow 和 partial 路线由 test-only synthetic Fixture 验证，不写入 canonical Catalog，也不代表真实执行就绪。
+
+### Project read path 与错误
+
+1. Route 复用 AuthContext，并以当前 workspace 限定 `get_active_project_or_raise()`；Project 不存在或跨 workspace 不可见都返回 `404`。
+2. archived/inactive Project 返回 `409`，detail 为 `project_not_active`。
+3. FastAPI/Pydantic 在进入 handler 前拒绝的 request-schema 错误返回框架原生 `422`；该路径不经过 Preview route，不能保证存在 route 追加的 `X-Request-ID`。
+4. 已进入 route 后由 normalizer 抛出的 `WorkflowPlannerInputError` 返回 `422`，detail 保留可映射到表单控件的 `loc`、`msg` 与 `type`，并携带 `X-Request-ID`。
+5. Capability Catalog 或 Planner dependency 不可用返回 `503`。
+6. 未分类内部错误返回 `500`，detail 为安全错误码。成功响应以及 route 内映射的 `404`、`409`、normalizer `422`、`500`、`503` 均携带 `X-Request-ID`；这不泛化到 handler 前的框架校验错误。
+7. Preview 路径不调用 create/update/delete/flush/commit，不创建后台任务；现有集成测试以 SQL capture 和全表计数锁定 0 写入。
+
+### Phase Two persistence/versioning（本地实施进行中）
+
+仅下列两个 POST 是已实现的持久化写入口；它们不创建执行、调度或 WorkflowRun：
+
+| 方法 | 路径 | 必填输入 | 响应 | 语义 |
+|---|---|---|---|---|
+| `POST` | `/api/projects/{project_id}/workflow-plans` | `Idempotency-Key`、`WorkflowPlanCreateRequest` | `WorkflowPlanSaveResponse` | 创建 Plan 与 v1，或返回语义 no-op/replay |
+| `POST` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions` | `Idempotency-Key`、`WorkflowVersionCreateRequest` | `WorkflowPlanSaveResponse` | 为既有 Plan 创建后续不可变 Version，或返回语义 no-op/replay |
+
+`WorkflowPlanCreateRequest` 只接受 `name`（trim 后 `1..200`）、`preview_input` 和 `expected_preview_fingerprint`；`WorkflowVersionCreateRequest` 只接受 `preview_input`、`expected_preview_fingerprint` 和 `expected_current_version_id`。服务端以 `preview_input` 重新计算 Preview 并校验 Fingerprint，客户端不得提交 `plan_payload`、Version number、Scope key 或其他未知字段。Plan 的 `name` 与 `flow_mode` 在创建后不可变；`held` 可保存为审计资产，但不表示 approved、active 或可运行。
+
+`Idempotency-Key` 是必填 opaque header，trim 后长度为 `12..200`；服务端只使用其 hash，不在响应、日志或持久化记录中保存原始值。相同 key 与相同规范化请求返回原资源快照并标注 `idempotent_replay=true`、`database_write=false`、`plan_changed=false`；同 key 不同请求返回 `409 idempotency_conflict`。新 Plan/v1 或新 Version 返回 `201` 与 `outcome=created`；与当前 Fingerprint 等价的首次请求返回 `200` 与 `outcome=semantic_no_op`、`plan_changed=false`。该 no-op 仍可能写入幂等结果，因此其首次响应的 `database_write=true`；不能把它误报为“无持久化操作”。A→B→A 创建新的 v3，不对 `(workflow_plan_id, preview_fingerprint)` 施加唯一约束。
+
+完整 Version 响应包含服务端从冻结 Fingerprint 输入重建的 `editable_input` 与冻结 `preview`；它使当前或历史 Version 能重新载入 Planner。列表和 Compare 中的 Version summary 不返回完整 Preview。嵌入的 Preview 继续描述规划计算，固定 `database_write=false`；外层 Save response 的 `database_write` 和 `plan_changed` 描述本次保存尝试。
+
+### 读取、分页、归档与 Compare
+
+| 方法 | 路径 | 响应 |
+|---|---|---|
+| `GET` | `/api/projects/{project_id}/workflow-plans` | `WorkflowPlanListResponse` |
+| `GET` | `/api/projects/{project_id}/workflow-plans/{plan_id}` | `WorkflowPlanDetailResponse`（含 current Version） |
+| `GET` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions` | `WorkflowVersionListResponse` |
+| `GET` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions/{version_id}` | `WorkflowVersionDetailResponse` |
+| `GET` | `/api/projects/{project_id}/workflow-plans/{plan_id}/version-compare?base_version_id={id}&target_version_id={id}` | `WorkflowPlanVersionCompareResponse` |
+| `GET` | `/api/projects/{project_id}/monitoring-scopes` | `MonitoringScopeListResponse` |
+
+三个列表都使用 `limit`（默认 `50`、范围 `1..100`）和 `offset`（默认 `0`），并返回 `items`、`total`、`limit`、`offset`。Plan 按 `updated_at DESC, id DESC`，Version 按 `version_number DESC`，MonitoringScope 按 `created_at DESC, id DESC`。Compare 返回服务端计算的结构化 sections；同一 Version 返回 `same_version=true` 与空 sections，不由 Web 重新计算 diff。
+
+所有读取响应固定 `database_write=false`、`plan_changed=false` 和执行边界 false。当前 Workspace 成员可读取 archived Project 的 Plan、Version、history、Compare 和 Scope；Preview 与两个 Save 写入口继续将 archived/inactive Project 拒绝为 `409 project_not_active`。
+
+### 错误与明确不存在的接口
+
+| 状态 | 情况 |
+|---|---|
+| `404` | 当前 Workspace 下不存在或不可见的 Project、Plan 或 Version |
+| `409` | `project_not_active`、`preview_stale`、`version_conflict`、`idempotency_conflict` 或 Plan `flow_mode` 冲突 |
+| `422` | body/header 校验失败；`Idempotency-Key` 格式无效时返回 header field error |
+| `503` | Catalog/Planner dependency 或 persistence transaction 不可用 |
+| `500` | 拓扑或其他未分类内部失败，返回安全错误码 |
+
+已进入 Planner route 的成功与映射错误携带 `X-Request-ID`；框架在 handler 前拒绝的校验错误不保证该 header。除上述 Plan/Version POST 外，不存在 `PATCH`、`DELETE`、`/activate`、`/run`、`/pause`、`/schedule`、`/archive` 或 WorkflowRun/Provider 端点。
+
+2026-07-13 当前本地证据：Phase One Preview 仍有其原始 L2 Fixture/集成 gate；Phase Two 的路由、模型、迁移、局部 PostgreSQL 15 约束 gate、Web unit/mock E2E 已完成各自任务级验证，但完整 Phase Two exit gate 尚未运行。因此不能宣称 real API、CI、部署、生产数据库或 Provider 验收。`provider_call=false`、`actor_run=false`、`browser_run=false`、`llm_call=false`、`workflow_run_created=false`、`production unchanged` 保持成立。
 
 ## Collector And Source
 

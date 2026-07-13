@@ -66,10 +66,7 @@ export function isNavigationItemActive(
   item: NavigationItem,
 ): boolean {
   const primaryPath = targetUrl(item.href).pathname;
-  if (
-    pathname === primaryPath ||
-    (primaryPath === "/api-market" && pathname.startsWith("/api-market/"))
-  ) {
+  if (pathname === primaryPath || pathname.startsWith(`${primaryPath}/`)) {
     return true;
   }
   return item.children.some((childItem) =>
@@ -92,6 +89,9 @@ export const primaryNavigation = [
     child("/domain/governance", "合规边界"),
   ]),
   nav("/automation", "采集工作流", Bot, [
+    child("/automation/planner?mode=periodic_monitoring", "创建监测项目"),
+    child("/automation/planner?mode=batch_research", "批量检索与解析"),
+    child("/automation/plans", "已保存计划"),
     child("/tasks", "采集任务"),
     child("/sources", "数据源"),
   ]),

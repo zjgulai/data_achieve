@@ -54,6 +54,7 @@ packages = ["src/data_intelligence_hub"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 line-length = 100
@@ -66,6 +67,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]

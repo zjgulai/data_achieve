@@ -576,6 +576,223 @@ async function createNotificationFixture(request: APIRequestContext) {
   }
 }
 
+type WorkflowPlannerMode = "periodic_monitoring" | "batch_research";
+
+const plannerProjects = {
+  canonicalHeld: {
+    id: "00000000-0000-4000-8000-000000000031",
+    name: "Planner Fixture - Canonical Held",
+  },
+  syntheticPartial: {
+    id: "00000000-0000-4000-8000-000000000032",
+    name: "Planner Fixture - Synthetic Partial",
+  },
+  syntheticResolved: {
+    id: "00000000-0000-4000-8000-000000000033",
+    name: "Planner Fixture - Synthetic Resolved",
+  },
+} as const;
+
+async function installLocalOnlyRequestGuard(
+  page: Page,
+): Promise<() => string[]> {
+  const externalRequests: string[] = [];
+  page.on("request", (request) => {
+    const requestUrl = new URL(request.url());
+    if (
+      (requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
+      requestUrl.hostname !== "localhost" &&
+      requestUrl.hostname !== "127.0.0.1"
+    ) {
+      externalRequests.push(request.url());
+    }
+  });
+  await page.route("**/*", async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (
+      (requestUrl.protocol === "http:" || requestUrl.protocol === "https:") &&
+      requestUrl.hostname !== "localhost" &&
+      requestUrl.hostname !== "127.0.0.1"
+    ) {
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.continue();
+  });
+  return () => [...externalRequests];
+}
+
+async function openPlannerFromDashboard(
+  page: Page,
+  projectName: string,
+  mode: WorkflowPlannerMode,
+) {
+  await page.goto("/dashboard");
+  const entryCards = page.getByTestId("workflow-planner-entry-cards");
+  const periodicLink = entryCards.getByRole("link", { name: /创建监测项目/ });
+  const batchLink = entryCards.getByRole("link", { name: /批量检索与解析/ });
+  await expect(periodicLink).toHaveAttribute(
+    "href",
+    "/automation/planner?mode=periodic_monitoring",
+  );
+  await expect(batchLink).toHaveAttribute(
+    "href",
+    "/automation/planner?mode=batch_research",
+  );
+  await expect(entryCards).not.toContainText("运行");
+  await expect(entryCards).not.toContainText("激活");
+  const overviewFact = page.getByText("情报总量", { exact: true }).first();
+  await expect(overviewFact).toBeVisible();
+  await expect(
+    entryCards.locator("xpath=following-sibling::*[1]"),
+  ).toContainText("情报总量");
+
+  await (mode === "periodic_monitoring" ? periodicLink : batchLink).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/automation/planner\\?mode=${mode}$`),
+  );
+  await expect(page.locator(`#planner-mode-${mode}`)).toBeChecked();
+  const selector = page.getByTestId("global-project-selector");
+  await expect(
+    selector.locator("option", { hasText: projectName }),
+  ).toBeAttached();
+  await selector.selectOption({ label: projectName });
+  await expect(page.getByTestId("workflow-planner-workspace")).toContainText(
+    projectName,
+  );
+  await expect(
+    page.locator('[data-project-filter-applied="false"]'),
+  ).toBeVisible();
+}
+
+async function openPlannerWithoutSelection(
+  page: Page,
+  mode: WorkflowPlannerMode,
+) {
+  await page.goto(`/automation/planner?mode=${mode}`);
+  await expect(page.locator(`#planner-mode-${mode}`)).toBeChecked();
+  await expect(
+    page.getByTestId("global-project-selector").locator("option").nth(1),
+  ).toBeAttached();
+}
+
+async function advanceBatchPlanner(
+  page: Page,
+  canonicalTerm: string,
+  seedUrl?: string,
+) {
+  await page.getByRole("button", { name: "下一步" }).click();
+  await page.locator("#planner-scope-0-canonical-term").fill(canonicalTerm);
+  if (seedUrl) {
+    await page.locator("#planner-scope-0-seed-url-0").fill(seedUrl);
+  }
+  await page.getByRole("button", { name: "下一步" }).click();
+  await page.locator("#planner-platform-reddit").check();
+  await page.getByRole("button", { name: "下一步" }).click();
+}
+
+async function generatePlannerPreview(page: Page) {
+  await page.getByTestId("workflow-planner-generate-preview").click();
+  await expect(page.getByTestId("workflow-planner-preview")).toBeVisible();
+  await expect(
+    page.getByTestId("workflow-planner-generate-preview"),
+  ).toHaveAttribute("aria-busy", "false");
+}
+
+async function regeneratePlannerPreview(page: Page) {
+  const sawBusy = page.evaluate(() => {
+    const button = document.querySelector(
+      '[data-testid="workflow-planner-generate-preview"]',
+    );
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("Generate Preview button is missing");
+    }
+    return new Promise<boolean>((resolve) => {
+      const observer = new MutationObserver(() => {
+        if (button.getAttribute("aria-busy") === "true") {
+          observer.disconnect();
+          resolve(true);
+        }
+      });
+      observer.observe(button, {
+        attributes: true,
+        attributeFilter: ["aria-busy"],
+      });
+    });
+  });
+  await page.getByTestId("workflow-planner-generate-preview").click();
+  expect(await sawBusy).toBe(true);
+  await expect(
+    page.getByTestId("workflow-planner-generate-preview"),
+  ).toHaveAttribute("aria-busy", "false");
+  await expect(page.getByTestId("workflow-planner-preview")).toBeVisible();
+}
+
+async function navigateWithPrimaryNavigation(page: Page, label: string) {
+  const mobileDrawer = page.getByRole("dialog", { name: "移动主导航" });
+  if (!(await mobileDrawer.isVisible())) {
+    const mobileOpener = page.getByRole("button", { name: "打开导航" });
+    if (await mobileOpener.isVisible()) {
+      await mobileOpener.click();
+      await expect(mobileDrawer).toBeVisible();
+    }
+  }
+  const navigation = (await mobileDrawer.isVisible())
+    ? mobileDrawer.getByRole("navigation", { name: "主导航" })
+    : page.getByRole("navigation", { name: "主导航" });
+  await navigation.getByRole("link", { name: label, exact: true }).click();
+}
+
+async function openSavedWorkflowPlan(
+  page: Page,
+  planName: string,
+  expectedVersion: number,
+) {
+  await navigateWithPrimaryNavigation(page, "已保存计划");
+  await expect(page).toHaveURL(/\/automation\/plans$/);
+  const list = page.getByTestId("saved-workflow-plan-list");
+  await expect(list).toBeVisible();
+  const planLink = list.getByRole("link", { name: planName, exact: true });
+  await expect(planLink).toHaveCount(1);
+  await expect(planLink.locator("xpath=ancestor::tr")).toContainText(
+    `v${expectedVersion}`,
+  );
+  await expectNoDocumentOverflow(page);
+  await expectNoForbiddenWorkflowActions(list);
+  const detailHref = await planLink.getAttribute("href");
+  if (!detailHref) {
+    throw new Error("Saved WorkflowPlan detail href is missing");
+  }
+  const detailUrl = new URL(detailHref, page.url()).toString();
+  await planLink.click();
+  await expect(page).toHaveURL(detailUrl);
+  await expect(
+    page.getByTestId("workflow-plan-detail-workspace"),
+  ).toBeVisible();
+  return { detailHref, detailUrl };
+}
+
+async function expectNoDocumentOverflow(page: Page) {
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    ),
+  ).toBeLessThanOrEqual(1);
+}
+
+async function expectNoForbiddenWorkflowActions(root: Locator) {
+  const forbiddenAction =
+    /activate|\brun\b|schedule|provider|actor|\bllm\b|workflow\s*run|激活|运行|调度/i;
+  await expect(root.getByRole("button", { name: forbiddenAction })).toHaveCount(
+    0,
+  );
+  await expect(root.getByRole("link", { name: forbiddenAction })).toHaveCount(
+    0,
+  );
+}
+
 test.beforeEach(async ({ page, request }, testInfo) => {
   if (!realApiMode) {
     return;
@@ -1618,6 +1835,551 @@ test.describe("MVP workspace routes", () => {
           .filter({ hasText: "Data quality anomaly watch" }),
       ).toHaveCount(0);
     }
+  });
+});
+
+test.describe("workflow planner local mock acceptance", () => {
+  test.skip(realApiMode, "Workflow Planner fixture acceptance is mock-only.");
+  test.beforeAll(() => {
+    if (process.env.PLAYWRIGHT_BASE_URL) {
+      throw new Error(
+        "Workflow Planner fixture acceptance requires PLAYWRIGHT_BASE_URL to be unset so Playwright owns the local mock server.",
+      );
+    }
+  });
+
+  test("workflow planner periodic flow stays held with canonical catalog", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.canonicalHeld.name,
+      "periodic_monitoring",
+    );
+
+    await page.goto("/dashboard");
+    await page
+      .getByTestId("workflow-planner-entry-cards")
+      .getByRole("link", { name: /批量检索与解析/ })
+      .click();
+    await expect(page.locator("#planner-mode-batch_research")).toBeChecked();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.locator("#planner-scope-0-canonical-term").fill("transient");
+    await page.goto("/dashboard");
+    await page
+      .getByTestId("workflow-planner-entry-cards")
+      .getByRole("link", { name: /创建监测项目/ })
+      .click();
+    await expect(
+      page.locator("#planner-mode-periodic_monitoring"),
+    ).toBeChecked();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await expect(page.locator("#planner-scope-0-canonical-term")).toHaveValue(
+      "",
+    );
+
+    await page.locator("#planner-scope-0-canonical-term").fill("Acme");
+    await page.getByRole("button", { name: "添加 Scope" }).click();
+    await page.locator("#planner-scope-1-type").selectOption("category");
+    await page.locator("#planner-scope-1-canonical-term").fill("running shoes");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.locator("#planner-platform-reddit").check();
+    await page.locator("#planner-schedule-cadence").selectOption("daily");
+    await page.locator("#planner-schedule-timezone").fill("Asia/Shanghai");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await generatePlannerPreview(page);
+
+    const planningStatusCard = page
+      .getByText("Planning status", { exact: true })
+      .locator("..");
+    await expect(
+      planningStatusCard.getByText("held", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-project-filter-applied="true"]'),
+    ).toBeVisible();
+    const fingerprint = page.getByTestId("workflow-planner-fingerprint");
+    await expect(fingerprint).toHaveText(/^sha256:[0-9a-f]{64}$/);
+    const simpleFingerprint = await fingerprint.textContent();
+    expect(simpleFingerprint).not.toBeNull();
+    await page.getByRole("tab", { name: "高级视图" }).click();
+    await expect(page.getByTestId("workflow-planner-primary")).toHaveCount(0);
+    await expect(fingerprint).toHaveText(simpleFingerprint!);
+    await expect(page.locator('[role="tabpanel"]:not([hidden])')).toContainText(
+      "execution_authorized=false",
+    );
+
+    await page.getByTestId("global-project-selector").selectOption({
+      label: plannerProjects.syntheticPartial.name,
+    });
+    await expect(
+      page.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow planner batch flow preserves unclassified seed url", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    const externalSeedUrl = "https://outside-seed.example/items/42";
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.canonicalHeld.name,
+      "batch_research",
+    );
+    await advanceBatchPlanner(page, "running shoes", externalSeedUrl);
+    await generatePlannerPreview(page);
+
+    await expect(
+      page.getByTestId("workflow-planner-unclassified-url"),
+    ).toContainText(externalSeedUrl);
+    const fingerprint = page.getByTestId("workflow-planner-fingerprint");
+    await expect(fingerprint).toHaveText(/^sha256:[0-9a-f]{64}$/);
+    const firstFingerprint = await fingerprint.textContent();
+    expect(firstFingerprint).not.toBeNull();
+    await regeneratePlannerPreview(page);
+    await expect(fingerprint).toHaveText(firstFingerprint!);
+    await expect(
+      page.locator('[data-project-filter-applied="true"]'),
+    ).toBeVisible();
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow planner renders synthetic resolved primary fallback and shadow", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.syntheticResolved.name,
+      "batch_research",
+    );
+    await advanceBatchPlanner(page, "running shoes");
+    await generatePlannerPreview(page);
+
+    const simpleTab = page.getByRole("tab", { name: "简单视图" });
+    await simpleTab.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "高级视图" })).toBeFocused();
+    await expect(page.getByRole("tab", { name: "高级视图" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(page.getByTestId("workflow-planner-primary")).toBeVisible();
+    await expect(page.getByTestId("workflow-planner-fallback")).toBeVisible();
+    await expect(page.getByTestId("workflow-planner-shadow")).toBeVisible();
+    await expect(page.locator('[role="tabpanel"]:not([hidden])')).toContainText(
+      "execution_authorized=false",
+    );
+
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.locator("#planner-mode-periodic_monitoring").check();
+    await expect(
+      page.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow planner marks preview stale and ignores older response", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.syntheticResolved.name,
+      "batch_research",
+    );
+    await advanceBatchPlanner(page, "e2e-slow-first");
+    await page.clock.install();
+    await page.clock.pauseAt(Date.now());
+
+    await page.getByTestId("workflow-planner-generate-preview").click();
+    await expect(
+      page.getByTestId("workflow-planner-generate-preview"),
+    ).toHaveAttribute("aria-busy", "true");
+    await expect(
+      page.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page
+      .locator("#planner-scope-0-canonical-term")
+      .fill("e2e-fast-second");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByTestId("workflow-planner-generate-preview").click();
+    await page.clock.fastForward(10);
+
+    const newestFingerprint = `sha256:${"2".repeat(64)}`;
+    await expect(page.getByTestId("workflow-planner-fingerprint")).toHaveText(
+      newestFingerprint,
+    );
+    await expect(
+      page.locator('[data-project-filter-applied="true"]'),
+    ).toBeVisible();
+    await page.clock.fastForward(240);
+    await expect(page.getByTestId("workflow-planner-fingerprint")).toHaveText(
+      newestFingerprint,
+    );
+
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page
+      .locator("#planner-scope-0-canonical-term")
+      .fill("post-preview-edit");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await expect(page.getByTestId("workflow-planner-stale")).toBeVisible();
+    await expect(
+      page.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow plan persistence saves held v1, preserves no-op, and compares v2", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize(
+      testInfo.project.name === "mobile"
+        ? { width: 375, height: 812 }
+        : { width: 1440, height: 900 },
+    );
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    const planName = `E2E held persistence ${testInfo.project.name}`;
+    const firstTerm = "e2e-held-persistence-v1";
+    const secondTerm = "e2e-held-persistence-v2";
+
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.canonicalHeld.name,
+      "batch_research",
+    );
+    await advanceBatchPlanner(page, firstTerm);
+    await generatePlannerPreview(page);
+
+    const firstSavePanel = page.getByTestId("workflow-plan-save-panel");
+    await expect(firstSavePanel).toContainText(
+      "held Preview 可以保存，但保存不会解除阻断、批准或启动运行。",
+    );
+    await expectNoForbiddenWorkflowActions(
+      page.getByTestId("workflow-planner-workspace"),
+    );
+    await page.locator("#workflow-plan-name").fill(planName);
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(firstSavePanel).toContainText("已创建 Plan 与 Version v1。");
+    await expectNoDocumentOverflow(page);
+
+    await openSavedWorkflowPlan(page, planName, 1);
+    const firstDetail = page.getByTestId("workflow-plan-detail-workspace");
+    await expect(
+      firstDetail.getByRole("heading", { name: planName }),
+    ).toBeVisible();
+    await expect(firstDetail).toContainText("当前 v1");
+    const firstHistory = page.getByTestId("workflow-plan-version-history");
+    await expect(firstHistory).toContainText("已加载 1 / 1");
+    await expect(
+      firstHistory.getByRole("heading", { name: "v1", exact: true }),
+    ).toBeVisible();
+    const firstCompare = page.getByTestId("workflow-plan-version-compare");
+    await expect(firstCompare).toContainText(
+      "至少需要 2 个 Version 才能比较。",
+    );
+    await expectNoForbiddenWorkflowActions(firstDetail);
+    await expectNoDocumentOverflow(page);
+
+    await firstDetail.getByRole("link", { name: "Edit in Planner" }).click();
+    await expect(page).toHaveURL(/\/automation\/planner\?/);
+    const workspace = page.getByTestId("workflow-planner-workspace");
+    await expect(workspace).toContainText(`${planName} · 当前基线 v1`);
+    await page.getByRole("button", { name: "下一步" }).click();
+    await expect(page.locator("#planner-scope-0-canonical-term")).toHaveValue(
+      firstTerm,
+    );
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await generatePlannerPreview(page);
+    const noOpSavePanel = page.getByTestId("workflow-plan-save-panel");
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(noOpSavePanel).toContainText("语义未变化，未创建新 Version。");
+
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.locator("#planner-scope-0-canonical-term").fill(secondTerm);
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await expect(page.getByTestId("workflow-planner-stale")).toBeVisible();
+    await expect(page.getByTestId("workflow-plan-save")).toHaveCount(0);
+    await generatePlannerPreview(page);
+    const secondSavePanel = page.getByTestId("workflow-plan-save-panel");
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(secondSavePanel).toContainText("已创建 Version v2。");
+
+    await openSavedWorkflowPlan(page, planName, 2);
+    const secondDetail = page.getByTestId("workflow-plan-detail-workspace");
+    await expect(secondDetail).toContainText("当前 v2");
+    const secondHistory = page.getByTestId("workflow-plan-version-history");
+    await expect(secondHistory).toContainText("已加载 2 / 2");
+    await expect(
+      secondHistory.getByRole("heading", { name: "v2", exact: true }),
+    ).toBeVisible();
+    await expect(
+      secondHistory.getByRole("heading", { name: "v1", exact: true }),
+    ).toBeVisible();
+    const secondCompare = page.getByTestId("workflow-plan-version-compare");
+    await expect(
+      secondCompare.getByLabel("Base Version").locator("option:checked"),
+    ).toContainText("v1");
+    await expect(
+      secondCompare.getByLabel("Target Version").locator("option:checked"),
+    ).toContainText("v2");
+    await expect(
+      secondCompare.getByRole("heading", { name: "scopes", exact: true }),
+    ).toBeVisible();
+    await expect(secondCompare).not.toContainText("同一 Version，无差异。");
+    await expectNoForbiddenWorkflowActions(secondDetail);
+    await expectNoDocumentOverflow(page);
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow plan persistence guards dirty same-origin navigation", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    const dirtyTerm = "e2e-dirty-navigation";
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.canonicalHeld.name,
+      "batch_research",
+    );
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.locator("#planner-scope-0-canonical-term").fill(dirtyTerm);
+
+    const dismissed = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toBe(
+          "当前 Workflow Planner 有未保存变更，确定离开吗？",
+        );
+        await dialog.dismiss();
+        resolve();
+      });
+    });
+    await navigateWithPrimaryNavigation(page, "已保存计划");
+    await dismissed;
+    await expect(page).toHaveURL(/\/automation\/planner\?/);
+    await expect(page.locator("#planner-scope-0-canonical-term")).toHaveValue(
+      dirtyTerm,
+    );
+
+    const accepted = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toBe(
+          "当前 Workflow Planner 有未保存变更，确定离开吗？",
+        );
+        await dialog.accept();
+        resolve();
+      });
+    });
+    await navigateWithPrimaryNavigation(page, "已保存计划");
+    await accepted;
+    await expect(page).toHaveURL(/\/automation\/plans$/);
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow plan persistence preserves draft across save-time stale and conflict", async ({
+    page,
+  }, testInfo) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    const planName = `E2E conflict persistence ${testInfo.project.name}`;
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.syntheticResolved.name,
+      "batch_research",
+    );
+    await advanceBatchPlanner(page, "e2e-save-error-baseline");
+    await generatePlannerPreview(page);
+    await page.locator("#workflow-plan-name").fill(planName);
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(page.getByTestId("workflow-plan-save-panel")).toContainText(
+      "已创建 Plan 与 Version v1。",
+    );
+
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page
+      .locator("#planner-scope-0-canonical-term")
+      .fill("e2e-preview-stale-save");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await generatePlannerPreview(page);
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(
+      page.getByText(
+        "Preview 已过期；已保留草稿，请重新生成 Preview 后再保存。",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.getByTestId("workflow-planner-stale")).toBeVisible();
+    await expect(page.getByTestId("workflow-plan-save")).toHaveCount(0);
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await expect(page.locator("#planner-scope-0-canonical-term")).toHaveValue(
+      "e2e-preview-stale-save",
+    );
+
+    await page
+      .locator("#planner-scope-0-canonical-term")
+      .fill("e2e-version-conflict-save");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "下一步" }).click();
+    await generatePlannerPreview(page);
+    await page.getByTestId("workflow-plan-save").click();
+    await expect(
+      page.getByText(
+        "当前 Version 已推进；已刷新并发基线，保留本地草稿，未自动合并或重提。请重新生成 Preview。",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(page.getByTestId("workflow-planner-workspace")).toContainText(
+      `${planName} · 当前基线 v2`,
+    );
+    await expect(page.getByTestId("workflow-plan-save")).toHaveCount(0);
+    await page.getByRole("button", { name: "上一步" }).click();
+    await page.getByRole("button", { name: "上一步" }).click();
+    await expect(page.locator("#planner-scope-0-canonical-term")).toHaveValue(
+      "e2e-version-conflict-save",
+    );
+
+    const accepted = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toBe(
+          "当前 Workflow Planner 有未保存变更，确定离开吗？",
+        );
+        await dialog.accept();
+        resolve();
+      });
+    });
+    const opened = openSavedWorkflowPlan(page, planName, 2);
+    await accepted;
+    await opened;
+    const currentPreview = page.getByRole("region", {
+      name: "当前 Version Preview",
+    });
+    await expect(currentPreview).toContainText("e2e-version-conflict-remote");
+    await expect(currentPreview).not.toContainText("e2e-version-conflict-save");
+    const history = page.getByTestId("workflow-plan-version-history");
+    await expect(history).toContainText("已加载 2 / 2");
+    await expect(
+      history.getByRole("heading", { name: "v3", exact: true }),
+    ).toHaveCount(0);
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("project selection syncs in same tab and across tabs", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "mobile",
+      "Cross-tab storage synchronization is desktop-only in this suite.",
+    );
+    const firstExternalRequests = await installLocalOnlyRequestGuard(page);
+    const secondPage = await page.context().newPage();
+    const secondExternalRequests =
+      await installLocalOnlyRequestGuard(secondPage);
+    await openPlannerWithoutSelection(page, "batch_research");
+    await openPlannerWithoutSelection(secondPage, "periodic_monitoring");
+    const partialId = plannerProjects.syntheticPartial.id;
+    await expect(
+      page
+        .getByTestId("global-project-selector")
+        .locator(`option[value="${partialId}"]`),
+    ).toBeAttached();
+    await expect(
+      secondPage
+        .getByTestId("global-project-selector")
+        .locator(`option[value="${partialId}"]`),
+    ).toBeAttached();
+
+    await page.getByTestId("global-project-selector").selectOption(partialId);
+    await expect(page.getByTestId("global-project-selector")).toHaveValue(
+      partialId,
+    );
+    await expect(page.getByTestId("workflow-planner-workspace")).toContainText(
+      plannerProjects.syntheticPartial.name,
+    );
+    await expect(secondPage.getByTestId("global-project-selector")).toHaveValue(
+      partialId,
+    );
+    await expect(
+      secondPage.getByTestId("workflow-planner-workspace"),
+    ).toContainText(plannerProjects.syntheticPartial.name);
+    await expect(
+      page.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    await expect(
+      secondPage.locator('[data-project-filter-applied="false"]'),
+    ).toBeVisible();
+    expect(firstExternalRequests()).toEqual([]);
+    expect(secondExternalRequests()).toEqual([]);
+    await secondPage.close();
+  });
+
+  test("workflow planner focuses first invalid field", async ({ page }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    await openPlannerFromDashboard(
+      page,
+      plannerProjects.canonicalHeld.name,
+      "periodic_monitoring",
+    );
+    const next = page.getByRole("button", { name: "下一步" });
+    await next.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#planner-scope-0-canonical-term")).toBeVisible();
+    await page.getByRole("button", { name: "下一步" }).focus();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.id))
+      .toBe("planner-scope-0-canonical-term");
+    await expect(
+      page.locator("#planner-scope-0-canonical-term"),
+    ).toHaveAttribute("aria-invalid", "true");
+    expect(externalRequests()).toEqual([]);
+  });
+
+  test("workflow planner has no horizontal overflow at 375 and 1440", async ({
+    page,
+  }) => {
+    const externalRequests = await installLocalOnlyRequestGuard(page);
+    for (const viewport of [
+      { width: 375, height: 812 },
+      { width: 1440, height: 900 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await openPlannerFromDashboard(
+        page,
+        plannerProjects.syntheticResolved.name,
+        "batch_research",
+      );
+      await advanceBatchPlanner(page, "running shoes");
+      await generatePlannerPreview(page);
+      const simpleOverflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(simpleOverflow).toBeLessThanOrEqual(1);
+      await page.getByRole("tab", { name: "高级视图" }).click();
+      const advancedOverflow = await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      );
+      expect(advancedOverflow).toBeLessThanOrEqual(1);
+    }
+    expect(externalRequests()).toEqual([]);
   });
 });
 

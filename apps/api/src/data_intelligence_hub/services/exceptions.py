@@ -21,6 +21,10 @@ class ProjectNotFoundError(ServiceError):
     message = "Project not found"
 
 
+class ProjectNotActiveError(ServiceError):
+    message = "project_not_active"
+
+
 class CollectorNotFoundError(ServiceError):
     message = "Collector not found"
 
@@ -175,3 +179,51 @@ class SocialProviderReadinessAuthorizationError(ServiceError):
 
 class SocialProviderGateAuthorizationError(ServiceError):
     message = "social_provider_gate_authorization_required"
+
+
+class WorkflowPlannerInputError(ServiceError):
+    message = "workflow_planner_input_invalid"
+
+    def __init__(self, issues: list[dict[str, object]]) -> None:
+        super().__init__(self.message)
+        self.issues = issues
+
+
+class WorkflowPlannerTopologyError(ServiceError):
+    message = "workflow_planner_invalid_step_graph"
+
+
+class WorkflowPlannerDependencyUnavailableError(ServiceError):
+    message = "workflow_planner_dependency_unavailable"
+
+
+class WorkflowPlanPreviewStaleError(ServiceError):
+    message = "preview_stale"
+
+
+class WorkflowPlanIdempotencyConflictError(ServiceError):
+    message = "idempotency_conflict"
+
+
+class WorkflowPlanScopeConflictError(ServiceError):
+    message = "workflow_plan_scope_conflict"
+
+
+class WorkflowPlanPersistenceTransactionStateError(ServiceError):
+    message = "persistence_transaction_state_invalid"
+
+
+class WorkflowPlanNotFoundError(ServiceError):
+    message = "workflow_plan_not_found"
+
+
+class WorkflowVersionNotFoundError(ServiceError):
+    message = "workflow_version_not_found"
+
+
+class WorkflowPlanVersionConflictError(ServiceError):
+    message = "version_conflict"
+
+
+class WorkflowPlanFlowModeConflictError(ServiceError):
+    message = "workflow_plan_flow_mode_conflict"

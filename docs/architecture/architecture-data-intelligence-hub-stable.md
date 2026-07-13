@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-06-29
+updated: 2026-07-13
 owner: self
 source: human+ai
 ---
@@ -24,6 +24,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
+7. GOAL-V2-03 Phase 1 已完成本地 L2 closeout，状态为 `phase_1_locally_complete`；它只生成 Project-scoped `WorkflowPlanPreview`，不持久化、激活、调度或执行计划。
 
 ## 运行拓扑
 
@@ -136,6 +137,63 @@ flowchart LR
 | Web app | `apps/web/src/app/` | 页面路由 |
 | Web lib | `apps/web/src/lib/` | API client、mock API、格式化工具 |
 | Web types | `apps/web/src/types/` | 前端类型定义 |
+
+## Workflow Planner：Phase One Preview 与 Phase Two Persistence
+
+当前 GOAL-V2-03 状态是 `phase_2_persistence_in_progress`。Phase One Preview 仍是纯、确定性且 write-free 的领域入口；Phase Two 只把成功的服务端重算 Preview 保存为可审计的 Plan/Version 历史，不引入执行系统。
+
+```mermaid
+flowchart LR
+  UI["Dual-mode Web Planner"] --> PREVIEW_API["POST /workflow-plans/preview"]
+  PREVIEW_API --> PROJECT["Workspace-scoped active Project read"]
+  PREVIEW_API --> CATALOG["Canonical Capability Catalog read"]
+  CATALOG --> NORM["Normalize / Query / Template / Resolver"]
+  NORM --> FINGERPRINT["Snapshot + Preview Fingerprint"]
+  FINGERPRINT --> PREVIEW["WorkflowPlanPreview (database_write=false)"]
+  PREVIEW --> SAVE["Explicit Save with Idempotency-Key"]
+  SAVE --> RECOMPUTE["Server recompute + fingerprint validation"]
+  RECOMPUTE --> HISTORY["Plan + immutable Version history"]
+```
+
+Phase One 仍由 `schemas/workflow_planner.py`、normalization、candidate expansion、query compiler、templates、resolver、fingerprint、planner 与 Preview route 组成。它只读取 active Project 和 canonical Catalog；candidate Assertion 只能得到可解释 `held`，Primary/Fallback/Shadow/partial 只来自 test-only synthetic Fixture。Web 的 shared Project selection provider 只在接受匹配 Project 的 Preview 后标记 applied；输入、mode、Project 或请求上下文变化会将旧 Preview 置为 stale。
+
+Phase Two 将持久化职责隔离到 `workflow_plan_persistence.py`、`models/workflow_plan.py`、`repositories/workflow_plans.py`、`services/workflow_planner/persistence.py` 和同一路由模块，不把 Save/history 逻辑塞回 Phase One Preview 模块。数据关系是：
+
+```mermaid
+erDiagram
+  PROJECT ||--o{ MONITORING_SCOPE : reuses
+  PROJECT ||--o{ WORKFLOW_PLAN : owns
+  WORKFLOW_PLAN ||--o{ WORKFLOW_VERSION : versions
+  WORKFLOW_VERSION ||--o{ WORKFLOW_VERSION_SCOPE : freezes
+  MONITORING_SCOPE ||--o{ WORKFLOW_VERSION_SCOPE : participates
+  WORKFLOW_VERSION ||--o{ QUERY_TERM : snapshots
+  WORKFLOW_PLAN ||--o{ WORKFLOW_PLAN_SAVE_REQUEST : idempotency
+```
+
+六张新增表为 `monitoring_scopes`、`workflow_plans`、`workflow_versions`、`workflow_version_scopes`、`query_terms` 与 `workflow_plan_save_requests`。Project 内按 `scope_key` 复用 Scope；Version–Scope 关联冻结顺序；QueryTerm 是 Version 级快照；Plan 只处于 `previewed`，`current_version_id` 指向不可变 Version。Alembic `202606110027` 同时增加 tenant 复合外键、当前指针归属、唯一约束、不可变 history trigger 与更新时间触发器；其验证只在已授权 disposable PostgreSQL 15 数据库执行。
+
+保存服务拥有唯一业务事务边界：先安全清理无修改的 auth read autobegin，随后在一个 transaction 内校验/重放 Idempotency-Key、锁定 Project，再锁定 Plan（仅后续 Version）、服务端重算 Preview 和 Fingerprint、检查乐观并发、复用/创建 Scope、写入 Version/关联/QueryTerm/current pointer/response snapshot。`semantic_no_op` 不推进 Version；A→B→A 会创建 v3。相同 key 不同请求返回冲突；并发写只有一个请求能推进 current Version。读取、history 和 Compare 使用 tenant-scoped read path，archived Project 保持可读但不能 Preview 或 Save。
+
+Web 继续以 Preview 为 Save 前提：变更输入会使 Preview stale 并禁用 Save；`preview_stale`/`version_conflict` 保留本地草稿并刷新并发基线。已保存的 Plan 在 `/automation/plans` 和显式 Project-scoped detail URL 中展示 current Preview、累积 Version history 与服务端 Compare facts；前端不自行计算 diff。所有 UI 仍不提供 Activate、Run、Schedule、Provider 或 WorkflowRun 操作。
+
+当前证据边界：
+
+```text
+GOAL-V2-03 status=phase_2_persistence_in_progress
+database_write=local_disposable_postgres_only
+migration_applied=disposable_pg_027_then_026_then_027
+provider_call=false
+actor_run=false
+browser_run=false
+llm_call=false
+workflow_run_created=false
+production unchanged
+phase_1_web_mock_e2e=passed
+phase_2_web_mock_e2e=passed
+local_playwright_browser=true
+```
+
+上述 Phase Two 任务级证明包括本地模型/路由/Web/mock E2E 与 disposable PostgreSQL 15 验证；Task 15 全量 exit gate 尚未运行，不能升级为 `phase_2_persistence_locally_complete`，也不构成 real API、CI、部署或生产验收。
 
 ## Automation 与 Dataset 模块
 

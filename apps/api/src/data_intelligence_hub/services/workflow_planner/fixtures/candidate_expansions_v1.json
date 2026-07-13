@@ -1,0 +1,31 @@
+{
+  "schema_version": "workflow_candidate_expansion_fixture.v1",
+  "version": "candidate-expansion.v1",
+  "entries": {
+    "acme": [
+      {
+        "term": "acme official",
+        "reason": "Fixture candidate for official-brand phrasing",
+        "source": "fixture:acme",
+        "score": 0.70,
+        "conflict_codes": []
+      }
+    ],
+    "running shoes": [
+      {
+        "term": "performance running footwear",
+        "reason": "Fixture candidate for category synonym",
+        "source": "fixture:running-shoes",
+        "score": 0.75,
+        "conflict_codes": []
+      },
+      {
+        "term": "shoe jobs",
+        "reason": "Fixture candidate intentionally conflicting with exclusions",
+        "source": "fixture:running-shoes",
+        "score": 0.20,
+        "conflict_codes": ["excluded_term_overlap"]
+      }
+    ]
+  }
+}
