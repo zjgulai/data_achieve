@@ -5,7 +5,7 @@ module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-07-13
+updated: 2026-07-14
 owner: self
 source: human+ai
 ---
@@ -24,7 +24,7 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
 6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
-7. GOAL-V2-03 Phase 1 已完成本地 L2 closeout，状态为 `phase_1_locally_complete`；它只生成 Project-scoped `WorkflowPlanPreview`，不持久化、激活、调度或执行计划。
+7. GOAL-V2-03 Phase 1 Preview 与 Phase 2 persistence 已完成本地 L2 closeout，状态为 `phase_2_persistence_locally_complete`；系统可保存 Project-scoped Plan/不可变 Version 历史，但仍不激活、调度或执行计划。
 
 ## 运行拓扑
 
@@ -140,7 +140,7 @@ flowchart LR
 
 ## Workflow Planner：Phase One Preview 与 Phase Two Persistence
 
-当前 GOAL-V2-03 状态是 `phase_2_persistence_in_progress`。Phase One Preview 仍是纯、确定性且 write-free 的领域入口；Phase Two 只把成功的服务端重算 Preview 保存为可审计的 Plan/Version 历史，不引入执行系统。
+当前 GOAL-V2-03 状态是 `phase_2_persistence_locally_complete`。Phase One Preview 仍是纯、确定性且 write-free 的领域入口；Phase Two 只把成功的服务端重算 Preview 保存为可审计的 Plan/Version 历史，不引入执行系统。
 
 ```mermaid
 flowchart LR
@@ -179,7 +179,10 @@ Web 继续以 Preview 为 Save 前提：变更输入会使 Preview stale 并禁�
 当前证据边界：
 
 ```text
-GOAL-V2-03 status=phase_2_persistence_in_progress
+GOAL-V2-03 status=phase_2_persistence_locally_complete
+implementation_baseline_reference=1e4cc4863c9629e2ff249edc0f7722dafaaf6831
+phase_2_checkpoint_commit=39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12
+checkpoint_commit_present=true
 database_write=local_disposable_postgres_only
 migration_applied=disposable_pg_027_then_026_then_027
 provider_call=false
@@ -190,10 +193,11 @@ workflow_run_created=false
 production unchanged
 phase_1_web_mock_e2e=passed
 phase_2_web_mock_e2e=passed
-local_playwright_browser=true
+task_15_full_exit_gate=passed
+local_playwright_browser=managed_chromium_headless_shell_installed
 ```
 
-上述 Phase Two 任务级证明包括本地模型/路由/Web/mock E2E 与 disposable PostgreSQL 15 验证；Task 15 全量 exit gate 尚未运行，不能升级为 `phase_2_persistence_locally_complete`，也不构成 real API、CI、部署或生产验收。
+上述 Phase Two 本地证明包括模型/路由/Web/mock E2E、disposable PostgreSQL 15 与 Task 15 全量 exit gate；本地 checkpoint commit 为 `39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12`。这些证据不构成 real API、CI、共享/生产数据库、部署或生产验收。
 
 ## Automation 与 Dataset 模块
 

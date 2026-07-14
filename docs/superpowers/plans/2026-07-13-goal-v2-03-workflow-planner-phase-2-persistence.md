@@ -6,7 +6,7 @@ topic: goal-v2-03-workflow-planner-phase-two-persistence
 status: locally_complete
 review_status: approved
 created: 2026-07-13
-updated: 2026-07-13
+updated: 2026-07-14
 owner: self
 source: human+ai
 spec: ../specs/2026-07-13-goal-v2-03-workflow-planner-phase-2-persistence-design.md
@@ -54,7 +54,7 @@ production_boundary: production unchanged
 
 ## Authorization Gates
 
-Current authorization after user approval on 2026-07-13:
+Implementation authorization recorded at Task 0 on 2026-07-13 (historical pre-checkpoint boundary):
 
     phase_2_design_approved=true
     phase_2_plan_review=approved
@@ -1084,6 +1084,8 @@ Record exact counts, skips, warnings, migration DB type, head and commands. Do n
 
 Report the unstaged local result and remaining authorization gates. Do not create a checkpoint commit unless the user explicitly authorizes it after seeing the final evidence.
 
+Post-closeout fact update (2026-07-14): repository `HEAD` is local checkpoint commit `39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12`, and `1e4cc4863c9629e2ff249edc0f7722dafaaf6831` remains its Phase Two implementation baseline ancestor. This closes only the observed local commit gate; it does not retroactively change Task 15's pre-commit evidence or authorize push、PR、merge、deploy、shared/production database work or product execution.
+
 ---
 
 ## Exit Criteria
@@ -1102,9 +1104,9 @@ Phase Two persistence is locally complete only when:
 10. Product/API/architecture/current-state docs match the implementation.
 11. No Activate、Run、Schedule、Provider、WorkflowRun、production or shared-database action occurred.
 
-## Separate Future Authorization Gates
+## Post-Closeout And Future Authorization Gates
 
-- [ ] Optional exact-file checkpoint commit
+- [x] Local exact-file checkpoint commit: `39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12`
 - [ ] Push / PR / merge
 - [ ] Shared or staging database migration
 - [ ] Production rollout strategy: maintenance window or compatibility release
@@ -1158,10 +1160,11 @@ Full local exit-gate evidence (2026-07-13); this is not real API, CI, deployment
     workflow_run_created=false
     execution_authorized=false
     live_send=false
-    commit_created=false
+    phase_2_checkpoint_commit=39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12
+    commit_created=true
     push_performed=false
     deploy_performed=false
     production unchanged
     full_phase_2_exit_gate=passed
 
-Task 15 establishes `phase_2_persistence_locally_complete`. The evidence above remains local task/fixture and disposable PostgreSQL 15 evidence; it is not real API, CI, deployment, shared database, production or Provider acceptance. Commit, push, deploy, shared/production database work and product execution still require separate explicit authorization.
+Task 15 establishes `phase_2_persistence_locally_complete`. The evidence above remains local task/fixture and disposable PostgreSQL 15 evidence; it is not real API, CI, deployment, shared database, production or Provider acceptance. A local checkpoint commit now exists; push、PR、merge、deploy、shared/production database work and product execution still require separate explicit authorization.

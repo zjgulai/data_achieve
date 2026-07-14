@@ -7,7 +7,7 @@ version: "2.0"
 status: stable
 review_status: approved
 created: 2026-07-10
-updated: 2026-07-13
+updated: 2026-07-14
 approved: 2026-07-10
 owner: self
 source: human+ai
@@ -16,7 +16,7 @@ design_spec: ../superpowers/specs/2026-07-10-social-media-automation-platform-v2
 evidence_level: L1-public-or-runtime
 provider_call: false
 production_boundary: production unchanged
-goal_execution: phase_1_locally_complete
+goal_execution: phase_2_persistence_locally_complete
 ---
 
 # Data Intelligence Hub PRD V2.0
@@ -25,7 +25,7 @@ goal_execution: phase_1_locally_complete
 
 > **文档状态**：V2.0 稳定目标基线，已于 2026-07-10 获得用户确认。
 >
-> **当前执行边界**：`GOAL-V2-03 status=phase_1_locally_complete`、`provider_call=false`、`database_write=false`、`migration_applied=false`、`production unchanged`；这只是本地 L2 Preview closeout，阶段二持久化仍未授权。
+> **当前执行边界**：`GOAL-V2-03 status=phase_2_persistence_locally_complete`、`database_write=local_disposable_postgres_only`、`migration_applied=disposable_pg_027_then_026_then_027`、`provider_call=false`、`production unchanged`。Phase Two 已完成本地 L2 closeout，并由本地 checkpoint commit `39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12` 固化；它不等于 real API、CI、共享/生产数据库、部署或产品执行验收。
 >
 > **技术设计**：[全社媒自动化数据采集平台 V2 总体设计](../superpowers/specs/2026-07-10-social-media-automation-platform-v2-design.md)
 
@@ -407,7 +407,7 @@ Alert / VOC / Brief
 | WFL-007 | P0 | 用户可查看完整计划 | 自动模式也能查看选路和替代路线 |
 | WFL-008 | P1 | 支持计划克隆和版本比较 | 可显示关键词、平台、路线和预算差异 |
 
-#### 当前 GOAL-V2-03 实现边界（2026-07-13）
+#### 当前 GOAL-V2-03 实现边界（2026-07-14）
 
 已实现的是 Project-scoped WorkflowPlan 资产保存与不可变 Version 历史：用户先获得服务端确定性 Preview，再显式 Save；服务端重算输入并校验 Fingerprint，保存 v1 或后续 Version。当前 Version 相同语义返回 `semantic_no_op`，A→B→A 创建新 Version；历史 Version 不被覆盖。用户可查看 Saved Plans、当前 Preview、Version history 和服务端结构化 Compare。
 
@@ -782,7 +782,7 @@ allow_ai_training=false
 
 - GOAL-V2-01: complete (local contract evidence)
 - GOAL-V2-02: locally_complete (local validation and mock E2E only)
-- GOAL-V2-03: phase_1_locally_complete (local L2 Preview gates only; Phase 2 unauthorized)
+- GOAL-V2-03: phase_2_persistence_locally_complete (local L2 fixture and disposable PostgreSQL 15 evidence only)
 - GOAL-V2-04 及后续 Goal: queued, not activated
 
 ### GOAL-V2-01：产品与能力合同底座
@@ -819,9 +819,11 @@ allow_ai_training=false
 
 **Control State**：
 
-    GOAL-V2-03 status=phase_2_persistence_in_progress
-    current_batch=phase_2_task_15_full_gate
-    checkpoint_reference=1e4cc4863c9629e2ff249edc0f7722dafaaf6831
+    GOAL-V2-03 status=phase_2_persistence_locally_complete
+    current_batch=phase_2_local_closeout_complete
+    implementation_baseline_reference=1e4cc4863c9629e2ff249edc0f7722dafaaf6831
+    phase_2_checkpoint_commit=39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12
+    checkpoint_commit_present=true
     database_write=local_disposable_postgres_only
     migration_applied=disposable_pg_027_then_026_then_027
     provider_call=false
@@ -829,9 +831,12 @@ allow_ai_training=false
     browser_run=false
     llm_call=false
     workflow_run_created=false
+    execution_authorized=false
+    live_send=false
     production unchanged
     phase_1_web_mock_e2e=passed
     phase_2_web_mock_e2e=passed
+    task_15_full_exit_gate=passed
     GOAL-V2-03 phase_2_implementation_authorization=true
 
 **Objective**：从品牌词、品类词和 Seed URL 生成可解释 Preview，并将已验证的 Preview 保存为可审计、可比较但不可执行的规划资产。
@@ -853,7 +858,7 @@ allow_ai_training=false
 - Project Selector 仅在一次成功的 Project-scoped Preview（包括 `held` 200）被接受后显示 applied；输入、mode 或 Project 变化会立即恢复为 false。
 - 2026-07-13 Phase 1 exit gate：API targeted `240 passed`、API full `439 passed`、Web unit `151 passed`、Web mock E2E `58 passed / 12 expected skipped`、Preview `p95=5.287ms`、Alembic head `202606110026`。这些数字仅是 Phase 1 基线，不替代当前 Phase 2 证据。
 
-**Phase 2 当前实现（本地进行中）**：
+**Phase 2 当前实现（本地完成）**：
 
 - 已提供显式 Save、Plan/Version 只读查询、History、Compare 和 Project-scoped MonitoringScope 读取。首次保存创建 `previewed` Plan/v1；后续保存只能新增不可变 Version，Plan 名称和 flow mode 不可变。
 - 保存使用 `Idempotency-Key`，服务端重算 Preview 和 Fingerprint；同语义返回 `semantic_no_op`，并发冲突、stale Preview 与 archived Project 保存失败不会覆盖历史或本地草稿。
@@ -861,7 +866,7 @@ allow_ai_training=false
 - Web 已提供 Save Preview、Saved Plans、Version history 和服务端 Compare；本地 mock E2E 已验证保存/历史/Compare/stale-conflict/dirty guard 响应式路径。real API persistence E2E 明确未执行。
 - 不存在 Activate、Run、Schedule、Archive、WorkflowRun、Provider、Actor、Browser 或 LLM 产品操作；`held` 只是可审计规划状态，不是执行批准。
 
-**Exit Gate**：Task 15 的全量本地 exit gate 尚未运行。当前只可表述为 `phase_2_persistence_in_progress`，不代表 real API、CI、deploy、共享/生产数据库或 Provider 验收。
+**Exit Gate**：Task 15 的全量本地 exit gate 已通过：focused API `113`、full API `543 passed / 40 skipped / 1 warning`、guarded disposable PostgreSQL 15 `49`、focused Web `160`、full Web `212`、serial builds `24/24`、mock E2E `64 passed / 12 expected skipped`。当前可表述为 `phase_2_persistence_locally_complete`；它仍不代表 real API、CI、deploy、共享/生产数据库或 Provider 验收。
 
 ### GOAL-V2-04：浏览器能力发现
 
