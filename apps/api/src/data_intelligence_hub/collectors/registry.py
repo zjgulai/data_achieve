@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
@@ -14,6 +15,7 @@ from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
+from data_intelligence_hub.collectors.tikhub_social import TikHubSocialCollector
 
 CollectorClass = type[BaseCollector]
 
@@ -25,6 +27,8 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     PublicFeedCollector.collector_type: PublicFeedCollector,
     EcommerceProductDiscoveryCollector.collector_type: EcommerceProductDiscoveryCollector,
     EcommerceProductPageCollector.collector_type: EcommerceProductPageCollector,
+    TikHubSocialCollector.collector_type: TikHubSocialCollector,
+    ApifyActorCollector.collector_type: ApifyActorCollector,
 }
 
 
