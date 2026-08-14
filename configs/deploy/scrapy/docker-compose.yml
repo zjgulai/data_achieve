@@ -117,12 +117,41 @@ services:
     networks:
       - scrapy_internal
 
+  console:
+    build:
+      context: ../../..
+      dockerfile: apps/scraper-console/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://scrapy.lute-tlz-dddd.top
+    container_name: data_achieve_scrapy_console
+    image: data_achieve_scrapy_console:latest
+    restart: unless-stopped
+    environment:
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3001"
+    expose:
+      - "3001"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3001/platforms').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - scrapy_internal
+
   edge:
     container_name: data_achieve_scrapy_edge
     depends_on:
       api:
         condition: service_healthy
-      web:
+      console:
         condition: service_healthy
     expose:
       - "8080"
@@ -131,7 +160,7 @@ services:
     volumes:
       - ./edge-nginx.conf:/etc/nginx/conf.d/default.conf:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/tasks >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/platforms >/dev/null || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
