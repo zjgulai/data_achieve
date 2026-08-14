@@ -462,6 +462,11 @@ describe("workflow plan preview api", () => {
   });
 
   it("preserves FastAPI validation locations and X-Request-ID", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MOCK_API", "false");
+    vi.resetModules();
+    const { previewWorkflowPlan: previewFn } = await import(
+      "@/lib/api/workflow-plans"
+    );
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -488,7 +493,7 @@ describe("workflow plan preview api", () => {
     );
 
     await expect(
-      previewWorkflowPlan("project-a", validPlanningInput),
+      previewFn("project-a", validPlanningInput),
     ).rejects.toMatchObject({
       status: 422,
       requestId: "request-422",
@@ -823,6 +828,11 @@ describe("workflow plan preview api", () => {
   });
 
   it("encodes projectId and sends the POST body and AbortSignal", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MOCK_API", "false");
+    vi.resetModules();
+    const { previewWorkflowPlan: previewFn } = await import(
+      "@/lib/api/workflow-plans"
+    );
     const controller = new AbortController();
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit) => {
@@ -836,7 +846,7 @@ describe("workflow plan preview api", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    await previewWorkflowPlan("project/a b", validPlanningInput, {
+    await previewFn("project/a b", validPlanningInput, {
       signal: controller.signal,
     });
 
@@ -856,6 +866,11 @@ describe("workflow plan preview api", () => {
   });
 
   it("does not convert a real API failure into mock success", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MOCK_API", "false");
+    vi.resetModules();
+    const { previewWorkflowPlan: previewFn } = await import(
+      "@/lib/api/workflow-plans"
+    );
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -868,7 +883,7 @@ describe("workflow plan preview api", () => {
     );
 
     await expect(
-      previewWorkflowPlan("project-a", validPlanningInput),
+      previewFn("project-a", validPlanningInput),
     ).rejects.toMatchObject({
       status: 503,
       message: "planner unavailable",

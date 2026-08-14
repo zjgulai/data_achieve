@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/client")>();
+  return { ...actual, mockApiEnabled: false };
+});
+
 import {
+  cloneWorkflowPlan,
+  copyMonitoringScopeTemplate,
   compareWorkflowPlanVersions,
   createWorkflowPlan,
   createWorkflowVersion,
@@ -9,13 +16,17 @@ import {
   listMonitoringScopes,
   listWorkflowPlans,
   listWorkflowPlanVersions,
+  transitionWorkflowPlanStatus,
 } from "@/lib/api/workflow-plan-persistence";
 import { mapPlanningInputToDto } from "@/lib/api/workflow-plans";
 import type {
   MonitoringScopeListResultDto,
+  MonitoringScopeTemplateCopyResultDto,
   WorkflowPlanDetailDto,
+  WorkflowPlanCloneResultDto,
   WorkflowPlanListResultDto,
   WorkflowPlanSaveResultDto,
+  WorkflowPlanTransitionResultDto,
   WorkflowPlanVersionCompareDto,
   WorkflowVersionDetailDto,
   WorkflowVersionListResultDto,
@@ -269,6 +280,191 @@ describe("workflow plan persistence transport", () => {
     expect(
       mapPlanningInputToDto(result.version.editableInput),
     ).not.toHaveProperty("schedule_intent");
+  });
+
+  it("posts an explicit local-only Plan status transition without creating a Run", async () => {
+    const response: WorkflowPlanTransitionResultDto = {
+      database_write: true,
+      plan_changed: true,
+      idempotent_replay: false,
+      provider_call: false,
+      actor_run: false,
+      browser_run: false,
+      llm_call: false,
+      workflow_run_created: false,
+      execution_authorized: false,
+      from_status: "previewed",
+      to_status: "approved",
+      reason: "reviewed locally",
+      plan: {
+        ...buildPlanDto(),
+        status: "approved",
+      },
+    };
+    const fetchMock = vi.fn<
+      (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+    >(async () => jsonResponse(response));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await transitionWorkflowPlanStatus(
+      "project/a b",
+      "plan/a b",
+      {
+        expectedStatus: "previewed",
+        toStatus: "approved",
+        reason: "reviewed locally",
+      },
+    );
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(
+      "http://localhost:8000/api/projects/project%2Fa%20b/workflow-plans/plan%2Fa%20b/status-transition",
+    );
+    expect(init).toMatchObject({ method: "POST", credentials: "include" });
+    expect(requestHeaders(fetchMock.mock.calls[0] ?? []).has("Idempotency-Key")).toBe(
+      false,
+    );
+    expect(JSON.parse(String(init?.body))).toEqual({
+      expected_status: "previewed",
+      to_status: "approved",
+      reason: "reviewed locally",
+    });
+    expect(result).toMatchObject({
+      databaseWrite: true,
+      planChanged: true,
+      idempotentReplay: false,
+      fromStatus: "previewed",
+      toStatus: "approved",
+      reason: "reviewed locally",
+      plan: { status: "approved" },
+      providerCall: false,
+      actorRun: false,
+      browserRun: false,
+      llmCall: false,
+      workflowRunCreated: false,
+      executionAuthorized: false,
+    });
+  });
+
+  it("posts Plan clone and Scope template copy with explicit idempotency boundaries", async () => {
+    const cloneResponse: WorkflowPlanCloneResultDto = {
+      database_write: true,
+      plan_changed: true,
+      outcome: "created",
+      idempotent_replay: false,
+      provider_call: false,
+      actor_run: false,
+      browser_run: false,
+      llm_call: false,
+      workflow_run_created: false,
+      execution_authorized: false,
+      source_plan_id: "plan-1",
+      source_version_id: "version-2",
+      plan: {
+        ...buildPlanDto(),
+        id: "plan-clone",
+        name: "Independent copy",
+        current_version_id: "version-clone",
+        current_version_number: 1,
+        source_plan_id: "plan-1",
+        source_version_id: "version-2",
+      },
+      version: {
+        ...buildVersionDto(1),
+        id: "version-clone",
+        workflow_plan_id: "plan-clone",
+      },
+    };
+    const copyResponse: MonitoringScopeTemplateCopyResultDto = {
+      database_write: true,
+      idempotent_replay: false,
+      provider_call: false,
+      actor_run: false,
+      browser_run: false,
+      llm_call: false,
+      workflow_run_created: false,
+      execution_authorized: false,
+      template: {
+        provider_call: false,
+        actor_run: false,
+        browser_run: false,
+        llm_call: false,
+        workflow_run_created: false,
+        execution_authorized: false,
+        id: "scope-template-1",
+        workspace_id: "workspace-1",
+        project_id: "project-a",
+        created_by_user_id: "user-1",
+        source_scope_id: "scope-1",
+        source_plan_id: "plan-1",
+        source_version_id: "version-2",
+        scope_key: "scope-key-1",
+        scope_type: "topic",
+        canonical_term: "running shoes",
+        aliases: [],
+        include_terms: ["road"],
+        exclude_terms: [],
+        official_accounts: [],
+        seed_urls: [],
+        effective_languages: ["en"],
+        effective_regions: ["US"],
+        effective_platforms: ["reddit"],
+        match_mode: "phrase",
+        created_at: "2026-07-13T02:00:00Z",
+      },
+    };
+    const responses = [cloneResponse, copyResponse];
+    const fetchMock = vi.fn<
+      (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+    >(async () => jsonResponse(responses.shift()));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const clone = await cloneWorkflowPlan("project/a", "plan/a", {
+      name: "Independent copy",
+      sourceVersionId: "version-2",
+      idempotencyKey: "clone-key-0001",
+    });
+    const copied = await copyMonitoringScopeTemplate(
+      "project/a",
+      "scope/a",
+      {
+        sourceVersionId: "version-2",
+        idempotencyKey: "scope-copy-key-0001",
+      },
+    );
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "http://localhost:8000/api/projects/project%2Fa/workflow-plans/plan%2Fa/clone",
+      "http://localhost:8000/api/projects/project%2Fa/monitoring-scopes/scope%2Fa/copy",
+    ]);
+    expect(requestHeaders(fetchMock.mock.calls[0] ?? []).get("Idempotency-Key")).toBe(
+      "clone-key-0001",
+    );
+    expect(requestHeaders(fetchMock.mock.calls[1] ?? []).get("Idempotency-Key")).toBe(
+      "scope-copy-key-0001",
+    );
+    expect(JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body))).toEqual({
+      name: "Independent copy",
+      source_version_id: "version-2",
+    });
+    expect(JSON.parse(String((fetchMock.mock.calls[1]?.[1] as RequestInit).body))).toEqual({
+      source_version_id: "version-2",
+    });
+    expect(clone).toMatchObject({
+      databaseWrite: true,
+      planChanged: true,
+      sourcePlanId: "plan-1",
+      sourceVersionId: "version-2",
+      plan: { id: "plan-clone", sourcePlanId: "plan-1" },
+    });
+    expect(copied).toMatchObject({
+      databaseWrite: true,
+      template: {
+        id: "scope-template-1",
+        sourceScopeId: "scope-1",
+        sourcePlanId: "plan-1",
+      },
+    });
   });
 
   it("creates a Version with an encoded Plan ID and concurrency baseline", async () => {
