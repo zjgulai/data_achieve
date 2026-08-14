@@ -11,6 +11,11 @@ export type Report = {
   periodStart: string;
   periodEnd: string;
   createdAt: string;
+  deliveredChannels: ReportDeliveryChannel[];
+  skippedChannels: Record<string, string>;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type ReportGenerateInput = {
@@ -18,6 +23,13 @@ export type ReportGenerateInput = {
   periodStart?: string;
   projectId?: string;
   reportType?: "daily";
+};
+
+export type ReportSendInput = {
+  authorized: boolean;
+  confirmSend: boolean;
+  channels?: ReportDeliveryChannel[];
+  idempotencyKey?: string;
 };
 
 export type ReportEvidenceReference = {
@@ -75,6 +87,9 @@ export type ReportSubscriptionRun = {
   errorMessage: string | null;
   startedAt: string;
   finishedAt: string | null;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type ReportSubscriptionInput = {
@@ -84,4 +99,16 @@ export type ReportSubscriptionInput = {
   reportType?: "daily";
   scheduleTime: string;
   timezone: string;
+};
+
+export type ReportSubscriptionRunInput = {
+  authorized?: boolean;
+  confirmRun?: boolean;
+  idempotencyKey?: string;
+};
+
+export type ReportSubscriptionRetryInput = {
+  authorized?: boolean;
+  confirmRetry?: boolean;
+  idempotencyKey?: string;
 };

@@ -1,0 +1,1 @@
+"""Reddit fixture adapter shell."""

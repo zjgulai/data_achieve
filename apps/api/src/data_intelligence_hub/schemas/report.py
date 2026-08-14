@@ -56,10 +56,47 @@ class ReportResponse(BaseModel):
     period_start: datetime
     period_end: datetime
     created_at: datetime
+    delivered_channels: list[str] = Field(default_factory=list)
+    skipped_channels: dict[str, str] = Field(default_factory=dict)
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
     @classmethod
-    def from_model(cls, report: Report) -> ReportResponse:
-        return cls.model_validate(report)
+    def from_model(
+        cls,
+        report: Report,
+        *,
+        delivered_channels: list[str] | None = None,
+        skipped_channels: dict[str, str] | None = None,
+        idempotency_replayed: bool = False,
+        idempotency_scope: str | None = None,
+        idempotency_key_hash: str | None = None,
+    ) -> ReportResponse:
+        return cls.model_validate(report).model_copy(
+            update={
+                "delivered_channels": delivered_channels or [],
+                "skipped_channels": skipped_channels or {},
+                "idempotency_replayed": idempotency_replayed,
+                "idempotency_scope": idempotency_scope,
+                "idempotency_key_hash": idempotency_key_hash,
+            }
+        )
+
+
+class ReportSendRequest(BaseModel):
+    authorized: bool
+    confirm_send: bool
+    channels: list[ReportDeliveryChannel] = Field(default_factory=default_report_delivery_channels)
+
+    @field_validator("channels")
+    @classmethod
+    def validate_channels(cls, value: list[ReportDeliveryChannel]) -> list[ReportDeliveryChannel]:
+        channels = list(dict.fromkeys(value))
+        if not channels:
+            msg = "at least one delivery channel is required"
+            raise ValueError(msg)
+        return channels
 
 
 class ReportEvidenceReferenceResponse(BaseModel):
@@ -144,6 +181,16 @@ class ReportSubscriptionUpsertRequest(BaseModel):
         return channels
 
 
+class ReportSubscriptionRunRequest(BaseModel):
+    authorized: bool
+    confirm_run: bool
+
+
+class ReportSubscriptionRetryRequest(BaseModel):
+    authorized: bool
+    confirm_retry: bool
+
+
 class ReportSubscriptionRunResponse(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
@@ -156,9 +203,19 @@ class ReportSubscriptionRunResponse(BaseModel):
     error_message: str | None
     started_at: datetime
     finished_at: datetime | None
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
     @classmethod
-    def from_model(cls, run: ReportSubscriptionRun) -> ReportSubscriptionRunResponse:
+    def from_model(
+        cls,
+        run: ReportSubscriptionRun,
+        *,
+        idempotency_replayed: bool = False,
+        idempotency_scope: str | None = None,
+        idempotency_key_hash: str | None = None,
+    ) -> ReportSubscriptionRunResponse:
         return cls(
             id=run.id,
             workspace_id=run.workspace_id,
@@ -171,6 +228,9 @@ class ReportSubscriptionRunResponse(BaseModel):
             error_message=run.error_message,
             started_at=run.started_at,
             finished_at=run.finished_at,
+            idempotency_replayed=idempotency_replayed,
+            idempotency_scope=idempotency_scope,
+            idempotency_key_hash=idempotency_key_hash,
         )
 
 
@@ -195,6 +255,9 @@ class ReportSubscriptionResponse(BaseModel):
         cls,
         subscription: ReportSubscription,
         latest_run: ReportSubscriptionRun | None = None,
+        idempotency_replayed: bool = False,
+        idempotency_scope: str | None = None,
+        idempotency_key_hash: str | None = None,
     ) -> ReportSubscriptionResponse:
         return cls(
             id=subscription.id,
@@ -209,7 +272,12 @@ class ReportSubscriptionResponse(BaseModel):
             next_run_at=subscription.next_run_at,
             last_sent_at=subscription.last_sent_at,
             latest_run=(
-                ReportSubscriptionRunResponse.from_model(latest_run)
+                ReportSubscriptionRunResponse.from_model(
+                    latest_run,
+                    idempotency_replayed=idempotency_replayed,
+                    idempotency_scope=idempotency_scope,
+                    idempotency_key_hash=idempotency_key_hash,
+                )
                 if latest_run is not None
                 else None
             ),

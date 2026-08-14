@@ -1,6 +1,6 @@
 # Data Intelligence Hub
 
-Data Intelligence Hub 是一个以授权、证据和可复用 Dataset 为核心的平台化数据采集工作台。
+Data Intelligence Hub 是一个面向品牌和市场运营人员的全社媒自动化数据采集与洞察平台。系统把监测目标、采集能力、透明工作流、数据资产和证据约束洞察连接为可持续运行的闭环。
 
 核心链路：
 
@@ -10,8 +10,8 @@ RawRecord -> EntitySnapshot -> Signal -> Intelligence -> Evidence -> Report / Al
 
 ## 文档入口
 
-- 产品 PRD：[docs/product/product-prd-data-intelligence-hub-stable.md](docs/product/product-prd-data-intelligence-hub-stable.md)
-- PRD2 平台采集执行计划：[docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md](docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md)
+- 当前产品 PRD V2.0：[docs/product/product-prd-social-media-automation-platform-v2.md](docs/product/product-prd-social-media-automation-platform-v2.md)
+- V2.0 总体设计：[docs/superpowers/specs/2026-07-10-social-media-automation-platform-v2-design.md](docs/superpowers/specs/2026-07-10-social-media-automation-platform-v2-design.md)
 - 技术架构：[docs/architecture/architecture-data-intelligence-hub-stable.md](docs/architecture/architecture-data-intelligence-hub-stable.md)
 - API 合同：[docs/api/api-contract-data-intelligence-hub-stable.md](docs/api/api-contract-data-intelligence-hub-stable.md)
 - 开发计划草案：[drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md](drafts/analysis/analysis-development-plan-data-intelligence-hub-draft-20260611.md)
@@ -19,6 +19,8 @@ RawRecord -> EntitySnapshot -> Signal -> Intelligence -> Evidence -> Report / Al
 - Demo 数据治理：[docs/workflows/workflow-demo-data-governance-stable.md](docs/workflows/workflow-demo-data-governance-stable.md)
 - 真实 API E2E 策略：[docs/workflows/workflow-real-e2e-strategy-stable.md](docs/workflows/workflow-real-e2e-strategy-stable.md)
 - 发布与回滚清单：[docs/workflows/workflow-release-rollback-stable.md](docs/workflows/workflow-release-rollback-stable.md)
+- 历史 PRD 基线：[docs/product/product-prd-data-intelligence-hub-stable.md](docs/product/product-prd-data-intelligence-hub-stable.md)
+- 历史 PRD2 平台采集计划：[docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md](docs/workflows/workflow-prd2-platform-collection-execution-plan-stable.md)
 
 ## 本地开发
 

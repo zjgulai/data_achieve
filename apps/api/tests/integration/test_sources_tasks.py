@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import AsyncGenerator, AsyncIterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -97,6 +98,8 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
         "manual_json",
         "ecommerce_product_discovery",
         "ecommerce_product_page",
+        "tikhub_social",
+        "apify_actor",
     }
 
 
@@ -118,9 +121,35 @@ async def test_automation_platform_packages_expose_collection_contract(
     assert "public-page-structure-preflight" in packages_by_id
     assert "public-web-rss-docs" in packages_by_id
 
+    for platform_package in packages_by_id.values():
+        assert platform_package["version"].startswith("2026.")
+        assert platform_package["owner"] == "data-intelligence-platform"
+        assert platform_package["lifecycle_status"] == "active"
+        assert platform_package["authorization_required"] is True
+        assert platform_package["evidence_grade"] in {
+            "L2-fixture-or-dry-run",
+            "L4-authorized-live",
+        }
+        assert platform_package["acceptance_registry"]
+        assert platform_package["cleanup_policy"]
+        assert platform_package["forbidden_actions"]
+
     ecommerce_package = packages_by_id["shopify-independent-ecommerce"]
     assert ecommerce_package["category"] == "ecommerce"
     assert ecommerce_package["execution_boundary"] == "executable"
+    assert ecommerce_package["version"] == "2026.06.m4"
+    assert ecommerce_package["evidence_grade"] == "L2-fixture-or-dry-run"
+    assert ecommerce_package["authorization_required"] is True
+    ecommerce_acceptance_statuses = {
+        gate["id"]: gate["status"] for gate in ecommerce_package["acceptance_registry"]
+    }
+    assert {
+        "m4-4a-local-fixture-e2e": "local_done",
+        "m4-4b-public-test-site-local-e2e": "local_external_done",
+        "m4-production-customer-site-gate": "todo",
+    }.items() <= ecommerce_acceptance_statuses.items()
+    assert "login_wall_collection" in ecommerce_package["forbidden_actions"]
+    assert "production_write_without_cleanup_register" in ecommerce_package["forbidden_actions"]
     assert ecommerce_package["collector_types"] == [
         "ecommerce_product_discovery",
         "ecommerce_product_page",
@@ -159,6 +188,11 @@ async def test_automation_platform_packages_expose_collection_contract(
     github_package = packages_by_id["github-api-first"]
     assert github_package["category"] == "developer_platform"
     assert github_package["execution_boundary"] == "executable"
+    assert github_package["evidence_grade"] == "L4-authorized-live"
+    assert {
+        gate["id"]: gate["status"] for gate in github_package["acceptance_registry"]
+    }["m3-scoped-production-package-gate"] == "done_scoped_l4"
+    assert "rate_limit_amplification_retry" in github_package["forbidden_actions"]
     assert "github_topic" in github_package["collector_types"]
     assert github_package["default_entrypoint"] == "source-create"
     assert github_package["sample_urls"][0]["url"].startswith("https://github.com/topics/")
@@ -177,6 +211,8 @@ async def test_automation_platform_packages_expose_collection_contract(
     preflight_package = packages_by_id["public-page-structure-preflight"]
     assert preflight_package["category"] == "browser_preflight"
     assert preflight_package["execution_boundary"] == "executable"
+    assert preflight_package["evidence_grade"] == "L2-fixture-or-dry-run"
+    assert "private_network_probe" in preflight_package["forbidden_actions"]
     assert preflight_package["default_entrypoint"] == "preflight"
     assert preflight_package["collector_types"] == ["toolkit_preflight", "generic_web"]
     assert {field["key"] for field in preflight_package["field_schema"]} >= {
@@ -205,6 +241,13 @@ async def test_automation_platform_packages_expose_collection_contract(
     public_content_package = packages_by_id["public-web-rss-docs"]
     assert public_content_package["category"] == "public_content"
     assert public_content_package["execution_boundary"] == "executable"
+    assert public_content_package["evidence_grade"] == "L4-authorized-live"
+    assert {
+        gate["id"]: gate["status"] for gate in public_content_package["acceptance_registry"]
+    }["m5-retained-lifecycle-canary"] == "retained_l4"
+    assert "provider_call_without_authorization" in public_content_package[
+        "forbidden_actions"
+    ]
     assert public_content_package["default_entrypoint"] == "source-create"
     assert public_content_package["collector_types"] == ["public_feed", "generic_web"]
     assert {field["key"] for field in public_content_package["field_schema"]} >= {
@@ -257,6 +300,11 @@ async def test_automation_capability_probes_fail_closed_when_agent_reach_missing
     assert payload["run_started"] is False
     assert payload["collection_resources_written"] is False
     assert payload["total"] >= 6
+    assert len(payload["evidence_assets"]) == payload["total"]
+    assert all(
+        asset["schema_version"] == "evidence_asset_reference.v1"
+        for asset in payload["evidence_assets"]
+    )
 
     probes_by_id = {item["platform_id"]: item for item in payload["items"]}
     github_probe = probes_by_id["github"]
@@ -269,6 +317,16 @@ async def test_automation_capability_probes_fail_closed_when_agent_reach_missing
     assert github_probe["agent_reach"]["blocked_reason"] == "agent_reach_not_installed"
     assert github_probe["agent_reach"]["read_invoked"] is False
     assert github_probe["agent_reach"]["search_invoked"] is False
+    assert github_probe["evidence_asset"]["asset_id"] == "capability_probe:github"
+    assert github_probe["evidence_asset"]["evidence_boundary"] == "no_read_no_search_no_write"
+    assert github_probe["evidence_asset"]["redaction_summary"]["read_invoked"] is False
+    assert github_probe["evidence_asset"]["redaction_summary"]["search_invoked"] is False
+    assert (
+        github_probe["evidence_asset"]["redaction_summary"][
+            "collection_resources_written"
+        ]
+        is False
+    )
     assert any(
         candidate["backend_id"] == "official_github_api"
         and candidate["status"] == "available"
@@ -284,6 +342,8 @@ async def test_automation_capability_probes_fail_closed_when_agent_reach_missing
     assert browser_probe["doctor_status"] == "missing_tool"
     assert browser_probe["agent_reach"] is None
     assert browser_probe["allowed_outputs"] == ["BrowserDiagnosticJobRun"]
+    assert browser_probe["evidence_asset"]["asset_type"] == "capability_probe"
+    assert "cookie_export" in browser_probe["evidence_asset"]["forbidden_actions"]
 
     social_probe = probes_by_id["social_sop_import_only"]
     assert social_probe["execution_boundary"] == "sop_only"
@@ -531,7 +591,7 @@ async def test_browser_automation_plan_persists_read_only_draft(
     tmp_path: Path,
 ) -> None:
     project_id = await register_and_create_project(client)
-    payload = {
+    payload: dict[str, Any] = {
         "project_id": project_id,
         "requested_url": "https://example.com/products/dynamic-bag",
         "authorized": True,
@@ -698,6 +758,18 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert diagnostic["network_summary"]["api_candidate_count"] == 1
     assert diagnostic["risk_flags"] == [{"flag": "dynamic_content", "severity": "review"}]
     assert diagnostic["run_started"] is False
+    assert diagnostic["evidence_asset"]["asset_type"] == "browser_diagnostic_run"
+    assert diagnostic["evidence_asset"]["reference_id"] == diagnostic["id"]
+    assert diagnostic["evidence_asset"]["evidence_level"] == "L1-repo-or-runtime"
+    assert diagnostic["evidence_asset"]["evidence_boundary"] == "metadata_only_no_files"
+    assert (
+        diagnostic["evidence_asset"]["summary"]["final_url"]
+        == "https://example.com/products/dynamic-bag"
+    )
+    assert diagnostic["evidence_asset"]["redaction_summary"]["cookies_captured"] is False
+    assert diagnostic["evidence_asset"]["redaction_summary"]["headers_captured"] is False
+    assert diagnostic["evidence_asset"]["redaction_summary"]["bodies_captured"] is False
+    assert "direct_source_task_creation" in diagnostic["evidence_asset"]["forbidden_actions"]
 
     history_response = await client.get(
         "/api/automation/site-analyses",
@@ -728,6 +800,9 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert diagnostics["total"] == 1
     assert diagnostics["items"][0]["id"] == diagnostic["id"]
     assert diagnostics["items"][0]["run_started"] is False
+    assert diagnostics["evidence_assets"][0]["asset_id"] == (
+        f"browser_diagnostic_run:{diagnostic['id']}"
+    )
 
     unconfirmed_dry_run_response = await client.post(
         "/api/automation/browser-automation-spec-dry-run",
@@ -841,6 +916,11 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert "browser_diagnostic_job_created_no_runner" in job["blocked_reasons"]
     assert job["audit_events"][0]["event"] == "browser_diagnostic_job_created"
     assert job["audit_events"][0]["run_started"] is False
+    assert job["evidence_asset"]["asset_type"] == "browser_diagnostic_job"
+    assert job["evidence_asset"]["reference_id"] == job["id"]
+    assert job["evidence_asset"]["evidence_boundary"] == "reviewed_no_runner"
+    assert job["evidence_asset"]["summary"]["selector_count"] == 3
+    assert job["evidence_asset"]["redaction_summary"]["files_written"] is False
 
     duplicate_job_response = await client.post(
         "/api/automation/browser-diagnostic-jobs",
@@ -866,6 +946,7 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert job_list["total"] == 1
     assert job_list["run_started"] is False
     assert job_list["items"][0]["id"] == job["id"]
+    assert job_list["evidence_assets"][0]["asset_id"] == f"browser_diagnostic_job:{job['id']}"
 
     job_detail_response = await client.get(
         f"/api/automation/browser-diagnostic-jobs/{job['id']}"
@@ -930,6 +1011,144 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert contract["execution_started"] is False
     assert contract["audit_events"][0]["event"] == "browser_executor_contract_built"
     assert contract["audit_events"][0]["run_started"] is False
+
+    pre_production_gate_runs_response = await client.get(
+        "/api/automation/browser-diagnostic-job-runs",
+        params={"diagnostic_job_id": job["id"]},
+    )
+    assert pre_production_gate_runs_response.status_code == 200
+    assert pre_production_gate_runs_response.json()["total"] == 0
+
+    unconfirmed_production_gate_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/production-metadata-run-gate",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_production_readonly": False,
+            "confirm_metadata_only": True,
+            "confirm_no_file_write": True,
+            "confirm_no_collection_write": True,
+        },
+    )
+    assert unconfirmed_production_gate_response.status_code == 400
+    assert (
+        unconfirmed_production_gate_response.json()["detail"]
+        == "browser_production_metadata_readonly_confirmation_required"
+    )
+
+    production_gate_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{job['id']}/production-metadata-run-gate",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_production_readonly": True,
+            "confirm_metadata_only": True,
+            "confirm_no_file_write": True,
+            "confirm_no_collection_write": True,
+            "target_environment": "production",
+            "max_metadata_events": 25,
+            "note": "Build production metadata-only gate only.",
+        },
+    )
+    assert production_gate_response.status_code == 200
+    production_gate = production_gate_response.json()
+    assert production_gate["schema_version"] == "browser_production_metadata_run_gate.v1"
+    assert production_gate["job"]["id"] == job["id"]
+    assert production_gate["target_environment"] == "production"
+    assert production_gate["evidence_grade"] == "L2-fixture-or-dry-run"
+    assert production_gate["gate"]["schema_version"] == (
+        "browser_production_metadata_run_gate.v1"
+    )
+    assert production_gate["gate"]["status"] == "ready_for_manual_read_only_run"
+    assert production_gate["gate"]["can_start_manual_browser"] is True
+    assert production_gate["gate"]["automatic_api_worker_start"] is False
+    assert production_gate["gate"]["production_read_only_observed"] is False
+    assert production_gate["gate"]["metadata_only"] is True
+    assert production_gate["gate"]["write_allowed"] is False
+    assert production_gate["gate"]["files_written"] is False
+    assert production_gate["gate"]["collection_resources_written"] is False
+    assert production_gate["gate"]["provider_called"] is False
+    assert production_gate["execution_policy"]["target_environment"] == "production"
+    assert production_gate["execution_policy"]["manual_operator_required"] is True
+    assert production_gate["execution_policy"]["automatic_api_worker_start"] is False
+    assert production_gate["execution_policy"]["read_only"] is True
+    assert production_gate["execution_policy"]["metadata_only"] is True
+    assert production_gate["execution_policy"]["capture_headers"] is False
+    assert production_gate["execution_policy"]["capture_body"] is False
+    assert production_gate["execution_policy"]["capture_cookies"] is False
+    assert production_gate["execution_policy"]["run_started"] is False
+    assert production_gate["execution_policy"]["browser_started"] is False
+    assert production_gate["execution_policy"]["write_allowed"] is False
+    assert production_gate["metadata_plan"]["schema_version"] == (
+        "browser_production_metadata_plan.v1"
+    )
+    assert production_gate["metadata_plan"]["max_metadata_events"] == 25
+    assert production_gate["metadata_plan"]["network_observation"]["metadata_only"] is True
+    assert (
+        production_gate["metadata_plan"]["network_observation"]["capture_headers"]
+        is False
+    )
+    assert production_gate["metadata_plan"]["network_observation"]["capture_body"] is False
+    assert production_gate["metadata_plan"]["network_observation"]["capture_cookies"] is False
+    assert production_gate["metadata_plan"]["artifact_capture"] == {
+        "screenshot": False,
+        "trace": False,
+        "har": False,
+        "filesystem_write": False,
+        "object_storage_write": False,
+    }
+    assert production_gate["metadata_plan"]["collection_side_effects"] == {
+        "source_created": False,
+        "task_created": False,
+        "task_run_started": False,
+        "dataset_created": False,
+        "notification_sent": False,
+        "scheduler_mutated": False,
+    }
+    production_checks_by_key = {
+        item["key"]: item for item in production_gate["readiness_checks"]
+    }
+    assert production_checks_by_key["production-api-autostart"]["status"] == "passed"
+    assert production_checks_by_key["production-metadata-only"]["status"] == "passed"
+    assert production_checks_by_key["production-no-artifact-write"]["status"] == "passed"
+    assert production_checks_by_key["production-no-collection-write"]["status"] == (
+        "passed"
+    )
+    assert production_gate["blocked_reasons"] == []
+    assert (
+        production_gate["audit_events"][0]["event"]
+        == "browser_production_metadata_run_gate_built"
+    )
+    assert production_gate["audit_events"][0]["production_read_only_observed"] is False
+    assert production_gate["audit_events"][0]["run_started"] is False
+    assert production_gate["audit_events"][0]["execution_started"] is False
+    assert production_gate["audit_events"][0]["browser_started"] is False
+    assert production_gate["audit_events"][0]["files_written"] is False
+    assert production_gate["audit_events"][0]["collection_resources_written"] is False
+    assert production_gate["audit_events"][0]["provider_called"] is False
+    assert production_gate["production_read_only_observed"] is False
+    assert production_gate["run_started"] is False
+    assert production_gate["execution_started"] is False
+    assert production_gate["browser_started"] is False
+    assert production_gate["files_written"] is False
+    assert production_gate["collection_resources_written"] is False
+    assert production_gate["provider_called"] is False
+    assert production_gate["source_created"] is False
+    assert production_gate["task_created"] is False
+    assert production_gate["task_run_started"] is False
+    assert production_gate["dataset_created"] is False
+    post_production_gate_runs_response = await client.get(
+        "/api/automation/browser-diagnostic-job-runs",
+        params={"diagnostic_job_id": job["id"]},
+    )
+    assert post_production_gate_runs_response.status_code == 200
+    assert post_production_gate_runs_response.json()["total"] == 0
+    post_production_gate_sources_response = await client.get("/api/sources")
+    assert post_production_gate_sources_response.status_code == 200
+    assert post_production_gate_sources_response.json() == []
+    post_production_gate_tasks_response = await client.get("/api/tasks")
+    assert post_production_gate_tasks_response.status_code == 200
+    assert post_production_gate_tasks_response.json() == []
 
     unconfirmed_local_run_response = await client.post(
         f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
@@ -1044,6 +1263,432 @@ async def test_browser_automation_plan_persists_read_only_draft(
     )
     assert local_run["audit_events"][0]["browser_started"] is False
     assert local_run["audit_events"][0]["collection_resources_written"] is False
+    assert local_run["evidence_asset"]["asset_type"] == "browser_diagnostic_job_run"
+    assert local_run["evidence_asset"]["reference_id"] == local_run["id"]
+    assert local_run["evidence_asset"]["evidence_level"] == "L2-fixture-or-dry-run"
+    assert (
+        local_run["evidence_asset"]["evidence_boundary"]
+        == "local_snapshot_replay_no_files"
+    )
+    assert local_run["evidence_asset"]["summary"]["browser_started"] is False
+    assert local_run["evidence_asset"]["summary"]["files_written"] is False
+    assert (
+        local_run["evidence_asset"]["summary"]["collection_resources_written"]
+        is False
+    )
+    assert local_run["evidence_asset"]["redaction_summary"]["headers_captured"] is False
+
+    unconfirmed_promotion_preview_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{local_run['id']}/promotion-preview",
+        json={
+            "authorized": True,
+            "confirm_review": False,
+        },
+    )
+    assert unconfirmed_promotion_preview_response.status_code == 400
+    assert (
+        unconfirmed_promotion_preview_response.json()["detail"]
+        == "browser_promotion_review_confirmation_required"
+    )
+
+    promotion_preview_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{local_run['id']}/promotion-preview",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "target_source_type": "generic_web",
+            "enable_task_preview": True,
+            "note": "Build local promotion preview only.",
+        },
+    )
+    assert promotion_preview_response.status_code == 200
+    promotion_preview = promotion_preview_response.json()
+    assert promotion_preview["schema_version"] == "browser_promotion_preview.v1"
+    assert promotion_preview["diagnostic_job_run_id"] == local_run["id"]
+    assert promotion_preview["diagnostic_job_id"] == job["id"]
+    assert promotion_preview["project_id"] == project_id
+    assert promotion_preview["can_promote"] is False
+    assert promotion_preview["source_created"] is False
+    assert promotion_preview["task_created"] is False
+    assert promotion_preview["task_run_started"] is False
+    assert promotion_preview["collection_resources_written"] is False
+    assert promotion_preview["evidence_asset"]["asset_id"] == (
+        f"browser_diagnostic_job_run:{local_run['id']}"
+    )
+    assert promotion_preview["source_draft"]["type"] == "generic_web"
+    assert promotion_preview["source_draft"]["schedule_cron"] is None
+    preview_config = promotion_preview["source_draft"]["config"]
+    assert preview_config["url"] == "https://example.com/products/dynamic-bag"
+    assert preview_config["promotion_source"] == "browser_diagnostic_job_run"
+    assert preview_config["browser_diagnostic_job_run_id"] == local_run["id"]
+    assert preview_config["fields"] == ["page_title", "api_candidate"]
+    assert preview_config["required_missing_fields"] == ["price"]
+    assert preview_config["promotion_boundary"] == "preview_only_no_source_task_write"
+    assert preview_config["manual_review_required"] is True
+    assert preview_config["collection_resources_written"] is False
+    assert preview_config["network_metadata_summary"]["metadata_only"] is True
+    assert preview_config["network_metadata_summary"]["capture_headers"] is False
+    assert promotion_preview["task_draft"]["collector_type"] == "generic_web"
+    assert promotion_preview["task_draft"]["status"] == "blocked"
+    assert promotion_preview["task_draft"]["schedule_policy"] == "manual_refresh_only"
+    assert promotion_preview["promotion_gate"]["schema_version"] == (
+        "browser_promotion_preview_gate.v1"
+    )
+    assert promotion_preview["promotion_gate"]["target_source_type"] == "generic_web"
+    assert promotion_preview["promotion_gate"]["can_promote"] is False
+    assert promotion_preview["promotion_gate"]["can_create_collection_resources"] is False
+    assert "required_selector_missing" in promotion_preview["promotion_gate"]["reasons"]
+    assert "manual_review_required" in promotion_preview["promotion_gate"]["reasons"]
+    assert (
+        "browser_automation_runtime_not_registered"
+        in promotion_preview["promotion_gate"]["reasons"]
+    )
+    assert "preview_only_no_source_task_write" in promotion_preview["blocked_reasons"]
+    assert (
+        promotion_preview["audit_events"][0]["event"]
+        == "browser_promotion_preview_built"
+    )
+    assert promotion_preview["audit_events"][0]["source_created"] is False
+    assert promotion_preview["audit_events"][0]["task_created"] is False
+    post_preview_sources_response = await client.get("/api/sources")
+    assert post_preview_sources_response.status_code == 200
+    assert post_preview_sources_response.json() == []
+    post_preview_tasks_response = await client.get("/api/tasks")
+    assert post_preview_tasks_response.status_code == 200
+    assert post_preview_tasks_response.json() == []
+
+    unconfirmed_execution_dry_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{local_run['id']}/promotion-execution-dry-run",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_no_write": False,
+        },
+    )
+    assert unconfirmed_execution_dry_run_response.status_code == 400
+    assert (
+        unconfirmed_execution_dry_run_response.json()["detail"]
+        == "browser_promotion_no_write_confirmation_required"
+    )
+
+    execution_dry_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{local_run['id']}/promotion-execution-dry-run",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_no_write": True,
+            "target_source_type": "generic_web",
+            "source_name": "Dynamic Bag candidate",
+            "enable_task_preview": True,
+            "note": "Validate dry-run only.",
+        },
+    )
+    assert execution_dry_run_response.status_code == 200
+    execution_dry_run = execution_dry_run_response.json()
+    assert execution_dry_run["schema_version"] == (
+        "browser_promotion_execution_dry_run.v1"
+    )
+    assert execution_dry_run["diagnostic_job_run_id"] == local_run["id"]
+    assert execution_dry_run["diagnostic_job_id"] == job["id"]
+    assert execution_dry_run["dry_run"] is True
+    assert execution_dry_run["write_allowed"] is False
+    assert execution_dry_run["can_execute"] is False
+    assert execution_dry_run["source_created"] is False
+    assert execution_dry_run["task_created"] is False
+    assert execution_dry_run["task_run_started"] is False
+    assert execution_dry_run["collection_resources_written"] is False
+    assert execution_dry_run["source_draft"]["suggested_name"] == (
+        "Dynamic Bag candidate"
+    )
+    assert execution_dry_run["source_draft"]["type"] == "generic_web"
+    assert execution_dry_run["validated_source_config"] == {
+        "url": "https://example.com/products/dynamic-bag",
+        "extract_mode": "main_content",
+    }
+    assert execution_dry_run["task_draft"]["status"] == "blocked"
+    assert execution_dry_run["execution_plan"]["schema_version"] == (
+        "browser_promotion_execution_plan.v1"
+    )
+    assert execution_dry_run["execution_plan"]["dry_run"] is True
+    assert execution_dry_run["execution_plan"]["write_allowed"] is False
+    assert execution_dry_run["execution_plan"]["source_create"]["write_performed"] is False
+    assert (
+        execution_dry_run["execution_plan"]["source_create"]["would_execute_if_authorized"]
+        is False
+    )
+    assert execution_dry_run["execution_plan"]["task_enable"]["write_performed"] is False
+    assert execution_dry_run["execution_plan"]["task_run"] == {
+        "would_execute_if_authorized": False,
+        "status": "separate_manual_run_required",
+        "write_performed": False,
+    }
+    checks_by_key = {
+        item["key"]: item for item in execution_dry_run["validation_checks"]
+    }
+    assert checks_by_key["no-write-confirmed"]["status"] == "passed"
+    assert checks_by_key["collector-config"]["status"] == "passed"
+    assert checks_by_key["required-selectors"]["status"] == "blocked"
+    assert checks_by_key["runtime-strategy"]["status"] == "review"
+    assert execution_dry_run["promotion_gate"]["schema_version"] == (
+        "browser_promotion_execution_gate.v1"
+    )
+    assert execution_dry_run["promotion_gate"]["write_allowed"] is False
+    assert execution_dry_run["promotion_gate"]["can_execute"] is False
+    assert "execution_dry_run_no_write" in execution_dry_run["promotion_gate"]["reasons"]
+    assert "separate_write_authorization_required" in (
+        execution_dry_run["promotion_gate"]["reasons"]
+    )
+    assert "required_selector_missing" in execution_dry_run["blocked_reasons"]
+    assert (
+        execution_dry_run["audit_events"][0]["event"]
+        == "browser_promotion_execution_dry_run_built"
+    )
+    assert execution_dry_run["audit_events"][0]["dry_run"] is True
+    post_dry_run_sources_response = await client.get("/api/sources")
+    assert post_dry_run_sources_response.status_code == 200
+    assert post_dry_run_sources_response.json() == []
+    post_dry_run_tasks_response = await client.get("/api/tasks")
+    assert post_dry_run_tasks_response.status_code == 200
+    assert post_dry_run_tasks_response.json() == []
+
+    blocked_write_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{local_run['id']}/promotion-execution",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_write": True,
+            "confirm_create_collection_resources": True,
+            "confirm_no_task_run": True,
+            "target_source_type": "generic_web",
+            "source_name": "Dynamic Bag candidate",
+            "idempotency_key": "dynamic-bag-write-gate-001",
+            "note": "Should stay blocked because a required selector is missing.",
+        },
+    )
+    assert blocked_write_response.status_code == 400
+    assert blocked_write_response.json()["detail"] == (
+        "browser_promotion_execution_blocked:required_selector_missing"
+    )
+    post_blocked_write_sources_response = await client.get("/api/sources")
+    assert post_blocked_write_sources_response.status_code == 200
+    assert post_blocked_write_sources_response.json() == []
+    post_blocked_write_tasks_response = await client.get("/api/tasks")
+    assert post_blocked_write_tasks_response.status_code == 200
+    assert post_blocked_write_tasks_response.json() == []
+
+    complete_payload = {
+        **payload,
+        "requested_url": "https://example.com/products/static-bag",
+        "browser_diagnostic": {
+            **payload["browser_diagnostic"],
+            "final_url": "https://example.com/products/static-bag",
+            "screenshot_path": "/tmp/browser-diagnostic/static-bag.png",
+        },
+        "diagnostic_payload": {
+            **payload["diagnostic_payload"],
+            "requested_url": "https://example.com/products/static-bag",
+            "final_url": "https://example.com/products/static-bag",
+            "visible_text": {
+                "length": 80,
+                "line_count": 4,
+                "sample": "Static Bag\n$99",
+            },
+            "network_summary": {
+                "resource_count": 12,
+                "api_candidate_count": 0,
+                "api_candidates": [],
+            },
+            "evidence": {
+                "source": "browser-harness",
+                "screenshot_path": "/tmp/browser-diagnostic/static-bag.png",
+                "errors": [],
+            },
+        },
+        "field_contract": {
+            **payload["field_contract"],
+            "fields": [
+                {
+                    **payload["field_contract"]["fields"][0],
+                    "key": "page_title",
+                    "label": "页面标题",
+                    "required": True,
+                    "selected": True,
+                },
+                {
+                    **payload["field_contract"]["fields"][1],
+                    "key": "price",
+                    "label": "价格",
+                    "required": False,
+                    "selected": True,
+                },
+            ],
+        },
+        "api_candidates": [],
+    }
+    complete_plan_response = await client.post(
+        "/api/automation/browser-automation-plans",
+        json=complete_payload,
+    )
+    assert complete_plan_response.status_code == 200
+    complete_result = complete_plan_response.json()
+    complete_job_response = await client.post(
+        "/api/automation/browser-diagnostic-jobs",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "site_analysis_id": complete_result["site_analysis"]["id"],
+            "extraction_plan_id": complete_result["extraction_plan"]["id"],
+            "browser_diagnostic_run_id": complete_result["browser_diagnostic"]["id"],
+            "network_observation_mode": "metadata_only",
+            "artifact_mode": "screenshot_reference_only",
+            "note": "Queue complete selector browser diagnostic job.",
+        },
+    )
+    assert complete_job_response.status_code == 200
+    complete_job = complete_job_response.json()
+    complete_local_run_response = await client.post(
+        f"/api/automation/browser-diagnostic-jobs/{complete_job['id']}/local-run",
+        json={
+            "authorized": True,
+            "confirm_execute": True,
+            "artifact_retention_days": 5,
+            "max_preview_rows": 12,
+            "include_screenshot": True,
+            "include_trace_summary": False,
+            "include_har_summary": False,
+            "note": "Replay complete diagnostic snapshot locally.",
+        },
+    )
+    assert complete_local_run_response.status_code == 200
+    complete_local_run = complete_local_run_response.json()
+    assert complete_local_run["promotion_gate"]["required_missing_fields"] == []
+
+    unconfirmed_write_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{complete_local_run['id']}/promotion-execution",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_write": False,
+            "confirm_create_collection_resources": True,
+            "confirm_no_task_run": True,
+            "target_source_type": "generic_web",
+            "source_name": "Static Bag candidate",
+            "idempotency_key": "static-bag-write-gate-001",
+        },
+    )
+    assert unconfirmed_write_response.status_code == 400
+    assert (
+        unconfirmed_write_response.json()["detail"]
+        == "browser_promotion_write_confirmation_required"
+    )
+
+    write_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{complete_local_run['id']}/promotion-execution",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_write": True,
+            "confirm_create_collection_resources": True,
+            "confirm_no_task_run": True,
+            "target_source_type": "generic_web",
+            "source_name": "Static Bag candidate",
+            "idempotency_key": "static-bag-write-gate-001",
+            "note": "Create local source and task without task run.",
+        },
+    )
+    assert write_response.status_code == 200
+    write_result = write_response.json()
+    assert write_result["schema_version"] == "browser_promotion_execution.v1"
+    assert write_result["dry_run"] is False
+    assert write_result["write_allowed"] is True
+    assert write_result["can_execute"] is True
+    assert write_result["idempotency_replayed"] is False
+    assert write_result["idempotency_scope"] == "browser_promotion_execution"
+    assert write_result["source_created"] is True
+    assert write_result["task_created"] is True
+    assert write_result["task_run_started"] is False
+    assert write_result["collection_resources_written"] is True
+    assert write_result["source"]["name"] == "Static Bag candidate"
+    assert write_result["source"]["type"] == "generic_web"
+    assert write_result["source"]["enabled"] is True
+    assert write_result["source"]["config"] == {
+        "url": "https://example.com/products/static-bag",
+        "extract_mode": "main_content",
+    }
+    assert write_result["task"]["source_id"] == write_result["source"]["id"]
+    assert write_result["task"]["status"] == "enabled"
+    assert write_result["task"]["latest_run_status"] is None
+    assert write_result["execution_plan"]["schema_version"] == (
+        "browser_promotion_write_execution_plan.v1"
+    )
+    assert write_result["execution_plan"]["task_run"]["write_performed"] is False
+    assert write_result["promotion_gate"]["schema_version"] == (
+        "browser_promotion_write_gate.v1"
+    )
+    assert write_result["promotion_gate"]["can_create_collection_resources"] is True
+    assert write_result["promotion_gate"]["can_start_task_run"] is False
+    assert write_result["blocked_reasons"] == []
+    assert (
+        write_result["audit_events"][0]["event"]
+        == "browser_promotion_execution_resources_created"
+    )
+    assert write_result["audit_events"][0]["source_id"] == write_result["source"]["id"]
+    assert write_result["audit_events"][0]["task_id"] == write_result["task"]["id"]
+
+    replay_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{complete_local_run['id']}/promotion-execution",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_write": True,
+            "confirm_create_collection_resources": True,
+            "confirm_no_task_run": True,
+            "target_source_type": "generic_web",
+            "source_name": "Static Bag candidate",
+            "idempotency_key": "static-bag-write-gate-001",
+        },
+    )
+    assert replay_response.status_code == 200
+    replay_result = replay_response.json()
+    assert replay_result["idempotency_replayed"] is True
+    assert replay_result["source"]["id"] == write_result["source"]["id"]
+    assert replay_result["task"]["id"] == write_result["task"]["id"]
+    assert replay_result["source_created"] is False
+    assert replay_result["task_created"] is False
+    assert replay_result["collection_resources_written"] is False
+    assert (
+        replay_result["audit_events"][0]["event"]
+        == "browser_promotion_execution_idempotency_replayed"
+    )
+
+    duplicate_target_response = await client.post(
+        f"/api/automation/browser-diagnostic-job-runs/{complete_local_run['id']}/promotion-execution",
+        json={
+            "authorized": True,
+            "confirm_review": True,
+            "confirm_write": True,
+            "confirm_create_collection_resources": True,
+            "confirm_no_task_run": True,
+            "target_source_type": "generic_web",
+            "source_name": "Static Bag duplicate",
+            "idempotency_key": "static-bag-write-gate-002",
+        },
+    )
+    assert duplicate_target_response.status_code == 400
+    assert (
+        duplicate_target_response.json()["detail"]
+        == "browser_promotion_target_source_already_exists"
+    )
+    post_write_sources_response = await client.get("/api/sources")
+    assert post_write_sources_response.status_code == 200
+    post_write_sources = post_write_sources_response.json()
+    assert len(post_write_sources) == 1
+    assert post_write_sources[0]["id"] == write_result["source"]["id"]
+    post_write_tasks_response = await client.get("/api/tasks")
+    assert post_write_tasks_response.status_code == 200
+    post_write_tasks = post_write_tasks_response.json()
+    assert len(post_write_tasks) == 1
+    assert post_write_tasks[0]["id"] == write_result["task"]["id"]
 
     local_run_list_response = await client.get(
         "/api/automation/browser-diagnostic-job-runs",
@@ -1056,6 +1701,9 @@ async def test_browser_automation_plan_persists_read_only_draft(
     assert local_run_list["files_written"] is False
     assert local_run_list["collection_resources_written"] is False
     assert local_run_list["items"][0]["id"] == local_run["id"]
+    assert local_run_list["evidence_assets"][0]["asset_id"] == (
+        f"browser_diagnostic_job_run:{local_run['id']}"
+    )
 
     unconfirmed_probe_run_response = await client.post(
         f"/api/automation/browser-diagnostic-jobs/{job['id']}/local-run",
@@ -1104,7 +1752,7 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(fake_harness),
-            "probe_timeout_seconds": 3,
+            "probe_timeout_seconds": 10,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
             "include_screenshot": True,
@@ -1154,6 +1802,11 @@ print(json.dumps({"target_tab_closed": True}))
     assert probe_run["redaction_summary"]["cookies_captured"] is False
     assert probe_run["redaction_summary"]["headers_captured"] is False
     assert probe_run["redaction_summary"]["bodies_captured"] is False
+    assert probe_run["evidence_asset"]["evidence_boundary"] == (
+        "local_ephemeral_probe_no_files"
+    )
+    assert probe_run["evidence_asset"]["summary"]["browser_started"] is True
+    assert probe_run["evidence_asset"]["summary"]["files_written"] is False
     assert "browser_harness_ephemeral_probe_only" in probe_run["blocked_reasons"]
     assert (
         probe_run["audit_events"][0]["event"]
@@ -1818,6 +2471,7 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
 
     report_asset_response = await client.post(
         "/api/automation/github-tool-report-assets",
+        headers={"Idempotency-Key": "github-tool-report-asset-replay-001"},
         json={
             "authorized": True,
             "confirm_create": True,
@@ -1832,6 +2486,12 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
     assert report_asset["summary"]["report_created"] is True
     assert report_asset["summary"]["run_started"] is False
     assert report_asset["notification_created"] is False
+    assert report_asset["idempotency_replayed"] is False
+    assert report_asset["idempotency_scope"] == "github_tool_report_asset"
+    report_asset_key_hash = report_asset["idempotency_key_hash"]
+    assert isinstance(report_asset_key_hash, str)
+    assert len(report_asset_key_hash) == 64
+    assert "github-tool-report-asset-replay-001" not in str(report_asset["audit_events"])
     assert report_asset["report"]["report_type"] == "github_tool_radar"
     assert report_asset["report"]["status"] == "generated"
     assert "GitHub Tool Radar web-scraping" in report_asset["report"]["title"]
@@ -1849,7 +2509,41 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
         and event["notification_created"] is False
         for event in report_asset["audit_events"]
     )
+    idempotency_events = [
+        event
+        for event in report_asset["audit_events"]
+        if event["event"] == "github_tool_report_asset_idempotency_key_recorded"
+    ]
+    assert len(idempotency_events) == 1
+    assert idempotency_events[0]["scope"] == "github_tool_report_asset"
+    assert idempotency_events[0]["idempotency_key_hash"] == report_asset_key_hash
+    assert idempotency_events[0]["raw_key_stored"] is False
     assert "不会启动采集" in report_asset["blocked_reasons"][0]
+
+    replay_report_asset_response = await client.post(
+        "/api/automation/github-tool-report-assets",
+        headers={"Idempotency-Key": "github-tool-report-asset-replay-001"},
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "min_stars": 10000,
+            "top_limit": 5,
+        },
+    )
+    assert replay_report_asset_response.status_code == 201
+    replay_report_asset = replay_report_asset_response.json()
+    assert replay_report_asset["report"]["id"] == report_asset["report"]["id"]
+    assert replay_report_asset["idempotency_replayed"] is True
+    assert replay_report_asset["idempotency_key_hash"] == report_asset_key_hash
+    assert any(
+        event["event"] == "github_tool_report_asset_idempotency_replayed"
+        and event["report_created"] is False
+        and event["run_started"] is False
+        and event["notification_created"] is False
+        for event in replay_report_asset["audit_events"]
+    )
 
     stored_report_response = await client.get(f"/api/reports/{report_asset['report']['id']}")
     assert stored_report_response.status_code == 200
@@ -2238,6 +2932,7 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
 
     report_asset_response = await client.post(
         "/api/automation/public-content-report-assets",
+        headers={"Idempotency-Key": "public-content-report-asset-replay-001"},
         json={
             "authorized": True,
             "confirm_create": True,
@@ -2251,6 +2946,12 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
     assert report_asset["summary"]["report_created"] is True
     assert report_asset["summary"]["run_started"] is False
     assert report_asset["notification_created"] is False
+    assert report_asset["idempotency_replayed"] is False
+    assert report_asset["idempotency_scope"] == "public_content_report_asset"
+    report_asset_key_hash = report_asset["idempotency_key_hash"]
+    assert isinstance(report_asset_key_hash, str)
+    assert len(report_asset_key_hash) == 64
+    assert "public-content-report-asset-replay-001" not in str(report_asset["audit_events"])
     assert report_asset["report"]["report_type"] == "public_content"
     assert len(report_asset["report"]["report_type"]) <= 20
     assert report_asset["report"]["status"] == "generated"
@@ -2267,7 +2968,40 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
         and event["notification_created"] is False
         for event in report_asset["audit_events"]
     )
+    idempotency_events = [
+        event
+        for event in report_asset["audit_events"]
+        if event["event"] == "public_content_report_asset_idempotency_key_recorded"
+    ]
+    assert len(idempotency_events) == 1
+    assert idempotency_events[0]["scope"] == "public_content_report_asset"
+    assert idempotency_events[0]["idempotency_key_hash"] == report_asset_key_hash
+    assert idempotency_events[0]["raw_key_stored"] is False
     assert "不会启动采集" in report_asset["blocked_reasons"][0]
+
+    replay_report_asset_response = await client.post(
+        "/api/automation/public-content-report-assets",
+        headers={"Idempotency-Key": "public-content-report-asset-replay-001"},
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": saved["dataset"]["id"],
+            "dataset_version_id": saved["version"]["id"],
+            "top_limit": 5,
+        },
+    )
+    assert replay_report_asset_response.status_code == 201
+    replay_report_asset = replay_report_asset_response.json()
+    assert replay_report_asset["report"]["id"] == report_asset["report"]["id"]
+    assert replay_report_asset["idempotency_replayed"] is True
+    assert replay_report_asset["idempotency_key_hash"] == report_asset_key_hash
+    assert any(
+        event["event"] == "public_content_report_asset_idempotency_replayed"
+        and event["report_created"] is False
+        and event["run_started"] is False
+        and event["notification_created"] is False
+        for event in replay_report_asset["audit_events"]
+    )
 
     stored_report_response = await client.get(f"/api/reports/{report_asset['report']['id']}")
     assert stored_report_response.status_code == 200
@@ -2912,6 +3646,92 @@ async def test_source_enable_disable_manual_task_run_and_raw_record_listing(
     tasks_response = await client.get("/api/tasks?status=disabled")
     assert tasks_response.status_code == 200
     assert [item["id"] for item in tasks_response.json()] == [task["id"]]
+
+
+@pytest.mark.asyncio
+async def test_manual_task_run_idempotency_key_replays_existing_run(
+    client: AsyncClient,
+) -> None:
+    project_id = await register_and_create_project(client)
+
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": "Idempotent Manual Product JSON",
+            "type": "manual_json",
+            "config": {
+                "entity_type": "product",
+                "json_data": {"name": "Replay Product", "price": 88},
+            },
+            "schedule_cron": None,
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    first_response = await client.post(
+        f"/api/tasks/{task['id']}/run",
+        headers={"Idempotency-Key": "manual-run-replay-001"},
+    )
+    assert first_response.status_code == 201
+    first_run = first_response.json()
+    assert first_run["status"] == "success"
+    assert first_run["records_count"] == 1
+    assert first_run["idempotency_replayed"] is False
+    assert first_run["idempotency_scope"] == "task_manual_run"
+    key_hash = first_run["idempotency_key_hash"]
+    assert isinstance(key_hash, str)
+    assert len(key_hash) == 64
+    assert "manual-run-replay-001" not in str(first_run["logs"])
+    idempotency_logs = [
+        log for log in first_run["logs"] if log["step"] == "idempotency_key_recorded"
+    ]
+    assert len(idempotency_logs) == 1
+    assert idempotency_logs[0]["scope"] == "task_manual_run"
+    assert idempotency_logs[0]["idempotency_key_hash"] == key_hash
+    assert idempotency_logs[0]["raw_key_stored"] is False
+
+    replay_response = await client.post(
+        f"/api/tasks/{task['id']}/run",
+        headers={"Idempotency-Key": "manual-run-replay-001"},
+    )
+    assert replay_response.status_code == 200
+    replayed_run = replay_response.json()
+    assert replayed_run["id"] == first_run["id"]
+    assert replayed_run["records_count"] == first_run["records_count"]
+    assert replayed_run["idempotency_replayed"] is True
+    assert replayed_run["idempotency_key_hash"] == key_hash
+
+    runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
+    assert runs_response.status_code == 200
+    listed_runs = runs_response.json()
+    assert [item["id"] for item in listed_runs] == [first_run["id"]]
+    assert listed_runs[0]["idempotency_replayed"] is False
+    assert listed_runs[0]["idempotency_scope"] == "task_manual_run"
+    assert listed_runs[0]["idempotency_key_hash"] == key_hash
+
+    new_key_response = await client.post(
+        f"/api/tasks/{task['id']}/run",
+        headers={"Idempotency-Key": "manual-run-replay-002"},
+    )
+    assert new_key_response.status_code == 201
+    new_key_run = new_key_response.json()
+    assert new_key_run["id"] != first_run["id"]
+    assert new_key_run["records_count"] == 0
+    assert new_key_run["idempotency_replayed"] is False
+    assert new_key_run["idempotency_key_hash"] != key_hash
+
+    updated_runs_response = await client.get(f"/api/tasks/{task['id']}/runs")
+    assert updated_runs_response.status_code == 200
+    assert [item["id"] for item in updated_runs_response.json()] == [
+        new_key_run["id"],
+        first_run["id"],
+    ]
 
 
 @pytest.mark.asyncio
@@ -3863,6 +4683,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     export_response = await client.post(
         "/api/automation/product-dataset-exports",
+        headers={"Idempotency-Key": "dataset-export-replay-001"},
         json={
             "authorized": True,
             "confirm_create": True,
@@ -3881,12 +4702,45 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert export_job["artifact_size_bytes"] > 0
     assert export_job["row_count"] == 2
     assert len(export_job["checksum_sha256"]) == 64
+    assert export_job["idempotency_replayed"] is False
+    assert export_job["idempotency_scope"] == "product_dataset_export"
+    export_key_hash = export_job["idempotency_key_hash"]
+    assert isinstance(export_key_hash, str)
+    assert len(export_key_hash) == 64
+    assert "dataset-export-replay-001" not in str(export_job["audit_events"])
     assert export_job["download_url"].endswith(f"/exports/{export_job['id']}/download")
+    idempotency_events = [
+        event
+        for event in export_job["audit_events"]
+        if event["event"] == "product_dataset_export_idempotency_key_recorded"
+    ]
+    assert len(idempotency_events) == 1
+    assert idempotency_events[0]["scope"] == "product_dataset_export"
+    assert idempotency_events[0]["idempotency_key_hash"] == export_key_hash
+    assert idempotency_events[0]["raw_key_stored"] is False
     assert any(
         event["event"] == "product_dataset_export_file_written"
         for event in export_job["audit_events"]
     )
     assert "下载接口" in export_job["blocked_reasons"][0]
+
+    replay_export_response = await client.post(
+        "/api/automation/product-dataset-exports",
+        headers={"Idempotency-Key": "dataset-export-replay-001"},
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "export_format": "csv",
+        },
+    )
+    assert replay_export_response.status_code == 200
+    replay_export_job = replay_export_response.json()
+    assert replay_export_job["id"] == export_job["id"]
+    assert replay_export_job["download_url"] == export_job["download_url"]
+    assert replay_export_job["idempotency_replayed"] is True
+    assert replay_export_job["idempotency_key_hash"] == export_key_hash
 
     export_history_response = await client.get(
         f"/api/automation/product-datasets/{first_save['dataset']['id']}/exports",
@@ -3898,6 +4752,9 @@ async def test_automation_product_batch_run_returns_field_completeness(
     assert export_history["export_created"] is False
     assert export_history["run_started"] is False
     assert export_history["items"][0]["id"] == export_job["id"]
+    assert export_history["items"][0]["idempotency_replayed"] is False
+    assert export_history["items"][0]["idempotency_scope"] == "product_dataset_export"
+    assert export_history["items"][0]["idempotency_key_hash"] == export_key_hash
 
     export_download_response = await client.get(export_job["download_url"])
     assert export_download_response.status_code == 200
@@ -4125,6 +4982,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     drift_alert_notification_response = await client.post(
         "/api/automation/product-drift-alert-notifications",
+        headers={"Idempotency-Key": "drift-alert-notification-replay-001"},
         json={
             "authorized": True,
             "confirm_send": True,
@@ -4136,6 +4994,14 @@ async def test_automation_product_batch_run_returns_field_completeness(
     )
     assert drift_alert_notification_response.status_code == 200
     drift_alert_notification = drift_alert_notification_response.json()
+    assert drift_alert_notification["idempotency_replayed"] is False
+    assert (
+        drift_alert_notification["idempotency_scope"]
+        == "product_drift_alert_notification_send"
+    )
+    notification_key_hash = drift_alert_notification["idempotency_key_hash"]
+    assert isinstance(notification_key_hash, str)
+    assert len(notification_key_hash) == 64
     assert len(drift_alert_notification["alert_events"]) == 1
     assert drift_alert_notification["alert_events"][0]["id"] == bridged_alert_event_id
     assert drift_alert_notification["alert_events"][0]["status"] == "sent"
@@ -4237,6 +5103,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     drift_alert_email_send_response = await client.post(
         "/api/automation/product-drift-alert-emails",
+        headers={"Idempotency-Key": "drift-alert-email-replay-001"},
         json={
             "authorized": True,
             "confirm_send": True,
@@ -4249,6 +5116,11 @@ async def test_automation_product_batch_run_returns_field_completeness(
     )
     assert drift_alert_email_send_response.status_code == 200
     drift_alert_email_send = drift_alert_email_send_response.json()
+    assert drift_alert_email_send["idempotency_replayed"] is False
+    assert drift_alert_email_send["idempotency_scope"] == "product_drift_alert_email_send"
+    email_key_hash = drift_alert_email_send["idempotency_key_hash"]
+    assert isinstance(email_key_hash, str)
+    assert len(email_key_hash) == 64
     assert len(drift_alert_email_send["email_deliveries"]) == 1
     assert drift_alert_email_send["email_deliveries"][0]["alert_event_id"] == email_alert_event_id
     assert drift_alert_email_send["email_deliveries"][0]["recipient_email"] == "owner@example.com"
@@ -4276,6 +5148,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 
     repeated_notification_response = await client.post(
         "/api/automation/product-drift-alert-notifications",
+        headers={"Idempotency-Key": "drift-alert-notification-replay-001"},
         json={
             "authorized": True,
             "confirm_send": True,
@@ -4287,8 +5160,30 @@ async def test_automation_product_batch_run_returns_field_completeness(
     )
     assert repeated_notification_response.status_code == 200
     repeated_notification = repeated_notification_response.json()
+    assert repeated_notification["idempotency_replayed"] is True
+    assert repeated_notification["idempotency_key_hash"] == notification_key_hash
     assert repeated_notification["summary"]["notification_created"] is False
     assert repeated_notification["notifications"][0]["id"] == drift_notifications[0]["id"]
+
+    repeated_email_send_response = await client.post(
+        "/api/automation/product-drift-alert-emails",
+        headers={"Idempotency-Key": "drift-alert-email-replay-001"},
+        json={
+            "authorized": True,
+            "confirm_send": True,
+            "dataset_id": first_save["dataset"]["id"],
+            "dataset_version_id": first_save["version"]["id"],
+            "drift_event_id": drift_event["id"],
+            "alert_event_ids": [email_alert_event_id],
+            "recipient_email": "owner@example.com",
+        },
+    )
+    assert repeated_email_send_response.status_code == 200
+    repeated_email_send = repeated_email_send_response.json()
+    assert repeated_email_send["idempotency_replayed"] is True
+    assert repeated_email_send["idempotency_key_hash"] == email_key_hash
+    assert repeated_email_send["email_deliveries"] == drift_alert_email_send["email_deliveries"]
+    assert "不会再次调用 SMTP/provider" in repeated_email_send["blocked_reasons"][0]
 
     repeated_alert_event_response = await client.post(
         "/api/automation/product-drift-alert-events",
@@ -4357,6 +5252,371 @@ async def test_automation_product_batch_run_returns_field_completeness(
         and event["cleaning_plan_id"] == cleaning_plan_result["cleaning_plan"]["id"]
         for event in cleaned_save["audit_events"]
     )
+
+
+@pytest.mark.asyncio
+async def test_shopify_independent_ecommerce_package_runs_local_authorized_e2e_gate(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    collection_url = "https://shop.example/collections/m4-authorized-fixture"
+    product_urls = {
+        "demo-bag": "https://shop.example/products/m4-demo-bag",
+        "city-sling": "https://shop.example/products/m4-city-sling",
+    }
+    selected_fields = [
+        "title",
+        "price",
+        "sku",
+        "currency",
+        "availability",
+        "variant",
+        "category",
+        "canonical_url",
+    ]
+    phase = "baseline"
+
+    class FixtureEcommerceDiscoveryCollector(EcommerceProductDiscoveryCollector):
+        async def collect(self) -> CollectionResult:
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="ecommerce_product_discovery",
+                        source_url=collection_url,
+                        content={
+                            "provider": "ecommerce",
+                            "kind": "product_discovery",
+                            "url": collection_url,
+                            "platform_profile": {
+                                "platform_type": "shopify",
+                                "confidence": 0.94,
+                                "indicators": ["json_ld_product", "same_origin_product_urls"],
+                                "risk_level": "low",
+                            },
+                            "page_structure": {
+                                "page_type": "collection_listing",
+                                "title": "M4 Authorized Fixture Collection",
+                                "canonical_url": collection_url,
+                                "link_count": 8,
+                                "product_link_count": 2,
+                                "jsonld_url_count": 2,
+                                "sitemap_url_count": 0,
+                                "pagination_url_count": 0,
+                                "duplicate_url_count": 0,
+                                "skipped_url_count": 0,
+                                "script_count": 3,
+                                "text_sample": "M4 Demo Bag City Sling",
+                            },
+                            "product_candidates": [
+                                {
+                                    "url": product_urls["demo-bag"],
+                                    "title": "M4 Demo Bag",
+                                    "source": "json_ld",
+                                    "confidence": 0.95,
+                                    "canonical_url": product_urls["demo-bag"],
+                                },
+                                {
+                                    "url": product_urls["city-sling"],
+                                    "title": "M4 City Sling",
+                                    "source": "anchor",
+                                    "confidence": 0.9,
+                                    "canonical_url": product_urls["city-sling"],
+                                },
+                            ],
+                            "tool_recommendations": [],
+                            "discovery_plan": {
+                                "next_collector_type": "ecommerce_product_page",
+                                "candidate_count": 2,
+                                "max_products": 10,
+                                "fan_out_requires_review": True,
+                                "pagination_urls": [],
+                                "dedupe_summary": {
+                                    "input_url_count": 2,
+                                    "canonical_candidate_count": 2,
+                                    "duplicate_url_count": 0,
+                                    "skipped_url_count": 0,
+                                    "skipped_reasons": [],
+                                },
+                            },
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    class FixtureEcommerceProductPageCollector(EcommerceProductPageCollector):
+        async def collect(self) -> CollectionResult:
+            url = str(self.config["url"])
+            baseline_values = {
+                product_urls["demo-bag"]: {
+                    "title": "M4 Demo Bag",
+                    "price": 129.9,
+                    "sku": "M4-BAG-001",
+                    "currency": "USD",
+                    "availability": "in_stock",
+                    "variant": "Black",
+                    "category": "Bags",
+                    "canonical_url": product_urls["demo-bag"],
+                },
+                product_urls["city-sling"]: {
+                    "title": "M4 City Sling",
+                    "price": 89.0,
+                    "sku": "M4-SLING-001",
+                    "currency": "USD",
+                    "availability": "in_stock",
+                    "variant": "Canvas",
+                    "category": "Bags",
+                    "canonical_url": product_urls["city-sling"],
+                },
+            }
+            drift_values = {
+                **baseline_values,
+                product_urls["demo-bag"]: {
+                    **baseline_values[product_urls["demo-bag"]],
+                    "price": 119.9,
+                    "availability": "out_of_stock",
+                },
+            }
+            extracted_fields = (
+                baseline_values if phase == "baseline" else drift_values
+            )[url]
+            return CollectionResult(
+                raw_records=[
+                    CollectorRawRecord(
+                        record_type="ecommerce_product_page",
+                        source_url=url,
+                        content={
+                            "provider": "ecommerce",
+                            "kind": "product_page",
+                            "url": url,
+                            "extracted_fields": extracted_fields,
+                            "field_schema": [],
+                            "cleaning_plan": [],
+                            "platform_profile": {
+                                "platform_type": "shopify",
+                                "confidence": 0.92,
+                            },
+                            "page_structure": {"page_type": "product_detail"},
+                        },
+                    )
+                ],
+                logs=[],
+                errors=[],
+            )
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.automation_service."
+        "EcommerceProductDiscoveryCollector",
+        FixtureEcommerceDiscoveryCollector,
+    )
+    monkeypatch.setitem(
+        collector_registry.COLLECTOR_REGISTRY,
+        "ecommerce_product_page",
+        FixtureEcommerceProductPageCollector,
+    )
+    project_id = await register_and_create_project(client)
+
+    package_response = await client.get(
+        "/api/automation/platform-packages/shopify-independent-ecommerce"
+    )
+    assert package_response.status_code == 200
+    package = package_response.json()
+    assert package["execution_boundary"] == "executable"
+    assert package["sample_fixture"] == {
+        "fixture_type": "deterministic_html",
+        "available": True,
+        "description": "E2E 使用固定商品页和集合页 fixture 验证 discovery、fan-out、dataset。",
+    }
+    assert package["run_started"] is False
+
+    discovery_response = await client.post(
+        "/api/automation/product-discovery",
+        json={"url": collection_url, "authorized": True, "max_products": 10},
+    )
+    assert discovery_response.status_code == 200
+    discovery = discovery_response.json()
+    assert discovery["requested_url"] == collection_url
+    assert discovery["authorization_confirmed"] is True
+    assert discovery["platform_profile"]["platform_type"] == "shopify"
+    assert discovery["discovery_plan"]["fan_out_requires_review"] is True
+    assert len(discovery["product_candidates"]) == 2
+
+    fanout_response = await client.post(
+        "/api/automation/product-fanout-create",
+        json={
+            "project_id": project_id,
+            "parent_url": collection_url,
+            "authorized": True,
+            "max_sources": 5,
+            "enable_tasks": True,
+            "fields": selected_fields,
+            "candidates": discovery["product_candidates"],
+        },
+    )
+    assert fanout_response.status_code == 200
+    fanout = fanout_response.json()
+    assert fanout["summary"] == {
+        "created_sources": 2,
+        "reused_sources": 0,
+        "enabled_tasks": 2,
+        "blocked_candidates": 0,
+        "run_started": False,
+    }
+    task_ids = [item["task"]["id"] for item in fanout["persisted_sources"]]
+
+    baseline_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 2, "task_ids": task_ids},
+    )
+    assert baseline_batch_response.status_code == 200
+    baseline_batch = baseline_batch_response.json()
+    assert baseline_batch["summary"]["run_tasks"] == 2
+    assert baseline_batch["summary"]["successful_runs"] == 2
+    assert baseline_batch["summary"]["average_completeness_percent"] == 100
+    baseline_run_ids = [
+        item["run"]["id"] for item in baseline_batch["items"] if item["status"] == "run_completed"
+    ]
+
+    dataset_response = await client.post(
+        "/api/automation/product-dataset-save",
+        json={
+            "authorized": True,
+            "name": "M4 Local Fixture Independent Site Dataset",
+            "description": (
+                "Local deterministic fixture gate for the "
+                "shopify-independent-ecommerce package."
+            ),
+            "task_run_ids": baseline_run_ids,
+            "fields": selected_fields,
+            "max_rows": 10,
+        },
+    )
+    assert dataset_response.status_code == 200
+    dataset_save = dataset_response.json()
+    assert dataset_save["dataset"]["dataset_type"] == "ecommerce_product"
+    assert dataset_save["version"]["row_count"] == 2
+    assert dataset_save["version"]["average_completeness_percent"] == 100
+    assert dataset_save["version"]["selected_fields"] == selected_fields
+    assert "尚未写出文件" in dataset_save["blocked_reasons"][-1]
+
+    schedule_response = await client.post(
+        "/api/automation/product-schedule-approve",
+        json={
+            "authorized": True,
+            "dataset_id": dataset_save["dataset"]["id"],
+            "dataset_version_id": dataset_save["version"]["id"],
+            "task_ids": task_ids,
+            "schedule_policy": "manual_refresh_only",
+            "freshness_target_hours": 24,
+            "minimum_completeness_percent": 100,
+            "note": "M4 local fixture approval without scheduler start.",
+        },
+    )
+    assert schedule_response.status_code == 200
+    schedule = schedule_response.json()
+    assert schedule["summary"] == {
+        "requested_tasks": 2,
+        "approved_tasks": 2,
+        "blocked_tasks": 0,
+        "run_started": False,
+    }
+    assert {task["schedule_policy"] for task in schedule["approved_tasks"]} == {
+        "manual_refresh_only"
+    }
+
+    export_response = await client.post(
+        "/api/automation/product-dataset-exports",
+        json={
+            "authorized": True,
+            "confirm_create": True,
+            "dataset_id": dataset_save["dataset"]["id"],
+            "dataset_version_id": dataset_save["version"]["id"],
+            "export_format": "jsonl",
+        },
+    )
+    assert export_response.status_code == 200
+    export_job = export_response.json()
+    assert export_job["status"] == "success"
+    assert export_job["export_format"] == "jsonl"
+    assert export_job["row_count"] == 2
+    assert len(export_job["checksum_sha256"]) == 64
+    assert any(
+        event["event"] == "product_dataset_export_file_written"
+        and event["run_started"] is False
+        for event in export_job["audit_events"]
+    )
+
+    export_download_response = await client.get(export_job["download_url"])
+    assert export_download_response.status_code == 200
+    assert "M4 Demo Bag" in export_download_response.text
+    assert "M4 City Sling" in export_download_response.text
+
+    phase = "drift"
+    drift_batch_response = await client.post(
+        "/api/automation/product-batch-run",
+        json={"authorized": True, "max_tasks": 2, "task_ids": task_ids},
+    )
+    assert drift_batch_response.status_code == 200
+    assert drift_batch_response.json()["summary"]["successful_runs"] == 2
+
+    drift_response = await client.post(
+        "/api/automation/product-drift-check",
+        json={
+            "authorized": True,
+            "dataset_id": dataset_save["dataset"]["id"],
+            "dataset_version_id": dataset_save["version"]["id"],
+            "task_ids": task_ids,
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+        },
+    )
+    assert drift_response.status_code == 200
+    drift = drift_response.json()
+    assert drift["summary"]["checked_tasks"] == 2
+    assert drift["summary"]["price_changed_tasks"] == 1
+    assert drift["summary"]["run_started"] is False
+    assert drift["summary"]["alert_created"] is False
+    assert any("price_changed" in item["issues"] for item in drift["items"])
+
+    drift_event_response = await client.post(
+        "/api/automation/product-drift-events",
+        json={
+            "authorized": True,
+            "dataset_id": dataset_save["dataset"]["id"],
+            "dataset_version_id": dataset_save["version"]["id"],
+            "task_ids": task_ids,
+            "completeness_drop_threshold_percent": 10,
+            "freshness_grace_hours": 24,
+            "note": "M4 local fixture E2E gate; no production write.",
+        },
+    )
+    assert drift_event_response.status_code == 200
+    drift_event = drift_event_response.json()
+    assert drift_event["event_type"] == "ecommerce_product_drift"
+    assert drift_event["status"] == "warning"
+    assert drift_event["summary"] == drift["summary"]
+    assert drift_event["run_started"] is False
+    assert drift_event["alert_created"] is False
+
+    dataset_list_response = await client.get(
+        "/api/automation/product-datasets",
+        params={"project_id": project_id},
+    )
+    assert dataset_list_response.status_code == 200
+    dataset_list = dataset_list_response.json()
+    assert dataset_list["total"] == 1
+    assert dataset_list["items"][0]["latest_drift_event"]["id"] == drift_event["id"]
+
+    export_history_response = await client.get(
+        f"/api/automation/product-datasets/{dataset_save['dataset']['id']}/exports",
+        params={"dataset_version_id": dataset_save["version"]["id"]},
+    )
+    assert export_history_response.status_code == 200
+    export_history = export_history_response.json()
+    assert export_history["total"] == 1
+    assert export_history["export_created"] is False
+    assert export_history["items"][0]["id"] == export_job["id"]
 
 
 @pytest.mark.asyncio

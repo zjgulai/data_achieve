@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
@@ -22,6 +22,14 @@ from data_intelligence_hub.schemas.automation import (
     AutomationBrowserLocalRunnerRequest,
     AutomationBrowserLocalRunnerResultListResponse,
     AutomationBrowserLocalRunnerResultResponse,
+    AutomationBrowserProductionMetadataRunGateRequest,
+    AutomationBrowserProductionMetadataRunGateResponse,
+    AutomationBrowserPromotionExecutionDryRunRequest,
+    AutomationBrowserPromotionExecutionDryRunResponse,
+    AutomationBrowserPromotionExecutionRequest,
+    AutomationBrowserPromotionExecutionResponse,
+    AutomationBrowserPromotionPreviewRequest,
+    AutomationBrowserPromotionPreviewResponse,
     AutomationCapabilityProbeListResponse,
     AutomationCleaningPlanCreateRequest,
     AutomationCleaningPlanCreateResponse,
@@ -93,6 +101,7 @@ from data_intelligence_hub.services.automation_service import (
     approve_product_schedule,
     approve_public_content_schedule,
     build_browser_executor_contract,
+    build_browser_production_metadata_run_gate,
     cancel_browser_diagnostic_job_asset,
     check_github_tool_drift,
     check_product_drift,
@@ -108,7 +117,9 @@ from data_intelligence_hub.services.automation_service import (
     create_reviewed_product_fanout,
     discover_products_for_collection,
     dry_run_browser_executable_spec,
+    dry_run_browser_promotion_execution,
     dry_run_cleaning_plan,
+    execute_browser_diagnostic_promotion,
     generate_github_tool_report,
     generate_public_content_report,
     get_browser_diagnostic_job_asset,
@@ -127,6 +138,7 @@ from data_intelligence_hub.services.automation_service import (
     list_product_drift_events,
     list_site_analysis_history,
     persist_site_analysis_plan,
+    preview_browser_diagnostic_promotion,
     preview_github_tool_dataset,
     preview_product_dataset,
     preview_product_drift_alert_rule,
@@ -484,6 +496,35 @@ async def build_browser_executor_contract_route(
 
 
 @router.post(
+    "/browser-diagnostic-jobs/{diagnostic_job_id}/production-metadata-run-gate",
+    response_model=AutomationBrowserProductionMetadataRunGateResponse,
+)
+async def build_browser_production_metadata_run_gate_route(
+    diagnostic_job_id: uuid.UUID,
+    payload: AutomationBrowserProductionMetadataRunGateRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserProductionMetadataRunGateResponse:
+    try:
+        return await build_browser_production_metadata_run_gate(
+            session,
+            context.workspace,
+            diagnostic_job_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc) == "browser_diagnostic_job_not_found"
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
     "/browser-diagnostic-jobs/{diagnostic_job_id}/local-run",
     response_model=AutomationBrowserLocalRunnerResultResponse,
 )
@@ -507,6 +548,105 @@ async def run_browser_diagnostic_job_local_route(
             in {
                 "browser_diagnostic_job_not_found",
                 "browser_diagnostic_run_not_found",
+            }
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-job-runs/{diagnostic_job_run_id}/promotion-preview",
+    response_model=AutomationBrowserPromotionPreviewResponse,
+)
+async def preview_browser_diagnostic_promotion_route(
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionPreviewRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserPromotionPreviewResponse:
+    try:
+        return await preview_browser_diagnostic_promotion(
+            session,
+            context.workspace,
+            diagnostic_job_run_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc)
+            in {
+                "browser_diagnostic_job_run_not_found",
+                "browser_diagnostic_job_not_found",
+            }
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-job-runs/{diagnostic_job_run_id}/promotion-execution-dry-run",
+    response_model=AutomationBrowserPromotionExecutionDryRunResponse,
+)
+async def dry_run_browser_promotion_execution_route(
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionExecutionDryRunRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserPromotionExecutionDryRunResponse:
+    try:
+        return await dry_run_browser_promotion_execution(
+            session,
+            context.workspace,
+            diagnostic_job_run_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc)
+            in {
+                "browser_diagnostic_job_run_not_found",
+                "browser_diagnostic_job_not_found",
+            }
+            else status.HTTP_400_BAD_REQUEST
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/browser-diagnostic-job-runs/{diagnostic_job_run_id}/promotion-execution",
+    response_model=AutomationBrowserPromotionExecutionResponse,
+)
+async def execute_browser_diagnostic_promotion_route(
+    diagnostic_job_run_id: uuid.UUID,
+    payload: AutomationBrowserPromotionExecutionRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationBrowserPromotionExecutionResponse:
+    try:
+        return await execute_browser_diagnostic_promotion(
+            session,
+            context.workspace,
+            diagnostic_job_run_id,
+            payload,
+        )
+    except CollectorError as exc:
+        status_code = (
+            status.HTTP_404_NOT_FOUND
+            if str(exc)
+            in {
+                "browser_diagnostic_job_run_not_found",
+                "browser_diagnostic_job_not_found",
             }
             else status.HTTP_400_BAD_REQUEST
         )
@@ -969,6 +1109,7 @@ async def create_github_tool_report_asset_route(
     payload: AutomationGitHubToolReportAssetCreateRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationGitHubToolReportAssetResponse:
     try:
         return await create_github_tool_report_asset(
@@ -976,6 +1117,7 @@ async def create_github_tool_report_asset_route(
             context.workspace,
             context.user,
             payload,
+            idempotency_key=idempotency_key,
         )
     except CollectorError as exc:
         raise HTTPException(
@@ -993,6 +1135,7 @@ async def create_public_content_report_asset_route(
     payload: AutomationPublicContentReportAssetCreateRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationPublicContentReportAssetResponse:
     try:
         return await create_public_content_report_asset(
@@ -1000,6 +1143,7 @@ async def create_public_content_report_asset_route(
             context.workspace,
             context.user,
             payload,
+            idempotency_key=idempotency_key,
         )
     except CollectorError as exc:
         raise HTTPException(
@@ -1070,9 +1214,15 @@ async def send_product_drift_alert_notifications_route(
     payload: AutomationProductDriftAlertNotificationSendRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDriftAlertNotificationSendResponse:
     try:
-        return await send_product_drift_alert_notifications(session, context.workspace, payload)
+        return await send_product_drift_alert_notifications(
+            session,
+            context.workspace,
+            payload,
+            idempotency_key=idempotency_key,
+        )
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1088,9 +1238,15 @@ async def send_product_drift_alert_emails_route(
     payload: AutomationProductDriftAlertEmailSendRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDriftAlertEmailSendResponse:
     try:
-        return await send_product_drift_alert_emails(session, context.workspace, payload)
+        return await send_product_drift_alert_emails(
+            session,
+            context.workspace,
+            payload,
+            idempotency_key=idempotency_key,
+        )
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1145,6 +1301,7 @@ async def create_product_dataset_export_route(
     payload: AutomationProductDatasetExportCreateRequest,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDatasetExportJobResponse:
     try:
         return await create_product_dataset_export(
@@ -1152,6 +1309,7 @@ async def create_product_dataset_export_route(
             context.workspace,
             context.user,
             payload,
+            idempotency_key=idempotency_key,
         )
     except CollectorError as exc:
         raise HTTPException(

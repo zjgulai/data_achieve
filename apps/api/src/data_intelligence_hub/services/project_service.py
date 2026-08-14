@@ -9,7 +9,10 @@ from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.projects import get_project, list_projects
 from data_intelligence_hub.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
-from data_intelligence_hub.services.exceptions import ProjectNotFoundError
+from data_intelligence_hub.services.exceptions import (
+    ProjectNotActiveError,
+    ProjectNotFoundError,
+)
 
 
 async def get_projects(
@@ -49,6 +52,17 @@ async def get_project_or_raise(
     project = await get_project(session, workspace.id, project_id)
     if project is None:
         raise ProjectNotFoundError
+    return project
+
+
+async def get_active_project_or_raise(
+    session: AsyncSession,
+    workspace: Workspace,
+    project_id: uuid.UUID,
+) -> Project:
+    project = await get_project_or_raise(session, workspace, project_id)
+    if project.status != "active":
+        raise ProjectNotActiveError
     return project
 
 

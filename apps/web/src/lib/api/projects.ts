@@ -1,5 +1,6 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
 import { getMockProjects } from "@/lib/api/mock";
+import { WORKFLOW_PLANNER_TEST_PROJECTS } from "@/lib/workflow-planner-mock";
 import type {
   Project,
   ProjectCreateInput,
@@ -30,7 +31,10 @@ const projectStatuses = new Set<ProjectStatus>(["active", "archived"]);
 
 export async function listProjects(): Promise<Project[]> {
   if (mockApiEnabled) {
-    return getMockProjects();
+    const projects = getMockProjects();
+    return process.env.NEXT_PUBLIC_WORKFLOW_PLANNER_TEST_FIXTURES === "true"
+      ? [...projects, ...WORKFLOW_PLANNER_TEST_PROJECTS]
+      : projects;
   }
   const response = await apiFetch<ProjectResponse[]>("/api/projects");
   return response.map(mapProject);

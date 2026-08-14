@@ -11,7 +11,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv==0.11.11 \
+RUN pip install --no-cache-dir uv==0.11.6 \
     && groupadd --system app \
     && useradd --system --gid app --home-dir /app app
 
@@ -20,7 +20,7 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY src ./src
 
-RUN uv sync --locked --no-dev \
+RUN uv sync --frozen --no-dev \
     && chown -R app:app /app
 
 USER app

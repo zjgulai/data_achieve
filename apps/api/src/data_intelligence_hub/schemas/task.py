@@ -9,8 +9,11 @@ from pydantic import BaseModel, ConfigDict
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.services.task_schedule_policy import (
     freshness_target_hours,
+    max_retry_attempts,
     next_run_at,
     retry_after_at,
+    retry_attempts_used,
+    retry_budget_exhausted,
     retry_delay_minutes,
     task_schedule_policy,
 )
@@ -39,6 +42,9 @@ class CollectionTaskResponse(BaseModel):
     next_run_at: datetime | None = None
     retry_after_at: datetime | None = None
     retry_delay_minutes: int = 15
+    max_retry_attempts: int = 3
+    retry_attempts_used: int = 0
+    retry_budget_exhausted: bool = False
     success_count: int
     failure_count: int
     last_run_at: datetime | None
@@ -84,6 +90,9 @@ class CollectionTaskResponse(BaseModel):
             "next_run_at": next_run_at(task, latest_run, current_time),
             "retry_after_at": retry_after_at(task, latest_run),
             "retry_delay_minutes": retry_delay_minutes(task.config),
+            "max_retry_attempts": max_retry_attempts(task.config),
+            "retry_attempts_used": retry_attempts_used(task.config),
+            "retry_budget_exhausted": retry_budget_exhausted(task, latest_run),
         }
         if latest_run is None:
             return response.model_copy(update=updates)
@@ -118,6 +127,39 @@ class TaskRunResponse(BaseModel):
     error_traceback: str | None
     logs: list[dict[str, Any]]
     created_at: datetime
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
+
+    @classmethod
+    def from_run(
+        cls,
+        run: TaskRun,
+        *,
+        idempotency_replayed: bool = False,
+        idempotency_key_hash: str | None = None,
+    ) -> TaskRunResponse:
+        response = cls.model_validate(run)
+        detected_key_hash = idempotency_key_hash or _task_run_idempotency_key_hash(run.logs)
+        return response.model_copy(
+            update={
+                "idempotency_replayed": idempotency_replayed,
+                "idempotency_scope": "task_manual_run" if detected_key_hash else None,
+                "idempotency_key_hash": detected_key_hash,
+            }
+        )
+
+
+def _task_run_idempotency_key_hash(logs: list[dict[str, Any]]) -> str | None:
+    for log in logs:
+        if log.get("step") != "idempotency_key_recorded":
+            continue
+        if log.get("scope") != "task_manual_run":
+            continue
+        idempotency_key_hash = log.get("idempotency_key_hash")
+        if isinstance(idempotency_key_hash, str) and idempotency_key_hash:
+            return idempotency_key_hash
+    return None
 
 
 def _freshness_state(
@@ -132,6 +174,8 @@ def _freshness_state(
     if task.status in {"paused", "disabled"}:
         return task.status, None
     if latest_run is not None and latest_run.status == "failed":
+        if retry_budget_exhausted(task, latest_run):
+            return "retry_exhausted", None
         return "failed", None
     if task.last_run_at is None:
         return "never_run", None

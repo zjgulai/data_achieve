@@ -1,0 +1,436 @@
+---
+title: YouTube + Reddit Social API Phase 2 Runbook
+doc_type: workflow
+topic: social-api-overseas-phase2
+status: draft
+evidence_level: L1-public-or-runtime
+provider_call: false
+production_boundary: production unchanged
+private_deploy_boundary: self_hosted_collectors
+created: 2026-07-08
+updated: 2026-07-08
+owner: self
+source: codex
+---
+
+# YouTube + Reddit Phase 2 Runbook
+
+## 0. Boundary
+
+This runbook prepares the first live-capable overseas social API lane, but this document does not authorize any provider call, production Source, Task, RawRecord, Dataset, or scheduler mutation.
+
+Current execution state:
+
+- `provider_call=false`
+- `production unchanged`
+- `run_scope=fixture_gate_only`
+- `live_adapter_dependency_install=false`
+- `dependency_install_executed=false`
+- `live_adapter_enabled=false`
+- `adapter_plan_fixture_only=true`
+- `credential_read_attempted=false`
+- `live_client_created=false`
+- `source_created=false`
+- `normalization_write_allowed=false`
+- `dataset_write_allowed=false`
+- `dataset_created=false`
+- `dataset_version_created=false`
+- `export_created=false`
+- `task_run_started=false`
+- `execution_dry_run_only=true`
+
+## 1. Mature SDK Selection
+
+| Platform | SDK | Source | Decision |
+|---|---|---|---|
+| YouTube | `google-api-python-client` | Google official Python client | Use after L4 gate for YouTube Data API v3 calls |
+| Reddit | `asyncpraw` | PRAW async wrapper | Use after L4 gate for Reddit OAuth Data API calls |
+
+Optional extras now registered in `apps/api/pyproject.toml`:
+
+| Extra | Package |
+|---|---|
+| `social-youtube` | `google-api-python-client>=2.198.0` |
+| `social-reddit` | `asyncpraw>=8.0.2` |
+| `social-overseas-live` | both packages |
+
+Rejected in Phase 2:
+
+- Browser-cookie, login-state, captcha, anti-detect, or private API wrappers.
+- TikHub hosted endpoints as runtime dependency.
+- Any Reddit/YouTube live call from `social-raw-preview`.
+
+## 2. Gate Sequence
+
+### Step 1: Catalog Check
+
+Call:
+
+```http
+GET /api/automation/social-provider-catalog?platform=youtube
+GET /api/automation/social-provider-catalog?platform=reddit
+```
+
+Expected:
+
+- `provider_call=false`
+- SDK selection present
+- forbidden actions present
+- `resource_groups` include content/search/comment groups
+
+### Step 2: Readiness Check
+
+Call:
+
+```http
+POST /api/automation/social-provider-readiness
+```
+
+Required request fields:
+
+- `platform`
+- `endpoints`
+- `credentials_ready`
+- `quotas`
+- `policy_context.allow_ai_training=false`
+
+Expected:
+
+- missing credentials produce `readiness=false`
+- unsupported endpoints produce `scope_missing:*`
+- policy violation produces `policy_missing:*`
+- `provider_call_attempted=false`
+
+### Step 3: Fixture Raw Preview
+
+Call:
+
+```http
+POST /api/automation/social-raw-preview
+```
+
+Expected:
+
+- `schema_version=social_raw_preview.v1`
+- records use `social_raw.v1`
+- `fixture_only=true`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `production_write_allowed=false`
+
+### Step 4: Fixture Normalization Preview
+
+Call:
+
+```http
+POST /api/automation/social-normalization-preview
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 1,
+  "include_voc": true,
+  "author_policy": "hashed"
+}
+```
+
+Expected:
+
+- `schema_version=social_normalization_preview.v1`
+- raw records still use `social_raw.v1`
+- normalized items use `social_post.v1`, `social_comment.v1`, or `social_voc_item.v1`
+- every normalized item carries `raw_record_id` and `evidence_ref`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `normalization_write_allowed=false`
+- `dataset_write_allowed=false`
+- `production_write_allowed=false`
+
+### Step 5: Fixture Dataset Preview
+
+Call:
+
+```http
+POST /api/automation/social-dataset-preview
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "max_rows": 100,
+  "author_policy": "hashed"
+}
+```
+
+Expected:
+
+- `schema_version=social_dataset_preview.v1`
+- `dataset_type=social_voc_fixture_preview`
+- `dataset_schema_version=social_voc_dataset.v1`
+- rows use `social_voc_item.v1` as source schema
+- every row carries `raw_record_id`, `evidence_ref`, and `source_item_id`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `dataset_write_allowed=false`
+- `dataset_created=false`
+- `dataset_version_created=false`
+- `export_created=false`
+- `production_write_allowed=false`
+
+### Step 6: TaskRun Approval Template
+
+Call template generator:
+
+```http
+POST /api/automation/social-task-run-approval-template
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoints": ["comments.new"],
+  "intended_use": "small scoped Reddit comments VOC fixture run",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "dataset_name": "Reddit comments VOC fixture",
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "allow_ai_training": false
+}
+```
+
+Expected:
+
+- `schema_version=social_task_run_approval_template.v1`
+- `approval_packet.schema_version=social_task_run_l4_approval_packet.v1`
+- approval packet records source, task, task run, dataset, export, budget, retention, and cleanup scope
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+
+This step is still not execution authorization. It prepares a reviewable packet for a later owner-approved L4 request.
+
+### Step 7: Fixture Execution Dry Run
+
+Call dry-run bundle:
+
+```http
+POST /api/automation/social-execution-dry-run
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoint": "comments.new",
+  "fixture_limit": 2,
+  "dataset_name": "Reddit comments VOC fixture",
+  "source_name": "Reddit comments fixture source",
+  "task_name": "Reddit comments fixture task",
+  "intended_use": "small scoped Reddit comments fixture dry-run",
+  "credential_reference": "secret:reddit-oauth-readonly",
+  "max_requests": 5,
+  "max_items": 20,
+  "max_rows": 20,
+  "allow_ai_training": false
+}
+```
+
+Expected:
+
+- `schema_version=social_execution_dry_run.v1`
+- stage order is `readiness -> raw_preview -> normalization_preview -> dataset_preview -> source_template -> task_run_approval_template`
+- each stage keeps `provider_call=false` and `production_write=false`
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `source_create_allowed=false`
+- `task_create_allowed=false`
+- `task_run_allowed=false`
+- `dataset_write_allowed=false`
+- `export_allowed=false`
+- `production_write_allowed=false`
+
+This step is the last fixture-only bundle before a human reviews whether a separate L4 live request is justified.
+
+### Step 8: L4 Live Gate Packet
+
+Call template generator:
+
+```http
+POST /api/automation/social-provider-live-approval-template
+```
+
+Required fields before any live adapter work:
+
+- `authorized=true`
+- `approval_id`
+- platform and endpoint scope
+- max requests
+- max items
+- max cost USD
+- retention hours
+- delete/retention policy
+- `allow_ai_training=false`
+- owner-approved credential location
+
+This packet is not created in the current docs/fixture pass.
+
+### Step 9: Optional Dependency Gate
+
+Call:
+
+```http
+POST /api/automation/social-provider-dependency-gate
+```
+
+Expected:
+
+- returns selected SDK package and optional extra
+- returns install command for local review only
+- `dependency_install_executed=false`
+- `credential_read_attempted=false`
+- `provider_call_attempted=false`
+- `live_adapter_enabled=false`
+- `production_write_allowed=false`
+
+### Step 10: Fixture Adapter Plan
+
+Call:
+
+```http
+POST /api/automation/social-provider-adapter-plan
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "youtube",
+  "endpoints": ["videos.list"],
+  "mode": "fixture_replay",
+  "authorized": false,
+  "fixture_limit": 2
+}
+```
+
+Expected:
+
+- selected SDK metadata is returned from catalog
+- YouTube maps to `data_intelligence_hub.social_api.youtube.google_api_client`
+- Reddit maps to `data_intelligence_hub.social_api.reddit.asyncpraw`
+- dependency presence is checked by import spec only
+- fixture operations are generated by local adapter modules, not live SDK clients
+- `provider_call_allowed=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `live_client_created=false`
+- `production_write_allowed=false`
+- `planned_operations[*].request_mode=fixture_replay`
+
+`mode=live_dry_run` or credential/approval fields remain blocked until a separate L4 live adapter authorization packet is approved.
+
+### Step 11: Source Template Preview
+
+Call:
+
+```http
+POST /api/automation/social-provider-source-template
+```
+
+Minimum request:
+
+```json
+{
+  "platform": "reddit",
+  "endpoints": ["search"],
+  "source_name": "Reddit search fixture source",
+  "authorized": false
+}
+```
+
+Expected:
+
+- returns a SourceCreate-shaped payload using `type=manual_json`
+- `template_strategy=manual_json_authorized_import`
+- `source_create_allowed=false`
+- `source_created=false`
+- `task_created=false`
+- `provider_call_attempted=false`
+- `credential_read_attempted=false`
+- `production_write_allowed=false`
+
+This step is not a source creation gate. It produces a reviewable candidate payload for a later L4 `/api/sources` authorization.
+
+## 3. Platform-Specific Phase 2 Plan
+
+### YouTube
+
+First endpoints:
+
+- `videos.list`
+- `channels.list`
+- `commentThreads.list`
+- `search.list`
+
+Implementation order after L4 gate:
+
+1. Install optional dependency `google-api-python-client`.
+2. Build thin adapter around official client construction.
+3. Add `CredentialResolver` support for `YOUTUBE_API_KEY` or OAuth secret manager reference.
+4. Add quota unit accounting in `BudgetLedger`.
+5. Add fixture replay tests before first live call.
+
+### Reddit
+
+First endpoints:
+
+- `hot.list`
+- `new.list`
+- `search`
+- `comments.new`
+- `r/{subreddit}/about`
+
+Implementation order after L4 gate:
+
+1. Install optional dependency `asyncpraw`.
+2. Build thin adapter around OAuth credentials and user agent.
+3. Enforce `no_ai_training` and retention policy before returning raw records.
+4. Record rate limit headers and local budget status.
+5. Add fixture replay tests before first live call.
+
+## 4. Acceptance Criteria
+
+Fixture stage is accepted only when:
+
+- catalog returns YouTube and Reddit SDK metadata
+- readiness/gate tests pass without provider calls
+- raw preview produces deterministic fixture records
+- approval template and dependency gate return no-side-effect plans
+- execution dry-run returns the ordered no-write fixture bundle
+- adapter plan returns deterministic fixture operations without reading credentials or creating SDK clients
+- source template returns a deterministic `manual_json` candidate without creating Source or Task rows
+- `git diff --check` passes
+- live adapter dependency installation execution remains unstarted unless separately authorized
+
+Live stage is accepted only after a separate authorization turn with a concrete L4 approval packet.

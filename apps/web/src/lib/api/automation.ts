@@ -45,6 +45,14 @@ import type {
   AutomationBrowserLocalRunnerInput,
   AutomationBrowserLocalRunnerResult,
   AutomationBrowserLocalRunnerResultList,
+  AutomationBrowserProductionMetadataRunGate,
+  AutomationBrowserProductionMetadataRunGateInput,
+  AutomationBrowserPromotionExecution,
+  AutomationBrowserPromotionExecutionInput,
+  AutomationBrowserPromotionExecutionDryRun,
+  AutomationBrowserPromotionExecutionDryRunInput,
+  AutomationBrowserPromotionPreview,
+  AutomationBrowserPromotionPreviewInput,
   AutomationBrowserDiagnosticRun,
   AutomationBrowserDiagnosticRunList,
   AutomationBrowserExecutableSpecCheck,
@@ -54,6 +62,7 @@ import type {
   AutomationCleaningStep,
   AutomationCapabilityProbe,
   AutomationCapabilityProbeList,
+  AutomationEvidenceAssetReference,
   AutomationFieldCandidate,
   AutomationGitHubToolReport,
   AutomationGitHubToolReportAsset,
@@ -103,6 +112,7 @@ import type {
   AutomationProductScheduleApproveInput,
   AutomationExtractionPlan,
   AutomationPlatformPackage,
+  AutomationPlatformPackageEvidenceGrade,
   AutomationPlatformPackageList,
   AutomationSiteAnalysis,
   AutomationSiteAnalysisHistoryItem,
@@ -115,6 +125,7 @@ import type { Report } from "@/types/report";
 import type { AlertEvent } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { Signal } from "@/types/signal";
+import type { CollectionTask, Source } from "@/types/source-task";
 
 type AutomationFieldCandidateResponse = {
   key: string;
@@ -153,6 +164,11 @@ type AutomationPlatformPackageResponse = {
   name: string;
   category: string;
   summary: string;
+  version: string;
+  owner: string;
+  lifecycle_status: "draft" | "active" | "beta" | "sop_only" | "import_only" | "deprecated";
+  evidence_grade: AutomationPlatformPackageEvidenceGrade;
+  authorization_required: boolean;
   supported_targets: string[];
   collector_types: string[];
   field_schema: Array<{
@@ -178,7 +194,8 @@ type AutomationPlatformPackageResponse = {
       | "normalize_url"
       | "uppercase"
       | "normalize_availability"
-      | "fill_default";
+      | "fill_default"
+      | "hash_content";
     value?: string | number | boolean | null;
     description: string;
   }>;
@@ -208,6 +225,23 @@ type AutomationPlatformPackageResponse = {
     description: string;
   };
   execution_boundary: "executable" | "sop_import_only" | "blocked";
+  acceptance_registry: Array<{
+    id: string;
+    label: string;
+    evidence_grade: AutomationPlatformPackageEvidenceGrade;
+    status:
+      | "todo"
+      | "local_done"
+      | "local_external_done"
+      | "done_scoped_l4"
+      | "retained_l4"
+      | "blocked"
+      | "manual_review";
+    evidence: string;
+    next_action: string | null;
+  }>;
+  cleanup_policy: string;
+  forbidden_actions: string[];
   run_started: boolean;
 };
 
@@ -264,6 +298,33 @@ type AutomationAgentReachChannelProbeResponse = {
   raw_summary: Record<string, unknown>;
 };
 
+type AutomationEvidenceAssetReferenceResponse = {
+  schema_version: "evidence_asset_reference.v1";
+  asset_id: string;
+  asset_type:
+    | "capability_probe"
+    | "browser_diagnostic_run"
+    | "browser_diagnostic_job"
+    | "browser_diagnostic_job_run";
+  reference_type: string;
+  reference_id: string | null;
+  evidence_level:
+    | "L0-unverified"
+    | "L1-repo-or-runtime"
+    | "L2-fixture-or-dry-run"
+    | "L3-production-read-only"
+    | "L4-authorized-live";
+  evidence_boundary: string;
+  source: string;
+  label: string;
+  summary: Record<string, unknown>;
+  redaction_summary: Record<string, unknown>;
+  forbidden_actions: string[];
+  promotion_required: boolean;
+  promotion_required_fields: string[];
+  created_at: string;
+};
+
 type AutomationCapabilityProbeResponse = {
   schema_version: "capability_probe.v1";
   platform_id: string;
@@ -288,6 +349,7 @@ type AutomationCapabilityProbeResponse = {
   next_actions: string[];
   run_started: boolean;
   collection_resources_written: boolean;
+  evidence_asset?: AutomationEvidenceAssetReferenceResponse | null;
 };
 
 type AutomationCapabilityProbeListResponse = {
@@ -297,6 +359,7 @@ type AutomationCapabilityProbeListResponse = {
   total: number;
   run_started: boolean;
   collection_resources_written: boolean;
+  evidence_assets?: AutomationEvidenceAssetReferenceResponse[];
 };
 
 type AutomationExtractionPlanResponse = {
@@ -402,12 +465,14 @@ type AutomationBrowserDiagnosticRunResponse = {
   blocked_reasons: string[];
   created_at: string;
   run_started: boolean;
+  evidence_asset?: AutomationEvidenceAssetReferenceResponse | null;
 };
 
 type AutomationBrowserDiagnosticRunListResponse = {
   items: AutomationBrowserDiagnosticRunResponse[];
   total: number;
   run_started: boolean;
+  evidence_assets?: AutomationEvidenceAssetReferenceResponse[];
 };
 
 type AutomationBrowserExecutableSpecCheckResponse = {
@@ -470,12 +535,14 @@ type AutomationBrowserDiagnosticJobResponse = {
   updated_at: string;
   cancelled_at: string | null;
   run_started: boolean;
+  evidence_asset?: AutomationEvidenceAssetReferenceResponse | null;
 };
 
 type AutomationBrowserDiagnosticJobListResponse = {
   items: AutomationBrowserDiagnosticJobResponse[];
   total: number;
   run_started: boolean;
+  evidence_assets?: AutomationEvidenceAssetReferenceResponse[];
 };
 
 type AutomationBrowserExecutorReadinessCheckResponse = {
@@ -498,6 +565,30 @@ type AutomationBrowserExecutorContractResponse = {
   audit_events: Array<Record<string, unknown>>;
   run_started: boolean;
   execution_started: boolean;
+};
+
+type AutomationBrowserProductionMetadataRunGateResponse = {
+  schema_version: "browser_production_metadata_run_gate.v1";
+  job: AutomationBrowserDiagnosticJobResponse;
+  target_environment: "production";
+  evidence_grade: "L2-fixture-or-dry-run";
+  gate: Record<string, unknown>;
+  execution_policy: Record<string, unknown>;
+  metadata_plan: Record<string, unknown>;
+  readiness_checks: AutomationBrowserExecutorReadinessCheckResponse[];
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  production_read_only_observed: boolean;
+  run_started: boolean;
+  execution_started: boolean;
+  browser_started: boolean;
+  files_written: boolean;
+  collection_resources_written: boolean;
+  provider_called: boolean;
+  source_created: boolean;
+  task_created: boolean;
+  task_run_started: boolean;
+  dataset_created: boolean;
 };
 
 type AutomationBrowserLocalRunnerResultResponse = {
@@ -526,6 +617,7 @@ type AutomationBrowserLocalRunnerResultResponse = {
   browser_started: boolean;
   files_written: boolean;
   collection_resources_written: boolean;
+  evidence_asset?: AutomationEvidenceAssetReferenceResponse | null;
 };
 
 type AutomationBrowserLocalRunnerResultListResponse = {
@@ -533,6 +625,139 @@ type AutomationBrowserLocalRunnerResultListResponse = {
   total: number;
   browser_started: boolean;
   files_written: boolean;
+  collection_resources_written: boolean;
+  evidence_assets?: AutomationEvidenceAssetReferenceResponse[];
+};
+
+type AutomationBrowserPromotionTaskDraftResponse = {
+  collector_type: string;
+  name: string;
+  status: "disabled" | "blocked" | "enabled";
+  schedule_cron: string | null;
+  schedule_policy: "manual_refresh_only";
+  config: Record<string, unknown>;
+};
+
+type AutomationPromotionSourceResponse = {
+  id: string;
+  project_id: string;
+  name: string;
+  type: Source["type"];
+  url: string | null;
+  config: Record<string, unknown>;
+  schedule_cron: string | null;
+  enabled: boolean;
+};
+
+type AutomationPromotionTaskResponse = {
+  id: string;
+  project_id: string;
+  source_id: string;
+  collector_type: CollectionTask["collectorType"];
+  name: string;
+  schedule_cron: string | null;
+  status: CollectionTask["status"];
+  project_name?: string | null;
+  project_domain?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
+  schedule_policy?: CollectionTask["schedulePolicy"];
+  freshness_target_hours?: number;
+  freshness_status?: CollectionTask["freshnessStatus"];
+  stale_hours?: number | null;
+  next_run_at?: string | null;
+  retry_after_at?: string | null;
+  retry_delay_minutes?: number;
+  max_retry_attempts?: number;
+  retry_attempts_used?: number;
+  retry_budget_exhausted?: boolean;
+  success_count: number;
+  failure_count: number;
+  last_run_at: string | null;
+  latest_run_status?: string | null;
+  latest_run_error_message?: string | null;
+  latest_run_records_count?: number | null;
+  latest_run_entities_count?: number | null;
+  latest_run_started_at?: string | null;
+  latest_run_finished_at?: string | null;
+  latest_run_created_at?: string | null;
+};
+
+type AutomationBrowserPromotionPreviewResponse = {
+  schema_version: "browser_promotion_preview.v1";
+  diagnostic_job_run_id: string;
+  diagnostic_job_id: string;
+  project_id: string;
+  evidence_asset: AutomationEvidenceAssetReferenceResponse;
+  source_draft: AutomationSourceDraftResponse;
+  task_draft: AutomationBrowserPromotionTaskDraftResponse | null;
+  promotion_gate: Record<string, unknown>;
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  can_promote: boolean;
+  run_started: boolean;
+  source_created: boolean;
+  task_created: boolean;
+  task_run_started: boolean;
+  collection_resources_written: boolean;
+};
+
+type AutomationBrowserPromotionExecutionCheckResponse = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+type AutomationBrowserPromotionExecutionDryRunResponse = {
+  schema_version: "browser_promotion_execution_dry_run.v1";
+  diagnostic_job_run_id: string;
+  diagnostic_job_id: string;
+  project_id: string;
+  evidence_asset: AutomationEvidenceAssetReferenceResponse;
+  source_draft: AutomationSourceDraftResponse;
+  task_draft: AutomationBrowserPromotionTaskDraftResponse | null;
+  validated_source_config: Record<string, unknown>;
+  execution_plan: Record<string, unknown>;
+  promotion_gate: Record<string, unknown>;
+  validation_checks: AutomationBrowserPromotionExecutionCheckResponse[];
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  dry_run: boolean;
+  write_allowed: boolean;
+  can_execute: boolean;
+  source_created: boolean;
+  task_created: boolean;
+  task_run_started: boolean;
+  collection_resources_written: boolean;
+};
+
+type AutomationBrowserPromotionExecutionResponse = {
+  schema_version: "browser_promotion_execution.v1";
+  diagnostic_job_run_id: string;
+  diagnostic_job_id: string;
+  project_id: string;
+  evidence_asset: AutomationEvidenceAssetReferenceResponse;
+  source_draft: AutomationSourceDraftResponse;
+  task_draft: AutomationBrowserPromotionTaskDraftResponse;
+  validated_source_config: Record<string, unknown>;
+  source: AutomationPromotionSourceResponse | null;
+  task: AutomationPromotionTaskResponse | null;
+  execution_plan: Record<string, unknown>;
+  promotion_gate: Record<string, unknown>;
+  validation_checks: AutomationBrowserPromotionExecutionCheckResponse[];
+  blocked_reasons: string[];
+  audit_events: Array<Record<string, unknown>>;
+  dry_run: boolean;
+  write_allowed: boolean;
+  can_execute: boolean;
+  idempotency_replayed: boolean;
+  idempotency_scope: string;
+  idempotency_key_hash: string;
+  source_created: boolean;
+  task_created: boolean;
+  task_run_started: boolean;
   collection_resources_written: boolean;
 };
 
@@ -842,6 +1067,9 @@ type AutomationProductDatasetExportJobResponse = {
   download_url: string | null;
   audit_events: Array<Record<string, unknown>>;
   blocked_reasons: string[];
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type AutomationProductDatasetExportListResponse = {
@@ -1023,11 +1251,19 @@ type ReportResponse = {
   period_start: string;
   period_end: string;
   created_at: string;
+  delivered_channels?: Array<"in_app" | "email">;
+  skipped_channels?: Record<string, string>;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type AutomationGitHubToolReportAssetResponse = AutomationGitHubToolReportResponse & {
   report: ReportResponse;
   notification_created: boolean;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type AutomationPublicContentReportResponse = {
@@ -1070,6 +1306,9 @@ type AutomationPublicContentReportResponse = {
 type AutomationPublicContentReportAssetResponse = AutomationPublicContentReportResponse & {
   report: ReportResponse;
   notification_created: boolean;
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type AutomationProductDatasetListResponse = {
@@ -1201,6 +1440,9 @@ type AutomationProductDriftAlertNotificationSendResponse = {
   notifications: NotificationResponse[];
   summary: AutomationProductDriftAlertSummaryResponse;
   blocked_reasons: string[];
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 type AutomationProductDriftAlertEmailDeliveryResponse = {
@@ -1221,6 +1463,9 @@ type AutomationProductDriftAlertEmailSendResponse = {
   email_deliveries: AutomationProductDriftAlertEmailDeliveryResponse[];
   summary: AutomationProductDriftAlertSummaryResponse;
   blocked_reasons: string[];
+  idempotency_replayed?: boolean;
+  idempotency_scope?: string | null;
+  idempotency_key_hash?: string | null;
 };
 
 export async function listAutomationPlatformPackages(): Promise<AutomationPlatformPackageList> {
@@ -1271,6 +1516,7 @@ export async function listAutomationCapabilityProbes(input: {
     total: response.total,
     runStarted: response.run_started,
     collectionResourcesWritten: response.collection_resources_written,
+    evidenceAssets: (response.evidence_assets ?? []).map(mapAutomationEvidenceAssetReference),
   };
 }
 
@@ -1500,6 +1746,7 @@ export async function listAutomationBrowserDiagnostics(input: {
       ],
       total: 1,
       runStarted: false,
+      evidenceAssets: [],
     };
   }
   const response = await apiFetch<AutomationBrowserDiagnosticRunListResponse>(
@@ -1509,6 +1756,7 @@ export async function listAutomationBrowserDiagnostics(input: {
     items: response.items.map(mapAutomationBrowserDiagnosticRun),
     total: response.total,
     runStarted: response.run_started,
+    evidenceAssets: (response.evidence_assets ?? []).map(mapAutomationEvidenceAssetReference),
   };
 }
 
@@ -1721,6 +1969,7 @@ export async function listAutomationBrowserDiagnosticJobs(input: {
       ],
       total: 1,
       runStarted: false,
+      evidenceAssets: [],
     };
   }
   const response = await apiFetch<AutomationBrowserDiagnosticJobListResponse>(
@@ -1730,6 +1979,7 @@ export async function listAutomationBrowserDiagnosticJobs(input: {
     items: response.items.map(mapAutomationBrowserDiagnosticJob),
     total: response.total,
     runStarted: response.run_started,
+    evidenceAssets: (response.evidence_assets ?? []).map(mapAutomationEvidenceAssetReference),
   };
 }
 
@@ -1838,6 +2088,128 @@ export async function buildAutomationBrowserExecutorContract(
     },
   );
   return mapAutomationBrowserExecutorContract(response);
+}
+
+export async function buildAutomationBrowserProductionMetadataRunGate(
+  jobId: string,
+  input: AutomationBrowserProductionMetadataRunGateInput,
+): Promise<AutomationBrowserProductionMetadataRunGate> {
+  if (mockApiEnabled) {
+    const job = await getAutomationBrowserDiagnosticJob(jobId);
+    return {
+      schemaVersion: "browser_production_metadata_run_gate.v1",
+      job,
+      targetEnvironment: "production",
+      evidenceGrade: "L2-fixture-or-dry-run",
+      gate: {
+        schema_version: "browser_production_metadata_run_gate.v1",
+        status: "ready_for_manual_read_only_run",
+        evidence_grade: "L2-fixture-or-dry-run",
+        can_start_manual_browser: true,
+        automatic_api_worker_start: false,
+        production_read_only_observed: false,
+        metadata_only: true,
+        write_allowed: false,
+        files_written: false,
+        collection_resources_written: false,
+        provider_called: false,
+        blocked_checks: 0,
+        review_checks: 0,
+        reasons: [],
+        review_reasons: [],
+      },
+      executionPolicy: {
+        schema_version: "browser_production_metadata_execution_policy.v1",
+        target_url: job.finalUrl,
+        target_environment: "production",
+        manual_operator_required: true,
+        automatic_api_worker_start: false,
+        read_only: true,
+        metadata_only: true,
+        capture_headers: false,
+        capture_body: false,
+        capture_cookies: false,
+        run_started: false,
+        browser_started: false,
+        write_allowed: false,
+      },
+      metadataPlan: {
+        schema_version: "browser_production_metadata_plan.v1",
+        job_id: job.id,
+        target_url: job.finalUrl,
+        max_metadata_events: input.maxMetadataEvents ?? 100,
+        network_observation: {
+          metadata_only: true,
+          capture_headers: false,
+          capture_body: false,
+          capture_cookies: false,
+          redacted: true,
+        },
+        artifact_capture: {
+          screenshot: false,
+          trace: false,
+          har: false,
+          filesystem_write: false,
+          object_storage_write: false,
+        },
+        collection_side_effects: {
+          source_created: false,
+          task_created: false,
+          task_run_started: false,
+          dataset_created: false,
+        },
+      },
+      readinessChecks: [
+        {
+          key: "production-metadata-only",
+          label: "生产元数据范围",
+          status: "passed",
+          message: "只生成生产只读 metadata 计划。",
+          evidence: { metadata_only: true, write_allowed: false },
+        },
+      ],
+      blockedReasons: [],
+      auditEvents: [
+        {
+          event: "browser_production_metadata_run_gate_built",
+          run_started: false,
+          browser_started: false,
+          files_written: false,
+          collection_resources_written: false,
+          provider_called: false,
+        },
+      ],
+      productionReadOnlyObserved: false,
+      runStarted: false,
+      executionStarted: false,
+      browserStarted: false,
+      filesWritten: false,
+      collectionResourcesWritten: false,
+      providerCalled: false,
+      sourceCreated: false,
+      taskCreated: false,
+      taskRunStarted: false,
+      datasetCreated: false,
+    };
+  }
+  const response = await apiFetch<AutomationBrowserProductionMetadataRunGateResponse>(
+    `/api/automation/browser-diagnostic-jobs/${jobId}/production-metadata-run-gate`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        confirm_production_readonly: input.confirmProductionReadonly,
+        confirm_metadata_only: input.confirmMetadataOnly,
+        confirm_no_file_write: input.confirmNoFileWrite,
+        confirm_no_collection_write: input.confirmNoCollectionWrite,
+        target_environment: input.targetEnvironment ?? "production",
+        max_metadata_events: input.maxMetadataEvents ?? 100,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserProductionMetadataRunGate(response);
 }
 
 export async function runAutomationBrowserDiagnosticJobLocal(
@@ -2021,6 +2393,7 @@ export async function runAutomationBrowserDiagnosticJobLocal(
       browserStarted: isHarnessProbe,
       filesWritten: false,
       collectionResourcesWritten: false,
+      evidenceAsset: undefined,
     };
   }
   const response = await apiFetch<AutomationBrowserLocalRunnerResultResponse>(
@@ -2072,6 +2445,7 @@ export async function listAutomationBrowserDiagnosticJobRuns(input: {
       browserStarted: false,
       filesWritten: false,
       collectionResourcesWritten: false,
+      evidenceAssets: [],
     };
   }
   const response = await apiFetch<AutomationBrowserLocalRunnerResultListResponse>(
@@ -2083,7 +2457,384 @@ export async function listAutomationBrowserDiagnosticJobRuns(input: {
     browserStarted: response.browser_started,
     filesWritten: response.files_written,
     collectionResourcesWritten: response.collection_resources_written,
+    evidenceAssets: (response.evidence_assets ?? []).map(mapAutomationEvidenceAssetReference),
   };
+}
+
+export async function previewAutomationBrowserPromotion(
+  diagnosticJobRunId: string,
+  input: AutomationBrowserPromotionPreviewInput,
+): Promise<AutomationBrowserPromotionPreview> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const response: AutomationBrowserPromotionPreviewResponse = {
+      schema_version: "browser_promotion_preview.v1",
+      diagnostic_job_run_id: diagnosticJobRunId,
+      diagnostic_job_id: "mock-browser-diagnostic-job",
+      project_id: "project_marketplace_price",
+      evidence_asset: {
+        schema_version: "evidence_asset_reference.v1",
+        asset_id: `browser_diagnostic_job_run:${diagnosticJobRunId}`,
+        asset_type: "browser_diagnostic_job_run",
+        reference_type: "browser_diagnostic_job_run_id",
+        reference_id: diagnosticJobRunId,
+        evidence_level: "L2-fixture-or-dry-run",
+        evidence_boundary: "local_snapshot_replay_no_files",
+        source: "browser_harness_read_only_local",
+        label: "Browser diagnostic local-run evidence",
+        summary: { browser_started: false, collection_resources_written: false },
+        redaction_summary: { headers_captured: false, bodies_captured: false },
+        forbidden_actions: ["direct_source_task_creation"],
+        promotion_required: true,
+        promotion_required_fields: ["reviewer", "target_source_type"],
+        created_at: now,
+      },
+      source_draft: {
+        type: input.targetSourceType ?? "generic_web",
+        config: {
+          url: "https://example.com/products/dynamic-bag",
+          promotion_boundary: "preview_only_no_source_task_write",
+          collection_resources_written: false,
+        },
+        suggested_name: "Promotion Candidate: example.com",
+        schedule_cron: null,
+      },
+      task_draft: input.enableTaskPreview === false
+        ? null
+        : {
+            collector_type: input.targetSourceType ?? "generic_web",
+            name: "Promotion Candidate: example.com",
+            status: "blocked",
+            schedule_cron: null,
+            schedule_policy: "manual_refresh_only",
+            config: {
+              task_boundary: "preview_only_no_task_created",
+            },
+          },
+      promotion_gate: {
+        schema_version: "browser_promotion_preview_gate.v1",
+        status: "blocked",
+        can_promote: false,
+        can_create_collection_resources: false,
+        reasons: [
+          "manual_review_required",
+          "browser_automation_runtime_not_registered",
+          "preview_only_no_source_task_write",
+        ],
+      },
+      blocked_reasons: ["preview_only_no_source_task_write"],
+      audit_events: [
+        {
+          event: "browser_promotion_preview_built",
+          source_created: false,
+          task_created: false,
+          task_run_started: false,
+          collection_resources_written: false,
+        },
+      ],
+      can_promote: false,
+      run_started: false,
+      source_created: false,
+      task_created: false,
+      task_run_started: false,
+      collection_resources_written: false,
+    };
+    return mapAutomationBrowserPromotionPreview(response);
+  }
+  const response = await apiFetch<AutomationBrowserPromotionPreviewResponse>(
+    `/api/automation/browser-diagnostic-job-runs/${diagnosticJobRunId}/promotion-preview`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        target_source_type: input.targetSourceType ?? "generic_web",
+        enable_task_preview: input.enableTaskPreview ?? true,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserPromotionPreview(response);
+}
+
+export async function dryRunAutomationBrowserPromotionExecution(
+  diagnosticJobRunId: string,
+  input: AutomationBrowserPromotionExecutionDryRunInput,
+): Promise<AutomationBrowserPromotionExecutionDryRun> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const response: AutomationBrowserPromotionExecutionDryRunResponse = {
+      schema_version: "browser_promotion_execution_dry_run.v1",
+      diagnostic_job_run_id: diagnosticJobRunId,
+      diagnostic_job_id: "mock-browser-diagnostic-job",
+      project_id: "project_marketplace_price",
+      evidence_asset: {
+        schema_version: "evidence_asset_reference.v1",
+        asset_id: `browser_diagnostic_job_run:${diagnosticJobRunId}`,
+        asset_type: "browser_diagnostic_job_run",
+        reference_type: "browser_diagnostic_job_run_id",
+        reference_id: diagnosticJobRunId,
+        evidence_level: "L2-fixture-or-dry-run",
+        evidence_boundary: "local_snapshot_replay_no_files",
+        source: "browser_harness_read_only_local",
+        label: "Browser diagnostic local-run evidence",
+        summary: { browser_started: false, collection_resources_written: false },
+        redaction_summary: { headers_captured: false, bodies_captured: false },
+        forbidden_actions: ["direct_source_task_creation"],
+        promotion_required: true,
+        promotion_required_fields: ["reviewer", "write_authorization"],
+        created_at: now,
+      },
+      source_draft: {
+        type: input.targetSourceType ?? "generic_web",
+        config: {
+          url: "https://example.com/products/dynamic-bag",
+          promotion_boundary: "execution_dry_run_no_write",
+          collection_resources_written: false,
+        },
+        suggested_name: input.sourceName ?? "Promotion Candidate: example.com",
+        schedule_cron: input.scheduleCron ?? null,
+      },
+      task_draft: input.enableTaskPreview === false
+        ? null
+        : {
+            collector_type: input.targetSourceType ?? "generic_web",
+            name: input.sourceName ?? "Promotion Candidate: example.com",
+            status: "blocked",
+            schedule_cron: input.scheduleCron ?? null,
+            schedule_policy: "manual_refresh_only",
+            config: { task_boundary: "execution_dry_run_no_write" },
+          },
+      validated_source_config: {
+        url: "https://example.com/products/dynamic-bag",
+        extract_mode: "main_content",
+      },
+      execution_plan: {
+        schema_version: "browser_promotion_execution_plan.v1",
+        dry_run: true,
+        write_allowed: false,
+      },
+      promotion_gate: {
+        schema_version: "browser_promotion_execution_gate.v1",
+        status: "blocked",
+        dry_run: true,
+        write_allowed: false,
+        can_execute: false,
+        reasons: [
+          "execution_dry_run_no_write",
+          "separate_write_authorization_required",
+        ],
+      },
+      validation_checks: [
+        {
+          key: "no-write-confirmed",
+          label: "No-write boundary",
+          status: "passed",
+          message: "browser_promotion_no_write_confirmed",
+          evidence: { write_allowed: false },
+        },
+        {
+          key: "runtime-strategy",
+          label: "Runtime strategy",
+          status: "review",
+          message: "browser_runtime_strategy_manual_review_required",
+          evidence: { browser_automation_runtime_registered: false },
+        },
+      ],
+      blocked_reasons: ["execution_dry_run_no_write"],
+      audit_events: [
+        {
+          event: "browser_promotion_execution_dry_run_built",
+          dry_run: true,
+          write_allowed: false,
+          source_created: false,
+          task_created: false,
+          task_run_started: false,
+          collection_resources_written: false,
+        },
+      ],
+      dry_run: true,
+      write_allowed: false,
+      can_execute: false,
+      source_created: false,
+      task_created: false,
+      task_run_started: false,
+      collection_resources_written: false,
+    };
+    return mapAutomationBrowserPromotionExecutionDryRun(response);
+  }
+  const response = await apiFetch<AutomationBrowserPromotionExecutionDryRunResponse>(
+    `/api/automation/browser-diagnostic-job-runs/${diagnosticJobRunId}/promotion-execution-dry-run`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        confirm_no_write: input.confirmNoWrite,
+        target_source_type: input.targetSourceType ?? "generic_web",
+        source_name: input.sourceName,
+        schedule_cron: input.scheduleCron,
+        enable_task_preview: input.enableTaskPreview ?? true,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserPromotionExecutionDryRun(response);
+}
+
+export async function executeAutomationBrowserPromotion(
+  diagnosticJobRunId: string,
+  input: AutomationBrowserPromotionExecutionInput,
+): Promise<AutomationBrowserPromotionExecution> {
+  if (mockApiEnabled) {
+    const now = new Date().toISOString();
+    const response: AutomationBrowserPromotionExecutionResponse = {
+      schema_version: "browser_promotion_execution.v1",
+      diagnostic_job_run_id: diagnosticJobRunId,
+      diagnostic_job_id: "mock-browser-diagnostic-job",
+      project_id: "project_marketplace_price",
+      evidence_asset: {
+        schema_version: "evidence_asset_reference.v1",
+        asset_id: `browser_diagnostic_job_run:${diagnosticJobRunId}`,
+        asset_type: "browser_diagnostic_job_run",
+        reference_type: "browser_diagnostic_job_run_id",
+        reference_id: diagnosticJobRunId,
+        evidence_level: "L2-fixture-or-dry-run",
+        evidence_boundary: "local_snapshot_replay_no_files",
+        source: "browser_harness_read_only_local",
+        label: "Browser diagnostic local-run evidence",
+        summary: { browser_started: false, collection_resources_written: true },
+        redaction_summary: { headers_captured: false, bodies_captured: false },
+        forbidden_actions: ["direct_task_run_start"],
+        promotion_required: false,
+        promotion_required_fields: ["manual_task_run_authorization"],
+        created_at: now,
+      },
+      source_draft: {
+        type: input.targetSourceType ?? "generic_web",
+        config: { url: "https://example.com/products/dynamic-bag" },
+        suggested_name: input.sourceName ?? "Promotion Candidate: example.com",
+        schedule_cron: input.scheduleCron ?? null,
+      },
+      task_draft: {
+        collector_type: input.targetSourceType ?? "generic_web",
+        name: input.sourceName ?? "Promotion Candidate: example.com",
+        status: "enabled",
+        schedule_cron: input.scheduleCron ?? null,
+        schedule_policy: "manual_refresh_only",
+        config: { schedule_policy: "manual_refresh_only" },
+      },
+      validated_source_config: {
+        url: "https://example.com/products/dynamic-bag",
+        extract_mode: "main_content",
+      },
+      source: {
+        id: "mock-browser-promotion-source",
+        project_id: "project_marketplace_price",
+        name: input.sourceName ?? "Promotion Candidate: example.com",
+        type: input.targetSourceType ?? "generic_web",
+        url: "https://example.com/products/dynamic-bag",
+        config: {
+          url: "https://example.com/products/dynamic-bag",
+          extract_mode: "main_content",
+        },
+        schedule_cron: input.scheduleCron ?? null,
+        enabled: true,
+      },
+      task: {
+        id: "mock-browser-promotion-task",
+        project_id: "project_marketplace_price",
+        source_id: "mock-browser-promotion-source",
+        collector_type: input.targetSourceType ?? "generic_web",
+        name: input.sourceName ?? "Promotion Candidate: example.com",
+        schedule_cron: input.scheduleCron ?? null,
+        status: "enabled",
+        schedule_policy: "manual_refresh_only",
+        freshness_target_hours: 24,
+        freshness_status: "never_run",
+        stale_hours: null,
+        next_run_at: null,
+        retry_after_at: null,
+        retry_delay_minutes: 15,
+        max_retry_attempts: 3,
+        retry_attempts_used: 0,
+        retry_budget_exhausted: false,
+        success_count: 0,
+        failure_count: 0,
+        last_run_at: null,
+        latest_run_status: null,
+      },
+      execution_plan: {
+        schema_version: "browser_promotion_write_execution_plan.v1",
+        dry_run: false,
+        write_allowed: true,
+        source_create: { status: "created", write_performed: true },
+        task_enable: { status: "enabled", write_performed: true },
+        task_run: {
+          status: "separate_manual_run_required",
+          write_performed: false,
+        },
+      },
+      promotion_gate: {
+        schema_version: "browser_promotion_write_gate.v1",
+        status: "ready",
+        write_allowed: true,
+        can_execute: true,
+        can_start_task_run: false,
+        reasons: [],
+      },
+      validation_checks: [
+        {
+          key: "write-authorization",
+          label: "Write authorization",
+          status: "passed",
+          message: "browser_promotion_write_authorization_confirmed",
+          evidence: { write_allowed: true },
+        },
+      ],
+      blocked_reasons: [],
+      audit_events: [
+        {
+          event: "browser_promotion_execution_resources_created",
+          source_created: true,
+          task_created: true,
+          task_run_started: false,
+          collection_resources_written: true,
+        },
+      ],
+      dry_run: false,
+      write_allowed: true,
+      can_execute: true,
+      idempotency_replayed: false,
+      idempotency_scope: "browser_promotion_execution",
+      idempotency_key_hash: "mock-browser-promotion-idempotency-hash",
+      source_created: true,
+      task_created: true,
+      task_run_started: false,
+      collection_resources_written: true,
+    };
+    return mapAutomationBrowserPromotionExecution(response);
+  }
+  const response = await apiFetch<AutomationBrowserPromotionExecutionResponse>(
+    `/api/automation/browser-diagnostic-job-runs/${diagnosticJobRunId}/promotion-execution`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        authorized: input.authorized,
+        confirm_review: input.confirmReview,
+        confirm_write: input.confirmWrite,
+        confirm_create_collection_resources: input.confirmCreateCollectionResources,
+        confirm_no_task_run: input.confirmNoTaskRun,
+        target_source_type: input.targetSourceType ?? "generic_web",
+        source_name: input.sourceName,
+        schedule_cron: input.scheduleCron,
+        confirm_schedule: input.confirmSchedule ?? false,
+        idempotency_key: input.idempotencyKey,
+        note: input.note,
+      }),
+    },
+  );
+  return mapAutomationBrowserPromotionExecution(response);
 }
 
 export async function listAutomationSiteAnalyses(
@@ -2441,6 +3192,9 @@ export async function createAutomationProductDatasetExport(
     "/api/automation/product-dataset-exports",
     {
       method: "POST",
+      headers: input.idempotencyKey
+        ? { "Idempotency-Key": input.idempotencyKey }
+        : undefined,
       body: JSON.stringify({
         authorized: input.authorized,
         confirm_create: input.confirmCreate,
@@ -2648,10 +3402,20 @@ export async function createAutomationGitHubToolReportAsset(
   if (mockApiEnabled) {
     return getMockAutomationGitHubToolReportAsset(input);
   }
+  const idempotencyKey =
+    input.idempotencyKey ??
+    [
+      "github-tool-report-asset",
+      input.datasetId,
+      input.datasetVersionId,
+      input.minStars ?? 1000,
+      input.topLimit ?? 10,
+    ].join(":");
   const response = await apiFetch<AutomationGitHubToolReportAssetResponse>(
     "/api/automation/github-tool-report-assets",
     {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
         authorized: input.authorized,
         confirm_create: input.confirmCreate,
@@ -2692,10 +3456,16 @@ export async function createAutomationPublicContentReportAsset(
   if (mockApiEnabled) {
     return getMockAutomationPublicContentReportAsset(input);
   }
+  const idempotencyKey =
+    input.idempotencyKey ??
+    ["public-content-report-asset", input.datasetId, input.datasetVersionId, input.topLimit ?? 10].join(
+      ":",
+    );
   const response = await apiFetch<AutomationPublicContentReportAssetResponse>(
     "/api/automation/public-content-report-assets",
     {
       method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
         authorized: input.authorized,
         confirm_create: input.confirmCreate,
@@ -2909,10 +3679,22 @@ export async function sendAutomationProductDriftAlertNotifications(
   if (mockApiEnabled) {
     return getMockAutomationProductDriftAlertNotificationSend(input);
   }
+  const idempotencyKey =
+    input.idempotencyKey ??
+    [
+      "drift-alert-notification",
+      input.datasetId,
+      input.datasetVersionId,
+      input.driftEventId,
+      [...input.alertEventIds].sort().join(","),
+    ].join(":");
+  const headers: Record<string, string> = {};
+  headers["Idempotency-Key"] = idempotencyKey;
   const response = await apiFetch<AutomationProductDriftAlertNotificationSendResponse>(
     "/api/automation/product-drift-alert-notifications",
     {
       method: "POST",
+      headers,
       body: JSON.stringify({
         authorized: input.authorized,
         confirm_send: input.confirmSend,
@@ -2933,6 +3715,9 @@ export async function sendAutomationProductDriftAlertNotifications(
     notifications: response.notifications.map(mapAutomationNotification),
     summary: mapAutomationDriftAlertSummary(response.summary),
     blockedReasons: response.blocked_reasons,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -2942,10 +3727,23 @@ export async function sendAutomationProductDriftAlertEmails(
   if (mockApiEnabled) {
     return getMockAutomationProductDriftAlertEmailSend(input);
   }
+  const idempotencyKey =
+    input.idempotencyKey ??
+    [
+      "drift-alert-email",
+      input.datasetId,
+      input.datasetVersionId,
+      input.driftEventId,
+      [...input.alertEventIds].sort().join(","),
+      input.recipientEmail ?? "workspace-owner",
+    ].join(":");
+  const headers: Record<string, string> = {};
+  headers["Idempotency-Key"] = idempotencyKey;
   const response = await apiFetch<AutomationProductDriftAlertEmailSendResponse>(
     "/api/automation/product-drift-alert-emails",
     {
       method: "POST",
+      headers,
       body: JSON.stringify({
         authorized: input.authorized,
         confirm_send: input.confirmSend,
@@ -2973,6 +3771,9 @@ export async function sendAutomationProductDriftAlertEmails(
     })),
     summary: mapAutomationDriftAlertSummary(response.summary),
     blockedReasons: response.blocked_reasons,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -3080,6 +3881,11 @@ function mapAutomationPlatformPackage(
     name: response.name,
     category: response.category,
     summary: response.summary,
+    version: response.version,
+    owner: response.owner,
+    lifecycleStatus: response.lifecycle_status,
+    evidenceGrade: response.evidence_grade,
+    authorizationRequired: response.authorization_required,
     supportedTargets: response.supported_targets,
     collectorTypes: response.collector_types,
     fieldSchema: response.field_schema.map((field) => ({
@@ -3129,6 +3935,16 @@ function mapAutomationPlatformPackage(
       description: response.sample_fixture.description,
     },
     executionBoundary: response.execution_boundary,
+    acceptanceRegistry: response.acceptance_registry.map((gate) => ({
+      id: gate.id,
+      label: gate.label,
+      evidenceGrade: gate.evidence_grade,
+      status: gate.status,
+      evidence: gate.evidence,
+      nextAction: gate.next_action,
+    })),
+    cleanupPolicy: response.cleanup_policy,
+    forbiddenActions: response.forbidden_actions,
     runStarted: response.run_started,
   };
 }
@@ -3177,6 +3993,31 @@ function mapAutomationCapabilityProbe(
     nextActions: response.next_actions,
     runStarted: response.run_started,
     collectionResourcesWritten: response.collection_resources_written,
+    evidenceAsset: response.evidence_asset
+      ? mapAutomationEvidenceAssetReference(response.evidence_asset)
+      : undefined,
+  };
+}
+
+function mapAutomationEvidenceAssetReference(
+  response: AutomationEvidenceAssetReferenceResponse,
+): AutomationEvidenceAssetReference {
+  return {
+    schemaVersion: response.schema_version,
+    assetId: response.asset_id,
+    assetType: response.asset_type,
+    referenceType: response.reference_type,
+    referenceId: response.reference_id,
+    evidenceLevel: response.evidence_level,
+    evidenceBoundary: response.evidence_boundary,
+    source: response.source,
+    label: response.label,
+    summary: response.summary,
+    redactionSummary: response.redaction_summary,
+    forbiddenActions: response.forbidden_actions,
+    promotionRequired: response.promotion_required,
+    promotionRequiredFields: response.promotion_required_fields,
+    createdAt: response.created_at,
   };
 }
 
@@ -3276,6 +4117,9 @@ function mapAutomationBrowserDiagnosticRun(
     blockedReasons: response.blocked_reasons,
     createdAt: response.created_at,
     runStarted: response.run_started,
+    evidenceAsset: response.evidence_asset
+      ? mapAutomationEvidenceAssetReference(response.evidence_asset)
+      : undefined,
   };
 }
 
@@ -3325,6 +4169,9 @@ function mapAutomationBrowserDiagnosticJob(
     updatedAt: response.updated_at,
     cancelledAt: response.cancelled_at,
     runStarted: response.run_started,
+    evidenceAsset: response.evidence_asset
+      ? mapAutomationEvidenceAssetReference(response.evidence_asset)
+      : undefined,
   };
 }
 
@@ -3343,6 +4190,34 @@ function mapAutomationBrowserExecutorContract(
     auditEvents: response.audit_events,
     runStarted: response.run_started,
     executionStarted: response.execution_started,
+  };
+}
+
+function mapAutomationBrowserProductionMetadataRunGate(
+  response: AutomationBrowserProductionMetadataRunGateResponse,
+): AutomationBrowserProductionMetadataRunGate {
+  return {
+    schemaVersion: response.schema_version,
+    job: mapAutomationBrowserDiagnosticJob(response.job),
+    targetEnvironment: response.target_environment,
+    evidenceGrade: response.evidence_grade,
+    gate: response.gate,
+    executionPolicy: response.execution_policy,
+    metadataPlan: response.metadata_plan,
+    readinessChecks: response.readiness_checks.map(mapAutomationBrowserExecutorCheck),
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    productionReadOnlyObserved: response.production_read_only_observed,
+    runStarted: response.run_started,
+    executionStarted: response.execution_started,
+    browserStarted: response.browser_started,
+    filesWritten: response.files_written,
+    collectionResourcesWritten: response.collection_resources_written,
+    providerCalled: response.provider_called,
+    sourceCreated: response.source_created,
+    taskCreated: response.task_created,
+    taskRunStarted: response.task_run_started,
+    datasetCreated: response.dataset_created,
   };
 }
 
@@ -3387,6 +4262,192 @@ function mapAutomationBrowserLocalRunnerResult(
     browserStarted: response.browser_started,
     filesWritten: response.files_written,
     collectionResourcesWritten: response.collection_resources_written,
+    evidenceAsset: response.evidence_asset
+      ? mapAutomationEvidenceAssetReference(response.evidence_asset)
+      : undefined,
+  };
+}
+
+function mapAutomationBrowserPromotionPreview(
+  response: AutomationBrowserPromotionPreviewResponse,
+): AutomationBrowserPromotionPreview {
+  return {
+    schemaVersion: response.schema_version,
+    diagnosticJobRunId: response.diagnostic_job_run_id,
+    diagnosticJobId: response.diagnostic_job_id,
+    projectId: response.project_id,
+    evidenceAsset: mapAutomationEvidenceAssetReference(response.evidence_asset),
+    sourceDraft: {
+      type: response.source_draft.type,
+      config: response.source_draft.config,
+      suggestedName: response.source_draft.suggested_name,
+      scheduleCron: response.source_draft.schedule_cron,
+    },
+    taskDraft: response.task_draft
+      ? {
+          collectorType: response.task_draft.collector_type,
+          name: response.task_draft.name,
+          status: response.task_draft.status,
+          scheduleCron: response.task_draft.schedule_cron,
+          schedulePolicy: response.task_draft.schedule_policy,
+          config: response.task_draft.config,
+        }
+      : null,
+    promotionGate: response.promotion_gate,
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    canPromote: response.can_promote,
+    runStarted: response.run_started,
+    sourceCreated: response.source_created,
+    taskCreated: response.task_created,
+    taskRunStarted: response.task_run_started,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
+function mapAutomationBrowserPromotionExecutionDryRun(
+  response: AutomationBrowserPromotionExecutionDryRunResponse,
+): AutomationBrowserPromotionExecutionDryRun {
+  return {
+    schemaVersion: response.schema_version,
+    diagnosticJobRunId: response.diagnostic_job_run_id,
+    diagnosticJobId: response.diagnostic_job_id,
+    projectId: response.project_id,
+    evidenceAsset: mapAutomationEvidenceAssetReference(response.evidence_asset),
+    sourceDraft: {
+      type: response.source_draft.type,
+      config: response.source_draft.config,
+      suggestedName: response.source_draft.suggested_name,
+      scheduleCron: response.source_draft.schedule_cron,
+    },
+    taskDraft: response.task_draft
+      ? {
+          collectorType: response.task_draft.collector_type,
+          name: response.task_draft.name,
+          status: response.task_draft.status,
+          scheduleCron: response.task_draft.schedule_cron,
+          schedulePolicy: response.task_draft.schedule_policy,
+          config: response.task_draft.config,
+        }
+      : null,
+    validatedSourceConfig: response.validated_source_config,
+    executionPlan: response.execution_plan,
+    promotionGate: response.promotion_gate,
+    validationChecks: response.validation_checks.map((check) => ({
+      key: check.key,
+      label: check.label,
+      status: check.status,
+      message: check.message,
+      evidence: check.evidence,
+    })),
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    dryRun: response.dry_run,
+    writeAllowed: response.write_allowed,
+    canExecute: response.can_execute,
+    sourceCreated: response.source_created,
+    taskCreated: response.task_created,
+    taskRunStarted: response.task_run_started,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
+function mapAutomationBrowserPromotionExecution(
+  response: AutomationBrowserPromotionExecutionResponse,
+): AutomationBrowserPromotionExecution {
+  return {
+    schemaVersion: response.schema_version,
+    diagnosticJobRunId: response.diagnostic_job_run_id,
+    diagnosticJobId: response.diagnostic_job_id,
+    projectId: response.project_id,
+    evidenceAsset: mapAutomationEvidenceAssetReference(response.evidence_asset),
+    sourceDraft: {
+      type: response.source_draft.type,
+      config: response.source_draft.config,
+      suggestedName: response.source_draft.suggested_name,
+      scheduleCron: response.source_draft.schedule_cron,
+    },
+    taskDraft: {
+      collectorType: response.task_draft.collector_type,
+      name: response.task_draft.name,
+      status: response.task_draft.status,
+      scheduleCron: response.task_draft.schedule_cron,
+      schedulePolicy: response.task_draft.schedule_policy,
+      config: response.task_draft.config,
+    },
+    validatedSourceConfig: response.validated_source_config,
+    source: response.source ? mapAutomationPromotionSource(response.source) : null,
+    task: response.task ? mapAutomationPromotionTask(response.task) : null,
+    executionPlan: response.execution_plan,
+    promotionGate: response.promotion_gate,
+    validationChecks: response.validation_checks.map((check) => ({
+      key: check.key,
+      label: check.label,
+      status: check.status,
+      message: check.message,
+      evidence: check.evidence,
+    })),
+    blockedReasons: response.blocked_reasons,
+    auditEvents: response.audit_events,
+    dryRun: response.dry_run,
+    writeAllowed: response.write_allowed,
+    canExecute: response.can_execute,
+    idempotencyReplayed: response.idempotency_replayed,
+    idempotencyScope: response.idempotency_scope,
+    idempotencyKeyHash: response.idempotency_key_hash,
+    sourceCreated: response.source_created,
+    taskCreated: response.task_created,
+    taskRunStarted: response.task_run_started,
+    collectionResourcesWritten: response.collection_resources_written,
+  };
+}
+
+function mapAutomationPromotionSource(response: AutomationPromotionSourceResponse): Source {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    name: response.name,
+    type: response.type,
+    url: response.url,
+    config: response.config,
+    scheduleCron: response.schedule_cron,
+    enabled: response.enabled,
+  };
+}
+
+function mapAutomationPromotionTask(response: AutomationPromotionTaskResponse): CollectionTask {
+  return {
+    id: response.id,
+    projectId: response.project_id,
+    sourceId: response.source_id,
+    collectorType: response.collector_type,
+    name: response.name,
+    scheduleCron: response.schedule_cron,
+    status: response.status,
+    projectName: response.project_name ?? null,
+    projectDomain: response.project_domain ?? null,
+    sourceName: response.source_name ?? null,
+    sourceUrl: response.source_url ?? null,
+    schedulePolicy: response.schedule_policy ?? "manual_refresh_only",
+    freshnessTargetHours: response.freshness_target_hours ?? 24,
+    freshnessStatus: response.freshness_status ?? "unknown",
+    staleHours: response.stale_hours ?? null,
+    nextRunAt: response.next_run_at ?? null,
+    retryAfterAt: response.retry_after_at ?? null,
+    retryDelayMinutes: response.retry_delay_minutes ?? 15,
+    maxRetryAttempts: response.max_retry_attempts ?? 3,
+    retryAttemptsUsed: response.retry_attempts_used ?? 0,
+    retryBudgetExhausted: response.retry_budget_exhausted ?? false,
+    successCount: response.success_count,
+    failureCount: response.failure_count,
+    lastRunAt: response.last_run_at,
+    latestRunStatus: response.latest_run_status ?? null,
+    latestRunErrorMessage: response.latest_run_error_message ?? null,
+    latestRunRecordsCount: response.latest_run_records_count ?? null,
+    latestRunEntitiesCount: response.latest_run_entities_count ?? null,
+    latestRunStartedAt: response.latest_run_started_at ?? null,
+    latestRunFinishedAt: response.latest_run_finished_at ?? null,
+    latestRunCreatedAt: response.latest_run_created_at ?? null,
   };
 }
 
@@ -4136,6 +5197,9 @@ function mapAutomationGitHubToolReportAsset(
     ...mapAutomationGitHubToolReport(response),
     report: mapReport(response.report),
     notificationCreated: response.notification_created,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -4183,6 +5247,9 @@ function mapAutomationPublicContentReportAsset(
     ...mapAutomationPublicContentReport(response),
     report: mapReport(response.report),
     notificationCreated: response.notification_created,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -4198,6 +5265,11 @@ function mapReport(response: ReportResponse): Report {
     periodStart: response.period_start,
     periodEnd: response.period_end,
     createdAt: response.created_at,
+    deliveredChannels: response.delivered_channels ?? [],
+    skippedChannels: response.skipped_channels ?? {},
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 
@@ -4370,8 +5442,16 @@ function getMockAutomationGitHubToolReportAsset(
       periodStart: now,
       periodEnd: now,
       createdAt: now,
+      deliveredChannels: [],
+      skippedChannels: {},
+      idempotencyReplayed: false,
+      idempotencyScope: null,
+      idempotencyKeyHash: null,
     },
     notificationCreated: false,
+    idempotencyReplayed: false,
+    idempotencyScope: input.idempotencyKey ? "github_tool_report_asset" : null,
+    idempotencyKeyHash: input.idempotencyKey ? "mock-github-tool-report-asset-key-hash" : null,
   };
 }
 
@@ -4486,8 +5566,16 @@ function getMockAutomationPublicContentReportAsset(
       periodStart: now,
       periodEnd: now,
       createdAt: now,
+      deliveredChannels: [],
+      skippedChannels: {},
+      idempotencyReplayed: false,
+      idempotencyScope: null,
+      idempotencyKeyHash: null,
     },
     notificationCreated: false,
+    idempotencyReplayed: false,
+    idempotencyScope: input.idempotencyKey ? "public_content_report_asset" : null,
+    idempotencyKeyHash: input.idempotencyKey ? "mock-public-content-report-asset-key-hash" : null,
   };
 }
 
@@ -4543,6 +5631,9 @@ function mapAutomationProductDatasetExportJob(
     downloadUrl: response.download_url,
     auditEvents: response.audit_events,
     blockedReasons: response.blocked_reasons,
+    idempotencyReplayed: response.idempotency_replayed ?? false,
+    idempotencyScope: response.idempotency_scope ?? null,
+    idempotencyKeyHash: response.idempotency_key_hash ?? null,
   };
 }
 

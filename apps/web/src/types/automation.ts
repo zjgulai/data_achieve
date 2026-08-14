@@ -2,6 +2,7 @@ import type { AlertEvent } from "@/types/alert";
 import type { NotificationItem } from "@/types/notification";
 import type { Report } from "@/types/report";
 import type { Signal } from "@/types/signal";
+import type { CollectionTask, Source } from "@/types/source-task";
 
 export type AutomationFieldCandidate = {
   key: string;
@@ -83,11 +84,39 @@ export type AutomationPlatformPackageFixture = {
   description: string;
 };
 
+export type AutomationPlatformPackageEvidenceGrade =
+  | "L0-unverified"
+  | "L1-public-or-runtime"
+  | "L2-fixture-or-dry-run"
+  | "L3-production-read-only"
+  | "L4-authorized-live";
+
+export type AutomationPlatformPackageAcceptanceGate = {
+  id: string;
+  label: string;
+  evidenceGrade: AutomationPlatformPackageEvidenceGrade;
+  status:
+    | "todo"
+    | "local_done"
+    | "local_external_done"
+    | "done_scoped_l4"
+    | "retained_l4"
+    | "blocked"
+    | "manual_review";
+  evidence: string;
+  nextAction: string | null;
+};
+
 export type AutomationPlatformPackage = {
   id: string;
   name: string;
   category: string;
   summary: string;
+  version: string;
+  owner: string;
+  lifecycleStatus: "draft" | "active" | "beta" | "sop_only" | "import_only" | "deprecated";
+  evidenceGrade: AutomationPlatformPackageEvidenceGrade;
+  authorizationRequired: boolean;
   supportedTargets: string[];
   collectorTypes: string[];
   fieldSchema: AutomationPlatformPackageField[];
@@ -100,6 +129,9 @@ export type AutomationPlatformPackage = {
   sopLinks: AutomationPlatformPackageSopLink[];
   sampleFixture: AutomationPlatformPackageFixture;
   executionBoundary: "executable" | "sop_import_only" | "blocked";
+  acceptanceRegistry: AutomationPlatformPackageAcceptanceGate[];
+  cleanupPolicy: string;
+  forbiddenActions: string[];
   runStarted: boolean;
 };
 
@@ -156,6 +188,33 @@ export type AutomationAgentReachChannelProbe = {
   rawSummary: Record<string, unknown>;
 };
 
+export type AutomationEvidenceAssetReference = {
+  schemaVersion: "evidence_asset_reference.v1";
+  assetId: string;
+  assetType:
+    | "capability_probe"
+    | "browser_diagnostic_run"
+    | "browser_diagnostic_job"
+    | "browser_diagnostic_job_run";
+  referenceType: string;
+  referenceId: string | null;
+  evidenceLevel:
+    | "L0-unverified"
+    | "L1-repo-or-runtime"
+    | "L2-fixture-or-dry-run"
+    | "L3-production-read-only"
+    | "L4-authorized-live";
+  evidenceBoundary: string;
+  source: string;
+  label: string;
+  summary: Record<string, unknown>;
+  redactionSummary: Record<string, unknown>;
+  forbiddenActions: string[];
+  promotionRequired: boolean;
+  promotionRequiredFields: string[];
+  createdAt: string;
+};
+
 export type AutomationCapabilityProbe = {
   schemaVersion: "capability_probe.v1";
   platformId: string;
@@ -180,6 +239,7 @@ export type AutomationCapabilityProbe = {
   nextActions: string[];
   runStarted: boolean;
   collectionResourcesWritten: boolean;
+  evidenceAsset?: AutomationEvidenceAssetReference;
 };
 
 export type AutomationCapabilityProbeList = {
@@ -189,6 +249,7 @@ export type AutomationCapabilityProbeList = {
   total: number;
   runStarted: boolean;
   collectionResourcesWritten: boolean;
+  evidenceAssets: AutomationEvidenceAssetReference[];
 };
 
 export type AutomationExtractionPlan = {
@@ -339,12 +400,14 @@ export type AutomationBrowserDiagnosticRun = {
   blockedReasons: string[];
   createdAt: string;
   runStarted: boolean;
+  evidenceAsset?: AutomationEvidenceAssetReference;
 };
 
 export type AutomationBrowserDiagnosticRunList = {
   items: AutomationBrowserDiagnosticRun[];
   total: number;
   runStarted: boolean;
+  evidenceAssets: AutomationEvidenceAssetReference[];
 };
 
 export type AutomationBrowserAutomationPlan = {
@@ -436,12 +499,14 @@ export type AutomationBrowserDiagnosticJob = {
   updatedAt: string;
   cancelledAt: string | null;
   runStarted: boolean;
+  evidenceAsset?: AutomationEvidenceAssetReference;
 };
 
 export type AutomationBrowserDiagnosticJobList = {
   items: AutomationBrowserDiagnosticJob[];
   total: number;
   runStarted: boolean;
+  evidenceAssets: AutomationEvidenceAssetReference[];
 };
 
 export type AutomationBrowserExecutorContractInput = {
@@ -475,6 +540,42 @@ export type AutomationBrowserExecutorContract = {
   auditEvents: Array<Record<string, unknown>>;
   runStarted: boolean;
   executionStarted: boolean;
+};
+
+export type AutomationBrowserProductionMetadataRunGateInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  confirmProductionReadonly: boolean;
+  confirmMetadataOnly: boolean;
+  confirmNoFileWrite: boolean;
+  confirmNoCollectionWrite: boolean;
+  targetEnvironment?: "production";
+  maxMetadataEvents?: number;
+  note?: string | null;
+};
+
+export type AutomationBrowserProductionMetadataRunGate = {
+  schemaVersion: "browser_production_metadata_run_gate.v1";
+  job: AutomationBrowserDiagnosticJob;
+  targetEnvironment: "production";
+  evidenceGrade: "L2-fixture-or-dry-run";
+  gate: Record<string, unknown>;
+  executionPolicy: Record<string, unknown>;
+  metadataPlan: Record<string, unknown>;
+  readinessChecks: AutomationBrowserExecutorReadinessCheck[];
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  productionReadOnlyObserved: boolean;
+  runStarted: boolean;
+  executionStarted: boolean;
+  browserStarted: boolean;
+  filesWritten: boolean;
+  collectionResourcesWritten: boolean;
+  providerCalled: boolean;
+  sourceCreated: boolean;
+  taskCreated: boolean;
+  taskRunStarted: boolean;
+  datasetCreated: boolean;
 };
 
 export type AutomationBrowserLocalRunnerInput = {
@@ -518,6 +619,7 @@ export type AutomationBrowserLocalRunnerResult = {
   browserStarted: boolean;
   filesWritten: boolean;
   collectionResourcesWritten: boolean;
+  evidenceAsset?: AutomationEvidenceAssetReference;
 };
 
 export type AutomationBrowserLocalRunnerResultList = {
@@ -525,6 +627,127 @@ export type AutomationBrowserLocalRunnerResultList = {
   total: number;
   browserStarted: boolean;
   filesWritten: boolean;
+  collectionResourcesWritten: boolean;
+  evidenceAssets: AutomationEvidenceAssetReference[];
+};
+
+export type AutomationBrowserPromotionPreviewInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  targetSourceType?: "generic_web" | "ecommerce_product_page";
+  enableTaskPreview?: boolean;
+  note?: string | null;
+};
+
+export type AutomationBrowserPromotionTaskDraft = {
+  collectorType: string;
+  name: string;
+  status: "disabled" | "blocked" | "enabled";
+  scheduleCron: string | null;
+  schedulePolicy: "manual_refresh_only";
+  config: Record<string, unknown>;
+};
+
+export type AutomationBrowserPromotionPreview = {
+  schemaVersion: "browser_promotion_preview.v1";
+  diagnosticJobRunId: string;
+  diagnosticJobId: string;
+  projectId: string;
+  evidenceAsset: AutomationEvidenceAssetReference;
+  sourceDraft: AutomationSourceDraft;
+  taskDraft: AutomationBrowserPromotionTaskDraft | null;
+  promotionGate: Record<string, unknown>;
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  canPromote: boolean;
+  runStarted: boolean;
+  sourceCreated: boolean;
+  taskCreated: boolean;
+  taskRunStarted: boolean;
+  collectionResourcesWritten: boolean;
+};
+
+export type AutomationBrowserPromotionExecutionDryRunInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  confirmNoWrite: boolean;
+  targetSourceType?: "generic_web" | "ecommerce_product_page";
+  sourceName?: string | null;
+  scheduleCron?: string | null;
+  enableTaskPreview?: boolean;
+  note?: string | null;
+};
+
+export type AutomationBrowserPromotionExecutionCheck = {
+  key: string;
+  label: string;
+  status: "passed" | "review" | "blocked";
+  message: string;
+  evidence: Record<string, unknown>;
+};
+
+export type AutomationBrowserPromotionExecutionDryRun = {
+  schemaVersion: "browser_promotion_execution_dry_run.v1";
+  diagnosticJobRunId: string;
+  diagnosticJobId: string;
+  projectId: string;
+  evidenceAsset: AutomationEvidenceAssetReference;
+  sourceDraft: AutomationSourceDraft;
+  taskDraft: AutomationBrowserPromotionTaskDraft | null;
+  validatedSourceConfig: Record<string, unknown>;
+  executionPlan: Record<string, unknown>;
+  promotionGate: Record<string, unknown>;
+  validationChecks: AutomationBrowserPromotionExecutionCheck[];
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  dryRun: boolean;
+  writeAllowed: boolean;
+  canExecute: boolean;
+  sourceCreated: boolean;
+  taskCreated: boolean;
+  taskRunStarted: boolean;
+  collectionResourcesWritten: boolean;
+};
+
+export type AutomationBrowserPromotionExecutionInput = {
+  authorized: boolean;
+  confirmReview: boolean;
+  confirmWrite: boolean;
+  confirmCreateCollectionResources: boolean;
+  confirmNoTaskRun: boolean;
+  targetSourceType?: "generic_web" | "ecommerce_product_page";
+  sourceName?: string | null;
+  scheduleCron?: string | null;
+  confirmSchedule?: boolean;
+  idempotencyKey: string;
+  note?: string | null;
+};
+
+export type AutomationBrowserPromotionExecution = {
+  schemaVersion: "browser_promotion_execution.v1";
+  diagnosticJobRunId: string;
+  diagnosticJobId: string;
+  projectId: string;
+  evidenceAsset: AutomationEvidenceAssetReference;
+  sourceDraft: AutomationSourceDraft;
+  taskDraft: AutomationBrowserPromotionTaskDraft;
+  validatedSourceConfig: Record<string, unknown>;
+  source: Source | null;
+  task: CollectionTask | null;
+  executionPlan: Record<string, unknown>;
+  promotionGate: Record<string, unknown>;
+  validationChecks: AutomationBrowserPromotionExecutionCheck[];
+  blockedReasons: string[];
+  auditEvents: Array<Record<string, unknown>>;
+  dryRun: boolean;
+  writeAllowed: boolean;
+  canExecute: boolean;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string;
+  idempotencyKeyHash: string;
+  sourceCreated: boolean;
+  taskCreated: boolean;
+  taskRunStarted: boolean;
   collectionResourcesWritten: boolean;
 };
 
@@ -902,6 +1125,9 @@ export type AutomationProductDatasetExportJob = {
   downloadUrl: string | null;
   auditEvents: Array<Record<string, unknown>>;
   blockedReasons: string[];
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type AutomationProductDatasetExportCreateInput = {
@@ -910,6 +1136,7 @@ export type AutomationProductDatasetExportCreateInput = {
   datasetId: string;
   datasetVersionId: string;
   exportFormat: AutomationDatasetExportFormat;
+  idempotencyKey?: string;
 };
 
 export type AutomationProductDatasetExportList = {
@@ -1153,10 +1380,14 @@ export type AutomationGitHubToolReportInput = {
 export type AutomationGitHubToolReportAsset = AutomationGitHubToolReport & {
   report: Report;
   notificationCreated: boolean;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type AutomationGitHubToolReportAssetInput = AutomationGitHubToolReportInput & {
   confirmCreate: boolean;
+  idempotencyKey?: string;
 };
 
 export type AutomationPublicContentReportEntry = {
@@ -1204,10 +1435,14 @@ export type AutomationPublicContentReportInput = {
 export type AutomationPublicContentReportAsset = AutomationPublicContentReport & {
   report: Report;
   notificationCreated: boolean;
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type AutomationPublicContentReportAssetInput = AutomationPublicContentReportInput & {
   confirmCreate: boolean;
+  idempotencyKey?: string;
 };
 
 export type AutomationProductDatasetListItem = {
@@ -1334,6 +1569,9 @@ export type AutomationProductDriftAlertNotificationSend = {
   notifications: NotificationItem[];
   summary: AutomationProductDriftAlertSummary;
   blockedReasons: string[];
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type AutomationProductDriftAlertNotificationSendInput = {
@@ -1343,6 +1581,7 @@ export type AutomationProductDriftAlertNotificationSendInput = {
   datasetVersionId: string;
   driftEventId: string;
   alertEventIds: string[];
+  idempotencyKey?: string;
 };
 
 export type AutomationProductDriftAlertEmailDelivery = {
@@ -1363,6 +1602,9 @@ export type AutomationProductDriftAlertEmailSend = {
   emailDeliveries: AutomationProductDriftAlertEmailDelivery[];
   summary: AutomationProductDriftAlertSummary;
   blockedReasons: string[];
+  idempotencyReplayed: boolean;
+  idempotencyScope: string | null;
+  idempotencyKeyHash: string | null;
 };
 
 export type AutomationProductDriftAlertEmailSendInput = {
@@ -1373,4 +1615,5 @@ export type AutomationProductDriftAlertEmailSendInput = {
   driftEventId: string;
   alertEventIds: string[];
   recipientEmail?: string;
+  idempotencyKey?: string;
 };

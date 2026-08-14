@@ -353,11 +353,42 @@ class AutomationPlatformPackageFixtureResponse(BaseModel):
     description: str
 
 
+PlatformPackageEvidenceGrade = Literal[
+    "L0-unverified",
+    "L1-public-or-runtime",
+    "L2-fixture-or-dry-run",
+    "L3-production-read-only",
+    "L4-authorized-live",
+]
+
+
+class AutomationPlatformPackageAcceptanceGateResponse(BaseModel):
+    id: str
+    label: str
+    evidence_grade: PlatformPackageEvidenceGrade
+    status: Literal[
+        "todo",
+        "local_done",
+        "local_external_done",
+        "done_scoped_l4",
+        "retained_l4",
+        "blocked",
+        "manual_review",
+    ]
+    evidence: str
+    next_action: str | None = None
+
+
 class AutomationPlatformPackageResponse(BaseModel):
     id: str
     name: str
     category: str
     summary: str
+    version: str
+    owner: str
+    lifecycle_status: Literal["draft", "active", "beta", "sop_only", "import_only", "deprecated"]
+    evidence_grade: PlatformPackageEvidenceGrade
+    authorization_required: bool
     supported_targets: list[str]
     collector_types: list[str]
     field_schema: list[AutomationPlatformPackageFieldResponse]
@@ -376,6 +407,9 @@ class AutomationPlatformPackageResponse(BaseModel):
     sop_links: list[AutomationPlatformPackageSopLinkResponse]
     sample_fixture: AutomationPlatformPackageFixtureResponse
     execution_boundary: Literal["executable", "sop_import_only", "blocked"]
+    acceptance_registry: list[AutomationPlatformPackageAcceptanceGateResponse]
+    cleanup_policy: str
+    forbidden_actions: list[str]
     run_started: bool
 
 
@@ -444,6 +478,37 @@ class AutomationAgentReachChannelProbeResponse(BaseModel):
     raw_summary: dict[str, Any]
 
 
+class AutomationEvidenceAssetReferenceResponse(BaseModel):
+    schema_version: Literal["evidence_asset_reference.v1"] = (
+        "evidence_asset_reference.v1"
+    )
+    asset_id: str
+    asset_type: Literal[
+        "capability_probe",
+        "browser_diagnostic_run",
+        "browser_diagnostic_job",
+        "browser_diagnostic_job_run",
+    ]
+    reference_type: str
+    reference_id: str | None
+    evidence_level: Literal[
+        "L0-unverified",
+        "L1-repo-or-runtime",
+        "L2-fixture-or-dry-run",
+        "L3-production-read-only",
+        "L4-authorized-live",
+    ]
+    evidence_boundary: str
+    source: str
+    label: str
+    summary: dict[str, Any]
+    redaction_summary: dict[str, Any]
+    forbidden_actions: list[str]
+    promotion_required: bool
+    promotion_required_fields: list[str]
+    created_at: str
+
+
 class AutomationCapabilityProbeResponse(BaseModel):
     schema_version: Literal["capability_probe.v1"] = "capability_probe.v1"
     platform_id: str
@@ -482,6 +547,7 @@ class AutomationCapabilityProbeResponse(BaseModel):
     next_actions: list[str]
     run_started: bool
     collection_resources_written: bool
+    evidence_asset: AutomationEvidenceAssetReferenceResponse | None = None
 
 
 class AutomationCapabilityProbeListResponse(BaseModel):
@@ -491,6 +557,9 @@ class AutomationCapabilityProbeListResponse(BaseModel):
     total: int
     run_started: bool
     collection_resources_written: bool
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
+        default_factory=list
+    )
 
 
 class AutomationExtractionPlanCreateRequest(BaseModel):
@@ -576,12 +645,16 @@ class AutomationBrowserDiagnosticRunResponse(BaseModel):
     blocked_reasons: list[str]
     created_at: datetime
     run_started: bool = False
+    evidence_asset: AutomationEvidenceAssetReferenceResponse | None = None
 
 
 class AutomationBrowserDiagnosticRunListResponse(BaseModel):
     items: list[AutomationBrowserDiagnosticRunResponse]
     total: int
     run_started: bool = False
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
+        default_factory=list
+    )
 
 
 class AutomationBrowserExecutableSpecDryRunRequest(BaseModel):
@@ -717,12 +790,16 @@ class AutomationBrowserDiagnosticJobResponse(BaseModel):
     updated_at: datetime
     cancelled_at: datetime | None
     run_started: bool = False
+    evidence_asset: AutomationEvidenceAssetReferenceResponse | None = None
 
 
 class AutomationBrowserDiagnosticJobListResponse(BaseModel):
     items: list[AutomationBrowserDiagnosticJobResponse]
     total: int
     run_started: bool = False
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
+        default_factory=list
+    )
 
 
 class AutomationBrowserExecutorContractRequest(BaseModel):
@@ -756,6 +833,44 @@ class AutomationBrowserExecutorContractResponse(BaseModel):
     audit_events: list[dict[str, Any]]
     run_started: bool = False
     execution_started: bool = False
+
+
+class AutomationBrowserProductionMetadataRunGateRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    confirm_production_readonly: bool
+    confirm_metadata_only: bool
+    confirm_no_file_write: bool
+    confirm_no_collection_write: bool
+    target_environment: Literal["production"] = "production"
+    max_metadata_events: int = Field(default=100, ge=1, le=500)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserProductionMetadataRunGateResponse(BaseModel):
+    schema_version: Literal["browser_production_metadata_run_gate.v1"] = (
+        "browser_production_metadata_run_gate.v1"
+    )
+    job: AutomationBrowserDiagnosticJobResponse
+    target_environment: Literal["production"]
+    evidence_grade: Literal["L2-fixture-or-dry-run"] = "L2-fixture-or-dry-run"
+    gate: dict[str, Any]
+    execution_policy: dict[str, Any]
+    metadata_plan: dict[str, Any]
+    readiness_checks: list[AutomationBrowserExecutorReadinessCheckResponse]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    production_read_only_observed: bool = False
+    run_started: bool = False
+    execution_started: bool = False
+    browser_started: bool = False
+    files_written: bool = False
+    collection_resources_written: bool = False
+    provider_called: bool = False
+    source_created: bool = False
+    task_created: bool = False
+    task_run_started: bool = False
+    dataset_created: bool = False
 
 
 class AutomationBrowserLocalRunnerRequest(BaseModel):
@@ -802,6 +917,7 @@ class AutomationBrowserLocalRunnerResultResponse(BaseModel):
     browser_started: bool
     files_written: bool
     collection_resources_written: bool
+    evidence_asset: AutomationEvidenceAssetReferenceResponse | None = None
 
 
 class AutomationBrowserLocalRunnerResultListResponse(BaseModel):
@@ -809,6 +925,135 @@ class AutomationBrowserLocalRunnerResultListResponse(BaseModel):
     total: int
     browser_started: bool = False
     files_written: bool = False
+    collection_resources_written: bool = False
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
+        default_factory=list
+    )
+
+
+class AutomationBrowserPromotionPreviewRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    target_source_type: Literal["generic_web", "ecommerce_product_page"] = "generic_web"
+    enable_task_preview: bool = True
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserPromotionTaskDraftResponse(BaseModel):
+    collector_type: str
+    name: str
+    status: Literal["disabled", "blocked", "enabled"]
+    schedule_cron: str | None
+    schedule_policy: Literal["manual_refresh_only"]
+    config: dict[str, Any]
+
+
+class AutomationBrowserPromotionPreviewResponse(BaseModel):
+    schema_version: Literal["browser_promotion_preview.v1"] = (
+        "browser_promotion_preview.v1"
+    )
+    diagnostic_job_run_id: uuid.UUID
+    diagnostic_job_id: uuid.UUID
+    project_id: uuid.UUID
+    evidence_asset: AutomationEvidenceAssetReferenceResponse
+    source_draft: AutomationSourceDraftResponse
+    task_draft: AutomationBrowserPromotionTaskDraftResponse | None
+    promotion_gate: dict[str, Any]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    can_promote: bool = False
+    run_started: bool = False
+    source_created: bool = False
+    task_created: bool = False
+    task_run_started: bool = False
+    collection_resources_written: bool = False
+
+
+class AutomationBrowserPromotionExecutionDryRunRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    confirm_no_write: bool
+    target_source_type: Literal["generic_web", "ecommerce_product_page"] = "generic_web"
+    source_name: str | None = Field(default=None, min_length=1, max_length=200)
+    schedule_cron: str | None = Field(default=None, max_length=50)
+    enable_task_preview: bool = True
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserPromotionExecutionCheckResponse(BaseModel):
+    key: str
+    label: str
+    status: Literal["passed", "review", "blocked"]
+    message: str
+    evidence: dict[str, Any]
+
+
+class AutomationBrowserPromotionExecutionDryRunResponse(BaseModel):
+    schema_version: Literal["browser_promotion_execution_dry_run.v1"] = (
+        "browser_promotion_execution_dry_run.v1"
+    )
+    diagnostic_job_run_id: uuid.UUID
+    diagnostic_job_id: uuid.UUID
+    project_id: uuid.UUID
+    evidence_asset: AutomationEvidenceAssetReferenceResponse
+    source_draft: AutomationSourceDraftResponse
+    task_draft: AutomationBrowserPromotionTaskDraftResponse | None
+    validated_source_config: dict[str, Any]
+    execution_plan: dict[str, Any]
+    promotion_gate: dict[str, Any]
+    validation_checks: list[AutomationBrowserPromotionExecutionCheckResponse]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    dry_run: bool = True
+    write_allowed: bool = False
+    can_execute: bool = False
+    source_created: bool = False
+    task_created: bool = False
+    task_run_started: bool = False
+    collection_resources_written: bool = False
+
+
+class AutomationBrowserPromotionExecutionRequest(BaseModel):
+    authorized: bool
+    confirm_review: bool
+    confirm_write: bool
+    confirm_create_collection_resources: bool
+    confirm_no_task_run: bool
+    target_source_type: Literal["generic_web", "ecommerce_product_page"] = "generic_web"
+    source_name: str | None = Field(default=None, min_length=1, max_length=200)
+    schedule_cron: str | None = Field(default=None, max_length=50)
+    confirm_schedule: bool = False
+    idempotency_key: str = Field(min_length=12, max_length=200)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class AutomationBrowserPromotionExecutionResponse(BaseModel):
+    schema_version: Literal["browser_promotion_execution.v1"] = (
+        "browser_promotion_execution.v1"
+    )
+    diagnostic_job_run_id: uuid.UUID
+    diagnostic_job_id: uuid.UUID
+    project_id: uuid.UUID
+    evidence_asset: AutomationEvidenceAssetReferenceResponse
+    source_draft: AutomationSourceDraftResponse
+    task_draft: AutomationBrowserPromotionTaskDraftResponse
+    validated_source_config: dict[str, Any]
+    source: SourceResponse | None
+    task: CollectionTaskResponse | None
+    execution_plan: dict[str, Any]
+    promotion_gate: dict[str, Any]
+    validation_checks: list[AutomationBrowserPromotionExecutionCheckResponse]
+    blocked_reasons: list[str]
+    audit_events: list[dict[str, Any]]
+    dry_run: bool = False
+    write_allowed: bool = True
+    can_execute: bool = True
+    idempotency_replayed: bool = False
+    idempotency_scope: str
+    idempotency_key_hash: str
+    source_created: bool = False
+    task_created: bool = False
+    task_run_started: bool = False
     collection_resources_written: bool = False
 
 
@@ -1301,6 +1546,9 @@ class AutomationGitHubToolReportResponse(BaseModel):
 class AutomationGitHubToolReportAssetResponse(AutomationGitHubToolReportResponse):
     report: ReportResponse
     notification_created: bool
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
 
 class AutomationPublicContentReportEntryResponse(BaseModel):
@@ -1343,6 +1591,9 @@ class AutomationPublicContentReportResponse(BaseModel):
 class AutomationPublicContentReportAssetResponse(AutomationPublicContentReportResponse):
     report: ReportResponse
     notification_created: bool
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
 
 class AutomationProductDatasetListItemResponse(BaseModel):
@@ -1385,6 +1636,9 @@ class AutomationProductDatasetExportJobResponse(BaseModel):
     download_url: str | None
     audit_events: list[dict[str, Any]]
     blocked_reasons: list[str]
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
 
 class AutomationProductDatasetExportListResponse(BaseModel):
@@ -1451,6 +1705,9 @@ class AutomationProductDriftAlertNotificationSendResponse(BaseModel):
     notifications: list[NotificationResponse]
     summary: AutomationProductDriftAlertSummaryResponse
     blocked_reasons: list[str]
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None
 
 
 class AutomationProductDriftAlertEmailDeliveryResponse(BaseModel):
@@ -1471,3 +1728,6 @@ class AutomationProductDriftAlertEmailSendResponse(BaseModel):
     email_deliveries: list[AutomationProductDriftAlertEmailDeliveryResponse]
     summary: AutomationProductDriftAlertSummaryResponse
     blocked_reasons: list[str]
+    idempotency_replayed: bool = False
+    idempotency_scope: str | None = None
+    idempotency_key_hash: str | None = None

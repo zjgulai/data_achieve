@@ -3,32 +3,35 @@ title: Data Intelligence Hub PRD 2.0 平台化采集工作台
 doc_type: prd
 module: product
 topic: data-intelligence-hub
-status: stable
+status: historical
 created: 2026-06-11
-updated: 2026-06-21
+updated: 2026-07-10
 owner: self
 source: human+ai
+superseded_by: product-prd-social-media-automation-platform-v2.md
 ---
 
 # Data Intelligence Hub PRD 2.0 — 平台化采集工作台
 
-> **当前状态**：PRD 2.0 当前源头版本 · **版本日期**：2026-06-21
->
-> 本版本将早期“跨平台数据采集情报平台”收敛为“平台化数据采集工作台”。旧 PRD 的数据闭环、证据链、Collector、Report、Alert 等详细规格仍作为历史详细规格保留；本文件顶部的 PRD 2.0 控制面用于指导下一阶段平台采集实现、优先级和验收边界。
+> **历史状态**：本文保留 2026-06-29 平台化采集工作台的产品与执行基线。当前 V2.0 目标源头已经迁移到 [全社媒自动化数据采集与能力发现平台 PRD](product-prd-social-media-automation-platform-v2.md)。后续新 Goal、范围决策和验收以新 PRD 为准。
 
-## PRD 2.0 当前控制面
+> **历史快照**：PRD 2.0 平台化采集工作台基线 · **版本日期**：2026-06-29
+>
+> 本历史版本曾将早期“跨平台数据采集情报平台”收敛为“平台化数据采集工作台”。其中的数据闭环、证据链、Collector、Report、Alert 等详细规格继续作为历史依据保留，不再作为新 Goal 的目标源头。
+
+## 历史 PRD 2.0 控制面
 
 ### 事实基线
 
 | 事项 | 当前事实 | 证据边界 |
 |---|---|---|
-| 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；本轮没有做业务代码修改 |
-| 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码和 API contract 可见 |
-| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight` | 历史生产 E2E 记录显示 commit `d9b2a5e` 完成一轮验收；2026-06-21 production HEAD `e9ccb81` 已完成 schema `202606110023` 发布、M3 GitHub API-first 字段合同发布和只读 smoke |
-| GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段 | authenticated read-only 平台包检查已确认字段合同；本轮未重新跑生产 GitHub 采集或生产写入 |
-| Browser diagnostic | `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun` 已随 production schema `202606110023` 上线；`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay` 和受控 `ephemeral_browser_harness_probe` 保持只读/受控边界 | 生产已具备资产表和页面/API 表达，不等于真实浏览器执行器已获准生产运行 |
-| 生产 health | 2026-06-21 发布后只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true` | L3 production read-only；只证明发布和 schema 对齐，不证明生产写入 E2E |
-| 外部能力环境 | 本机 `browser-harness` 存在，`browser-harness --doctor` 显示 Chrome running、daemon alive，但 active browser connections 为 0；`agent-reach` 当前不在 PATH | 本地运行态事实，不代表生产可用 |
+| 主产品形态 | `/automation` 已是自动化采集工作台入口，串联授权 URL/API/导入样本、结构解析、字段候选、采集计划、清洗计划、Dataset、导出、漂移、报告和告警 | 来自本仓库架构/API 文档和既有实现；2026-06-29 本轮新增运行安全和 M4 独立站本地 fixture E2E 代码切片，但未做生产写入 |
+| 稳定 Collector | `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` | 代码、API contract 和后续生产门禁记录可见；`ecommerce_product_page` 已兼容 JSON-LD Product 和静态 schema.org microdata；逐平台规模化仍需单独 gate |
+| 已上线平台包 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`、`public-web-rss-docs` | 2026-06-29 active app `HEAD` 和 `/opt/data-achieve-scrapy/app/.deploy-sha` 均为 `42851929d59d82708c9380d36347ca721979297d`；生产 health 正常；历史小范围 M3/M5 L4 gates 不等于所有平台已规模化 |
+| GitHub Tool Radar | GitHub topic/repo 运行记录可进入 `github_tool_radar` Dataset、导出、漂移、只读报告和 Report 资产；M3 已补充 license、default branch、latest release、pushed_at 等 API-first 字段 | 已完成一次小范围 GitHub API-first production package gate；仍不证明大 scope rate-limit、retention/export/scheduler 或 provider/email |
+| Browser diagnostic | `BrowserDiagnosticRun`、`BrowserDiagnosticJob`、`BrowserDiagnosticJobRun` 已随 production schema `202606110023` 上线；`browser_executor_adapter_contract.v1`、`diagnostic_snapshot_replay`、受控 `ephemeral_browser_harness_probe` 和 `browser_production_metadata_run_gate.v1` 保持只读/受控边界 | 已补 L2 production metadata-only no-run gate；`production_read_only_observed=false`、`run_started=false`、`browser_started=false`、`files_written=false`、`collection_resources_written=false`；真实生产浏览器观测仍需独立授权 |
+| 生产 health | 2026-06-29 只读请求 `https://scrapy.lute-tlz-dddd.top/api/health` 返回 `environment=production`、`status=ok`、`database=connected`、`schema=current`、`schema_revision=202606110023`、`schema_head=202606110023`、`scheduler_enabled=true` | L3 production read-only；只证明当前服务和 schema 对齐，不证明生产写入 E2E、provider call、email send、browser run 或 cleanup execute |
+| 外部能力环境 | Agent Reach 作为 doctor/router 思路内化；browser-harness 已完成本地隔离 metadata-only smoke，但生产 browser runtime 和 artifact write 仍未授权 | 本地运行态事实和外部工具可用性不代表生产采集能力 |
 
 ### 本轮修订目的
 
@@ -62,9 +65,9 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 
 | 对象 | PRD 2.0 角色 | 下一阶段变化 |
 |---|---|---|
-| `PlatformPackage` | 平台级采集路径合同 | 从静态平台包扩展为可版本化、可解释、可验收的策略对象 |
-| `CapabilityProbe` | 平台能力和后端候选体检资产 | 新增 Agent Reach 风格的 doctor/result contract，先作为草案资产 |
-| `BrowserDiagnosticRun/Job/JobRun` | 浏览器只读证据资产 | 扩展 selector 求值、network metadata、artifact retention 和 promotion gate |
+| `PlatformPackage` | 平台级采集路径合同 | 已从静态平台包补成本地 API/UI 可见的 version、owner、lifecycle、evidence grade、authorization、acceptance registry、cleanup policy 和 forbidden actions；持久化/自定义层仍是后续项 |
+| `CapabilityProbe` | 平台能力和后端候选体检资产 | Agent Reach 风格 doctor/result contract 已补 computed `evidence_asset_reference.v1`；独立持久化 run history 表仍是后续项 |
+| `BrowserDiagnosticRun/Job/JobRun` | 浏览器只读证据资产 | 已补 selector 求值、network metadata、computed evidence reference、本地 promotion preview gate、no-write execution dry-run、显式授权 Source+Task 写 gate 和生产 metadata-only no-run gate；真实生产浏览器观测、自动 task run、自动 Dataset 创建和独立 artifact retention 仍待授权 |
 | `ExternalToolSnapshot` | 外部工具读/搜结果导入资产 | 用于 Web/RSS/GitHub/Video 等低风险渠道的人工审核导入 |
 | `DatasetVersion` | 结构化交付资产 | 继续作为采集结果进入导出、漂移、报告的中心 |
 | `Evidence` | 事实链路绑定 | 所有报告、告警和推荐必须可回溯到采集或诊断证据 |
@@ -83,10 +86,12 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 
 | 优先级 | 平台/能力 | 原因 | 执行边界 |
 |---|---|---|---|
-| P0 | GitHub API-first 深化 | M3 已完成首轮字段合同、collector、report、前端和本地门禁，并已部署到 production HEAD `e9ccb81`；剩余 README metadata、issue activity、commit freshness、显式 schema version/provenance 和生产写入验收 | 官方 API 为事实源；Agent Reach/gh CLI 只做 router/doctor 或补充检索；生产写入 E2E 需单独授权 |
-| P0 | browser-harness 有界证据 | 当前浏览器诊断已经资产化，下一步最需要补 selector 和 network 证据 | 默认 `collection_resources_written=false`；截图/trace/HAR 文件写入必须先完成 retention 方案 |
-| P0 | 独立站/Shopify-style 深化 | 已有 `ecommerce_product_discovery` 和 `ecommerce_product_page`，可形成业务数据集 | 只处理授权公开页面；不处理登录墙、验证码或反检测 |
-| P1 | Public Web/RSS/Docs | 低风险、高复用，适合培训内容、竞品官网和文档更新监控 | 公开 URL/feed；保留来源、时间、final URL 和摘要，不覆盖原始事实 |
+| P0 | 运行安全底座 | 所有平台生产化都依赖 task run lock、retry budget、timeout、前端 submitting state 和 side-effect idempotency；2026-06-29/30 已完成本地切片：task row lock、collector timeout、scheduler running-task skip、前端 submitting guard、auto freshness retry budget、手动 Task run、Dataset export create、Report send、drift alert notification/email send、Report asset create、subscription run/retry、email-channel test、email provider-live gate preflight、email provider live-send readiness 和 email provider live-send gate default-deny 的 `Idempotency-Key` replay 合同；L4 live-send runbook 已补为执行前置文档 | 本地实现和测试优先；provider 真实生产发送和生产门禁仍需继续，不触发生产写入 |
+| P0 | 独立站/Shopify-style 授权 E2E | 已有 `ecommerce_product_discovery` 和 `ecommerce_product_page`，最贴近商业采集主价值；2026-06-29 已补本地 fixture gate，并完成一次 WebScraper.io 公开测试站 local API E2E：`max_products=2`，Dataset `row_count=2`、完整度 `100%`，CSV export `966 bytes`，drift event `status=ok` | 当前证据是 `L2 local validation + public test-site read`，不是生产写入；真实生产站或客户站仍只处理授权公开页面，不处理登录墙、验证码或反检测；production write / cleanup execute / retained lifecycle 需另起授权 gate |
+| P0 | PlatformPackage 治理 | 本地 API/UI 合同已补 version、owner、lifecycle status、acceptance registry、evidence grade、授权要求、清理策略和禁止动作 | 当前仍是代码内 catalog，不代表生产已部署或已完成持久化/用户自定义 package |
+| P1 | GitHub API-first 深化 | 已完成一次小范围生产 gate，下一步是大 scope rate-limit、retention、export 和 scheduler | 官方 API 为事实源；Agent Reach/gh CLI 只做 router/doctor 或补充检索；更大 scope 需单独授权 |
+| P1 | browser-harness 有界证据 | 当前浏览器诊断已经资产化，本地隔离 CDP smoke 已证明 metadata-only 路径；2026-06-30 已补生产 metadata-only no-run gate | 默认 `collection_resources_written=false`；L2 gate 不启动浏览器、不写文件、不写采集资源；真实 production read-only observation、截图/trace/HAR 文件写入必须先完成授权和 retention 方案 |
+| P1 | Public Web/RSS/Docs 后续门 | 小范围 RSS/docs/page Dataset、drift、report、export、scheduler、retained canary 与 default 168h TTL final observation 已完成多项 gate | 剩余 cleanup execute、post-cleanup recount、provider/email 仍需单独 gate |
 | P1 | YouTube/B 站公开视频 metadata/transcript import | 适合内容趋势和培训资料，但不应下载媒体资产 | 先做 metadata/transcript import；版权和字幕来源进入审计字段 |
 | P1/P2 | V2EX/公开社区趋势 | 公开社区聚合可做趋势数据，不做人级画像 | 聚合主题、链接、时间、回复数；不采个人画像 |
 | P2 | Amazon/Marketplace | 商业价值高，但页面抓取风险高 | 官方 API、授权导出或人工导入优先；browser-harness 只做公开结构评估 |
@@ -117,7 +122,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 
 ## 目录
 
-- [PRD 2.0 当前控制面](#prd-20-当前控制面)
+- [历史 PRD 2.0 控制面](#历史-prd-20-控制面)
 - [PRD 2.0 产品规格摘要](#prd-20-产品规格摘要)
 - [能力融合与平台优先级](#能力融合与平台优先级)
 - [证据与验收边界](#证据与验收边界)
@@ -147,7 +152,7 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 | 数据规模 | 小型（<20 数据源，日采集 <1 万条） | 单机 PostgreSQL + 进程内调度可满足 |
 | 用户认证 | 邮箱 + 密码登录 | MVP 最简方案 |
 | 通知渠道 | 站内通知 + 邮件（SMTP） | 日报和预警的基础触达方式 |
-| 稳定 Collector | GitHub Repo / GitHub Topic / 通用网页 / 手动 JSON / 独立站商品发现 / 独立站商品页 | 当前实现和 API contract 可见 |
+| 稳定 Collector | GitHub Repo / GitHub Topic / 通用网页 / 手动 JSON / 独立站商品发现 / 独立站商品页 | 当前实现和 API contract 可见；独立站商品页支持 JSON-LD Product 和静态 microdata 基础字段 |
 | 核心关注模块 | 授权与合规确认 + 平台包 + 能力探测 + 浏览器证据 + Dataset + 导出 + 漂移 + 报告/告警 | 可追溯数据资产闭环优先 |
 
 ---
@@ -176,16 +181,16 @@ Data Intelligence Hub 是一个以授权、证据和可复用数据资产为中�
 |---|---|---|
 | 用户登录 / Workspace / Project | 已有 | 邮箱密码、单 workspace 和项目管理仍是 MVP 边界 |
 | Source / Task / TaskRun | 已有 | 采集源、采集任务和运行记录是正式写入链路 |
-| 稳定 Collector | 已有 | `github_repo`、`github_topic`、`generic_web`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page` |
-| Platform Package | 已有第一版 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`；`github-api-first` 已部署 M3 字段合同，下一步补 version、owner 和 acceptance registry |
+| 稳定 Collector | 已有 | `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；商品页 collector 已兼容 JSON-LD Product 和静态 schema.org microdata |
+| Platform Package | 已有本地治理合同 | `shopify-independent-ecommerce`、`github-api-first`、`public-page-structure-preflight`、`public-web-rss-docs`；API/UI 已暴露 version、owner、lifecycle status、evidence grade、authorization required、acceptance registry、cleanup policy 和 forbidden actions；持久化/自定义层未完成 |
 | SiteAnalysis / ExtractionPlan | 已有 | 公开 URL 分析、字段候选、采集计划和浏览器诊断导入 |
-| Browser diagnostic | 本地增强中 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`；不是生产无人值守采集 |
+| Browser diagnostic | 已上线资产，生产运行待授权 | 只读诊断资产、job、contract、snapshot replay、受控 `ephemeral_browser_harness_probe`、`evidence_asset_reference.v1`、Source/Task 候选 preview、no-write execution dry-run 和显式授权 Source+Task 写 gate；不是生产无人值守采集，不自动启动 TaskRun，也不自动创建 Dataset |
 | CleaningPlan | 已有 | 清洗规则草案、试跑和 DatasetVersion 追踪 |
 | Dataset / DatasetVersion | 已有 | 结构化交付资产，可从商品采集和 GitHub Tool Radar 进入 |
 | Dataset Export | 已有 | CSV/JSON/JSONL 导出，必须记录审计和 checksum |
 | Drift / Alert / Notification | 已有基础 | 漂移、告警规则、站内通知和邮件仍需按授权分层 |
 | Report Asset | 已有基础 | 工具雷达报告可保存为 Report 资产；保存不等于通知或邮件发送 |
-| CapabilityProbe | 已有第一版 | Agent Reach 风格的能力体检和后端候选路由已覆盖 missing/blocked/available no-read/no-write probe；下一步补 probe run history 和 evidence asset |
+| CapabilityProbe | 已有第一版 | Agent Reach 风格的能力体检和后端候选路由已覆盖 missing/blocked/available no-read/no-write probe，并已补 computed evidence reference；下一步是独立持久化 run history |
 | ExternalToolSnapshot | 待实现 | 外部工具 read/search 输出的人工审核导入资产 |
 | Marketplace API/import | 待实现 | Amazon 等优先 API、授权导出或人工导入 |
 | Social SOP/import-only | 待实现 | Twitter/X、小红书、Instagram、LinkedIn 等默认不做自动页面抓取 |
@@ -613,7 +618,7 @@ apps/web/
 | name | VARCHAR(200) | NOT NULL | — |
 | schedule_cron | VARCHAR(50) | — | 继承自 Source |
 | status | VARCHAR(20) | DEFAULT 'draft' | draft / enabled / running / paused / disabled |
-| config | JSONB | — | 任务级配置覆盖 |
+| config | JSONB | — | 任务级配置覆盖；运行安全本地合同支持 `run_timeout_seconds`、`retry_delay_minutes`、`max_retry_attempts`、`retry_attempts_used` |
 | success_count | INTEGER | DEFAULT 0 | — |
 | failure_count | INTEGER | DEFAULT 0 | — |
 | last_run_at | TIMESTAMPTZ | — | — |
@@ -1245,6 +1250,10 @@ Response:
 | Method | Path | 说明 |
 |---|---|---|
 | GET | /api/notifications?is_read= | 列表 |
+| GET | /api/notifications/email-channel | 邮件通道状态 |
+| GET | /api/notifications/email-channel/live-send-readiness | 生产邮件发送 readiness 只读清单 |
+| POST | /api/notifications/email-channel/provider-live-gate | 生产邮件发送预授权 gate |
+| POST | /api/notifications/email-channel/live-send | 单次 L4 邮件发送 gate |
 | PATCH | /api/notifications/{id}/read | 标记已读 |
 | POST | /api/notifications/read-all | 全部已读 |
 

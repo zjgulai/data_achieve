@@ -1,0 +1,4442 @@
+{
+  "schema_version": "capability_catalog.v1",
+  "evidence_level": "L1-public-or-runtime",
+  "provider_call": false,
+  "production_write_allowed": false,
+  "generated_at": "2026-07-08T00:00:00Z",
+  "implementations": [
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "youtube.v3",
+      "provider_id": "youtube.v3",
+      "platform": "youtube",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "content_search",
+        "channel_profile",
+        "video_detail",
+        "comment_threads",
+        "live_stream_snapshot"
+      ],
+      "resource_groups": [
+        "content_search",
+        "channel_profile",
+        "video_detail",
+        "comment_threads",
+        "live_stream_snapshot"
+      ],
+      "official_docs": [
+        "https://developers.google.com/youtube/v3/docs",
+        "https://googleapis.github.io/google-api-python-client/docs/dyn/youtube_v3.html"
+      ],
+      "sdk_selection": {
+        "package": "google-api-python-client",
+        "import_name": "googleapiclient",
+        "source_url": "https://github.com/googleapis/google-api-python-client",
+        "status": "selected",
+        "reason": "Official Google discovery-based API client; selected for YouTube Data API live adapter after gate approval."
+      },
+      "live_adapter_strategy": "use_google_api_python_client_after_l4_gate",
+      "auth_mode": "Google OAuth2 / API Key (server-side secrets)",
+      "quota_hint": {
+        "default_daily_requests": 10000,
+        "default_daily_unit_cost": 10000,
+        "per_1000_unit_cost": 0.0,
+        "soft_limits": {
+          "search.list": 100,
+          "videos.insert": 100,
+          "others": 10000
+        },
+        "period": "day"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "no_login_state",
+        "no_profile_graph_merge",
+        "no_user_private_message",
+        "no_ai_training_from_raw_source_without_governance"
+      ],
+      "blocked_actions": [
+        "private_message",
+        "dm",
+        "login_cookie_capture",
+        "cookies_replay",
+        "subgraph_fans_following_merge",
+        "unauthorized_video_download"
+      ],
+      "stability": "high",
+      "self_host_priority": "p0",
+      "api_version": "v3",
+      "required_credentials": [
+        "api_key"
+      ],
+      "supported_endpoints": [
+        "search.list",
+        "videos.list",
+        "videos.insert",
+        "commentThreads.list",
+        "videos.getRating",
+        "channels.list",
+        "channels.update"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "reddit.praw",
+      "provider_id": "reddit.praw",
+      "platform": "reddit",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "post_search",
+        "subreddit_snapshot",
+        "comment_snapshot",
+        "comment_tree",
+        "user_profile_public"
+      ],
+      "resource_groups": [
+        "post_search",
+        "subreddit_snapshot",
+        "comment_snapshot",
+        "comment_tree",
+        "user_profile_public"
+      ],
+      "official_docs": [
+        "https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki",
+        "https://asyncpraw.readthedocs.io/"
+      ],
+      "sdk_selection": {
+        "package": "asyncpraw",
+        "import_name": "asyncpraw",
+        "source_url": "https://github.com/praw-dev/asyncpraw",
+        "status": "selected",
+        "reason": "Mature async Reddit API wrapper that follows Reddit API rules; fits FastAPI async runtime for authorized live adapter."
+      },
+      "live_adapter_strategy": "use_asyncpraw_after_l4_gate_with_policy_gate",
+      "auth_mode": "OAuth2 Bearer + User-Agent + App credentials",
+      "quota_hint": {
+        "default_requests_per_minute": 100,
+        "default_daily_requests": 100000,
+        "soft_limits": {
+          "listings": 100,
+          "search": 100
+        },
+        "period": "minute"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "no_ai_training",
+        "no_private_message",
+        "no_user_data_aggregation_without_scope",
+        "compliance_contract_required"
+      ],
+      "blocked_actions": [
+        "private_data_scrape",
+        "login_state_capture",
+        "captcha_bypass",
+        "media_download_without_license"
+      ],
+      "stability": "medium",
+      "self_host_priority": "p1",
+      "api_version": "OAuth2",
+      "required_credentials": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "supported_endpoints": [
+        "hot.list",
+        "new.list",
+        "comments.new",
+        "search",
+        "r/{subreddit}/about",
+        "user.profile"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "tiktok_research",
+      "provider_id": "tiktok_research",
+      "platform": "tiktok",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "video_snapshot",
+        "video_comment",
+        "hashtag_rank",
+        "creator_profile",
+        "search"
+      ],
+      "resource_groups": [
+        "video_snapshot",
+        "video_comment",
+        "hashtag_rank",
+        "creator_profile",
+        "search"
+      ],
+      "official_docs": [
+        "https://developers.tiktok.com/doc/research-api-get-started",
+        "https://github.com/tiktok/tiktok-research-api-wrapper"
+      ],
+      "sdk_selection": {
+        "package": "TikTokResearchApi",
+        "import_name": "tiktok_research_api",
+        "source_url": "https://github.com/tiktok/tiktok-research-api-wrapper",
+        "status": "manual_review",
+        "reason": "Official TikTok Research API wrapper exists, but qualification, region, purpose, and release maturity must be reviewed before enabling."
+      },
+      "live_adapter_strategy": "research_wrapper_test_only_after_qualification",
+      "auth_mode": "OAuth2 Bearer + VCE qualification",
+      "quota_hint": {
+        "default_requests_per_day": 1000,
+        "soft_limits": {
+          "video_snapshot": 20000,
+          "comment": 10000
+        },
+        "period": "day"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "research_only",
+        "no_private_message",
+        "no_user_data_aggregation_without_scope",
+        "no_ai_training"
+      ],
+      "blocked_actions": [
+        "private_message",
+        "login_state_capture",
+        "captcha_bypass",
+        "media_download_without_license"
+      ],
+      "stability": "low",
+      "self_host_priority": "p3",
+      "api_version": "research",
+      "required_credentials": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "supported_endpoints": [
+        "video.search",
+        "video.list",
+        "comment.list",
+        "user.info",
+        "vce.batch_status"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "x.v2",
+      "provider_id": "x.v2",
+      "platform": "x",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "post_search",
+        "user_profile",
+        "post_lookup",
+        "realtime_trends",
+        "metrics"
+      ],
+      "resource_groups": [
+        "post_search",
+        "user_profile",
+        "post_lookup",
+        "realtime_trends",
+        "metrics"
+      ],
+      "official_docs": [
+        "https://docs.x.com/x-api/introduction",
+        "https://docs.x.com/tools-and-libraries"
+      ],
+      "sdk_selection": {
+        "package": "tweepy[async]",
+        "import_name": "tweepy",
+        "source_url": "https://github.com/tweepy/tweepy",
+        "status": "candidate",
+        "reason": "Popular Python X/Twitter library with v2 support; enable only after paid tier and max_cost_usd gate are approved."
+      },
+      "live_adapter_strategy": "use_tweepy_recent_search_only_after_cost_gate",
+      "auth_mode": "OAuth2 Bearer / Paid product key",
+      "quota_hint": {
+        "default_requests_per_minute": 300,
+        "default_requests_per_day": 30000,
+        "soft_limits": {
+          "search/recent": 300,
+          "users/me": 60
+        },
+        "cost": {
+          "pay_per_use": true,
+          "unit_cost_hint": "provider_defined"
+        },
+        "period": "minute"
+      },
+      "cost_hint": {
+        "pay_per_use": true,
+        "unit_cost_hint": "provider_defined"
+      },
+      "policy_flags": [
+        "commercial_use_requires_paywall_terms",
+        "no_ai_training",
+        "strict_scope_required",
+        "no_login_state"
+      ],
+      "blocked_actions": [
+        "private_message",
+        "dm",
+        "automated_following_graph_inference",
+        "login_cookie_capture"
+      ],
+      "stability": "medium",
+      "self_host_priority": "p2",
+      "api_version": "v2",
+      "required_credentials": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "supported_endpoints": [
+        "tweets/search/recent",
+        "tweets/search/all",
+        "tweets",
+        "users/me",
+        "users/by/username/:id"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "instagram_graph.v19",
+      "provider_id": "instagram_graph.v19",
+      "platform": "instagram",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "media_feed",
+        "user_pages",
+        "mentions",
+        "comments",
+        "insights"
+      ],
+      "resource_groups": [
+        "media_feed",
+        "user_pages",
+        "mentions",
+        "comments",
+        "insights"
+      ],
+      "official_docs": [
+        "https://developers.facebook.com/docs/instagram-api",
+        "https://github.com/facebook/facebook-python-business-sdk"
+      ],
+      "sdk_selection": {
+        "package": "facebook-business",
+        "import_name": "facebook_business",
+        "source_url": "https://github.com/facebook/facebook-python-business-sdk",
+        "status": "candidate",
+        "reason": "Official Meta Business SDK includes Instagram-related business APIs; direct Graph calls may still be needed for some read-only edges."
+      },
+      "live_adapter_strategy": "use_meta_business_sdk_or_graph_httpx_for_authorized_business_assets",
+      "auth_mode": "Meta App Token + Page/Business token + permissions",
+      "quota_hint": {
+        "default_requests_per_hour": 200,
+        "default_requests_per_day": 20000,
+        "soft_limits": {
+          "business_content": 2000,
+          "insights": 200
+        },
+        "period": "hour"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "business_account_required",
+        "page_level_authorization",
+        "mentions_requires_scope",
+        "no_ai_training"
+      ],
+      "blocked_actions": [
+        "private_profile_deep_scrape",
+        "consumer_dm_capture",
+        "unscoped_comment_dump",
+        "login_state_collection"
+      ],
+      "stability": "medium",
+      "self_host_priority": "p2",
+      "api_version": "v19",
+      "required_credentials": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "supported_endpoints": [
+        "media",
+        "user_media",
+        "mentions",
+        "comments",
+        "insights"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "threads.graph.v1",
+      "provider_id": "threads.graph.v1",
+      "platform": "threads",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "endpoint",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "thread_feed",
+        "user_profile",
+        "mentions",
+        "post_lookup",
+        "replies"
+      ],
+      "resource_groups": [
+        "thread_feed",
+        "user_profile",
+        "mentions",
+        "post_lookup",
+        "replies"
+      ],
+      "official_docs": [
+        "https://developers.facebook.com/docs/threads",
+        "https://developers.facebook.com/docs/graph-api/guides/our-sdks/"
+      ],
+      "sdk_selection": {
+        "package": "httpx",
+        "import_name": "httpx",
+        "source_url": "https://www.python-httpx.org/",
+        "status": "selected",
+        "reason": "Threads Graph coverage is primarily REST/Graph based; reuse existing httpx dependency for thin authorized calls instead of custom transport."
+      },
+      "live_adapter_strategy": "use_existing_httpx_graph_adapter_for_authorized_threads_assets",
+      "auth_mode": "Meta threads scope + app review",
+      "quota_hint": {
+        "default_requests_per_hour": 120,
+        "default_requests_per_day": 10000,
+        "soft_limits": {
+          "thread_feed": 1200,
+          "user_profile": 600
+        },
+        "period": "hour"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "business_profile_required",
+        "strict_permissions_required",
+        "no_private_graph_merge",
+        "no_ai_training"
+      ],
+      "blocked_actions": [
+        "login_state_capture",
+        "private_account_enumeration",
+        "media_download_without_scope"
+      ],
+      "stability": "low",
+      "self_host_priority": "p3",
+      "api_version": "threads",
+      "required_credentials": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "supported_endpoints": [
+        "threads",
+        "users",
+        "mentions",
+        "media",
+        "replies"
+      ],
+      "lifecycle_status": "active"
+    },
+    {
+      "schema_version": "capability_implementation.v1",
+      "implementation_id": "linkedin.mcdm",
+      "provider_id": "linkedin.mcdm",
+      "platform": "linkedin",
+      "access_channel": "official_authorized_api",
+      "delivery_form": "sdk",
+      "deployment_mode": "official_cloud",
+      "data_domains": [
+        "company_updates",
+        "post_feed",
+        "ugc_posts",
+        "social_actions",
+        "organization_pages"
+      ],
+      "resource_groups": [
+        "company_updates",
+        "post_feed",
+        "ugc_posts",
+        "social_actions",
+        "organization_pages"
+      ],
+      "official_docs": [
+        "https://developer.linkedin.com/product-catalog",
+        "https://github.com/linkedin-developers/linkedin-api-python-client"
+      ],
+      "sdk_selection": {
+        "package": "linkedin-api-client",
+        "import_name": "linkedin_api_client",
+        "source_url": "https://github.com/linkedin-developers/linkedin-api-python-client",
+        "status": "manual_review",
+        "reason": "Official LinkedIn Rest.li client is beta; use only for approved organization/community APIs, never unofficial login-state libraries."
+      },
+      "live_adapter_strategy": "official_restli_client_after_tier_review",
+      "auth_mode": "LinkedIn MDP/MCM OAuth + app tier",
+      "quota_hint": {
+        "default_requests_per_day": 50000,
+        "default_requests_per_minute": 60,
+        "soft_limits": {
+          "ugc_posts": 500,
+          "posts_feed": 2000
+        },
+        "period": "day"
+      },
+      "cost_hint": {},
+      "policy_flags": [
+        "official_api_only",
+        "version_tier_review_required",
+        "data_retention_contract_required",
+        "no_ai_training"
+      ],
+      "blocked_actions": [
+        "private_message",
+        "contact_graph_expansion",
+        "member_profile_broad_scan",
+        "unapproved_data_retargeting"
+      ],
+      "stability": "medium",
+      "self_host_priority": "p3",
+      "api_version": "v2",
+      "required_credentials": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "supported_endpoints": [
+        "ugcPosts",
+        "network_sizes",
+        "organizations",
+        "shares",
+        "socialActions"
+      ],
+      "lifecycle_status": "active"
+    }
+  ],
+  "assertions": [
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "youtube.v3:content:search_discover:content_search",
+      "implementation_id": "youtube.v3",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "content_search",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "api_key"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_profile_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training_from_raw_source_without_governance",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "cookies_replay",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "subgraph_fans_following_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unauthorized_video_download",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_daily_requests": 10000,
+            "default_daily_unit_cost": 10000,
+            "per_1000_unit_cost": 0.0,
+            "soft_limits": {
+              "search.list": 100,
+              "videos.insert": 100,
+              "others": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 5,
+        "schema_stability": 5,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6fdc32760a18e705a0a6",
+        "evidence:2d14c2efa5fbf984bdba"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "youtube.v3:creator:resolve_detail:channel_profile",
+      "implementation_id": "youtube.v3",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "channel_profile",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "api_key"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_profile_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training_from_raw_source_without_governance",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "cookies_replay",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "subgraph_fans_following_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unauthorized_video_download",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_daily_requests": 10000,
+            "default_daily_unit_cost": 10000,
+            "per_1000_unit_cost": 0.0,
+            "soft_limits": {
+              "search.list": 100,
+              "videos.insert": 100,
+              "others": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 5,
+        "schema_stability": 5,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6fdc32760a18e705a0a6",
+        "evidence:2d14c2efa5fbf984bdba"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "youtube.v3:content:resolve_detail:video_detail",
+      "implementation_id": "youtube.v3",
+      "resource_type": "content",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "video_detail",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "api_key"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_profile_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training_from_raw_source_without_governance",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "cookies_replay",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "subgraph_fans_following_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unauthorized_video_download",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_daily_requests": 10000,
+            "default_daily_unit_cost": 10000,
+            "per_1000_unit_cost": 0.0,
+            "soft_limits": {
+              "search.list": 100,
+              "videos.insert": 100,
+              "others": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 5,
+        "schema_stability": 5,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6fdc32760a18e705a0a6",
+        "evidence:2d14c2efa5fbf984bdba"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "youtube.v3:conversation:list_enumerate:comment_threads",
+      "implementation_id": "youtube.v3",
+      "resource_type": "conversation",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "comment_threads",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "api_key"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_profile_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training_from_raw_source_without_governance",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "cookies_replay",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "subgraph_fans_following_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unauthorized_video_download",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_daily_requests": 10000,
+            "default_daily_unit_cost": 10000,
+            "per_1000_unit_cost": 0.0,
+            "soft_limits": {
+              "search.list": 100,
+              "videos.insert": 100,
+              "others": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 5,
+        "schema_stability": 5,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6fdc32760a18e705a0a6",
+        "evidence:2d14c2efa5fbf984bdba"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "youtube.v3:media_live:monitor_incremental:live_stream_snapshot",
+      "implementation_id": "youtube.v3",
+      "resource_type": "media_live",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "live_stream_snapshot",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "api_key"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_profile_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training_from_raw_source_without_governance",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "cookies_replay",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "subgraph_fans_following_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unauthorized_video_download",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_daily_requests": 10000,
+            "default_daily_unit_cost": 10000,
+            "per_1000_unit_cost": 0.0,
+            "soft_limits": {
+              "search.list": 100,
+              "videos.insert": 100,
+              "others": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 5,
+        "schema_stability": 5,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6fdc32760a18e705a0a6",
+        "evidence:2d14c2efa5fbf984bdba"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "reddit.praw:content:search_discover:post_search",
+      "implementation_id": "reddit.praw",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "post_search",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "compliance_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_data_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 100,
+            "default_daily_requests": 100000,
+            "soft_limits": {
+              "listings": 100,
+              "search": 100
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:b22812757b3a4850818d",
+        "evidence:e3a4ccc9c96ba43cf024"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "reddit.praw:topic:monitor_incremental:subreddit_snapshot",
+      "implementation_id": "reddit.praw",
+      "resource_type": "topic",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "subreddit_snapshot",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "compliance_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_data_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 100,
+            "default_daily_requests": 100000,
+            "soft_limits": {
+              "listings": 100,
+              "search": 100
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:b22812757b3a4850818d",
+        "evidence:e3a4ccc9c96ba43cf024"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "reddit.praw:conversation:resolve_detail:comment_snapshot",
+      "implementation_id": "reddit.praw",
+      "resource_type": "conversation",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "comment_snapshot",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "compliance_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_data_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 100,
+            "default_daily_requests": 100000,
+            "soft_limits": {
+              "listings": 100,
+              "search": 100
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:b22812757b3a4850818d",
+        "evidence:e3a4ccc9c96ba43cf024"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "reddit.praw:conversation:list_enumerate:comment_tree",
+      "implementation_id": "reddit.praw",
+      "resource_type": "conversation",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "comment_tree",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "compliance_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_data_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 100,
+            "default_daily_requests": 100000,
+            "soft_limits": {
+              "listings": 100,
+              "search": 100
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:b22812757b3a4850818d",
+        "evidence:e3a4ccc9c96ba43cf024"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "reddit.praw:creator:resolve_detail:user_profile_public",
+      "implementation_id": "reddit.praw",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "user_profile_public",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "oauth_token",
+        "client_id",
+        "client_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "compliance_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_data_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 100,
+            "default_daily_requests": 100000,
+            "soft_limits": {
+              "listings": 100,
+              "search": 100
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:b22812757b3a4850818d",
+        "evidence:e3a4ccc9c96ba43cf024"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "tiktok_research:content:resolve_detail:video_snapshot",
+      "implementation_id": "tiktok_research",
+      "resource_type": "content",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "video_snapshot",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "research_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "research_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 1000,
+            "soft_limits": {
+              "video_snapshot": 20000,
+              "comment": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6538ae3f871d6673881b",
+        "evidence:e78cfb443c8dc52ebbe3"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "tiktok_research:conversation:list_enumerate:video_comment",
+      "implementation_id": "tiktok_research",
+      "resource_type": "conversation",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "video_comment",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "research_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "research_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 1000,
+            "soft_limits": {
+              "video_snapshot": 20000,
+              "comment": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6538ae3f871d6673881b",
+        "evidence:e78cfb443c8dc52ebbe3"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "tiktok_research:topic:monitor_incremental:hashtag_rank",
+      "implementation_id": "tiktok_research",
+      "resource_type": "topic",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "hashtag_rank",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "research_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "research_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 1000,
+            "soft_limits": {
+              "video_snapshot": 20000,
+              "comment": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6538ae3f871d6673881b",
+        "evidence:e78cfb443c8dc52ebbe3"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "tiktok_research:creator:resolve_detail:creator_profile",
+      "implementation_id": "tiktok_research",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "creator_profile",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "research_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "research_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 1000,
+            "soft_limits": {
+              "video_snapshot": 20000,
+              "comment": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6538ae3f871d6673881b",
+        "evidence:e78cfb443c8dc52ebbe3"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "tiktok_research:content:search_discover:search",
+      "implementation_id": "tiktok_research",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "search",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "research_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "research_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_user_data_aggregation_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "captcha_bypass",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_license",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 1000,
+            "soft_limits": {
+              "video_snapshot": 20000,
+              "comment": 10000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:6538ae3f871d6673881b",
+        "evidence:e78cfb443c8dc52ebbe3"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "x.v2:content:search_discover:post_search",
+      "implementation_id": "x.v2",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "post_search",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "commercial_use_requires_paywall_terms",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_scope_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "automated_following_graph_inference",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 300,
+            "default_requests_per_day": 30000,
+            "soft_limits": {
+              "search/recent": 300,
+              "users/me": 60
+            },
+            "cost": {
+              "pay_per_use": true,
+              "unit_cost_hint": "provider_defined"
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:5faf4c91cf8f10ee257c",
+        "evidence:626e7979eced7d209212"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "x.v2:creator:resolve_detail:user_profile",
+      "implementation_id": "x.v2",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "user_profile",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "commercial_use_requires_paywall_terms",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_scope_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "automated_following_graph_inference",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 300,
+            "default_requests_per_day": 30000,
+            "soft_limits": {
+              "search/recent": 300,
+              "users/me": 60
+            },
+            "cost": {
+              "pay_per_use": true,
+              "unit_cost_hint": "provider_defined"
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:5faf4c91cf8f10ee257c",
+        "evidence:626e7979eced7d209212"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "x.v2:content:resolve_detail:post_lookup",
+      "implementation_id": "x.v2",
+      "resource_type": "content",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "post_lookup",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "commercial_use_requires_paywall_terms",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_scope_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "automated_following_graph_inference",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 300,
+            "default_requests_per_day": 30000,
+            "soft_limits": {
+              "search/recent": 300,
+              "users/me": 60
+            },
+            "cost": {
+              "pay_per_use": true,
+              "unit_cost_hint": "provider_defined"
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:5faf4c91cf8f10ee257c",
+        "evidence:626e7979eced7d209212"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "x.v2:topic:monitor_incremental:realtime_trends",
+      "implementation_id": "x.v2",
+      "resource_type": "topic",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "realtime_trends",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "commercial_use_requires_paywall_terms",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_scope_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "automated_following_graph_inference",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 300,
+            "default_requests_per_day": 30000,
+            "soft_limits": {
+              "search/recent": 300,
+              "users/me": 60
+            },
+            "cost": {
+              "pay_per_use": true,
+              "unit_cost_hint": "provider_defined"
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:5faf4c91cf8f10ee257c",
+        "evidence:626e7979eced7d209212"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "x.v2:metrics:monitor_incremental:metrics",
+      "implementation_id": "x.v2",
+      "resource_type": "metrics",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "metrics",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "bearer_token",
+        "app_id",
+        "app_secret"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "commercial_use_requires_paywall_terms",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_scope_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_login_state",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "dm",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "automated_following_graph_inference",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_cookie_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_minute": 300,
+            "default_requests_per_day": 30000,
+            "soft_limits": {
+              "search/recent": 300,
+              "users/me": 60
+            },
+            "cost": {
+              "pay_per_use": true,
+              "unit_cost_hint": "provider_defined"
+            },
+            "period": "minute"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:5faf4c91cf8f10ee257c",
+        "evidence:626e7979eced7d209212"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "instagram_graph.v19:content:list_enumerate:media_feed",
+      "implementation_id": "instagram_graph.v19",
+      "resource_type": "content",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "media_feed",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "owned_assets_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_account_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "page_level_authorization",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "mentions_requires_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_profile_deep_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "consumer_dm_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unscoped_comment_dump",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_collection",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 200,
+            "default_requests_per_day": 20000,
+            "soft_limits": {
+              "business_content": 2000,
+              "insights": 200
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:e47d496709014ce67afe",
+        "evidence:29e12946b9166fc31299"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "instagram_graph.v19:creator:resolve_detail:user_pages",
+      "implementation_id": "instagram_graph.v19",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "user_pages",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "owned_assets_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_account_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "page_level_authorization",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "mentions_requires_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_profile_deep_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "consumer_dm_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unscoped_comment_dump",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_collection",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 200,
+            "default_requests_per_day": 20000,
+            "soft_limits": {
+              "business_content": 2000,
+              "insights": 200
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:e47d496709014ce67afe",
+        "evidence:29e12946b9166fc31299"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "instagram_graph.v19:content:search_discover:mentions",
+      "implementation_id": "instagram_graph.v19",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "mentions",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "owned_assets_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_account_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "page_level_authorization",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "mentions_requires_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_profile_deep_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "consumer_dm_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unscoped_comment_dump",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_collection",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 200,
+            "default_requests_per_day": 20000,
+            "soft_limits": {
+              "business_content": 2000,
+              "insights": 200
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:e47d496709014ce67afe",
+        "evidence:29e12946b9166fc31299"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "instagram_graph.v19:conversation:list_enumerate:comments",
+      "implementation_id": "instagram_graph.v19",
+      "resource_type": "conversation",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "comments",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "owned_assets_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_account_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "page_level_authorization",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "mentions_requires_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_profile_deep_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "consumer_dm_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unscoped_comment_dump",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_collection",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 200,
+            "default_requests_per_day": 20000,
+            "soft_limits": {
+              "business_content": 2000,
+              "insights": 200
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:e47d496709014ce67afe",
+        "evidence:29e12946b9166fc31299"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "instagram_graph.v19:metrics:monitor_incremental:insights",
+      "implementation_id": "instagram_graph.v19",
+      "resource_type": "metrics",
+      "operation": "monitor_incremental",
+      "support_status": "candidate",
+      "source_resource_group": "insights",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "owned_assets_only"
+      ],
+      "auth_scope": [
+        "access_token",
+        "app_secret",
+        "page_access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_account_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "page_level_authorization",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "mentions_requires_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_profile_deep_scrape",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "consumer_dm_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unscoped_comment_dump",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_collection",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 200,
+            "default_requests_per_day": 20000,
+            "soft_limits": {
+              "business_content": 2000,
+              "insights": 200
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 3,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:e47d496709014ce67afe",
+        "evidence:29e12946b9166fc31299"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "threads.graph.v1:content:list_enumerate:thread_feed",
+      "implementation_id": "threads.graph.v1",
+      "resource_type": "content",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "thread_feed",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_profile_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_permissions_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_account_enumeration",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 120,
+            "default_requests_per_day": 10000,
+            "soft_limits": {
+              "thread_feed": 1200,
+              "user_profile": 600
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:73af31d14cc90032c89c",
+        "evidence:d6c89bc8421f53a400b7"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "threads.graph.v1:creator:resolve_detail:user_profile",
+      "implementation_id": "threads.graph.v1",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "user_profile",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_profile_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_permissions_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_account_enumeration",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 120,
+            "default_requests_per_day": 10000,
+            "soft_limits": {
+              "thread_feed": 1200,
+              "user_profile": 600
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:73af31d14cc90032c89c",
+        "evidence:d6c89bc8421f53a400b7"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "threads.graph.v1:content:search_discover:mentions",
+      "implementation_id": "threads.graph.v1",
+      "resource_type": "content",
+      "operation": "search_discover",
+      "support_status": "candidate",
+      "source_resource_group": "mentions",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_profile_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_permissions_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_account_enumeration",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 120,
+            "default_requests_per_day": 10000,
+            "soft_limits": {
+              "thread_feed": 1200,
+              "user_profile": 600
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:73af31d14cc90032c89c",
+        "evidence:d6c89bc8421f53a400b7"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "threads.graph.v1:content:resolve_detail:post_lookup",
+      "implementation_id": "threads.graph.v1",
+      "resource_type": "content",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "post_lookup",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_profile_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_permissions_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_account_enumeration",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 120,
+            "default_requests_per_day": 10000,
+            "soft_limits": {
+              "thread_feed": 1200,
+              "user_profile": 600
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:73af31d14cc90032c89c",
+        "evidence:d6c89bc8421f53a400b7"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "threads.graph.v1:conversation:list_enumerate:replies",
+      "implementation_id": "threads.graph.v1",
+      "resource_type": "conversation",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "replies",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "app_id",
+        "app_secret",
+        "access_token",
+        "scope"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "business_profile_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "strict_permissions_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_private_graph_merge",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "login_state_capture",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_account_enumeration",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "media_download_without_scope",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_hour": 120,
+            "default_requests_per_day": 10000,
+            "soft_limits": {
+              "thread_feed": 1200,
+              "user_profile": 600
+            },
+            "period": "hour"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 2,
+        "schema_stability": 2,
+        "cost_efficiency": 3,
+        "maintainability": 4,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:73af31d14cc90032c89c",
+        "evidence:d6c89bc8421f53a400b7"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "linkedin.mcdm:content:list_enumerate:company_updates",
+      "implementation_id": "linkedin.mcdm",
+      "resource_type": "content",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "company_updates",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "official_api_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "version_tier_review_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "data_retention_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "contact_graph_expansion",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "member_profile_broad_scan",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unapproved_data_retargeting",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 50000,
+            "default_requests_per_minute": 60,
+            "soft_limits": {
+              "ugc_posts": 500,
+              "posts_feed": 2000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:92f419485ea7f733684b",
+        "evidence:84ee5504525c48fd7c73"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "linkedin.mcdm:content:list_enumerate:post_feed",
+      "implementation_id": "linkedin.mcdm",
+      "resource_type": "content",
+      "operation": "list_enumerate",
+      "support_status": "candidate",
+      "source_resource_group": "post_feed",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "official_api_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "version_tier_review_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "data_retention_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "contact_graph_expansion",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "member_profile_broad_scan",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unapproved_data_retargeting",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 50000,
+            "default_requests_per_minute": 60,
+            "soft_limits": {
+              "ugc_posts": 500,
+              "posts_feed": 2000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:92f419485ea7f733684b",
+        "evidence:84ee5504525c48fd7c73"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "linkedin.mcdm:content:resolve_detail:ugc_posts",
+      "implementation_id": "linkedin.mcdm",
+      "resource_type": "content",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "ugc_posts",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "official_api_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "version_tier_review_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "data_retention_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "contact_graph_expansion",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "member_profile_broad_scan",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unapproved_data_retargeting",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 50000,
+            "default_requests_per_minute": 60,
+            "soft_limits": {
+              "ugc_posts": 500,
+              "posts_feed": 2000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:92f419485ea7f733684b",
+        "evidence:84ee5504525c48fd7c73"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "linkedin.mcdm:metrics:resolve_detail:social_actions",
+      "implementation_id": "linkedin.mcdm",
+      "resource_type": "metrics",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "social_actions",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "official_api_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "version_tier_review_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "data_retention_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "contact_graph_expansion",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "member_profile_broad_scan",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unapproved_data_retargeting",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 50000,
+            "default_requests_per_minute": 60,
+            "soft_limits": {
+              "ugc_posts": 500,
+              "posts_feed": 2000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:92f419485ea7f733684b",
+        "evidence:84ee5504525c48fd7c73"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    },
+    {
+      "schema_version": "capability_assertion.v1",
+      "assertion_id": "linkedin.mcdm:creator:resolve_detail:organization_pages",
+      "implementation_id": "linkedin.mcdm",
+      "resource_type": "creator",
+      "operation": "resolve_detail",
+      "support_status": "candidate",
+      "source_resource_group": "organization_pages",
+      "region_scope": [
+        "manual_review"
+      ],
+      "purpose_scope": [
+        "commercial_review_required"
+      ],
+      "auth_scope": [
+        "client_id",
+        "client_secret",
+        "access_token"
+      ],
+      "field_contract": {
+        "required": [],
+        "optional": [],
+        "status": "manual_review"
+      },
+      "constraints": [
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "official_api_only",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "version_tier_review_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "data_retention_contract_required",
+          "details": {}
+        },
+        {
+          "constraint_type": "policy",
+          "severity": "blocking",
+          "code": "no_ai_training",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "private_message",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "contact_graph_expansion",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "member_profile_broad_scan",
+          "details": {}
+        },
+        {
+          "constraint_type": "blocked_action",
+          "severity": "blocking",
+          "code": "unapproved_data_retargeting",
+          "details": {}
+        },
+        {
+          "constraint_type": "quota",
+          "severity": "major",
+          "code": "catalog_quota_hint",
+          "details": {
+            "default_requests_per_day": 50000,
+            "default_requests_per_minute": 60,
+            "soft_limits": {
+              "ugc_posts": 500,
+              "posts_feed": 2000
+            },
+            "period": "day"
+          }
+        }
+      ],
+      "score_profile": {
+        "coverage": 3,
+        "freshness": 3,
+        "history": 2,
+        "reliability": 3,
+        "schema_stability": 3,
+        "cost_efficiency": 3,
+        "maintainability": 2,
+        "evidence_confidence": 3
+      },
+      "evidence_refs": [
+        "evidence:92f419485ea7f733684b",
+        "evidence:84ee5504525c48fd7c73"
+      ],
+      "last_verified_at": "2026-07-08T00:00:00Z"
+    }
+  ],
+  "evidence": [
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:6fdc32760a18e705a0a6",
+      "evidence_type": "official_doc",
+      "source_url": "https://developers.google.com/youtube/v3/docs",
+      "source_version": "v3",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "6fdc32760a18e705a0a66d904287f2b01028967592165095f74a6b640c8a1204",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:2d14c2efa5fbf984bdba",
+      "evidence_type": "official_doc",
+      "source_url": "https://googleapis.github.io/google-api-python-client/docs/dyn/youtube_v3.html",
+      "source_version": "v3",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "2d14c2efa5fbf984bdbae300749d66ae336381b0266de20364eda18a9f16de4f",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:b22812757b3a4850818d",
+      "evidence_type": "official_doc",
+      "source_url": "https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki",
+      "source_version": "OAuth2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "b22812757b3a4850818dd2f92a01e71b17791c9c5b45bf5cd468132277ecfcaa",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:e3a4ccc9c96ba43cf024",
+      "evidence_type": "official_doc",
+      "source_url": "https://asyncpraw.readthedocs.io/",
+      "source_version": "OAuth2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "e3a4ccc9c96ba43cf024a63eabd5d3ced1c82eaa9aa396861c4e46d8676fa180",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:6538ae3f871d6673881b",
+      "evidence_type": "official_doc",
+      "source_url": "https://developers.tiktok.com/doc/research-api-get-started",
+      "source_version": "research",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "6538ae3f871d6673881b4b718eaae0740ef41966466ea4d8eddb1a447e0de52d",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:e78cfb443c8dc52ebbe3",
+      "evidence_type": "repository",
+      "source_url": "https://github.com/tiktok/tiktok-research-api-wrapper",
+      "source_version": "research",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "e78cfb443c8dc52ebbe3dcd533d276b8c159508d723d74ab23625b3465428cd1",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:5faf4c91cf8f10ee257c",
+      "evidence_type": "official_doc",
+      "source_url": "https://docs.x.com/x-api/introduction",
+      "source_version": "v2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "5faf4c91cf8f10ee257c0ab21eb1f55395e5f7c5d2b01629dcd94f53c8a30dda",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:626e7979eced7d209212",
+      "evidence_type": "official_doc",
+      "source_url": "https://docs.x.com/tools-and-libraries",
+      "source_version": "v2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "626e7979eced7d209212142d9bd7b14c3a35d27860b176a42f910261fd0f5192",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:e47d496709014ce67afe",
+      "evidence_type": "official_doc",
+      "source_url": "https://developers.facebook.com/docs/instagram-api",
+      "source_version": "v19",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "e47d496709014ce67afe7b82fceb30194b3a1fa4f892b4da4d7e9c048abefcf5",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:29e12946b9166fc31299",
+      "evidence_type": "repository",
+      "source_url": "https://github.com/facebook/facebook-python-business-sdk",
+      "source_version": "v19",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "29e12946b9166fc31299cfae39167c2d685b9382457786d87ac42b3f64a99dea",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:73af31d14cc90032c89c",
+      "evidence_type": "official_doc",
+      "source_url": "https://developers.facebook.com/docs/threads",
+      "source_version": "threads",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "73af31d14cc90032c89cd58879837060185aa941d8e1f4444afcc68f2c272faa",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:d6c89bc8421f53a400b7",
+      "evidence_type": "official_doc",
+      "source_url": "https://developers.facebook.com/docs/graph-api/guides/our-sdks/",
+      "source_version": "threads",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "d6c89bc8421f53a400b7610d169bf878009f4296623ea7d750e07ce2fb167abe",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:92f419485ea7f733684b",
+      "evidence_type": "official_doc",
+      "source_url": "https://developer.linkedin.com/product-catalog",
+      "source_version": "v2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "92f419485ea7f733684b44b65f2d48a6b75dc74ad15ccb1d858037ddf96f46f8",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    },
+    {
+      "schema_version": "capability_evidence.v1",
+      "evidence_id": "evidence:84ee5504525c48fd7c73",
+      "evidence_type": "repository",
+      "source_url": "https://github.com/linkedin-developers/linkedin-api-python-client",
+      "source_version": "v2",
+      "observed_at": "2026-07-08T00:00:00Z",
+      "content_hash": "84ee5504525c48fd7c73631a31b66519d74da6ee2a6cb6f5c20b4af96ec1d62e",
+      "hash_scope": "source_reference_only",
+      "evidence_grade": "L1-public-or-runtime",
+      "provider_call_attempted": false,
+      "credential_read_attempted": false,
+      "live_client_created": false,
+      "production_write_attempted": false
+    }
+  ]
+}

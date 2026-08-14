@@ -55,6 +55,9 @@ type CollectionTaskResponse = {
   next_run_at?: string | null;
   retry_after_at?: string | null;
   retry_delay_minutes?: number;
+  max_retry_attempts?: number;
+  retry_attempts_used?: number;
+  retry_budget_exhausted?: boolean;
   success_count: number;
   failure_count: number;
   last_run_at: string | null;
@@ -185,6 +188,9 @@ export async function enableSource(sourceId: string): Promise<CollectionTask> {
       nextRunAt: task?.scheduleCron ? new Date().toISOString() : null,
       retryAfterAt: null,
       retryDelayMinutes: 15,
+      maxRetryAttempts: 3,
+      retryAttemptsUsed: 0,
+      retryBudgetExhausted: false,
       successCount: 0,
       failureCount: 0,
       lastRunAt: null,
@@ -291,6 +297,9 @@ function mapTask(response: CollectionTaskResponse): CollectionTask {
     nextRunAt: response.next_run_at ?? null,
     retryAfterAt: response.retry_after_at ?? null,
     retryDelayMinutes: response.retry_delay_minutes ?? 15,
+    maxRetryAttempts: response.max_retry_attempts ?? 3,
+    retryAttemptsUsed: response.retry_attempts_used ?? 0,
+    retryBudgetExhausted: response.retry_budget_exhausted ?? false,
     successCount: response.success_count,
     failureCount: response.failure_count,
     lastRunAt: response.last_run_at,

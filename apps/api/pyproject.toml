@@ -21,6 +21,18 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
 ]
 
+[project.optional-dependencies]
+social-youtube = [
+    "google-api-python-client>=2.198.0",
+]
+social-reddit = [
+    "asyncpraw>=8.0.2",
+]
+social-overseas-live = [
+    "google-api-python-client>=2.198.0",
+    "asyncpraw>=8.0.2",
+]
+
 [dependency-groups]
 dev = [
     "aiosqlite>=0.20.0",
@@ -42,6 +54,7 @@ packages = ["src/data_intelligence_hub"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["src"]
+addopts = ["--import-mode=importlib"]
 
 [tool.ruff]
 line-length = 100
@@ -54,6 +67,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]

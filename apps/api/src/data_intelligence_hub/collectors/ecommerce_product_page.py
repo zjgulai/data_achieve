@@ -267,6 +267,7 @@ class _EcommerceHtmlInspector(HTMLParser):
         self.title: str | None = None
         self.canonical_url: str | None = None
         self.meta: dict[str, str] = {}
+        self.microdata: dict[str, list[tuple[str, str, str]]] = {}
         self.jsonld_documents: list[Any] = []
         self.script_count = 0
         self.form_count = 0
@@ -276,6 +277,7 @@ class _EcommerceHtmlInspector(HTMLParser):
         self._in_title = False
         self._in_jsonld = False
         self._jsonld_parts: list[str] = []
+        self._microdata_stack: list[tuple[str, str, str, list[str]]] = []
         self._ignore_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -300,6 +302,19 @@ class _EcommerceHtmlInspector(HTMLParser):
             content = attrs_by_name.get("content", "").strip()
             if key and content:
                 self.meta[key.lower()] = content
+            itemprop = attrs_by_name.get("itemprop", "").strip()
+            if itemprop and content:
+                self._capture_microdata(itemprop, content, tag_name, attrs_by_name)
+        itemprop = attrs_by_name.get("itemprop", "").strip()
+        if itemprop and tag_name == "img":
+            src = attrs_by_name.get("src", "").strip()
+            if src:
+                self._capture_microdata(
+                    itemprop,
+                    urljoin(self.final_url, src),
+                    tag_name,
+                    attrs_by_name,
+                )
         if tag_name == "link":
             rel = attrs_by_name.get("rel", "").lower()
             href = attrs_by_name.get("href", "").strip()
@@ -309,6 +324,10 @@ class _EcommerceHtmlInspector(HTMLParser):
             href = attrs_by_name.get("href", "").strip()
             if href and _origin(urljoin(self.final_url, href)) == _origin(self.final_url):
                 self.same_origin_link_count += 1
+        if itemprop and tag_name not in {"meta", "img", "link", "script", "style"}:
+            self._microdata_stack.append(
+                (tag_name, itemprop, attrs_by_name.get("class", ""), [])
+            )
 
     def handle_endtag(self, tag: str) -> None:
         tag_name = tag.lower()
@@ -324,6 +343,11 @@ class _EcommerceHtmlInspector(HTMLParser):
                 self._ignore_depth -= 1
         if tag_name in {"style", "noscript"} and self._ignore_depth > 0:
             self._ignore_depth -= 1
+        if self._microdata_stack and self._microdata_stack[-1][0] == tag_name:
+            _tag_name, itemprop, class_name, parts = self._microdata_stack.pop()
+            value = " ".join(" ".join(parts).split())
+            if value:
+                self._capture_microdata(itemprop, value, tag_name, {"class": class_name})
 
     def handle_data(self, data: str) -> None:
         normalized = " ".join(data.split())
@@ -331,6 +355,9 @@ class _EcommerceHtmlInspector(HTMLParser):
             self.title_parts.append(normalized)
         if self._in_jsonld:
             self._jsonld_parts.append(data)
+        if normalized:
+            for _tag_name, _itemprop, _class_name, parts in self._microdata_stack:
+                parts.append(normalized)
         if self._ignore_depth == 0 and normalized:
             self.text_parts.append(normalized)
 
@@ -342,6 +369,21 @@ class _EcommerceHtmlInspector(HTMLParser):
             self.jsonld_documents.append(json.loads(stripped))
         except ValueError:
             return
+
+    def _capture_microdata(
+        self,
+        itemprop: str,
+        value: str,
+        tag_name: str,
+        attrs_by_name: dict[str, str],
+    ) -> None:
+        normalized_prop = itemprop.strip()
+        normalized_value = " ".join(value.split())
+        if not normalized_prop or not normalized_value:
+            return
+        self.microdata.setdefault(normalized_prop, []).append(
+            (normalized_value, tag_name, attrs_by_name.get("class", ""))
+        )
 
 
 def _iter_jsonld_products(documents: list[Any]) -> list[dict[str, Any]]:
@@ -389,7 +431,9 @@ def _extract_product_fields(
         brand_value: Any = brand.get("name")
     else:
         brand_value = brand
-    image = product.get("image") or inspector.meta.get("og:image")
+    image = product.get("image") or _microdata_value(inspector, "image") or inspector.meta.get(
+        "og:image"
+    )
     if isinstance(image, list):
         image = next((item for item in image if isinstance(item, str)), None)
     offer_prices = [
@@ -400,6 +444,15 @@ def _extract_product_fields(
     price = offer_prices[0] if offer_prices else None
     if price is None:
         price = _number(inspector.meta.get("product:price:amount"))
+    if price is None:
+        price = _number(
+            _microdata_value(
+                inspector,
+                "price",
+                preferred_classes=("price",),
+                allow_fallback=True,
+            )
+        )
     price_range = offer_prices or ([price] if price is not None else [])
     availability_values = [
         normalized
@@ -411,23 +464,48 @@ def _extract_product_fields(
     availability = availability_values[0] if availability_values else None
     return {
         "title": _text(product.get("name"))
+        or _microdata_value(inspector, "name", preferred_classes=("title", "product-title"))
         or inspector.meta.get("og:title")
         or inspector.title,
         "price": price,
         "price_min": min(price_range) if price_range else None,
         "price_max": max(price_range) if price_range else None,
         "currency": _text(offer.get("priceCurrency") if offer else None)
-        or inspector.meta.get("product:price:currency"),
+        or inspector.meta.get("product:price:currency")
+        or _microdata_value(inspector, "priceCurrency"),
         "availability": availability,
         "availability_detail": _availability_detail(offers, availability),
-        "sku": _text(product.get("sku")) or _text(product.get("mpn")),
+        "sku": _text(product.get("sku"))
+        or _text(product.get("mpn"))
+        or _microdata_value(inspector, "sku"),
         "variant": _variant_summary(product, offers),
         "brand": _text(brand_value),
         "category": _category_value(product, inspector),
-        "description": _text(product.get("description")) or inspector.meta.get("og:description"),
+        "description": _text(product.get("description"))
+        or _microdata_value(inspector, "description", preferred_classes=("description",))
+        or inspector.meta.get("og:description"),
         "image_url": urljoin(url, image) if isinstance(image, str) else None,
         "canonical_url": inspector.canonical_url or _text(product.get("url")) or url,
     }
+
+
+def _microdata_value(
+    inspector: _EcommerceHtmlInspector,
+    itemprop: str,
+    *,
+    preferred_classes: tuple[str, ...] = (),
+    allow_fallback: bool = False,
+) -> str | None:
+    values = inspector.microdata.get(itemprop, [])
+    if not values:
+        return None
+    for value, _tag_name, class_name in values:
+        classes = set(class_name.lower().split())
+        if any(preferred.lower() in classes for preferred in preferred_classes):
+            return value
+    if preferred_classes and not allow_fallback:
+        return None
+    return values[0][0]
 
 
 def _dicts(value: Any) -> list[dict[str, Any]]:

@@ -60,6 +60,50 @@ jobs:
       - name: Alembic head check
         run: uv run alembic heads
 
+  workflow-planner-postgres:
+    name: Workflow Planner PostgreSQL 15 Gate
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: data_scrapy_workflow_plan_phase2_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d data_scrapy_workflow_plan_phase2_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/api/uv.lock
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: uv sync --locked --dev
+
+      - name: Run guarded workflow planner PostgreSQL gate
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/data_scrapy_workflow_plan_phase2_test
+          ALLOW_DESTRUCTIVE_MIGRATION_TEST: "true"
+        run: bash scripts/verify-workflow-planner-phase2-migration.sh
+
   web:
     name: Web Quality Gate
     runs-on: ubuntu-latest

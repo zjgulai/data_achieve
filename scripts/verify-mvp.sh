@@ -42,6 +42,14 @@ run_step() {
   "$@"
 }
 
+run_pnpm() {
+  if command -v corepack >/dev/null 2>&1; then
+    corepack pnpm "$@"
+    return
+  fi
+  pnpm "$@"
+}
+
 if [[ "$WITH_DB" == "1" ]]; then
   # shellcheck source=scripts/lib/docker-db.sh
   source "$ROOT_DIR/scripts/lib/docker-db.sh"
@@ -61,10 +69,10 @@ if [[ "$WITH_DB" == "1" ]]; then
 fi
 
 cd "$ROOT_DIR/apps/web"
-run_step "Web lint" pnpm lint
-run_step "Web unit tests" pnpm test
-run_step "Web build" pnpm build
-run_step "Web Playwright E2E" pnpm test:e2e
+run_step "Web lint" run_pnpm lint
+run_step "Web unit tests" run_pnpm test
+run_step "Web build" run_pnpm build
+run_step "Web Playwright E2E" run_pnpm test:e2e
 
 echo
 echo "MVP verification complete."

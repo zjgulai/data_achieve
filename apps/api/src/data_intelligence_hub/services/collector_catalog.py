@@ -90,6 +90,37 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             },
         },
     ),
+    CollectorDefinition(
+        type="tikhub_social",
+        name="TikHub Social",
+        description="Collect TikTok / Instagram / Xiaohongshu data via TikHub REST API.",
+        config_schema={
+            "required": ["endpoint_type"],
+            "properties": {
+                "endpoint_type": "string",
+                "keyword": "string",
+                "unique_id": "string",
+                "ch_id": "string",
+                "user_id": "string",
+                "max_items": "integer",
+            },
+        },
+    ),
+    CollectorDefinition(
+        type="apify_actor",
+        name="Apify Actor",
+        description="Run any Apify Actor and collect Dataset items.",
+        config_schema={
+            "required": ["actor_id", "actor_input"],
+            "properties": {
+                "actor_id": "string",
+                "actor_input": "object",
+                "max_items": "integer",
+                "max_total_charge_usd": "number",
+                "run_timeout_seconds": "integer",
+            },
+        },
+    ),
 )
 
 
@@ -134,6 +165,11 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_ecommerce_product_page_config(config)
     if collector_type == "ecommerce_product_discovery":
         return _validate_ecommerce_product_discovery_config(config)
+
+    if collector_type == "tikhub_social":
+        return _validate_tikhub_social_config(config)
+    if collector_type == "apify_actor":
+        return _validate_apify_actor_config(config)
 
     from data_intelligence_hub.services.exceptions import CollectorNotFoundError
 
@@ -287,3 +323,56 @@ def _validate_ecommerce_product_discovery_config(config: dict[str, Any]) -> dict
 
         raise CollectorConfigError
     return {"url": url, "max_products": max_products, "platform_hint": platform_hint}
+
+
+_TIKHUB_ENDPOINT_TYPES = {
+    "tikhub_tiktok_video_search",
+    "tikhub_tiktok_user_posts",
+    "tikhub_tiktok_hashtag_posts",
+    "tikhub_instagram_search",
+    "tikhub_instagram_user_posts",
+    "tikhub_xiaohongshu_search",
+}
+
+
+def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
+    endpoint_type = _require_text(config, "endpoint_type")
+    if endpoint_type not in _TIKHUB_ENDPOINT_TYPES:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    max_items = config.get("max_items", 20)
+    if not isinstance(max_items, int) or not (1 <= max_items <= 100):
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    out: dict[str, Any] = {"endpoint_type": endpoint_type, "max_items": max_items}
+    for key in ("keyword", "unique_id", "ch_id", "user_id", "cursor", "max_cursor"):
+        if key in config and config[key] is not None:
+            out[key] = config[key]
+    return out
+
+
+def _validate_apify_actor_config(config: dict[str, Any]) -> dict[str, Any]:
+    actor_id = _require_text(config, "actor_id")
+    actor_input = config.get("actor_input")
+    if not isinstance(actor_input, dict):
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    max_items = config.get("max_items", 20)
+    if not isinstance(max_items, int) or not (1 <= max_items <= 1000):
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    max_charge = config.get("max_total_charge_usd", 1.0)
+    if not isinstance(max_charge, (int, float)) or max_charge <= 0:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    return {
+        "actor_id": actor_id,
+        "actor_input": actor_input,
+        "max_items": max_items,
+        "max_total_charge_usd": float(max_charge),
+    }

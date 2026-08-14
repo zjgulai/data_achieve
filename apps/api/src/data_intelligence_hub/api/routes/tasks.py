@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.core.config import get_settings
@@ -78,14 +78,27 @@ async def run_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
+    response: Response,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TaskRunResponse:
     try:
-        run = await run_task_now(session, context.workspace, task_id)
+        result = await run_task_now(
+            session,
+            context.workspace,
+            task_id,
+            idempotency_key=idempotency_key,
+        )
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     except (TaskAlreadyRunningError, TaskNotRunnableError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.message) from exc
-    return TaskRunResponse.model_validate(run)
+    if result.idempotency_replayed:
+        response.status_code = status.HTTP_200_OK
+    return TaskRunResponse.from_run(
+        result.run,
+        idempotency_replayed=result.idempotency_replayed,
+        idempotency_key_hash=result.idempotency_key_hash,
+    )
 
 
 @router.post("/{task_id}/pause", response_model=CollectionTaskResponse)
@@ -124,4 +137,4 @@ async def list_task_run_items(
         runs = await get_task_runs(session, context.workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
-    return [TaskRunResponse.model_validate(run) for run in runs]
+    return [TaskRunResponse.from_run(run) for run in runs]

@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens (Data Intelligence Product) ─── */
+:root,
+[data-theme="light"] {
+  --fg-1: #241b1b;
+  --fg-2: #5b5050;
+  --fg-3: #786d6a;
+  --fg-inverse: #ffffff;
+  --bg-1: #f7f2ed;
+  --bg-2: #ffffff;
+  --bg-3: #fffdfb;
+  --bg-4: #f4ece7;
+  --bg-diagnostic: #2e201c;
+  --accent-1: #9b4355;
+  --accent-1-hover: #823747;
+  --accent-1-pressed: #6f2f3d;
+  --accent-1-soft: #f8e6e2;
+  --accent-2: #284e7a;
+  --accent-2-soft: #e9f0f7;
+  --success-1: #287a45;
+  --success-soft: #eaf7ee;
+  --warning-1: #87611b;
+  --warning-soft: #fff4de;
+  --danger-1: #a04437;
+  --danger-soft: #fff0ed;
+  --border-1: #ded3cc;
+  --border-2: #c9b8af;
+  --focus-1: #284e7a;
+  --overlay-1: rgb(36 27 27 / 48%);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --radius-1: 0.25rem;
+  --radius-2: 0.5rem;
+  --radius-3: 0.75rem;
+  --radius-4: 1rem;
+  --radius-pill: 999px;
+  --sidebar-width: 17rem;
+  --sidebar-width-collapsed: 3.5rem;
+  --topbar-height: 4.5rem;
+
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Semantic aliases */
+  --surface-canvas: var(--bg-1);
+  --surface-primary: var(--bg-2);
+  --surface-secondary: var(--bg-3);
+  --surface-muted: var(--bg-4);
+  --text-primary: var(--fg-1);
+  --text-secondary: var(--fg-2);
+  --text-tertiary: var(--fg-3);
+  --text-inverse: var(--fg-inverse);
+  --border-subtle: var(--border-1);
+  --border-strong: var(--border-2);
+  --action-primary: var(--accent-1);
+  --action-primary-hover: var(--accent-1-hover);
+  --action-primary-pressed: var(--accent-1-pressed);
+  --state-info: var(--accent-2);
+  --state-success: var(--success-1);
+  --state-warning: var(--warning-1);
+  --state-danger: var(--danger-1);
+  --focus-ring: 0 0 0 3px rgb(40 78 122 / 24%);
+  --shadow-overlay: 0 18px 48px rgb(46 32 28 / 18%);
+
+  /* shadcn/ui compatibility */
+  --background: var(--surface-canvas);
+  --foreground: var(--text-primary);
+  --card: var(--surface-primary);
+  --card-foreground: var(--text-primary);
+  --popover: var(--surface-primary);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--action-primary);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--text-tertiary);
+  --accent: var(--accent-1-soft);
+  --accent-foreground: var(--action-primary);
+  --destructive: var(--danger-1);
+  --destructive-foreground: var(--text-inverse);
+  --border: var(--border-subtle);
+  --input: var(--border-subtle);
+  --ring: var(--focus-1);
+  --radius: var(--radius-2);
+
+  --sidebar-background: var(--surface-primary);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--action-primary);
+  --sidebar-primary-foreground: var(--text-inverse);
+  --sidebar-accent: var(--accent-1-soft);
+  --sidebar-accent-foreground: var(--action-primary);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; }
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--accent-1-soft);
+  color: var(--text-primary);
+}

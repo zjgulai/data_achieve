@@ -1,0 +1,403 @@
+{
+  "schema_version": "external_provider_catalog.v1",
+  "provider_call": false,
+  "evidence_level": "L1-public-or-runtime",
+  "generated_at": "2026-07-08",
+  "catalog": {
+    "phase": "phase0_overseas_overview",
+    "scope": ["youtube", "reddit", "x", "instagram", "threads", "tiktok", "linkedin"],
+    "self_hosted_priority_baseline": ["youtube", "reddit", "x", "instagram_threads", "tiktok", "linkedin"],
+    "providers": [
+      {
+        "provider_id": "youtube.v3",
+        "platform": "youtube",
+        "data_domain": [
+          "content_search",
+          "channel_profile",
+          "video_detail",
+          "comment_threads",
+          "live_stream_snapshot"
+        ],
+        "resource_groups": [
+          "content_search",
+          "channel_profile",
+          "video_detail",
+          "comment_threads",
+          "live_stream_snapshot"
+        ],
+        "official_docs": [
+          "https://developers.google.com/youtube/v3/docs",
+          "https://googleapis.github.io/google-api-python-client/docs/dyn/youtube_v3.html"
+        ],
+        "sdk_selection": {
+          "package": "google-api-python-client",
+          "import_name": "googleapiclient",
+          "source_url": "https://github.com/googleapis/google-api-python-client",
+          "status": "selected",
+          "reason": "Official Google discovery-based API client; selected for YouTube Data API live adapter after gate approval."
+        },
+        "live_adapter_strategy": "use_google_api_python_client_after_l4_gate",
+        "auth_mode": "Google OAuth2 / API Key (server-side secrets)",
+        "quota_hint": {
+          "default_daily_requests": 10000,
+          "default_daily_unit_cost": 10000,
+          "per_1000_unit_cost": 0.0,
+          "soft_limits": {
+            "search.list": 100,
+            "videos.insert": 100,
+            "others": 10000
+          },
+          "period": "day"
+        },
+        "policy_flags": [
+          "no_login_state",
+          "no_profile_graph_merge",
+          "no_user_private_message",
+          "no_ai_training_from_raw_source_without_governance"
+        ],
+        "blocked_actions": [
+          "private_message",
+          "dm",
+          "login_cookie_capture",
+          "cookies_replay",
+          "subgraph_fans_following_merge",
+          "unauthorized_video_download"
+        ],
+        "stability": "high",
+        "self_host_priority": "p0",
+        "api_version": "v3",
+        "required_credentials": ["api_key"],
+        "supported_endpoints": [
+          "search.list",
+          "videos.list",
+          "videos.insert",
+          "commentThreads.list",
+          "videos.getRating",
+          "channels.list",
+          "channels.update"
+        ]
+      },
+      {
+        "provider_id": "reddit.praw",
+        "platform": "reddit",
+        "data_domain": ["post_search", "subreddit_snapshot", "comment_snapshot", "comment_tree", "user_profile_public"],
+        "resource_groups": ["post_search", "subreddit_snapshot", "comment_snapshot", "comment_tree", "user_profile_public"],
+        "official_docs": [
+          "https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki",
+          "https://asyncpraw.readthedocs.io/"
+        ],
+        "sdk_selection": {
+          "package": "asyncpraw",
+          "import_name": "asyncpraw",
+          "source_url": "https://github.com/praw-dev/asyncpraw",
+          "status": "selected",
+          "reason": "Mature async Reddit API wrapper that follows Reddit API rules; fits FastAPI async runtime for authorized live adapter."
+        },
+        "live_adapter_strategy": "use_asyncpraw_after_l4_gate_with_policy_gate",
+        "auth_mode": "OAuth2 Bearer + User-Agent + App credentials",
+        "quota_hint": {
+          "default_requests_per_minute": 100,
+          "default_daily_requests": 100000,
+          "soft_limits": {
+            "listings": 100,
+            "search": 100
+          },
+          "period": "minute"
+        },
+        "policy_flags": [
+          "no_ai_training",
+          "no_private_message",
+          "no_user_data_aggregation_without_scope",
+          "compliance_contract_required"
+        ],
+        "blocked_actions": [
+          "private_data_scrape",
+          "login_state_capture",
+          "captcha_bypass",
+          "media_download_without_license"
+        ],
+        "stability": "medium",
+        "self_host_priority": "p1",
+        "api_version": "OAuth2",
+        "required_credentials": ["oauth_token", "client_id", "client_secret"],
+        "supported_endpoints": [
+          "hot.list",
+          "new.list",
+          "comments.new",
+          "search",
+          "r/{subreddit}/about",
+          "user.profile"
+        ]
+      },
+      {
+        "provider_id": "tiktok_research",
+        "platform": "tiktok",
+        "data_domain": [
+          "video_snapshot",
+          "video_comment",
+          "hashtag_rank",
+          "creator_profile",
+          "search"
+        ],
+        "resource_groups": [
+          "video_snapshot",
+          "video_comment",
+          "hashtag_rank",
+          "creator_profile",
+          "search"
+        ],
+        "official_docs": [
+          "https://developers.tiktok.com/doc/research-api-get-started",
+          "https://github.com/tiktok/tiktok-research-api-wrapper"
+        ],
+        "sdk_selection": {
+          "package": "TikTokResearchApi",
+          "import_name": "tiktok_research_api",
+          "source_url": "https://github.com/tiktok/tiktok-research-api-wrapper",
+          "status": "manual_review",
+          "reason": "Official TikTok Research API wrapper exists, but qualification, region, purpose, and release maturity must be reviewed before enabling."
+        },
+        "live_adapter_strategy": "research_wrapper_test_only_after_qualification",
+        "auth_mode": "OAuth2 Bearer + VCE qualification",
+        "quota_hint": {
+          "default_requests_per_day": 1000,
+          "soft_limits": {
+            "video_snapshot": 20000,
+            "comment": 10000
+          },
+          "period": "day"
+        },
+        "policy_flags": [
+          "research_only",
+          "no_private_message",
+          "no_user_data_aggregation_without_scope",
+          "no_ai_training"
+        ],
+        "blocked_actions": [
+          "private_message",
+          "login_state_capture",
+          "captcha_bypass",
+          "media_download_without_license"
+        ],
+        "stability": "low",
+        "self_host_priority": "p3",
+        "api_version": "research",
+        "required_credentials": ["access_token", "app_id", "app_secret"],
+        "supported_endpoints": [
+          "video.search",
+          "video.list",
+          "comment.list",
+          "user.info",
+          "vce.batch_status"
+        ]
+      },
+      {
+        "provider_id": "x.v2",
+        "platform": "x",
+        "data_domain": ["post_search", "user_profile", "post_lookup", "realtime_trends", "metrics"],
+        "resource_groups": ["post_search", "user_profile", "post_lookup", "realtime_trends", "metrics"],
+        "official_docs": [
+          "https://docs.x.com/x-api/introduction",
+          "https://docs.x.com/tools-and-libraries"
+        ],
+        "sdk_selection": {
+          "package": "tweepy[async]",
+          "import_name": "tweepy",
+          "source_url": "https://github.com/tweepy/tweepy",
+          "status": "candidate",
+          "reason": "Popular Python X/Twitter library with v2 support; enable only after paid tier and max_cost_usd gate are approved."
+        },
+        "live_adapter_strategy": "use_tweepy_recent_search_only_after_cost_gate",
+        "auth_mode": "OAuth2 Bearer / Paid product key",
+        "quota_hint": {
+          "default_requests_per_minute": 300,
+          "default_requests_per_day": 30000,
+          "soft_limits": {
+            "search/recent": 300,
+            "users/me": 60
+          },
+          "cost": {
+            "pay_per_use": true,
+            "unit_cost_hint": "provider_defined"
+          },
+          "period": "minute"
+        },
+        "policy_flags": [
+          "commercial_use_requires_paywall_terms",
+          "no_ai_training",
+          "strict_scope_required",
+          "no_login_state"
+        ],
+        "blocked_actions": [
+          "private_message",
+          "dm",
+          "automated_following_graph_inference",
+          "login_cookie_capture"
+        ],
+        "stability": "medium",
+        "self_host_priority": "p2",
+        "api_version": "v2",
+        "required_credentials": ["bearer_token", "app_id", "app_secret"],
+        "supported_endpoints": [
+          "tweets/search/recent",
+          "tweets/search/all",
+          "tweets",
+          "users/me",
+          "users/by/username/:id"
+        ]
+      },
+      {
+        "provider_id": "instagram_graph.v19",
+        "platform": "instagram",
+        "data_domain": ["media_feed", "user_pages", "mentions", "comments", "insights"],
+        "resource_groups": ["media_feed", "user_pages", "mentions", "comments", "insights"],
+        "official_docs": [
+          "https://developers.facebook.com/docs/instagram-api",
+          "https://github.com/facebook/facebook-python-business-sdk"
+        ],
+        "sdk_selection": {
+          "package": "facebook-business",
+          "import_name": "facebook_business",
+          "source_url": "https://github.com/facebook/facebook-python-business-sdk",
+          "status": "candidate",
+          "reason": "Official Meta Business SDK includes Instagram-related business APIs; direct Graph calls may still be needed for some read-only edges."
+        },
+        "live_adapter_strategy": "use_meta_business_sdk_or_graph_httpx_for_authorized_business_assets",
+        "auth_mode": "Meta App Token + Page/Business token + permissions",
+        "quota_hint": {
+          "default_requests_per_hour": 200,
+          "default_requests_per_day": 20000,
+          "soft_limits": {
+            "business_content": 2000,
+            "insights": 200
+          },
+          "period": "hour"
+        },
+        "policy_flags": [
+          "business_account_required",
+          "page_level_authorization",
+          "mentions_requires_scope",
+          "no_ai_training"
+        ],
+        "blocked_actions": [
+          "private_profile_deep_scrape",
+          "consumer_dm_capture",
+          "unscoped_comment_dump",
+          "login_state_collection"
+        ],
+        "stability": "medium",
+        "self_host_priority": "p2",
+        "api_version": "v19",
+        "required_credentials": ["access_token", "app_secret", "page_access_token"],
+        "supported_endpoints": [
+          "media",
+          "user_media",
+          "mentions",
+          "comments",
+          "insights"
+        ]
+      },
+      {
+        "provider_id": "threads.graph.v1",
+        "platform": "threads",
+        "data_domain": ["thread_feed", "user_profile", "mentions", "post_lookup", "replies"],
+        "resource_groups": ["thread_feed", "user_profile", "mentions", "post_lookup", "replies"],
+        "official_docs": [
+          "https://developers.facebook.com/docs/threads",
+          "https://developers.facebook.com/docs/graph-api/guides/our-sdks/"
+        ],
+        "sdk_selection": {
+          "package": "httpx",
+          "import_name": "httpx",
+          "source_url": "https://www.python-httpx.org/",
+          "status": "selected",
+          "reason": "Threads Graph coverage is primarily REST/Graph based; reuse existing httpx dependency for thin authorized calls instead of custom transport."
+        },
+        "live_adapter_strategy": "use_existing_httpx_graph_adapter_for_authorized_threads_assets",
+        "auth_mode": "Meta threads scope + app review",
+        "quota_hint": {
+          "default_requests_per_hour": 120,
+          "default_requests_per_day": 10000,
+          "soft_limits": {
+            "thread_feed": 1200,
+            "user_profile": 600
+          },
+          "period": "hour"
+        },
+        "policy_flags": [
+          "business_profile_required",
+          "strict_permissions_required",
+          "no_private_graph_merge",
+          "no_ai_training"
+        ],
+        "blocked_actions": [
+          "login_state_capture",
+          "private_account_enumeration",
+          "media_download_without_scope"
+        ],
+        "stability": "low",
+        "self_host_priority": "p3",
+        "api_version": "threads",
+        "required_credentials": ["app_id", "app_secret", "access_token", "scope"],
+        "supported_endpoints": [
+          "threads",
+          "users",
+          "mentions",
+          "media",
+          "replies"
+        ]
+      },
+      {
+        "provider_id": "linkedin.mcdm",
+        "platform": "linkedin",
+        "data_domain": ["company_updates", "post_feed", "ugc_posts", "social_actions", "organization_pages"],
+        "resource_groups": ["company_updates", "post_feed", "ugc_posts", "social_actions", "organization_pages"],
+        "official_docs": [
+          "https://developer.linkedin.com/product-catalog",
+          "https://github.com/linkedin-developers/linkedin-api-python-client"
+        ],
+        "sdk_selection": {
+          "package": "linkedin-api-client",
+          "import_name": "linkedin_api_client",
+          "source_url": "https://github.com/linkedin-developers/linkedin-api-python-client",
+          "status": "manual_review",
+          "reason": "Official LinkedIn Rest.li client is beta; use only for approved organization/community APIs, never unofficial login-state libraries."
+        },
+        "live_adapter_strategy": "official_restli_client_after_tier_review",
+        "auth_mode": "LinkedIn MDP/MCM OAuth + app tier",
+        "quota_hint": {
+          "default_requests_per_day": 50000,
+          "default_requests_per_minute": 60,
+          "soft_limits": {
+            "ugc_posts": 500,
+            "posts_feed": 2000
+          },
+          "period": "day"
+        },
+        "policy_flags": [
+          "official_api_only",
+          "version_tier_review_required",
+          "data_retention_contract_required",
+          "no_ai_training"
+        ],
+        "blocked_actions": [
+          "private_message",
+          "contact_graph_expansion",
+          "member_profile_broad_scan",
+          "unapproved_data_retargeting"
+        ],
+        "stability": "medium",
+        "self_host_priority": "p3",
+        "api_version": "v2",
+        "required_credentials": ["client_id", "client_secret", "access_token"],
+        "supported_endpoints": [
+          "ugcPosts",
+          "network_sizes",
+          "organizations",
+          "shares",
+          "socialActions"
+        ]
+      }
+    ]
+  }
+}

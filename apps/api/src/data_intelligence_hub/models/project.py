@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from data_intelligence_hub.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
 class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "projects"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_projects_workspace_id"),
+    )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
