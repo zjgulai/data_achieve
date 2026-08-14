@@ -68,6 +68,8 @@ services:
       SMTP_PASSWORD: ${SCRAPY_SMTP_PASSWORD:-}
       SMTP_PORT: ${SCRAPY_SMTP_PORT:-587}
       SMTP_USER: ${SCRAPY_SMTP_USER:-}
+      TIKHUB_API_KEY: ${TIKHUB_API_KEY:-}
+      APIFY_API_TOKEN: ${APIFY_API_TOKEN:-}
     expose:
       - "8000"
     volumes:
