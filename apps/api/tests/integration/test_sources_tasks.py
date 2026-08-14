@@ -98,6 +98,8 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
         "manual_json",
         "ecommerce_product_discovery",
         "ecommerce_product_page",
+        "tikhub_social",
+        "apify_actor",
     }
 
 
@@ -1750,7 +1752,7 @@ print(json.dumps({"target_tab_closed": True}))
             "run_mode": "ephemeral_browser_harness_probe",
             "confirm_real_browser_probe": True,
             "browser_harness_binary": str(fake_harness),
-            "probe_timeout_seconds": 3,
+            "probe_timeout_seconds": 10,
             "artifact_retention_days": 5,
             "max_preview_rows": 12,
             "include_screenshot": True,
