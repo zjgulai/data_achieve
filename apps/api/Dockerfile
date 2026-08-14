@@ -20,7 +20,7 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY src ./src
 
-RUN uv sync --locked --no-dev \
+RUN uv sync --frozen --no-dev \
     && chown -R app:app /app
 
 USER app
