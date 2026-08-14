@@ -471,8 +471,8 @@ def test_fresh_database_upgrade_has_single_head_and_phase_two_objects(
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202606110027 (head)"]
-    assert _database_revision(postgres_database_url) == "202606110027"
+    assert heads == ["202607160033 (head)"]
+    assert _database_revision(postgres_database_url) == "202607160033"
     _assert_phase_two_objects_present(postgres_database_url)
 
 
@@ -485,9 +485,9 @@ def test_upgrade_from_026_preserves_representative_legacy_data_and_project_schem
     legacy_before = _legacy_snapshot(postgres_database_url, legacy)
     project_columns_before = _project_column_signature(postgres_database_url)
 
-    _run_alembic(postgres_database_url, "upgrade", "202606110027")
+    _run_alembic(postgres_database_url, "upgrade", "202607160033")
 
-    assert _database_revision(postgres_database_url) == "202606110027"
+    assert _database_revision(postgres_database_url) == "202607160033"
     assert _legacy_snapshot(postgres_database_url, legacy) == legacy_before
     assert _project_column_signature(postgres_database_url) == project_columns_before
     _assert_phase_two_objects_present(postgres_database_url)
@@ -501,7 +501,7 @@ def test_027_to_026_to_027_cleans_and_restores_all_phase_two_objects(
     legacy = _seed_legacy_project(postgres_database_url)
     legacy_before = _legacy_snapshot(postgres_database_url, legacy)
     project_columns_before = _project_column_signature(postgres_database_url)
-    _run_alembic(postgres_database_url, "upgrade", "202606110027")
+    _run_alembic(postgres_database_url, "upgrade", "202607160033")
     _assert_phase_two_objects_present(postgres_database_url)
 
     _run_alembic(postgres_database_url, "downgrade", "202606110026")
@@ -511,9 +511,9 @@ def test_027_to_026_to_027_cleans_and_restores_all_phase_two_objects(
     assert _project_column_signature(postgres_database_url) == project_columns_before
     _assert_phase_two_objects_absent(postgres_database_url)
 
-    _run_alembic(postgres_database_url, "upgrade", "202606110027")
+    _run_alembic(postgres_database_url, "upgrade", "202607160033")
 
-    assert _database_revision(postgres_database_url) == "202606110027"
+    assert _database_revision(postgres_database_url) == "202607160033"
     assert _legacy_snapshot(postgres_database_url, legacy) == legacy_before
     assert _project_column_signature(postgres_database_url) == project_columns_before
     _assert_phase_two_objects_present(postgres_database_url)
