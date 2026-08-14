@@ -6,15 +6,13 @@ required.
 
 from __future__ import annotations
 
-import json
-from typing import Any, Union, cast
+from typing import Any, cast
 from unittest.mock import patch
 
 import httpx
 import pytest
 
 from data_intelligence_hub.collectors.apify_actor import (
-    APIFY_TERMINAL_STATUSES,
     ApifyActorCollector,
     _actor_id_to_path,
     _extract_source_url,
@@ -82,7 +80,11 @@ REDDIT_POST_ITEM: dict[str, Any] = {
 # Mock transport helpers
 # ---------------------------------------------------------------------------
 
-def _run_response(run_id: str, status: str = "SUCCEEDED", dataset_id: str = "ds_abc123") -> dict[str, Any]:
+def _run_response(
+    run_id: str,
+    status: str = "SUCCEEDED",
+    dataset_id: str = "ds_abc123",
+) -> dict[str, Any]:
     return {
         "data": {
             "id": run_id,
@@ -92,7 +94,10 @@ def _run_response(run_id: str, status: str = "SUCCEEDED", dataset_id: str = "ds_
     }
 
 
-_ResponseBody = Union[dict[str, Any], list[dict[str, Any]]]
+_ResponseBody = dict[str, Any] | list[dict[str, Any]]
+
+_PATCH_TOKEN = "data_intelligence_hub.collectors.apify_actor._get_api_token"
+_PATCH_CLIENT = "data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient"
 
 
 def _make_sequence_transport(
@@ -236,7 +241,9 @@ def test_normalize_non_dict_returns_none() -> None:
 
 
 def test_normalize_with_explicit_record_type_override() -> None:
-    record = normalize_apify_item(INSTAGRAM_POST_ITEM, "apify/instagram-scraper", record_type="custom_type")
+    record = normalize_apify_item(
+        INSTAGRAM_POST_ITEM, "apify/instagram-scraper", record_type="custom_type"
+    )
     assert record is not None
     assert record.record_type == "custom_type"
 
@@ -320,8 +327,10 @@ async def test_collect_succeeds_end_to_end_mock() -> None:
         }
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.collect()
 
     assert result.errors == []
@@ -347,8 +356,10 @@ async def test_collect_actor_run_failed_returns_error() -> None:
         }
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.collect()
 
     assert len(result.errors) == 1
@@ -381,8 +392,10 @@ async def test_collect_http_error_returns_error_not_exception() -> None:
         config={"actor_id": "apify/instagram-scraper", "actor_input": {"search": "test"}}
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.collect()
 
     assert len(result.errors) >= 1
@@ -404,8 +417,10 @@ async def test_collect_empty_dataset_returns_zero_records() -> None:
         config={"actor_id": "apify/instagram-scraper", "actor_input": {"search": "test"}}
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.collect()
 
     assert result.errors == []
@@ -429,8 +444,10 @@ async def test_collect_all_items_unnormalizable_adds_error() -> None:
         config={"actor_id": "apify/instagram-scraper", "actor_input": {"search": "test"}}
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.collect()
 
     assert any("apify_normalize_all_failed" in e for e in result.errors)
@@ -451,8 +468,10 @@ async def test_test_valid_token_returns_ok() -> None:
         config={"actor_id": "apify/instagram-scraper", "actor_input": {}}
     )
 
-    with patch("data_intelligence_hub.collectors.apify_actor._get_api_token", return_value="fake_token"):
-        with patch("data_intelligence_hub.collectors.apify_actor.httpx.AsyncClient", _patched_client(transport)):
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
             result = await collector.test()
 
     assert result.status == "ok"

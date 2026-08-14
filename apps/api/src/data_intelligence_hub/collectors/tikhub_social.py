@@ -508,7 +508,10 @@ class TikHubSocialCollector(BaseCollector):
 
         params = _build_params(config, max_items=max_items)
         logs.append(
-            collector_log("tikhub_collect_start", f"endpoint={endpoint_type}, max_items={max_items}")
+            collector_log(
+                "tikhub_collect_start",
+                f"endpoint={endpoint_type}, max_items={max_items}",
+            )
         )
 
         try:

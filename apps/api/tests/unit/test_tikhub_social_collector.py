@@ -6,20 +6,13 @@ required (except where explicitly noted with pytest.mark.skip).
 
 from __future__ import annotations
 
-import json
 from typing import Any, cast
 from unittest.mock import patch
 
 import httpx
 import pytest
 
-from data_intelligence_hub.collectors.base import CollectorRawRecord
-
-
-def _c(record: CollectorRawRecord) -> dict[str, Any]:
-    return cast(dict[str, Any], record.content)
-
-from data_intelligence_hub.collectors.base import CollectorError
+from data_intelligence_hub.collectors.base import CollectorError, CollectorRawRecord
 from data_intelligence_hub.collectors.tikhub_social import (
     TIKHUB_ENDPOINT_MAP,
     TikHubSocialCollector,
@@ -32,6 +25,9 @@ from data_intelligence_hub.collectors.tikhub_social import (
     _safe_ts,
 )
 
+
+def _c(record: CollectorRawRecord) -> dict[str, Any]:
+    return cast(dict[str, Any], record.content)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -334,10 +330,17 @@ def test_extract_items_empty_response() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_tiktok_video_search_mock() -> None:
-    with patch("data_intelligence_hub.collectors.tikhub_social._get_api_key", return_value="fake_key"):
+    with patch(
+        "data_intelligence_hub.collectors.tikhub_social._get_api_key",
+        return_value="fake_key",
+    ):
         transport = _make_mock_transport(TIKHUB_TIKTOK_RESPONSE)
         collector = TikHubSocialCollector(
-            config={"endpoint_type": "tikhub_tiktok_video_search", "keyword": "breast pump", "max_items": 5}
+            config={
+                "endpoint_type": "tikhub_tiktok_video_search",
+                "keyword": "breast pump",
+                "max_items": 5,
+            }
         )
         # Inject mock transport
         import httpx as _httpx
@@ -364,7 +367,10 @@ async def test_collect_tiktok_video_search_mock() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_instagram_user_posts_mock() -> None:
-    with patch("data_intelligence_hub.collectors.tikhub_social._get_api_key", return_value="fake_key"):
+    with patch(
+        "data_intelligence_hub.collectors.tikhub_social._get_api_key",
+        return_value="fake_key",
+    ):
         transport = _make_mock_transport(TIKHUB_INSTAGRAM_RESPONSE)
         collector = TikHubSocialCollector(
             config={"endpoint_type": "tikhub_instagram_user_posts", "username": "momcozy_us"}
@@ -392,7 +398,10 @@ async def test_collect_instagram_user_posts_mock() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_xiaohongshu_search_mock() -> None:
-    with patch("data_intelligence_hub.collectors.tikhub_social._get_api_key", return_value="fake_key"):
+    with patch(
+        "data_intelligence_hub.collectors.tikhub_social._get_api_key",
+        return_value="fake_key",
+    ):
         transport = _make_mock_transport(TIKHUB_XHS_RESPONSE)
         collector = TikHubSocialCollector(
             config={"endpoint_type": "tikhub_xiaohongshu_search", "keyword": "吸奶器"}
@@ -435,7 +444,10 @@ async def test_collect_missing_api_key_returns_error() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_http_error_returns_error_not_exception() -> None:
-    with patch("data_intelligence_hub.collectors.tikhub_social._get_api_key", return_value="fake_key"):
+    with patch(
+        "data_intelligence_hub.collectors.tikhub_social._get_api_key",
+        return_value="fake_key",
+    ):
 
         def error_handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(429, json={"error": "rate limited"})
@@ -467,7 +479,10 @@ async def test_collect_http_error_returns_error_not_exception() -> None:
 @pytest.mark.asyncio
 async def test_collect_all_items_fail_normalization_adds_error() -> None:
     bad_response = {"code": 200, "data": {"aweme_list": [{"no_id": "missing"}]}}
-    with patch("data_intelligence_hub.collectors.tikhub_social._get_api_key", return_value="fake_key"):
+    with patch(
+        "data_intelligence_hub.collectors.tikhub_social._get_api_key",
+        return_value="fake_key",
+    ):
         transport = _make_mock_transport(bad_response)
         collector = TikHubSocialCollector(
             config={"endpoint_type": "tikhub_tiktok_video_search", "keyword": "test"}

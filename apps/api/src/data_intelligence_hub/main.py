@@ -14,13 +14,13 @@ from data_intelligence_hub.api.routes.auth import router as auth_router
 from data_intelligence_hub.api.routes.automation import router as automation_router
 from data_intelligence_hub.api.routes.capabilities import router as capabilities_router
 from data_intelligence_hub.api.routes.collectors import router as collectors_router
-from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.dashboard import router as dashboard_router
 from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
 from data_intelligence_hub.api.routes.notifications import router as notifications_router
 from data_intelligence_hub.api.routes.projects import router as projects_router
+from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
 from data_intelligence_hub.api.routes.reports import router as reports_router
 from data_intelligence_hub.api.routes.signals import router as signals_router

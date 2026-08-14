@@ -290,7 +290,11 @@ class ApifyActorCollector(BaseCollector):
             APIFY_MAX_ITEMS_LIMIT,
         )
         timeout_raw = self.config.get("run_timeout_seconds")
-        run_timeout = float(timeout_raw) if isinstance(timeout_raw, (int, float, str)) else APIFY_RUN_WAIT_TIMEOUT
+        run_timeout = (
+            float(timeout_raw)
+            if isinstance(timeout_raw, (int, float, str))
+            else APIFY_RUN_WAIT_TIMEOUT
+        )
         charge_raw = self.config.get("max_total_charge_usd")
         max_charge = float(charge_raw) if isinstance(charge_raw, (int, float, str)) else 1.0
 
@@ -314,7 +318,11 @@ class ApifyActorCollector(BaseCollector):
         try:
             async with httpx.AsyncClient() as client:
                 resp = await _apify_get(client, "/users/me", {}, token)
-            username = (resp.get("data") or {}).get("username", "unknown") if isinstance(resp, dict) else "unknown"
+            username = (
+                (resp.get("data") or {}).get("username", "unknown")
+                if isinstance(resp, dict)
+                else "unknown"
+            )
             msg = f"Apify token valid; user={username!r}"
             logs.append(collector_log("apify_test", msg))
             return CollectorTestResult(status="ok", message=msg, logs=logs)
@@ -362,7 +370,11 @@ class ApifyActorCollector(BaseCollector):
                     params={"maxTotalChargeUsd": str(max_charge)},
                     token=token,
                 )
-                run_id = (run_resp.get("data") or {}).get("id") if isinstance(run_resp, dict) else None
+                run_id = (
+                    (run_resp.get("data") or {}).get("id")
+                    if isinstance(run_resp, dict)
+                    else None
+                )
                 if not isinstance(run_id, str) or not run_id:
                     raise CollectorError("apify_run_id_missing: no run ID in response")
 
@@ -371,7 +383,12 @@ class ApifyActorCollector(BaseCollector):
                 # 2. Wait for completion
                 run_data = await _wait_for_run(client, run_id, token, timeout=run_timeout)
                 status = str(run_data.get("status") or "")
-                logs.append(collector_log("apify_run_finished", f"run_id={run_id}, status={status}"))
+                logs.append(
+                    collector_log(
+                        "apify_run_finished",
+                        f"run_id={run_id}, status={status}",
+                    )
+                )
 
                 if status != "SUCCEEDED":
                     errors.append(
@@ -387,7 +404,10 @@ class ApifyActorCollector(BaseCollector):
 
                 items = await _fetch_dataset_items(client, dataset_id, max_items, token)
                 logs.append(
-                    collector_log("apify_dataset_fetched", f"dataset_id={dataset_id}, count={len(items)}")
+                    collector_log(
+                        "apify_dataset_fetched",
+                        f"dataset_id={dataset_id}, count={len(items)}",
+                    )
                 )
 
         except CollectorError as exc:
