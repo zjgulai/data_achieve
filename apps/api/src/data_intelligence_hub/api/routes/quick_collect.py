@@ -40,6 +40,22 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "generic_web": "generic_web",
 }
 
+# Apify endpoint → (actor_id, actor_input_builder)
+_APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
+    "apify_tiktok": (
+        "clockworks/free-tiktok-scraper",
+        {},
+    ),
+    "apify_instagram": (
+        "apify/instagram-scraper",
+        {},
+    ),
+    "apify_youtube": (
+        "streamers/youtube-scraper",
+        {},
+    ),
+}
+
 
 class QuickCollectRequest(BaseModel):
     project_id: uuid.UUID
@@ -84,6 +100,18 @@ async def quick_collect(
         )
 
     config: dict[str, Any] = {"endpoint_type": body.endpoint_type, **body.params}
+
+    apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
+    if apify_defaults is not None:
+        actor_id, base_input = apify_defaults
+        actor_input = {**base_input, **body.params}
+        config = {
+            "actor_id": actor_id,
+            "actor_input": actor_input,
+            "max_items": body.params.get("maxItems", 10),
+            "max_total_charge_usd": body.params.get("max_total_charge_usd", 1.0),
+        }
+
     try:
         validated = validate_collector_config(collector_type, config)
     except (CollectorConfigError, CollectorNotFoundError) as exc:
@@ -119,6 +147,8 @@ async def quick_collect(
     )
     session.add(task)
     await session.flush()
+    source_id = source.id
+    task_id = task.id
     await session.commit()
 
     try:
@@ -131,8 +161,8 @@ async def quick_collect(
 
     return QuickCollectResponse(
         task_run_id=run.id,
-        task_id=task.id,
-        source_id=source.id,
+        task_id=task_id,
+        source_id=source_id,
         status=run.status,
         records_count=run.records_count,
         error_message=run.error_message,
