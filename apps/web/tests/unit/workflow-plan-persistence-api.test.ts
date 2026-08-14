@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/api/client")>();
-  return { ...actual, mockApiEnabled: false };
+const _mockEnabled = vi.hoisted(() => {
+  process.env["NEXT_PUBLIC_MOCK_API"] = "false";
+  return false;
 });
+void _mockEnabled;
 
 import {
   cloneWorkflowPlan,
