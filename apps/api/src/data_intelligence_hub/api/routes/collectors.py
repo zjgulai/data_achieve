@@ -58,6 +58,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items", "cursor", "sort_type"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_tiktok_user_posts",
@@ -69,6 +71,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items", "max_cursor"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_tiktok_hashtag_posts",
@@ -80,6 +84,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items", "cursor"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_instagram_search",
@@ -91,6 +97,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_instagram_user_posts",
@@ -102,6 +110,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items", "max_id"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_xiaohongshu_search",
@@ -113,6 +123,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items", "sort_type"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_youtube_search",
@@ -124,6 +136,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_youtube_channel_videos",
@@ -135,6 +149,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_reddit_search",
@@ -146,6 +162,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_reddit_subreddit_posts",
@@ -157,6 +175,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_x_search",
@@ -168,6 +188,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
         CollectorEndpointMetadata(
             endpoint_type="tikhub_x_user_tweets",
@@ -179,6 +201,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="~$0.001/条",
             provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
         ),
     ]
 
@@ -194,6 +218,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsLimit", "resultsType"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/instagram-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_instagram_profile_scraper",
@@ -205,6 +231,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsLimit"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/instagram-profile-scraper)",
+            content_type="account",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_facebook_posts_scraper",
@@ -216,6 +244,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPosts", "maxPostDate"],
             cost_hint="$0.0017+",
             provider="Apify Actor (apify/facebook-posts-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_facebook_comments_scraper",
@@ -227,6 +257,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsLimit", "includeNestedComments"],
             cost_hint="$0.0017+",
             provider="Apify Actor (apify/facebook-comments-scraper)",
+            content_type="comment",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_tiktok_scraper",
@@ -238,6 +270,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsPerPage", "hashtags", "profiles"],
             cost_hint="$0.5+",
             provider="Apify Actor (clockworks/tiktok-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_tiktok_comments_scraper",
@@ -249,6 +283,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["commentsPerPost", "maxRepliesPerComment"],
             cost_hint="按事件计费",
             provider="Apify Actor (clockworks/tiktok-comments-scraper)",
+            content_type="comment",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_youtube_scraper",
@@ -260,6 +296,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxResults", "startUrls", "downloadSubtitles"],
             cost_hint="按事件计费",
             provider="Apify Actor (streamers/youtube-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_youtube_comments_scraper",
@@ -271,6 +309,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxComments", "sortCommentsBy"],
             cost_hint="$0.5+",
             provider="Apify Actor (streamers/youtube-comments-scraper)",
+            content_type="comment",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_x_tweet_scraper",
@@ -282,6 +322,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "startUrls", "twitterHandles"],
             cost_hint="按事件计费",
             provider="Apify Actor (apidojo/tweet-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_reddit_scraper",
@@ -293,6 +335,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "searches", "skipComments"],
             cost_hint="$0.04+",
             provider="Apify Actor (trudax/reddit-scraper-lite)",
+            content_type="post",
+            method="apify",
         ),
     ]
 
@@ -308,6 +352,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "country"],
             cost_hint="按事件计费",
             provider="Apify Actor (junglee/Amazon-crawler)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_amazon_reviews_scraper",
@@ -319,6 +365,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews", "country"],
             cost_hint="按事件计费",
             provider="Apify Actor (junglee/amazon-reviews-scraper)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_walmart_product_scraper",
@@ -330,6 +378,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="免费",
             provider="Apify Actor (e-commerce/walmart-product-detail-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_walmart_reviews_scraper",
@@ -341,6 +391,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (e-commerce/walmart-reviews-scraper)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_temu_products_scraper",
@@ -352,6 +404,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (amit123/temu-products-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_shein_product_scraper",
@@ -363,6 +417,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (shahidirfan/shein-product-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_aliexpress_products_scraper",
@@ -374,6 +430,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (devcake/aliexpress-products-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_tiktok_shop_scraper",
@@ -385,6 +443,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (clockworks/tiktok-shop-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_trustpilot_reviews_scraper",
@@ -396,6 +456,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="$0.5+",
             provider="Apify Actor (memo23/trustpilot-scraper-ppe)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_appstore_reviews_scraper",
@@ -407,6 +469,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews", "country"],
             cost_hint="按事件计费",
             provider="Apify Actor (johnvc/apple-app-store-reviews-api)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_ebay_product_scraper",
@@ -418,6 +482,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (dtrungtin/ebay-items-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_etsy_scraper",
@@ -429,6 +495,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (automation-lab/etsy-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_tripadvisor_reviews_scraper",
@@ -440,6 +508,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (maxcopell/tripadvisor-reviews)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_yelp_scraper",
@@ -451,6 +521,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (tri_angle/yelp-scraper)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_booking_scraper",
@@ -462,6 +534,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (dtrungtin/booking-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_airbnb_scraper",
@@ -473,6 +547,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxListings"],
             cost_hint="按事件计费",
             provider="Apify Actor (dtrungtin/airbnb-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_shopify_scraper",
@@ -484,6 +560,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (clearpath/shopify-store-leads)",
+            content_type="product",
+            method="apify",
         ),
     ]
 
@@ -499,6 +577,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPagesPerQuery", "resultsPerPage"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/google-search-scraper)",
+            content_type="search",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_maps_scraper",
@@ -510,6 +590,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxCrawledPlacesPerSearch"],
             cost_hint="按事件计费",
             provider="Apify Actor (compass/crawler-google-places)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_maps_reviews_scraper",
@@ -521,6 +603,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (compass/Google-Maps-Reviews-Scraper)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_trends_scraper",
@@ -532,6 +616,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["timeRange", "geo"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/google-trends-scraper)",
+            content_type="trend",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_news_scraper",
@@ -543,6 +629,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (data_xplorer/google-news-scraper-fast)",
+            content_type="news",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_ai_overviews_scraper",
@@ -554,6 +642,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxQueries"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/google-ai-overviews-scraper)",
+            content_type="ai_answer",
+            method="apify",
         ),
     ]
 
@@ -569,6 +659,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxQueries"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/chatgpt-search-scraper)",
+            content_type="ai_answer",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_perplexity_search_scraper",
@@ -580,6 +672,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxQueries"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/perplexity-search-scraper)",
+            content_type="ai_answer",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_gemini_search_scraper",
@@ -591,6 +685,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxQueries"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/gemini-search-scraper)",
+            content_type="ai_answer",
+            method="apify",
         ),
     ]
 
@@ -606,6 +702,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "countries"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/facebook-ads-scraper)",
+            content_type="ad",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_google_ads_scraper",
@@ -617,6 +715,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (lexis-solutions/google-ads-scraper)",
+            content_type="ad",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_tiktok_ads_scraper",
@@ -628,6 +728,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (lexis-solutions/tiktok-ads-scraper)",
+            content_type="ad",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_snapchat_ads_scraper",
@@ -639,6 +741,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (lexis-solutions/snapchat-ads-scraper)",
+            content_type="ad",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_pinterest_ads_scraper",
@@ -650,6 +754,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (shahidirfan/Pinterest-Ads-Scraper)",
+            content_type="ad",
+            method="apify",
         ),
     ]
 
@@ -666,6 +772,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPosts"],
             cost_hint="按事件计费",
             provider="Apify Actor (harvestapi/linkedin-company-posts)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_threads_profile_scraper",
@@ -677,6 +785,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPosts"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/threads-profile-api-scraper)",
+            content_type="account",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_threads_posts_scraper",
@@ -688,6 +798,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["usernames", "keywords", "max_posts"],
             cost_hint="$0.005+",
             provider="Apify Actor (futurizerush/meta-threads-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_pinterest_scraper",
@@ -699,6 +811,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPinsCnt"],
             cost_hint="免费",
             provider="Apify Actor (danielmilevski9/pinterest-crawler)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_glassdoor_scraper",
@@ -710,6 +824,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxReviews"],
             cost_hint="按事件计费",
             provider="Apify Actor (memo23/glassdoor-scraper-ppr)",
+            content_type="review",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_product_hunt_scraper",
@@ -721,6 +837,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxDays"],
             cost_hint="按事件计费",
             provider="Apify Actor (happitap/product-hunt-daily-launch-scraper)",
+            content_type="product",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_crunchbase_scraper",
@@ -732,6 +850,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxCompanies"],
             cost_hint="按事件计费",
             provider="Apify Actor (davidsharadbhatt/crunchbase-company-scraper)",
+            content_type="account",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_hacker_news_scraper",
@@ -743,6 +863,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (onescales/hacker-news-data)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_bluesky_scraper",
@@ -754,6 +876,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (fatihtahta/All-In-One-Bluesky-Scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_telegram_scraper",
@@ -765,6 +889,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxMessages"],
             cost_hint="按事件计费",
             provider="Apify Actor (danielmilevski9/telegram-channel-scraper)",
+            content_type="post",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_indeed_jobs_scraper",
@@ -776,6 +902,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "country"],
             cost_hint="按事件计费",
             provider="Apify Actor (misceres/indeed-scraper)",
+            content_type="job",
+            method="apify",
         ),
     ]
 
@@ -792,6 +920,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems", "includedDomains"],
             cost_hint="按事件计费",
             provider="Apify Actor (data_xplorer/google-news-scraper-fast)",
+            content_type="news",
+            method="apify",
         ),
         # Instagram monitoring for S/A-level media accounts
         CollectorEndpointMetadata(
@@ -804,6 +934,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsLimit"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/instagram-profile-scraper)",
+            content_type="account",
+            method="apify",
         ),
         # TikTok monitoring for S/A-level media accounts
         CollectorEndpointMetadata(
@@ -816,6 +948,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["resultsPerPage"],
             cost_hint="$0.5+",
             provider="Apify Actor (clockworks/tiktok-scraper)",
+            content_type="account",
+            method="apify",
         ),
         # YouTube monitoring for S/A-level media channels
         CollectorEndpointMetadata(
@@ -828,6 +962,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxResults"],
             cost_hint="按事件计费",
             provider="Apify Actor (streamers/youtube-scraper)",
+            content_type="account",
+            method="apify",
         ),
         # Facebook monitoring for S/A-level media pages
         CollectorEndpointMetadata(
@@ -840,6 +976,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPosts"],
             cost_hint="$0.0017+",
             provider="Apify Actor (apify/facebook-posts-scraper)",
+            content_type="account",
+            method="apify",
         ),
         # X/Twitter monitoring for S/A-level media accounts
         CollectorEndpointMetadata(
@@ -852,6 +990,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (apidojo/tweet-scraper)",
+            content_type="account",
+            method="apify",
         ),
         # Pinterest monitoring for S/A-level media accounts
         CollectorEndpointMetadata(
@@ -864,6 +1004,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxPinsCnt"],
             cost_hint="免费",
             provider="Apify Actor (danielmilevski9/pinterest-crawler)",
+            content_type="account",
+            method="apify",
         ),
     ]
 
@@ -879,6 +1021,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxCrawlDepth", "maxCrawlPages"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/website-content-crawler)",
+            content_type="web_page",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_web_scraper",
@@ -890,6 +1034,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["pageFunction", "maxCrawlDepth"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/web-scraper)",
+            content_type="web_page",
+            method="apify",
         ),
         CollectorEndpointMetadata(
             endpoint_type="apify_rag_web_browser",
@@ -901,6 +1047,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxCrawlDepth"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/rag-web-browser)",
+            content_type="web_page",
+            method="apify",
         ),
     ]
 
@@ -926,6 +1074,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="GitHub REST API",
+            content_type="repo",
+            method="github_api",
         ),
         CollectorEndpointMetadata(
             endpoint_type="github_topic",
@@ -937,6 +1087,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["max_items"],
             cost_hint="免费",
             provider="GitHub REST API",
+            content_type="repo",
+            method="github_api",
         ),
     ]
 
@@ -951,6 +1103,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -962,6 +1116,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         # S级媒体 RSS 监测 (已验证可用)
         CollectorEndpointMetadata(
@@ -974,6 +1130,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -985,6 +1143,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         # S级媒体 RSS 监测 (待验证)
         CollectorEndpointMetadata(
@@ -997,6 +1157,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1008,6 +1170,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1019,6 +1183,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1030,6 +1196,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         # C/D 级母婴媒体 RSS (已验证可用)
         CollectorEndpointMetadata(
@@ -1042,6 +1210,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1053,6 +1223,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1064,6 +1236,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1075,6 +1249,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1086,6 +1262,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1097,6 +1275,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         # C/D 级母婴媒体 RSS (不可用)
         CollectorEndpointMetadata(
@@ -1109,6 +1289,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1120,6 +1302,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1131,6 +1315,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1142,6 +1328,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1153,6 +1341,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="feed",
+            method="rss",
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -1176,6 +1366,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -1187,6 +1379,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -1198,6 +1392,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -1209,6 +1405,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -1220,6 +1418,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -1231,6 +1431,8 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=[],
             cost_hint="免费",
             provider="自研 HTTP Collector",
+            content_type="web_page",
+            method="web_crawl",
         ),
     ]
 

@@ -17,6 +17,21 @@ class CollectorEndpointMetadata(BaseModel):
     optional_params: list[str] = Field(default_factory=list)
     cost_hint: str | None = Field(default=None, description="Estimated cost per item")
     provider: str = Field(description="TikHub REST API, Apify Actor, etc.")
+    content_type: str = Field(
+        default="post",
+        description=(
+            "Content category on the platform: "
+            "post | comment | account | product | review | ad | "
+            "job | news | trend | ai_answer | repo | feed | web_page"
+        ),
+    )
+    method: str = Field(
+        default="tikhub",
+        description=(
+            "Collection method / service tier: "
+            "tikhub | apify | github_api | rss | web_crawl"
+        ),
+    )
 
 
 class CollectorCatalogEntry(BaseModel):
