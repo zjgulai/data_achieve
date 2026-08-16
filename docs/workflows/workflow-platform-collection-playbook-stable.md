@@ -1,34 +1,36 @@
 ---
 name: platform-collection-playbook
-description: 全平台数据采集方法手册，覆盖 TikHub、Apify 及内部采集器共 91 个已核验端点。说明每个平台的采集能力、调用参数和成本估算。当需要接入新平台、确认采集路径、或在 API Market 界面配置采集任务时使用。
+description: 全平台数据采集方法手册，覆盖 TikHub、Apify 及内部采集器共 137 个已核验端点（50个平台、14种数据类型）。说明每个平台的采集能力、调用参数和成本估算。当需要接入新平台、确认采集路径、或在平台能力中心配置采集任务时使用。
 ---
 
 # 平台数据采集手册
 
-> **版本**：2026-08-15 · **状态**：已核验端点 91 / 禁用 11 · **负责人**：数据工程
+> **版本**：2026-08-16 · **状态**：已核验端点 137 / 禁用 11 · **负责人**：数据工程
 >
 > 本手册覆盖系统当前所有已核验采集端点，包含调用示例和参数说明。
-> 调用入口统一为 `/api/collectors/catalog`，前端在「API Market」页面渲染。
+> 调用入口统一为 `/api/collectors/catalog`，前端在「平台能力中心」页面渲染（三层矩阵：平台分类 → 内容类型 → 采集方式）。
 
 ---
 
 ## 概览
 
-| 采集器组 | 平台 | 端点数 | 状态 |
+| 采集器组 | 方法 | 端点数 | 平台 |
 |---|---|---|---|
-| TikHub Social | TikTok / Instagram / 小红书 / YouTube / Reddit / X | 12 | 已核验 |
-| Apify 社交 | Instagram / Facebook / TikTok / YouTube / X / Reddit | 10 | 已核验 |
-| Apify 电商 & 评价 | Amazon / Walmart / Temu / SHEIN / AliExpress / TikTok Shop / Trustpilot / App Store / eBay / Etsy / Tripadvisor / Yelp / Booking / Airbnb / Shopify | 15 | 已核验 |
-| Apify Google 生态 | Google Search / Maps / Trends / News / AI Overviews | 6 | 已核验 |
-| Apify AI 搜索 | ChatGPT / Perplexity / Gemini | 3 | 已核验 |
-| Apify 广告情报 | Meta Ads / Google Ads / TikTok Ads / Snap Ads / Pinterest Ads | 5 | 已核验 |
-| Apify B2B & 内容 | LinkedIn / Threads / Pinterest / Glassdoor / Product Hunt / Crunchbase / HN / Bluesky / Telegram / Indeed | 10 | 已核验 |
-| Apify PR 媒体 | Google News + 媒体账号监测（Instagram / TikTok / YouTube / Facebook / X / Pinterest）+ 网页内容 | 11 | 已核验（含 1 项预核验） |
-| Apify 通用爬取 | Website Content Crawler / Web Scraper / RAG Browser | 3 | 已核验 |
-| GitHub | GitHub REST API | 5 | 已核验 |
-| RSS / 公开网页 | RSS + Web Snapshot | 11 | 已核验（含 disabled） |
+| TikHub Social | tikhub | 45 | TikTok / Instagram / 小红书 / YouTube / Reddit / X / Threads / LinkedIn / Lemon8 |
+| Apify 社交 | apify | 20 | Instagram / Facebook / TikTok / YouTube / X / Reddit / Pinterest / Bluesky / Telegram / Snapchat |
+| Apify 电商 & 评价 | apify | 18 | Amazon / Walmart / Temu / SHEIN / AliExpress / TikTok Shop / Trustpilot / Google Play / App Store / eBay / Etsy / Tripadvisor / Yelp / Booking / Airbnb / Shopify |
+| Apify Google 生态 | apify | 9 | Google Search / Maps / Maps Reviews / Trends / News / AI Overviews / Google Play Reviews |
+| Apify AI 搜索 | apify | 6 | ChatGPT / Perplexity / Gemini（含 search + scraper 两版） |
+| Apify 广告情报 | apify | 11 | Meta Ads / Google Ads / TikTok Ads / Snap Ads / Pinterest Ads / TikTok Creative Center |
+| Apify B2B & LinkedIn | apify | 14 | LinkedIn（帖子/职位/员工/公司搜索）/ Threads / Glassdoor / Product Hunt / Crunchbase / HN / Indeed |
+| Apify 社群 & 渠道 | apify | 5 | Facebook Group / TikTok Shop Search / SimilarWeb / Target / Facebook Marketplace |
+| Apify 内容分析 | apify | 4 | TikTok字幕 / YouTube字幕 / Website Crawler / RAG Browser |
+| Apify PR 媒体 | apify | 11 | Google News + 媒体账号监测（Instagram/TikTok/YouTube/Facebook/X/Pinterest）|
+| GitHub | github_api | 2 | GitHub Repo / Topics |
+| RSS / 公开网页 | rss + web_crawl | 15 | RSS 订阅源 + Web Snapshot |
 
----
+**数据类型覆盖（14种）**：`post` · `comment` · `account` · `product` · `review` · `ad` · `job` · `trend` · `ai_answer` · `news` · `web_page` · `repo` · `feed` · `search`
+
 
 ## 1. TikHub Social
 
