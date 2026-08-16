@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2 } from "lucide-react";
 
 const navigation = [
   { name: "采集平台", href: "/platforms", icon: Grid3x3 },
@@ -14,6 +14,8 @@ const navigation = [
 const secondaryNav = [
   { name: "凭证配置", href: "/settings/credentials", icon: Key },
 ];
+
+const INSIGHT_URL = "/insight/dashboard";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -57,6 +59,15 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
+        <a
+          href={INSIGHT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-1 flex min-h-10 items-center gap-3 rounded-[var(--radius-2)] px-3 py-2 text-sm font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
+        >
+          <BarChart2 aria-hidden="true" size={16} />
+          洞察面板
+        </a>
         <nav aria-label="辅助导航" className="grid gap-1">
           {secondaryNav.map((item) => {
             const on = active(item.href);

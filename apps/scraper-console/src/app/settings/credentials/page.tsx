@@ -219,7 +219,7 @@ export default function CredentialsPage() {
       title="凭证管理"
       description="配置各平台 API Key 用于采集"
     >
-      {!data?.vault_write_enabled && !isLoading && (
+      {data && !data.vault_write_enabled && (
         <div className="rounded-[var(--radius-2)] border border-[var(--state-warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--state-warning)]">
           <p className="font-medium">凭证保险库未启用</p>
           <p className="mt-1 text-xs">

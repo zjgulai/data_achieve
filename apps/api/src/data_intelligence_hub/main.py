@@ -19,6 +19,9 @@ from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
 from data_intelligence_hub.api.routes.notifications import router as notifications_router
+from data_intelligence_hub.api.routes.platform_credentials import (
+    router as platform_credentials_router,
+)
 from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
@@ -93,6 +96,7 @@ def create_app() -> FastAPI:
     app.include_router(alert_rules_router, prefix="/api/alert-rules")
     app.include_router(alert_events_router, prefix="/api/alert-events")
     app.include_router(notifications_router, prefix="/api/notifications")
+    app.include_router(platform_credentials_router, prefix="/api/settings")
     return app
 
 
