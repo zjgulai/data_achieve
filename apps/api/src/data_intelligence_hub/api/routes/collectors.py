@@ -2076,6 +2076,48 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    jina_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="jina_page_content",
+            label="Jina Reader 通用页面转 Markdown",
+            platform="web",
+            description="Convert any public web page to clean Markdown via r.jina.ai.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["return_format"],
+            cost_hint="~0.001 credits/page",
+            provider="Jina AI",
+            content_type="web_page_markdown",
+            method="jina_reader",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="jina_dtc_review",
+            label="Jina Reader DTC 评价页采集",
+            platform="web",
+            description="Extract review page content from DTC brand sites via r.jina.ai.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["return_format"],
+            cost_hint="~0.001 credits/page",
+            provider="Jina AI",
+            content_type="web_page_markdown",
+            method="jina_reader",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="jina_news_article",
+            label="Jina Reader 新闻文章正文提取",
+            platform="web",
+            description="Extract clean article text from news pages via r.jina.ai.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["return_format"],
+            cost_hint="~0.001 credits/page",
+            provider="Jina AI",
+            content_type="web_page_markdown",
+            method="jina_reader",
+        ),
+    ]
+
     anysearch_endpoints = [
         CollectorEndpointMetadata(
             endpoint_type="anysearch_brand_media",
@@ -2250,6 +2292,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="AnySearch 搜索采集",
                 platform="web",
                 endpoints=anysearch_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="jina_reader",
+                label="Jina Reader 页面转 Markdown",
+                platform="web",
+                endpoints=jina_endpoints,
             ),
         ]
     )

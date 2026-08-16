@@ -71,6 +71,7 @@ services:
       TIKHUB_API_KEY: ${TIKHUB_API_KEY:-}
       APIFY_API_TOKEN: ${APIFY_API_TOKEN:-}
       ANYSEARCH_API_KEY: ${ANYSEARCH_API_KEY:-}
+      JINA_API_KEY: ${JINA_API_KEY:-}
     expose:
       - "8000"
     volumes:

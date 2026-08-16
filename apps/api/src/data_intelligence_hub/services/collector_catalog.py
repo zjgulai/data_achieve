@@ -148,6 +148,18 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             },
         },
     ),
+    CollectorDefinition(
+        type="jina_reader",
+        name="Jina Reader",
+        description="Convert any public web page to clean Markdown via r.jina.ai.",
+        config_schema={
+            "required": ["url"],
+            "properties": {
+                "url": "string",
+                "return_format": "string",
+            },
+        },
+    ),
 )
 
 
@@ -201,6 +213,8 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_playwright_browser_config(config)
     if collector_type == "anysearch":
         return _validate_anysearch_config(config)
+    if collector_type == "jina_reader":
+        return _validate_jina_reader_config(config)
 
     from data_intelligence_hub.services.exceptions import CollectorNotFoundError
 
@@ -433,3 +447,13 @@ def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
     if site is not None and not isinstance(site, str):
         raise CollectorConfigError
     return {"query": query, "num_results": num_results, "site": site}
+
+
+def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    url = _require_text(config, "url")
+    return_format = config.get("return_format", "markdown")
+    if return_format not in {"markdown", "text", "html"}:
+        raise CollectorConfigError
+    return {"url": url, "return_format": return_format}

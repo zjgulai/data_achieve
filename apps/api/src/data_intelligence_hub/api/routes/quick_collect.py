@@ -203,6 +203,10 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # AnySearch (2 endpoints)
     "anysearch_brand_media": "anysearch",
     "anysearch_competitor": "anysearch",
+    # Jina Reader (3 endpoints)
+    "jina_page_content": "jina_reader",
+    "jina_dtc_review": "jina_reader",
+    "jina_news_article": "jina_reader",
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

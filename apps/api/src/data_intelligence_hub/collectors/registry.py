@@ -14,6 +14,7 @@ from data_intelligence_hub.collectors.ecommerce_product_page import EcommercePro
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
+from data_intelligence_hub.collectors.jina_reader import JinaReaderCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
@@ -33,6 +34,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     ApifyActorCollector.collector_type: ApifyActorCollector,
     PlaywrightBrowserCollector.collector_type: PlaywrightBrowserCollector,
     AnySearchCollector.collector_type: AnySearchCollector,
+    JinaReaderCollector.collector_type: JinaReaderCollector,
 }
 
 
