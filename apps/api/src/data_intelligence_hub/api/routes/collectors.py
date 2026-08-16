@@ -2034,6 +2034,35 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    ecommerce_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="ecommerce_product_page",
+            label="独立站商品页采集",
+            platform="ecommerce",
+            description="解析公开独立站商品页，提取标题、价格、库存、SKU、品牌、描述、图片等结构化字段。",
+            status="verified",
+            required_params=["url"],
+            optional_params=["fields", "platform_hint"],
+            cost_hint="免费",
+            provider="自研 HTTP Collector",
+            content_type="product",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="ecommerce_product_discovery",
+            label="独立站商品 URL 发现",
+            platform="ecommerce",
+            description="Discover product URLs from an ecommerce site (Shopify / generic).",
+            status="verified",
+            required_params=["url"],
+            optional_params=["max_products", "platform_hint"],
+            cost_hint="免费",
+            provider="自研 HTTP Collector",
+            content_type="product",
+            method="web_crawl",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -2059,6 +2088,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="RSS / 公开网页",
                 platform="web",
                 endpoints=rss_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="ecommerce_web",
+                label="电商独立站",
+                platform="ecommerce",
+                endpoints=ecommerce_endpoints,
             ),
         ]
     )

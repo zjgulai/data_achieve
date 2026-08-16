@@ -192,6 +192,9 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # RSS / Web (2 endpoints)
     "public_feed": "public_feed",
     "generic_web": "generic_web",
+    # Ecommerce Web (2 endpoints)
+    "ecommerce_product_page": "ecommerce_product_page",
+    "ecommerce_product_discovery": "ecommerce_product_discovery",
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)
