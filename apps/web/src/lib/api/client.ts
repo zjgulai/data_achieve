@@ -22,7 +22,13 @@ export type ApiErrorCode =
   | "workflow_planner_dependency_unavailable"
   | "persistence_unavailable"
   | "workflow_planner_invalid_step_graph"
-  | "workflow_planner_internal_error";
+  | "workflow_planner_internal_error"
+  | "capability_governance_forbidden"
+  | "governance_resource_not_found"
+  | "verification_task_conflict"
+  | "publication_parent_conflict"
+  | "catalog_snapshot_invalid"
+  | "internal_server_error";
 
 export type ApiErrorRecoveryDetails = {
   projectId?: string;
@@ -49,6 +55,12 @@ const stableApiErrorCodes = new Set<ApiErrorCode>([
   "persistence_unavailable",
   "workflow_planner_invalid_step_graph",
   "workflow_planner_internal_error",
+  "capability_governance_forbidden",
+  "governance_resource_not_found",
+  "verification_task_conflict",
+  "publication_parent_conflict",
+  "catalog_snapshot_invalid",
+  "internal_server_error",
 ]);
 const recoveryDetailErrorCodes = new Set<ApiErrorCode>([
   "preview_stale",
@@ -101,9 +113,6 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const error = await readApiError(response);
-    if (response.status === 401 && shouldRedirectForUnauthorized(path)) {
-      redirectToLogin();
-    }
     throw new ApiRequestError(response.status, error.message, {
       validationIssues: error.validationIssues,
       requestId: response.headers.get("x-request-id"),
@@ -295,16 +304,4 @@ function readNonEmptyString(value: unknown): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function shouldRedirectForUnauthorized(path: string) {
-  return path !== "/api/auth/login" && path !== "/api/auth/register";
-}
-
-function redirectToLogin() {
-  if (typeof window === "undefined" || window.location.pathname === "/login") {
-    return;
-  }
-  const next = `${window.location.pathname}${window.location.search}`;
-  window.location.assign(`/login?next=${encodeURIComponent(next)}`);
 }
