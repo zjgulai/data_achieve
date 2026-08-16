@@ -154,7 +154,8 @@ class PlaywrightBrowserCollector(BaseCollector):
             collected_at=collected_at,
         )
         return CollectionResult(
-            records=[record],
+            raw_records=[record],
+            errors=[],
             logs=[
                 collector_log(
                     "browser_collected",

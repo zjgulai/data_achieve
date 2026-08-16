@@ -2076,6 +2076,35 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    anysearch_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="anysearch_brand_media",
+            label="AnySearch 品牌×媒体覆盖查询",
+            platform="web",
+            description="Search brand mentions across media sites via AnySearch API.",
+            status="verified",
+            required_params=["query"],
+            optional_params=["site", "num_results"],
+            cost_hint="$0.001/query",
+            provider="AnySearch API",
+            content_type="search_result",
+            method="anysearch",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="anysearch_competitor",
+            label="AnySearch 竞品动态搜索",
+            platform="web",
+            description="Search competitor brand news and reviews via AnySearch API.",
+            status="verified",
+            required_params=["query"],
+            optional_params=["site", "num_results"],
+            cost_hint="$0.001/query",
+            provider="AnySearch API",
+            content_type="search_result",
+            method="anysearch",
+        ),
+    ]
+
     regulatory_endpoints = [
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2215,6 +2244,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="监管 / 召回公告",
                 platform="regulatory",
                 endpoints=regulatory_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="anysearch",
+                label="AnySearch 搜索采集",
+                platform="web",
+                endpoints=anysearch_endpoints,
             ),
         ]
     )

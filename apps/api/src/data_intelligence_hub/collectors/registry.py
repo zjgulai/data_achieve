@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.anysearch_collector import AnySearchCollector
 from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
@@ -31,6 +32,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     TikHubSocialCollector.collector_type: TikHubSocialCollector,
     ApifyActorCollector.collector_type: ApifyActorCollector,
     PlaywrightBrowserCollector.collector_type: PlaywrightBrowserCollector,
+    AnySearchCollector.collector_type: AnySearchCollector,
 }
 
 

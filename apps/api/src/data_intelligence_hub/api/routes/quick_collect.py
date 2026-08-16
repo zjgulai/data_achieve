@@ -200,6 +200,9 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "playwright_browser_text": "playwright_browser",
     "playwright_browser_html": "playwright_browser",
     "playwright_browser_screenshot": "playwright_browser",
+    # AnySearch (2 endpoints)
+    "anysearch_brand_media": "anysearch",
+    "anysearch_competitor": "anysearch",
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

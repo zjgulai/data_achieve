@@ -121,6 +121,33 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             },
         },
     ),
+    CollectorDefinition(
+        type="playwright_browser",
+        name="Playwright Browser",
+        description="Headless Chromium browser collector for JS-rendered pages.",
+        config_schema={
+            "required": ["url"],
+            "properties": {
+                "url": "string",
+                "wait_for": "string",
+                "extract_mode": "string",
+                "wait_selector": "string",
+            },
+        },
+    ),
+    CollectorDefinition(
+        type="anysearch",
+        name="AnySearch",
+        description="Search the web via AnySearch API and collect structured results.",
+        config_schema={
+            "required": ["query"],
+            "properties": {
+                "query": "string",
+                "site": "string",
+                "num_results": "integer",
+            },
+        },
+    ),
 )
 
 
@@ -170,6 +197,10 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_tikhub_social_config(config)
     if collector_type == "apify_actor":
         return _validate_apify_actor_config(config)
+    if collector_type == "playwright_browser":
+        return _validate_playwright_browser_config(config)
+    if collector_type == "anysearch":
+        return _validate_anysearch_config(config)
 
     from data_intelligence_hub.services.exceptions import CollectorNotFoundError
 
@@ -376,3 +407,29 @@ def _validate_apify_actor_config(config: dict[str, Any]) -> dict[str, Any]:
         "max_items": max_items,
         "max_total_charge_usd": float(max_charge),
     }
+
+
+def _validate_playwright_browser_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    url = _require_text(config, "url")
+    wait_for = config.get("wait_for", "load")
+    if wait_for not in {"load", "networkidle", "domcontentloaded"}:
+        raise CollectorConfigError
+    extract_mode = config.get("extract_mode", "text")
+    if extract_mode not in {"text", "html", "screenshot"}:
+        raise CollectorConfigError
+    return {"url": url, "wait_for": wait_for, "extract_mode": extract_mode}
+
+
+def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    query = _require_text(config, "query")
+    num_results = config.get("num_results", 10)
+    if not isinstance(num_results, int) or not (1 <= num_results <= 50):
+        raise CollectorConfigError
+    site = config.get("site")
+    if site is not None and not isinstance(site, str):
+        raise CollectorConfigError
+    return {"query": query, "num_results": num_results, "site": site}
