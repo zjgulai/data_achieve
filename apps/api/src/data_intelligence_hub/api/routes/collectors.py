@@ -2034,6 +2034,48 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    browser_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="playwright_browser_text",
+            label="浏览器采集 - 正文文本",
+            platform="web",
+            description="Headless Chromium renders the page and extracts visible body text.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["wait_for", "wait_selector"],
+            cost_hint="免费",
+            provider="自研 Playwright Collector",
+            content_type="web_page",
+            method="browser",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="playwright_browser_html",
+            label="浏览器采集 - 完整 HTML",
+            platform="web",
+            description="Headless Chromium renders the page and returns the full HTML source.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["wait_for", "wait_selector"],
+            cost_hint="免费",
+            provider="自研 Playwright Collector",
+            content_type="web_page",
+            method="browser",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="playwright_browser_screenshot",
+            label="浏览器采集 - 截图",
+            platform="web",
+            description="Headless Chromium renders the page and captures a full-page screenshot.",
+            status="verified",
+            required_params=["url"],
+            optional_params=["wait_for", "wait_selector"],
+            cost_hint="免费",
+            provider="自研 Playwright Collector",
+            content_type="web_page",
+            method="browser",
+        ),
+    ]
+
     ecommerce_endpoints = [
         CollectorEndpointMetadata(
             endpoint_type="ecommerce_product_page",
@@ -2088,6 +2130,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="RSS / 公开网页",
                 platform="web",
                 endpoints=rss_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="browser",
+                label="浏览器自动化",
+                platform="web",
+                endpoints=browser_endpoints,
             ),
             CollectorCatalogEntry(
                 collector_type="ecommerce_web",

@@ -14,6 +14,7 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
 from data_intelligence_hub.collectors.tikhub_social import TikHubSocialCollector
 
@@ -29,6 +30,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     EcommerceProductPageCollector.collector_type: EcommerceProductPageCollector,
     TikHubSocialCollector.collector_type: TikHubSocialCollector,
     ApifyActorCollector.collector_type: ApifyActorCollector,
+    PlaywrightBrowserCollector.collector_type: PlaywrightBrowserCollector,
 }
 
 

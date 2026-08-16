@@ -32,6 +32,9 @@ social-overseas-live = [
     "google-api-python-client>=2.198.0",
     "asyncpraw>=8.0.2",
 ]
+browser = [
+    "playwright>=1.49.0",
+]
 
 [dependency-groups]
 dev = [

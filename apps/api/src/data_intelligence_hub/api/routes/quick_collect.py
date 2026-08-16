@@ -195,6 +195,10 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # Ecommerce Web (2 endpoints)
     "ecommerce_product_page": "ecommerce_product_page",
     "ecommerce_product_discovery": "ecommerce_product_discovery",
+    # Browser (3 endpoints)
+    "playwright_browser_text": "playwright_browser",
+    "playwright_browser_html": "playwright_browser",
+    "playwright_browser_screenshot": "playwright_browser",
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)
