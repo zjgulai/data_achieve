@@ -14,8 +14,11 @@ import {
 import { listProjects } from "@/lib/api/projects";
 import {
   isProjectFilterApplied,
+  projectSelectionRelativeUrl,
   projectSelectionEventName,
+  readProjectIdFromSearch,
   readSelectedProjectPreference,
+  resolveRouteScopedProjectId,
   resolveAppliedProjectId,
   resolveSelectedProjectId,
   selectedProjectStorageKey,
@@ -53,6 +56,17 @@ function eventProjectId(event: Event): string | null {
   return typeof detail?.projectId === "string" && detail.projectId
     ? detail.projectId
     : null;
+}
+
+function replaceProjectSelectionUrl(projectId: string | null): void {
+  if (resolveRouteScopedProjectId(window.location.pathname)) {
+    return;
+  }
+  const nextUrl = projectSelectionRelativeUrl(window.location.href, projectId);
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }
 }
 
 export function ProjectSelectionProvider({
@@ -144,7 +158,10 @@ export function ProjectSelectionProvider({
   useEffect(() => {
     let cancelled = false;
     const preference = readSelectedProjectPreference();
-    requestedProjectIdRef.current = preference.value;
+    const urlProjectId = resolveRouteScopedProjectId(window.location.pathname)
+      ? null
+      : readProjectIdFromSearch(window.location.search);
+    requestedProjectIdRef.current = urlProjectId ?? preference.value;
     setPreferenceError(
       preference.available ? null : projectPreferenceUnavailableMessage,
     );
@@ -155,12 +172,24 @@ export function ProjectSelectionProvider({
 
     function onStorage(event: StorageEvent) {
       if (event.key === selectedProjectStorageKey) {
+        replaceProjectSelectionUrl(event.newValue);
         applyRequestedSelection(event.newValue, true);
       }
     }
 
+    function onPopState() {
+      const projectId = readProjectIdFromSearch(window.location.search);
+      applyRequestedSelection(projectId);
+      setPreferenceError(
+        writeSelectedProjectId(projectId)
+          ? null
+          : projectPreferenceUnavailableMessage,
+      );
+    }
+
     window.addEventListener(projectSelectionEventName, onProjectSelection);
     window.addEventListener("storage", onStorage);
+    window.addEventListener("popstate", onPopState);
 
     const projectRequest = projectRequestRef.current ?? listProjects();
     projectRequestRef.current = projectRequest;
@@ -183,8 +212,9 @@ export function ProjectSelectionProvider({
         setBinding({ selectedProjectId: resolved, appliedProjectId: null });
         setProjectListError(null);
         setLoading(false);
+        replaceProjectSelectionUrl(resolved);
 
-        if (requestedProjectId !== resolved) {
+        if (requestedProjectId !== resolved || preference.value !== resolved) {
           setPreferenceError(
             writeSelectedProjectId(resolved)
               ? null
@@ -209,12 +239,16 @@ export function ProjectSelectionProvider({
       projectsValidatedRef.current = false;
       window.removeEventListener(projectSelectionEventName, onProjectSelection);
       window.removeEventListener("storage", onStorage);
+      window.removeEventListener("popstate", onPopState);
     };
   }, [applyRequestedSelection]);
 
   useEffect(() => {
     clearProjectFilterApplied();
-  }, [clearProjectFilterApplied, pathname]);
+    if (projectsValidatedRef.current) {
+      replaceProjectSelectionUrl(binding.selectedProjectId);
+    }
+  }, [binding.selectedProjectId, clearProjectFilterApplied, pathname]);
 
   const selectedProject = useMemo(
     () =>

@@ -13,7 +13,7 @@ import {
 import type { Project } from "@/types/project";
 
 describe("primary navigation", () => {
-  it("contains exactly the six approved entries", () => {
+  it("contains the approved product entries and platform settings", () => {
     expect(primaryNavigation.map((item) => item.label)).toEqual([
       "工作台",
       "监测项目",
@@ -21,6 +21,7 @@ describe("primary navigation", () => {
       "数据资产",
       "洞察与交付",
       "能力市场",
+      "系统设置",
     ]);
   });
 
@@ -86,6 +87,10 @@ describe("primary navigation", () => {
         {
           href: "/automation/plans",
           label: "已保存计划",
+        },
+        {
+          href: "/automation/runs",
+          label: "运行记录",
         },
       ]),
     );
@@ -172,6 +177,27 @@ describe("primary navigation", () => {
       false,
     );
     expect(isNavigationChildActive("/api-market", "", scenarios!)).toBe(true);
+  });
+
+  it("keeps Discovery nested under API Market without adding a primary item", () => {
+    const market = primaryNavigation.find(
+      (item) => item.href === "/api-market",
+    )!;
+    const discovery = market.children.find(
+      (item) => String(item.href) === "/api-market/discovery",
+    );
+
+    expect(primaryNavigation).toHaveLength(7);
+    expect(discovery).toEqual({
+      href: "/api-market/discovery",
+      label: "能力发现 Preview",
+    });
+    expect(
+      isNavigationChildActive("/api-market/discovery", "", discovery!),
+    ).toBe(true);
+    expect(isNavigationItemActive("/api-market/discovery", "", market)).toBe(
+      true,
+    );
   });
 });
 

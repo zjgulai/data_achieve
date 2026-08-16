@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.capability_governance import CapabilityCatalogHead
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workflow_plan import (
@@ -33,11 +34,21 @@ from data_intelligence_hub.models.workflow_plan import (
     WorkflowVersion,
     WorkflowVersionScope,
 )
+from data_intelligence_hub.models.workflow_scope_template import MonitoringScopeTemplate
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
-from data_intelligence_hub.schemas.capability_catalog import CapabilityCatalog
+from data_intelligence_hub.schemas.capability_catalog import (
+    CapabilityCatalog,
+    CapabilityStatus,
+)
 from data_intelligence_hub.schemas.workflow_plan_persistence import (
+    MonitoringScopeTemplateCopyRequest,
+    MonitoringScopeTemplateCopyResponse,
+    WorkflowPlanCloneRequest,
+    WorkflowPlanCloneResponse,
     WorkflowPlanCreateRequest,
     WorkflowPlanSaveResponse,
+    WorkflowPlanTransitionRequest,
+    WorkflowPlanTransitionResponse,
     WorkflowVersionCreateRequest,
 )
 from data_intelligence_hub.schemas.workflow_planner import (
@@ -46,19 +57,23 @@ from data_intelligence_hub.schemas.workflow_planner import (
 )
 from data_intelligence_hub.services.capability_catalog import get_capability_catalog
 from data_intelligence_hub.services.exceptions import (
+    MonitoringScopeNotFoundError,
     ProjectNotActiveError,
     ProjectNotFoundError,
     WorkflowPlanFlowModeConflictError,
     WorkflowPlanIdempotencyConflictError,
+    WorkflowPlanInvalidTransitionError,
     WorkflowPlanNotFoundError,
     WorkflowPlanPersistenceTransactionStateError,
     WorkflowPlanPreviewStaleError,
     WorkflowPlanScopeConflictError,
+    WorkflowPlanStatusConflictError,
     WorkflowPlanVersionConflictError,
     WorkflowVersionNotFoundError,
 )
 from data_intelligence_hub.services.workflow_planner import persistence
 from data_intelligence_hub.services.workflow_planner.persistence import (
+    clone_workflow_plan,
     compare_workflow_plan_versions,
     create_workflow_plan,
     create_workflow_version,
@@ -67,10 +82,14 @@ from data_intelligence_hub.services.workflow_planner.persistence import (
     list_monitoring_scopes_for_project,
     list_workflow_plan_versions,
     list_workflow_plans_for_project,
+    transition_workflow_plan_status,
 )
 from data_intelligence_hub.services.workflow_planner.planner import (
     WorkflowPlanBuildResult,
     build_workflow_plan_result,
+)
+from data_intelligence_hub.services.workflow_planner.scope_templates import (
+    copy_monitoring_scope_template,
 )
 
 FIXTURE_DIR = Path(__file__).parents[1] / "fixtures" / "workflow_planner"
@@ -280,6 +299,11 @@ async def database(
                     domain="social",
                     status="active",
                 ),
+                CapabilityCatalogHead(
+                    singleton_key="global",
+                    current_revision_id=None,
+                    head_version=0,
+                ),
             ]
         )
         await session.commit()
@@ -336,6 +360,81 @@ async def _create_version(
         payload=payload,
         idempotency_key=idempotency_key,
         request_id=f"save-{idempotency_key}",
+        generated_at=generated_at,
+    )
+
+
+async def _transition(
+    database: _DatabaseContext,
+    *,
+    expected_status: str,
+    to_status: str,
+    reason: str | None = None,
+    generated_at: datetime = NOW + timedelta(minutes=4),
+) -> WorkflowPlanTransitionResponse:
+    plan = (
+        await database.session.execute(
+            select(WorkflowPlan).where(WorkflowPlan.project_id == database.project_id)
+        )
+    ).scalar_one()
+    return await transition_workflow_plan_status(
+        database.session,
+        workspace_id=database.workspace_id,
+        project_id=database.project_id,
+        workflow_plan_id=plan.id,
+        created_by_user_id=database.user_id,
+        payload=WorkflowPlanTransitionRequest(
+            expected_status=expected_status,
+            to_status=to_status,
+            reason=reason,
+        ),
+        request_id="status-transition-test",
+        generated_at=generated_at,
+    )
+
+
+async def _clone(
+    database: _DatabaseContext,
+    *,
+    source_plan_id: uuid.UUID,
+    source_version_id: uuid.UUID,
+    name: str = "Cloned competitor monitoring",
+    idempotency_key: str = "plan-clone-key-0001",
+    generated_at: datetime = NOW + timedelta(minutes=2),
+) -> WorkflowPlanCloneResponse:
+    return await clone_workflow_plan(
+        database.session,
+        workspace_id=database.workspace_id,
+        project_id=database.project_id,
+        workflow_plan_id=source_plan_id,
+        created_by_user_id=database.user_id,
+        payload=WorkflowPlanCloneRequest(
+            name=name,
+            source_version_id=source_version_id,
+        ),
+        idempotency_key=idempotency_key,
+        request_id=f"clone-{idempotency_key}",
+        generated_at=generated_at,
+    )
+
+
+async def _copy_scope_template(
+    database: _DatabaseContext,
+    *,
+    scope_id: uuid.UUID,
+    source_version_id: uuid.UUID,
+    idempotency_key: str = "scope-template-copy-0001",
+    generated_at: datetime = NOW + timedelta(minutes=3),
+) -> MonitoringScopeTemplateCopyResponse:
+    return await copy_monitoring_scope_template(
+        database.session,
+        workspace_id=database.workspace_id,
+        project_id=database.project_id,
+        scope_id=scope_id,
+        created_by_user_id=database.user_id,
+        payload=MonitoringScopeTemplateCopyRequest(source_version_id=source_version_id),
+        idempotency_key=idempotency_key,
+        request_id=f"scope-copy-{idempotency_key}",
         generated_at=generated_at,
     )
 
@@ -445,6 +544,368 @@ async def test_create_recomputes_and_saves_v1_inside_one_explicit_transaction(
     serialized = response.model_dump(mode="json")
     assert "fingerprint_payload" not in serialized["version"]
     assert "fingerprint_input" not in serialized["version"]
+
+
+@pytest.mark.asyncio
+async def test_plan_status_transition_changes_only_lifecycle_and_supports_noop(
+    database: _DatabaseContext,
+) -> None:
+    saved = await _create(database)
+    before_version = (
+        await database.session.execute(
+            select(WorkflowVersion).where(WorkflowVersion.id == saved.version.id)
+        )
+    ).scalar_one()
+    before_payload = dict(before_version.plan_payload)
+    before_current_version_id = saved.plan.current_version_id
+
+    approved = await _transition(
+        database,
+        expected_status="previewed",
+        to_status="approved",
+        reason=" owner reviewed the frozen plan ",
+    )
+    assert approved.database_write is True
+    assert approved.plan_changed is True
+    assert approved.from_status == "previewed"
+    assert approved.to_status == "approved"
+    assert approved.reason == "owner reviewed the frozen plan"
+    assert approved.plan.status == "approved"
+
+    replay = await _transition(
+        database,
+        expected_status="approved",
+        to_status="approved",
+    )
+    assert replay.database_write is False
+    assert replay.plan_changed is False
+    assert replay.from_status == replay.to_status == "approved"
+
+    with pytest.raises(WorkflowPlanStatusConflictError):
+        await _transition(
+            database,
+            expected_status="previewed",
+            to_status="active",
+        )
+    with pytest.raises(WorkflowPlanInvalidTransitionError):
+        await _transition(
+            database,
+            expected_status="approved",
+            to_status="paused",
+        )
+
+    after_version = (
+        await database.session.execute(
+            select(WorkflowVersion).where(WorkflowVersion.id == saved.version.id)
+        )
+    ).scalar_one()
+    plan = (
+        await database.session.execute(
+            select(WorkflowPlan).where(WorkflowPlan.id == saved.plan.id)
+        )
+    ).scalar_one()
+    assert after_version.plan_payload == before_payload
+    assert plan.current_version_id == before_current_version_id
+    assert plan.status == "approved"
+
+
+@pytest.mark.asyncio
+async def test_plan_status_transition_allows_pause_resume_and_archive(
+    database: _DatabaseContext,
+) -> None:
+    saved = await _create(database)
+    for expected, target in (
+        ("previewed", "approved"),
+        ("approved", "active"),
+        ("active", "paused"),
+        ("paused", "active"),
+        ("active", "paused"),
+        ("paused", "archived"),
+    ):
+        result = await _transition(
+            database,
+            expected_status=expected,
+            to_status=target,
+        )
+        assert result.plan.status == target
+
+    assert saved.version.id == (
+        await database.session.execute(select(WorkflowVersion.id))
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_plan_status_transition_locks_project_before_plan(
+    database: _DatabaseContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await _create(database)
+    events: list[str] = []
+    original_project_lock = persistence.lock_project_for_workflow_plan_save  # type: ignore[attr-defined]
+    original_plan_lock = persistence.get_workflow_plan_for_update  # type: ignore[attr-defined]
+
+    async def tracked_project_lock(
+        session: AsyncSession,
+        workspace_id: uuid.UUID,
+        project_id: uuid.UUID,
+    ) -> Project | None:
+        events.append("project")
+        return await original_project_lock(session, workspace_id, project_id)
+
+    async def tracked_plan_lock(
+        session: AsyncSession,
+        workspace_id: uuid.UUID,
+        project_id: uuid.UUID,
+        workflow_plan_id: uuid.UUID,
+    ) -> WorkflowPlan | None:
+        events.append("plan")
+        return await original_plan_lock(
+            session,
+            workspace_id,
+            project_id,
+            workflow_plan_id,
+        )
+
+    monkeypatch.setattr(
+        persistence,
+        "lock_project_for_workflow_plan_save",
+        tracked_project_lock,
+    )
+    monkeypatch.setattr(
+        persistence,
+        "get_workflow_plan_for_update",
+        tracked_plan_lock,
+    )
+
+    await _transition(
+        database,
+        expected_status="previewed",
+        to_status="approved",
+    )
+
+    assert events == ["project", "plan"]
+
+
+@pytest.mark.asyncio
+async def test_clone_creates_independent_plan_and_preserves_frozen_source_graph(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+
+    cloned = await _clone(
+        database,
+        source_plan_id=source.plan.id,
+        source_version_id=source.version.id,
+    )
+
+    assert cloned.database_write is True
+    assert cloned.plan_changed is True
+    assert cloned.idempotent_replay is False
+    assert cloned.source_plan_id == source.plan.id
+    assert cloned.source_version_id == source.version.id
+    assert cloned.plan.id != source.plan.id
+    assert cloned.version.id != source.version.id
+    assert cloned.plan.current_version_id == cloned.version.id
+    assert cloned.plan.source_plan_id == source.plan.id
+    assert cloned.plan.source_version_id == source.version.id
+    assert cloned.version.workflow_plan_id == cloned.plan.id
+    assert cloned.version.preview_fingerprint == source.version.preview_fingerprint
+    assert cloned.version.preview == source.version.preview
+    assert cloned.version.editable_input == source.version.editable_input
+
+    source_plan = (
+        await database.session.execute(
+            select(WorkflowPlan).where(WorkflowPlan.id == source.plan.id)
+        )
+    ).scalar_one()
+    target_plan = (
+        await database.session.execute(
+            select(WorkflowPlan).where(WorkflowPlan.id == cloned.plan.id)
+        )
+    ).scalar_one()
+    assert source_plan.current_version_id == source.version.id
+    assert source_plan.source_workflow_plan_id is None
+    assert target_plan.current_version_id == cloned.version.id
+    assert target_plan.source_workflow_plan_id == source.plan.id
+    assert target_plan.source_workflow_version_id == source.version.id
+    assert await _count(database.session, WorkflowPlan) == 2
+    assert await _count(database.session, WorkflowVersion) == 2
+    assert await _count(database.session, WorkflowVersionScope) == (
+        2 * len(source.version.preview.normalized_input.scopes)
+    )
+    assert await _count(database.session, QueryTerm) == 2 * len(source.version.preview.query_terms)
+    assert await _count(database.session, WorkflowPlanSaveRequest) == 2
+
+
+@pytest.mark.asyncio
+async def test_clone_replay_is_write_free_and_same_key_conflict_fails_closed(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+    first = await _clone(
+        database,
+        source_plan_id=source.plan.id,
+        source_version_id=source.version.id,
+        idempotency_key="plan-clone-replay-0001",
+    )
+
+    replay = await _clone(
+        database,
+        source_plan_id=source.plan.id,
+        source_version_id=source.version.id,
+        idempotency_key="plan-clone-replay-0001",
+    )
+
+    assert replay.idempotent_replay is True
+    assert replay.database_write is False
+    assert replay.plan_changed is False
+    assert replay.plan == first.plan
+    assert replay.version == first.version
+    assert await _count(database.session, WorkflowPlan) == 2
+    assert await _count(database.session, WorkflowPlanSaveRequest) == 2
+
+    with pytest.raises(WorkflowPlanIdempotencyConflictError):
+        await _clone(
+            database,
+            source_plan_id=source.plan.id,
+            source_version_id=source.version.id,
+            name="Different clone name",
+            idempotency_key="plan-clone-replay-0001",
+        )
+    assert await _count(database.session, WorkflowPlan) == 2
+
+
+@pytest.mark.asyncio
+async def test_clone_rejects_version_from_another_plan_without_writes(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+    other = await _create(
+        database,
+        payload=_create_request(
+            database.project_id,
+            planning_input=_batch_input(),
+        ),
+        idempotency_key="other-plan-0001",
+    )
+
+    with pytest.raises(WorkflowVersionNotFoundError):
+        await _clone(
+            database,
+            source_plan_id=source.plan.id,
+            source_version_id=other.version.id,
+            idempotency_key="plan-clone-wrong-version-0001",
+        )
+    assert await _count(database.session, WorkflowPlan) == 2
+    assert await _count(database.session, WorkflowVersion) == 2
+    assert await _count(database.session, WorkflowPlanSaveRequest) == 2
+
+
+@pytest.mark.asyncio
+async def test_scope_template_copy_creates_new_draft_identity_and_keeps_canonical_scope(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+    scope = (await database.session.execute(select(MonitoringScope))).scalars().first()
+    assert scope is not None
+    scope_id = scope.id
+
+    copied = await _copy_scope_template(
+        database,
+        scope_id=scope_id,
+        source_version_id=source.version.id,
+    )
+
+    assert copied.database_write is True
+    assert copied.idempotent_replay is False
+    assert copied.template.id != scope.id
+    assert copied.template.source_scope_id == scope.id
+    assert copied.template.source_plan_id == source.plan.id
+    assert copied.template.source_version_id == source.version.id
+    assert copied.template.scope_key == scope.scope_key
+    assert copied.template.canonical_term == scope.canonical_term
+    assert copied.template.aliases == scope.aliases
+    assert await _count(database.session, MonitoringScope) == len(
+        source.version.preview.normalized_input.scopes
+    )
+    assert await _count(database.session, MonitoringScopeTemplate) == 1
+
+
+@pytest.mark.asyncio
+async def test_scope_template_copy_replay_is_write_free_and_wrong_version_fails(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+    scope = (await database.session.execute(select(MonitoringScope))).scalars().first()
+    assert scope is not None
+    scope_id = scope.id
+
+    first = await _copy_scope_template(
+        database,
+        scope_id=scope_id,
+        source_version_id=source.version.id,
+        idempotency_key="scope-template-replay-0001",
+    )
+    replay = await _copy_scope_template(
+        database,
+        scope_id=scope_id,
+        source_version_id=source.version.id,
+        idempotency_key="scope-template-replay-0001",
+    )
+    assert replay.idempotent_replay is True
+    assert replay.database_write is False
+    assert replay.template == first.template
+    assert await _count(database.session, MonitoringScopeTemplate) == 1
+
+    other = await _create(
+        database,
+        payload=_create_request(database.project_id, planning_input=_batch_input()),
+        idempotency_key="scope-template-other-plan-0001",
+    )
+    with pytest.raises(MonitoringScopeNotFoundError):
+        await _copy_scope_template(
+            database,
+            scope_id=scope_id,
+            source_version_id=other.version.id,
+            idempotency_key="scope-template-wrong-version-0001",
+        )
+    assert await _count(database.session, MonitoringScopeTemplate) == 1
+
+
+@pytest.mark.asyncio
+async def test_scope_template_copy_same_key_different_source_version_conflicts(
+    database: _DatabaseContext,
+) -> None:
+    source = await _create(database)
+    scope = (await database.session.execute(select(MonitoringScope))).scalars().first()
+    assert scope is not None
+    second = await _create_version(
+        database,
+        plan_id=source.plan.id,
+        payload=_version_request(
+            database.project_id,
+            current_version_id=source.version.id,
+            planning_input=_changed_input("comments"),
+        ),
+        idempotency_key="scope-template-source-version-0001",
+    )
+
+    await _copy_scope_template(
+        database,
+        scope_id=scope.id,
+        source_version_id=source.version.id,
+        idempotency_key="scope-template-cross-version-0001",
+    )
+
+    with pytest.raises(WorkflowPlanIdempotencyConflictError):
+        await _copy_scope_template(
+            database,
+            scope_id=scope.id,
+            source_version_id=second.version.id,
+            idempotency_key="scope-template-cross-version-0001",
+        )
+
+    assert await _count(database.session, MonitoringScopeTemplate) == 1
 
 
 @pytest.mark.asyncio
@@ -572,10 +1033,14 @@ async def test_create_requires_active_project_before_catalog_recompute(
     project.status = "archived"
     await database.session.commit()
 
-    def fail_catalog_load() -> CapabilityCatalog:
+    async def fail_catalog_load(_session: AsyncSession) -> CapabilityCatalog:
         raise AssertionError("catalog must not load for inactive project")
 
-    monkeypatch.setattr(persistence, "get_capability_catalog", fail_catalog_load)
+    monkeypatch.setattr(
+        persistence,
+        "resolve_current_capability_catalog",
+        fail_catalog_load,
+    )
 
     with pytest.raises(ProjectNotActiveError):
         await _create(database)
@@ -642,11 +1107,15 @@ async def test_completed_replay_short_circuits_project_and_catalog(
     async def fail_project_read(*args: object, **kwargs: object) -> Project:
         raise AssertionError("project must not be read during completed replay")
 
-    def fail_catalog_load() -> CapabilityCatalog:
+    async def fail_catalog_load(_session: AsyncSession) -> CapabilityCatalog:
         raise AssertionError("catalog must not load during completed replay")
 
     monkeypatch.setattr(persistence, "get_project", fail_project_read)
-    monkeypatch.setattr(persistence, "get_capability_catalog", fail_catalog_load)
+    monkeypatch.setattr(
+        persistence,
+        "resolve_current_capability_catalog",
+        fail_catalog_load,
+    )
 
     replay = await _create(database)
 
@@ -927,6 +1396,81 @@ async def test_a_to_b_to_a_creates_v3_instead_of_reusing_history(
     assert v3.version.preview_fingerprint == v1.version.preview_fingerprint
     assert v3.version.id != v1.version.id
     assert v2.version.preview_fingerprint != v1.version.preview_fingerprint
+
+
+@pytest.mark.asyncio
+async def test_new_version_uses_current_catalog_and_historical_version_stays_frozen(
+    database: _DatabaseContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    v1 = await _create(database)
+    base = _catalog()
+    changed_assertion = base.assertions[0].model_copy(
+        update={"support_status": CapabilityStatus.DEPRECATED},
+        deep=True,
+    )
+    overlay = CapabilityCatalog.model_validate(
+        base.model_copy(
+            update={"assertions": [changed_assertion, *base.assertions[1:]]},
+            deep=True,
+        ).model_dump(mode="json")
+    )
+    planning_input = _changed_input("catalog-overlay")
+    expected = build_workflow_plan_result(
+        project_id=database.project_id,
+        planning_input=planning_input,
+        catalog=overlay,
+        generated_at=NOW + timedelta(minutes=1),
+        request_id="save-catalog-overlay-version-0001",
+    )
+    resolver_calls = 0
+
+    async def resolve_overlay(_session: AsyncSession) -> CapabilityCatalog:
+        nonlocal resolver_calls
+        resolver_calls += 1
+        return overlay
+
+    monkeypatch.setattr(
+        persistence,
+        "resolve_current_capability_catalog",
+        resolve_overlay,
+    )
+    v2 = await _create_version(
+        database,
+        plan_id=v1.plan.id,
+        payload=WorkflowVersionCreateRequest(
+            preview_input=planning_input,
+            expected_preview_fingerprint=expected.preview.preview_fingerprint,
+            expected_current_version_id=v1.version.id,
+        ),
+        idempotency_key="catalog-overlay-version-0001",
+    )
+
+    assert resolver_calls == 1
+    assert v2.version.catalog_snapshot_id == expected.preview.catalog_snapshot_id
+    assert v2.version.catalog_snapshot_id != v1.version.catalog_snapshot_id
+
+    async def fail_current_catalog_resolution(
+        _session: AsyncSession,
+    ) -> CapabilityCatalog:
+        raise AssertionError("historical read must not resolve the current Catalog")
+
+    monkeypatch.setattr(
+        persistence,
+        "resolve_current_capability_catalog",
+        fail_current_catalog_resolution,
+    )
+    historical = await get_workflow_version_detail(
+        database.session,
+        workspace_id=database.workspace_id,
+        project_id=database.project_id,
+        plan_id=v1.plan.id,
+        version_id=v1.version.id,
+    )
+
+    assert historical.version.id == v1.version.id
+    assert historical.version.catalog_snapshot_id == v1.version.catalog_snapshot_id
+    assert historical.version.preview.catalog_snapshot_id == v1.version.catalog_snapshot_id
 
 
 @pytest.mark.asyncio

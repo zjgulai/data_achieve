@@ -769,7 +769,7 @@ async def test_query_term_requires_scope_associated_to_same_version(
 @pytest.mark.parametrize(
     ("invalid_kind", "invalid_value"),
     [
-        ("plan_status", "draft"),
+        ("plan_status", "unknown"),
         ("flow_mode", "unknown"),
         ("planning_status", "partial"),
         ("scope_type", "unknown"),

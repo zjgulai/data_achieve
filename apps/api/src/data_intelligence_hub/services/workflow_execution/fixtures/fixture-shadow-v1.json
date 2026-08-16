@@ -1,0 +1,228 @@
+{
+  "cases": [
+    {
+      "case_id": "fixture-shadow-primary-content-search-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:search_discover"],
+      "implementation_id": "fixture.primary",
+      "operation": "search_discover",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:00:00Z",
+          "content": {
+            "id": "fixture-shadow-search-001",
+            "text": "Acme shadow reconciliation sample one",
+            "url": "https://example.invalid/videos/fixture-shadow-search-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-search-001"
+        },
+        {
+          "collected_at": "2026-07-23T00:01:00Z",
+          "content": {
+            "id": "fixture-shadow-search-002",
+            "text": "Acme shadow reconciliation sample two",
+            "url": "https://example.invalid/videos/fixture-shadow-search-002"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-search-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-fallback-content-search-v1",
+      "evidence_refs": ["evidence:fixture.fallback:content:search_discover"],
+      "implementation_id": "fixture.fallback",
+      "operation": "search_discover",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:02:00Z",
+          "content": {
+            "id": "fixture-shadow-search-001",
+            "text": "Acme shadow reconciliation sample one",
+            "url": "https://example.invalid/videos/fixture-shadow-search-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-search-001"
+        },
+        {
+          "collected_at": "2026-07-23T00:03:00Z",
+          "content": {
+            "id": "fixture-shadow-search-002",
+            "text": "Acme shadow reconciliation sample two",
+            "url": "https://example.invalid/videos/fixture-shadow-search-002"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-search-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-primary-content-detail-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:resolve_detail"],
+      "implementation_id": "fixture.primary",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:04:00Z",
+          "content": {
+            "id": "fixture-shadow-detail-001",
+            "text": "Acme shadow detail sample",
+            "url": "https://example.invalid/videos/fixture-shadow-detail-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-detail-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-fallback-content-detail-v1",
+      "evidence_refs": ["evidence:fixture.fallback:content:resolve_detail"],
+      "implementation_id": "fixture.fallback",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:05:00Z",
+          "content": {
+            "id": "fixture-shadow-detail-001",
+            "text": "Acme shadow detail sample",
+            "url": "https://example.invalid/videos/fixture-shadow-detail-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-detail-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-primary-content-monitor-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:monitor_incremental"],
+      "implementation_id": "fixture.primary",
+      "operation": "monitor_incremental",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:06:00Z",
+          "content": {
+            "id": "fixture-shadow-monitor-001",
+            "published_at": "2026-07-22T23:00:00Z",
+            "text": "Acme shadow monitor sample",
+            "url": "https://example.invalid/videos/fixture-shadow-monitor-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-monitor-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "published_at", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-fallback-content-monitor-v1",
+      "evidence_refs": ["evidence:fixture.fallback:content:monitor_incremental"],
+      "implementation_id": "fixture.fallback",
+      "operation": "monitor_incremental",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:07:00Z",
+          "content": {
+            "id": "fixture-shadow-monitor-001",
+            "published_at": "2026-07-22T23:00:00Z",
+            "text": "Acme shadow monitor sample",
+            "url": "https://example.invalid/videos/fixture-shadow-monitor-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-monitor-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "published_at", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-primary-content-batch-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:batch_parse"],
+      "implementation_id": "fixture.primary",
+      "operation": "batch_parse",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:08:00Z",
+          "content": {
+            "id": "fixture-shadow-batch-001",
+            "text": "Acme shadow batch sample",
+            "url": "https://example.invalid/videos/fixture-shadow-batch-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-batch-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    },
+    {
+      "case_id": "fixture-shadow-fallback-content-batch-v1",
+      "evidence_refs": ["evidence:fixture.fallback:content:batch_parse"],
+      "implementation_id": "fixture.fallback",
+      "operation": "batch_parse",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-23T00:09:00Z",
+          "content": {
+            "id": "fixture-shadow-batch-001",
+            "text": "Acme shadow batch sample",
+            "url": "https://example.invalid/videos/fixture-shadow-batch-001"
+          },
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-shadow-batch-001"
+        }
+      ],
+      "records_count": 1,
+      "resource_type": "content",
+      "summary": {
+        "fields": ["id", "text", "url"],
+        "result_kind": "fixture_receipt"
+      }
+    }
+  ],
+  "profile_id": "fixture-shadow-v1",
+  "schema_version": "workflow_fixture_profile.v2"
+}

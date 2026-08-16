@@ -16,8 +16,14 @@ import {
   createWorkflowVersion,
   getWorkflowPlan,
   getWorkflowVersion,
+  transitionWorkflowPlanStatus,
 } from "@/lib/api/workflow-plan-persistence";
+import {
+  createWorkflowFixtureRun,
+  getWorkflowFixtureRunGate,
+} from "@/lib/api/workflow-runs";
 import { previewWorkflowPlan } from "@/lib/api/workflow-plans";
+import type { PlannerLifecycleActionKey } from "@/lib/workflow-planner-lifecycle";
 import {
   buildPlanningInput,
   clonePlanningInput,
@@ -39,9 +45,14 @@ import {
 } from "@/lib/workflow-planner";
 import type {
   WorkflowPlanDetail,
+  WorkflowPlanStatus,
   WorkflowVersionDetail,
 } from "@/types/workflow-plan-persistence";
 import type { ProjectStatus } from "@/types/project";
+import type {
+  WorkflowFixtureRunCreateResult,
+  WorkflowFixtureRunGate,
+} from "@/types/workflow-run";
 import type { WorkflowPlannerMode } from "@/types/workflow-planner";
 
 const steps: PlannerStep[] = ["mode", "scopes", "constraints", "preview"];
@@ -62,6 +73,8 @@ type PersistedPlanContext = {
   mode: WorkflowPlannerMode;
   currentVersionId: string;
   currentVersionNumber: number;
+  currentPreviewFingerprint: string;
+  status: WorkflowPlanStatus;
   sourceVersionId: string | null;
   projectStatus: ProjectStatus;
 };
@@ -81,6 +94,26 @@ type LogicalSaveAttempt = {
   signature: string;
   idempotencyKey: string;
 };
+
+type LifecycleRequestState =
+  | { status: "idle" }
+  | { status: "loading"; action: PlannerLifecycleActionKey }
+  | {
+      status: "success";
+      action: PlannerLifecycleActionKey;
+      message: string;
+    }
+  | {
+      status: "error";
+      action: PlannerLifecycleActionKey;
+      message: string;
+    };
+
+type RunGateState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; gate: WorkflowFixtureRunGate }
+  | { status: "error"; message: string };
 
 function persistenceSemanticKey(
   draft: WorkflowPlannerDraft,
@@ -186,6 +219,13 @@ export function WorkflowPlannerWorkspace({
   const [saveState, setSaveState] = useState<SaveRequestState>({
     status: "idle",
   });
+  const [lifecycleState, setLifecycleState] =
+    useState<LifecycleRequestState>({ status: "idle" });
+  const [runGateState, setRunGateState] = useState<RunGateState>({
+    status: "idle",
+  });
+  const [runReceipt, setRunReceipt] =
+    useState<WorkflowFixtureRunCreateResult | null>(null);
   const [semanticBaseline, setSemanticBaseline] = useState(() =>
     persistenceSemanticKey(createWorkflowPlannerDraft(initialMode), ""),
   );
@@ -197,6 +237,10 @@ export function WorkflowPlannerWorkspace({
   const saveControllerRef = useRef<AbortController | null>(null);
   const saveSequenceRef = useRef(0);
   const logicalSaveAttemptRef = useRef<LogicalSaveAttempt | null>(null);
+  const lifecycleControllerRef = useRef<AbortController | null>(null);
+  const runGateControllerRef = useRef<AbortController | null>(null);
+  const runGateSequenceRef = useRef(0);
+  const runIdempotencyRef = useRef<LogicalSaveAttempt | null>(null);
   const previewStateRef = useRef(previewState);
   const currentContextRef = useRef<PreviewSemanticContext>({
     projectId: selectedProject?.id ?? null,
@@ -311,6 +355,8 @@ export function WorkflowPlannerWorkspace({
           mode: detail.plan.flowMode,
           currentVersionId: detail.plan.currentVersionId,
           currentVersionNumber: detail.plan.currentVersionNumber,
+          currentPreviewFingerprint: detail.currentVersion.previewFingerprint,
+          status: detail.plan.status,
           sourceVersionId: initialSourceVersionId,
           projectStatus: detail.projectStatus,
         });
@@ -319,7 +365,11 @@ export function WorkflowPlannerWorkspace({
         setFieldErrors({});
         setPreviewState({ status: "idle" });
         setSaveState({ status: "idle" });
+        setLifecycleState({ status: "idle" });
+        setRunGateState({ status: "idle" });
+        setRunReceipt(null);
         logicalSaveAttemptRef.current = null;
+        runIdempotencyRef.current = null;
         setPlanLoadState({ status: "ready" });
       })
       .catch((error: unknown) => {
@@ -359,12 +409,75 @@ export function WorkflowPlannerWorkspace({
     selectedProject?.id,
   ]);
 
+  const refreshRunGate = useCallback(async () => {
+    if (!planContext) {
+      setRunGateState({ status: "idle" });
+      return;
+    }
+    const context = planContext;
+    const sequence = runGateSequenceRef.current + 1;
+    runGateSequenceRef.current = sequence;
+    runGateControllerRef.current?.abort();
+    const controller = new AbortController();
+    runGateControllerRef.current = controller;
+    setRunGateState({ status: "loading" });
+    try {
+      const gate = await getWorkflowFixtureRunGate(
+        context.projectId,
+        context.planId,
+        context.currentVersionId,
+        { signal: controller.signal },
+      );
+      if (
+        controller.signal.aborted ||
+        sequence !== runGateSequenceRef.current
+      ) {
+        return;
+      }
+      if (
+        gate.projectStatus !== context.projectStatus ||
+        gate.workflowPlanId !== context.planId ||
+        gate.workflowVersionId !== context.currentVersionId ||
+        gate.currentVersionId !== context.currentVersionId ||
+        gate.planStatus !== context.status
+      ) {
+        throw new Error("Workflow fixture run gate context mismatch");
+      }
+      setRunGateState({ status: "ready", gate });
+    } catch (error) {
+      if (
+        controller.signal.aborted ||
+        sequence !== runGateSequenceRef.current ||
+        isAbortError(error)
+      ) {
+        return;
+      }
+      setRunGateState({
+        status: "error",
+        message: readableError(error, "运行门禁读取失败"),
+      });
+    } finally {
+      if (runGateControllerRef.current === controller) {
+        runGateControllerRef.current = null;
+      }
+    }
+  }, [planContext]);
+
+  useEffect(() => {
+    void refreshRunGate();
+  }, [refreshRunGate]);
+
   const invalidateActiveSave = useCallback(() => {
     saveControllerRef.current?.abort();
     saveControllerRef.current = null;
     saveSequenceRef.current += 1;
     logicalSaveAttemptRef.current = null;
     setSaveState({ status: "idle" });
+    lifecycleControllerRef.current?.abort();
+    lifecycleControllerRef.current = null;
+    setLifecycleState({ status: "idle" });
+    setRunReceipt(null);
+    runIdempotencyRef.current = null;
   }, []);
 
   const invalidateActivePreview = useCallback(() => {
@@ -402,8 +515,13 @@ export function WorkflowPlannerWorkspace({
       planLoadControllerRef.current = null;
       saveControllerRef.current?.abort();
       saveControllerRef.current = null;
+      lifecycleControllerRef.current?.abort();
+      lifecycleControllerRef.current = null;
+      runGateControllerRef.current?.abort();
+      runGateControllerRef.current = null;
       saveSequenceRef.current += 1;
       requestSequenceRef.current += 1;
+      runGateSequenceRef.current += 1;
       clearProjectFilterApplied();
     };
   }, [clearProjectFilterApplied]);
@@ -657,6 +775,8 @@ export function WorkflowPlannerWorkspace({
         mode: result.plan.flowMode,
         currentVersionId: result.plan.currentVersionId,
         currentVersionNumber: result.plan.currentVersionNumber,
+        currentPreviewFingerprint: result.version.previewFingerprint,
+        status: result.plan.status,
         sourceVersionId: planContext?.sourceVersionId ?? null,
         projectStatus: "active",
       });
@@ -730,6 +850,9 @@ export function WorkflowPlannerWorkspace({
                   name: refreshed.plan.name,
                   currentVersionId: refreshed.plan.currentVersionId,
                   currentVersionNumber: refreshed.plan.currentVersionNumber,
+                  currentPreviewFingerprint:
+                    refreshed.currentVersion.previewFingerprint,
+                  status: refreshed.plan.status,
                   projectStatus: refreshed.projectStatus,
                 }
               : current,
@@ -773,6 +896,159 @@ export function WorkflowPlannerWorkspace({
     } finally {
       if (saveControllerRef.current === controller) {
         saveControllerRef.current = null;
+      }
+    }
+  }
+
+  async function transitionPlanLifecycle(
+    action: "approve" | "activate",
+    expectedStatus: WorkflowPlanStatus,
+    toStatus: WorkflowPlanStatus,
+  ) {
+    if (
+      !planContext ||
+      dirty ||
+      planContext.projectStatus !== "active" ||
+      planContext.status !== expectedStatus ||
+      lifecycleState.status === "loading"
+    ) {
+      return;
+    }
+    const context = planContext;
+    lifecycleControllerRef.current?.abort();
+    const controller = new AbortController();
+    lifecycleControllerRef.current = controller;
+    setLifecycleState({ status: "loading", action });
+    try {
+      const result = await transitionWorkflowPlanStatus(
+        context.projectId,
+        context.planId,
+        {
+          expectedStatus,
+          toStatus,
+          reason:
+            action === "approve"
+              ? "Planner current Version reviewed for local lifecycle approval"
+              : "Planner approved Plan activated before fixture run gate",
+        },
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (
+        result.plan.projectId !== context.projectId ||
+        result.plan.id !== context.planId ||
+        result.plan.currentVersionId !== context.currentVersionId ||
+        result.fromStatus !== expectedStatus ||
+        result.toStatus !== toStatus ||
+        result.plan.status !== toStatus ||
+        result.providerCall ||
+        result.actorRun ||
+        result.browserRun ||
+        result.llmCall ||
+        result.workflowRunCreated ||
+        result.executionAuthorized
+      ) {
+        throw new Error("WorkflowPlan lifecycle response context mismatch");
+      }
+      setPlanContext({
+        ...context,
+        status: result.plan.status,
+        currentVersionId: result.plan.currentVersionId,
+        currentVersionNumber: result.plan.currentVersionNumber,
+      });
+      setRunReceipt(null);
+      runIdempotencyRef.current = null;
+      setLifecycleState({
+        status: "success",
+        action,
+        message:
+          action === "approve"
+            ? "Plan 已批准；未激活，也未创建 Run。"
+            : "Plan 已激活；正在重新读取 current Version runnable gate，尚未创建 Run。",
+      });
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) {
+        return;
+      }
+      setLifecycleState({
+        status: "error",
+        action,
+        message: readableError(error, "WorkflowPlan 生命周期状态变更失败"),
+      });
+    } finally {
+      if (lifecycleControllerRef.current === controller) {
+        lifecycleControllerRef.current = null;
+      }
+    }
+  }
+
+  async function createFixtureRun() {
+    if (
+      !planContext ||
+      dirty ||
+      planContext.projectStatus !== "active" ||
+      planContext.status !== "active" ||
+      runGateState.status !== "ready" ||
+      !runGateState.gate.runnable ||
+      lifecycleState.status === "loading"
+    ) {
+      return;
+    }
+    const context = planContext;
+    const signature = [
+      context.projectId,
+      context.planId,
+      context.currentVersionId,
+      context.currentPreviewFingerprint,
+      "fixture-primary-v1",
+    ].join(":");
+    if (runIdempotencyRef.current?.signature !== signature) {
+      runIdempotencyRef.current = {
+        signature,
+        idempotencyKey: crypto.randomUUID(),
+      };
+    }
+    const controller = new AbortController();
+    lifecycleControllerRef.current?.abort();
+    lifecycleControllerRef.current = controller;
+    setLifecycleState({ status: "loading", action: "run" });
+    try {
+      const result = await createWorkflowFixtureRun(
+        context.projectId,
+        context.planId,
+        context.currentVersionId,
+        {
+          expectedPreviewFingerprint: context.currentPreviewFingerprint,
+          fixtureProfileId: "fixture-primary-v1",
+          idempotencyKey: runIdempotencyRef.current.idempotencyKey,
+        },
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted) {
+        return;
+      }
+      setRunReceipt(result);
+      setLifecycleState({
+        status: "success",
+        action: "run",
+        message: result.idempotentReplay
+          ? `已确认先前本地样例 Run ${result.run.id}；本次未重复写入。`
+          : `已创建本地样例 Run ${result.run.id}；Provider、凭证、浏览器与 LLM 调用均为 0。`,
+      });
+    } catch (error) {
+      if (controller.signal.aborted || isAbortError(error)) {
+        return;
+      }
+      setLifecycleState({
+        status: "error",
+        action: "run",
+        message: readableError(error, "本地样例 Run 创建失败"),
+      });
+    } finally {
+      if (lifecycleControllerRef.current === controller) {
+        lifecycleControllerRef.current = null;
       }
     }
   }
@@ -825,6 +1101,15 @@ export function WorkflowPlannerWorkspace({
               />
               {!previewState.stale ? (
                 <WorkflowPlanSavePanel
+                  activeAction={
+                    lifecycleState.status === "loading"
+                      ? lifecycleState.action
+                      : null
+                  }
+                  approvalReasonCount={previewState.snapshot.preview.routePlans.reduce(
+                    (count, route) => count + route.approvalReasons.length,
+                    0,
+                  )}
                   canSave={
                     planLoadState.status === "ready" &&
                     !loading &&
@@ -853,14 +1138,72 @@ export function WorkflowPlannerWorkspace({
                   message={
                     saveState.status === "success" ? saveState.message : null
                   }
+                  hasUnsavedChanges={dirty}
+                  lifecycleError={
+                    lifecycleState.status === "error"
+                      ? lifecycleState.message
+                      : null
+                  }
+                  lifecycleMessage={
+                    lifecycleState.status === "success"
+                      ? lifecycleState.message
+                      : null
+                  }
+                  missingOptionalFields={[
+                    ...new Set(
+                      previewState.snapshot.preview.routePlans.flatMap(
+                        (route) => route.missingOptionalFields,
+                      ),
+                    ),
+                  ]}
                   mode={draft.mode}
+                  onActivate={() =>
+                    void transitionPlanLifecycle(
+                      "activate",
+                      "approved",
+                      "active",
+                    )
+                  }
+                  onApprove={() =>
+                    void transitionPlanLifecycle(
+                      "approve",
+                      "previewed",
+                      "approved",
+                    )
+                  }
                   onPlanNameChange={updatePlanName}
+                  onRefreshGate={() => void refreshRunGate()}
+                  onRun={() => void createFixtureRun()}
                   onSave={() => void savePreview()}
                   planName={planName}
                   planNameLocked={planContext !== null}
+                  planStatus={planContext?.status ?? null}
                   planningStatus={previewState.snapshot.preview.planningStatus}
                   retryable={
                     saveState.status === "error" && saveState.retryable
+                  }
+                  runGate={
+                    runGateState.status === "ready"
+                      ? {
+                          status: "ready",
+                          runnable: runGateState.gate.runnable,
+                          blockerCodes: runGateState.gate.blockerCodes,
+                        }
+                      : {
+                          status: runGateState.status,
+                          runnable: false,
+                          blockerCodes: [],
+                        }
+                  }
+                  runReceipt={
+                    runReceipt
+                      ? {
+                          id: runReceipt.run.id,
+                          status: runReceipt.run.status,
+                          totalSteps: runReceipt.run.totalSteps,
+                          recordsCount: runReceipt.run.recordsCount,
+                        }
+                      : null
                   }
                   saving={saveState.status === "loading"}
                   sourceVersionId={planContext?.sourceVersionId ?? null}
@@ -952,7 +1295,10 @@ export function WorkflowPlannerWorkspace({
       data-testid="workflow-planner-workspace"
       ref={workspaceRef}
     >
-      <WorkflowPlannerStepper currentStep={currentStep} />
+      <WorkflowPlannerStepper
+        currentStep={currentStep}
+        reviewReady={previewState.status === "success" && !previewState.stale}
+      />
 
       {planLoadState.status === "loading" ? (
         <p

@@ -13,8 +13,11 @@ class RawRecordResponse(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
     project_id: uuid.UUID
-    source_id: uuid.UUID
-    task_run_id: uuid.UUID
+    source_id: uuid.UUID | None
+    task_run_id: uuid.UUID | None
+    workflow_run_id: uuid.UUID | None = None
+    workflow_step_run_id: uuid.UUID | None = None
+    workflow_lineage_contract_version: str | None = None
     record_type: str
     source_url: str | None
     content: dict[str, Any] | list[Any]

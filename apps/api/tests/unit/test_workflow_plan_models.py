@@ -195,7 +195,10 @@ def test_plan_and_version_constraints_preserve_current_version_ownership() -> No
     status_default = _table(WorkflowPlan).c.status.default
     assert isinstance(status_default, ColumnDefault)
     assert cast(str, status_default.arg) == "previewed"
-    assert "status='previewed'" in _check_sql(_table(WorkflowPlan))
+    assert (
+        "statusIN('draft','previewed','approved','active','paused','archived')"
+        in _check_sql(_table(WorkflowPlan))
+    )
     assert (
         "flow_modeIN('periodic_monitoring','batch_research')"
         in _check_sql(_table(WorkflowPlan))

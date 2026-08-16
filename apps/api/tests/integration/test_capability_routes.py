@@ -12,7 +12,11 @@ from data_intelligence_hub.api.routes import capabilities as capability_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.capability_governance import CapabilityCatalogHead
+from data_intelligence_hub.schemas.capability_catalog import CapabilityCatalog
 from data_intelligence_hub.schemas.capability_matrix import CapabilityMatrixResponse
+from data_intelligence_hub.services.capability_catalog import get_capability_catalog
+from data_intelligence_hub.services.capability_matrix import build_capability_matrix
 from data_intelligence_hub.services.exceptions import CapabilityCatalogLoadError
 
 
@@ -27,6 +31,15 @@ async def client() -> AsyncIterator[AsyncClient]:
         await connection.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with session_factory() as session:
+        session.add(
+            CapabilityCatalogHead(
+                singleton_key="global",
+                current_revision_id=None,
+                head_version=0,
+            )
+        )
+        await session.commit()
 
     async def override_session() -> AsyncGenerator[AsyncSession, None]:
         async with session_factory() as session:
@@ -75,6 +88,7 @@ async def test_capability_matrix_route_returns_complete_matrix(client: AsyncClie
 
     payload = response.json()
     CapabilityMatrixResponse.model_validate(payload)
+    assert payload == build_capability_matrix().model_dump(mode="json")
     assert payload["schema_version"] == "capability_matrix.v1"
     assert len(payload["platforms"]) == 7
     assert len(payload["access_channels"]) == 6
@@ -84,6 +98,43 @@ async def test_capability_matrix_route_returns_complete_matrix(client: AsyncClie
     assert payload["summary"]["unknown_cell_count"] == 35
     assert payload["provider_call"] is False
     assert payload["production_write_allowed"] is False
+
+
+@pytest.mark.asyncio
+async def test_capability_route_resolves_one_catalog_per_request(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_login(client)
+    youtube = get_capability_catalog(platform="youtube")
+    calls = 0
+
+    async def resolve_once(_session: AsyncSession) -> CapabilityCatalog:
+        nonlocal calls
+        calls += 1
+        return youtube
+
+    monkeypatch.setattr(
+        capability_routes,
+        "resolve_current_capability_catalog",
+        resolve_once,
+    )
+    matrix_response = await client.get("/api/capabilities/matrix")
+    assertions_response = await client.get("/api/capabilities/assertions")
+    implementations_response = await client.get("/api/capabilities/implementations")
+    detail_response = await client.get("/api/capabilities/implementations/youtube.v3")
+
+    assert matrix_response.status_code == 200
+    assert matrix_response.json() == build_capability_matrix(catalog=youtube).model_dump(
+        mode="json"
+    )
+    assert assertions_response.status_code == 200
+    assert {item["implementation_id"] for item in assertions_response.json()} == {"youtube.v3"}
+    assert implementations_response.status_code == 200
+    assert [item["implementation_id"] for item in implementations_response.json()] == ["youtube.v3"]
+    assert detail_response.status_code == 200
+    assert detail_response.json()["implementation"]["implementation_id"] == "youtube.v3"
+    assert calls == 4
 
 
 @pytest.mark.asyncio
@@ -162,14 +213,9 @@ async def test_capability_implementation_detail_route(client: AsyncClient) -> No
     assert response.status_code == 200
     assert response.json()["implementation"]["implementation_id"] == "youtube.v3"
 
-    missing_response = await client.get(
-        "/api/capabilities/implementations/missing-provider"
-    )
+    missing_response = await client.get("/api/capabilities/implementations/missing-provider")
     assert missing_response.status_code == 404
-    assert (
-        missing_response.json()["detail"]
-        == "capability_implementation_not_found"
-    )
+    assert missing_response.json()["detail"] == "capability_implementation_not_found"
 
 
 @pytest.mark.asyncio
@@ -179,12 +225,12 @@ async def test_capability_matrix_route_maps_catalog_load_error(
 ) -> None:
     await register_and_login(client)
 
-    def raise_catalog_load_error() -> CapabilityMatrixResponse:
+    async def raise_catalog_load_error(_session: AsyncSession) -> CapabilityCatalog:
         raise CapabilityCatalogLoadError
 
     monkeypatch.setattr(
         capability_routes,
-        "build_capability_matrix",
+        "resolve_current_capability_catalog",
         raise_catalog_load_error,
     )
     response = await client.get("/api/capabilities/matrix")

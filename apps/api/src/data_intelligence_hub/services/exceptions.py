@@ -165,6 +165,18 @@ class CapabilityImplementationNotFoundError(ServiceError):
     message = "capability_implementation_not_found"
 
 
+class CapabilityDiscoveryFixtureUnknownError(ServiceError):
+    message = "capability_discovery_fixture_unknown"
+
+
+class CapabilityDiscoveryFixtureInvalidError(ServiceError):
+    message = "capability_discovery_fixture_invalid"
+
+
+class CapabilityDiscoveryContractInvalidError(ServiceError):
+    message = "capability_discovery_contract_invalid"
+
+
 class SocialProviderCatalogLoadError(ServiceError):
     message = "social_provider_catalog_load_failed"
 
@@ -221,9 +233,45 @@ class WorkflowVersionNotFoundError(ServiceError):
     message = "workflow_version_not_found"
 
 
+class MonitoringScopeNotFoundError(ServiceError):
+    message = "monitoring_scope_not_found"
+
+
 class WorkflowPlanVersionConflictError(ServiceError):
     message = "version_conflict"
 
 
 class WorkflowPlanFlowModeConflictError(ServiceError):
     message = "workflow_plan_flow_mode_conflict"
+
+
+class WorkflowPlanStatusConflictError(ServiceError):
+    message = "workflow_plan_status_conflict"
+
+
+class WorkflowPlanInvalidTransitionError(ServiceError):
+    message = "workflow_plan_invalid_transition"
+
+
+class WorkflowTemplateNotFoundError(ServiceError):
+    message = "workflow_template_not_found"
+
+
+class WorkflowTemplateRevisionNotFoundError(ServiceError):
+    message = "workflow_template_revision_not_found"
+
+
+class WorkflowTemplateKeyConflictError(ServiceError):
+    message = "workflow_template_key_conflict"
+
+
+class WorkflowTemplateRevisionConflictError(ServiceError):
+    message = "workflow_template_revision_conflict"
+
+
+class WorkflowTemplateNotEditableError(ServiceError):
+    message = "workflow_template_not_editable"
+
+
+class WorkflowTemplateRevisionInvalidError(ServiceError):
+    message = "workflow_template_revision_invalid"

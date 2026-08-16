@@ -56,9 +56,51 @@ class WorkflowPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="fk_workflow_plans_current_version_owner",
             use_alter=True,
         ),
+        ForeignKeyConstraint(
+            [
+                "workspace_id",
+                "project_id",
+                "source_workflow_plan_id",
+                "source_workflow_version_id",
+            ],
+            [
+                "workflow_versions.workspace_id",
+                "workflow_versions.project_id",
+                "workflow_versions.workflow_plan_id",
+                "workflow_versions.id",
+            ],
+            name="fk_workflow_plans_source_version_owner",
+            use_alter=True,
+        ),
+        ForeignKeyConstraint(
+            [
+                "workspace_id",
+                "project_id",
+                "workflow_template_id",
+                "workflow_template_revision_id",
+            ],
+            [
+                "workflow_template_revisions.workspace_id",
+                "workflow_template_revisions.project_id",
+                "workflow_template_revisions.workflow_template_id",
+                "workflow_template_revisions.id",
+            ],
+            name="fk_workflow_plans_template_revision_tenant",
+            use_alter=True,
+        ),
         CheckConstraint(
-            "status = 'previewed'",
-            name="status_previewed",
+            "status IN ('draft', 'previewed', 'approved', 'active', 'paused', 'archived')",
+            name="status",
+        ),
+        CheckConstraint(
+            "(source_workflow_plan_id IS NULL AND source_workflow_version_id IS NULL) "
+            "OR (source_workflow_plan_id IS NOT NULL AND source_workflow_version_id IS NOT NULL)",
+            name="source_version_pair",
+        ),
+        CheckConstraint(
+            "(workflow_template_id IS NULL AND workflow_template_revision_id IS NULL) "
+            "OR (workflow_template_id IS NOT NULL AND workflow_template_revision_id IS NOT NULL)",
+            name="template_revision_pair",
         ),
         CheckConstraint(
             "flow_mode IN ('periodic_monitoring', 'batch_research')",
@@ -76,6 +118,18 @@ class WorkflowPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     flow_mode: Mapped[str] = mapped_column(String(40), nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="previewed", nullable=False)
     current_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True))
+    source_workflow_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
+    source_workflow_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
+    workflow_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
+    workflow_template_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
 
 
 class WorkflowVersion(UUIDPrimaryKeyMixin, _CreatedAtMixin, Base):
@@ -113,6 +167,21 @@ class WorkflowVersion(UUIDPrimaryKeyMixin, _CreatedAtMixin, Base):
             ],
             name="fk_workflow_versions_plan_tenant",
         ),
+        ForeignKeyConstraint(
+            [
+                "workspace_id",
+                "project_id",
+                "workflow_template_id",
+                "workflow_template_revision_id",
+            ],
+            [
+                "workflow_template_revisions.workspace_id",
+                "workflow_template_revisions.project_id",
+                "workflow_template_revisions.workflow_template_id",
+                "workflow_template_revisions.id",
+            ],
+            name="fk_workflow_versions_template_revision_tenant",
+        ),
         CheckConstraint(
             "version_number >= 1",
             name="version_number_positive",
@@ -121,11 +190,22 @@ class WorkflowVersion(UUIDPrimaryKeyMixin, _CreatedAtMixin, Base):
             "planning_status IN ('resolved', 'partially_resolved', 'held')",
             name="planning_status_valid",
         ),
+        CheckConstraint(
+            "(workflow_template_id IS NULL AND workflow_template_revision_id IS NULL) "
+            "OR (workflow_template_id IS NOT NULL AND workflow_template_revision_id IS NOT NULL)",
+            name="template_revision_pair",
+        ),
     )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     workflow_plan_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    workflow_template_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
+    workflow_template_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+    )
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id"),
         nullable=False,

@@ -15,16 +15,16 @@ export function Sidebar() {
   const search = useSearchParams().toString();
 
   return (
-    <aside className="hidden min-h-screen w-72 overflow-y-auto border-r border-[#E9E5E2] bg-white px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
+    <aside className="hidden min-h-screen w-[var(--sidebar-width)] overflow-y-auto border-r border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
       <Link className="mb-7 flex items-center gap-3 px-2" href="/dashboard">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C25B6E] text-white">
+        <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-3)] bg-[var(--action-primary)] text-[var(--text-inverse)]">
           <ChartNoAxesCombined size={20} aria-hidden="true" />
         </span>
         <span>
-          <span className="block text-sm font-semibold text-[#1D1D1F]">
+          <span className="block text-sm font-semibold text-[var(--text-primary)]">
             Data Intelligence
           </span>
-          <span className="block text-xs text-[#86868B]">Hub</span>
+          <span className="block text-xs text-[var(--text-tertiary)]">Hub</span>
         </span>
       </Link>
 
@@ -36,23 +36,23 @@ export function Sidebar() {
             <div key={String(item.href)}>
               <Link
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                className={`flex min-h-11 items-center gap-3 rounded-[var(--radius-2)] px-3 py-2.5 text-sm font-semibold transition-colors duration-[var(--duration-base)] ${
                   active
-                    ? "bg-[#F8E6E2] text-[#9B4355]"
-                    : "text-[#5F5757] hover:bg-[#FBF8F5] hover:text-[#1D1D1F]"
+                    ? "bg-[var(--accent-1-soft)] text-[var(--action-primary)]"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                 }`}
                 data-testid="primary-nav-link"
                 href={item.href}
               >
                 <Icon
                   aria-hidden="true"
-                  className={active ? "text-[#C25B6E]" : "text-[#86868B]"}
+                  className={active ? "text-[var(--action-primary)]" : "text-[var(--text-tertiary)]"}
                   size={17}
                 />
                 {item.label}
               </Link>
               {active ? (
-                <div className="ml-7 mt-1 grid gap-1 border-l border-[#EDE6DF] pl-3">
+                <div className="ml-7 mt-1 grid gap-1 border-l border-[var(--border-subtle)] pl-3">
                   {item.children.map((child) => {
                     const childActive = isNavigationChildActive(
                       pathname,
@@ -62,10 +62,10 @@ export function Sidebar() {
                     return (
                       <Link
                         aria-current={childActive ? "page" : undefined}
-                        className={`rounded-lg px-2 py-1.5 text-xs font-medium transition-colors ${
+                        className={`rounded-[var(--radius-2)] px-2 py-1.5 text-xs font-medium transition-colors duration-[var(--duration-base)] ${
                           childActive
-                            ? "bg-[#FFF4F0] text-[#9B4355]"
-                            : "text-[#7A706D] hover:bg-[#FBF8F5] hover:text-[#1D1D1F]"
+                            ? "bg-[var(--accent-1-soft)] text-[var(--action-primary)]"
+                            : "text-[var(--text-tertiary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                         }`}
                         href={child.href}
                         key={String(child.href)}

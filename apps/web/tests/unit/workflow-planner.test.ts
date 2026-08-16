@@ -3,7 +3,7 @@
 import * as React from "react";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PlannerConstraintsStep } from "@/components/workflow-planner/planner-constraints-step";
 import { PlannerScopeStep } from "@/components/workflow-planner/planner-scope-step";
@@ -13,17 +13,25 @@ import { WorkflowPlanSimpleView } from "@/components/workflow-planner/workflow-p
 import { WorkflowPlannerWorkspace } from "@/components/workflow-planner/workflow-planner-workspace";
 import { useUnsavedWorkflowPlannerGuard } from "@/components/workflow-planner/use-unsaved-workflow-planner-guard";
 import { ApiRequestError } from "@/lib/api/client";
+import { projectSelectionRequestEventName } from "@/lib/project-selection";
 import {
   createWorkflowPlan,
   createWorkflowVersion,
   getWorkflowPlan,
   getWorkflowVersion,
+  transitionWorkflowPlanStatus,
 } from "@/lib/api/workflow-plan-persistence";
+import {
+  createWorkflowFixtureRun,
+  getWorkflowFixtureRunGate,
+  mapWorkflowRunDetail,
+} from "@/lib/api/workflow-runs";
 import {
   mapPlanningInputToDto,
   previewWorkflowPlan,
 } from "@/lib/api/workflow-plans";
 import { buildMockWorkflowPlanPreview } from "@/lib/workflow-planner-mock";
+import { buildMockWorkflowRunDetailDto } from "@/lib/workflow-run-mock";
 import {
   addScopeDraft,
   buildPlanningInput,
@@ -82,6 +90,16 @@ vi.mock("@/lib/api/workflow-plan-persistence", async (importOriginal) => {
     createWorkflowVersion: vi.fn(),
     getWorkflowPlan: vi.fn(),
     getWorkflowVersion: vi.fn(),
+    transitionWorkflowPlanStatus: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/api/workflow-runs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/workflow-runs")>();
+  return {
+    ...actual,
+    createWorkflowFixtureRun: vi.fn(),
+    getWorkflowFixtureRunGate: vi.fn(),
   };
 });
 
@@ -105,11 +123,51 @@ const createWorkflowPlanMock = vi.mocked(createWorkflowPlan);
 const createWorkflowVersionMock = vi.mocked(createWorkflowVersion);
 const getWorkflowPlanMock = vi.mocked(getWorkflowPlan);
 const getWorkflowVersionMock = vi.mocked(getWorkflowVersion);
+const transitionWorkflowPlanStatusMock = vi.mocked(
+  transitionWorkflowPlanStatus,
+);
+const getWorkflowFixtureRunGateMock = vi.mocked(getWorkflowFixtureRunGate);
+const createWorkflowFixtureRunMock = vi.mocked(createWorkflowFixtureRun);
 
 vi.stubGlobal("React", React);
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeEach(() => {
+  getWorkflowFixtureRunGateMock.mockImplementation(
+    async (projectId, planId, versionId) => ({
+      executionMode: "fixture",
+      liveExecutionAuthorized: false,
+      providerCall: false,
+      providerCallAttempted: false,
+      credentialReadAttempted: false,
+      actorRun: false,
+      browserRun: false,
+      llmCall: false,
+      rawRecordWrite: false,
+      datasetWrite: false,
+      productionWriteAllowed: false,
+      databaseWrite: false,
+      gateContractVersion: "workflow_fixture_run_gate.v1",
+      projectStatus: "active",
+      workflowPlanId: planId,
+      workflowVersionId: versionId,
+      currentVersionId: versionId,
+      planStatus: "previewed",
+      planningStatus: "resolved",
+      isCurrentVersion: true,
+      runnable: false,
+      blockerCodes: ["workflow_plan_not_active"],
+      nextActionCodes: ["approve_and_activate_plan"],
+      evidenceRefs: [
+        `project:${projectId}`,
+        `workflow_plan:${planId}`,
+        `workflow_version:${versionId}`,
+      ],
+    }),
+  );
+});
 
 type Rendered = {
   container: HTMLDivElement;
@@ -1791,6 +1849,29 @@ describe("workflow planner dirty navigation guard", () => {
     );
     expect(confirm).not.toHaveBeenCalled();
   });
+
+  it("cancels a project switch when the current draft is not confirmed", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { root } = renderNode(createElement(GuardHarness, { dirty: true }));
+    const rejectedSwitch = new CustomEvent(projectSelectionRequestEventName, {
+      cancelable: true,
+      detail: { projectId: "project-b" },
+    });
+
+    expect(window.dispatchEvent(rejectedSwitch)).toBe(false);
+    expect(rejectedSwitch.defaultPrevented).toBe(true);
+    expect(confirm).toHaveBeenCalledTimes(1);
+
+    confirm.mockReturnValue(true);
+    const acceptedSwitch = new CustomEvent(projectSelectionRequestEventName, {
+      cancelable: true,
+      detail: { projectId: "project-b" },
+    });
+    expect(window.dispatchEvent(acceptedSwitch)).toBe(true);
+    expect(acceptedSwitch.defaultPrevented).toBe(false);
+
+    act(() => root.unmount());
+  });
 });
 
 describe("workflow planner explicit persistence", () => {
@@ -1874,6 +1955,190 @@ describe("workflow planner explicit persistence", () => {
       container.querySelector('[data-testid="workflow-plan-save-panel"]'),
     ).toBeNull();
     expect(buttonByName(container, "生成 Preview").disabled).toBe(true);
+
+    act(() => root.unmount());
+  });
+
+  it("opens Save, approval, activation and local fixture Run only after each prior receipt", async () => {
+    const input = validBatchInput();
+    const preview = await createMockPreview();
+    const version = makeWorkflowVersion("version-1", 1, input, preview);
+    const detail = makePlanDetail(version, "Lifecycle plan");
+    const gateForStatus = (
+      planStatus: "previewed" | "approved" | "active",
+      runnable: boolean,
+    ) =>
+      ({
+        executionMode: "fixture",
+        liveExecutionAuthorized: false,
+        providerCall: false,
+        providerCallAttempted: false,
+        credentialReadAttempted: false,
+        actorRun: false,
+        browserRun: false,
+        llmCall: false,
+        rawRecordWrite: false,
+        datasetWrite: false,
+        productionWriteAllowed: false,
+        databaseWrite: false,
+        gateContractVersion: "workflow_fixture_run_gate.v1",
+        projectStatus: "active",
+        workflowPlanId: detail.plan.id,
+        workflowVersionId: version.id,
+        currentVersionId: version.id,
+        planStatus,
+        planningStatus: "resolved",
+        isCurrentVersion: true,
+        runnable,
+        blockerCodes: runnable ? [] : ["workflow_plan_not_active"],
+        nextActionCodes: runnable
+          ? ["create_fixture_run"]
+          : ["approve_and_activate_plan"],
+        evidenceRefs: [
+          `project:${detail.plan.projectId}`,
+          `workflow_plan:${detail.plan.id}`,
+          `workflow_version:${version.id}`,
+        ],
+      }) satisfies Awaited<ReturnType<typeof getWorkflowFixtureRunGate>>;
+    const transitionResult = (
+      fromStatus: "previewed" | "approved",
+      toStatus: "approved" | "active",
+    ) =>
+      ({
+        databaseWrite: true,
+        planChanged: true,
+        idempotentReplay: false,
+        providerCall: false,
+        actorRun: false,
+        browserRun: false,
+        llmCall: false,
+        workflowRunCreated: false,
+        executionAuthorized: false,
+        fromStatus,
+        toStatus,
+        reason: "local lifecycle test",
+        plan: { ...detail.plan, status: toStatus },
+      }) satisfies Awaited<
+        ReturnType<typeof transitionWorkflowPlanStatus>
+      >;
+    const runDetail = mapWorkflowRunDetail(
+      buildMockWorkflowRunDetailDto(detail.plan.projectId, "fixture-run-1"),
+    );
+
+    previewWorkflowPlanMock.mockResolvedValueOnce(preview);
+    createWorkflowPlanMock.mockResolvedValueOnce(
+      makeSaveResult(detail, version),
+    );
+    getWorkflowFixtureRunGateMock
+      .mockResolvedValueOnce(gateForStatus("previewed", false))
+      .mockResolvedValueOnce(gateForStatus("approved", false))
+      .mockResolvedValueOnce(gateForStatus("active", true));
+    transitionWorkflowPlanStatusMock
+      .mockResolvedValueOnce(transitionResult("previewed", "approved"))
+      .mockResolvedValueOnce(transitionResult("approved", "active"));
+    createWorkflowFixtureRunMock.mockResolvedValueOnce({
+      executionMode: "fixture",
+      liveExecutionAuthorized: false,
+      providerCall: false,
+      providerCallAttempted: false,
+      credentialReadAttempted: false,
+      actorRun: false,
+      browserRun: false,
+      llmCall: false,
+      rawRecordWrite: false,
+      datasetWrite: false,
+      productionWriteAllowed: false,
+      databaseWrite: true,
+      idempotentReplay: false,
+      run: {
+        ...runDetail.run,
+        workflowPlanId: detail.plan.id,
+        workflowVersionId: version.id,
+        previewFingerprint: preview.previewFingerprint,
+        fixtureProfileId: "fixture-primary-v1",
+      },
+      steps: runDetail.steps,
+    });
+    projectSelectionMock.projects = [activeProject()];
+    projectSelectionMock.selectedProject = activeProject();
+    vi.spyOn(globalThis.crypto, "randomUUID")
+      .mockReturnValueOnce("55555555-5555-4555-8555-555555555555")
+      .mockReturnValueOnce("66666666-6666-4666-8666-666666666666");
+
+    const { container, root } = renderNode(
+      createElement(WorkflowPlannerWorkspace, {
+        initialMode: "batch_research",
+      }),
+    );
+    advanceBatchWorkspaceToPreview(container);
+    await act(async () => {
+      buttonByName(container, "生成 Preview").click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    act(() =>
+      setInputValue(
+        container.querySelector("#workflow-plan-name") as HTMLInputElement,
+        "Lifecycle plan",
+      ),
+    );
+
+    expect(buttonByName(container, "Save Preview").disabled).toBe(false);
+    expect(buttonByName(container, "批准 Plan").disabled).toBe(true);
+    await act(async () => {
+      buttonByName(container, "Save Preview").click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(buttonByName(container, "批准 Plan").disabled).toBe(false);
+    expect(buttonByName(container, "激活 Plan").disabled).toBe(true);
+
+    await act(async () => {
+      buttonByName(container, "批准 Plan").click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(transitionWorkflowPlanStatusMock).toHaveBeenCalledWith(
+      "project-a",
+      detail.plan.id,
+      expect.objectContaining({
+        expectedStatus: "previewed",
+        toStatus: "approved",
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(buttonByName(container, "激活 Plan").disabled).toBe(false);
+
+    await act(async () => {
+      buttonByName(container, "激活 Plan").click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(buttonByName(container, "创建本地样例 Run").disabled).toBe(false);
+
+    await act(async () => {
+      buttonByName(container, "创建本地样例 Run").click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(createWorkflowFixtureRunMock).toHaveBeenCalledWith(
+      "project-a",
+      detail.plan.id,
+      version.id,
+      {
+        expectedPreviewFingerprint: preview.previewFingerprint,
+        fixtureProfileId: "fixture-primary-v1",
+        idempotencyKey: "66666666-6666-4666-8666-666666666666",
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(container.textContent).toContain(
+      "Provider、凭证、浏览器与 LLM 调用均为 0",
+    );
+    expect(container.textContent).toContain("fixture-run-1");
 
     act(() => root.unmount());
   });
@@ -2812,7 +3077,7 @@ describe("workflow planner form model", () => {
 });
 
 describe("workflow planner accessible form", () => {
-  it("renders the ordered four-step contract and the selected active Project", () => {
+  it("renders the ordered five-phase contract and the selected active Project", () => {
     projectSelectionMock.selectedProject = activeProject();
     const { container, root } = renderNode(
       createElement(WorkflowPlannerWorkspace, {
@@ -2824,10 +3089,12 @@ describe("workflow planner accessible form", () => {
       container.querySelector('[data-testid="workflow-planner-workspace"]'),
     ).not.toBeNull();
     const stepItems = container.querySelectorAll("ol li");
-    expect(stepItems).toHaveLength(4);
+    expect(stepItems).toHaveLength(5);
     expect(stepItems[0]?.getAttribute("aria-current")).toBe("step");
     expect(container.textContent).toContain("Active Planner Project");
-    expect(container.textContent).not.toMatch(/保存|激活/);
+    expect(
+      container.querySelector('[data-testid="workflow-plan-save-panel"]'),
+    ).toBeNull();
     expect(
       [...container.querySelectorAll("button")].every(
         (button) => button.getAttribute("type") === "button",
@@ -3085,6 +3352,9 @@ afterEach(() => {
   createWorkflowVersionMock.mockReset();
   getWorkflowPlanMock.mockReset();
   getWorkflowVersionMock.mockReset();
+  transitionWorkflowPlanStatusMock.mockReset();
+  getWorkflowFixtureRunGateMock.mockReset();
+  createWorkflowFixtureRunMock.mockReset();
   document.body.replaceChildren();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();

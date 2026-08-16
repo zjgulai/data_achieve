@@ -14,10 +14,16 @@ from sqlalchemy.exc import SQLAlchemyError
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.workflow_plan_persistence import (
     MonitoringScopeListResponse,
+    MonitoringScopeTemplateCopyRequest,
+    MonitoringScopeTemplateCopyResponse,
+    WorkflowPlanCloneRequest,
+    WorkflowPlanCloneResponse,
     WorkflowPlanCreateRequest,
     WorkflowPlanDetailResponse,
     WorkflowPlanListResponse,
     WorkflowPlanSaveResponse,
+    WorkflowPlanTransitionRequest,
+    WorkflowPlanTransitionResponse,
     WorkflowPlanVersionCompareResponse,
     WorkflowVersionCreateRequest,
     WorkflowVersionDetailResponse,
@@ -28,24 +34,47 @@ from data_intelligence_hub.schemas.workflow_planner import (
     PlanningInput,
     WorkflowPlanPreview,
 )
-from data_intelligence_hub.services.capability_catalog import get_capability_catalog
+from data_intelligence_hub.schemas.workflow_template_persistence import (
+    WorkflowTemplateCreateRequest,
+    WorkflowTemplateDetailResponse,
+    WorkflowTemplateInstantiateRequest,
+    WorkflowTemplateListResponse,
+    WorkflowTemplateMetadataUpdateRequest,
+    WorkflowTemplateMutationResponse,
+    WorkflowTemplateRevisionCreateRequest,
+    WorkflowTemplateRevisionListResponse,
+)
+from data_intelligence_hub.services.capability_governance.catalog_resolution import (
+    CapabilityCatalogResolutionError,
+    resolve_current_capability_catalog,
+)
 from data_intelligence_hub.services.exceptions import (
     CapabilityCatalogLoadError,
+    MonitoringScopeNotFoundError,
     ProjectNotActiveError,
     ProjectNotFoundError,
     WorkflowPlanFlowModeConflictError,
     WorkflowPlanIdempotencyConflictError,
+    WorkflowPlanInvalidTransitionError,
     WorkflowPlannerDependencyUnavailableError,
     WorkflowPlannerInputError,
     WorkflowPlannerTopologyError,
     WorkflowPlanNotFoundError,
     WorkflowPlanPersistenceTransactionStateError,
     WorkflowPlanPreviewStaleError,
+    WorkflowPlanStatusConflictError,
     WorkflowPlanVersionConflictError,
+    WorkflowTemplateKeyConflictError,
+    WorkflowTemplateNotEditableError,
+    WorkflowTemplateNotFoundError,
+    WorkflowTemplateRevisionConflictError,
+    WorkflowTemplateRevisionInvalidError,
+    WorkflowTemplateRevisionNotFoundError,
     WorkflowVersionNotFoundError,
 )
 from data_intelligence_hub.services.project_service import get_active_project_or_raise
 from data_intelligence_hub.services.workflow_planner.persistence import (
+    clone_workflow_plan,
     compare_workflow_plan_versions,
     create_workflow_plan,
     create_workflow_version,
@@ -54,9 +83,22 @@ from data_intelligence_hub.services.workflow_planner.persistence import (
     list_monitoring_scopes_for_project,
     list_workflow_plan_versions,
     list_workflow_plans_for_project,
+    transition_workflow_plan_status,
 )
 from data_intelligence_hub.services.workflow_planner.planner import (
     build_workflow_plan_preview,
+)
+from data_intelligence_hub.services.workflow_planner.scope_templates import (
+    copy_monitoring_scope_template,
+)
+from data_intelligence_hub.services.workflow_planner.template_persistence import (
+    append_workflow_template_revision,
+    create_workflow_template,
+    get_workflow_template_detail,
+    instantiate_workflow_plan_from_template,
+    list_workflow_template_revisions_for_template,
+    list_workflow_templates_for_project,
+    update_workflow_template_metadata,
 )
 
 logger = structlog.get_logger(__name__)
@@ -127,6 +169,9 @@ async def _run_persistence_operation[PersistenceResult](
         ProjectNotFoundError,
         WorkflowPlanNotFoundError,
         WorkflowVersionNotFoundError,
+        WorkflowTemplateNotFoundError,
+        WorkflowTemplateRevisionNotFoundError,
+        MonitoringScopeNotFoundError,
     ) as exc:
         raise _route_error(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,6 +184,12 @@ async def _run_persistence_operation[PersistenceResult](
         WorkflowPlanVersionConflictError,
         WorkflowPlanIdempotencyConflictError,
         WorkflowPlanFlowModeConflictError,
+        WorkflowPlanStatusConflictError,
+        WorkflowPlanInvalidTransitionError,
+        WorkflowTemplateKeyConflictError,
+        WorkflowTemplateRevisionConflictError,
+        WorkflowTemplateNotEditableError,
+        WorkflowTemplateRevisionInvalidError,
     ) as exc:
         raise _route_error(
             status_code=status.HTTP_409_CONFLICT,
@@ -157,6 +208,12 @@ async def _run_persistence_operation[PersistenceResult](
     ) as exc:
         raise _route_error(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.message,
+            request_id=request_id,
+        ) from exc
+    except CapabilityCatalogResolutionError as exc:
+        raise _route_error(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=exc.message,
             request_id=request_id,
         ) from exc
@@ -220,6 +277,228 @@ IdempotencyKeyDep = Annotated[str, Depends(_validated_idempotency_key)]
 
 
 @router.post(
+    "/{project_id}/workflow-templates",
+    response_model=WorkflowTemplateMutationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_workflow_template_item(
+    project_id: uuid.UUID,
+    payload: WorkflowTemplateCreateRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> WorkflowTemplateMutationResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: create_workflow_template(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_201_CREATED if not result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.get(
+    "/{project_id}/workflow-templates",
+    response_model=WorkflowTemplateListResponse,
+)
+async def list_workflow_template_items(
+    project_id: uuid.UUID,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> WorkflowTemplateListResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    return await _run_persistence_operation(
+        lambda: list_workflow_templates_for_project(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            limit=limit,
+            offset=offset,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+
+
+@router.get(
+    "/{project_id}/workflow-templates/{template_id}",
+    response_model=WorkflowTemplateDetailResponse,
+)
+async def get_workflow_template_item(
+    project_id: uuid.UUID,
+    template_id: uuid.UUID,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> WorkflowTemplateDetailResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    return await _run_persistence_operation(
+        lambda: get_workflow_template_detail(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_template_id=template_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+
+
+@router.patch(
+    "/{project_id}/workflow-templates/{template_id}",
+    response_model=WorkflowTemplateMutationResponse,
+)
+async def update_workflow_template_item(
+    project_id: uuid.UUID,
+    template_id: uuid.UUID,
+    payload: WorkflowTemplateMetadataUpdateRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> WorkflowTemplateMutationResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: update_workflow_template_metadata(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_template_id=template_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_200_OK if result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.post(
+    "/{project_id}/workflow-templates/{template_id}/revisions",
+    response_model=WorkflowTemplateMutationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def append_workflow_template_revision_item(
+    project_id: uuid.UUID,
+    template_id: uuid.UUID,
+    payload: WorkflowTemplateRevisionCreateRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> WorkflowTemplateMutationResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: append_workflow_template_revision(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_template_id=template_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_201_CREATED if not result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.get(
+    "/{project_id}/workflow-templates/{template_id}/revisions",
+    response_model=WorkflowTemplateRevisionListResponse,
+)
+async def list_workflow_template_revision_items(
+    project_id: uuid.UUID,
+    template_id: uuid.UUID,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> WorkflowTemplateRevisionListResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    return await _run_persistence_operation(
+        lambda: list_workflow_template_revisions_for_template(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_template_id=template_id,
+            limit=limit,
+            offset=offset,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+
+
+@router.post(
+    "/{project_id}/workflow-templates/{template_id}/instantiate",
+    response_model=WorkflowPlanSaveResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def instantiate_workflow_template_item(
+    project_id: uuid.UUID,
+    template_id: uuid.UUID,
+    payload: WorkflowTemplateInstantiateRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> WorkflowPlanSaveResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: instantiate_workflow_plan_from_template(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_template_id=template_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_201_CREATED if not result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.post(
     "/{project_id}/workflow-plans/preview",
     response_model=WorkflowPlanPreview,
 )
@@ -239,7 +518,7 @@ async def preview_workflow_plan_item(
             context.workspace,
             project_id,
         )
-        catalog = get_capability_catalog()
+        catalog = await resolve_current_capability_catalog(session)
         generated_at = datetime.now(UTC)
         preview = build_workflow_plan_preview(
             project_id=project.id,
@@ -264,6 +543,12 @@ async def preview_workflow_plan_item(
         raise _route_error(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=exc.issues,
+            request_id=request_id,
+        ) from exc
+    except CapabilityCatalogResolutionError as exc:
+        raise _route_error(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
             request_id=request_id,
         ) from exc
     except (
@@ -348,6 +633,108 @@ async def create_workflow_plan_item(
     )
     response.status_code = (
         status.HTTP_201_CREATED if result.outcome == "created" else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.post(
+    "/{project_id}/workflow-plans/{plan_id}/clone",
+    response_model=WorkflowPlanCloneResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def clone_workflow_plan_item(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    payload: WorkflowPlanCloneRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> WorkflowPlanCloneResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: clone_workflow_plan(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_plan_id=plan_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_201_CREATED if not result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.post(
+    "/{project_id}/monitoring-scopes/{scope_id}/copy",
+    response_model=MonitoringScopeTemplateCopyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def copy_monitoring_scope_template_item(
+    project_id: uuid.UUID,
+    scope_id: uuid.UUID,
+    payload: MonitoringScopeTemplateCopyRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    idempotency_key: IdempotencyKeyDep,
+) -> MonitoringScopeTemplateCopyResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: copy_monitoring_scope_template(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            scope_id=scope_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
+    )
+    response.status_code = (
+        status.HTTP_201_CREATED if not result.idempotent_replay else status.HTTP_200_OK
+    )
+    return result
+
+
+@router.post(
+    "/{project_id}/workflow-plans/{plan_id}/status-transition",
+    response_model=WorkflowPlanTransitionResponse,
+)
+async def transition_workflow_plan_status_item(
+    project_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    payload: WorkflowPlanTransitionRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> WorkflowPlanTransitionResponse:
+    request_id = str(uuid.uuid4())
+    response.headers["X-Request-ID"] = request_id
+    result = await _run_persistence_operation(
+        lambda: transition_workflow_plan_status(
+            session=session,
+            workspace_id=context.workspace.id,
+            project_id=project_id,
+            workflow_plan_id=plan_id,
+            created_by_user_id=context.user.id,
+            payload=payload,
+            request_id=request_id,
+        ),
+        request_id=request_id,
+        project_id=project_id,
     )
     return result
 

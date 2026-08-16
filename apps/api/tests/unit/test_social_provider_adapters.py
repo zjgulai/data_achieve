@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-from data_intelligence_hub.social_api.contracts import build_fixture_operations
+from typing import get_type_hints
+
+from data_intelligence_hub.social_api.contracts import (
+    CredentialHandle,
+    CredentialResolver,
+    PlatformAdapter,
+    build_fixture_operations,
+)
 from data_intelligence_hub.social_api.reddit import asyncpraw as reddit_adapter
 from data_intelligence_hub.social_api.youtube import google_api_client as youtube_adapter
+from data_intelligence_hub.social_api.youtube.contracts import YouTubeReadTransport
 
 
 def test_build_fixture_operations_uses_fixture_mode_without_provider_call() -> None:
@@ -61,3 +69,31 @@ def test_reddit_adapter_plans_fixture_operations_without_provider_call() -> None
             "provider_call": False,
         }
     ]
+
+
+def test_provider_adapter_objects_conform_without_live_execution() -> None:
+    for adapter_module in (youtube_adapter, reddit_adapter):
+        adapter = adapter_module.PLATFORM_ADAPTER
+
+        assert isinstance(adapter, PlatformAdapter)
+        assert adapter.metadata == adapter_module.adapter_metadata()
+        assert adapter.plan_fixture_operations(
+            endpoints=["search"],
+            fixture_limit=1,
+        ) == adapter_module.plan_fixture_operations(
+            endpoints=["search"],
+            fixture_limit=1,
+        )
+        assert not hasattr(adapter, "execute")
+        assert not hasattr(adapter, "credential_resolver")
+
+
+def test_credential_protocols_expose_only_an_opaque_handle() -> None:
+    handle_members = vars(CredentialHandle)
+    resolver_hints = get_type_hints(CredentialResolver.resolve)
+    transport_hints = get_type_hints(YouTubeReadTransport.execute)
+
+    assert "reference_fingerprint" in handle_members
+    assert {"value", "secret", "token", "api_key"}.isdisjoint(handle_members)
+    assert resolver_hints["return"] is CredentialHandle
+    assert transport_hints["credential"] is CredentialHandle

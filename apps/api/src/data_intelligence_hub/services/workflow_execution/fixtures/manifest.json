@@ -1,0 +1,35 @@
+{
+  "profiles": [
+    {
+      "allowed_implementation_ids": [
+        "fixture.primary",
+        "reddit.praw",
+        "youtube.v3"
+      ],
+      "expected_sha256": "sha256:8741039f2727633325ef0d76ce1e8bd9c0f9ce4b4992eff6d8a8e5bd0a4ea4cd",
+      "profile_id": "fixture-primary-v1",
+      "profile_schema_version": "workflow_fixture_profile.v1",
+      "relative_path": "fixture-primary-v1.json"
+    },
+    {
+      "allowed_implementation_ids": [
+        "fixture.primary"
+      ],
+      "expected_sha256": "sha256:e51ce56e2dec522893e00ddd185ae099b8e485f7db750c0aa5c85d5fa00485af",
+      "profile_id": "fixture-primary-payload-v1",
+      "profile_schema_version": "workflow_fixture_profile.v2",
+      "relative_path": "fixture-primary-payload-v1.json"
+    },
+    {
+      "allowed_implementation_ids": [
+        "fixture.fallback",
+        "fixture.primary"
+      ],
+      "expected_sha256": "sha256:1187b50a8b7dfc85ed5c825c2f67c03300c69e8ba7c27fefe6faebe0ba23430a",
+      "profile_id": "fixture-shadow-v1",
+      "profile_schema_version": "workflow_fixture_profile.v2",
+      "relative_path": "fixture-shadow-v1.json"
+    }
+  ],
+  "schema_version": "workflow_fixture_manifest.v1"
+}

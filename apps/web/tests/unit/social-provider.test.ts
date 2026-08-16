@@ -67,10 +67,13 @@ const catalogResponse = {
 } satisfies SocialProviderCatalogResponseDto;
 
 const readinessResponse = {
-  schema_version: "social_provider_readiness.v1",
+  schema_version: "social_provider_readiness.v2",
   platform: "instagram",
   provider_id: "instagram_graph.v19",
   readiness: false,
+  declared_readiness: false,
+  readiness_basis: "caller_declared",
+  execution_enabled: false,
   missing_credentials: ["access_token", "app_secret"],
   missing_scope: [],
   blocked_reasons: ["credential_missing:access_token", "credential_missing:app_secret"],
@@ -455,8 +458,11 @@ describe("social provider catalog and readiness mappers", () => {
   it("maps readiness without upgrading provider-call evidence", () => {
     const mapped = mapSocialProviderReadinessResponse(readinessResponse);
 
-    expect(mapped.schemaVersion).toBe("social_provider_readiness.v1");
+    expect(mapped.schemaVersion).toBe("social_provider_readiness.v2");
     expect(mapped.ready).toBe(false);
+    expect(mapped.declaredReadiness).toBe(false);
+    expect(mapped.readinessBasis).toBe("caller_declared");
+    expect(mapped.executionEnabled).toBe(false);
     expect(mapped.providerCallAllowed).toBe(false);
     expect(mapped.providerCallAttempted).toBe(false);
     expect(mapped.missingCredentials).toEqual(["access_token", "app_secret"]);

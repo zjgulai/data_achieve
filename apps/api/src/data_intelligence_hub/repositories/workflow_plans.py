@@ -164,6 +164,42 @@ async def list_workflow_versions(
     return list(result.scalars().all())
 
 
+async def list_workflow_version_scopes(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    workflow_version_id: uuid.UUID,
+) -> list[WorkflowVersionScope]:
+    result = await session.execute(
+        select(WorkflowVersionScope)
+        .where(
+            WorkflowVersionScope.workspace_id == workspace_id,
+            WorkflowVersionScope.project_id == project_id,
+            WorkflowVersionScope.workflow_version_id == workflow_version_id,
+        )
+        .order_by(WorkflowVersionScope.ordinal)
+    )
+    return list(result.scalars().all())
+
+
+async def list_query_terms_for_version(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    workflow_version_id: uuid.UUID,
+) -> list[QueryTerm]:
+    result = await session.execute(
+        select(QueryTerm)
+        .where(
+            QueryTerm.workspace_id == workspace_id,
+            QueryTerm.project_id == project_id,
+            QueryTerm.workflow_version_id == workflow_version_id,
+        )
+        .order_by(QueryTerm.ordinal)
+    )
+    return list(result.scalars().all())
+
+
 async def count_workflow_versions(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -334,8 +370,10 @@ __all__ = [
     "get_workflow_version",
     "insert_monitoring_scope_on_conflict",
     "list_monitoring_scopes",
+    "list_query_terms_for_version",
     "list_workflow_plans",
     "list_workflow_versions",
+    "list_workflow_version_scopes",
     "lock_project_for_workflow_plan_save",
     "project_lock_statement",
     "workflow_plan_lock_statement",

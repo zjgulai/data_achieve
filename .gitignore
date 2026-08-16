@@ -38,3 +38,22 @@ tmp/**
 .codegraph/
 .kiro/
 TODO.md
+
+# Runtime-generated / local-only directories
+tmp/
+output/
+drafts/
+archive/
+ref/
+assets/
+.playwright-cli/
+.playwright-mcp/
+.omo/
+.superpowers/
+.gitnexus/
+data_scrapy-apify-docs/
+
+# Large generated files
+*.html
+!apps/scraper-console/public/**/*.html
+!apps/web/public/**/*.html

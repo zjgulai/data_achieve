@@ -5,7 +5,7 @@ module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-07-14
+updated: 2026-07-24
 owner: self
 source: human+ai
 ---
@@ -65,7 +65,7 @@ osint, ecommerce, social, competitor, mixed
 
 ## Workflow Planner（GOAL-V2-03）
 
-当前执行状态为 `phase_2_persistence_locally_complete`，本地 checkpoint commit 为 `39c07e9baf12ec2ec8a1a21afc4b4feacffc4d12`。Phase One 的 Project-scoped write-free Preview 合同保持不变；Phase Two 在同一 Project/Workspace 边界内增加显式 Save、不可变 Version、历史、Compare 和只读 Scope 查询。该状态只代表本地 fixture 与 disposable PostgreSQL 15 证据，不代表 real API、共享/生产数据库、部署或产品执行验收。以下 Preview 小节记录仍受保护的 Phase One 合同。
+当前执行状态为 `payload_bound_fixture_materialization_postgres_accepted_live_provider_pending`。Phase One 的 Project-scoped write-free Preview 合同保持不变；Phase Two 在同一 Project/Workspace 边界内增加显式 Save、不可变 Version、历史、Compare、Template Revision、Plan instantiation、fixture-only WorkflowRun、lineage-preview v2 与 payload-bound local materialization。Revision-034 已完成 exact disposable PostgreSQL acceptance；该状态仍不代表 live Provider、real API、共享/生产数据库、部署或产品执行验收。以下 Preview 小节记录仍受保护的 Phase One 合同。
 
 ### Phase One Preview（保持 write-free）
 
@@ -158,16 +158,37 @@ canonical Catalog 当前只有 candidate Assertion，因此正常产品请求可
 6. 未分类内部错误返回 `500`，detail 为安全错误码。成功响应以及 route 内映射的 `404`、`409`、normalizer `422`、`500`、`503` 均携带 `X-Request-ID`；这不泛化到 handler 前的框架校验错误。
 7. Preview 路径不调用 create/update/delete/flush/commit，不创建后台任务；现有集成测试以 SQL capture 和全表计数锁定 0 写入。
 
-### Phase Two persistence/versioning（本地实施进行中）
+### Phase Two persistence/versioning 与 Plan lifecycle（本地实现）
 
-仅下列两个 POST 是已实现的持久化写入口；它们不创建执行、调度或 WorkflowRun：
+下列两个 POST 是 WorkflowPlan 持久化写入口；它们不创建执行、调度或 WorkflowRun：
 
 | 方法 | 路径 | 必填输入 | 响应 | 语义 |
 |---|---|---|---|---|
 | `POST` | `/api/projects/{project_id}/workflow-plans` | `Idempotency-Key`、`WorkflowPlanCreateRequest` | `WorkflowPlanSaveResponse` | 创建 Plan 与 v1，或返回语义 no-op/replay |
 | `POST` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions` | `Idempotency-Key`、`WorkflowVersionCreateRequest` | `WorkflowPlanSaveResponse` | 为既有 Plan 创建后续不可变 Version，或返回语义 no-op/replay |
+| `POST` | `/api/projects/{project_id}/workflow-plans/{plan_id}/clone` | `Idempotency-Key`、`WorkflowPlanCloneRequest` | `WorkflowPlanCloneResponse` | 复制指定冻结 Version 为独立 Plan/v1，保留 source Plan/Version provenance |
+| `POST` | `/api/projects/{project_id}/monitoring-scopes/{scope_id}/copy` | `Idempotency-Key`、`MonitoringScopeTemplateCopyRequest` | `MonitoringScopeTemplateCopyResponse` | 复制为独立 Scope template draft，不插入重复 canonical Scope |
+| `POST` | `/api/projects/{project_id}/workflow-plans/{plan_id}/status-transition` | `WorkflowPlanTransitionRequest` | `WorkflowPlanTransitionResponse` | 按 expected status 执行受限生命周期转换；不创建 Run |
 
 `WorkflowPlanCreateRequest` 只接受 `name`（trim 后 `1..200`）、`preview_input` 和 `expected_preview_fingerprint`；`WorkflowVersionCreateRequest` 只接受 `preview_input`、`expected_preview_fingerprint` 和 `expected_current_version_id`。服务端以 `preview_input` 重新计算 Preview 并校验 Fingerprint，客户端不得提交 `plan_payload`、Version number、Scope key 或其他未知字段。Plan 的 `name` 与 `flow_mode` 在创建后不可变；`held` 可保存为审计资产，但不表示 approved、active 或可运行。
+
+`WorkflowPlanCloneRequest` 只接受 `name` 与属于 URL Plan 的 `source_version_id`。首次 clone 创建新 Plan/v1，响应包含 `source_plan_id`、`source_version_id`，并复制冻结 Preview、RoutePlan、Catalog/Policy snapshot、VersionScope 与 QueryTerm；不会重新运行 Planner。`MonitoringScopeTemplateCopyRequest` 只接受属于该 Project 且关联 source Version 的 `source_version_id`；响应返回新 template ID、source Scope/Plan/Version provenance 与完整语义字段。两者均使用同一 Idempotency-Key replay/conflict 语义，首次写入 `database_write=true`，replay 为 write-free。
+
+`WorkflowPlanTransitionRequest` 只接受 `expected_status`、`to_status` 和可选 `reason`。当前本地状态表为 `draft→previewed→approved→active→paused→archived`，另允许 `paused→active`；同状态请求是 write-free no-op，过期 expected status 或未列出的跳转返回 `409`。成功只更新 Plan `status/updated_at`，Version、Scope、QueryTerm 和 current pointer 保持不变。
+
+### WorkflowTemplate Revision 与 Plan association（本地实现）
+
+| 方法 | 路径 | 必填输入 | 语义 |
+|---|---|---|---|
+| `POST` | `/api/projects/{project_id}/workflow-templates` | `Idempotency-Key`、`WorkflowTemplateCreateRequest` | 原子创建 Template header 与 Revision 1 |
+| `GET` | `/api/projects/{project_id}/workflow-templates` | `limit`、`offset` | tenant-safe 列表，带 current Revision |
+| `GET` | `/api/projects/{project_id}/workflow-templates/{template_id}` | 无 | header、current Revision 与不可变 fingerprint |
+| `PATCH` | `/api/projects/{project_id}/workflow-templates/{template_id}` | `Idempotency-Key`、metadata patch | 只改 draft Template header，不替换 definition |
+| `POST` | `/api/projects/{project_id}/workflow-templates/{template_id}/revisions` | `Idempotency-Key`、`expected_revision_id`、`definition` | append-only Revision；过期指针返回 `409` |
+| `GET` | `/api/projects/{project_id}/workflow-templates/{template_id}/revisions` | `limit`、`offset` | 稳定 Revision history |
+| `POST` | `/api/projects/{project_id}/workflow-templates/{template_id}/instantiate` | `Idempotency-Key`、`revision_id`、`name` | 用选定冻结 Revision 创建新的 `previewed` Plan/v1，并写入 Template/Revision lineage |
+
+definition fingerprint 由服务端生成并固定为 `sha256:<64 hex>`；Plan 与 Version 都绑定同一 `(workflow_template_id, workflow_template_revision_id)`。Revision 不可更新或删除，metadata PATCH 不修改 definition。写入均返回 `X-Request-ID`，同 key replay 为 `database_write=false`；archived/non-draft、stale Revision、跨 Project 资源和损坏 definition fail closed。所有 route 保持 `provider_call=false`、`workflow_run_created=false`、`execution_authorized=false`。
 
 `Idempotency-Key` 是必填 opaque header，trim 后长度为 `12..200`；服务端只使用其 hash，不在响应、日志或持久化记录中保存原始值。相同 key 与相同规范化请求返回原资源快照并标注 `idempotent_replay=true`、`database_write=false`、`plan_changed=false`；同 key 不同请求返回 `409 idempotency_conflict`。新 Plan/v1 或新 Version 返回 `201` 与 `outcome=created`；与当前 Fingerprint 等价的首次请求返回 `200` 与 `outcome=semantic_no_op`、`plan_changed=false`。该 no-op 仍可能写入幂等结果，因此其首次响应的 `database_write=true`；不能把它误报为“无持久化操作”。A→B→A 创建新的 v3，不对 `(workflow_plan_id, preview_fingerprint)` 施加唯一约束。
 
@@ -186,7 +207,7 @@ canonical Catalog 当前只有 candidate Assertion，因此正常产品请求可
 
 三个列表都使用 `limit`（默认 `50`、范围 `1..100`）和 `offset`（默认 `0`），并返回 `items`、`total`、`limit`、`offset`。Plan 按 `updated_at DESC, id DESC`，Version 按 `version_number DESC`，MonitoringScope 按 `created_at DESC, id DESC`。Compare 返回服务端计算的结构化 sections；同一 Version 返回 `same_version=true` 与空 sections，不由 Web 重新计算 diff。
 
-所有读取响应固定 `database_write=false`、`plan_changed=false` 和执行边界 false。当前 Workspace 成员可读取 archived Project 的 Plan、Version、history、Compare 和 Scope；Preview 与两个 Save 写入口继续将 archived/inactive Project 拒绝为 `409 project_not_active`。
+所有读取响应固定 `database_write=false`、`plan_changed=false` 和执行边界 false。当前 Workspace 成员可读取 archived Project 的 Plan、Version、history、Compare 和 Scope；Preview、Save、clone、Scope template copy 与 status-transition 写入口继续将 archived/inactive Project 拒绝为 `409 project_not_active`。Clone/copy/transition 的执行边界固定为 `provider_call=false`、`actor_run=false`、`browser_run=false`、`llm_call=false`、`workflow_run_created=false`、`execution_authorized=false`。
 
 ### 错误与明确不存在的接口
 
@@ -198,9 +219,96 @@ canonical Catalog 当前只有 candidate Assertion，因此正常产品请求可
 | `503` | Catalog/Planner dependency 或 persistence transaction 不可用 |
 | `500` | 拓扑或其他未分类内部失败，返回安全错误码 |
 
-已进入 Planner route 的成功与映射错误携带 `X-Request-ID`；框架在 handler 前拒绝的校验错误不保证该 header。除上述 Plan/Version POST 外，不存在 `PATCH`、`DELETE`、`/activate`、`/run`、`/pause`、`/schedule`、`/archive` 或 WorkflowRun/Provider 端点。
+已进入 Planner route 的成功与映射错误携带 `X-Request-ID`；框架在 handler 前拒绝的校验错误不保证该 header。Plan/Version 仍不存在 `PATCH`、`DELETE`、`/activate`、`/pause`、`/schedule`、`/archive` 或 live Provider 端点；status-transition 只写生命周期状态，不等于 Activate 或 Run。GOAL-V2-05A 的 fixture-only WorkflowRun routes 见下一节，不代表产品 Run/Provider 执行已开放。
 
-2026-07-13 当前本地证据：Phase One Preview 仍有其原始 L2 Fixture/集成 gate；Phase Two 的路由、模型、迁移、局部 PostgreSQL 15 约束 gate、Web unit/mock E2E 已完成各自任务级验证，但完整 Phase Two exit gate 尚未运行。因此不能宣称 real API、CI、部署、生产数据库或 Provider 验收。`provider_call=false`、`actor_run=false`、`browser_run=false`、`llm_call=false`、`workflow_run_created=false`、`production unchanged` 保持成立。
+2026-07-17 当前本地证据：payload-bound fixture materialization focused gates、full API `976 passed / 72 skipped / 6 warnings`、Ruff、full strict mypy `199 source files` 与 Alembic single head `202607170034` 通过；6 个 warnings 是 1 个既有 passlib deprecation 和 5 个既有 retention 测试的 aiosqlite event-loop-close warnings，不是 materialization failure。Web compatibility `246 passed`，TypeScript、ESLint 与 26-page mock build 通过。`apps/api/tests/postgres_workflow_lineage/` 已仅在 `127.0.0.1:55367/local_workflow_lineage_test` 通过 revision-034 lifecycle/constraint/service-concurrency/cleanup `13/13`；最终 head 034 且 lineage/materialization 业务表零行。
+
+### GOAL-V2-05A Fixture WorkflowRun API（本地 Fixture-only）
+
+这组 route 只执行服务端注册的 Fixture profile，并绑定指定的不可变 `WorkflowVersion`；它不是 Plan Activate、Schedule、live Run 或 Provider API。所有响应保留 `execution_mode=fixture`、`live_execution_authorized=false`、`provider_call=false`、`provider_call_attempted=false`、`credential_read_attempted=false`、`actor_run=false`、`browser_run=false`、`llm_call=false`、`raw_record_write=false`、`dataset_write=false`、`production_write_allowed=false`。创建响应额外返回 `database_write=true|false` 和 `idempotent_replay=true|false`；GET 读取固定 `database_write=false`。
+
+| 方法 | 路径 | 请求/查询 | 响应 | 语义 |
+|---|---|---|---|---|
+| `GET` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions/{version_id}/fixture-run-gate` | 无 | `WorkflowFixtureRunGateResponse` | write-free 返回 Project active、Plan active、current Version 与完整 Primary fixture contract 门禁；`active` 不自动等于 runnable |
+| `POST` | `/api/projects/{project_id}/workflow-plans/{plan_id}/versions/{version_id}/fixture-runs` | body: `expected_preview_fingerprint`、`fixture_profile_id`; header: `Idempotency-Key`（trim 后 12–200 字符） | `WorkflowFixtureRunCreateResponse` | 复用同一 runnable gate；仅 active Plan 的 current、完整 resolved Version 可首次创建 `WorkflowRun`/`StepRun`；同 key 同 body 返回 `200` replay，不重复 fixture side effect；同 key 不同 body `409` |
+| `GET` | `/api/projects/{project_id}/workflow-runs` | `workflow_plan_id?`、`workflow_version_id?`、`limit=50`、`offset=0` | `WorkflowRunListResponse` | tenant-scoped 稳定分页列表，只读历史 Fixture Run |
+| `GET` | `/api/projects/{project_id}/workflow-runs/{run_id}` | 无 | `WorkflowRunDetailResponse` | 返回 Run 与按 sequence 排序的 StepRun detail |
+| `GET` | `/api/projects/{project_id}/workflow-runs/{run_id}/attempt-fallback-evidence` | 无 | `WorkflowAttemptFallbackEvidenceResponse` | tenant-scoped 只读组合持久化 Step Attempt 与 FallbackDecision，不执行 retry 或 switch |
+| `GET` | `/api/projects/{project_id}/workflow-runs/{run_id}/checkpoint-budget-evidence` | 无 | `WorkflowCheckpointBudgetEvidenceResponse` | tenant-scoped 只读组合已确认 checkpoint 与五维 budget ledger，不执行 resume 或 budget override |
+| `GET` | `/api/projects/{project_id}/workflow-runs/{run_id}/provider-health-evidence` | 无 | `WorkflowProviderHealthEvidenceResponse` | tenant-scoped 只读匹配 frozen Step route candidates 与最新 Provider health snapshots/feedback，不探测、不改 Catalog、不自动切路 |
+| `GET` | `/api/projects/{project_id}/workflow-runs/{run_id}/lineage-preview` | 无 | `WorkflowRunLineagePreview` | 只读返回 payload eligibility、lineage digest；物化后重验 ledger/envelope/RawRecord/DatasetVersion 并返回资产 IDs |
+| `POST` | `/api/projects/{project_id}/workflow-runs/{run_id}/materializations` | `dataset_name`, `expected_lineage_digest`; header `Idempotency-Key` | `WorkflowLineageMaterializationResponse` | 首次本地 fixture 写入返回 `201`；same-key exact replay 返回 `200` 且零新增写入 |
+
+`WorkflowFixtureRunGateResponse` 固定包含 `project_status`、`plan_status`、requested/current Version、`planning_status`、`runnable`、allowlisted `blocker_codes`、`next_action_codes` 与 Evidence references，并继承全部 fixture/read-only false flags。`WorkflowRunResponse` 固定包含 Version/Plan IDs、由 immutable Version 派生的 `workflow_template_id` 与 `workflow_template_revision_id`（无 Template 时成对为 `null`）、Preview fingerprint、Catalog/Policy/Template/Query versions、Fixture profile/hash、step/record counts、时间与 non-live flags；`WorkflowStepRunResponse` 固定包含 frozen route、Primary implementation/assertion、Evidence refs、fixture case/content hash、input/output digest、step idempotency hash 与同一组 non-live flags。服务端拒绝 unknown fixture profile、fingerprint mismatch、非 active Plan、非 current Version、非 Primary/partial/held/不完整 Version、archived Project 新建和跨 tenant 资源；读取时若 Version lineage 缺失或成对不一致则返回 sanitized `500 workflow_run_lineage_invalid`；事务失败必须回滚三张新表，不产生 orphan。
+
+`WorkflowAttemptFallbackEvidenceResponse` 固定
+`schema_version=workflow_attempt_fallback_evidence.v1`，包含 ownership IDs、按 Step/
+attempt number 排序的 `attempts`、按创建时间排序的 `fallback_decisions` 及精确 totals。
+Attempt 必须在每个 Step 内从 1 连续编号，状态只允许 succeeded、retryable_error、timeout、
+terminal_error，并校验 error/backoff/time 一致性。FallbackDecision 必须包含 trigger、policy、
+credential、budget、fields、evidence、approval 七段有序 gate、字段差异、成本快照、审批状态、
+Evidence refs 与 decision digest；ownership、gate outcome、approval 和 candidate pair 均 fail
+closed。响应继承 fixture read-only flags，并额外固定 `switch_executed=false`、
+`database_write=false`、`provider_call=false`；无 Decision 的空数组仅表示没有持久化证据，
+不表示 Fallback 可用。该资源没有对应 POST/PATCH/DELETE，也不授权 retry、resume、cancel
+或 route switch。
+
+`WorkflowCheckpointBudgetEvidenceResponse` 固定
+`schema_version=workflow_checkpoint_budget_evidence.v1`，并要求
+`execution_session_id=workflow_run_id`。Checkpoint 按 Step/page 排序，校验 cursor chain、
+terminal/next cursor、records total 与 Plan/Version ownership；Budget account 冻结
+request/item/quota/cost/time 上限，ledger 按 entry number/previous digest 串联并重算累计值，
+每个 checkpoint 必须存在相同 step/page/side-effect key 的 reserved entry。空 account 仅返回
+`budget_status=not_configured`，不得推断无限预算；blocked final entry 返回 `held` 与固定原因。
+响应继承全部 fixture read-only flags并固定 `resume_action_available=false`、
+`budget_override_available=false`。该资源没有 POST/PATCH/DELETE。
+
+`WorkflowProviderHealthEvidenceResponse` 固定
+`schema_version=workflow_provider_health_evidence.v1`。每个 Step 的候选顺序必须精确等于
+frozen RoutePlan 的 Primary + Fallback，selected candidate 固定为第一项且恰好一个；只读取
+同 Project、platform、resource type、operation、implementation ID 的快照，并要求每个
+implementation 的 snapshot version 连续、previous digest 指向上一版本。最新快照按
+`routing_expires_at` 与响应 `read_at` 标记 active/expired；过期只失去 routing influence，
+Evidence 仍可读。Route feedback 只有 capability identity 与 original candidate order 精确
+匹配时才返回，且只读展示 adjusted order/reasons。响应固定
+`health_probe_attempted=false`、`catalog_mutation=false`、
+`automatic_route_switch=false`、`provider_call=false`、`database_write=false`；无快照仅表示
+unobserved，不能推断健康或允许切路。该资源没有 POST/PATCH/DELETE。
+
+错误映射为 `401` Auth、`404` tenant-hidden project/plan/version/run、`409` inactive/non-current/non-completed/unbound/digest/idempotency/Dataset/transaction conflict、`422` request/fixture profile contract、`503` persistence unavailable，以及 sanitized `500` payload/ledger/lineage/internal invalid；route 内错误携带 `X-Request-ID`。`fixture-run-gate`、`lineage-preview`、`attempt-fallback-evidence`、`checkpoint-budget-evidence` 与 `provider-health-evidence` 始终 write-free；未物化且 payload-bound 时 `materialization_eligible=true`，历史 unbound Run 返回 blocker，已物化 Run 返回持久化 IDs 与 `workflow_run_already_materialized`。POST 不接受 record bodies，只从 StepRun-bound server registry 重建 envelope，写入 RawRecord、一个 DatasetVersion 与专用 ledger 的同一事务。后端仍没有独立 Activate、Schedule、Retry、Resume、Budget override、Fallback switch 或 live Provider adapter；Shadow、Attempt/Fallback、Checkpoint/Budget 与 Provider Health 均仅为 fixture Evidence 读取。Web `/automation/runs` 保持只读；Planner 只在 active/current/complete fixture gate 回执允许时暴露本地 fixture Run，不开放 live Run。
+
+### V2 persisted lineage storage contract (local PostgreSQL accepted)
+
+`RawRecord` remains the canonical raw asset. Revision `202607160033` adds
+nullable `workflow_run_id`, `workflow_step_run_id` and
+`workflow_lineage_contract_version`; a named check requires either the legacy
+`source_id + task_run_id` pair or the V2 WorkflowRun/StepRun pair, never both.
+The V2 StepRun foreign key is tenant-scoped and `(workflow_step_run_id,
+content_hash)` is the V2 deduplication key. Provider implementation, route and
+Evidence refs remain on immutable StepRun and are not copied into RawRecord.
+
+`DatasetVersion` adds nullable `source_workflow_run_id`, ordered
+`source_workflow_step_run_ids`, ordered `source_raw_record_ids` and
+`lineage_contract_version=workflow_dataset_version.v1`; legacy
+`source_task_run_ids` remains unchanged. The payload-bound fixture route now
+consumes this contract, and revision-034 PostgreSQL acceptance passed on the
+exact disposable target. No live Provider adapter exists, so `DAT-003` remains
+fixture-only rather than production-ready.
+
+PostgreSQL acceptance source is now present at
+`scripts/verify-workflow-lineage-migration.sh` and
+`tests/postgres_workflow_lineage/`. It requires three independent
+`WORKFLOW_LINEAGE_*` inputs, an exact loopback host/port/database target and a
+database name ending `_workflow_lineage_test`. With those variables unset the
+13 revision-034 database cases skip before engine creation. The explicit Task
+13 authorization was then consumed only for
+`127.0.0.1:55367/local_workflow_lineage_test`: guarded
+`033→034→033→034`, constraints, rollback, ledger/service concurrency and
+cleanup passed `13/13`. Final recount is head `202607170034` with Dataset,
+DatasetVersion, RawRecord, WorkflowRun, StepRun and materialization ledger at
+zero rows. No other database was connected or modified.
+
+Task 13 实测证据（2026-07-16）：仅授权并使用 `127.0.0.1:55367/local_workflow_execution_test`，Alembic `028→029→028→029` 与 PostgreSQL suite `14 passed`；cleanup head `202606110029`，`workflow_runs`、`step_runs`、`workflow_run_requests` 均为 0。该证据是 disposable local PostgreSQL schema/concurrency proof，不是生产或 live Provider 验收；`database_write=local-test-only`、`provider_call=false`、`production unchanged`。
 
 ## Collector And Source
 
@@ -510,9 +618,12 @@ source_type, content_kind, text_length
 数据集不变量：
 
 1. 数据集版本必须保留 `source_task_run_ids`、`selected_fields`、`cleaning_script`、`rows`、`export_preview` 和 completeness 指标。
-2. 清洗计划是独立草案资产，保存规则、脚本文案、试跑预览和版本号。
-3. `cleaning-plan-dry-run` 必须返回 `dataset_version_created=false`、`cleaning_plan_created=false`、`run_started=false`。
-4. 数据集版本可选追踪 `cleaning_plan_id`；不传该字段时保持原始预览保存行为。
+2. V2 DatasetVersion 可在不填充 `source_task_run_ids` 的情况下保留
+   `source_workflow_run_id`、有序 `source_workflow_step_run_ids`、有序
+   `source_raw_record_ids` 和 `lineage_contract_version`；四者必须成组出现。
+3. 清洗计划是独立草案资产，保存规则、脚本文案、试跑预览和版本号。
+4. `cleaning-plan-dry-run` 必须返回 `dataset_version_created=false`、`cleaning_plan_created=false`、`run_started=false`。
+5. 数据集版本可选追踪 `cleaning_plan_id`；不传该字段时保持原始预览保存行为。
 
 ### Dataset Export
 
@@ -624,6 +735,12 @@ GitHub 工具漂移和报告：
 | `GET` | `/api/entities/{entity_id}/signals` | `SignalResponse[]` |
 | `GET` | `/api/signals` | `SignalResponse[]` |
 | `GET` | `/api/signals/{signal_id}` | `SignalResponse` |
+
+`RawRecordResponse.source_id` 与 `task_run_id` 对 legacy 记录保持有值，对 V2
+记录为 `null`；V2 记录额外返回 `workflow_run_id`、`workflow_step_run_id` 和
+`workflow_lineage_contract_version`。V2 写入只通过 WorkflowRun-scoped POST 的
+server-registered payload-bound fixture materialization；raw-record 资源本身仍保持
+只读，不接受客户端上传 record bodies。
 | `GET` | `/api/signals/{signal_id}/snapshot-compare` | `SignalSnapshotCompareResponse` |
 
 不变量：
@@ -712,3 +829,170 @@ All routes require the existing authenticated session and are read-only.
 Invalid enum query values return `422`. A missing Implementation returns `404` with `capability_implementation_not_found`. Catalog load/parse/validation failure returns `500` with `capability_catalog_load_failed`; there is no static-data fallback.
 
 Every Matrix response carries `provider_call=false` and `production_write_allowed=false`. Evidence retains `provider_call_attempted=false`, `credential_read_attempted=false`, `live_client_created=false`, and `production_write_attempted=false`.
+
+## Capability Discovery Preview API（GOAL-V2-04A）
+
+This authenticated endpoint replays only repository-registered, hash-checked fixtures. It is a sibling of the canonical Capability Catalog read path and does not use the Catalog as discovery input.
+
+| Method | Route | Request | Response | Side effect |
+|---|---|---|---|---|
+| POST | `/api/capabilities/discovery/preview` | `capability_discovery_preview_request.v1` | `capability_discovery_preview.v1` | AuthContext read plus offline fixture replay only |
+
+Request contract:
+
+```json
+{
+  "schema_version": "capability_discovery_preview_request.v1",
+  "preview_mode": "fixture_replay",
+  "fixture_ids": [
+    "tikhub-youtube-market-v1",
+    "apify-reddit-market-v1",
+    "youtube-data-api-doc-v1",
+    "reddit-data-api-doc-v1"
+  ]
+}
+```
+
+`fixture_ids` must contain 1–4 unique registered IDs; extra fields, arbitrary URLs, uploaded HTML and `live_capture` are rejected. The Web default requests the four fixed fixtures above.
+
+The response contains `source_snapshots`、`proposed_implementations`、`candidate_assertions`、`evidence`、`diagnostics` and an exact `summary`. Every Candidate is fixed to `support_status=candidate`、`verification_status=unverified`、`executable=false` and `publishable=false`. The complete validated body except `preview_fingerprint` is canonicalized and SHA-256 hashed, so request ordering does not change the deterministic response fingerprint. `generated_from_observed_at` is derived from fixture observation times, never the current clock.
+
+The four-fixture local response currently contains 4 Sources, 4 proposed Implementations, 7 Candidate Assertions, 4 Evidence records, 2 warnings and 0 errors. All responses carry:
+
+```text
+evidence_grade=L2-fixture-or-dry-run
+provider_call=false
+provider_call_attempted=false
+actor_run=false
+browser_run=false
+llm_call=false
+credential_read_attempted=false
+database_write=false
+database_migration=false
+workflow_run_created=false
+candidate_publish_allowed=false
+production_write_allowed=false
+```
+
+Error map:
+
+| Status | Detail / condition |
+|---|---|
+| 401 | existing authentication dependency rejects the request |
+| 422 | request validation or `capability_discovery_fixture_unknown` |
+| 503 | `capability_discovery_fixture_invalid` for missing/hash/schema/parser dependency failure |
+| 500 | `capability_discovery_contract_invalid`; unknown exceptions are sanitized to `internal_server_error` |
+
+The route has no Session parameter. AuthContext performs existing User/Workspace SELECTs; route tests observed only SELECT statements and unchanged table counts around the Preview call. Test registration/login rows use disposable in-memory SQLite and are reported separately as `database_write=local-test-only`; Discovery business behavior remains `database_write=false`.
+
+There are no Verify、Publish、Run、Refresh or Browser Capture operations on the Discovery endpoint itself. Its no-write contract remains unchanged; the separately authorized Governance API below consumes only a server-rebuilt registered-Fixture Preview.
+
+Historical Route A Task 15 closeout passed API Ruff、mypy `212` files、full pytest `610 passed / 40 skipped / 11 warnings` and Alembic head `202606110027`. This evidence remains the L2 Fixture Preview baseline and does not replace the later Governance evidence.
+
+## Platform credential settings API（local vault）
+
+Base path: `/api/settings/platform-credentials`. Authentication uses the existing
+AuthContext; update and delete additionally require the current Workspace Owner.
+
+| Method | Route | Request | Response / effect |
+|---|---|---|---|
+| GET | `/api/settings/platform-credentials` | none | seven-platform configured status; never returns or decrypts a secret |
+| PUT | `/api/settings/platform-credentials/{platform}` | `{ "values": { "catalog_field": "secret" } }` | validates catalog fields, encrypts the merged Workspace bundle and returns status only |
+| DELETE | `/api/settings/platform-credentials/{platform}` | none | removes the Workspace/provider bundle and returns unconfigured status |
+
+Request values are `SecretStr`; the API never returns plaintext, ciphertext or a reusable
+credential reference. Platform and field names must exist in the current social provider
+catalog. PUT returns `503 platform_credential_vault_unavailable` until the deployment
+environment provides `PLATFORM_CREDENTIAL_MASTER_KEY`; this master key is intentionally
+not configurable through the UI. Owner violations return 403, unknown platform/field
+contracts return 404/422. Saving does not run a reachability check, construct a client or
+call a Provider, and all settings responses fix `provider_call_allowed=false`,
+`credential_read_attempted=false` and `live_execution_enabled=false`.
+
+Revision 035 currently exists as migration source only and has not been run against a real
+database. The application-managed encrypted bundle is also not yet registered as a
+`secret:` runtime source; configured status is not evidence of credential reachability.
+
+## YouTube disabled read Adapter foundation（GOAL-V2-05B）
+
+`POST /api/automation/social-provider-youtube-read-plan` 使用既有 AuthContext 和当前
+Capability Catalog resolution。严格 request 只接受：
+
+- `query.query`、可选 UTC-aware `published_after`/`published_before`、两位
+  `region_code`、BCP-47-like `relevance_language`、`date|relevance|viewCount`
+  排序与 `1..50` 的 `max_items`；
+- 可选 opaque `credential_reference`，仅允许 `env:NAME` 或 `secret:name` 语法。
+
+Route 保留 typed `YouTubeReadPlanRequest` OpenAPI requestBody。FastAPI request
+validation 仅在该精确 path 返回固定脱敏 422；其他 path 继续委托默认 validation
+handler，不改变全局错误合同。
+
+服务不解析、读取、回显或记录该 reference。Response 返回 deterministic
+operation plan、per-method/per-bucket quota plan、fixture/hash validation、query 与
+reference fingerprint；原 keyword 和 reference 字段固定为 `null`。所有响应固定：
+
+```text
+execution_enabled=false
+provider_call_allowed=false
+provider_call_attempted=false
+credential_read_attempted=false
+live_client_created=false
+database_write=false
+workflow_run_created=false
+raw_record_write=false
+dataset_write=false
+production_write_allowed=false
+```
+
+`foundation_ready` 只表示 Catalog scope、fixture、quota 和 normalization foundation
+完整，不依赖 optional Google SDK 或 credential；`declared_readiness` 另行表达 caller
+是否提供 opaque reference。`social-provider-readiness.v2` 与
+`social-provider-gate.v2` 同样把 `declared_readiness`、
+`readiness_basis=caller_declared` 与 execution permission 分开，后两者的
+`execution_enabled`/`provider_call_allowed` 也固定为 false。
+
+当前记录的官方 quota evidence 使用 granular bucket：`search.list=1`
+unit/request，归属独立 `youtube_search_queries` bucket，默认上限为每天 100 次调用；
+`videos.list=1` unit/request，归属 `youtube_data_daily_units`，与其他非独立 bucket
+端点共享默认每天 10,000 units。两个 method 保持独立 ledger entry，不把每日 bucket
+上限误写成单次成本，也不压成 USD 或猜测值；Evidence 超过 30 天时返回
+`foundation_ready=false` 和稳定 stale blocker。Fixture validation 最多返回 10 条去重
+Evidence refs，与 quota/search/videos 三类合法输入上限一致。
+
+Error map：401 由现有认证依赖返回；strict request 返回固定且不含输入的
+`422 youtube_read_plan_request_invalid`；unknown/missing YouTube Catalog projection
+为 404；Catalog resolution failure 为 500；fixture 与 normalized contract failure
+分别返回 sanitized `youtube_fixture_contract_invalid` 与
+`youtube_normalized_payload_invalid` 500。端点没有 Provider/network、credential
+read 或业务 persistence 路径。
+
+2026-07-19 quota refresh 新鲜证据：focused API `68 passed / 1 existing warning`、
+full API `1011 passed / 73 skipped / 1 existing warning`、full Ruff、strict Mypy
+`313 source files`、traceability `92/10/12` 与 CI real-E2E boundary GREEN。此前
+Task 10 independent review cycle 14 已返回 `No actionable findings.`；source-only
+Alembic 仍保持单一 head `202607170034`，本次没有执行 migration 或 PostgreSQL。
+
+## Capability Governance API（GOAL-V2-04B）
+
+Base path: `/api/capabilities/governance`. Authentication uses the existing AuthContext, but authorization is an explicit global governance membership with independent read、review and publish permissions; Workspace membership never grants governance authority.
+
+| Method | Route | Contract | Required permission / effect |
+|---|---|---|---|
+| POST | `/imports` | registered Fixture IDs + expected Preview fingerprint | read; server rebuilds Preview and persists idempotent Candidate/Evidence lineage |
+| POST | `/verification-tasks/{task_id}/decisions` | expected Task version、verify/reject/deprecate、reason、canonical bundle when required | review; appends immutable Decision and resolves the Task |
+| POST | `/publications` | expected parent Revision + verified Decision operations | publish; appends content-addressed Snapshot and Revision |
+| POST | `/publications/rollback` | expected current Revision + historical target | publish; appends a restoring Revision |
+| GET | `/candidates` | pagination | read; Candidate versions only |
+| GET | `/candidates/{candidate_key}` | SHA-256 logical key | read; Candidate、Evidence、open Task and latest Decision |
+| GET | `/verification-tasks` | status + pagination | read |
+| GET | `/verification-tasks/{task_id}` | UUID | read |
+| GET | `/publications` | pagination | read; Revision ledger and current head |
+| GET | `/publications/{revision_id}` | UUID | read; Revision + complete Snapshot |
+
+Every write requires a normalized `Idempotency-Key`; exact replay returns the frozen result without another domain write, while same key/different body is `409`. All responses include `X-Request-ID`. Import never trusts a client Candidate、Evidence、URL、HTML、filesystem path or Catalog body: it accepts registered Fixture IDs and `expected_preview_fingerprint`, rebuilds the Preview on the server and classifies exact replay、first observation、Evidence refresh or semantic drift.
+
+Candidate verification、canonical `CapabilityStatus` and publication inclusion are separate axes. A review freezes reviewer、reviewed_at、reason、Candidate fingerprint、Evidence refs and canonical bundle. Verification never publishes. Publication accepts only current verified Decisions, locks the Catalog head, materializes a complete content-addressed Snapshot and appends a Revision. Rollback appends another Revision; it never rewinds history and is unrelated to Alembic downgrade. Saved WorkflowVersions keep their frozen `catalog_snapshot_id`.
+
+Error mapping is fail-closed: 403 governance permission、404 resource、409 stale/idempotency/task/head conflict、422 request or business contract、503 persistence unavailable、500 sanitized internal/snapshot failure. Logs retain request/action/error type without raw idempotency key、payload、secret or untrusted exception text.
+
+Historical GOAL-V2-04B evidence (2026-07-15): its exact disposable PostgreSQL target `127.0.0.1:55367/data_scrapy_capability_governance_test` passed Alembic `027→028→027→028` and governance suite `19/19`; this remains historical and is not the 029 execution target. GOAL-V2-05A Task 13 evidence (2026-07-16): exact target `127.0.0.1:55367/local_workflow_execution_test` passed `028→029→028→029` and workflow-execution suite `14 passed`; cleanup head is `202606110029` with the three execution tables at 0 rows. Task 14 API/Web local gates passed Ruff、strict mypy `268` source files、full pytest `836 passed / 59 skipped / 1 warning`、Web unit `238`、static build `25/25` and static mock Playwright `72 passed / 12 expected skipped / 0 failed`; the earlier `next dev` mobile failures were HMR `ERR_ABORTED` and are not product evidence. All are local evidence only: `database_write=local-test-only`、`provider_call=false`、`actor_run=false`、`browser_run=false`、`llm_call=false`、`production unchanged`; CI、deployment、live Provider and production acceptance were not run.

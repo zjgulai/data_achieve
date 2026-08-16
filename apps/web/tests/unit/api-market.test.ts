@@ -341,4 +341,25 @@ describe("api market catalog", () => {
     expect(capabilityStatusLabel("unknown")).toBe("尚无能力事实");
     expect(capabilityStatusLabel("verified")).toBe("已核验");
   });
+
+  it("links to Discovery as a secondary surface without creating a fourth Catalog tab", () => {
+    const workspaceSource = readFileSync(
+      resolve(
+        process.cwd(),
+        "src/components/api-market/api-market-workspace.tsx",
+      ),
+      "utf8",
+    );
+    const discoveryPageSource = readFileSync(
+      resolve(process.cwd(), "src/app/api-market/discovery/page.tsx"),
+      "utf8",
+    );
+
+    expect(workspaceSource).toContain('href="/api-market/discovery"');
+    expect(workspaceSource).toContain("打开能力发现 Preview");
+    expect(workspaceSource.match(/value: \"(scenarios|matrix|list)\"/g)).toHaveLength(
+      3,
+    );
+    expect(discoveryPageSource).toContain("CapabilityDiscoveryWorkspace");
+  });
 });

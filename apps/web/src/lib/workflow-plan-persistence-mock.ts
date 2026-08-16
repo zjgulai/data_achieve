@@ -3,20 +3,38 @@ import { buildMockWorkflowPlanPreview } from "@/lib/workflow-planner-mock";
 import type {
   MonitoringScope,
   MonitoringScopeListResult,
+  MonitoringScopeTemplate,
+  MonitoringScopeTemplateCopyInput,
+  MonitoringScopeTemplateCopyResult,
   PaginationOptions,
   WorkflowPlan,
+  WorkflowPlanCloneInput,
+  WorkflowPlanCloneResult,
   WorkflowPlanCompareChange,
   WorkflowPlanCompareSection,
   WorkflowPlanCreateInput,
   WorkflowPlanDetail,
   WorkflowPlanListResult,
   WorkflowPlanSaveResult,
+  WorkflowPlanStatus,
+  WorkflowPlanTransitionInput,
+  WorkflowPlanTransitionResult,
   WorkflowPlanVersionCompare,
   WorkflowVersion,
   WorkflowVersionCreateInput,
   WorkflowVersionDetail,
   WorkflowVersionListResult,
   WorkflowVersionSummary,
+  WorkflowTemplate,
+  WorkflowTemplateCreateInput,
+  WorkflowTemplateDetail,
+  WorkflowTemplateInstantiateInput,
+  WorkflowTemplateListResult,
+  WorkflowTemplateMetadataUpdateInput,
+  WorkflowTemplateMutationResult,
+  WorkflowTemplateRevision,
+  WorkflowTemplateRevisionCreateInput,
+  WorkflowTemplateRevisionListResult,
 } from "@/types/workflow-plan-persistence";
 import type {
   PlannerJsonValue,
@@ -46,6 +64,16 @@ const READ_BOUNDARY = {
   executionAuthorized: false,
 } as const;
 
+const TEMPLATE_READ_BOUNDARY = {
+  databaseWrite: false,
+  providerCall: false,
+  actorRun: false,
+  browserRun: false,
+  llmCall: false,
+  workflowRunCreated: false,
+  executionAuthorized: false,
+} as const;
+
 type StoredPlan = {
   plan: WorkflowPlan;
   versions: WorkflowVersion[];
@@ -56,9 +84,39 @@ type StoredIdempotencyResult = {
   response: WorkflowPlanSaveResult;
 };
 
+type StoredCloneIdempotencyResult = {
+  requestHash: string;
+  response: WorkflowPlanCloneResult;
+};
+
+type StoredScopeTemplateIdempotencyResult = {
+  requestHash: string;
+  response: MonitoringScopeTemplateCopyResult;
+};
+
+type StoredTemplate = {
+  template: WorkflowTemplate;
+  revisions: WorkflowTemplateRevision[];
+};
+
+type StoredTemplateMutationResult = {
+  requestHash: string;
+  response: WorkflowTemplateMutationResult;
+};
+
 const plansByProject = new Map<string, Map<string, StoredPlan>>();
 const scopesByProject = new Map<string, Map<string, MonitoringScope>>();
 const idempotencyResults = new Map<string, StoredIdempotencyResult>();
+const cloneIdempotencyResults = new Map<string, StoredCloneIdempotencyResult>();
+const scopeTemplateIdempotencyResults = new Map<
+  string,
+  StoredScopeTemplateIdempotencyResult
+>();
+const templatesByProject = new Map<string, Map<string, StoredTemplate>>();
+const templateIdempotencyResults = new Map<
+  string,
+  StoredTemplateMutationResult
+>();
 const previewStaleFixturePlanIds = new Set<string>();
 const versionConflictFixturePlanIds = new Set<string>();
 
@@ -75,6 +133,283 @@ export async function createWorkflowPlanMock(
   return createWorkflowPlanInternal(projectId, input);
 }
 
+export async function createWorkflowTemplateMock(
+  projectId: string,
+  input: WorkflowTemplateCreateInput,
+): Promise<WorkflowTemplateMutationResult> {
+  await ensureMockReady();
+  const name = input.name.trim();
+  const templateKey = input.templateKey.trim();
+  if (name.length < 1 || name.length > 200 || templateKey.length < 1) {
+    throw mockError(422, "workflow_template_input_invalid");
+  }
+  const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
+  const scope = `workflow_template.create:${projectId}`;
+  const recordKey = await idempotencyRecordKey(scope, idempotencyKey);
+  const requestHash = await hashValue({
+    projectId,
+    name,
+    templateKey,
+    description: input.description ?? null,
+    definition: input.definition,
+  });
+  const completed = templateIdempotencyResults.get(recordKey);
+  if (completed) {
+    return replayTemplateMutation(completed, requestHash);
+  }
+  const templates = getOrCreateProjectTemplates(projectId);
+  if (
+    [...templates.values()].some(
+      (entry) => entry.template.templateKey === templateKey,
+    )
+  ) {
+    throw mockError(409, "workflow_template_key_conflict");
+  }
+  const timestamp = nextTimestamp();
+  const templateId = nextId();
+  const revision = await buildTemplateRevision({
+    projectId,
+    templateId,
+    revisionNumber: 1,
+    definition: input.definition,
+    createdAt: timestamp,
+  });
+  const template: WorkflowTemplate = {
+    ...TEMPLATE_READ_BOUNDARY,
+    id: templateId,
+    workspaceId: MOCK_WORKSPACE_ID,
+    projectId,
+    createdByUserId: MOCK_USER_ID,
+    name,
+    templateKey,
+    description: input.description?.trim() || null,
+    status: "draft",
+    currentRevisionId: revision.id,
+    currentRevision: revision,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const response: WorkflowTemplateMutationResult = clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    databaseWrite: true,
+    idempotentReplay: false,
+    outcome: "created",
+    template,
+    revision,
+  });
+  templates.set(template.id, { template, revisions: [revision] });
+  templateIdempotencyResults.set(recordKey, {
+    requestHash,
+    response: clone(response),
+  });
+  return clone(response);
+}
+
+export async function updateWorkflowTemplateMetadataMock(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateMetadataUpdateInput,
+): Promise<WorkflowTemplateMutationResult> {
+  await ensureMockReady();
+  const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
+  const scope = `workflow_template.metadata:${projectId}:${templateId}`;
+  const recordKey = await idempotencyRecordKey(scope, idempotencyKey);
+  const requestHash = await hashValue({
+    projectId,
+    templateId,
+    expectedRevisionId: input.expectedRevisionId,
+    name: input.name,
+    description: input.description,
+  });
+  const completed = templateIdempotencyResults.get(recordKey);
+  if (completed) {
+    return replayTemplateMutation(completed, requestHash);
+  }
+  const stored = getStoredTemplate(projectId, templateId);
+  assertTemplateDraft(stored, input.expectedRevisionId);
+  const template = {
+    ...stored.template,
+    name: input.name?.trim() || stored.template.name,
+    description:
+      input.description === undefined
+        ? stored.template.description
+        : input.description?.trim() || null,
+    updatedAt: nextTimestamp(),
+  };
+  stored.template = template;
+  const response: WorkflowTemplateMutationResult = clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    databaseWrite: true,
+    idempotentReplay: false,
+    outcome: "updated",
+    template,
+    revision: null,
+  });
+  templateIdempotencyResults.set(recordKey, {
+    requestHash,
+    response: clone(response),
+  });
+  return clone(response);
+}
+
+export async function appendWorkflowTemplateRevisionMock(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateRevisionCreateInput,
+): Promise<WorkflowTemplateMutationResult> {
+  await ensureMockReady();
+  const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
+  const scope = `workflow_template.revision:${projectId}:${templateId}`;
+  const recordKey = await idempotencyRecordKey(scope, idempotencyKey);
+  const requestHash = await hashValue({
+    projectId,
+    templateId,
+    expectedRevisionId: input.expectedRevisionId,
+    definition: input.definition,
+  });
+  const completed = templateIdempotencyResults.get(recordKey);
+  if (completed) {
+    return replayTemplateMutation(completed, requestHash);
+  }
+  const stored = getStoredTemplate(projectId, templateId);
+  assertTemplateDraft(stored, input.expectedRevisionId);
+  const revision = await buildTemplateRevision({
+    projectId,
+    templateId,
+    revisionNumber: stored.revisions.length + 1,
+    definition: input.definition,
+    createdAt: nextTimestamp(),
+  });
+  stored.revisions.push(revision);
+  stored.template = {
+    ...stored.template,
+    currentRevisionId: revision.id,
+    currentRevision: revision,
+    updatedAt: revision.createdAt,
+  };
+  const response: WorkflowTemplateMutationResult = clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    databaseWrite: true,
+    idempotentReplay: false,
+    outcome: "updated",
+    template: stored.template,
+    revision,
+  });
+  templateIdempotencyResults.set(recordKey, {
+    requestHash,
+    response: clone(response),
+  });
+  return clone(response);
+}
+
+export async function listWorkflowTemplatesMock(
+  projectId: string,
+  options: PaginationOptions = {},
+): Promise<WorkflowTemplateListResult> {
+  await ensureMockReady();
+  const { limit, offset } = normalizePagination(options);
+  const items = [...(templatesByProject.get(projectId)?.values() ?? [])]
+    .map((entry) => entry.template)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(offset, offset + limit);
+  return clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    projectStatus: "active",
+    items,
+    total: templatesByProject.get(projectId)?.size ?? 0,
+    limit,
+    offset,
+  });
+}
+
+export async function getWorkflowTemplateMock(
+  projectId: string,
+  templateId: string,
+): Promise<WorkflowTemplateDetail> {
+  await ensureMockReady();
+  const stored = getStoredTemplate(projectId, templateId);
+  const current = stored.revisions.find(
+    (revision) => revision.id === stored.template.currentRevisionId,
+  );
+  if (!current) {
+    throw mockError(409, "workflow_template_revision_invalid");
+  }
+  return clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    projectStatus: "active",
+    template: stored.template,
+    currentRevision: current,
+  });
+}
+
+export async function listWorkflowTemplateRevisionsMock(
+  projectId: string,
+  templateId: string,
+  options: PaginationOptions = {},
+): Promise<WorkflowTemplateRevisionListResult> {
+  await ensureMockReady();
+  const stored = getStoredTemplate(projectId, templateId);
+  const { limit, offset } = normalizePagination(options);
+  const revisions = [...stored.revisions]
+    .sort((left, right) => right.revisionNumber - left.revisionNumber)
+    .slice(offset, offset + limit);
+  return clone({
+    ...TEMPLATE_READ_BOUNDARY,
+    projectStatus: "active",
+    template: stored.template,
+    items: revisions,
+    total: stored.revisions.length,
+    limit,
+    offset,
+  });
+}
+
+export async function instantiateWorkflowPlanFromTemplateMock(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateInstantiateInput,
+): Promise<WorkflowPlanSaveResult> {
+  await ensureMockReady();
+  const stored = getStoredTemplate(projectId, templateId);
+  const revision = stored.revisions.find(
+    (candidate) => candidate.id === input.revisionId,
+  );
+  if (!revision) {
+    throw mockError(404, "workflow_template_revision_not_found");
+  }
+  const created = await createWorkflowPlanInternal(
+    projectId,
+    {
+      name: input.name,
+      previewInput: revision.definition,
+      expectedPreviewFingerprint: (
+        await buildMockWorkflowPlanPreview(projectId, revision.definition)
+      ).previewFingerprint,
+      idempotencyKey: input.idempotencyKey,
+    },
+    `workflow_template.instantiate:${projectId}:${templateId}`,
+    { revisionId: revision.id },
+  );
+  const version = {
+    ...created.version,
+    workflowTemplateId: templateId,
+    workflowTemplateRevisionId: revision.id,
+  };
+  const plan = {
+    ...created.plan,
+    workflowTemplateId: templateId,
+    workflowTemplateRevisionId: revision.id,
+  };
+  if (!created.idempotentReplay) {
+    const planStored = getStoredPlan(projectId, created.plan.id);
+    planStored.plan = plan;
+    planStored.versions = planStored.versions.map((candidate) =>
+      candidate.id === version.id ? version : candidate,
+    );
+  }
+  return clone({ ...created, plan, version });
+}
+
 export async function createWorkflowVersionMock(
   projectId: string,
   planId: string,
@@ -82,6 +417,220 @@ export async function createWorkflowVersionMock(
 ): Promise<WorkflowPlanSaveResult> {
   await ensureMockReady();
   return createWorkflowVersionInternal(projectId, planId, input);
+}
+
+export async function transitionWorkflowPlanStatusMock(
+  projectId: string,
+  planId: string,
+  input: WorkflowPlanTransitionInput,
+): Promise<WorkflowPlanTransitionResult> {
+  await ensureMockReady();
+  const stored = getStoredPlan(projectId, planId);
+  const fromStatus = stored.plan.status;
+  if (fromStatus !== input.expectedStatus) {
+    throw mockError(409, "workflow_plan_status_conflict");
+  }
+  const allowed: Partial<Record<WorkflowPlanStatus, WorkflowPlanStatus[]>> = {
+    draft: ["previewed"],
+    previewed: ["approved"],
+    approved: ["active"],
+    active: ["paused"],
+    paused: ["active", "archived"],
+  };
+  if (
+    fromStatus !== input.toStatus &&
+    !allowed[fromStatus]?.includes(input.toStatus)
+  ) {
+    throw mockError(409, "workflow_plan_invalid_transition");
+  }
+  const changed = fromStatus !== input.toStatus;
+  if (changed) {
+    stored.plan = {
+      ...stored.plan,
+      status: input.toStatus,
+      updatedAt: nextTimestamp(),
+    };
+  }
+  return clone({
+    providerCall: false,
+    actorRun: false,
+    browserRun: false,
+    llmCall: false,
+    workflowRunCreated: false,
+    executionAuthorized: false,
+    databaseWrite: changed,
+    planChanged: changed,
+    idempotentReplay: false,
+    fromStatus,
+    toStatus: input.toStatus,
+    reason: input.reason?.trim() || null,
+    plan: stored.plan,
+  });
+}
+
+export async function cloneWorkflowPlanMock(
+  projectId: string,
+  planId: string,
+  input: WorkflowPlanCloneInput,
+): Promise<WorkflowPlanCloneResult> {
+  await ensureMockReady();
+  const name = input.name.trim();
+  if (name.length < 1 || name.length > 200) {
+    throw mockError(422, "workflow_plan_name_invalid");
+  }
+  const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
+  const idempotencyScope = `workflow_plan.clone:${projectId}:${planId}`;
+  const recordKey = await idempotencyRecordKey(
+    idempotencyScope,
+    idempotencyKey,
+  );
+  const requestHash = await hashValue({
+    projectId,
+    planId,
+    name,
+    sourceVersionId: input.sourceVersionId,
+  });
+  const completed = cloneIdempotencyResults.get(recordKey);
+  if (completed) {
+    if (completed.requestHash !== requestHash) {
+      throw mockError(409, "idempotency_conflict");
+    }
+    return clone({
+      ...completed.response,
+      databaseWrite: false,
+      planChanged: false,
+      idempotentReplay: true,
+    });
+  }
+
+  const source = getStoredPlan(projectId, planId);
+  const sourceVersion = getStoredVersion(source, input.sourceVersionId);
+  const timestamp = nextTimestamp();
+  const targetPlanId = nextId();
+  const targetVersion = clone({
+    ...sourceVersion,
+    id: nextId(),
+    workflowPlanId: targetPlanId,
+    versionNumber: 1,
+    createdAt: timestamp,
+  });
+  const targetPlan: WorkflowPlan = {
+    ...source.plan,
+    id: targetPlanId,
+    name,
+    sourcePlanId: source.plan.id,
+    sourceVersionId: sourceVersion.id,
+    currentVersionId: targetVersion.id,
+    currentVersionNumber: 1,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  getOrCreateProjectPlans(projectId).set(targetPlanId, {
+    plan: targetPlan,
+    versions: [targetVersion],
+  });
+  const response: WorkflowPlanCloneResult = clone({
+    ...READ_BOUNDARY,
+    databaseWrite: true,
+    planChanged: true,
+    outcome: "created",
+    idempotentReplay: false,
+    sourcePlanId: source.plan.id,
+    sourceVersionId: sourceVersion.id,
+    plan: targetPlan,
+    version: targetVersion,
+  });
+  cloneIdempotencyResults.set(recordKey, {
+    requestHash,
+    response: clone(response),
+  });
+  return clone(response);
+}
+
+export async function copyMonitoringScopeTemplateMock(
+  projectId: string,
+  scopeId: string,
+  input: MonitoringScopeTemplateCopyInput,
+): Promise<MonitoringScopeTemplateCopyResult> {
+  await ensureMockReady();
+  const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
+  const idempotencyScope = `monitoring_scope_template.copy:${projectId}:${scopeId}`;
+  const recordKey = await idempotencyRecordKey(
+    idempotencyScope,
+    idempotencyKey,
+  );
+  const requestHash = await hashValue({
+    projectId,
+    scopeId,
+    sourceVersionId: input.sourceVersionId,
+  });
+  const completed = scopeTemplateIdempotencyResults.get(recordKey);
+  if (completed) {
+    if (completed.requestHash !== requestHash) {
+      throw mockError(409, "idempotency_conflict");
+    }
+    return clone({
+      ...completed.response,
+      databaseWrite: false,
+      idempotentReplay: true,
+    });
+  }
+
+  const sourceScope = [
+    ...(scopesByProject.get(projectId)?.values() ?? []),
+  ].find((scope) => scope.id === scopeId);
+  if (!sourceScope) {
+    throw mockError(404, "monitoring_scope_not_found");
+  }
+  const sourceEntry = [...(plansByProject.get(projectId)?.values() ?? [])].find(
+    (stored) =>
+      stored.versions.some((version) => version.id === input.sourceVersionId),
+  );
+  const sourceVersion = sourceEntry?.versions.find(
+    (version) => version.id === input.sourceVersionId,
+  );
+  if (
+    !sourceVersion ||
+    !sourceVersion.preview.normalizedInput.scopes.some(
+      (scope) => scope.scopeKey === sourceScope.scopeKey,
+    )
+  ) {
+    throw mockError(404, "monitoring_scope_not_found");
+  }
+  const template: MonitoringScopeTemplate = {
+    ...READ_BOUNDARY,
+    id: nextId(),
+    workspaceId: sourceScope.workspaceId,
+    projectId,
+    createdByUserId: sourceScope.createdByUserId,
+    sourceScopeId: sourceScope.id,
+    sourcePlanId: sourceEntry!.plan.id,
+    sourceVersionId: sourceVersion.id,
+    scopeKey: sourceScope.scopeKey,
+    scopeType: sourceScope.scopeType,
+    canonicalTerm: sourceScope.canonicalTerm,
+    aliases: clone(sourceScope.aliases),
+    includeTerms: clone(sourceScope.includeTerms),
+    excludeTerms: clone(sourceScope.excludeTerms),
+    officialAccounts: clone(sourceScope.officialAccounts),
+    seedUrls: clone(sourceScope.seedUrls),
+    effectiveLanguages: clone(sourceScope.effectiveLanguages),
+    effectiveRegions: clone(sourceScope.effectiveRegions),
+    effectivePlatforms: clone(sourceScope.effectivePlatforms),
+    matchMode: sourceScope.matchMode,
+    createdAt: nextTimestamp(),
+  };
+  const response: MonitoringScopeTemplateCopyResult = clone({
+    ...READ_BOUNDARY,
+    databaseWrite: true,
+    idempotentReplay: false,
+    template,
+  });
+  scopeTemplateIdempotencyResults.set(recordKey, {
+    requestHash,
+    response: clone(response),
+  });
+  return clone(response);
 }
 
 export async function listWorkflowPlansMock(
@@ -206,6 +755,10 @@ export function resetWorkflowPlanPersistenceMockForTests(): void {
   plansByProject.clear();
   scopesByProject.clear();
   idempotencyResults.clear();
+  cloneIdempotencyResults.clear();
+  scopeTemplateIdempotencyResults.clear();
+  templatesByProject.clear();
+  templateIdempotencyResults.clear();
   previewStaleFixturePlanIds.clear();
   versionConflictFixturePlanIds.clear();
   idCounter = 0;
@@ -291,13 +844,14 @@ async function seedFixture(): Promise<void> {
 async function createWorkflowPlanInternal(
   projectId: string,
   input: WorkflowPlanCreateInput,
+  idempotencyScope = `workflow_plan.create:${projectId}`,
+  idempotencyRequestContext: unknown = null,
 ): Promise<WorkflowPlanSaveResult> {
   const name = input.name.trim();
   if (name.length < 1 || name.length > 200) {
     throw mockError(422, "workflow_plan_name_invalid");
   }
   const idempotencyKey = normalizeIdempotencyKey(input.idempotencyKey);
-  const idempotencyScope = `workflow_plan.create:${projectId}`;
   const recordKey = await idempotencyRecordKey(
     idempotencyScope,
     idempotencyKey,
@@ -307,6 +861,7 @@ async function createWorkflowPlanInternal(
     name,
     previewInput: input.previewInput,
     expectedPreviewFingerprint: input.expectedPreviewFingerprint,
+    idempotencyRequestContext,
   });
   const completed = idempotencyResults.get(recordKey);
   if (completed) {
@@ -338,6 +893,10 @@ async function createWorkflowPlanInternal(
     flowMode: preview.flowMode,
     status: "previewed",
     currentVersionId: version.id,
+    sourcePlanId: null,
+    sourceVersionId: null,
+    workflowTemplateId: null,
+    workflowTemplateRevisionId: null,
     currentVersionNumber: version.versionNumber,
     planningStatus: version.planningStatus,
     scopeCount: preview.normalizedInput.scopes.length,
@@ -441,6 +1000,8 @@ async function createWorkflowVersionInternal(
     previewInput: input.previewInput,
     preview,
     createdAt: timestamp,
+    workflowTemplateId: stored.plan.workflowTemplateId,
+    workflowTemplateRevisionId: stored.plan.workflowTemplateRevisionId,
   });
   stored.versions.push(version);
   stored.plan = {
@@ -472,6 +1033,8 @@ function buildVersion({
   previewInput,
   preview,
   createdAt,
+  workflowTemplateId,
+  workflowTemplateRevisionId,
 }: {
   id: string;
   projectId: string;
@@ -480,12 +1043,16 @@ function buildVersion({
   previewInput: PlanningInput;
   preview: WorkflowPlanPreview;
   createdAt: string;
+  workflowTemplateId?: string | null;
+  workflowTemplateRevisionId?: string | null;
 }): WorkflowVersion {
   return {
     id,
     workspaceId: MOCK_WORKSPACE_ID,
     projectId,
     workflowPlanId: planId,
+    workflowTemplateId: workflowTemplateId ?? null,
+    workflowTemplateRevisionId: workflowTemplateRevisionId ?? null,
     createdByUserId: MOCK_USER_ID,
     versionNumber,
     planningStatus: preview.planningStatus,
@@ -700,6 +1267,81 @@ function getOrCreateProjectPlans(projectId: string): Map<string, StoredPlan> {
   return plans;
 }
 
+function getOrCreateProjectTemplates(
+  projectId: string,
+): Map<string, StoredTemplate> {
+  let templates = templatesByProject.get(projectId);
+  if (!templates) {
+    templates = new Map();
+    templatesByProject.set(projectId, templates);
+  }
+  return templates;
+}
+
+function getStoredTemplate(
+  projectId: string,
+  templateId: string,
+): StoredTemplate {
+  const stored = templatesByProject.get(projectId)?.get(templateId);
+  if (!stored) {
+    throw mockError(404, "workflow_template_not_found");
+  }
+  return stored;
+}
+
+function assertTemplateDraft(
+  stored: StoredTemplate,
+  expectedRevisionId: string,
+): void {
+  if (stored.template.status !== "draft") {
+    throw mockError(409, "workflow_template_not_editable");
+  }
+  if (stored.template.currentRevisionId !== expectedRevisionId) {
+    throw mockError(409, "workflow_template_revision_conflict");
+  }
+}
+
+async function buildTemplateRevision({
+  projectId,
+  templateId,
+  revisionNumber,
+  definition,
+  createdAt,
+}: {
+  projectId: string;
+  templateId: string;
+  revisionNumber: number;
+  definition: PlanningInput;
+  createdAt: string;
+}): Promise<WorkflowTemplateRevision> {
+  return {
+    ...TEMPLATE_READ_BOUNDARY,
+    id: nextId(),
+    workspaceId: MOCK_WORKSPACE_ID,
+    projectId,
+    workflowTemplateId: templateId,
+    createdByUserId: MOCK_USER_ID,
+    revisionNumber,
+    definition: clone(definition),
+    definitionFingerprint: `sha256:${await hashValue(definition)}`,
+    createdAt,
+  };
+}
+
+function replayTemplateMutation(
+  stored: StoredTemplateMutationResult,
+  requestHash: string,
+): WorkflowTemplateMutationResult {
+  if (stored.requestHash !== requestHash) {
+    throw mockError(409, "idempotency_conflict");
+  }
+  return clone({
+    ...stored.response,
+    databaseWrite: false,
+    idempotentReplay: true,
+  });
+}
+
 function getStoredPlan(projectId: string, planId: string): StoredPlan {
   const stored = plansByProject.get(projectId)?.get(planId);
   if (!stored) {
@@ -731,6 +1373,8 @@ function toVersionSummary(version: WorkflowVersion): WorkflowVersionSummary {
     workspaceId: version.workspaceId,
     projectId: version.projectId,
     workflowPlanId: version.workflowPlanId,
+    workflowTemplateId: version.workflowTemplateId,
+    workflowTemplateRevisionId: version.workflowTemplateRevisionId,
     createdByUserId: version.createdByUserId,
     versionNumber: version.versionNumber,
     planningStatus: version.planningStatus,

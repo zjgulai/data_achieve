@@ -880,8 +880,19 @@ export function getMockAutomationPlatformPackages(): AutomationPlatformPackage[]
   ];
 }
 
-export function getMockDashboard(domain?: string): DashboardSummary {
-  const allTop = getMockIntelligence().map((item) => ({
+export function getMockDashboard(
+  domain?: string,
+  projectId?: string,
+): DashboardSummary {
+  const scopedProjects = getMockProjects().filter(
+    (project) =>
+      (!projectId || project.id === projectId) &&
+      (!domain || project.domain === domain),
+  );
+  const scopedProjectIds = new Set(scopedProjects.map((project) => project.id));
+  const allTop = getMockIntelligence()
+    .filter((item) => scopedProjectIds.has(item.projectId))
+    .map((item) => ({
     id: item.id,
     title: item.title,
     summary: item.summary,
@@ -893,16 +904,18 @@ export function getMockDashboard(domain?: string): DashboardSummary {
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   }));
-  const topIntelligence = domain ? allTop.filter((item) => item.domain === domain) : allTop;
+  const topIntelligence = allTop;
   const typeCounts = topIntelligence.reduce<Record<string, number>>((accumulator, item) => {
     accumulator[item.type] = (accumulator[item.type] ?? 0) + 1;
     return accumulator;
   }, {});
-  const projectCount = getMockProjects().filter((project) => !domain || project.domain === domain).length;
-  const sourceCount = getMockSources().filter((source) => {
-    const project = getMockProjects().find((item) => item.id === source.projectId);
-    return !domain || project?.domain === domain;
-  }).length;
+  const projectCount = scopedProjects.length;
+  const sourceCount = getMockSources().filter((source) =>
+    scopedProjectIds.has(source.projectId),
+  ).length;
+  const scopedDomains = domain
+    ? [domain]
+    : Array.from(new Set(scopedProjects.map((project) => project.domain)));
   return {
     intelligenceCount: topIntelligence.length,
     taskSuccessRate: topIntelligence.length > 0 ? 100 : 0,
@@ -916,14 +929,14 @@ export function getMockDashboard(domain?: string): DashboardSummary {
       count,
       percent: topIntelligence.length > 0 ? (count / topIntelligence.length) * 100 : 0,
     })),
-    domainBreakdown: (domain ? [domain] : ["osint", "competitor"]).map((item) => ({
+    domainBreakdown: scopedDomains.map((item) => ({
       domain: item,
       intelligenceCount: allTop.filter((entry) => entry.domain === item).length,
       signalCount: getMockSignals().filter((signal) => {
         const project = getMockProjects().find((projectItem) => projectItem.id === signal.projectId);
-        return project?.domain === item;
+        return scopedProjectIds.has(signal.projectId) && project?.domain === item;
       }).length,
-      projectCount: getMockProjects().filter((project) => project.domain === item).length,
+      projectCount: scopedProjects.filter((project) => project.domain === item).length,
     })),
     topIntelligence,
     taskHealth: {
@@ -3691,6 +3704,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_competitor",
       sourceId: "source_competitor_homepage",
       taskRunId: "run_competitor_page_20260611",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "generic_web",
       sourceUrl: "https://example.com/pricing",
       contentHash: "a8f1c6c6c1e14f67d2418b1a0ad0fdde4f6e8a029dd8f8aa9b6ef7a8e3124497",
@@ -3715,6 +3731,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_competitor",
       sourceId: "source_competitor_homepage",
       taskRunId: "run_competitor_page_20260610",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "generic_web",
       sourceUrl: "https://example.com/pricing",
       contentHash: "6b9450c1d3f544a58a9e8d736bb40d237df59ec8f87241b030395a4bc7b9b3da",
@@ -3739,6 +3758,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_osint",
       sourceId: "source_codex_repo",
       taskRunId: "run_codex_repo_20260611",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "github_repo",
       sourceUrl: "https://github.com/openai/codex",
       contentHash: "f9b9290ad4ce7ce6e1b9c4e01c308f6a19e7c5e06f19e842bb8f16b87fe8c02a",
@@ -3761,6 +3783,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_osint",
       sourceId: "source_codex_repo",
       taskRunId: "run_codex_repo_20260610",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "github_repo",
       sourceUrl: "https://github.com/openai/codex",
       contentHash: "54af72380f8400440ef2d335671e3307e7adf924df0f9cc43a7d6879f7a3db15",
@@ -3783,6 +3808,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_osint",
       sourceId: "source_manual_json",
       taskRunId: "run_manual_json",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "manual_json",
       sourceUrl: null,
       contentHash: "d0e3f73e35a02f5dff60f421b9b4f3ad7c4dd30f47c904aa344b63808e1929f6",
@@ -3806,6 +3834,9 @@ export function getMockRawRecords(): RawRecord[] {
       projectId: "project_osint",
       sourceId: "source_manual_json",
       taskRunId: "run_manual_json_prev",
+      workflowRunId: null,
+      workflowStepRunId: null,
+      workflowLineageContractVersion: null,
       recordType: "manual_json",
       sourceUrl: null,
       contentHash: "1b9ab77f6a4d04d8c0ad01f73058e698d4a7e47fc0b42494b58da6418a01973f",
@@ -4233,7 +4264,7 @@ function withEvidenceTrace(
           createdAt: rawRecord.createdAt,
         }
       : null,
-    taskRun: rawRecord
+    taskRun: rawRecord?.taskRunId
       ? {
           id: rawRecord.taskRunId,
           taskId: task?.id ?? "task_unknown",

@@ -4,6 +4,9 @@ export const selectedProjectStorageKey =
   "data-intelligence-hub:selected-project-id";
 export const projectSelectionEventName =
   "data-intelligence-hub:project-selection";
+export const projectSelectionRequestEventName =
+  "data-intelligence-hub:project-selection-request";
+export const selectedProjectQueryKey = "project_id";
 
 export type SelectedProjectPreference = {
   available: boolean;
@@ -23,6 +26,24 @@ export function resolveRouteScopedProjectId(pathname: string): string | null {
   } catch {
     return encodedProjectId;
   }
+}
+
+export function readProjectIdFromSearch(search: string): string | null {
+  const value = new URLSearchParams(search).get(selectedProjectQueryKey);
+  return value?.trim() || null;
+}
+
+export function projectSelectionRelativeUrl(
+  currentUrl: string,
+  projectId: string | null,
+): string {
+  const url = new URL(currentUrl, "http://localhost");
+  if (projectId) {
+    url.searchParams.set(selectedProjectQueryKey, projectId);
+  } else {
+    url.searchParams.delete(selectedProjectQueryKey);
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 export function projectFilterStatusMessage({
@@ -54,7 +75,12 @@ export function isProjectFilterApplied({
   appliedProjectId: string | null;
 }): boolean {
   return (
-    (pathname === "/automation/planner" || pathname === "/automation/plans") &&
+    (pathname === "/dashboard" ||
+      pathname.startsWith("/domain/") ||
+      pathname === "/intelligence" ||
+      pathname.startsWith("/intelligence/") ||
+      pathname === "/automation/planner" ||
+      pathname === "/automation/plans") &&
     selectedProjectId !== null &&
     selectedProjectId === appliedProjectId
   );

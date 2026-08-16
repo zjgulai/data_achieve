@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from data_intelligence_hub.api.deps import AuthContext, get_auth_context
+from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.capability_catalog import (
     AccessChannel,
     CapabilityAssertion,
@@ -17,6 +17,10 @@ from data_intelligence_hub.schemas.capability_catalog import (
 from data_intelligence_hub.schemas.capability_matrix import (
     CapabilityImplementationDetail,
     CapabilityMatrixResponse,
+)
+from data_intelligence_hub.services.capability_governance.catalog_resolution import (
+    CapabilityCatalogResolutionError,
+    resolve_current_capability_catalog,
 )
 from data_intelligence_hub.services.capability_matrix import (
     build_capability_matrix,
@@ -34,11 +38,18 @@ router = APIRouter(tags=["capabilities"])
 
 @router.get("/matrix", response_model=CapabilityMatrixResponse)
 async def get_capability_matrix(
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> CapabilityMatrixResponse:
     _ = context
     try:
-        return build_capability_matrix()
+        catalog = await resolve_current_capability_catalog(session)
+        return build_capability_matrix(catalog=catalog)
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except CapabilityCatalogLoadError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -48,6 +59,7 @@ async def get_capability_matrix(
 
 @router.get("/assertions", response_model=list[CapabilityAssertion])
 async def get_capability_assertions(
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
     platform: PlatformId | None = None,
     access_channel: AccessChannel | None = None,
@@ -57,13 +69,20 @@ async def get_capability_assertions(
 ) -> list[CapabilityAssertion]:
     _ = context
     try:
+        catalog = await resolve_current_capability_catalog(session)
         return list_capability_assertions(
             platform=platform,
             access_channel=access_channel,
             resource_type=resource_type,
             operation=operation,
             support_status=support_status,
+            catalog=catalog,
         )
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except CapabilityCatalogLoadError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -73,16 +92,24 @@ async def get_capability_assertions(
 
 @router.get("/implementations", response_model=list[CapabilityImplementation])
 async def get_capability_implementations(
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
     platform: PlatformId | None = None,
     access_channel: AccessChannel | None = None,
 ) -> list[CapabilityImplementation]:
     _ = context
     try:
+        catalog = await resolve_current_capability_catalog(session)
         return list_capability_implementations(
             platform=platform,
             access_channel=access_channel,
+            catalog=catalog,
         )
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except CapabilityCatalogLoadError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -96,11 +123,21 @@ async def get_capability_implementations(
 )
 async def get_capability_implementation(
     implementation_id: str,
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> CapabilityImplementationDetail:
     _ = context
     try:
-        return get_capability_implementation_detail(implementation_id)
+        catalog = await resolve_current_capability_catalog(session)
+        return get_capability_implementation_detail(
+            implementation_id,
+            catalog=catalog,
+        )
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except CapabilityCatalogLoadError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { projectSelectionRequestEventName } from "@/lib/project-selection";
+
 const leaveMessage = "当前 Workflow Planner 有未保存变更，确定离开吗？";
 
 function isOrdinaryPrimaryClick(event: MouseEvent): boolean {
@@ -72,10 +74,24 @@ export function useUnsavedWorkflowPlannerGuard(dirty: boolean): void {
       event.stopPropagation();
     }
 
+    function onProjectSelectionRequest(event: Event) {
+      if (!window.confirm(leaveMessage)) {
+        event.preventDefault();
+      }
+    }
+
     window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener(
+      projectSelectionRequestEventName,
+      onProjectSelectionRequest,
+    );
     document.addEventListener("click", onDocumentClick, true);
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener(
+        projectSelectionRequestEventName,
+        onProjectSelectionRequest,
+      );
       document.removeEventListener("click", onDocumentClick, true);
     };
   }, [dirty]);

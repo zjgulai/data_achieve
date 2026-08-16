@@ -90,17 +90,20 @@ class SocialProviderRateLimitProfile(BaseModel):
 
 
 class SocialProviderReadinessResponse(BaseModel):
-    schema_version: str = "social_provider_readiness.v1"
+    schema_version: Literal["social_provider_readiness.v2"] = "social_provider_readiness.v2"
     platform: str
     provider_id: str
     readiness: bool
+    declared_readiness: bool
+    readiness_basis: Literal["caller_declared"] = "caller_declared"
+    execution_enabled: Literal[False] = False
     missing_credentials: list[str]
     missing_scope: list[str]
     blocked_reasons: list[str]
     policy_blockers: list[str]
     forbidden_actions: list[str]
     rate_limit_profile: SocialProviderRateLimitProfile
-    provider_call_allowed: bool
+    provider_call_allowed: Literal[False] = False
     provider_call_attempted: bool = False
     dry_run: bool
     checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -124,12 +127,15 @@ class SocialProviderGateRequest(BaseModel):
 
 
 class SocialProviderGateResponse(BaseModel):
-    schema_version: str = "social_provider_gate.v1"
+    schema_version: Literal["social_provider_gate.v2"] = "social_provider_gate.v2"
     platform: str
     provider_id: str
-    provider_call_allowed: bool
+    provider_call_allowed: Literal[False] = False
     provider_call_attempted: bool
     readiness: bool
+    declared_readiness: bool
+    readiness_basis: Literal["caller_declared"] = "caller_declared"
+    execution_enabled: Literal[False] = False
     blocked_reasons: list[str]
     policy_blockers: list[str]
     forbidden_actions: list[str]

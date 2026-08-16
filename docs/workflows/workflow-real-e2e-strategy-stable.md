@@ -5,7 +5,7 @@ module: qa
 topic: real-api-e2e
 status: stable
 created: 2026-06-14
-updated: 2026-06-14
+updated: 2026-07-17
 owner: self
 source: human+ai
 ---
@@ -22,7 +22,19 @@ source: human+ai
 4. 页面没有移动端横向溢出。
 5. 测试产生的数据与演示账号隔离。
 
-## 当前执行方式
+## 当前执行边界（2026-07-14）
+
+通用 GitHub Actions `web-real-e2e` job 已移除，`workflow_dispatch` 也不再接收 `base_url`。原因是原 job 会创建持久对象，却没有可强制执行的 `always()` cleanup、精确 ID 账本和 recount 控制面。当前仓库没有可声明为 V2 release gate 的 generic real-API CI 路径。
+
+`apps/web test:e2e:real` 暂时只保留为 Owner-run 工具。任何执行都需要新的精确授权包；本文不是生产执行授权，Route A 也没有运行真实 API E2E。
+
+2026-07-17 新增的 WorkflowRun materialization 仍是 server-registered offline
+fixture 路径，Web 没有写控件。其 `976 passed / 72 skipped / 6 warnings` API full 和 26-page
+mock build 不能作为 real API/Provider 证据。Revision 034 PostgreSQL gate 已在唯一
+授权的 disposable target 通过 `13/13`；未来真实验收仍须为 live Provider adapter、目标 Project/Dataset、请求预算、
+RawRecord retention、cleanup/recount 和禁止触碰其他数据库取得单独授权。
+
+## Owner-run 命令模板
 
 本地命令：
 
@@ -34,14 +46,7 @@ SCRAPY_DEMO_PASSWORD="$E2E_PASSWORD" \
 pnpm -C apps/web exec playwright test
 ```
 
-CI 当前提供手动入口：
-
-```bash
-gh workflow run CI \
-  -f base_url=https://scrapy.lute-tlz-dddd.top
-```
-
-GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
+必须显式设置 `PLAYWRIGHT_BASE_URL`；package script 的历史默认 URL 不能替代授权。执行前还必须冻结命名测试范围、一次性身份、创建 ID 记录、预算、保留与清理方式。
 
 ## 测试账号策略
 
@@ -55,7 +60,7 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 4. 使用注册返回 cookie 调用 `/api/projects` 创建 `osint` 项目。
 5. 把一次性 email/password 传给 Playwright。
 
-这样可以隔离测试产生的 source、task、report、notification，避免污染演示账号最新情报排序。GitHub Actions 的 `web-real-e2e` job 已按此策略执行。
+这样可以把测试对象与 demo 账号分开，但“隔离账号”本身不等于“可回收”。执行方仍须记录本轮创建的所有 ID，并在成功、失败或取消后执行 cleanup 与 recount。
 
 ## 覆盖范围
 
@@ -72,11 +77,11 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 | `/notifications` | 偏好保存、批量标记已读 |
 | 移动端 | `/reports`、`/alerts`、`/notifications`、`/tasks`、`/sources` 无横向溢出 |
 
-## 夜间策略
+## 未来夜间策略（GOAL-V2-07）
 
 夜间执行建议：
 
-1. 在 GitHub Actions 增加 `schedule`，频率不高于每日一次。
+1. 先设计独立、命名、定向的 real-API workflow，再考虑 `schedule`，频率不高于每日一次。
 2. 使用动态注册策略创建 `e2e-` 一次性用户。
 3. 夜间只跑真实 API E2E，不执行部署。
 4. 失败时保留 Playwright trace。
@@ -88,7 +93,7 @@ GitHub Actions job：`web-real-e2e`，触发条件为 `workflow_dispatch`。
 2. 当前还没有自动清理 job。
 3. 生产环境不是专用 staging 环境。
 
-启用夜间任务前必须完成测试数据清理策略。
+启用夜间任务前必须完成可强制执行的测试数据清理策略；当前未启用。
 
 ## 测试数据清理策略
 
@@ -117,19 +122,20 @@ SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh --execute
 SCRAPY_CLEANUP_USE_DOCKER=1 bash scripts/cleanup-e2e-fixtures.sh --older-than-hours 0 --execute
 ```
 
-## 通过标准
+## 未来 V2 通过标准
 
-一次生产真实 API E2E 合格必须同时满足：
+一次被授权的定向生产真实 API E2E 合格必须同时满足：
 
-1. `/api/health` 返回 200。
-2. API 容器、web 容器、edge 容器、db 容器均 healthy。
-3. Playwright 主流程 `17 passed, 5 skipped`。
-4. skipped 项必须是 desktop 下 mobile-only layout guard。
-5. 失败 trace 不为空，便于定位。
+1. 授权包明确目标环境、命名测试、预算、数据保留和回滚负责人。
+2. `/api/health` 与目标容器健康检查通过。
+3. 定向 Playwright 测试全部通过；skip 必须逐项解释，不能沿用历史固定计数。
+4. 创建 ID 账本完整，`always()` cleanup 或等价失败闭环执行。
+5. cleanup 后 recount 为零；保留项必须有独立批准和 TTL。
+6. trace、测试结果、cleanup 与 recount 产物均被保留。
 
 ## 最近验收记录
 
-2026-06-14 已完成：
+历史记录（不代表当前 V2 gate）：2026-06-14 已完成：
 
 1. 本地完整 gate：API `45 passed`，Playwright `17 passed, 5 skipped`。
 2. 生产真实 API E2E：Playwright `17 passed, 5 skipped`。

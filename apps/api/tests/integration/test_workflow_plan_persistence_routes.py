@@ -26,6 +26,11 @@ from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.schemas.workflow_plan_persistence import (
     MonitoringScopeListResponse,
     MonitoringScopeResponse,
+    MonitoringScopeTemplateCopyRequest,
+    MonitoringScopeTemplateCopyResponse,
+    MonitoringScopeTemplateResponse,
+    WorkflowPlanCloneRequest,
+    WorkflowPlanCloneResponse,
     WorkflowPlanCompareChange,
     WorkflowPlanCompareSection,
     WorkflowPlanCreateRequest,
@@ -34,6 +39,8 @@ from data_intelligence_hub.schemas.workflow_plan_persistence import (
     WorkflowPlanResponse,
     WorkflowPlanSaveOutcome,
     WorkflowPlanSaveResponse,
+    WorkflowPlanTransitionRequest,
+    WorkflowPlanTransitionResponse,
     WorkflowPlanVersionCompareResponse,
     WorkflowVersionCreateRequest,
     WorkflowVersionDetailResponse,
@@ -52,11 +59,13 @@ from data_intelligence_hub.services.exceptions import (
     ProjectNotFoundError,
     WorkflowPlanFlowModeConflictError,
     WorkflowPlanIdempotencyConflictError,
+    WorkflowPlanInvalidTransitionError,
     WorkflowPlannerDependencyUnavailableError,
     WorkflowPlannerInputError,
     WorkflowPlannerTopologyError,
     WorkflowPlanNotFoundError,
     WorkflowPlanPreviewStaleError,
+    WorkflowPlanStatusConflictError,
     WorkflowPlanVersionConflictError,
 )
 from data_intelligence_hub.services.workflow_planner.planner import (
@@ -278,6 +287,99 @@ def _save_response(
     )
 
 
+def _clone_response(
+    context: RouteContext,
+    *,
+    replay: bool,
+    request_id: str,
+) -> WorkflowPlanCloneResponse:
+    target_plan_id = uuid.uuid4()
+    target_version_id = uuid.uuid4()
+    plan = _plan_response(context, current_version_number=1).model_copy(
+        update={
+            "id": target_plan_id,
+            "current_version_id": target_version_id,
+            "source_plan_id": context.plan_id,
+            "source_version_id": context.base_version_id,
+        }
+    )
+    version = _version_response(
+        context,
+        request_id=request_id,
+        version_number=1,
+    ).model_copy(
+        update={
+            "id": target_version_id,
+            "workflow_plan_id": target_plan_id,
+        }
+    )
+    return WorkflowPlanCloneResponse(
+        database_write=not replay,
+        plan_changed=not replay,
+        outcome="created",
+        idempotent_replay=replay,
+        source_plan_id=context.plan_id,
+        source_version_id=context.base_version_id,
+        plan=plan,
+        version=version,
+    )
+
+
+def _scope_template_copy_response(
+    context: RouteContext,
+    *,
+    replay: bool,
+) -> MonitoringScopeTemplateCopyResponse:
+    source = _scope_response(context)
+    template = MonitoringScopeTemplateResponse(
+        id=uuid.uuid4(),
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        created_by_user_id=context.user_id,
+        source_scope_id=source.id,
+        source_plan_id=context.plan_id,
+        source_version_id=context.base_version_id,
+        scope_key=source.scope_key,
+        scope_type=source.scope_type,
+        canonical_term=source.canonical_term,
+        aliases=source.aliases,
+        include_terms=source.include_terms,
+        exclude_terms=source.exclude_terms,
+        official_accounts=source.official_accounts,
+        seed_urls=source.seed_urls,
+        effective_languages=source.effective_languages,
+        effective_regions=source.effective_regions,
+        effective_platforms=source.effective_platforms,
+        match_mode=source.match_mode,
+        created_at=NOW,
+    )
+    return MonitoringScopeTemplateCopyResponse(
+        database_write=not replay,
+        idempotent_replay=replay,
+        template=template,
+    )
+
+
+def _transition_response(
+    context: RouteContext,
+    *,
+    from_status: str,
+    to_status: str,
+    database_write: bool,
+) -> WorkflowPlanTransitionResponse:
+    plan = _plan_response(context, current_version_number=1).model_copy(
+        update={"status": to_status}
+    )
+    return WorkflowPlanTransitionResponse(
+        database_write=database_write,
+        plan_changed=database_write,
+        from_status=from_status,
+        to_status=to_status,
+        reason="reviewed",
+        plan=plan,
+    )
+
+
 def _scope_response(context: RouteContext) -> MonitoringScopeResponse:
     scope = _preview(context.project_id, "scope-fixture").normalized_input.scopes[0]
     return MonitoringScopeResponse(
@@ -374,6 +476,10 @@ def _assert_boundary_false(payload: dict[str, object]) -> None:
 def test_registers_exact_two_write_and_six_read_persistence_contracts() -> None:
     expected = {
         ("POST", "/api/projects/{project_id}/workflow-plans"),
+        (
+            "POST",
+            "/api/projects/{project_id}/workflow-plans/{plan_id}/status-transition",
+        ),
         ("POST", "/api/projects/{project_id}/workflow-plans/{plan_id}/versions"),
         ("GET", "/api/projects/{project_id}/workflow-plans"),
         ("GET", "/api/projects/{project_id}/workflow-plans/{plan_id}"),
@@ -397,6 +503,28 @@ def test_registers_exact_two_write_and_six_read_persistence_contracts() -> None:
         if "/workflow-plans" in path
         and (method in {"PATCH", "DELETE"} or path.endswith(("/activate", "/run", "/archive")))
     }
+
+
+def test_registers_template_revision_and_instantiation_contracts() -> None:
+    expected = {
+        ("POST", "/api/projects/{project_id}/workflow-templates"),
+        ("GET", "/api/projects/{project_id}/workflow-templates"),
+        ("GET", "/api/projects/{project_id}/workflow-templates/{template_id}"),
+        ("PATCH", "/api/projects/{project_id}/workflow-templates/{template_id}"),
+        (
+            "POST",
+            "/api/projects/{project_id}/workflow-templates/{template_id}/revisions",
+        ),
+        (
+            "GET",
+            "/api/projects/{project_id}/workflow-templates/{template_id}/revisions",
+        ),
+        (
+            "POST",
+            "/api/projects/{project_id}/workflow-templates/{template_id}/instantiate",
+        ),
+    }
+    assert expected <= _workflow_route_contracts()
 
 
 @pytest.mark.asyncio
@@ -518,6 +646,177 @@ async def test_write_routes_preserve_created_no_op_and_replay_status(
         assert kwargs["created_by_user_id"] == route_context.user_id
         assert kwargs["project_id"] == route_context.project_id
         assert kwargs["request_id"] == response.headers["X-Request-ID"]
+
+
+@pytest.mark.asyncio
+async def test_clone_and_scope_template_copy_routes_preserve_source_and_replay_boundaries(
+    route_context: RouteContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clone_calls: list[ServiceCall] = []
+    scope_copy_calls: list[ServiceCall] = []
+    clone_attempt = 0
+    scope_attempt = 0
+
+    async def clone_service(*args: object, **kwargs: object) -> object:
+        nonlocal clone_attempt
+        clone_calls.append((args, kwargs))
+        clone_attempt += 1
+        return _clone_response(
+            route_context,
+            replay=clone_attempt > 1,
+            request_id=cast(str, kwargs["request_id"]),
+        )
+
+    async def scope_copy_service(*args: object, **kwargs: object) -> object:
+        nonlocal scope_attempt
+        scope_copy_calls.append((args, kwargs))
+        scope_attempt += 1
+        return _scope_template_copy_response(
+            route_context,
+            replay=scope_attempt > 1,
+        )
+
+    monkeypatch.setattr(workflow_plan_routes, "clone_workflow_plan", clone_service)
+    monkeypatch.setattr(
+        workflow_plan_routes,
+        "copy_monitoring_scope_template",
+        scope_copy_service,
+    )
+
+    base_path = f"/api/projects/{route_context.project_id}"
+    clone_path = f"{base_path}/workflow-plans/{route_context.plan_id}/clone"
+    copy_path = f"{base_path}/monitoring-scopes/{uuid.uuid4()}/copy"
+    clone_body = {
+        "name": "Copied plan",
+        "source_version_id": str(route_context.base_version_id),
+    }
+    copy_body = {"source_version_id": str(route_context.base_version_id)}
+    responses = [
+        await route_context.client.post(
+            clone_path,
+            headers={"Idempotency-Key": "clone-route-key-0001"},
+            json=clone_body,
+        ),
+        await route_context.client.post(
+            clone_path,
+            headers={"Idempotency-Key": "clone-route-key-0001"},
+            json=clone_body,
+        ),
+        await route_context.client.post(
+            copy_path,
+            headers={"Idempotency-Key": "scope-copy-route-key-0001"},
+            json=copy_body,
+        ),
+        await route_context.client.post(
+            copy_path,
+            headers={"Idempotency-Key": "scope-copy-route-key-0001"},
+            json=copy_body,
+        ),
+    ]
+
+    assert [response.status_code for response in responses] == [201, 200, 201, 200]
+    assert responses[0].json()["source_plan_id"] == str(route_context.plan_id)
+    assert responses[0].json()["source_version_id"] == str(route_context.base_version_id)
+    assert responses[1].json()["idempotent_replay"] is True
+    assert responses[1].json()["database_write"] is False
+    assert responses[2].json()["template"]["source_version_id"] == str(
+        route_context.base_version_id
+    )
+    assert responses[3].json()["idempotent_replay"] is True
+    assert responses[3].json()["database_write"] is False
+    for response in responses:
+        assert response.headers["X-Request-ID"]
+        _assert_boundary_false(cast(dict[str, object], response.json()))
+
+    assert len(clone_calls) == 2
+    assert len(scope_copy_calls) == 2
+    assert isinstance(clone_calls[0][1]["payload"], WorkflowPlanCloneRequest)
+    assert clone_calls[0][1]["workflow_plan_id"] == route_context.plan_id
+    assert isinstance(
+        scope_copy_calls[0][1]["payload"],
+        MonitoringScopeTemplateCopyRequest,
+    )
+
+
+@pytest.mark.asyncio
+async def test_status_transition_route_preserves_expected_status_and_boundary(
+    route_context: RouteContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[ServiceCall] = []
+
+    async def transition_service(*args: object, **kwargs: object) -> object:
+        calls.append((args, kwargs))
+        payload = cast(WorkflowPlanTransitionRequest, kwargs["payload"])
+        return _transition_response(
+            route_context,
+            from_status=payload.expected_status,
+            to_status=payload.to_status,
+            database_write=payload.to_status != payload.expected_status,
+        )
+
+    monkeypatch.setattr(
+        workflow_plan_routes,
+        "transition_workflow_plan_status",
+        transition_service,
+    )
+    path = (
+        f"/api/projects/{route_context.project_id}/workflow-plans/"
+        f"{route_context.plan_id}/status-transition"
+    )
+    response = await route_context.client.post(
+        path,
+        json={
+            "expected_status": "previewed",
+            "to_status": "approved",
+            "reason": " reviewed ",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"]
+    payload = cast(dict[str, object], response.json())
+    assert payload["from_status"] == "previewed"
+    assert payload["to_status"] == "approved"
+    assert payload["database_write"] is True
+    assert payload["plan_changed"] is True
+    _assert_boundary_false(payload)
+    assert len(calls) == 1
+    assert calls[0][1]["workflow_plan_id"] == route_context.plan_id
+    assert isinstance(calls[0][1]["payload"], WorkflowPlanTransitionRequest)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("error", "expected_status"),
+    [
+        (WorkflowPlanStatusConflictError, 409),
+        (WorkflowPlanInvalidTransitionError, 409),
+        (WorkflowPlanNotFoundError, 404),
+    ],
+)
+async def test_status_transition_route_maps_lifecycle_errors(
+    route_context: RouteContext,
+    monkeypatch: pytest.MonkeyPatch,
+    error: type[Exception],
+    expected_status: int,
+) -> None:
+    _install_failing_service(
+        monkeypatch,
+        "transition_workflow_plan_status",
+        error,
+    )
+    path = (
+        f"/api/projects/{route_context.project_id}/workflow-plans/"
+        f"{route_context.plan_id}/status-transition"
+    )
+    response = await route_context.client.post(
+        path,
+        json={"expected_status": "previewed", "to_status": "approved"},
+    )
+    assert response.status_code == expected_status
+    assert response.headers["X-Request-ID"]
 
 
 @pytest.mark.asyncio

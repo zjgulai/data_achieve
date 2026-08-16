@@ -187,10 +187,13 @@ export type SocialTaskRunApprovalTemplateRequestDto = {
 };
 
 export type SocialProviderReadinessResponseDto = {
-  schema_version: "social_provider_readiness.v1";
+  schema_version: "social_provider_readiness.v2";
   platform: string;
   provider_id: string;
   readiness: boolean;
+  declared_readiness: boolean;
+  readiness_basis: "caller_declared";
+  execution_enabled: false;
   missing_credentials: string[];
   missing_scope: string[];
   blocked_reasons: string[];
@@ -350,10 +353,13 @@ export type SocialProviderSdkSelection = {
 };
 
 export type SocialProviderReadiness = {
-  schemaVersion: "social_provider_readiness.v1";
+  schemaVersion: "social_provider_readiness.v2";
   platform: string;
   providerId: string;
   ready: boolean;
+  declaredReadiness: boolean;
+  readinessBasis: "caller_declared";
+  executionEnabled: false;
   missingCredentials: string[];
   missingScope: string[];
   blockedReasons: string[];

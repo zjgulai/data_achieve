@@ -454,9 +454,7 @@ class AutomationCapabilityProbeBackendCandidateResponse(BaseModel):
 
 
 class AutomationAgentReachChannelProbeResponse(BaseModel):
-    schema_version: Literal["agent_reach_channel_probe.v1"] = (
-        "agent_reach_channel_probe.v1"
-    )
+    schema_version: Literal["agent_reach_channel_probe.v1"] = "agent_reach_channel_probe.v1"
     installed: bool
     command_path: str | None
     doctor_status: Literal[
@@ -479,9 +477,7 @@ class AutomationAgentReachChannelProbeResponse(BaseModel):
 
 
 class AutomationEvidenceAssetReferenceResponse(BaseModel):
-    schema_version: Literal["evidence_asset_reference.v1"] = (
-        "evidence_asset_reference.v1"
-    )
+    schema_version: Literal["evidence_asset_reference.v1"] = "evidence_asset_reference.v1"
     asset_id: str
     asset_type: Literal[
         "capability_probe",
@@ -557,9 +553,7 @@ class AutomationCapabilityProbeListResponse(BaseModel):
     total: int
     run_started: bool
     collection_resources_written: bool
-    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
-        default_factory=list
-    )
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(default_factory=list)
 
 
 class AutomationExtractionPlanCreateRequest(BaseModel):
@@ -596,9 +590,7 @@ class AutomationBrowserFieldContractRequest(BaseModel):
 
 
 class AutomationBrowserDiagnosticEvidenceRequest(BaseModel):
-    schema_version: Literal["browser_structure_diagnostic.v1"] = (
-        "browser_structure_diagnostic.v1"
-    )
+    schema_version: Literal["browser_structure_diagnostic.v1"] = "browser_structure_diagnostic.v1"
     final_url: str = Field(min_length=1, max_length=5000)
     recommended_path: str = Field(min_length=1, max_length=80)
     confidence: float = Field(default=0, ge=0, le=100)
@@ -652,9 +644,7 @@ class AutomationBrowserDiagnosticRunListResponse(BaseModel):
     items: list[AutomationBrowserDiagnosticRunResponse]
     total: int
     run_started: bool = False
-    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
-        default_factory=list
-    )
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(default_factory=list)
 
 
 class AutomationBrowserExecutableSpecDryRunRequest(BaseModel):
@@ -797,9 +787,7 @@ class AutomationBrowserDiagnosticJobListResponse(BaseModel):
     items: list[AutomationBrowserDiagnosticJobResponse]
     total: int
     run_started: bool = False
-    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
-        default_factory=list
-    )
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(default_factory=list)
 
 
 class AutomationBrowserExecutorContractRequest(BaseModel):
@@ -926,9 +914,7 @@ class AutomationBrowserLocalRunnerResultListResponse(BaseModel):
     browser_started: bool = False
     files_written: bool = False
     collection_resources_written: bool = False
-    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(
-        default_factory=list
-    )
+    evidence_assets: list[AutomationEvidenceAssetReferenceResponse] = Field(default_factory=list)
 
 
 class AutomationBrowserPromotionPreviewRequest(BaseModel):
@@ -949,9 +935,7 @@ class AutomationBrowserPromotionTaskDraftResponse(BaseModel):
 
 
 class AutomationBrowserPromotionPreviewResponse(BaseModel):
-    schema_version: Literal["browser_promotion_preview.v1"] = (
-        "browser_promotion_preview.v1"
-    )
+    schema_version: Literal["browser_promotion_preview.v1"] = "browser_promotion_preview.v1"
     diagnostic_job_run_id: uuid.UUID
     diagnostic_job_id: uuid.UUID
     project_id: uuid.UUID
@@ -1028,9 +1012,7 @@ class AutomationBrowserPromotionExecutionRequest(BaseModel):
 
 
 class AutomationBrowserPromotionExecutionResponse(BaseModel):
-    schema_version: Literal["browser_promotion_execution.v1"] = (
-        "browser_promotion_execution.v1"
-    )
+    schema_version: Literal["browser_promotion_execution.v1"] = "browser_promotion_execution.v1"
     diagnostic_job_run_id: uuid.UUID
     diagnostic_job_id: uuid.UUID
     project_id: uuid.UUID
@@ -1354,6 +1336,10 @@ class AutomationDatasetVersionResponse(BaseModel):
     cleaning_plan_id: uuid.UUID | None = None
     version_number: int
     source_task_run_ids: list[str]
+    source_workflow_run_id: uuid.UUID | None = None
+    source_workflow_step_run_ids: list[str] | None = None
+    source_raw_record_ids: list[str] | None = None
+    lineage_contract_version: str | None = None
     selected_fields: list[str]
     cleaning_script: list[str]
     row_count: int

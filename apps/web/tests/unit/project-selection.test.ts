@@ -14,7 +14,9 @@ import { listProjects } from "@/lib/api/projects";
 import {
   projectFilterStatusMessage,
   isProjectFilterApplied,
+  projectSelectionRelativeUrl,
   projectSelectionEventName,
+  readProjectIdFromSearch,
   resolveRouteScopedProjectId,
   resolveAppliedProjectId,
   selectedProjectStorageKey,
@@ -65,7 +67,7 @@ describe("shared project selection", () => {
     ).toBe(true);
     expect(
       isProjectFilterApplied({
-        pathname: "/dashboard",
+        pathname: "/datasets",
         selectedProjectId: "project-a",
         appliedProjectId: "project-a",
       }),
@@ -92,6 +94,54 @@ describe("shared project selection", () => {
         appliedProjectId: "project-a",
       }),
     ).toBe(true);
+    expect(
+      isProjectFilterApplied({
+        pathname: "/dashboard",
+        selectedProjectId: "project-a",
+        appliedProjectId: "project-a",
+      }),
+    ).toBe(true);
+    expect(
+      isProjectFilterApplied({
+        pathname: "/domain/social",
+        selectedProjectId: "project-a",
+        appliedProjectId: "project-a",
+      }),
+    ).toBe(true);
+    expect(
+      isProjectFilterApplied({
+        pathname: "/intelligence",
+        selectedProjectId: "project-a",
+        appliedProjectId: "project-a",
+      }),
+    ).toBe(true);
+    expect(
+      isProjectFilterApplied({
+        pathname: "/intelligence/intel-a",
+        selectedProjectId: "project-a",
+        appliedProjectId: "project-a",
+      }),
+    ).toBe(true);
+  });
+
+  it("round-trips project context through a shareable URL without dropping other state", () => {
+    expect(readProjectIdFromSearch("?mode=batch_research&project_id=project-a"))
+      .toBe("project-a");
+    expect(readProjectIdFromSearch("?project_id=")).toBeNull();
+    expect(
+      projectSelectionRelativeUrl(
+        "https://hub.example/automation/planner?mode=batch_research#preview",
+        "project a",
+      ),
+    ).toBe(
+      "/automation/planner?mode=batch_research&project_id=project+a#preview",
+    );
+    expect(
+      projectSelectionRelativeUrl(
+        "https://hub.example/automation/planner?mode=batch_research&project_id=project-a#preview",
+        null,
+      ),
+    ).toBe("/automation/planner?mode=batch_research#preview");
   });
 
   it("describes dynamic Plan detail as URL Project-scoped without applying the global preference", () => {
@@ -253,11 +303,51 @@ describe("shared project selection", () => {
     expect(synchronizedValue?.selectedProjectId).toBe(projectId);
     expect(synchronizedValue?.preferenceError).toBeNull();
   });
+
+  it("prefers a validated URL project over a different stored preference", async () => {
+    const projects = [
+      { id: "project-a", status: "active" },
+      { id: "project-b", status: "active" },
+    ] as Project[];
+    window.localStorage.setItem(selectedProjectStorageKey, "project-b");
+    window.history.replaceState(null, "", "/automation/planner?project_id=project-a");
+    listProjectsMock.mockResolvedValueOnce(projects);
+    const values: ProjectSelectionContextValue[] = [];
+    const onValue = (value: ProjectSelectionContextValue) => {
+      values.push(value);
+    };
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(
+          ProjectSelectionProvider,
+          null,
+          createElement(ProjectSelectionProbe, { onValue }),
+        ),
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(values.at(-1)?.selectedProjectId).toBe("project-a");
+    expect(window.localStorage.getItem(selectedProjectStorageKey)).toBe(
+      "project-a",
+    );
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
 });
 
 afterEach(() => {
   listProjectsMock.mockReset();
   window.localStorage.clear();
+  window.history.replaceState(null, "", "/");
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });

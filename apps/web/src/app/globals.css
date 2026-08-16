@@ -1,17 +1,19 @@
+@import "../../../../opendesign/design-systems/data-intelligence-product/tokens/colors_and_type.css";
 @import "tailwindcss";
 
 :root {
-  --background: #f7f0eb;
-  --foreground: #231a1a;
-  --muted: #86868b;
-  --border: #e9e5e2;
-  --panel: #ffffff;
-  --panel-strong: #fbf8f5;
-  --accent: #c25b6e;
-  --accent-foreground: #ffffff;
-  --warning: #ff9800;
-  --risk: #ff3b30;
-  --info: #6e5cf6;
+  /* Compatibility aliases for existing modules during the staged migration. */
+  --background: var(--surface-canvas);
+  --foreground: var(--text-primary);
+  --muted: var(--text-tertiary);
+  --border: var(--border-subtle);
+  --panel: var(--surface-primary);
+  --panel-strong: var(--surface-secondary);
+  --accent: var(--action-primary);
+  --accent-foreground: var(--text-inverse);
+  --warning: var(--state-warning);
+  --risk: var(--state-danger);
+  --info: var(--state-info);
 }
 
 * {
@@ -27,10 +29,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font: var(--body);
 }
 
 a {
@@ -41,4 +40,14 @@ a {
 button,
 input {
   font: inherit;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: var(--accent-1-soft);
+  color: var(--text-primary);
 }

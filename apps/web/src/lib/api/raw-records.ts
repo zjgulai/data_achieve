@@ -6,8 +6,11 @@ type RawRecordResponse = {
   id: string;
   workspace_id: string;
   project_id: string;
-  source_id: string;
-  task_run_id: string;
+  source_id: string | null;
+  task_run_id: string | null;
+  workflow_run_id: string | null;
+  workflow_step_run_id: string | null;
+  workflow_lineage_contract_version: string | null;
   record_type: string;
   source_url: string | null;
   content: Record<string, unknown> | unknown[];
@@ -34,13 +37,16 @@ export async function getRawRecord(rawRecordId: string): Promise<RawRecord> {
   return mapRawRecord(response);
 }
 
-function mapRawRecord(response: RawRecordResponse): RawRecord {
+export function mapRawRecord(response: RawRecordResponse): RawRecord {
   return {
     id: response.id,
     workspaceId: response.workspace_id,
     projectId: response.project_id,
     sourceId: response.source_id,
     taskRunId: response.task_run_id,
+    workflowRunId: response.workflow_run_id,
+    workflowStepRunId: response.workflow_step_run_id,
+    workflowLineageContractVersion: response.workflow_lineage_contract_version,
     recordType: response.record_type,
     sourceUrl: response.source_url,
     content: response.content,

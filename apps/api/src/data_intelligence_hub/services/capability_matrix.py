@@ -5,6 +5,7 @@ from collections import Counter
 from data_intelligence_hub.schemas.capability_catalog import (
     AccessChannel,
     CapabilityAssertion,
+    CapabilityCatalog,
     CapabilityImplementation,
     CapabilityOperation,
     CapabilityStatus,
@@ -42,8 +43,11 @@ def _summary_status(
     return CapabilityStatus.UNKNOWN
 
 
-def build_capability_matrix() -> CapabilityMatrixResponse:
-    catalog = get_capability_catalog()
+def build_capability_matrix(
+    *,
+    catalog: CapabilityCatalog | None = None,
+) -> CapabilityMatrixResponse:
+    catalog = catalog or get_capability_catalog()
     cells: list[CapabilityMatrixCell] = []
 
     for platform in PlatformId:
@@ -55,23 +59,18 @@ def build_capability_matrix() -> CapabilityMatrixResponse:
                 and implementation.access_channel is access_channel
             ]
             implementation_ids = {
-                implementation.implementation_id
-                for implementation in implementations
+                implementation.implementation_id for implementation in implementations
             }
             assertions = [
                 assertion
                 for assertion in catalog.assertions
                 if assertion.implementation_id in implementation_ids
             ]
-            status_counts = Counter(
-                assertion.support_status for assertion in assertions
-            )
+            status_counts = Counter(assertion.support_status for assertion in assertions)
             if not assertions:
                 status_counts[CapabilityStatus.UNKNOWN] = 1
             evidence_refs = {
-                evidence_ref
-                for assertion in assertions
-                for evidence_ref in assertion.evidence_refs
+                evidence_ref for assertion in assertions for evidence_ref in assertion.evidence_refs
             }
             cells.append(
                 CapabilityMatrixCell(
@@ -80,9 +79,7 @@ def build_capability_matrix() -> CapabilityMatrixResponse:
                     summary_status=_summary_status(status_counts),
                     status_counts=dict(status_counts),
                     implementation_ids=sorted(implementation_ids),
-                    assertion_ids=sorted(
-                        assertion.assertion_id for assertion in assertions
-                    ),
+                    assertion_ids=sorted(assertion.assertion_id for assertion in assertions),
                     resource_types=sorted(
                         {assertion.resource_type for assertion in assertions},
                         key=lambda resource_type: resource_type.value,
@@ -100,10 +97,7 @@ def build_capability_matrix() -> CapabilityMatrixResponse:
                     ),
                     evidence_count=len(evidence_refs),
                     last_verified_at=max(
-                        (
-                            assertion.last_verified_at
-                            for assertion in assertions
-                        ),
+                        (assertion.last_verified_at for assertion in assertions),
                         default=None,
                     ),
                 )
@@ -134,16 +128,14 @@ def list_capability_implementations(
     *,
     platform: PlatformId | None = None,
     access_channel: AccessChannel | None = None,
+    catalog: CapabilityCatalog | None = None,
 ) -> list[CapabilityImplementation]:
-    catalog = get_capability_catalog()
+    catalog = catalog or get_capability_catalog()
     implementations = [
         implementation
         for implementation in catalog.implementations
         if (platform is None or implementation.platform is platform)
-        and (
-            access_channel is None
-            or implementation.access_channel is access_channel
-        )
+        and (access_channel is None or implementation.access_channel is access_channel)
     ]
     return sorted(
         implementations,
@@ -158,16 +150,14 @@ def list_capability_assertions(
     resource_type: ResourceType | None = None,
     operation: CapabilityOperation | None = None,
     support_status: CapabilityStatus | None = None,
+    catalog: CapabilityCatalog | None = None,
 ) -> list[CapabilityAssertion]:
-    catalog = get_capability_catalog()
+    catalog = catalog or get_capability_catalog()
     implementation_ids = {
         implementation.implementation_id
         for implementation in catalog.implementations
         if (platform is None or implementation.platform is platform)
-        and (
-            access_channel is None
-            or implementation.access_channel is access_channel
-        )
+        and (access_channel is None or implementation.access_channel is access_channel)
     }
     assertions = [
         assertion
@@ -175,24 +165,19 @@ def list_capability_assertions(
         if assertion.implementation_id in implementation_ids
         and (resource_type is None or assertion.resource_type is resource_type)
         and (operation is None or assertion.operation is operation)
-        and (
-            support_status is None
-            or assertion.support_status is support_status
-        )
+        and (support_status is None or assertion.support_status is support_status)
     ]
     return sorted(assertions, key=lambda assertion: assertion.assertion_id)
 
 
 def get_capability_implementation_detail(
     implementation_id: str,
+    *,
+    catalog: CapabilityCatalog | None = None,
 ) -> CapabilityImplementationDetail:
-    catalog = get_capability_catalog()
+    catalog = catalog or get_capability_catalog()
     implementation = next(
-        (
-            item
-            for item in catalog.implementations
-            if item.implementation_id == implementation_id
-        ),
+        (item for item in catalog.implementations if item.implementation_id == implementation_id),
         None,
     )
     if implementation is None:
@@ -207,16 +192,10 @@ def get_capability_implementation_detail(
         key=lambda assertion: assertion.assertion_id,
     )
     evidence_refs = {
-        evidence_ref
-        for assertion in assertions
-        for evidence_ref in assertion.evidence_refs
+        evidence_ref for assertion in assertions for evidence_ref in assertion.evidence_refs
     }
     evidence = sorted(
-        (
-            item
-            for item in catalog.evidence
-            if item.evidence_id in evidence_refs
-        ),
+        (item for item in catalog.evidence if item.evidence_id in evidence_refs),
         key=lambda item: item.evidence_id,
     )
     return CapabilityImplementationDetail(

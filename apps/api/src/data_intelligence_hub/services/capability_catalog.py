@@ -20,19 +20,13 @@ from data_intelligence_hub.services.exceptions import (
     CapabilityCatalogUnknownPlatformError,
 )
 
-CATALOG_PATH = (
-    Path(__file__).resolve().parent
-    / "fixtures"
-    / "capability_catalog_overseas_v2.json"
-)
+CATALOG_PATH = Path(__file__).resolve().parent / "fixtures" / "capability_catalog_overseas_v2.json"
 
 
 @lru_cache(maxsize=1)
 def _load_capability_catalog() -> CapabilityCatalog:
     try:
-        return CapabilityCatalog.model_validate_json(
-            CATALOG_PATH.read_text(encoding="utf-8")
-        )
+        return CapabilityCatalog.model_validate_json(CATALOG_PATH.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, ValidationError) as exc:
         raise CapabilityCatalogLoadError from exc
 
@@ -51,26 +45,18 @@ def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
     except ValueError as exc:
         raise CapabilityCatalogUnknownPlatformError from exc
 
-    implementations = [
-        item for item in catalog.implementations if item.platform == platform_id
-    ]
+    implementations = [item for item in catalog.implementations if item.platform == platform_id]
     if not implementations:
         raise CapabilityCatalogUnknownPlatformError
 
     implementation_ids = {item.implementation_id for item in implementations}
     assertions = [
-        item
-        for item in catalog.assertions
-        if item.implementation_id in implementation_ids
+        item for item in catalog.assertions if item.implementation_id in implementation_ids
     ]
     evidence_refs = {
-        evidence_ref
-        for assertion in assertions
-        for evidence_ref in assertion.evidence_refs
+        evidence_ref for assertion in assertions for evidence_ref in assertion.evidence_refs
     }
-    evidence = [
-        item for item in catalog.evidence if item.evidence_id in evidence_refs
-    ]
+    evidence = [item for item in catalog.evidence if item.evidence_id in evidence_refs]
     return catalog.model_copy(
         update={
             "implementations": implementations,
@@ -80,8 +66,11 @@ def get_capability_catalog(platform: str | None = None) -> CapabilityCatalog:
     )
 
 
-def project_external_provider_catalog_v1() -> SocialProviderCatalogResponse:
-    catalog = get_capability_catalog()
+def project_external_provider_catalog_v1(
+    *,
+    catalog: CapabilityCatalog | None = None,
+) -> SocialProviderCatalogResponse:
+    catalog = catalog or get_capability_catalog()
     providers: list[SocialProviderCatalogItem] = []
     for item in catalog.implementations:
         sdk_selection = None

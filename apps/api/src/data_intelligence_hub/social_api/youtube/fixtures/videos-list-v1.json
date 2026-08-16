@@ -1,0 +1,59 @@
+{
+  "schema_version": "youtube_recorded_videos_response.v1",
+  "snapshot_id": "youtube-videos-list-public-v1",
+  "method": "videos.list",
+  "captured_at": "2026-07-17T00:00:00Z",
+  "evidence_refs": [
+    "official:youtube:videos.list:2026-07-17"
+  ],
+  "response": {
+    "kind": "youtube#videoListResponse",
+    "etag": "fixture-videos-etag-v1",
+    "pageInfo": {
+      "totalResults": 2,
+      "resultsPerPage": 2
+    },
+    "items": [
+      {
+        "kind": "youtube#video",
+        "etag": "fixture-detail-video-a",
+        "id": "yt-video-a",
+        "snippet": {
+          "publishedAt": "2026-07-15T10:30:00Z",
+          "channelId": "yt-channel-a",
+          "title": "Reliable data pipelines",
+          "description": "A public fixture about reliable collection boundaries.",
+          "channelTitle": "Fixture Channel A"
+        },
+        "contentDetails": {
+          "duration": "PT8M5S"
+        },
+        "statistics": {
+          "viewCount": "1200",
+          "likeCount": "84",
+          "commentCount": "12"
+        }
+      },
+      {
+        "kind": "youtube#video",
+        "etag": "fixture-detail-video-b",
+        "id": "yt-video-b",
+        "snippet": {
+          "publishedAt": "2026-07-16T12:00:00Z",
+          "channelId": "yt-channel-b",
+          "title": "Agentic workflow operations",
+          "description": "A public fixture about bounded workflow operations.",
+          "channelTitle": "Fixture Channel B"
+        },
+        "contentDetails": {
+          "duration": "PT4M2S"
+        },
+        "statistics": {
+          "viewCount": "2500",
+          "likeCount": "190",
+          "commentCount": "31"
+        }
+      }
+    ]
+  }
+}

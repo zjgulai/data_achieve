@@ -5,17 +5,32 @@ import {
 } from "@/lib/api/workflow-plans";
 import {
   compareWorkflowPlanVersionsMock,
+  cloneWorkflowPlanMock,
+  copyMonitoringScopeTemplateMock,
+  appendWorkflowTemplateRevisionMock,
+  createWorkflowTemplateMock,
   createWorkflowPlanMock,
   createWorkflowVersionMock,
+  getWorkflowTemplateMock,
   getWorkflowPlanMock,
   getWorkflowVersionMock,
+  instantiateWorkflowPlanFromTemplateMock,
+  listWorkflowTemplateRevisionsMock,
+  listWorkflowTemplatesMock,
   listMonitoringScopesMock,
   listWorkflowPlansMock,
   listWorkflowPlanVersionsMock,
+  updateWorkflowTemplateMetadataMock,
+  transitionWorkflowPlanStatusMock,
 } from "@/lib/workflow-plan-persistence-mock";
 import type {
   ApiRequestOptions,
   MonitoringScope,
+  MonitoringScopeTemplate,
+  MonitoringScopeTemplateCopyInput,
+  MonitoringScopeTemplateCopyResultDto,
+  MonitoringScopeTemplateCopyResult,
+  MonitoringScopeTemplateDto,
   MonitoringScopeDto,
   MonitoringScopeListResult,
   MonitoringScopeListResultDto,
@@ -23,7 +38,11 @@ import type {
   WorkflowExecutionBoundary,
   WorkflowExecutionBoundaryDto,
   WorkflowPlan,
+  WorkflowPlanCloneInput,
+  WorkflowPlanCloneResult,
+  WorkflowPlanCloneResultDto,
   WorkflowPlanCreateInput,
+  WorkflowPlanCloneRequestDto,
   WorkflowPlanCreateRequestDto,
   WorkflowPlanDetail,
   WorkflowPlanDetailDto,
@@ -34,6 +53,10 @@ import type {
   WorkflowPlanReadBoundaryDto,
   WorkflowPlanSaveResult,
   WorkflowPlanSaveResultDto,
+  WorkflowPlanTransitionInput,
+  WorkflowPlanTransitionRequestDto,
+  WorkflowPlanTransitionResult,
+  WorkflowPlanTransitionResultDto,
   WorkflowPlanVersionCompare,
   WorkflowPlanVersionCompareDto,
   WorkflowVersion,
@@ -46,6 +69,26 @@ import type {
   WorkflowVersionListResultDto,
   WorkflowVersionSummary,
   WorkflowVersionSummaryDto,
+  WorkflowTemplate,
+  WorkflowTemplateCreateInput,
+  WorkflowTemplateCreateRequestDto,
+  WorkflowTemplateDetail,
+  WorkflowTemplateDetailDto,
+  WorkflowTemplateDto,
+  WorkflowTemplateInstantiateInput,
+  WorkflowTemplateInstantiateRequestDto,
+  WorkflowTemplateListResult,
+  WorkflowTemplateListResultDto,
+  WorkflowTemplateMetadataUpdateInput,
+  WorkflowTemplateMetadataUpdateRequestDto,
+  WorkflowTemplateMutationResult,
+  WorkflowTemplateMutationResultDto,
+  WorkflowTemplateRevisionCreateInput,
+  WorkflowTemplateRevisionCreateRequestDto,
+  WorkflowTemplateRevisionListResult,
+  WorkflowTemplateRevisionListResultDto,
+  WorkflowTemplateRevision,
+  WorkflowTemplateRevisionDto,
 } from "@/types/workflow-plan-persistence";
 import type { PlanningInput } from "@/types/workflow-planner";
 
@@ -75,6 +118,42 @@ export async function createWorkflowPlan(
   return mapWorkflowPlanSaveResult(response);
 }
 
+export async function cloneWorkflowPlan(
+  projectId: string,
+  planId: string,
+  input: WorkflowPlanCloneInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowPlanCloneResult> {
+  if (mockApiEnabled) {
+    return cloneWorkflowPlanMock(projectId, planId, input);
+  }
+
+  const body: WorkflowPlanCloneRequestDto = {
+    name: input.name,
+    source_version_id: input.sourceVersionId,
+  };
+  const response = await apiFetch<WorkflowPlanCloneResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-plans/${encodeURIComponent(planId)}/clone`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return {
+    ...mapExecutionBoundary(response),
+    databaseWrite: response.database_write,
+    planChanged: response.plan_changed,
+    outcome: response.outcome,
+    idempotentReplay: response.idempotent_replay,
+    sourcePlanId: response.source_plan_id,
+    sourceVersionId: response.source_version_id,
+    plan: mapWorkflowPlan(response.plan),
+    version: mapWorkflowVersion(response.version),
+  };
+}
+
 export async function createWorkflowVersion(
   projectId: string,
   planId: string,
@@ -92,6 +171,212 @@ export async function createWorkflowVersion(
   };
   const response = await apiFetch<WorkflowPlanSaveResultDto>(
     `/api/projects/${encodeURIComponent(projectId)}/workflow-plans/${encodeURIComponent(planId)}/versions`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return mapWorkflowPlanSaveResult(response);
+}
+
+export async function transitionWorkflowPlanStatus(
+  projectId: string,
+  planId: string,
+  input: WorkflowPlanTransitionInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowPlanTransitionResult> {
+  if (mockApiEnabled) {
+    return transitionWorkflowPlanStatusMock(projectId, planId, input);
+  }
+  const body: WorkflowPlanTransitionRequestDto = {
+    expected_status: input.expectedStatus,
+    to_status: input.toStatus,
+    reason: input.reason,
+  };
+  const response = await apiFetch<WorkflowPlanTransitionResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-plans/${encodeURIComponent(planId)}/status-transition`,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return {
+    ...mapExecutionBoundary(response),
+    databaseWrite: response.database_write,
+    planChanged: response.plan_changed,
+    idempotentReplay: response.idempotent_replay,
+    fromStatus: response.from_status,
+    toStatus: response.to_status,
+    reason: response.reason,
+    plan: mapWorkflowPlan(response.plan),
+  };
+}
+
+export async function createWorkflowTemplate(
+  projectId: string,
+  input: WorkflowTemplateCreateInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowTemplateMutationResult> {
+  if (mockApiEnabled) {
+    return createWorkflowTemplateMock(projectId, input);
+  }
+  const body: WorkflowTemplateCreateRequestDto = {
+    name: input.name,
+    template_key: input.templateKey,
+    description: input.description,
+    definition: mapPlanningInputToDto(input.definition),
+  };
+  const response = await apiFetch<WorkflowTemplateMutationResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-templates`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return mapWorkflowTemplateMutationResult(response);
+}
+
+export async function listWorkflowTemplates(
+  projectId: string,
+  options: PaginationOptions = {},
+): Promise<WorkflowTemplateListResult> {
+  if (mockApiEnabled) {
+    return listWorkflowTemplatesMock(projectId, options);
+  }
+  const response = await apiFetch<WorkflowTemplateListResultDto>(
+    withPagination(
+      `/api/projects/${encodeURIComponent(projectId)}/workflow-templates`,
+      options,
+    ),
+    { signal: options.signal },
+  );
+  return {
+    ...mapTemplateReadBoundary(response),
+    projectStatus: response.project_status,
+    items: response.items.map(mapWorkflowTemplate),
+    total: response.total,
+    limit: response.limit,
+    offset: response.offset,
+  };
+}
+
+export async function getWorkflowTemplate(
+  projectId: string,
+  templateId: string,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowTemplateDetail> {
+  if (mockApiEnabled) {
+    return getWorkflowTemplateMock(projectId, templateId);
+  }
+  const response = await apiFetch<WorkflowTemplateDetailDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-templates/${encodeURIComponent(templateId)}`,
+    { signal: options.signal },
+  );
+  return {
+    ...mapTemplateReadBoundary(response),
+    projectStatus: response.project_status,
+    template: mapWorkflowTemplate(response.template),
+    currentRevision: mapWorkflowTemplateRevision(response.current_revision),
+  };
+}
+
+export async function updateWorkflowTemplateMetadata(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateMetadataUpdateInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowTemplateMutationResult> {
+  if (mockApiEnabled) {
+    return updateWorkflowTemplateMetadataMock(projectId, templateId, input);
+  }
+  const body: WorkflowTemplateMetadataUpdateRequestDto = {
+    expected_revision_id: input.expectedRevisionId,
+    name: input.name,
+    description: input.description,
+  };
+  const response = await apiFetch<WorkflowTemplateMutationResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-templates/${encodeURIComponent(templateId)}`,
+    {
+      method: "PATCH",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return mapWorkflowTemplateMutationResult(response);
+}
+
+export async function appendWorkflowTemplateRevision(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateRevisionCreateInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowTemplateMutationResult> {
+  if (mockApiEnabled) {
+    return appendWorkflowTemplateRevisionMock(projectId, templateId, input);
+  }
+  const body: WorkflowTemplateRevisionCreateRequestDto = {
+    expected_revision_id: input.expectedRevisionId,
+    definition: mapPlanningInputToDto(input.definition),
+  };
+  const response = await apiFetch<WorkflowTemplateMutationResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-templates/${encodeURIComponent(templateId)}/revisions`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(body),
+      signal: options.signal,
+    },
+  );
+  return mapWorkflowTemplateMutationResult(response);
+}
+
+export async function listWorkflowTemplateRevisions(
+  projectId: string,
+  templateId: string,
+  options: PaginationOptions = {},
+): Promise<WorkflowTemplateRevisionListResult> {
+  if (mockApiEnabled) {
+    return listWorkflowTemplateRevisionsMock(projectId, templateId, options);
+  }
+  const response = await apiFetch<WorkflowTemplateRevisionListResultDto>(
+    withPagination(
+      `/api/projects/${encodeURIComponent(projectId)}/workflow-templates/${encodeURIComponent(templateId)}/revisions`,
+      options,
+    ),
+    { signal: options.signal },
+  );
+  return {
+    ...mapTemplateReadBoundary(response),
+    projectStatus: response.project_status,
+    template: mapWorkflowTemplate(response.template),
+    items: response.items.map(mapWorkflowTemplateRevision),
+    total: response.total,
+    limit: response.limit,
+    offset: response.offset,
+  };
+}
+
+export async function instantiateWorkflowPlanFromTemplate(
+  projectId: string,
+  templateId: string,
+  input: WorkflowTemplateInstantiateInput,
+  options: ApiRequestOptions = {},
+): Promise<WorkflowPlanSaveResult> {
+  if (mockApiEnabled) {
+    return instantiateWorkflowPlanFromTemplateMock(projectId, templateId, input);
+  }
+  const body: WorkflowTemplateInstantiateRequestDto = {
+    revision_id: input.revisionId,
+    name: input.name,
+  };
+  const response = await apiFetch<WorkflowPlanSaveResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/workflow-templates/${encodeURIComponent(templateId)}/instantiate`,
     {
       method: "POST",
       headers: { "Idempotency-Key": input.idempotencyKey },
@@ -263,6 +548,35 @@ export async function listMonitoringScopes(
   };
 }
 
+export async function copyMonitoringScopeTemplate(
+  projectId: string,
+  scopeId: string,
+  input: MonitoringScopeTemplateCopyInput,
+  options: ApiRequestOptions = {},
+): Promise<MonitoringScopeTemplateCopyResult> {
+  if (mockApiEnabled) {
+    return copyMonitoringScopeTemplateMock(projectId, scopeId, input);
+  }
+
+  const response = await apiFetch<MonitoringScopeTemplateCopyResultDto>(
+    `/api/projects/${encodeURIComponent(projectId)}/monitoring-scopes/${encodeURIComponent(scopeId)}/copy`,
+    {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify({
+        source_version_id: input.sourceVersionId,
+      }),
+      signal: options.signal,
+    },
+  );
+  return {
+    ...mapExecutionBoundary(response),
+    databaseWrite: response.database_write,
+    idempotentReplay: response.idempotent_replay,
+    template: mapMonitoringScopeTemplate(response.template),
+  };
+}
+
 function withPagination(path: string, options: PaginationOptions): string {
   const query = new URLSearchParams();
   if (options.limit !== undefined) {
@@ -298,6 +612,23 @@ function mapReadBoundary(
   };
 }
 
+function mapTemplateReadBoundary(
+  response: WorkflowTemplateListResultDto | WorkflowTemplateDetailDto | WorkflowTemplateRevisionListResultDto,
+): {
+  providerCall: false;
+  actorRun: false;
+  browserRun: false;
+  llmCall: false;
+  workflowRunCreated: false;
+  executionAuthorized: false;
+  databaseWrite: false;
+} {
+  return {
+    ...mapExecutionBoundary(response),
+    databaseWrite: response.database_write,
+  };
+}
+
 function mapWorkflowPlan(response: WorkflowPlanDto): WorkflowPlan {
   return {
     id: response.id,
@@ -308,6 +639,10 @@ function mapWorkflowPlan(response: WorkflowPlanDto): WorkflowPlan {
     flowMode: response.flow_mode,
     status: response.status,
     currentVersionId: response.current_version_id,
+    sourcePlanId: response.source_plan_id,
+    sourceVersionId: response.source_version_id,
+    workflowTemplateId: response.workflow_template_id,
+    workflowTemplateRevisionId: response.workflow_template_revision_id,
     currentVersionNumber: response.current_version_number,
     planningStatus: response.planning_status,
     scopeCount: response.scope_count,
@@ -325,6 +660,8 @@ function mapWorkflowVersionSummary(
     workspaceId: response.workspace_id,
     projectId: response.project_id,
     workflowPlanId: response.workflow_plan_id,
+    workflowTemplateId: response.workflow_template_id,
+    workflowTemplateRevisionId: response.workflow_template_revision_id,
     createdByUserId: response.created_by_user_id,
     versionNumber: response.version_number,
     planningStatus: response.planning_status,
@@ -411,12 +748,97 @@ function mapWorkflowPlanSaveResult(
   };
 }
 
+function mapWorkflowTemplateRevision(
+  response: WorkflowTemplateRevisionDto,
+): WorkflowTemplateRevision {
+  return {
+    ...mapExecutionBoundary(response),
+    id: response.id,
+    workspaceId: response.workspace_id,
+    projectId: response.project_id,
+    workflowTemplateId: response.workflow_template_id,
+    createdByUserId: response.created_by_user_id,
+    revisionNumber: response.revision_number,
+    definition: mapEditablePlanningInput(
+      response.definition as WorkflowVersionDto["editable_input"],
+    ),
+    definitionFingerprint: response.definition_fingerprint,
+    createdAt: response.created_at,
+  };
+}
+
+function mapWorkflowTemplate(response: WorkflowTemplateDto): WorkflowTemplate {
+  return {
+    ...mapExecutionBoundary(response),
+    id: response.id,
+    workspaceId: response.workspace_id,
+    projectId: response.project_id,
+    createdByUserId: response.created_by_user_id,
+    name: response.name,
+    templateKey: response.template_key,
+    description: response.description,
+    status: response.status,
+    currentRevisionId: response.current_revision_id,
+    currentRevision: response.current_revision
+      ? mapWorkflowTemplateRevision(response.current_revision)
+      : null,
+    createdAt: response.created_at,
+    updatedAt: response.updated_at,
+  };
+}
+
+function mapWorkflowTemplateMutationResult(
+  response: WorkflowTemplateMutationResultDto,
+): WorkflowTemplateMutationResult {
+  return {
+    ...mapExecutionBoundary(response),
+    databaseWrite: response.database_write,
+    idempotentReplay: response.idempotent_replay,
+    outcome: response.outcome,
+    template: mapWorkflowTemplate(response.template),
+    revision: response.revision ? mapWorkflowTemplateRevision(response.revision) : null,
+  };
+}
+
 function mapMonitoringScope(response: MonitoringScopeDto): MonitoringScope {
   return {
     id: response.id,
     workspaceId: response.workspace_id,
     projectId: response.project_id,
     createdByUserId: response.created_by_user_id,
+    scopeKey: response.scope_key,
+    scopeType: response.scope_type,
+    canonicalTerm: response.canonical_term,
+    aliases: response.aliases,
+    includeTerms: response.include_terms,
+    excludeTerms: response.exclude_terms,
+    officialAccounts: response.official_accounts,
+    seedUrls: response.seed_urls,
+    effectiveLanguages: response.effective_languages,
+    effectiveRegions: response.effective_regions,
+    effectivePlatforms: response.effective_platforms,
+    matchMode: response.match_mode,
+    createdAt: response.created_at,
+  };
+}
+
+function mapMonitoringScopeTemplate(
+  response: MonitoringScopeTemplateDto,
+): MonitoringScopeTemplate {
+  return {
+    providerCall: response.provider_call,
+    actorRun: response.actor_run,
+    browserRun: response.browser_run,
+    llmCall: response.llm_call,
+    workflowRunCreated: response.workflow_run_created,
+    executionAuthorized: response.execution_authorized,
+    id: response.id,
+    workspaceId: response.workspace_id,
+    projectId: response.project_id,
+    createdByUserId: response.created_by_user_id,
+    sourceScopeId: response.source_scope_id,
+    sourcePlanId: response.source_plan_id,
+    sourceVersionId: response.source_version_id,
     scopeKey: response.scope_key,
     scopeType: response.scope_type,
     canonicalTerm: response.canonical_term,

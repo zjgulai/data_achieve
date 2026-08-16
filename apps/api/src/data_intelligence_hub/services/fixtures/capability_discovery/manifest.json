@@ -1,0 +1,29 @@
+{
+  "fixtures": [
+    {
+      "expected_sha256": "537bc5351ffd49472880fa5e9bcfa5927fd512cadc4bee0a3186699f951ff40d",
+      "fixture_id": "tikhub-youtube-market-v1",
+      "parser_id": "tikhub_public_market.v1",
+      "relative_path": "tikhub-youtube-market-v1.json"
+    },
+    {
+      "expected_sha256": "9302c771424147797290712cb2228300b9350cc271b4d0b7afe4083509ebc8e4",
+      "fixture_id": "apify-reddit-market-v1",
+      "parser_id": "apify_public_market.v1",
+      "relative_path": "apify-reddit-market-v1.json"
+    },
+    {
+      "expected_sha256": "02e3b6d9760becddc64f1cb8145ea21596f0fd0eba76c74cf273b7429d27cabe",
+      "fixture_id": "youtube-data-api-doc-v1",
+      "parser_id": "youtube_official_doc.v1",
+      "relative_path": "youtube-data-api-doc-v1.json"
+    },
+    {
+      "expected_sha256": "71683c5de9cdbabce31cda75c9fd18cb7495113c3caa5c1426504d9011e5edec",
+      "fixture_id": "reddit-data-api-doc-v1",
+      "parser_id": "reddit_official_doc.v1",
+      "relative_path": "reddit-data-api-doc-v1.json"
+    }
+  ],
+  "schema_version": "capability_discovery_fixture_manifest.v1"
+}

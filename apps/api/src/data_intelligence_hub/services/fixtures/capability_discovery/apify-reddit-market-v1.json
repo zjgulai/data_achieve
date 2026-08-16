@@ -1,0 +1,132 @@
+{
+  "fixture_id": "apify-reddit-market-v1",
+  "observed_at": "2026-07-14T08:00:00Z",
+  "parser_id": "apify_public_market.v1",
+  "payload": {
+    "access_channel": "managed_opaque_collector",
+    "claimed_auth_mode": "apify_console_or_api_token",
+    "claimed_limitations": [
+      "public_html_only",
+      "actor_run_required",
+      "pay_per_event_pricing_claim",
+      "deep_collapsed_comment_threads_may_be_incomplete",
+      "market_claims_require_independent_verification"
+    ],
+    "claimed_required_credentials": [
+      "apify_account_or_api_token_for_run"
+    ],
+    "claims": [
+      {
+        "auth_scope": [
+          "apify_account_or_api_token_claimed"
+        ],
+        "claim_ref": "claim:apify:reddit-search",
+        "claimed_constraints": [
+          {
+            "code": "public_reddit_pages_only",
+            "constraint_type": "policy",
+            "details": {
+              "private_subreddits": false
+            },
+            "severity": "blocking"
+          },
+          {
+            "code": "listing_ceiling_claim",
+            "constraint_type": "quota",
+            "details": {
+              "maximum_items_per_listing": 1000
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "post_id",
+            "title",
+            "self_text",
+            "score",
+            "comment_count",
+            "created_at",
+            "permalink"
+          ],
+          "required": [
+            "reddit_url_or_search_query"
+          ]
+        },
+        "operation": "search_discover",
+        "purpose_scope": [
+          "public_discussion_research"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "content"
+      },
+      {
+        "auth_scope": [
+          "apify_account_or_api_token_claimed"
+        ],
+        "claim_ref": "claim:apify:reddit-comments",
+        "claimed_constraints": [
+          {
+            "code": "comment_depth_completeness_claim",
+            "constraint_type": "policy",
+            "details": {
+              "deep_collapsed_threads_fetched": false
+            },
+            "severity": "major"
+          },
+          {
+            "code": "comment_limit_claim",
+            "constraint_type": "quota",
+            "details": {
+              "maximum_comments_per_post": 1000
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "comment_id",
+            "post_id",
+            "body",
+            "score",
+            "created_at",
+            "depth",
+            "parent_id"
+          ],
+          "required": [
+            "public_post_url"
+          ]
+        },
+        "operation": "list_enumerate",
+        "purpose_scope": [
+          "public_comment_research"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "conversation"
+      }
+    ],
+    "delivery_form": "actor",
+    "deployment_mode": "managed_saas",
+    "platform": "reddit",
+    "provider_id": "apify.prodiger-reddit-scraper.v1",
+    "source_summary": [
+      "The public Actor page claims collection of posts, comments, user pages and search results from public Reddit pages.",
+      "The page states that execution produces Dataset output and is subject to paid Actor execution, limits and public-HTML completeness constraints."
+    ],
+    "unmapped_claims": [
+      {
+        "claim_ref": "claim:apify:user-profile",
+        "summary": "User profile collection claims are retained for review but are not mapped by this bounded parser."
+      }
+    ]
+  },
+  "schema_version": "capability_source_snapshot_fixture.v1",
+  "source_kind": "public_market",
+  "source_name": "Apify Reddit Scraper public Actor page",
+  "source_url": "https://apify.com/prodiger/reddit-scraper",
+  "source_version": "published-2026-04-18"
+}

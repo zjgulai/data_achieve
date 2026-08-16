@@ -138,8 +138,11 @@ export function RawRecordsWorkspace() {
       return [
         record.id,
         record.recordType,
-        record.sourceId,
-        record.taskRunId,
+        record.sourceId ?? "",
+        record.taskRunId ?? "",
+        record.workflowRunId ?? "",
+        record.workflowStepRunId ?? "",
+        record.workflowLineageContractVersion ?? "",
         record.sourceUrl ?? "",
         record.contentHash,
         getTrainingSourceId(record.content),
@@ -162,7 +165,15 @@ export function RawRecordsWorkspace() {
   }, [filteredRecords, selectedId]);
 
   const stats = useMemo(() => {
-    const uniqueSources = new Set(rawRecords.map((record) => record.sourceId)).size;
+    const uniqueSources = new Set(
+      rawRecords.map(
+        (record) =>
+          record.sourceId ??
+          record.workflowStepRunId ??
+          record.workflowRunId ??
+          record.id,
+      ),
+    ).size;
     const trainingRecords = rawRecords.filter((record) => isTrainingRawRecord(record)).length;
     const latest = rawRecords
       .map((record) => new Date(record.collectedAt).getTime())
@@ -434,6 +445,18 @@ function RecordDetail({ rawRecord }: { rawRecord: RawRecord }) {
           <WorkbenchDetailRow label="采集时间" value={formatDate(rawRecord.collectedAt)} />
           <WorkbenchDetailRow label="事实字段" value={`${facts.length} fields`} />
           <WorkbenchDetailRow label="内容大小" value={`${contentSize} chars`} />
+          {rawRecord.workflowRunId ? (
+            <WorkbenchDetailRow label="Workflow run" value={rawRecord.workflowRunId} />
+          ) : null}
+          {rawRecord.workflowStepRunId ? (
+            <WorkbenchDetailRow label="Workflow step" value={rawRecord.workflowStepRunId} />
+          ) : null}
+          {rawRecord.workflowLineageContractVersion ? (
+            <WorkbenchDetailRow
+              label="Lineage contract"
+              value={rawRecord.workflowLineageContractVersion}
+            />
+          ) : null}
           {training ? (
             <>
               <WorkbenchDetailRow label="训练源 ID" value={getTrainingSourceId(rawRecord.content)} />
@@ -544,6 +567,12 @@ function getRecordHeadline(record: RawRecord): string {
 function getSourceLabel(record: RawRecord): string {
   if (record.sourceUrl) {
     return record.sourceUrl;
+  }
+  if (record.workflowStepRunId) {
+    return `Workflow step ${record.workflowStepRunId}`;
+  }
+  if (record.workflowRunId) {
+    return `Workflow run ${record.workflowRunId}`;
   }
   const content = asRecord(record.content);
   const payload = asRecord(content.payload);

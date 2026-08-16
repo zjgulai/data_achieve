@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, AsyncIterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -8,9 +9,29 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.routes import social_provider as social_provider_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.capability_governance import CapabilityCatalogHead
+from data_intelligence_hub.schemas.capability_catalog import CapabilityCatalog
+from data_intelligence_hub.schemas.youtube_read_adapter import (
+    YouTubeReadAdapterFoundationResponse,
+    YouTubeReadPlanRequest,
+)
+from data_intelligence_hub.services.capability_catalog import get_capability_catalog
+from data_intelligence_hub.services.social_provider import (
+    get_social_provider_catalog,
+)
+from data_intelligence_hub.services.social_provider import (
+    prepare_youtube_read_plan as prepare_youtube_read_plan_service,
+)
+from data_intelligence_hub.social_api.youtube.fixtures import (
+    YouTubeFixtureContractInvalidError,
+)
+from data_intelligence_hub.social_api.youtube.normalizer import (
+    YouTubeNormalizedPayloadInvalidError,
+)
 
 
 @pytest_asyncio.fixture()
@@ -24,6 +45,15 @@ async def client() -> AsyncIterator[AsyncClient]:
         await connection.run_sync(Base.metadata.create_all)
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with session_factory() as session:
+        session.add(
+            CapabilityCatalogHead(
+                singleton_key="global",
+                current_revision_id=None,
+                head_version=0,
+            )
+        )
+        await session.commit()
 
     async def override_session() -> AsyncGenerator[AsyncSession, None]:
         async with session_factory() as session:
@@ -51,6 +81,27 @@ async def register_and_login(client: AsyncClient) -> None:
     assert register.status_code == 201
 
 
+def test_youtube_read_plan_openapi_preserves_typed_request_body() -> None:
+    operation = app.openapi()["paths"]["/api/automation/social-provider-youtube-read-plan"]["post"]
+    schema = operation["requestBody"]["content"]["application/json"]["schema"]
+    assert schema["$ref"] == "#/components/schemas/YouTubeReadPlanRequest"
+
+
+@pytest.mark.asyncio
+async def test_youtube_read_plan_validation_sanitizer_is_path_scoped(
+    client: AsyncClient,
+) -> None:
+    await register_and_login(client)
+    response = await client.post(
+        "/api/automation/social-provider-readiness",
+        json={"platform": "youtube", "endpoints": []},
+    )
+
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
+    assert response.json()["detail"][0]["loc"] == ["body", "endpoints"]
+
+
 @pytest.mark.asyncio
 async def test_social_provider_routes_require_authentication(client: AsyncClient) -> None:
     response = await client.get("/api/automation/social-provider-catalog")
@@ -65,6 +116,7 @@ async def test_social_provider_catalog_route_returns_platforms(client: AsyncClie
     assert response.status_code == 200
 
     payload = response.json()
+    assert payload == get_social_provider_catalog().model_dump(mode="json")
     assert payload["schema_version"] == "external_provider_catalog.v1"
     assert payload["provider_call"] is False
     assert {item["provider_id"] for item in payload["providers"]} >= {
@@ -75,6 +127,81 @@ async def test_social_provider_catalog_route_returns_platforms(client: AsyncClie
         "threads.graph.v1",
         "tiktok_research",
     }
+
+
+@pytest.mark.asyncio
+async def test_social_catalog_and_readiness_resolve_one_current_catalog_each(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_login(client)
+    youtube = get_capability_catalog(platform="youtube")
+    calls = 0
+
+    async def resolve_once(_session: AsyncSession) -> CapabilityCatalog:
+        nonlocal calls
+        calls += 1
+        return youtube
+
+    monkeypatch.setattr(
+        social_provider_routes,
+        "resolve_current_capability_catalog",
+        resolve_once,
+    )
+    catalog_response = await client.get("/api/automation/social-provider-catalog")
+    readiness_response = await client.post(
+        "/api/automation/social-provider-readiness",
+        json={
+            "platform": "youtube",
+            "endpoints": ["search.list", "videos.list"],
+        },
+    )
+
+    assert catalog_response.status_code == 200
+    assert [item["provider_id"] for item in catalog_response.json()["providers"]] == ["youtube.v3"]
+    assert readiness_response.status_code == 200
+    assert readiness_response.json()["provider_id"] == "youtube.v3"
+    assert calls == 2
+
+
+@pytest.mark.asyncio
+async def test_social_provider_gate_uses_current_catalog(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_login(client)
+    youtube = get_capability_catalog(platform="youtube")
+    implementation = youtube.implementations[0].model_copy(
+        update={"supported_endpoints": ["search.list"]}
+    )
+    current_catalog = youtube.model_copy(update={"implementations": [implementation]})
+    calls = 0
+
+    async def resolve_once(_session: AsyncSession) -> CapabilityCatalog:
+        nonlocal calls
+        calls += 1
+        return current_catalog
+
+    monkeypatch.setattr(
+        social_provider_routes,
+        "resolve_current_capability_catalog",
+        resolve_once,
+    )
+    response = await client.post(
+        "/api/automation/social-provider-gate",
+        json={
+            "authorized": True,
+            "platform": "youtube",
+            "endpoints": ["search.list", "videos.list"],
+            "credentials_ready": {"api_key": True},
+            "approval_id": "current-catalog-gate-001",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["declared_readiness"] is False
+    assert "scope_missing:videos.list" in response.json()["blocked_reasons"]
+    assert calls == 1
 
 
 @pytest.mark.asyncio
@@ -124,6 +251,10 @@ async def test_social_provider_readiness_route_blocks_missing_credentials(
     assert response.status_code == 200
     payload = response.json()
     assert payload["readiness"] is False
+    assert payload["schema_version"] == "social_provider_readiness.v2"
+    assert payload["declared_readiness"] is False
+    assert payload["readiness_basis"] == "caller_declared"
+    assert payload["execution_enabled"] is False
     assert payload["provider_call_allowed"] is False
     assert payload["provider_call_attempted"] is False
     assert payload["missing_credentials"] == ["api_key"]
@@ -161,10 +292,199 @@ async def test_social_provider_gate_route_requires_authorization_and_returns_fix
     )
     assert authorized.status_code == 200
     payload = authorized.json()
-    assert payload["provider_call_allowed"] is True
+    assert payload["schema_version"] == "social_provider_gate.v2"
+    assert payload["declared_readiness"] is True
+    assert payload["readiness_basis"] == "caller_declared"
+    assert payload["execution_enabled"] is False
+    assert payload["provider_call_allowed"] is False
     assert payload["provider_call_attempted"] is False
     assert payload["run_scope"] == "fixture_gate_only"
     assert payload["production_write_allowed"] is False
+
+
+@pytest.mark.asyncio
+async def test_youtube_read_plan_route_is_authenticated_strict_and_fixture_only(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    unauthorized = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={"query": {"query": "agentic workflows"}},
+    )
+    assert unauthorized.status_code == 401
+
+    await register_and_login(client)
+
+    def prepare_at_fixture_time(
+        payload: YouTubeReadPlanRequest,
+        *,
+        catalog: CapabilityCatalog,
+    ) -> YouTubeReadAdapterFoundationResponse:
+        return prepare_youtube_read_plan_service(
+            payload,
+            catalog=catalog,
+            now=datetime(2026, 7, 19, tzinfo=UTC),
+        )
+
+    monkeypatch.setattr(
+        social_provider_routes,
+        "prepare_youtube_read_plan",
+        prepare_at_fixture_time,
+    )
+    response = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={
+            "query": {
+                "query": "agentic workflows",
+                "published_after": "2026-07-01T00:00:00Z",
+                "published_before": "2026-07-17T00:00:00Z",
+                "region_code": "US",
+                "relevance_language": "en",
+                "order": "relevance",
+                "max_items": 50,
+            },
+            "credential_reference": "env:YOUTUBE_API_KEY",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    rendered = response.text
+    assert payload["foundation_ready"] is True
+    assert payload["execution_enabled"] is False
+    assert payload["provider_call_allowed"] is False
+    assert payload["provider_call_attempted"] is False
+    assert payload["credential_read_attempted"] is False
+    assert payload["database_write"] is False
+    assert payload["credential_reference"] is None
+    assert payload["query"] is None
+    assert "agentic workflows" not in rendered
+    assert "env:YOUTUBE_API_KEY" not in rendered
+
+    rejected = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={
+            "query": {"query": "agentic workflows"},
+            "api_key": "must-not-be-accepted",
+        },
+    )
+    assert rejected.status_code == 422
+    assert rejected.json() == {"detail": "youtube_read_plan_request_invalid"}
+    assert "must-not-be-accepted" not in rejected.text
+
+    invalid_reference = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={
+            "query": {"query": "agentic workflows"},
+            "credential_reference": "RAW_SECRET_VALUE",
+        },
+    )
+    assert invalid_reference.status_code == 422
+    assert invalid_reference.json() == {"detail": "youtube_read_plan_request_invalid"}
+    assert "RAW_SECRET_VALUE" not in invalid_reference.text
+
+    invalid_query = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={"query": {"query": "TOP_SECRET\n"}},
+    )
+    assert invalid_query.status_code == 422
+    assert invalid_query.json() == {"detail": "youtube_read_plan_request_invalid"}
+    assert "TOP_SECRET" not in invalid_query.text
+
+
+@pytest.mark.asyncio
+async def test_youtube_read_plan_route_reports_stale_and_sanitized_failures(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_login(client)
+
+    def prepare_stale(
+        payload: YouTubeReadPlanRequest,
+        *,
+        catalog: CapabilityCatalog,
+    ) -> YouTubeReadAdapterFoundationResponse:
+        return prepare_youtube_read_plan_service(
+            payload,
+            catalog=catalog,
+            now=datetime(2026, 7, 19, tzinfo=UTC) + timedelta(days=31),
+        )
+
+    monkeypatch.setattr(social_provider_routes, "prepare_youtube_read_plan", prepare_stale)
+    stale = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={"query": {"query": "agentic workflows"}},
+    )
+    assert stale.status_code == 200
+    assert stale.json()["foundation_ready"] is False
+    assert "youtube_quota_evidence_stale" in stale.json()["blocked_reasons"]
+    assert stale.json()["provider_call_allowed"] is False
+
+    for exception_type, detail in (
+        (YouTubeFixtureContractInvalidError, "youtube_fixture_contract_invalid"),
+        (YouTubeNormalizedPayloadInvalidError, "youtube_normalized_payload_invalid"),
+    ):
+
+        def raise_failure(
+            payload: YouTubeReadPlanRequest,
+            *,
+            catalog: CapabilityCatalog,
+            _exception_type: type[ValueError] = exception_type,
+        ) -> YouTubeReadAdapterFoundationResponse:
+            _ = (payload, catalog)
+            raise _exception_type("UNTRUSTED_SECRET_DETAIL")
+
+        monkeypatch.setattr(social_provider_routes, "prepare_youtube_read_plan", raise_failure)
+        failed = await client.post(
+            "/api/automation/social-provider-youtube-read-plan",
+            json={"query": {"query": "agentic workflows"}},
+        )
+        assert failed.status_code == 500
+        assert failed.json() == {"detail": detail}
+        assert "UNTRUSTED_SECRET_DETAIL" not in failed.text
+
+
+@pytest.mark.asyncio
+async def test_youtube_read_plan_route_uses_current_catalog_and_returns_404(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await register_and_login(client)
+
+    youtube = get_capability_catalog(platform="youtube")
+    implementation = youtube.implementations[0].model_copy(
+        update={"supported_endpoints": ["search.list"]}
+    )
+    blocked_catalog = youtube.model_copy(update={"implementations": [implementation]})
+
+    async def resolve_blocked(_session: AsyncSession) -> CapabilityCatalog:
+        return blocked_catalog
+
+    monkeypatch.setattr(
+        social_provider_routes,
+        "resolve_current_capability_catalog",
+        resolve_blocked,
+    )
+    blocked = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={"query": {"query": "agentic workflows"}},
+    )
+    assert blocked.status_code == 200
+    assert blocked.json()["foundation_ready"] is False
+    assert "scope_missing:videos.list" in blocked.json()["blocked_reasons"]
+
+    async def resolve_reddit_only(_session: AsyncSession) -> CapabilityCatalog:
+        return get_capability_catalog(platform="reddit")
+
+    monkeypatch.setattr(
+        social_provider_routes,
+        "resolve_current_capability_catalog",
+        resolve_reddit_only,
+    )
+    response = await client.post(
+        "/api/automation/social-provider-youtube-read-plan",
+        json={"query": {"query": "agentic workflows"}},
+    )
+    assert response.status_code == 404
 
 
 @pytest.mark.asyncio

@@ -7,12 +7,16 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import (
     JSON,
     BigInteger,
+    CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +32,12 @@ class Dataset(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "datasets"
     __table_args__ = (
         UniqueConstraint("workspace_id", "name", name="uq_datasets_workspace_name"),
+        UniqueConstraint(
+            "workspace_id",
+            "project_id",
+            "id",
+            name="uq_datasets_tenant_id",
+        ),
     )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
@@ -78,6 +88,44 @@ class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "dataset_versions"
     __table_args__ = (
         UniqueConstraint("dataset_id", "version_number", name="uq_dataset_versions_number"),
+        UniqueConstraint(
+            "workspace_id",
+            "project_id",
+            "dataset_id",
+            "id",
+            name="uq_dataset_versions_tenant_dataset_id",
+        ),
+        UniqueConstraint(
+            "source_workflow_run_id",
+            name="uq_dataset_versions_source_workflow_run",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id", "source_workflow_run_id"],
+            [
+                "workflow_runs.workspace_id",
+                "workflow_runs.project_id",
+                "workflow_runs.id",
+            ],
+            name="fk_dataset_versions_workflow_run_tenant",
+        ),
+        CheckConstraint(
+            "(source_workflow_run_id IS NULL "
+            "AND source_workflow_step_run_ids IS NULL "
+            "AND source_raw_record_ids IS NULL "
+            "AND lineage_contract_version IS NULL) "
+            "OR (source_workflow_run_id IS NOT NULL "
+            "AND source_workflow_step_run_ids IS NOT NULL "
+            "AND source_raw_record_ids IS NOT NULL "
+            "AND lineage_contract_version IS NOT NULL "
+            "AND lineage_contract_version = 'workflow_dataset_version.v1')",
+            name="workflow_lineage_contract",
+        ),
+        Index(
+            "ix_dataset_versions_workflow_run",
+            "workspace_id",
+            "project_id",
+            "source_workflow_run_id",
+        ),
     )
 
     dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id"), nullable=False)
@@ -85,6 +133,10 @@ class DatasetVersion(UUIDPrimaryKeyMixin, Base):
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     cleaning_plan_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("cleaning_plans.id"))
+    source_workflow_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True))
+    source_workflow_step_run_ids: Mapped[list[str] | None] = mapped_column(JSON)
+    source_raw_record_ids: Mapped[list[str] | None] = mapped_column(JSON)
+    lineage_contract_version: Mapped[str | None] = mapped_column(String(100))
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     source_task_run_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     selected_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False)

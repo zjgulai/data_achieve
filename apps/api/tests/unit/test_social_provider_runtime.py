@@ -111,6 +111,10 @@ def test_social_provider_readiness_blocks_missing_credentials() -> None:
     )
 
     assert readiness.readiness is False
+    assert readiness.schema_version == "social_provider_readiness.v2"
+    assert readiness.declared_readiness is False
+    assert readiness.readiness_basis == "caller_declared"
+    assert readiness.execution_enabled is False
     assert readiness.provider_call_allowed is False
     assert readiness.provider_call_attempted is False
     assert readiness.missing_credentials == ["api_key"]
@@ -142,7 +146,11 @@ def test_social_provider_readiness_successfully_checks_policy_without_ai_trainin
     )
 
     assert readiness.readiness is True
-    assert readiness.provider_call_allowed is True
+    assert readiness.schema_version == "social_provider_readiness.v2"
+    assert readiness.declared_readiness is True
+    assert readiness.readiness_basis == "caller_declared"
+    assert readiness.execution_enabled is False
+    assert readiness.provider_call_allowed is False
     assert readiness.provider_call_attempted is False
     assert readiness.policy_blockers == []
 
@@ -172,7 +180,11 @@ def test_social_provider_gate_returns_fixture_run_scope() -> None:
         ),
     )
 
-    assert gate.provider_call_allowed is True
+    assert gate.schema_version == "social_provider_gate.v2"
+    assert gate.declared_readiness is True
+    assert gate.readiness_basis == "caller_declared"
+    assert gate.execution_enabled is False
+    assert gate.provider_call_allowed is False
     assert gate.provider_call_attempted is False
     assert gate.run_scope == "fixture_gate_only"
     assert gate.production_write_allowed is False

@@ -165,6 +165,10 @@ def _infer_platform(actor_id: str) -> str:
         "instagram", "tiktok", "youtube", "reddit", "facebook",
         "amazon", "trustpilot", "linkedin", "twitter", "threads",
         "bluesky", "shopify", "walmart", "ebay", "tripadvisor",
+        "pinterest", "google", "temu", "shein", "aliexpress",
+        "telegram", "crunchbase", "glassdoor", "perplexity", "gemini",
+        "snapchat", "yelp", "booking", "airbnb", "etsy", "indeed",
+        "hacker-news", "hackernews",
     ):
         if platform in lower:
             return platform
@@ -176,21 +180,68 @@ def _infer_record_type(actor_id: str) -> str:
     if "instagram" in lower:
         return "instagram_profile" if "profile" in lower else "instagram_post"
     if "tiktok" in lower:
+        if "shop" in lower:
+            return "tiktok_shop_product"
+        if "comment" in lower:
+            return "tiktok_comment"
+        if "ads" in lower or "ad-" in lower:
+            return "tiktok_ad"
         return "tiktok_profile" if "profile" in lower else "tiktok_video"
     if "youtube" in lower:
         return "youtube_comment" if "comment" in lower else "youtube_video"
     if "reddit" in lower:
         return "reddit_post"
     if "facebook" in lower:
+        if "ads" in lower:
+            return "facebook_ad"
         return "facebook_comment" if "comment" in lower else "facebook_post"
     if "amazon" in lower:
-        return "amazon_product"
-    if "trustpilot" in lower or "appstore" in lower or "google-play" in lower:
+        return "amazon_review" if "review" in lower else "amazon_product"
+    if "walmart" in lower:
+        return "walmart_review" if "review" in lower else "walmart_product"
+    if "trustpilot" in lower or "tripadvisor" in lower or "glassdoor" in lower or "yelp" in lower:
         return "review"
+    if "appstore" in lower or "apple-app" in lower or "app-store" in lower:
+        return "appstore_review"
+    if "google-play" in lower or "play-store" in lower:
+        return "google_play_review"
     if "linkedin" in lower:
         return "linkedin_post"
     if "twitter" in lower or "tweet" in lower:
         return "twitter_post"
+    if "threads" in lower:
+        return "threads_post"
+    if "pinterest" in lower:
+        return "pinterest_pin"
+    if "bluesky" in lower:
+        return "bluesky_post"
+    if "telegram" in lower:
+        return "telegram_message"
+    if "google" in lower:
+        if "news" in lower:
+            return "news_article"
+        if "trend" in lower:
+            return "google_trends_data"
+        if "ads" in lower or "ad-" in lower:
+            return "google_ad"
+        return "google_search_result"
+    ecommerce_platforms = ("temu", "shein", "aliexpress", "ebay", "etsy")
+    if any(p in lower for p in ecommerce_platforms):
+        return "ecommerce_product"
+    if "crunchbase" in lower:
+        return "company_profile"
+    if "product-hunt" in lower or "producthunt" in lower:
+        return "product_launch"
+    if "hacker-news" in lower or "hackernews" in lower:
+        return "news_article"
+    if "indeed" in lower:
+        return "job_posting"
+    if "booking" in lower or "airbnb" in lower:
+        return "travel_listing"
+    if "perplexity" in lower or "chatgpt" in lower or "gemini" in lower:
+        return "ai_search_result"
+    if "web-scraper" in lower or "website-content" in lower or "rag-web" in lower:
+        return "web_content"
     return "social_post"
 
 

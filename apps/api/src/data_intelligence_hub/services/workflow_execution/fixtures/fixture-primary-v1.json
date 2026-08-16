@@ -1,0 +1,146 @@
+{
+  "cases": [
+    {
+      "case_id": "fixture-primary-content-search-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:search_discover"],
+      "implementation_id": "fixture.primary",
+      "operation": "search_discover",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-detail-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:resolve_detail"],
+      "implementation_id": "fixture.primary",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-monitor-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:monitor_incremental"],
+      "implementation_id": "fixture.primary",
+      "operation": "monitor_incremental",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "published_at", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-batch-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:batch_parse"],
+      "implementation_id": "fixture.primary",
+      "operation": "batch_parse",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "youtube-v3-content-search-v1",
+      "evidence_refs": ["evidence:6fdc32760a18e705a0a6", "evidence:2d14c2efa5fbf984bdba"],
+      "implementation_id": "youtube.v3",
+      "operation": "search_discover",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "youtube-v3-creator-detail-v1",
+      "evidence_refs": ["evidence:6fdc32760a18e705a0a6", "evidence:2d14c2efa5fbf984bdba"],
+      "implementation_id": "youtube.v3",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records_count": 1,
+      "resource_type": "creator",
+      "summary": {"fields": ["id", "name", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "youtube-v3-content-detail-v1",
+      "evidence_refs": ["evidence:6fdc32760a18e705a0a6", "evidence:2d14c2efa5fbf984bdba"],
+      "implementation_id": "youtube.v3",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "youtube-v3-conversation-list-v1",
+      "evidence_refs": ["evidence:6fdc32760a18e705a0a6", "evidence:2d14c2efa5fbf984bdba"],
+      "implementation_id": "youtube.v3",
+      "operation": "list_enumerate",
+      "platform": "youtube",
+      "records_count": 2,
+      "resource_type": "conversation",
+      "summary": {"fields": ["id", "parent_id", "text"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "youtube-v3-live-monitor-v1",
+      "evidence_refs": ["evidence:6fdc32760a18e705a0a6", "evidence:2d14c2efa5fbf984bdba"],
+      "implementation_id": "youtube.v3",
+      "operation": "monitor_incremental",
+      "platform": "youtube",
+      "records_count": 1,
+      "resource_type": "media_live",
+      "summary": {"fields": ["id", "status", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "reddit-praw-content-search-v1",
+      "evidence_refs": ["evidence:b22812757b3a4850818d", "evidence:e3a4ccc9c96ba43cf024"],
+      "implementation_id": "reddit.praw",
+      "operation": "search_discover",
+      "platform": "reddit",
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "reddit-praw-topic-monitor-v1",
+      "evidence_refs": ["evidence:b22812757b3a4850818d", "evidence:e3a4ccc9c96ba43cf024"],
+      "implementation_id": "reddit.praw",
+      "operation": "monitor_incremental",
+      "platform": "reddit",
+      "records_count": 2,
+      "resource_type": "topic",
+      "summary": {"fields": ["id", "name", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "reddit-praw-conversation-detail-v1",
+      "evidence_refs": ["evidence:b22812757b3a4850818d", "evidence:e3a4ccc9c96ba43cf024"],
+      "implementation_id": "reddit.praw",
+      "operation": "resolve_detail",
+      "platform": "reddit",
+      "records_count": 2,
+      "resource_type": "conversation",
+      "summary": {"fields": ["id", "parent_id", "text"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "reddit-praw-conversation-list-v1",
+      "evidence_refs": ["evidence:b22812757b3a4850818d", "evidence:e3a4ccc9c96ba43cf024"],
+      "implementation_id": "reddit.praw",
+      "operation": "list_enumerate",
+      "platform": "reddit",
+      "records_count": 2,
+      "resource_type": "conversation",
+      "summary": {"fields": ["id", "parent_id", "text"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "reddit-praw-creator-detail-v1",
+      "evidence_refs": ["evidence:b22812757b3a4850818d", "evidence:e3a4ccc9c96ba43cf024"],
+      "implementation_id": "reddit.praw",
+      "operation": "resolve_detail",
+      "platform": "reddit",
+      "records_count": 1,
+      "resource_type": "creator",
+      "summary": {"fields": ["id", "name", "url"], "result_kind": "fixture_receipt"}
+    }
+  ],
+  "profile_id": "fixture-primary-v1",
+  "schema_version": "workflow_fixture_profile.v1"
+}

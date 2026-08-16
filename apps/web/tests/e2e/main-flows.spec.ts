@@ -641,11 +641,17 @@ async function openPlannerFromDashboard(
   );
   await expect(entryCards).not.toContainText("运行");
   await expect(entryCards).not.toContainText("激活");
-  const overviewFact = page.getByText("情报总量", { exact: true }).first();
+  await expect(
+    entryCards.getByRole("link", { name: /查看已保存计划/ }),
+  ).toHaveAttribute("href", "/automation/plans");
+  const overviewFact = page.getByText("已形成情报", { exact: true }).first();
   await expect(overviewFact).toBeVisible();
   await expect(
     entryCards.locator("xpath=following-sibling::*[1]"),
-  ).toContainText("情报总量");
+  ).toContainText("需要处理");
+  await expect(page.getByTestId("dashboard-advanced-operations")).not.toHaveAttribute(
+    "open",
+  );
 
   await (mode === "periodic_monitoring" ? periodicLink : batchLink).click();
   await expect(page).toHaveURL(
@@ -657,6 +663,7 @@ async function openPlannerFromDashboard(
     selector.locator("option", { hasText: projectName }),
   ).toBeAttached();
   await selector.selectOption({ label: projectName });
+  await expect(page).toHaveURL(/project_id=/);
   await expect(page.getByTestId("workflow-planner-workspace")).toContainText(
     projectName,
   );
@@ -749,7 +756,7 @@ async function openSavedWorkflowPlan(
   expectedVersion: number,
 ) {
   await navigateWithPrimaryNavigation(page, "已保存计划");
-  await expect(page).toHaveURL(/\/automation\/plans$/);
+  await expect(page).toHaveURL((url) => url.pathname === "/automation/plans");
   const list = page.getByTestId("saved-workflow-plan-list");
   await expect(list).toBeVisible();
   const planLink = list.getByRole("link", { name: planName, exact: true });
@@ -791,6 +798,17 @@ async function expectNoForbiddenWorkflowActions(root: Locator) {
   await expect(root.getByRole("link", { name: forbiddenAction })).toHaveCount(
     0,
   );
+}
+
+async function expectPlannerLifecycleGates(root: Locator) {
+  for (const label of ["批准 Plan", "激活 Plan", "创建本地样例 Run"]) {
+    await expect(root.getByRole("button", { name: label })).toBeDisabled();
+  }
+  await expect(
+    root.getByRole("link", {
+      name: /activate|\brun\b|schedule|provider|actor|\bllm\b|workflow\s*run|激活|运行|调度/i,
+    }),
+  ).toHaveCount(0);
 }
 
 test.beforeEach(async ({ page, request }, testInfo) => {
@@ -851,7 +869,11 @@ test.describe("MVP workspace routes", () => {
     await expect(
       page.getByRole("heading", { name: "全局仪表盘" }),
     ).toBeVisible();
-    await expect(page.getByText("情报总量")).toBeVisible();
+    await expect(
+      page
+        .getByTestId("dashboard-outcome-summary")
+        .getByText("已形成情报", { exact: true }),
+    ).toBeVisible();
 
     await page.goto("/intelligence");
     await expect(
@@ -873,6 +895,82 @@ test.describe("MVP workspace routes", () => {
     await expect(page.getByText("Reference Metadata")).toHaveCount(0);
     await expect(page.getByText("RawRecord ID")).toHaveCount(0);
     await expectNoVisibleTechnicalNoise(page);
+  });
+
+  test("preserves Project and Evidence context across intelligence hops", async ({
+    page,
+  }) => {
+    test.skip(realApiMode, "Mock fixture IDs are required for deterministic context hops");
+
+    const listUrl =
+      "/intelligence?project_id=project_osint&type=trend&status=new&intelligence_id=intel_star_growth&evidence_id=evidence_signal_star";
+    await page.goto(listUrl);
+
+    await expect(page.getByTestId("global-project-selector")).toHaveValue("project_osint");
+    await expect(page.locator('[data-project-filter-applied="true"]')).toBeVisible();
+    await expect(page.getByTestId("intelligence-context-strip")).toContainText(
+      "当前 Project · AI Scrapy Tools",
+    );
+    await expect(page.getByLabel("类型")).toHaveValue("trend");
+    await expect(page.getByLabel("状态")).toHaveValue("new");
+    await expect(page.getByTestId("intelligence-list-item-intel_star_growth")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByTestId("intelligence-evidence-evidence_signal_star")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expectNoDocumentOverflow(page);
+
+    const detailLink = page.getByTestId("intelligence-open-detail");
+    await expect(detailLink).toHaveAttribute(
+      "href",
+      "/intelligence/intel_star_growth?project_id=project_osint&type=trend&status=new&intelligence_id=intel_star_growth&evidence_id=evidence_signal_star",
+    );
+    await detailLink.click();
+
+    await expect(page.getByTestId("intelligence-detail-context-strip")).toContainText(
+      "当前 Project · AI Scrapy Tools",
+    );
+    await expect(page.getByTestId("intelligence-detail-evidence-evidence_signal_star")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByRole("link", { name: "打开采集任务" })).toHaveAttribute(
+      "href",
+      /project_id=project_osint/,
+    );
+    await expect(page.getByRole("link", { name: "查看原始数据" })).toHaveAttribute(
+      "href",
+      /project_id=project_osint/,
+    );
+    await expectNoDocumentOverflow(page);
+
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${listUrl.replace(/[?]/g, "\\?")}$`));
+    await expect(page.getByLabel("类型")).toHaveValue("trend");
+    await expect(page.getByTestId("intelligence-evidence-evidence_signal_star")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await page.goto(
+      "/intelligence/intel_star_growth?project_id=project_competitor&type=trend&status=new&intelligence_id=intel_star_growth&evidence_id=evidence_signal_star",
+    );
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: "当前情报不属于所选 Project",
+      }),
+    ).toContainText(
+      "当前情报不属于所选 Project；已停止显示 Evidence。",
+    );
+    await expect(page.getByRole("heading", { name: "Evidence Timeline" })).toHaveCount(0);
+    await expect(page.locator('[data-project-filter-applied="true"]')).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "返回当前 Project 的情报列表" }),
+    ).toHaveAttribute("href", /project_id=project_competitor/);
+    await expectNoDocumentOverflow(page);
   });
 
   test("filters toolkit and validates URL preflight guardrails", async ({
@@ -1910,9 +2008,39 @@ test.describe("workflow planner local mock acceptance", () => {
       "execution_authorized=false",
     );
 
-    await page.getByTestId("global-project-selector").selectOption({
+    const projectSelector = page.getByTestId("global-project-selector");
+    const originalProjectId = await projectSelector.inputValue();
+    const rejectedDialog = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain("未保存变更");
+        await dialog.dismiss();
+        resolve();
+      });
+    });
+    const rejectedSelection = projectSelector.selectOption({
       label: plannerProjects.syntheticPartial.name,
     });
+    await rejectedDialog;
+    await rejectedSelection;
+    await expect(projectSelector).toHaveValue(originalProjectId);
+    await expect(
+      page.locator('[data-project-filter-applied="true"]'),
+    ).toBeVisible();
+
+    const acceptedDialog = new Promise<void>((resolve) => {
+      page.once("dialog", async (dialog) => {
+        await dialog.accept();
+        resolve();
+      });
+    });
+    const acceptedSelection = projectSelector.selectOption({
+      label: plannerProjects.syntheticPartial.name,
+    });
+    await acceptedDialog;
+    await acceptedSelection;
+    await expect(projectSelector).toHaveValue(
+      plannerProjects.syntheticPartial.id,
+    );
     await expect(
       page.locator('[data-project-filter-applied="false"]'),
     ).toBeVisible();
@@ -2062,10 +2190,18 @@ test.describe("workflow planner local mock acceptance", () => {
     await generatePlannerPreview(page);
 
     const firstSavePanel = page.getByTestId("workflow-plan-save-panel");
+    await expect(
+      page
+        .getByTestId("workflow-planner-stepper")
+        .locator('[aria-current="step"]'),
+    ).toContainText("Review 与保存");
+    await expect(firstSavePanel).toContainText("阻断摘要");
+    await expect(firstSavePanel).toContainText("版本影响");
+    await expect(firstSavePanel).toContainText("条路线原因仍需处理");
     await expect(firstSavePanel).toContainText(
       "held Preview 可以保存，但保存不会解除阻断、批准或启动运行。",
     );
-    await expectNoForbiddenWorkflowActions(
+    await expectPlannerLifecycleGates(
       page.getByTestId("workflow-planner-workspace"),
     );
     await page.locator("#workflow-plan-name").fill(planName);
@@ -2313,6 +2449,16 @@ test.describe("workflow planner local mock acceptance", () => {
     await expect(secondPage.getByTestId("global-project-selector")).toHaveValue(
       partialId,
     );
+    await expect(page).toHaveURL(new RegExp(`project_id=${partialId}`));
+    await expect(secondPage).toHaveURL(new RegExp(`project_id=${partialId}`));
+    const heldId = plannerProjects.canonicalHeld.id;
+    await page.getByTestId("global-project-selector").selectOption(heldId);
+    await expect(page).toHaveURL(new RegExp(`project_id=${heldId}`));
+    await page.goBack();
+    await expect(page.getByTestId("global-project-selector")).toHaveValue(
+      partialId,
+    );
+    await expect(page).toHaveURL(new RegExp(`project_id=${partialId}`));
     await expect(
       secondPage.getByTestId("workflow-planner-workspace"),
     ).toContainText(plannerProjects.syntheticPartial.name);

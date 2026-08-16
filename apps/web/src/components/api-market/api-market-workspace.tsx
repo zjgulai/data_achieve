@@ -2,14 +2,17 @@
 
 import {
   AlertTriangle,
+  ArrowRight,
   Boxes,
   Filter,
   Layers3,
   ListFilter,
   Loader2,
   Search,
+  ScanSearch,
   TableProperties,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CapabilityComparisonPanel } from "@/components/api-market/capability-comparison-panel";
@@ -339,6 +342,24 @@ export function ApiMarketWorkspace({
             label="production_write_allowed"
             value={String(data.matrix.productionWriteAllowed)}
           />
+        </div>
+        <div className="mt-4 flex min-w-0 flex-col gap-3 rounded-2xl border border-[#E8D4CB] bg-[#FFF8F5] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-[#7D4F43]">
+              <ScanSearch size={16} aria-hidden="true" />
+              从离线来源快照审查新的能力候选
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[#7A625A]">
+              Discovery 是独立 Preview，不改变当前三种 Catalog 视图与 42-cell 矩阵。
+            </p>
+          </div>
+          <Link
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#C96F5C] bg-white px-4 text-sm font-semibold text-[#B85F4F] outline-none transition hover:bg-[#FFF1EC] focus-visible:ring-4 focus-visible:ring-[#F3D7CE]"
+            href="/api-market/discovery"
+          >
+            打开能力发现 Preview
+            <ArrowRight size={16} aria-hidden="true" />
+          </Link>
         </div>
       </WorkbenchPanel>
 

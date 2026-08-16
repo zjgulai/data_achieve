@@ -1,0 +1,149 @@
+{
+  "fixture_id": "tikhub-youtube-market-v1",
+  "observed_at": "2026-07-14T08:00:00Z",
+  "parser_id": "tikhub_public_market.v1",
+  "payload": {
+    "access_channel": "managed_opaque_collector",
+    "claimed_auth_mode": "authorization_header_api_key",
+    "claimed_limitations": [
+      "public_content_only",
+      "market_claims_require_independent_verification",
+      "pay_per_request_pricing_claim",
+      "provider_rps_plan_applies"
+    ],
+    "claimed_required_credentials": [
+      "tikhub_api_key"
+    ],
+    "claims": [
+      {
+        "auth_scope": [
+          "api_key_claimed"
+        ],
+        "claim_ref": "claim:tikhub:video-detail",
+        "claimed_constraints": [
+          {
+            "code": "public_content_only",
+            "constraint_type": "policy",
+            "details": {
+              "private_or_unlisted_content": false
+            },
+            "severity": "blocking"
+          },
+          {
+            "code": "default_rps_claim",
+            "constraint_type": "quota",
+            "details": {
+              "requests_per_second": 10
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "video_metadata",
+            "video_statistics",
+            "channel_id",
+            "available_subtitles"
+          ],
+          "required": [
+            "video_id_or_public_url"
+          ]
+        },
+        "operation": "resolve_detail",
+        "purpose_scope": [
+          "public_content_research"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "content"
+      },
+      {
+        "auth_scope": [
+          "api_key_claimed"
+        ],
+        "claim_ref": "claim:tikhub:comment-list",
+        "claimed_constraints": [
+          {
+            "code": "continuation_token_pagination",
+            "constraint_type": "quota",
+            "details": {
+              "pagination": "continuation_token"
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "public_comments",
+            "continuation_token"
+          ],
+          "required": [
+            "video_id_or_public_url"
+          ]
+        },
+        "operation": "list_enumerate",
+        "purpose_scope": [
+          "public_comment_research"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "conversation"
+      },
+      {
+        "auth_scope": [
+          "api_key_claimed"
+        ],
+        "claim_ref": "claim:tikhub:video-search",
+        "claimed_constraints": [
+          {
+            "code": "continuation_token_pagination",
+            "constraint_type": "quota",
+            "details": {
+              "pagination": "continuation_token"
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "search_results",
+            "shorts",
+            "continuation_token"
+          ],
+          "required": [
+            "search_query"
+          ]
+        },
+        "operation": "search_discover",
+        "purpose_scope": [
+          "public_content_research"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "content"
+      }
+    ],
+    "delivery_form": "endpoint",
+    "deployment_mode": "managed_saas",
+    "platform": "youtube",
+    "provider_id": "tikhub.youtube.v1",
+    "source_summary": [
+      "The public page claims read-only REST access to public video, channel, comment, search, Shorts and subtitle data.",
+      "The public page claims API-key authorization, per-request pricing and bounded continuation-token pagination."
+    ],
+    "unmapped_claims": [
+      {
+        "claim_ref": "claim:tikhub:channel-profile",
+        "summary": "Channel profile and upload claims are retained for review but are not mapped by this bounded parser."
+      }
+    ]
+  },
+  "schema_version": "capability_source_snapshot_fixture.v1",
+  "source_kind": "public_market",
+  "source_name": "TikHub YouTube API public page",
+  "source_url": "https://tikhub.io/youtube-api",
+  "source_version": "published-2026-06-20"
+}

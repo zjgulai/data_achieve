@@ -1,0 +1,22 @@
+{
+  "schema_version": "youtube_read_fixture_manifest.v1",
+  "fixture_profile_id": "youtube-read-a1-recorded-v1",
+  "implementation_id": "youtube.v3",
+  "entries": [
+    {
+      "kind": "quota",
+      "relative_path": "quota-v1.json",
+      "expected_sha256": "sha256:52b9357a82287cf69f64c6d5a623bc00875fc4a6a646cbb904c403373c2f681a"
+    },
+    {
+      "kind": "search",
+      "relative_path": "search-list-v1.json",
+      "expected_sha256": "sha256:9c8b72872243590a2def2ff38ada112f55fb4b6026e1f95595b29b0f700c5bab"
+    },
+    {
+      "kind": "videos",
+      "relative_path": "videos-list-v1.json",
+      "expected_sha256": "sha256:cfbc84d5bbf697115b76d8cb708381fcd48f46bdbf0c96dfdf027616b8ccb886"
+    }
+  ]
+}

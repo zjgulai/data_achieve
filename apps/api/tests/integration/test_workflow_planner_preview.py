@@ -27,11 +27,17 @@ from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.core.security import create_access_token
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.capability_governance import CapabilityCatalogHead
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
+from data_intelligence_hub.schemas.capability_catalog import (
+    CapabilityCatalog,
+    CapabilityStatus,
+)
 from data_intelligence_hub.services.capability_catalog import (
     clear_capability_catalog_cache,
+    get_capability_catalog,
 )
 from data_intelligence_hub.services.exceptions import (
     CapabilityCatalogLoadError,
@@ -41,6 +47,9 @@ from data_intelligence_hub.services.exceptions import (
     WorkflowPlannerTopologyError,
 )
 from data_intelligence_hub.services.project_service import get_active_project_or_raise
+from data_intelligence_hub.services.workflow_planner.fingerprint import (
+    compute_catalog_snapshot_id,
+)
 from data_intelligence_hub.services.workflow_planner.planner import (
     build_workflow_plan_preview,
 )
@@ -171,6 +180,11 @@ async def planner_context() -> AsyncIterator[PlannerTestContext]:
                 active_project,
                 archived_project,
                 foreign_project,
+                CapabilityCatalogHead(
+                    singleton_key="global",
+                    current_revision_id=None,
+                    head_version=0,
+                ),
             ]
         )
         await session.commit()
@@ -379,6 +393,7 @@ async def test_canonical_preview_returns_held_with_bounded_logging(
     assert payload["planning_status"] == "held"
     assert payload["project_id"] == str(planner_context.active_project.id)
     assert payload["request_id"] == response.headers["X-Request-ID"]
+    assert payload["catalog_snapshot_id"] == compute_catalog_snapshot_id(get_capability_catalog())
     for boundary_field in (
         "provider_call",
         "actor_run",
@@ -421,6 +436,42 @@ async def test_canonical_preview_returns_held_with_bounded_logging(
         for key in fields
         for forbidden in ("term", "url", "body", "credential", "password", "secret")
     )
+
+
+@pytest.mark.asyncio
+async def test_preview_resolves_one_current_catalog_for_planner_fingerprint(
+    planner_context: PlannerTestContext,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base = get_capability_catalog()
+    changed_assertion = base.assertions[0].model_copy(
+        update={"support_status": CapabilityStatus.DEPRECATED},
+        deep=True,
+    )
+    overlay = base.model_copy(
+        update={"assertions": [changed_assertion, *base.assertions[1:]]},
+        deep=True,
+    )
+    calls = 0
+
+    async def resolve_once(_session: AsyncSession) -> CapabilityCatalog:
+        nonlocal calls
+        calls += 1
+        return overlay
+
+    monkeypatch.setattr(
+        workflow_plan_routes,
+        "resolve_current_capability_catalog",
+        resolve_once,
+    )
+    response = await planner_context.client.post(
+        preview_path(planner_context),
+        json=load_periodic_request(),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["catalog_snapshot_id"] == compute_catalog_snapshot_id(overlay)
+    assert calls == 1
 
 
 @pytest.mark.parametrize(
@@ -470,9 +521,7 @@ async def test_periodic_platformless_youtu_be_seed_derives_youtube(
 
     assert response.status_code == 200
     assert response.json()["planning_status"] == "held"
-    assert response.json()["normalized_input"]["scopes"][0][
-        "effective_platforms"
-    ] == ["youtube"]
+    assert response.json()["normalized_input"]["scopes"][0]["effective_platforms"] == ["youtube"]
 
 
 @pytest.mark.asyncio
@@ -520,11 +569,17 @@ async def test_preview_maps_dependency_failures_to_503(
     expected_detail: str,
 ) -> None:
     if error_type is CapabilityCatalogLoadError:
-        def fail_catalog() -> object:
+
+        async def fail_catalog(_session: AsyncSession) -> CapabilityCatalog:
             raise CapabilityCatalogLoadError
 
-        monkeypatch.setattr(workflow_plan_routes, "get_capability_catalog", fail_catalog)
+        monkeypatch.setattr(
+            workflow_plan_routes,
+            "resolve_current_capability_catalog",
+            fail_catalog,
+        )
     else:
+
         def fail_planner(**_kwargs: object) -> object:
             raise WorkflowPlannerDependencyUnavailableError
 
@@ -702,16 +757,11 @@ async def test_scope_expansion_adds_no_database_selects(
 
     assert one_response.status_code == 200
     assert twenty_response.status_code == 200
-    one_select_count = sum(
-        statement.startswith("SELECT") for statement in one_statements
-    )
-    twenty_select_count = sum(
-        statement.startswith("SELECT") for statement in twenty_statements
-    )
+    one_select_count = sum(statement.startswith("SELECT") for statement in one_statements)
+    twenty_select_count = sum(statement.startswith("SELECT") for statement in twenty_statements)
     assert one_select_count == twenty_select_count
     assert (
-        one_response.json()["preview_fingerprint"]
-        == twenty_response.json()["preview_fingerprint"]
+        one_response.json()["preview_fingerprint"] == twenty_response.json()["preview_fingerprint"]
     )
     print(
         f"preview_select_count_one_scope={one_select_count} "

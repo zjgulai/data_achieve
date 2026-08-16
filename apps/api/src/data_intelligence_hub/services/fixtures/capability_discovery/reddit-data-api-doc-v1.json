@@ -1,0 +1,93 @@
+{
+  "fixture_id": "reddit-data-api-doc-v1",
+  "observed_at": "2026-07-14T08:00:00Z",
+  "parser_id": "reddit_official_doc.v1",
+  "payload": {
+    "access_channel": "official_authorized_api",
+    "claimed_auth_mode": "oauth2_read_scope",
+    "claimed_limitations": [
+      "registered_oauth_token_required",
+      "descriptive_user_agent_required",
+      "listing_pagination_required",
+      "search_result_limit_maximum_100",
+      "developer_and_data_api_terms_apply"
+    ],
+    "claimed_required_credentials": [
+      "registered_reddit_oauth_token"
+    ],
+    "claims": [
+      {
+        "auth_scope": [
+          "oauth2_read"
+        ],
+        "claim_ref": "claim:reddit:search",
+        "claimed_constraints": [
+          {
+            "code": "oauth_read_scope",
+            "constraint_type": "policy",
+            "details": {
+              "oauth_scope": "read"
+            },
+            "severity": "blocking"
+          },
+          {
+            "code": "search_query_length",
+            "constraint_type": "quota",
+            "details": {
+              "maximum_query_characters": 512
+            },
+            "severity": "major"
+          },
+          {
+            "code": "search_result_limit",
+            "constraint_type": "quota",
+            "details": {
+              "default": 25,
+              "maximum": 100
+            },
+            "severity": "major"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "subreddit",
+            "after",
+            "before",
+            "limit",
+            "restrict_sr",
+            "sort",
+            "time_window",
+            "result_type"
+          ],
+          "required": [
+            "q"
+          ]
+        },
+        "operation": "search_discover",
+        "purpose_scope": [
+          "link_search"
+        ],
+        "region_scope": [
+          "source_page_not_region_scoped"
+        ],
+        "resource_type": "content"
+      }
+    ],
+    "delivery_form": "endpoint",
+    "deployment_mode": "official_cloud",
+    "platform": "reddit",
+    "provider_id": "reddit.data-api.v1",
+    "related_source_urls": [
+      "https://support.reddithelp.com/hc/en-us/articles/16160319875092-Reddit-Data-API-Wiki"
+    ],
+    "source_summary": [
+      "The official API documentation defines an OAuth read-scope search listing for Reddit links.",
+      "The search contract requires q, supports subreddit and pagination filters, and documents a maximum result limit of 100."
+    ]
+  },
+  "schema_version": "capability_source_snapshot_fixture.v1",
+  "source_kind": "official_doc",
+  "source_name": "Reddit Data API GET search official documentation",
+  "source_url": "https://www.reddit.com/dev/api/#GET_search",
+  "source_version": "live-api-doc-observed-2026-07-14"
+}

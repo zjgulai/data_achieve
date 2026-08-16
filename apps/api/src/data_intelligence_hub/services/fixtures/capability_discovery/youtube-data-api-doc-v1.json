@@ -1,0 +1,94 @@
+{
+  "fixture_id": "youtube-data-api-doc-v1",
+  "observed_at": "2026-07-14T08:00:00Z",
+  "parser_id": "youtube_official_doc.v1",
+  "payload": {
+    "access_channel": "official_authorized_api",
+    "claimed_auth_mode": "api_key_or_oauth2_by_request_scope",
+    "claimed_limitations": [
+      "quota_cost_applies",
+      "exactly_one_filter_required",
+      "owner_only_parts_require_authorization"
+    ],
+    "claimed_required_credentials": [
+      "google_api_key_or_oauth2_token"
+    ],
+    "claims": [
+      {
+        "auth_scope": [
+          "api_key_for_public_data_or_oauth2_for_authorized_parts"
+        ],
+        "claim_ref": "claim:youtube:videos-list",
+        "claimed_constraints": [
+          {
+            "code": "videos_list_quota_cost",
+            "constraint_type": "quota",
+            "details": {
+              "quota_units_per_call": 1
+            },
+            "severity": "major"
+          },
+          {
+            "code": "exactly_one_filter",
+            "constraint_type": "purpose",
+            "details": {
+              "allowed_filters": [
+                "chart",
+                "id",
+                "myRating"
+              ]
+            },
+            "severity": "blocking"
+          },
+          {
+            "code": "owner_only_parts",
+            "constraint_type": "policy",
+            "details": {
+              "restricted_parts": [
+                "fileDetails",
+                "processingDetails",
+                "suggestions"
+              ]
+            },
+            "severity": "blocking"
+          }
+        ],
+        "claimed_field_contract": {
+          "optional": [
+            "chart",
+            "id",
+            "myRating",
+            "pageToken",
+            "regionCode",
+            "videoCategoryId",
+            "items"
+          ],
+          "required": [
+            "part"
+          ]
+        },
+        "operation": "resolve_detail",
+        "purpose_scope": [
+          "video_resource_lookup"
+        ],
+        "region_scope": [
+          "region_code_optional_for_chart"
+        ],
+        "resource_type": "content"
+      }
+    ],
+    "delivery_form": "endpoint",
+    "deployment_mode": "official_cloud",
+    "platform": "youtube",
+    "provider_id": "youtube.data-api.v3",
+    "source_summary": [
+      "The official videos.list documentation defines a GET endpoint that returns matching video resources.",
+      "The method requires part, exactly one filter and has a documented quota cost of one unit."
+    ]
+  },
+  "schema_version": "capability_source_snapshot_fixture.v1",
+  "source_kind": "official_doc",
+  "source_name": "YouTube Data API videos.list official documentation",
+  "source_url": "https://developers.google.com/youtube/v3/docs/videos/list",
+  "source_version": "last-updated-2026-07-08"
+}

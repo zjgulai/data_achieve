@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useProjectSelection } from "@/components/layout/project-selection-provider";
 import {
   getIntelligence,
   listEvidences,
@@ -23,6 +24,13 @@ import {
 } from "@/lib/api/intelligence";
 import { getSignalSnapshotCompare } from "@/lib/api/signals";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
+import {
+  buildIntelligenceDetailHref,
+  buildIntelligenceListHref,
+  buildProjectScopedHref,
+  readIntelligenceNavigationContext,
+  type IntelligenceNavigationContext,
+} from "@/lib/intelligence-navigation";
 import { cn } from "@/lib/utils";
 import { WorkbenchDistributionRow, WorkbenchTraceDetailRow } from "@/components/common/workbench-ui";
 import type {
@@ -49,6 +57,15 @@ const typeClass: Record<string, string> = {
   anomaly: "bg-[#FBF8F5] text-[#86868B]",
 };
 
+const initialNavigationContext: IntelligenceNavigationContext = {
+  evidenceId: null,
+  intelligenceId: null,
+  projectId: null,
+  scope: "all",
+  status: "",
+  type: "",
+};
+
 export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId: string }) {
   const [item, setItem] = useState<IntelligenceItem | null>(null);
   const [evidences, setEvidences] = useState<Evidence[]>([]);
@@ -58,19 +75,63 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
   const [compareLoading, setCompareLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedbackState, setFeedbackState] = useState<string | null>(null);
+  const [navigationContext, setNavigationContext] =
+    useState<IntelligenceNavigationContext>(initialNavigationContext);
+  const [navigationReady, setNavigationReady] = useState(false);
+  const {
+    clearProjectFilterApplied,
+    loading: projectSelectionLoading,
+    markProjectFilterApplied,
+    selectedProject,
+    selectedProjectId,
+  } = useProjectSelection();
 
   useEffect(() => {
+    function restoreNavigationContext() {
+      const context = readIntelligenceNavigationContext(window.location.search);
+      setNavigationContext(context);
+      setSelectedEvidenceId(context.evidenceId);
+      setNavigationReady(true);
+    }
+
+    restoreNavigationContext();
+    window.addEventListener("popstate", restoreNavigationContext);
+    return () => window.removeEventListener("popstate", restoreNavigationContext);
+  }, []);
+
+  useEffect(() => {
+    if (!navigationReady || projectSelectionLoading) {
+      return;
+    }
     let mounted = true;
     setLoading(true);
     setError(null);
+    setItem(null);
+    setEvidences([]);
+    clearProjectFilterApplied();
     Promise.all([getIntelligence(intelligenceId), listEvidences(intelligenceId)])
       .then(([intelligence, evidenceItems]) => {
         if (!mounted) {
           return;
         }
+        if (selectedProjectId && intelligence.projectId !== selectedProjectId) {
+          setSelectedEvidenceId(null);
+          setError(
+            "当前情报不属于所选 Project；已停止显示 Evidence。请返回情报列表查看当前范围。",
+          );
+          return;
+        }
         setItem(intelligence);
         setEvidences(evidenceItems);
-        setSelectedEvidenceId(evidenceItems[0]?.id ?? null);
+        setSelectedEvidenceId((currentId) => {
+          if (currentId && evidenceItems.some((evidence) => evidence.id === currentId)) {
+            return currentId;
+          }
+          return evidenceItems[0]?.id ?? null;
+        });
+        if (selectedProjectId) {
+          markProjectFilterApplied(selectedProjectId);
+        }
       })
       .catch((caught) => {
         if (mounted) {
@@ -85,11 +146,41 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
     return () => {
       mounted = false;
     };
-  }, [intelligenceId]);
+  }, [
+    clearProjectFilterApplied,
+    intelligenceId,
+    markProjectFilterApplied,
+    navigationContext.evidenceId,
+    navigationReady,
+    projectSelectionLoading,
+    selectedProjectId,
+  ]);
 
   const selectedEvidence = useMemo(() => {
     return evidences.find((evidence) => evidence.id === selectedEvidenceId) ?? null;
   }, [evidences, selectedEvidenceId]);
+
+  const detailNavigationContext = useMemo(
+    () => ({
+      ...navigationContext,
+      evidenceId: selectedEvidenceId,
+      intelligenceId,
+      projectId: selectedProjectId,
+    }),
+    [intelligenceId, navigationContext, selectedEvidenceId, selectedProjectId],
+  );
+  const listHref = buildIntelligenceListHref(detailNavigationContext);
+
+  useEffect(() => {
+    if (!navigationReady || projectSelectionLoading) {
+      return;
+    }
+    const nextHref = buildIntelligenceDetailHref(intelligenceId, detailNavigationContext);
+    const currentHref = `${window.location.pathname}${window.location.search}`;
+    if (nextHref !== currentHref) {
+      window.history.replaceState(window.history.state, "", nextHref);
+    }
+  }, [detailNavigationContext, intelligenceId, navigationReady, projectSelectionLoading]);
 
   useEffect(() => {
     if (!selectedEvidence?.signalId) {
@@ -141,19 +232,44 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
 
   if (error || !item) {
     return (
-      <div className="rounded-2xl border border-[#FFD7DF] bg-[#FFF7F8] px-3 py-2 text-sm text-[#C25B6E]">
-        {error ?? "Intelligence item not found"}
+      <div
+        className="grid gap-3 rounded-[var(--radius-3)] border border-[var(--state-danger)] bg-[var(--surface-primary)] p-4 text-sm text-[var(--state-danger)]"
+        role="alert"
+      >
+        <p>{error ?? "Intelligence item not found"}</p>
+        <Link
+          className="inline-flex min-h-[var(--touch-target)] w-fit items-center gap-2 rounded-[var(--radius-2)] border border-[var(--border-strong)] px-3 font-semibold text-[var(--action-primary)] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]"
+          href={listHref}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          返回当前 Project 的情报列表
+        </Link>
       </div>
     );
   }
 
   return (
     <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_430px]">
+      <section
+        className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between 2xl:col-span-2"
+        data-testid="intelligence-detail-context-strip"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-[var(--text-tertiary)]">浏览上下文</p>
+          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+            当前 Project · {selectedProject?.name ?? "全部项目"}
+          </p>
+        </div>
+        <p className="text-xs leading-5 text-[var(--text-secondary)]">
+          类型 {navigationContext.type || "全部"} · 状态 {navigationContext.status || "全部"} ·
+          Scope {navigationContext.scope}
+        </p>
+      </section>
       <section className="grid gap-5">
         <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <Link
-            className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#C25B6E]"
-            href="/intelligence"
+            className="mb-4 inline-flex min-h-[var(--touch-target)] items-center gap-2 rounded-[var(--radius-2)] text-sm font-semibold text-[var(--action-primary)] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]"
+            href={listHref}
           >
             <ArrowLeft size={16} aria-hidden="true" />
             情报列表
@@ -235,12 +351,14 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
           <div className="grid gap-2">
             {evidences.map((evidence) => (
               <button
+                aria-pressed={evidence.id === selectedEvidenceId}
                 className={cn(
                   "rounded-xl border px-3 py-3 text-left transition-colors",
                   evidence.id === selectedEvidenceId
                     ? "border-[#C25B6E] bg-[#FFF7F8]"
                     : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
                 )}
+                data-testid={`intelligence-detail-evidence-${evidence.id}`}
                 key={evidence.id}
                 onClick={() => setSelectedEvidenceId(evidence.id)}
                 type="button"
@@ -264,7 +382,7 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
           </div>
         </div>
 
-        <AuditDrawer evidence={selectedEvidence} />
+        <AuditDrawer evidence={selectedEvidence} projectId={selectedProjectId} />
 
         <div className="rounded-2xl border border-[#E9E5E2] bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
@@ -380,7 +498,13 @@ function SnapshotBox({
   );
 }
 
-function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
+function AuditDrawer({
+  evidence,
+  projectId,
+}: {
+  evidence: Evidence | null;
+  projectId: string | null;
+}) {
   const referenceFacts = evidence?.referenceMetadata
     ? buildAuditFacts(evidence.referenceMetadata, 6)
     : [];
@@ -432,7 +556,7 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
               ) : null}
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
-                href={`/tasks?run=${evidence.taskRun.id}`}
+                href={buildProjectScopedHref(`/tasks?run=${evidence.taskRun.id}`, projectId)}
               >
                 打开采集任务
               </Link>
@@ -444,7 +568,10 @@ function AuditDrawer({ evidence }: { evidence: Evidence | null }) {
               <WorkbenchTraceDetailRow surface="warm" label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-3 py-2 text-sm font-semibold text-[#C25B6E]"
-                href={`/raw-records?record=${evidence.rawRecord.id}`}
+                href={buildProjectScopedHref(
+                  `/raw-records?record=${evidence.rawRecord.id}`,
+                  projectId,
+                )}
               >
                 查看原始数据
               </Link>

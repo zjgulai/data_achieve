@@ -89,7 +89,7 @@ export async function getDashboardOverview(
   filters: DashboardFilters = {},
 ): Promise<DashboardSummary> {
   if (mockApiEnabled) {
-    return getMockDashboard(filters.domain);
+    return getMockDashboard(filters.domain, filters.projectId);
   }
   const query = new URLSearchParams();
   if (filters.projectId) {

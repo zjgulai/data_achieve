@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import AuthContext, get_auth_context
+from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.schemas.social_provider import (
     SocialDatasetPreviewRequest,
     SocialDatasetPreviewResponse,
@@ -30,6 +30,14 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialTaskRunApprovalTemplateRequest,
     SocialTaskRunApprovalTemplateResponse,
 )
+from data_intelligence_hub.schemas.youtube_read_adapter import (
+    YouTubeReadAdapterFoundationResponse,
+    YouTubeReadPlanRequest,
+)
+from data_intelligence_hub.services.capability_governance.catalog_resolution import (
+    CapabilityCatalogResolutionError,
+    resolve_current_capability_catalog,
+)
 from data_intelligence_hub.services.exceptions import (
     SocialProviderCatalogLoadError,
     SocialProviderGateAuthorizationError,
@@ -48,6 +56,13 @@ from data_intelligence_hub.services.social_provider import (
     prepare_social_provider_source_template,
     prepare_social_raw_preview,
     prepare_social_task_run_approval_template,
+    prepare_youtube_read_plan,
+)
+from data_intelligence_hub.social_api.youtube.fixtures import (
+    YouTubeFixtureContractInvalidError,
+)
+from data_intelligence_hub.social_api.youtube.normalizer import (
+    YouTubeNormalizedPayloadInvalidError,
 )
 
 router = APIRouter(tags=["automation"])
@@ -55,6 +70,7 @@ router = APIRouter(tags=["automation"])
 
 @router.get("/social-provider-catalog", response_model=SocialProviderCatalogResponse)
 async def get_social_provider_catalog_item(
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
     platform: str | None = None,
     data_domain: Annotated[str | None, Query(alias="data-domain")] = None,
@@ -62,11 +78,18 @@ async def get_social_provider_catalog_item(
 ) -> SocialProviderCatalogResponse:
     _ = context
     try:
+        catalog = await resolve_current_capability_catalog(session)
         return get_social_provider_catalog(
             platform=platform,
             data_domain=data_domain,
             resource_group=resource_group,
+            catalog=catalog,
         )
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except SocialProviderCatalogLoadError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.message
@@ -78,11 +101,18 @@ async def get_social_provider_catalog_item(
 @router.post("/social-provider-readiness", response_model=SocialProviderReadinessResponse)
 async def prepare_social_provider_readiness_item(
     payload: SocialProviderReadinessRequest,
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> SocialProviderReadinessResponse:
     _ = context
     try:
-        return prepare_social_provider_readiness(payload)
+        catalog = await resolve_current_capability_catalog(session)
+        return prepare_social_provider_readiness(payload, catalog=catalog)
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
 
@@ -90,15 +120,54 @@ async def prepare_social_provider_readiness_item(
 @router.post("/social-provider-gate", response_model=SocialProviderGateResponse)
 async def prepare_social_provider_gate_item(
     payload: SocialProviderGateRequest,
+    session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> SocialProviderGateResponse:
     _ = context
     try:
-        return prepare_social_provider_gate(payload)
+        catalog = await resolve_current_capability_catalog(session)
+        return prepare_social_provider_gate(payload, catalog=catalog)
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
     except SocialProviderUnknownPlatformError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     except SocialProviderGateAuthorizationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+
+
+@router.post(
+    "/social-provider-youtube-read-plan",
+    response_model=YouTubeReadAdapterFoundationResponse,
+)
+async def prepare_youtube_read_plan_item(
+    payload: YouTubeReadPlanRequest,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> YouTubeReadAdapterFoundationResponse:
+    _ = context
+    try:
+        catalog = await resolve_current_capability_catalog(session)
+        return prepare_youtube_read_plan(payload, catalog=catalog)
+    except CapabilityCatalogResolutionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.message,
+        ) from exc
+    except SocialProviderUnknownPlatformError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+    except YouTubeFixtureContractInvalidError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="youtube_fixture_contract_invalid",
+        ) from exc
+    except YouTubeNormalizedPayloadInvalidError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="youtube_normalized_payload_invalid",
+        ) from exc
 
 
 @router.post(

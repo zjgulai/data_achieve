@@ -51,8 +51,8 @@ export type EvidenceEntityContext = {
 
 export type EvidenceRawRecordContext = {
   id: string;
-  sourceId: string;
-  taskRunId: string;
+  sourceId: string | null;
+  taskRunId: string | null;
   recordType: string;
   sourceUrl: string | null;
   contentHash: string;

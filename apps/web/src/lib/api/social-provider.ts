@@ -391,6 +391,9 @@ export function mapSocialProviderReadinessResponse(
     platform: response.platform,
     providerId: response.provider_id,
     ready: response.readiness,
+    declaredReadiness: response.declared_readiness,
+    readinessBasis: response.readiness_basis,
+    executionEnabled: response.execution_enabled,
     missingCredentials: response.missing_credentials,
     missingScope: response.missing_scope,
     blockedReasons: response.blocked_reasons,
@@ -590,10 +593,13 @@ function mockSocialProviderReadinessResponse(
 ): SocialProviderReadinessResponseDto {
   const catalogItem = mockCatalogItem(input.platform);
   return {
-    schema_version: "social_provider_readiness.v1",
+    schema_version: "social_provider_readiness.v2",
     platform: input.platform,
     provider_id: catalogItem.provider_id,
     readiness: false,
+    declared_readiness: false,
+    readiness_basis: "caller_declared",
+    execution_enabled: false,
     missing_credentials: catalogItem.required_credentials,
     missing_scope: input.endpoints.filter(
       (endpoint) => !catalogItem.supported_endpoints.includes(endpoint),

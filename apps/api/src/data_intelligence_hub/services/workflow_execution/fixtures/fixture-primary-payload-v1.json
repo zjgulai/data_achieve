@@ -1,0 +1,102 @@
+{
+  "cases": [
+    {
+      "case_id": "fixture-primary-content-search-payload-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:search_discover"],
+      "implementation_id": "fixture.primary",
+      "operation": "search_discover",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-17T00:00:00Z",
+          "content": {"id": "fixture-search-001", "text": "Acme launch review", "url": "https://example.invalid/videos/fixture-search-001"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-search-001"
+        },
+        {
+          "collected_at": "2026-07-17T00:01:00Z",
+          "content": {"id": "fixture-search-002", "text": "Acme market response", "url": "https://example.invalid/videos/fixture-search-002"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-search-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-detail-payload-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:resolve_detail"],
+      "implementation_id": "fixture.primary",
+      "operation": "resolve_detail",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-17T00:02:00Z",
+          "content": {"id": "fixture-detail-001", "text": "Acme launch detail", "url": "https://example.invalid/videos/fixture-detail-001"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-detail-001"
+        },
+        {
+          "collected_at": "2026-07-17T00:03:00Z",
+          "content": {"id": "fixture-detail-002", "text": "Acme response detail", "url": "https://example.invalid/videos/fixture-detail-002"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-detail-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-monitor-payload-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:monitor_incremental"],
+      "implementation_id": "fixture.primary",
+      "operation": "monitor_incremental",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-17T00:04:00Z",
+          "content": {"id": "fixture-monitor-001", "published_at": "2026-07-16T23:00:00Z", "url": "https://example.invalid/videos/fixture-monitor-001"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-monitor-001"
+        },
+        {
+          "collected_at": "2026-07-17T00:05:00Z",
+          "content": {"id": "fixture-monitor-002", "published_at": "2026-07-16T23:30:00Z", "url": "https://example.invalid/videos/fixture-monitor-002"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-monitor-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "published_at", "url"], "result_kind": "fixture_receipt"}
+    },
+    {
+      "case_id": "fixture-primary-content-batch-payload-v1",
+      "evidence_refs": ["evidence:fixture.primary:content:batch_parse"],
+      "implementation_id": "fixture.primary",
+      "operation": "batch_parse",
+      "platform": "youtube",
+      "records": [
+        {
+          "collected_at": "2026-07-17T00:06:00Z",
+          "content": {"id": "fixture-batch-001", "text": "Acme batch item one", "url": "https://example.invalid/videos/fixture-batch-001"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-batch-001"
+        },
+        {
+          "collected_at": "2026-07-17T00:07:00Z",
+          "content": {"id": "fixture-batch-002", "text": "Acme batch item two", "url": "https://example.invalid/videos/fixture-batch-002"},
+          "record_type": "content",
+          "source_url": "https://example.invalid/videos/fixture-batch-002"
+        }
+      ],
+      "records_count": 2,
+      "resource_type": "content",
+      "summary": {"fields": ["id", "text", "url"], "result_kind": "fixture_receipt"}
+    }
+  ],
+  "profile_id": "fixture-primary-payload-v1",
+  "schema_version": "workflow_fixture_profile.v2"
+}

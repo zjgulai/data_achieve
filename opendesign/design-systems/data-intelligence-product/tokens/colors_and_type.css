@@ -1,0 +1,121 @@
+/*
+ * Data Intelligence Product design tokens
+ * Status: stable, owner-approved and visually accepted in UX-B01
+ * Source of truth: ../DESIGN.md
+ */
+
+:root,
+[data-theme="light"] {
+  /* Raw color primitives */
+  --fg-1: #241b1b;
+  --fg-2: #5b5050;
+  --fg-3: #786d6a;
+  --fg-inverse: #ffffff;
+  --bg-1: #f7f2ed;
+  --bg-2: #ffffff;
+  --bg-3: #fffdfb;
+  --bg-4: #f4ece7;
+  --bg-diagnostic: #2e201c;
+  --accent-1: #9b4355;
+  --accent-1-hover: #823747;
+  --accent-1-pressed: #6f2f3d;
+  --accent-1-soft: #f8e6e2;
+  --accent-2: #284e7a;
+  --accent-2-soft: #e9f0f7;
+  --success-1: #287a45;
+  --success-soft: #eaf7ee;
+  --warning-1: #87611b;
+  --warning-soft: #fff4de;
+  --danger-1: #a04437;
+  --danger-soft: #fff0ed;
+  --border-1: #ded3cc;
+  --border-2: #c9b8af;
+  --focus-1: #284e7a;
+  --overlay-1: rgb(36 27 27 / 48%);
+
+  /* Font primitives */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --size-1: 0.75rem;
+  --size-2: 0.8125rem;
+  --size-3: 0.875rem;
+  --size-4: 1rem;
+  --size-5: 1.125rem;
+  --size-6: 1.5rem;
+  --size-7: 2rem;
+
+  /* Typography semantics */
+  --h1: var(--weight-semibold) var(--size-7) / 1.18 var(--font-display);
+  --h2: var(--weight-semibold) var(--size-6) / 1.25 var(--font-display);
+  --h3: var(--weight-semibold) var(--size-5) / 1.35 var(--font-display);
+  --body: var(--weight-regular) var(--size-3) / 1.55 var(--font-sans);
+  --body-strong: var(--weight-medium) var(--size-3) / 1.5 var(--font-sans);
+  --label: var(--weight-medium) var(--size-2) / 1.35 var(--font-sans);
+  --caption: var(--weight-regular) var(--size-1) / 1.45 var(--font-sans);
+  --code: var(--weight-regular) var(--size-1) / 1.55 var(--font-mono);
+
+  /* Layout primitives */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --radius-1: 0.25rem;
+  --radius-2: 0.5rem;
+  --radius-3: 0.75rem;
+  --radius-4: 1rem;
+  --radius-pill: 999px;
+  --content-max: 80rem;
+  --sidebar-width: 17rem;
+  --topbar-height: 4.5rem;
+  --touch-target: 2.75rem;
+
+  /* Motion primitives */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Semantic colors */
+  --surface-canvas: var(--bg-1);
+  --surface-primary: var(--bg-2);
+  --surface-secondary: var(--bg-3);
+  --surface-muted: var(--bg-4);
+  --surface-diagnostic: var(--bg-diagnostic);
+  --text-primary: var(--fg-1);
+  --text-secondary: var(--fg-2);
+  --text-tertiary: var(--fg-3);
+  --text-inverse: var(--fg-inverse);
+  --overlay-scrim: var(--overlay-1);
+  --border-subtle: var(--border-1);
+  --border-strong: var(--border-2);
+  --action-primary: var(--accent-1);
+  --action-primary-hover: var(--accent-1-hover);
+  --action-primary-pressed: var(--accent-1-pressed);
+  --action-secondary: var(--fg-1);
+  --state-info: var(--accent-2);
+  --state-success: var(--success-1);
+  --state-warning: var(--warning-1);
+  --state-danger: var(--danger-1);
+  --focus-ring: 0 0 0 3px rgb(40 78 122 / 24%);
+  --shadow-overlay: 0 18px 48px rgb(46 32 28 / 18%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}

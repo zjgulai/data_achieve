@@ -9,11 +9,18 @@ import { WorkflowPlanVersionCompare } from "@/components/workflow-planner/workfl
 import { WorkflowPlanVersionHistory } from "@/components/workflow-planner/workflow-plan-version-history";
 import { ApiRequestError } from "@/lib/api/client";
 import {
+  cloneWorkflowPlan,
+  copyMonitoringScopeTemplate,
   getWorkflowPlan,
+  listMonitoringScopes,
   listWorkflowPlanVersions,
 } from "@/lib/api/workflow-plan-persistence";
 import type { ProjectStatus } from "@/types/project";
 import type {
+  MonitoringScope,
+  MonitoringScopeListResult,
+  MonitoringScopeTemplateCopyResult,
+  WorkflowPlanCloneResult,
   WorkflowPlanDetail,
   WorkflowPlanReadBoundary,
   WorkflowVersionListResult,
@@ -21,10 +28,12 @@ import type {
 } from "@/types/workflow-plan-persistence";
 
 const HISTORY_PAGE_LIMIT = 50;
+const SCOPE_PAGE_LIMIT = 100;
 
 type ReadyAssetState = {
   status: "ready";
   detail: WorkflowPlanDetail;
+  scopes: MonitoringScope[];
   versions: WorkflowVersionSummary[];
   total: number;
   nextOffset: number;
@@ -36,6 +45,30 @@ type AssetState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | ReadyAssetState;
+
+type CloneState =
+  | { status: "idle" }
+  | { status: "submitting" }
+  | {
+      status: "success";
+      result: WorkflowPlanCloneResult;
+    }
+  | { status: "error"; message: string };
+
+type ScopeCopyState =
+  | { status: "idle" }
+  | { status: "submitting"; scopeId: string }
+  | {
+      status: "success";
+      scopeId: string;
+      result: MonitoringScopeTemplateCopyResult;
+    }
+  | { status: "error"; scopeId: string; message: string };
+
+type MutationAttempt = {
+  fingerprint: string;
+  idempotencyKey: string;
+};
 
 function isAbortError(error: unknown): boolean {
   return (
@@ -137,6 +170,61 @@ function assertVersionPage(
   assertStrictDescending(result.items);
 }
 
+function assertScopeList(
+  result: MonitoringScopeListResult,
+  projectId: string,
+  projectStatus: ProjectStatus,
+): void {
+  assertFalseBoundary(result);
+  if (
+    result.projectStatus !== projectStatus ||
+    !Number.isSafeInteger(result.total) ||
+    result.total < result.offset + result.items.length ||
+    result.items.length > result.limit ||
+    result.items.some((scope) => scope.projectId !== projectId)
+  ) {
+    throw new Error("MonitoringScope list response context mismatch");
+  }
+}
+
+async function listAllMonitoringScopes(
+  projectId: string,
+  projectStatus: ProjectStatus,
+  signal: AbortSignal,
+): Promise<MonitoringScope[]> {
+  const items: MonitoringScope[] = [];
+  const ids = new Set<string>();
+  let offset = 0;
+  let total: number | null = null;
+
+  while (total === null || offset < total) {
+    const page = await listMonitoringScopes(projectId, {
+      limit: SCOPE_PAGE_LIMIT,
+      offset,
+      signal,
+    });
+    assertScopeList(page, projectId, projectStatus);
+    if (
+      page.limit !== SCOPE_PAGE_LIMIT ||
+      page.offset !== offset ||
+      (total !== null && page.total !== total) ||
+      (page.items.length === 0 && page.offset < page.total)
+    ) {
+      throw new Error("MonitoringScope list pagination mismatch");
+    }
+    for (const scope of page.items) {
+      if (ids.has(scope.id)) {
+        throw new Error("MonitoringScope list identity mismatch");
+      }
+      ids.add(scope.id);
+      items.push(scope);
+    }
+    total = page.total;
+    offset += page.items.length;
+  }
+  return items;
+}
+
 function assertInitialResponses(
   detail: WorkflowPlanDetail,
   history: WorkflowVersionListResult,
@@ -227,6 +315,10 @@ function currentPlannerHref(detail: WorkflowPlanDetail): Route {
   return `/automation/planner?${query.toString()}` as Route;
 }
 
+function planDetailHref(projectId: string, planId: string): Route {
+  return `/automation/projects/${encodeURIComponent(projectId)}/plans/${encodeURIComponent(planId)}` as Route;
+}
+
 export function WorkflowPlanDetailWorkspace({
   projectId,
   planId,
@@ -253,10 +345,17 @@ function WorkflowPlanDetailAsset({
   const [assetState, setAssetState] = useState<AssetState>({
     status: "loading",
   });
+  const [cloneName, setCloneName] = useState("");
+  const [cloneState, setCloneState] = useState<CloneState>({ status: "idle" });
+  const [scopeCopyState, setScopeCopyState] = useState<ScopeCopyState>({
+    status: "idle",
+  });
   const [retrySequence, setRetrySequence] = useState(0);
   const detailSequenceRef = useRef(0);
   const historySequenceRef = useRef(0);
   const historyControllerRef = useRef<AbortController | null>(null);
+  const cloneAttemptRef = useRef<MutationAttempt | null>(null);
+  const scopeCopyAttemptRefs = useRef(new Map<string, MutationAttempt>());
   const contextRef = useRef({ projectId, planId });
   contextRef.current = { projectId, planId };
 
@@ -275,9 +374,16 @@ function WorkflowPlanDetailAsset({
       offset: 0,
       signal: controller.signal,
     });
+    const scopesRequest = detailRequest.then((detail) =>
+      listAllMonitoringScopes(
+        projectId,
+        detail.projectStatus,
+        controller.signal,
+      ),
+    );
 
-    void Promise.all([detailRequest, historyRequest])
-      .then(([detail, history]) => {
+    void Promise.all([detailRequest, historyRequest, scopesRequest])
+      .then(([detail, history, scopes]) => {
         const context = contextRef.current;
         if (
           controller.signal.aborted ||
@@ -291,12 +397,16 @@ function WorkflowPlanDetailAsset({
         setAssetState({
           status: "ready",
           detail,
+          scopes,
           versions: history.items,
           total: history.total,
           nextOffset: history.offset + history.items.length,
           loadingMore: false,
           loadMoreError: null,
         });
+        setCloneName(`${detail.plan.name} copy`);
+        setCloneState({ status: "idle" });
+        setScopeCopyState({ status: "idle" });
       })
       .catch((error: unknown) => {
         const context = contextRef.current;
@@ -412,6 +522,101 @@ function WorkflowPlanDetailAsset({
       });
   }
 
+  async function cloneCurrentPlan(): Promise<void> {
+    if (
+      assetState.status !== "ready" ||
+      detail.projectStatus === "archived" ||
+      cloneName.trim().length < 1 ||
+      cloneName.trim().length > 200
+    ) {
+      return;
+    }
+    setCloneState({ status: "submitting" });
+    const fingerprint = JSON.stringify([
+      projectId,
+      planId,
+      assetState.detail.plan.currentVersionId,
+      cloneName,
+    ]);
+    const previousAttempt = cloneAttemptRef.current;
+    const attempt =
+      previousAttempt?.fingerprint === fingerprint
+        ? previousAttempt
+        : { fingerprint, idempotencyKey: crypto.randomUUID() };
+    cloneAttemptRef.current = attempt;
+    try {
+      const result = await cloneWorkflowPlan(projectId, planId, {
+        name: cloneName,
+        sourceVersionId: assetState.detail.plan.currentVersionId,
+        idempotencyKey: attempt.idempotencyKey,
+      });
+      const mutationBoundaryMatches = result.idempotentReplay
+        ? result.databaseWrite === false && result.planChanged === false
+        : result.databaseWrite === true && result.planChanged === true;
+      if (
+        !mutationBoundaryMatches ||
+        result.providerCall !== false ||
+        result.actorRun !== false ||
+        result.browserRun !== false ||
+        result.llmCall !== false ||
+        result.workflowRunCreated !== false ||
+        result.executionAuthorized !== false
+      ) {
+        throw new Error("WorkflowPlan clone boundary mismatch");
+      }
+      cloneAttemptRef.current = null;
+      setCloneState({ status: "success", result });
+    } catch (error: unknown) {
+      setCloneState({ status: "error", message: detailErrorMessage(error) });
+    }
+  }
+
+  async function copyScope(scope: MonitoringScope): Promise<void> {
+    if (assetState.status !== "ready" || archived) {
+      return;
+    }
+    setScopeCopyState({ status: "submitting", scopeId: scope.id });
+    const fingerprint = JSON.stringify([
+      projectId,
+      scope.id,
+      assetState.detail.plan.currentVersionId,
+    ]);
+    const previousAttempt = scopeCopyAttemptRefs.current.get(scope.id);
+    const attempt =
+      previousAttempt?.fingerprint === fingerprint
+        ? previousAttempt
+        : { fingerprint, idempotencyKey: crypto.randomUUID() };
+    scopeCopyAttemptRefs.current.set(scope.id, attempt);
+    try {
+      const result = await copyMonitoringScopeTemplate(projectId, scope.id, {
+        sourceVersionId: assetState.detail.plan.currentVersionId,
+        idempotencyKey: attempt.idempotencyKey,
+      });
+      const mutationBoundaryMatches = result.idempotentReplay
+        ? result.databaseWrite === false
+        : result.databaseWrite === true;
+      if (
+        !mutationBoundaryMatches ||
+        result.providerCall !== false ||
+        result.actorRun !== false ||
+        result.browserRun !== false ||
+        result.llmCall !== false ||
+        result.workflowRunCreated !== false ||
+        result.executionAuthorized !== false
+      ) {
+        throw new Error("MonitoringScope template boundary mismatch");
+      }
+      scopeCopyAttemptRefs.current.delete(scope.id);
+      setScopeCopyState({ status: "success", scopeId: scope.id, result });
+    } catch (error: unknown) {
+      setScopeCopyState({
+        status: "error",
+        scopeId: scope.id,
+        message: detailErrorMessage(error),
+      });
+    }
+  }
+
   if (assetState.status === "loading") {
     return <DetailStatus message="正在加载 WorkflowPlan 详情…" />;
   }
@@ -434,6 +639,14 @@ function WorkflowPlanDetailAsset({
 
   const { detail, versions } = assetState;
   const archived = detail.projectStatus === "archived";
+  const versionScopeKeys = new Set(
+    (detail.currentVersion.preview.normalizedInput?.scopes ?? []).map(
+      (scope) => scope.scopeKey,
+    ),
+  );
+  const versionScopes = assetState.scopes.filter((scope) =>
+    versionScopeKeys.has(scope.scopeKey),
+  );
 
   return (
     <div
@@ -483,6 +696,142 @@ function WorkflowPlanDetailAsset({
           </div>
         </div>
       </section>
+
+      {!archived && versionScopes.length > 0 ? (
+        <section
+          aria-labelledby="workflow-scope-template-copy-heading"
+          className="min-w-0 rounded-2xl border border-[#E8DDD6] bg-[#FFFDFC] p-4 sm:p-5"
+          data-testid="workflow-scope-template-copy-panel"
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9A7467]">
+              Scope template
+            </p>
+            <h2
+              className="mt-1 text-lg font-semibold text-[#2E201C]"
+              id="workflow-scope-template-copy-heading"
+            >
+              复制当前 Version 的 Scope 模板
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[#716562]">
+              生成独立草稿模板，不增加 canonical Scope，也不会启动运行。
+            </p>
+          </div>
+          <ul className="mt-4 grid gap-3">
+            {versionScopes.map((scope) => {
+              const busy =
+                scopeCopyState.status === "submitting" &&
+                scopeCopyState.scopeId === scope.id;
+              const copied =
+                scopeCopyState.status === "success" &&
+                scopeCopyState.scopeId === scope.id;
+              const failed =
+                scopeCopyState.status === "error" &&
+                scopeCopyState.scopeId === scope.id;
+              return (
+                <li
+                  className="flex min-w-0 flex-col gap-3 rounded-xl border border-[#E9E1DC] bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                  key={scope.id}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[#392823]">
+                      {scope.scopeKey}
+                    </p>
+                    <p className="mt-1 break-all text-xs text-[#716562]">
+                      {scope.canonicalTerm ?? scope.scopeType}
+                    </p>
+                    {copied ? (
+                      <p className="mt-2 text-xs font-semibold text-[#356152]" role="status">
+                        已复制模板：{scopeCopyState.result.template.id}
+                      </p>
+                    ) : null}
+                    {failed ? (
+                      <p className="mt-2 text-xs font-semibold text-[#B85F4F]" role="alert">
+                        {scopeCopyState.message}
+                      </p>
+                    ) : null}
+                  </div>
+                  <button
+                    aria-busy={busy}
+                    className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[#C97865] bg-white px-4 py-2 text-sm font-semibold text-[#8A4436] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={archived || busy}
+                    onClick={() => void copyScope(scope)}
+                    type="button"
+                  >
+                    {busy ? "正在复制…" : "复制 Scope 模板"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {!archived ? (
+        <section
+          aria-labelledby="workflow-plan-clone-heading"
+          className="min-w-0 rounded-2xl border border-[#E8DDD6] bg-[#FFFDFC] p-4 sm:p-5"
+          data-testid="workflow-plan-clone-panel"
+        >
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#9A7467]">
+            Independent copy
+          </p>
+          <h2
+            className="mt-1 text-lg font-semibold text-[#2E201C]"
+            id="workflow-plan-clone-heading"
+          >
+            复制为新 WorkflowPlan
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#716562]">
+            复制当前冻结 Version，生成新的 Plan/v1；不会激活、运行或调用 Provider。
+          </p>
+        </div>
+        <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="min-w-0 flex-1 text-sm font-semibold text-[#463530]">
+            新 Plan 名称
+            <input
+              className="mt-2 w-full rounded-xl border border-[#DED3CC] bg-white px-3 py-2.5 text-sm font-normal outline-none focus:border-[#C97865]"
+              maxLength={200}
+              onChange={(event) => setCloneName(event.target.value)}
+              value={cloneName}
+            />
+          </label>
+          <button
+            aria-busy={cloneState.status === "submitting"}
+            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#9F4E3D] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#CDBEB9]"
+            data-testid="workflow-plan-clone"
+            disabled={
+              archived ||
+              cloneState.status === "submitting" ||
+              cloneName.trim().length < 1 ||
+              cloneName.trim().length > 200
+            }
+            onClick={() => void cloneCurrentPlan()}
+            type="button"
+          >
+            {cloneState.status === "submitting" ? "正在复制…" : "复制为新计划"}
+          </button>
+        </div>
+        {cloneState.status === "success" ? (
+          <p className="mt-4 text-sm font-semibold text-[#356152]" role="status">
+            已创建独立 Plan/v1：{" "}
+            <Link
+              className="underline decoration-[#8BBE9E] underline-offset-4"
+              href={planDetailHref(projectId, cloneState.result.plan.id)}
+            >
+              {cloneState.result.plan.name}
+            </Link>
+            。来源 v{detail.plan.currentVersionNumber} 已保留。
+          </p>
+        ) : null}
+        {cloneState.status === "error" ? (
+          <p className="mt-4 text-sm font-semibold text-[#B85F4F]" role="alert">
+            {cloneState.message}
+          </p>
+        ) : null}
+        </section>
+      ) : null}
 
       <section
         aria-labelledby="current-workflow-plan-preview-heading"

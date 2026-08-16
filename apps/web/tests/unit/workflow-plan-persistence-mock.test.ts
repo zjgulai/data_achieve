@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiRequestError } from "@/lib/api/client";
 import {
   WORKFLOW_PLAN_PERSISTENCE_TEST_FIXTURE_PROJECT_ID,
+  cloneWorkflowPlanMock,
+  copyMonitoringScopeTemplateMock,
   compareWorkflowPlanVersionsMock,
   createWorkflowPlanMock,
   createWorkflowVersionMock,
@@ -181,6 +183,116 @@ describe("workflow plan persistence mock store", () => {
     expect(localStorage.getItem).not.toHaveBeenCalled();
     expect(sessionStorage.setItem).not.toHaveBeenCalled();
     expect(sessionStorage.getItem).not.toHaveBeenCalled();
+  });
+
+  it("clones a frozen Version and copies a Scope without mutating the canonical Scope", async () => {
+    const source = await createPlan(PROJECT_A);
+    const scopesBefore = await listMonitoringScopesMock(PROJECT_A);
+    const sourceScope = scopesBefore.items[0];
+    expect(sourceScope).toBeDefined();
+
+    const cloned = await cloneWorkflowPlanMock(PROJECT_A, source.plan.id, {
+      name: "Independent copy",
+      sourceVersionId: source.version.id,
+      idempotencyKey: "clone-plan-key-0001",
+    });
+    expect(cloned).toMatchObject({
+      databaseWrite: true,
+      planChanged: true,
+      idempotentReplay: false,
+      sourcePlanId: source.plan.id,
+      sourceVersionId: source.version.id,
+      plan: {
+        name: "Independent copy",
+        sourcePlanId: source.plan.id,
+        sourceVersionId: source.version.id,
+        currentVersionNumber: 1,
+      },
+      version: {
+        workflowPlanId: cloned.plan.id,
+        versionNumber: 1,
+        editableInput: source.version.editableInput,
+      },
+    });
+    expect(cloned.plan.id).not.toBe(source.plan.id);
+    expect(cloned.version.id).not.toBe(source.version.id);
+
+    const replay = await cloneWorkflowPlanMock(PROJECT_A, source.plan.id, {
+      name: "Independent copy",
+      sourceVersionId: source.version.id,
+      idempotencyKey: "clone-plan-key-0001",
+    });
+    expect(replay).toMatchObject({
+      databaseWrite: false,
+      planChanged: false,
+      idempotentReplay: true,
+      plan: { id: cloned.plan.id },
+    });
+
+    const copied = await copyMonitoringScopeTemplateMock(
+      PROJECT_A,
+      sourceScope!.id,
+      {
+        sourceVersionId: source.version.id,
+        idempotencyKey: "copy-scope-key-0001",
+      },
+    );
+    expect(copied).toMatchObject({
+      databaseWrite: true,
+      idempotentReplay: false,
+      template: {
+        sourceScopeId: sourceScope!.id,
+        sourcePlanId: source.plan.id,
+        sourceVersionId: source.version.id,
+        scopeKey: sourceScope!.scopeKey,
+      },
+    });
+    expect(copied.template.id).not.toBe(sourceScope!.id);
+    expect((await listMonitoringScopesMock(PROJECT_A)).total).toBe(
+      scopesBefore.total,
+    );
+
+    const scopeReplay = await copyMonitoringScopeTemplateMock(
+      PROJECT_A,
+      sourceScope!.id,
+      {
+        sourceVersionId: source.version.id,
+        idempotencyKey: "copy-scope-key-0001",
+      },
+    );
+    expect(scopeReplay).toMatchObject({
+      databaseWrite: false,
+      idempotentReplay: true,
+      template: { id: copied.template.id },
+    });
+
+    const changedInput: PlanningInput = {
+      ...source.version.editableInput,
+      requiredFields: [
+        ...source.version.editableInput.requiredFields,
+        "comments",
+      ],
+    };
+    const changedPreview = await buildMockWorkflowPlanPreview(
+      PROJECT_A,
+      changedInput,
+    );
+    const secondVersion = await createWorkflowVersionMock(
+      PROJECT_A,
+      source.plan.id,
+      {
+        previewInput: changedInput,
+        expectedPreviewFingerprint: changedPreview.previewFingerprint,
+        expectedCurrentVersionId: source.version.id,
+        idempotencyKey: "copy-scope-version-key-0001",
+      },
+    );
+    await expect(
+      copyMonitoringScopeTemplateMock(PROJECT_A, sourceScope!.id, {
+        sourceVersionId: secondVersion.version.id,
+        idempotencyKey: "copy-scope-key-0001",
+      }),
+    ).rejects.toMatchObject({ status: 409, code: "idempotency_conflict" });
   });
 
   it("implements replay, key conflict, version conflict, semantic no-op, and A to B to A v3", async () => {

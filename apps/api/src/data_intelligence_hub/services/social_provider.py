@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+from datetime import datetime
 from typing import Any, Literal
 
+from data_intelligence_hub.schemas.capability_catalog import CapabilityCatalog
 from data_intelligence_hub.schemas.social_provider import (
     SocialDatasetPreviewRequest,
     SocialDatasetPreviewResponse,
@@ -37,6 +39,10 @@ from data_intelligence_hub.schemas.social_provider import (
     SocialTaskRunApprovalTemplateRequest,
     SocialTaskRunApprovalTemplateResponse,
 )
+from data_intelligence_hub.schemas.youtube_read_adapter import (
+    YouTubeReadAdapterFoundationResponse,
+    YouTubeReadPlanRequest,
+)
 from data_intelligence_hub.services.capability_catalog import (
     project_external_provider_catalog_v1,
 )
@@ -45,6 +51,15 @@ from data_intelligence_hub.services.exceptions import (
     SocialProviderCatalogLoadError,
     SocialProviderGateAuthorizationError,
     SocialProviderUnknownPlatformError,
+)
+from data_intelligence_hub.social_api.contracts import PlatformAdapter
+from data_intelligence_hub.social_api.output_contracts import (
+    PlatformAdapterFixtureRequest,
+    PlatformAdapterFixtureResponse,
+    PlatformAdapterOutputError,
+)
+from data_intelligence_hub.social_api.youtube.foundation import (
+    prepare_youtube_read_adapter_foundation,
 )
 
 OPTIONAL_DEPENDENCY_EXTRAS: dict[str, str] = {
@@ -126,12 +141,18 @@ def get_social_provider_catalog(
     platform: str | None = None,
     data_domain: str | None = None,
     resource_group: str | None = None,
+    *,
+    catalog: CapabilityCatalog | None = None,
 ) -> SocialProviderCatalogResponse:
     try:
-        catalog = project_external_provider_catalog_v1()
+        projected_catalog = (
+            project_external_provider_catalog_v1()
+            if catalog is None
+            else project_external_provider_catalog_v1(catalog=catalog)
+        )
     except CapabilityCatalogLoadError as exc:
         raise SocialProviderCatalogLoadError from exc
-    filtered = list(catalog.providers)
+    filtered = list(projected_catalog.providers)
 
     if platform is not None:
         requested_platform = _normalize_platform(platform)
@@ -154,17 +175,22 @@ def get_social_provider_catalog(
             if requested_resource_group in {group.lower() for group in item.resource_groups}
         ]
 
-    return catalog.model_copy(update={"providers": filtered})
+    return projected_catalog.model_copy(update={"providers": filtered})
 
 
-def _find_provider(platform: str, provider_id: str | None = None) -> SocialProviderCatalogItem:
-    catalog = get_social_provider_catalog(platform)
+def _find_provider(
+    platform: str,
+    provider_id: str | None = None,
+    *,
+    catalog: CapabilityCatalog | None = None,
+) -> SocialProviderCatalogItem:
+    projected_catalog = get_social_provider_catalog(platform, catalog=catalog)
     if provider_id is None:
-        if not catalog.providers:
+        if not projected_catalog.providers:
             raise SocialProviderUnknownPlatformError
-        return catalog.providers[0]
+        return projected_catalog.providers[0]
 
-    for provider in catalog.providers:
+    for provider in projected_catalog.providers:
         if provider.provider_id == provider_id:
             return provider
     raise SocialProviderUnknownPlatformError
@@ -321,9 +347,14 @@ def _gate_budget_enforcement(max_requests: int, max_items: int) -> dict[str, Any
 
 def prepare_social_provider_readiness(
     payload: SocialProviderReadinessRequest,
+    *,
+    catalog: CapabilityCatalog | None = None,
 ) -> SocialProviderReadinessResponse:
     normalized_endpoints = [endpoint.strip() for endpoint in payload.endpoints if endpoint.strip()]
-    provider = _find_provider(_normalize_platform(payload.platform))
+    provider = _find_provider(
+        _normalize_platform(payload.platform),
+        catalog=catalog,
+    )
 
     missing_scope = _missing_endpoints(provider, normalized_endpoints)
     credentials_snapshot = _coerce_bool_map(
@@ -349,19 +380,22 @@ def prepare_social_provider_readiness(
         platform=provider.platform,
         provider_id=provider.provider_id,
         readiness=readiness,
+        declared_readiness=readiness,
         missing_credentials=missing_credentials,
         missing_scope=missing_scope,
         blocked_reasons=blocked_reasons,
         policy_blockers=policy_blockers,
         forbidden_actions=provider.blocked_actions,
         rate_limit_profile=rate_limit_profile,
-        provider_call_allowed=readiness,
+        provider_call_allowed=False,
         dry_run=payload.dry_run,
     )
 
 
 def prepare_social_provider_gate(
     payload: SocialProviderGateRequest,
+    *,
+    catalog: CapabilityCatalog | None = None,
 ) -> SocialProviderGateResponse:
     if not payload.authorized:
         raise SocialProviderGateAuthorizationError
@@ -374,7 +408,7 @@ def prepare_social_provider_gate(
         policy_context=_derive_policy_context(payload),
         dry_run=payload.dry_run,
     )
-    readiness = prepare_social_provider_readiness(readiness_payload)
+    readiness = prepare_social_provider_readiness(readiness_payload, catalog=catalog)
 
     blocked_reasons = list(readiness.blocked_reasons)
     if payload.max_items < 1:
@@ -386,12 +420,13 @@ def prepare_social_provider_gate(
     ):
         blocked_reasons.append("max_cost_usd_below_estimated_cost")
 
-    provider_call_allowed = readiness.provider_call_allowed and not blocked_reasons
+    declared_readiness = readiness.declared_readiness and not blocked_reasons
 
     return SocialProviderGateResponse(
         platform=readiness.platform,
         provider_id=readiness.provider_id,
-        provider_call_allowed=provider_call_allowed,
+        declared_readiness=declared_readiness,
+        provider_call_allowed=False,
         provider_call_attempted=False,
         readiness=readiness.readiness,
         blocked_reasons=blocked_reasons,
@@ -409,6 +444,22 @@ def prepare_social_provider_gate(
         approval_id=payload.approval_id,
         next_required_authorization="L4_social_api_gate_required_after_fixture",
         dry_run=payload.dry_run,
+    )
+
+
+def prepare_youtube_read_plan(
+    payload: YouTubeReadPlanRequest,
+    *,
+    catalog: CapabilityCatalog | None = None,
+    dependency_present: bool | None = None,
+    now: datetime | None = None,
+) -> YouTubeReadAdapterFoundationResponse:
+    provider = _find_provider("youtube", "youtube.v3", catalog=catalog)
+    return prepare_youtube_read_adapter_foundation(
+        payload,
+        provider=provider,
+        dependency_present=dependency_present,
+        now=now,
     )
 
 
@@ -536,6 +587,37 @@ def _load_fixture_adapter_module(module_path: str | None) -> Any | None:
         return importlib.import_module(module_path)
     except ImportError:
         return None
+
+
+def _prepare_platform_adapter_fixture_response(
+    provider: SocialProviderCatalogItem,
+    endpoint: str,
+    fixture_limit: int,
+) -> tuple[PlatformAdapterFixtureResponse | None, str | None]:
+    module_path = FIXTURE_ADAPTER_MODULES.get(provider.provider_id)
+    adapter_module = _load_fixture_adapter_module(module_path)
+    if adapter_module is None:
+        return None, "platform_adapter_module_unavailable"
+    adapter = getattr(adapter_module, "PLATFORM_ADAPTER", None)
+    if not isinstance(adapter, PlatformAdapter):
+        return None, "platform_adapter_contract_missing"
+    try:
+        return (
+            adapter.prepare_fixture_response(
+                PlatformAdapterFixtureRequest(
+                    provider_id=provider.provider_id,
+                    operation_id=f"fixture:{provider.provider_id}:{endpoint}",
+                    endpoint=endpoint,
+                    fixture_limit=fixture_limit,
+                    max_response_bytes=262_144,
+                )
+            ),
+            None,
+        )
+    except PlatformAdapterOutputError as exc:
+        return None, exc.code
+    except Exception:
+        return None, "platform_adapter_response_invalid"
 
 
 def prepare_social_provider_adapter_plan(
@@ -688,22 +770,6 @@ def _fixture_payload(
         "fixture_index": index,
         "provider_call": False,
     }
-    if provider.platform == "youtube":
-        return {
-            **base_payload,
-            "content_id": f"yt_fixture_video_{index}",
-            "title": f"YouTube fixture video {index}",
-            "channel_id": f"yt_fixture_channel_{index}",
-            "comment_count": 12 + index,
-        }
-    if provider.platform == "reddit":
-        return {
-            **base_payload,
-            "subreddit": "example_subreddit",
-            "post_id": f"reddit_fixture_post_{index}",
-            "title": f"Reddit fixture post {index}",
-            "comment_count": 8 + index,
-        }
     if provider.platform == "x":
         return {
             **base_payload,
@@ -749,20 +815,56 @@ def prepare_social_raw_preview(payload: SocialRawPreviewRequest) -> SocialRawPre
 
     records: list[SocialRawPreviewRecord] = []
     if not missing_scope:
-        for index in range(1, payload.fixture_limit + 1):
-            raw_record_id = f"fixture:{provider.provider_id}:{endpoint}:{index}"
-            evidence_ref = f"fixture://{provider.provider_id}/{endpoint}/{index}"
-            records.append(
-                SocialRawPreviewRecord(
-                    raw_record_id=raw_record_id,
-                    provider_id=provider.provider_id,
-                    platform=provider.platform,
-                    endpoint=endpoint,
-                    source_ref=f"{provider.provider_id}:{endpoint}",
-                    evidence_ref=evidence_ref,
-                    payload=_fixture_payload(provider, endpoint, index),
-                )
+        if provider.provider_id in FIXTURE_ADAPTER_MODULES:
+            adapter_response, adapter_error = _prepare_platform_adapter_fixture_response(
+                provider,
+                endpoint,
+                payload.fixture_limit,
             )
+            if adapter_error is not None:
+                blocked_reasons.append(adapter_error)
+            elif adapter_response is not None:
+                for index, record in enumerate(adapter_response.records, start=1):
+                    normalized_payload: dict[str, Any] = {
+                        "platform": record.platform,
+                        "provider_id": record.provider_id,
+                        "endpoint": record.endpoint,
+                        "fixture_index": index,
+                        "record_type": record.record_type,
+                        "post_id": record.external_post_id,
+                        "comment_id": record.external_comment_id,
+                        "text": record.text,
+                        "metrics": record.metrics,
+                        "payload_digest": record.payload_digest,
+                        "provider_call": False,
+                    }
+                    normalized_payload.update(record.metrics)
+                    records.append(
+                        SocialRawPreviewRecord(
+                            raw_record_id=record.raw_record_id,
+                            provider_id=record.provider_id,
+                            platform=record.platform,
+                            endpoint=record.endpoint,
+                            source_ref=record.source_ref,
+                            evidence_ref=record.evidence_ref,
+                            payload=normalized_payload,
+                        )
+                    )
+        else:
+            for index in range(1, payload.fixture_limit + 1):
+                raw_record_id = f"fixture:{provider.provider_id}:{endpoint}:{index}"
+                evidence_ref = f"fixture://{provider.provider_id}/{endpoint}/{index}"
+                records.append(
+                    SocialRawPreviewRecord(
+                        raw_record_id=raw_record_id,
+                        provider_id=provider.provider_id,
+                        platform=provider.platform,
+                        endpoint=endpoint,
+                        source_ref=f"{provider.provider_id}:{endpoint}",
+                        evidence_ref=evidence_ref,
+                        payload=_fixture_payload(provider, endpoint, index),
+                    )
+                )
 
     return SocialRawPreviewResponse(
         platform=provider.platform,

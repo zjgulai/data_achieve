@@ -1,0 +1,20 @@
+{
+  "schema_version": "youtube_quota_evidence.v1",
+  "observed_at": "2026-07-19T00:00:00Z",
+  "entries": [
+    {
+      "method": "search.list",
+      "bucket": "youtube_search_queries",
+      "units_per_request": 1,
+      "evidence_ref": "official:youtube:search.list:2026-07-19",
+      "source_url": "https://developers.google.com/youtube/v3/docs/search/list"
+    },
+    {
+      "method": "videos.list",
+      "bucket": "youtube_data_daily_units",
+      "units_per_request": 1,
+      "evidence_ref": "official:youtube:videos.list:2026-07-19",
+      "source_url": "https://developers.google.com/youtube/v3/docs/videos/list"
+    }
+  ]
+}

@@ -8,13 +8,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SavedWorkflowPlansWorkspace } from "@/components/workflow-planner/saved-workflow-plans-workspace";
 import { WorkflowPlanDetailWorkspace } from "@/components/workflow-planner/workflow-plan-detail-workspace";
 import {
+  cloneWorkflowPlan,
   compareWorkflowPlanVersions,
+  copyMonitoringScopeTemplate,
   getWorkflowPlan,
+  listMonitoringScopes,
   listWorkflowPlans,
   listWorkflowPlanVersions,
 } from "@/lib/api/workflow-plan-persistence";
 import { ApiRequestError } from "@/lib/api/client";
 import type {
+  MonitoringScope,
+  MonitoringScopeListResult,
   WorkflowPlan,
   WorkflowPlanDetail,
   WorkflowPlanListResult,
@@ -65,8 +70,11 @@ vi.mock("@/lib/api/workflow-plan-persistence", async (importOriginal) => {
     >();
   return {
     ...original,
+    cloneWorkflowPlan: vi.fn(),
     compareWorkflowPlanVersions: vi.fn(),
+    copyMonitoringScopeTemplate: vi.fn(),
     getWorkflowPlan: vi.fn(),
+    listMonitoringScopes: vi.fn(),
     listWorkflowPlans: vi.fn(),
     listWorkflowPlanVersions: vi.fn(),
   };
@@ -82,7 +90,10 @@ vi.mock("@/components/workflow-planner/workflow-plan-preview", () => ({
 }));
 
 const compareMock = vi.mocked(compareWorkflowPlanVersions);
+const cloneMock = vi.mocked(cloneWorkflowPlan);
+const copyScopeMock = vi.mocked(copyMonitoringScopeTemplate);
 const getPlanMock = vi.mocked(getWorkflowPlan);
+const listScopesMock = vi.mocked(listMonitoringScopes);
 const listPlansMock = vi.mocked(listWorkflowPlans);
 const listVersionsMock = vi.mocked(listWorkflowPlanVersions);
 
@@ -227,6 +238,43 @@ function makeVersionList(
   };
 }
 
+function makeScopeList(
+  projectStatus: "active" | "archived" = "active",
+  items: MonitoringScope[] = [],
+): MonitoringScopeListResult {
+  return {
+    ...readBoundary,
+    projectStatus,
+    items,
+    total: items.length,
+    limit: 100,
+    offset: 0,
+  };
+}
+
+function makeScope(overrides: Partial<MonitoringScope> = {}): MonitoringScope {
+  return {
+    id: "scope-a",
+    workspaceId: "workspace-a",
+    projectId: "project-a",
+    createdByUserId: "user-creator",
+    scopeKey: "scope-key-a",
+    scopeType: "brand",
+    canonicalTerm: "Example",
+    aliases: [],
+    includeTerms: [],
+    excludeTerms: [],
+    officialAccounts: [],
+    seedUrls: [],
+    effectiveLanguages: ["en"],
+    effectiveRegions: ["US"],
+    effectivePlatforms: ["reddit"],
+    matchMode: "exact",
+    createdAt: "2026-07-13T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
 function makeCompare(
   baseVersion: WorkflowVersionSummary,
   targetVersion: WorkflowVersionSummary,
@@ -276,7 +324,11 @@ beforeEach(() => {
   projectSelection.clear.mockReset();
   projectSelection.mark.mockReset();
   compareMock.mockReset();
+  cloneMock.mockReset();
+  copyScopeMock.mockReset();
   getPlanMock.mockReset();
+  listScopesMock.mockReset();
+  listScopesMock.mockResolvedValue(makeScopeList());
   listPlansMock.mockReset();
   listVersionsMock.mockReset();
 });
@@ -552,6 +604,57 @@ describe("saved WorkflowPlan assets", () => {
     act(() => root.unmount());
   });
 
+  it("loads later Scope pages before filtering the current Version", async () => {
+    const detail = makeDetail();
+    const versions = [makeSummary(3), makeSummary(2)];
+    detail.currentVersion.preview = {
+      ...detail.currentVersion.preview,
+      normalizedInput: {
+        scopes: [{ scopeKey: "scope-key-old" }],
+      },
+    } as WorkflowPlanPreview;
+    const firstPage = Array.from({ length: 100 }, (_, index) =>
+      makeScope({
+        id: `scope-new-${index}`,
+        scopeKey: `scope-key-new-${index}`,
+      }),
+    );
+    const oldScope = makeScope({ id: "scope-old", scopeKey: "scope-key-old" });
+    getPlanMock.mockResolvedValueOnce(detail);
+    listVersionsMock.mockResolvedValueOnce(makeVersionList(versions));
+    listScopesMock
+      .mockResolvedValueOnce({
+        ...makeScopeList("active", firstPage),
+        total: 101,
+      })
+      .mockResolvedValueOnce({
+        ...makeScopeList("active", [oldScope]),
+        total: 101,
+        offset: 100,
+      });
+    compareMock.mockResolvedValueOnce(makeCompare(versions[1]!, versions[0]!));
+
+    const { container, root } = renderNode(
+      createElement(WorkflowPlanDetailWorkspace, {
+        projectId: "project-a",
+        planId: "plan-a",
+      }),
+    );
+    await flushEffects();
+
+    expect(listScopesMock).toHaveBeenNthCalledWith(
+      2,
+      "project-a",
+      expect.objectContaining({ limit: 100, offset: 100 }),
+    );
+    expect(container.textContent).toContain("scope-key-old");
+    expect(
+      container.querySelector('[data-testid="workflow-scope-template-copy-panel"]'),
+    ).not.toBeNull();
+
+    act(() => root.unmount());
+  });
+
   it("fails closed when detail objects cross a Workspace boundary", async () => {
     const detail = makeDetail();
     const versions = [makeSummary(3), makeSummary(2)];
@@ -665,6 +768,7 @@ describe("saved WorkflowPlan assets", () => {
     listVersionsMock.mockResolvedValueOnce(
       makeVersionList(versions, "archived"),
     );
+    listScopesMock.mockResolvedValueOnce(makeScopeList("archived"));
     compareMock.mockResolvedValueOnce(
       makeCompare(versions[1]!, versions[0]!, { projectStatus: "archived" }),
     );
@@ -680,6 +784,180 @@ describe("saved WorkflowPlan assets", () => {
     expect(container.textContent).toContain("Archived Project");
     expect(container.textContent).toContain("只读");
     expect(container.textContent).not.toMatch(/激活|运行/);
+
+    act(() => root.unmount());
+  });
+
+  it("exposes Plan clone as a separate action from the historical Planner draft link", async () => {
+    const detail = makeDetail("active");
+    const versions = [makeSummary(3), makeSummary(2)];
+    const clonePlan = {
+      ...detail.plan,
+      id: "plan-clone",
+      name: "Competitor monitoring copy",
+      sourcePlanId: detail.plan.id,
+      sourceVersionId: detail.plan.currentVersionId,
+      currentVersionId: "version-clone",
+      currentVersionNumber: 1,
+    };
+    cloneMock.mockResolvedValueOnce({
+      ...readBoundary,
+      databaseWrite: true,
+      planChanged: true,
+      outcome: "created",
+      idempotentReplay: false,
+      sourcePlanId: detail.plan.id,
+      sourceVersionId: detail.plan.currentVersionId,
+      plan: clonePlan,
+      version: {
+        ...detail.currentVersion,
+        id: "version-clone",
+        workflowPlanId: "plan-clone",
+        versionNumber: 1,
+      },
+    });
+    getPlanMock.mockResolvedValueOnce(detail);
+    listVersionsMock.mockResolvedValueOnce(makeVersionList(versions));
+    compareMock.mockResolvedValue(makeCompare(versions[1]!, versions[0]!));
+
+    const { container, root } = renderNode(
+      createElement(WorkflowPlanDetailWorkspace, {
+        projectId: "project-a",
+        planId: "plan-a",
+      }),
+    );
+    await flushEffects();
+
+    const cloneButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="workflow-plan-clone"]',
+    );
+    expect(cloneButton).not.toBeNull();
+    act(() => cloneButton!.click());
+    await flushEffects();
+
+    expect(cloneMock).toHaveBeenCalledWith(
+      "project-a",
+      "plan-a",
+      expect.objectContaining({
+        name: "Competitor monitoring copy",
+        sourceVersionId: "version-3",
+        idempotencyKey: expect.any(String),
+      }),
+    );
+    expect(container.textContent).toContain("已创建独立 Plan/v1");
+    expect(
+      container.querySelector(
+        'a[href="/automation/projects/project-a/plans/plan-clone"]',
+      ),
+    ).not.toBeNull();
+    expect(container.textContent).toContain("从 v3 在 Planner 中继续");
+
+    act(() => root.unmount());
+  });
+
+  it("reuses clone and Scope-copy idempotency keys after an uncertain failure", async () => {
+    const scope = makeScope();
+    const detail = makeDetail("active");
+    detail.currentVersion.preview = {
+      ...detail.currentVersion.preview,
+      normalizedInput: { scopes: [{ scopeKey: scope.scopeKey }] },
+    } as WorkflowPlanPreview;
+    const versions = [makeSummary(3), makeSummary(2)];
+    const cloneResult = {
+      ...readBoundary,
+      databaseWrite: false,
+      planChanged: false,
+      outcome: "created" as const,
+      idempotentReplay: true,
+      sourcePlanId: detail.plan.id,
+      sourceVersionId: detail.plan.currentVersionId,
+      plan: {
+        ...detail.plan,
+        id: "plan-clone-retry",
+        currentVersionId: "version-clone-retry",
+        currentVersionNumber: 1,
+      },
+      version: {
+        ...detail.currentVersion,
+        id: "version-clone-retry",
+        workflowPlanId: "plan-clone-retry",
+        versionNumber: 1,
+      },
+    };
+    const copyResult = {
+      ...readBoundary,
+      databaseWrite: false,
+      idempotentReplay: true,
+      template: {
+        ...readBoundary,
+        id: "scope-template-a",
+        workspaceId: scope.workspaceId,
+        projectId: scope.projectId,
+        createdByUserId: scope.createdByUserId,
+        sourceScopeId: scope.id,
+        sourcePlanId: detail.plan.id,
+        sourceVersionId: detail.plan.currentVersionId,
+        scopeKey: scope.scopeKey,
+        scopeType: scope.scopeType,
+        canonicalTerm: scope.canonicalTerm,
+        aliases: scope.aliases,
+        includeTerms: scope.includeTerms,
+        excludeTerms: scope.excludeTerms,
+        officialAccounts: scope.officialAccounts,
+        seedUrls: scope.seedUrls,
+        effectiveLanguages: scope.effectiveLanguages,
+        effectiveRegions: scope.effectiveRegions,
+        effectivePlatforms: scope.effectivePlatforms,
+        matchMode: scope.matchMode,
+        createdAt: scope.createdAt,
+      },
+    };
+    cloneMock
+      .mockRejectedValueOnce(new Error("response_lost"))
+      .mockResolvedValueOnce(cloneResult);
+    copyScopeMock
+      .mockRejectedValueOnce(new Error("response_lost"))
+      .mockResolvedValueOnce(copyResult);
+    getPlanMock.mockResolvedValueOnce(detail);
+    listVersionsMock.mockResolvedValueOnce(makeVersionList(versions));
+    listScopesMock.mockResolvedValueOnce(makeScopeList("active", [scope]));
+    compareMock.mockResolvedValue(makeCompare(versions[1]!, versions[0]!));
+
+    const { container, root } = renderNode(
+      createElement(WorkflowPlanDetailWorkspace, {
+        projectId: "project-a",
+        planId: "plan-a",
+      }),
+    );
+    await flushEffects();
+
+    const cloneButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="workflow-plan-clone"]',
+    )!;
+    act(() => cloneButton.click());
+    await flushEffects();
+    act(() => cloneButton.click());
+    await flushEffects();
+
+    const cloneKeys = cloneMock.mock.calls.map(
+      ([, , input]) => input.idempotencyKey,
+    );
+    expect(cloneKeys).toHaveLength(2);
+    expect(new Set(cloneKeys).size).toBe(1);
+
+    const copyButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "复制 Scope 模板",
+    )!;
+    act(() => copyButton.click());
+    await flushEffects();
+    act(() => copyButton.click());
+    await flushEffects();
+
+    const copyKeys = copyScopeMock.mock.calls.map(
+      ([, , input]) => input.idempotencyKey,
+    );
+    expect(copyKeys).toHaveLength(2);
+    expect(new Set(copyKeys).size).toBe(1);
 
     act(() => root.unmount());
   });

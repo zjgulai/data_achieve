@@ -3,6 +3,7 @@ import {
   ChartNoAxesCombined,
   FolderKanban,
   Gauge,
+  Settings,
   Store,
   TableProperties,
   type LucideIcon,
@@ -92,6 +93,7 @@ export const primaryNavigation = [
     child("/automation/planner?mode=periodic_monitoring", "创建监测项目"),
     child("/automation/planner?mode=batch_research", "批量检索与解析"),
     child("/automation/plans", "已保存计划"),
+    child("/automation/runs", "运行记录"),
     child("/tasks", "采集任务"),
     child("/sources", "数据源"),
   ]),
@@ -109,5 +111,7 @@ export const primaryNavigation = [
     child("/api-market?view=scenarios", "场景视图"),
     child("/api-market?view=matrix", "矩阵视图"),
     child("/api-market?view=list", "能力列表"),
+    child("/api-market/discovery", "能力发现 Preview"),
   ]),
+  nav("/settings/platforms", "系统设置", Settings, []),
 ] satisfies NavigationItem[];

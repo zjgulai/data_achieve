@@ -31,8 +31,16 @@ Sha256Fingerprint = Annotated[
     str,
     StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$"),
 ]
-WorkflowPlanStatus = Literal["previewed"]
+WorkflowPlanStatus = Literal[
+    "draft",
+    "previewed",
+    "approved",
+    "active",
+    "paused",
+    "archived",
+]
 WorkflowPlanSaveOutcome = Literal["created", "semantic_no_op"]
+WorkflowPlanCloneOutcome = Literal["created"]
 
 
 class WorkflowPlanPersistenceContract(BaseModel):
@@ -70,6 +78,33 @@ class WorkflowVersionCreateRequest(WorkflowPlanPersistenceContract):
     expected_current_version_id: UUID
 
 
+class WorkflowPlanCloneRequest(WorkflowPlanPersistenceContract):
+    name: str = Field(min_length=1, max_length=200)
+    source_version_id: UUID
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def trim_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class WorkflowPlanTransitionRequest(WorkflowPlanPersistenceContract):
+    expected_status: WorkflowPlanStatus
+    to_status: WorkflowPlanStatus
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("reason", mode="before")
+    @classmethod
+    def trim_reason(cls, value: object) -> object:
+        if value is None:
+            return value
+        return value.strip() if isinstance(value, str) else value
+
+
+class MonitoringScopeTemplateCopyRequest(WorkflowPlanPersistenceContract):
+    source_version_id: UUID
+
+
 class WorkflowPlanResponse(WorkflowPlanPersistenceContract):
     id: UUID
     workspace_id: UUID
@@ -79,6 +114,10 @@ class WorkflowPlanResponse(WorkflowPlanPersistenceContract):
     flow_mode: FlowMode
     status: WorkflowPlanStatus
     current_version_id: UUID
+    source_plan_id: UUID | None = None
+    source_version_id: UUID | None = None
+    workflow_template_id: UUID | None = None
+    workflow_template_revision_id: UUID | None = None
     current_version_number: int = Field(ge=1)
     planning_status: PlanningStatus
     scope_count: int = Field(ge=0)
@@ -92,6 +131,8 @@ class WorkflowVersionSummaryResponse(WorkflowPlanPersistenceContract):
     workspace_id: UUID
     project_id: UUID
     workflow_plan_id: UUID
+    workflow_template_id: UUID | None = None
+    workflow_template_revision_id: UUID | None = None
     created_by_user_id: UUID
     version_number: int = Field(ge=1)
     planning_status: PlanningStatus
@@ -144,6 +185,75 @@ class MonitoringScopeResponse(WorkflowPlanPersistenceContract):
     created_at: datetime
 
 
+class MonitoringScopeTemplateResponse(WorkflowExecutionBoundary):
+    id: UUID
+    workspace_id: UUID
+    project_id: UUID
+    created_by_user_id: UUID
+    source_scope_id: UUID
+    source_plan_id: UUID
+    source_version_id: UUID
+    scope_key: str
+    scope_type: MonitoringScopeType
+    canonical_term: str | None
+    aliases: list[str]
+    include_terms: list[str]
+    exclude_terms: list[str]
+    official_accounts: list[str]
+    seed_urls: list[str]
+    effective_languages: list[str]
+    effective_regions: list[str]
+    effective_platforms: list[PlatformId]
+    match_mode: MatchMode
+    created_at: datetime
+
+
+class WorkflowPlanCloneResponse(WorkflowExecutionBoundary):
+    database_write: bool
+    plan_changed: bool
+    outcome: WorkflowPlanCloneOutcome
+    idempotent_replay: bool
+    source_plan_id: UUID
+    source_version_id: UUID
+    plan: WorkflowPlanResponse
+    version: WorkflowVersionResponse
+
+    @model_validator(mode="after")
+    def validate_attempt_flags(self) -> Self:
+        valid = (
+            self.idempotent_replay
+            and not self.database_write
+            and not self.plan_changed
+        ) or (
+            not self.idempotent_replay
+            and self.database_write
+            and self.plan_changed
+        )
+        if not valid:
+            raise ValueError("clone_attempt_flags_invalid")
+        if self.plan.source_plan_id != self.source_plan_id:
+            raise ValueError("clone_source_plan_mismatch")
+        if self.plan.source_version_id != self.source_version_id:
+            raise ValueError("clone_source_version_mismatch")
+        if self.version.workflow_plan_id != self.plan.id:
+            raise ValueError("clone_target_plan_mismatch")
+        return self
+
+
+class MonitoringScopeTemplateCopyResponse(WorkflowExecutionBoundary):
+    database_write: bool
+    idempotent_replay: bool
+    template: MonitoringScopeTemplateResponse
+
+    @model_validator(mode="after")
+    def validate_attempt_flags(self) -> Self:
+        if self.idempotent_replay and self.database_write:
+            raise ValueError("scope_template_copy_attempt_flags_invalid")
+        if not self.idempotent_replay and not self.database_write:
+            raise ValueError("scope_template_copy_attempt_flags_invalid")
+        return self
+
+
 class WorkflowPlanSaveResponse(WorkflowExecutionBoundary):
     database_write: bool
     plan_changed: bool
@@ -163,6 +273,28 @@ class WorkflowPlanSaveResponse(WorkflowExecutionBoundary):
             valid = self.database_write and not self.plan_changed
         if not valid:
             raise ValueError("save_attempt_flags_invalid")
+        return self
+
+
+class WorkflowPlanTransitionResponse(WorkflowExecutionBoundary):
+    database_write: bool
+    plan_changed: bool
+    idempotent_replay: Literal[False] = False
+    from_status: WorkflowPlanStatus
+    to_status: WorkflowPlanStatus
+    reason: str | None = None
+    plan: WorkflowPlanResponse
+
+    @model_validator(mode="after")
+    def validate_attempt_flags(self) -> Self:
+        if self.database_write != self.plan_changed:
+            raise ValueError("transition_attempt_flags_invalid")
+        if self.plan.status != self.to_status:
+            raise ValueError("transition_plan_status_mismatch")
+        if self.database_write and self.from_status == self.to_status:
+            raise ValueError("transition_write_noop_invalid")
+        if not self.database_write and self.from_status != self.to_status:
+            raise ValueError("transition_read_status_mismatch")
         return self
 
 
@@ -240,6 +372,9 @@ __all__ = [
     "WorkflowPlanCompareChange",
     "WorkflowPlanCompareSection",
     "WorkflowPlanCreateRequest",
+    "WorkflowPlanCloneOutcome",
+    "WorkflowPlanCloneRequest",
+    "WorkflowPlanCloneResponse",
     "WorkflowPlanDetailResponse",
     "WorkflowPlanListResponse",
     "WorkflowPlanReadBoundary",
@@ -247,12 +382,17 @@ __all__ = [
     "WorkflowPlanSaveOutcome",
     "WorkflowPlanSaveResponse",
     "WorkflowPlanStatus",
+    "WorkflowPlanTransitionRequest",
+    "WorkflowPlanTransitionResponse",
     "WorkflowPlanVersionCompareResponse",
     "WorkflowVersionCreateRequest",
     "WorkflowVersionDetailResponse",
     "WorkflowVersionListResponse",
     "WorkflowVersionResponse",
     "WorkflowVersionSummaryResponse",
+    "MonitoringScopeTemplateCopyRequest",
+    "MonitoringScopeTemplateCopyResponse",
+    "MonitoringScopeTemplateResponse",
     "normalize_idempotency_key",
     "serialize_preview_snapshot",
 ]

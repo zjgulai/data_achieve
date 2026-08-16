@@ -15,6 +15,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useProjectSelection } from "@/components/layout/project-selection-provider";
 import {
   listEvidences,
   listIntelligence,
@@ -23,6 +24,13 @@ import {
 } from "@/lib/api/intelligence";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { getToolkitOverview } from "@/lib/api/toolkit";
+import {
+  buildIntelligenceDetailHref,
+  buildIntelligenceListHref,
+  buildProjectScopedHref,
+  readIntelligenceNavigationContext,
+  type IntelligenceScope,
+} from "@/lib/intelligence-navigation";
 import { getTrainingSummaryLine } from "@/lib/training-data";
 import { cn } from "@/lib/utils";
 import { WorkbenchDistributionRow, WorkbenchTraceDetailRow } from "@/components/common/workbench-ui";
@@ -67,8 +75,6 @@ const typeClass: Record<string, string> = {
   anomaly: "bg-[#FBF8F5] text-[#86868B]",
 };
 
-type IntelligenceScope = "all" | "training";
-
 export function IntelligenceWorkspace() {
   const [items, setItems] = useState<IntelligenceItem[]>([]);
   const [evidences, setEvidences] = useState<Evidence[]>([]);
@@ -82,12 +88,41 @@ export function IntelligenceWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [feedbackState, setFeedbackState] = useState<string | null>(null);
   const [toolkitTrainingIds, setToolkitTrainingIds] = useState<Set<string>>(new Set());
+  const [navigationReady, setNavigationReady] = useState(false);
+  const {
+    clearProjectFilterApplied,
+    loading: projectSelectionLoading,
+    markProjectFilterApplied,
+    selectedProject,
+    selectedProjectId,
+  } = useProjectSelection();
 
   useEffect(() => {
+    function restoreNavigationContext() {
+      const context = readIntelligenceNavigationContext(window.location.search);
+      setTypeFilter(context.type);
+      setStatusFilter(context.status);
+      setIntelligenceScope(context.scope);
+      setSelectedId(context.intelligenceId);
+      setSelectedEvidenceId(context.evidenceId);
+      setNavigationReady(true);
+    }
+
+    restoreNavigationContext();
+    window.addEventListener("popstate", restoreNavigationContext);
+    return () => window.removeEventListener("popstate", restoreNavigationContext);
+  }, []);
+
+  useEffect(() => {
+    if (!navigationReady || projectSelectionLoading) {
+      return;
+    }
     let mounted = true;
     setLoading(true);
     setError(null);
+    clearProjectFilterApplied();
     listIntelligence({
+      projectId: selectedProjectId ?? undefined,
       type: typeFilter || undefined,
       status: statusFilter || undefined,
       sort: "final_score",
@@ -103,6 +138,9 @@ export function IntelligenceWorkspace() {
           }
           return responseItems[0]?.id ?? null;
         });
+        if (selectedProjectId) {
+          markProjectFilterApplied(selectedProjectId);
+        }
       })
       .catch((caught) => {
         if (mounted) {
@@ -117,7 +155,15 @@ export function IntelligenceWorkspace() {
     return () => {
       mounted = false;
     };
-  }, [statusFilter, typeFilter]);
+  }, [
+    clearProjectFilterApplied,
+    markProjectFilterApplied,
+    navigationReady,
+    projectSelectionLoading,
+    selectedProjectId,
+    statusFilter,
+    typeFilter,
+  ]);
 
   useEffect(() => {
     let mounted = true;
@@ -152,7 +198,12 @@ export function IntelligenceWorkspace() {
           return;
         }
         setEvidences(responseItems);
-        setSelectedEvidenceId(responseItems[0]?.id ?? null);
+        setSelectedEvidenceId((currentId) => {
+          if (currentId && responseItems.some((item) => item.id === currentId)) {
+            return currentId;
+          }
+          return responseItems[0]?.id ?? null;
+        });
       })
       .catch((caught) => {
         if (mounted) {
@@ -196,6 +247,36 @@ export function IntelligenceWorkspace() {
   const selectedEvidence = useMemo(() => {
     return evidences.find((item) => item.id === selectedEvidenceId) ?? null;
   }, [evidences, selectedEvidenceId]);
+
+  const navigationContext = useMemo(
+    () => ({
+      evidenceId: selectedEvidenceId,
+      intelligenceId: selectedId,
+      projectId: selectedProjectId,
+      scope: intelligenceScope,
+      status: statusFilter,
+      type: typeFilter,
+    }),
+    [
+      intelligenceScope,
+      selectedEvidenceId,
+      selectedId,
+      selectedProjectId,
+      statusFilter,
+      typeFilter,
+    ],
+  );
+
+  useEffect(() => {
+    if (!navigationReady || projectSelectionLoading) {
+      return;
+    }
+    const nextHref = buildIntelligenceListHref(navigationContext);
+    const currentHref = `${window.location.pathname}${window.location.search}`;
+    if (nextHref !== currentHref) {
+      window.history.replaceState(window.history.state, "", nextHref);
+    }
+  }, [navigationContext, navigationReady, projectSelectionLoading]);
 
   const summary = useMemo(() => {
     const reviewedCount = visibleItems.filter((item) => item.status === "reviewed").length;
@@ -264,6 +345,21 @@ export function IntelligenceWorkspace() {
         </div>
       </section>
 
+      <section
+        className="flex min-w-0 flex-col gap-2 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        data-testid="intelligence-context-strip"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-[var(--text-tertiary)]">浏览上下文</p>
+          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">
+            当前 Project · {selectedProject?.name ?? "全部项目"}
+          </p>
+        </div>
+        <p className="text-xs leading-5 text-[var(--text-secondary)]">
+          返回时保留：类型、状态、Scope、Intelligence 与 Evidence
+        </p>
+      </section>
+
       <div className="grid min-w-0 max-w-full grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1fr)_460px]">
       <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#E9E5E2] bg-white p-5">
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -289,11 +385,12 @@ export function IntelligenceWorkspace() {
         <div className="mb-4 flex flex-wrap gap-2">
           {(["all", "training"] as const).map((scope) => (
             <button
+              aria-pressed={intelligenceScope === scope}
               className={cn(
-                "inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors",
+                "inline-flex min-h-[var(--touch-target)] items-center gap-2 rounded-[var(--radius-2)] border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]",
                 intelligenceScope === scope
-                  ? "border-[#C25B6E] bg-[#C25B6E] text-white"
-                  : "border-[#EDE6DF] bg-[#FBF8F5] text-[#5F5757] hover:border-[#C25B6E]",
+                  ? "border-[var(--action-primary)] bg-[var(--action-primary)] text-[var(--text-inverse)]"
+                  : "border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:border-[var(--action-primary)]",
               )}
               key={scope}
               onClick={() => setIntelligenceScope(scope)}
@@ -317,12 +414,14 @@ export function IntelligenceWorkspace() {
             const trainingTalkTrack = getTrainingSummaryLine(item.summary);
             return (
               <button
+                aria-pressed={item.id === selectedId}
                 className={cn(
                   "rounded-2xl border p-4 text-left transition-colors",
                   item.id === selectedId
                     ? "border-[#C25B6E] bg-[#FFF7F8]"
                     : "border-[#EDE6DF] bg-[#FBF8F5] hover:border-[#C25B6E]",
                 )}
+                data-testid={`intelligence-list-item-${item.id}`}
                 key={item.id}
                 onClick={() => setSelectedId(item.id)}
                 type="button"
@@ -391,8 +490,9 @@ export function IntelligenceWorkspace() {
                     </p>
                   ) : null}
                   <Link
-                    className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#C25B6E]"
-                    href={`/intelligence/${selectedItem.id}`}
+                    className="mt-3 inline-flex min-h-[var(--touch-target)] items-center gap-2 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 text-xs font-semibold text-[var(--action-primary)] hover:border-[var(--action-primary)] focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)]"
+                    data-testid="intelligence-open-detail"
+                    href={buildIntelligenceDetailHref(selectedItem.id, navigationContext)}
                   >
                     打开详情页
                   </Link>
@@ -446,12 +546,14 @@ export function IntelligenceWorkspace() {
               <div className="grid min-w-0 grid-cols-1 gap-2">
                 {evidences.map((evidence) => (
                   <button
+                    aria-pressed={evidence.id === selectedEvidenceId}
                     className={cn(
                       "rounded-xl border px-3 py-3 text-left text-sm transition-colors",
                       evidence.id === selectedEvidenceId
                         ? "border-[#C25B6E] bg-[#FFF7F8]"
                         : "border-[#EDE6DF] bg-white hover:border-[#C25B6E]",
                     )}
+                    data-testid={`intelligence-evidence-${evidence.id}`}
                     key={evidence.id}
                     onClick={() => setSelectedEvidenceId(evidence.id)}
                     type="button"
@@ -485,7 +587,7 @@ export function IntelligenceWorkspace() {
               </div>
             </div>
 
-            <AuditPanel evidence={selectedEvidence} />
+            <AuditPanel evidence={selectedEvidence} projectId={selectedProjectId} />
 
             <div className="rounded-2xl border border-[#EDE6DF] bg-[#FBF8F5] p-4">
               <div className="mb-3 flex items-center justify-between">
@@ -542,7 +644,7 @@ function FilterSelect({
     <label className="grid gap-1 text-xs font-semibold text-[#86868B]">
       {label}
       <select
-        className="h-9 rounded-xl border border-[#EDE6DF] bg-[#FBF8F5] px-2 text-sm font-normal text-[#1D1D1F] outline-none"
+        className="min-h-[var(--touch-target)] rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 text-sm font-normal text-[var(--text-primary)] outline-none focus-visible:shadow-[var(--focus-ring)]"
         onChange={(event) => onChange(event.target.value)}
         value={value}
       >
@@ -603,7 +705,13 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function AuditPanel({ evidence }: { evidence: Evidence | null }) {
+function AuditPanel({
+  evidence,
+  projectId,
+}: {
+  evidence: Evidence | null;
+  projectId: string | null;
+}) {
   const referenceFacts = evidence?.referenceMetadata
     ? buildAuditFacts(evidence.referenceMetadata, 6)
     : [];
@@ -647,7 +755,7 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
               <WorkbenchTraceDetailRow label="Records" value={String(evidence.taskRun.recordsCount)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
-                href={`/tasks?run=${evidence.taskRun.id}`}
+                href={buildProjectScopedHref(`/tasks?run=${evidence.taskRun.id}`, projectId)}
               >
                 打开采集任务
               </Link>
@@ -659,7 +767,10 @@ function AuditPanel({ evidence }: { evidence: Evidence | null }) {
               <WorkbenchTraceDetailRow label="Collected" value={formatDateTime(evidence.rawRecord.collectedAt)} />
               <Link
                 className="inline-flex w-fit items-center gap-2 rounded-xl border border-[#EDE6DF] bg-white px-3 py-2 text-xs font-semibold text-[#C25B6E]"
-                href={`/raw-records?record=${evidence.rawRecord.id}`}
+                href={buildProjectScopedHref(
+                  `/raw-records?record=${evidence.rawRecord.id}`,
+                  projectId,
+                )}
               >
                 查看原始数据
               </Link>

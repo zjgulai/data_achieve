@@ -10,6 +10,8 @@ export type CollectorEndpoint = {
   optional_params: string[];
   cost_hint: string | null;
   provider: string;
+  content_type: string;
+  method: string;
 };
 
 export type CollectorEntry = {

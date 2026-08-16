@@ -541,6 +541,9 @@ function PreviewChainReview({ chain }: { chain: ApiMarketPreviewChainState }) {
         <FactGrid
           facts={[
             ["readiness", String(chain.readiness.ready)],
+            ["declared_readiness", String(chain.readiness.declaredReadiness)],
+            ["readiness_basis", chain.readiness.readinessBasis],
+            ["execution_enabled", String(chain.readiness.executionEnabled)],
             ["provider_id", chain.readiness.providerId],
             ["provider_call_allowed", String(chain.readiness.providerCallAllowed)],
             ["provider_call_attempted", String(chain.readiness.providerCallAttempted)],

@@ -66,6 +66,36 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
         "xiaohongshu_note",
         "xiaohongshu",
     ),
+    "tikhub_youtube_search": (
+        "/api/v1/youtube/web_v2/get_general_search",
+        "youtube_video",
+        "youtube",
+    ),
+    "tikhub_youtube_channel_videos": (
+        "/api/v1/youtube/web_v2/get_channel_videos",
+        "youtube_video",
+        "youtube",
+    ),
+    "tikhub_reddit_search": (
+        "/api/v1/reddit/app/fetch_dynamic_search",
+        "reddit_post",
+        "reddit",
+    ),
+    "tikhub_reddit_subreddit_posts": (
+        "/api/v1/reddit/app/fetch_subreddit_feed",
+        "reddit_post",
+        "reddit",
+    ),
+    "tikhub_x_search": (
+        "/api/v1/twitter/web/fetch_search_timeline",
+        "twitter_post",
+        "x",
+    ),
+    "tikhub_x_user_tweets": (
+        "/api/v1/twitter/web/fetch_user_post_tweet",
+        "twitter_post",
+        "x",
+    ),
 }
 
 
@@ -140,6 +170,43 @@ async def _tikhub_get(
 
 def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
     inner = data.get("data")
+
+    if platform == "youtube":
+        # web_v2/get_general_search → data.contents (nested)
+        # web_v2/get_channel_videos → data.videos
+        if isinstance(inner, dict):
+            videos = inner.get("videos")
+            if isinstance(videos, list):
+                return videos
+            contents = inner.get("contents")
+            if isinstance(contents, list):
+                return contents
+        return []
+
+    if platform == "reddit":
+        # fetch_dynamic_search → data.search (list)
+        # fetch_subreddit_feed → data (list)
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            search = inner.get("search")
+            if isinstance(search, list):
+                return search
+            posts = inner.get("posts")
+            if isinstance(posts, list):
+                return posts
+        return []
+
+    if platform == "x":
+        # fetch_search_timeline → data.timeline (list)
+        # fetch_user_post_tweet → data.timeline or data (list)
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            timeline = inner.get("timeline")
+            if isinstance(timeline, list):
+                return timeline
+        return []
 
     if platform == "xiaohongshu":
         if isinstance(inner, dict):
@@ -385,7 +452,46 @@ def _normalize_item(
         return _normalize_instagram_post(item, collector_type)
     if platform == "xiaohongshu":
         return _normalize_xiaohongshu_note(item, collector_type)
+    if platform in ("youtube", "reddit", "x"):
+        return _normalize_generic(item, platform, collector_type)
     return None
+
+
+def _normalize_generic(
+    item: dict[str, Any],
+    platform: str,
+    collector_type: str,
+) -> CollectorRawRecord | None:
+    if not item:
+        return None
+    for key in ("url", "postUrl", "videoUrl", "link"):
+        val = item.get(key)
+        if isinstance(val, str) and val.startswith("http"):
+            source_url = val
+            break
+    else:
+        source_url = None
+    for key in ("text", "title", "body", "description", "caption", "snippet"):
+        val = item.get(key)
+        if isinstance(val, str) and val.strip():
+            text = val.strip()[:2000]
+            break
+    else:
+        text = ""
+    record_type_map = {"youtube": "youtube_video", "reddit": "reddit_post", "x": "twitter_post"}
+    return CollectorRawRecord(
+        record_type=record_type_map.get(platform, "social_post"),
+        source_url=source_url,
+        content={
+            "provider": "tikhub",
+            "platform": platform,
+            "collector_type": collector_type,
+            "schema_version": f"tikhub_{platform}.v1",
+            "text": text,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +540,31 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "sort_type": config.get("sort_type") or "general",
             "note_type": config.get("note_type") or "不限",
             "source": config.get("source") or "explore_feed",
+        }
+    if endpoint_type == "tikhub_youtube_search":
+        return {
+            "search_query": config.get("keyword") or config.get("query") or "",
+        }
+    if endpoint_type == "tikhub_youtube_channel_videos":
+        return {
+            "channel_id": config.get("channel_id") or "",
+        }
+    if endpoint_type == "tikhub_reddit_search":
+        return {
+            "query": config.get("keyword") or config.get("query") or "",
+            "search_type": "post",
+        }
+    if endpoint_type == "tikhub_reddit_subreddit_posts":
+        return {
+            "subreddit_name": config.get("subreddit") or "",
+        }
+    if endpoint_type == "tikhub_x_search":
+        return {
+            "keyword": config.get("keyword") or config.get("query") or "",
+        }
+    if endpoint_type == "tikhub_x_user_tweets":
+        return {
+            "screen_name": config.get("username") or config.get("screen_name") or "",
         }
     return {}
 

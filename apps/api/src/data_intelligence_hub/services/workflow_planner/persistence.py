@@ -35,7 +35,9 @@ from data_intelligence_hub.repositories.workflow_plans import (
     get_workflow_version,
     insert_monitoring_scope_on_conflict,
     list_monitoring_scopes,
+    list_query_terms_for_version,
     list_workflow_plans,
+    list_workflow_version_scopes,
     list_workflow_versions,
     lock_project_for_workflow_plan_save,
 )
@@ -44,11 +46,16 @@ from data_intelligence_hub.schemas.project import ProjectStatus
 from data_intelligence_hub.schemas.workflow_plan_persistence import (
     MonitoringScopeListResponse,
     MonitoringScopeResponse,
+    WorkflowPlanCloneRequest,
+    WorkflowPlanCloneResponse,
     WorkflowPlanCreateRequest,
     WorkflowPlanDetailResponse,
     WorkflowPlanListResponse,
     WorkflowPlanResponse,
     WorkflowPlanSaveResponse,
+    WorkflowPlanStatus,
+    WorkflowPlanTransitionRequest,
+    WorkflowPlanTransitionResponse,
     WorkflowPlanVersionCompareResponse,
     WorkflowVersionCreateRequest,
     WorkflowVersionDetailResponse,
@@ -60,34 +67,43 @@ from data_intelligence_hub.schemas.workflow_plan_persistence import (
 )
 from data_intelligence_hub.schemas.workflow_planner import (
     NormalizedMonitoringScope,
-    PlanningInput,
-    WorkflowPlanFingerprintPayload,
     WorkflowPlanPreview,
 )
-from data_intelligence_hub.services.capability_catalog import get_capability_catalog
+from data_intelligence_hub.services.capability_governance.catalog_resolution import (
+    resolve_current_capability_catalog,
+)
 from data_intelligence_hub.services.exceptions import (
     ProjectNotActiveError,
     ProjectNotFoundError,
     WorkflowPlanFlowModeConflictError,
     WorkflowPlanIdempotencyConflictError,
+    WorkflowPlanInvalidTransitionError,
     WorkflowPlanNotFoundError,
     WorkflowPlanPersistenceTransactionStateError,
     WorkflowPlanPreviewStaleError,
     WorkflowPlanScopeConflictError,
+    WorkflowPlanStatusConflictError,
     WorkflowPlanVersionConflictError,
     WorkflowVersionNotFoundError,
+)
+from data_intelligence_hub.services.workflow_execution.integrity import (
+    WorkflowVersionSnapshotInvalidError,
+    validate_workflow_version_snapshot,
 )
 from data_intelligence_hub.services.workflow_planner.comparison import (
     compare_workflow_plan_previews,
 )
 from data_intelligence_hub.services.workflow_planner.fingerprint import (
-    build_preview_fingerprint_payload,
-    compute_preview_fingerprint,
     sha256_id,
+)
+from data_intelligence_hub.services.workflow_planner.lifecycle import (
+    WorkflowPlanTransitionError,
+)
+from data_intelligence_hub.services.workflow_planner.lifecycle import (
+    transition_workflow_plan_status as _transition_plan_status,
 )
 from data_intelligence_hub.services.workflow_planner.normalization import (
     build_scope_key,
-    normalize_planning_input,
     normalize_text,
 )
 from data_intelligence_hub.services.workflow_planner.planner import (
@@ -96,211 +112,6 @@ from data_intelligence_hub.services.workflow_planner.planner import (
 )
 
 _PLATFORM_ORDER = {platform.value: index for index, platform in enumerate(PlatformId)}
-
-
-def _stored_object(value: JsonValue | None, *, field: str) -> dict[str, JsonValue]:
-    if not isinstance(value, dict):
-        raise ValueError(f"workflow_plan_fingerprint_{field}_invalid")
-    return value
-
-
-def _stored_list(value: JsonValue | None, *, field: str) -> list[JsonValue]:
-    if not isinstance(value, list):
-        raise ValueError(f"workflow_plan_fingerprint_{field}_invalid")
-    return value
-
-
-def _stored_string(value: JsonValue | None, *, field: str) -> str:
-    if not isinstance(value, str):
-        raise ValueError(f"workflow_plan_fingerprint_{field}_invalid")
-    return value
-
-
-def _stored_optional_string(value: JsonValue | None, *, field: str) -> str | None:
-    if value is None:
-        return None
-    return _stored_string(value, field=field)
-
-
-def _stored_string_list(value: JsonValue | None, *, field: str) -> list[str]:
-    items = _stored_list(value, field=field)
-    if not all(isinstance(item, str) for item in items):
-        raise ValueError(f"workflow_plan_fingerprint_{field}_invalid")
-    return cast(list[str], items)
-
-
-def _scope_override(effective: list[str], defaults: list[str]) -> list[str]:
-    return [] if effective == defaults else effective
-
-
-def _editable_input_from_version(
-    version: WorkflowVersion,
-    preview: WorkflowPlanPreview,
-) -> PlanningInput:
-    try:
-        fingerprint_payload = WorkflowPlanFingerprintPayload.model_validate(
-            version.fingerprint_payload
-        )
-        rebuilt_fingerprint_payload = build_preview_fingerprint_payload(
-            planner_contract_version=preview.planner_contract_version,
-            fingerprint_input=fingerprint_payload.fingerprint_input,
-            catalog_snapshot_id=preview.catalog_snapshot_id,
-            policy_version=preview.policy_version,
-            mode_template_version=preview.mode_template_version,
-            query_versions=preview.query_versions,
-            candidate_fixture_version=fingerprint_payload.candidate_fixture_version,
-            query_terms=preview.query_terms,
-            steps=preview.steps,
-            compiled_queries=preview.compiled_queries,
-            route_plans=preview.route_plans,
-            coverage=preview.coverage,
-            budget_summary=preview.budget_summary,
-            limitations=preview.limitations,
-            semantic_decision_trace=preview.decision_trace.semantic_entries,
-        )
-    except (TypeError, ValueError) as exc:
-        raise ValueError("workflow_plan_version_fingerprint_mismatch") from exc
-    preview_query_versions = {
-        platform.value: query_version for platform, query_version in preview.query_versions.items()
-    }
-    fingerprint_query_versions = {
-        platform.value: query_version
-        for platform, query_version in fingerprint_payload.query_versions.items()
-    }
-    if (
-        rebuilt_fingerprint_payload != fingerprint_payload
-        or compute_preview_fingerprint(fingerprint_payload) != version.preview_fingerprint
-        or compute_preview_fingerprint(rebuilt_fingerprint_payload) != version.preview_fingerprint
-        or preview.preview_fingerprint != version.preview_fingerprint
-        or preview.project_id != version.project_id
-        or version.planning_status != preview.planning_status.value
-        or version.planner_contract_version != preview.planner_contract_version
-        or version.planner_contract_version != fingerprint_payload.planner_contract_version
-        or version.catalog_snapshot_id != preview.catalog_snapshot_id
-        or version.catalog_snapshot_id != fingerprint_payload.catalog_snapshot_id
-        or version.policy_version != preview.policy_version
-        or version.policy_version != fingerprint_payload.policy_version
-        or version.mode_template_version != preview.mode_template_version
-        or version.mode_template_version != fingerprint_payload.mode_template_version
-        or version.query_versions != preview_query_versions
-        or version.query_versions != fingerprint_query_versions
-        or version.normalized_input != preview.normalized_input.model_dump(mode="json")
-    ):
-        raise ValueError("workflow_plan_version_fingerprint_mismatch")
-    stored = fingerprint_payload.fingerprint_input
-    if preview.flow_mode.value != _stored_string(stored.get("flow_mode"), field="flow_mode"):
-        raise ValueError("workflow_plan_version_fingerprint_mismatch")
-    default_languages = _stored_string_list(
-        stored.get("default_languages"),
-        field="default_languages",
-    )
-    default_regions = _stored_string_list(
-        stored.get("default_regions"),
-        field="default_regions",
-    )
-    default_platforms = _stored_string_list(
-        stored.get("default_platforms"),
-        field="default_platforms",
-    )
-
-    scopes: list[dict[str, object]] = []
-    for index, raw_scope in enumerate(_stored_list(stored.get("scopes"), field="scopes")):
-        scope = _stored_object(raw_scope, field="scope")
-        effective_languages = _stored_string_list(
-            scope.get("effective_languages"),
-            field="scope_effective_languages",
-        )
-        effective_regions = _stored_string_list(
-            scope.get("effective_regions"),
-            field="scope_effective_regions",
-        )
-        effective_platforms = _stored_string_list(
-            scope.get("effective_platforms"),
-            field="scope_effective_platforms",
-        )
-        scopes.append(
-            {
-                "scope_ref": f"scope-{index + 1}",
-                "scope_type": _stored_string(
-                    scope.get("scope_type"),
-                    field="scope_type",
-                ),
-                "canonical_term": _stored_optional_string(
-                    scope.get("canonical_term"),
-                    field="scope_canonical_term",
-                ),
-                "aliases": _stored_string_list(
-                    scope.get("aliases"),
-                    field="scope_aliases",
-                ),
-                "include_terms": _stored_string_list(
-                    scope.get("include_terms"),
-                    field="scope_include_terms",
-                ),
-                "exclude_terms": _stored_string_list(
-                    scope.get("exclude_terms"),
-                    field="scope_exclude_terms",
-                ),
-                "official_accounts": _stored_string_list(
-                    scope.get("official_accounts"),
-                    field="scope_official_accounts",
-                ),
-                "seed_urls": _stored_string_list(
-                    scope.get("seed_urls"),
-                    field="scope_seed_urls",
-                ),
-                "languages": _scope_override(
-                    effective_languages,
-                    default_languages,
-                ),
-                "regions": _scope_override(
-                    effective_regions,
-                    default_regions,
-                ),
-                "platforms": _scope_override(
-                    effective_platforms,
-                    default_platforms,
-                ),
-                "match_mode": _stored_string(
-                    scope.get("match_mode"),
-                    field="scope_match_mode",
-                ),
-            }
-        )
-
-    editable_payload: dict[str, object] = {
-        "flow_mode": _stored_string(stored.get("flow_mode"), field="flow_mode"),
-        "scopes": scopes,
-        "default_languages": default_languages,
-        "default_regions": default_regions,
-        "default_platforms": default_platforms,
-        "delivery_intent": stored.get("delivery_intent"),
-        "policy_profile": _stored_string(
-            stored.get("policy_profile"),
-            field="policy_profile",
-        ),
-        "purpose": _stored_string(stored.get("purpose"), field="purpose"),
-        "required_fields": _stored_string_list(
-            stored.get("required_fields"),
-            field="required_fields",
-        ),
-        "optional_fields": _stored_string_list(
-            stored.get("optional_fields"),
-            field="optional_fields",
-        ),
-        "budget_ceiling": stored.get("budget_ceiling"),
-        "rate_limit_intent": stored.get("rate_limit_intent"),
-        "retention_intent": stored.get("retention_intent"),
-        "allow_partial_degradation": stored.get("allow_partial_degradation"),
-    }
-    schedule_intent = stored.get("schedule_intent")
-    if schedule_intent is not None:
-        editable_payload["schedule_intent"] = schedule_intent
-
-    editable_input = PlanningInput.model_validate(editable_payload)
-    if normalize_planning_input(editable_input).fingerprint_input != stored:
-        raise ValueError("workflow_plan_editable_input_fingerprint_mismatch")
-    return editable_input
 
 
 async def _prepare_service_transaction(session: AsyncSession) -> None:
@@ -355,6 +166,27 @@ def _version_request_hash(
     return sha256_id(request_payload)
 
 
+def _clone_request_hash(
+    *,
+    project_id: uuid.UUID,
+    workflow_plan_id: uuid.UUID,
+    payload: WorkflowPlanCloneRequest,
+) -> str:
+    request_payload = cast(
+        JsonValue,
+        {
+            "method": "POST",
+            "route": {
+                "project_id": str(project_id),
+                "workflow_plan_id": str(workflow_plan_id),
+                "resource": "workflow_plan_clone",
+            },
+            "body": payload.model_dump(mode="json"),
+        },
+    )
+    return sha256_id(request_payload)
+
+
 def _replay_response(
     save_request: WorkflowPlanSaveRequest,
     *,
@@ -363,6 +195,24 @@ def _replay_response(
     if save_request.request_hash != request_hash:
         raise WorkflowPlanIdempotencyConflictError
     original = WorkflowPlanSaveResponse.model_validate(save_request.response_payload)
+    return original.model_copy(
+        update={
+            "database_write": False,
+            "plan_changed": False,
+            "idempotent_replay": True,
+        },
+        deep=True,
+    )
+
+
+def _replay_clone_response(
+    save_request: WorkflowPlanSaveRequest,
+    *,
+    request_hash: str,
+) -> WorkflowPlanCloneResponse:
+    if save_request.request_hash != request_hash:
+        raise WorkflowPlanIdempotencyConflictError
+    original = WorkflowPlanCloneResponse.model_validate(save_request.response_payload)
     return original.model_copy(
         update={
             "database_write": False,
@@ -561,6 +411,8 @@ async def _persist_version_graph(
     created_by_user_id: uuid.UUID,
     version_number: int,
     created_at: datetime,
+    workflow_template_id: uuid.UUID | None = None,
+    workflow_template_revision_id: uuid.UUID | None = None,
 ) -> WorkflowVersion:
     preview = build_result.preview
     preview_snapshot = serialize_preview_snapshot(preview)
@@ -569,6 +421,12 @@ async def _persist_version_graph(
         workspace_id=workspace_id,
         project_id=project_id,
         workflow_plan_id=plan.id,
+        workflow_template_id=workflow_template_id
+        if workflow_template_id is not None
+        else plan.workflow_template_id,
+        workflow_template_revision_id=workflow_template_revision_id
+        if workflow_template_revision_id is not None
+        else plan.workflow_template_revision_id,
         created_by_user_id=created_by_user_id,
         version_number=version_number,
         planning_status=preview.planning_status.value,
@@ -636,11 +494,18 @@ def _version_response(
     version: WorkflowVersion,
     preview: WorkflowPlanPreview,
 ) -> WorkflowVersionResponse:
+    validated = validate_workflow_version_snapshot(version)
+    if validated.preview != preview:
+        raise WorkflowVersionSnapshotInvalidError(
+            "workflow_plan_version_fingerprint_mismatch"
+        )
     return WorkflowVersionResponse(
         id=version.id,
         workspace_id=version.workspace_id,
         project_id=version.project_id,
         workflow_plan_id=version.workflow_plan_id,
+        workflow_template_id=version.workflow_template_id,
+        workflow_template_revision_id=version.workflow_template_revision_id,
         created_by_user_id=version.created_by_user_id,
         version_number=version.version_number,
         planning_status=preview.planning_status,
@@ -650,8 +515,8 @@ def _version_response(
         mode_template_version=version.mode_template_version,
         query_versions=preview.query_versions,
         preview_fingerprint=version.preview_fingerprint,
-        editable_input=_editable_input_from_version(version, preview),
-        preview=preview,
+        editable_input=validated.editable_input,
+        preview=validated.preview,
         created_at=version.created_at,
     )
 
@@ -671,8 +536,12 @@ def _plan_response(
         created_by_user_id=plan.created_by_user_id,
         name=plan.name,
         flow_mode=preview.flow_mode,
-        status="previewed",
+        status=cast(WorkflowPlanStatus, plan.status),
         current_version_id=version.id,
+        source_plan_id=plan.source_workflow_plan_id,
+        source_version_id=plan.source_workflow_version_id,
+        workflow_template_id=plan.workflow_template_id,
+        workflow_template_revision_id=plan.workflow_template_revision_id,
         current_version_number=version.version_number,
         planning_status=preview.planning_status,
         scope_count=len(preview.normalized_input.scopes),
@@ -715,6 +584,38 @@ async def _persist_save_request(
     )
 
 
+async def _persist_clone_save_request(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    idempotency_scope: str,
+    idempotency_key_hash: str,
+    request_hash: str,
+    response: WorkflowPlanCloneResponse,
+    created_at: datetime,
+) -> None:
+    await add_workflow_plan_save_request(
+        session,
+        WorkflowPlanSaveRequest(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            project_id=project_id,
+            created_by_user_id=created_by_user_id,
+            idempotency_scope=idempotency_scope,
+            idempotency_key_hash=idempotency_key_hash,
+            request_hash=request_hash,
+            workflow_plan_id=response.plan.id,
+            workflow_version_id=response.version.id,
+            outcome="created",
+            response_status=201,
+            response_payload=response.model_dump(mode="json"),
+            created_at=created_at,
+        ),
+    )
+
+
 async def _create_workflow_plan_attempt(
     session: AsyncSession,
     *,
@@ -748,7 +649,7 @@ async def _create_workflow_plan_attempt(
         build_result = build_workflow_plan_result(
             project_id=project_id,
             planning_input=payload.preview_input,
-            catalog=get_capability_catalog(),
+            catalog=await resolve_current_capability_catalog(session),
             generated_at=timestamp,
             request_id=request_id,
         )
@@ -874,6 +775,388 @@ async def create_workflow_plan(
     )
 
 
+async def _recover_clone_idempotency_race(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    idempotency_scope: str,
+    idempotency_key_hash: str,
+    request_hash: str,
+    error: IntegrityError,
+) -> WorkflowPlanCloneResponse:
+    async with session.begin():
+        completed = await get_workflow_plan_save_request(
+            session,
+            workspace_id,
+            created_by_user_id,
+            idempotency_scope,
+            idempotency_key_hash,
+        )
+        if completed is not None:
+            return _replay_clone_response(completed, request_hash=request_hash)
+    raise error
+
+
+async def _run_clone_with_idempotency_race_recovery(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    idempotency_scope: str,
+    idempotency_key_hash: str,
+    request_hash: str,
+    attempt: Callable[[], Awaitable[WorkflowPlanCloneResponse]],
+) -> WorkflowPlanCloneResponse:
+    try:
+        return await attempt()
+    except IntegrityError as exc:
+        if not _is_idempotency_unique_violation(exc):
+            raise
+        return await _recover_clone_idempotency_race(
+            session,
+            workspace_id=workspace_id,
+            created_by_user_id=created_by_user_id,
+            idempotency_scope=idempotency_scope,
+            idempotency_key_hash=idempotency_key_hash,
+            request_hash=request_hash,
+            error=exc,
+        )
+
+
+async def _clone_workflow_plan_attempt(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    workflow_plan_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    payload: WorkflowPlanCloneRequest,
+    request_id: str,
+    timestamp: datetime,
+    idempotency_scope: str,
+    idempotency_key_hash: str,
+    request_hash: str,
+) -> WorkflowPlanCloneResponse:
+    del request_id
+    async with session.begin():
+        completed = await get_workflow_plan_save_request(
+            session,
+            workspace_id,
+            created_by_user_id,
+            idempotency_scope,
+            idempotency_key_hash,
+        )
+        if completed is not None:
+            return _replay_clone_response(completed, request_hash=request_hash)
+
+        project = await get_project(session, workspace_id, project_id)
+        if project is None:
+            raise ProjectNotFoundError
+        if project.status != "active":
+            raise ProjectNotActiveError
+
+        source_plan = await get_workflow_plan(
+            session,
+            workspace_id,
+            project_id,
+            workflow_plan_id,
+        )
+        if source_plan is None:
+            raise WorkflowPlanNotFoundError
+        source_version = await get_workflow_version(
+            session,
+            workspace_id,
+            project_id,
+            workflow_plan_id,
+            payload.source_version_id,
+        )
+        if source_version is None:
+            raise WorkflowVersionNotFoundError
+        source_preview = _preview_from_version(source_version)
+
+        locked_project = await lock_project_for_workflow_plan_save(
+            session,
+            workspace_id,
+            project_id,
+        )
+        if locked_project is None:
+            raise ProjectNotFoundError
+        if locked_project.status != "active":
+            raise ProjectNotActiveError
+
+        completed = await get_workflow_plan_save_request(
+            session,
+            workspace_id,
+            created_by_user_id,
+            idempotency_scope,
+            idempotency_key_hash,
+        )
+        if completed is not None:
+            return _replay_clone_response(completed, request_hash=request_hash)
+
+        target_plan = WorkflowPlan(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            project_id=project_id,
+            created_by_user_id=created_by_user_id,
+            name=payload.name,
+            flow_mode=source_plan.flow_mode,
+            status="previewed",
+            current_version_id=None,
+            source_workflow_plan_id=source_plan.id,
+            source_workflow_version_id=source_version.id,
+            workflow_template_id=source_plan.workflow_template_id,
+            workflow_template_revision_id=source_plan.workflow_template_revision_id,
+            created_at=timestamp,
+            updated_at=timestamp,
+        )
+        await add_workflow_plan(session, target_plan)
+
+        target_version = WorkflowVersion(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            project_id=project_id,
+            workflow_plan_id=target_plan.id,
+            workflow_template_id=source_version.workflow_template_id,
+            workflow_template_revision_id=source_version.workflow_template_revision_id,
+            created_by_user_id=created_by_user_id,
+            version_number=1,
+            planning_status=source_version.planning_status,
+            planner_contract_version=source_version.planner_contract_version,
+            catalog_snapshot_id=source_version.catalog_snapshot_id,
+            policy_version=source_version.policy_version,
+            mode_template_version=source_version.mode_template_version,
+            query_versions=dict(source_version.query_versions),
+            fingerprint_payload=dict(source_version.fingerprint_payload),
+            normalized_input=dict(source_version.normalized_input),
+            plan_payload=dict(source_version.plan_payload),
+            preview_fingerprint=source_version.preview_fingerprint,
+            created_at=timestamp,
+        )
+        await add_workflow_version(session, target_version)
+
+        source_associations = await list_workflow_version_scopes(
+            session,
+            workspace_id,
+            project_id,
+            source_version.id,
+        )
+        for association in source_associations:
+            await add_workflow_version_scope(
+                session,
+                WorkflowVersionScope(
+                    workspace_id=workspace_id,
+                    project_id=project_id,
+                    workflow_version_id=target_version.id,
+                    monitoring_scope_id=association.monitoring_scope_id,
+                    ordinal=association.ordinal,
+                    created_at=timestamp,
+                ),
+            )
+
+        source_terms = await list_query_terms_for_version(
+            session,
+            workspace_id,
+            project_id,
+            source_version.id,
+        )
+        for term in source_terms:
+            await add_query_term(
+                session,
+                QueryTerm(
+                    id=uuid.uuid4(),
+                    workspace_id=workspace_id,
+                    project_id=project_id,
+                    workflow_version_id=target_version.id,
+                    ordinal=term.ordinal,
+                    term=term.term,
+                    normalized_term=term.normalized_term,
+                    origin=term.origin,
+                    status=term.status,
+                    reason=term.reason,
+                    source=term.source,
+                    score=term.score,
+                    conflict_codes=list(term.conflict_codes),
+                    matched_scope_id=term.matched_scope_id,
+                    created_at=timestamp,
+                ),
+            )
+
+        target_plan.current_version_id = target_version.id
+        await add_workflow_plan(session, target_plan)
+        await session.refresh(target_plan, attribute_names=["updated_at"])
+
+        response = WorkflowPlanCloneResponse(
+            database_write=True,
+            plan_changed=True,
+            outcome="created",
+            idempotent_replay=False,
+            source_plan_id=source_plan.id,
+            source_version_id=source_version.id,
+            plan=_plan_response(
+                target_plan,
+                target_version,
+                source_preview,
+                created_at=timestamp,
+                updated_at=target_plan.updated_at,
+            ),
+            version=_version_response(target_version, source_preview),
+        )
+        await _persist_clone_save_request(
+            session,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            created_by_user_id=created_by_user_id,
+            idempotency_scope=idempotency_scope,
+            idempotency_key_hash=idempotency_key_hash,
+            request_hash=request_hash,
+            response=response,
+            created_at=timestamp,
+        )
+        return response
+
+
+async def clone_workflow_plan(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    workflow_plan_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    payload: WorkflowPlanCloneRequest,
+    idempotency_key: str,
+    request_id: str,
+    generated_at: datetime | None = None,
+) -> WorkflowPlanCloneResponse:
+    idempotency_scope = f"workflow_plan.clone:{project_id}:{workflow_plan_id}"
+    idempotency_key_hash = _key_hash(idempotency_key)
+    request_hash = _clone_request_hash(
+        project_id=project_id,
+        workflow_plan_id=workflow_plan_id,
+        payload=payload,
+    )
+    timestamp = generated_at or datetime.now(UTC)
+
+    await _prepare_service_transaction(session)
+
+    async def attempt() -> WorkflowPlanCloneResponse:
+        return await _clone_workflow_plan_attempt(
+            session,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            workflow_plan_id=workflow_plan_id,
+            created_by_user_id=created_by_user_id,
+            payload=payload,
+            request_id=request_id,
+            timestamp=timestamp,
+            idempotency_scope=idempotency_scope,
+            idempotency_key_hash=idempotency_key_hash,
+            request_hash=request_hash,
+        )
+
+    return await _run_clone_with_idempotency_race_recovery(
+        session,
+        workspace_id=workspace_id,
+        created_by_user_id=created_by_user_id,
+        idempotency_scope=idempotency_scope,
+        idempotency_key_hash=idempotency_key_hash,
+        request_hash=request_hash,
+        attempt=attempt,
+    )
+
+
+async def transition_workflow_plan_status(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    workflow_plan_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    payload: WorkflowPlanTransitionRequest,
+    request_id: str,
+    generated_at: datetime | None = None,
+) -> WorkflowPlanTransitionResponse:
+    del created_by_user_id, request_id
+    timestamp = generated_at or datetime.now(UTC)
+    await _prepare_service_transaction(session)
+
+    async with session.begin():
+        project = await lock_project_for_workflow_plan_save(
+            session,
+            workspace_id,
+            project_id,
+        )
+        if project is None:
+            raise ProjectNotFoundError
+        if project.status != "active":
+            raise ProjectNotActiveError
+
+        plan = await get_workflow_plan_for_update(
+            session,
+            workspace_id,
+            project_id,
+            workflow_plan_id,
+        )
+        if plan is None:
+            raise WorkflowPlanNotFoundError
+
+        current_status = cast(WorkflowPlanStatus, plan.status)
+        if current_status != payload.expected_status:
+            raise WorkflowPlanStatusConflictError
+        try:
+            target_status = _transition_plan_status(
+                current_status,
+                payload.to_status,
+            )
+        except WorkflowPlanTransitionError as exc:
+            raise WorkflowPlanInvalidTransitionError from exc
+
+        current_version = await _get_current_workflow_version_for_read(
+            session,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            plan=plan,
+        )
+        preview = _preview_from_version(current_version)
+        plan_created_at = plan.created_at
+        if target_status == current_status:
+            response = WorkflowPlanTransitionResponse(
+                database_write=False,
+                plan_changed=False,
+                from_status=current_status,
+                to_status=target_status,
+                reason=payload.reason,
+                plan=_plan_response(
+                    plan,
+                    current_version,
+                    preview,
+                    created_at=plan_created_at,
+                    updated_at=plan.updated_at,
+                ),
+            )
+            return response
+
+        plan.status = target_status
+        plan.updated_at = timestamp
+        await add_workflow_plan(session, plan)
+        await session.refresh(plan, attribute_names=["updated_at"])
+        return WorkflowPlanTransitionResponse(
+            database_write=True,
+            plan_changed=True,
+            from_status=current_status,
+            to_status=target_status,
+            reason=payload.reason,
+            plan=_plan_response(
+                plan,
+                current_version,
+                preview,
+                created_at=plan_created_at,
+                updated_at=plan.updated_at,
+            ),
+        )
+
+
 async def _create_workflow_version_attempt(
     session: AsyncSession,
     *,
@@ -917,7 +1200,7 @@ async def _create_workflow_version_attempt(
         build_result = build_workflow_plan_result(
             project_id=project_id,
             planning_input=payload.preview_input,
-            catalog=get_capability_catalog(),
+            catalog=await resolve_current_capability_catalog(session),
             generated_at=timestamp,
             request_id=request_id,
         )
@@ -1144,7 +1427,7 @@ async def _get_current_workflow_version_for_read(
 
 
 def _preview_from_version(version: WorkflowVersion) -> WorkflowPlanPreview:
-    return WorkflowPlanPreview.model_validate(version.plan_payload)
+    return validate_workflow_version_snapshot(version).preview
 
 
 def _version_summary_response(
@@ -1418,6 +1701,7 @@ async def list_monitoring_scopes_for_project(
 
 
 __all__ = [
+    "clone_workflow_plan",
     "compare_workflow_plan_versions",
     "create_workflow_plan",
     "create_workflow_version",

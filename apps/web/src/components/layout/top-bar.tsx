@@ -11,17 +11,17 @@ type TopBarProps = {
 
 export function TopBar({ title, description }: TopBarProps) {
   return (
-    <header className="border-b border-[#E9E5E2] bg-white/95">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-[var(--border-subtle)] bg-[var(--surface-primary)]/95 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-[var(--content-max)] flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
         <div className="flex min-w-0 items-start gap-3">
           <Suspense fallback={null}>
             <MobileNavigation />
           </Suspense>
           <div className="min-w-0">
-            <h1 className="break-words text-xl font-semibold tracking-tight text-[#1D1D1F]">
+            <h1 className="break-words text-xl font-semibold tracking-tight text-[var(--text-primary)]">
               {title}
             </h1>
-            <p className="mt-1 break-words text-sm text-[#86868B]">
+            <p className="mt-1 break-words text-sm text-[var(--text-tertiary)]">
               {description}
             </p>
           </div>

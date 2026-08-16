@@ -91,6 +91,9 @@ export function SocialProviderDryRunPanel() {
     }
     return [
       ["readiness", String(readiness.ready)],
+      ["declared_readiness", String(readiness.declaredReadiness)],
+      ["readiness_basis", readiness.readinessBasis],
+      ["execution_enabled", String(readiness.executionEnabled)],
       ["provider_call_allowed", String(readiness.providerCallAllowed)],
       ["provider_call_attempted", String(readiness.providerCallAttempted)],
       ["missing_credentials", joinOrNone(readiness.missingCredentials)],
@@ -348,8 +351,10 @@ export function SocialProviderDryRunPanel() {
               <div className="grid min-w-0 gap-3 rounded-xl border border-[#F0E1D9] bg-[#FFFDFC] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-[#2E201C]">Readiness Review</p>
-                  <WorkbenchTag tone={readiness?.ready ? "green" : "amber"}>
-                    {readiness?.dryRun ? "dry_run=true" : "dry_run=pending"}
+                  <WorkbenchTag tone={readiness?.executionEnabled ? "green" : "amber"}>
+                    {readiness
+                      ? `execution_enabled=${String(readiness.executionEnabled)}`
+                      : "execution=pending"}
                   </WorkbenchTag>
                 </div>
                 <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
