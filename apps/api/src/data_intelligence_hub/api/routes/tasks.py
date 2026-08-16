@@ -3,13 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 from sqlalchemy import select
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.task import TaskRun
 from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
+from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
 from data_intelligence_hub.services.exceptions import (
@@ -28,15 +29,19 @@ from data_intelligence_hub.services.task_service import (
 
 router = APIRouter(tags=["tasks"])
 
-
 @router.get("", response_model=list[CollectionTaskResponse])
 async def list_task_items(
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
     project_id: Annotated[uuid.UUID | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[CollectionTaskResponse]:
-    tasks = await get_collection_tasks(session, context.workspace, project_id, status_filter)
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
+    tasks = await get_collection_tasks(session, workspace, project_id, status_filter)
     return [
         CollectionTaskResponse.from_task(
             task.task,
@@ -49,11 +54,9 @@ async def list_task_items(
         for task in tasks
     ]
 
-
 @router.get("/scheduler/overview", response_model=SchedulerOverviewResponse)
 async def get_scheduler_overview_item(
     session: SessionDep,
-    _context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> SchedulerOverviewResponse:
     latest_tick = await get_latest_scheduler_tick(session)
     return SchedulerOverviewResponse.from_tick(
@@ -61,17 +64,21 @@ async def get_scheduler_overview_item(
         latest_tick=latest_tick,
     )
 
-
 @router.get("/runs", response_model=list[TaskRunResponse])
 async def list_all_task_run_items(
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[TaskRunResponse]:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     q = (
         select(TaskRun)
-        .where(TaskRun.workspace_id == context.workspace.id)
+        .where(TaskRun.workspace_id == workspace.id)
         .order_by(TaskRun.created_at.desc())
         .limit(limit)
     )
@@ -81,32 +88,40 @@ async def list_all_task_run_items(
     runs = result.scalars().all()
     return [TaskRunResponse.from_run(run) for run in runs]
 
-
 @router.get("/{task_id}", response_model=CollectionTaskResponse)
 async def get_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> CollectionTaskResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     try:
-        task = await get_task_or_raise(session, context.workspace, task_id)
+        task = await get_task_or_raise(session, workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return CollectionTaskResponse.from_task(task)
-
 
 @router.post("/{task_id}/run", response_model=TaskRunResponse, status_code=status.HTTP_201_CREATED)
 async def run_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
     response: Response,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TaskRunResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     try:
         result = await run_task_now(
             session,
-            context.workspace,
+            workspace,
             task_id,
             idempotency_key=idempotency_key,
         )
@@ -122,41 +137,53 @@ async def run_task_item(
         idempotency_key_hash=result.idempotency_key_hash,
     )
 
-
 @router.post("/{task_id}/pause", response_model=CollectionTaskResponse)
 async def pause_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> CollectionTaskResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     try:
-        task = await pause_task(session, context.workspace, task_id)
+        task = await pause_task(session, workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return CollectionTaskResponse.from_task(task)
-
 
 @router.post("/{task_id}/resume", response_model=CollectionTaskResponse)
 async def resume_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> CollectionTaskResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     try:
-        task = await resume_task(session, context.workspace, task_id)
+        task = await resume_task(session, workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return CollectionTaskResponse.from_task(task)
-
 
 @router.get("/{task_id}/runs", response_model=list[TaskRunResponse])
 async def list_task_run_items(
     task_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> list[TaskRunResponse]:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     try:
-        runs = await get_task_runs(session, context.workspace, task_id)
+        runs = await get_task_runs(session, workspace, task_id)
     except TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return [TaskRunResponse.from_run(run) for run in runs]
