@@ -28,9 +28,13 @@ class CollectorEndpointMetadata(BaseModel):
     method: str = Field(
         default="tikhub",
         description=(
-            "Collection method / service tier: "
-            "tikhub | apify | github_api | rss | web_crawl"
+            "Collection method: tikhub | apify | github_api | rss"
+            " | web_crawl | browser | jina | shopee_api | anysearch"
         ),
+    )
+    param_fields: dict[str, str] = Field(
+        default_factory=dict,
+        description="Pre-filled parameter defaults shown in the Quick Collect UI.",
     )
 
 

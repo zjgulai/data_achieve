@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import uuid
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.collectors import get_collector_by_type
+from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.collector_catalog import (
     ensure_collectors_seeded,
     validate_collector_config,
@@ -346,8 +347,13 @@ class QuickCollectResponse(BaseModel):
 async def quick_collect(
     body: QuickCollectRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
 ) -> QuickCollectResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     """Create an ephemeral Source + Task and run one collection immediately.
 
     Returns the completed (or failed) TaskRun synchronously.
@@ -392,7 +398,7 @@ async def quick_collect(
     label = (body.label or body.endpoint_type).strip()[:200]
 
     source = Source(
-        workspace_id=context.workspace.id,
+        workspace_id=workspace.id,
         project_id=body.project_id,
         name=f"[quick] {label}",
         type=collector_type,
@@ -405,7 +411,7 @@ async def quick_collect(
     await session.flush()
 
     task = CollectionTask(
-        workspace_id=context.workspace.id,
+        workspace_id=workspace.id,
         project_id=body.project_id,
         source_id=source.id,
         collector_type=collector_type,
@@ -421,7 +427,7 @@ async def quick_collect(
     await session.commit()
 
     try:
-        run: TaskRun = await execute_collection_task(session, context.workspace, task)
+        run: TaskRun = await execute_collection_task(session, workspace, task)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -2076,6 +2076,73 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    regulatory_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="public_feed",
+            label="FDA Food Safety Recalls RSS",
+            platform="regulatory",
+            description="US FDA food safety recalls and market withdrawals RSS feed.",
+            status="verified",
+            required_params=["url"],
+            optional_params=[],
+            cost_hint="免费",
+            provider="自研 RSS Collector",
+            content_type="news",
+            method="rss",
+            param_fields={
+                "url": "https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/food-safety-recalls/rss.xml"
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="public_feed",
+            label="UK OPSS Product Safety Recalls",
+            platform="regulatory",
+            description="UK Office for Product Safety and Standards product recall notices (Atom).",
+            status="verified",
+            required_params=["url"],
+            optional_params=[],
+            cost_hint="免费",
+            provider="自研 RSS Collector",
+            content_type="news",
+            method="rss",
+            param_fields={
+                "url": "https://www.gov.uk/search/all.atom?keywords=product+safety+recall&order=updated-newest"
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="public_feed",
+            label="UK NHS Medicines & Devices Alerts",
+            platform="regulatory",
+            description="UK NHS medical device and drug safety alerts (Atom feed, 50 latest).",
+            status="verified",
+            required_params=["url"],
+            optional_params=[],
+            cost_hint="免费",
+            provider="自研 RSS Collector",
+            content_type="news",
+            method="rss",
+            param_fields={
+                "url": "https://www.gov.uk/drug-device-alerts.atom"
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="public_feed",
+            label="PR Newswire Product Recalls",
+            platform="regulatory",
+            description="PR Newswire product recall press releases RSS (global brands).",
+            status="verified",
+            required_params=["url"],
+            optional_params=[],
+            cost_hint="免费",
+            provider="自研 RSS Collector",
+            content_type="news",
+            method="rss",
+            param_fields={
+                "url": "https://www.prnewswire.com/rss/news-releases-list.rss?category=PRODUCT_RECALLS"
+            },
+        ),
+    ]
+
     ecommerce_endpoints = [
         CollectorEndpointMetadata(
             endpoint_type="ecommerce_product_page",
@@ -2142,6 +2209,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="电商独立站",
                 platform="ecommerce",
                 endpoints=ecommerce_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="regulatory",
+                label="监管 / 召回公告",
+                platform="regulatory",
+                endpoints=regulatory_endpoints,
             ),
         ]
     )
