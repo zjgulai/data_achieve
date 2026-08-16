@@ -665,10 +665,10 @@ function RunResult({ result }: { result: QuickCollectResponse }) {
           {ok && (
             <button
               type="button"
-              onClick={() => router.push(`/collect/${result.task_run_id}`)}
+              onClick={() => router.push("/runs")}
               className="mt-3 flex items-center gap-1.5 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-inverse)] transition-opacity hover:opacity-90"
             >
-              查看详细结果
+              查看运行记录
               <ArrowRight size={12} />
             </button>
           )}

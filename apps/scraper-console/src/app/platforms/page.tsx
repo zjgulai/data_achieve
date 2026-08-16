@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X, ChevronRight, Zap, Database, Globe, Rss, GitFork } from "lucide-react";
+import { Search, X, ChevronRight, Zap, Database, Globe, Rss, GitFork, CheckSquare, Square, Play } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer";
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
@@ -94,26 +94,55 @@ function ContentTypePill({ type }: { type: string }) {
 function EndpointCard({
   endpoint,
   onCollect,
+  batchMode,
+  selected,
+  onToggleSelect,
 }: {
   endpoint: CollectorEndpoint;
   onCollect: (ep: CollectorEndpoint) => void;
+  batchMode: boolean;
+  selected: boolean;
+  onToggleSelect: (ep: CollectorEndpoint) => void;
 }) {
   const isVerified = endpoint.status === "verified";
+
+  function handleClick() {
+    if (!isVerified) return;
+    if (batchMode) {
+      onToggleSelect(endpoint);
+    } else {
+      onCollect(endpoint);
+    }
+  }
+
   return (
     <div
       className={`group relative flex flex-col rounded-xl border bg-[var(--surface-primary)] p-4 transition-all duration-150
         ${isVerified
-          ? "border-[var(--border-subtle)] hover:border-[var(--action-primary)] hover:shadow-md cursor-pointer"
+          ? selected
+            ? "border-[var(--action-primary)] bg-[var(--accent-1-soft)] shadow-md cursor-pointer"
+            : "border-[var(--border-subtle)] hover:border-[var(--action-primary)] hover:shadow-md cursor-pointer"
           : "border-[var(--border-subtle)] opacity-60"
         }`}
-      onClick={isVerified ? () => onCollect(endpoint) : undefined}
+      onClick={handleClick}
     >
+      {/* 批量选择复选框 */}
+      {batchMode && isVerified && (
+        <div className="absolute right-3 top-3">
+          {selected
+            ? <CheckSquare size={16} className="text-[var(--action-primary)]" />
+            : <Square size={16} className="text-[var(--text-tertiary)]" />}
+        </div>
+      )}
+
       {/* 顶部：标题 + 状态点 */}
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm font-semibold leading-snug text-[var(--text-primary)] group-hover:text-[var(--action-primary)] transition-colors">
+        <h4 className={`text-sm font-semibold leading-snug transition-colors ${
+          selected ? "text-[var(--action-primary)]" : "text-[var(--text-primary)] group-hover:text-[var(--action-primary)]"
+        }`}>
           {endpoint.label}
         </h4>
-        <StatusDot status={endpoint.status} />
+        {!batchMode && <StatusDot status={endpoint.status} />}
       </div>
 
       {/* 描述 */}
@@ -138,13 +167,20 @@ function EndpointCard({
         </div>
       )}
 
-      {/* 采集按钮（hover 显示） */}
-      {isVerified && (
+      {/* 采集按钮（单选模式 hover 显示） */}
+      {isVerified && !batchMode && (
         <div className="mt-3 flex items-center justify-between">
           <span className="text-[10px] text-[var(--text-tertiary)]">{endpoint.platform}</span>
           <span className="flex items-center gap-0.5 text-[11px] font-semibold text-[var(--action-primary)] opacity-0 group-hover:opacity-100 transition-opacity">
             快速采集 <ChevronRight size={11} />
           </span>
+        </div>
+      )}
+
+      {/* 批量模式平台标签 */}
+      {isVerified && batchMode && (
+        <div className="mt-3 text-[10px] text-[var(--text-tertiary)]">
+          {endpoint.platform}
         </div>
       )}
     </div>
@@ -156,10 +192,16 @@ function ContentTypeSection({
   contentType,
   endpoints,
   onCollect,
+  batchMode,
+  selectedEndpoints,
+  onToggleSelect,
 }: {
   contentType: string;
   endpoints: CollectorEndpoint[];
   onCollect: (ep: CollectorEndpoint) => void;
+  batchMode: boolean;
+  selectedEndpoints: Set<string>;
+  onToggleSelect: (ep: CollectorEndpoint) => void;
 }) {
   const meta = CONTENT_TYPE_META[contentType] ?? { label: contentType, emoji: "📦", desc: "" };
   const byMethod = endpoints.reduce<Record<string, CollectorEndpoint[]>>((acc, ep) => {
@@ -170,7 +212,6 @@ function ContentTypeSection({
 
   return (
     <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-primary)] overflow-hidden">
-      {/* 内容类型标题 */}
       <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3">
         <span className="text-xl">{meta.emoji}</span>
         <div>
@@ -182,7 +223,6 @@ function ContentTypeSection({
         </span>
       </div>
 
-      {/* 按采集方法分组 */}
       <div className="divide-y divide-[var(--border-subtle)]">
         {methodOrder
           .filter(m => byMethod[m])
@@ -191,7 +231,6 @@ function ContentTypeSection({
             const mm = METHOD_META[method] ?? { label: method, color: "", bg: "", icon: null };
             return (
               <div key={method} className="px-4 py-3">
-                {/* 方法标头 */}
                 <div className={`mb-3 inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-semibold ${mm.bg} ${mm.color}`}>
                   {mm.icon}
                   {mm.label}
@@ -199,10 +238,16 @@ function ContentTypeSection({
                     {eps.length}
                   </span>
                 </div>
-                {/* 卡片网格 */}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {eps.map(ep => (
-                    <EndpointCard key={ep.endpoint_type} endpoint={ep} onCollect={onCollect} />
+                    <EndpointCard
+                      key={ep.endpoint_type}
+                      endpoint={ep}
+                      onCollect={onCollect}
+                      batchMode={batchMode}
+                      selected={selectedEndpoints.has(ep.endpoint_type)}
+                      onToggleSelect={onToggleSelect}
+                    />
                   ))}
                 </div>
               </div>
@@ -223,46 +268,39 @@ export default function PlatformsPage() {
   const [activeContentTypes, setActiveContentTypes] = useState<Set<string>>(new Set());
   const [activeMethods, setActiveMethods] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedEndpoints, setSelectedEndpoints] = useState<Set<string>>(new Set());
+  const [batchQueueIndex, setBatchQueueIndex] = useState<number>(0);
+  const [batchQueue, setBatchQueue] = useState<CollectorEndpoint[]>([]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["collector-catalog"],
     queryFn: fetchCollectorCatalog,
   });
 
-  /* 扁平化所有 verified endpoints */
   const allEndpoints = useMemo(() => {
     if (!data) return [];
     return data.collectors.flatMap(c => c.endpoints).filter(e => e.status !== "disabled");
   }, [data]);
 
-  /* 统计用 */
   const stats = useMemo(() => ({
     total: allEndpoints.filter(e => e.status === "verified").length,
     platforms: new Set(allEndpoints.map(e => e.platform)).size,
     content_types: new Set(allEndpoints.map(e => e.content_type)).size,
   }), [allEndpoints]);
 
-  /* 筛选逻辑 */
   const filtered = useMemo(() => {
     let eps = allEndpoints;
-
-    // 平台大类筛选
     if (platformGroup !== "all") {
       const group = PLATFORM_GROUP_META[platformGroup];
       eps = eps.filter(e => group.platforms.some(p => e.platform.toLowerCase().includes(p)));
     }
-
-    // 内容类型多选
     if (activeContentTypes.size > 0) {
       eps = eps.filter(e => activeContentTypes.has(e.content_type));
     }
-
-    // 采集方法多选
     if (activeMethods.size > 0) {
       eps = eps.filter(e => activeMethods.has(e.method));
     }
-
-    // 搜索
     if (search.trim()) {
       const q = search.toLowerCase();
       eps = eps.filter(e =>
@@ -271,7 +309,6 @@ export default function PlatformsPage() {
         e.platform.toLowerCase().includes(q)
       );
     }
-
     return eps;
   }, [allEndpoints, platformGroup, activeContentTypes, activeMethods, search]);
 
@@ -314,13 +351,44 @@ export default function PlatformsPage() {
     setSearch("");
     setPlatformGroup("all");
   }
+  function toggleBatchMode() {
+    setBatchMode(prev => !prev);
+    setSelectedEndpoints(new Set());
+    setBatchQueue([]);
+    setBatchQueueIndex(0);
+  }
+  function toggleSelect(ep: CollectorEndpoint) {
+    setSelectedEndpoints(prev => {
+      const next = new Set(prev);
+      next.has(ep.endpoint_type) ? next.delete(ep.endpoint_type) : next.add(ep.endpoint_type);
+      return next;
+    });
+  }
+  function startBatchCollect() {
+    const queue = allEndpoints.filter(ep => selectedEndpoints.has(ep.endpoint_type));
+    if (queue.length === 0) return;
+    setBatchQueue(queue);
+    setBatchQueueIndex(0);
+    setActiveEndpoint(queue[0]);
+  }
+  function onBatchDrawerClose() {
+    setActiveEndpoint(null);
+    const next = batchQueueIndex + 1;
+    if (next < batchQueue.length) {
+      setBatchQueueIndex(next);
+      setActiveEndpoint(batchQueue[next]);
+    } else {
+      setBatchQueue([]);
+      setBatchQueueIndex(0);
+    }
+  }
 
   const hasFilter = platformGroup !== "all" || activeContentTypes.size > 0 || activeMethods.size > 0 || search.trim();
 
   return (
     <AppShell
       title="平台能力中心"
-      description="按平台 · 内容类型 · 采集方式浏览 91 种数据采集能力"
+      description={`按平台 · 内容类型 · 采集方式浏览 ${stats.total} 种数据采集能力`}
       brief="选择平台大类，找到所需数据类型，点击卡片立即启动采集"
     >
       {isLoading ? (
@@ -347,6 +415,45 @@ export default function PlatformsPage() {
                 <div className="mt-0.5 text-xs text-[var(--text-tertiary)]">{s.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* ── 批量采集控制栏 ── */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleBatchMode}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all ${
+                batchMode
+                  ? "border-[var(--action-primary)] bg-[var(--action-primary)] text-[var(--text-inverse)]"
+                  : "border-[var(--border-subtle)] bg-[var(--surface-primary)] text-[var(--text-secondary)] hover:border-[var(--action-primary)] hover:text-[var(--action-primary)]"
+              }`}
+            >
+              <CheckSquare size={14} />
+              {batchMode ? "退出批量" : "批量采集"}
+            </button>
+            {batchMode && (
+              <>
+                <span className="text-sm text-[var(--text-tertiary)]">
+                  已选 <span className="font-semibold text-[var(--text-primary)]">{selectedEndpoints.size}</span> 个
+                </span>
+                {selectedEndpoints.size > 0 && (
+                  <button
+                    onClick={startBatchCollect}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--action-primary)] px-3 py-1.5 text-sm font-semibold text-[var(--text-inverse)] hover:opacity-90"
+                  >
+                    <Play size={13} />
+                    逐个启动 ({selectedEndpoints.size})
+                  </button>
+                )}
+                {selectedEndpoints.size > 0 && (
+                  <button
+                    onClick={() => setSelectedEndpoints(new Set())}
+                    className="text-xs text-[var(--text-tertiary)] hover:text-[var(--state-danger)]"
+                  >
+                    清空选择
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           {/* ── 第一层：平台大类 Tabs ── */}
@@ -474,6 +581,9 @@ export default function PlatformsPage() {
                   contentType={type}
                   endpoints={endpoints}
                   onCollect={setActiveEndpoint}
+                  batchMode={batchMode}
+                  selectedEndpoints={selectedEndpoints}
+                  onToggleSelect={toggleSelect}
                 />
               ))}
             </div>
@@ -486,7 +596,7 @@ export default function PlatformsPage() {
         <QuickCollectDrawer
           endpoint={activeEndpoint}
           open={!!activeEndpoint}
-          onClose={() => setActiveEndpoint(null)}
+          onClose={batchQueue.length > 0 ? onBatchDrawerClose : () => setActiveEndpoint(null)}
         />
       )}
     </AppShell>
