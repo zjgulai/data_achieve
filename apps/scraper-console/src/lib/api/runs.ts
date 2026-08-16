@@ -25,24 +25,11 @@ export async function fetchAllRuns(params?: {
   limit?: number;
   status?: string;
 }): Promise<TaskRun[]> {
-  // 后端没有全局 runs 端点，需从 tasks 聚合
-  const tasks = await apiFetch<Array<{ id: string }>>("/api/tasks");
-  const allRuns: TaskRun[] = [];
-  
-  for (const task of tasks.slice(0, 20)) {
-    try {
-      const runs = await apiFetch<TaskRun[]>(`/api/tasks/${task.id}/runs`);
-      allRuns.push(...runs);
-    } catch {
-      // 跳过失败的任务
-    }
-  }
-  
-  allRuns.sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
-  
-  return params?.limit ? allRuns.slice(0, params.limit) : allRuns;
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString() ? `?${qs.toString()}` : "";
+  return apiFetch<TaskRun[]>(`/api/tasks/runs${query}`);
 }
 
 export async function fetchRunRecords(runId: string): Promise<RawRecord[]> {

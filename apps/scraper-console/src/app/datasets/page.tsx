@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchDatasets, createExport } from "@/lib/api/datasets";
-import { Database, Download, RefreshCw, Loader2, Package } from "lucide-react";
+import { fetchDatasets, createExport, fetchExportJob } from "@/lib/api/datasets";
+import { Database, Download, RefreshCw, Loader2, Package, CheckCircle, ExternalLink } from "lucide-react";
 
 function formatDate(s: string) {
   return new Date(s).toLocaleDateString("zh-CN", { month: "short", day: "numeric", year: "numeric" });
@@ -12,13 +12,46 @@ function formatDate(s: string) {
 
 function ExportButton({ datasetId, versionId }: { datasetId: string; versionId: string }) {
   const [fmt, setFmt] = useState<"csv" | "json" | "jsonl">("csv");
+  const [exportJobId, setExportJobId] = useState<string | null>(null);
 
   const exp = useMutation({
     mutationFn: () => createExport(datasetId, versionId, fmt),
-    onSuccess: (data) => {
-      alert(`导出已创建，任务 ID：${data.export_job_id}`);
+    onSuccess: (data) => setExportJobId(data.export_job_id),
+  });
+
+  const { data: job } = useQuery({
+    queryKey: ["export-job", exportJobId],
+    queryFn: () => fetchExportJob(exportJobId!),
+    enabled: !!exportJobId,
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      return s === "completed" || s === "failed" ? false : 2000;
     },
   });
+
+  if (job?.status === "completed" && job.download_url) {
+    return (
+      <a
+        href={job.download_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--state-success)] bg-[var(--success-soft)] px-2.5 py-1.5 text-xs font-medium text-[var(--state-success)] hover:opacity-90"
+      >
+        <CheckCircle size={12} />
+        下载
+        <ExternalLink size={10} />
+      </a>
+    );
+  }
+
+  if (exportJobId && job?.status && job.status !== "completed") {
+    return (
+      <span className="flex items-center gap-1 text-xs text-[var(--text-tertiary)]">
+        <Loader2 size={12} className="animate-spin" />
+        {job.status === "failed" ? "导出失败" : "导出中…"}
+      </span>
+    );
+  }
 
   return (
     <div className="flex items-center gap-1.5">

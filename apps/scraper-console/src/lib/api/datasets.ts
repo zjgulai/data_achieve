@@ -68,3 +68,7 @@ export async function createExport(
     }),
   });
 }
+
+export async function fetchExportJob(exportJobId: string): Promise<ExportJob> {
+  return apiFetch<ExportJob>(`/api/automation/product-dataset-exports/${exportJobId}`);
+}

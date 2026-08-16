@@ -4,9 +4,11 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from sqlalchemy import select
 
 from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
 from data_intelligence_hub.core.config import get_settings
+from data_intelligence_hub.models.task import TaskRun
 from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
 from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
@@ -58,6 +60,26 @@ async def get_scheduler_overview_item(
         enabled=get_settings().scheduler_enabled,
         latest_tick=latest_tick,
     )
+
+
+@router.get("/runs", response_model=list[TaskRunResponse])
+async def list_all_task_run_items(
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    status_filter: Annotated[str | None, Query(alias="status")] = None,
+) -> list[TaskRunResponse]:
+    q = (
+        select(TaskRun)
+        .where(TaskRun.workspace_id == context.workspace.id)
+        .order_by(TaskRun.created_at.desc())
+        .limit(limit)
+    )
+    if status_filter:
+        q = q.where(TaskRun.status == status_filter)
+    result = await session.execute(q)
+    runs = result.scalars().all()
+    return [TaskRunResponse.from_run(run) for run in runs]
 
 
 @router.get("/{task_id}", response_model=CollectionTaskResponse)
