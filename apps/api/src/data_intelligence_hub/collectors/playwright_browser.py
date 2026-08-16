@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
@@ -26,6 +27,17 @@ def _assert_playwright_available() -> None:
         raise CollectorError(
             "playwright_not_installed: add 'browser' extra and rebuild image"
         )
+
+
+def _chromium_launch_kwargs() -> dict[str, Any]:
+    exe = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
+    kwargs: dict[str, Any] = {
+        "headless": True,
+        "args": ["--no-sandbox", "--disable-dev-shm-usage"],
+    }
+    if exe:
+        kwargs["executable_path"] = exe
+    return kwargs
 
 
 def _assert_public_url(url: str) -> None:
@@ -69,7 +81,7 @@ class PlaywrightBrowserCollector(BaseCollector):
         from playwright.async_api import async_playwright
 
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
+            browser = await pw.chromium.launch(**_chromium_launch_kwargs())
             try:
                 page = await browser.new_page()
                 response = await page.goto(
@@ -100,7 +112,7 @@ class PlaywrightBrowserCollector(BaseCollector):
 
         collected_at = datetime.now(UTC)
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(headless=True)
+            browser = await pw.chromium.launch(**_chromium_launch_kwargs())
             try:
                 page = await browser.new_page()
                 response = await page.goto(
