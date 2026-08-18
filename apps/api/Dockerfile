@@ -21,6 +21,8 @@ COPY alembic ./alembic
 COPY src ./src
 
 RUN uv sync --frozen --no-dev \
+    && uv pip install playwright \
+    && uv run playwright install chromium --with-deps \
     && chown -R app:app /app
 
 USER app

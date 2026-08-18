@@ -22,6 +22,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+browser = [
+    "playwright>=1.49.0",
+]
 social-youtube = [
     "google-api-python-client>=2.198.0",
 ]
