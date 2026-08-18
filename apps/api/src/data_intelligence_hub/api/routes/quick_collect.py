@@ -233,7 +233,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # Document to Markdown (1 endpoint)
     "anydoc_file_to_markdown": "anydoc_file_to_markdown",
     # Bilibili / B站 (3 endpoints)
-    "bilibili_video_info": "bilibili_video_info",
+    "bilibili_video_info": "bilibili_video_search",
     "bilibili_user_videos": "bilibili_user_videos",
     "bilibili_video_comments": "bilibili_video_comments",
     # 微博 (3 endpoints)
@@ -245,19 +245,19 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "zhihu_keyword_search": "zhihu_keyword_search",
     "zhihu_hot_list": "zhihu_hot_list",
     # SERP 搜索引擎 (3 endpoints)
-    "baidu_search": "baidu_search",
-    "bing_search": "bing_search",
-    "duckduckgo_search": "duckduckgo_search",
+    "baidu_search": "baidu_search_results",
+    "bing_search": "bing_search_results",
+    "duckduckgo_search": "duckduckgo_search_results",
     # 快手 (2 endpoints)
     "kuaishou_video_search": "kuaishou_video_search",
     "kuaishou_user_videos": "kuaishou_user_videos",
     # Firecrawl (3 endpoints)
-    "firecrawl_crawl": "firecrawl_crawl",
-    "firecrawl_extract": "firecrawl_extract",
+    "firecrawl_crawl": "firecrawl_crawl_site",
+    "firecrawl_extract": "firecrawl_extract_structured",
     "firecrawl_batch_scrape": "firecrawl_batch_scrape",
     # 技术博客 (3 endpoints)
-    "devto_articles": "devto_articles",
-    "juejin_articles": "juejin_articles",
+    "devto_articles": "devto_articles_search",
+    "juejin_articles": "juejin_articles_search",
     "substack_posts": "substack_posts",
     # 技术栈检测 (1 endpoint)
     "tech_stack_detect": "tech_stack_detect",
