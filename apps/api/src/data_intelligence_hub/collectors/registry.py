@@ -4,6 +4,11 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.anycrawl_collector import (
+    BaiduSearchCollector,
+    BingSearchCollector,
+    DuckDuckGoSearchCollector,
+)
 from data_intelligence_hub.collectors.anydoc_collector import AnydocCollector
 from data_intelligence_hub.collectors.anysearch_collector import AnySearchCollector
 from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
@@ -17,6 +22,17 @@ from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.jina_reader import JinaReaderCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.collectors.mediacrawler_collector import (
+    BilibiliUserVideosCollector,
+    BilibiliVideoCommentsCollector,
+    BilibiliVideoSearchCollector,
+    WeiboKeywordSearchCollector,
+    WeiboTrendingTopicsCollector,
+    WeiboUserPostsCollector,
+    ZhihuHotListCollector,
+    ZhihuKeywordSearchCollector,
+    ZhihuQuestionAnswersCollector,
+)
 from data_intelligence_hub.collectors.osint_collector import MaigretCollector, SherlockCollector
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
@@ -48,6 +64,18 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     TwscrapeUserTweetsCollector.collector_type: TwscrapeUserTweetsCollector,
     TwscrapeTrendsCollector.collector_type: TwscrapeTrendsCollector,
     AnydocCollector.collector_type: AnydocCollector,
+    BilibiliVideoSearchCollector.collector_type: BilibiliVideoSearchCollector,
+    BilibiliUserVideosCollector.collector_type: BilibiliUserVideosCollector,
+    BilibiliVideoCommentsCollector.collector_type: BilibiliVideoCommentsCollector,
+    WeiboKeywordSearchCollector.collector_type: WeiboKeywordSearchCollector,
+    WeiboUserPostsCollector.collector_type: WeiboUserPostsCollector,
+    WeiboTrendingTopicsCollector.collector_type: WeiboTrendingTopicsCollector,
+    ZhihuQuestionAnswersCollector.collector_type: ZhihuQuestionAnswersCollector,
+    ZhihuKeywordSearchCollector.collector_type: ZhihuKeywordSearchCollector,
+    ZhihuHotListCollector.collector_type: ZhihuHotListCollector,
+    BaiduSearchCollector.collector_type: BaiduSearchCollector,
+    BingSearchCollector.collector_type: BingSearchCollector,
+    DuckDuckGoSearchCollector.collector_type: DuckDuckGoSearchCollector,
 }
 
 
