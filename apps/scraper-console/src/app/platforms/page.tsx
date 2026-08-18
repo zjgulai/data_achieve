@@ -77,6 +77,15 @@ const PLATFORM_LOGOS: Record<string, { bg: string; fg: string; letter: string }>
   web:           { bg: "#4A5568", fg: "#fff",    letter: "Web" },
   ecommerce:     { bg: "#6B7280", fg: "#fff",    letter: "EC"  },
   regulatory:    { bg: "#D97706", fg: "#fff",    letter: "Reg" },
+  baidu:         { bg: "#2932E1", fg: "#fff",    letter: "百"  },
+  bing:          { bg: "#008373", fg: "#fff",    letter: "Bi"  },
+  duckduckgo:    { bg: "#DE5833", fg: "#fff",    letter: "DDG" },
+  devto:         { bg: "#0A0A0A", fg: "#fff",    letter: "DEV" },
+  juejin:        { bg: "#1E80FF", fg: "#fff",    letter: "掘"  },
+  substack:      { bg: "#FF6719", fg: "#fff",    letter: "Sub" },
+  spiderfoot:    { bg: "#2D3748", fg: "#fff",    letter: "SF"  },
+  firecrawl:     { bg: "#FF4F00", fg: "#fff",    letter: "FC"  },
+  wappalyzer:    { bg: "#4608AD", fg: "#fff",    letter: "Wp"  },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -104,6 +113,9 @@ const PLATFORM_LABELS: Record<string, string> = {
   product_hunt: "Product Hunt", crunchbase: "Crunchbase",
   hacker_news: "Hacker News", indeed: "Indeed", github: "GitHub",
   regulatory: "监管机构", rss: "RSS", web: "Web 爬取",
+  baidu: "百度", bing: "Bing", duckduckgo: "DuckDuckGo",
+  devto: "Dev.to", juejin: "掘金", substack: "Substack",
+  spiderfoot: "SpiderFoot OSINT", firecrawl: "Firecrawl", wappalyzer: "技术栈检测",
 };
 
 function getPlatformMeta(platform: string) {
@@ -139,12 +151,13 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   search:            "搜索结果",
   search_result:     "搜索结果",
   recall_notice:     "召回公告",
+  osint_report:      "OSINT 报告",
 };
 
 const CONTENT_TYPE_ORDER = [
   "post", "comment", "account", "product", "review", "ad",
   "search", "search_result", "trend", "ai_answer", "news", "job",
-  "repo", "feed", "web_page", "web_page_markdown", "recall_notice",
+  "repo", "feed", "web_page", "web_page_markdown", "recall_notice", "osint_report",
 ];
 
 /* ─────────────────────────────────────────────────────────────
@@ -152,14 +165,19 @@ const CONTENT_TYPE_ORDER = [
 ───────────────────────────────────────────────────────────── */
 
 const METHOD_LABELS: Record<string, string> = {
-  tikhub:      "TikHub API",
-  apify:       "Apify Actor",
-  github_api:  "GitHub API",
-  rss:         "RSS 解析",
-  web_crawl:   "通用爬取",
-  browser:     "浏览器采集",
-  anysearch:   "AnySearch",
-  jina_reader: "Jina Reader",
+  tikhub:        "TikHub API",
+  apify:         "Apify Actor",
+  github_api:    "GitHub API",
+  rss:           "RSS 解析",
+  web_crawl:     "通用爬取",
+  browser:       "浏览器采集",
+  anysearch:     "AnySearch",
+  jina_reader:   "Jina Reader",
+  mediacrawler:  "MediaCrawler",
+  serp:          "搜索引擎 SERP",
+  firecrawl:     "Firecrawl",
+  osint:         "OSINT 情报",
+  tech_stack:    "技术栈识别",
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -176,7 +194,9 @@ type CategoryKey =
   | "ads"
   | "b2b"
   | "regulatory"
-  | "open_web";
+  | "open_web"
+  | "search_cn"
+  | "osint_tools";
 
 const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[] }[] = [
   { key: "all",          label: "全部",      filterKeys: [] },
@@ -206,6 +226,10 @@ const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[] }[] = 
                  "chatgpt", "perplexity", "gemini"],
   },
   {
+    key: "search_cn",    label: "中文搜索",
+    filterKeys: ["baidu", "bing", "duckduckgo"],
+  },
+  {
     key: "ads",          label: "广告情报",
     filterKeys: ["facebook_ads", "google_ads", "tiktok_ads",
                  "snapchat_ads", "pinterest_ads"],
@@ -213,7 +237,7 @@ const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[] }[] = 
   {
     key: "b2b",          label: "B2B & 开源",
     filterKeys: ["linkedin", "product_hunt", "crunchbase",
-                 "hacker_news", "indeed", "github"],
+                 "hacker_news", "indeed", "github", "devto", "juejin", "substack"],
   },
   {
     key: "regulatory",   label: "监管公告",
@@ -221,7 +245,12 @@ const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[] }[] = 
   },
   {
     key: "open_web",     label: "开放网络",
-    filterKeys: ["rss", "web", "public_feed", "generic_web", "jina"],
+    filterKeys: ["rss", "web", "public_feed", "generic_web", "jina",
+                 "firecrawl", "wappalyzer"],
+  },
+  {
+    key: "osint_tools",  label: "OSINT 情报",
+    filterKeys: ["osint", "sherlock", "maigret", "twscrape", "spiderfoot"],
   },
 ];
 
