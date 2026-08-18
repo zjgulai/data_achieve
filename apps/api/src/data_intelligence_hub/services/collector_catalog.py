@@ -160,6 +160,252 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             },
         },
     ),
+    CollectorDefinition(
+        type="sherlock",
+        name="Sherlock Username Search",
+        description="Search for a username across 400+ social networks via sherlock-project CLI.",
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "sites": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="maigret",
+        name="Maigret Username Dossier",
+        description="Build a cross-platform dossier from a username via maigret (3000+ sites).",
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "max_sites": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="twscrape_search",
+        name="X/Twitter Search",
+        description="Search X/Twitter for tweets matching a query via twscrape.",
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "limit": "integer", "product": "string"},
+        },
+    ),
+    CollectorDefinition(
+        type="twscrape_user_tweets",
+        name="X/Twitter User Timeline",
+        description="Fetch the public timeline of an X/Twitter user via twscrape.",
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="twscrape_trends",
+        name="X/Twitter Trending Topics",
+        description="Fetch X/Twitter trending topics for a given category via twscrape.",
+        config_schema={"required": [], "properties": {"category": "string"}},
+    ),
+    CollectorDefinition(
+        type="anydoc_file_to_markdown",
+        name="Document to Markdown",
+        description="Convert a remote document file (PDF, DOCX, PPTX, etc.) to Markdown.",
+        config_schema={
+            "required": ["file_url"],
+            "properties": {"file_url": "string", "file_type": "string"},
+        },
+    ),
+    CollectorDefinition(
+        type="bilibili_video_info",
+        name="Bilibili 视频信息",
+        description="获取 B站单个视频的元数据、播放量、评论等。",
+        config_schema={"required": ["bvid"], "properties": {"bvid": "string"}},
+    ),
+    CollectorDefinition(
+        type="bilibili_user_videos",
+        name="Bilibili UP主视频列表",
+        description="获取 B站 UP主的视频列表。",
+        config_schema={
+            "required": ["uid"],
+            "properties": {"uid": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="bilibili_video_comments",
+        name="Bilibili 视频评论",
+        description="获取 B站视频的评论列表。",
+        config_schema={
+            "required": ["bvid"],
+            "properties": {"bvid": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="weibo_keyword_search",
+        name="微博关键词搜索",
+        description="搜索微博关键词，返回相关帖子。",
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="weibo_user_posts",
+        name="微博用户帖子",
+        description="获取微博用户的帖子列表。",
+        config_schema={
+            "required": ["user_id"],
+            "properties": {"user_id": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="weibo_trending_topics",
+        name="微博热搜榜",
+        description="获取微博当前热搜话题列表。",
+        config_schema={"required": [], "properties": {}},
+    ),
+    CollectorDefinition(
+        type="zhihu_question_answers",
+        name="知乎问题回答",
+        description="获取知乎问题下的回答列表。",
+        config_schema={
+            "required": ["question_id"],
+            "properties": {"question_id": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="zhihu_keyword_search",
+        name="知乎关键词搜索",
+        description="搜索知乎关键词，返回相关内容。",
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="zhihu_hot_list",
+        name="知乎热榜",
+        description="获取知乎当前热榜话题。",
+        config_schema={"required": [], "properties": {}},
+    ),
+    CollectorDefinition(
+        type="baidu_search",
+        name="百度搜索",
+        description="通过 MediaCrawler 采集百度搜索结果。",
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="bing_search",
+        name="Bing 搜索",
+        description="通过 MediaCrawler 采集 Bing 搜索结果。",
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="duckduckgo_search",
+        name="DuckDuckGo 搜索",
+        description="通过 MediaCrawler 采集 DuckDuckGo 搜索结果。",
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="kuaishou_video_search",
+        name="快手视频搜索",
+        description="搜索快手关键词视频。",
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="kuaishou_user_videos",
+        name="快手用户视频",
+        description="获取快手用户的视频列表。",
+        config_schema={
+            "required": ["user_id"],
+            "properties": {"user_id": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="firecrawl_crawl",
+        name="Firecrawl 全站采集",
+        description="通过 Firecrawl 对目标网站进行全站结构化采集。",
+        config_schema={
+            "required": ["url"],
+            "properties": {"url": "string", "max_pages": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="firecrawl_extract",
+        name="Firecrawl 结构化提取",
+        description="通过 Firecrawl 从页面提取结构化数据。",
+        config_schema={"required": ["url"], "properties": {"url": "string", "schema": "object"}},
+    ),
+    CollectorDefinition(
+        type="firecrawl_batch_scrape",
+        name="Firecrawl 批量抓取",
+        description="通过 Firecrawl 批量抓取多个 URL。",
+        config_schema={"required": ["urls"], "properties": {"urls": "array"}},
+    ),
+    CollectorDefinition(
+        type="devto_articles",
+        name="Dev.to 文章",
+        description="采集 Dev.to 技术文章。",
+        config_schema={"required": [], "properties": {"tag": "string", "limit": "integer"}},
+    ),
+    CollectorDefinition(
+        type="juejin_articles",
+        name="掘金文章",
+        description="采集掘金技术文章。",
+        config_schema={
+            "required": [],
+            "properties": {"category": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="substack_posts",
+        name="Substack 文章",
+        description="采集 Substack Newsletter 文章。",
+        config_schema={
+            "required": ["publication_url"],
+            "properties": {"publication_url": "string", "limit": "integer"},
+        },
+    ),
+    CollectorDefinition(
+        type="tech_stack_detect",
+        name="网页技术栈检测",
+        description="通过 HTML 和 HTTP 响应头指纹识别目标网站使用的技术栈。",
+        config_schema={"required": ["url"], "properties": {"url": "string"}},
+    ),
+    CollectorDefinition(
+        type="spiderfoot_domain_osint",
+        name="SpiderFoot 域名 OSINT",
+        description="通过 SpiderFoot 对域名进行全面 OSINT 扫描。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_ip_osint",
+        name="SpiderFoot IP OSINT",
+        description="通过 SpiderFoot 对 IP 地址进行 OSINT 扫描。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_email_osint",
+        name="SpiderFoot 邮箱 OSINT",
+        description="通过 SpiderFoot 对邮箱地址进行 OSINT 扫描。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
 )
 
 
@@ -215,6 +461,22 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_anysearch_config(config)
     if collector_type == "jina_reader":
         return _validate_jina_reader_config(config)
+
+    if collector_type in {
+        "sherlock", "maigret",
+        "twscrape_search", "twscrape_user_tweets", "twscrape_trends",
+        "anydoc_file_to_markdown",
+        "bilibili_video_info", "bilibili_user_videos", "bilibili_video_comments",
+        "weibo_keyword_search", "weibo_user_posts", "weibo_trending_topics",
+        "zhihu_question_answers", "zhihu_keyword_search", "zhihu_hot_list",
+        "baidu_search", "bing_search", "duckduckgo_search",
+        "kuaishou_video_search", "kuaishou_user_videos",
+        "firecrawl_crawl", "firecrawl_extract", "firecrawl_batch_scrape",
+        "devto_articles", "juejin_articles", "substack_posts",
+        "tech_stack_detect",
+        "spiderfoot_domain_osint", "spiderfoot_ip_osint", "spiderfoot_email_osint",
+    }:
+        return _validate_passthrough_config(config)
 
     from data_intelligence_hub.services.exceptions import CollectorNotFoundError
 
@@ -513,3 +775,7 @@ def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
     if return_format not in {"markdown", "text", "html"}:
         raise CollectorConfigError
     return {"url": url, "return_format": return_format}
+
+
+def _validate_passthrough_config(config: dict[str, Any]) -> dict[str, Any]:
+    return dict(config)
