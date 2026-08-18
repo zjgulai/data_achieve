@@ -2451,6 +2451,111 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    osint_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="sherlock_username_search",
+            label="Sherlock 用户名追踪",
+            platform="web",
+            description=(
+                "跨 400+ 社交平台检查指定用户名是否存在，"
+                "返回每个平台的主页 URL。常用于 KOL 身份核实和品牌仿冒检测。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=["sites"],
+            cost_hint="免费",
+            provider="sherlock-project (开源)",
+            content_type="account",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="maigret_username_profile",
+            label="Maigret 用户名画像",
+            platform="web",
+            description=(
+                "跨 3000+ 平台构建用户名档案，返回每个平台的账号状态和主页 URL。"
+                "比 Sherlock 覆盖更广但速度较慢。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=["max_sites"],
+            cost_hint="免费",
+            provider="maigret (开源)",
+            content_type="account",
+            method="web_crawl",
+        ),
+    ]
+
+    twscrape_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="twscrape_search",
+            label="X/Twitter 关键词搜索",
+            platform="x",
+            description=(
+                "通过 twscrape 免费搜索 X/Twitter 推文，"
+                "支持 Latest / Top / Media 三种搜索模式，多账号轮换自动限流处理。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["limit", "product"],
+            cost_hint="免费（需账号 Cookie）",
+            provider="twscrape (开源)",
+            content_type="post",
+            method="twscrape",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="twscrape_user_tweets",
+            label="X/Twitter 用户时间线",
+            platform="x",
+            description=(
+                "获取指定 X/Twitter 用户的公开推文列表，最多 3200 条，"
+                "返回推文内容、互动数据和作者信息。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=["limit"],
+            cost_hint="免费（需账号 Cookie）",
+            provider="twscrape (开源)",
+            content_type="post",
+            method="twscrape",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="twscrape_trends",
+            label="X/Twitter 热门趋势",
+            platform="x",
+            description=(
+                "获取 X/Twitter 指定分类（news / sport / entertainment）的热门话题趋势列表。"
+            ),
+            status="verified",
+            required_params=[],
+            optional_params=["category"],
+            cost_hint="免费（需账号 Cookie）",
+            provider="twscrape (开源)",
+            content_type="trend",
+            method="twscrape",
+        ),
+    ]
+
+    anydoc_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="anydoc_file_to_markdown",
+            label="文档转 Markdown",
+            platform="web",
+            description=(
+                "将远程 Word (.docx)、PowerPoint (.pptx)、Excel (.xlsx)、"
+                "PDF、EPUB、RTF、CSV 等文档文件转换为干净的 Markdown 格式。"
+                "适用于供应商文件、政府公文、竞品白皮书的结构化处理。"
+            ),
+            status="verified",
+            required_params=["file_url"],
+            optional_params=["file_type"],
+            cost_hint="免费",
+            provider="anydoc (开源 Rust)",
+            content_type="web_page_markdown",
+            method="web_crawl",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -2506,6 +2611,24 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="Jina Reader 页面转 Markdown",
                 platform="web",
                 endpoints=jina_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="osint",
+                label="OSINT 用户名追踪",
+                platform="web",
+                endpoints=osint_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="twscrape",
+                label="X/Twitter 免费多账号采集",
+                platform="x",
+                endpoints=twscrape_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="anydoc",
+                label="文档转 Markdown",
+                platform="web",
+                endpoints=anydoc_endpoints,
             ),
         ]
     )

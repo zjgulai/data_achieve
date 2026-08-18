@@ -4,6 +4,7 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.anydoc_collector import AnydocCollector
 from data_intelligence_hub.collectors.anysearch_collector import AnySearchCollector
 from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
@@ -16,9 +17,15 @@ from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.jina_reader import JinaReaderCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.collectors.osint_collector import MaigretCollector, SherlockCollector
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
 from data_intelligence_hub.collectors.tikhub_social import TikHubSocialCollector
+from data_intelligence_hub.collectors.twscrape_collector import (
+    TwscrapeSearchCollector,
+    TwscrapeTrendsCollector,
+    TwscrapeUserTweetsCollector,
+)
 
 CollectorClass = type[BaseCollector]
 
@@ -35,6 +42,12 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     PlaywrightBrowserCollector.collector_type: PlaywrightBrowserCollector,
     AnySearchCollector.collector_type: AnySearchCollector,
     JinaReaderCollector.collector_type: JinaReaderCollector,
+    SherlockCollector.collector_type: SherlockCollector,
+    MaigretCollector.collector_type: MaigretCollector,
+    TwscrapeSearchCollector.collector_type: TwscrapeSearchCollector,
+    TwscrapeUserTweetsCollector.collector_type: TwscrapeUserTweetsCollector,
+    TwscrapeTrendsCollector.collector_type: TwscrapeTrendsCollector,
+    AnydocCollector.collector_type: AnydocCollector,
 }
 
 
