@@ -20,9 +20,12 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY src ./src
 
+ARG INSTALL_PLAYWRIGHT=false
 RUN uv sync --frozen --no-dev \
-    && uv pip install playwright \
-    && uv run playwright install chromium --with-deps \
+    && if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
+         uv pip install playwright \
+         && uv run playwright install chromium --with-deps; \
+       fi \
     && chown -R app:app /app
 
 USER app
