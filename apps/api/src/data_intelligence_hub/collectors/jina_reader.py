@@ -12,6 +12,7 @@ from data_intelligence_hub.collectors.base import (
     CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
+    collector_http_error_message,
     collector_log,
     require_text,
 )
@@ -28,6 +29,11 @@ def _get_api_key() -> str:
     return key
 
 
+def _jina_client() -> httpx.AsyncClient:
+    proxy = os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY")
+    return httpx.AsyncClient(timeout=JINA_TIMEOUT, proxy=proxy)
+
+
 class JinaReaderCollector(BaseCollector):
     collector_type = "jina_reader"
 
@@ -40,16 +46,31 @@ class JinaReaderCollector(BaseCollector):
 
     async def test(self) -> CollectorTestResult:
         config = self.validate_config()
-        api_key = _get_api_key()
-        async with httpx.AsyncClient(timeout=JINA_TIMEOUT) as client:
-            r = await client.get(
-                f"{JINA_BASE_URL}{config['url']}",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Accept": "text/plain",
-                    "X-Return-Format": config["return_format"],
-                },
-                follow_redirects=True,
+        try:
+            api_key = _get_api_key()
+        except CollectorError as exc:
+            return CollectorTestResult(
+                status="failed",
+                message=str(exc),
+                logs=[collector_log("jina_test_failed", str(exc), level="error")],
+            )
+        try:
+            async with _jina_client() as client:
+                r = await client.get(
+                    f"{JINA_BASE_URL}{config['url']}",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Accept": "text/plain",
+                        "X-Return-Format": config["return_format"],
+                    },
+                    follow_redirects=True,
+                )
+        except httpx.HTTPError as exc:
+            msg = collector_http_error_message(exc)
+            return CollectorTestResult(
+                status="failed",
+                message=msg,
+                logs=[collector_log("jina_test_failed", msg, level="error")],
             )
         if r.status_code not in {200, 422}:
             return CollectorTestResult(
@@ -65,20 +86,39 @@ class JinaReaderCollector(BaseCollector):
 
     async def collect(self) -> CollectionResult:
         config = self.validate_config()
-        api_key = _get_api_key()
+        logs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        try:
+            api_key = _get_api_key()
+        except CollectorError as exc:
+            errors.append(str(exc))
+            logs.append(collector_log("jina_collect_error", str(exc), level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         collected_at = datetime.now(UTC)
-        async with httpx.AsyncClient(timeout=JINA_TIMEOUT) as client:
-            r = await client.get(
-                f"{JINA_BASE_URL}{config['url']}",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Accept": "text/plain",
-                    "X-Return-Format": config["return_format"],
-                },
-                follow_redirects=True,
-            )
+        try:
+            async with _jina_client() as client:
+                r = await client.get(
+                    f"{JINA_BASE_URL}{config['url']}",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Accept": "text/plain",
+                        "X-Return-Format": config["return_format"],
+                    },
+                    follow_redirects=True,
+                )
+        except httpx.HTTPError as exc:
+            msg = collector_http_error_message(exc)
+            errors.append(msg)
+            logs.append(collector_log("jina_collect_error", msg, level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         if r.status_code not in {200, 422}:
-            raise CollectorError(f"Jina Reader HTTP {r.status_code}: {r.text[:200]}")
+            msg = f"Jina Reader HTTP {r.status_code}: {r.text[:200]}"
+            errors.append(msg)
+            logs.append(collector_log("jina_collect_error", msg, level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         record = CollectorRawRecord(
             record_type="web_page_markdown",
             source_url=config["url"],
@@ -90,13 +130,5 @@ class JinaReaderCollector(BaseCollector):
             },
             collected_at=collected_at,
         )
-        return CollectionResult(
-            raw_records=[record],
-            errors=[],
-            logs=[
-                collector_log(
-                    "jina_collected",
-                    f"url={config['url']!r} size={len(r.text)}",
-                )
-            ],
-        )
+        logs.append(collector_log("jina_collected", f"url={config['url']!r} size={len(r.text)}"))
+        return CollectionResult(raw_records=[record], logs=logs, errors=errors)

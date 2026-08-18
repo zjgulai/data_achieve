@@ -10,9 +10,21 @@ from urllib.parse import urlparse
 
 import httpx
 
-HTTP_TIMEOUT_SECONDS = 10.0
-HTTP_USER_AGENT = "DataIntelligenceHub/0.1 (+https://localhost)"
-HTTP_HEADERS = {"User-Agent": HTTP_USER_AGENT, "Accept": "application/json, text/html"}
+HTTP_TIMEOUT_SECONDS = 15.0
+HTTP_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/125.0.0.0 Safari/537.36"
+)
+HTTP_HEADERS = {
+    "User-Agent": HTTP_USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+}
 HTTP_RETRY_BACKOFF_SECONDS = (0.25, 1.0)
 
 JsonContent = dict[str, Any] | list[Any]

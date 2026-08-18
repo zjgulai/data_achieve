@@ -85,7 +85,15 @@ class AnySearchCollector(BaseCollector):
 
     async def collect(self) -> CollectionResult:
         config = self.validate_config()
-        api_key = _get_api_key()
+        logs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        try:
+            api_key = _get_api_key()
+        except CollectorError as exc:
+            errors.append(str(exc))
+            logs.append(collector_log("anysearch_collect_error", str(exc), level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         collected_at = datetime.now(UTC)
         payload: dict[str, Any] = {
             "query": config["query"],
@@ -93,17 +101,32 @@ class AnySearchCollector(BaseCollector):
         }
         if config.get("site"):
             payload["site"] = config["site"]
-        async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
-            r = await client.post(
-                ANYSEARCH_ENDPOINT,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json=payload,
-            )
+        try:
+            async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
+                r = await client.post(
+                    ANYSEARCH_ENDPOINT,
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    json=payload,
+                )
+        except httpx.HTTPError as exc:
+            msg = f"AnySearch network error: {exc}"
+            errors.append(msg)
+            logs.append(collector_log("anysearch_collect_error", msg, level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         if r.status_code != 200:
-            raise CollectorError(f"AnySearch HTTP {r.status_code}: {r.text[:200]}")
+            msg = f"AnySearch HTTP {r.status_code}: {r.text[:200]}"
+            errors.append(msg)
+            logs.append(collector_log("anysearch_collect_error", msg, level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         data = r.json()
         if data.get("code") != 0:
-            raise CollectorError(f"AnySearch API error: {data.get('message')}")
+            msg = f"AnySearch API error: {data.get('message')}"
+            errors.append(msg)
+            logs.append(collector_log("anysearch_collect_error", msg, level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         results: list[dict[str, Any]] = data.get("data", {}).get("results", [])
         records = [
             CollectorRawRecord(
@@ -122,13 +145,10 @@ class AnySearchCollector(BaseCollector):
             )
             for item in results
         ]
-        return CollectionResult(
-            raw_records=records,
-            errors=[],
-            logs=[
-                collector_log(
-                    "anysearch_collected",
-                    f"query={config['query']!r} results={len(records)}",
-                )
-            ],
+        logs.append(
+            collector_log(
+                "anysearch_collected",
+                f"query={config['query']!r} results={len(records)}",
+            )
         )
+        return CollectionResult(raw_records=records, logs=logs, errors=errors)

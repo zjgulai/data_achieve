@@ -73,6 +73,22 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "tikhub_tiktok_creator_account_health": "tikhub_social",
     "tikhub_tiktok_ads_detail": "tikhub_social",
     "tikhub_tiktok_ads_keyword_suggest": "tikhub_social",
+    "tikhub_douyin_video_search": "tikhub_social",
+    "tikhub_douyin_user_posts": "tikhub_social",
+    "tikhub_douyin_hot_search": "tikhub_social",
+    "tikhub_douyin_comments": "tikhub_social",
+    "tikhub_douyin_brand_hot_search": "tikhub_social",
+    "tikhub_bilibili_video_search": "tikhub_social",
+    "tikhub_bilibili_user_videos": "tikhub_social",
+    "tikhub_bilibili_comments": "tikhub_social",
+    "tikhub_weibo_search": "tikhub_social",
+    "tikhub_weibo_user_posts": "tikhub_social",
+    "tikhub_kuaishou_search": "tikhub_social",
+    "tikhub_kuaishou_user_posts": "tikhub_social",
+    "tikhub_wechat_search": "tikhub_social",
+    "tikhub_wechat_channels_video": "tikhub_social",
+    "tikhub_zhihu_search": "tikhub_social",
+    "tikhub_zhihu_question_answers": "tikhub_social",
     # Apify Social (18 endpoints)
     "apify_tiktok": "apify_actor",
     "apify_tiktok_scraper": "apify_actor",
@@ -386,12 +402,17 @@ async def quick_collect(
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        actor_input = {**base_input, **body.params}
+        _meta_keys = {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds"}
+        actor_input = {
+            **base_input,
+            **{k: v for k, v in body.params.items() if k not in _meta_keys},
+        }
         config = {
             "actor_id": actor_id,
             "actor_input": actor_input,
-            "max_items": body.params.get("maxItems", 10),
+            "max_items": body.params.get("maxItems") or body.params.get("max_items") or 10,
             "max_total_charge_usd": body.params.get("max_total_charge_usd", 1.0),
+            "run_timeout_seconds": body.params.get("run_timeout_seconds", 600),
         }
 
     try:

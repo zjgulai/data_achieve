@@ -63,10 +63,18 @@ class PublicFeedCollector(BaseCollector):
 
     async def collect(self) -> CollectionResult:
         config = self.validate_config()
-        xml_text = await self._get_xml(config["url"])
-        parsed = parse_public_feed(xml_text, config["feed_type"], config["max_items"])
+        logs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        try:
+            xml_text = await self._get_xml(config["url"])
+            parsed = parse_public_feed(xml_text, config["feed_type"], config["max_items"])
+        except CollectorError as exc:
+            errors.append(str(exc))
+            logs.append(collector_log("public_feed_error", str(exc), level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
         if not parsed.entries:
-            raise CollectorError("public_feed_empty: feed contains no entries")
+            errors.append("public_feed_empty: feed contains no entries")
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
         content: dict[str, Any] = {
             "provider": "public_feed",
             "kind": "feed_snapshot",
@@ -94,13 +102,13 @@ class PublicFeedCollector(BaseCollector):
                     content=content,
                 )
             ],
-            logs=[
+            logs=logs + [
                 collector_log(
                     "public_feed_collected",
                     f"Collected {len(parsed.entries)} public feed entries from {config['url']}.",
                 )
             ],
-            errors=[],
+            errors=errors,
         )
 
     async def _get_xml(self, url: str) -> str:
