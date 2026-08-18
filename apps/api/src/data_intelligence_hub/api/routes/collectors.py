@@ -2816,6 +2816,76 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    tech_blog_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="devto_articles_search",
+            label="Dev.to 文章搜索",
+            platform="devto",
+            description=(
+                "通过 Dev.to 公开 API 搜索技术文章，"
+                "支持按 tag 或关键词筛选，无需 API Key。"
+            ),
+            status="verified",
+            required_params=[],
+            optional_params=["tag", "username", "keyword", "max_items"],
+            cost_hint="免费",
+            provider="Dev.to Public API",
+            content_type="news",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="juejin_articles_search",
+            label="掘金文章搜索",
+            platform="juejin",
+            description=(
+                "通过掘金公开搜索 API 搜索技术文章，"
+                "返回标题、摘要、作者、阅读量、点赞数。无需 API Key。"
+            ),
+            status="verified",
+            required_params=["keyword"],
+            optional_params=["max_items"],
+            cost_hint="免费",
+            provider="掘金 Public API",
+            content_type="news",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="substack_posts",
+            label="Substack 博客采集",
+            platform="substack",
+            description=(
+                "通过 RSS 采集指定 Substack 刊物的最新文章，"
+                "支持任意 publication slug 或自定义域名。"
+            ),
+            status="verified",
+            required_params=["publication"],
+            optional_params=["max_items"],
+            cost_hint="免费",
+            provider="Substack RSS",
+            content_type="news",
+            method="rss",
+        ),
+    ]
+
+    tech_stack_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="tech_stack_detect",
+            label="网页技术栈检测",
+            platform="web",
+            description=(
+                "通过 HTML 内容和 HTTP 响应头指纹识别目标网站使用的技术栈，"
+                "涵盖前端框架、CMS、CDN、分析工具、服务器等约 60 种技术。"
+            ),
+            status="verified",
+            required_params=["url"],
+            optional_params=[],
+            cost_hint="免费",
+            provider="内置指纹库",
+            content_type="web_page",
+            method="web_crawl",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -2925,6 +2995,18 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="Firecrawl 全站结构化采集",
                 platform="web",
                 endpoints=firecrawl_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="tech_blog",
+                label="技术博客采集 (Dev.to / 掘金 / Substack)",
+                platform="web",
+                endpoints=tech_blog_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="tech_stack",
+                label="网页技术栈检测",
+                platform="web",
+                endpoints=tech_stack_endpoints,
             ),
         ]
     )

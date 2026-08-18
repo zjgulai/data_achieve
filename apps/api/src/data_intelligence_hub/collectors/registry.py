@@ -43,12 +43,18 @@ from data_intelligence_hub.collectors.mediacrawler_collector import (
 from data_intelligence_hub.collectors.osint_collector import MaigretCollector, SherlockCollector
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
+from data_intelligence_hub.collectors.tech_blog_collector import (
+    DevToArticlesCollector,
+    JuejinArticlesCollector,
+    SubstackPostsCollector,
+)
 from data_intelligence_hub.collectors.tikhub_social import TikHubSocialCollector
 from data_intelligence_hub.collectors.twscrape_collector import (
     TwscrapeSearchCollector,
     TwscrapeTrendsCollector,
     TwscrapeUserTweetsCollector,
 )
+from data_intelligence_hub.collectors.wappalyzer_collector import TechStackDetectCollector
 
 CollectorClass = type[BaseCollector]
 
@@ -88,6 +94,10 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     FirecrawlCrawlCollector.collector_type: FirecrawlCrawlCollector,
     FirecrawlExtractCollector.collector_type: FirecrawlExtractCollector,
     FirecrawlBatchScrapeCollector.collector_type: FirecrawlBatchScrapeCollector,
+    DevToArticlesCollector.collector_type: DevToArticlesCollector,
+    JuejinArticlesCollector.collector_type: JuejinArticlesCollector,
+    SubstackPostsCollector.collector_type: SubstackPostsCollector,
+    TechStackDetectCollector.collector_type: TechStackDetectCollector,
 }
 
 
