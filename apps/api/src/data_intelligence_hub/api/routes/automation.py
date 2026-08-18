@@ -1257,13 +1257,19 @@ async def send_product_drift_alert_emails_route(
 @router.get("/product-datasets", response_model=AutomationProductDatasetListResponse)
 async def list_product_datasets_route(
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
     project_id: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> AutomationProductDatasetListResponse:
+    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
     return await list_product_datasets(
         session,
-        context.workspace,
+        workspace,
         project_id=project_id,
         limit=limit,
     )
