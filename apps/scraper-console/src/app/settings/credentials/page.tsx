@@ -8,30 +8,58 @@ import {
   updateCredential,
   deleteCredential,
 } from "@/lib/api/credentials";
-import type { PlatformCredential, CredentialField } from "@/lib/api/credentials";
+import type { PlatformCredential } from "@/lib/api/credentials";
 import { Key, CheckCircle, AlertCircle, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 
-/* ── Platform icons ── */
-const PLATFORM_EMOJI: Record<string, string> = {
-  youtube:   "▶",
-  reddit:    "🔴",
-  x:         "✕",
-  instagram: "📸",
-  threads:   "🧵",
-  tiktok:    "🎵",
-  linkedin:  "💼",
+/* ── Platform badge (matches platforms/page.tsx PlatformLogo) ── */
+const PLATFORM_BADGE: Record<string, { bg: string; fg: string; letter: string }> = {
+  tikhub:    { bg: "#010101", fg: "#fff", letter: "TH"  },
+  apify:     { bg: "#FF7300", fg: "#fff", letter: "Ap"  },
+  anysearch: { bg: "#2563EB", fg: "#fff", letter: "AS"  },
+  jina:      { bg: "#9333EA", fg: "#fff", letter: "Ji"  },
+  github:    { bg: "#24292F", fg: "#fff", letter: "GH"  },
+  youtube:   { bg: "#FF0000", fg: "#fff", letter: "YT"  },
+  reddit:    { bg: "#FF4500", fg: "#fff", letter: "Re"  },
+  x:         { bg: "#000000", fg: "#fff", letter: "𝕏"   },
+  instagram: { bg: "#E1306C", fg: "#fff", letter: "In"  },
+  threads:   { bg: "#101010", fg: "#fff", letter: "Th"  },
+  tiktok:    { bg: "#010101", fg: "#fff", letter: "TK"  },
+  linkedin:  { bg: "#0A66C2", fg: "#fff", letter: "in"  },
 };
 
-/* ── Field input with show/hide toggle ── */
+function PlatformBadge({ platform }: { platform: string }) {
+  const meta = PLATFORM_BADGE[platform.toLowerCase()]
+    ?? { bg: "#6B7280", fg: "#fff", letter: platform.slice(0, 2).toUpperCase() };
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        background: meta.bg,
+        color: meta.fg,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "-0.03em",
+        flexShrink: 0,
+      }}
+    >
+      {meta.letter}
+    </span>
+  );
+}
+
+/* ── Field input ── */
 function SecretInput({
-  fieldKey,
   label,
   configured,
   value,
   onChange,
 }: {
-  fieldKey: string;
   label: string;
   configured: boolean;
   value: string;
@@ -41,9 +69,7 @@ function SecretInput({
   return (
     <div className="grid gap-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-[var(--text-primary)]">
-          {label}
-        </label>
+        <label className="text-sm font-medium text-[var(--text-primary)]">{label}</label>
         {configured && (
           <span className="flex items-center gap-1 text-xs text-[var(--state-success)]">
             <CheckCircle size={12} />
@@ -58,7 +84,7 @@ function SecretInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder={configured ? "输入新值以更新" : `输入 ${label}`}
           autoComplete="off"
-          className="h-10 w-full rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 pr-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-1)]"
+          className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 pr-9 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-1)]"
         />
         <button
           type="button"
@@ -93,8 +119,7 @@ function PlatformCard({
       for (const [k, v] of Object.entries(values)) {
         if (v.trim()) payload[k] = v.trim();
       }
-      if (Object.keys(payload).length === 0)
-        throw new Error("请至少填写一个字段");
+      if (Object.keys(payload).length === 0) throw new Error("请至少填写一个字段");
       return updateCredential(platform.platform, payload);
     },
     onSuccess: () => {
@@ -103,9 +128,7 @@ function PlatformCard({
       setValues(Object.fromEntries(platform.fields.map((f) => [f.key, ""])));
       setError(null);
     },
-    onError: (e) => {
-      setError(e instanceof ApiError ? e.message : String(e));
-    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : String(e)),
   });
 
   const remove = useMutation({
@@ -113,17 +136,13 @@ function PlatformCard({
     onSuccess: () => qc.invalidateQueries({ queryKey: ["credentials"] }),
   });
 
-  const icon = PLATFORM_EMOJI[platform.platform] ?? "🔑";
-
   return (
-    <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)]">
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-primary)]">
       <div className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-3">
-          <span className="text-xl">{icon}</span>
+          <PlatformBadge platform={platform.platform} />
           <div>
-            <p className="text-sm font-semibold text-[var(--text-primary)]">
-              {platform.label}
-            </p>
+            <p className="text-sm font-semibold text-[var(--text-primary)]">{platform.label}</p>
             <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
               {platform.auth_mode}
               {platform.configured && (
@@ -134,14 +153,14 @@ function PlatformCard({
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           {platform.configured && (
             <button
               type="button"
               disabled={remove.isPending || !vaultEnabled}
               onClick={() => remove.mutate()}
-              title="删除凭证"
-              className="rounded-[var(--radius-2)] p-2 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--danger-soft)] hover:text-[var(--state-danger)] disabled:opacity-40"
+              className="rounded-lg p-2 text-[var(--text-tertiary)] hover:bg-[var(--danger-soft)] hover:text-[var(--state-danger)] disabled:opacity-40 transition-colors"
             >
               {remove.isPending
                 ? <Loader2 size={14} className="animate-spin" />
@@ -152,7 +171,7 @@ function PlatformCard({
             type="button"
             disabled={!vaultEnabled}
             onClick={() => setExpanded(!expanded)}
-            className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] disabled:opacity-40"
+            className="rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] disabled:opacity-40 transition-colors"
           >
             {platform.configured ? "更新" : "配置"}
           </button>
@@ -165,7 +184,6 @@ function PlatformCard({
             {platform.fields.map((f) => (
               <SecretInput
                 key={f.key}
-                fieldKey={f.key}
                 label={f.label}
                 configured={f.configured}
                 value={values[f.key] ?? ""}
@@ -185,7 +203,7 @@ function PlatformCard({
             <button
               type="button"
               onClick={() => { setExpanded(false); setError(null); }}
-              className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              className="rounded-lg border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
             >
               取消
             </button>
@@ -193,7 +211,7 @@ function PlatformCard({
               type="button"
               disabled={save.isPending}
               onClick={() => save.mutate()}
-              className="flex items-center gap-1.5 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-4 py-2 text-sm font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-lg bg-[var(--action-primary)] px-4 py-2 text-sm font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-60"
             >
               {save.isPending ? <Loader2 size={14} className="animate-spin" /> : <Key size={14} />}
               保存
@@ -220,13 +238,21 @@ export default function CredentialsPage() {
       description="配置各平台 API Key 用于采集"
     >
       {data && !data.vault_write_enabled && (
-        <div className="rounded-[var(--radius-2)] border border-[var(--state-warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--state-warning)]">
+        <div className="rounded-lg border border-[var(--state-warning)] bg-[var(--warning-soft)] px-4 py-3 text-sm text-[var(--state-warning)]">
           <p className="font-medium">凭证保险库未启用</p>
           <p className="mt-1 text-xs">
-            需要在服务器设置 <code className="font-mono">PLATFORM_CREDENTIAL_MASTER_KEY</code> 环境变量并重启 API 服务
+            需要在服务器设置{" "}
+            <code className="font-mono">PLATFORM_CREDENTIAL_MASTER_KEY</code>{" "}
+            环境变量并重启 API 服务
           </p>
         </div>
       )}
+
+      <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3 text-xs text-[var(--text-tertiary)]">
+        TikHub / Apify / AnySearch / Jina Reader 的密钥在生产服务器
+        <code className="mx-1 font-mono">.env.production</code>
+        中通过环境变量配置，不在此界面管理。此处管理平台级 OAuth 凭证（YouTube Data API、Reddit OAuth 等）。
+      </div>
 
       {data && (
         <p className="text-sm text-[var(--text-tertiary)]">
@@ -235,12 +261,12 @@ export default function CredentialsPage() {
       )}
 
       {isLoading ? (
-        <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-8 text-center">
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-8 text-center">
           <Loader2 size={24} className="mx-auto animate-spin text-[var(--text-tertiary)]" />
           <p className="mt-2 text-sm text-[var(--text-tertiary)]">加载中...</p>
         </div>
       ) : error ? (
-        <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--danger-soft)] p-8 text-center">
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--danger-soft)] p-8 text-center">
           <p className="text-sm text-[var(--state-danger)]">
             加载失败：{(error as Error).message}
           </p>
@@ -256,10 +282,6 @@ export default function CredentialsPage() {
           ))}
         </div>
       )}
-
-      <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-4 py-3 text-xs text-[var(--text-tertiary)]">
-        凭证经 Fernet 加密存储，API 不返回明文。TikHub 和 Apify 的密钥在 API 容器环境变量中配置（TIKHUB_API_KEY / APIFY_API_TOKEN），不在此处管理。
-      </div>
     </AppShell>
   );
 }
