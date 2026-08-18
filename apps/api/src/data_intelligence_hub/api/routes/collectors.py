@@ -2730,6 +2730,92 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    kuaishou_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="kuaishou_video_search",
+            label="快手视频搜索",
+            platform="kuaishou",
+            description=(
+                "按关键词搜索快手公开视频，返回视频标题、播放量、点赞数和作者信息。"
+                "需配置 MEDIACRAWLER_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["keyword"],
+            optional_params=["max_items"],
+            cost_hint="免费（需快手 Cookie）",
+            provider="MediaCrawler (开源)",
+            content_type="post",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="kuaishou_user_videos",
+            label="快手用户视频列表",
+            platform="kuaishou",
+            description=(
+                "获取指定快手用户的公开视频列表，用于 KOL 内容分析。"
+                "需配置 MEDIACRAWLER_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["user_id"],
+            optional_params=["max_items"],
+            cost_hint="免费（需快手 Cookie）",
+            provider="MediaCrawler (开源)",
+            content_type="post",
+            method="web_crawl",
+        ),
+    ]
+
+    firecrawl_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="firecrawl_crawl_site",
+            label="全站爬取转 Markdown",
+            platform="web",
+            description=(
+                "爬取目标网站最多 500 页并返回每页的 Markdown 内容。"
+                "适用于竞品全站采集、技术文档归档、电商目录批量提取。需配置 FIRECRAWL_API_KEY。"
+            ),
+            status="verified",
+            required_params=["url"],
+            optional_params=["max_pages", "include_paths", "exclude_paths"],
+            cost_hint="$16/月起 (Cloud) / 免费 (自托管)",
+            provider="Firecrawl (开源/Cloud)",
+            content_type="web_page_markdown",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="firecrawl_extract_structured",
+            label="结构化数据提取",
+            platform="web",
+            description=(
+                "用自然语言 prompt 或 JSON schema 从单个页面提取结构化数据。"
+                "适用于价格监控、产品规格提取、公司信息采集。需配置 FIRECRAWL_API_KEY。"
+            ),
+            status="verified",
+            required_params=["url"],
+            optional_params=["schema", "prompt"],
+            cost_hint="$16/月起 (Cloud) / 免费 (自托管)",
+            provider="Firecrawl (开源/Cloud)",
+            content_type="web_page_markdown",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="firecrawl_batch_scrape",
+            label="批量 URL 转 Markdown",
+            platform="web",
+            description=(
+                "并行抓取最多 100 个 URL 并返回每页的 Markdown 内容。"
+                "适用于批量竞品页面、新闻稿、落地页的内容采集。需配置 FIRECRAWL_API_KEY。"
+            ),
+            status="verified",
+            required_params=["urls"],
+            optional_params=[],
+            cost_hint="$16/月起 (Cloud) / 免费 (自托管)",
+            provider="Firecrawl (开源/Cloud)",
+            content_type="web_page_markdown",
+            method="web_crawl",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -2827,6 +2913,18 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="搜索引擎结果 (百度/Bing/DDG)",
                 platform="web",
                 endpoints=serp_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="kuaishou",
+                label="快手",
+                platform="kuaishou",
+                endpoints=kuaishou_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="firecrawl",
+                label="Firecrawl 全站结构化采集",
+                platform="web",
+                endpoints=firecrawl_endpoints,
             ),
         ]
     )

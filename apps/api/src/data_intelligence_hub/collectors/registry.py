@@ -17,6 +17,11 @@ from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
 )
 from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
+from data_intelligence_hub.collectors.firecrawl_collector import (
+    FirecrawlBatchScrapeCollector,
+    FirecrawlCrawlCollector,
+    FirecrawlExtractCollector,
+)
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
@@ -26,6 +31,8 @@ from data_intelligence_hub.collectors.mediacrawler_collector import (
     BilibiliUserVideosCollector,
     BilibiliVideoCommentsCollector,
     BilibiliVideoSearchCollector,
+    KuaishouUserVideosCollector,
+    KuaishouVideoSearchCollector,
     WeiboKeywordSearchCollector,
     WeiboTrendingTopicsCollector,
     WeiboUserPostsCollector,
@@ -76,6 +83,11 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     BaiduSearchCollector.collector_type: BaiduSearchCollector,
     BingSearchCollector.collector_type: BingSearchCollector,
     DuckDuckGoSearchCollector.collector_type: DuckDuckGoSearchCollector,
+    KuaishouVideoSearchCollector.collector_type: KuaishouVideoSearchCollector,
+    KuaishouUserVideosCollector.collector_type: KuaishouUserVideosCollector,
+    FirecrawlCrawlCollector.collector_type: FirecrawlCrawlCollector,
+    FirecrawlExtractCollector.collector_type: FirecrawlExtractCollector,
+    FirecrawlBatchScrapeCollector.collector_type: FirecrawlBatchScrapeCollector,
 }
 
 

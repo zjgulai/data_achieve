@@ -521,3 +521,97 @@ class ZhihuHotListCollector(BaseCollector):
         )
         logs.append(collector_log("zhihu_hot_collected", f"count={len(items)}"))
         return CollectionResult(raw_records=[record], logs=logs, errors=errors)
+
+
+# ─────────────────────────────────────────────
+#  Kuaishou collectors
+# ─────────────────────────────────────────────
+
+class KuaishouVideoSearchCollector(BaseCollector):
+    """Search Kuaishou videos by keyword via MediaCrawler."""
+
+    collector_type = "kuaishou_video_search"
+
+    def validate_config(self) -> dict[str, Any]:
+        keyword = require_text(self.config, "keyword")
+        max_items = int(self.config.get("max_items", 20))
+        if max_items < 1 or max_items > 200:
+            raise CollectorError("max_items must be between 1 and 200")
+        return {"keyword": keyword, "max_items": max_items}
+
+    async def test(self) -> CollectorTestResult:
+        return CollectorTestResult(
+            status="ok",
+            message=f"MediaCrawler base URL: {_base_url()}",
+            logs=[collector_log("kuaishou_test_ok", _base_url())],
+        )
+
+    async def collect(self) -> CollectionResult:
+        config = self.validate_config()
+        logs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        collected_at = datetime.now(UTC)
+
+        try:
+            items = await _mc_get(
+                "/kuaishou/search",
+                params={"keyword": config["keyword"], "limit": config["max_items"]},
+            )
+        except CollectorError as exc:
+            errors.append(str(exc))
+            logs.append(collector_log("kuaishou_collect_error", str(exc), level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
+        records = _records_from(items, "post", "url", collected_at)
+        logs.append(
+            collector_log(
+                "kuaishou_search_collected",
+                f"keyword={config['keyword']!r} count={len(records)}",
+            )
+        )
+        return CollectionResult(raw_records=records, logs=logs, errors=errors)
+
+
+class KuaishouUserVideosCollector(BaseCollector):
+    """Collect a Kuaishou user's public video list via MediaCrawler."""
+
+    collector_type = "kuaishou_user_videos"
+
+    def validate_config(self) -> dict[str, Any]:
+        user_id = require_text(self.config, "user_id")
+        max_items = int(self.config.get("max_items", 30))
+        if max_items < 1 or max_items > 200:
+            raise CollectorError("max_items must be between 1 and 200")
+        return {"user_id": user_id, "max_items": max_items}
+
+    async def test(self) -> CollectorTestResult:
+        return CollectorTestResult(
+            status="ok",
+            message=f"MediaCrawler base URL: {_base_url()}",
+            logs=[collector_log("kuaishou_test_ok", _base_url())],
+        )
+
+    async def collect(self) -> CollectionResult:
+        config = self.validate_config()
+        logs: list[dict[str, Any]] = []
+        errors: list[str] = []
+        collected_at = datetime.now(UTC)
+
+        try:
+            items = await _mc_get(
+                "/kuaishou/user/videos",
+                params={"user_id": config["user_id"], "limit": config["max_items"]},
+            )
+        except CollectorError as exc:
+            errors.append(str(exc))
+            logs.append(collector_log("kuaishou_collect_error", str(exc), level="error"))
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
+        records = _records_from(items, "post", "url", collected_at)
+        logs.append(
+            collector_log(
+                "kuaishou_user_videos_collected",
+                f"user_id={config['user_id']!r} count={len(records)}",
+            )
+        )
+        return CollectionResult(raw_records=records, logs=logs, errors=errors)
