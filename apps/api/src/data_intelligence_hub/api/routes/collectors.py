@@ -2886,6 +2886,60 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    spiderfoot_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_domain_osint",
+            label="域名 OSINT 扫描",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 对域名进行全面的 OSINT 扫描，"
+                "涵盖子域发现、DNS记录、WHOIS、威胁情报、S3桶枚举等200+模块。"
+                "需自托管 SpiderFoot 并配置 SPIDERFOOT_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=["modules"],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_ip_osint",
+            label="IP 地址 OSINT 扫描",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 对 IP 地址进行 OSINT 扫描，"
+                "包括地理位置、ISP、黑名单检测、开放端口、恶意活动关联等。"
+                "需自托管 SpiderFoot 并配置 SPIDERFOOT_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=["modules"],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_email_osint",
+            label="邮箱地址 OSINT 扫描",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 对邮箱地址进行 OSINT 扫描，"
+                "包括数据泄露查询（HaveIBeenPwned等）、关联账号、社媒档案等。"
+                "需自托管 SpiderFoot 并配置 SPIDERFOOT_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=["modules"],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3007,6 +3061,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="网页技术栈检测",
                 platform="web",
                 endpoints=tech_stack_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="spiderfoot",
+                label="SpiderFoot OSINT 威胁情报",
+                platform="web",
+                endpoints=spiderfoot_endpoints,
             ),
         ]
     )

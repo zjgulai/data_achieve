@@ -43,6 +43,11 @@ from data_intelligence_hub.collectors.mediacrawler_collector import (
 from data_intelligence_hub.collectors.osint_collector import MaigretCollector, SherlockCollector
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
+from data_intelligence_hub.collectors.spiderfoot_collector import (
+    SpiderFootDomainCollector,
+    SpiderFootEmailCollector,
+    SpiderFootIPCollector,
+)
 from data_intelligence_hub.collectors.tech_blog_collector import (
     DevToArticlesCollector,
     JuejinArticlesCollector,
@@ -98,6 +103,9 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     JuejinArticlesCollector.collector_type: JuejinArticlesCollector,
     SubstackPostsCollector.collector_type: SubstackPostsCollector,
     TechStackDetectCollector.collector_type: TechStackDetectCollector,
+    SpiderFootDomainCollector.collector_type: SpiderFootDomainCollector,
+    SpiderFootIPCollector.collector_type: SpiderFootIPCollector,
+    SpiderFootEmailCollector.collector_type: SpiderFootEmailCollector,
 }
 
 
