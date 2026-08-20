@@ -1,0 +1,11 @@
+# Mubeng Proxy List
+# Format: <protocol>://<host>:<port>
+# Supported protocols: http, https, socks4, socks5
+#
+# Examples:
+# socks5://127.0.0.1:1080
+# http://proxy.example.com:8080
+# http://user:pass@proxy.example.com:8080
+#
+# Add your proxies below (one per line):
+

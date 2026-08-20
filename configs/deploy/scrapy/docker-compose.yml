@@ -76,10 +76,14 @@ services:
       PLATFORM_CREDENTIAL_MASTER_KEY: ${PLATFORM_CREDENTIAL_MASTER_KEY:-}
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
+      PROXY_ROTATOR_URL: ${PROXY_ROTATOR_URL:-http://proxy_rotator:8080}
+      PROXY_ROTATOR_ENABLED: ${PROXY_ROTATOR_ENABLED:-false}
+      MAIGRET_URL: ${MAIGRET_URL:-http://maigret:5000}
     expose:
       - "8000"
     volumes:
       - scrapy_export_data:/app/exports
+      - browser_data:/app/browser_data
     healthcheck:
       test:
         [
@@ -154,6 +158,42 @@ services:
     networks:
       - scrapy_internal
 
+  # Mubeng Proxy Rotator - P0 Infrastructure
+  proxy_rotator:
+    container_name: data_achieve_scrapy_proxy_rotator
+    image: kitabisa/mubeng:latest
+    command: ["-a", "0.0.0.0:8080", "-f", "/proxies.txt", "-r", "30", "-v"]
+    volumes:
+      - ./proxies.txt:/proxies.txt:ro
+    expose:
+      - "8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - scrapy_internal
+
+  # Maigret OSINT Service - P0 OSINT Layer
+  maigret:
+    container_name: data_achieve_scrapy_maigret
+    image: soxoj/maigret:latest
+    command: ["--web", "5000"]
+    expose:
+      - "5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - scrapy_internal
+
   edge:
     container_name: data_achieve_scrapy_edge
     depends_on:
@@ -191,3 +231,5 @@ volumes:
     name: data_achieve_scrapy_postgres_data
   scrapy_export_data:
     name: data_achieve_scrapy_export_data
+  browser_data:
+    name: data_achieve_scrapy_browser_data
