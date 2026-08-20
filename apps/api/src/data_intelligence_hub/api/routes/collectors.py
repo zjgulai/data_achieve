@@ -2938,6 +2938,160 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             content_type="osint_report",
             method="web_crawl",
         ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_subdomain_enum",
+            label="子域名枚举",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 专用模块组枚举域名的所有子域，"
+                "整合 DNS 暴力破解、证书透明度日志、Shodan、VirusTotal 等多源数据。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_threat_intel",
+            label="IP 威胁情报聚合",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 聚合多个威胁情报源对 IP 地址打分，"
+                "涵盖 GreyNoise、AbuseIPDB、AlienVault OTX、Spamhaus、SANS ISC 等。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_breach_check",
+            label="邮箱数据泄露检测",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 检测邮箱是否出现在已知数据泄露库中，"
+                "整合 HaveIBeenPwned、Dehashed、LeakCheck、Hunter.io 等来源。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_cert_transparency",
+            label="证书透明度日志",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 从证书透明度日志（crt.sh、CertSpotter 等）"
+                "发现目标域名的历史 SSL 证书，揭示隐藏子域和基础设施。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_dark_web",
+            label="暗网提及扫描",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 在 Tor 暗网搜索引擎（Ahmia、Torch、DarkSearch 等）"
+                "中搜索目标的提及，发现潜在的数据泄露和暗网活动。需配置 Tor 代理。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管 + Tor）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="spiderfoot_attack_surface",
+            label="攻击面全貌扫描",
+            platform="web",
+            description=(
+                "通过 SpiderFoot 全面扫描域名的攻击面，"
+                "整合 Shodan、Censys、BinaryEdge、Nmap 等，"
+                "输出开放端口、服务指纹、子域、证书和漏洞信息。"
+            ),
+            status="verified",
+            required_params=["target"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="SpiderFoot (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+    ]
+
+    bestblogs_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="bestblogs_articles",
+            label="BestBlogs AI 精选技术文章",
+            platform="web",
+            description=(
+                "从 BestBlogs.dev 采集经 LLM 六维评分（实用性/深度/创新性/表达/可读性/时效）"
+                "筛选的高质量技术文章，覆盖编程、AI、产品、DevOps 等领域。"
+                "需配置 BESTBLOGS_API_KEY。"
+            ),
+            status="verified",
+            required_params=[],
+            optional_params=["category", "lang", "min_score", "limit"],
+            cost_hint="免费 API（需注册）",
+            provider="BestBlogs.dev",
+            content_type="news",
+            method="web_crawl",
+        ),
+    ]
+
+    blackbird_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="blackbird_email_osint",
+            label="Blackbird 邮箱 OSINT",
+            platform="web",
+            description=(
+                "通过 Blackbird 在 574+ 站点搜索邮箱地址的关联账号，"
+                "补充 Maigret/Sherlock 不支持的 Email OSINT 能力。"
+                "需自托管 Blackbird 并配置 BLACKBIRD_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["email"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="Blackbird (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="blackbird_username_osint",
+            label="Blackbird 用户名 OSINT",
+            platform="web",
+            description=(
+                "通过 Blackbird 在 574+ 站点搜索用户名，"
+                "与 Maigret (3000+) 互补，具备 AI 分析和 PDF 报告能力。"
+                "需自托管 Blackbird 并配置 BLACKBIRD_BASE_URL。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=[],
+            cost_hint="免费（需自托管）",
+            provider="Blackbird (开源 自托管)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
     ]
 
     return CollectorCatalogResponse(
@@ -3067,6 +3221,18 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="SpiderFoot OSINT 威胁情报",
                 platform="web",
                 endpoints=spiderfoot_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="bestblogs",
+                label="BestBlogs AI 精选内容",
+                platform="web",
+                endpoints=bestblogs_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="blackbird",
+                label="Blackbird 用户名/邮箱 OSINT",
+                platform="web",
+                endpoints=blackbird_endpoints,
             ),
         ]
     )

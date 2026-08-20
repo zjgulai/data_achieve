@@ -79,6 +79,8 @@ services:
       PROXY_ROTATOR_URL: ${PROXY_ROTATOR_URL:-http://proxy_rotator:8080}
       PROXY_ROTATOR_ENABLED: ${PROXY_ROTATOR_ENABLED:-false}
       MAIGRET_URL: ${MAIGRET_URL:-http://maigret:5000}
+      SPIDERFOOT_BASE_URL: ${SPIDERFOOT_BASE_URL:-http://spiderfoot:5001}
+      SPIDERFOOT_TIMEOUT: ${SPIDERFOOT_TIMEOUT:-300}
     expose:
       - "8000"
     volumes:
@@ -191,6 +193,23 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - scrapy_internal
+
+  # SpiderFoot OSINT Platform - P0 Enterprise OSINT (200+ modules)
+  spiderfoot:
+    container_name: data_achieve_scrapy_spiderfoot
+    image: spiderfoot/spiderfoot:latest
+    command: ["-l", "0.0.0.0:5001"]
+    expose:
+      - "5001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5001 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     networks:
       - scrapy_internal
 

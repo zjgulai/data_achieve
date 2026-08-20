@@ -13,6 +13,11 @@ from data_intelligence_hub.collectors.anydoc_collector import AnydocCollector
 from data_intelligence_hub.collectors.anysearch_collector import AnySearchCollector
 from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
+from data_intelligence_hub.collectors.bestblogs_collector import BestBlogsArticlesCollector
+from data_intelligence_hub.collectors.blackbird_collector import (
+    BlackbirdEmailCollector,
+    BlackbirdUsernameCollector,
+)
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
 )
@@ -47,6 +52,14 @@ from data_intelligence_hub.collectors.spiderfoot_collector import (
     SpiderFootDomainCollector,
     SpiderFootEmailCollector,
     SpiderFootIPCollector,
+)
+from data_intelligence_hub.collectors.spiderfoot_extended_collectors import (
+    SpiderFootAttackSurfaceCollector,
+    SpiderFootBreachCollector,
+    SpiderFootCertCollector,
+    SpiderFootDarkWebCollector,
+    SpiderFootSubdomainCollector,
+    SpiderFootThreatIntelCollector,
 )
 from data_intelligence_hub.collectors.tech_blog_collector import (
     DevToArticlesCollector,
@@ -106,6 +119,15 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     SpiderFootDomainCollector.collector_type: SpiderFootDomainCollector,
     SpiderFootIPCollector.collector_type: SpiderFootIPCollector,
     SpiderFootEmailCollector.collector_type: SpiderFootEmailCollector,
+    SpiderFootSubdomainCollector.collector_type: SpiderFootSubdomainCollector,
+    SpiderFootThreatIntelCollector.collector_type: SpiderFootThreatIntelCollector,
+    SpiderFootBreachCollector.collector_type: SpiderFootBreachCollector,
+    SpiderFootCertCollector.collector_type: SpiderFootCertCollector,
+    SpiderFootDarkWebCollector.collector_type: SpiderFootDarkWebCollector,
+    SpiderFootAttackSurfaceCollector.collector_type: SpiderFootAttackSurfaceCollector,
+    BestBlogsArticlesCollector.collector_type: BestBlogsArticlesCollector,
+    BlackbirdEmailCollector.collector_type: BlackbirdEmailCollector,
+    BlackbirdUsernameCollector.collector_type: BlackbirdUsernameCollector,
 }
 
 
