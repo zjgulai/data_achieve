@@ -206,9 +206,10 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # GitHub (2 endpoints)
     "github_repo": "github_repo",
     "github_topic": "github_topic",
-    # RSS / Web (2 endpoints)
+    # RSS / Web (3 endpoints)
     "public_feed": "public_feed",
     "generic_web": "generic_web",
+    "autoscraper_enhanced_web": "autoscraper_enhanced_web",
     # Ecommerce Web (2 endpoints)
     "ecommerce_product_page": "ecommerce_product_page",
     "ecommerce_product_discovery": "ecommerce_product_discovery",

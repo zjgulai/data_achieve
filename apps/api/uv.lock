@@ -381,6 +381,20 @@ wheels = [
 ]
 
 [[package]]
+name = "autoscraper"
+version = "1.1.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bs4" },
+    { name = "lxml" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/36/b459ec778bd7b0bfac01358dfdee9d26075f4f2c6ee72e7742e3274a9d41/autoscraper-1.1.14.tar.gz", hash = "sha256:281901477fb69aa09aa235abbd15bb38c46df1682c2cad504d0ac1ee0b6b81d0", size = 11550, upload-time = "2022-07-17T17:20:11.619Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/07/ac4961ea3d88822f832297c199729136b26c93ad0c7580ac42b14c661812/autoscraper-1.1.14-py3-none-any.whl", hash = "sha256:fc0265723f6bcc80ee908d7be8d5318129f3388d2830d049fc0bda6c25695cf9", size = 10112, upload-time = "2022-07-17T17:20:09.57Z" },
+]
+
+[[package]]
 name = "bcrypt"
 version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -419,6 +433,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/21/28/9b3f50ce0e048515135495f198351908d99540d69bfdc8c1d15b73dc55ce/blinker-1.9.0.tar.gz", hash = "sha256:b4ce2265a7abece45e7cc896e98dbebe6cead56bcf805a3d23136d145f5445bf", size = 22460, upload-time = "2024-11-08T17:25:47.436Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/cb/f2ad4230dc2eb1a74edf38f1a38b9b52277f75bef262d8908e60d957e13c/blinker-1.9.0-py3-none-any.whl", hash = "sha256:ba0efaa9080b619ff2f3459d1d500c57bddea4a6b424b60a91141db6fd2f08bc", size = 8458, upload-time = "2024-11-08T17:25:46.184Z" },
+]
+
+[[package]]
+name = "bs4"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "beautifulsoup4" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c9/aa/4acaf814ff901145da37332e05bb510452ebed97bc9602695059dd46ef39/bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925", size = 698, upload-time = "2024-01-17T18:15:47.371Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/51/bb/bf7aab772a159614954d84aa832c129624ba6c32faa559dfb200a534e50b/bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc", size = 1189, upload-time = "2024-01-17T18:15:48.613Z" },
 ]
 
 [[package]]
@@ -757,6 +783,7 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
+    { name = "autoscraper" },
     { name = "bcrypt" },
     { name = "email-validator" },
     { name = "fastapi" },
@@ -806,6 +833,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "asyncpraw", marker = "extra == 'social-overseas-live'", specifier = ">=8.0.2" },
     { name = "asyncpraw", marker = "extra == 'social-reddit'", specifier = ">=8.0.2" },
+    { name = "autoscraper", specifier = ">=1.1.14" },
     { name = "bcrypt", specifier = ">=4.0,<4.1" },
     { name = "email-validator", specifier = ">=2.2.0" },
     { name = "fastapi", specifier = ">=0.115.0" },

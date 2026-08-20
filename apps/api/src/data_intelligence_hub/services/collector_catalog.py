@@ -442,6 +442,8 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_github_topic_config(config)
     if collector_type == "generic_web":
         return _validate_generic_web_config(config)
+    if collector_type == "autoscraper_enhanced_web":
+        return _validate_autoscraper_enhanced_web_config(config)
     if collector_type == "public_feed":
         return _validate_public_feed_config(config)
     if collector_type == "manual_json":
@@ -519,6 +521,34 @@ def _validate_generic_web_config(config: dict[str, Any]) -> dict[str, Any]:
 
         raise CollectorConfigError
     return {"url": url, "extract_mode": extract_mode}
+
+
+def _validate_autoscraper_enhanced_web_config(config: dict[str, Any]) -> dict[str, Any]:
+    url = _require_text(config, "url")
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    wanted_list = config.get("wanted_list", [])
+    if not isinstance(wanted_list, list) or not wanted_list:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    mode = config.get("mode", "exact")
+    if mode not in {"exact", "similar"}:
+        from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+        raise CollectorConfigError
+    save_rules = config.get("save_rules", False)
+    rules_path = config.get("rules_path")
+    return {
+        "url": url,
+        "wanted_list": wanted_list,
+        "mode": mode,
+        "save_rules": save_rules,
+        "rules_path": rules_path,
+    }
 
 
 def _validate_public_feed_config(config: dict[str, Any]) -> dict[str, Any]:

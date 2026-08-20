@@ -1925,6 +1925,19 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             content_type="web_page",
             method="web_crawl",
         ),
+        CollectorEndpointMetadata(
+            endpoint_type="autoscraper_enhanced_web",
+            label="智能网页提取",
+            platform="web",
+            description="通过示例数据自动学习提取规则，无需手动编写 selector (AutoScraper)",
+            status="verified",
+            required_params=["url", "wanted_list"],
+            optional_params=["mode", "save_rules", "rules_path"],
+            cost_hint="免费",
+            provider="AutoScraper",
+            content_type="web_page",
+            method="smart_extract",
+        ),
         # S级媒体 RSS 监测 (已验证可用)
         CollectorEndpointMetadata(
             endpoint_type="public_feed",

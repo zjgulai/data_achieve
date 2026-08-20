@@ -12,6 +12,9 @@ from data_intelligence_hub.collectors.anycrawl_collector import (
 from data_intelligence_hub.collectors.anydoc_collector import AnydocCollector
 from data_intelligence_hub.collectors.anysearch_collector import AnySearchCollector
 from data_intelligence_hub.collectors.apify_actor import ApifyActorCollector
+from data_intelligence_hub.collectors.autoscraper_collector import (
+    AutoScraperEnhancedWebCollector,
+)
 from data_intelligence_hub.collectors.base import BaseCollector, CollectorError
 from data_intelligence_hub.collectors.bestblogs_collector import BestBlogsArticlesCollector
 from data_intelligence_hub.collectors.blackbird_collector import (
@@ -128,6 +131,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     BestBlogsArticlesCollector.collector_type: BestBlogsArticlesCollector,
     BlackbirdEmailCollector.collector_type: BlackbirdEmailCollector,
     BlackbirdUsernameCollector.collector_type: BlackbirdUsernameCollector,
+    AutoScraperEnhancedWebCollector.collector_type: AutoScraperEnhancedWebCollector,
 }
 
 
