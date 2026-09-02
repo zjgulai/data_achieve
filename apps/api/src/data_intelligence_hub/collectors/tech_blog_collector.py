@@ -57,7 +57,7 @@ def _text(el: ET.Element | None, tag: str) -> str:
 class DevToArticlesCollector(BaseCollector):
     """Search published articles on Dev.to using the public REST API."""
 
-    collector_type = "devto_articles_search"
+    collector_type = "devto_articles"
 
     def validate_config(self) -> dict[str, Any]:
         tag = self.config.get("tag", "").strip()
@@ -150,7 +150,7 @@ class DevToArticlesCollector(BaseCollector):
 class JuejinArticlesCollector(BaseCollector):
     """Search articles on 掘金 (Juejin) using the public API."""
 
-    collector_type = "juejin_articles_search"
+    collector_type = "juejin_articles"
 
     _CATE_MAP = {
         "frontend": "6809637767543259144",

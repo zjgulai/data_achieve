@@ -412,6 +412,60 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             "properties": {"target": "string", "modules": "array"},
         },
     ),
+    CollectorDefinition(
+        type="spiderfoot_subdomain_enum",
+        name="SpiderFoot 子域名枚举",
+        description="通过 SpiderFoot 枚举目标域名的所有子域名。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_threat_intel",
+        name="SpiderFoot 威胁情报",
+        description="通过 SpiderFoot 收集目标的威胁情报信息。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_breach_check",
+        name="SpiderFoot 数据泄露检测",
+        description="通过 SpiderFoot 检测目标是否出现在已知数据泄露事件中。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_cert_transparency",
+        name="SpiderFoot 证书透明度",
+        description="通过 SpiderFoot 查询证书透明度日志，发现相关域名和子域名。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_dark_web",
+        name="SpiderFoot 暗网监控",
+        description="通过 SpiderFoot 在暗网来源中搜索目标相关信息。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
+    CollectorDefinition(
+        type="spiderfoot_attack_surface",
+        name="SpiderFoot 攻击面分析",
+        description="通过 SpiderFoot 全面分析目标的攻击面。",
+        config_schema={
+            "required": ["target"],
+            "properties": {"target": "string", "modules": "array"},
+        },
+    ),
 )
 
 
@@ -484,6 +538,7 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "tech_stack_detect",
         "spiderfoot_domain_osint", "spiderfoot_ip_osint", "spiderfoot_email_osint",
         "spiderfoot_subdomain_enum", "spiderfoot_threat_intel", "spiderfoot_breach_check",
+        "spiderfoot_cert_transparency", "spiderfoot_dark_web", "spiderfoot_attack_surface",
         "bestblogs_articles",
         "blackbird_email_osint", "blackbird_username_osint",
     }:

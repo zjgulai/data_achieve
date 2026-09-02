@@ -226,7 +226,9 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "jina_news_article": "jina_reader",
     # OSINT (2 endpoints)
     "sherlock_username": "sherlock",
+    "sherlock_username_search": "sherlock",
     "maigret_username": "maigret",
+    "maigret_username_profile": "maigret",
     # X/Twitter twscrape (3 endpoints)
     "twscrape_search": "twscrape_search",
     "twscrape_user_tweets": "twscrape_user_tweets",
@@ -246,9 +248,12 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "zhihu_keyword_search": "zhihu_keyword_search",
     "zhihu_hot_list": "zhihu_hot_list",
     # SERP 搜索引擎 (3 endpoints)
-    "baidu_search": "baidu_search_results",
-    "bing_search": "bing_search_results",
-    "duckduckgo_search": "duckduckgo_search_results",
+    "baidu_search": "baidu_search",
+    "baidu_search_results": "baidu_search",
+    "bing_search": "bing_search",
+    "bing_search_results": "bing_search",
+    "duckduckgo_search": "duckduckgo_search",
+    "duckduckgo_search_results": "duckduckgo_search",
     # 快手 (2 endpoints)
     "kuaishou_video_search": "kuaishou_video_search",
     "kuaishou_user_videos": "kuaishou_user_videos",
@@ -257,18 +262,23 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "firecrawl_extract": "firecrawl_extract",
     "firecrawl_batch_scrape": "firecrawl_batch_scrape",
     # 技术博客 (3 endpoints)
-    "devto_articles": "devto_articles_search",
-    "juejin_articles": "juejin_articles_search",
+    "devto_articles": "devto_articles",
+    "devto_articles_search": "devto_articles",
+    "juejin_articles": "juejin_articles",
+    "juejin_articles_search": "juejin_articles",
     "substack_posts": "substack_posts",
     # 技术栈检测 (1 endpoint)
     "tech_stack_detect": "tech_stack_detect",
-    # SpiderFoot OSINT (3 + 3 extended endpoints)
+    # SpiderFoot OSINT (3 + 6 extended endpoints)
     "spiderfoot_domain_osint": "spiderfoot_domain_osint",
     "spiderfoot_ip_osint": "spiderfoot_ip_osint",
     "spiderfoot_email_osint": "spiderfoot_email_osint",
     "spiderfoot_subdomain_enum": "spiderfoot_subdomain_enum",
     "spiderfoot_threat_intel": "spiderfoot_threat_intel",
     "spiderfoot_breach_check": "spiderfoot_breach_check",
+    "spiderfoot_cert_transparency": "spiderfoot_cert_transparency",
+    "spiderfoot_dark_web": "spiderfoot_dark_web",
+    "spiderfoot_attack_surface": "spiderfoot_attack_surface",
     # BestBlogs (1 endpoint)
     "bestblogs_articles": "bestblogs_articles",
     # Blackbird OSINT (2 endpoints)
@@ -277,9 +287,20 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
 }
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
-    "firecrawl_crawl":          {"url": "https://example.com", "max_pages": 2},
-    "firecrawl_extract":        {"url": "https://example.com", "prompt": "Extract title and description"},
-    "firecrawl_batch_scrape":   {"urls": ["https://example.com", "https://httpbin.org/get"]},
+    "firecrawl_crawl":            {"url": "https://example.com", "max_pages": 2},
+    "firecrawl_extract":          {"url": "https://example.com", "prompt": "Extract title and description"},
+    "firecrawl_batch_scrape":     {"urls": ["https://example.com", "https://httpbin.org/get"]},
+    "autoscraper_enhanced_web":   {"url": "https://books.toscrape.com", "wanted_list": ["Books to Scrape"]},
+    "spiderfoot_cert_transparency": {"target": "example.com"},
+    "spiderfoot_dark_web":          {"target": "example.com"},
+    "spiderfoot_attack_surface":    {"target": "example.com"},
+    "baidu_search":               {"keyword": "python"},
+    "bing_search":                {"keyword": "python"},
+    "duckduckgo_search":          {"keyword": "python"},
+    "devto_articles":             {"keyword": "python"},
+    "juejin_articles":            {"keyword": "python"},
+    "sherlock":                   {"username": "github"},
+    "maigret":                    {"username": "github"},
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

@@ -2785,7 +2785,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
 
     firecrawl_endpoints = [
         CollectorEndpointMetadata(
-            endpoint_type="firecrawl_crawl_site",
+            endpoint_type="firecrawl_crawl",
             label="全站爬取转 Markdown",
             platform="web",
             description=(
@@ -2801,7 +2801,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             method="web_crawl",
         ),
         CollectorEndpointMetadata(
-            endpoint_type="firecrawl_extract_structured",
+            endpoint_type="firecrawl_extract",
             label="结构化数据提取",
             platform="web",
             description=(
