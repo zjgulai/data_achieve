@@ -96,14 +96,15 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
         "twitter_post",
         "x",
     ),
+
     # ── 抖音 (Douyin) ──────────────────────────────────────────────────────────
     "tikhub_douyin_video_search": (
-        "/api/v1/douyin/web/fetch_video_search_result",
+        "/api/v1/douyin/search/fetch_video_search_v1",
         "douyin_video",
         "douyin",
     ),
     "tikhub_douyin_user_posts": (
-        "/api/v1/douyin/web/fetch_user_post_videos",
+        "/api/v1/douyin/app/v3/fetch_user_post_videos",
         "douyin_video",
         "douyin",
     ),
@@ -119,56 +120,56 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
     ),
     # ── B站 (Bilibili) ─────────────────────────────────────────────────────────
     "tikhub_bilibili_video_search": (
-        "/api/v1/bilibili/web/fetch_search_result",
+        "/api/v1/bilibili/web/fetch_general_search",
         "bilibili_video",
         "bilibili",
     ),
     "tikhub_bilibili_user_videos": (
-        "/api/v1/bilibili/web/fetch_user_videos",
+        "/api/v1/bilibili/app/fetch_user_videos",
         "bilibili_video",
         "bilibili",
     ),
     "tikhub_bilibili_comments": (
-        "/api/v1/bilibili/web/fetch_video_comments",
+        "/api/v1/bilibili/app/fetch_video_comments",
         "bilibili_comment",
         "bilibili",
     ),
     # ── 微博 (Weibo) ───────────────────────────────────────────────────────────
     "tikhub_weibo_search": (
-        "/api/v1/weibo/web/fetch_search_result",
+        "/api/v1/weibo/app/fetch_search_all",
         "weibo_post",
         "weibo",
     ),
     "tikhub_weibo_user_posts": (
-        "/api/v1/weibo/web/fetch_user_weibo",
+        "/api/v1/weibo/web/fetch_user_posts",
         "weibo_post",
         "weibo",
     ),
     # ── 快手 (Kuaishou) ────────────────────────────────────────────────────────
     "tikhub_kuaishou_search": (
-        "/api/v1/kuaishou/web/fetch_search_result",
+        "/api/v1/kuaishou/app/search_video_v2",
         "kuaishou_video",
         "kuaishou",
     ),
     "tikhub_kuaishou_user_posts": (
-        "/api/v1/kuaishou/web/fetch_user_videos",
+        "/api/v1/kuaishou/app/fetch_user_post_v2",
         "kuaishou_video",
         "kuaishou",
     ),
     # ── 微信 (WeChat) ──────────────────────────────────────────────────────────
     "tikhub_wechat_search": (
-        "/api/v1/wechat/web/v2/fetch_search_result",
+        "/api/v1/wechat_search/v2/fetch_search",
         "wechat_article",
         "wechat",
     ),
     "tikhub_wechat_channels_video": (
-        "/api/v1/wechat/channels/v2/fetch_channel_videos",
+        "/api/v1/wechat_channels/v2/fetch_user_videos",
         "wechat_video",
         "wechat",
     ),
     # ── 知乎 (Zhihu) ───────────────────────────────────────────────────────────
     "tikhub_zhihu_search": (
-        "/api/v1/zhihu/web/fetch_search_result",
+        "/api/v1/zhihu/web/fetch_salt_search_v3",
         "zhihu_post",
         "zhihu",
     ),
@@ -191,7 +192,7 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
     ),
     # ── Threads ────────────────────────────────────────────────────────────
     "tikhub_threads_search": (
-        "/api/v1/threads/web/fetch_search_result",
+        "/api/v1/threads/web/search_top",
         "threads_post",
         "threads",
     ),
@@ -207,123 +208,123 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
     ),
     # ── LinkedIn ───────────────────────────────────────────────────────────
     "tikhub_linkedin_user_posts": (
-        "/api/v1/linkedin/web/fetch_user_posts",
+        "/api/v1/linkedin/web_v2/get_user_posts",
         "linkedin_post",
         "linkedin",
     ),
     "tikhub_linkedin_company_profile": (
-        "/api/v1/linkedin/web/fetch_company_profile",
+        "/api/v1/linkedin/web_v2/get_company_profile",
         "linkedin_post",
         "linkedin",
     ),
     "tikhub_linkedin_company_posts": (
-        "/api/v1/linkedin/web/fetch_company_posts",
+        "/api/v1/linkedin/web_v2/get_company_posts",
         "linkedin_post",
         "linkedin",
     ),
     "tikhub_linkedin_search_jobs": (
-        "/api/v1/linkedin/web/fetch_search_jobs",
+        "/api/v1/linkedin/web_v2/search_jobs",
         "linkedin_job",
         "linkedin",
     ),
     "tikhub_linkedin_job_detail": (
-        "/api/v1/linkedin/web/fetch_job_detail",
+        "/api/v1/linkedin/web_v2/get_job_detail",
         "linkedin_job",
         "linkedin",
     ),
     "tikhub_linkedin_post_comments": (
-        "/api/v1/linkedin/web/fetch_post_comments",
+        "/api/v1/linkedin/web_v2/get_post_comments",
         "linkedin_post",
         "linkedin",
     ),
     # ── Lemon8 ────────────────────────────────────────────────────────────
     "tikhub_lemon8_search": (
-        "/api/v1/lemon8/web/fetch_search_result",
+        "/api/v1/lemon8/app/fetch_search",
         "lemon8_post",
         "lemon8",
     ),
     "tikhub_lemon8_user_posts": (
-        "/api/v1/lemon8/web/fetch_user_posts",
+        "/api/v1/lemon8/app/fetch_user_profile",
         "lemon8_post",
         "lemon8",
     ),
     "tikhub_lemon8_trending": (
-        "/api/v1/lemon8/web/fetch_trending",
+        "/api/v1/lemon8/app/fetch_discover_tab",
         "lemon8_post",
         "lemon8",
     ),
     # ── TikTok Ads ────────────────────────────────────────────────────────
     "tikhub_tiktok_ads_search": (
-        "/api/v1/tiktok/ads/v3/fetch_ads_search_result",
+        "/api/v1/tiktok/ads/get_recommended_ads",
         "tiktok_ad",
         "tiktok",
     ),
     "tikhub_tiktok_top_ads": (
-        "/api/v1/tiktok/ads/v3/fetch_top_ads_list",
+        "/api/v1/tiktok/ads/get_top_ads_spotlight",
         "tiktok_ad",
         "tiktok",
     ),
     "tikhub_tiktok_ads_detail": (
-        "/api/v1/tiktok/ads/v3/fetch_ads_detail",
+        "/api/v1/tiktok/ads/get_ads_detail",
         "tiktok_ad",
         "tiktok",
     ),
     "tikhub_tiktok_ads_keyword_suggest": (
-        "/api/v1/tiktok/ads/v3/fetch_keyword_suggest",
+        "/api/v1/tiktok/ads/get_query_suggestions",
         "tiktok_ad",
         "tiktok",
     ),
     # ── TikTok Shop ───────────────────────────────────────────────────────
     "tikhub_tiktok_shop_products": (
-        "/api/v1/tiktok/shop/v1/fetch_search_products",
+        "/api/v1/tiktok/shop/web/fetch_search_products_list",
         "tiktok_shop_product",
         "tiktok_shop",
     ),
     # ── TikTok Creator ────────────────────────────────────────────────────
     "tikhub_tiktok_creator_info": (
-        "/api/v1/tiktok/creator/v1/fetch_creator_info",
+        "/api/v1/tiktok/app/v3/fetch_creator_info",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_tiktok_creator_insights": (
-        "/api/v1/tiktok/creator/v1/fetch_creator_insights",
+        "/api/v1/tiktok/app/v3/fetch_creator_search_insights",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_tiktok_creator_insights_trend": (
-        "/api/v1/tiktok/creator/v1/fetch_creator_insights_trend",
+        "/api/v1/tiktok/app/v3/fetch_creator_search_insights_trend",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_tiktok_creator_account_health": (
-        "/api/v1/tiktok/creator/v1/fetch_account_health",
+        "/api/v1/tiktok/creator/get_account_health_status",
         "tiktok_video",
         "tiktok",
     ),
     # ── TikTok Live ───────────────────────────────────────────────────────
     "tikhub_tiktok_live_search": (
-        "/api/v1/tiktok/app/v3/fetch_live_search",
+        "/api/v1/tiktok/app/v3/fetch_live_search_result",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_tiktok_live_room_detail": (
-        "/api/v1/tiktok/app/v3/fetch_live_room_detail",
+        "/api/v1/tiktok/app/v3/fetch_live_room_info",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_tiktok_live_user": (
-        "/api/v1/tiktok/app/v3/fetch_live_user",
+        "/api/v1/tiktok/app/v3/fetch_creator_info",
         "tiktok_video",
         "tiktok",
     ),
     # ── TikTok trending / followers ───────────────────────────────────────
     "tikhub_youtube_trending": (
-        "/api/v1/youtube/web_v2/get_trending",
+        "/api/v1/youtube/web_v2/get_general_search",
         "youtube_video",
         "youtube",
     ),
     "tikhub_reddit_trending": (
-        "/api/v1/reddit/app/fetch_trending",
+        "/api/v1/reddit/app/fetch_popular_feed",
         "reddit_post",
         "reddit",
     ),
@@ -333,12 +334,12 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
         "x",
     ),
     "tikhub_tiktok_user_followers": (
-        "/api/v1/tiktok/app/v3/fetch_user_followers",
+        "/api/v1/tiktok/app/v3/fetch_user_follower_list",
         "tiktok_video",
         "tiktok",
     ),
     "tikhub_instagram_user_followers": (
-        "/api/v1/instagram/v1/fetch_user_followers",
+        "/api/v1/instagram/v2/fetch_user_followers",
         "instagram_post",
         "instagram",
     ),
@@ -348,7 +349,7 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
         "x",
     ),
     "tikhub_instagram_post_comments": (
-        "/api/v1/instagram/v1/fetch_post_comments",
+        "/api/v1/instagram/v2/fetch_post_comments",
         "instagram_post",
         "instagram",
     ),
@@ -404,7 +405,6 @@ async def _tikhub_get(
     params: dict[str, Any],
     api_key: str,
 ) -> dict[str, Any]:
-    """Single TikHub GET with bounded retry."""
     url = f"{TIKHUB_BASE_URL}{path}"
     last_exc: Exception | None = None
     for attempt in range(TIKHUB_MAX_RETRY + 1):
@@ -427,6 +427,47 @@ async def _tikhub_get(
                 continue
             raise CollectorError(collector_http_error_message(exc)) from exc
     raise CollectorError(f"tikhub_retry_exhausted: {last_exc}")
+
+
+async def _tikhub_post(
+    client: httpx.AsyncClient,
+    path: str,
+    body: dict[str, Any],
+    api_key: str,
+) -> dict[str, Any]:
+    url = f"{TIKHUB_BASE_URL}{path}"
+    last_exc: Exception | None = None
+    for attempt in range(TIKHUB_MAX_RETRY + 1):
+        try:
+            resp = await client.post(
+                url,
+                json={k: v for k, v in body.items() if v is not None},
+                headers=_tikhub_headers(api_key),
+                timeout=TIKHUB_TIMEOUT,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            if not isinstance(data, dict):
+                raise CollectorError("tikhub_response_invalid: expected JSON object")
+            return data
+        except httpx.HTTPError as exc:
+            last_exc = exc
+            if attempt < TIKHUB_MAX_RETRY and _is_retryable(exc):
+                await asyncio.sleep(TIKHUB_RETRY_BACKOFF[attempt])
+                continue
+            raise CollectorError(collector_http_error_message(exc)) from exc
+    raise CollectorError(f"tikhub_retry_exhausted: {last_exc}")
+
+
+_TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
+    "tikhub_tiktok_ads_search",
+    "tikhub_tiktok_top_ads",
+    "tikhub_tiktok_ads_detail",
+    "tikhub_tiktok_ads_keyword_suggest",
+    "tikhub_tiktok_creator_account_health",
+    "tikhub_wechat_channels_video",
+    "tikhub_douyin_video_search",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -861,9 +902,6 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_douyin_video_search":
         return {
             "keyword": config.get("keyword") or "",
-            "count": max_items,
-            "cursor": config.get("cursor") or 0,
-            "sort_type": config.get("sort_type") or 0,
         }
     if endpoint_type == "tikhub_douyin_user_posts":
         return {
@@ -880,65 +918,53 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "cursor": config.get("cursor") or 0,
         }
     if endpoint_type == "tikhub_douyin_brand_hot_search":
-        return {}
+        return {"category_id": config.get("category_id") or 10}
     # ── B站 (Bilibili) ─────────────────────────────────────────────────────────
     if endpoint_type == "tikhub_bilibili_video_search":
         return {
             "keyword": config.get("keyword") or "",
+            "order": config.get("order") or "totalrank",
             "page": config.get("page") or 1,
-            "page_size": max_items,
+            "page_size": min(max_items, 20),
         }
     if endpoint_type == "tikhub_bilibili_user_videos":
         return {
-            "mid": config.get("mid") or config.get("user_id") or "",
-            "pn": config.get("page") or 1,
-            "ps": max_items,
+            "user_id": str(config.get("mid") or config.get("uid") or config.get("user_id") or ""),
         }
     if endpoint_type == "tikhub_bilibili_comments":
         return {
-            "oid": config.get("oid") or config.get("video_id") or "",
-            "pn": config.get("page") or 1,
-            "ps": max_items,
+            "bvid": config.get("bvid") or config.get("video_id") or "",
         }
-    # ── 微博 (Weibo) ───────────────────────────────────────────────────────────
     if endpoint_type == "tikhub_weibo_search":
         return {
-            "keyword": config.get("keyword") or "",
-            "page": config.get("page") or 1,
+            "query": config.get("keyword") or config.get("query") or "",
         }
     if endpoint_type == "tikhub_weibo_user_posts":
         return {
             "uid": config.get("uid") or config.get("user_id") or "",
             "page": config.get("page") or 1,
         }
-    # ── 快手 (Kuaishou) ────────────────────────────────────────────────────────
     if endpoint_type == "tikhub_kuaishou_search":
         return {
             "keyword": config.get("keyword") or "",
-            "pcursor": config.get("pcursor") or "",
         }
     if endpoint_type == "tikhub_kuaishou_user_posts":
         return {
-            "userId": config.get("userId") or config.get("user_id") or "",
-            "pcursor": config.get("pcursor") or "",
+            "user_id": config.get("user_id") or config.get("userId") or "",
         }
-    # ── 微信 (WeChat) ──────────────────────────────────────────────────────────
     if endpoint_type == "tikhub_wechat_search":
         return {
             "keyword": config.get("keyword") or "",
-            "page": config.get("page") or 1,
         }
     if endpoint_type == "tikhub_wechat_channels_video":
         return {
             "username": config.get("username") or "",
-            "count": max_items,
         }
-    # ── 知乎 (Zhihu) ───────────────────────────────────────────────────────────
-    if endpoint_type == "tikhub_zhihu_search":
         return {
             "keyword": config.get("keyword") or "",
-            "offset": config.get("offset") or 0,
         }
+    if endpoint_type == "tikhub_zhihu_search":
+        return {"keyword": config.get("keyword") or ""}
     if endpoint_type == "tikhub_zhihu_question_answers":
         return {
             "question_id": config.get("question_id") or "",
@@ -947,71 +973,88 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
         }
     if endpoint_type == "tikhub_youtube_video_search":
         return {"search_query": config.get("keyword") or config.get("query") or ""}
-    if endpoint_type in ("tikhub_threads_search", "tikhub_threads_user_posts"):
-        return {"keyword": config.get("keyword") or config.get("username") or ""}
+    if endpoint_type == "tikhub_threads_search":
+        return {"query": config.get("keyword") or config.get("query") or ""}
+    if endpoint_type == "tikhub_threads_user_posts":
+        return {"user_id": config.get("user_id") or config.get("username") or ""}
     if endpoint_type == "tikhub_threads_post_comments":
         return {"post_id": config.get("post_id") or "", "count": max_items}
     if endpoint_type == "tikhub_linkedin_user_posts":
-        return {"username": config.get("username") or "", "count": max_items}
+        url = config.get("url") or config.get("username") or ""
+        if url and not url.startswith("http"):
+            url = f"https://www.linkedin.com/in/{url}/"
+        return {"url": url}
     if endpoint_type == "tikhub_linkedin_company_profile":
-        return {"company_name": config.get("company_name") or config.get("username") or ""}
+        url = config.get("url") or config.get("company_username") or config.get("company_name") or ""
+        if url and not url.startswith("http"):
+            url = f"https://www.linkedin.com/company/{url}/"
+        return {"url": url}
     if endpoint_type == "tikhub_linkedin_company_posts":
-        return {"company_name": config.get("company_name") or "", "count": max_items}
+        url = config.get("url") or config.get("company_username") or config.get("company_name") or ""
+        if url and not url.startswith("http"):
+            url = f"https://www.linkedin.com/company/{url}/"
+        return {"url": url}
     if endpoint_type == "tikhub_linkedin_search_jobs":
         keywords = config.get("keyword") or config.get("keywords") or ""
-        return {"keywords": keywords, "count": max_items}
+        return {"keywords": keywords}
     if endpoint_type == "tikhub_linkedin_job_detail":
-        return {"job_id": config.get("job_id") or ""}
+        url = config.get("url") or config.get("job_id") or ""
+        if url and not url.startswith("http"):
+            url = f"https://www.linkedin.com/jobs/view/{url}/"
+        return {"url": url}
     if endpoint_type == "tikhub_linkedin_post_comments":
-        return {"post_id": config.get("post_id") or "", "count": max_items}
+        urn = config.get("urn") or config.get("post_urn") or config.get("post_id") or ""
+        return {"urn": urn}
     if endpoint_type == "tikhub_lemon8_search":
-        return {"keyword": config.get("keyword") or "", "count": max_items}
+        return {"query": config.get("keyword") or config.get("query") or ""}
     if endpoint_type == "tikhub_lemon8_user_posts":
-        return {"username": config.get("username") or "", "count": max_items}
+        return {"user_id": config.get("user_id") or config.get("username") or ""}
     if endpoint_type == "tikhub_lemon8_trending":
         return {}
     if endpoint_type == "tikhub_tiktok_ads_search":
-        return {"keyword": config.get("keyword") or "", "count": max_items}
+        return {}
     if endpoint_type == "tikhub_tiktok_top_ads":
-        return {"count": max_items}
+        return {}
     if endpoint_type == "tikhub_tiktok_ads_detail":
-        return {"ad_id": config.get("ad_id") or ""}
+        return {"ads_id": config.get("ads_id") or config.get("ad_id") or ""}
     if endpoint_type == "tikhub_tiktok_ads_keyword_suggest":
-        return {"keyword": config.get("keyword") or ""}
+        return {}
     if endpoint_type == "tikhub_tiktok_shop_products":
-        return {"keyword": config.get("keyword") or "", "count": max_items}
+        return {"search_word": config.get("keyword") or config.get("search_word") or ""}
     if endpoint_type == "tikhub_tiktok_creator_info":
-        return {"unique_id": config.get("unique_id") or config.get("username") or ""}
-    if endpoint_type in ("tikhub_tiktok_creator_insights", "tikhub_tiktok_creator_insights_trend",
-                          "tikhub_tiktok_creator_account_health"):
-        return {"unique_id": config.get("unique_id") or config.get("username") or ""}
+        return {"creator_uid": config.get("creator_uid") or config.get("unique_id") or config.get("username") or ""}
+    if endpoint_type == "tikhub_tiktok_creator_insights":
+        return {"keyword": config.get("keyword") or config.get("unique_id") or ""}
+    if endpoint_type == "tikhub_tiktok_creator_insights_trend":
+        return {"query_id_str": config.get("query_id_str") or config.get("keyword") or "7555720035176562699"}
+    if endpoint_type == "tikhub_tiktok_creator_account_health":
+        return {}
     if endpoint_type == "tikhub_tiktok_live_search":
         return {"keyword": config.get("keyword") or ""}
     if endpoint_type == "tikhub_tiktok_live_room_detail":
         return {"room_id": config.get("room_id") or ""}
     if endpoint_type == "tikhub_tiktok_live_user":
-        return {"unique_id": config.get("unique_id") or config.get("username") or ""}
+        return {"creator_uid": config.get("creator_uid") or config.get("unique_id") or ""}
     if endpoint_type == "tikhub_youtube_trending":
-        return {}
+        return {"search_query": config.get("keyword") or "trending"}
     if endpoint_type == "tikhub_reddit_trending":
         return {}
     if endpoint_type == "tikhub_x_trending":
         return {}
     if endpoint_type == "tikhub_tiktok_user_followers":
-        uid = config.get("unique_id") or config.get("username") or ""
-        return {"unique_id": uid, "count": max_items}
+        return {"sec_user_id": config.get("sec_user_id") or config.get("unique_id") or "", "count": max_items}
     if endpoint_type == "tikhub_instagram_user_followers":
         return {"user_id": config.get("user_id") or "", "count": max_items}
     if endpoint_type == "tikhub_x_user_followers":
         screen_name = config.get("username") or config.get("screen_name") or ""
-        return {"screen_name": screen_name, "count": max_items}
+        return {"screen_name": screen_name}
     if endpoint_type == "tikhub_instagram_post_comments":
-        shortcode = config.get("shortcode") or config.get("post_id") or ""
-        return {"shortcode": shortcode, "count": max_items}
+        code_or_url = config.get("code_or_url") or config.get("shortcode") or config.get("post_id") or ""
+        return {"code_or_url": code_or_url}
     if endpoint_type == "tikhub_youtube_video_comments":
-        return {"video_id": config.get("video_id") or "", "count": max_items}
+        return {"video_id": config.get("video_id") or ""}
     if endpoint_type == "tikhub_reddit_post_comments":
-        return {"post_id": config.get("post_id") or "", "count": max_items}
+        return {"post_id": config.get("post_id") or ""}
     return {}
 
 
@@ -1093,7 +1136,10 @@ class TikHubSocialCollector(BaseCollector):
 
         try:
             async with httpx.AsyncClient() as client:
-                data = await _tikhub_get(client, endpoint_path, params, api_key)
+                if endpoint_type in _TIKHUB_POST_ENDPOINTS:
+                    data = await _tikhub_post(client, endpoint_path, params, api_key)
+                else:
+                    data = await _tikhub_get(client, endpoint_path, params, api_key)
         except CollectorError as exc:
             errors.append(str(exc))
             logs.append(collector_log("tikhub_collect_error", str(exc), level="error"))

@@ -1,36 +1,62 @@
 # Data Intelligence Hub — Agent 工作指南
 
-> 最后更新：2026-08-16 · commit `b339f45` · 分支 `codex/social-api-private-matrix-20260708`
+> 最后更新：2026-09-01 · commit `42a0dc7` · 分支 `codex/social-api-private-matrix-20260708`
 
 ## 项目一句话定位
 
-**纯数据采集平台**。后端 FastAPI 提供 162 种采集能力（tikhub/apify/rss/browser/anysearch/jina），前端 Next.js scraper-console 提供无需登录的采集管理台，生产部署在 `scrapy.lute-tlz-dddd.top`。
+**纯数据采集平台**。后端 FastAPI 提供 218 种采集能力（tikhub/apify/rss/browser/anysearch/jina/osint/spiderfoot/bestblogs/blackbird/autoscraper 等），前端 Next.js scraper-console 提供无需登录的采集管理台，生产部署在 `scrapy.lute-tlz-dddd.top`。
 
 ---
 
 ## 生产环境
 
+### 当前生产（腾讯云 · 已运行）
+
 | 项目 | 值 |
 |---|---|
 | 域名 | `scrapy.lute-tlz-dddd.top` |
-| 服务器 IP | `101.34.52.232` |
+| 服务器 IP | `101.34.52.232`（公网）|
 | SSH key | `DDDD.pem`（项目根目录，**不得 commit**）|
 | 部署分支 | `codex/social-api-private-matrix-20260708` |
-| 当前 commit | `b339f45` |
+| 当前 commit | `42a0dc7` |
 | API health | `GET /api/health` → `{"status":"ok"}` |
-| 采集端点 | 151 verified / 11 disabled（总 162）|
+| 采集端点 | 207 verified / 11 disabled（总 218）|
 | 认证模式 | **无需登录**，全路由使用 demo workspace `bf51c6a8-fba5-5528-ac91-89ffd84f85c2` |
+| docker-compose | `configs/deploy/scrapy/docker-compose.yml` |
 
-### 容器
+### 新服务器（内网 · **已部署运行**）
 
-| 容器名 | 镜像 | 端口 |
-|---|---|---|
-| `data_achieve_scrapy_api` | `data_achieve_scrapy_api:latest` | 8000 |
-| `data_achieve_scrapy_console` | `data_achieve_scrapy_console:latest` | 3001 |
-| `data_achieve_scrapy_edge` | `nginx:1.27-alpine` | 8080 |
-| `data_achieve_scrapy_db` | `postgres:16` | 5432 |
+| 项目 | 值 |
+|---|---|
+| 服务器 IP | `192.168.204.230`（内网）|
+| 规格 | 8 vCPU · 62 GB RAM · 200 GB 系统盘 + 1 TB `/data` 数据盘 |
+| 访问方式 | 堡垒机 `jumpserver.luteos.site:2222` → `lute@192.168.204.230` 密码登录 |
+| 项目路径 | `~/apps/data_scrapy` |
+| 环境变量 | `/data/scrapy/configs/.env.production` |
+| API health | `http://192.168.204.230/api/health` → `{"status":"ok"}` |
+| 采集端点 | 207 verified / 11 disabled（总 218）|
+| docker-compose | `configs/deploy/scrapy-new/docker-compose.yml` |
+| 持久化路径 | Postgres: `/data/scrapy/postgres`，Exports: `/data/scrapy/exports` |
+| 部署文档 | [`docs/deployment-new-server.md`](docs/deployment-new-server.md) |
+| 部署日期 | 2026-09-01 |
 
-> `apps/web`（洞察面板）代码存在但**未在生产部署**，nginx 路由已移除（commit `241910c`）。
+### 容器（新服务器 192.168.204.230）
+
+| 容器名 | 镜像 | 端口 | 说明 |
+|---|---|---|---|
+| `data_achieve_scrapy_api` | `data_achieve_scrapy_api:latest` | 8000 | FastAPI 后端 |
+| `data_achieve_scrapy_console` | `data_achieve_scrapy_console:latest` | 3001 | 采集管理台 |
+| `data_achieve_scrapy_edge` | `nginx:1.27-alpine` | 8080 | 反向代理 |
+| `data_achieve_scrapy_db` | `postgres:16` | 5432 | 数据库 |
+| `data_achieve_scrapy_maigret` | `soxoj/maigret:latest` | 5000 | OSINT 用户名追踪 |
+| `data_achieve_scrapy_spiderfoot_real` | `crivellarodiego/spiderfoot:latest` | 5001（内部）| SpiderFoot Web UI |
+| `data_achieve_scrapy_spiderfoot` | `spiderfoot_bridge:latest` | 5001 | SpiderFoot REST API 桥接 |
+| `data_achieve_scrapy_mediacrawler` | `bllxk/mediacrawler-api:latest` | 8001（内部）| MediaCrawler 爬虫服务 |
+| `data_achieve_scrapy_mc_bridge` | `mediacrawler_bridge:latest` | 8080（内部）| MediaCrawler 路由桥接 |
+
+> Bridge 镜像源码在 `configs/bridges/`，需要在服务器上 build（`docker compose ... up --build`）。
+
+> MediaCrawler 需配置平台 cookies 才能获取真实数据：`BILIBILI_COOKIES`、`WEIBO_COOKIES`、`ZHIHU_COOKIES`、`KUAISHOU_COOKIES`（写入 `.env.production`）。
 
 ---
 
@@ -41,14 +67,25 @@ apps/api/src/data_intelligence_hub/
 ├── collectors/                   ★ 采集器实现
 │   ├── base.py                   — BaseCollector 基类
 │   ├── registry.py               ★ COLLECTOR_REGISTRY 注册表
-│   ├── tikhub_social.py          — TikHub 45 端点
+│   ├── tikhub_social.py          — TikHub 61 端点
 │   ├── apify_actor.py            — Apify 75 端点
-│   ├── public_feed.py            — RSS + Web crawl
+│   ├── public_feed.py            — RSS + Web crawl + AutoScraper
 │   ├── github_repo.py / github_topic.py
 │   ├── playwright_browser.py     — 浏览器采集（text/html/screenshot）
 │   ├── ecommerce_product_page.py / ecommerce_product_discovery.py
 │   ├── anysearch_collector.py    — AnySearch API
-│   └── jina_reader.py            — Jina Reader（需代理）
+│   ├── jina_reader.py            — Jina Reader（需代理）
+│   ├── spiderfoot_collector.py   — SpiderFoot 基础 3 端点
+│   ├── spiderfoot_extended_collectors.py — SpiderFoot 扩展 6 端点
+│   ├── bestblogs_collector.py    — BestBlogs AI 精选文章
+│   ├── blackbird_collector.py    — Blackbird 邮箱/用户名 OSINT
+│   ├── autoscraper_collector.py  — AutoScraper 智能提取
+│   ├── mediacrawler_collector.py — B站/微博/知乎/快手
+│   ├── twscrape_collector.py     — X/Twitter 多账号采集
+│   ├── anycrawl_collector.py     — 百度/Bing/DDG SERP
+│   ├── tech_blog_collector.py    — Dev.to/掘金/Substack
+│   ├── osint_collector.py        — Maigret/Sherlock 用户名追踪
+│   └── wappalyzer_collector.py   — 技术栈检测
 ├── api/routes/
 │   ├── collectors.py             ★ catalog 端点 + CollectorEndpoint 定义
 │   └── quick_collect.py          ★ _ENDPOINT_TO_COLLECTOR 映射
@@ -82,6 +119,18 @@ configs/deploy/scrapy/
 | D1 Jina Reader 采集器 | `ca8b647` | ✅ verified×3，本地 OK，生产需代理 |
 | 平台能力中心 UI 重设计 | `e59cbcc` | ✅ 去 emoji，PlatformLogo，工业质感行布局 |
 | 项目减负 | `b339f45` | ✅ git 干净，分支精简，文档更新 |
+| SpiderFoot 升级（6 扩展模块）| `5a37483` | ✅ spiderfoot 从 3→9 端点 |
+| BestBlogs AI 精选文章 | `5a37483` | ✅ verified×1，catalog 独立分组 |
+| Blackbird 邮箱/用户名 OSINT | `5a37483` | ✅ verified×2，catalog 独立分组 |
+| AutoScraper 智能提取 | `42a0dc7` | ✅ verified×1，已入 rss_web 组 |
+| MediaCrawler（B站/微博/知乎/快手）| `c299697` | ✅ 8 端点 |
+| AnyCrawl SERP（百度/Bing/DDG）| `fedb26b` | ✅ 3 端点 |
+| Maigret/Sherlock OSINT | `cdc81e9` | ✅ 2 端点 |
+| twscrape X/Twitter | `cdc81e9` | ✅ 3 端点 |
+| Firecrawl 全站采集 | `fe8cd0a` | ✅ 3 端点 |
+| 技术博客（Dev.to/掘金/Substack）| `11b5cf0` | ✅ 3 端点 |
+| Wappalyzer 技术栈检测 | `11b5cf0` | ✅ 1 端点 |
+| catalog 同步（bestblogs/blackbird/spiderfoot 扩展）| 热推 2026-08-31 | ✅ verified 197→207 |
 
 ### 未完成 / 待处理
 
@@ -229,7 +278,7 @@ curl -fsSL https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | \
   python3 -c "import sys,json; d=json.load(sys.stdin); \
   v=sum(1 for g in d['collectors'] for e in g['endpoints'] if e.get('status')=='verified'); \
   print('verified:', v)"
-# 期望：verified: 151
+# 期望：verified: 207
 ```
 
 ---

@@ -19,7 +19,12 @@ Organised into 10 groups:
 
 from __future__ import annotations
 
+import uuid
+from typing import Any
+
 from fastapi import APIRouter
+from pydantic import BaseModel
+from sqlalchemy import text
 
 from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.repositories.collectors import list_collectors
@@ -3248,4 +3253,129 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 endpoints=blackbird_endpoints,
             ),
         ]
+    )
+
+
+class EndpointTestResult(BaseModel):
+    endpoint_type: str
+    last_run_id: str | None
+    last_run_status: str | None
+    last_run_at: str | None
+    last_records_count: int | None
+    last_error_message: str | None
+
+
+class CollectorDocsEndpoint(BaseModel):
+    endpoint_type: str
+    label: str
+    platform: str
+    description: str
+    status: str
+    required_params: list[str]
+    optional_params: list[str]
+    cost_hint: str | None
+    provider: str
+    content_type: str
+    method: str
+    param_fields: dict[str, str]
+    test_result: EndpointTestResult | None
+
+
+class CollectorDocsEntry(BaseModel):
+    collector_type: str
+    label: str
+    platform: str
+    endpoints: list[CollectorDocsEndpoint]
+
+
+class CollectorDocsResponse(BaseModel):
+    groups: list[CollectorDocsEntry]
+    total_endpoints: int
+    tested_endpoints: int
+    success_endpoints: int
+
+
+@router.get("/docs", response_model=CollectorDocsResponse)
+async def get_collector_docs(session: SessionDep) -> CollectorDocsResponse:
+    catalog = await get_collector_catalog()
+
+    rows = await session.execute(
+        text("""
+            SELECT DISTINCT ON (endpoint_type)
+                COALESCE(
+                    SUBSTRING(ct.name FROM '\\[quick\\] \\[quick\\] \\[test\\] (.+)$'),
+                    SUBSTRING(ct.name FROM '\\[quick\\] \\[test\\] (.+)$')
+                ) AS endpoint_type,
+                tr.id AS run_id,
+                tr.status,
+                tr.finished_at,
+                tr.records_count,
+                tr.error_message
+            FROM collection_tasks ct
+            JOIN LATERAL (
+                SELECT id, status, finished_at, records_count, error_message
+                FROM task_runs
+                WHERE task_id = ct.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) tr ON true
+            WHERE ct.name LIKE '[quick] [test]%'
+               OR ct.name LIKE '[quick] [quick] [test]%'
+            ORDER BY endpoint_type, ct.created_at DESC
+        """)
+    )
+    test_map: dict[str, EndpointTestResult] = {}
+    for row in rows.mappings():
+        ep = row["endpoint_type"]
+        if ep:
+            test_map[ep] = EndpointTestResult(
+                endpoint_type=ep,
+                last_run_id=str(row["run_id"]) if row["run_id"] else None,
+                last_run_status=row["status"],
+                last_run_at=row["finished_at"].isoformat() if row["finished_at"] else None,
+                last_records_count=row["records_count"],
+                last_error_message=row["error_message"],
+            )
+
+    groups: list[CollectorDocsEntry] = []
+    total = 0
+    tested = 0
+    success = 0
+
+    for entry in catalog.collectors:
+        doc_eps: list[CollectorDocsEndpoint] = []
+        for ep in entry.endpoints:
+            tr = test_map.get(ep.endpoint_type)
+            doc_eps.append(CollectorDocsEndpoint(
+                endpoint_type=ep.endpoint_type,
+                label=ep.label,
+                platform=ep.platform,
+                description=ep.description,
+                status=ep.status,
+                required_params=ep.required_params,
+                optional_params=ep.optional_params,
+                cost_hint=ep.cost_hint,
+                provider=ep.provider,
+                content_type=ep.content_type,
+                method=ep.method,
+                param_fields=ep.param_fields,
+                test_result=tr,
+            ))
+            total += 1
+            if tr:
+                tested += 1
+                if tr.last_run_status == "success":
+                    success += 1
+        groups.append(CollectorDocsEntry(
+            collector_type=entry.collector_type,
+            label=entry.label,
+            platform=entry.platform,
+            endpoints=doc_eps,
+        ))
+
+    return CollectorDocsResponse(
+        groups=groups,
+        total_endpoints=total,
+        tested_endpoints=tested,
+        success_endpoints=success,
     )

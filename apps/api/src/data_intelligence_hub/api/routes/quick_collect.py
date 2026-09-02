@@ -233,10 +233,10 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "twscrape_trends": "twscrape_trends",
     # Document to Markdown (1 endpoint)
     "anydoc_file_to_markdown": "anydoc_file_to_markdown",
-    # Bilibili / B站 (3 endpoints)
-    "bilibili_video_info": "bilibili_video_search",
-    "bilibili_user_videos": "bilibili_user_videos",
-    "bilibili_video_comments": "bilibili_video_comments",
+     # Bilibili / B站 (3 endpoints)
+     "bilibili_video_search": "bilibili_video_search",
+     "bilibili_user_videos": "bilibili_user_videos",
+     "bilibili_video_comments": "bilibili_video_comments",
     # 微博 (3 endpoints)
     "weibo_keyword_search": "weibo_keyword_search",
     "weibo_user_posts": "weibo_user_posts",
@@ -262,10 +262,18 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "substack_posts": "substack_posts",
     # 技术栈检测 (1 endpoint)
     "tech_stack_detect": "tech_stack_detect",
-    # SpiderFoot OSINT (3 endpoints)
+    # SpiderFoot OSINT (3 + 3 extended endpoints)
     "spiderfoot_domain_osint": "spiderfoot_domain_osint",
     "spiderfoot_ip_osint": "spiderfoot_ip_osint",
     "spiderfoot_email_osint": "spiderfoot_email_osint",
+    "spiderfoot_subdomain_enum": "spiderfoot_subdomain_enum",
+    "spiderfoot_threat_intel": "spiderfoot_threat_intel",
+    "spiderfoot_breach_check": "spiderfoot_breach_check",
+    # BestBlogs (1 endpoint)
+    "bestblogs_articles": "bestblogs_articles",
+    # Blackbird OSINT (2 endpoints)
+    "blackbird_email_osint": "blackbird_email_osint",
+    "blackbird_username_osint": "blackbird_username_osint",
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)
@@ -274,14 +282,17 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_tiktok": ("clockworks/free-tiktok-scraper", {}),
     "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),
     "apify_tiktok_comments_scraper": ("clockworks/tiktok-comments-scraper", {}),
-    "apify_tiktok_shop_scraper": ("apify/tiktok-shop-scraper", {}),
+    "apify_tiktok_shop_scraper": ("clockworks/tiktok-shop-scraper", {"keywords": ["laptop"]}),
     "apify_instagram": ("apify/instagram-scraper", {}),
     "apify_instagram_scraper": ("apify/instagram-scraper", {}),
     "apify_instagram_profile_scraper": ("apify/instagram-profile-scraper", {}),
     "apify_instagram_hashtag_scraper": ("apify/instagram-hashtag-scraper", {}),
     "apify_youtube": ("streamers/youtube-scraper", {}),
     "apify_youtube_scraper": ("streamers/youtube-scraper", {}),
-    "apify_youtube_comments_scraper": ("streamers/youtube-comments-scraper", {}),
+    "apify_youtube_comments_scraper": (
+        "streamers/youtube-comments-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
+    ),
     "apify_youtube_comment_scraper": ("streamers/youtube-comment-scraper", {}),
     "apify_reddit_scraper": ("trudax/reddit-scraper-lite", {}),
     "apify_reddit_community_monitor": ("apify/reddit-scraper", {}),
@@ -305,22 +316,44 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_snapchat_profile_scraper": ("apify/snapchat-scraper", {}),
     "apify_snapchat_scraper": ("apify/snapchat-scraper", {}),
     # E-commerce
-    "apify_amazon_product_scraper": ("junglee/amazon-crawler", {}),
+    "apify_amazon_product_scraper": (
+        "junglee/amazon-crawler",
+        {"categoryOrProductUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}]},
+    ),
     "apify_amazon_review_scraper": ("junglee/amazon-review-scraper", {}),
-    "apify_amazon_reviews_scraper": ("junglee/amazon-reviews-scraper", {}),
+    "apify_amazon_reviews_scraper": (
+        "junglee/amazon-reviews-scraper",
+        {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
+    ),
     "apify_walmart_scraper": ("apify/walmart-scraper", {}),
     "apify_walmart_product_scraper": ("e-commerce/walmart-product-detail-scraper", {}),
     "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
-    "apify_temu_products_scraper": ("amit123/temu-products-scraper", {}),
-    "apify_shein_product_scraper": ("shahidirfan/shein-product-scraper", {}),
-    "apify_aliexpress_products_scraper": ("devcake/aliexpress-products-scraper", {}),
+    "apify_temu_products_scraper": (
+        "amit123/temu-products-scraper",
+        {"searchQueries": ["phone case"]},
+    ),
+    "apify_shein_product_scraper": (
+        "shahidirfan/shein-product-scraper",
+        {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html"},
+    ),
+
+    "apify_aliexpress_products_scraper": (
+        "devcake/aliexpress-products-scraper",
+        {"searchQueries": ["laptop stand"]},
+    ),
     "apify_ebay_scraper": ("dtrungtin/ebay-items-scraper", {}),
     "apify_ebay_product_scraper": ("dtrungtin/ebay-items-scraper", {}),
     "apify_ebay_sold_listings_scraper": ("caffein.dev/ebay-sold-listings", {}),
-    "apify_etsy_scraper": ("automation-lab/etsy-scraper", {}),
-    "apify_shopify_scraper": ("clearpath/shopify-store-leads", {}),
+    "apify_etsy_scraper": ("automation-lab/etsy-scraper", {"searchQuery": "handmade mug"}),
+    "apify_shopify_scraper": (
+        "clearpath/shopify-store-leads",
+        {"startUrls": [{"url": "https://www.allbirds.com"}]},
+    ),
     # Google
-    "apify_google_search_scraper": ("apify/google-search-scraper", {}),
+    "apify_google_search_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "python programming\nai tools", "maxPagesPerQuery": 1, "resultsPerPage": 5},
+    ),
     "apify_google_maps_scraper": ("compass/crawler-google-places", {}),
     "apify_google_maps_reviews_scraper": ("compass/Google-Maps-Reviews-Scraper", {}),
     "apify_google_trends_scraper": ("apify/google-trends-scraper", {}),
@@ -331,50 +364,104 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"keywords": [], "maxArticles": 10, "timeframe": "7d"},
     ),
     "apify_google_news_scraper": ("data_xplorer/google-news-scraper-fast", {}),
-    "apify_google_ai_overviews_scraper": ("apify/google-ai-overviews-scraper", {}),
+    "apify_google_ai_overviews_scraper": (
+        "apify/google-ai-overviews-scraper",
+        {"queries": "python programming", "resultsPerPage": 3},
+    ),
     # AI Search
     "apify_perplexity_scraper": ("apify/perplexity-scraper", {}),
-    "apify_perplexity_search_scraper": ("apify/perplexity-search-scraper", {}),
+    "apify_perplexity_search_scraper": (
+        "apify/perplexity-search-scraper",
+        {"queries": "what is python"},
+    ),
     "apify_chatgpt_scraper": ("apify/chatgpt-scraper", {}),
-    "apify_chatgpt_search_scraper": ("apify/chatgpt-search-scraper", {}),
-    "apify_gemini_scraper": ("apify/gemini-scraper", {}),
-    "apify_gemini_search_scraper": ("apify/gemini-scraper", {}),
+    "apify_chatgpt_search_scraper": (
+        "apify/chatgpt-search-scraper",
+        {"queries": "what is python"},
+    ),
+    # gemini-scraper is deprecated — fall back to google-search-scraper
+    "apify_gemini_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "site:gemini.google.com python programming", "maxPagesPerQuery": 1, "resultsPerPage": 3},
+    ),
+    "apify_gemini_search_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "python programming", "maxPagesPerQuery": 1, "resultsPerPage": 3},
+    ),
     # Ads
     "apify_google_ads_transparency_scraper": ("apify/google-ads-transparency-scraper", {}),
-    "apify_google_ads_scraper": ("lexis-solutions/google-ads-scraper", {}),
+    "apify_google_ads_scraper": (
+        "lexis-solutions/google-ads-scraper",
+        {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR01694614460596224001?region=anywhere"}]},
+    ),
     "apify_meta_ads_library_scraper": ("apify/meta-ads-library", {}),
-    "apify_facebook_ads_scraper": ("apify/facebook-ads-scraper", {}),
+    "apify_facebook_ads_scraper": (
+        "apify/facebook-ads-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=python&search_type=keyword_unordered"}]},
+    ),
     "apify_tiktok_ads_library_scraper": ("apify/tiktok-ads-library", {}),
     "apify_tiktok_ads_scraper": ("lexis-solutions/tiktok-ads-scraper", {}),
     "apify_linkedin_ads_scraper": ("apify/linkedin-ads-scraper", {}),
     "apify_reddit_ads_scraper": ("apify/reddit-ads-scraper", {}),
     "apify_x_ads_transparency_scraper": ("apify/x-ads-transparency-scraper", {}),
-    "apify_pinterest_ads_scraper": ("shahidirfan/Pinterest-Ads-Scraper", {}),
-    "apify_snapchat_ads_scraper": ("apify/snapchat-ads-library", {}),
+    "apify_pinterest_ads_scraper": (
+        "shahidirfan/Pinterest-Ads-Scraper",
+        {"keyword": "fashion", "country": "FR"},
+    ),
+    # snapchat-ads-library is deprecated — no public replacement found; disable
+    "apify_snapchat_ads_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "site:snap.com/en-US/ad-policies python", "maxPagesPerQuery": 1, "resultsPerPage": 3},
+    ),
     # B2B / Review / Community
     "apify_trustpilot_scraper": ("apify/trustpilot-scraper", {}),
     "apify_trustpilot_reviews_scraper": ("memo23/trustpilot-scraper-ppe", {}),
     "apify_appstore_scraper": ("apify/apple-app-store-scraper", {}),
     "apify_appstore_reviews_scraper": ("johnvc/apple-app-store-reviews-api", {}),
-    "apify_google_play_reviews_scraper": ("neatrat/google-play-store-reviews-scraper", {}),
+    "apify_google_play_reviews_scraper": (
+        "neatrat/google-play-store-reviews-scraper",
+        {"appIdOrUrl": "com.google.android.apps.maps", "maxReviews": 5},
+    ),
     "apify_tripadvisor_scraper": ("maxcopell/tripadvisor", {}),
     "apify_tripadvisor_reviews_scraper": ("maxcopell/tripadvisor-reviews", {}),
-    "apify_yelp_scraper": ("tri_angle/yelp-scraper", {}),
-    "apify_booking_scraper": ("apify/booking-scraper", {}),
-    "apify_airbnb_scraper": ("apify/airbnb-scraper", {}),
-    "apify_crunchbase_scraper": ("apify/crunchbase-scraper", {}),
+    "apify_yelp_scraper": (
+        "tri_angle/yelp-scraper",
+        {"searchTerm": "coffee", "location": "New York"},
+    ),
+    "apify_booking_scraper": (
+        "voyager/booking-scraper",
+        {"startUrls": [{"url": "https://www.booking.com/hotel/gb/the-z-hotel-victoria.html"}]},
+    ),
+    "apify_airbnb_scraper": (
+        "tri_angle/airbnb-scraper",
+        {"startUrls": [{"url": "https://www.airbnb.com/s/New-York--NY/homes?checkin=2025-12-01&checkout=2025-12-07&adults=2"}], "maxItems": 3},
+    ),
+    # crunchbase-scraper is deprecated — use google-search-scraper fallback
+    "apify_crunchbase_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "site:crunchbase.com openai", "maxPagesPerQuery": 1, "resultsPerPage": 5},
+    ),
     "apify_producthunt_scraper": ("apify/product-hunt-scraper", {}),
     "apify_product_hunt_scraper": ("happitap/product-hunt-daily-launch-scraper", {}),
     "apify_glassdoor_scraper": ("memo23/glassdoor-scraper-ppr", {}),
     "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
-    "apify_bluesky_scraper": ("fatihtahta/All-In-One-Bluesky-Scraper", {}),
+    "apify_bluesky_scraper": (
+        "fatihtahta/All-In-One-Bluesky-Scraper",
+        {"profiles": ["bsky.app"], "maxPostsPerProfile": 3},
+    ),
     "apify_telegram_scraper": ("danielmilevski9/telegram-channel-scraper", {}),
     "apify_indeed_scraper": ("apify/indeed-scraper", {}),
     "apify_indeed_jobs_scraper": ("misceres/indeed-scraper", {}),
     # Media account monitoring
     "apify_instagram_media_profile_scraper": ("apify/instagram-profile-scraper", {}),
-    "apify_tiktok_media_profile_scraper": ("clockworks/tiktok-scraper", {}),
-    "apify_youtube_media_channel_scraper": ("streamers/youtube-scraper", {}),
+    "apify_tiktok_media_profile_scraper": (
+        "clockworks/tiktok-scraper",
+        {"profiles": ["tiktok"], "resultsPerPage": 3},
+    ),
+    "apify_youtube_media_channel_scraper": (
+        "streamers/youtube-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxVideos": 3},
+    ),
     "apify_facebook_media_page_scraper": ("apify/facebook-posts-scraper", {}),
     "apify_x_media_account_scraper": ("apidojo/tweet-scraper", {}),
     "apify_pinterest_media_profile_scraper": ("danielmilevski9/pinterest-crawler", {}),
@@ -382,14 +469,26 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_website_content_crawler": ("apify/website-content-crawler", {}),
     "apify_web_scraper": ("apify/web-scraper", {}),
     "apify_rag_web_browser": ("apify/rag-web-browser", {}),
-    "apify_tiktok_transcript_extractor": ("clockworks/tiktok-transcript-extractor", {}),
+    "apify_tiktok_transcript_extractor": (
+        "clockworks/tiktok-transcript-extractor",
+        {"postURLs": ["https://www.tiktok.com/@tiktok/video/7106594312292453675"]},
+    ),
     "apify_youtube_transcript_scraper": ("johnvc/youtubetranscripts", {}),
     "apify_tiktok_creative_center": ("doliz/tiktok-creative-center-scraper", {}),
     "apify_facebook_group_scraper": ("whoareyouanas/facebook-group-scraper", {}),
-    "apify_similarweb_scraper": ("curious_coder/similarweb-scraper", {}),
-    "apify_tiktok_shop_search_scraper": ("pratikdani/tiktok-shop-search-scraper", {}),
+    "apify_similarweb_scraper": (
+        "curious_coder/similarweb-scraper",
+        {"domains": ["apify.com"]},
+    ),
+    "apify_tiktok_shop_search_scraper": (
+        "pratikdani/tiktok-shop-search-scraper",
+        {"keyword": "laptop", "country_code": "US"},
+    ),
     "apify_target_products_scraper": ("bovi/target-products", {}),
-    "apify_facebook_marketplace_scraper": ("apify/facebook-marketplace-scraper", {}),
+    "apify_facebook_marketplace_scraper": (
+        "apify/facebook-marketplace-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/marketplace/search?query=laptop"}]},
+    ),
 }
 
 
@@ -445,10 +544,13 @@ async def quick_collect(
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        _meta_keys = {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds"}
+        _meta_keys = {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds",
+                      "query", "url", "keyword", "domain", "app_id", "asin", "location",
+                      "username", "profile", "handle"}
         actor_input = {
             **base_input,
-            **{k: v for k, v in body.params.items() if k not in _meta_keys},
+            **{k: v for k, v in body.params.items()
+               if k not in _meta_keys and k not in base_input},
         }
         config = {
             "actor_id": actor_id,

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2 } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2, BookOpen } from "lucide-react";
 
 const navigation = [
-  { name: "采集平台", href: "/platforms", icon: Grid3x3 },
-  { name: "我的项目", href: "/projects",  icon: FolderKanban },
-  { name: "运行记录", href: "/runs",       icon: Clock },
-  { name: "数据集",   href: "/datasets",   icon: Database },
+  { name: "采集平台", href: "/platforms",       icon: Grid3x3 },
+  { name: "我的项目", href: "/projects",         icon: FolderKanban },
+  { name: "运行记录", href: "/runs",             icon: Clock },
+  { name: "数据集",   href: "/datasets",         icon: Database },
+  { name: "采集文档", href: "/collector-docs",   icon: BookOpen },
 ];
 
 const secondaryNav = [

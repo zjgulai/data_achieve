@@ -30,7 +30,7 @@ def _get_api_key() -> str:
 
 
 def _jina_client() -> httpx.AsyncClient:
-    proxy = os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY")
+    proxy = (os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY") or "").strip() or None
     return httpx.AsyncClient(timeout=JINA_TIMEOUT, proxy=proxy)
 
 

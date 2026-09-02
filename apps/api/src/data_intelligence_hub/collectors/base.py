@@ -115,7 +115,8 @@ def collector_http_error_message(exc: httpx.HTTPError) -> str:
             return "http_forbidden: upstream returned 403"
         if status_code >= 500:
             return f"http_upstream_error: upstream returned {status_code}"
-        return f"http_status_error: upstream returned {status_code}"
+        body_hint = exc.response.text[:120].strip().replace("\n", " ") if exc.response.text else ""
+        return f"http_status_error: upstream returned {status_code}" + (f" | {body_hint}" if body_hint else "")
     if isinstance(exc, httpx.ConnectError):
         return "http_connection_failed: upstream connection failed"
     if isinstance(exc, httpx.NetworkError):

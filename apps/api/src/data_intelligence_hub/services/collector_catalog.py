@@ -209,7 +209,13 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         config_schema={
             "required": ["file_url"],
             "properties": {"file_url": "string", "file_type": "string"},
-        },
+         },
+    ),
+    CollectorDefinition(
+        type="bilibili_video_search",
+        name="B站视频搜索",
+        description="按关键词搜索 B站视频内容。",
+        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_items": "integer"}},
     ),
     CollectorDefinition(
         type="bilibili_video_info",
@@ -468,7 +474,7 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "sherlock", "maigret",
         "twscrape_search", "twscrape_user_tweets", "twscrape_trends",
         "anydoc_file_to_markdown",
-        "bilibili_video_info", "bilibili_user_videos", "bilibili_video_comments",
+        "bilibili_video_search", "bilibili_video_info", "bilibili_user_videos", "bilibili_video_comments",
         "weibo_keyword_search", "weibo_user_posts", "weibo_trending_topics",
         "zhihu_question_answers", "zhihu_keyword_search", "zhihu_hot_list",
         "baidu_search", "bing_search", "duckduckgo_search",
@@ -477,6 +483,9 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "devto_articles", "juejin_articles", "substack_posts",
         "tech_stack_detect",
         "spiderfoot_domain_osint", "spiderfoot_ip_osint", "spiderfoot_email_osint",
+        "spiderfoot_subdomain_enum", "spiderfoot_threat_intel", "spiderfoot_breach_check",
+        "bestblogs_articles",
+        "blackbird_email_osint", "blackbird_username_osint",
     }:
         return _validate_passthrough_config(config)
 
@@ -495,6 +504,11 @@ def _require_text(config: dict[str, Any], key: str) -> str:
 
 
 def _validate_github_repo_config(config: dict[str, Any]) -> dict[str, Any]:
+    url = config.get("url", "")
+    if url and isinstance(url, str):
+        parts = url.rstrip("/").split("/")
+        if len(parts) >= 2:
+            return {"owner": parts[-2], "repo": parts[-1]}
     return {"owner": _require_text(config, "owner"), "repo": _require_text(config, "repo")}
 
 
@@ -740,7 +754,14 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
 
         raise CollectorConfigError
     out: dict[str, Any] = {"endpoint_type": endpoint_type, "max_items": max_items}
-    for key in ("keyword", "unique_id", "ch_id", "user_id", "cursor", "max_cursor"):
+    for key in (
+        "keyword", "unique_id", "ch_id", "user_id", "cursor", "max_cursor",
+        "video_id", "url", "query", "sec_user_id", "screen_name", "urn",
+        "room_id", "creator_uid", "query_id_str", "post_id", "shortcode",
+        "code_or_url", "company_name", "company_username", "job_id",
+        "uid", "bvid", "mid", "search_word", "ad_id", "ads_id",
+        "username", "category_id",
+    ):
         if key in config and config[key] is not None:
             out[key] = config[key]
     return out

@@ -40,8 +40,8 @@ from data_intelligence_hub.collectors.base import (
     require_text,
 )
 
-_DEFAULT_TIMEOUT = 120.0
-_POLL_INTERVAL = 3.0
+_DEFAULT_TIMEOUT = 240.0
+_POLL_INTERVAL = 5.0
 _FINISHED_STATUSES = {"FINISHED", "ERROR", "ABORTED"}
 
 
@@ -261,10 +261,28 @@ class _SpiderFootCollector(BaseCollector):
         return CollectionResult(raw_records=[record], logs=logs, errors=errors)
 
 
+_FAST_DOMAIN_MODULES = [
+    "sfp_dns", "sfp_whois", "sfp_ssl", "sfp_crt", "sfp_certspotter",
+    "sfp_http", "sfp_networkshodan",
+]
+_FAST_IP_MODULES = [
+    "sfp_dns", "sfp_whois", "sfp_networkshodan", "sfp_arin",
+]
+_FAST_EMAIL_MODULES = [
+    "sfp_dns", "sfp_whois", "sfp_haveibeenpwned", "sfp_emailformat",
+]
+
+
 class SpiderFootDomainCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against a domain name."""
     collector_type = "spiderfoot_domain_osint"
     _target_type = "domain"
+
+    def validate_config(self) -> dict[str, Any]:
+        config = super().validate_config()
+        if not config["modules"]:
+            config["modules"] = _FAST_DOMAIN_MODULES
+        return config
 
 
 class SpiderFootIPCollector(_SpiderFootCollector):
@@ -272,8 +290,20 @@ class SpiderFootIPCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_ip_osint"
     _target_type = "ip"
 
+    def validate_config(self) -> dict[str, Any]:
+        config = super().validate_config()
+        if not config["modules"]:
+            config["modules"] = _FAST_IP_MODULES
+        return config
+
 
 class SpiderFootEmailCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against an e-mail address."""
     collector_type = "spiderfoot_email_osint"
     _target_type = "email"
+
+    def validate_config(self) -> dict[str, Any]:
+        config = super().validate_config()
+        if not config["modules"]:
+            config["modules"] = _FAST_EMAIL_MODULES
+        return config

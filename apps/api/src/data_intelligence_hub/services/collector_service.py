@@ -104,6 +104,8 @@ async def execute_collection_task(
         if signals_count > 0:
             logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
         status = _run_status(result_errors=result.errors, created_records=records_count)
+        if status in ("failed", "partial_success") and result.errors:
+            error_message = "; ".join(result.errors[:3])
     except Exception as exc:
         await session.rollback()
         refreshed_workspace = await session.get(Workspace, workspace_id)

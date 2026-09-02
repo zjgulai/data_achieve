@@ -66,7 +66,7 @@ def _get_api() -> Any:
         ) from exc
 
     proxy = os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY")
-    api = API(db_path=_DB_PATH, proxy=proxy or None)
+    api = API(pool=_DB_PATH, proxy=proxy or None)
     return api
 
 

@@ -6,8 +6,11 @@ import { AppShell } from "@/components/layout/app-shell";
 import { fetchDatasets, createExport, fetchExportJob } from "@/lib/api/datasets";
 import { Database, Download, RefreshCw, Loader2, Package, CheckCircle, ExternalLink } from "lucide-react";
 
-function formatDate(s: string) {
-  return new Date(s).toLocaleDateString("zh-CN", { month: "short", day: "numeric", year: "numeric" });
+function formatDate(s: string | null | undefined) {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function ExportButton({ datasetId, versionId }: { datasetId: string; versionId: string }) {
