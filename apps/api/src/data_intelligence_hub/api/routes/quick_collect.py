@@ -253,8 +253,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "kuaishou_video_search": "kuaishou_video_search",
     "kuaishou_user_videos": "kuaishou_user_videos",
     # Firecrawl (3 endpoints)
-    "firecrawl_crawl": "firecrawl_crawl_site",
-    "firecrawl_extract": "firecrawl_extract_structured",
+    "firecrawl_crawl": "firecrawl_crawl",
+    "firecrawl_extract": "firecrawl_extract",
     "firecrawl_batch_scrape": "firecrawl_batch_scrape",
     # 技术博客 (3 endpoints)
     "devto_articles": "devto_articles_search",
@@ -276,6 +276,12 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "blackbird_username_osint": "blackbird_username_osint",
 }
 
+_COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
+    "firecrawl_crawl":          {"url": "https://example.com", "max_pages": 2},
+    "firecrawl_extract":        {"url": "https://example.com", "prompt": "Extract title and description"},
+    "firecrawl_batch_scrape":   {"urls": ["https://example.com", "https://httpbin.org/get"]},
+}
+
 # Apify endpoint → (actor_id, base_input_defaults)
 _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Social
@@ -288,7 +294,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_instagram_profile_scraper": ("apify/instagram-profile-scraper", {}),
     "apify_instagram_hashtag_scraper": ("apify/instagram-hashtag-scraper", {}),
     "apify_youtube": ("streamers/youtube-scraper", {}),
-    "apify_youtube_scraper": ("streamers/youtube-scraper", {}),
+    "apify_youtube_scraper": (
+        "streamers/youtube-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxVideos": 3},
+    ),
     "apify_youtube_comments_scraper": (
         "streamers/youtube-comments-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
@@ -347,7 +356,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_etsy_scraper": ("automation-lab/etsy-scraper", {"searchQuery": "handmade mug"}),
     "apify_shopify_scraper": (
         "clearpath/shopify-store-leads",
-        {"startUrls": [{"url": "https://www.allbirds.com"}]},
+        {"searchQuery": "sneakers", "maxItems": 3},
     ),
     # Google
     "apify_google_search_scraper": (
@@ -447,7 +456,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
     "apify_bluesky_scraper": (
         "fatihtahta/All-In-One-Bluesky-Scraper",
-        {"profiles": ["bsky.app"], "maxPostsPerProfile": 3},
+        {"profiles": ["atproto.com"], "maxPostsPerProfile": 3},
     ),
     "apify_telegram_scraper": ("danielmilevski9/telegram-channel-scraper", {}),
     "apify_indeed_scraper": ("apify/indeed-scraper", {}),
@@ -456,7 +465,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_instagram_media_profile_scraper": ("apify/instagram-profile-scraper", {}),
     "apify_tiktok_media_profile_scraper": (
         "clockworks/tiktok-scraper",
-        {"profiles": ["tiktok"], "resultsPerPage": 3},
+        {"profiles": ["https://www.tiktok.com/@apple"], "resultsPerPage": 3},
     ),
     "apify_youtube_media_channel_scraper": (
         "streamers/youtube-scraper",
@@ -540,6 +549,10 @@ async def quick_collect(
         )
 
     config: dict[str, Any] = {"endpoint_type": body.endpoint_type, **body.params}
+
+    collector_defaults = _COLLECTOR_TEST_DEFAULTS.get(collector_type)
+    if collector_defaults is not None:
+        config = {"endpoint_type": body.endpoint_type, **collector_defaults, **body.params}
 
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:

@@ -112,7 +112,7 @@ async def _poll_job(job_id: str) -> dict[str, Any]:
 class FirecrawlCrawlCollector(BaseCollector):
     """Crawl an entire site and return each page as Markdown via Firecrawl."""
 
-    collector_type = "firecrawl_crawl_site"
+    collector_type = "firecrawl_crawl"
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")
@@ -129,13 +129,6 @@ class FirecrawlCrawlCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
-        key = _api_key()
-        if not key and _base_url() == _DEFAULT_BASE_URL:
-            msg = "FIRECRAWL_API_KEY not set — required for Firecrawl Cloud"
-            return CollectorTestResult(
-                status="failed", message=msg,
-                logs=[collector_log("firecrawl_test_failed", msg, level="error")],
-            )
         try:
             self.validate_config()
         except CollectorError as exc:
@@ -225,7 +218,7 @@ class FirecrawlCrawlCollector(BaseCollector):
 class FirecrawlExtractCollector(BaseCollector):
     """Extract structured JSON from a URL using a Firecrawl schema prompt."""
 
-    collector_type = "firecrawl_extract_structured"
+    collector_type = "firecrawl_extract"
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")
@@ -238,13 +231,6 @@ class FirecrawlExtractCollector(BaseCollector):
         return {"url": url, "schema": schema, "prompt": prompt}
 
     async def test(self) -> CollectorTestResult:
-        key = _api_key()
-        if not key and _base_url() == _DEFAULT_BASE_URL:
-            msg = "FIRECRAWL_API_KEY not set — required for Firecrawl Cloud"
-            return CollectorTestResult(
-                status="failed", message=msg,
-                logs=[collector_log("firecrawl_test_failed", msg, level="error")],
-            )
         return CollectorTestResult(
             status="ok",
             message=f"Firecrawl ready at {_base_url()}",
@@ -325,13 +311,6 @@ class FirecrawlBatchScrapeCollector(BaseCollector):
         return {"urls": [u.strip() for u in urls]}
 
     async def test(self) -> CollectorTestResult:
-        key = _api_key()
-        if not key and _base_url() == _DEFAULT_BASE_URL:
-            msg = "FIRECRAWL_API_KEY not set — required for Firecrawl Cloud"
-            return CollectorTestResult(
-                status="failed", message=msg,
-                logs=[collector_log("firecrawl_test_failed", msg, level="error")],
-            )
         return CollectorTestResult(
             status="ok",
             message=f"Firecrawl batch scrape ready at {_base_url()}",
