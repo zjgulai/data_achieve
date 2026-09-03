@@ -110,6 +110,14 @@ from data_intelligence_hub.collectors.pkg_community_collector import (
     GoPackageCollector,
     GoSearchCollector,
 )
+from data_intelligence_hub.collectors.pkg_registry2_collector import (
+    PackagistPackageCollector,
+    PackagistSearchCollector,
+    NuGetPackageCollector,
+    NuGetSearchCollector,
+    PubDevPackageCollector,
+    PubDevSearchCollector,
+)
 
 CollectorClass = type[BaseCollector]
 
@@ -190,6 +198,12 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     RubyGemsSearchCollector.collector_type: RubyGemsSearchCollector,
     GoPackageCollector.collector_type: GoPackageCollector,
     GoSearchCollector.collector_type: GoSearchCollector,
+    PackagistPackageCollector.collector_type: PackagistPackageCollector,
+    PackagistSearchCollector.collector_type: PackagistSearchCollector,
+    NuGetPackageCollector.collector_type: NuGetPackageCollector,
+    NuGetSearchCollector.collector_type: NuGetSearchCollector,
+    PubDevPackageCollector.collector_type: PubDevPackageCollector,
+    PubDevSearchCollector.collector_type: PubDevSearchCollector,
 }
 
 

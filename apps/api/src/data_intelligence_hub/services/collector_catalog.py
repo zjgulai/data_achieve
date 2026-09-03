@@ -610,6 +610,42 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="在 pkg.go.dev 搜索 Go 包。",
         config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
     ),
+    CollectorDefinition(
+        type="packagist_package",
+        name="Packagist PHP 包信息",
+        description="从 Packagist 获取 PHP composer 包的详细元数据，包括版本、下载量、依赖等。package 格式为 vendor/name（如 laravel/framework）。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="packagist_search",
+        name="Packagist PHP 包搜索",
+        description="按关键词搜索 Packagist 上的 PHP composer 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="nuget_package",
+        name="NuGet .NET 包信息",
+        description="从 NuGet 获取 .NET 包的详细元数据，包括版本、下载量、作者等。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="nuget_search",
+        name="NuGet .NET 包搜索",
+        description="按关键词搜索 NuGet 上的 .NET 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="pubdev_package",
+        name="pub.dev Dart/Flutter 包信息",
+        description="从 pub.dev 获取 Dart/Flutter 包的详细元数据，包括版本、依赖等。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="pubdev_search",
+        name="pub.dev Dart/Flutter 包搜索",
+        description="按关键词搜索 pub.dev 上的 Dart/Flutter 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
 )
 
 
@@ -700,6 +736,9 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "crates_package", "crates_search",
         "rubygems_package", "rubygems_search",
         "go_package", "go_search",
+        "packagist_package", "packagist_search",
+        "nuget_package", "nuget_search",
+        "pubdev_package", "pubdev_search",
     }:
         return _validate_passthrough_config(config)
 

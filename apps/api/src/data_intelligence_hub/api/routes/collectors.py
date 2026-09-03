@@ -3471,6 +3471,93 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    packagist_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="packagist_package",
+            label="Packagist PHP 包信息",
+            platform="packagist",
+            description="从 Packagist 获取 PHP Composer 包元数据，包括版本、下载量、依赖等。package 格式为 vendor/name（如 laravel/framework）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="Packagist API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="packagist_search",
+            label="Packagist PHP 包搜索",
+            platform="packagist",
+            description="按关键词搜索 Packagist 上的 PHP Composer 包，返回名称、描述、下载量等。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="Packagist API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
+    nuget_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="nuget_package",
+            label="NuGet .NET 包信息",
+            platform="nuget",
+            description="从 NuGet 获取 .NET 包的详细元数据，包括版本、下载量、作者等。package 为包名（如 Newtonsoft.Json）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="NuGet Search API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="nuget_search",
+            label="NuGet .NET 包搜索",
+            platform="nuget",
+            description="按关键词搜索 NuGet 上的 .NET 包，返回名称、版本、下载量等。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="NuGet Search API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
+    pubdev_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="pubdev_package",
+            label="pub.dev Dart/Flutter 包信息",
+            platform="pubdev",
+            description="从 pub.dev 获取 Dart/Flutter 包的详细元数据，包括版本、依赖、Flutter 支持状态等。package 为包名（如 http）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="pub.dev API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="pubdev_search",
+            label="pub.dev Dart/Flutter 包搜索",
+            platform="pubdev",
+            description="按关键词搜索 pub.dev 上的 Dart/Flutter 包。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="pub.dev API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3664,6 +3751,24 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="pkg.go.dev Go 包",
                 platform="golang",
                 endpoints=go_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="packagist",
+                label="Packagist PHP 包",
+                platform="packagist",
+                endpoints=packagist_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="nuget",
+                label="NuGet .NET 包",
+                platform="nuget",
+                endpoints=nuget_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="pubdev",
+                label="pub.dev Dart/Flutter 包",
+                platform="pubdev",
+                endpoints=pubdev_endpoints,
             ),
         ]
     )

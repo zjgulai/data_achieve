@@ -316,6 +316,15 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # Go 包 (2 endpoints)
     "go_package":             "go_package",
     "go_search":              "go_search",
+    # Packagist PHP 包 (2 endpoints)
+    "packagist_package":      "packagist_package",
+    "packagist_search":       "packagist_search",
+    # NuGet .NET 包 (2 endpoints)
+    "nuget_package":          "nuget_package",
+    "nuget_search":           "nuget_search",
+    # pub.dev Dart/Flutter 包 (2 endpoints)
+    "pubdev_package":         "pubdev_package",
+    "pubdev_search":          "pubdev_search",
 }
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -357,6 +366,12 @@ _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
     "rubygems_search":            {"query": "web", "max_items": 10},
     "go_package":                 {"package": "github.com/gin-gonic/gin"},
     "go_search":                  {"query": "http server", "max_items": 10},
+    "packagist_package":          {"package": "laravel/framework"},
+    "packagist_search":           {"query": "http", "max_items": 10},
+    "nuget_package":              {"package": "Newtonsoft.Json"},
+    "nuget_search":               {"query": "json", "max_items": 10},
+    "pubdev_package":             {"package": "http"},
+    "pubdev_search":              {"query": "flutter", "max_items": 10},
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)
