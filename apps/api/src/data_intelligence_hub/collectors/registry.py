@@ -91,6 +91,17 @@ from data_intelligence_hub.collectors.twscrape_collector import (
     TwscrapeUserTweetsCollector,
 )
 from data_intelligence_hub.collectors.wappalyzer_collector import TechStackDetectCollector
+from data_intelligence_hub.collectors.hackernews_collector import (
+    HackerNewsFrontPageCollector,
+    HackerNewsSearchCollector,
+    HackerNewsUserCollector,
+)
+from data_intelligence_hub.collectors.package_registry_collector import (
+    NpmPackageCollector,
+    NpmSearchCollector,
+    PyPIPackageCollector,
+    PyPISearchCollector,
+)
 
 CollectorClass = type[BaseCollector]
 
@@ -158,6 +169,13 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     RobinUsernameCollector.collector_type: RobinUsernameCollector,
     RobinEmailCollector.collector_type: RobinEmailCollector,
     BrowserUseCollector.collector_type: BrowserUseCollector,
+    HackerNewsFrontPageCollector.collector_type: HackerNewsFrontPageCollector,
+    HackerNewsSearchCollector.collector_type: HackerNewsSearchCollector,
+    HackerNewsUserCollector.collector_type: HackerNewsUserCollector,
+    NpmPackageCollector.collector_type: NpmPackageCollector,
+    NpmSearchCollector.collector_type: NpmSearchCollector,
+    PyPIPackageCollector.collector_type: PyPIPackageCollector,
+    PyPISearchCollector.collector_type: PyPISearchCollector,
 }
 
 

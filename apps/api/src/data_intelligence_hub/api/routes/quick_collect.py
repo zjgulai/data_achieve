@@ -297,6 +297,16 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "robin_darkweb_username": "robin_darkweb_username",
     "robin_darkweb_email":    "robin_darkweb_email",
     "browser_use_task":       "browser_use_task",
+    # Hacker News (3 endpoints)
+    "hackernews_front_page":  "hackernews_front_page",
+    "hackernews_search":      "hackernews_search",
+    "hackernews_user":        "hackernews_user",
+    # npm registry (2 endpoints)
+    "npm_package":            "npm_package",
+    "npm_search":             "npm_search",
+    # PyPI (2 endpoints)
+    "pypi_package":           "pypi_package",
+    "pypi_search":            "pypi_search",
 }
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -325,6 +335,13 @@ _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
     "robin_darkweb_username":     {"username": "testuser", "max_results": 5},
     "robin_darkweb_email":        {"email": "test@example.com", "max_results": 5},
     "browser_use_task":           {"task": "Extract the page title and main heading", "url": "https://example.com", "max_steps": 5},
+    "hackernews_front_page":      {"max_items": 10},
+    "hackernews_search":          {"query": "python", "max_items": 10},
+    "hackernews_user":            {"username": "pg", "max_items": 10},
+    "npm_package":                {"package": "react"},
+    "npm_search":                 {"query": "typescript", "max_items": 10},
+    "pypi_package":               {"package": "requests"},
+    "pypi_search":                {"query": "fastapi", "max_items": 10},
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

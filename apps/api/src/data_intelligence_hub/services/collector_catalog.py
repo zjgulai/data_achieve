@@ -532,6 +532,48 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="用自然语言描述采集任务，AI 控制浏览器自动完成采集。",
         config_schema={"required": ["task"], "properties": {"task": "string", "url": "string", "max_steps": "integer"}},
     ),
+    CollectorDefinition(
+        type="hackernews_front_page",
+        name="Hacker News 首页热门",
+        description="抓取 Hacker News 首页热门文章，免费无需 API Key。",
+        config_schema={"required": [], "properties": {"max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="hackernews_search",
+        name="Hacker News 搜索",
+        description="通过 Algolia 搜索 Hacker News 历史帖子。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="hackernews_user",
+        name="Hacker News 用户提交",
+        description="抓取指定 HN 用户的提交记录。",
+        config_schema={"required": ["username"], "properties": {"username": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="npm_package",
+        name="npm 包信息",
+        description="从 npm registry 获取包的详细元数据。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="npm_search",
+        name="npm 包搜索",
+        description="按关键词搜索 npm 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="pypi_package",
+        name="PyPI 包信息",
+        description="从 PyPI 获取 Python 包的详细元数据。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="pypi_search",
+        name="PyPI 包搜索",
+        description="通过 PyPI RSS 搜索 Python 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
 )
 
 
@@ -616,6 +658,9 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "aliens_eye_selfcheck",
         "robin_darkweb_search", "robin_darkweb_username", "robin_darkweb_email",
         "browser_use_task",
+        "hackernews_front_page", "hackernews_search", "hackernews_user",
+        "npm_package", "npm_search",
+        "pypi_package", "pypi_search",
     }:
         return _validate_passthrough_config(config)
 

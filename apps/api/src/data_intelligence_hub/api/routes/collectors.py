@@ -3284,6 +3284,106 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    hackernews_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="hackernews_front_page",
+            label="HN 首页热门故事",
+            platform="hackernews",
+            description="抓取 Hacker News 首页热门文章（topstories），免费无需 API Key。max_items 控制数量（默认 30，最多 500）。",
+            status="verified",
+            required_params=[],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="Hacker News Firebase API (免费)",
+            content_type="post",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="hackernews_search",
+            label="HN 内容搜索",
+            platform="hackernews",
+            description="通过 Algolia 搜索 Hacker News 历史帖子。query 为关键词，max_items 控制返回数量。免费无需 API Key。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="HN Algolia Search API (免费)",
+            content_type="post",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="hackernews_user",
+            label="HN 用户提交记录",
+            platform="hackernews",
+            description="抓取指定 HN 用户的所有提交记录（文章、评论等）。username 为 HN 用户名，max_items 控制数量。",
+            status="verified",
+            required_params=["username"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="Hacker News Firebase API (免费)",
+            content_type="post",
+            method="api",
+        ),
+    ]
+
+    npm_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="npm_package",
+            label="npm 包信息",
+            platform="npm",
+            description="从 npm registry 获取指定包的详细元数据，包括版本、依赖、下载量、发布者等。package 为包名（如 react）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="npm Registry API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="npm_search",
+            label="npm 包搜索",
+            platform="npm",
+            description="按关键词搜索 npm 包，返回包名、描述、评分、下载量等。query 为搜索词，max_items 控制结果数（默认 20）。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="npm Registry API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
+    pypi_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="pypi_package",
+            label="PyPI 包信息",
+            platform="pypi",
+            description="从 PyPI 获取 Python 包的详细元数据，包括版本、依赖、许可证、作者等。package 为包名（如 requests）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="PyPI JSON API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="pypi_search",
+            label="PyPI 包搜索",
+            platform="pypi",
+            description="通过 PyPI 搜索 Python 包。暂时禁用（服务器端 Cloudflare 拦截）。",
+            status="disabled",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="PyPI (免费，需绕过 Cloudflare)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3441,6 +3541,24 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="Browser Use AI 浏览器",
                 platform="web",
                 endpoints=browser_use_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="hackernews",
+                label="Hacker News",
+                platform="hackernews",
+                endpoints=hackernews_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="npm",
+                label="npm 包注册表",
+                platform="npm",
+                endpoints=npm_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="pypi",
+                label="PyPI Python 包",
+                platform="pypi",
+                endpoints=pypi_endpoints,
             ),
         ]
     )
