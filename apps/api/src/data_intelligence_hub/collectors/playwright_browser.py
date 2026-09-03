@@ -29,6 +29,10 @@ def _assert_playwright_available() -> None:
         )
 
 
+def _obscura_cdp_url() -> str | None:
+    return os.environ.get("OBSCURA_CDP_URL", "").strip() or None
+
+
 def _chromium_launch_kwargs() -> dict[str, Any]:
     exe = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
     kwargs: dict[str, Any] = {
@@ -75,13 +79,22 @@ class PlaywrightBrowserCollector(BaseCollector):
             "wait_selector": wait_selector,
         }
 
+    async def _get_browser(self, pw: Any) -> Any:
+        cdp_url = _obscura_cdp_url()
+        if cdp_url:
+            try:
+                return await pw.chromium.connect_over_cdp(cdp_url)
+            except Exception:
+                pass
+        return await pw.chromium.launch(**_chromium_launch_kwargs())
+
     async def test(self) -> CollectorTestResult:
         _assert_playwright_available()
         config = self.validate_config()
         from playwright.async_api import async_playwright
 
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(**_chromium_launch_kwargs())
+            browser = await self._get_browser(pw)
             try:
                 page = await browser.new_page()
                 response = await page.goto(
@@ -99,10 +112,11 @@ class PlaywrightBrowserCollector(BaseCollector):
                 message=f"HTTP {status} from {config['url']}",
                 logs=[collector_log("browser_test_failed", f"status={status}")],
             )
+        backend = "obscura" if _obscura_cdp_url() else "chromium"
         return CollectorTestResult(
             status="ok",
-            message=f"Browser reached {config['url']} (HTTP {status})",
-            logs=[collector_log("browser_test_ok", f"status={status}")],
+            message=f"Browser ({backend}) reached {config['url']} (HTTP {status})",
+            logs=[collector_log("browser_test_ok", f"status={status} backend={backend}")],
         )
 
     async def collect(self) -> CollectionResult:
@@ -112,7 +126,7 @@ class PlaywrightBrowserCollector(BaseCollector):
 
         collected_at = datetime.now(UTC)
         async with async_playwright() as pw:
-            browser = await pw.chromium.launch(**_chromium_launch_kwargs())
+            browser = await self._get_browser(pw)
             try:
                 page = await browser.new_page()
                 response = await page.goto(
@@ -150,6 +164,7 @@ class PlaywrightBrowserCollector(BaseCollector):
                 "http_status": http_status,
                 "extract_mode": extract_mode,
                 "content": content,
+                "backend": "obscura" if _obscura_cdp_url() else "chromium",
             },
             collected_at=collected_at,
         )
@@ -163,3 +178,4 @@ class PlaywrightBrowserCollector(BaseCollector):
                 )
             ],
         )
+

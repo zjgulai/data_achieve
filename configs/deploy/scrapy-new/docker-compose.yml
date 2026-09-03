@@ -53,6 +53,8 @@ services:
     build:
       context: ../../../apps/api
       dockerfile: Dockerfile
+      args:
+        INSTALL_OSINT: "true"
     container_name: data_achieve_scrapy_api
     depends_on:
       db:
@@ -93,6 +95,19 @@ services:
       SPIDERFOOT_TIMEOUT: ${SPIDERFOOT_TIMEOUT:-300}
       MEDIACRAWLER_BASE_URL: ${MEDIACRAWLER_BASE_URL:-http://mediacrawler-bridge:8080}
       SCRAPY_DEMO_PASSWORD: ${SCRAPY_DEMO_PASSWORD:-}
+      # MediaCrawler 平台 cookies（获取方式见 docs/cookie-guide.md）
+      BILIBILI_COOKIES: ${BILIBILI_COOKIES:-}
+      WEIBO_COOKIES: ${WEIBO_COOKIES:-}
+      ZHIHU_COOKIES: ${ZHIHU_COOKIES:-}
+      KUAISHOU_COOKIES: ${KUAISHOU_COOKIES:-}
+      # Twitter 多账号（JSON 数组格式）
+      TWITTER_ACCOUNTS_JSON: ${TWITTER_ACCOUNTS_JSON:-}
+      # OSINT 工具配置
+      BLACKBIRD_BASE_URL: ${BLACKBIRD_BASE_URL:-}
+      BESTBLOGS_API_KEY: ${BESTBLOGS_API_KEY:-}
+      TOR_PROXY_URL: ${TOR_PROXY_URL:-socks5://127.0.0.1:9050}
+      ALIENS_EYE_NO_ML: ${ALIENS_EYE_NO_ML:-0}
+      OBSCURA_CDP_URL: ${OBSCURA_CDP_URL:-http://obscura:9222}
     expose:
       - "8000"
     volumes:
@@ -140,6 +155,23 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - scrapy_internal
+
+  # Obscura — 高性能 Rust 无头浏览器，内置反检测，替换 Chromium 作为 Playwright CDP 后端
+  obscura:
+    container_name: data_achieve_scrapy_obscura
+    image: ghcr.io/h4ckf0r0day/obscura:latest
+    command: ["server", "--port", "9222", "--host", "0.0.0.0"]
+    expose:
+      - "9222"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9222/json/version >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - scrapy_internal
 

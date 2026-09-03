@@ -21,10 +21,16 @@ COPY alembic ./alembic
 COPY src ./src
 
 ARG INSTALL_PLAYWRIGHT=false
+ARG INSTALL_OSINT=false
 RUN uv sync --frozen --no-dev \
     && if [ "$INSTALL_PLAYWRIGHT" = "true" ]; then \
          uv pip install playwright \
          && uv run playwright install chromium --with-deps; \
+       fi \
+    && if [ "$INSTALL_OSINT" = "true" ]; then \
+         apt-get update \
+         && apt-get install -y --no-install-recommends tor \
+         && rm -rf /var/lib/apt/lists/*; \
        fi \
     && chown -R app:app /app
 

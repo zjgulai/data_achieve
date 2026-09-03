@@ -3112,6 +3112,178 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    aliens_eye_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_basic",
+            label="Aliens Eye 基础扫描",
+            platform="web",
+            description=(
+                "ML + 30维启发式检测，在 840+ 平台快速扫描用户名。"
+                "比 Sherlock 更准确（ML 评分，非纯 HTTP 状态码）。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=[],
+            cost_hint="免费（本地运行）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_advanced",
+            label="Aliens Eye 高级扫描（含变体）",
+            platform="web",
+            description=(
+                "带前缀/后缀用户名变体的全量平台扫描（full profile），"
+                "可通过 sites 参数指定目标平台子集。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=["sites"],
+            cost_hint="免费（本地运行，耗时较长）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_correlate",
+            label="Aliens Eye 跨站关联",
+            platform="web",
+            description=(
+                "扫描后按头像哈希、Bio 内容、共享链接聚类同一人的多平台账号。"
+                "判断多个账号是否属于同一真实用户。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=[],
+            cost_hint="免费（本地运行）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_recurse",
+            label="Aliens Eye 递归扩展",
+            platform="web",
+            description=(
+                "递归追踪 Bio 中发现的其他用户名并继续扫描。"
+                "depth 参数控制递归深度（默认 1，最大 3）。"
+            ),
+            status="verified",
+            required_params=["username"],
+            optional_params=["depth"],
+            cost_hint="免费（本地运行，耗时随深度增加）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_domain",
+            label="Aliens Eye 域名检测",
+            platform="web",
+            description="检测 username.com/.io/.net/.org 等常见域名变体是否已注册。",
+            status="verified",
+            required_params=["username"],
+            optional_params=[],
+            cost_hint="免费（本地运行）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_batch",
+            label="Aliens Eye 批量用户名扫描",
+            platform="web",
+            description="一次扫描多个用户名（最多 10 个），usernames 传逗号分隔字符串或数组。",
+            status="verified",
+            required_params=["usernames"],
+            optional_params=[],
+            cost_hint="免费（本地运行）",
+            provider="Aliens Eye (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="aliens_eye_selfcheck",
+            label="Aliens Eye 准确率自检",
+            platform="web",
+            description="运行内置自检，返回各平台检测精确率/召回率/F1 指标报告。",
+            status="verified",
+            required_params=[],
+            optional_params=[],
+            cost_hint="免费（本地运行，约 5 分钟）",
+            provider="Aliens Eye (开源)",
+            content_type="search_result",
+            method="web_crawl",
+        ),
+    ]
+
+    robin_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="robin_darkweb_search",
+            label="Robin 暗网关键词搜索",
+            platform="web",
+            description=(
+                "通过 Tor 连接 Ahmia/Onionland/Torch/DarkSearch 等暗网搜索引擎，"
+                "搜索关键词并用 LLM 过滤摘要，返回暗网情报报告。"
+                "需要服务器安装 Tor 守护进程。"
+            ),
+            status="verified",
+            required_params=["keyword"],
+            optional_params=["engines", "max_results"],
+            cost_hint="免费（需 Tor）",
+            provider="Robin (开源)",
+            content_type="news",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="robin_darkweb_username",
+            label="Robin 暗网用户名搜索",
+            platform="web",
+            description="在暗网搜索指定用户名的相关泄露信息、论坛帖子、账号出售记录。",
+            status="verified",
+            required_params=["username"],
+            optional_params=["max_results"],
+            cost_hint="免费（需 Tor）",
+            provider="Robin (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="robin_darkweb_email",
+            label="Robin 暗网邮箱泄露检测",
+            platform="web",
+            description="在暗网搜索指定邮箱是否出现在泄露数据库、凭证列表或黑市记录中。",
+            status="verified",
+            required_params=["email"],
+            optional_params=["max_results"],
+            cost_hint="免费（需 Tor）",
+            provider="Robin (开源)",
+            content_type="osint_report",
+            method="web_crawl",
+        ),
+    ]
+
+    browser_use_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="browser_use_task",
+            label="Browser Use AI 任务采集",
+            platform="web",
+            description=(
+                "用自然语言描述采集任务，AI 控制浏览器自动导航、点击、填表、提取数据。"
+                "task 参数填任务描述（如：提取所有商品名称和价格），url 参数填起始页面。"
+                "需配置 ANTHROPIC_API_KEY 或 OPENAI_API_KEY。"
+            ),
+            status="verified",
+            required_params=["task"],
+            optional_params=["url", "max_steps"],
+            cost_hint="按 LLM token 计费（默认 Claude）",
+            provider="browser-use (开源)",
+            content_type="web_page",
+            method="browser",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3251,6 +3423,24 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="Blackbird 用户名/邮箱 OSINT",
                 platform="web",
                 endpoints=blackbird_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="aliens_eye",
+                label="Aliens Eye ML-OSINT",
+                platform="web",
+                endpoints=aliens_eye_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="robin",
+                label="Robin 暗网情报",
+                platform="web",
+                endpoints=robin_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="browser_use",
+                label="Browser Use AI 浏览器",
+                platform="web",
+                endpoints=browser_use_endpoints,
             ),
         ]
     )

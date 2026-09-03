@@ -466,6 +466,72 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
             "properties": {"target": "string", "modules": "array"},
         },
     ),
+    CollectorDefinition(
+        type="aliens_eye_basic",
+        name="Aliens Eye 基础扫描",
+        description="通过 ML 检测在 840+ 平台快速搜索用户名。",
+        config_schema={"required": ["username"], "properties": {"username": "string"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_advanced",
+        name="Aliens Eye 高级扫描",
+        description="带用户名变体（前缀/后缀）的全量平台扫描，可指定平台范围。",
+        config_schema={"required": ["username"], "properties": {"username": "string", "sites": "string"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_correlate",
+        name="Aliens Eye 跨站关联",
+        description="扫描后按头像哈希、Bio、共享链接聚类同一人的多个账号。",
+        config_schema={"required": ["username"], "properties": {"username": "string"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_recurse",
+        name="Aliens Eye 递归扩展",
+        description="递归追踪 Bio 中发现的其他用户名并继续扫描。",
+        config_schema={"required": ["username"], "properties": {"username": "string", "depth": "integer"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_domain",
+        name="Aliens Eye 域名检测",
+        description="检测 username.com/.io/.net 等常见域名变体是否已注册。",
+        config_schema={"required": ["username"], "properties": {"username": "string"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_batch",
+        name="Aliens Eye 批量扫描",
+        description="一次扫描多个用户名（最多 10 个）。",
+        config_schema={"required": ["usernames"], "properties": {"usernames": "array"}},
+    ),
+    CollectorDefinition(
+        type="aliens_eye_selfcheck",
+        name="Aliens Eye 准确率报告",
+        description="运行内置自检，返回各平台检测精确率/召回率/F1 指标。",
+        config_schema={"required": [], "properties": {}},
+    ),
+    CollectorDefinition(
+        type="robin_darkweb_search",
+        name="Robin 暗网关键词搜索",
+        description="通过 Tor 在 8 个暗网搜索引擎搜索关键词，返回 .onion 结果。",
+        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_results": "integer"}},
+    ),
+    CollectorDefinition(
+        type="robin_darkweb_username",
+        name="Robin 暗网用户名搜索",
+        description="在暗网搜索用户名相关的泄露信息和市场记录。",
+        config_schema={"required": ["username"], "properties": {"username": "string", "max_results": "integer"}},
+    ),
+    CollectorDefinition(
+        type="robin_darkweb_email",
+        name="Robin 暗网邮箱泄露检测",
+        description="在暗网搜索邮箱是否出现在泄露数据库或凭证列表中。",
+        config_schema={"required": ["email"], "properties": {"email": "string", "max_results": "integer"}},
+    ),
+    CollectorDefinition(
+        type="browser_use_task",
+        name="Browser Use AI 任务采集",
+        description="用自然语言描述采集任务，AI 控制浏览器自动完成采集。",
+        config_schema={"required": ["task"], "properties": {"task": "string", "url": "string", "max_steps": "integer"}},
+    ),
 )
 
 
@@ -482,7 +548,11 @@ async def ensure_collectors_seeded(session: AsyncSession) -> None:
                     enabled=True,
                 )
             )
-    await session.flush()
+    try:
+        await session.flush()
+    except Exception:
+        await session.rollback()
+        pass
 
 
 async def require_collector(session: AsyncSession, collector_type: str) -> Collector:
@@ -541,6 +611,11 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "spiderfoot_cert_transparency", "spiderfoot_dark_web", "spiderfoot_attack_surface",
         "bestblogs_articles",
         "blackbird_email_osint", "blackbird_username_osint",
+        "aliens_eye_basic", "aliens_eye_advanced", "aliens_eye_correlate",
+        "aliens_eye_recurse", "aliens_eye_domain", "aliens_eye_batch",
+        "aliens_eye_selfcheck",
+        "robin_darkweb_search", "robin_darkweb_username", "robin_darkweb_email",
+        "browser_use_task",
     }:
         return _validate_passthrough_config(config)
 

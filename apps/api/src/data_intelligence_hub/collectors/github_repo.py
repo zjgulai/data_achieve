@@ -59,7 +59,7 @@ class GitHubRepoCollector(BaseCollector):
         url = f"https://api.github.com/repos/{owner}/{repo}"
         if self.http_client is not None:
             return await _fetch_json(self.http_client, url)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             return await _fetch_json(client, url)
 
     async def _get_latest_release(self, owner: str, repo: str) -> dict[str, Any] | None:
@@ -67,7 +67,7 @@ class GitHubRepoCollector(BaseCollector):
         try:
             if self.http_client is not None:
                 return await _fetch_json(self.http_client, url)
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
             if str(exc) == "http_not_found: upstream returned 404":
@@ -79,7 +79,7 @@ class GitHubRepoCollector(BaseCollector):
         try:
             if self.http_client is not None:
                 return await _fetch_json(self.http_client, url)
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
             if str(exc) == "http_not_found: upstream returned 404":

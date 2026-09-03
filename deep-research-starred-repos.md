@@ -81,8 +81,9 @@
 ### 待补充调研 (深度二轮)
 - [x] MediaCrawler: 63.1k stars, Playwright 爬取小红书/抖音/快手/B站/微博/贴吧/知乎，支持评论爬取、IP 代理、生成词云图，WebUI 可视化界面
 - [x] twscrape: 2.7k stars, 基于 cookie 的 X/Twitter 多账号轮换采集器，支持搜索/用户/评论/关注者，自动处理 rate limit
-- [x] apify/agent-skills: 2.4k stars, Apify 官方 AI agent 技能包，130+ 精选 Actors + 30k+ Apify Store 自动回退，支持 Claude Code/Cursor/Windsurf/Codex/Gemini CLI
-- [ ] 剩余 13+ repos 需二轮深度分析
+- [x] apify/agent-skills: 2.4k stars, Apify 官方 AI agent 技能包，涵盖 14 大平台（Instagram/Facebook/TikTok/YouTube/LinkedIn/Google Maps 等）120+ actors，已写入 `docs/apify-integration-analysis.md`
+- [ ] 4 个后台 explore 任务运行中（mubeng/autoscraper, browser-use/obscura, wigolo/bb-browser/anysearch/robin, Agent-Reach）
+- [ ] 剩余 10+ repos 需二轮深度分析
 
 ---
 

@@ -284,6 +284,19 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # Blackbird OSINT (2 endpoints)
     "blackbird_email_osint": "blackbird_email_osint",
     "blackbird_username_osint": "blackbird_username_osint",
+    # Aliens Eye ML-OSINT (7 endpoints)
+    "aliens_eye_basic":     "aliens_eye_basic",
+    "aliens_eye_advanced":  "aliens_eye_advanced",
+    "aliens_eye_correlate": "aliens_eye_correlate",
+    "aliens_eye_recurse":   "aliens_eye_recurse",
+    "aliens_eye_domain":    "aliens_eye_domain",
+    "aliens_eye_batch":     "aliens_eye_batch",
+    "aliens_eye_selfcheck": "aliens_eye_selfcheck",
+    # Robin 暗网 OSINT (3 endpoints)
+    "robin_darkweb_search":   "robin_darkweb_search",
+    "robin_darkweb_username": "robin_darkweb_username",
+    "robin_darkweb_email":    "robin_darkweb_email",
+    "browser_use_task":       "browser_use_task",
 }
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -301,6 +314,17 @@ _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
     "juejin_articles":            {"keyword": "python"},
     "sherlock":                   {"username": "github"},
     "maigret":                    {"username": "github"},
+    "aliens_eye_basic":           {"username": "github"},
+    "aliens_eye_advanced":        {"username": "github"},
+    "aliens_eye_correlate":       {"username": "github"},
+    "aliens_eye_recurse":         {"username": "github", "depth": 1},
+    "aliens_eye_domain":          {"username": "github"},
+    "aliens_eye_batch":           {"usernames": "github,torvalds"},
+    "aliens_eye_selfcheck":       {},
+    "robin_darkweb_search":       {"keyword": "data breach", "max_results": 5},
+    "robin_darkweb_username":     {"username": "testuser", "max_results": 5},
+    "robin_darkweb_email":        {"email": "test@example.com", "max_results": 5},
+    "browser_use_task":           {"task": "Extract the page title and main heading", "url": "https://example.com", "max_steps": 5},
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

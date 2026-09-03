@@ -24,6 +24,21 @@ from data_intelligence_hub.collectors.blackbird_collector import (
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
 )
+from data_intelligence_hub.collectors.aliens_eye_collector import (
+    AliensEyeAdvancedCollector,
+    AliensEyeBatchCollector,
+    AliensEyeBasicCollector,
+    AliensEyeCorrelateCollector,
+    AliensEyeDomainCollector,
+    AliensEyeRecurseCollector,
+    AliensEyeSelfcheckCollector,
+)
+from data_intelligence_hub.collectors.browser_use_collector import BrowserUseCollector
+from data_intelligence_hub.collectors.robin_collector import (
+    RobinEmailCollector,
+    RobinKeywordCollector,
+    RobinUsernameCollector,
+)
 from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
 from data_intelligence_hub.collectors.firecrawl_collector import (
     FirecrawlBatchScrapeCollector,
@@ -132,6 +147,17 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     BlackbirdEmailCollector.collector_type: BlackbirdEmailCollector,
     BlackbirdUsernameCollector.collector_type: BlackbirdUsernameCollector,
     AutoScraperEnhancedWebCollector.collector_type: AutoScraperEnhancedWebCollector,
+    AliensEyeBasicCollector.collector_type: AliensEyeBasicCollector,
+    AliensEyeAdvancedCollector.collector_type: AliensEyeAdvancedCollector,
+    AliensEyeCorrelateCollector.collector_type: AliensEyeCorrelateCollector,
+    AliensEyeRecurseCollector.collector_type: AliensEyeRecurseCollector,
+    AliensEyeDomainCollector.collector_type: AliensEyeDomainCollector,
+    AliensEyeBatchCollector.collector_type: AliensEyeBatchCollector,
+    AliensEyeSelfcheckCollector.collector_type: AliensEyeSelfcheckCollector,
+    RobinKeywordCollector.collector_type: RobinKeywordCollector,
+    RobinUsernameCollector.collector_type: RobinUsernameCollector,
+    RobinEmailCollector.collector_type: RobinEmailCollector,
+    BrowserUseCollector.collector_type: BrowserUseCollector,
 }
 
 

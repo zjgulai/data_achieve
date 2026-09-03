@@ -59,14 +59,18 @@ def _load_accounts() -> list[dict[str, str]]:
 def _get_api() -> Any:
     """Lazily import twscrape and return a configured API instance."""
     try:
-        from twscrape import API  # type: ignore[import-untyped]
+        from twscrape import API, AccountsPool  # type: ignore[import-untyped]
     except ImportError as exc:
         raise CollectorError(
             "twscrape not installed — add it to pyproject.toml dependencies"
         ) from exc
 
     proxy = os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY")
-    api = API(pool=_DB_PATH, proxy=proxy or None)
+    try:
+        pool = AccountsPool(_DB_PATH)
+        api = API(pool=pool, proxy=proxy or None)
+    except TypeError:
+        api = API(pool=_DB_PATH, proxy=proxy or None)  # type: ignore[call-arg]
     return api
 
 

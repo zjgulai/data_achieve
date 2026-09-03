@@ -1,6 +1,6 @@
 # Data Intelligence Hub — Agent 工作指南
 
-> 最后更新：2026-09-01 · commit `42a0dc7` · 分支 `codex/social-api-private-matrix-20260708`
+> 最后更新：2026-09-03 · 热推 · 分支 `codex/social-api-private-matrix-20260708`
 
 ## 项目一句话定位
 
@@ -112,7 +112,7 @@ configs/deploy/scrapy/
 
 ### 已完成（生产可用）
 
-| 任务 | commit | 状态 |
+| 任务 | commit/热推 | 状态 |
 |---|---|---|
 | D4 监管 RSS（FDA/NHS/OPSS/PR Newswire）| `8d462e8` | ✅ verified×4 |
 | D5 AnySearch 采集器 | `7e8468a` | ✅ verified×2，records=10 |
@@ -123,29 +123,43 @@ configs/deploy/scrapy/
 | BestBlogs AI 精选文章 | `5a37483` | ✅ verified×1，catalog 独立分组 |
 | Blackbird 邮箱/用户名 OSINT | `5a37483` | ✅ verified×2，catalog 独立分组 |
 | AutoScraper 智能提取 | `42a0dc7` | ✅ verified×1，已入 rss_web 组 |
-| MediaCrawler（B站/微博/知乎/快手）| `c299697` | ✅ 8 端点 |
+| MediaCrawler（B站/微博/知乎/快手）| `c299697` | ✅ 8 端点（cookies 需配置才生效）|
 | AnyCrawl SERP（百度/Bing/DDG）| `fedb26b` | ✅ 3 端点 |
 | Maigret/Sherlock OSINT | `cdc81e9` | ✅ 2 端点 |
-| twscrape X/Twitter | `cdc81e9` | ✅ 3 端点 |
+| twscrape X/Twitter | `cdc81e9` | ✅ 3 端点（多账号需配置）|
 | Firecrawl 全站采集 | `fe8cd0a` | ✅ 3 端点 |
 | 技术博客（Dev.to/掘金/Substack）| `11b5cf0` | ✅ 3 端点 |
 | Wappalyzer 技术栈检测 | `11b5cf0` | ✅ 1 端点 |
 | catalog 同步（bestblogs/blackbird/spiderfoot 扩展）| 热推 2026-08-31 | ✅ verified 197→207 |
+| **Aliens Eye ML-OSINT**（7 端点）| 热推 2026-09-03 | ✅ 207→217 verified，ML+840+平台 |
+| **Robin 暗网 OSINT**（3 端点）| 热推 2026-09-03 | ✅ catalog 已注册，需 Tor |
+| **Obscura CDP 接入**（3 端点质量提升）| 2026-09-03 | ✅ PlaywrightBrowserCollector 优先用 Obscura，降级 Chromium |
+| **browser-use AI 浏览器**（1 端点）| 2026-09-03 | ✅ BrowserUseCollector 已实现，需 LLM key |
+| **Aliens Eye ML-OSINT**（7 端点）| 热推 2026-09-03 | ✅ 207→217 verified，ML+840+平台 |
+| **Robin 暗网 OSINT**（3 端点）| 热推 2026-09-03 | ✅ catalog 已注册，需 Tor |
+| **Obscura CDP 接入**（3 端点质量提升）| 2026-09-03 | ✅ PlaywrightBrowserCollector 优先用 Obscura，降级 Chromium |
+| **browser-use AI 浏览器**（1 端点）| 2026-09-03 | ✅ BrowserUseCollector 已实现，需 LLM key |
 
-### 未完成 / 待处理
+### 未完成 / 等待配置
 
 | 任务 | 说明 | 优先级 |
 |---|---|---|
-| Jina Reader 生产网络 | 服务器 IP 直连 `r.jina.ai` 超时，需配代理或中转 | 中 |
+| E1: MediaCrawler cookies | 需用户提供 BILIBILI/WEIBO/ZHIHU/KUAISHOU cookies，写入 `.env.production` | **高** |
+| E2: Twitter 多账号 | 需用户提供 TWITTER_ACCOUNTS_JSON，写入 `.env.production` | **高** |
+| Robin Tor 配置 | 新服务器安装 Tor（`apt install tor`），docker-compose INSTALL_OSINT=true 重建 | 中 |
+| browser-use LLM key | 在 `.env.production` 配 ANTHROPIC_API_KEY 或 OPENAI_API_KEY | 中 |
+| Obscura 容器启动 | 新服务器 docker-compose 重建时自动拉取 `h4ckf0r0day/obscura:latest` | 中 |
+| Jina Reader 生产网络 | 服务器 IP 直连 `r.jina.ai` 超时，需配代理或中转 | 低 |
 | D2 Shopee | 生产 IP 被封（HTTP 403），暂不可行 | 取消 |
 | B1 Reddit collector | **永久取消**（用户明确要求）| 取消 |
 | B2 YouTube collector | **永久取消**（用户明确要求）| 取消 |
 
-### 下一步可做的事
+### 下一步可做的事（代码已就绪，等配置）
 
-- 新增更多平台采集卡片（参考「新增采集卡片流程」）
-- 配置 Jina Reader 代理（在 docker-compose.yml 加 `HTTP_PROXY` 环境变量）
-- 生产完整重建（当前是热更新状态，下次正式发布需 `docker compose up --build`）
+1. 提供 B站 Cookie → 立即激活 3 个 MediaCrawler 端点
+2. 提供微博/知乎/快手 Cookie → 各再激活若干端点
+3. 提供 Twitter 多账号 JSON → twscrape 3 端点稳定运行
+4. 新服务器 `docker compose up --build` → Obscura + Robin(Tor) + aliens-eye 全部生效
 
 ---
 
