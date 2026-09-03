@@ -307,6 +307,15 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # PyPI (2 endpoints)
     "pypi_package":           "pypi_package",
     "pypi_search":            "pypi_search",
+    # crates.io Rust 包 (2 endpoints)
+    "crates_package":         "crates_package",
+    "crates_search":          "crates_search",
+    # RubyGems Ruby 包 (2 endpoints)
+    "rubygems_package":       "rubygems_package",
+    "rubygems_search":        "rubygems_search",
+    # Go 包 (2 endpoints)
+    "go_package":             "go_package",
+    "go_search":              "go_search",
 }
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
@@ -342,6 +351,12 @@ _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
     "npm_search":                 {"query": "typescript", "max_items": 10},
     "pypi_package":               {"package": "requests"},
     "pypi_search":                {"query": "fastapi", "max_items": 10},
+    "crates_package":             {"package": "serde"},
+    "crates_search":              {"query": "async", "max_items": 10},
+    "rubygems_package":           {"package": "rails"},
+    "rubygems_search":            {"query": "web", "max_items": 10},
+    "go_package":                 {"package": "github.com/gin-gonic/gin"},
+    "go_search":                  {"query": "http server", "max_items": 10},
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)

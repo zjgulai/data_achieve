@@ -102,6 +102,14 @@ from data_intelligence_hub.collectors.package_registry_collector import (
     PyPIPackageCollector,
     PyPISearchCollector,
 )
+from data_intelligence_hub.collectors.pkg_community_collector import (
+    CratesIoPackageCollector,
+    CratesIoSearchCollector,
+    RubyGemsPackageCollector,
+    RubyGemsSearchCollector,
+    GoPackageCollector,
+    GoSearchCollector,
+)
 
 CollectorClass = type[BaseCollector]
 
@@ -176,6 +184,12 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     NpmSearchCollector.collector_type: NpmSearchCollector,
     PyPIPackageCollector.collector_type: PyPIPackageCollector,
     PyPISearchCollector.collector_type: PyPISearchCollector,
+    CratesIoPackageCollector.collector_type: CratesIoPackageCollector,
+    CratesIoSearchCollector.collector_type: CratesIoSearchCollector,
+    RubyGemsPackageCollector.collector_type: RubyGemsPackageCollector,
+    RubyGemsSearchCollector.collector_type: RubyGemsSearchCollector,
+    GoPackageCollector.collector_type: GoPackageCollector,
+    GoSearchCollector.collector_type: GoSearchCollector,
 }
 
 

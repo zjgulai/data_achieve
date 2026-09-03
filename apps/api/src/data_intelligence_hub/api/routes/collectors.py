@@ -3384,6 +3384,93 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    crates_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="crates_package",
+            label="crates.io 包信息",
+            platform="crates",
+            description="从 crates.io 获取 Rust crate 的详细元数据，包括版本、下载量、license、关键词等。package 为 crate 名（如 serde）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="crates.io API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="crates_search",
+            label="crates.io 包搜索",
+            platform="crates",
+            description="按关键词搜索 crates.io 上的 Rust 包，返回名称、版本、下载量等。query 为搜索词，max_items 控制结果数。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="crates.io API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
+    rubygems_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="rubygems_package",
+            label="RubyGems 包信息",
+            platform="rubygems",
+            description="从 RubyGems 获取 Ruby gem 的详细元数据，包括版本、依赖、下载量等。package 为 gem 名（如 rails）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="RubyGems API (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="rubygems_search",
+            label="RubyGems 包搜索",
+            platform="rubygems",
+            description="按关键词搜索 RubyGems 上的 Ruby gem，返回名称、版本、下载量等。query 为搜索词，max_items 控制结果数。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="RubyGems API (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
+    go_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="go_package",
+            label="pkg.go.dev 包信息",
+            platform="golang",
+            description="从 pkg.go.dev 获取 Go 包的文档摘要和元数据。package 为完整 import path（如 github.com/gin-gonic/gin）。",
+            status="verified",
+            required_params=["package"],
+            optional_params=[],
+            cost_hint=None,
+            provider="pkg.go.dev (免费)",
+            content_type="product",
+            method="api",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="go_search",
+            label="pkg.go.dev 包搜索",
+            platform="golang",
+            description="在 pkg.go.dev 搜索 Go 包，返回 import path 和简介。query 为搜索词，max_items 控制结果数。",
+            status="verified",
+            required_params=["query"],
+            optional_params=["max_items"],
+            cost_hint=None,
+            provider="pkg.go.dev (免费)",
+            content_type="product",
+            method="api",
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3559,6 +3646,24 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="PyPI Python 包",
                 platform="pypi",
                 endpoints=pypi_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="crates",
+                label="crates.io Rust 包",
+                platform="crates",
+                endpoints=crates_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="rubygems",
+                label="RubyGems Ruby 包",
+                platform="rubygems",
+                endpoints=rubygems_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="golang",
+                label="pkg.go.dev Go 包",
+                platform="golang",
+                endpoints=go_endpoints,
             ),
         ]
     )

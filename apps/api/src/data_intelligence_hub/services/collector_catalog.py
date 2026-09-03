@@ -574,6 +574,42 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="通过 PyPI RSS 搜索 Python 包。",
         config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
     ),
+    CollectorDefinition(
+        type="crates_package",
+        name="crates.io Rust 包信息",
+        description="从 crates.io 获取 Rust 包的详细元数据，包括版本、下载量、依赖等。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="crates_search",
+        name="crates.io Rust 包搜索",
+        description="按关键词搜索 crates.io 上的 Rust 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="rubygems_package",
+        name="RubyGems 包信息",
+        description="从 RubyGems 获取 Ruby gem 的详细元数据，包括版本、依赖、下载量等。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="rubygems_search",
+        name="RubyGems 包搜索",
+        description="按关键词搜索 RubyGems 上的 Ruby gem。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
+    CollectorDefinition(
+        type="go_package",
+        name="pkg.go.dev Go 包信息",
+        description="从 pkg.go.dev 获取 Go 包的文档和元数据。package 为完整 import path（如 github.com/gin-gonic/gin）。",
+        config_schema={"required": ["package"], "properties": {"package": "string"}},
+    ),
+    CollectorDefinition(
+        type="go_search",
+        name="pkg.go.dev Go 包搜索",
+        description="在 pkg.go.dev 搜索 Go 包。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+    ),
 )
 
 
@@ -661,6 +697,9 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "hackernews_front_page", "hackernews_search", "hackernews_user",
         "npm_package", "npm_search",
         "pypi_package", "pypi_search",
+        "crates_package", "crates_search",
+        "rubygems_package", "rubygems_search",
+        "go_package", "go_search",
     }:
         return _validate_passthrough_config(config)
 

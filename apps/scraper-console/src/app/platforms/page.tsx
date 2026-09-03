@@ -89,6 +89,9 @@ const PLATFORM_LOGOS: Record<string, { bg: string; fg: string; letter: string }>
   hackernews:    { bg: "#FF6600", fg: "#fff",    letter: "HN"  },
   npm:           { bg: "#CC3534", fg: "#fff",    letter: "npm" },
   pypi:          { bg: "#3775A9", fg: "#fff",    letter: "PyPI"},
+  crates:        { bg: "#CE422B", fg: "#fff",    letter: "Rs"  },
+  rubygems:      { bg: "#CC342D", fg: "#fff",    letter: "Gem" },
+  golang:        { bg: "#00ACD7", fg: "#fff",    letter: "Go"  },
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -120,6 +123,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   devto: "Dev.to", juejin: "掘金", substack: "Substack",
   spiderfoot: "SpiderFoot OSINT", firecrawl: "Firecrawl", wappalyzer: "技术栈检测",
   hackernews: "Hacker News", npm: "npm", pypi: "PyPI",
+  crates: "crates.io", rubygems: "RubyGems", golang: "Go (pkg.go.dev)",
 };
 
 function getPlatformMeta(platform: string) {
