@@ -646,6 +646,78 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="按关键词搜索 pub.dev 上的 Dart/Flutter 包。",
         config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
     ),
+    CollectorDefinition(
+        type="apify_1688_product_search",
+        name="1688 商品搜索",
+        description="按关键词搜索 1688.com 批发商品，返回价格梯度、MOQ、供应商信息。",
+        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_items_per_url": "integer"}},
+    ),
+    CollectorDefinition(
+        type="apify_1688_product_detail",
+        name="1688 商品详情",
+        description="批量抓取 1688.com 商品详情页，返回 SKU、价格梯度、MOQ、供应商。",
+        config_schema={"required": ["urls"], "properties": {"urls": "array"}},
+    ),
+    CollectorDefinition(
+        type="apify_1688_advanced",
+        name="1688 高级采集（含图片反查/到岸成本）",
+        description="支持关键词搜索、以图搜货（图片 URL 反查）和到岸成本估算。",
+        config_schema={"required": ["type", "queries"], "properties": {"type": "string", "queries": "array", "shippingCountry": "string"}},
+    ),
+    CollectorDefinition(
+        type="apify_alibaba_product_search",
+        name="阿里巴巴国际站商品搜索（含规格/证书）",
+        description="采集 Alibaba.com 商品，支持规格书、CE/RoHS 认证信息、包装尺寸/重量。",
+        config_schema={"required": ["startUrls"], "properties": {"startUrls": "array", "maxItems": "integer"}},
+    ),
+    CollectorDefinition(
+        type="apify_alibaba_product_detail",
+        name="阿里巴巴国际站商品详情（梯级报价）",
+        description="抓取 Alibaba.com 单品详情，返回梯级报价、供应商资质、交货期。",
+        config_schema={"required": ["productUrls"], "properties": {"productUrls": "array"}},
+    ),
+    CollectorDefinition(
+        type="apify_amazon_bestsellers",
+        name="Amazon BSR 最佳卖家榜",
+        description="抓取 Amazon 分类 Best Sellers / New Releases 榜单，返回排名、价格、评分。",
+        config_schema={"required": ["categoryUrls"], "properties": {"categoryUrls": "array", "maxResults": "integer"}},
+    ),
+    CollectorDefinition(
+        type="apify_amazon_competitor_research",
+        name="Amazon 竞品批量研究（BSR/FBA/卖家数）",
+        description="按 ASIN 批量研究 Amazon 竞品，返回 BSR、FBA 状态、卖家数量，替代 Jungle Scout。",
+        config_schema={"required": ["asins"], "properties": {"asins": "array", "marketplace": "string"}},
+    ),
+    CollectorDefinition(
+        type="apify_amazon_bsr_tracker",
+        name="Amazon BSR 时序追踪（多站点）",
+        description="追踪指定 ASIN 在多 Amazon 站点的 BSR 变化，适合日度定时任务，替代 Keepa。",
+        config_schema={"required": ["asins"], "properties": {"asins": "array", "marketplaces": "array"}},
+    ),
+    CollectorDefinition(
+        type="apify_amazon_price_tracker",
+        name="Amazon + Shopify 跨平台价格追踪",
+        description="同时追踪 Amazon 和 Shopify 商品价格、库存、BSR 变化及 delta 告警。",
+        config_schema={"required": ["products"], "properties": {"products": "array"}},
+    ),
+    CollectorDefinition(
+        type="apify_aliexpress_product_search_v2",
+        name="AliExpress 商品搜索（多货币/多国运费）",
+        description="高质量 AliExpress 采集，支持 30+ 货币、40+ 收货国运费，适合 Dropshipping 利润估算。",
+        config_schema={"required": ["queries"], "properties": {"queries": "array", "shipTo": "string", "currency": "string"}},
+    ),
+    CollectorDefinition(
+        type="apify_shopify_products_monitor",
+        name="Shopify 独立站实时价格/库存监控",
+        description="实时监控 Shopify 独立站全品类价格和库存，适合竞品价格追踪。",
+        config_schema={"required": ["url"], "properties": {"url": "string", "maxProducts": "integer"}},
+    ),
+    CollectorDefinition(
+        type="apify_shopify_full_catalog",
+        name="Shopify 独立站全品类 SKU 采集",
+        description="通过 /products.json 高效采集 Shopify 独立站全品类商品和变体。",
+        config_schema={"required": ["startUrls"], "properties": {"startUrls": "array", "maxProducts": "integer"}},
+    ),
 )
 
 
@@ -739,6 +811,12 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "packagist_package", "packagist_search",
         "nuget_package", "nuget_search",
         "pubdev_package", "pubdev_search",
+        "apify_1688_product_search", "apify_1688_product_detail", "apify_1688_advanced",
+        "apify_alibaba_product_search", "apify_alibaba_product_detail",
+        "apify_amazon_bestsellers", "apify_amazon_competitor_research",
+        "apify_amazon_bsr_tracker", "apify_amazon_price_tracker",
+        "apify_aliexpress_product_search_v2",
+        "apify_shopify_products_monitor", "apify_shopify_full_catalog",
     }:
         return _validate_passthrough_config(config)
 

@@ -203,6 +203,23 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_tiktok_shop_search_scraper": "apify_actor",
     "apify_target_products_scraper": "apify_actor",
     "apify_facebook_marketplace_scraper": "apify_actor",
+    # 跨境供应链 - 1688.com (3 endpoints)
+    "apify_1688_product_search":    "apify_actor",
+    "apify_1688_product_detail":    "apify_actor",
+    "apify_1688_advanced":          "apify_actor",
+    # 跨境供应链 - 阿里巴巴国际站 (2 endpoints)
+    "apify_alibaba_product_search": "apify_actor",
+    "apify_alibaba_product_detail": "apify_actor",
+    # Amazon 选品竞品 (4 endpoints)
+    "apify_amazon_bestsellers":          "apify_actor",
+    "apify_amazon_competitor_research":  "apify_actor",
+    "apify_amazon_bsr_tracker":          "apify_actor",
+    "apify_amazon_price_tracker":        "apify_actor",
+    # AliExpress 升级 (1 endpoint)
+    "apify_aliexpress_product_search_v2": "apify_actor",
+    # 独立站竞品 (2 endpoints)
+    "apify_shopify_products_monitor": "apify_actor",
+    "apify_shopify_full_catalog":     "apify_actor",
     # GitHub (2 endpoints)
     "github_repo": "github_repo",
     "github_topic": "github_topic",
@@ -589,6 +606,62 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_facebook_marketplace_scraper": (
         "apify/facebook-marketplace-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/marketplace/search?query=laptop"}]},
+    ),
+    "apify_1688_product_search": (
+        "ecomscrape/1688-product-search-scraper",
+        {"keyword": "wireless earbuds", "max_items_per_url": 20},
+    ),
+    "apify_1688_product_detail": (
+        "ecomscrape/1688-product-details-page-scraper",
+        {"urls": ["https://detail.1688.com/offer/642952568827.html"]},
+    ),
+    "apify_1688_advanced": (
+        "dltik/1688-scraper",
+        {"type": "search", "queries": ["wireless earbuds"], "shippingCountry": "US"},
+    ),
+    "apify_alibaba_product_search": (
+        "scraperx/alibaba-scraper",
+        {
+            "maxItems": 20,
+            "includeSpecSheet": True,
+            "includeCertificates": True,
+            "includePackagingAndWeight": True,
+        },
+    ),
+    "apify_alibaba_product_detail": (
+        "xtracto/alibaba-product-scraper",
+        {"productUrls": ["https://www.alibaba.com/product-detail/wireless-earbuds_60843983630.html"]},
+    ),
+    "apify_amazon_bestsellers": (
+        "simpleapi/amazon-bestsellers-scraper",
+        {
+            "categoryUrls": ["https://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/"],
+            "maxResults": 50,
+        },
+    ),
+    "apify_amazon_competitor_research": (
+        "samstorm/amazon-competitor-research-scraper",
+        {"asins": ["B08N5WRWNW"], "marketplace": "amazon.com"},
+    ),
+    "apify_amazon_bsr_tracker": (
+        "marketplace-scrapers/amazon-bsr-scraper",
+        {"asins": ["B08N5WRWNW"], "marketplaces": ["amazon.com"]},
+    ),
+    "apify_amazon_price_tracker": (
+        "ramsford/ecommerce-price-tracker",
+        {"products": [{"url": "https://www.amazon.com/dp/B08N5WRWNW"}]},
+    ),
+    "apify_aliexpress_product_search_v2": (
+        "skystone_labs/aliexpress-product-scraper",
+        {"queries": ["wireless earbuds"], "shipTo": "US", "currency": "USD", "maxPages": 3},
+    ),
+    "apify_shopify_products_monitor": (
+        "autofacts/shopify-scraper",
+        {"url": "https://gymshark.com"},
+    ),
+    "apify_shopify_full_catalog": (
+        "pocesar/shopify-scraper",
+        {"startUrls": [{"url": "https://gymshark.com/products.json"}], "maxProducts": 200},
     ),
 }
 

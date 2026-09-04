@@ -1863,6 +1863,205 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    apify_cross_border = [
+        CollectorEndpointMetadata(
+            endpoint_type="apify_1688_product_search",
+            label="1688 商品搜索",
+            platform="alibaba",
+            description=(
+                "按关键词搜索 1688.com 批发商品，返回标题、价格梯度、MOQ、供应商评分。"
+                "keyword 为搜索词，max_items_per_url 控制每次返回数量。"
+            ),
+            status="verified",
+            required_params=["keyword"],
+            optional_params=["max_items_per_url"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (ecomscrape/1688-product-search-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_1688_product_detail",
+            label="1688 商品详情",
+            platform="alibaba",
+            description=(
+                "批量抓取 1688.com 商品详情页，返回 SKU 规格、价格梯度、最小起订量、"
+                "卖家信息、图片。urls 为商品 URL 列表。"
+            ),
+            status="verified",
+            required_params=["urls"],
+            optional_params=[],
+            cost_hint="按结果计费",
+            provider="Apify Actor (ecomscrape/1688-product-details-page-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_1688_advanced",
+            label="1688 高级采集（含图片反查/到岸成本）",
+            platform="alibaba",
+            description=(
+                "高级 1688 采集器，支持关键词搜索、以图搜货（图片 URL 反查）和到岸成本估算。"
+                "type 为 search 或 image，shippingCountry 为收货国（如 US/GB/AU）。"
+            ),
+            status="verified",
+            required_params=["type", "queries"],
+            optional_params=["shippingCountry", "priceRange"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (dltik/1688-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_alibaba_product_search",
+            label="阿里巴巴国际站商品搜索（含规格/证书）",
+            platform="alibaba",
+            description=(
+                "采集 Alibaba.com 商品，支持获取规格书、CE/RoHS 认证信息、包装尺寸/重量，"
+                "适合合规出口验证和供应商对比。maxItems 控制返回数量。"
+            ),
+            status="verified",
+            required_params=["startUrls"],
+            optional_params=["maxItems", "includeSpecSheet", "includeCertificates", "includePackagingAndWeight"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (scraperx/alibaba-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_alibaba_product_detail",
+            label="阿里巴巴国际站商品详情（梯级报价）",
+            platform="alibaba",
+            description=(
+                "抓取 Alibaba.com 单品详情页，返回梯级报价（1件/10件/100件价格）、"
+                "供应商资质、交货期、付款方式。productUrls 为商品 URL 列表。"
+            ),
+            status="verified",
+            required_params=["productUrls"],
+            optional_params=[],
+            cost_hint="按结果计费",
+            provider="Apify Actor (xtracto/alibaba-product-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_amazon_bestsellers",
+            label="Amazon BSR 最佳卖家榜",
+            platform="amazon",
+            description=(
+                "抓取 Amazon 分类 Best Sellers / New Releases / Movers & Shakers 榜单，"
+                "返回排名、ASIN、价格、评分、评价数。categoryUrls 为分类榜单 URL，"
+                "maxResults 控制每榜返回数量（建议 50-100）。"
+            ),
+            status="verified",
+            required_params=["categoryUrls"],
+            optional_params=["maxResults"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (simpleapi/amazon-bestsellers-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_amazon_competitor_research",
+            label="Amazon 竞品批量研究（BSR/FBA/卖家数）",
+            platform="amazon",
+            description=(
+                "按 ASIN 批量研究 Amazon 竞品，返回 BSR 排名、FBA/FBM 状态、卖家数量、"
+                "价格历史、月销量估算，替代 Jungle Scout 基础功能。"
+                "asins 为 ASIN 列表，marketplace 为站点（如 amazon.com）。"
+            ),
+            status="verified",
+            required_params=["asins"],
+            optional_params=["marketplace"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (samstorm/amazon-competitor-research-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_amazon_bsr_tracker",
+            label="Amazon BSR 时序追踪（多站点）",
+            platform="amazon",
+            description=(
+                "追踪指定 ASIN 在多个 Amazon 站点（.com/.co.uk/.de 等）的 BSR 排名变化，"
+                "适合日度定时任务 + webhook 告警，替代 Keepa 基础订阅。"
+                "asins 为 ASIN 列表，marketplaces 为站点域名列表。"
+            ),
+            status="verified",
+            required_params=["asins"],
+            optional_params=["marketplaces"],
+            cost_hint="$1.5/1K results",
+            provider="Apify Actor (marketplace-scrapers/amazon-bsr-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_amazon_price_tracker",
+            label="Amazon + Shopify 跨平台价格追踪",
+            platform="amazon",
+            description=(
+                "同时追踪 Amazon 和 Shopify 独立站商品价格、库存、BSR 变化，"
+                "支持 delta 变化检测和自动告警。products 为商品 URL 列表。"
+            ),
+            status="verified",
+            required_params=["products"],
+            optional_params=[],
+            cost_hint="按结果计费",
+            provider="Apify Actor (ramsford/ecommerce-price-tracker)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_aliexpress_product_search_v2",
+            label="AliExpress 商品搜索（多货币/多国运费）",
+            platform="aliexpress",
+            description=(
+                "高质量 AliExpress 采集器，支持 30+ 货币、40+ 收货国运费计算，"
+                "适合 Dropshipping 精确利润估算。queries 为关键词列表，"
+                "shipTo 为收货国代码（US/GB/AU），currency 为货币代码。"
+            ),
+            status="verified",
+            required_params=["queries"],
+            optional_params=["shipTo", "currency", "maxPages", "shipsFrom"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (skystone_labs/aliexpress-product-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_shopify_products_monitor",
+            label="Shopify 独立站实时价格/库存监控",
+            platform="shopify",
+            description=(
+                "实时监控任意 Shopify 独立站全品类价格和库存状态，"
+                "适合竞品价格追踪。url 为目标独立站域名（如 https://gymshark.com）。"
+            ),
+            status="verified",
+            required_params=["url"],
+            optional_params=["maxProducts"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (autofacts/shopify-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="apify_shopify_full_catalog",
+            label="Shopify 独立站全品类 SKU 采集",
+            platform="shopify",
+            description=(
+                "通过 /products.json 端点高效采集 Shopify 独立站全部商品、变体和元数据，"
+                "适合竞品完整品类分析。startUrls 包含 /products.json 路径。"
+            ),
+            status="verified",
+            required_params=["startUrls"],
+            optional_params=["maxProducts"],
+            cost_hint="按结果计费",
+            provider="Apify Actor (pocesar/shopify-scraper)",
+            content_type="product",
+            method="apify",
+        ),
+    ]
+
     apify_endpoints = (
         apify_social
         + apify_ecommerce
@@ -1872,6 +2071,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         + apify_b2b
         + apify_media
         + apify_open_web
+        + apify_cross_border
     )
 
     github_endpoints = [
