@@ -22,6 +22,9 @@ from data_intelligence_hub.api.routes.notifications import router as notificatio
 from data_intelligence_hub.api.routes.platform_credentials import (
     router as platform_credentials_router,
 )
+from data_intelligence_hub.api.routes.platform_packages import (
+    router as platform_packages_router,
+)
 from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
@@ -36,6 +39,11 @@ from data_intelligence_hub.api.routes.workflow_plans import (
 )
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.mcp_runtime import (
+    BearerTokenMiddleware,
+    mcp_app,
+    mcp_server,
+)
 from data_intelligence_hub.scheduler import CollectionScheduler
 
 
@@ -43,16 +51,17 @@ from data_intelligence_hub.scheduler import CollectionScheduler
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     scheduler: CollectionScheduler | None = None
-    if settings.scheduler_enabled:
-        scheduler = CollectionScheduler(
-            session_factory=async_session_factory,
-            poll_interval_seconds=settings.scheduler_poll_interval_seconds,
-        )
-        app.state.collection_scheduler = scheduler
-        scheduler.start()
-    yield
-    if scheduler is not None:
-        await scheduler.stop()
+    async with mcp_server.session_manager.run():
+        if settings.scheduler_enabled:
+            scheduler = CollectionScheduler(
+                session_factory=async_session_factory,
+                poll_interval_seconds=settings.scheduler_poll_interval_seconds,
+            )
+            app.state.collection_scheduler = scheduler
+            scheduler.start()
+        yield
+        if scheduler is not None:
+            await scheduler.stop()
 
 
 def create_app() -> FastAPI:
@@ -97,6 +106,8 @@ def create_app() -> FastAPI:
     app.include_router(alert_events_router, prefix="/api/alert-events")
     app.include_router(notifications_router, prefix="/api/notifications")
     app.include_router(platform_credentials_router, prefix="/api/settings")
+    app.include_router(platform_packages_router, prefix="/api/platform-packages")
+    app.mount("/mcp", BearerTokenMiddleware(mcp_app))
     return app
 
 
