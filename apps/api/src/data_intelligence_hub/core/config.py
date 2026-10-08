@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
 
     platform_credential_master_key: SecretStr | None = None
+    mcp_token: SecretStr | None = Field(
+        default=None,
+        validation_alias="SCRAPY_MCP_TOKEN",
+    )
 
     dataset_export_dir: str = "tmp/dataset-exports"
 
