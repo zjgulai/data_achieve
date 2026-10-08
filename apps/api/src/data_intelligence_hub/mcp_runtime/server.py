@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 from data_intelligence_hub.platform_packages.service import (
@@ -20,6 +21,25 @@ mcp_server = MCPServer(
         "Discover capabilities before collecting. Never request provider secrets. "
         "Collect only non-disabled endpoints with an explicit project_id."
     ),
+)
+
+MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
+    allowed_hosts=[
+        "scrapy.luteos.com",
+        "scrapy.luteos.com:*",
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "localhost",
+        "localhost:*",
+        "test",
+        "test:*",
+    ],
+    allowed_origins=[
+        "https://scrapy.luteos.com",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+        "http://test",
+    ],
 )
 
 
@@ -117,4 +137,5 @@ mcp_app = mcp_server.streamable_http_app(
     streamable_http_path="/",
     json_response=True,
     stateless_http=True,
+    transport_security=MCP_TRANSPORT_SECURITY,
 )
