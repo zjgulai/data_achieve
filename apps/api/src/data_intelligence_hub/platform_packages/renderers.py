@@ -25,7 +25,7 @@ description: {description}
 ## 运行入口
 
 - API Base URL：`https://scrapy.luteos.com`
-- MCP URL：`https://scrapy.luteos.com/mcp/`
+- MCP URL：`https://scrapy.luteos.com/mcp`
 - REST：`POST /api/quick-collect`
 
 ## 工作流
@@ -71,7 +71,7 @@ curl -X POST https://scrapy.luteos.com/api/quick-collect \\
   -d '{example_payload}'
 ```
 
-MCP 客户端连接：`https://scrapy.luteos.com/mcp/`。
+MCP 客户端连接：`https://scrapy.luteos.com/mcp`。
 
 详细端点与参数见 `manifest.json`，操作流程见 `references/playbook.md`。
 """
