@@ -63,7 +63,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
         </div>
         <aside className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
           <InfoRow icon={<Code2 size={14} />} label="Skill" value={item.skill_path} />
-          <InfoRow icon={<Cable size={14} />} label="MCP" value="https://scrapy.luteos.com/mcp" />
+          <InfoRow icon={<Cable size={14} />} label="MCP" value="https://scrapy.luteos.com/mcp/" />
           <InfoRow icon={<BookOpen size={14} />} label="Playbook" value={item.playbook_path} />
           <InfoRow icon={<ServerCog size={14} />} label="Catalog digest" value="由 API 响应提供" />
           <a
@@ -81,7 +81,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
         <CodePanel title="MCP 配置" code={`{
   "mcpServers": {
     "data-intelligence-hub": {
-      "url": "https://scrapy.luteos.com/mcp",
+      "url": "https://scrapy.luteos.com/mcp/",
       "headers": { "Authorization": "Bearer <SCRAPY_MCP_TOKEN>" }
     }
   }
