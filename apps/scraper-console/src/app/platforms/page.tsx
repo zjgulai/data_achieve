@@ -184,6 +184,7 @@ const METHOD_LABELS: Record<string, string> = {
   web_crawl:     "通用爬取",
   browser:       "浏览器采集",
   anysearch:     "AnySearch",
+  exa:           "Exa AI Search",
   jina_reader:   "Jina Reader",
   mediacrawler:  "MediaCrawler",
   serp:          "搜索引擎 SERP",
@@ -497,7 +498,7 @@ function ContentTypePanel({
 
   // group by method, preserve a stable order
   const METHOD_ORDER = [
-    "tikhub", "apify", "github_api", "anysearch",
+    "tikhub", "apify", "github_api", "anysearch", "exa",
     "jina_reader", "rss", "web_crawl", "browser",
   ];
   const byMethod = useMemo(() => {
