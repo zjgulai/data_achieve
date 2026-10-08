@@ -46,6 +46,8 @@ drafts/
 archive/
 ref/
 assets/
+generated/
+docs/playbooks/platforms/
 .playwright-cli/
 .playwright-mcp/
 .omo/
