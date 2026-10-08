@@ -17,8 +17,12 @@ from data_intelligence_hub.collectors.base import (
 )
 
 ANYSEARCH_ENDPOINT = "https://api.anysearch.com/v1/search"
-ANYSEARCH_TIMEOUT = 20.0
+ANYSEARCH_TIMEOUT = 30.0
 ANYSEARCH_MAX_RESULTS = 50
+
+ANYSEARCH_KNOWN_TAGS = {
+    "code.doc",
+}
 
 
 def _get_api_key() -> str:
@@ -28,6 +32,20 @@ def _get_api_key() -> str:
             "ANYSEARCH_API_KEY not set — add to .env.production"
         )
     return key
+
+
+def _build_payload(config: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "query": config["query"],
+        "num_results": config["num_results"],
+    }
+    if config.get("site"):
+        payload["site"] = config["site"]
+    if config.get("tag"):
+        payload["tag"] = config["tag"]
+    if config.get("params"):
+        payload["params"] = config["params"]
+    return payload
 
 
 class AnySearchCollector(BaseCollector):
@@ -43,26 +61,29 @@ class AnySearchCollector(BaseCollector):
         site = self.config.get("site")
         if site is not None and not isinstance(site, str):
             raise CollectorError("site must be a string domain (e.g. 'trustpilot.com')")
+        tag = self.config.get("tag")
+        if tag is not None and not isinstance(tag, str):
+            raise CollectorError("tag must be a string (e.g. 'code.doc', 'news')")
+        params = self.config.get("params")
+        if params is not None and not isinstance(params, dict):
+            raise CollectorError("params must be a dict (e.g. {\"library\": \"golang\"})")
         return {
             "query": query,
             "num_results": num_results,
             "site": site,
+            "tag": tag,
+            "params": params,
         }
 
     async def test(self) -> CollectorTestResult:
         config = self.validate_config()
         api_key = _get_api_key()
-        payload: dict[str, Any] = {
-            "query": config["query"],
-            "num_results": 1,
-        }
-        if config.get("site"):
-            payload["site"] = config["site"]
+        test_payload = _build_payload({**config, "num_results": 1})
         async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
             r = await client.post(
                 ANYSEARCH_ENDPOINT,
                 headers={"Authorization": f"Bearer {api_key}"},
-                json=payload,
+                json=test_payload,
             )
         if r.status_code != 200:
             return CollectorTestResult(
@@ -77,9 +98,11 @@ class AnySearchCollector(BaseCollector):
                 message=f"AnySearch error: {data.get('message')}",
                 logs=[collector_log("anysearch_api_error", str(data.get("message")))],
             )
+        tag_info = f" tag={config['tag']!r}" if config.get("tag") else ""
+        params_info = f" params={config['params']}" if config.get("params") else ""
         return CollectorTestResult(
             status="ok",
-            message=f"AnySearch reachable, query={config['query']!r}",
+            message=f"AnySearch reachable, query={config['query']!r}{tag_info}{params_info}",
             logs=[collector_log("anysearch_test_ok", "api_key_valid")],
         )
 
@@ -95,12 +118,7 @@ class AnySearchCollector(BaseCollector):
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
         collected_at = datetime.now(UTC)
-        payload: dict[str, Any] = {
-            "query": config["query"],
-            "num_results": config["num_results"],
-        }
-        if config.get("site"):
-            payload["site"] = config["site"]
+        payload = _build_payload(config)
         try:
             async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
                 r = await client.post(
@@ -134,11 +152,15 @@ class AnySearchCollector(BaseCollector):
                 source_url=item.get("url"),
                 content={
                     "query": config["query"],
+                    "tag": config.get("tag"),
+                    "params": config.get("params"),
                     "site": config.get("site"),
                     "title": item.get("title"),
                     "url": item.get("url"),
                     "snippet": item.get("snippet"),
                     "published_date": item.get("published_date"),
+                    "source": item.get("source"),
+                    "score": item.get("score"),
                     "request_id": data.get("request_id"),
                 },
                 collected_at=collected_at,
@@ -148,7 +170,7 @@ class AnySearchCollector(BaseCollector):
         logs.append(
             collector_log(
                 "anysearch_collected",
-                f"query={config['query']!r} results={len(records)}",
+                f"query={config['query']!r} tag={config.get('tag')!r} results={len(records)}",
             )
         )
         return CollectionResult(raw_records=records, logs=logs, errors=errors)

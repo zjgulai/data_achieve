@@ -2571,6 +2571,42 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             content_type="search_result",
             method="anysearch",
         ),
+        CollectorEndpointMetadata(
+            endpoint_type="anysearch_code_doc",
+            label="AnySearch 代码文档搜索",
+            platform="web",
+            description=(
+                "按 tag=code.doc 在技术文档、官方文档和库文档中结构化搜索。"
+                "支持 params.library 指定库名（如 golang、react、fastapi），"
+                "精准检索对应库的 API 文档、教程和 release notes。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["params", "num_results", "site"],
+            cost_hint="$0.001/query",
+            provider="AnySearch API",
+            content_type="search_result",
+            method="anysearch",
+            param_fields={"params": "object (e.g. {\"library\": \"golang\"})"},
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="anysearch_tag_search",
+            label="AnySearch 标签分类搜索",
+            platform="web",
+            description=(
+                "按内容类型 tag 精准搜索，搭配 params 传扩展过滤参数。"
+                "当前 API 已验证可用 tag：code.doc（需 params.library 指定库名）。"
+                "其他 tag 值（news/blog/code.qa 等）由 AnySearch API 白名单控制，按需测试。"
+            ),
+            status="verified",
+            required_params=["query", "tag"],
+            optional_params=["params", "num_results", "site"],
+            cost_hint="$0.001/query",
+            provider="AnySearch API",
+            content_type="search_result",
+            method="anysearch",
+            param_fields={"tag": "string (e.g. code.doc)", "params": "object (e.g. {\"library\": \"react\"})"},
+        ),
     ]
 
     regulatory_endpoints = [
@@ -3758,6 +3794,379 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
+    exa_endpoints = [
+        CollectorEndpointMetadata(
+            endpoint_type="exa_search_auto",
+            label="Exa 通用语义搜索",
+            platform="web",
+            description=(
+                "Exa 神经语义搜索（auto 模式，~1s）。理解概念而非关键词，"
+                "返回 highlights（10x token 高效）。支持域名过滤、日期范围、实时抓取。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "contents_mode", "include_domains", "exclude_domains",
+                "start_published_date", "end_published_date", "max_age_hours",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "contents_mode": "highlights|text|summary|none",
+                "num_results": "10",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_search_news",
+            label="Exa 语义新闻搜索",
+            platform="web",
+            description=(
+                "Exa category=news 专项新闻索引语义搜索。"
+                "支持发布日期过滤，语义准确性显著优于 RSS 订阅。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "start_published_date", "end_published_date",
+                "include_domains", "contents_mode",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="news",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "news",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_company_search",
+            label="Exa 企业语义搜索",
+            platform="web",
+            description=(
+                "Exa category=company 专项索引，覆盖 5000 万+ 企业页面。"
+                "搜索融资轮次、行业分类、竞品企业等，支持语义描述查询。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["num_results", "contents_mode"],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="account",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "company",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_find_similar",
+            label="Exa 相似 URL 发现",
+            platform="web",
+            description=(
+                "输入任意 URL，在向量空间中找语义最近邻页面。"
+                "竞品发现、论文扩展、内容推荐的核心工具。"
+                "excludeSourceDomain=true 自动排除同域结果。"
+            ),
+            status="verified",
+            required_params=["url"],
+            optional_params=[
+                "num_results", "exclude_source_domain", "contents_mode",
+                "include_domains", "exclude_domains",
+                "start_published_date", "end_published_date",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "exclude_source_domain": "true",
+                "num_results": "10",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_contents",
+            label="Exa URL 内容提取",
+            platform="web",
+            description=(
+                "输入已知 URL 列表，提取结构化内容。"
+                "支持 highlights（10x token 高效）/ text / summary 三种模式，"
+                "以及 subpages 子页面递归抓取（适合 docs 站点）。"
+            ),
+            status="verified",
+            required_params=["urls"],
+            optional_params=[
+                "contents_mode", "max_age_hours", "subpages",
+                "subpage_target", "summary_query", "text_max_characters",
+            ],
+            cost_hint="$0.001/page",
+            provider="Exa API",
+            content_type="web_page_markdown",
+            method="exa",
+            param_fields={
+                "contents_mode": "highlights|text|summary",
+                "max_age_hours": "0 (实时) | -1 (仅缓存)",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_research_paper",
+            label="Exa 学术论文检索",
+            platform="web",
+            description=(
+                "Exa category=publication 专项索引，覆盖 3.5 亿+ 学术论文、预印本、期刊文章。"
+                "含引用数、作者、摘要等结构化元数据。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["num_results", "contents_mode", "start_published_date"],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="news",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "publication",
+                "contents_mode": "summary",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_people_search",
+            label="Exa 人物语义搜索",
+            platform="web",
+            description=(
+                "Exa category=people 专项索引，覆盖 10 亿+ 人物档案。"
+                "含职位、教育背景、社交链接。适合 OSINT 增强和 KOL 发现。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["num_results", "contents_mode"],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="account",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "people",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_financial_report",
+            label="Exa 财报/SEC 检索",
+            platform="web",
+            description=(
+                "Exa category=financial report 专项索引。"
+                "检索 SEC 财务申报、财报、投资者关系文件。"
+                "出海竞品调研和投资分析利器。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "include_domains", "start_published_date",
+                "end_published_date", "contents_mode",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="news",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "financial report",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_deep_research",
+            label="Exa 深度结构化研究",
+            platform="web",
+            description=(
+                "Exa deep 模式（4-15s，$0.012/query）。多步推理 + output_schema 结构化输出。"
+                "一次 API 调用完成多源研究 → 结构化 JSON + grounding 字段级引用。"
+                "output_schema 为必填（JSON Schema 格式）。"
+            ),
+            status="verified",
+            required_params=["query", "output_schema"],
+            optional_params=[
+                "num_results", "system_prompt", "additional_queries",
+                "contents_mode", "include_domains",
+            ],
+            cost_hint="$0.012/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "deep",
+                "contents_mode": "highlights",
+                "num_results": "10",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_deep_reasoning",
+            label="Exa 深度推理研究",
+            platform="web",
+            description=(
+                "Exa deep-reasoning 模式（12-40s，$0.015/query）。"
+                "最强推理合成，适合高复杂度研究报告生成。"
+                "支持 additionalQueries 多查询变体，output_schema 结构化输出。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "output_schema", "system_prompt", "additional_queries",
+                "num_results", "contents_mode",
+            ],
+            cost_hint="$0.015/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "deep-reasoning",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_answer",
+            label="Exa 带引用问答",
+            platform="web",
+            description=(
+                "Exa /answer 端点（$0.005/query）。"
+                "输入自然语言问题，返回综合答案 + 信源引用（标题/URL/日期/作者）。"
+                "支持 output_schema 结构化答案输出。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["output_schema", "text"],
+            cost_hint="$0.005/query",
+            provider="Exa API",
+            content_type="ai_answer",
+            method="exa",
+            param_fields={
+                "text": "false",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_search_instant",
+            label="Exa 极速搜索（250ms）",
+            platform="web",
+            description=(
+                "Exa instant 模式（~250ms）。极速语义搜索，适合实时补全、"
+                "对话类场景。最多 10 条结果。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=["num_results", "contents_mode", "include_domains"],
+            cost_hint="$0.005/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "instant",
+                "contents_mode": "highlights",
+                "num_results": "5",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_search_fast",
+            label="Exa 快速搜索（450ms）",
+            platform="web",
+            description=(
+                "Exa fast 模式（~450ms）。速度与质量平衡，"
+                "适合批量处理场景和用户交互场景。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "contents_mode", "include_domains",
+                "start_published_date", "end_published_date",
+            ],
+            cost_hint="$0.005/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "fast",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_personal_site",
+            label="Exa 个人博客/站点检索",
+            platform="web",
+            description=(
+                "Exa category=personal site。"
+                "检索个人博客、个人主页，发现行业从业者观点和 KOL 原创内容。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "contents_mode",
+                "start_published_date", "end_published_date",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="news",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "category": "personal site",
+                "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_domain_search",
+            label="Exa 域名精准搜索",
+            platform="web",
+            description=(
+                "Exa 带域名白名单的精准语义搜索（最多 1200 个域名）。"
+                "适合垂直领域内的精准检索，如指定多个竞品官网或特定媒体源。"
+            ),
+            status="verified",
+            required_params=["query", "include_domains"],
+            optional_params=[
+                "num_results", "exclude_domains", "contents_mode",
+                "start_published_date", "end_published_date",
+            ],
+            cost_hint="$0.007/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "auto",
+                "contents_mode": "highlights",
+                "include_domains": '["example.com","another.com"]',
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_deep_lite",
+            label="Exa 轻量合成研究（4s）",
+            platform="web",
+            description=(
+                "Exa deep-lite 模式（~4s，$0.012/query）。"
+                "轻量合成输出，比完整 deep 延迟低但有合成能力。"
+                "支持 output_schema 结构化提取。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "output_schema", "system_prompt", "num_results",
+                "contents_mode", "include_domains",
+            ],
+            cost_hint="$0.012/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "deep-lite",
+                "contents_mode": "highlights",
+            },
+        ),
+    ]
+
     return CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
@@ -3969,6 +4378,12 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
                 label="pub.dev Dart/Flutter 包",
                 platform="pubdev",
                 endpoints=pubdev_endpoints,
+            ),
+            CollectorCatalogEntry(
+                collector_type="exa",
+                label="Exa AI 语义搜索",
+                platform="web",
+                endpoints=exa_endpoints,
             ),
         ]
     )

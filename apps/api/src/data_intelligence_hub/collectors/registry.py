@@ -4,6 +4,12 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.exa_collector import (
+    ExaAnswerCollector,
+    ExaContentsCollector,
+    ExaFindSimilarCollector,
+    ExaSearchCollector,
+)
 from data_intelligence_hub.collectors.anycrawl_collector import (
     BaiduSearchCollector,
     BingSearchCollector,
@@ -204,6 +210,10 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     NuGetSearchCollector.collector_type: NuGetSearchCollector,
     PubDevPackageCollector.collector_type: PubDevPackageCollector,
     PubDevSearchCollector.collector_type: PubDevSearchCollector,
+    ExaSearchCollector.collector_type: ExaSearchCollector,
+    ExaFindSimilarCollector.collector_type: ExaFindSimilarCollector,
+    ExaContentsCollector.collector_type: ExaContentsCollector,
+    ExaAnswerCollector.collector_type: ExaAnswerCollector,
 }
 
 

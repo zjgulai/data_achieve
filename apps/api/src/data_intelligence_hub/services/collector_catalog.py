@@ -718,6 +718,30 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="通过 /products.json 高效采集 Shopify 独立站全品类商品和变体。",
         config_schema={"required": ["startUrls"], "properties": {"startUrls": "array", "maxProducts": "integer"}},
     ),
+    CollectorDefinition(
+        type="exa_search",
+        name="Exa 神经语义搜索",
+        description="Exa AI 语义搜索引擎，支持 auto/fast/instant/deep/deep-reasoning 模式及 company/people/publication/news 专项索引。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "search_type": "string", "category": "string", "num_results": "integer", "contents_mode": "string", "output_schema": "object"}},
+    ),
+    CollectorDefinition(
+        type="exa_find_similar",
+        name="Exa 相似 URL 发现",
+        description="输入种子 URL，在向量空间中找语义最近邻页面，用于竞品发现和内容推荐。",
+        config_schema={"required": ["url"], "properties": {"url": "string", "num_results": "integer", "exclude_source_domain": "boolean", "contents_mode": "string"}},
+    ),
+    CollectorDefinition(
+        type="exa_contents",
+        name="Exa URL 内容提取",
+        description="输入已知 URL 列表，提取 highlights/text/summary 多模式结构化内容，支持子页面递归。",
+        config_schema={"required": ["urls"], "properties": {"urls": "array", "contents_mode": "string", "max_age_hours": "integer", "subpages": "integer"}},
+    ),
+    CollectorDefinition(
+        type="exa_answer",
+        name="Exa 带引用问答",
+        description="输入自然语言问题，返回综合答案 + 信源引用（标题/URL/日期/作者）。",
+        config_schema={"required": ["query"], "properties": {"query": "string", "output_schema": "object", "text": "boolean"}},
+    ),
 )
 
 
@@ -779,6 +803,14 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_anysearch_config(config)
     if collector_type == "jina_reader":
         return _validate_jina_reader_config(config)
+    if collector_type == "exa_search":
+        return _validate_exa_search_config(config)
+    if collector_type == "exa_find_similar":
+        return _validate_exa_find_similar_config(config)
+    if collector_type == "exa_contents":
+        return _validate_exa_contents_config(config)
+    if collector_type == "exa_answer":
+        return _validate_exa_answer_config(config)
 
     if collector_type in {
         "sherlock", "maigret",
@@ -1146,7 +1178,13 @@ def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
     site = config.get("site")
     if site is not None and not isinstance(site, str):
         raise CollectorConfigError
-    return {"query": query, "num_results": num_results, "site": site}
+    tag = config.get("tag")
+    if tag is not None and not isinstance(tag, str):
+        raise CollectorConfigError
+    params = config.get("params")
+    if params is not None and not isinstance(params, dict):
+        raise CollectorConfigError
+    return {"query": query, "num_results": num_results, "site": site, "tag": tag, "params": params}
 
 
 def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1157,6 +1195,137 @@ def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
     if return_format not in {"markdown", "text", "html"}:
         raise CollectorConfigError
     return {"url": url, "return_format": return_format}
+
+
+def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    _VALID_SEARCH_TYPES = {
+        "instant", "fast", "auto", "deep-lite", "deep", "deep-reasoning",
+    }
+    _DEEP_TYPES = {"deep-lite", "deep", "deep-reasoning"}
+    _VALID_CATEGORIES = {
+        "company", "people", "publication", "news",
+        "personal site", "financial report",
+    }
+    _VALID_CONTENTS_MODES = {"highlights", "text", "summary", "none"}
+
+    query = _require_text(config, "query")
+    search_type = config.get("search_type", "auto")
+    if search_type not in _VALID_SEARCH_TYPES:
+        raise CollectorConfigError
+
+    is_deep = search_type in _DEEP_TYPES
+    max_n = 25 if is_deep else 10
+    num_results = config.get("num_results", 10)
+    if not isinstance(num_results, int) or not (1 <= num_results <= max_n):
+        raise CollectorConfigError
+
+    category = config.get("category")
+    if category and category not in _VALID_CATEGORIES:
+        raise CollectorConfigError
+
+    contents_mode = config.get("contents_mode", "highlights")
+    if contents_mode not in _VALID_CONTENTS_MODES:
+        raise CollectorConfigError
+
+    output_schema = config.get("output_schema")
+    if output_schema is not None and not isinstance(output_schema, dict):
+        raise CollectorConfigError
+
+    include_domains = config.get("include_domains", [])
+    exclude_domains = config.get("exclude_domains", [])
+    if not isinstance(include_domains, list):
+        raise CollectorConfigError
+    if not isinstance(exclude_domains, list):
+        raise CollectorConfigError
+
+    return {
+        "query": query,
+        "search_type": search_type,
+        "category": category,
+        "num_results": num_results,
+        "contents_mode": contents_mode,
+        "output_schema": output_schema,
+        "system_prompt": config.get("system_prompt"),
+        "additional_queries": config.get("additional_queries"),
+        "include_domains": include_domains,
+        "exclude_domains": exclude_domains,
+        "start_published_date": config.get("start_published_date"),
+        "end_published_date": config.get("end_published_date"),
+        "max_age_hours": config.get("max_age_hours"),
+        "summary_query": config.get("summary_query"),
+        "text_max_characters": config.get("text_max_characters"),
+    }
+
+
+def _validate_exa_find_similar_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    url = _require_text(config, "url")
+    num_results = config.get("num_results", 10)
+    if not isinstance(num_results, int) or not (1 <= num_results <= 25):
+        raise CollectorConfigError
+    exclude_source = config.get("exclude_source_domain", True)
+    if not isinstance(exclude_source, bool):
+        raise CollectorConfigError
+    return {
+        "url": url,
+        "num_results": num_results,
+        "exclude_source_domain": exclude_source,
+        "contents_mode": config.get("contents_mode", "highlights"),
+        "include_domains": config.get("include_domains", []),
+        "exclude_domains": config.get("exclude_domains", []),
+        "start_published_date": config.get("start_published_date"),
+        "end_published_date": config.get("end_published_date"),
+    }
+
+
+def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    _VALID_CONTENTS_MODES = {"highlights", "text", "summary", "none"}
+
+    urls = config.get("urls", [])
+    if not isinstance(urls, list) or not urls:
+        raise CollectorConfigError
+    if len(urls) > 100:
+        raise CollectorConfigError
+    for u in urls:
+        if not isinstance(u, str) or not u.strip():
+            raise CollectorConfigError
+
+    contents_mode = config.get("contents_mode", "highlights")
+    if contents_mode not in _VALID_CONTENTS_MODES:
+        raise CollectorConfigError
+
+    subpages = config.get("subpages", 0)
+    if not isinstance(subpages, int) or not (0 <= subpages <= 100):
+        raise CollectorConfigError
+
+    return {
+        "urls": [u.strip() for u in urls],
+        "contents_mode": contents_mode,
+        "max_age_hours": config.get("max_age_hours"),
+        "subpages": subpages,
+        "subpage_target": config.get("subpage_target", []),
+        "summary_query": config.get("summary_query"),
+        "text_max_characters": config.get("text_max_characters"),
+    }
+
+
+def _validate_exa_answer_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    query = _require_text(config, "query")
+    output_schema = config.get("output_schema")
+    if output_schema is not None and not isinstance(output_schema, dict):
+        raise CollectorConfigError
+    return {
+        "query": query,
+        "output_schema": output_schema,
+        "text": config.get("text", False),
+    }
 
 
 def _validate_passthrough_config(config: dict[str, Any]) -> dict[str, Any]:
