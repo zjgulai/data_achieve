@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2, BookOpen } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2, BookOpen, Boxes } from "lucide-react";
 
 const navigation = [
   { name: "采集平台", href: "/platforms",       icon: Grid3x3 },
+  { name: "Skill 与 MCP", href: "/skills",      icon: Boxes },
   { name: "我的项目", href: "/projects",         icon: FolderKanban },
   { name: "运行记录", href: "/runs",             icon: Clock },
   { name: "数据集",   href: "/datasets",         icon: Database },
