@@ -1,0 +1,35 @@
+{
+  "platform_id": "reddit",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_reddit_search",
+      "symptom": "quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records）",
+      "cause": "TikHub 的 app/fetch_dynamic_search 把结果放在 data.search，而 search 是 dict（search.dynamic.components.main.edges[].node.children[]），帖子挂在 __typename=SearchPost 的 node.post；归一化器只认 data.search 为 list，于是取到 0 条。",
+      "workaround": "已在 _extract_items 中对 reddit 增加 _deep_find_typename(inner, \"SearchPost\") 深度查找，再由 _normalize_reddit_post 抽取 postTitle/url/score/authorInfo.name/subreddit.name/createdAt。实测同一响应由 0 条变为 7 条。",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape"
+      ]
+    },
+    {
+      "scope": "platform",
+      "target": "reddit",
+      "symptom": "搜索结果零记录；帖子字段名与通用归一化器预期不一致",
+      "cause": "Reddit 走的是 GraphQL 风格响应：标题字段是 postTitle（不是 title）、正文在 content.markdown、作者在 authorInfo.name、时间在 createdAt（形如 2026-10-03T19:08:43.382000+0000）。_normalize_generic 认不出这些字段，即便取到条目也只会得到空 text。",
+      "workaround": "reddit 已单独走 _normalize_reddit_post；新增 reddit 端点时先确认字段名，不要直接复用 _normalize_generic。",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "schema"
+      ]
+    }
+  ]
+}

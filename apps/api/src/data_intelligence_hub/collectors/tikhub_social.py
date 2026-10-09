@@ -475,34 +475,72 @@ _TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
 # ---------------------------------------------------------------------------
 
 
+def _deep_find_dicts(node: Any, key: str) -> list[dict[str, Any]]:
+    """按 key 深度优先收集整棵响应树里的所有 dict。
+
+    上游改版会改变嵌套层级（YouTube 的 `contents` 曾是 list，现为 dict，视频
+    藏在 `videoRenderer` 里），按固定路径取值会静默返回空列表。深度查找对
+    层级变化免疫，失效的只剩"上游重命名"这一种情况。
+    """
+    found: list[dict[str, Any]] = []
+    if isinstance(node, dict):
+        value = node.get(key)
+        if isinstance(value, dict):
+            found.append(value)
+        for child in node.values():
+            found.extend(_deep_find_dicts(child, key))
+    elif isinstance(node, list):
+        for child in node:
+            found.extend(_deep_find_dicts(child, key))
+    return found
+
+
+def _deep_find_typename(node: Any, typename: str) -> list[dict[str, Any]]:
+    """收集 `__typename == typename` 的 dict（Reddit 的 GraphQL 风格响应用）。"""
+    found: list[dict[str, Any]] = []
+    if isinstance(node, dict):
+        if node.get("__typename") == typename:
+            found.append(node)
+        for child in node.values():
+            found.extend(_deep_find_typename(child, typename))
+    elif isinstance(node, list):
+        for child in node:
+            found.extend(_deep_find_typename(child, typename))
+    return found
+
+
 def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
     inner = data.get("data")
 
     if platform == "youtube":
-        # web_v2/get_general_search → data.contents (nested)
-        # web_v2/get_channel_videos → data.videos
+        # web_v2/get_channel_videos → data.videos (list)
+        # web_v2/get_general_search → data.contents (dict → videoRenderer)
         if isinstance(inner, dict):
             videos = inner.get("videos")
-            if isinstance(videos, list):
+            if isinstance(videos, list) and videos:
                 return videos
             contents = inner.get("contents")
-            if isinstance(contents, list):
+            if isinstance(contents, list) and contents:
                 return contents
-        return []
+        return _deep_find_dicts(inner, "videoRenderer")
 
     if platform == "reddit":
-        # fetch_dynamic_search → data.search (list)
         # fetch_subreddit_feed → data (list)
+        # fetch_dynamic_search → data.search (dict → SearchPost.post)
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):
             search = inner.get("search")
-            if isinstance(search, list):
+            if isinstance(search, list) and search:
                 return search
             posts = inner.get("posts")
-            if isinstance(posts, list):
+            if isinstance(posts, list) and posts:
                 return posts
-        return []
+        return [
+            node["post"]
+            for node in _deep_find_typename(inner, "SearchPost")
+            if isinstance(node.get("post"), dict)
+        ]
 
     if platform == "x":
         # fetch_search_timeline → data.timeline (list)
@@ -762,6 +800,85 @@ def _normalize_xiaohongshu_note(
     )
 
 
+def _runs_text(block: Any) -> str | None:
+    """YouTube 文本节点：`{"runs": [{"text": ...}]}` 或 `{"simpleText": ...}`。"""
+    if not isinstance(block, dict):
+        return None
+    runs = block.get("runs")
+    if isinstance(runs, list):
+        joined = "".join(
+            str(run.get("text") or "") for run in runs if isinstance(run, dict)
+        ).strip()
+        if joined:
+            return joined
+    simple = block.get("simpleText")
+    if isinstance(simple, str) and simple.strip():
+        return simple.strip()
+    return None
+
+
+def _normalize_youtube_video(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    video_id = _safe_str(item.get("videoId"))
+    if video_id is None:
+        # get_channel_videos 等的条目形状不同，交回通用归一化，避免丢记录。
+        return _normalize_generic(item, "youtube", collector_type)
+    title = _runs_text(item.get("title"))
+    return CollectorRawRecord(
+        record_type="youtube_video",
+        source_url=f"https://www.youtube.com/watch?v={video_id}",
+        content={
+            "provider": "tikhub",
+            "platform": "youtube",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_youtube.v2",
+            "video_id": video_id,
+            "text": title or "",
+            "channel": _runs_text(item.get("ownerText") or item.get("longBylineText")),
+            "published_time": _runs_text(item.get("publishedTimeText")),
+            "view_count_text": _runs_text(item.get("viewCountText")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_reddit_post(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    title = _safe_str(item.get("postTitle") or item.get("title"))
+    permalink = _safe_str(item.get("permalink"))
+    source_url = _safe_str(item.get("url")) or (
+        f"https://www.reddit.com{permalink}" if permalink else None
+    )
+    if title is None and source_url is None:
+        return _normalize_generic(item, "reddit", collector_type)
+    content_block = item.get("content")
+    body = _safe_str(content_block.get("markdown")) if isinstance(content_block, dict) else None
+    author_info = item.get("authorInfo")
+    subreddit = item.get("subreddit")
+    return CollectorRawRecord(
+        record_type="reddit_post",
+        source_url=source_url,
+        content={
+            "provider": "tikhub",
+            "platform": "reddit",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_reddit.v2",
+            "text": (title or "")[:2000],
+            "body": (body or "")[:2000],
+            "subreddit": _safe_str(subreddit.get("name")) if isinstance(subreddit, dict) else None,
+            "author": _safe_str(author_info.get("name")) if isinstance(author_info, dict) else None,
+            "score": _safe_int(item.get("score")),
+            "comment_count": _safe_int(item.get("commentCount")),
+            "created_at": _safe_ts(item.get("createdAt")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
 def _normalize_item(
     item: dict[str, Any],
     platform: str,
@@ -773,8 +890,12 @@ def _normalize_item(
         return _normalize_instagram_post(item, collector_type)
     if platform == "xiaohongshu":
         return _normalize_xiaohongshu_note(item, collector_type)
+    if platform == "youtube":
+        return _normalize_youtube_video(item, collector_type)
+    if platform == "reddit":
+        return _normalize_reddit_post(item, collector_type)
     if platform in (
-        "youtube", "reddit", "x", "douyin", "bilibili", "weibo", "kuaishou", "wechat", "zhihu",
+        "x", "douyin", "bilibili", "weibo", "kuaishou", "wechat", "zhihu",
         "threads", "linkedin", "lemon8", "tiktok_shop",
     ):
         return _normalize_generic(item, platform, collector_type)

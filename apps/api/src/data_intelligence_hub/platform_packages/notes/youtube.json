@@ -1,0 +1,35 @@
+{
+  "platform_id": "youtube",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_youtube_search",
+      "symptom": "quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records）",
+      "cause": "TikHub 的 web_v2/get_general_search 把搜索结果放在 data.contents，而 contents 是 dict（结构为 twoColumnSearchResultsRenderer→…→videoRenderer），不是 list；归一化器只认 list，于是静默取到 0 条。参数本身正确，换关键词也不会变。",
+      "workaround": "已在 _extract_items 中对 youtube 增加深度查找兜底：_deep_find_dicts(inner, \"videoRenderer\")，再由 _normalize_youtube_video 抽取 videoId/title/ownerText/viewCountText。实测同一响应由 0 条变为 18 条。",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape"
+      ]
+    },
+    {
+      "scope": "platform",
+      "target": "youtube",
+      "symptom": "搜索类端点全部零记录（tikhub_youtube_search / tikhub_youtube_video_search，后者当前未进 catalog 包），而直接调用 TikHub 上游却返回 HTTP 200 且负载很大",
+      "cause": "TikHub 上游改版会改变嵌套层级；collector 按固定的 JSON 路径取值，一旦层级变化就静默返回空列表，不会报错。",
+      "workaround": "排查 zero-record 时先取原始响应确认形状（而不是反复调参数）：从服务器用 TIKHUB_API_KEY 直接 curl 上游，再比对 _extract_items 的取值路径。新增归一化分支要同时加单测（tests/unit/test_tikhub_social_collector.py 的 YOUTUBE_SEARCH_RESPONSE）。",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "diagnosis"
+      ]
+    }
+  ]
+}

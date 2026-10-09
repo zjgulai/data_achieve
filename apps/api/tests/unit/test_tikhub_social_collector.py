@@ -19,8 +19,11 @@ from data_intelligence_hub.collectors.tikhub_social import (
     _extract_hashtags,
     _extract_items,
     _normalize_instagram_post,
+    _normalize_item,
+    _normalize_reddit_post,
     _normalize_tiktok_video,
     _normalize_xiaohongshu_note,
+    _normalize_youtube_video,
     _safe_int,
     _safe_ts,
 )
@@ -321,6 +324,145 @@ def test_extract_items_items_key() -> None:
 def test_extract_items_empty_response() -> None:
     assert _extract_items({}, "tiktok") == []
     assert _extract_items({"data": {}}, "tiktok") == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: 2026-10-09 生产实测发现 youtube/reddit 归一化形状过时
+# （data.contents / data.search 由 list 变成 dict），线上端点静默返回空记录。
+# ---------------------------------------------------------------------------
+
+YOUTUBE_SEARCH_RESPONSE: dict[str, Any] = {
+    "data": {
+        "contents": {
+            "twoColumnSearchResultsRenderer": {
+                "primaryContents": {
+                    "sectionListRenderer": {
+                        "contents": [
+                            {
+                                "itemSectionRenderer": {
+                                    "contents": [
+                                        {
+                                            "videoRenderer": {
+                                                "videoId": "K5KVEU3aaeQ",
+                                                "title": {"runs": [{"text": "Python Full Course"}]},
+                                                "ownerText": {"runs": [{"text": "Programming with Mosh"}]},
+                                                "viewCountText": {"simpleText": "7,823,573 views"},
+                                            }
+                                        },
+                                        {
+                                            "videoRenderer": {
+                                                "videoId": "fWjsdhR3z3c",
+                                                "title": {"runs": [{"text": "Learn Python Fast"}]},
+                                            }
+                                        },
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+def test_extract_items_youtube_nested_video_renderers() -> None:
+    items = _extract_items(YOUTUBE_SEARCH_RESPONSE, "youtube")
+    assert [item["videoId"] for item in items] == ["K5KVEU3aaeQ", "fWjsdhR3z3c"]
+
+
+def test_extract_items_youtube_prefers_flat_videos_list() -> None:
+    data = {"data": {"videos": [{"id": "1"}, {"id": "2"}]}}
+    assert len(_extract_items(data, "youtube")) == 2
+
+
+def test_normalize_youtube_video_full_item() -> None:
+    item = _extract_items(YOUTUBE_SEARCH_RESPONSE, "youtube")[0]
+    record = _normalize_youtube_video(item, "tikhub_youtube_search")
+    assert record is not None
+    assert record.source_url == "https://www.youtube.com/watch?v=K5KVEU3aaeQ"
+    content = _c(record)
+    assert content["text"] == "Python Full Course"
+    assert content["channel"] == "Programming with Mosh"
+    assert content["view_count_text"] == "7,823,573 views"
+
+
+def test_normalize_youtube_video_without_id_falls_back_to_generic() -> None:
+    record = _normalize_youtube_video({"title": "flat item"}, "tikhub_youtube_search")
+    assert record is not None
+    assert _c(record)["text"] == "flat item"
+
+
+REDDIT_SEARCH_RESPONSE: dict[str, Any] = {
+    "data": {
+        "search": {
+            "dynamic": {
+                "components": {
+                    "main": {
+                        "edges": [
+                            {
+                                "node": {
+                                    "children": [
+                                        {
+                                            "__typename": "SearchPost",
+                                            "post": {
+                                                "__typename": "Post",
+                                                "postTitle": "My Python magic is gone",
+                                                "permalink": "/r/Python/comments/1wwv97o/my_python_magic_is_gone/",
+                                                "score": 837,
+                                                "commentCount": 296,
+                                                "createdAt": "2026-10-03T19:08:43.382000+0000",
+                                                "authorInfo": {"__typename": "Redditor", "name": "RedYad2"},
+                                                "subreddit": {"__typename": "Subreddit", "name": "Python"},
+                                                "content": {"markdown": "I've been coding for a long time."},
+                                            },
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+def test_extract_items_reddit_dynamic_search_posts() -> None:
+    items = _extract_items(REDDIT_SEARCH_RESPONSE, "reddit")
+    assert len(items) == 1
+    assert items[0]["postTitle"] == "My Python magic is gone"
+
+
+def test_normalize_reddit_post_full_item() -> None:
+    item = _extract_items(REDDIT_SEARCH_RESPONSE, "reddit")[0]
+    record = _normalize_reddit_post(item, "tikhub_reddit_search")
+    assert record is not None
+    assert record.source_url == "https://www.reddit.com/r/Python/comments/1wwv97o/my_python_magic_is_gone/"
+    content = _c(record)
+    assert content["text"] == "My Python magic is gone"
+    assert content["subreddit"] == "Python"
+    assert content["author"] == "RedYad2"
+    assert content["score"] == 837
+
+
+def test_normalize_reddit_post_without_title_falls_back_to_generic() -> None:
+    record = _normalize_reddit_post({"text": "flat"}, "tikhub_reddit_search")
+    assert record is not None
+    assert _c(record)["text"] == "flat"
+
+
+def test_normalize_item_routes_youtube_and_reddit() -> None:
+    youtube_item = _extract_items(YOUTUBE_SEARCH_RESPONSE, "youtube")[0]
+    reddit_item = _extract_items(REDDIT_SEARCH_RESPONSE, "reddit")[0]
+    youtube_record = _normalize_item(youtube_item, "youtube", "tikhub_youtube_search")
+    reddit_record = _normalize_item(reddit_item, "reddit", "tikhub_reddit_search")
+    assert youtube_record is not None
+    assert reddit_record is not None
+    assert _c(youtube_record)["platform"] == "youtube"
+    assert _c(reddit_record)["platform"] == "reddit"
 
 
 # ---------------------------------------------------------------------------

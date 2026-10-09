@@ -78,7 +78,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | failure_class | 数量 | 含义 | 典型 |
 |---|---|---|---|
 | ok | 101 | 返回 ≥1 条记录 | github、apify 多数、tikhub 热点类 |
-| empty_records | 55 | 成功但 0 条 | tikhub 演示参数不足（linkedin/youtube/reddit 等） |
+| empty_records | 55 | 成功但 0 条 | **已定位：不是演示参数不足，是归一化形状过时**（YouTube `data.contents`、Reddit `data.search` 由 list 变 dict，`_extract_items` 静默返回空列表）；其余见下 |
 | upstream_4xx | 23 | 上游 4xx | apify 反爬 403（pinterest/telegram/1688/shopify）、tikhub 400/422 |
 | config_gated | 23 | 缺配置 | Exa×16、firecrawl×2、twscrape×3、anycrawl(bing/baidu)×2 |
 | params_invalid | 12 | 入参/上游 schema 不符 | apify 1688/alibaba/shopify/rag；tikhub 少量 |
@@ -99,6 +99,27 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | 4 个 "not available" 端点 | 400 | 可执行（转为 config/param 类错误） |
 
 > 语义：`verified` = 最近一次 `[test]` 运行成功**且返回 ≥1 条记录**；`empty` = 运行成功但 0 条；`degraded` = 最近失败；`untested` = 无证据；`config-gated` = 缺 Provider 配置。
+
+### 4.2 空记录根因修复（2026-10-09，生产 commit `b4c1015`）
+
+上一节的 `empty_records=55` 经原始响应比对，**首因不是参数**：TikHub 上游把搜索结果由 list 改成了 dict。
+
+| 端点 | 修复前 | 修复后 | 状态 |
+|---|---|---|---|
+| `tikhub_youtube_search` | `success` / 0 条 | `success` / **17 条** | `empty` → `verified` |
+| `tikhub_reddit_search` | `success` / 0 条 | `success` / **7 条** | `empty` → `verified` |
+
+修复方式：`_extract_items` 增加 `_deep_find_dicts`（找 `videoRenderer`）/ `_deep_find_typename`（找 `SearchPost`）深度查找兜底，
+并按平台新增 `_normalize_youtube_video` / `_normalize_reddit_post`（Reddit 字段名是 `postTitle` / `content.markdown` / `authorInfo.name`，通用归一化器认不出）。
+
+| 指标 | 修复前 | 修复后 |
+|---|---|---|
+| `/providers/status` | `verified 108 / empty 55` | `verified 110 / empty 53` |
+
+> 同类风险仍在：`x` / `xiaohongshu` / `instagram` / `douyin` 等平台同样按固定路径取 `data.*`，上游改版会以完全相同的方式静默返回空。
+> 排查这类"成功但 0 条"时**先取原始响应**（服务器上用 `TIKHUB_API_KEY` 直接 curl 上游），不要反复调 `params`。
+> 另：证据只认 label 恰好为 `[test] <endpoint_type>` 的运行（正则 `^\[quick\](?: \[quick\])? \[test\] (.+)$`）。
+> label 格式一旦漂移，实测结果会被**静默忽略**，状态看起来从未测过。
 
 ## 5. Catalog ↔ 页面覆盖
 

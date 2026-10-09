@@ -74,6 +74,13 @@ def build_platform_package_catalog(
             by_platform[endpoint.platform].append(packaged)
 
     notes_by_platform = load_platform_notes()
+    # 同理：坑点文件的 platform_id 必须能对上某个平台包，否则整份文件被静默忽略。
+    orphan_note_files = sorted(set(notes_by_platform) - set(by_platform))
+    if orphan_note_files:
+        raise ValueError(
+            "notes file(s) reference unknown platform_id(s): "
+            f"{', '.join(orphan_note_files)}"
+        )
     packages = tuple(
         _build_package(platform_id, endpoints, notes_by_platform.get(platform_id))
         for platform_id, endpoints in sorted(by_platform.items())
@@ -99,6 +106,15 @@ def _build_package(
     notes: PlatformNotes | None = None,
 ) -> PlatformPackage:
     endpoint_notes = notes.endpoint_notes if notes else {}
+    # 命中不了的 target 必须报错，不能静默丢弃：否则写错端点名的坑点会"看起来已沉淀"
+    # 却从不出现（2026-10-09 实测：tikhub_youtube_video_search 的 note 被无声吞掉）。
+    known_endpoint_types = {endpoint.endpoint_type for endpoint in endpoints}
+    unknown_targets = sorted(set(endpoint_notes) - known_endpoint_types)
+    if unknown_targets:
+        raise ValueError(
+            f"notes for platform {platform_id!r} target unknown endpoint_type(s): "
+            f"{', '.join(unknown_targets)}; known: {', '.join(sorted(known_endpoint_types))}"
+        )
     annotated = tuple(
         endpoint.model_copy(update={"notes": endpoint_notes.get(endpoint.endpoint_type, ())})
         if endpoint_notes.get(endpoint.endpoint_type)
