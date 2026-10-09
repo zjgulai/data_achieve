@@ -742,6 +742,35 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="输入自然语言问题，返回综合答案 + 信源引用（标题/URL/日期/作者）。",
         config_schema={"required": ["query"], "properties": {"query": "string", "output_schema": "object", "text": "boolean"}},
     ),
+    # 以下 4 个 collector 早已在 registry 注册并有校验函数，但此前遗漏在播种清单里，
+    # 导致生产 quick-collect 一律返回 400 "Collector ... is not available"。
+    CollectorDefinition(
+        type="autoscraper_enhanced_web",
+        name="AutoScraper 智能提取",
+        description="给示例样本自动学习网页结构并批量提取同类字段，适合无固定模板的页面。",
+        config_schema={
+            "required": ["url", "wanted_list"],
+            "properties": {"url": "string", "wanted_list": "array", "mode": "string", "save_rules": "boolean", "rules_path": "string"},
+        },
+    ),
+    CollectorDefinition(
+        type="bestblogs_articles",
+        name="BestBlogs AI 精选文章",
+        description="BestBlogs 平台聚合的 AI/技术精选文章、评分与摘要。",
+        config_schema={"required": [], "properties": {"category": "string", "lang": "string", "min_score": "integer", "limit": "integer"}},
+    ),
+    CollectorDefinition(
+        type="blackbird_email_osint",
+        name="Blackbird 邮箱 OSINT",
+        description="通过 Blackbird API 查询邮箱关联的公开账号画像。",
+        config_schema={"required": ["email"], "properties": {"email": "string"}},
+    ),
+    CollectorDefinition(
+        type="blackbird_username_osint",
+        name="Blackbird 用户名 OSINT",
+        description="通过 Blackbird API 查询用户名在公开平台的注册情况。",
+        config_schema={"required": ["username"], "properties": {"username": "string"}},
+    ),
 )
 
 
