@@ -1146,6 +1146,8 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
 
         raise CollectorConfigError
     out: dict[str, Any] = {"endpoint_type": endpoint_type, "max_items": max_items}
+    # 这份白名单必须覆盖 _build_params 里所有 config.get("X")：漏掉的键会被静默丢成 ""，
+    # 上游于是报 400/422（2026-10-09 实测：subreddit 被丢 -> subreddit_name 长度不足）。
     for key in (
         "keyword", "unique_id", "ch_id", "user_id", "cursor", "max_cursor",
         "video_id", "url", "query", "sec_user_id", "screen_name", "urn",
@@ -1153,6 +1155,13 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
         "code_or_url", "company_name", "company_username", "job_id",
         "uid", "bvid", "mid", "search_word", "ad_id", "ads_id",
         "username", "category_id",
+        # _build_params 读取但此前不在白名单里的键
+        "sort_type", "hashtag_id", "max_id", "pagination_token", "note_type",
+        "page", "page_size", "order", "source", "channel_id", "subreddit",
+        "aweme_id", "keywords", "post_urn", "offset", "question_id",
+        "material_id", "industry", "country_code", "label", "tag",
+        "since_id", "feature", "filter_type", "month", "search_type",
+        "end_cursor", "pcursor",
     ):
         if key in config and config[key] is not None:
             out[key] = config[key]

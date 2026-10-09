@@ -33,7 +33,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "tikhub_lemon8_search":               {"keyword": "python"},
     "tikhub_lemon8_user_posts":           {"user_id": "12345"},
     "tikhub_lemon8_trending":             {},
-    "tikhub_tiktok_ads_search":           {"keyword": "python"},
+    "tikhub_tiktok_ads_search":           {"material_id": "7182310470102122497"},
     "tikhub_tiktok_top_ads":             {},
     "tikhub_tiktok_shop_products":        {"keyword": "phone case"},
     "tikhub_tiktok_creator_info":         {"unique_id": "tiktok"},
@@ -60,7 +60,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "tikhub_douyin_comments":             {"aweme_id": "123456"},
     "tikhub_douyin_brand_hot_search":     {},
     "tikhub_wechat_search":               {"keyword": "python"},
-    "tikhub_wechat_channels_video":       {"video_id": "123456"},
+    "tikhub_wechat_channels_video":       {"username": "v2_020302030405060708090a0b0c0d0e0f@finder"},
     "tikhub_weibo_search":                {"keyword": "python"},
     "tikhub_weibo_user_posts":            {"uid": "1669879400"},
     "tikhub_zhihu_search":                {"keyword": "python"},
@@ -199,7 +199,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     # ── RSS / Web ──────────────────────────────────────────────────────────────
     "public_feed":                {"url": "https://hnrss.org/frontpage"},
     "generic_web":                {"url": "https://example.com"},
-    "autoscraper_enhanced_web":   {"url": "https://news.ycombinator.com", "examples": ["Ask HN", "Show HN"]},
+    "autoscraper_enhanced_web":   {"url": "https://news.ycombinator.com", "wanted_list": ["Ask HN", "Show HN"]},
     # ── Ecommerce ─────────────────────────────────────────────────────────────
     "ecommerce_product_page":     {"url": "https://www.amazon.com/dp/B09G9FPHY6"},
     "ecommerce_product_discovery": {"url": "https://www.amazon.com/s?k=laptop"},
@@ -274,7 +274,7 @@ DEMO_PARAMS.update(
         "tikhub_bilibili_comments": {"oid": "1234567890"},
         # AnySearch
         "anysearch_code_doc": {"query": "python requests"},
-        "anysearch_tag_search": {"query": "python", "tag": "python"},
+        "anysearch_tag_search": {"query": "python", "tag": "code.doc"},
         # OSINT
         "sherlock_username_search": {"username": "python"},
         "maigret_username_profile": {"username": "python"},
