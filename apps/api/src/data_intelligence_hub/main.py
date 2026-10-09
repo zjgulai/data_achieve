@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from data_intelligence_hub.agents.tiktok_cdo.router import router as tiktok_cdo_router
 from data_intelligence_hub.api.routes.alerts import (
     alert_events_router,
     alert_rules_router,
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router, prefix="/api/notifications")
     app.include_router(platform_credentials_router, prefix="/api/settings")
     app.include_router(platform_packages_router, prefix="/api/platform-packages")
+    app.include_router(tiktok_cdo_router, prefix="/api/agents/tiktok-cdo")
     app.mount("/mcp", BearerTokenMiddleware(mcp_app))
     return app
 
