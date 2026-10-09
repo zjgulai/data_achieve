@@ -1,0 +1,37 @@
+{
+  "platform_id": "threads",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_threads_user_posts",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_user_posts 在 data.mediaData.edges[].node，正文在 thread_items[0].post.caption.text；且 user_id 必须是数值型 ID（用户名不行）",
+      "workaround": "已修：新增 threads 提取分支与 _normalize_threads_item；演示参数改用 fetch_user_info 拿到的数值 user_id。实测 0 -> 20 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_threads_post_comments",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_post_comments 在 data.edges[].node（含 thread_items），不是常见的 items/list",
+      "workaround": "已修：同上。实测 0 -> 19 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    }
+  ]
+}

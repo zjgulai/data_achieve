@@ -64,6 +64,70 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_ads_detail",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "get_ads_detail（POST）的 data.data 是单个广告对象；且 body 的键是 ads_id 不是 ad_id，演示值曾是占位 123456",
+      "workaround": "已修：提取器识别单对象形状；演示参数换成 top ads 回收的真实素材 ID。实测 0 -> 1 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_live_room_detail",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_live_room_info 的 data.data 是单个直播间对象（261 个字段），主播在 owner；演示 room_id 曾是 123456",
+      "workaround": "已修：单对象形状识别 + _normalize_tiktok_live 兼容 owner/title。实测 0 -> 1 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_hashtag_posts",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "演示 ch_id 是占位 7654567，不是真实话题 ID",
+      "workaround": "已修：从视频搜索结果的 challenge cid 回收真实 ID。实测 0 -> 20 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_ads_keyword_suggest",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "get_query_suggestions 是 POST，body 需要 query/count，原先 _build_params 返回 {}；补上后上游对 query=python 仍返回空列表（上游侧无联想词）",
+      "workaround": "参数已正确传递；该端点暂视为 empty，换更常见的 seed 词可能出数据",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

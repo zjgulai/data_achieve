@@ -905,6 +905,143 @@ def test_extract_items_tiktok_top_ads() -> None:
     assert record.content["text"] == "Showcase a comparison"
 
 
+THREADS_USER_POSTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "mediaData": {
+            "edges": [
+                {
+                    "node": {
+                        "__typename": "ThreadItem",
+                        "id": "111",
+                        "thread_items": [
+                            {
+                                "post": {
+                                    "id": "222",
+                                    "code": "Cxyz",
+                                    "user": {"username": "zuck"},
+                                    "caption": {"text": "hello threads"},
+                                }
+                            }
+                        ],
+                    }
+                }
+            ],
+            "page_info": {"has_next_page": False},
+        }
+    },
+}
+
+THREADS_POST_COMMENTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "edges": [
+            {
+                "node": {
+                    "id": "333",
+                    "thread_items": [
+                        {"post": {"id": "444", "code": "Dabc", "caption": {"text": "a reply"}}}
+                    ],
+                }
+            }
+        ],
+        "page_info": {},
+    },
+}
+
+
+def test_extract_items_threads_user_posts() -> None:
+    items = _extract_items(THREADS_USER_POSTS_RESPONSE, "threads")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "threads", "tikhub_threads_user_posts")
+    assert record is not None
+    assert record.record_type == "threads_post"
+    assert record.content["text"] == "hello threads"
+    assert record.content["author"] == "zuck"
+
+
+def test_extract_items_threads_post_comments() -> None:
+    items = _extract_items(THREADS_POST_COMMENTS_RESPONSE, "threads")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "threads", "tikhub_threads_post_comments")
+    assert record is not None
+    assert record.content["text"] == "a reply"
+
+
+TIKTOK_LIVE_ROOM_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "status_code": 0,
+        "data": {
+            "id_str": "7694650101042170654",
+            "id": "7694650101042170654",
+            "title": "Morning Worship Prayer",
+            "owner": {"nickname": "Full Soul", "id_str": "7001"},
+        },
+        "extra": {},
+    },
+}
+
+X_FOLLOWERS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "followers_count": 1,
+        "followers": [{"user_id": "1153803242", "screen_name": "0xOrionVega", "description": "hi"}],
+        "next_cursor": "",
+    },
+}
+
+
+def test_extract_items_tiktok_live_room_detail() -> None:
+    """fetch_live_room_info 的 data.data 是单个直播间对象，不是列表。"""
+    items = _extract_items(TIKTOK_LIVE_ROOM_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_live_room_detail")
+    assert record is not None
+    assert record.record_type == "tiktok_live"
+    assert record.content["room_id"] == "7694650101042170654"
+    assert record.content["nickname"] == "Full Soul"
+
+
+def test_extract_items_x_user_followers() -> None:
+    items = _extract_items(X_FOLLOWERS_RESPONSE, "x")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "x", "tikhub_x_user_followers")
+    assert record is not None
+
+
+TIKTOK_FOLLOWERS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "followers": [
+            {
+                "uid": "7001",
+                "sec_uid": "MS4wLjABAAAA",
+                "unique_id": "someuser",
+                "nickname": "Some User",
+                "signature": "hi",
+                "follower_count": 12,
+                "item_list": [],
+                "cha_list": [],
+            }
+        ],
+        "has_more": 1,
+    },
+}
+
+
+def test_extract_items_tiktok_followers() -> None:
+    """粉丝条目是完整用户对象，没有 aweme_id，不能走视频归一化。"""
+    items = _extract_items(TIKTOK_FOLLOWERS_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_user_followers")
+    assert record is not None
+    assert record.record_type == "tiktok_user"
+    assert record.content["text"] == "Some User"
+    assert record.content["unique_id"] == "someuser"
+    assert record.source_url == "https://www.tiktok.com/@someuser"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
