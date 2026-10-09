@@ -101,6 +101,7 @@ services:
       SCRAPY_MCP_DAILY_COLLECTS: ${SCRAPY_MCP_DAILY_COLLECTS:-500}
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
+      TOR_PROXY_URL: ${TOR_PROXY_URL:-socks5h://tor:9050}
       PROXY_ROTATOR_URL: ${PROXY_ROTATOR_URL:-http://proxy_rotator:8080}
       PROXY_ROTATOR_ENABLED: ${PROXY_ROTATOR_ENABLED:-false}
       MAIGRET_URL: ${MAIGRET_URL:-http://maigret:5000}
@@ -207,6 +208,16 @@ services:
       - scrapy_internal
 
   # Maigret OSINT Service - P0 OSINT Layer
+  tor:
+    build:
+      context: ./tor
+    container_name: data_achieve_scrapy_tor
+    restart: unless-stopped
+    expose:
+      - "9050"
+    networks:
+      - scrapy_internal
+
   maigret:
     container_name: data_achieve_scrapy_maigret
     image: soxoj/maigret:latest
