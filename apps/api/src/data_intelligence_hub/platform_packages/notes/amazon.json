@@ -1,0 +1,20 @@
+{
+  "platform_id": "amazon",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "amazon",
+      "symptom": "apify_amazon_bestsellers 报 403；apify_amazon_bsr_tracker、apify_amazon_competitor_research actor run FAILED",
+      "cause": "Amazon 反爬 + 部分 actor 需特定入参（categoryUrls/asins）与代理",
+      "workaround": "配置代理并核对 actor 入参；apify_amazon_product_scraper 已验证可用，可作首选",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "anti-bot"
+      ]
+    }
+  ]
+}

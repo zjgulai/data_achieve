@@ -1,0 +1,19 @@
+{
+  "platform_id": "weibo",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "weibo",
+      "symptom": "weibo_keyword_search / _user_posts / _trending_topics 报 http_connection_failed",
+      "cause": "生产服务器 IP 直连该站点超时（http_connection_failed）",
+      "workaround": "改用 tikhub_* 对应端点，或在服务器配置可用的 HTTP_PROXY/HTTPS_PROXY 后重试",
+      "failure_class": "network_proxy",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "egress"
+      ]
+    }
+  ]
+}

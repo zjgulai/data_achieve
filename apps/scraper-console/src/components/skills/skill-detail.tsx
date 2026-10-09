@@ -9,7 +9,7 @@ import {
   fetchPlatformPlaybook,
   fetchPlatformRelease,
 } from "@/lib/api/platform-packages";
-import type { PackageEndpoint } from "@/lib/api/platform-packages";
+import type { CapabilityNote, PackageEndpoint } from "@/lib/api/platform-packages";
 import { API_BASE_URL } from "@/lib/api/client";
 
 export function SkillDetail({ platformId }: { readonly platformId: string }) {
@@ -34,6 +34,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
     return <ShellState title="平台不存在" text="未找到对应的平台工具包。" danger />;
   }
 
+  const notes = [...item.platform_notes, ...item.endpoints.flatMap((endpoint) => endpoint.notes)];
   const firstEndpoint = item.endpoints[0];
   const restExample = firstEndpoint
     ? JSON.stringify(
@@ -122,6 +123,18 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
         </div>
       </section>
 
+      {notes.length > 0 ? (
+        <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
+          <h2 className="font-bold">坑点与规避</h2>
+          <p className="mt-1 text-xs text-[var(--text-tertiary)]">来自策展坑点源，随平台包一同发布。</p>
+          <div className="mt-4 grid gap-3">
+            {notes.map((note, index) => (
+              <PitfallCard key={`${note.target}-${index}`} note={note} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
         <h2 className="font-bold">Playbook</h2>
         {playbookQuery.isLoading ? (
@@ -182,6 +195,35 @@ function CodePanel({ title, code }: { readonly title: string; readonly code: str
 
 function InstallCard({ name, path }: { readonly name: string; readonly path: string }) {
   return <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4"><p className="text-sm font-semibold">{name}</p><code className="mt-2 block break-all text-[10px] leading-5 text-[var(--text-tertiary)]">{path}</code></div>;
+}
+
+function PitfallCard({ note }: { readonly note: CapabilityNote }) {
+  const tone =
+    note.severity === "blocker"
+      ? "var(--state-danger)"
+      : note.severity === "warning"
+        ? "var(--action-primary)"
+        : "var(--text-tertiary)";
+  return (
+    <article className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold uppercase" style={{ color: tone }}>{note.severity}</span>
+        <code className="text-xs text-[var(--text-secondary)]">{note.target}</code>
+        {note.failure_class ? <Tag>{note.failure_class}</Tag> : null}
+        {note.verified_at ? (
+          <span className="text-xs text-[var(--text-tertiary)]">已验证 {note.verified_at}</span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{note.symptom}</p>
+      <div className="mt-2 grid gap-1 text-xs leading-6 text-[var(--text-secondary)]">
+        <p><span className="font-semibold">原因：</span>{note.cause}</p>
+        <p><span className="font-semibold">规避：</span>{note.workaround}</p>
+      </div>
+      {note.source_ref ? (
+        <p className="mt-2 text-xs text-[var(--text-tertiary)]">来源：{note.source_ref}</p>
+      ) : null}
+    </article>
+  );
 }
 
 function ShellState({ title, text, danger = false }: { readonly title: string; readonly text: string; readonly danger?: boolean }) {

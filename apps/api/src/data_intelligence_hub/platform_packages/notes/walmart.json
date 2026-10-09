@@ -1,0 +1,19 @@
+{
+  "platform_id": "walmart",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "walmart",
+      "symptom": "apify_walmart_product_scraper 返回 0 条；apify_walmart_reviews_scraper 报 403",
+      "cause": "Walmart 对无代理请求返回空/403",
+      "workaround": "配置代理并确认商品 ID 有效",
+      "failure_class": "upstream_4xx",
+      "severity": "info",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify"
+      ]
+    }
+  ]
+}

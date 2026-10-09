@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
+from data_intelligence_hub.platform_packages.notes import (
+    SECRET_VALUE_RE,
+    _PRIVATE_KEY_RE,
+)
 from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
 from data_intelligence_hub.platform_packages.generator import generate_platform_packages
 
@@ -38,7 +42,9 @@ def test_generator_writes_complete_safe_packages(tmp_path: Path) -> None:
         skill_text = (skill_dir / "SKILL.md").read_text()
         assert skill_text.startswith("---\nname:")
         assert "https://scrapy.luteos.com" in skill_text
-        assert "API_KEY=" not in skill_text
+        # 只拦“疑似真实密钥值”，占位符如 `EXA_API_KEY=<key>` 不算泄漏
+        assert SECRET_VALUE_RE.search(skill_text) is None
+        assert _PRIVATE_KEY_RE.search(skill_text) is None
         cases = json.loads((skill_dir / "evals/trigger_cases.json").read_text())
         assert sum(case["should_trigger"] for case in cases) >= 2
         assert sum(not case["should_trigger"] for case in cases) >= 2

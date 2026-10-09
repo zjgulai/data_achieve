@@ -1,5 +1,18 @@
 import { apiFetch } from "./client";
 
+export type CapabilityNote = Readonly<{
+  scope: "platform" | "endpoint";
+  target: string;
+  symptom: string;
+  cause: string;
+  workaround: string;
+  failure_class: string | null;
+  severity: "info" | "warning" | "blocker";
+  verified_at: string | null;
+  source_ref: string | null;
+  tags: readonly string[];
+}>;
+
 export type PackageEndpoint = Readonly<{
   capability_id: string;
   endpoint_type: string;
@@ -16,6 +29,7 @@ export type PackageEndpoint = Readonly<{
   content_type: string;
   method: string;
   param_fields: Readonly<Record<string, string>>;
+  notes: readonly CapabilityNote[];
 }>;
 
 export type PlatformPackage = Readonly<{
@@ -32,6 +46,7 @@ export type PlatformPackage = Readonly<{
   skill_path: string;
   playbook_path: string;
   detail_path: string;
+  platform_notes: readonly CapabilityNote[];
 }>;
 
 export type PlatformPackageCatalog = Readonly<{
@@ -51,7 +66,7 @@ export type PlatformPlaybook = Readonly<{
 
 export type EndpointAvailability = Readonly<{
   endpoint_type: string;
-  availability: "verified" | "config-gated" | "degraded" | "disabled";
+  availability: "verified" | "config-gated" | "degraded" | "untested" | "disabled";
   missing_configuration: readonly string[];
   last_test_status: string | null;
   last_test_at: string | null;

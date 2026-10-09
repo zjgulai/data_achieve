@@ -116,7 +116,7 @@ export function SkillsDirectory() {
   function updateAvailability(value: string) {
     if (
       value === "all" || value === "verified" || value === "config-gated" ||
-      value === "degraded" || value === "disabled"
+      value === "degraded" || value === "untested" || value === "disabled"
     ) setAvailability(value);
   }
 
@@ -158,6 +158,7 @@ export function SkillsDirectory() {
           <option value="verified">verified</option>
           <option value="config-gated">config-gated</option>
           <option value="degraded">degraded</option>
+          <option value="untested">untested</option>
           <option value="disabled">disabled</option>
         </select>
       </section>

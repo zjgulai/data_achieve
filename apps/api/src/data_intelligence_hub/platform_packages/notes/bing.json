@@ -1,0 +1,19 @@
+{
+  "platform_id": "bing",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "bing",
+      "symptom": "bing_search_results 报 “ANYCRAWL_BASE_URL is not configured”",
+      "cause": "同上，Bing SERP 依赖 AnyCrawl",
+      "workaround": "配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器",
+      "failure_class": "config_gated",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "anycrawl"
+      ]
+    }
+  ]
+}

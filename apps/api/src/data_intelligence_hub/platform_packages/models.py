@@ -1,6 +1,26 @@
 from __future__ import annotations
 
+from datetime import date
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
+
+
+class CapabilityNote(BaseModel):
+    """一条平台/端点级坑点（策展来源，见 platform_packages/notes/*.json）。"""
+
+    model_config = ConfigDict(frozen=True)
+
+    scope: Literal["platform", "endpoint"]
+    target: str  # platform_id (platform scope) 或 endpoint_type (endpoint scope)
+    symptom: str
+    cause: str
+    workaround: str
+    failure_class: str | None = None
+    severity: Literal["info", "warning", "blocker"] = "warning"
+    verified_at: date | None = None
+    source_ref: str | None = None
+    tags: tuple[str, ...] = ()
 
 
 class PackageEndpoint(BaseModel):
@@ -23,6 +43,7 @@ class PackageEndpoint(BaseModel):
     content_type: str
     method: str
     param_fields: dict[str, str]
+    notes: tuple[CapabilityNote, ...] = ()
 
 
 class PlatformPackage(BaseModel):
@@ -41,6 +62,7 @@ class PlatformPackage(BaseModel):
     skill_path: str
     playbook_path: str
     detail_path: str
+    platform_notes: tuple[CapabilityNote, ...] = ()
 
 
 class PlatformPackageCatalog(BaseModel):

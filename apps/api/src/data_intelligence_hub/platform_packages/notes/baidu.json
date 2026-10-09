@@ -1,0 +1,19 @@
+{
+  "platform_id": "baidu",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "baidu",
+      "symptom": "baidu_search_results 报 “ANYCRAWL_BASE_URL is not configured”",
+      "cause": "SERP 采集依赖 AnyCrawl 服务，生产未配置 ANYCRAWL_BASE_URL",
+      "workaround": "配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器",
+      "failure_class": "config_gated",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "anycrawl"
+      ]
+    }
+  ]
+}

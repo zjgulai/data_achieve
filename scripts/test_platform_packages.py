@@ -6,8 +6,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import urllib.request
 from pathlib import Path
+
+# 与 data_intelligence_hub.platform_packages.notes 保持一致：只拦“疑似真实密钥值”，
+# 占位符（如 `EXA_API_KEY=...`）不算。
+SECRET_VALUE_RE = re.compile(
+    r"(api[_-]?key|apikey|password|passwd|secret|bearer|private\s+key)"
+    r"\s*[:=]\s*([A-Za-z0-9_\-]{16,})",
+    re.IGNORECASE,
+)
+_PRIVATE_KEY_RE = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,6 +28,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
+
+
+def _note_failures(note: dict, known_endpoints: set[str], platform_id: str) -> list[str]:
+    out: list[str] = []
+    for field in ("symptom", "cause", "workaround"):
+        if not str(note.get(field, "")).strip():
+            out.append(f"note_empty_field:{platform_id}:{note.get('target')}:{field}")
+    if note.get("scope") == "endpoint" and note.get("target") not in known_endpoints:
+        out.append(f"note_unknown_target:{platform_id}:{note.get('target')}")
+    if note.get("severity") not in {"info", "warning", "blocker"}:
+        out.append(f"note_bad_severity:{platform_id}:{note.get('target')}")
+    return out
 
 
 def validate_packages(root: Path, platform_filter: str | None) -> dict[str, object]:
@@ -32,6 +54,7 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
     failures: list[str] = []
     capability_ids: set[str] = set()
     endpoint_types: set[str] = set()
+    note_count = 0
     for package in packages:
         platform_id = package["platform_id"]
         skill_root = root / "generated/platform-skills" / platform_id
@@ -46,9 +69,16 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
         failures.extend(
             f"missing:{path.relative_to(root)}" for path in required_paths if not path.is_file()
         )
+        known = {endpoint["endpoint_type"] for endpoint in package["endpoints"]}
+        for note in package.get("platform_notes", []):
+            note_count += 1
+            failures.extend(_note_failures(note, known, platform_id))
         for endpoint in package["endpoints"]:
             capability_ids.add(endpoint["capability_id"])
             endpoint_types.add(endpoint["endpoint_type"])
+            for note in endpoint.get("notes", []):
+                note_count += 1
+                failures.extend(_note_failures(note, known, platform_id))
             if not endpoint["required_params"] and not endpoint["optional_params"]:
                 continue
             if endpoint["status"] not in {"verified", "pending", "disabled"}:
@@ -59,9 +89,8 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
                 for path in skill_root.rglob("*")
                 if path.is_file()
             )
-            for marker in ("API_KEY=", "PASSWORD=", "BEGIN PRIVATE KEY"):
-                if marker in combined:
-                    failures.append(f"secret_marker:{platform_id}:{marker}")
+            if SECRET_VALUE_RE.search(combined) or _PRIVATE_KEY_RE.search(combined):
+                failures.append(f"secret_marker:{platform_id}")
     expected_platforms = 1 if platform_filter else 74
     if len(packages) != expected_platforms:
         failures.append(f"platform_count:{len(packages)}:{expected_platforms}")
@@ -79,11 +108,14 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
         ):
             if lock[key] != index[key]:
                 failures.append(f"catalog_lock_mismatch:{key}")
+        if note_count and not (root / "docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md").is_file():
+            failures.append("missing:pitfalls_library")
     return {
         "status": "passed" if not failures else "failed",
         "platform_count": len(packages),
         "capability_count": len(capability_ids),
         "unique_endpoint_count": len(endpoint_types),
+        "note_count": note_count,
         "failures": failures,
     }
 

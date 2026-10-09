@@ -9,6 +9,10 @@ from data_intelligence_hub.platform_packages.models import (
     PlatformPackage,
     PlatformPackageCatalog,
 )
+from data_intelligence_hub.platform_packages.notes import (
+    PlatformNotes,
+    load_platform_notes,
+)
 from data_intelligence_hub.schemas.collector_catalog import CollectorCatalogResponse
 
 
@@ -69,8 +73,9 @@ def build_platform_package_catalog(
             )
             by_platform[endpoint.platform].append(packaged)
 
+    notes_by_platform = load_platform_notes()
     packages = tuple(
-        _build_package(platform_id, endpoints)
+        _build_package(platform_id, endpoints, notes_by_platform.get(platform_id))
         for platform_id, endpoints in sorted(by_platform.items())
     )
     digest_payload = [package.model_dump(mode="json") for package in packages]
@@ -91,8 +96,16 @@ def build_platform_package_catalog(
 def _build_package(
     platform_id: str,
     endpoints: list[PackageEndpoint],
+    notes: PlatformNotes | None = None,
 ) -> PlatformPackage:
-    ordered = tuple(sorted(endpoints, key=lambda item: item.endpoint_type))
+    endpoint_notes = notes.endpoint_notes if notes else {}
+    annotated = tuple(
+        endpoint.model_copy(update={"notes": endpoint_notes.get(endpoint.endpoint_type, ())})
+        if endpoint_notes.get(endpoint.endpoint_type)
+        else endpoint
+        for endpoint in endpoints
+    )
+    ordered = tuple(sorted(annotated, key=lambda item: item.endpoint_type))
     display_name = _display_name(platform_id)
     return PlatformPackage(
         platform_id=platform_id,
@@ -108,4 +121,5 @@ def _build_package(
         skill_path=f"generated/platform-skills/{platform_id}",
         playbook_path=f"docs/playbooks/platforms/{platform_id}.md",
         detail_path=f"/skills/{platform_id}",
+        platform_notes=notes.platform_notes if notes else (),
     )

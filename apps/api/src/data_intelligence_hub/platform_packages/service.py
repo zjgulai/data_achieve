@@ -18,6 +18,7 @@ from data_intelligence_hub.platform_packages.models import (
     PlatformPackage,
     PlatformPackageCatalog,
 )
+from data_intelligence_hub.platform_packages.notes import notes_version
 from data_intelligence_hub.platform_packages.renderers import (
     render_playbook,
     render_readme,
@@ -42,14 +43,16 @@ class CapabilityNotFoundError(LookupError):
 
 
 @lru_cache(maxsize=1)
-def _build_cached(source_json: str) -> PlatformPackageCatalog:
+def _build_cached(cache_key: str) -> PlatformPackageCatalog:
+    source_json, _, _notes_version = cache_key.partition("\x00")
     source = CollectorCatalogResponse.model_validate_json(source_json)
     return build_platform_package_catalog(source)
 
 
 async def get_platform_package_catalog() -> PlatformPackageCatalog:
     source = await get_collector_catalog()
-    return _build_cached(source.model_dump_json())
+    # 缓存键包含策展坑点版本，只改 notes（不改 catalog）时也能失效重建。
+    return _build_cached(f"{source.model_dump_json()}\x00{notes_version()}")
 
 
 async def get_platform_package(platform_id: str) -> PlatformPackage:

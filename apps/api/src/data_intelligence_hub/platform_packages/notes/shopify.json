@@ -1,0 +1,19 @@
+{
+  "platform_id": "shopify",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "shopify",
+      "symptom": "apify_shopify_products_monitor 报 404；apify_shopify_full_catalog 报 403",
+      "cause": "演示域名（allbirds.com）路径不匹配或对无代理请求 403",
+      "workaround": "改用真实存在的 /products.json 目标域名与代理后重试",
+      "failure_class": "upstream_4xx",
+      "severity": "info",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify"
+      ]
+    }
+  ]
+}

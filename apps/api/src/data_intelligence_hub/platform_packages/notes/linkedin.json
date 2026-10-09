@@ -1,0 +1,20 @@
+{
+  "platform_id": "linkedin",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "linkedin",
+      "symptom": "tikhub_linkedin_* 多个端点返回 records=0（无报错），apify_linkedin_jobs/company_search 亦为空",
+      "cause": "LinkedIn 上游对无有效会话的请求返回空结果集；演示参数不足以触发真实数据",
+      "workaround": "视为“需真实会话/参数”的高不稳定端点；不要据此判定能力可用，接入前用小样本人工验证",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tikhub",
+        "linkedin"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "platform_id": "x",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "x",
+      "symptom": "twscrape_search / _user_tweets / _trends 报 “No Twitter accounts configured”",
+      "cause": "twscrape 需要登录态账号池，生产未配置 TWITTER_ACCOUNTS_JSON / TWITTER_ACCOUNTS_FILE",
+      "workaround": "配置 TWITTER_ACCOUNTS_JSON（账号+代理）后重建；否则用 tikhub_x_* 或 apify_x_* 替代",
+      "failure_class": "config_gated",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "twscrape",
+        "credentials"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,39 @@ from __future__ import annotations
 
 import json
 
-from data_intelligence_hub.platform_packages.models import PlatformPackage
+from data_intelligence_hub.platform_packages.models import CapabilityNote, PlatformPackage
+
+
+def _escape(value: str) -> str:
+    return value.replace("|", "/").replace("\n", " ").strip()
+
+
+def _notes_table(notes: list[CapabilityNote], header: str) -> str:
+    rows = "\n".join(
+        "| {} | {} | {} | {} | {} | {} |".format(
+            note.target,
+            _escape(note.symptom),
+            _escape(note.cause),
+            _escape(note.workaround),
+            note.severity,
+            note.verified_at.isoformat() if note.verified_at else "—",
+        )
+        for note in notes
+    )
+    return (
+        f"{header}\n\n"
+        "| 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 |\n"
+        "|---|---|---|---|---|---|\n"
+        f"{rows}\n"
+    )
+
+
+def _collect_notes(package: PlatformPackage) -> list[CapabilityNote]:
+    notes: list[CapabilityNote] = list(package.platform_notes)
+    for endpoint in package.endpoints:
+        notes.extend(endpoint.notes)
+    return notes
+
 
 
 def render_skill(package: PlatformPackage) -> str:
@@ -13,6 +45,19 @@ def render_skill(package: PlatformPackage) -> str:
         f"{package.display_name} 数据采集 Skill，覆盖搜索、内容、账号、评论等已注册能力。"
         f"当用户要采集、查询、监测或分析 {package.display_name} 数据时使用。"
     )
+    notes = _collect_notes(package)
+    ordered_notes = sorted(notes, key=lambda n: {"blocker": 0, "warning": 1, "info": 2}[n.severity])
+    skill_notes_block = ""
+    if ordered_notes:
+        bullets = "\n".join(
+            f"- [{note.severity}] `{note.target}`：{_escape(note.symptom)} → {_escape(note.workaround)}"
+            for note in ordered_notes[:8]
+        )
+        skill_notes_block = (
+            "\n## 已知限制与坑点\n\n"
+            f"{bullets}\n\n"
+            "完整清单见 `references/playbook.md` 的「坑点与规避」。\n"
+        )
     return f"""---
 name: {package.platform_id}-collector
 description: {description}
@@ -46,7 +91,7 @@ description: {description}
 - 不把 Cookie、Token、密码或生产环境变量写入对话和文件。
 - Provider 缺配置时应报告 `config-gated`，不得声称采集成功。
 - 本 Skill 不负责发布、点赞、评论或修改第三方平台数据。
-"""
+{skill_notes_block}"""
 
 
 def render_readme(package: PlatformPackage) -> str:
@@ -58,6 +103,10 @@ def render_readme(package: PlatformPackage) -> str:
         '{{"project_id":"<project-uuid>",'
         f'"endpoint_type":"{package.endpoints[0].endpoint_type}",'
         '"params":{}}}'
+    )
+    note_count = len(_collect_notes(package))
+    readme_notes_hint = (
+        f"\n> 本平台已知 {note_count} 条坑点/限制，采集前请先阅读。\n" if note_count else ""
     )
     return f"""# {package.display_name} Collector Skill
 
@@ -76,8 +125,9 @@ MCP 客户端连接：`https://scrapy.luteos.com/mcp/`。
 发布元数据：`GET /api/platform-packages/{package.platform_id}/release`，包含版本、
 catalog digest 与 ZIP SHA-256。
 
-详细端点与参数见 `manifest.json`，操作流程见 `references/playbook.md`。
-"""
+详细端点与参数见 `manifest.json`，操作流程见 `references/playbook.md`，
+已知坑点与规避见 `references/playbook.md` 的「坑点与规避」一节。
+{readme_notes_hint}"""
 
 
 def render_playbook(package: PlatformPackage) -> str:
@@ -94,6 +144,12 @@ def render_playbook(package: PlatformPackage) -> str:
     description = (
         f"{package.display_name} 数据采集 Playbook，涵盖能力选择、参数准备、调用、"
         f"验收和风险边界。当执行 {package.display_name} 采集任务时使用。"
+    )
+    notes = _collect_notes(package)
+    notes_block = (
+        "\n" + _notes_table(notes, "## 坑点与规避") + "\n"
+        if notes
+        else ""
     )
     return f"""---
 name: {package.platform_id}-collection-playbook
@@ -115,7 +171,7 @@ description: {description}
 
 `manifest.json` 中 `canonical_capability_id` 标识唯一可调用能力；
 `is_alias_view=true` 表示该行是同一 endpoint 在其他平台或预设场景下的能力视图。
-
+{notes_block}
 ## 执行步骤
 
 1. 根据目标数据类型选择 endpoint。

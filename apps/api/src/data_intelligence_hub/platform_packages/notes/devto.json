@@ -1,0 +1,19 @@
+{
+  "platform_id": "devto",
+  "notes": [
+    {
+      "scope": "platform",
+      "target": "devto",
+      "symptom": "devto_articles_search 报 http_forbidden (403)",
+      "cause": "Dev.to API/站点对生产出口 IP 返回 403",
+      "workaround": "配置代理或改用其它技术博客端点（juejin/substack）",
+      "failure_class": "upstream_4xx",
+      "severity": "info",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "egress"
+      ]
+    }
+  ]
+}
