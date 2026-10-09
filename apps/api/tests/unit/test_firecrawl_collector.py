@@ -2,6 +2,7 @@
 
 All HTTP calls mocked — no real Firecrawl API key required.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -48,10 +49,14 @@ class TestFirecrawlCrawlCollector:
 
     def test_max_pages_bounds(self):
         with pytest.raises(CollectorError):
-            FirecrawlCrawlCollector(config={"url": "https://x.com", "max_pages": 999}).validate_config()
+            FirecrawlCrawlCollector(
+                config={"url": "https://x.com", "max_pages": 999}
+            ).validate_config()
 
     def test_valid_config_defaults(self):
-        cfg = FirecrawlCrawlCollector(config={"url": "https://example.com"}).validate_config()
+        cfg = FirecrawlCrawlCollector(
+            config={"url": "https://example.com"}
+        ).validate_config()
         assert cfg["url"] == "https://example.com"
         assert cfg["max_pages"] == 10
 
@@ -100,8 +105,14 @@ class TestFirecrawlCrawlCollector:
     async def test_collect_happy_path(self, monkeypatch):
         monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
         pages = [
-            {"metadata": {"sourceURL": "https://example.com/", "title": "Home"}, "markdown": "# Home"},
-            {"metadata": {"sourceURL": "https://example.com/about"}, "markdown": "# About"},
+            {
+                "metadata": {"sourceURL": "https://example.com/", "title": "Home"},
+                "markdown": "# Home",
+            },
+            {
+                "metadata": {"sourceURL": "https://example.com/about"},
+                "markdown": "# About",
+            },
         ]
         with (
             _post({"success": True, "id": "job-1"}),
@@ -117,6 +128,35 @@ class TestFirecrawlCrawlCollector:
 
 
 class TestFirecrawlExtractCollector:
+    @pytest.mark.asyncio
+    async def test_payload_uses_url_not_urls(self, monkeypatch):
+        """v1/scrape 的 body 收 url（字符串）。
+
+        传 urls 数组会被上游 400 拒绝：
+        "Unrecognized key in body -- please review the v2 API documentation"（2026-10-09 实测）。
+        """
+        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
+        captured: dict[str, Any] = {}
+
+        async def fake_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+            captured["path"] = path
+            captured["payload"] = payload
+            return {"success": True, "data": {"extract": {"title": "Example"}}}
+
+        with patch(
+            "data_intelligence_hub.collectors.firecrawl_collector._post",
+            side_effect=fake_post,
+        ):
+            result = await FirecrawlExtractCollector(
+                config={"url": "https://example.com", "prompt": "extract title"}
+            ).collect()
+
+        assert captured["path"] == "/v1/scrape"
+        assert captured["payload"]["url"] == "https://example.com"
+        assert "urls" not in captured["payload"]
+        assert result.raw_records
+        assert result.raw_records[0].content["extracted"] == {"title": "Example"}
+
     def test_missing_url_raises(self):
         with pytest.raises(CollectorError):
             FirecrawlExtractCollector(config={}).validate_config()
@@ -172,7 +212,9 @@ class TestFirecrawlBatchScrapeCollector:
 
     def test_non_list_raises(self):
         with pytest.raises(CollectorError):
-            FirecrawlBatchScrapeCollector(config={"urls": "https://x.com"}).validate_config()
+            FirecrawlBatchScrapeCollector(
+                config={"urls": "https://x.com"}
+            ).validate_config()
 
     def test_too_many_urls_raises(self):
         with pytest.raises(CollectorError):
@@ -193,6 +235,40 @@ class TestFirecrawlBatchScrapeCollector:
         assert cfg["urls"] == ["https://a.com", "https://b.com"]
 
     @pytest.mark.asyncio
+    async def test_collect_polls_async_job(self, monkeypatch):
+        """/v1/batch/scrape 首次只回 {"success", "id"}，必须再轮询才拿得到 data。
+
+        此前直接读 resp["data"] -> 永远 0 条（2026-10-09 实测）。
+        """
+        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
+        pages = [
+            {
+                "metadata": {"sourceURL": "https://example.com/", "title": "E"},
+                "markdown": "# E",
+            }
+        ]
+        with (
+            _post({"success": True, "id": "batch-1"}),
+            _poll({"status": "completed", "data": pages}),
+        ):
+            result = await FirecrawlBatchScrapeCollector(
+                config={"urls": ["https://example.com"]}
+            ).collect()
+        assert len(result.raw_records) == 1
+        assert result.raw_records[0].content["markdown"] == "# E"
+        assert not result.errors
+
+    @pytest.mark.asyncio
+    async def test_collect_without_id_reports_error(self, monkeypatch):
+        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
+        with _post({"success": True}):
+            result = await FirecrawlBatchScrapeCollector(
+                config={"urls": ["https://example.com"]}
+            ).collect()
+        assert result.raw_records == []
+        assert any("neither data nor id" in e for e in result.errors)
+
+    @pytest.mark.asyncio
     async def test_collect_post_error_returns_error(self, monkeypatch):
         monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
         with _post_error(CollectorError("network error")):
@@ -206,8 +282,14 @@ class TestFirecrawlBatchScrapeCollector:
     async def test_collect_happy_path(self, monkeypatch):
         monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
         pages = [
-            {"metadata": {"sourceURL": "https://a.com", "title": "A"}, "markdown": "# A"},
-            {"metadata": {"sourceURL": "https://b.com", "title": "B"}, "markdown": "# B"},
+            {
+                "metadata": {"sourceURL": "https://a.com", "title": "A"},
+                "markdown": "# A",
+            },
+            {
+                "metadata": {"sourceURL": "https://b.com", "title": "B"},
+                "markdown": "# B",
+            },
         ]
         with _post({"success": True, "data": pages}):
             result = await FirecrawlBatchScrapeCollector(
