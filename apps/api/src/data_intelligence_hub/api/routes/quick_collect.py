@@ -411,6 +411,26 @@ _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 # Apify endpoint → (actor_id, base_input_defaults)
+# quick-collect 级别的采集开关，绝不能传给 Actor：Actor 的 inputSchema 是
+# additionalProperties:false，多一个键就整单 400。除此之外的入参一律透传。
+# 曾把 query/url/keyword/... 也列进这个集合，结果调用方传的 query 被静默丢弃
+# → 上游报 "Field input.query is required"（2026-10-09 实测 apify_rag_web_browser）。
+_APIFY_META_KEYS = frozenset(
+    {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds"}
+)
+
+
+def build_apify_actor_input(base_input: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    """把调用方入参并到端点的缺省 Actor 入参上。
+
+    只有采集开关（``_APIFY_META_KEYS``）留在 quick-collect 层，其余键一律透传给
+    Actor。Actor 的 inputSchema 是 ``additionalProperties: false``：漏传必填键或
+    多传未知键都会让整单 400，所以这里刻意不做白名单过滤，让上游的报错
+    （"Field input.X is required" / "Property input.X is not allowed"）直接暴露给调用方。
+    """
+    return {**base_input, **{k: v for k, v in params.items() if k not in _APIFY_META_KEYS}}
+
+
 _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Social
     "apify_tiktok": ("clockworks/free-tiktok-scraper", {}),
@@ -430,13 +450,26 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "streamers/youtube-comments-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
     ),
-    "apify_youtube_comment_scraper": ("streamers/youtube-comment-scraper", {}),
+    "apify_youtube_comment_scraper": (
+        "streamers/youtube-comments-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
+    ),
     "apify_reddit_scraper": ("trudax/reddit-scraper-lite", {}),
-    "apify_reddit_community_monitor": ("apify/reddit-scraper", {}),
+    "apify_reddit_community_monitor": (
+        "trudax/reddit-scraper-lite",
+        {"searches": ["python"], "maxItems": 5},
+    ),
     "apify_facebook_posts_scraper": ("apify/facebook-posts-scraper", {}),
     "apify_facebook_comments_scraper": ("apify/facebook-comments-scraper", {}),
-    "apify_linkedin_profile_scraper": ("apimaestro/linkedin-profile-scraper", {}),
-    "apify_linkedin_company_scraper": ("apimaestro/linkedin-company-scraper", {}),
+    "apify_linkedin_profile_scraper": (
+        "harvestapi/linkedin-profile-scraper",
+        {"profileScraperMode": "Profile details no email ($4 per 1k)",
+         "queries": ["guido-van-rossum"]},
+    ),
+    "apify_linkedin_company_scraper": (
+        "harvestapi/linkedin-company",
+        {"companies": ["https://www.linkedin.com/company/python-software-foundation/"]},
+    ),
     "apify_linkedin_company_posts_scraper": ("harvestapi/linkedin-company-posts", {}),
     "apify_linkedin_jobs_scraper": ("freshdata/linkedin-job-scraper", {}),
     "apify_linkedin_company_employees_scraper": (
@@ -444,25 +477,40 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {},
     ),
     "apify_linkedin_company_search_scraper": ("khadinakbar/linkedin-company-search-scraper", {}),
-    "apify_x_scraper": ("quacker/twitter-scraper", {}),
+    "apify_x_scraper": ("apidojo/tweet-scraper", {}),
     "apify_x_tweet_scraper": ("apidojo/tweet-scraper", {}),
-    "apify_threads_scraper": ("apify/threads-scraper", {}),
+    "apify_threads_scraper": (
+        "futurizerush/meta-threads-scraper",
+        {"mode": "user", "usernames": ["zuck"], "max_posts": 3},
+    ),
     "apify_threads_profile_scraper": ("apify/threads-profile-api-scraper", {}),
     "apify_threads_posts_scraper": ("futurizerush/meta-threads-scraper", {}),
     "apify_pinterest_scraper": ("danielmilevski9/pinterest-crawler", {}),
-    "apify_snapchat_profile_scraper": ("apify/snapchat-scraper", {}),
-    "apify_snapchat_scraper": ("apify/snapchat-scraper", {}),
+    "apify_snapchat_profile_scraper": (
+        "tri_angle/snapchat-scraper",
+        {"profilesInput": ["fcbarcelona"]},
+    ),
+    "apify_snapchat_scraper": (
+        "tri_angle/snapchat-scraper",
+        {"profilesInput": ["fcbarcelona"]},
+    ),
     # E-commerce
     "apify_amazon_product_scraper": (
         "junglee/amazon-crawler",
         {"categoryOrProductUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}]},
     ),
-    "apify_amazon_review_scraper": ("junglee/amazon-review-scraper", {}),
+    "apify_amazon_review_scraper": (
+        "junglee/amazon-reviews-scraper",
+        {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
+    ),
     "apify_amazon_reviews_scraper": (
         "junglee/amazon-reviews-scraper",
         {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
     ),
-    "apify_walmart_scraper": ("apify/walmart-scraper", {}),
+    "apify_walmart_scraper": (
+        "web_wanderer/walmart-product-scraper",
+        {"product_ids": ["565742697"]},
+    ),
     "apify_walmart_product_scraper": ("e-commerce/walmart-product-detail-scraper", {}),
     "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
     "apify_temu_products_scraper": (
@@ -471,7 +519,8 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "apify_shein_product_scraper": (
         "shahidirfan/shein-product-scraper",
-        {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html"},
+        {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html",
+         "results_wanted": 3},
     ),
 
     "apify_aliexpress_products_scraper": (
@@ -479,7 +528,14 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"searchQueries": ["laptop stand"]},
     ),
     "apify_ebay_scraper": ("dtrungtin/ebay-items-scraper", {}),
-    "apify_ebay_product_scraper": ("dtrungtin/ebay-items-scraper", {}),
+    "apify_ebay_product_scraper": (
+        "dtrungtin/ebay-items-scraper",
+        {
+            "startUrls": [{"url": "https://www.ebay.com/sch/i.html?_nkw=laptop"}],
+            "maxItems": 5,
+            "proxyConfig": {"useApifyProxy": True},
+        },
+    ),
     "apify_ebay_sold_listings_scraper": ("caffein.dev/ebay-sold-listings", {}),
     "apify_etsy_scraper": ("automation-lab/etsy-scraper", {"searchQuery": "handmade mug"}),
     "apify_shopify_scraper": (
@@ -494,8 +550,14 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_google_maps_scraper": ("compass/crawler-google-places", {}),
     "apify_google_maps_reviews_scraper": ("compass/Google-Maps-Reviews-Scraper", {}),
     "apify_google_trends_scraper": ("apify/google-trends-scraper", {}),
-    "apify_google_shopping_scraper": ("apify/google-shopping-scraper", {}),
-    "apify_google_play_scraper": ("apify/google-play-scraper", {}),
+    "apify_google_shopping_scraper": (
+        "burbn/google-shopping-scraper",
+        {"searchQuery": "laptop", "limit": 3},
+    ),
+    "apify_google_play_scraper": (
+        "curious_coder/google-play-scraper",
+        {"action": "scrapeAppSearch", "scrapeAppSearch.keywords": ["maps"], "count": 3},
+    ),
     "apify_google_news_media_search": (
         "data_xplorer/google-news-scraper-fast",
         {"keywords": [], "maxArticles": 10, "timeframe": "7d"},
@@ -506,12 +568,18 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "python programming", "resultsPerPage": 3},
     ),
     # AI Search
-    "apify_perplexity_scraper": ("apify/perplexity-scraper", {}),
+    "apify_perplexity_scraper": (
+        "apify/perplexity-search-scraper",
+        {"queries": "what is python"},
+    ),
     "apify_perplexity_search_scraper": (
         "apify/perplexity-search-scraper",
         {"queries": "what is python"},
     ),
-    "apify_chatgpt_scraper": ("apify/chatgpt-scraper", {}),
+    "apify_chatgpt_scraper": (
+        "apify/chatgpt-search-scraper",
+        {"queries": "what is python"},
+    ),
     "apify_chatgpt_search_scraper": (
         "apify/chatgpt-search-scraper",
         {"queries": "what is python"},
@@ -526,21 +594,39 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "python programming", "maxPagesPerQuery": 1, "resultsPerPage": 3},
     ),
     # Ads
-    "apify_google_ads_transparency_scraper": ("apify/google-ads-transparency-scraper", {}),
+    "apify_google_ads_transparency_scraper": (
+        "solidcode/ads-transparency-scraper",
+        {"searchQuery": "Nike", "maxResults": 5},
+    ),
     "apify_google_ads_scraper": (
         "lexis-solutions/google-ads-scraper",
         {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR01694614460596224001?region=anywhere"}]},
     ),
-    "apify_meta_ads_library_scraper": ("apify/meta-ads-library", {}),
+    "apify_meta_ads_library_scraper": (
+        "igolaizola/facebook-ad-library-scraper",
+        {"query": "python", "country": "US", "maxItems": 5},
+    ),
     "apify_facebook_ads_scraper": (
         "apify/facebook-ads-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=python&search_type=keyword_unordered"}]},
     ),
-    "apify_tiktok_ads_library_scraper": ("apify/tiktok-ads-library", {}),
+    "apify_tiktok_ads_library_scraper": (
+        "brilliant_gum/tiktok-ads-library-scraper",
+        {"source": "library", "searchTerms": ["Nike"], "countries": ["DE"], "maxResults": 5},
+    ),
     "apify_tiktok_ads_scraper": ("lexis-solutions/tiktok-ads-scraper", {}),
-    "apify_linkedin_ads_scraper": ("apify/linkedin-ads-scraper", {}),
-    "apify_reddit_ads_scraper": ("apify/reddit-ads-scraper", {}),
-    "apify_x_ads_transparency_scraper": ("apify/x-ads-transparency-scraper", {}),
+    "apify_linkedin_ads_scraper": (
+        "silva95gustavo/linkedin-ad-library-scraper",
+        {"startUrls": [{"url": "https://www.linkedin.com/company/nvidia/"}], "resultsLimit": 5},
+    ),
+    "apify_reddit_ads_scraper": (
+        "lexis-solutions/reddit-ads-scraper",
+        {"query": "python", "maxItems": 5},
+    ),
+    "apify_x_ads_transparency_scraper": (
+        "memo23/x-ads-transparency-scraper",
+        {"sources": ["political"], "search": "python", "maxItems": 5},
+    ),
     "apify_pinterest_ads_scraper": (
         "shahidirfan/Pinterest-Ads-Scraper",
         {"keyword": "fashion", "country": "FR"},
@@ -551,9 +637,15 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "site:snap.com/en-US/ad-policies python", "maxPagesPerQuery": 1, "resultsPerPage": 3},
     ),
     # B2B / Review / Community
-    "apify_trustpilot_scraper": ("apify/trustpilot-scraper", {}),
+    "apify_trustpilot_scraper": (
+        "automation-lab/trustpilot",
+        {"companyUrls": ["https://www.trustpilot.com/review/amazon.com"], "maxReviewsPerCompany": 5},
+    ),
     "apify_trustpilot_reviews_scraper": ("memo23/trustpilot-scraper-ppe", {}),
-    "apify_appstore_scraper": ("apify/apple-app-store-scraper", {}),
+    "apify_appstore_scraper": (
+        "automation-lab/apple-app-store-scraper",
+        {"mode": "details", "appIds": ["284882215"], "maxItems": 3},
+    ),
     "apify_appstore_reviews_scraper": ("johnvc/apple-app-store-reviews-api", {}),
     "apify_google_play_reviews_scraper": (
         "neatrat/google-play-store-reviews-scraper",
@@ -578,7 +670,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/google-search-scraper",
         {"queries": "site:crunchbase.com openai", "maxPagesPerQuery": 1, "resultsPerPage": 5},
     ),
-    "apify_producthunt_scraper": ("apify/product-hunt-scraper", {}),
+    "apify_producthunt_scraper": (
+        "maximedupre/product-hunt-scraper",
+        {"target": "daily", "maxNbItemsToScrape": 5},
+    ),
     "apify_product_hunt_scraper": ("happitap/product-hunt-daily-launch-scraper", {}),
     "apify_glassdoor_scraper": ("memo23/glassdoor-scraper-ppr", {}),
     "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
@@ -587,7 +682,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"profiles": ["atproto.com"], "maxPostsPerProfile": 3},
     ),
     "apify_telegram_scraper": ("danielmilevski9/telegram-channel-scraper", {}),
-    "apify_indeed_scraper": ("apify/indeed-scraper", {}),
+    "apify_indeed_scraper": (
+        "misceres/indeed-scraper",
+        {"position": "python developer", "location": "New York", "country": "US",
+         "maxItemsPerSearch": 3},
+    ),
     "apify_indeed_jobs_scraper": ("misceres/indeed-scraper", {}),
     # Media account monitoring
     "apify_instagram_media_profile_scraper": ("apify/instagram-profile-scraper", {}),
@@ -605,7 +704,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Open Web
     "apify_website_content_crawler": ("apify/website-content-crawler", {}),
     "apify_web_scraper": ("apify/web-scraper", {}),
-    "apify_rag_web_browser": ("apify/rag-web-browser", {}),
+    "apify_rag_web_browser": (
+        "apify/rag-web-browser",
+        {"query": "python programming", "maxResults": 1},
+    ),
     "apify_tiktok_transcript_extractor": (
         "clockworks/tiktok-transcript-extractor",
         {"postURLs": ["https://www.tiktok.com/@tiktok/video/7106594312292453675"]},
@@ -631,31 +733,32 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"keyword": "wireless earbuds", "max_items_per_url": 20},
     ),
     "apify_1688_product_detail": (
-        "ecomscrape/1688-product-details-page-scraper",
-        {"urls": ["https://detail.1688.com/offer/642952568827.html"]},
+        "dltik/1688-scraper",
+        {"mode": "detail", "inputs": ["https://detail.1688.com/offer/642952568827.html"]},
     ),
     "apify_1688_advanced": (
         "dltik/1688-scraper",
-        {"type": "search", "queries": ["wireless earbuds"], "shippingCountry": "US"},
+        {
+            "mode": "search",
+            "inputs": ["wireless earbuds"],
+            "maxResults": 20,
+            "shippingCountry": "US",
+        },
     ),
     "apify_alibaba_product_search": (
-        "scraperx/alibaba-scraper",
-        {
-            "maxItems": 20,
-            "includeSpecSheet": True,
-            "includeCertificates": True,
-            "includePackagingAndWeight": True,
-        },
+        "zen-studio/alibaba-scraper",
+        {"resultType": "products", "keywords": ["led lights"], "maxResults": 5,
+         "shipToCountry": "US"},
     ),
     "apify_alibaba_product_detail": (
         "xtracto/alibaba-product-scraper",
         {"productUrls": ["https://www.alibaba.com/product-detail/wireless-earbuds_60843983630.html"]},
     ),
     "apify_amazon_bestsellers": (
-        "simpleapi/amazon-bestsellers-scraper",
+        "junglee/amazon-bestsellers",
         {
             "categoryUrls": ["https://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/"],
-            "maxResults": 50,
+            "maxItemsPerStartUrl": 5,
         },
     ),
     "apify_amazon_competitor_research": (
@@ -675,8 +778,8 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": ["wireless earbuds"], "shipTo": "US", "currency": "USD", "maxPages": 3},
     ),
     "apify_shopify_products_monitor": (
-        "autofacts/shopify-scraper",
-        {"url": "https://gymshark.com"},
+        "trovevault/shopify-products-scraper",
+        {"domains": ["allbirds.com"], "maxProducts": 5},
     ),
     "apify_shopify_full_catalog": (
         "pocesar/shopify-scraper",
@@ -749,14 +852,7 @@ async def quick_collect(
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        _meta_keys = {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds",
-                      "query", "url", "keyword", "domain", "app_id", "asin", "location",
-                      "username", "profile", "handle"}
-        actor_input = {
-            **base_input,
-            **{k: v for k, v in body.params.items()
-               if k not in _meta_keys and k not in base_input},
-        }
+        actor_input = build_apify_actor_input(base_input, body.params)
         config = {
             "actor_id": actor_id,
             "actor_input": actor_input,

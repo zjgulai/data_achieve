@@ -2,17 +2,33 @@
   "platform_id": "walmart",
   "notes": [
     {
-      "scope": "platform",
-      "target": "walmart",
-      "symptom": "apify_walmart_product_scraper 返回 0 条；apify_walmart_reviews_scraper 报 403",
-      "cause": "Walmart 对无代理请求返回空/403",
-      "workaround": "配置代理并确认商品 ID 有效",
+      "scope": "endpoint",
+      "target": "apify_walmart_reviews_scraper",
+      "symptom": "403，1 秒内失败",
+      "cause": "e-commerce/walmart-reviews-scraper 拒绝本账号发起运行（run 未创建），与代理或商品 ID 无关",
+      "workaround": "改用 web_wanderer/walmart-reviews-scraper；或先用 apify_walmart_product_scraper 验证代理链路（它返回 success 但 0 条，属于另一类问题）",
       "failure_class": "upstream_4xx",
-      "severity": "info",
+      "severity": "warning",
       "verified_at": "2026-10-09",
       "source_ref": "reports/live-sweep/latest.json",
       "tags": [
-        "apify"
+        "apify",
+        "run-start-403"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_walmart_product_scraper",
+      "symptom": "运行成功（run SUCCEEDED）但数据集 0 条",
+      "cause": "e-commerce/walmart-product-detail-scraper 对演示商品 ID 没有返回结果；需按“先看原始响应”的方法确认是入参不匹配还是上游返回空页",
+      "workaround": "改用真实商品 URL（而不是纯 ID）并确认 datasets 输出；同类 0 条问题不要默认是参数不足",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records"
       ]
     }
   ]

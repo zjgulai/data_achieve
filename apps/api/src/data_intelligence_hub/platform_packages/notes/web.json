@@ -118,6 +118,38 @@
         "seeding",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_rag_web_browser",
+      "symptom": "调用方传了 query 仍报 400 invalid-input：Field input.query is required",
+      "cause": "quick-collect 的 Apify 分支把一批“元键”（query/url/keyword/domain/asin/location/username/profile/handle…）从 actor_input 里剔除，而 apify/rag-web-browser 的必填键恰好就叫 query，于是入参被静默丢掉",
+      "workaround": "已修：元键只保留 maxItems/max_items/max_total_charge_usd/run_timeout_seconds 四个采集开关，其余一律透传给 Actor（_APIFY_META_KEYS）",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "meta-keys",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_web_scraper",
+      "symptom": "403，1 秒内失败（http_forbidden），调用方传的 startUrls/maxPagesPerCrawl 正确",
+      "cause": "403 发生在 POST /acts/apify~web-scraper/runs，run 根本没创建。该 Actor 与其它 403 的 Actor（danielmilevski9/pinterest-crawler、pocesar/shopify-scraper 等）共同点是 Store 元数据 pricingInfos 为空；但同样 pricingInfos 为空的 shahidirfan/Pinterest-Ads-Scraper 却能跑通，所以“无定价”不是充分条件，真实原因需读 403 响应体确认",
+      "workaround": "视为 Apify 账号侧不可运行；换用 apify/website-content-crawler 或 apify/rag-web-browser 覆盖同类网页采集需求",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-start-403",
+        "unconfirmed"
+      ]
     }
   ]
 }

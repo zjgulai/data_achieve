@@ -136,7 +136,56 @@ instagram/kuaishou/duckduckgo×1、apify 电商/地图类×10。
 > 另：证据只认 label 恰好为 `[test] <endpoint_type>` 的运行（正则 `^\[quick\](?: \[quick\])? \[test\] (.+)$`）。
 > label 格式一旦漂移，实测结果会被**静默忽略**，状态看起来从未测过。
 
-## 5. Catalog ↔ 页面覆盖
+### 4.4 Apify 平台深挖（2026-10-09，分支 `fix/apify-actor-liveness`）
+
+对 `_APIFY_ENDPOINT_DEFAULTS` 里的 **103 个 distinct Actor** 做了一次存活巡检
+（`GET https://api.apify.com/v2/acts/<user~name>`，免鉴权、不产生 run、不消耗额度）：
+
+| 结果 | 数量 | 含义 |
+|---|---|---|
+| 存活 | 76 | 元数据可取，`isDeprecated=false` |
+| **已下架（record-not-found）** | **25** | 端点调用必然失败 |
+| **已废弃（`isDeprecated=true`）** | **2** | 作者标记废弃，30 天活跃用户 0 或将被下线 |
+
+另有 5 个 Actor（`automation-lab/etsy-scraper`、`caffein.dev/ebay-sold-listings`、
+`lexis-solutions/google-ads-scraper`、`lexis-solutions/tiktok-ads-scraper`、
+`marketplace-scrapers/amazon-bsr-scraper`）不在首批巡检名单内，本轮补测确认存活。
+
+处理方式（本轮已完成）：把死/废弃 Actor 对应的 **28 个 endpoint_type** 改指到存活
+Actor（见 §4.4.2 的"幽灵端点"说明——这 28 个里只有 7 个同时存在于 catalog），
+另修 5 个入参形状错误的端点。`api/routes/collectors.py` 中这 7 个端点的 `provider`
+字符串与 `required_params` 已同步（此前大量端点一律写 `["startUrls"]`，与真实 schema 不符）。
+
+#### 4.4.1 三类失败必须分开
+
+Apify 端点在扫描里出现的 4 类症状，根因完全不同，处置手段不能互换：
+
+| 症状 | 判据 | 根因 | 处置 |
+|---|---|---|---|
+| `http_forbidden` 403 | **耗時 <2s**，无 Apify run 产生 | `POST /acts/<id>/runs` 被拒：Actor 已下架，或拒绝本账号发起运行 | 换 Actor / 申请租用；改参数和加代理都没用 |
+| `http_status_error` 400 | 立即返回 | Actor 的 `inputSchema` 是 `additionalProperties:false`：缺必填键或多传未知键 | 用 `GET /acts/<user~name>/builds/default` 的 `inputSchema` 核对键名 |
+| `apify_run_failed` | 有 run id，status=FAILED/ABORTED | Actor 内部抓取失败（反爬、目标站点） | 读 `GET /v2/actor-runs/<runId>/log` |
+| `success` + 0 条 | run SUCCEEDED，数据集为空 | 入参不匹配上游实际，或上游真的没有数据 | 先看原始数据集，再调参数 |
+
+> ⚠️ 此前把整组 403 都归因为"跨境站点反爬"。实测 `apify_web_scraper`（官方
+> `apify/web-scraper`，`example.com` 都能 403）证明二者不是一回事。
+
+#### 4.4.2 端点表与目录不一致
+
+`POST /api/quick-collect` 的 `_APIFY_ENDPOINT_DEFAULTS` 有 **118** 个端点，而
+`GET /api/collectors/catalog` 只暴露 **87** 个 Apify 端点，且后者是前者的**真子集**：
+
+- **31 个"幽灵端点"**（如 `apify_x_scraper`、`apify_trustpilot_scraper`、
+  `apify_indeed_scraper`）只能直接打 quick-collect，不出现在 `/platforms`、
+  `/skills`、`/collector-docs` 与 MCP 目录里 —— 没人能发现它们，但它们**真的会消耗额度**。
+- 反向集合为空：没有"目录里有、quick-collect 跑不了"的端点。
+- 同类问题此前已发现一次：`tikhub_youtube_video_search` 在 TikHub 映射表里但不在目录里。
+
+本轮加了回归测试 `tests/unit/test_quick_collect_apify_input.py`，钉住
+`catalog_apify ⊆ _APIFY_ENDPOINT_DEFAULTS`（防止再出现"目录有、跑不了"）。
+"幽灵端点"是否要补进目录，留待产品决策。
+
+
 
 - **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。
 - **有 UI 但无真实后端**：`/projects/[id]` 的"采集任务/最近运行/数据集"段、TopBar 的 ⌘K 命令搜索（无功能）。

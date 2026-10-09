@@ -105,6 +105,15 @@ docker compose --env-file "$ENV" restart edge        # ⚠️ 必须，见下
 > **坑 5**：本地 `.venv` 是 **editable 安装**，可能指向另一个检出（`python -c "import data_intelligence_hub as m; print(m.__file__)"` 可确认）。
 > 在 worktree 里跑 `python ../scripts/*.py` 时 `sys.path[0]` 是脚本目录而非 `src`，载入的可能是**别的检出的代码** → 生成/契约测试结果全部无效。
 > 必须显式 `PYTHONPATH=<worktree>/apps/api/src`。（`pytest` 不受影响：`pyproject.toml` 里有 `pythonpath=["src"]`。）
+> **坑 6（Apify）**：Actor 的 `inputSchema` 是 `additionalProperties:false` —— 缺一个必填键或**多一个未知键**都整单 400。
+> 扫描脚本的演示参数（`scripts/collector_demo_params.py`）与 `_APIFY_ENDPOINT_DEFAULTS` 是两份，容易各写各的。
+> 报 `Field input.X is required` 或 `Property input.X is not allowed` 时，先取 schema 对照，别猜。
+> **坑 7（Apify）**：quick-collect 的 Apify 分支只把 `maxItems` / `max_items` / `max_total_charge_usd` / `run_timeout_seconds`
+> 当采集开关（`_APIFY_META_KEYS`）；其余入参一律透传。曾把 `query`/`url`/`keyword`/… 也列进黑名单，
+> 导致 `apify_rag_web_browser` 收到的 `query` 被静默丢掉，上游报"必填 query 缺失"。
+> **坑 8（Apify）**：`http_forbidden` 403 **不等于反爬**。先看 TaskRun 耗时：**<2 秒**的 403 来自
+> `POST /acts/<id>/runs`，连 Apify run 都没创建（Actor 已下架或拒绝本账号运行），换参数/加代理都没用；
+> 耗时长才是上游站点反爬。
 
 发布后自检：
 
@@ -117,6 +126,36 @@ curl -s $B/api/platform-packages/web/playbook | grep -c 坑点与规避
 curl -s -o /dev/null -w '%{http_code}\n' $B/mcp/                  # 无 token → 401
 ```
 
+
+## Apify Actor 巡检（免额度，必须先跑）
+
+全量实测之前先做一遍 Actor 存活巡检：**不产生 run、不消耗额度**，但能提前过滤掉一大类
+必然失败的端点。用 `scripts/verify_platform_live.py` 扫到的失败里，Apify 的 403 有一部分
+就是这么来的。
+
+```bash
+# 1) Actor 是否存在 / 是否被废弃（免鉴权）
+curl -s "https://api.apify.com/v2/acts/<user>~<name>" | python3 -c \
+  'import json,sys; d=json.load(sys.stdin)["data"]; print(d["title"], d["isDeprecated"], d["stats"]["totalRuns"])'
+
+# 2) 取真实 inputSchema（必填/可选/枚举/默认值全在里面，同样免鉴权）
+curl -s "https://api.apify.com/v2/acts/<user>~<name>/builds/default" | python3 -c \
+  'import json,sys; s=json.load(sys.stdin)["data"]["inputSchema"]; print(json.dumps(json.loads(s)["properties"], ensure_ascii=False, indent=1))'
+
+# 3) 找替代 Actor（按关键词搜 Store，返回 totalRuns / 近 30 天活跃用户）
+curl -s "https://api.apify.com/v2/store?search=linkedin%20profile%20scraper&limit=5"
+```
+
+判据：
+- `record-not-found` / `page-not-found` → Actor 已下架，对应的 endpoint_type 必须改指。
+- `isDeprecated=true` → 立刻排期替换，不要等它彻底下线。
+- `stats.totalUsers30Days == 0` → 高风险（无人维护），降级为备选。
+- `exampleRunInput` 常是 `{"helloWorld":123}` 占位，**不能**当作入参示例；入参以 `inputSchema` 为准。
+
+> 更新 endpoint 时三处都要动，否则文档与运行不一致：
+> `_APIFY_ENDPOINT_DEFAULTS`（真实 actor_id + 缺省入参）、
+> `scripts/collector_demo_params.py`（扫描用演示参数）、
+> `api/routes/collectors.py` 的 `provider` / `required_params`（控制台与文档展示）。
 
 ## 收尾
 

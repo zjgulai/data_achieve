@@ -4,16 +4,17 @@
     {
       "scope": "platform",
       "target": "pinterest",
-      "symptom": "apify_pinterest_scraper / apify_pinterest_media_profile_scraper 报 http_forbidden (403)",
-      "cause": "Pinterest 反爬对生产出口 IP 返回 403",
-      "workaround": "配置 Apify 住宅代理（actor 代理参数）或使用代理出口后重试",
+      "symptom": "apify_pinterest_scraper / apify_pinterest_media_profile_scraper 报 http_forbidden (403)，且 1 秒内失败",
+      "cause": "403 返回自 POST /acts/danielmilevski9~pinterest-crawler/runs，Apify run 根本没创建，因此**不是** Pinterest 反爬，而是该 Actor 拒绝本账号发起运行",
+      "workaround": "该类端点无法通过改参数或加代理修复；換 Actor 或先在 Apify 控制台申请该 Actor。判别方法：看 TaskRun 耗时，<2s 的 403 一律属于运行前拒绝",
       "failure_class": "upstream_4xx",
       "severity": "warning",
       "verified_at": "2026-10-09",
       "source_ref": "reports/live-sweep/latest.json",
       "tags": [
         "apify",
-        "anti-bot"
+        "run-start-403",
+        "misdiagnosed"
       ]
     }
   ]

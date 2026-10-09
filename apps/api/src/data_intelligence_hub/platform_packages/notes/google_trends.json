@@ -1,0 +1,21 @@
+{
+  "platform_id": "google_trends",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_google_trends_scraper",
+      "symptom": "客户端读超时（The read operation timed out），不是上游报错",
+      "cause": "apify/google-trends-scraper 的 run 等待时间超过 quick-collect 的同步等待窗口；采集器内部 APIFY_TIMEOUT=30s、APIFY_RUN_WAIT_TIMEOUT=600s，而 quick-collect 路由是同步返回的",
+      "workaround": "走异步任务（POST /api/tasks/{id}/run + 轮询 /api/tasks/runs）而不是 quick-collect；或调小 searchTerms 数量与 geo 范围",
+      "failure_class": "timeout",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "timeout",
+        "quick-collect"
+      ]
+    }
+  ]
+}

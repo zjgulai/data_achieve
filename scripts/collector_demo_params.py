@@ -138,14 +138,14 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "apify_walmart_reviews_scraper":       {"productIds": ["565742697"], "maxReviews": 5},
     "apify_walmart_scraper":               {"searchQuery": "laptop", "maxItems": 3},
     # eBay
-    "apify_ebay_product_scraper":          {"listingUrls": ["https://www.ebay.com/itm/284574059539"], "maxItems": 3},
+    "apify_ebay_product_scraper":          {"startUrls": [{"url": "https://www.ebay.com/sch/i.html?_nkw=laptop"}], "maxItems": 3},
     "apify_ebay_scraper":                  {"searchQuery": "laptop", "maxItems": 3},
     "apify_ebay_sold_listings_scraper":    {"searchQuery": "laptop", "maxItems": 3},
     # Other E-commerce
     "apify_etsy_scraper":                  {"searchQueries": ["handmade bags"], "maxItems": 3},
     "apify_shopify_scraper":               {"domain": "allbirds.com", "maxItems": 3},
     "apify_aliexpress_products_scraper":   {"searchQuery": "phone case", "maxItems": 3},
-    "apify_shein_product_scraper":         {"searchQuery": "dress", "maxItems": 3},
+    "apify_shein_product_scraper":         {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html", "results_wanted": 3},
     "apify_temu_products_scraper":         {"keywords": ["phone case"], "maxItems": 3},
     "apify_target_products_scraper":       {"keywords": ["laptop"], "maxItems": 3},
     # Reviews / B2B
@@ -192,7 +192,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     # Open Web
     "apify_website_content_crawler":       {"startUrls": [{"url": "https://example.com"}], "maxCrawlPages": 2},
     "apify_web_scraper":                   {"startUrls": [{"url": "https://example.com"}], "maxPagesPerCrawl": 2},
-    "apify_rag_web_browser":               {"query": "python programming"},
+    "apify_rag_web_browser":               {"query": "python programming", "maxResults": 1},
     # ── GitHub ─────────────────────────────────────────────────────────────────
     "github_repo":   {"url": "https://github.com/tiangolo/fastapi"},
     "github_topic":  {"topic": "python", "max_results": 5},
@@ -347,16 +347,16 @@ DEMO_PARAMS.update(
         "exa_deep_lite": {"query": "What is Python?"},
         # Apify 跨境电商（新增）
         "apify_1688_product_search": {"keyword": "phone case"},
-        "apify_1688_product_detail": {"urls": ["https://detail.1688.com/offer/610000000000.html"]},
-        "apify_1688_advanced": {"type": "keyword", "queries": ["phone case"]},
+        "apify_1688_product_detail": {"mode": "detail", "inputs": ["https://detail.1688.com/offer/642952568827.html"]},
+        "apify_1688_advanced": {"mode": "search", "inputs": ["phone case"]},
         "apify_alibaba_product_search": {"startUrls": [{"url": "https://www.alibaba.com/trade/search?SearchText=phone+case"}]},
-        "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/10000000000000.html"]},
-        "apify_amazon_bestsellers": {"categoryUrls": ["https://www.amazon.com/Best-Sellers/zgbs"]},
+        "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/wireless-earbuds_60843983630.html"]},
+        "apify_amazon_bestsellers": {"categoryUrls": ["https://www.amazon.com/Best-Sellers/zgbs"], "maxItemsPerStartUrl": 5},
         "apify_amazon_competitor_research": {"asins": ["B09G9FPHY6"]},
         "apify_amazon_bsr_tracker": {"asins": ["B09G9FPHY6"]},
         "apify_amazon_price_tracker": {"products": ["B09G9FPHY6"]},
         "apify_aliexpress_product_search_v2": {"queries": ["phone case"]},
-        "apify_shopify_products_monitor": {"url": "https://allbirds.com"},
+        "apify_shopify_products_monitor": {"domains": ["allbirds.com"], "maxProducts": 5},
         "apify_shopify_full_catalog": {"startUrls": [{"url": "https://allbirds.com"}]},
     }
 )

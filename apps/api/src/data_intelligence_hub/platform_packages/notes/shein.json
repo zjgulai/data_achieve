@@ -1,0 +1,21 @@
+{
+  "platform_id": "shein",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_shein_product_scraper",
+      "symptom": "400 invalid-input：Property input.searchQuery is not allowed",
+      "cause": "Actor 的 inputSchema 是 additionalProperties:false，只接受 startUrl（必填）+ results_wanted + proxyConfiguration；调用方（扫描脚本的演示参数与 _APIFY_ENDPOINT_DEFAULTS 的缺省值曾不一致）多传了一个 searchQuery，整单被拒",
+      "workaround": "只传 Actor schema 里存在的键。缺省值已统一为 {startUrl, results_wanted}；核对 schema 用 GET https://api.apify.com/v2/acts/shahidirfan~shein-product-scraper/builds/default 的 inputSchema 字段（免鉴权）",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "strict-schema"
+      ]
+    }
+  ]
+}

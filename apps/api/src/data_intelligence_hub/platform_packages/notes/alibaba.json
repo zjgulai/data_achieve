@@ -4,9 +4,9 @@
     {
       "scope": "platform",
       "target": "alibaba",
-      "symptom": "apify_1688_product_search/_detail 报 403；apify_alibaba_product_search 报 403；apify_1688_advanced、apify_alibaba_product_detail 报 invalid-input",
-      "cause": "跨境站点对无代理请求反爬；部分 actor 入参 schema 与演示参数不符",
-      "workaround": "配置代理并为 actor 传入其真实入参（inputs/startUrls/productUrls 等，见 manifest）；先用最小样例验证",
+      "symptom": "跨境端点（1688 / Alibaba）整组报 403 或 invalid-input，看起来像“反爬”",
+      "cause": "两种完全不同的原因被混在一起：一是上游站点反爬，二是 Apify Actor 本身拒绝本账号发起运行（403 在 POST /acts/<id>/runs 阶段立即返回，1 秒内失败，根本没产生 run）",
+      "workaround": "先看失败耗时：<2s 且 http_forbidden 说明是 Actor 侧的 403，换 Actor 或申请租用；耗时长才是站点反爬。Actor 的真实入参用 https://api.apify.com/v2/acts/<user~name>/builds/default 的 inputSchema（免鉴权）核对",
       "failure_class": "upstream_4xx",
       "severity": "warning",
       "verified_at": "2026-10-09",
@@ -14,6 +14,84 @@
       "tags": [
         "apify",
         "cross-border"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_1688_advanced",
+      "symptom": "400 invalid-input：Field input.inputs is required",
+      "cause": "调用方按想象传了 {\"type\":\"keyword\",\"queries\":[...]}，而 dltik/1688-scraper 的 schema 只有 mode(detail|search|image) + inputs(数组) + maxResults，且 additionalProperties:false，所以既缺 inputs 又多出非法键",
+      "workaround": "传 {\"mode\":\"search\",\"inputs\":[\"<关键词或 offer id/URL>\"],\"maxResults\":N}；_APIFY_ENDPOINT_DEFAULTS 已按真实 schema 修正",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_alibaba_product_detail",
+      "symptom": "400 invalid-input：Items in input.productUrls at positions ...",
+      "cause": "演示参数里的商品 URL 是占位串（.../product-detail/10000000000000.html），xtracto/alibaba-product-scraper 会做 URL 校验，占位 ID 不是合法商品",
+      "workaround": "必须传真实商品详情页 URL（形如 https://www.alibaba.com/product-detail/<slug>_<id>.html）",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "demo-params"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_1688_product_detail",
+      "symptom": "400 或立即 403，且 Actor 元数据 isDeprecated=true、30 天活跃用户 0",
+      "cause": "ecomscrape/1688-product-details-page-scraper 已被作者标记废弃（最后运行 2026-08-25）",
+      "workaround": "已改指 dltik/1688-scraper（mode=detail，inputs 传 offer id 或详情页 URL），与 apify_1688_advanced 共用同一 Actor",
+      "failure_class": "upstream_4xx",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "deprecated-actor",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_alibaba_product_search",
+      "symptom": "403（曾被归类为 rate limit）",
+      "cause": "scraperx/alibaba-scraper 已从 Apify Store 下架：GET /v2/acts/scraperx~alibaba-scraper 返回 record-not-found，发起运行一律 403",
+      "workaround": "已改指 zen-studio/alibaba-scraper（resultType/keywords/maxResults/shipToCountry）",
+      "failure_class": "upstream_4xx",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "dead-actor",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_1688_product_search",
+      "symptom": "403，1 秒内失败，无 Apify run 产生",
+      "cause": "ecomscrape/1688-product-search-scraper 仍存在但拒绝本账号发起运行（pricingInfos 为 FLAT_PRICE_PER_MONTH + FREE，疑似需先租用）；具体原因未确认，需要读 403 响应体",
+      "workaround": "暂视为不可用；替换候选 dltik/1688-scraper 的 mode=search 可覆盖同一场景，待实测后切换",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "rental",
+        "unconfirmed"
       ]
     }
   ]

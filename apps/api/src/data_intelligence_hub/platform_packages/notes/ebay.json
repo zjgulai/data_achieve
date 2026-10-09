@@ -1,0 +1,35 @@
+{
+  "platform_id": "ebay",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_ebay_product_scraper",
+      "symptom": "400 invalid-input：Field input.startUrls is required",
+      "cause": "dtrungtin/ebay-items-scraper 的必填键是 startUrls（列表页 URL），且 proxyConfig 也标为必填；调用方传的是 listingUrls，键名不存在于 schema，additionalProperties:false 下直接整单拒绝",
+      "workaround": "传 startUrls（如 https://www.ebay.com/sch/i.html?_nkw=<关键词>）+ maxItems + proxyConfig={useApifyProxy:true}；缺省值已按真实 schema 补齐",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_ebay_sold_listings_scraper",
+      "symptom": "运行成功但 0 条记录",
+      "cause": "caffein.dev/ebay-sold-listings 的输入是搜索链接（Store 未提供示例入参，exampleRunInput 为 {\"helloWorld\":123}），演示参数 searchQuery 未必被识别",
+      "workaround": "按“先看原始响应”的方法核对数据集；必要时改传 startUrls 形式的已售列表 URL",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records"
+      ]
+    }
+  ]
+}
