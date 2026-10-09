@@ -91,3 +91,40 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 测试步骤：不带 Authorization 请求 `/mcp`，再携带正确 Bearer Token 初始化 MCP。
 
 预期结果：无 Token 返回 401；正确 Token 可以 initialize 和 list tools。
+
+## DIH-SM-009 生成-坑点渲染进包与控制台
+
+前置条件：`platform_packages/notes/<platform>.json` 存在至少一条策展坑点。
+
+测试步骤：
+
+1. 运行 `cd apps/api && uv run python ../../scripts/generate_platform_packages.py --update-lock`。
+2. 检查 `generated/platform-skills/<platform>/references/playbook.md` 与 `SKILL.md`。
+3. 检查 `docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md`。
+4. 请求 `GET /api/platform-packages/<platform>/playbook` 与 `GET /api/platform-packages/<platform>`。
+
+预期结果：Playbook 含 `## 坑点与规避` 表；SKILL 含 `## 已知限制与坑点`；坑点库按 failure_class 分组；API 响应含 `notes`/`platform_notes`；控制台 `/skills/<platform>` 显示坑点卡片。
+
+## DIH-SM-010 契约-坑点字段与密钥边界
+
+前置条件：平台包已生成。
+
+测试步骤：运行 `uv run python ../../scripts/test_platform_packages.py`。
+
+预期结果：`note_count` > 0 时无 `note_empty_field` / `note_unknown_target` / `note_bad_severity` / `secret_marker` / `missing:pitfalls_library`。占位符（如 `EXA_API_KEY=...`）不算泄漏。
+
+## DIH-SM-011 状态-无证据不得报 verified
+
+前置条件：可导入 status 模块。
+
+测试步骤：`build_provider_status(catalog, configured={...}, evidence={})`，取一个既无缺失配置也无证据的端点。
+
+预期结果：其 `availability == "untested"`（不是 `verified`）；有 `success` 证据的端点才是 `verified`。
+
+## DIH-SM-012 生产-播种清单与 registry 一致
+
+前置条件：可导入 collector_catalog 与 registry。
+
+测试步骤：比对 `set(COLLECTOR_REGISTRY) - {d.type for d in COLLECTOR_CATALOG}`。
+
+预期结果：差集为空。若不为空，对应端点在生产 `POST /api/quick-collect` 会返回 400 `Collector ... is not available`（曾于 `autoscraper_enhanced_web` / `bestblogs_articles` / `blackbird_*` 出现）。

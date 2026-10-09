@@ -307,6 +307,21 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 
 ---
 
+## 平台采集实测与坑点体系（2026-10-09 起）
+
+- **能力图谱**：`docs/architecture/【能力图谱】DIH-控制台能力地图.md`（逐页 → 后端 → 实测状态）
+- **测试计划**：`docs/playbooks/【测试计划】DIH-平台采集生产实测.md`（L1–L8 分层 + 通过标准）
+- **坑点库（自动生成）**：`docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md`
+- **坑点单一事实源**：`apps/api/src/data_intelligence_hub/platform_packages/notes/<platform_id>.json`
+  → 生成器把它渲染进每平台 `SKILL.md` / `README.md` / `references/playbook.md`，
+  并经 `GET /api/platform-packages/<id>` 与控制台 `/skills/<id>` 展示。
+- **两个必须记住的坑**：
+  1. catalog 的 `status="verified"` 只是静态声明，**不等于实测通过**；真实状态看 `/api/collectors/docs` 与 `/providers/status`（证据来自 `label=[test] <endpoint_type>` 的 quick-collect 运行）。
+  2. 端点归属的 `platform` 未必等于 collector 名（例：Exa 端点的 platform 是 `web`）；写坑点/建 Skill 包时以 catalog 的 `platform` 字段为准。
+- **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`，只允许出现 `deploy/scrapy-luteos-rebuild` 既有基线内的失败。
+
+---
+
 ## 设计规范（改 UI 前必读）
 
 - 设计 token：`opendesign/design-systems/data-intelligence-product/tokens/colors_and_type.css`
