@@ -66,7 +66,7 @@ export type PlatformPlaybook = Readonly<{
 
 export type EndpointAvailability = Readonly<{
   endpoint_type: string;
-  availability: "verified" | "config-gated" | "degraded" | "untested" | "disabled";
+  availability: "verified" | "config-gated" | "degraded" | "empty" | "untested" | "disabled";
   missing_configuration: readonly string[];
   last_test_status: string | null;
   last_test_at: string | null;

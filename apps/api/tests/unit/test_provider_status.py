@@ -51,3 +51,20 @@ def test_provider_status_marks_verified_only_with_success_evidence() -> None:
     assert verified.availability == "verified"
     assert verified.last_test_status == "success"
     assert verified.last_records_count == 3
+
+
+def test_provider_status_treats_success_without_records_as_empty() -> None:
+    source = asyncio.run(get_collector_catalog())
+    catalog = build_platform_package_catalog(source)
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=0,
+            )
+        },
+    )
+    by_endpoint = {item.endpoint_type: item for item in status.endpoints}
+    assert by_endpoint["tikhub_tiktok_video_search"].availability == "empty"
