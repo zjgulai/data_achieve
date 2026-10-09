@@ -7,6 +7,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import {
   fetchPlatformPackage,
   fetchPlatformPlaybook,
+  fetchPlatformRelease,
 } from "@/lib/api/platform-packages";
 import type { PackageEndpoint } from "@/lib/api/platform-packages";
 import { API_BASE_URL } from "@/lib/api/client";
@@ -19,6 +20,10 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
   const playbookQuery = useQuery({
     queryKey: ["platform-playbook", platformId],
     queryFn: () => fetchPlatformPlaybook(platformId),
+  });
+  const releaseQuery = useQuery({
+    queryKey: ["platform-release", platformId],
+    queryFn: () => fetchPlatformRelease(platformId),
   });
   const item = packageQuery.data;
 
@@ -66,6 +71,12 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
           <InfoRow icon={<Cable size={14} />} label="MCP" value="https://scrapy.luteos.com/mcp/" />
           <InfoRow icon={<BookOpen size={14} />} label="Playbook" value={item.playbook_path} />
           <InfoRow icon={<ServerCog size={14} />} label="Catalog digest" value="由 API 响应提供" />
+          {releaseQuery.data && (
+            <>
+              <InfoRow icon={<ServerCog size={14} />} label="版本" value={releaseQuery.data.version} />
+              <InfoRow icon={<ServerCog size={14} />} label="ZIP SHA-256" value={releaseQuery.data.archive_sha256} />
+            </>
+          )}
           <a
             href={`${API_BASE_URL}/api/platform-packages/${encodeURIComponent(item.platform_id)}/download`}
             className="mt-4 flex min-h-10 items-center justify-center gap-2 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-3 text-sm font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)]"
@@ -86,6 +97,19 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
     }
   }
 }`} />
+      </section>
+
+      <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
+        <h2 className="font-bold">安装说明</h2>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <InstallCard name="Claude Code" path="~/.claude/skills/<platform>-collector/" />
+          <InstallCard name="Codex" path="~/.agents/skills/<platform>-collector/" />
+          <InstallCard name="OpenCode" path="~/.config/opencode/skills/<platform>-collector/" />
+          <InstallCard name="Cursor" path="项目 .cursor/skills/<platform>-collector/" />
+        </div>
+        <p className="mt-4 text-xs text-[var(--text-tertiary)]">
+          下载 ZIP 后解压到对应目录，保留 SKILL.md、manifest.json、references 和 evals 结构。
+        </p>
       </section>
 
       <section className="overflow-hidden rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)]">
@@ -154,6 +178,10 @@ function InfoRow({ icon, label, value }: { readonly icon: React.ReactNode; reado
 
 function CodePanel({ title, code }: { readonly title: string; readonly code: string }) {
   return <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5"><h2 className="font-bold">{title}</h2><pre className="mt-4 overflow-auto whitespace-pre-wrap rounded-[var(--radius-2)] bg-[var(--surface-canvas)] p-4 text-xs leading-6 text-[var(--text-secondary)]">{code}</pre></section>;
+}
+
+function InstallCard({ name, path }: { readonly name: string; readonly path: string }) {
+  return <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-canvas)] p-4"><p className="text-sm font-semibold">{name}</p><code className="mt-2 block break-all text-[10px] leading-5 text-[var(--text-tertiary)]">{path}</code></div>;
 }
 
 function ShellState({ title, text, danger = false }: { readonly title: string; readonly text: string; readonly danger?: boolean }) {

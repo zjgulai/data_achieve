@@ -49,6 +49,29 @@ export type PlatformPlaybook = Readonly<{
   markdown: string;
 }>;
 
+export type EndpointAvailability = Readonly<{
+  endpoint_type: string;
+  availability: "verified" | "config-gated" | "degraded" | "disabled";
+  missing_configuration: readonly string[];
+  last_test_status: string | null;
+  last_test_at: string | null;
+  last_records_count: number | null;
+  last_error_message: string | null;
+}>;
+
+export type ProviderStatus = Readonly<{
+  catalog_digest: string;
+  endpoints: readonly EndpointAvailability[];
+}>;
+
+export type PlatformRelease = Readonly<{
+  platform_id: string;
+  version: string;
+  catalog_digest: string;
+  archive_sha256: string;
+  download_url: string;
+}>;
+
 export function fetchPlatformPackages(): Promise<PlatformPackageCatalog> {
   return apiFetch<PlatformPackageCatalog>("/api/platform-packages");
 }
@@ -62,5 +85,15 @@ export function fetchPlatformPackage(platformId: string): Promise<PlatformPackag
 export function fetchPlatformPlaybook(platformId: string): Promise<PlatformPlaybook> {
   return apiFetch<PlatformPlaybook>(
     `/api/platform-packages/${encodeURIComponent(platformId)}/playbook`,
+  );
+}
+
+export function fetchProviderStatus(): Promise<ProviderStatus> {
+  return apiFetch<ProviderStatus>("/api/platform-packages/providers/status");
+}
+
+export function fetchPlatformRelease(platformId: string): Promise<PlatformRelease> {
+  return apiFetch<PlatformRelease>(
+    `/api/platform-packages/${encodeURIComponent(platformId)}/release`,
   );
 }

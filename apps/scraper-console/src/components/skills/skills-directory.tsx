@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Box, Cable, Search, ServerCog } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchPlatformPackages } from "@/lib/api/platform-packages";
-import type { PlatformPackage } from "@/lib/api/platform-packages";
+import { fetchPlatformPackages, fetchProviderStatus } from "@/lib/api/platform-packages";
+import type { EndpointAvailability, PlatformPackage } from "@/lib/api/platform-packages";
 import {
   collectMethods,
   filterPlatformPackages,
@@ -21,10 +21,12 @@ function PlatformMark({ name }: { readonly name: string }) {
   );
 }
 
-function PackageCard({ item }: { readonly item: PlatformPackage }) {
+function PackageCard({ item, availability }: { readonly item: PlatformPackage; readonly availability: readonly EndpointAvailability[] }) {
   const ratio = item.endpoint_count
     ? Math.round((item.verified_count / item.endpoint_count) * 100)
     : 0;
+  const degraded = availability.filter((entry) => entry.availability === "degraded").length;
+  const gated = availability.filter((entry) => entry.availability === "config-gated").length;
   return (
     <Link
       href={`/skills/${encodeURIComponent(item.platform_id)}`}
@@ -57,6 +59,13 @@ function PackageCard({ item }: { readonly item: PlatformPackage }) {
           </span>
         ))}
       </div>
+      {(degraded > 0 || gated > 0) && (
+        <p className="mt-3 text-xs text-[var(--state-warning)]">
+          {degraded > 0 ? `${degraded} 个 degraded` : ""}
+          {degraded > 0 && gated > 0 ? " · " : ""}
+          {gated > 0 ? `${gated} 个 config-gated` : ""}
+        </p>
+      )}
       <div className="mt-auto grid grid-cols-3 gap-2 border-t border-[var(--border-subtle)] pt-4 text-[11px] text-[var(--text-tertiary)]">
         <span className="flex items-center gap-1"><Box size={12} />Skill</span>
         <span className="flex items-center gap-1"><Cable size={12} />MCP</span>
@@ -70,14 +79,27 @@ export function SkillsDirectory() {
   const [query, setQuery] = useState("");
   const [method, setMethod] = useState("");
   const [status, setStatus] = useState<"all" | "verified" | "pending" | "disabled">("all");
+  const [availability, setAvailability] = useState<"all" | EndpointAvailability["availability"]>("all");
   const { data, error, isLoading } = useQuery({
     queryKey: ["platform-packages"],
     queryFn: fetchPlatformPackages,
   });
+  const statusQuery = useQuery({
+    queryKey: ["provider-status"],
+    queryFn: fetchProviderStatus,
+  });
+  const availabilityByEndpoint = useMemo(
+    () => new Map((statusQuery.data?.endpoints ?? []).map((entry) => [entry.endpoint_type, entry])),
+    [statusQuery.data],
+  );
   const methods = useMemo(() => collectMethods(data?.packages ?? []), [data]);
   const filtered = useMemo(
-    () => filterPlatformPackages(data?.packages ?? [], { query, method, status }),
-    [data, method, query, status],
+    () => filterPlatformPackages(
+      data?.packages ?? [],
+      { query, method, status, availability },
+      availabilityByEndpoint,
+    ),
+    [availability, availabilityByEndpoint, data, method, query, status],
   );
 
   function updateStatus(value: string) {
@@ -89,6 +111,13 @@ export function SkillsDirectory() {
     ) {
       setStatus(value);
     }
+  }
+
+  function updateAvailability(value: string) {
+    if (
+      value === "all" || value === "verified" || value === "config-gated" ||
+      value === "degraded" || value === "disabled"
+    ) setAvailability(value);
   }
 
   return (
@@ -103,7 +132,7 @@ export function SkillsDirectory() {
         <Metric label="能力视图" value={data?.capability_count ?? 0} icon={<Cable size={16} />} />
         <Metric label="共享 MCP" value={1} icon={<BookOpen size={16} />} />
       </section>
-      <section className="grid gap-3 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 md:grid-cols-[1fr_12rem_12rem]">
+      <section className="grid gap-3 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 md:grid-cols-2 xl:grid-cols-[1fr_12rem_12rem_12rem]">
         <label className="relative">
           <Search className="absolute left-3 top-3 text-[var(--text-tertiary)]" size={15} />
           <span className="sr-only">搜索平台与能力</span>
@@ -124,10 +153,17 @@ export function SkillsDirectory() {
           <option value="pending">待验证</option>
           <option value="disabled">已停用</option>
         </select>
+        <select value={availability} onChange={(event) => updateAvailability(event.target.value)} className="h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-canvas)] px-3 text-sm">
+          <option value="all">全部实时状态</option>
+          <option value="verified">verified</option>
+          <option value="config-gated">config-gated</option>
+          <option value="degraded">degraded</option>
+          <option value="disabled">disabled</option>
+        </select>
       </section>
       {isLoading ? <State text="正在加载平台工具包…" /> : error ? <State text="Skill 目录加载失败，请检查 API。" danger /> : filtered.length === 0 ? <State text="没有匹配的平台工具包。" /> : (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((item) => <PackageCard key={item.platform_id} item={item} />)}
+          {filtered.map((item) => <PackageCard key={item.platform_id} item={item} availability={item.endpoints.flatMap((endpoint) => { const state = availabilityByEndpoint.get(endpoint.endpoint_type); return state ? [state] : []; })} />)}
         </section>
       )}
     </AppShell>

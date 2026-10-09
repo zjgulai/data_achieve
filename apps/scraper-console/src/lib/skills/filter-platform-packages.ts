@@ -1,14 +1,17 @@
 import type { PlatformPackage } from "@/lib/api/platform-packages";
+import type { EndpointAvailability } from "@/lib/api/platform-packages";
 
 export type PackageFilters = Readonly<{
   query: string;
   method: string;
   status: "all" | "verified" | "pending" | "disabled";
+  availability: "all" | EndpointAvailability["availability"];
 }>;
 
 export function filterPlatformPackages(
   packages: readonly PlatformPackage[],
   filters: PackageFilters,
+  availabilityByEndpoint: ReadonlyMap<string, EndpointAvailability>,
 ): readonly PlatformPackage[] {
   const query = filters.query.trim().toLocaleLowerCase("zh-CN");
   return packages.filter((platformPackage) => {
@@ -18,6 +21,16 @@ export function filterPlatformPackages(
     if (
       filters.status !== "all" &&
       !platformPackage.endpoints.some((endpoint) => endpoint.status === filters.status)
+    ) {
+      return false;
+    }
+    if (
+      filters.availability !== "all" &&
+      !platformPackage.endpoints.some(
+        (endpoint) =>
+          availabilityByEndpoint.get(endpoint.endpoint_type)?.availability ===
+          filters.availability,
+      )
     ) {
       return false;
     }
