@@ -542,6 +542,13 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             posts = inner.get("posts")
             if isinstance(posts, list) and posts:
                 return posts
+            # fetch_post_comments → data.postInfoById（单条帖子 + commentForest）
+            post_info = inner.get("postInfoById")
+            if isinstance(post_info, dict) and post_info:
+                forest = post_info.get("commentForest")
+                if isinstance(forest, list) and forest:
+                    return forest
+                return [post_info]
             # fetch_popular_feed → data.popularfeed.postsInfoByIds (list)
             popular = inner.get("popularfeed")
             if isinstance(popular, dict):
@@ -593,6 +600,22 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     candidate = deeper.get(key)
                     if isinstance(candidate, list) and candidate:
                         return candidate
+        return []
+
+    if platform == "threads":
+        # fetch_user_posts → data.mediaData.edges[].node
+        # fetch_post_comments → data.edges[].node（含 thread_items）
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            media = inner.get("mediaData")
+            if isinstance(media, dict) and isinstance(media.get("edges"), list):
+                nodes = [e.get("node") for e in media["edges"] if isinstance(e, dict)]
+                return [n for n in nodes if isinstance(n, dict)]
+            edges = inner.get("edges")
+            if isinstance(edges, list) and edges:
+                nodes = [e.get("node") for e in edges if isinstance(e, dict)]
+                return [n for n in nodes if isinstance(n, dict)]
         return []
 
     if platform == "linkedin":
@@ -899,6 +922,45 @@ def _normalize_youtube_video(
     )
 
 
+def _normalize_threads_item(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """Threads 的帖子/评论节点：正文在 thread_items[0].post.caption.text。"""
+    thread_items = item.get("thread_items")
+    post = (
+        thread_items[0].get("post")
+        if thread_items and isinstance(thread_items[0], dict)
+        else {}
+    )
+    if not isinstance(post, dict):
+        post = {}
+    caption = post.get("caption") if isinstance(post.get("caption"), dict) else {}
+    text = _safe_str(caption.get("text"))
+    code = _safe_str(post.get("code"))
+    user = post.get("user") if isinstance(post.get("user"), dict) else {}
+    username = _safe_str(user.get("username"))
+    if text is None and code is None:
+        return _normalize_generic(item, "threads", collector_type)
+    return CollectorRawRecord(
+        record_type="threads_post",
+        source_url=(
+            f"https://www.threads.com/@{username}/post/{code}" if code else None
+        ),
+        content={
+            "provider": "tikhub",
+            "platform": "threads",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_threads.v2",
+            "text": text or "",
+            "post_id": _safe_str(post.get("id") or item.get("id")),
+            "code": code,
+            "author": username,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
 def _normalize_tiktok_live(
     item: dict[str, Any], collector_type: str
 ) -> CollectorRawRecord | None:
@@ -1168,6 +1230,8 @@ def _normalize_item(
     if platform == "x" and item.get("name") and item.get("context") is not None:
         # fetch_trending 的条目形状：{name, description, context}
         return _normalize_x_trend(item, collector_type)
+    if platform == "threads" and isinstance(item.get("thread_items"), list):
+        return _normalize_threads_item(item, collector_type)
     if platform in (
         "x", "douyin", "bilibili", "weibo", "kuaishou", "wechat", "zhihu",
         "threads", "linkedin", "lemon8", "tiktok_shop",
@@ -1418,7 +1482,12 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_tiktok_ads_detail":
         return {"ads_id": config.get("ads_id") or config.get("ad_id") or ""}
     if endpoint_type == "tikhub_tiktok_ads_keyword_suggest":
-        return {}
+        # 官方 spec 的 body 收 query / count / scenario / country_code
+        return {
+            "query": config.get("keyword") or config.get("query") or "",
+            "count": max_items,
+            "country_code": config.get("country_code") or "US",
+        }
     if endpoint_type == "tikhub_tiktok_shop_products":
         return {"search_word": config.get("keyword") or config.get("search_word") or ""}
     if endpoint_type == "tikhub_tiktok_creator_info":

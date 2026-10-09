@@ -905,6 +905,69 @@ def test_extract_items_tiktok_top_ads() -> None:
     assert record.content["text"] == "Showcase a comparison"
 
 
+THREADS_USER_POSTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "mediaData": {
+            "edges": [
+                {
+                    "node": {
+                        "__typename": "ThreadItem",
+                        "id": "111",
+                        "thread_items": [
+                            {
+                                "post": {
+                                    "id": "222",
+                                    "code": "Cxyz",
+                                    "user": {"username": "zuck"},
+                                    "caption": {"text": "hello threads"},
+                                }
+                            }
+                        ],
+                    }
+                }
+            ],
+            "page_info": {"has_next_page": False},
+        }
+    },
+}
+
+THREADS_POST_COMMENTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "edges": [
+            {
+                "node": {
+                    "id": "333",
+                    "thread_items": [
+                        {"post": {"id": "444", "code": "Dabc", "caption": {"text": "a reply"}}}
+                    ],
+                }
+            }
+        ],
+        "page_info": {},
+    },
+}
+
+
+def test_extract_items_threads_user_posts() -> None:
+    items = _extract_items(THREADS_USER_POSTS_RESPONSE, "threads")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "threads", "tikhub_threads_user_posts")
+    assert record is not None
+    assert record.record_type == "threads_post"
+    assert record.content["text"] == "hello threads"
+    assert record.content["author"] == "zuck"
+
+
+def test_extract_items_threads_post_comments() -> None:
+    items = _extract_items(THREADS_POST_COMMENTS_RESPONSE, "threads")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "threads", "tikhub_threads_post_comments")
+    assert record is not None
+    assert record.content["text"] == "a reply"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
