@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BarChart2, BookOpen, Boxes } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Boxes, ListChecks } from "lucide-react";
 
 const navigation = [
   { name: "采集平台", href: "/platforms",       icon: Grid3x3 },
   { name: "Skill 与 MCP", href: "/skills",      icon: Boxes },
   { name: "我的项目", href: "/projects",         icon: FolderKanban },
+  { name: "采集任务", href: "/tasks",            icon: ListChecks },
   { name: "运行记录", href: "/runs",             icon: Clock },
   { name: "数据集",   href: "/datasets",         icon: Database },
   { name: "采集文档", href: "/collector-docs",   icon: BookOpen },
@@ -16,8 +17,6 @@ const navigation = [
 const secondaryNav = [
   { name: "凭证配置", href: "/settings/credentials", icon: Key },
 ];
-
-const INSIGHT_URL = "/insight/dashboard";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -61,15 +60,6 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
-        <a
-          href={INSIGHT_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mb-1 flex min-h-10 items-center gap-3 rounded-[var(--radius-2)] px-3 py-2 text-sm font-medium text-[var(--text-tertiary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
-        >
-          <BarChart2 aria-hidden="true" size={16} />
-          洞察面板
-        </a>
         <nav aria-label="辅助导航" className="grid gap-1">
           {secondaryNav.map((item) => {
             const on = active(item.href);

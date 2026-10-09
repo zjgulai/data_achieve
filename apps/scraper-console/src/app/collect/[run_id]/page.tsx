@@ -77,8 +77,14 @@ export default function CollectResultPage({ params }: Props) {
                 </span>
               </div>
 
+              {rec.source_url ? (
+                <p className="mt-2 truncate text-xs text-[var(--text-tertiary)]">
+                  {rec.source_url}
+                </p>
+              ) : null}
+
               <div className="mt-3 grid gap-1.5">
-                {Object.entries(rec.data ?? {})
+                {Object.entries(rec.content ?? {})
                   .filter(([k]) => k !== "raw")
                   .slice(0, 6)
                   .map(([k, v]) => (

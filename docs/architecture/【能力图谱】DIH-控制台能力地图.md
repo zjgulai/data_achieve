@@ -32,15 +32,14 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | 我的项目 | `/projects` | `app/projects/page.tsx` | `GET/POST /api/projects` | DB | live |
 | 项目详情 | `/projects/[id]` | `app/projects/[id]/page.tsx` | `GET /api/projects/{id}` | DB | 部分占位（"采集任务/最近运行/数据集"为静态占位；链接到不存在的 `/tasks/new`） |
 | 运行记录 | `/runs` | `app/runs/page.tsx` | `GET /api/tasks/runs`、`GET /api/raw-records?task_run_id=` | DB | live |
-| 采集结果 | `/collect/[run_id]` | `app/collect/[run_id]/page.tsx` | `GET /api/raw-records?task_run_id=` | DB | live（但**无任何入口链接**） |
+| 采集结果 | `/collect/[run_id]` | `app/collect/[run_id]/page.tsx` | `GET /api/raw-records?task_run_id=` | DB | live（2026-10-09 起可从 `/runs` 进入；此前读错字段 `data`，实际是 `content`，页面恒为空） |
 | 数据集 | `/datasets` | `app/datasets/page.tsx` | `GET /api/automation/product-datasets`、`POST/GET /api/automation/product-dataset-exports` | DB + 异步导出 | live |
 | 采集文档 | `/collector-docs` | `app/collector-docs/page.tsx` | `GET /api/collectors/docs` | catalog + 最近 `[test]` TaskRun | live（实测前"最近测试"全空） |
 | 凭证配置 | `/settings/credentials` | `app/settings/credentials/page.tsx` | `GET/PUT/DELETE /api/settings/platform-credentials` | DB（需 `PLATFORM_CREDENTIAL_MASTER_KEY`） | live |
-| 洞察面板 | `/insight/dashboard`（外链） | `components/layout/sidebar.tsx` | — | — | **死链 404** |
-| 采集任务 | `/tasks`（不在导航） | `app/tasks/page.tsx` | `GET /api/tasks`、`POST /api/tasks/{id}/run` | DB | live |
-| 工作台 | `/dashboard` | `app/dashboard/page.tsx` | — | 硬编码 | stub 占位 |
-| 原始数据 | `/raw-records` | `app/raw-records/page.tsx` | — | — | stub 占位 |
-| 账户设置 | `/settings/account` | `app/settings/account/page.tsx` | — | — | stub 占位 |
+| 采集任务 | `/tasks` | `app/tasks/page.tsx` | `GET /api/tasks`、`POST /api/tasks/{id}/run` | DB | live（已入导航） |
+| 工作台 | `/dashboard` | `app/dashboard/page.tsx` | `GET /api/dashboard/overview` | DB | live（2026-10-09 接真实数据） |
+| 原始数据 | `/raw-records` | `app/raw-records/page.tsx` | `GET /api/raw-records` | DB | live（2026-10-09 实现） |
+| 账户设置 | `/settings/account` | `app/settings/account/page.tsx` | — | — | stub 占位（生产为 demo 模式，无用户上下文） |
 | 共享 MCP | `/mcp/` | — | `mcp_runtime/server.py`（5 工具） | 复用 catalog | live（Bearer `SCRAPY_MCP_TOKEN`） |
 
 ## 3. 平台能力矩阵
@@ -271,19 +270,23 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 
 
 
-- **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。
-- **有 UI 但无真实后端**：`/projects/[id]` 的"采集任务/最近运行/数据集"段、TopBar 的 ⌘K 命令搜索（无功能）。
-- **死链**：`/insight/dashboard`（导航外链，404）。
+- **有 catalog 定义但无 UI 入口**：`/settings/account`（stub，生产 demo 模式无用户上下文）。`/tasks` 与 `/collect/[run_id]` 已于 2026-10-09 接上入口。
+- **有 UI 但无真实后端**：`/projects/[id]` 的"最近运行"段（接口按 task 维度，无 project 聚合）；"采集任务"段已于 2026-10-09 接真实数据。
+- **死链**：无（`/insight/dashboard` 与 `/tasks/new` 已于 2026-10-09 清除）。
 - **端点 → 页面**：全部 270 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
 
 ## 6. 死链与桩面清单
 
 | 位置 | 现象 | 备注 |
 |---|---|---|
-| `sidebar.tsx:19` `INSIGHT_URL=/insight/dashboard` | 404 | 该页可能属 `apps/web`，需先确认引用来源再决定是否补路由 |
-| `/projects/[id]` → `/tasks/new` | 目标路由不存在 | 死链 |
-| `/dashboard` `/raw-records` `/settings/account` | "建设中"占位 | 非导航入口 |
-| `/skills` 详情"验证比例" | 实测前恒为空/误导 | 本轮修复 `providers/status` 语义 + 跑实测后可读 |
+| ~~`sidebar.tsx` `INSIGHT_URL=/insight/dashboard`~~ | ~~404~~ | **已修**（2026-10-09）：`apps/web` 未在生产部署，外链与入口一并移除 |
+| ~~`/projects/[id]` → `/tasks/new`~~ | ~~目标路由不存在~~ | **已修**（2026-10-09）：改指 `/tasks`，并把"采集任务"段接上 `GET /api/tasks?project_id=` |
+| ~~`/dashboard`~~ | ~~硬编码 0~~ | **已修**（2026-10-09）：接 `GET /api/dashboard/overview`（该接口原只被下线的 `apps/web` 调用） |
+| ~~`/raw-records`~~ | ~~"建设中"~~ | **已修**（2026-10-09）：实现列表 + 分页 |
+| ~~TopBar 命令搜索 ⌘K~~ | ~~按钮无 onClick~~ | **已移除**（2026-10-09）。真做需要单独的 command palette |
+| `/settings/account` | "建设中"占位 | 保留：生产为 demo 模式（`/api/auth/me` 返 401），无用户上下文可展示 |
+| ~~`/collect/[run_id]` 恒空~~ | ~~读 `rec.data`，接口返回 `content`~~ | **已修**（2026-10-09）：`RawRecord` 类型与 `/collect`、`/runs` 两处渲染一并改正 |
+| `/skills` 详情"验证比例" | 实测前恒为空/误导 | 修复 `providers/status` 语义 + 跑实测后可读 |
 
 ## 7. 维护方式
 

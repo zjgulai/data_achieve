@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchAllRuns, fetchRunRecords } from "@/lib/api/runs";
 import type { TaskRun, RawRecord } from "@/lib/api/runs";
@@ -72,9 +73,9 @@ function RecordPreview({ runId }: { runId: string }) {
               {new Date(rec.created_at).toLocaleTimeString("zh-CN")}
             </span>
           </div>
-          {/* Show first 3 data keys */}
+          {/* Show first 3 content keys */}
           <div className="mt-1.5 grid gap-0.5">
-            {Object.entries(rec.data ?? {}).slice(0, 3).map(([k, v]) => (
+            {Object.entries(rec.content ?? {}).slice(0, 3).map(([k, v]) => (
               <div key={k} className="flex gap-2 text-xs">
                 <span className="shrink-0 font-mono text-[var(--text-tertiary)]">{k}:</span>
                 <span className="truncate text-[var(--text-secondary)]">
@@ -125,7 +126,18 @@ function RunRow({ run }: { run: TaskRun }) {
           {dur(run.started_at, run.finished_at)}
         </td>
         <td className="px-4 py-3 text-xs font-mono text-[var(--text-tertiary)]">
-          {run.id.slice(0, 8)}…
+          <div className="flex items-center gap-3">
+            <span>{run.id.slice(0, 8)}…</span>
+            {run.records_count > 0 ? (
+              <Link
+                href={`/collect/${run.id}`}
+                onClick={event => event.stopPropagation()}
+                className="font-sans text-[var(--action-primary)] underline"
+              >
+                查看结果
+              </Link>
+            ) : null}
+          </div>
         </td>
       </tr>
 

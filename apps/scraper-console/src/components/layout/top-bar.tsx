@@ -4,6 +4,9 @@ type TopBarProps = {
 };
 
 export function TopBar({ title, description }: TopBarProps) {
+  // A "命令搜索 ⌘K" button used to sit here with no click handler. It was
+  // removed rather than left as a dead affordance; a real command palette is a
+  // separate piece of work.
   return (
     <header className="border-b border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 py-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between">
@@ -16,14 +19,6 @@ export function TopBar({ title, description }: TopBarProps) {
               {description}
             </p>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)]"
-          >
-            命令搜索 ⌘K
-          </button>
         </div>
       </div>
     </header>
