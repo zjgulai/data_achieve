@@ -1,5 +1,8 @@
 FROM python:3.12-slim AS runtime
 
+# PLAYWRIGHT_BROWSERS_PATH 必须显式钉住：构建时以 root 执行 playwright install，
+# 浏览器落到 /root/.cache；运行时用户是 app（HOME=/app），默认去 /app/.cache 找，
+# 于是报 "Executable doesn't exist at /app/.cache/ms-playwright/..."（2026-10-09 实测）。
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DEFAULT_TIMEOUT=120 \
@@ -7,7 +10,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_RETRIES=10 \
     UV_DEFAULT_INDEX=https://pypi.org/simple \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:${PATH}"
+    PATH="/app/.venv/bin:${PATH}" \
+    PLAYWRIGHT_BROWSERS_PATH=/app/.cache/ms-playwright
 
 WORKDIR /app
 
