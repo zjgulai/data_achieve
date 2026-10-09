@@ -763,6 +763,9 @@ async def quick_collect(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid collector config: {exc}",
         ) from exc
+    # Validators return a whitelist of collection parameters only. Keep the
+    # endpoint_type: dataset platform attribution walks task.config["endpoint_type"].
+    validated.setdefault("endpoint_type", body.endpoint_type)
 
     label = (body.label or body.endpoint_type).strip()[:200]
 
