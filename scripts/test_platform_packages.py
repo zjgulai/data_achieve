@@ -23,6 +23,7 @@ def parse_args() -> argparse.Namespace:
 def validate_packages(root: Path, platform_filter: str | None) -> dict[str, object]:
     index_path = root / "generated/platform-packages.json"
     index = json.loads(index_path.read_text(encoding="utf-8"))
+    lock = json.loads((root / "configs/platform-packages.lock.json").read_text())
     packages = [
         package
         for package in index["packages"]
@@ -69,6 +70,15 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
             failures.append(f"capability_count:{len(capability_ids)}:278")
         if len(endpoint_types) != 250:
             failures.append(f"endpoint_count:{len(endpoint_types)}:250")
+        for key in (
+            "schema_version",
+            "catalog_digest",
+            "platform_count",
+            "capability_count",
+            "unique_endpoint_count",
+        ):
+            if lock[key] != index[key]:
+                failures.append(f"catalog_lock_mismatch:{key}")
     return {
         "status": "passed" if not failures else "failed",
         "platform_count": len(packages),
