@@ -104,6 +104,7 @@ from data_intelligence_hub.repositories.datasets import (
     get_dataset_by_name,
     get_dataset_drift_event,
     get_dataset_export_job,
+    get_dataset_export_job_by_id,
     get_dataset_version,
     get_latest_dataset_version,
     list_dataset_drift_events,
@@ -230,6 +231,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductDatasetSaveResponse,
     AutomationProductDatasetSummaryResponse,
     AutomationProductDatasetVersionListResponse,
+    AutomationProductDatasetVersionPreviewResponse,
     AutomationProductDiscoveryRequest,
     AutomationProductDiscoveryResponse,
     AutomationProductDriftAlertEmailDeliveryResponse,
@@ -314,8 +316,16 @@ DATASET_EXPORT_CONTENT_TYPES = {
     "csv": "text/csv; charset=utf-8",
     "json": "application/json; charset=utf-8",
     "jsonl": "application/x-ndjson; charset=utf-8",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 DATASET_EXPORT_IDEMPOTENCY_SCOPE = "product_dataset_export"
+# Coarse console category implied by a dataset's type, used when the originating
+# endpoint (and therefore the real platform) cannot be resolved.
+DATASET_TYPE_CATEGORIES = {
+    "ecommerce_product": "ecommerce",
+    "public_content_update": "open_web",
+    "github_tool_radar": "osint_tools",
+}
 GITHUB_TOOL_REPORT_ASSET_IDEMPOTENCY_SCOPE = "github_tool_report_asset"
 PUBLIC_CONTENT_REPORT_ASSET_IDEMPOTENCY_SCOPE = "public_content_report_asset"
 DRIFT_ALERT_NOTIFICATION_IDEMPOTENCY_SCOPE = "product_drift_alert_notification_send"
@@ -3183,14 +3193,7 @@ async def save_product_dataset_version(
     return AutomationProductDatasetSaveResponse(
         saved_at=datetime.now(UTC),
         authorization_confirmed=payload.authorized,
-        dataset=AutomationDatasetResponse(
-            id=dataset.id,
-            project_id=dataset.project_id,
-            name=dataset.name,
-            dataset_type=dataset.dataset_type,
-            status=dataset.status,
-            description=dataset.description,
-        ),
+        dataset=_dataset_response(dataset),
         version=_dataset_version_response(version),
         audit_events=[
             {
@@ -3295,14 +3298,7 @@ async def approve_product_schedule(
     return AutomationProductScheduleApproveResponse(
         approved_at=approved_at,
         authorization_confirmed=payload.authorized,
-        dataset=AutomationDatasetResponse(
-            id=dataset.id,
-            project_id=dataset.project_id,
-            name=dataset.name,
-            dataset_type=dataset.dataset_type,
-            status=dataset.status,
-            description=dataset.description,
-        ),
+        dataset=_dataset_response(dataset),
         version=_dataset_version_response(version),
         approved_tasks=approved_tasks,
         blocked_tasks=blocked_tasks,
@@ -3619,14 +3615,7 @@ async def check_product_drift(
     return AutomationProductDriftCheckResponse(
         checked_at=checked_at,
         authorization_confirmed=payload.authorized,
-        dataset=AutomationDatasetResponse(
-            id=dataset.id,
-            project_id=dataset.project_id,
-            name=dataset.name,
-            dataset_type=dataset.dataset_type,
-            status=dataset.status,
-            description=dataset.description,
-        ),
+        dataset=_dataset_response(dataset),
         version=_dataset_version_response(version),
         items=items,
         summary=summary,
@@ -4861,6 +4850,7 @@ async def list_product_datasets(
     workspace: Workspace,
     project_id: uuid.UUID | None = None,
     limit: int = 50,
+    endpoint_platforms: dict[str, str] | None = None,
 ) -> AutomationProductDatasetListResponse:
     datasets = await list_datasets(
         session,
@@ -4888,6 +4878,17 @@ async def list_product_datasets(
             )
             if event_version is not None:
                 latest_drift_event = _drift_event_response(event, dataset, event_version)
+        endpoint_types, collector_types = await _dataset_origin_signals(
+            session,
+            workspace,
+            latest_version,
+        )
+        platforms: list[str] = []
+        if endpoint_platforms:
+            for endpoint_type in endpoint_types:
+                platform = endpoint_platforms.get(endpoint_type)
+                if platform and platform not in platforms:
+                    platforms.append(platform)
         items.append(
             AutomationProductDatasetListItemResponse(
                 dataset=_dataset_response(dataset),
@@ -4903,6 +4904,9 @@ async def list_product_datasets(
                     workspace.id,
                     dataset_id=dataset.id,
                 ),
+                platforms=platforms,
+                category=_dataset_category_from_type(dataset.dataset_type),
+                collector_types=collector_types,
             )
         )
     return AutomationProductDatasetListResponse(
@@ -5128,6 +5132,58 @@ async def get_product_dataset_export_file(
     if not artifact_path.is_file():
         raise CollectorError("dataset_export_file_missing")
     return export_job, artifact_path
+
+
+async def get_product_dataset_export(
+    session: AsyncSession,
+    workspace: Workspace,
+    export_job_id: uuid.UUID,
+) -> AutomationProductDatasetExportJobResponse:
+    export_job = await get_dataset_export_job_by_id(session, workspace.id, export_job_id)
+    if export_job is None:
+        raise CollectorError("dataset_export_not_found")
+    dataset = await get_dataset(session, workspace.id, export_job.dataset_id)
+    if dataset is None:
+        raise CollectorError("dataset_not_found")
+    version = await get_dataset_version(
+        session,
+        workspace.id,
+        export_job.dataset_id,
+        export_job.dataset_version_id,
+    )
+    if version is None:
+        raise CollectorError("dataset_version_not_found")
+    return _dataset_export_job_response(export_job, dataset, version)
+
+
+async def get_product_dataset_version_preview(
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+    dataset_version_id: uuid.UUID,
+    limit: int = 50,
+) -> AutomationProductDatasetVersionPreviewResponse:
+    dataset, version = await _get_dataset_and_version(
+        session,
+        workspace,
+        dataset_id,
+        dataset_version_id,
+    )
+    all_rows = _dataset_export_rows(version)
+    preview_rows = all_rows[:limit]
+    return AutomationProductDatasetVersionPreviewResponse(
+        dataset=_dataset_response(dataset),
+        version=_dataset_version_response(version),
+        fields=list(version.selected_fields),
+        rows=[
+            _dataset_preview_row_response(row, version.selected_fields)
+            for row in preview_rows
+        ],
+        total_rows=len(all_rows),
+        preview_row_count=len(preview_rows),
+        average_completeness_percent=version.average_completeness_percent,
+        export_preview=version.export_preview,
+    )
 
 
 async def preview_product_drift_alert_rule(
@@ -10500,6 +10556,8 @@ def _dataset_response(dataset: Dataset | AutomationDatasetResponse) -> Automatio
         dataset_type=dataset.dataset_type,
         status=dataset.status,
         description=dataset.description,
+        created_at=dataset.created_at,
+        updated_at=dataset.updated_at,
     )
 
 
@@ -10934,6 +10992,8 @@ def _render_dataset_export(
     if export_format == "jsonl":
         lines = [json.dumps(row, ensure_ascii=False, default=str) for row in rows]
         return ("\n".join(lines) + ("\n" if lines else "")).encode("utf-8")
+    if export_format == "xlsx":
+        return _render_dataset_xlsx(version, rows)
     payload = {
         "dataset": {
             "id": str(dataset.id),
@@ -10975,6 +11035,72 @@ def _dataset_export_rows(version: DatasetVersion) -> list[dict[str, object]]:
     return rows
 
 
+def _coerce_uuid(value: object) -> uuid.UUID | None:
+    if value is None:
+        return None
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def _dataset_preview_row_response(
+    row: dict[str, object],
+    selected_fields: list[str],
+) -> AutomationProductDatasetRowResponse:
+    raw_missing = row.get("missing_fields")
+    missing_fields = (
+        [str(field) for field in raw_missing] if isinstance(raw_missing, list) else []
+    )
+    raw_completeness = row.get("completeness_percent")
+    source_url = row.get("source_url")
+    return AutomationProductDatasetRowResponse(
+        row_id=str(row.get("row_id") or ""),
+        task_run_id=_coerce_uuid(row.get("task_run_id")),
+        raw_record_id=_coerce_uuid(row.get("raw_record_id")),
+        source_url=source_url if isinstance(source_url, str) else None,
+        values={field: row.get(field) for field in selected_fields},
+        missing_fields=missing_fields,
+        completeness_percent=(
+            int(raw_completeness) if isinstance(raw_completeness, int | float) else 0
+        ),
+    )
+
+
+def _dataset_category_from_type(dataset_type: str) -> str | None:
+    return DATASET_TYPE_CATEGORIES.get(dataset_type)
+
+
+async def _dataset_origin_signals(
+    session: AsyncSession,
+    workspace: Workspace,
+    version: DatasetVersion | None,
+) -> tuple[list[str], list[str]]:
+    """Return ``(endpoint_types, collector_types)`` behind a dataset version.
+
+    Datasets store neither a platform nor a category. The originating endpoint
+    is recoverable by walking version -> task runs -> tasks, because quick
+    collect writes ``config["endpoint_type"]``; the console then maps endpoint
+    types to platforms (via the capability catalog) and to category tabs.
+    """
+    if version is None or not version.source_task_run_ids:
+        return [], []
+    task_ids = await _dataset_version_task_ids(session, workspace, version)
+    endpoint_types: list[str] = []
+    collector_types: list[str] = []
+    for task_id in task_ids:
+        task = await get_task(session, workspace.id, task_id)
+        if task is None:
+            continue
+        if task.collector_type and task.collector_type not in collector_types:
+            collector_types.append(task.collector_type)
+        config = task.config or {}
+        endpoint_type = config.get("endpoint_type")
+        if isinstance(endpoint_type, str) and endpoint_type and endpoint_type not in endpoint_types:
+            endpoint_types.append(endpoint_type)
+    return endpoint_types, collector_types
+
+
 def _render_dataset_csv(version: DatasetVersion, rows: list[dict[str, object]]) -> bytes:
     stream = io.StringIO()
     fieldnames = [
@@ -10997,6 +11123,40 @@ def _csv_export_value(value: object) -> str | int | float | bool | None:
     if value is None or isinstance(value, str | int | float | bool):
         return value
     return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _render_dataset_xlsx(version: DatasetVersion, rows: list[dict[str, object]]) -> bytes:
+    # Imported lazily so the API image still boots if openpyxl is not installed
+    # yet; only the xlsx export path fails in that case.
+    from openpyxl import Workbook
+
+    fieldnames = [
+        *version.selected_fields,
+        "row_id",
+        "source_url",
+        "task_run_id",
+        "raw_record_id",
+        "missing_fields",
+        "completeness_percent",
+    ]
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = f"v{version.version_number}"[:31]
+    worksheet.append(fieldnames)
+    for row in rows:
+        worksheet.append([_xlsx_export_value(row.get(field)) for field in fieldnames])
+    worksheet.freeze_panes = "A2"
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def _xlsx_export_value(value: object) -> str | int | float | bool | None:
+    converted = _csv_export_value(value)
+    # Excel caps a cell at 32,767 characters; truncate rather than corrupt the file.
+    if isinstance(converted, str) and len(converted) > 32767:
+        return converted[:32760] + "…"
+    return converted
 
 
 def _drift_event_response(

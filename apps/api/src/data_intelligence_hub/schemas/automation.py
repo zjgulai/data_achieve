@@ -124,7 +124,7 @@ class AutomationProductDatasetExportCreateRequest(BaseModel):
     confirm_create: bool
     dataset_id: uuid.UUID
     dataset_version_id: uuid.UUID
-    export_format: Literal["csv", "json", "jsonl"] = "csv"
+    export_format: Literal["csv", "json", "jsonl", "xlsx"] = "csv"
 
 
 class AutomationProductScheduleApproveRequest(BaseModel):
@@ -1225,8 +1225,8 @@ class AutomationProductBatchRunResponse(BaseModel):
 
 class AutomationProductDatasetRowResponse(BaseModel):
     row_id: str
-    task_run_id: uuid.UUID
-    raw_record_id: uuid.UUID
+    task_run_id: uuid.UUID | None = None
+    raw_record_id: uuid.UUID | None = None
     source_url: str | None
     values: dict[str, Any]
     missing_fields: list[str]
@@ -1328,6 +1328,8 @@ class AutomationDatasetResponse(BaseModel):
     dataset_type: str
     status: str
     description: str | None
+    created_at: datetime
+    updated_at: datetime
 
 
 class AutomationDatasetVersionResponse(BaseModel):
@@ -1588,6 +1590,9 @@ class AutomationProductDatasetListItemResponse(BaseModel):
     version_count: int
     latest_drift_event: AutomationProductDriftEventResponse | None
     drift_event_count: int
+    platforms: list[str] = Field(default_factory=list)
+    category: str | None = None
+    collector_types: list[str] = Field(default_factory=list)
 
 
 class AutomationProductDatasetListResponse(BaseModel):
@@ -1605,11 +1610,22 @@ class AutomationProductDatasetVersionListResponse(BaseModel):
     alert_created: bool
 
 
+class AutomationProductDatasetVersionPreviewResponse(BaseModel):
+    dataset: AutomationDatasetResponse
+    version: AutomationDatasetVersionResponse
+    fields: list[str]
+    rows: list[AutomationProductDatasetRowResponse]
+    total_rows: int
+    preview_row_count: int
+    average_completeness_percent: int
+    export_preview: dict[str, Any]
+
+
 class AutomationProductDatasetExportJobResponse(BaseModel):
     id: uuid.UUID
     dataset: AutomationDatasetResponse
     version: AutomationDatasetVersionResponse
-    export_format: Literal["csv", "json", "jsonl"]
+    export_format: Literal["csv", "json", "jsonl", "xlsx"]
     status: str
     filename: str
     content_type: str
