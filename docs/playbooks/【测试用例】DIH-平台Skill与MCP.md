@@ -21,6 +21,8 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 | DIH-SM-008 | 异常 | 生产-MCP无Token-返回未授权 | P0 |
 | DIH-SM-014 | 异常 | 路由-quick-collect-未知 project_id 返回 400 | P0 |
 | DIH-SM-015 | 异常 | 归一化-非空响应不得产出零记录 | P0 |
+| DIH-SM-016 | 功能 | 路由-Apify 入参装配-只挡采集开关 | P0 |
+| DIH-SM-017 | 异常 | 目录-Apify 端点-必须有可运行归属 | P0 |
 
 ## DIH-SM-001 生成-平台工具包-覆盖全部平台
 
@@ -31,7 +33,7 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 1. 运行 `cd apps/api && uv run python ../../scripts/generate_platform_packages.py`。
 2. 运行 `uv run python ../../scripts/test_platform_packages.py`。
 
-预期结果：生成 74 个平台目录、278 个能力视图、250 个唯一 endpoint；每个目录包含 Skill、README、manifest、trigger cases 和 Playbook。
+预期结果：生成 70 个平台目录、270 个能力视图、242 个唯一 endpoint；每个目录包含 Skill、README、manifest、trigger cases 和 Playbook。
 
 ## DIH-SM-002 生成-密钥边界-阻止敏感信息
 
@@ -167,3 +169,27 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 预期结果：YouTube 取到 `videoRenderer` 条目、Reddit 取到 `SearchPost.post` 条目，且 `text` 非空。
 
 > **历史坑（2026-10-09 生产实测）**：上游把嵌套结构由 list 改成 dict 后，`_extract_items` 按固定路径取值**静默返回空列表**，端点仍报 `status=success`、`records_count=0`；从参数侧排查永远查不出来。修复：`_deep_find_dicts` / `_deep_find_typename` 深度查找兜底 + `_normalize_youtube_video` / `_normalize_reddit_post`。实测 `tikhub_youtube_search` 0→11、`tikhub_reddit_search` 0→7。
+
+## DIH-SM-016 路由-Apify 入参装配-只挡采集开关
+
+前置条件：可导入 `api.routes.quick_collect`。
+
+测试步骤：对 `build_apify_actor_input` 分别传入
+
+1. `{"query": "x"}` / `{"url": ...}` / `{"keyword": ...}` / `{"asin": ...}` 等 Actor 侧键；
+2. 采集开关 `maxItems` / `max_items` / `max_total_charge_usd` / `run_timeout_seconds`；
+3. 与端点缺省值同名的键。
+
+预期结果：第 1 组原样进入 `actor_input`；第 2 组被剔除；第 3 组覆盖缺省值。
+
+> **历史坑（2026-10-09 生产实测）**：装配逻辑用一个"元键"黑名单把 `query`/`url`/`keyword`/`domain`/`asin`/`location`/`username`/`profile`/`handle` 一起剔除，而 `apify/rag-web-browser` 的必填键恰好是 `query` → 调用方传了也报 `400 invalid-input: Field input.query is required`。修复：`_APIFY_META_KEYS` 只保留 4 个采集开关（`quick_collect.py`），并入参改为覆盖缺省值（此前缺省值胜出，调用方传的值会被静默忽略）。回归见 `tests/unit/test_quick_collect_apify_input.py`。
+
+## DIH-SM-017 目录-Apify 端点-必须有可运行归属
+
+前置条件：可导入 catalog 与 `_APIFY_ENDPOINT_DEFAULTS`。
+
+测试步骤：取 `GET /api/collectors/catalog` 里的全部 `apify_*` endpoint_type，与 `_APIFY_ENDPOINT_DEFAULTS` 的键做差集。
+
+预期结果：差集为空（目录暴露的端点都能跑）；且 `_APIFY_ENDPOINT_DEFAULTS` 的每个键都映射到 `apify_actor`、actor_id 均为 `username/name` 形式。
+
+> **事实（2026-10-09）**：反方向不成立——`_APIFY_ENDPOINT_DEFAULTS` 有 118 个端点，目录只暴露 87 个，多出的 31 个"幽灵端点"能跑、消耗额度，但不出现在 `/platforms`、`/skills`、`/collector-docs` 与 MCP 目录里。同类问题见 `tikhub_youtube_video_search`。是否补进目录待产品决策；测试只钉住"目录 ⊆ 可运行"这个安全方向。

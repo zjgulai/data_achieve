@@ -105,6 +105,15 @@ docker compose --env-file "$ENV" restart edge        # ⚠️ 必须，见下
 > **坑 5**：本地 `.venv` 是 **editable 安装**，可能指向另一个检出（`python -c "import data_intelligence_hub as m; print(m.__file__)"` 可确认）。
 > 在 worktree 里跑 `python ../scripts/*.py` 时 `sys.path[0]` 是脚本目录而非 `src`，载入的可能是**别的检出的代码** → 生成/契约测试结果全部无效。
 > 必须显式 `PYTHONPATH=<worktree>/apps/api/src`。（`pytest` 不受影响：`pyproject.toml` 里有 `pythonpath=["src"]`。）
+> **坑 6（Apify）**：Actor 的 `inputSchema` 是 `additionalProperties:false` —— 缺一个必填键或**多一个未知键**都整单 400。
+> 扫描脚本的演示参数（`scripts/collector_demo_params.py`）与 `_APIFY_ENDPOINT_DEFAULTS` 是两份，容易各写各的。
+> 报 `Field input.X is required` 或 `Property input.X is not allowed` 时，先取 schema 对照，别猜。
+> **坑 7（Apify）**：quick-collect 的 Apify 分支只把 `maxItems` / `max_items` / `max_total_charge_usd` / `run_timeout_seconds`
+> 当采集开关（`_APIFY_META_KEYS`）；其余入参一律透传。曾把 `query`/`url`/`keyword`/… 也列进黑名单，
+> 导致 `apify_rag_web_browser` 收到的 `query` 被静默丢掉，上游报"必填 query 缺失"。
+> **坑 8（Apify）**：`http_forbidden` 403 **不等于反爬**。先看 TaskRun 耗时：**<2 秒**的 403 来自
+> `POST /acts/<id>/runs`，连 Apify run 都没创建（Actor 已下架或拒绝本账号运行），换参数/加代理都没用；
+> 耗时长才是上游站点反爬。
 
 发布后自检：
 
@@ -117,6 +126,68 @@ curl -s $B/api/platform-packages/web/playbook | grep -c 坑点与规避
 curl -s -o /dev/null -w '%{http_code}\n' $B/mcp/                  # 无 token → 401
 ```
 
+
+## Apify Actor 巡检（免额度，必须先跑）
+
+全量实测之前先做一遍 Actor 存活巡检：**不产生 run、不消耗额度**，但能提前过滤掉一大类
+必然失败的端点。用 `scripts/verify_platform_live.py` 扫到的失败里，Apify 的 403 有一部分
+就是这么来的。
+
+```bash
+# 1) Actor 是否存在 / 是否被废弃（免鉴权）
+curl -s "https://api.apify.com/v2/acts/<user>~<name>" | python3 -c \
+  'import json,sys; d=json.load(sys.stdin)["data"]; print(d["title"], d["isDeprecated"], d["stats"]["totalRuns"])'
+
+# 2) 取真实 inputSchema（必填/可选/枚举/默认值全在里面，同样免鉴权）
+curl -s "https://api.apify.com/v2/acts/<user>~<name>/builds/default" | python3 -c \
+  'import json,sys; s=json.load(sys.stdin)["data"]["inputSchema"]; print(json.dumps(json.loads(s)["properties"], ensure_ascii=False, indent=1))'
+
+# 3) 找替代 Actor（按关键词搜 Store，返回 totalRuns / 近 30 天活跃用户）
+curl -s "https://api.apify.com/v2/store?search=linkedin%20profile%20scraper&limit=5"
+```
+
+判据：
+- `record-not-found` / `page-not-found` → Actor 已下架，对应的 endpoint_type 必须改指。
+- `isDeprecated=true` → 立刻排期替换，不要等它彻底下线。
+- `stats.totalUsers30Days == 0` → 高风险（无人维护），降级为备选。
+- `exampleRunInput` 常是 `{"helloWorld":123}` 占位，**不能**当作入参示例；入参以 `inputSchema` 为准。
+
+### 入参形状：一次审计替代多次试错
+
+```bash
+python scripts/audit_apify_inputs.py      # 只读 schema，0 额度
+```
+
+这个脚本把每个端点的 `base_input` 与它 Actor 的 `inputSchema` 做静态比对，报三类问题：
+
+| 问题 | 后果 | 判据来源 |
+|---|---|---|
+| 缺必填键 | 必然 400 | `schema["required"]` |
+| 键名不在 schema 里 | `additionalProperties:false` 的 Actor 整单 400；其余 Actor **静默忽略**（限流、数量意图落空） | `schema["properties"]` + `additionalProperties` |
+| editor 形状不符 | 400 | `editor` |
+
+**`editor` 决定值的形状**：
+
+- `requestListSources` → 传 `[{"url": "https://..."}]`，**不能**传裸字符串。实测把 Actor 自己的 `prefill` URL 裸着传进去，仍报 `Items in input.productUrls at positions [0] do not contain valid URLs`。
+- `stringList` → 传 `["a", "b"]`。
+
+**取值优先级**：`schema[properties][key]["prefill"]` > `default` > 自己猜。
+`prefill` 是 Actor 作者放的真实样例（连 `pageFunction` 的 JS 源码都有），比 `exampleRunInput` 可靠得多。
+`minimum` / `maximum` / `enum` 也照抄，别自己定小值：`limit` / `max_posts` 这类字段常有 `minimum: 10`，
+传 3 会直接 400。
+
+> **坑 9（Apify）**：`max_total_charge_usd` 调得太小不会"少抓一点"，而是让按事件计费的 Actor
+> 直接以 `ABORTED` 结束（实测 eBay scraper 传 0.3 → ABORTED，传 1.0 → 5 条）。
+> 要限流请用入参里的数量字段，不要用计费上限。
+> 2026-10-09 已把缺省值从 1.0 提到 **3.0**（常量 `DEFAULT_MAX_TOTAL_CHARGE_USD`），
+> 并在 `ABORTED` 的报错里直接提示这个原因。
+> **坑 10**：40x 的响应体是唯一线索，采集器原先只截前 120 字符，正好把
+> `...at positions [0] do not contain valid URLs` 砍掉。已放宽到 500（`collectors/base.py`）。
+
+> 更新 endpoint 时三处都要动，否则文档与运行不一致：
+> `_APIFY_ENDPOINT_DEFAULTS`（真实 actor_id + 缺省入参）、
+> `scripts/collector_demo_params.py`（扫描用演示参数）、
+> `api/routes/collectors.py` 的 `provider` / `required_params`（控制台与文档展示）。
 
 ## 收尾
 

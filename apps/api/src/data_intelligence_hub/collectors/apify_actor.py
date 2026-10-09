@@ -32,6 +32,11 @@ APIFY_RUN_WAIT_TIMEOUT = 600.0   # seconds
 APIFY_POLL_INTERVAL = 5.0        # seconds between status polls
 APIFY_MAX_ITEMS_LIMIT = 1000
 
+# 计费上限（USD）。它**不是**限流开关：按事件计费的 Actor 一旦累计花费触顶会直接
+# ABORTED，而不是少返回几条（2026-10-09 实测 eBay scraper：0.3 -> ABORTED，1.0 -> 5 条）。
+# 要限流请用入参里的数量字段。3.0 足够覆盖 10 条量级的抓取并留出余量。
+DEFAULT_MAX_TOTAL_CHARGE_USD = 3.0
+
 APIFY_TERMINAL_STATUSES = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"})
 
 
@@ -319,7 +324,7 @@ class ApifyActorCollector(BaseCollector):
     Optional config keys:
         max_items:              int   (default 20, max 1000)
         run_timeout_seconds:    int   (default 600)
-        max_total_charge_usd:   float (default 1.0)
+        max_total_charge_usd:   float (default 3.0)
         record_type:            str   override inferred record_type
     """
 
@@ -347,7 +352,7 @@ class ApifyActorCollector(BaseCollector):
             else APIFY_RUN_WAIT_TIMEOUT
         )
         charge_raw = self.config.get("max_total_charge_usd")
-        max_charge = float(charge_raw) if isinstance(charge_raw, (int, float, str)) else 1.0
+        max_charge = float(charge_raw) if isinstance(charge_raw, (int, float, str)) else DEFAULT_MAX_TOTAL_CHARGE_USD
 
         return {
             "actor_id": actor_id,
@@ -442,8 +447,14 @@ class ApifyActorCollector(BaseCollector):
                 )
 
                 if status != "SUCCEEDED":
+                    hint = (
+                        " (ABORTED 常见原因是 max_total_charge_usd 太小，"
+                        "按事件计费的 Actor 会直接中止；请调大该值)"
+                        if status == "ABORTED"
+                        else ""
+                    )
                     errors.append(
-                        f"apify_run_failed: run {run_id!r} ended with status={status!r}"
+                        f"apify_run_failed: run {run_id!r} ended with status={status!r}{hint}"
                     )
                     return CollectionResult(raw_records=[], logs=logs, errors=errors)
 

@@ -22,9 +22,9 @@ def test_generator_writes_complete_safe_packages(tmp_path: Path) -> None:
     index = json.loads((tmp_path / "generated/platform-packages.json").read_text())
     skill_dirs = sorted((tmp_path / "generated/platform-skills").iterdir())
     playbooks = sorted((tmp_path / "docs/playbooks/platforms").glob("*.md"))
-    assert len(index["packages"]) == 74
-    assert len(skill_dirs) == 74
-    assert len(playbooks) == 74
+    assert len(index["packages"]) == 70
+    assert len(skill_dirs) == 70
+    assert len(playbooks) == 70
     for skill_dir in skill_dirs:
         required = {
             "SKILL.md",

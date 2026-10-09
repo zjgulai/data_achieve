@@ -2,18 +2,34 @@
   "platform_id": "amazon",
   "notes": [
     {
+      "scope": "endpoint",
+      "target": "apify_amazon_bestsellers",
+      "symptom": "403，1 秒内失败；Actor 元数据查询返回 record-not-found",
+      "cause": "simpleapi/amazon-bestsellers-scraper 已从 Apify Store 下架，任何第三方发起运行都被 403 挡回（403 而不是 404，容易被误判为反爬）",
+      "workaround": "已改指 junglee/amazon-bestsellers（categoryUrls 必填、maxItemsPerStartUrl 限流、depthOfCrawl 控制子类目）",
+      "failure_class": "upstream_4xx",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "dead-actor",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
       "scope": "platform",
       "target": "amazon",
-      "symptom": "apify_amazon_bestsellers 报 403；apify_amazon_bsr_tracker、apify_amazon_competitor_research actor run FAILED",
-      "cause": "Amazon 反爬 + 部分 actor 需特定入参（categoryUrls/asins）与代理",
-      "workaround": "配置代理并核对 actor 入参；apify_amazon_product_scraper 已验证可用，可作首选",
-      "failure_class": "upstream_4xx",
+      "symptom": "apify_amazon_bsr_tracker、apify_amazon_competitor_research 的 Apify run 状态为 FAILED",
+      "cause": "入参/代理被 Amazon 拒绝，失败发生在 Actor 内部（run 已创建），与 403 类不同——需要读 run log 才能定位",
+      "workaround": "用 GET /v2/actor-runs/<runId>/log 看 Actor 自身日志；apify_amazon_product_scraper 与 apify_amazon_reviews_scraper 已验证可用，可作首选替代",
+      "failure_class": "actor_failed",
       "severity": "warning",
       "verified_at": "2026-10-09",
       "source_ref": "reports/live-sweep/latest.json",
       "tags": [
         "apify",
-        "anti-bot"
+        "actor-failed"
       ]
     }
   ]

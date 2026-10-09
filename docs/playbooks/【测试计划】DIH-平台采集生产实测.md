@@ -9,7 +9,7 @@ description: Data Intelligence Hub 平台采集分层测试计划，覆盖契约
 
 ## 0. 背景
 
-平台 catalog 声明 278 条能力（266 `verified`），但生产 `GET /api/collectors/docs` 长期返回 `tested_endpoints=0`、`/api/platform-packages/providers/status` 全部 `last_test_status=null`。即 **"verified" 是静态声明，不是实测结论**。更严重的是 `platform_packages/status.py` 把"无证据、无缺失配置"的端点也判为 `verified`（本轮已修）。
+平台 catalog 声明 270 条能力（258 `verified`），但生产 `GET /api/collectors/docs` 长期返回 `tested_endpoints=0`、`/api/platform-packages/providers/status` 全部 `last_test_status=null`。即 **"verified" 是静态声明，不是实测结论**。更严重的是 `platform_packages/status.py` 把"无证据、无缺失配置"的端点也判为 `verified`（本轮已修）。
 
 本计划用分层测试把声明变成结论，并保证回归。
 
@@ -17,7 +17,7 @@ description: Data Intelligence Hub 平台采集分层测试计划，覆盖契约
 
 | 层 | 目的 | 命令 | 通过标准 |
 |---|---|---|---|
-| L1 契约 | 生成物与 catalog 一致、无密钥泄漏 | `cd apps/api && uv run python ../../scripts/generate_platform_packages.py --update-lock` 然后 `uv run python ../../scripts/test_platform_packages.py` | `status=passed`；74/278/250 与 lock 一致；`note_count` 与策展源相符；无真实密钥 |
+| L1 契约 | 生成物与 catalog 一致、无密钥泄漏 | `cd apps/api && uv run python ../../scripts/generate_platform_packages.py --update-lock` 然后 `uv run python ../../scripts/test_platform_packages.py` | `status=passed`；70/270/242 与 lock 一致；`note_count` 与策展源相符；无真实密钥 |
 | L2 单测/集成 | 回归 | `cd apps/api && uv run pytest -q` | 无**新增**失败（见 §4 基线） |
 | L3 生产冒烟 | 面可用 | `curl /api/health`、`/api/collectors/catalog`、`/api/collectors/docs`、`/api/platform-packages`、`/{id}/release`、`/{id}/download`(ZIP 可解压) | 各 200；计数符合；ZIP 可解压 |
 | L4 分组实测 | 逐组验证 | `python scripts/verify_platform_live.py --project-id <uuid> --group tikhub_social` | 每端点有 verdict；报告落盘 |

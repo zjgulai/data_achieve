@@ -2,17 +2,49 @@
   "platform_id": "walmart",
   "notes": [
     {
-      "scope": "platform",
-      "target": "walmart",
-      "symptom": "apify_walmart_product_scraper 返回 0 条；apify_walmart_reviews_scraper 报 403",
-      "cause": "Walmart 对无代理请求返回空/403",
-      "workaround": "配置代理并确认商品 ID 有效",
+      "scope": "endpoint",
+      "target": "apify_walmart_reviews_scraper",
+      "symptom": "403，1 秒内失败",
+      "cause": "e-commerce/walmart-reviews-scraper 拒绝本账号发起运行（run 未创建），与代理或商品 ID 无关",
+      "workaround": "改用 web_wanderer/walmart-reviews-scraper；或先用 apify_walmart_product_scraper 验证代理链路（它返回 success 但 0 条，属于另一类问题）",
       "failure_class": "upstream_4xx",
-      "severity": "info",
+      "severity": "warning",
       "verified_at": "2026-10-09",
       "source_ref": "reports/live-sweep/latest.json",
       "tags": [
-        "apify"
+        "apify",
+        "run-start-403"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_walmart_product_scraper",
+      "symptom": "运行成功（run SUCCEEDED）但数据集 0 条",
+      "cause": "e-commerce/walmart-product-detail-scraper 对演示商品 ID 没有返回结果；需按“先看原始响应”的方法确认是入参不匹配还是上游返回空页",
+      "workaround": "改用真实商品 URL（而不是纯 ID）并确认 datasets 输出；同类 0 条问题不要默认是参数不足",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records"
+      ]
+    },
+    {
+      "scope": "platform",
+      "target": "walmart",
+      "symptom": "apify_walmart_scraper 运行成功但恒返回 0 条",
+      "cause": "Actor 换成了 web_wanderer/walmart-product-scraper（旧的 apify/walmart-scraper 已下架），product_ids 用的是该 Actor 自己的 inputSchema.prefill 里的 walmart.ca 商品 URL，并配 reg=CA；仍返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。）",
+      "workaround": "视为上游侧不可用；需要 Walmart 数据时优先用 apify_walmart_product_scraper 并确认代理链路",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "actor-broken"
       ]
     }
   ]

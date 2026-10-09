@@ -14,7 +14,7 @@ description: 平台采集 Skill 与 MCP 技术方案，涵盖生成架构、运�
 - 每个平台一份 Playbook。
 - 网站 `/skills` 中可搜索、筛选和查看详情的卡片目录。
 
-平台边界使用 endpoint 的 `platform` 字段。当前生产 catalog 对应 74 个平台、250 个唯一端点。`collector_type` 只作为 Provider/实现来源，不额外生成重复包。
+平台边界使用 endpoint 的 `platform` 字段。当前生产 catalog 对应 70 个平台、242 个唯一端点。`collector_type` 只作为 Provider/实现来源，不额外生成重复包。
 
 ## 2. 关键约束
 
@@ -31,8 +31,8 @@ description: 平台采集 Skill 与 MCP 技术方案，涵盖生成架构、运�
 flowchart LR
     Catalog[Collector Catalog API]:::entry --> Builder[Platform Package Builder]:::entry
     Builder --> Manifest[platform-packages.json]:::store
-    Builder --> Skills[74 Platform Skills]:::success
-    Builder --> Playbooks[74 Playbooks]:::success
+    Builder --> Skills[70 Platform Skills]:::success
+    Builder --> Playbooks[70 Playbooks]:::success
     Manifest --> MCP[Shared MCP Runtime]:::external
     Manifest --> Web[Skills Website Directory]:::external
     MCP --> Quick[/api/quick-collect]:::entry
@@ -99,8 +99,8 @@ MCP 采用官方 Python SDK v2，挂载于现有 FastAPI 的 `/mcp`。工具保�
 
 ### 4.1 生成器测试
 
-- 278 条 catalog 定义去重为 250 个 endpoint。
-- 74 个 platform id 生成 74 个包。
+- 270 条 catalog 定义去重为 242 个 endpoint。
+- 70 个 platform id 生成 70 个包。
 - 每个非 disabled endpoint 恰好归属一个平台包。
 - 所有 required/optional params 写入 manifest。
 - 生成器二次运行无 diff。
@@ -137,6 +137,6 @@ MCP 采用官方 Python SDK v2，挂载于现有 FastAPI 的 `/mcp`。工具保�
 ## 6. 非目标
 
 - 不为每个平台启动独立 MCP 进程。
-- 不发布 74 个独立 GitHub 仓库。
+- 不发布 70 个独立 GitHub 仓库。
 - 不把 Provider 凭据下发给客户端。
 - 不把 config-gated 能力声明为真实采集通过。

@@ -91,14 +91,14 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
             )
             if SECRET_VALUE_RE.search(combined) or _PRIVATE_KEY_RE.search(combined):
                 failures.append(f"secret_marker:{platform_id}")
-    expected_platforms = 1 if platform_filter else 74
+    expected_platforms = 1 if platform_filter else 70
     if len(packages) != expected_platforms:
         failures.append(f"platform_count:{len(packages)}:{expected_platforms}")
     if platform_filter is None:
-        if len(capability_ids) != 278:
-            failures.append(f"capability_count:{len(capability_ids)}:278")
-        if len(endpoint_types) != 250:
-            failures.append(f"endpoint_count:{len(endpoint_types)}:250")
+        if len(capability_ids) != 270:
+            failures.append(f"capability_count:{len(capability_ids)}:270")
+        if len(endpoint_types) != 242:
+            failures.append(f"endpoint_count:{len(endpoint_types)}:242")
         for key in (
             "schema_version",
             "catalog_digest",

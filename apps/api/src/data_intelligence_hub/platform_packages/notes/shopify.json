@@ -2,17 +2,19 @@
   "platform_id": "shopify",
   "notes": [
     {
-      "scope": "platform",
-      "target": "shopify",
-      "symptom": "apify_shopify_products_monitor 报 404；apify_shopify_full_catalog 报 403",
-      "cause": "演示域名（allbirds.com）路径不匹配或对无代理请求 403",
-      "workaround": "改用真实存在的 /products.json 目标域名与代理后重试",
+      "scope": "endpoint",
+      "target": "apify_shopify_products_monitor",
+      "symptom": "404（http_not_found），Actor 元数据查询同样 404",
+      "cause": "autofacts/shopify-scraper 已下架；原演示参数 {url: ...} 也不是该 Actor 的入参名",
+      "workaround": "已改指 trovevault/shopify-products-scraper，入参是 domains（域名数组）+ maxProducts",
       "failure_class": "upstream_4xx",
-      "severity": "info",
+      "severity": "blocker",
       "verified_at": "2026-10-09",
       "source_ref": "reports/live-sweep/latest.json",
       "tags": [
-        "apify"
+        "apify",
+        "dead-actor",
+        "fixed-2026-10-09"
       ]
     }
   ]

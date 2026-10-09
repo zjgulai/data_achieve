@@ -30,6 +30,22 @@
         "normalizer",
         "schema"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "reddit",
+      "symptom": "apify_reddit_ads_scraper 运行成功但恒返回 0 条",
+      "cause": "Actor 的 query 是必填键，已补齐；但 lexis-solutions/reddit-ads-scraper 的 schema 自己写明“没有 ads.reddit.com 会话 cookie 时最多返回约 30 条”，实测无 cookie 时直接返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。）",
+      "workaround": "按 Actor 入参 cookies 传入登录态 cookie（需含 token_v2）后才可能出数据；在此之前视为不可用",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "requires-cookies"
+      ]
     }
   ]
 }

@@ -118,6 +118,22 @@
         "seeding",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_rag_web_browser",
+      "symptom": "调用方传了 query 仍报 400 invalid-input：Field input.query is required",
+      "cause": "quick-collect 的 Apify 分支把一批“元键”（query/url/keyword/domain/asin/location/username/profile/handle…）从 actor_input 里剔除，而 apify/rag-web-browser 的必填键恰好就叫 query，于是入参被静默丢掉",
+      "workaround": "已修：元键只保留 maxItems/max_items/max_total_charge_usd/run_timeout_seconds 四个采集开关，其余一律透传给 Actor（_APIFY_META_KEYS）",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "meta-keys",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

@@ -4,7 +4,7 @@
 
 ## 项目一句话定位
 
-**纯数据采集平台**。后端 FastAPI 提供 278 个能力视图（250 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
+**纯数据采集平台**。后端 FastAPI 提供 270 个能力视图（242 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
 
 ---
 
@@ -34,7 +34,7 @@
 | 项目路径 | `~/apps/data_scrapy` |
 | 环境变量 | `/data/scrapy/configs/.env.production` |
 | API health | `http://192.168.204.230/api/health` → `{"status":"ok"}` |
-| 采集端点 | 278 capability views / 250 unique endpoint types |
+| 采集端点 | 270 capability views / 242 unique endpoint types |
 | docker-compose | `configs/deploy/scrapy-new/docker-compose.yml` |
 | 持久化路径 | Postgres: `/data/scrapy/postgres`，Exports: `/data/scrapy/exports` |
 | 部署文档 | [`docs/deployment-new-server.md`](docs/deployment-new-server.md) |
@@ -49,8 +49,8 @@
 | 链路 | 共享 Nginx → relay → 受限 SSH 反向隧道 → `192.168.204.230:80` |
 | Skill 目录 | `/skills` |
 | MCP | `/mcp/`，生产要求 `SCRAPY_MCP_TOKEN` |
-| 平台包 | 74 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
-| 当前口径 | 278 capability views / 250 unique endpoint types |
+| 平台包 | 70 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
+| 当前口径 | 270 capability views / 242 unique endpoint types |
 
 ### 容器（新服务器 192.168.204.230）
 
@@ -302,7 +302,7 @@ curl -fsSL https://scrapy.luteos.com/api/health
 curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   python3 -c "import sys,json; d=json.load(sys.stdin); \
   print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])"
-# 期望：74 278 250
+# 期望：70 270 242
 ```
 
 ---
@@ -315,11 +315,19 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **坑点单一事实源**：`apps/api/src/data_intelligence_hub/platform_packages/notes/<platform_id>.json`
   → 生成器把它渲染进每平台 `SKILL.md` / `README.md` / `references/playbook.md`，
   并经 `GET /api/platform-packages/<id>` 与控制台 `/skills/<id>` 展示。
-- **四个必须记住的坑**：
+- **七个必须记住的坑**：
   1. catalog 的 `status="verified"` 只是静态声明，**不等于实测通过**；真实状态看 `/api/collectors/docs` 与 `/providers/status`（证据来自 `label=[test] <endpoint_type>` 的 quick-collect 运行）。
   2. 端点归属的 `platform` 未必等于 collector 名（例：Exa 端点的 platform 是 `web`）；写坑点/建 Skill 包时以 catalog 的 `platform` 字段为准。
   3. **`success` + `records_count=0` 通常是归一化形状过时，不是参数问题**。TikHub 会改嵌套层级（YouTube `data.contents` 由 list 变 dict、Reddit `data.search` 同理）；`_extract_items` 按固定路径取值会静默返回空列表。排查时**先取原始响应确认形状**（服务器上直接用 `TIKHUB_API_KEY` curl 上游），别反复调 `params`。
   4. `quick-collect` 的 `project_id` 必须属于 demo workspace；此前不校验，传错值直接撞外键 → **500 + 原始 SQL 栈**（2026-10-09 已改成 400 `Unknown project_id`）。
+  5. **Apify 的 403 ≠ 反爬**。看 TaskRun 耗时：**<2 秒**的 `http_forbidden` 来自 `POST /acts/<id>/runs`，Apify run 根本没创建（Actor 已下架，或拒绝本账号运行）；耗时长才是上游站点反爬。前者换参数、加代理都没用，只能换 Actor。
+  6. **Apify Actor 的 `inputSchema` 是 `additionalProperties:false`**：缺必填键**或**多传未知键都整单 400。真实 schema 用 `GET https://api.apify.com/v2/acts/<user~name>/builds/default` 免鉴权取（`exampleRunInput` 常是 `{"helloWorld":123}` 占位，不能当示例用）。
+  7. **quick-collect 的 Apify 元键白名单只该有 4 个采集开关**（`maxItems`/`max_items`/`max_total_charge_usd`/`run_timeout_seconds`，见 `_APIFY_META_KEYS`）。曾把 `query`/`url`/`keyword`/`asin`/… 也列进去，`apify_rag_web_browser` 必填的 `query` 因此被静默丢弃。
+- **Apify Actor 会下架**：`_APIFY_ENDPOINT_DEFAULTS` 的 103 个 distinct Actor 里，2026-10-09 巡检发现 **25 个已下架 + 2 个被标废弃**（对应 28 个 endpoint_type，已改指存活 Actor）。下架后调用一律返回 403（**不是** 404），极易误判为反爬。改 Actor 时三处要一起动：`_APIFY_ENDPOINT_DEFAULTS`、`scripts/collector_demo_params.py`、`api/routes/collectors.py` 的 `provider`/`required_params`。巡检方法（免额度、不产生 run）见 [运行手册](./docs/workflows/workflow-console-capability-live-verification-stable.md)。
+- **quick-collect 能跑的端点 ≠ 目录里有的端点**：`_APIFY_ENDPOINT_DEFAULTS` 有 118 个，`/api/collectors/catalog` 只暴露 87 个 Apify 端点，前者是后者的真超集——多出的 31 个"幽灵端点"无人可发现却照样消耗额度。回归测试 `tests/unit/test_quick_collect_apify_input.py` 钉住了 `catalog ⊆ defaults` 这一方向。**副作用**：幽灵端点没有平台包，所以它**不能挂 endpoint 级坑点**——写 `notes/<platform>.json` 时 `builder` 会直接报 `target unknown endpoint_type`。这类坑点要改成 `scope: "platform"`。
+- **改 Apify 入参前先跑 `python scripts/audit_apify_inputs.py`**（只读 schema，0 额度）。它会报缺必填键、键名不存在、editor 形状不符。2026-10-09 首次运行：118 个端点里 33 个不合格（17 个缺必填键，直接 400）。取默认值用 `inputSchema.properties[key].prefill`，不要用 `exampleRunInput`（常是 `{"helloWorld":123}` 占位）。
+- **`editor` 决定值的形状**：`requestListSources` 要 `[{"url": ...}]`，`stringList` 要裸字符串数组。传错形状即使值本身合法也报 `... do not contain valid URLs`。`minimum`/`maximum`/`enum` 也要照抄——`limit`、`max_posts` 常有 `minimum: 10`。
+- **`max_total_charge_usd` 不是限流开关**：调小会让按事件计费的 Actor 直接 `ABORTED`，而不是少返回几条。要限流用入参里的数量字段。
 - **坑点写错端点名会被静默丢弃吗**：不会了。`builder` 现在对"target 命中不了任何端点"和"坑点文件 platform_id 对不上平台包"**直接报错**（2026-10-09 前是静默忽略，写错的坑点会看起来已沉淀却从不出现）。
 - **quick-collect 一定会落库**：`QuickCollectRequest` **没有** `save_records` 开关，传了也被忽略——每次调用都会建 `Source`+`CollectionTask`+`TaskRun` 并**保存 `RawRecord`**（实测一次全量扫描留下 265 组运行 / 565 条记录）。做扫描时用 `label` 打 `[test]` 前缀以便回收，别指望"不保存"。
 - **quick-collect 曾把 `endpoint_type` 从任务 config 里剥掉**：各 `_validate_*_config` 返回白名单字典，只留采集参数；而数据集平台归因（`_dataset_origin_signals`）靠 `task.config["endpoint_type"]` 取端点。结果：quick-collect 存出的数据集 `platforms=[]`，永远落到粗分类兜底（2026-10-09 已修：`validated.setdefault("endpoint_type", ...)`，quick_collect.py）。判断旧数据是否受影响：列表接口 `platforms` 为空但 `collector_types` 非空，且该版本血缘里的任务建于修复前。

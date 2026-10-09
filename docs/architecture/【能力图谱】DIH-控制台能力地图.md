@@ -14,9 +14,9 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 |---|---|
 | 生产域名 | `https://scrapy.luteos.com`（控制台）· `/api/*`（FastAPI）· `/mcp/`（共享 MCP） |
 | 部署分支 | `deploy/scrapy-luteos-rebuild` |
-| catalog 条目 | 278（266 verified + 12 disabled） |
+| catalog 条目 | 270（258 verified + 12 disabled） |
 | 唯一端点 | 250（按 endpoint_type 去重；非 disabled 的去重端点 249） |
-| 平台（Skill 包） | 74 |
+| 平台（Skill 包） | 70 |
 | collector group | 36 |
 | **生产实测状态（2026-10-09）** | `GET /api/collectors/docs` → `tested_endpoints=0`；`/api/platform-packages/providers/status` 全部 `last_test_status=null` |
 
@@ -58,7 +58,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 | 能力 | backing | 说明 |
 |---|---|---|
-| 平台工具包目录 | `GET /api/platform-packages` | 74 平台 / 278 能力视图 / 250 唯一端点 |
+| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 270 能力视图 / 242 唯一端点 |
 | 实时可用性 | `GET /api/platform-packages/providers/status` | 依赖 `task_runs` 证据；实测前全为 `verified`（**误导**） |
 | 平台详情 | `GET /api/platform-packages/{id}` | 含能力表、参数、**策展坑点 `platform_notes` / `notes`** |
 | Playbook | `GET /api/platform-packages/{id}/playbook` | 请求时实时渲染（含「坑点与规避」） |
@@ -136,12 +136,145 @@ instagram/kuaishou/duckduckgo×1、apify 电商/地图类×10。
 > 另：证据只认 label 恰好为 `[test] <endpoint_type>` 的运行（正则 `^\[quick\](?: \[quick\])? \[test\] (.+)$`）。
 > label 格式一旦漂移，实测结果会被**静默忽略**，状态看起来从未测过。
 
-## 5. Catalog ↔ 页面覆盖
+### 4.4 Apify 平台深挖（2026-10-09，分支 `fix/apify-actor-liveness`）
+
+对 `_APIFY_ENDPOINT_DEFAULTS` 里的 **103 个 distinct Actor** 做了一次存活巡检
+（`GET https://api.apify.com/v2/acts/<user~name>`，免鉴权、不产生 run、不消耗额度）：
+
+| 结果 | 数量 | 含义 |
+|---|---|---|
+| 存活 | 76 | 元数据可取，`isDeprecated=false` |
+| **已下架（record-not-found）** | **25** | 端点调用必然失败 |
+| **已废弃（`isDeprecated=true`）** | **2** | 作者标记废弃，30 天活跃用户 0 或将被下线 |
+
+另有 5 个 Actor（`automation-lab/etsy-scraper`、`caffein.dev/ebay-sold-listings`、
+`lexis-solutions/google-ads-scraper`、`lexis-solutions/tiktok-ads-scraper`、
+`marketplace-scrapers/amazon-bsr-scraper`）不在首批巡检名单内，本轮补测确认存活。
+
+处理方式（本轮已完成）：把死/废弃 Actor 对应的 **28 个 endpoint_type** 改指到存活
+Actor（见 §4.4.2 的"幽灵端点"说明——这 28 个里只有 7 个同时存在于 catalog），
+另修 5 个入参形状错误的端点。`api/routes/collectors.py` 中这 7 个端点的 `provider`
+字符串与 `required_params` 已同步（此前大量端点一律写 `["startUrls"]`，与真实 schema 不符）。
+
+#### 4.4.1 三类失败必须分开
+
+Apify 端点在扫描里出现的 4 类症状，根因完全不同，处置手段不能互换：
+
+| 症状 | 判据 | 根因 | 处置 |
+|---|---|---|---|
+| `http_forbidden` 403 | **耗時 <2s**，无 Apify run 产生 | `POST /acts/<id>/runs` 被拒：Actor 已下架，或拒绝本账号发起运行 | 换 Actor / 申请租用；改参数和加代理都没用 |
+| `http_status_error` 400 | 立即返回 | Actor 的 `inputSchema` 是 `additionalProperties:false`：缺必填键或多传未知键 | 用 `GET /acts/<user~name>/builds/default` 的 `inputSchema` 核对键名 |
+| `apify_run_failed` | 有 run id，status=FAILED/ABORTED | Actor 内部抓取失败（反爬、目标站点） | 读 `GET /v2/actor-runs/<runId>/log` |
+| `success` + 0 条 | run SUCCEEDED，数据集为空 | 入参不匹配上游实际，或上游真的没有数据 | 先看原始数据集，再调参数 |
+
+> ⚠️ 此前把整组 403 都归因为"跨境站点反爬"。实测 `apify_web_scraper`（官方
+> `apify/web-scraper`，`example.com` 都能 403）证明二者不是一回事。
+
+#### 4.4.2 端点表与目录不一致
+
+`POST /api/quick-collect` 的 `_APIFY_ENDPOINT_DEFAULTS` 有 **118** 个端点，而
+`GET /api/collectors/catalog` 只暴露 **87** 个 Apify 端点，且后者是前者的**真子集**：
+
+- **31 个"幽灵端点"**（如 `apify_x_scraper`、`apify_trustpilot_scraper`、
+  `apify_indeed_scraper`）只能直接打 quick-collect，不出现在 `/platforms`、
+  `/skills`、`/collector-docs` 与 MCP 目录里 —— 没人能发现它们，但它们**真的会消耗额度**。
+- 反向集合为空：没有"目录里有、quick-collect 跑不了"的端点。
+- 同类问题此前已发现一次：`tikhub_youtube_video_search` 在 TikHub 映射表里但不在目录里。
+
+本轮加了回归测试 `tests/unit/test_quick_collect_apify_input.py`，钉住
+`catalog_apify ⊆ _APIFY_ENDPOINT_DEFAULTS`（防止再出现"目录有、跑不了"）。
+"幽灵端点"是否要补进目录，留待产品决策。
+
+#### 4.4.3 入参形状审计（离线，0 额度）
+
+`scripts/audit_apify_inputs.py` 把 118 个端点的 `base_input` 与各自 Actor 的
+`inputSchema` 做静态比对。首轮结果：**33 个端点不合格**。
+
+| 类型 | 数量 | 后果 |
+|---|---|---|
+| 缺必填键 | 17 | 必然 400，端点**从未真正可用** |
+| 键名不存在 | 15 | `additionalProperties:false` 的 Actor 整单 400；其余静默忽略，限流意图落空 |
+| editor 形状不符 | 1 | 400 |
+
+典型例子：`apify_pinterest_scraper` 缺 `startUrls`+`proxyConfig`；
+`apify_instagram_profile_scraper` 缺必填的 `usernames`；
+`apify_alibaba_product_detail` 把 `requestListSources` 当 `stringList` 传（连 Actor 自己的
+prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
+
+真实取值优先级：`inputSchema.properties[key].prefill` > `default` > 猜。
+`exampleRunInput` 不可用（多为 `{"helloWorld":123}` 占位）。
+
+#### 4.4.4 实测复验（2026-10-09）
+
+三轮真实采集，全部用 `label=[test] <endpoint_type>`，第三轮起**不传任何 `params`**——
+只有端点的 `base_input` 生效，这才是对修复本身的验证。
+
+| 轮次 | 范围 | 结果 |
+|---|---|---|
+| 第一轮 | 33 个改动端点 | 成功 30 / 失败 3 |
+| 第二轮 | 6 个复查 | 修好 2（`threads`、`google_shopping` 的 `minimum: 10`）、确认 1 个形状错、3 个待查 |
+| 第三轮 | 31 个重新验证（空 params） | 成功 26 / 失败 5 |
+
+第三轮的 5 个失败全部是**运行前 403**（`pinterest_scraper`、`pinterest_media_profile_scraper`、
+`telegram_scraper`、`web_scraper`、`shopify_full_catalog`）——Actor 级限制，改入参无效。
+
+**恒返回 0 条（入参已合规，Actor 侧不产出）**，共 5 个：
+
+| 端点 | 证据 |
+|---|---|
+| `apify_facebook_group_scraper` | 换成公开群组 URL 仍为 `[]` |
+| `apify_product_hunt_scraper` | `mode=today` 与 `mode=date` 均为 `[]` |
+| `apify_yelp_scraper` | 键名改对后仍为 `[]`；改用 `directUrls` 直连商家页同样 `[]` |
+| `apify_reddit_ads_scraper` | Actor 自述无 cookie 时受限，实测无 cookie 返回 `[]` |
+| `apify_walmart_scraper` | 用 Actor 自己的 `prefill` URL + `reg=CA` 仍为 `[]` |
+
+这 5 个已按平台写入坑点，状态应记为 `empty_records`，**不要再调参数**。
+`apify_alibaba_product_detail` 改对 `requestListSources` 形状后实测返回 1 条，问题解决。
+
+#### 4.4.5 下线记录（2026-10-09）
+
+按"跑不通就别占位"的原则做了两轮收缩：
+
+**a. 从 catalog 摘掉 8 个端点**（同时从 `_APIFY_ENDPOINT_DEFAULTS` 与
+`_ENDPOINT_TO_COLLECTOR` 移除，调用会返回 400 `Unknown endpoint_type`）：
+
+| 端点 | 原因 |
+|---|---|
+| `apify_pinterest_scraper`、`apify_pinterest_media_profile_scraper` | 运行前 403 |
+| `apify_telegram_scraper` | 运行前 403 |
+| `apify_web_scraper` | 运行前 403（官方 Actor，`apify/website-content-crawler` 可替代） |
+| `apify_shopify_full_catalog` | 运行前 403（`apify_shopify_products_monitor` 可替代） |
+| `apify_facebook_group_scraper` | 恒 0 条（`apify_facebook_posts_scraper` 可替代） |
+| `apify_product_hunt_scraper` | 恒 0 条（`apify_producthunt_scraper` 可替代） |
+| `apify_yelp_scraper` | 恒 0 条 |
+
+连带影响：`pinterest`、`telegram`、`product_hunt`、`yelp` 四个平台失去全部端点，
+平台包随之消失，对应的 `notes/*.json` 一并删除（否则触发 builder 的
+"orphan note file" 守卫）。
+
+**b. 从 `_APIFY_ENDPOINT_DEFAULTS` 删掉 31 个幽灵端点**（其中 `apify_tiktok`、
+`apify_youtube`、`apify_instagram`、`apify_tripadvisor_scraper`、`apify_ebay_scraper`、
+`apify_gemini_scraper` 等与 catalog 里的正式端点重名或重复）。
+
+计数收口：
+
+| 指标 | 之前 | 之后 |
+|---|---|---|
+| 平台包 | 74 | **70** |
+| 能力视图 | 278 | **270** |
+| 唯一端点 | 250 | **242** |
+
+> ⚠️ 被删的 31 个里有约 20 个当轮实测**是通的**（`apify_x_scraper` 1 条、
+> `apify_threads_scraper` 10 条、`apify_google_shopping_scraper` 10 条、
+> `apify_trustpilot_scraper` 5 条…）。它们现在不可达。若以后要用，需要重新
+> 补进 catalog 与 `_APIFY_ENDPOINT_DEFAULTS`——入参与 Actor 都还是对的。
+
+
 
 - **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。
 - **有 UI 但无真实后端**：`/projects/[id]` 的"采集任务/最近运行/数据集"段、TopBar 的 ⌘K 命令搜索（无功能）。
 - **死链**：`/insight/dashboard`（导航外链，404）。
-- **端点 → 页面**：全部 278 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
+- **端点 → 页面**：全部 270 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
 
 ## 6. 死链与桩面清单
 

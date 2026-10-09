@@ -16,12 +16,12 @@ def test_builder_preserves_platform_views_and_counts_unique_endpoints() -> None:
         for package in result.packages
         for endpoint in package.endpoints
     ]
-    assert len(result.packages) == 74
-    assert len(endpoint_ids) == 278
-    assert len(set(endpoint_ids)) == 250
-    assert result.source_entry_count == 278
-    assert result.unique_endpoint_count == 250
-    assert result.capability_count == 278
+    assert len(result.packages) == 70
+    assert len(endpoint_ids) == 270
+    assert len(set(endpoint_ids)) == 242
+    assert result.source_entry_count == 270
+    assert result.unique_endpoint_count == 242
+    assert result.capability_count == 270
     regulatory = next(
         package for package in result.packages if package.platform_id == "regulatory"
     )

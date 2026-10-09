@@ -198,7 +198,7 @@ bash scripts/smoke-api-scrapy.sh
 1. `curl -ks https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`、`database=connected`、`schema=current`。
 2. `docker compose ps` 显示 api、db、edge、web、console 全部 healthy。
 3. `bash scripts/reload-scrapy-gateway.sh --dry-run` 通过，外层网关可解析 `data_achieve_scrapy_proxy`。
-4. 平台包验收：`curl -fsSL https://scrapy.luteos.com/api/platform-packages` 返回 `platform_count=74, capability_count=278, unique_endpoint_count=250`。
+4. 平台包验收：`curl -fsSL https://scrapy.luteos.com/api/platform-packages` 返回 `platform_count=70, capability_count=270, unique_endpoint_count=242`。
 5. 主要页面返回 200：`/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`；Console `/platforms` 返回 200。
 6. 演示账号数据域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
 7. 最新高价值情报不是 placeholder，至少包含开源、 电商、社媒、竞品四类。
