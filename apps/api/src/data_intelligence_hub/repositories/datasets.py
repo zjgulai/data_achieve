@@ -206,6 +206,27 @@ async def get_dataset_export_job(
     return result.scalar_one_or_none()
 
 
+async def get_dataset_export_job_by_id(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    export_job_id: uuid.UUID,
+) -> DatasetExportJob | None:
+    """Fetch a single export job by id, scoped to the workspace.
+
+    Unlike :func:`get_dataset_export_job`, this does not require the caller to
+    already know the dataset/version ids, which lets the API expose a
+    ``GET /product-dataset-exports/{export_job_id}`` lookup for polling a job
+    right after it is created.
+    """
+    result = await session.execute(
+        select(DatasetExportJob).where(
+            DatasetExportJob.workspace_id == workspace_id,
+            DatasetExportJob.id == export_job_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def list_dataset_export_jobs(
     session: AsyncSession,
     workspace_id: uuid.UUID,

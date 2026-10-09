@@ -34,7 +34,7 @@ tmp/**
 *.pem
 *.key
 
-# Live verification sweep reports (machine-readable artifacts)
+# Local verification sweep reports (machine-readable artifacts)
 reports/
 
 # Local autonomous loop control

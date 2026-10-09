@@ -614,6 +614,7 @@ source_type, content_kind, text_length
 | `POST` | `/api/automation/product-dataset-save` | `authorized`、`task_run_ids`、`fields?`、`max_rows?`、`name`、`description?`、`cleaning_plan_id?` | `AutomationProductDatasetSaveResponse` | 保存数据集版本，可追踪清洗计划 |
 | `GET` | `/api/automation/product-datasets` | query: `project_id?`、`limit?` | `AutomationProductDatasetListResponse` | 列出商品数据集资产 |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/versions` | query: `limit?` | `AutomationProductDatasetVersionListResponse` | 列出数据集版本 |
+| `GET` | `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/preview` | query: `limit?`（1–500，默认 50） | `AutomationProductDatasetVersionPreviewResponse` | 返回版本前 N 行样本（`rows`）、`fields`、`total_rows`，供控制台数据预览抽屉展示，不写文件 |
 
 数据集不变量：
 
@@ -629,7 +630,8 @@ source_type, content_kind, text_length
 
 | 方法 | 路径 | 请求 | 响应 | 说明 |
 |---|---|---|---|---|
-| `POST` | `/api/automation/product-dataset-exports` | body: `authorized`、`confirm_create`、`dataset_id`、`dataset_version_id`、`export_format`; optional header: `Idempotency-Key` | `AutomationProductDatasetExportJobResponse` | 生成受控导出文件，格式支持 `csv`、`json`、`jsonl`；同 key 重放返回原 job |
+| `POST` | `/api/automation/product-dataset-exports` | body: `authorized`、`confirm_create`、`dataset_id`、`dataset_version_id`、`export_format`; optional header: `Idempotency-Key` | `AutomationProductDatasetExportJobResponse` | 生成受控导出文件，格式支持 `csv`、`json`、`jsonl`、`xlsx`；同 key 重放返回原 job。渲染是同步的：成功时响应已含 `download_url` |
+| `GET` | `/api/automation/product-dataset-exports/{export_job_id}` | 无 | `AutomationProductDatasetExportJobResponse` | 按 job id 查询单个导出任务（控制台导出后轮询/刷新用，无需预先知道 dataset/version） |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/exports` | query: `dataset_version_id?`、`limit?` | `AutomationProductDatasetExportListResponse` | 查看导出历史 |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/exports/{export_job_id}/download` | 无 | 文件响应 | 下载导出文件 |
 

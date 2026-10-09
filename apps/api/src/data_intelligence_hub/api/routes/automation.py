@@ -59,6 +59,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationProductDatasetSaveRequest,
     AutomationProductDatasetSaveResponse,
     AutomationProductDatasetVersionListResponse,
+    AutomationProductDatasetVersionPreviewResponse,
     AutomationProductDiscoveryRequest,
     AutomationProductDiscoveryResponse,
     AutomationProductDriftAlertEmailSendRequest,
@@ -124,7 +125,9 @@ from data_intelligence_hub.services.automation_service import (
     generate_public_content_report,
     get_browser_diagnostic_job_asset,
     get_platform_package,
+    get_product_dataset_export,
     get_product_dataset_export_file,
+    get_product_dataset_version_preview,
     get_site_analysis_history_detail,
     list_browser_diagnostic_job_assets,
     list_browser_diagnostic_job_run_assets,
@@ -1254,6 +1257,27 @@ async def send_product_drift_alert_emails_route(
         ) from exc
 
 
+_ENDPOINT_PLATFORM_CACHE: dict[str, str] | None = None
+
+
+async def _endpoint_platform_map() -> dict[str, str]:
+    """Map ``endpoint_type -> platform`` from the capability catalog.
+
+    Cached for the process lifetime; the catalog is a static declaration.
+    """
+    global _ENDPOINT_PLATFORM_CACHE
+    if _ENDPOINT_PLATFORM_CACHE is None:
+        from data_intelligence_hub.api.routes.collectors import get_collector_catalog
+
+        catalog = await get_collector_catalog()
+        _ENDPOINT_PLATFORM_CACHE = {
+            endpoint.endpoint_type: endpoint.platform
+            for entry in catalog.collectors
+            for endpoint in entry.endpoints
+        }
+    return _ENDPOINT_PLATFORM_CACHE
+
+
 @router.get("/product-datasets", response_model=AutomationProductDatasetListResponse)
 async def list_product_datasets_route(
     session: SessionDep,
@@ -1272,6 +1296,7 @@ async def list_product_datasets_route(
         workspace,
         project_id=project_id,
         limit=limit,
+        endpoint_platforms=await _endpoint_platform_map(),
     )
 
 
@@ -1290,6 +1315,32 @@ async def list_product_dataset_versions_route(
             session,
             context.workspace,
             dataset_id=dataset_id,
+            limit=limit,
+        )
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/product-datasets/{dataset_id}/versions/{version_id}/preview",
+    response_model=AutomationProductDatasetVersionPreviewResponse,
+)
+async def preview_product_dataset_version_route(
+    dataset_id: uuid.UUID,
+    version_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+    limit: Annotated[int, Query(ge=1, le=500)] = 50,
+) -> AutomationProductDatasetVersionPreviewResponse:
+    try:
+        return await get_product_dataset_version_preview(
+            session,
+            context.workspace,
+            dataset_id,
+            version_id,
             limit=limit,
         )
     except CollectorError as exc:
@@ -1320,6 +1371,24 @@ async def create_product_dataset_export_route(
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get(
+    "/product-dataset-exports/{export_job_id}",
+    response_model=AutomationProductDatasetExportJobResponse,
+)
+async def get_product_dataset_export_route(
+    export_job_id: uuid.UUID,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_auth_context)],
+) -> AutomationProductDatasetExportJobResponse:
+    try:
+        return await get_product_dataset_export(session, context.workspace, export_job_id)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
