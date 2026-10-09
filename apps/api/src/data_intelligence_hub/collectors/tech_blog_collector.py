@@ -38,11 +38,16 @@ def _get_proxy() -> str | None:
     return os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY") or None
 
 
-def _client(accept: str = "application/json") -> httpx.AsyncClient:
+# 公开 JSON API 会被 Cloudflare 拦：带着"浏览器"UA 请求 /api/articles 返回 403，
+# 换成不含浏览器标识的 UA（或不带）就是 200（2026-10-09 实测）。
+_API_UA = "data-intelligence-hub-collector/1.0 (+https://scrapy.luteos.com)"
+
+
+def _client(accept: str = "application/json", user_agent: str | None = None) -> httpx.AsyncClient:
     return httpx.AsyncClient(
         timeout=_TIMEOUT,
         proxy=_get_proxy(),
-        headers={"User-Agent": _UA, "Accept": accept},
+        headers={"User-Agent": user_agent or _UA, "Accept": accept},
         follow_redirects=True,
     )
 
@@ -77,7 +82,7 @@ class DevToArticlesCollector(BaseCollector):
 
     async def test(self) -> CollectorTestResult:
         try:
-            async with _client() as c:
+            async with _client(user_agent=_API_UA) as c:
                 r = await c.get("https://dev.to/api/articles?per_page=1")
             if r.status_code != 200:
                 msg = f"Dev.to API returned HTTP {r.status_code}"
@@ -111,7 +116,7 @@ class DevToArticlesCollector(BaseCollector):
             params["search"] = config["keyword"]
 
         try:
-            async with _client() as c:
+            async with _client(user_agent=_API_UA) as c:
                 r = await c.get("https://dev.to/api/articles", params=params)
                 r.raise_for_status()
         except httpx.HTTPError as exc:

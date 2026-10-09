@@ -14,6 +14,22 @@
       "tags": [
         "egress"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "devto_articles_search",
+      "symptom": "http_forbidden: upstream returned 403（0.2s 内立即返回）",
+      "cause": "dev.to 走 Cloudflare：对 /api/articles 带**浏览器 User-Agent** 的请求返回 403，同一请求不带该 UA（或只带 Accept）返回 200。collector 给所有技术博客端点统一套了 Chrome UA",
+      "workaround": "已修：DevToArticlesCollector 改用中性 UA（data-intelligence-hub-collector/1.0）。判据：同一个 URL 换个 UA 就 200，说明是 UA 触发的拦截，与参数无关",
+      "failure_class": "upstream_4xx",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "cloudflare",
+        "user-agent",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

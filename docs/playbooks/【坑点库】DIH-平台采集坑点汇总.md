@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`999a6ddf983bfa2ed7925e0553fc2bd0f557929ab1b78b0161119b155046647f`
-> 坑点总数：47 · 覆盖平台：22
+> 自动生成，请勿手工编辑。catalog_digest：`2e433a1cb887fda66600b103d8659adde32ceeb131666d3146cda04d3f425e3c`
+> 坑点总数：48 · 覆盖平台：22
 
 ## actor_failed
 
@@ -92,6 +92,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | alibaba | apify_alibaba_product_search | 403（曾被归类为 rate limit） | scraperx/alibaba-scraper 已从 Apify Store 下架：GET /v2/acts/scraperx~alibaba-scraper 返回 record-not-found，发起运行一律 403 | 已改指 zen-studio/alibaba-scraper（resultType/keywords/maxResults/shipToCountry） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | amazon | apify_amazon_bestsellers | 403，1 秒内失败；Actor 元数据查询返回 record-not-found | simpleapi/amazon-bestsellers-scraper 已从 Apify Store 下架，任何第三方发起运行都被 403 挡回（403 而不是 404，容易被误判为反爬） | 已改指 junglee/amazon-bestsellers（categoryUrls 必填、maxItemsPerStartUrl 限流、depthOfCrawl 控制子类目） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | devto | devto | devto_articles_search 报 http_forbidden (403) | Dev.to API/站点对生产出口 IP 返回 403 | 配置代理或改用其它技术博客端点（juejin/substack） | info | 2026-10-09 | reports/live-sweep/latest.json |
+| devto | devto_articles_search | http_forbidden: upstream returned 403（0.2s 内立即返回） | dev.to 走 Cloudflare：对 /api/articles 带**浏览器 User-Agent** 的请求返回 403，同一请求不带该 UA（或只带 Accept）返回 200。collector 给所有技术博客端点统一套了 Chrome UA | 已修：DevToArticlesCollector 改用中性 UA（data-intelligence-hub-collector/1.0）。判据：同一个 URL 换个 UA 就 200，说明是 UA 触发的拦截，与参数无关 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | shopify | apify_shopify_products_monitor | 404（http_not_found），Actor 元数据查询同样 404 | autofacts/shopify-scraper 已下架；原演示参数 {url: ...} 也不是该 Actor 的入参名 | 已改指 trovevault/shopify-products-scraper，入参是 domains（域名数组）+ maxProducts | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_reviews_scraper | 403，1 秒内失败 | e-commerce/walmart-reviews-scraper 拒绝本账号发起运行（run 未创建），与代理或商品 ID 无关 | 改用 web_wanderer/walmart-reviews-scraper；或先用 apify_walmart_product_scraper 验证代理链路（它返回 success 但 0 条，属于另一类问题） | warning | 2026-10-09 | reports/live-sweep/latest.json |
 
