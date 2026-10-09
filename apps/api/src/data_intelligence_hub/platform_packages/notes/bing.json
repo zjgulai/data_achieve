@@ -14,6 +14,21 @@
       "tags": [
         "anycrawl"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "bing",
+      "symptom": "ANYCRAWL_BASE_URL is not configured — Bing SERP requires AnyCrawl",
+      "cause": "同 baidu：AnyCrawl 未部署",
+      "workaround": "部署 AnyCrawl 并设置 ANYCRAWL_BASE_URL",
+      "failure_class": "config_gated",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "self-hosted",
+        "anycrawl"
+      ]
     }
   ]
 }

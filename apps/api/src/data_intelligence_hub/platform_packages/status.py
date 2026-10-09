@@ -49,6 +49,16 @@ GROUP_REQUIREMENTS: dict[str, tuple[tuple[str, ...], ...]] = {
     "blackbird": (("BLACKBIRD_BASE_URL",),),
     "twscrape": (("TWITTER_ACCOUNTS_JSON", "TWITTER_ACCOUNTS_FILE"),),
     "browser_use": (("ANTHROPIC_API_KEY", "OPENAI_API_KEY"),),
+    # 国内社媒端点走自建的 MediaCrawler 服务（默认 http://localhost:8080）。
+    # 没配 MEDIACRAWLER_BASE_URL 时容器内连 localhost 直接 Connection refused ——
+    # 这是"没部署服务"，不是"被墙"。归到 config-gated 才如实。
+    "bilibili": (("MEDIACRAWLER_BASE_URL",),),
+    "kuaishou": (("MEDIACRAWLER_BASE_URL",),),
+    "weibo": (("MEDIACRAWLER_BASE_URL",),),
+    "zhihu": (("MEDIACRAWLER_BASE_URL",),),
+    # SERP 走 AnyCrawl（默认 http://localhost:3001）。duckduckgo 有 HTML 兜底，
+    # 但没有 AnyCrawl 时 baidu/bing 是硬失败，整组标 config-gated。
+    "serp": (("ANYCRAWL_BASE_URL",),),
 }
 
 

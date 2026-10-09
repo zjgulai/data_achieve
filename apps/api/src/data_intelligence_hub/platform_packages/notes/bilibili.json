@@ -46,6 +46,21 @@
         "upstream-shape",
         "fixed-2026-10-10"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "bilibili",
+      "symptom": "http_connection_failed: upstream connection failed（0.2s 内立即失败）",
+      "cause": "这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为\"需要代理\"。）",
+      "workaround": "部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。",
+      "failure_class": "config_gated",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "self-hosted",
+        "mediacrawler"
+      ]
     }
   ]
 }

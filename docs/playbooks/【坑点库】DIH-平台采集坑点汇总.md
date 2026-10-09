@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`4eca17bcf11e4e22e38387f0f1fc56cd38ed86a210361e54465e262bea62b505`
-> 坑点总数：88 · 覆盖平台：31
+> 自动生成，请勿手工编辑。catalog_digest：`fff52e06c3c3a9a565d8c005f7adc4c818b895a38cac94325df0df3d2111e2d0`
+> 坑点总数：94 · 覆盖平台：31
 
 ## actor_failed
 
@@ -20,11 +20,17 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | baidu | baidu | baidu_search_results 报 “ANYCRAWL_BASE_URL is not configured” | SERP 采集依赖 AnyCrawl 服务，生产未配置 ANYCRAWL_BASE_URL | 配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| baidu | baidu | ANYCRAWL_BASE_URL is not configured — Baidu SERP requires AnyCrawl | SERP 端点走自建 AnyCrawl（默认 http://localhost:3001），容器里同样 Connection refused；未部署 | 部署 AnyCrawl 并设置 ANYCRAWL_BASE_URL；缺失时 serp 组已归为 config-gated | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| bilibili | bilibili | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | bing | bing | bing_search_results 报 “ANYCRAWL_BASE_URL is not configured” | 同上，Bing SERP 依赖 AnyCrawl | 配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| bing | bing | ANYCRAWL_BASE_URL is not configured — Bing SERP requires AnyCrawl | 同 baidu：AnyCrawl 未部署 | 部署 AnyCrawl 并设置 ANYCRAWL_BASE_URL | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| kuaishou | kuaishou | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | web | web | Exa 系列端点（exa_search_auto / exa_answer / exa_contents / exa_deep_* 等 16 个）调用后 records=0，错误为 “EXA_API_KEY not set” | 生产 API 容器运行时环境未注入 EXA_API_KEY；compose 已声明该变量但服务器 .env.production 未提供值 | 在服务器 .env.production 增加 EXA_API_KEY=<key> 后重建 api 容器；在此之前不要把 Exa 端点视为可采集 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | firecrawl_crawl / firecrawl_extract / firecrawl_batch_scrape 报缺 FIRECRAWL_API_KEY | FIRECRAWL_API_KEY 未在 compose/.env.production 中配置 | 配置 FIRECRAWL_API_KEY（及可选 FIRECRAWL_BASE_URL）后重建 api 容器 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | robin_darkweb_search / _username / _email 曾返回 0 条（无报错） | 采集器要一个 Tor SOCKS5 出口（TOR_PROXY_URL，默认 socks5://127.0.0.1:9050），而 api 容器里没有 tor 守护进程 | 已修：compose 增加 tor sidecar（alpine + tor，只暴露 9050），api 的 TOR_PROXY_URL 设为 socks5h://tor:9050（h 让 DNS 也走 Tor，.onion 必须）。实测三个端点各返回 5 条。给其它需要 Tor 的端点复用同一个 URL 即可 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| weibo | weibo | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | x | x | twscrape_search / _user_tweets / _trends 报 “No Twitter accounts configured” | twscrape 需要登录态账号池，生产未配置 TWITTER_ACCOUNTS_JSON / TWITTER_ACCOUNTS_FILE | 配置 TWITTER_ACCOUNTS_JSON（账号+代理）后重建；否则用 tikhub_x_* 或 apify_x_* 替代 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| zhihu | zhihu | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 
 ## container_missing
 
