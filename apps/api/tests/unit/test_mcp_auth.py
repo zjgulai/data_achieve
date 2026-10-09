@@ -49,3 +49,14 @@ async def test_mcp_auth_accepts_matching_bearer_token(
 
     assert response.status_code == 200
     assert response.text == "ok"
+
+
+def test_settings_support_multiple_client_tokens() -> None:
+    settings = config.Settings(
+        SCRAPY_MCP_TOKENS_JSON={
+            "claude": SecretStr("token-a"),
+            "codex": SecretStr("token-b"),
+        },
+    )
+
+    assert set(settings.accepted_mcp_tokens) == {"token-a", "token-b"}

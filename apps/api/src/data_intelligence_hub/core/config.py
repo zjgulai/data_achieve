@@ -51,6 +51,25 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="SCRAPY_MCP_TOKEN",
     )
+    mcp_tokens: dict[str, SecretStr] = Field(
+        default_factory=dict,
+        validation_alias="SCRAPY_MCP_TOKENS_JSON",
+    )
+    mcp_rate_per_minute: int = Field(
+        default=120,
+        ge=1,
+        validation_alias="SCRAPY_MCP_RATE_PER_MINUTE",
+    )
+    mcp_concurrent_calls: int = Field(
+        default=8,
+        ge=1,
+        validation_alias="SCRAPY_MCP_CONCURRENT_CALLS",
+    )
+    mcp_daily_collects: int = Field(
+        default=500,
+        ge=1,
+        validation_alias="SCRAPY_MCP_DAILY_COLLECTS",
+    )
 
     dataset_export_dir: str = "tmp/dataset-exports"
 
@@ -68,6 +87,13 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://")
+
+    @property
+    def accepted_mcp_tokens(self) -> tuple[str, ...]:
+        values = [secret.get_secret_value() for secret in self.mcp_tokens.values()]
+        if self.mcp_token is not None:
+            values.append(self.mcp_token.get_secret_value())
+        return tuple(values)
 
 
 @lru_cache(maxsize=1)

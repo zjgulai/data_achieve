@@ -17,14 +17,13 @@ class BearerTokenMiddleware:
         receive: Receive,
         send: Send,
     ) -> None:
-        token = get_settings().mcp_token
-        if token is None or scope.get("type") != "http":
+        tokens = get_settings().accepted_mcp_tokens
+        if not tokens or scope.get("type") != "http":
             await self._app(scope, receive, send)
             return
         headers = dict(scope["headers"])
         provided = headers.get(b"authorization", b"").decode()
-        expected = f"Bearer {token.get_secret_value()}"
-        if hmac.compare_digest(provided, expected):
+        if any(hmac.compare_digest(provided, f"Bearer {token}") for token in tokens):
             await self._app(scope, receive, send)
             return
         await send(
