@@ -141,7 +141,7 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
         "weibo",
     ),
     "tikhub_weibo_user_posts": (
-        "/api/v1/weibo/web/fetch_user_posts",
+        "/api/v1/weibo/web_v2/fetch_user_posts",
         "weibo_post",
         "weibo",
     ),
@@ -466,6 +466,7 @@ _TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
     "tikhub_tiktok_ads_keyword_suggest",
     "tikhub_tiktok_creator_account_health",
     "tikhub_wechat_channels_video",
+    "tikhub_wechat_search",
     "tikhub_douyin_video_search",
 })
 
@@ -1133,7 +1134,12 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_lemon8_trending":
         return {}
     if endpoint_type == "tikhub_tiktok_ads_search":
-        return {}
+        # 官方 spec 的 body 必填 material_id（缺失即 422），industry / country_code 有默认值。
+        return {
+            "material_id": config.get("material_id") or "",
+            "industry": config.get("industry") or "25308000000",
+            "country_code": config.get("country_code") or "US",
+        }
     if endpoint_type == "tikhub_tiktok_top_ads":
         return {}
     if endpoint_type == "tikhub_tiktok_ads_detail":
@@ -1220,7 +1226,10 @@ class TikHubSocialCollector(BaseCollector):
         logs: list[dict[str, Any]] = []
         try:
             async with httpx.AsyncClient() as client:
-                data = await _tikhub_get(client, endpoint_path, test_params, api_key)
+                if endpoint_type in _TIKHUB_POST_ENDPOINTS:
+                    data = await _tikhub_post(client, endpoint_path, test_params, api_key)
+                else:
+                    data = await _tikhub_get(client, endpoint_path, test_params, api_key)
             items = _extract_items(data, platform)
             msg = f"TikHub endpoint {endpoint_type!r} reachable; got {len(items)} items."
             logs.append(collector_log("tikhub_test", msg))
