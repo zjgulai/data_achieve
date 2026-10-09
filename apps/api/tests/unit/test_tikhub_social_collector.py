@@ -1010,6 +1010,38 @@ def test_extract_items_x_user_followers() -> None:
     assert record is not None
 
 
+TIKTOK_FOLLOWERS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "followers": [
+            {
+                "uid": "7001",
+                "sec_uid": "MS4wLjABAAAA",
+                "unique_id": "someuser",
+                "nickname": "Some User",
+                "signature": "hi",
+                "follower_count": 12,
+                "item_list": [],
+                "cha_list": [],
+            }
+        ],
+        "has_more": 1,
+    },
+}
+
+
+def test_extract_items_tiktok_followers() -> None:
+    """粉丝条目是完整用户对象，没有 aweme_id，不能走视频归一化。"""
+    items = _extract_items(TIKTOK_FOLLOWERS_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_user_followers")
+    assert record is not None
+    assert record.record_type == "tiktok_user"
+    assert record.content["text"] == "Some User"
+    assert record.content["unique_id"] == "someuser"
+    assert record.source_url == "https://www.tiktok.com/@someuser"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------

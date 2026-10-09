@@ -972,6 +972,39 @@ def _normalize_threads_item(
     )
 
 
+def _normalize_tiktok_user(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """fetch_user_follower_list 的条目：完整 TikTok 用户对象。
+
+    这类条目没有 aweme_id/video_id，落到 _normalize_tiktok_video 会全部返回 None，
+    采集器于是报 "tikhub_normalize_all_failed"（提取到 20 条却 0 条入库）。
+    """
+    unique_id = _safe_str(item.get("unique_id"))
+    nickname = _safe_str(item.get("nickname"))
+    if unique_id is None and nickname is None:
+        return _normalize_generic(item, "tiktok", collector_type)
+    return CollectorRawRecord(
+        record_type="tiktok_user",
+        source_url=f"https://www.tiktok.com/@{unique_id}" if unique_id else None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_user.v1",
+            "text": nickname or unique_id or "",
+            "unique_id": unique_id,
+            "nickname": nickname,
+            "uid": _safe_str(item.get("uid")),
+            "sec_uid": _safe_str(item.get("sec_uid")),
+            "signature": _safe_str(item.get("signature")),
+            "follower_count": _safe_int(item.get("follower_count")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
 def _normalize_tiktok_live(
     item: dict[str, Any], collector_type: str
 ) -> CollectorRawRecord | None:
@@ -1238,6 +1271,9 @@ def _normalize_item(
             return _normalize_tiktok_live(item, collector_type)
         if item.get("highlight") or (item.get("id") and item.get("video_info")):
             return _normalize_tiktok_ad(item, collector_type)
+        if item.get("unique_id") or item.get("sec_uid"):
+            # fetch_user_follower_list 的条目是完整用户对象
+            return _normalize_tiktok_user(item, collector_type)
         return _normalize_tiktok_video(item, collector_type)
     if platform == "instagram":
         return _normalize_instagram_post(item, collector_type)
