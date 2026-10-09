@@ -309,6 +309,8 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 
 ## 平台采集实测与坑点体系（2026-10-09 起）
 
+- **能力总账（先读这份）**：`docs/architecture/【能力总账】DIH-平台能力现状与维护手册.md`
+  （可用/缺配置/上游故障/恒空端点清单、现状快照、维护方法、待补清单）
 - **能力图谱**：`docs/architecture/【能力图谱】DIH-控制台能力地图.md`（逐页 → 后端 → 实测状态）
 - **测试计划**：`docs/playbooks/【测试计划】DIH-平台采集生产实测.md`（L1–L8 分层 + 通过标准）
 - **坑点库（自动生成）**：`docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md`

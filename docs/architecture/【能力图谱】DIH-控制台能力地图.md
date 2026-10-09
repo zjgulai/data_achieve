@@ -7,6 +7,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 > 站点：`https://scrapy.luteos.com` · 采集后端：`apps/api/src/data_intelligence_hub` · 控制台：`apps/scraper-console`
 > 首次测绘：2026-10-09（基于生产实测，见 [测试计划](../playbooks/【测试计划】DIH-平台采集生产实测.md)）
+> 现状总账与维护方法见 [平台能力总账](./【能力总账】DIH-平台能力现状与维护手册.md)
 
 ## 1. 概览
 
