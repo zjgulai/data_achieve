@@ -116,6 +116,21 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 |---|---|---|
 | `/providers/status` | `verified 108 / empty 55` | `verified 110 / empty 53` |
 
+### 4.3 全量重扫（清理 `[test]` 证据后的重建，2026-10-09 第二次）
+
+`[test]` 运行记录清理后证据归零，重跑 `scripts/verify_platform_live.py` 全量（249 端点）重建：
+
+| 指标 | 值 |
+|---|---|
+| `/api/collectors/docs` | `tested=277/278, success=189` |
+| `/providers/status` | `verified 112 / degraded 62 / empty 49 / config-gated 26 / disabled 1` |
+| `tikhub_youtube_search` | `verified`（12 条） |
+| `tikhub_reddit_search` | `verified`（7 条） |
+
+剩余 `empty_records=49` 的分布（待后续按"先看原始响应"的方法逐个归因，不再默认是参数问题）：
+tiktok×11、douyin×4、linkedin×3、web(robin)×3、youtube/threads/lemon8/reddit/x/bilibili/zhihu×各2、
+instagram/kuaishou/duckduckgo×1、apify 电商/地图类×10。
+
 > 同类风险仍在：`x` / `xiaohongshu` / `instagram` / `douyin` 等平台同样按固定路径取 `data.*`，上游改版会以完全相同的方式静默返回空。
 > 排查这类"成功但 0 条"时**先取原始响应**（服务器上用 `TIKHUB_API_KEY` 直接 curl 上游），不要反复调 `params`。
 > 另：证据只认 label 恰好为 `[test] <endpoint_type>` 的运行（正则 `^\[quick\](?: \[quick\])? \[test\] (.+)$`）。
