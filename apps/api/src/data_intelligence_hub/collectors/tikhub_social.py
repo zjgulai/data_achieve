@@ -713,7 +713,8 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     "aweme_list", "item_list", "items", "item", "video_list",
                     "list", "result_list", "statuses", "cards", "answer_list",
                     "search_result", "result", "videos", "brand_list",
-                    "trending_list", "word_list", "comments", "mixFeeds", "data",
+                    "trending_list", "word_list", "comments", "mixFeeds",
+                    "feeds", "data",
                 ):
                     candidate = scope.get(key)
                     if isinstance(candidate, list) and candidate:
