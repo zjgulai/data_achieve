@@ -196,6 +196,44 @@ async def count_dataset_drift_events(
     return int(result.scalar_one())
 
 
+async def count_dataset_versions_by_dataset(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, int]:
+    """Version counts for many datasets in one round trip (missing = 0)."""
+    if not dataset_ids:
+        return {}
+    result = await session.execute(
+        select(DatasetVersion.dataset_id, func.count())
+        .where(
+            DatasetVersion.workspace_id == workspace_id,
+            DatasetVersion.dataset_id.in_(dataset_ids),
+        )
+        .group_by(DatasetVersion.dataset_id)
+    )
+    return {dataset_id: int(count) for dataset_id, count in result.all()}
+
+
+async def count_dataset_drift_events_by_dataset(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, int]:
+    """Drift-event counts for many datasets in one round trip (missing = 0)."""
+    if not dataset_ids:
+        return {}
+    result = await session.execute(
+        select(DatasetDriftEvent.dataset_id, func.count())
+        .where(
+            DatasetDriftEvent.workspace_id == workspace_id,
+            DatasetDriftEvent.dataset_id.in_(dataset_ids),
+        )
+        .group_by(DatasetDriftEvent.dataset_id)
+    )
+    return {dataset_id: int(count) for dataset_id, count in result.all()}
+
+
 async def list_dataset_drift_events(
     session: AsyncSession,
     workspace_id: uuid.UUID,

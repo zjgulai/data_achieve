@@ -97,8 +97,9 @@ from data_intelligence_hub.repositories.cleaning_plans import (
 )
 from data_intelligence_hub.repositories.datasets import (
     archive_dataset,
-    count_dataset_drift_events,
+    count_dataset_drift_events_by_dataset,
     count_dataset_versions,
+    count_dataset_versions_by_dataset,
     count_datasets,
     create_dataset_drift_event,
     create_dataset_export_job,
@@ -129,7 +130,12 @@ from data_intelligence_hub.repositories.reports import (
 )
 from data_intelligence_hub.repositories.signals import get_signal, list_signals
 from data_intelligence_hub.repositories.sources import get_source, get_source_by_type_url
-from data_intelligence_hub.repositories.tasks import get_task, list_task_runs
+from data_intelligence_hub.repositories.tasks import (
+    get_task,
+    list_task_runs,
+    list_task_runs_by_ids,
+    list_tasks_by_ids,
+)
 from data_intelligence_hub.repositories.users import get_user_by_id
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, cron_interval
 from data_intelligence_hub.schemas.alert import (
@@ -4871,9 +4877,24 @@ async def list_product_datasets(
         project_id=project_id,
         include_archived=include_archived,
     )
+    # Prefetch per-dataset data in bulk: the loop below would otherwise issue
+    # ~6 queries per dataset (counts + run->task lineage).
+    dataset_ids = [dataset.id for dataset in datasets]
+    version_counts = await count_dataset_versions_by_dataset(session, workspace.id, dataset_ids)
+    drift_counts = await count_dataset_drift_events_by_dataset(session, workspace.id, dataset_ids)
+    latest_versions: dict[uuid.UUID, DatasetVersion | None] = {
+        dataset.id: await get_latest_dataset_version(session, dataset.id)
+        for dataset in datasets
+    }
+    origin_signals = await _dataset_origin_signals_for_versions(
+        session,
+        workspace,
+        [version for version in latest_versions.values() if version is not None],
+    )
+
     items: list[AutomationProductDatasetListItemResponse] = []
     for dataset in datasets:
-        latest_version = await get_latest_dataset_version(session, dataset.id)
+        latest_version = latest_versions[dataset.id]
         latest_events = await list_dataset_drift_events(
             session,
             workspace.id,
@@ -4891,10 +4912,9 @@ async def list_product_datasets(
             )
             if event_version is not None:
                 latest_drift_event = _drift_event_response(event, dataset, event_version)
-        endpoint_types, collector_types = await _dataset_origin_signals(
-            session,
-            workspace,
-            latest_version,
+        endpoint_types, collector_types = origin_signals.get(
+            latest_version.id if latest_version is not None else None,
+            ([], []),
         )
         platforms: list[str] = []
         if endpoint_platforms:
@@ -4916,13 +4936,9 @@ async def list_product_datasets(
                     if latest_version is not None
                     else None
                 ),
-                version_count=await count_dataset_versions(session, workspace.id, dataset.id),
+                version_count=version_counts.get(dataset.id, 0),
                 latest_drift_event=latest_drift_event,
-                drift_event_count=await count_dataset_drift_events(
-                    session,
-                    workspace.id,
-                    dataset_id=dataset.id,
-                ),
+                drift_event_count=drift_counts.get(dataset.id, 0),
                 platforms=platforms,
                 category=_dataset_category_from_type(dataset.dataset_type),
                 collector_types=collector_types,
@@ -11103,34 +11119,71 @@ def _dataset_category_from_type(dataset_type: str) -> str | None:
     return DATASET_TYPE_CATEGORIES.get(dataset_type)
 
 
-async def _dataset_origin_signals(
+async def _dataset_origin_signals_for_versions(
     session: AsyncSession,
     workspace: Workspace,
-    version: DatasetVersion | None,
-) -> tuple[list[str], list[str]]:
-    """Return ``(endpoint_types, collector_types)`` behind a dataset version.
+    versions: list[DatasetVersion],
+) -> dict[uuid.UUID, tuple[list[str], list[str]]]:
+    """Return ``version_id -> (endpoint_types, collector_types)`` for a page.
 
     Datasets store neither a platform nor a category. The originating endpoint
     is recoverable by walking version -> task runs -> tasks, because quick
     collect writes ``config["endpoint_type"]``; the console then maps endpoint
     types to platforms (via the capability catalog) and to category tabs.
+
+    Runs and tasks are fetched in one round trip each, so listing a page costs
+    two queries instead of two per source task run.
     """
-    if version is None or not version.source_task_run_ids:
-        return [], []
-    task_ids = await _dataset_version_task_ids(session, workspace, version)
-    endpoint_types: list[str] = []
-    collector_types: list[str] = []
-    for task_id in task_ids:
-        task = await get_task(session, workspace.id, task_id)
-        if task is None:
-            continue
-        if task.collector_type and task.collector_type not in collector_types:
-            collector_types.append(task.collector_type)
-        config = task.config or {}
-        endpoint_type = config.get("endpoint_type")
-        if isinstance(endpoint_type, str) and endpoint_type and endpoint_type not in endpoint_types:
-            endpoint_types.append(endpoint_type)
-    return endpoint_types, collector_types
+    if not versions:
+        return {}
+
+    parsed_runs: dict[uuid.UUID, set[uuid.UUID]] = {}
+    all_run_ids: set[uuid.UUID] = set()
+    for version in versions:
+        run_ids: set[uuid.UUID] = set()
+        for raw_id in version.source_task_run_ids:
+            try:
+                run_ids.add(uuid.UUID(raw_id))
+            except (TypeError, ValueError):
+                continue
+        parsed_runs[version.id] = run_ids
+        all_run_ids |= run_ids
+
+    runs = await list_task_runs_by_ids(session, workspace.id, all_run_ids)
+    # Keep the per-version project scoping that _dataset_version_task_ids applies.
+    version_task_ids: dict[uuid.UUID, set[uuid.UUID]] = {}
+    all_task_ids: set[uuid.UUID] = set()
+    for version in versions:
+        task_ids = {
+            runs[run_id].task_id
+            for run_id in parsed_runs[version.id]
+            if run_id in runs
+        }
+        version_task_ids[version.id] = task_ids
+        all_task_ids |= task_ids
+
+    tasks = await list_tasks_by_ids(session, workspace.id, all_task_ids)
+
+    signals: dict[uuid.UUID, tuple[list[str], list[str]]] = {}
+    for version in versions:
+        endpoint_types: list[str] = []
+        collector_types: list[str] = []
+        for task_id in version_task_ids[version.id]:
+            task = tasks.get(task_id)
+            if task is None or task.project_id != version.project_id:
+                continue
+            if task.collector_type and task.collector_type not in collector_types:
+                collector_types.append(task.collector_type)
+            config = task.config or {}
+            endpoint_type = config.get("endpoint_type")
+            if (
+                isinstance(endpoint_type, str)
+                and endpoint_type
+                and endpoint_type not in endpoint_types
+            ):
+                endpoint_types.append(endpoint_type)
+        signals[version.id] = (endpoint_types, collector_types)
+    return signals
 
 
 def _render_dataset_csv(version: DatasetVersion, rows: list[dict[str, object]]) -> bytes:

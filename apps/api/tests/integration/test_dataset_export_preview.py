@@ -44,6 +44,14 @@ RUN_ID = uuid.uuid4()
 DATASET_ID = uuid.uuid4()
 VERSION_ID = uuid.uuid4()
 
+# A second dataset in the same workspace, from a different endpoint, used to
+# check that page-level attribution prefetching does not cross datasets.
+SOURCE2_ID = uuid.uuid4()
+TASK2_ID = uuid.uuid4()
+RUN2_ID = uuid.uuid4()
+DATASET2_ID = uuid.uuid4()
+VERSION2_ID = uuid.uuid4()
+
 SELECTED_FIELDS = ["title", "price"]
 
 
@@ -186,8 +194,99 @@ async def _seed(session) -> None:
     await session.commit()
 
 
-@pytest_asyncio.fixture()
-async def api(tmp_path_factory) -> AsyncIterator[AsyncClient]:
+async def _seed_second_product_dataset(session) -> None:
+    """Add a Walmart dataset beside the Amazon one, in the same workspace."""
+    session.add(
+        Source(
+            id=SOURCE2_ID,
+            workspace_id=WORKSPACE_ID,
+            project_id=PROJECT_ID,
+            name="Walmart source",
+            type="apify_actor",
+            url=None,
+            config={},
+            schedule_cron=None,
+            enabled=True,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    session.add(
+        CollectionTask(
+            id=TASK2_ID,
+            workspace_id=WORKSPACE_ID,
+            project_id=PROJECT_ID,
+            source_id=SOURCE2_ID,
+            collector_type="apify_actor",
+            name="Walmart products",
+            schedule_cron=None,
+            status="enabled",
+            config={"endpoint_type": "apify_walmart_product_scraper"},
+            success_count=1,
+            failure_count=0,
+            last_run_at=NOW,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    session.add(
+        TaskRun(
+            id=RUN2_ID,
+            task_id=TASK2_ID,
+            workspace_id=WORKSPACE_ID,
+            status="success",
+            started_at=NOW,
+            finished_at=NOW,
+            records_count=1,
+            entities_count=0,
+            error_message=None,
+            error_traceback=None,
+            logs=[],
+            created_at=NOW,
+        )
+    )
+    session.add(
+        Dataset(
+            id=DATASET2_ID,
+            workspace_id=WORKSPACE_ID,
+            project_id=PROJECT_ID,
+            name="Walmart 竞品数据集",
+            dataset_type="ecommerce_product",
+            status="active",
+            description="walmart sample",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    session.add(
+        DatasetVersion(
+            id=VERSION2_ID,
+            dataset_id=DATASET2_ID,
+            workspace_id=WORKSPACE_ID,
+            project_id=PROJECT_ID,
+            created_by_user_id=USER_ID,
+            cleaning_plan_id=None,
+            source_workflow_run_id=None,
+            lineage_contract_version=None,
+            version_number=1,
+            source_task_run_ids=[str(RUN2_ID)],
+            selected_fields=SELECTED_FIELDS,
+            cleaning_script=["trim string fields"],
+            rows=[],
+            export_preview={"schema": {}},
+            row_count=0,
+            average_completeness_percent=0,
+            status="saved",
+            created_at=NOW,
+        )
+    )
+    await session.commit()
+
+
+async def _app_client(
+    tmp_path_factory,
+    seeders: list,
+) -> AsyncIterator[AsyncClient]:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -198,7 +297,8 @@ async def api(tmp_path_factory) -> AsyncIterator[AsyncClient]:
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     async with session_factory() as session:
-        await _seed(session)
+        for seed in seeders:
+            await seed(session)
 
     async def override_session() -> AsyncGenerator[object, None]:
         async with session_factory() as session:
@@ -218,6 +318,21 @@ async def api(tmp_path_factory) -> AsyncIterator[AsyncClient]:
         app.dependency_overrides.clear()
         settings.dataset_export_dir = original_export_dir
         await engine.dispose()
+
+
+@pytest_asyncio.fixture()
+async def api(tmp_path_factory) -> AsyncIterator[AsyncClient]:
+    async for client in _app_client(tmp_path_factory, [_seed]):
+        yield client
+
+
+@pytest_asyncio.fixture()
+async def api_two_datasets(tmp_path_factory) -> AsyncIterator[AsyncClient]:
+    async for client in _app_client(
+        tmp_path_factory,
+        [_seed, _seed_second_product_dataset],
+    ):
+        yield client
 
 
 async def test_list_exposes_platform_category_and_timestamps(api: AsyncClient) -> None:
@@ -371,3 +486,25 @@ async def test_list_respects_limit_and_offset(api: AsyncClient) -> None:
     assert page.status_code == 200
     assert page.json()["items"] == []
     assert page.json()["total"] == 1  # total 不随 offset 变化
+
+
+async def test_page_keeps_per_dataset_attribution(api_two_datasets: AsyncClient) -> None:
+    """页面级预取不得让两个数据集共用同一份血缘结果。"""
+    response = await api_two_datasets.get("/api/automation/product-datasets")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+
+    by_id = {item["dataset"]["id"]: item for item in body["items"]}
+    amazon = by_id[str(DATASET_ID)]
+    walmart = by_id[str(DATASET2_ID)]
+
+    assert amazon["platforms"] == ["amazon"]
+    assert amazon["content_types"] == ["product"]
+    assert amazon["version_count"] == 1
+
+    assert walmart["platforms"] == ["walmart"]
+    assert walmart["content_types"] == ["product"]
+    assert walmart["version_count"] == 1
+    # the two datasets must not share a platform or a version count
+    assert amazon["platforms"] != walmart["platforms"]

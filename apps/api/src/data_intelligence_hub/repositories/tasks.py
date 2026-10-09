@@ -107,6 +107,44 @@ async def get_task(
     return result.scalar_one_or_none()
 
 
+async def list_tasks_by_ids(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    task_ids: list[uuid.UUID] | set[uuid.UUID],
+) -> dict[uuid.UUID, CollectionTask]:
+    """Fetch many tasks in one round trip, keyed by id.
+
+    Exists so per-dataset loops (dataset attribution) do not issue one query
+    per dataset.
+    """
+    if not task_ids:
+        return {}
+    result = await session.execute(
+        select(CollectionTask).where(
+            CollectionTask.workspace_id == workspace_id,
+            CollectionTask.id.in_(list(task_ids)),
+        )
+    )
+    return {task.id: task for task in result.scalars().all()}
+
+
+async def list_task_runs_by_ids(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    run_ids: list[uuid.UUID] | set[uuid.UUID],
+) -> dict[uuid.UUID, TaskRun]:
+    """Fetch many task runs in one round trip, keyed by id."""
+    if not run_ids:
+        return {}
+    result = await session.execute(
+        select(TaskRun).where(
+            TaskRun.workspace_id == workspace_id,
+            TaskRun.id.in_(list(run_ids)),
+        )
+    )
+    return {run.id: run for run in result.scalars().all()}
+
+
 async def list_task_runs(
     session: AsyncSession,
     workspace_id: uuid.UUID,
