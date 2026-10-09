@@ -572,7 +572,9 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                 return trends
         return []
 
-    if platform == "tiktok":
+    if platform in ("tiktok", "tiktok_shop"):
+        # 注意 TIKHUB_ENDPOINT_MAP 里 tikhub_tiktok_shop_products 的 platform 是
+        # "tiktok_shop"，不是 "tiktok" —— 只判 "tiktok" 会漏掉它。
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):

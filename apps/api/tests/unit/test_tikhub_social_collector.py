@@ -885,9 +885,10 @@ def test_extract_items_tiktok_live_search() -> None:
 
 
 def test_extract_items_tiktok_shop_products() -> None:
-    items = _extract_items(TIKTOK_SHOP_PRODUCTS_RESPONSE, "tiktok")
+    # platform 是 "tiktok_shop"，不是 "tiktok"（TIKHUB_ENDPOINT_MAP 里就是这样）
+    items = _extract_items(TIKTOK_SHOP_PRODUCTS_RESPONSE, "tiktok_shop")
     assert len(items) == 1
-    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_shop_products")
+    record = _normalize_item(items[0], "tiktok_shop", "tikhub_tiktok_shop_products")
     assert record is not None
     assert record.record_type == "tiktok_shop_product"
     assert record.content["text"] == "junk phone case"
