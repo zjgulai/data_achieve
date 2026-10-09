@@ -123,3 +123,35 @@ curl -s -o /dev/null -w '%{http_code}\n' $B/mcp/                  # 无 token �
 - `reports/live-sweep/` 是本地产物，不入库（已在 `.gitignore`）。
 - 提交前 `git status` 确认没有 `*.key` / `*.pem` / `.env`。
 - 把 §2 的 `tested_endpoints` 与 §3 的 `summary` 回填进 [能力图谱](../architecture/【能力图谱】DIH-控制台能力地图.md)。
+
+## 待配 Provider 密钥清单（2026-10-09）
+
+从采集器读取的环境变量（`grep -rhoE '(getenv|environ)\(\s*"[A-Z0-9_]+"' apps/api/src`）减去服务器
+`/opt/data-achieve-scrapy/.env.production` 已配置项，得到的缺口。**配齐前，对应端点只能是
+`config_gated`，不是代码缺陷。**
+
+### 需要提供密钥值（写进 `.env.production` 后 `up -d api`）
+
+| 变量 | 影响 | 说明 |
+|---|---|---|
+| `EXA_API_KEY` | 平台 `web` 的 20 个 Exa 端点 | 缺它时 `exa_*` 全部 config_gated |
+| `FIRECRAWL_API_KEY` | `firecrawl_crawl` / `_extract` / `_batch_scrape` | 可选 `FIRECRAWL_BASE_URL` |
+| `ANYCRAWL_API_KEY` | AnyCrawl 系列 | 可选 `ANYCRAWL_BASE_URL` |
+| `BESTBLOGS_API_KEY` | `bestblogs_articles` | |
+| `GITHUB_TOKEN`（或 `GH_TOKEN`） | `github_repo` / `github_topic` | 无 token 也能跑，但会撞限流 |
+| `TWITTER_ACCOUNTS_JSON` | `twscrape_*` | 也支持 `TWITTER_ACCOUNTS_FILE` / `TWITTER_DB_PATH` |
+| `OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY` | `browser_use_task` | 需配 `BROWSER_USE_LLM_PROVIDER` |
+
+### 需要基础设施地址（不是密钥）
+
+| 变量 | 影响 |
+|---|---|
+| `SPIDERFOOT_BASE_URL` | spiderfoot 各 endpoint（`container_missing` 的来源之一） |
+| `MEDIACRAWLER_BASE_URL` | mediacrawler |
+| `BLACKBIRD_BASE_URL` | blackbird OSINT |
+| `OBSCURA_CDP_URL` | 浏览器 CDP 复用 |
+| `HTTP_PROXY` / `HTTPS_PROXY` / `OSINT_PROXY` / `TOR_PROXY_URL` | `network_proxy` 类失败（直连被墙的站点，如 weibo/baidu/bing） |
+
+> 服务器上**已经**配置的：`TIKHUB_API_KEY`、`APIFY_API_TOKEN`、`ANYSEARCH_API_KEY`、`JINA_API_KEY`、
+> `MAIGRET_URL`、`PROXY_ROTATOR_*`。`PLATFORM_CREDENTIAL_MASTER_KEY` 是凭据加密主密钥，不要更换
+> （换了会解不开 `/settings/credentials` 已存的凭据）。
