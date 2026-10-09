@@ -1593,6 +1593,7 @@ class AutomationProductDatasetListItemResponse(BaseModel):
     platforms: list[str] = Field(default_factory=list)
     category: str | None = None
     collector_types: list[str] = Field(default_factory=list)
+    content_types: list[str] = Field(default_factory=list)
 
 
 class AutomationProductDatasetListResponse(BaseModel):

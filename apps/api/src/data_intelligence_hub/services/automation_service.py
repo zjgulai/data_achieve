@@ -4855,6 +4855,7 @@ async def list_product_datasets(
     offset: int = 0,
     include_archived: bool = False,
     endpoint_platforms: dict[str, str] | None = None,
+    endpoint_content_types: dict[str, str] | None = None,
 ) -> AutomationProductDatasetListResponse:
     datasets = await list_datasets(
         session,
@@ -4901,6 +4902,12 @@ async def list_product_datasets(
                 platform = endpoint_platforms.get(endpoint_type)
                 if platform and platform not in platforms:
                     platforms.append(platform)
+        content_types: list[str] = []
+        if endpoint_content_types:
+            for endpoint_type in endpoint_types:
+                content_type = endpoint_content_types.get(endpoint_type)
+                if content_type and content_type not in content_types:
+                    content_types.append(content_type)
         items.append(
             AutomationProductDatasetListItemResponse(
                 dataset=_dataset_response(dataset),
@@ -4919,6 +4926,7 @@ async def list_product_datasets(
                 platforms=platforms,
                 category=_dataset_category_from_type(dataset.dataset_type),
                 collector_types=collector_types,
+                content_types=content_types,
             )
         )
     return AutomationProductDatasetListResponse(

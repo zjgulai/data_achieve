@@ -28,6 +28,7 @@
   --border-2: #c9b8af;
   --focus-1: #284e7a;
   --overlay-1: rgb(36 27 27 / 48%);
+  --overlay-scrim: var(--overlay-1);
 
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",

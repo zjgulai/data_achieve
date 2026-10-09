@@ -1259,25 +1259,34 @@ async def send_product_drift_alert_emails_route(
         ) from exc
 
 
-_ENDPOINT_PLATFORM_CACHE: dict[str, str] | None = None
+_ENDPOINT_META_CACHE: dict[str, tuple[str, str]] | None = None
 
 
-async def _endpoint_platform_map() -> dict[str, str]:
-    """Map ``endpoint_type -> platform`` from the capability catalog.
+async def _endpoint_meta_map() -> dict[str, tuple[str, str]]:
+    """Map ``endpoint_type -> (platform, content_type)`` from the catalog.
 
     Cached for the process lifetime; the catalog is a static declaration.
+    Both values feed dataset attribution in the list response.
     """
-    global _ENDPOINT_PLATFORM_CACHE
-    if _ENDPOINT_PLATFORM_CACHE is None:
+    global _ENDPOINT_META_CACHE
+    if _ENDPOINT_META_CACHE is None:
         from data_intelligence_hub.api.routes.collectors import get_collector_catalog
 
         catalog = await get_collector_catalog()
-        _ENDPOINT_PLATFORM_CACHE = {
-            endpoint.endpoint_type: endpoint.platform
+        _ENDPOINT_META_CACHE = {
+            endpoint.endpoint_type: (endpoint.platform, endpoint.content_type)
             for entry in catalog.collectors
             for endpoint in entry.endpoints
         }
-    return _ENDPOINT_PLATFORM_CACHE
+    return _ENDPOINT_META_CACHE
+
+
+async def _endpoint_platform_map() -> dict[str, str]:
+    return {key: value[0] for key, value in (await _endpoint_meta_map()).items()}
+
+
+async def _endpoint_content_type_map() -> dict[str, str]:
+    return {key: value[1] for key, value in (await _endpoint_meta_map()).items()}
 
 
 @router.get("/product-datasets", response_model=AutomationProductDatasetListResponse)
@@ -1303,6 +1312,7 @@ async def list_product_datasets_route(
         offset=offset,
         include_archived=include_archived,
         endpoint_platforms=await _endpoint_platform_map(),
+        endpoint_content_types=await _endpoint_content_type_map(),
     )
 
 

@@ -229,10 +229,11 @@ async def test_list_exposes_platform_category_and_timestamps(api: AsyncClient) -
     assert item["dataset"]["dataset_type"] == "ecommerce_product"
     assert item["dataset"]["created_at"]
     assert item["dataset"]["updated_at"]
-    # derived from config.endpoint_type -> catalog platform
+    # derived from config.endpoint_type -> catalog platform + content_type
     assert item["platforms"] == ["amazon"]
     assert item["category"] == "ecommerce"
     assert item["collector_types"] == ["apify_actor"]
+    assert item["content_types"] == ["product"]
 
 
 async def test_version_preview_returns_rows(api: AsyncClient) -> None:

@@ -18,10 +18,13 @@ import {
 import { AppShell } from "@/components/layout/app-shell";
 import { PlatformLogo } from "@/components/platforms/platform-logo";
 import { DataPreviewDrawer } from "@/components/datasets/data-preview-drawer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   CATEGORIES,
+  CONTENT_TYPE_ORDER,
   PLATFORM_LABELS,
   datasetCategory,
+  getContentTypeLabel,
   getPlatformLabel,
   type CategoryKey,
 } from "@/lib/platforms/catalog";
@@ -111,6 +114,7 @@ function StatTile({ label, value, hint }: { label: string; value: string; hint?:
 export default function DatasetsPage() {
   const [category, setCategory] = useState<CategoryKey>("all");
   const [platformFilter, setPlatformFilter] = useState<string[]>([]);
+  const [contentTypeFilter, setContentTypeFilter] = useState<string[]>([]);
   const [timeRange, setTimeRange] = useState<TimeRange>("all");
   const [sort, setSort] = useState<SortKey>("updated");
   const [search, setSearch] = useState("");
@@ -120,6 +124,8 @@ export default function DatasetsPage() {
     running: false,
     message: null,
   });
+  const [pendingArchive, setPendingArchive] = useState<DatasetListItem[] | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["datasets"],
@@ -127,6 +133,7 @@ export default function DatasetsPage() {
   });
 
   const items = useMemo(() => data?.items ?? [], [data]);
+  const total = data?.total ?? 0;
 
   // Attach the resolved platform list once so filters/stats share one source.
   const enriched = useMemo(
@@ -153,6 +160,18 @@ export default function DatasetsPage() {
       .map(([key, count]) => ({ key, count }));
   }, [enriched]);
 
+  const contentTypeOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { item } of enriched) {
+      for (const ct of item.content_types) counts.set(ct, (counts.get(ct) ?? 0) + 1);
+    }
+    return CONTENT_TYPE_ORDER.filter(ct => counts.has(ct))
+      .concat(
+        Array.from(counts.keys()).filter(ct => !CONTENT_TYPE_ORDER.includes(ct)).sort(),
+      )
+      .map(key => ({ key, count: counts.get(key) ?? 0 }));
+  }, [enriched]);
+
   const stats = useMemo(() => {
     const totalRows = enriched.reduce(
       (sum, { item }) => sum + (item.latest_version?.row_count ?? 0),
@@ -165,12 +184,12 @@ export default function DatasetsPage() {
     ).length;
     // Server-side total: reflects datasets beyond the fetched page.
     return {
-      datasets: data?.total ?? enriched.length,
+      datasets: total || enriched.length,
       totalRows,
       platforms: platforms.size,
       newThisWeek,
     };
-  }, [enriched, data?.total]);
+  }, [enriched, total]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -179,6 +198,12 @@ export default function DatasetsPage() {
         return false;
       }
       if (platformFilter.length > 0 && !platformFilter.some(p => platforms.includes(p))) {
+        return false;
+      }
+      if (
+        contentTypeFilter.length > 0 &&
+        !contentTypeFilter.some(ct => item.content_types.includes(ct))
+      ) {
         return false;
       }
       if (!withinRange(item.dataset.updated_at, timeRange)) return false;
@@ -200,7 +225,7 @@ export default function DatasetsPage() {
         new Date(a.item.dataset.updated_at).getTime()
       );
     });
-  }, [enriched, category, platformFilter, timeRange, search, sort]);
+  }, [enriched, category, platformFilter, contentTypeFilter, timeRange, search, sort]);
 
   function toggleSelected(id: string) {
     setSelected(prev => {
@@ -240,24 +265,40 @@ export default function DatasetsPage() {
     });
   }
 
-  async function runArchive(item: DatasetListItem) {
-    if (!window.confirm(`归档数据集「${item.dataset.name}」？归档后可从列表移除，数据保留。`)) {
-      return;
+  /** Ask for confirmation, then archive every id. Returns the failure count. */
+  async function archiveMany(targets: DatasetListItem[]): Promise<number> {
+    let failed = 0;
+    for (const item of targets) {
+      try {
+        await archiveDataset(item.dataset.id);
+      } catch {
+        failed += 1;
+      }
     }
-    try {
-      await archiveDataset(item.dataset.id);
-      setSelected(prev => {
-        const next = new Set(prev);
-        next.delete(item.dataset.id);
-        return next;
-      });
-      await refetch();
-    } catch (err) {
-      setBatch({
-        running: false,
-        message: `归档失败：${err instanceof Error ? err.message : "未知错误"}`,
-      });
-    }
+    const done = new Set(targets.map(t => t.dataset.id));
+    setSelected(prev => {
+      const next = new Set(prev);
+      for (const id of done) next.delete(id);
+      return next;
+    });
+    await refetch();
+    return failed;
+  }
+
+  async function confirmArchive() {
+    if (!pendingArchive) return;
+    const targets = pendingArchive;
+    setConfirmBusy(true);
+    const failed = await archiveMany(targets);
+    setConfirmBusy(false);
+    setPendingArchive(null);
+    setBatch({
+      running: false,
+      message:
+        failed > 0
+          ? `归档完成：成功 ${targets.length - failed}，失败 ${failed}`
+          : `已归档 ${targets.length} 个数据集`,
+    });
   }
 
   const allVisibleSelected =
@@ -359,6 +400,17 @@ export default function DatasetsPage() {
         </button>
         <button
           type="button"
+          disabled={selected.size === 0 || batch.running}
+          onClick={() =>
+            setPendingArchive(visible.filter(({ item }) => selected.has(item.dataset.id)).map(e => e.item))
+          }
+          className="flex items-center gap-1.5 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] disabled:opacity-50"
+        >
+          <Archive size={12} />
+          批量归档{selected.size > 0 ? `（${selected.size}）` : ""}
+        </button>
+        <button
+          type="button"
           onClick={() => refetch()}
           className="flex items-center gap-1.5 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
         >
@@ -406,8 +458,53 @@ export default function DatasetsPage() {
         </div>
       ) : null}
 
+      {/* Content-type filter */}
+      {contentTypeOptions.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-[var(--text-tertiary)]">内容类型</span>
+          {contentTypeOptions.map(({ key, count }) => {
+            const active = contentTypeFilter.includes(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() =>
+                  setContentTypeFilter(prev =>
+                    prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key],
+                  )
+                }
+                className={`flex items-center gap-1.5 rounded-[var(--radius-pill)] border px-2 py-1 text-xs transition-colors ${
+                  active
+                    ? "border-[var(--action-primary)] bg-[var(--accent-1-soft)] text-[var(--action-primary)]"
+                    : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]"
+                }`}
+              >
+                {getContentTypeLabel(key)}
+                <span className="tabular-nums text-[var(--text-tertiary)]">{count}</span>
+              </button>
+            );
+          })}
+          {contentTypeFilter.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setContentTypeFilter([])}
+              className="text-xs text-[var(--text-tertiary)] underline hover:text-[var(--text-primary)]"
+            >
+              清除
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {batch.message ? (
         <p className="text-xs text-[var(--text-secondary)]">{batch.message}</p>
+      ) : null}
+
+      {/* The list is fetched as one page; say so when it is not the whole set. */}
+      {total > items.length ? (
+        <p className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-xs text-[var(--text-secondary)]">
+          已加载 {items.length} 个，共 {total} 个。分类计数、平台计数与筛选只覆盖已加载的部分。
+        </p>
       ) : null}
 
       {/* Table */}
@@ -535,7 +632,7 @@ export default function DatasetsPage() {
                           <button
                             type="button"
                             aria-label={`归档 ${ds.name}`}
-                            onClick={() => runArchive(item)}
+                            onClick={() => setPendingArchive([item])}
                             className="flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                           >
                             <Archive size={12} />
@@ -560,6 +657,24 @@ export default function DatasetsPage() {
         datasetName={drawerItem?.dataset.name ?? ""}
         platforms={drawerItem ? inferPlatforms(drawerItem) : []}
         initialVersion={drawerItem?.latest_version ?? null}
+      />
+
+      <ConfirmDialog
+        open={pendingArchive !== null}
+        title={
+          pendingArchive && pendingArchive.length > 1
+            ? `归档 ${pendingArchive.length} 个数据集？`
+            : "归档数据集？"
+        }
+        description={
+          pendingArchive
+            ? `「${pendingArchive.map(t => t.dataset.name).join("、")}」将从列表移除，数据保留，可用 include_archived 找回。`
+            : undefined
+        }
+        confirmLabel="归档"
+        busy={confirmBusy}
+        onConfirm={confirmArchive}
+        onCancel={() => setPendingArchive(null)}
       />
     </AppShell>
   );

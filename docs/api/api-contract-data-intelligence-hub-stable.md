@@ -626,6 +626,10 @@ source_type, content_kind, text_length
 3. 清洗计划是独立草案资产，保存规则、脚本文案、试跑预览和版本号。
 4. `cleaning-plan-dry-run` 必须返回 `dataset_version_created=false`、`cleaning_plan_created=false`、`run_started=false`。
 5. 数据集版本可选追踪 `cleaning_plan_id`；不传该字段时保持原始预览保存行为。
+6. 列表项的 `platforms`、`content_types`、`collector_types` 由版本血缘派生：
+   `source_task_run_ids -> TaskRun -> CollectionTask.config["endpoint_type"]`，
+   再查 catalog 取 `platform` 与 `content_type`。血缘缺失时三个字段都可能为空，
+   控制台用 `dataset_type` 做粗分类兜底。
 
 ### Dataset Export
 

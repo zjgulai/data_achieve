@@ -41,6 +41,8 @@ export type DatasetListItem = {
   /** Coarse category from `dataset_type`; may be null. */
   category: string | null;
   collector_types: string[];
+  /** Catalog `content_type`s of the originating endpoint(s); may be empty. */
+  content_types: string[];
 };
 
 export type DatasetsListResponse = {
