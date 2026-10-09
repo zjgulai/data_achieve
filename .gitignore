@@ -32,6 +32,10 @@ tmp/**
 *.sqlite
 *.sqlite3
 *.pem
+*.key
+
+# Live verification sweep reports (machine-readable artifacts)
+reports/
 
 # Local autonomous loop control
 .Codex/
