@@ -180,6 +180,23 @@
         "async-job",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "web",
+      "symptom": "robin_darkweb_search / _username / _email 曾返回 0 条（无报错）",
+      "cause": "采集器要一个 Tor SOCKS5 出口（TOR_PROXY_URL，默认 socks5://127.0.0.1:9050），而 api 容器里没有 tor 守护进程",
+      "workaround": "已修：compose 增加 tor sidecar（alpine + tor，只暴露 9050），api 的 TOR_PROXY_URL 设为 socks5h://tor:9050（h 让 DNS 也走 Tor，.onion 必须）。实测三个端点各返回 5 条。给其它需要 Tor 的端点复用同一个 URL 即可",
+      "failure_class": "config_gated",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tor",
+        "robin",
+        "osint",
+        "fixed-2026-10-10"
+      ]
     }
   ]
 }
