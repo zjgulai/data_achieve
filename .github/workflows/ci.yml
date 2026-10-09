@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - codex/social-api-private-matrix-20260708
   pull_request:
     branches:
       - main
