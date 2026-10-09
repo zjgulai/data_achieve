@@ -1145,7 +1145,7 @@ def _normalize_item(
     platform: str,
     collector_type: str,
 ) -> CollectorRawRecord | None:
-    if platform == "tiktok":
+    if platform in ("tiktok", "tiktok_shop"):
         if item.get("product_id"):
             return _normalize_tiktok_product(item, collector_type)
         if isinstance(item.get("anchor"), dict) or isinstance(item.get("lives"), dict):
