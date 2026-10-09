@@ -1,0 +1,21 @@
+{
+  "platform_id": "google_ads",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_google_ads_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 keywords/maxItems，Actor 要 startUrls；且原来的 advertiser ID 是个不存在的占位值",
+      "workaround": "已修：startUrls 换成 Actor prefill 里的真实 advertiser URL + maxItems=3，实测 3 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-10"
+      ]
+    }
+  ]
+}

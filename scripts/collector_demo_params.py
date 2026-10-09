@@ -146,7 +146,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "apify_shopify_scraper":               {"domain": "allbirds.com", "maxItems": 3},
     "apify_aliexpress_products_scraper":   {"searchQuery": "phone case", "maxItems": 3},
     "apify_shein_product_scraper":         {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html", "results_wanted": 3},
-    "apify_temu_products_scraper":         {"keywords": ["phone case"], "maxItems": 3},
+    "apify_temu_products_scraper":         {"searchQueries": ["women dress"], "maxResults": 20},
     "apify_target_products_scraper":       {"searchQueries": ["coffee maker"], "maxProductsPerSearch": 3},
     # Reviews / B2B
     "apify_trustpilot_scraper":            {"companyUrls": ["https://www.trustpilot.com/review/amazon.com"], "maxReviews": 5},
@@ -172,7 +172,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "apify_google_news_scraper":           {"keywords": ["python programming"], "maxArticles": 5},
     "apify_google_news_media_search":      {"keywords": ["python programming"], "maxArticles": 5},
     "apify_google_ai_overviews_scraper":   {"queries": ["python programming"]},
-    "apify_google_ads_scraper":            {"keywords": ["python"], "maxItems": 3},
+    "apify_google_ads_scraper":            {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR18135649662495883265?region=anywhere"}], "maxItems": 3},
     "apify_google_ads_transparency_scraper": {"advertiserId": "AR01234567890", "maxItems": 3},
     # AI Search
     "apify_chatgpt_scraper":               {"queries": ["what is python"], "maxItems": 3},

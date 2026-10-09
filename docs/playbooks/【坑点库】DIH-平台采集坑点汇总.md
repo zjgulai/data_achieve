@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`eecf0ab408b3e35e382805e64143f0ed940b1b366ce5bffb011774d83eedd7fd`
-> 坑点总数：71 · 覆盖平台：27
+> 自动生成，请勿手工编辑。catalog_digest：`75da9152466406085a2de91d9c078d05a9c52f43a30dc16f4926e1fd10c2ee0a`
+> 坑点总数：73 · 覆盖平台：29
 
 ## actor_failed
 
@@ -42,6 +42,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，Actor 的键是 keywords/count | 已修：keywords=["laptop"] + count=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | facebook | facebook | 曾有一个 apify_facebook_group_scraper 端点：运行成功但恒返回 0 条 | whoareyouanas/facebook-group-scraper 的入参已按 schema 补齐（startUrls 必填），但用演示群组和公开群组 URL 都返回空数据集——Actor 侧能力问题 | 该端点已于 2026-10-09 从目录下线。要采 Facebook 群组内容请用 apify_facebook_posts_scraper（已验证返回记录）；判定同类问题的方法：同一 Actor 用自己文档里的公开样例 URL 仍返回空，就不要再调参数 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | glassdoor | apify_glassdoor_scraper | 运行成功但数据集 0 条 | 演示参数用了 keyword，而 memo23/glassdoor-scraper-ppr 靠 command(reviews/interviews/…) + startUrls（Glassdoor 公司页 URL）取数 | 已修：command=reviews + startUrls 用 Actor 自己的 prefill URL + maxItems=3 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| google_ads | apify_google_ads_scraper | 运行成功但数据集 0 条 | 演示参数用了 keywords/maxItems，Actor 要 startUrls；且原来的 advertiser ID 是个不存在的占位值 | 已修：startUrls 换成 Actor prefill 里的真实 advertiser URL + maxItems=3，实测 3 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | google_maps | apify_google_maps_reviews_scraper | 运行成功但数据集 0 条 | 演示 startUrls 用的是 maps.google.com/maps?cid=… 这种短链，Actor 要求含 /maps/search、/maps/place 或 /maps/review 的完整 URL | 已修：换成 Actor prefill 里的 /maps/place/… 完整链接，实测返回记录 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | google_news | apify_google_news_media_search | 曾报运行成功但 0 条 | DB 里是 10:54 扫描的旧证据；用 keywords/maxArticles 直连 Actor 实测能返回 1 条 | 重跑即恢复，属证据过期而非代码问题 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | linkedin | tikhub_linkedin_* 多个端点返回 records=0（无报错），apify_linkedin_jobs/company_search 亦为空 | LinkedIn 上游对无有效会话的请求返回空结果集；演示参数不足以触发真实数据 | 视为“需真实会话/参数”的高不稳定端点；不要据此判定能力可用，接入前用小样本人工验证 | warning | 2026-10-09 | reports/live-sweep/latest.json |
@@ -54,6 +55,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | reddit | tikhub_reddit_search | quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records） | TikHub 的 app/fetch_dynamic_search 把结果放在 data.search，而 search 是 dict（search.dynamic.components.main.edges[].node.children[]），帖子挂在 __typename=SearchPost 的 node.post；归一化器只认 data.search 为 list，于是取到 0 条。 | 已在 _extract_items 中对 reddit 增加 _deep_find_typename(inner, "SearchPost") 深度查找，再由 _normalize_reddit_post 抽取 postTitle/url/score/authorInfo.name/subreddit.name/createdAt。实测同一响应由 0 条变为 7 条。 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | tikhub_reddit_subreddit_posts | quick-collect 报 422：subreddit_name 长度不足；修好参数后又恒返回 0 条 | 两个独立问题：(1) 参数白名单漏了 subreddit，_build_params 传出空串；(2) 上游把响应换成了 UI 结构 data.subredditV3.elements.edges[].node（__typename=CellGroup），帖子内容散在 cells[] 里，标题在 TitleCell.title、作者/时间在 MetadataCell，按 postTitle 取永远为空 | 已修：白名单补齐 subreddit；_extract_items 增加 CellGroup 深度查找，_normalize_reddit_subreddit_post 按 cells 抽字段（groupId t3_xxx → https://www.reddit.com/comments/xxx）。同一响应由 0 条变 6 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | tikhub_reddit_trending | 运行成功但恒返回 0 条 | fetch_popular_feed 放在 data.popularfeed.postsInfoByIds（list），条目只有 id（如 1o8v3kd）与 postTitle，没有 permalink / url | 已修：_extract_items 增加 popularfeed 分支；_normalize_reddit_post 增加由 id 拼 https://www.reddit.com/comments/<id> 的兜底。同一响应由 0 条变 8 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| temu | apify_temu_products_scraper | 运行成功但数据集 0 条；传 maxResults=3 则 400 | 演示参数用了 keywords/maxItems（都不存在），而 amit123/temu-products-scraper 的键是 searchQueries/maxResults，且 maxResults **下限为 20** | 已修：searchQueries=["women dress"] + maxResults=20（该值是 Actor 的下限，不是我们要这么多） | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | threads | tikhub_threads_post_comments | 运行成功但恒返回 0 条 | fetch_post_comments 在 data.edges[].node（含 thread_items），不是常见的 items/list | 已修：同上。实测 0 -> 19 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | threads | tikhub_threads_user_posts | 运行成功但恒返回 0 条 | fetch_user_posts 在 data.mediaData.edges[].node，正文在 thread_items[0].post.caption.text；且 user_id 必须是数值型 ID（用户名不行） | 已修：新增 threads 提取分支与 _normalize_threads_item；演示参数改用 fetch_user_info 拿到的数值 user_id。实测 0 -> 20 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | tiktok | tikhub_tiktok_ads_detail | 运行成功但恒返回 0 条 | get_ads_detail（POST）的 data.data 是单个广告对象；且 body 的键是 ads_id 不是 ad_id，演示值曾是占位 123456 | 已修：提取器识别单对象形状；演示参数换成 top ads 回收的真实素材 ID。实测 0 -> 1 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |

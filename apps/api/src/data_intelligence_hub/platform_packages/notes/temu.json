@@ -1,0 +1,21 @@
+{
+  "platform_id": "temu",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_temu_products_scraper",
+      "symptom": "运行成功但数据集 0 条；传 maxResults=3 则 400",
+      "cause": "演示参数用了 keywords/maxItems（都不存在），而 amit123/temu-products-scraper 的键是 searchQueries/maxResults，且 maxResults **下限为 20**",
+      "workaround": "已修：searchQueries=[\"women dress\"] + maxResults=20（该值是 Actor 的下限，不是我们要这么多）",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-10"
+      ]
+    }
+  ]
+}

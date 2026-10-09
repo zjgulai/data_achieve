@@ -462,7 +462,8 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
     "apify_temu_products_scraper": (
         "amit123/temu-products-scraper",
-        {"searchQueries": ["phone case"]},
+        # maxResults 的下限是 20，传 3 会被 400 拒绝
+        {"searchQueries": ["women dress"], "maxResults": 20},
     ),
     "apify_shein_product_scraper": (
         "shahidirfan/shein-product-scraper",
@@ -531,7 +532,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Ads
     "apify_google_ads_scraper": (
         "lexis-solutions/google-ads-scraper",
-        {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR01694614460596224001?region=anywhere"}]},
+        {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR18135649662495883265?region=anywhere"}], "maxItems": 3},
     ),
     "apify_facebook_ads_scraper": (
         "apify/facebook-ads-scraper",
