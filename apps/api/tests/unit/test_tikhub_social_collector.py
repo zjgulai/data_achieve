@@ -732,6 +732,178 @@ def test_normalize_reddit_subreddit_post_carries_preview_text() -> None:
     assert record.content["body"] == "weekly free-talk"
 
 
+YOUTUBE_COMMENTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "comments": [
+            {
+                "comment_id": "Ugzge340dBgB75hWBm54AaABAg",
+                "content": "can confirm: he never gave us up",
+                "published_time": "1 year ago",
+                "like_count": "12K",
+                "reply_count": 3,
+                "reply_level": 0,
+            }
+        ],
+        "continuation_token": "tok",
+    },
+}
+
+REDDIT_POPULAR_FEED_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "popularfeed": {
+            "postsInfoByIds": [
+                {
+                    "__typename": "Post",
+                    "id": "1o8v3kd",
+                    "createdAt": "2026-10-08T12:05:42.883000+0000",
+                    "subreddit": {"name": "AskReddit"},
+                    "postTitle": "Bartender threatened to kick me out",
+                }
+            ]
+        },
+        "after": "t3_next",
+    },
+}
+
+X_TRENDING_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "trends": [
+            {"name": "New Yorker", "description": None, "context": "Trending in United States"}
+        ]
+    },
+}
+
+LINKEDIN_COMPANY_PROFILE_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "id": "1035",
+        "name": "Microsoft",
+        "followers": 29258099,
+        "about": "Every company has a mission.",
+        "url": "https://www.linkedin.com/company/microsoft",
+        "description": "Microsoft | 29,258,099 followers on LinkedIn.",
+        "specialties": ["Cloud", "AI"],
+    },
+}
+
+
+def test_extract_items_youtube_video_comments() -> None:
+    items = _extract_items(YOUTUBE_COMMENTS_RESPONSE, "youtube")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "youtube", "tikhub_youtube_video_comments")
+    assert record is not None
+    assert record.record_type == "youtube_comment"
+    assert record.content["comment_id"] == "Ugzge340dBgB75hWBm54AaABAg"
+    assert record.content["text"] == "can confirm: he never gave us up"
+
+
+def test_extract_items_reddit_popular_feed() -> None:
+    items = _extract_items(REDDIT_POPULAR_FEED_RESPONSE, "reddit")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "reddit", "tikhub_reddit_trending")
+    assert record is not None
+    assert record.content["text"] == "Bartender threatened to kick me out"
+    # 只有 id，没有 permalink / url，必须能从 id 拼出链接
+    assert record.source_url == "https://www.reddit.com/comments/1o8v3kd"
+
+
+def test_extract_items_x_trending() -> None:
+    items = _extract_items(X_TRENDING_RESPONSE, "x")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "x", "tikhub_x_trending")
+    assert record is not None
+    assert record.record_type == "trend"
+    assert record.content["text"] == "New Yorker"
+    assert record.content["context"] == "Trending in United States"
+
+
+def test_extract_items_linkedin_company_profile() -> None:
+    items = _extract_items(LINKEDIN_COMPANY_PROFILE_RESPONSE, "linkedin")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "linkedin", "tikhub_linkedin_company_profile")
+    assert record is not None
+    assert "Microsoft" in record.content["text"]
+    assert record.source_url == "https://www.linkedin.com/company/microsoft"
+
+
+TIKTOK_LIVE_SEARCH_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "status_code": 0,
+        "data": [
+            {"type": 1, "lives": {"aweme_id": "7694578771533351710", "author": {"uid": "693", "nickname": "Kwood"}}},
+            {"type": 2, "anchor": {"owner_user_info": {"uid": "720", "nickname": "music"}, "live_info": {}}},
+        ],
+        "has_more": 1,
+    },
+}
+
+TIKTOK_SHOP_PRODUCTS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+            "products": [
+                {
+                    "product_id": "1731987113638072822",
+                    "title": "junk phone case",
+                    "seo_url": "https://shop.tiktok.com/us/pdp/x/1731987113638072822",
+                    "product_price_info": {"sale_price": "9.99"},
+                }
+            ]
+        },
+    },
+}
+
+TIKTOK_TOP_ADS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "code": 0,
+        "msg": "ok",
+        "data": {
+            "materials": [
+                {"id": "7182310470102122497", "highlight": "Showcase a comparison", "ctr": 0.21, "like": 33506}
+            ]
+        },
+    },
+}
+
+
+def test_extract_items_tiktok_live_search() -> None:
+    items = _extract_items(TIKTOK_LIVE_SEARCH_RESPONSE, "tiktok")
+    assert len(items) == 2
+    records = [_normalize_item(i, "tiktok", "tikhub_tiktok_live_search") for i in items]
+    assert all(r is not None for r in records)
+    assert records[0].record_type == "tiktok_live"
+    assert records[0].content["nickname"] == "Kwood"
+    assert records[0].content["room_id"] == "7694578771533351710"
+    assert records[1].content["nickname"] == "music"
+
+
+def test_extract_items_tiktok_shop_products() -> None:
+    items = _extract_items(TIKTOK_SHOP_PRODUCTS_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_shop_products")
+    assert record is not None
+    assert record.record_type == "tiktok_shop_product"
+    assert record.content["text"] == "junk phone case"
+    assert record.content["product_id"] == "1731987113638072822"
+
+
+def test_extract_items_tiktok_top_ads() -> None:
+    items = _extract_items(TIKTOK_TOP_ADS_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_top_ads")
+    assert record is not None
+    assert record.record_type == "tiktok_ad"
+    assert record.content["material_id"] == "7182310470102122497"
+    assert record.content["text"] == "Showcase a comparison"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------

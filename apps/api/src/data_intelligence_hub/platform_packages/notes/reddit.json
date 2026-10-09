@@ -62,6 +62,22 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_reddit_trending",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_popular_feed 放在 data.popularfeed.postsInfoByIds（list），条目只有 id（如 1o8v3kd）与 postTitle，没有 permalink / url",
+      "workaround": "已修：_extract_items 增加 popularfeed 分支；_normalize_reddit_post 增加由 id 拼 https://www.reddit.com/comments/<id> 的兜底。同一响应由 0 条变 8 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

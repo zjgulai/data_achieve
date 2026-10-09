@@ -15,6 +15,22 @@
         "twscrape",
         "credentials"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_x_trending",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_trending 放在 data.trends（list of {name, description, context}）；x 分支只找 timeline，认不出 trends",
+      "workaround": "已修：_extract_items 增加 trends 分支，_normalize_x_trend 抽 name/description/context。同一响应由 0 条变 50 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

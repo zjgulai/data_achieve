@@ -15,6 +15,22 @@
         "tikhub",
         "linkedin"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_linkedin_company_profile",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "get_company_profile 的 data 直接就是单个公司对象（id/name/followers/about/description/url），不是列表；没有 linkedin 分支时提取返回空",
+      "workaround": "已修：_extract_items 增加 linkedin 分支（有 name/id 时返回 [data]）",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }
