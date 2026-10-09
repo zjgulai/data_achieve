@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from data_intelligence_hub.platform_packages.models import PlatformPackageCatalog
 
-Availability = Literal["verified", "config-gated", "degraded", "disabled"]
+Availability = Literal["verified", "config-gated", "degraded", "untested", "disabled"]
 
 
 class EndpointEvidence(BaseModel):
@@ -71,7 +71,10 @@ def build_provider_status(
                 availability: Availability = "disabled"
             elif missing:
                 availability = "config-gated"
-            elif latest is not None and latest.status not in {"success", "ok"}:
+            elif latest is None:
+                # 没有任何实测证据：不得谎报 verified，标记为 untested。
+                availability = "untested"
+            elif latest.status not in {"success", "ok"}:
                 availability = "degraded"
             else:
                 availability = "verified"
