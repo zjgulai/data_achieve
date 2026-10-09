@@ -676,14 +676,28 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):
-            for key in (
-                "aweme_list", "item_list", "items", "video_list", "data",
-                "list", "result_list", "statuses", "cards", "answer_list",
-                "search_result", "result", "videos",
-            ):
-                candidate = inner.get(key)
-                if isinstance(candidate, list) and candidate:
-                    return candidate
+            # 这些平台的响应常常再套一层或两层 data / results，条目数组藏在里面：
+            #   bilibili fetch_user_videos → data.item
+            #   douyin   fetch_hot_search_list → data.data.word_list
+            #   douyin   fetch_brand_hot_..._detail → data.brand_list
+            #   weibo    fetch_user_posts → data.data.list
+            #   wechat   fetch_search → data.results.data
+            scopes: list[dict[str, Any]] = [inner]
+            for key in ("data", "results"):
+                for scope in list(scopes):
+                    nested = scope.get(key)
+                    if isinstance(nested, dict):
+                        scopes.append(nested)
+            for scope in scopes:
+                for key in (
+                    "aweme_list", "item_list", "items", "item", "video_list",
+                    "list", "result_list", "statuses", "cards", "answer_list",
+                    "search_result", "result", "videos", "brand_list",
+                    "trending_list", "word_list", "data",
+                ):
+                    candidate = scope.get(key)
+                    if isinstance(candidate, list) and candidate:
+                        return candidate
         return []
 
     if isinstance(inner, list):
