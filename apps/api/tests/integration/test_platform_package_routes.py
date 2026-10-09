@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import zipfile
 
@@ -17,6 +18,7 @@ async def test_platform_package_routes_list_detail_and_playbook() -> None:
         detail = await client.get("/api/platform-packages/tiktok")
         playbook = await client.get("/api/platform-packages/tiktok/playbook")
         download = await client.get("/api/platform-packages/tiktok/download")
+        release = await client.get("/api/platform-packages/tiktok/release")
 
     assert listing.status_code == 200
     assert listing.json()["platform_count"] == 3
@@ -34,6 +36,10 @@ async def test_platform_package_routes_list_detail_and_playbook() -> None:
             "references/playbook.md",
             "evals/trigger_cases.json",
         }
+    assert release.status_code == 200
+    assert release.json()["version"].startswith("1.0.0+")
+    assert len(release.json()["archive_sha256"]) == 64
+    assert release.json()["archive_sha256"] == hashlib.sha256(download.content).hexdigest()
 
 
 @pytest.mark.asyncio

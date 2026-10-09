@@ -33,17 +33,25 @@ def build_platform_package_catalog(
     source: CollectorCatalogResponse,
 ) -> PlatformPackageCatalog:
     unique_endpoint_types: set[str] = set()
+    canonical_capabilities: dict[str, str] = {}
     by_platform: dict[str, list[PackageEndpoint]] = defaultdict(list)
     source_entry_count = 0
     for group in source.collectors:
         for index, endpoint in enumerate(group.endpoints):
             source_entry_count += 1
             unique_endpoint_types.add(endpoint.endpoint_type)
+            capability_id = (
+                f"{endpoint.platform}:{group.collector_type}:"
+                f"{endpoint.endpoint_type}:{index}"
+            )
+            canonical_id = canonical_capabilities.setdefault(
+                endpoint.endpoint_type,
+                capability_id,
+            )
             packaged = PackageEndpoint(
-                capability_id=(
-                    f"{endpoint.platform}:{group.collector_type}:"
-                    f"{endpoint.endpoint_type}:{index}"
-                ),
+                capability_id=capability_id,
+                canonical_capability_id=canonical_id,
+                is_alias_view=canonical_id != capability_id,
                 endpoint_type=endpoint.endpoint_type,
                 label=endpoint.label,
                 platform=endpoint.platform,

@@ -73,6 +73,9 @@ curl -X POST https://scrapy.luteos.com/api/quick-collect \\
 
 MCP 客户端连接：`https://scrapy.luteos.com/mcp/`。
 
+发布元数据：`GET /api/platform-packages/{package.platform_id}/release`，包含版本、
+catalog digest 与 ZIP SHA-256。
+
 详细端点与参数见 `manifest.json`，操作流程见 `references/playbook.md`。
 """
 
@@ -109,6 +112,9 @@ description: {description}
 | endpoint_type | 名称 | method | content_type | 状态 |
 |---|---|---|---|---|
 {rows}
+
+`manifest.json` 中 `canonical_capability_id` 标识唯一可调用能力；
+`is_alias_view=true` 表示该行是同一 endpoint 在其他平台或预设场景下的能力视图。
 
 ## 执行步骤
 

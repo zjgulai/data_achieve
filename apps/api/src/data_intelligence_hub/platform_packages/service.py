@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import io
 import json
+import os
+import re
 import zipfile
 from functools import lru_cache
 
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
+from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
 from data_intelligence_hub.platform_packages.models import (
     PackageEndpoint,
@@ -17,6 +23,12 @@ from data_intelligence_hub.platform_packages.renderers import (
     render_readme,
     render_skill,
     render_trigger_cases,
+)
+from data_intelligence_hub.platform_packages.status import (
+    GROUP_REQUIREMENTS,
+    EndpointEvidence,
+    ProviderStatusResponse,
+    build_provider_status,
 )
 from data_intelligence_hub.schemas.collector_catalog import CollectorCatalogResponse
 
@@ -71,12 +83,51 @@ async def build_platform_skill_archive(platform_id: str) -> bytes:
     }
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("SKILL.md", render_skill(package))
-        archive.writestr("README.md", render_readme(package))
-        archive.writestr(
-            "manifest.json",
-            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        files = (
+            ("SKILL.md", render_skill(package)),
+            ("README.md", render_readme(package)),
+            ("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"),
+            ("references/playbook.md", render_playbook(package)),
+            ("evals/trigger_cases.json", render_trigger_cases(package)),
         )
-        archive.writestr("references/playbook.md", render_playbook(package))
-        archive.writestr("evals/trigger_cases.json", render_trigger_cases(package))
+        for filename, content in files:
+            info = zipfile.ZipInfo(filename, date_time=(2026, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            archive.writestr(info, content.encode())
     return buffer.getvalue()
+
+
+async def get_provider_status(session: AsyncSession) -> ProviderStatusResponse:
+    result = await session.execute(
+        select(CollectionTask.name, TaskRun)
+        .join(TaskRun, TaskRun.task_id == CollectionTask.id)
+        .where(
+            or_(
+                CollectionTask.name.like("[quick] [test]%"),
+                CollectionTask.name.like("[quick] [quick] [test]%"),
+            )
+        )
+        .order_by(TaskRun.created_at.desc())
+    )
+    evidence: dict[str, EndpointEvidence] = {}
+    pattern = re.compile(r"^\[quick\](?: \[quick\])? \[test\] (.+)$")
+    for task_name, run in result.all():
+        match = pattern.match(task_name)
+        if match is None or match.group(1) in evidence:
+            continue
+        evidence[match.group(1)] = EndpointEvidence(
+            status=run.status,
+            finished_at=run.finished_at,
+            records_count=run.records_count,
+            error_message=run.error_message,
+        )
+    configured_names = {
+        name for groups in GROUP_REQUIREMENTS.values() for group in groups for name in group
+    }
+    configured = {name: bool(os.environ.get(name, "").strip()) for name in configured_names}
+    return build_provider_status(
+        await get_platform_package_catalog(),
+        configured=configured,
+        evidence=evidence,
+    )

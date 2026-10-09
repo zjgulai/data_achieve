@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 
@@ -7,13 +9,16 @@ from data_intelligence_hub.platform_packages.models import (
     PlatformPackage,
     PlatformPackageCatalog,
 )
+from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.platform_packages.service import (
     PlatformPackageNotFoundError,
     build_platform_skill_archive,
     get_platform_package,
     get_platform_package_catalog,
     get_platform_playbook,
+    get_provider_status,
 )
+from data_intelligence_hub.platform_packages.status import ProviderStatusResponse
 
 router = APIRouter(tags=["platform-packages"])
 
@@ -22,6 +27,15 @@ class PlatformPlaybookResponse(BaseModel):
     model_config = ConfigDict(frozen=True)
     platform_id: str
     markdown: str
+
+
+class PlatformReleaseResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    platform_id: str
+    version: str
+    catalog_digest: str
+    archive_sha256: str
+    download_url: str
 
 
 @router.get("", response_model=PlatformPackageCatalog)
@@ -37,6 +51,11 @@ async def list_platform_packages(
         if _matches(package, normalized, status)
     )
     return catalog.model_copy(update={"packages": packages, "platform_count": len(packages)})
+
+
+@router.get("/providers/status", response_model=ProviderStatusResponse)
+async def read_provider_status(session: SessionDep) -> ProviderStatusResponse:
+    return await get_provider_status(session)
 
 
 @router.get("/{platform_id}", response_model=PlatformPackage)
@@ -70,6 +89,22 @@ async def download_platform_skill(platform_id: str) -> Response:
                 f'attachment; filename="{platform_id}-collector-skill.zip"'
             )
         },
+    )
+
+
+@router.get("/{platform_id}/release", response_model=PlatformReleaseResponse)
+async def read_platform_release(platform_id: str) -> PlatformReleaseResponse:
+    try:
+        content = await build_platform_skill_archive(platform_id)
+        catalog = await get_platform_package_catalog()
+    except PlatformPackageNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="platform_package_not_found") from exc
+    return PlatformReleaseResponse(
+        platform_id=platform_id,
+        version=f"1.0.0+{catalog.catalog_digest[:12]}",
+        catalog_digest=catalog.catalog_digest,
+        archive_sha256=hashlib.sha256(content).hexdigest(),
+        download_url=f"/api/platform-packages/{platform_id}/download",
     )
 
 

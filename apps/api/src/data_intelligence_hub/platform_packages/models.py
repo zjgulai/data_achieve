@@ -7,6 +7,8 @@ class PackageEndpoint(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     capability_id: str
+    canonical_capability_id: str
+    is_alias_view: bool
     endpoint_type: str
     label: str
     platform: str

@@ -26,6 +26,8 @@ def test_builder_preserves_platform_views_and_counts_unique_endpoints() -> None:
         package for package in result.packages if package.platform_id == "regulatory"
     )
     assert {endpoint.endpoint_type for endpoint in regulatory.endpoints} == {"public_feed"}
+    assert regulatory.endpoints[0].is_alias_view is True
+    assert regulatory.endpoints[0].canonical_capability_id != regulatory.endpoints[0].capability_id
 
 
 def test_builder_is_deterministic() -> None:
