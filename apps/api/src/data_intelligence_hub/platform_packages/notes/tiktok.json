@@ -1,0 +1,21 @@
+{
+  "platform_id": "tiktok",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_ads_search",
+      "symptom": "http_status_error: upstream returned 422 | Field required: material_id",
+      "cause": "_build_params 对该端点返回 {}，而官方 spec 的 POST body 必填 material_id（industry / country_code 有默认值）",
+      "workaround": "已修：透传 material_id / industry / country_code；演示值取自 apify/tikhub 的 top ads 结果。注意 material_id 属业务 ID，调用方要传自己的素材 ID",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "post-only",
+        "needs-business-id",
+        "fixed-2026-10-09"
+      ]
+    }
+  ]
+}

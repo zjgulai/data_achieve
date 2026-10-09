@@ -328,6 +328,10 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **改 Apify 入参前先跑 `python scripts/audit_apify_inputs.py`**（只读 schema，0 额度）。它会报缺必填键、键名不存在、editor 形状不符。2026-10-09 首次运行：118 个端点里 33 个不合格（17 个缺必填键，直接 400）。取默认值用 `inputSchema.properties[key].prefill`，不要用 `exampleRunInput`（常是 `{"helloWorld":123}` 占位）。
 - **`editor` 决定值的形状**：`requestListSources` 要 `[{"url": ...}]`，`stringList` 要裸字符串数组。传错形状即使值本身合法也报 `... do not contain valid URLs`。`minimum`/`maximum`/`enum` 也要照抄——`limit`、`max_posts` 常有 `minimum: 10`。
 - **`max_total_charge_usd` 不是限流开关**：调小会让按事件计费的 Actor 直接 `ABORTED`，而不是少返回几条。要限流用入参里的数量字段。
+- **排查 degraded 端点的顺序**：① 先读 400/422 的响应体（上游会点名是哪个字段）；② 拿官方 spec 比对路径与方法（TikHub 的 `https://api.tikhub.io/openapi.json` 免鉴权）；③ 确认参数真的传到了上游；④ "成功但 0 条"再去比原始响应形状。详见 [运行手册](./docs/workflows/workflow-console-capability-live-verification-stable.md)。
+- **`_validate_*_config` 的白名单会静默丢参数**：它必须覆盖 collector 实际读取的所有键，否则那些键变成空串，上游报一个看不出原因的参数错误。TikHub 已补 27 个键并有回归测试 `tests/unit/test_tikhub_param_contract.py`；其它 collector 同理。
+- **第三方库的位置参数与返回类型要核对**：`AutoScraper.build()` 的第一个位置参数是 `url`（传 HTML 会触发 `requests.get(HTML)`），`get_result()` 返回 `(similar, exact)` 二元组。
+- **TikHub 有 POST-only 端点**：走 GET 会得到 405/422；新增端点时先查 spec 的方法。
 - **坑点写错端点名会被静默丢弃吗**：不会了。`builder` 现在对"target 命中不了任何端点"和"坑点文件 platform_id 对不上平台包"**直接报错**（2026-10-09 前是静默忽略，写错的坑点会看起来已沉淀却从不出现）。
 - **quick-collect 一定会落库**：`QuickCollectRequest` **没有** `save_records` 开关，传了也被忽略——每次调用都会建 `Source`+`CollectionTask`+`TaskRun` 并**保存 `RawRecord`**（实测一次全量扫描留下 265 组运行 / 565 条记录）。做扫描时用 `label` 打 `[test]` 前缀以便回收，别指望"不保存"。
 - **quick-collect 曾把 `endpoint_type` 从任务 config 里剥掉**：各 `_validate_*_config` 返回白名单字典，只留采集参数；而数据集平台归因（`_dataset_origin_signals`）靠 `task.config["endpoint_type"]` 取端点。结果：quick-collect 存出的数据集 `platforms=[]`，永远落到粗分类兜底（2026-10-09 已修：`validated.setdefault("endpoint_type", ...)`，quick_collect.py）。判断旧数据是否受影响：列表接口 `platforms` 为空但 `collector_types` 非空，且该版本血缘里的任务建于修复前。

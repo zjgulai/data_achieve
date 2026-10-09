@@ -649,6 +649,89 @@ async def test_collect_all_items_fail_normalization_adds_error() -> None:
     assert result.raw_records == []
 
 
+SUBREDDIT_FEED_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "subredditV3": {
+            "elements": {
+                "dist": None,
+                "edges": [
+                    {
+                        "__typename": "FeedElementEdge",
+                        "node": {
+                            "__typename": "CellGroup",
+                            "groupId": "t3_1wxjay5",
+                            "cells": [
+                                {
+                                    "__typename": "MetadataCell",
+                                    "authorName": "AutoModerator",
+                                    "createdAt": "2026-10-04T16:05:17.397000+0000",
+                                },
+                                {"__typename": "TitleCell", "title": "Showcase Thread"},
+                                {
+                                    "__typename": "ActionCell",
+                                    "score": 17,
+                                    "commentCount": 4,
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "__typename": "FeedElementEdge",
+                        "node": {
+                            "__typename": "CellGroup",
+                            "groupId": "t3_1x16rfy",
+                            "cells": [
+                                {
+                                    "__typename": "MetadataCell",
+                                    "authorName": "u/someone",
+                                    "createdAt": "2026-10-09T00:00:32.357000+0000",
+                                },
+                                {
+                                    "__typename": "TitleCell",
+                                    "title": "Friday Daily Thread",
+                                },
+                                {
+                                    "__typename": "PreviewTextCell",
+                                    "text": "weekly free-talk",
+                                },
+                                {"__typename": "ActionCell", "score": 3, "commentCount": 12},
+                            ],
+                        },
+                    },
+                ],
+            }
+        }
+    },
+}
+
+
+def test_extract_items_reddit_subreddit_feed_returns_cell_groups() -> None:
+    """fetch_subreddit_feed 返回的是 UI 结构（CellGroup），不是 SearchPost。"""
+    items = _extract_items(SUBREDDIT_FEED_RESPONSE, "reddit")
+    assert len(items) == 2
+    assert items[0]["__typename"] == "CellGroup"
+
+
+def test_normalize_reddit_subreddit_post_reads_cells() -> None:
+    items = _extract_items(SUBREDDIT_FEED_RESPONSE, "reddit")
+    record = _normalize_item(items[0], "reddit", "tikhub_reddit_subreddit_posts")
+    assert record is not None
+    content = record.content
+    assert content["post_id"] == "1wxjay5"
+    assert content["text"] == "Showcase Thread"
+    assert content["author"] == "AutoModerator"
+    assert content["score"] == 17
+    assert content["url"] == "https://www.reddit.com/comments/1wxjay5"
+
+
+def test_normalize_reddit_subreddit_post_carries_preview_text() -> None:
+    items = _extract_items(SUBREDDIT_FEED_RESPONSE, "reddit")
+    record = _normalize_item(items[1], "reddit", "tikhub_reddit_subreddit_posts")
+    assert record is not None
+    assert record.content["body"] == "weekly free-talk"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------

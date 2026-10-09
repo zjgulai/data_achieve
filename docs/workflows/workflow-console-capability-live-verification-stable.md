@@ -189,6 +189,31 @@ python scripts/audit_apify_inputs.py      # 只读 schema，0 额度
 > `scripts/collector_demo_params.py`（扫描用演示参数）、
 > `api/routes/collectors.py` 的 `provider` / `required_params`（控制台与文档展示）。
 
+## 排查 degraded 端点的顺序（2026-10-09 实践）
+
+多数"降级"不是环境问题，而是代码侧静默失败。按下面的顺序查，改一次能修一批：
+
+1. **先看 400/422 的响应体**（采集器会截 500 字符）。上游往往直接点名是哪个字段：
+   `Field input.startUrls is required`、`String should have at least 2 characters`、`Field required: material_id`。
+2. **拿官方 spec 比对**，别靠猜。
+   - TikHub：`curl -s https://api.tikhub.io/openapi.json`（3 MB，1050 个路径，免鉴权）。
+     用它校验两件事：**路径是否存在**（实测 `tikhub_weibo_user_posts` 少了个 `_v2` → 404）、
+     **方法是 GET 还是 POST**（实测 `tikhub_wechat_search` 是 POST-only，走 GET → 405）。
+   - Apify：见上一节的 `inputSchema` / `prefill` / `editor`。
+3. **查"参数有没有真的传到上游"**。这是最隐蔽的一类：white-list 过滤 / 位置参数错位 /
+   库的返回类型与预期不符，全都表现为"参数看起来传了，上游说没收到"。
+   - `_validate_*_config` 的白名单必须覆盖 collector 实际读取的所有键，否则**静默变空串**。
+     回归测试：`tests/unit/test_tikhub_param_contract.py`（解析 `_build_params` 源码取出
+     所有 `config.get(...)` 键，逐个过一遍白名单）。
+   - 第三方库的**位置参数顺序**要核对：`AutoScraper.build()` / `get_result()` 的第一个位置参数
+     是 `url`，把 HTML 传进去会得到 `No connection adapters were found for '<html ...'`；
+     而且 `get_result()` 返回 `(similar, exact)` 二元组，`len()` 恒为 0。
+   - 某些上游把必填参数放在**嵌套的 `params` 里**而不是顶层（实测 AnySearch 的
+     `tag=code.doc` 需要 `params.library`）。
+4. **成功但 0 条 → 取原始响应比对形状**（同 §4.2 的 TikHub 经验）。
+   实测 `fetch_subreddit_feed` 返回的是 UI 结构 `CellGroup`，帖子内容散在 `cells[]`，
+   按 `postTitle` 取值永远为空。
+
 ## 收尾
 
 - `reports/live-sweep/` 是本地产物，不入库（已在 `.gitignore`）。

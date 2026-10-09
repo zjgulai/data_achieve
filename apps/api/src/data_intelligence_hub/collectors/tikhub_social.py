@@ -526,8 +526,9 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
         return _deep_find_dicts(inner, "videoRenderer")
 
     if platform == "reddit":
-        # fetch_subreddit_feed → data (list)
-        # fetch_dynamic_search → data.search (dict → SearchPost.post)
+        # fetch_dynamic_search → data.search (list，或 dict → SearchPost.post)
+        # fetch_subreddit_feed → data.subredditV3.elements.edges[].node (CellGroup，
+        #   帖子内容散在 cells[] 里：TitleCell/MetadataCell/PreviewTextCell/ActionCell)
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):
@@ -537,11 +538,14 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             posts = inner.get("posts")
             if isinstance(posts, list) and posts:
                 return posts
-        return [
+        search_posts = [
             node["post"]
             for node in _deep_find_typename(inner, "SearchPost")
             if isinstance(node.get("post"), dict)
         ]
+        if search_posts:
+            return search_posts
+        return _deep_find_typename(inner, "CellGroup")
 
     if platform == "x":
         # fetch_search_timeline → data.timeline (list)
@@ -845,6 +849,57 @@ def _normalize_youtube_video(
     )
 
 
+def _reddit_cell(node: dict[str, Any], typename: str) -> dict[str, Any]:
+    """从 CellGroup.cells / crosspostCells 里取出指定 __typename 的 cell。"""
+    for key in ("cells", "crosspostCells"):
+        for cell in node.get(key) or []:
+            if isinstance(cell, dict) and cell.get("__typename") == typename:
+                return cell
+    return {}
+
+
+def _normalize_reddit_subreddit_post(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """fetch_subreddit_feed 的 CellGroup 形态。
+
+    上游返回的是 UI 结构：groupId 形如 ``t3_1wxjay5``，标题在 TitleCell.title，
+    作者/时间在 MetadataCell，正文摘要可选在 PreviewTextCell.text，
+    互动数在 ActionCell。按固定路径取 item.get("title") 只会得到空记录。
+    """
+    group_id = _safe_str(item.get("groupId")) or ""
+    post_id = group_id[3:] if group_id.startswith("t3_") else group_id
+    title = _safe_str(_reddit_cell(item, "TitleCell").get("title"))
+    meta = _reddit_cell(item, "MetadataCell")
+    preview = _reddit_cell(item, "PreviewTextCell")
+    action = _reddit_cell(item, "ActionCell")
+    source_url = (
+        f"https://www.reddit.com/comments/{post_id}" if post_id else None
+    )
+    if title is None and source_url is None:
+        return None
+    return CollectorRawRecord(
+        record_type="reddit_post",
+        source_url=source_url,
+        content={
+            "record_type": "reddit_post",
+            "schema_version": "tikhub_reddit.v2",
+            "platform": "reddit",
+            "post_id": post_id or None,
+            "text": title,
+            "body": _safe_str(preview.get("text")),
+            "author": _safe_str(meta.get("authorName")),
+            "created_at": _safe_str(meta.get("createdAt")),
+            "score": action.get("score"),
+            "comment_count": action.get("commentCount"),
+            "url": source_url,
+            "collector_type": collector_type,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
 def _normalize_reddit_post(
     item: dict[str, Any], collector_type: str
 ) -> CollectorRawRecord | None:
@@ -894,6 +949,8 @@ def _normalize_item(
     if platform == "youtube":
         return _normalize_youtube_video(item, collector_type)
     if platform == "reddit":
+        if item.get("__typename") == "CellGroup":
+            return _normalize_reddit_subreddit_post(item, collector_type)
         return _normalize_reddit_post(item, collector_type)
     if platform in (
         "x", "douyin", "bilibili", "weibo", "kuaishou", "wechat", "zhihu",

@@ -199,7 +199,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     # ── RSS / Web ──────────────────────────────────────────────────────────────
     "public_feed":                {"url": "https://hnrss.org/frontpage"},
     "generic_web":                {"url": "https://example.com"},
-    "autoscraper_enhanced_web":   {"url": "https://news.ycombinator.com", "wanted_list": ["Ask HN", "Show HN"]},
+    "autoscraper_enhanced_web":   {"url": "https://example.com", "wanted_list": ["Example Domain"]},
     # ── Ecommerce ─────────────────────────────────────────────────────────────
     "ecommerce_product_page":     {"url": "https://www.amazon.com/dp/B09G9FPHY6"},
     "ecommerce_product_discovery": {"url": "https://www.amazon.com/s?k=laptop"},
@@ -274,7 +274,7 @@ DEMO_PARAMS.update(
         "tikhub_bilibili_comments": {"oid": "1234567890"},
         # AnySearch
         "anysearch_code_doc": {"query": "python requests"},
-        "anysearch_tag_search": {"query": "python", "tag": "code.doc"},
+        "anysearch_tag_search": {"query": "requests", "tag": "code.doc", "params": {"library": "python"}},
         # OSINT
         "sherlock_username_search": {"username": "python"},
         "maigret_username_profile": {"username": "python"},
