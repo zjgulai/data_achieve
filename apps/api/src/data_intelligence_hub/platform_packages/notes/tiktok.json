@@ -16,6 +16,54 @@
         "needs-business-id",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_live_search",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_live_search_result 放在 data.data（list），且有两种条目形状：{\"type\":1,\"lives\":{...}} 与 {\"type\":2,\"anchor\":{\"owner_user_info\":...}}；tiktok 分支认不出",
+      "workaround": "已修：_extract_items 增加 tiktok 分支（含 data.data / products / materials），_normalize_tiktok_live 兼容两种形状。同一响应由 0 条变 20 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_shop_products",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_search_products_list 放在 data.data.products（list），字段是 product_id/title/seo_url/product_price_info",
+      "workaround": "已修：_normalize_tiktok_product 抽 product_id/title/seo_url/price/sold_info。同一响应由 0 条变 15 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_tiktok_top_ads",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "get_top_ads_spotlight 放在 data.data.materials（list），字段是 id/highlight/ctr/cost/like/video_info",
+      "workaround": "已修：_normalize_tiktok_ad 抽 material_id/highlight/ctr/like/video_info。同一响应由 0 条变 5 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

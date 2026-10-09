@@ -30,6 +30,22 @@
         "normalizer",
         "diagnosis"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_youtube_video_comments",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "上游把评论放在 data.comments（list），字段是 snake_case（comment_id/content/published_time/like_count）；youtube 分支只找 videos/contents/videoRenderer，认不出 comments",
+      "workaround": "已修：_extract_items 增加 comments 分支，按 comment_id 存在与否分流到 _normalize_youtube_comment。同一响应由 0 条变 20 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

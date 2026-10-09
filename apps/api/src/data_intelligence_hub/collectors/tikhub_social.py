@@ -523,6 +523,10 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             contents = inner.get("contents")
             if isinstance(contents, list) and contents:
                 return contents
+            # web_v2/get_video_comments → data.comments (list)
+            comments = inner.get("comments")
+            if isinstance(comments, list) and comments:
+                return comments
         return _deep_find_dicts(inner, "videoRenderer")
 
     if platform == "reddit":
@@ -538,6 +542,12 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             posts = inner.get("posts")
             if isinstance(posts, list) and posts:
                 return posts
+            # fetch_popular_feed → data.popularfeed.postsInfoByIds (list)
+            popular = inner.get("popularfeed")
+            if isinstance(popular, dict):
+                popular_posts = popular.get("postsInfoByIds")
+                if isinstance(popular_posts, list) and popular_posts:
+                    return popular_posts
         search_posts = [
             node["post"]
             for node in _deep_find_typename(inner, "SearchPost")
@@ -556,6 +566,44 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             timeline = inner.get("timeline")
             if isinstance(timeline, list):
                 return timeline
+            # fetch_trending → data.trends (list of {name, description, context})
+            trends = inner.get("trends")
+            if isinstance(trends, list) and trends:
+                return trends
+        return []
+
+    if platform == "tiktok":
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            for key in ("aweme_list", "item_list", "items", "video_list", "result_list"):
+                candidate = inner.get(key)
+                if isinstance(candidate, list) and candidate:
+                    return candidate
+            deeper = inner.get("data")
+            if isinstance(deeper, list) and deeper:
+                # fetch_live_search_result → data.data (list)
+                return deeper
+            if isinstance(deeper, dict):
+                # shop/fetch_search_products_list → data.data.products
+                # ads/get_top_ads_spotlight → data.data.materials
+                for key in ("products", "materials", "items", "list"):
+                    candidate = deeper.get(key)
+                    if isinstance(candidate, list) and candidate:
+                        return candidate
+        return []
+
+    if platform == "linkedin":
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            for key in ("posts", "items", "results"):
+                candidate = inner.get(key)
+                if isinstance(candidate, list) and candidate:
+                    return candidate
+            # get_company_profile → data 就是单个公司对象
+            if inner.get("name") or inner.get("id"):
+                return [inner]
         return []
 
     if platform == "xiaohongshu":
@@ -849,6 +897,157 @@ def _normalize_youtube_video(
     )
 
 
+def _normalize_tiktok_live(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """fetch_live_search_result 的条目。两种形状：
+
+    - ``{"type": 1, "lives": {"aweme_id", "author": {...}}}``（绝大多数）
+    - ``{"type": 2, "anchor": {"owner_user_info": {...}, "live_info": {...}}}``
+    """
+    anchor = item.get("anchor") if isinstance(item.get("anchor"), dict) else {}
+    lives = item.get("lives") if isinstance(item.get("lives"), dict) else {}
+    owner = lives.get("author") if isinstance(lives.get("author"), dict) else {}
+    if not owner:
+        owner = anchor.get("owner_user_info") if isinstance(anchor.get("owner_user_info"), dict) else {}
+    nickname = _safe_str(owner.get("nickname"))
+    uid = _safe_str(owner.get("uid"))
+    if nickname is None and uid is None:
+        return _normalize_generic(item, "tiktok", collector_type)
+    room_id = _safe_str(lives.get("aweme_id")) or _safe_str(anchor.get("room_id"))
+    return CollectorRawRecord(
+        record_type="tiktok_live",
+        source_url=f"https://www.tiktok.com/@{nickname}/live" if nickname else None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_live.v1",
+            "text": nickname or uid or "",
+            "uid": uid,
+            "nickname": nickname,
+            "room_id": room_id,
+            "live_info": anchor.get("live_info") or lives,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_product(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """shop/fetch_search_products_list 的条目：product_id / title / seo_url / price。"""
+    product_id = _safe_str(item.get("product_id"))
+    title = _safe_str(item.get("title"))
+    if product_id is None and title is None:
+        return _normalize_generic(item, "tiktok", collector_type)
+    price = item.get("product_price_info")
+    return CollectorRawRecord(
+        record_type="tiktok_shop_product",
+        source_url=_safe_str(item.get("seo_url")),
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_shop_product.v1",
+            "product_id": product_id,
+            "text": title or "",
+            "price": price,
+            "sold_info": item.get("sold_info"),
+            "seller_info": item.get("seller_info"),
+            "url": _safe_str(item.get("seo_url")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_ad(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """ads/get_top_ads_spotlight 的条目：id / highlight / ctr / cost / video_info。"""
+    ad_id = _safe_str(item.get("id"))
+    highlight = _safe_str(item.get("highlight"))
+    if ad_id is None and highlight is None:
+        return _normalize_generic(item, "tiktok", collector_type)
+    return CollectorRawRecord(
+        record_type="tiktok_ad",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_ad.v1",
+            "material_id": ad_id,
+            "text": highlight or "",
+            "ctr": item.get("ctr"),
+            "cost": item.get("cost"),
+            "like_count": item.get("like"),
+            "video_info": item.get("video_info"),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_youtube_comment(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """web_v2/get_video_comments 的条目形状：comment_id / content / like_count。
+
+    评论在 data.comments，字段是 snake_case（和 channel videos 的 video_id 一样），
+    而 _normalize_youtube_video 只认 videoId，整批会落到通用归一化里。
+    """
+    comment_id = _safe_str(item.get("comment_id") or item.get("commentId"))
+    if comment_id is None:
+        return _normalize_generic(item, "youtube", collector_type)
+    content = item.get("content")
+    text = _safe_str(content) or _runs_text(content) or ""
+    return CollectorRawRecord(
+        record_type="youtube_comment",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "youtube",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_youtube_comment.v1",
+            "comment_id": comment_id,
+            "text": text,
+            "published_time": _safe_str(item.get("published_time")),
+            "like_count": _safe_int(item.get("like_count")),
+            "reply_count": _safe_int(item.get("reply_count")),
+            "reply_level": item.get("reply_level"),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_x_trend(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    """fetch_trending 的条目形状：{name, description, context}。"""
+    name = _safe_str(item.get("name"))
+    if name is None:
+        return _normalize_generic(item, "x", collector_type)
+    return CollectorRawRecord(
+        record_type="trend",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "x",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_x_trend.v1",
+            "text": name,
+            "description": _safe_str(item.get("description")),
+            "context": item.get("context"),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
 def _reddit_cell(node: dict[str, Any], typename: str) -> dict[str, Any]:
     """从 CellGroup.cells / crosspostCells 里取出指定 __typename 的 cell。"""
     for key in ("cells", "crosspostCells"):
@@ -905,8 +1104,12 @@ def _normalize_reddit_post(
 ) -> CollectorRawRecord | None:
     title = _safe_str(item.get("postTitle") or item.get("title"))
     permalink = _safe_str(item.get("permalink"))
-    source_url = _safe_str(item.get("url")) or (
-        f"https://www.reddit.com{permalink}" if permalink else None
+    # fetch_popular_feed 的条目只有 id（如 "1abcde"），没有 permalink / url
+    post_id = _safe_str(item.get("id"))
+    source_url = (
+        _safe_str(item.get("url"))
+        or (f"https://www.reddit.com{permalink}" if permalink else None)
+        or (f"https://www.reddit.com/comments/{post_id}" if post_id else None)
     )
     if title is None and source_url is None:
         return _normalize_generic(item, "reddit", collector_type)
@@ -941,17 +1144,28 @@ def _normalize_item(
     collector_type: str,
 ) -> CollectorRawRecord | None:
     if platform == "tiktok":
+        if item.get("product_id"):
+            return _normalize_tiktok_product(item, collector_type)
+        if isinstance(item.get("anchor"), dict) or isinstance(item.get("lives"), dict):
+            return _normalize_tiktok_live(item, collector_type)
+        if item.get("highlight") or (item.get("id") and item.get("video_info")):
+            return _normalize_tiktok_ad(item, collector_type)
         return _normalize_tiktok_video(item, collector_type)
     if platform == "instagram":
         return _normalize_instagram_post(item, collector_type)
     if platform == "xiaohongshu":
         return _normalize_xiaohongshu_note(item, collector_type)
     if platform == "youtube":
+        if item.get("comment_id") or item.get("commentId"):
+            return _normalize_youtube_comment(item, collector_type)
         return _normalize_youtube_video(item, collector_type)
     if platform == "reddit":
         if item.get("__typename") == "CellGroup":
             return _normalize_reddit_subreddit_post(item, collector_type)
         return _normalize_reddit_post(item, collector_type)
+    if platform == "x" and item.get("name") and item.get("context") is not None:
+        # fetch_trending 的条目形状：{name, description, context}
+        return _normalize_x_trend(item, collector_type)
     if platform in (
         "x", "douyin", "bilibili", "weibo", "kuaishou", "wechat", "zhihu",
         "threads", "linkedin", "lemon8", "tiktok_shop",
