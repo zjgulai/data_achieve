@@ -2,11 +2,13 @@
   "name": "scraper-console",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test src/lib/run-status.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

@@ -8,6 +8,7 @@ import type { CollectorEndpoint } from "@/lib/api/collectors";
 import { postQuickCollect, type QuickCollectResponse } from "@/lib/api/quick-collect";
 import { fetchProjects } from "@/lib/api/projects";
 import { ApiError } from "@/lib/api/client";
+import { isSuccessfulRunStatus } from "@/lib/run-status";
 
 /* ── Param field definitions per endpoint_type ── */
 type FieldDef = {
@@ -630,7 +631,7 @@ function getDefaultParams(endpoint_type: string): Record<string, string | number
 /* ── Result card ── */
 function RunResult({ result }: { result: QuickCollectResponse }) {
   const router = useRouter();
-  const ok = result.status === "completed";
+  const ok = isSuccessfulRunStatus(result.status);
   return (
     <div
       className={`mt-4 rounded-[var(--radius-3)] border p-4 ${

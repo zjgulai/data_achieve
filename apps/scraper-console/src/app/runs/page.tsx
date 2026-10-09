@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchAllRuns, fetchRunRecords } from "@/lib/api/runs";
 import type { TaskRun, RawRecord } from "@/lib/api/runs";
+import { isSuccessfulRunStatus } from "@/lib/run-status";
 import {
   CheckCircle, AlertCircle, Clock, Loader2,
   ChevronDown, ChevronRight, FileText,
@@ -12,7 +13,7 @@ import {
 
 /* ── Status helpers ── */
 function RunStatusIcon({ status }: { status: string }) {
-  if (status === "completed") return <CheckCircle size={16} className="text-[var(--state-success)]" />;
+  if (isSuccessfulRunStatus(status)) return <CheckCircle size={16} className="text-[var(--state-success)]" />;
   if (status === "failed")    return <AlertCircle size={16} className="text-[var(--state-danger)]" />;
   if (status === "running")   return <Loader2    size={16} className="animate-spin text-[var(--state-info)]" />;
   return <Clock size={16} className="text-[var(--text-tertiary)]" />;
@@ -21,6 +22,7 @@ function RunStatusIcon({ status }: { status: string }) {
 function RunStatusLabel({ status }: { status: string }) {
   const map: Record<string, { label: string; style: string }> = {
     completed: { label: "已完成", style: "text-[var(--state-success)]" },
+    success:   { label: "成功",   style: "text-[var(--state-success)]" },
     failed:    { label: "失败",   style: "text-[var(--state-danger)]" },
     running:   { label: "运行中", style: "text-[var(--state-info)]" },
     pending:   { label: "等待中", style: "text-[var(--text-tertiary)]" },

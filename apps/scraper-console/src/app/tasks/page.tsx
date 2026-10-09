@@ -18,6 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; style: string }> = {
 
 const RUN_STATUS_ICON: Record<string, React.ReactNode> = {
   completed: <CheckCircle size={14} className="text-[var(--state-success)]" />,
+  success:   <CheckCircle size={14} className="text-[var(--state-success)]" />,
   failed:    <AlertCircle size={14} className="text-[var(--state-danger)]" />,
   running:   <Loader2   size={14} className="animate-spin text-[var(--state-info)]" />,
   pending:   <Clock     size={14} className="text-[var(--text-tertiary)]" />,
