@@ -350,7 +350,7 @@ DEMO_PARAMS.update(
         "apify_1688_product_detail": {"mode": "detail", "inputs": ["https://detail.1688.com/offer/642952568827.html"]},
         "apify_1688_advanced": {"mode": "search", "inputs": ["phone case"]},
         "apify_alibaba_product_search": {"startUrls": [{"url": "https://www.alibaba.com/trade/search?SearchText=phone+case"}]},
-        "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/wireless-earbuds_60843983630.html"]},
+        "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/WATA-In-Ear-Waterproof-Sport-Earbud_1601685362945.html"]},
         "apify_amazon_bestsellers": {"categoryUrls": ["https://www.amazon.com/Best-Sellers/zgbs"], "maxItemsPerStartUrl": 5},
         "apify_amazon_competitor_research": {"asins": ["B09G9FPHY6"]},
         "apify_amazon_bsr_tracker": {"asins": ["B09G9FPHY6"]},

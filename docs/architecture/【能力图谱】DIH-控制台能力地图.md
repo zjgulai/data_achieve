@@ -185,6 +185,38 @@ Apify 端点在扫描里出现的 4 类症状，根因完全不同，处置手�
 `catalog_apify ⊆ _APIFY_ENDPOINT_DEFAULTS`（防止再出现"目录有、跑不了"）。
 "幽灵端点"是否要补进目录，留待产品决策。
 
+#### 4.4.3 入参形状审计（离线，0 额度）
+
+`scripts/audit_apify_inputs.py` 把 118 个端点的 `base_input` 与各自 Actor 的
+`inputSchema` 做静态比对。首轮结果：**33 个端点不合格**。
+
+| 类型 | 数量 | 后果 |
+|---|---|---|
+| 缺必填键 | 17 | 必然 400，端点**从未真正可用** |
+| 键名不存在 | 15 | `additionalProperties:false` 的 Actor 整单 400；其余静默忽略，限流意图落空 |
+| editor 形状不符 | 1 | 400 |
+
+典型例子：`apify_pinterest_scraper` 缺 `startUrls`+`proxyConfig`；
+`apify_instagram_profile_scraper` 缺必填的 `usernames`；
+`apify_alibaba_product_detail` 把 `requestListSources` 当 `stringList` 传（连 Actor 自己的
+prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
+
+真实取值优先级：`inputSchema.properties[key].prefill` > `default` > 猜。
+`exampleRunInput` 不可用（多为 `{"helloWorld":123}` 占位）。
+
+#### 4.4.4 实测复验（2026-10-09，33 个改动端点）
+
+对全部改动端点跑了一轮真实采集（`label=[test] <endpoint_type>`）：
+
+| 结果 | 数量 | 说明 |
+|---|---|---|
+| 成功且 >0 条 | 27 | 换 Actor 与改入参的目的达成 |
+| 成功但 0 条 | 3 | `apify_walmart_scraper`（Actor 对自己的 prefill 也返回 `[]`）、`apify_reddit_ads_scraper`、`apify_amazon_...` 类，属上游/反爬，非入参 |
+| 失败 | 3 | 首轮 2 个是 `minimum: 10` 约束（`max_posts` / `limit`）；1 个是 `requestListSources` 形状 |
+
+`apify_alibaba_product_detail` 改对形状后不再 400，但 Actor 返回
+`{"error": "EMPTY_PAYLOAD"}`——输入合法、上游空页，状态应记为 `empty_records` 而非 `params_invalid`。
+
 
 
 - **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。

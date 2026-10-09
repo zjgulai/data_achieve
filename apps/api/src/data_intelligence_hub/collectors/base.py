@@ -115,7 +115,10 @@ def collector_http_error_message(exc: httpx.HTTPError) -> str:
             return "http_forbidden: upstream returned 403"
         if status_code >= 500:
             return f"http_upstream_error: upstream returned {status_code}"
-        body_hint = exc.response.text[:120].strip().replace("\n", " ") if exc.response.text else ""
+        # 400 的响应体是唯一的诊断线索（Apify 的 invalid-input 会指明是哪个字段），
+        # 截太短会把关键信息砍掉：120 字符时 "Items in input.productUrls at positions…"
+        # 正好断在原因之前（2026-10-09 实测）。
+        body_hint = exc.response.text[:500].strip().replace("\n", " ") if exc.response.text else ""
         return f"http_status_error: upstream returned {status_code}" + (f" | {body_hint}" if body_hint else "")
     if isinstance(exc, httpx.ConnectError):
         return "http_connection_failed: upstream connection failed"

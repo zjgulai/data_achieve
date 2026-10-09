@@ -152,6 +152,36 @@ curl -s "https://api.apify.com/v2/store?search=linkedin%20profile%20scraper&limi
 - `stats.totalUsers30Days == 0` → 高风险（无人维护），降级为备选。
 - `exampleRunInput` 常是 `{"helloWorld":123}` 占位，**不能**当作入参示例；入参以 `inputSchema` 为准。
 
+### 入参形状：一次审计替代多次试错
+
+```bash
+python scripts/audit_apify_inputs.py      # 只读 schema，0 额度
+```
+
+这个脚本把每个端点的 `base_input` 与它 Actor 的 `inputSchema` 做静态比对，报三类问题：
+
+| 问题 | 后果 | 判据来源 |
+|---|---|---|
+| 缺必填键 | 必然 400 | `schema["required"]` |
+| 键名不在 schema 里 | `additionalProperties:false` 的 Actor 整单 400；其余 Actor **静默忽略**（限流、数量意图落空） | `schema["properties"]` + `additionalProperties` |
+| editor 形状不符 | 400 | `editor` |
+
+**`editor` 决定值的形状**：
+
+- `requestListSources` → 传 `[{"url": "https://..."}]`，**不能**传裸字符串。实测把 Actor 自己的 `prefill` URL 裸着传进去，仍报 `Items in input.productUrls at positions [0] do not contain valid URLs`。
+- `stringList` → 传 `["a", "b"]`。
+
+**取值优先级**：`schema[properties][key]["prefill"]` > `default` > 自己猜。
+`prefill` 是 Actor 作者放的真实样例（连 `pageFunction` 的 JS 源码都有），比 `exampleRunInput` 可靠得多。
+`minimum` / `maximum` / `enum` 也照抄，别自己定小值：`limit` / `max_posts` 这类字段常有 `minimum: 10`，
+传 3 会直接 400。
+
+> **坑 9（Apify）**：`max_total_charge_usd` 调得太小不会"少抓一点"，而是让按事件计费的 Actor
+> 直接以 `ABORTED` 结束（实测 eBay scraper 传 0.3 → ABORTED，传 1.0 → 5 条）。
+> 要限流请用入参里的数量字段，不要用计费上限。
+> **坑 10**：40x 的响应体是唯一线索，采集器原先只截前 120 字符，正好把
+> `...at positions [0] do not contain valid URLs` 砍掉。已放宽到 500（`collectors/base.py`）。
+
 > 更新 endpoint 时三处都要动，否则文档与运行不一致：
 > `_APIFY_ENDPOINT_DEFAULTS`（真实 actor_id + 缺省入参）、
 > `scripts/collector_demo_params.py`（扫描用演示参数）、
