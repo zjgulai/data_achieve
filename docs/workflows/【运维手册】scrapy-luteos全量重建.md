@@ -50,7 +50,37 @@ install -m 600 /dev/null /opt/data-achieve-scrapy/.env.production
 
 ```bash
 cd /opt/data-achieve-scrapy/app
-docker compose -f configs/deploy/scrapy/docker-compose.yml --env-file ../.env.production up --build --detach
+docker compose -f configs/deploy/scrapy/docker-compose.yml --env-file ../.env.production up --detach db
+docker compose -f configs/deploy/scrapy/docker-compose.yml --env-file ../.env.production build api console spiderfoot
+docker compose -f configs/deploy/scrapy/docker-compose.yml --env-file ../.env.production run --rm --no-deps api alembic upgrade head
+docker compose -f configs/deploy/scrapy/docker-compose.yml --env-file ../.env.production up --detach
+```
+
+空库迁移后必须执行标准 demo seed，否则工作台项目接口和 quick-collect 会返回 `demo_workspace_unavailable`：
+
+```bash
+cd /opt/data-achieve-scrapy/app
+set -a
+source ../.env.production
+set +a
+docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml \
+  run --rm \
+  -e SCRAPY_DEMO_EMAIL="$SCRAPY_DEMO_EMAIL" \
+  -e SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
+  api python -m data_intelligence_hub.seed.demo_data
+```
+
+共享 `ai_video_nginx` 必须把 `scrapy.luteos.com` 转发到同网络 upstream `data_achieve_scrapy`，不得继续指向旧 SSH 隧道。修改前备份 `/opt/ai-video/deploy/lighthouse/nginx.conf`，修改后只执行热重载：
+
+```nginx
+location / {
+    proxy_pass http://data_achieve_scrapy;
+}
+```
+
+```bash
+docker exec ai_video_nginx nginx -t
+docker exec ai_video_nginx nginx -s reload
 ```
 
 ## 验收
@@ -61,6 +91,8 @@ curl -fsSL https://scrapy.luteos.com/api/health
 curl -fsSL https://scrapy.luteos.com/api/platform-packages
 curl -fsSL -X POST https://scrapy.luteos.com/api/agents/tiktok-cdo/webhook -H 'content-type: application/json' -d '{"type":"url_verification","challenge":"acceptance"}'
 curl -fsSI https://scrapy.luteos.com/platforms
+set -a && source /opt/data-achieve-scrapy/.env.production && set +a
+BASE_URL=https://scrapy.luteos.com SCRAPY_DEMO_EMAIL="$SCRAPY_DEMO_EMAIL" SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" bash scripts/smoke-api-scrapy.sh
 ```
 
 确认 `ai_video_nginx` 和其他 Compose 项目的启动时间未变化，且 `data_achieve_scrapy_edge` 已接入 `lighthouse_ai_video_net` 并持有别名 `data_achieve_scrapy_proxy`。
