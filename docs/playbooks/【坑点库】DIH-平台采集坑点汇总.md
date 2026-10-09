@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`75da9152466406085a2de91d9c078d05a9c52f43a30dc16f4926e1fd10c2ee0a`
-> 坑点总数：73 · 覆盖平台：29
+> 自动生成，请勿手工编辑。catalog_digest：`5f18612d9cf3cca19b1365df41d67ee4126aa2bf6df4ca26eab311546dfbce00`
+> 坑点总数：82 · 覆盖平台：30
 
 ## actor_failed
 
@@ -38,6 +38,12 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
+| bilibili | tikhub_bilibili_user_videos | 运行成功但恒返回 0 条 | fetch_user_videos 的条目在 data.data.item（**单数** item），提取器的键清单里只有 item_list/items | 已修：提取器先把 inner / inner.data / inner.results 都收进候选作用域，并补上 item 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| bilibili | tikhub_bilibili_video_search | 运行成功但恒返回 0 条 | 开量搜索的结果同样嵌在 data.data 下 | 已修：同上的作用域展开。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_brand_hot_search | 运行成功但恒返回 0 条 | fetch_brand_hot_search_list_detail 的榜单在 data.brand_list | 已修：补 brand_list 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_comments | 运行成功但恒返回 0 条 | 演示 aweme_id 是占位 123456；上游对不存在的视频不返回评论 | 需要真实视频 ID（可从 fetch_video_search_result 的结果里取） | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_hot_search | 运行成功但恒返回 0 条 | fetch_hot_search_list 的热榜在 data.data.word_list / trending_list，多套了一层 data | 已修：作用域展开 + 补 word_list / trending_list 键。实测 0 -> 5 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_user_posts | 运行成功但恒返回 0 条 | 演示 sec_user_id 是占位 MS4wLjABAAAA（长度不足） | 需要真实 sec_user_id | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但 0 条记录 | caffein.dev/ebay-sold-listings 的输入是搜索链接（Store 未提供示例入参，exampleRunInput 为 {"helloWorld":123}），演示参数 searchQuery 未必被识别 | 按“先看原始响应”的方法核对数据集；必要时改传 startUrls 形式的已售列表 URL | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，Actor 的键是 keywords/count | 已修：keywords=["laptop"] + count=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | facebook | facebook | 曾有一个 apify_facebook_group_scraper 端点：运行成功但恒返回 0 条 | whoareyouanas/facebook-group-scraper 的入参已按 schema 补齐（startUrls 必填），但用演示群组和公开群组 URL 都返回空数据集——Actor 侧能力问题 | 该端点已于 2026-10-09 从目录下线。要采 Facebook 群组内容请用 apify_facebook_posts_scraper（已验证返回记录）；判定同类问题的方法：同一 Actor 用自己文档里的公开样例 URL 仍返回空，就不要再调参数 | warning | 2026-10-09 | reports/live-sweep/latest.json |
@@ -71,6 +77,9 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | web | web | robin_darkweb_search / _username / _email 返回 records=0（无报错） | Robin 暗网采集依赖 Tor 出口，生产容器未运行 Tor | 在服务器安装 tor 并以 INSTALL_OSINT=true 重建；否则应视为 config-gated 而非可采集 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | web | firecrawl_batch_scrape | 运行成功但恒返回 0 条（此前一度报 401，是旧证据） | /v1/batch/scrape 是异步接口，首次响应只有 {"success": true, "id": "..."}，没有 data；collector 直接读 resp["data"]，于是永远 0 条 | 已修：无 data 时用 /v1/batch/scrape/{id} 轮询到 completed 再取 data（_poll_job 增加 base_path 参数，crawl 仍用 /v1/crawl） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | wechat | tikhub_wechat_channels_video | 运行成功但 0 条（此前为 422：body.username 至少 10 字符） | 该端点是 POST-only 且 body 必填 username，取值必须是视频号 finder id（形如 v2_<hex>@finder）；演示值无法凭空构造 | 调用方需传真实 finder username；管道已修好（POST + 参数透传），仅缺真实业务 ID | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| wechat | tikhub_wechat_channels_video | 运行成功但恒返回 0 条 | 演示 username 是自造的 v2_…@finder，上游只回 message/debug_id，没有作品列表 | 需要真实的视频号 finder username | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| wechat | tikhub_wechat_search | 运行成功但恒返回 0 条 | fetch_search 的结果在 data.results.data，而 results 是 dict 不是 list | 已修：作用域展开把 inner.results 也纳入。实测 0 -> 15 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| weibo | tikhub_weibo_user_posts | 运行成功但恒返回 0 条 | fetch_user_posts 的微博列表在 data.data.list，多套了一层 data | 已修：作用域展开。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | x | tikhub_x_trending | 运行成功但恒返回 0 条 | fetch_trending 放在 data.trends（list of {name, description, context}）；x 分支只找 timeline，认不出 trends | 已修：_extract_items 增加 trends 分支，_normalize_x_trend 抽 name/description/context。同一响应由 0 条变 50 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | x | tikhub_x_user_followers | 运行成功但恒返回 0 条 | fetch_user_followers 在 data.followers（list of 50），x 提取分支只找 timeline/trends；演示 username 曾是不存在的 python | 已修：新增 followers 分支，username 换成搜索结果里的真实账号。实测 0 -> 50 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | youtube | youtube | 搜索类端点全部零记录（tikhub_youtube_search / tikhub_youtube_video_search，后者当前未进 catalog 包），而直接调用 TikHub 上游却返回 HTTP 200 且负载很大 | TikHub 上游改版会改变嵌套层级；collector 按固定的 JSON 路径取值，一旦层级变化就静默返回空列表，不会报错。 | 排查 zero-record 时先取原始响应确认形状（而不是反复调参数）：从服务器用 TIKHUB_API_KEY 直接 curl 上游，再比对 _extract_items 的取值路径。新增归一化分支要同时加单测（tests/unit/test_tikhub_social_collector.py 的 YOUTUBE_SEARCH_RESPONSE）。 | warning | 2026-10-09 | reports/live-sweep/latest.json |

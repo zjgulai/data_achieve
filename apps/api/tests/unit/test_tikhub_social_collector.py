@@ -1042,6 +1042,33 @@ def test_extract_items_tiktok_followers() -> None:
     assert record.source_url == "https://www.tiktok.com/@someuser"
 
 
+NESTED_DOMESTIC_RESPONSES: dict[str, tuple[str, dict[str, Any]]] = {
+    "bilibili": (
+        "bilibili",
+        {"data": {"code": 0, "data": {"item": [{"title": "v1", "bvid": "BV1"}]}}},
+    ),
+    "douyin_hot": (
+        "douyin",
+        {"data": {"data": {"word_list": [{"word": "w1", "hot_value": 1}]}}},
+    ),
+    "weibo": (
+        "weibo",
+        {"data": {"data": {"list": [{"idstr": "1", "text_raw": "hello"}]}}},
+    ),
+    "wechat": (
+        "wechat",
+        {"data": {"results": {"data": [{"type": "article", "title": "t"}]}}},
+    ),
+}
+
+
+@pytest.mark.parametrize("key,expected", [("bilibili", 1), ("douyin_hot", 1), ("weibo", 1), ("wechat", 1)])
+def test_extract_items_nested_domestic_scopes(key: str, expected: int) -> None:
+    platform, payload = NESTED_DOMESTIC_RESPONSES[key]
+    items = _extract_items(payload, platform)
+    assert len(items) == expected
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
