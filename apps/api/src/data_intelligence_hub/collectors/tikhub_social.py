@@ -613,6 +613,26 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     return [deeper]
         return []
 
+    if platform == "lemon8":
+        # fetch_discover_tab → data.data (list)
+        # fetch_search → data.data (list)
+        # fetch_user_profile → data.data 是单个用户对象
+        if isinstance(inner, list):
+            return inner
+        if isinstance(inner, dict):
+            deeper = inner.get("data")
+            if isinstance(deeper, list) and deeper:
+                return deeper
+            for key in ("items", "posts", "notes", "list"):
+                candidate = inner.get(key)
+                if isinstance(candidate, list) and candidate:
+                    return candidate
+            if isinstance(deeper, dict) and (
+                deeper.get("user_id") or deeper.get("media_id") or deeper.get("name")
+            ):
+                return [deeper]
+        return []
+
     if platform == "threads":
         # fetch_user_posts → data.mediaData.edges[].node
         # fetch_post_comments → data.edges[].node（含 thread_items）
@@ -693,7 +713,7 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     "aweme_list", "item_list", "items", "item", "video_list",
                     "list", "result_list", "statuses", "cards", "answer_list",
                     "search_result", "result", "videos", "brand_list",
-                    "trending_list", "word_list", "data",
+                    "trending_list", "word_list", "comments", "mixFeeds", "data",
                 ):
                     candidate = scope.get(key)
                     if isinstance(candidate, list) and candidate:
