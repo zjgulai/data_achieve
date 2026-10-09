@@ -351,6 +351,8 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **禁止** 彩色渐变卡片、glassmorphism（DESIGN.md §12）
 - 平台图标用 `PlatformLogo` 组件（letter badge），方法/内容类型用 Lucide 图标
 - 所有颜色使用 `var(--token-name)`，不得写 raw hex
+- **`src/app/globals.css` 是手工从 token 文件转录的，会漏 token**。2026-10-09 发现它漏了 `--overlay-scrim`，导致 4 处遮罩（两个抽屉、项目页、确认弹窗）`bg-[var(--overlay-scrim)]` 解析失败、完全透明。改 UI 前先 diff 两边的 token 名单：
+  `grep -oE "^\s*--[a-z0-9-]+" <token文件> | sort -u` 对比 `... src/app/globals.css | sort -u`，再对差异项 `grep -rn "var(--x)" src/` 确认是否被引用。
 
 ---
 
