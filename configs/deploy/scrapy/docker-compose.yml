@@ -55,7 +55,7 @@ services:
     environment:
       APP_ENV: production
       AUTH_COOKIE_SECURE: ${SCRAPY_AUTH_COOKIE_SECURE:-true}
-      CORS_ORIGINS: '["https://scrapy.lute-tlz-dddd.top"]'
+      CORS_ORIGINS: '["${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}"]'
       DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
       JWT_SECRET: ${SCRAPY_JWT_SECRET:?SCRAPY_JWT_SECRET is required}
       DATASET_EXPORT_DIR: ${SCRAPY_DATASET_EXPORT_DIR:-/app/exports/datasets}
@@ -71,9 +71,18 @@ services:
       TIKHUB_API_KEY: ${TIKHUB_API_KEY:-}
       APIFY_API_TOKEN: ${APIFY_API_TOKEN:-}
       ANYSEARCH_API_KEY: ${ANYSEARCH_API_KEY:-}
+      EXA_API_KEY: ${EXA_API_KEY:-}
       JINA_API_KEY: ${JINA_API_KEY:-}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       PLATFORM_CREDENTIAL_MASTER_KEY: ${PLATFORM_CREDENTIAL_MASTER_KEY:-}
+      LARK_CDO_APP_ID: ${LARK_CDO_APP_ID:-}
+      LARK_CDO_APP_SECRET: ${LARK_CDO_APP_SECRET:-}
+      LARK_CDO_VERIFICATION_TOKEN: ${LARK_CDO_VERIFICATION_TOKEN:-}
+      LARK_CDO_PROJECT_ID: ${LARK_CDO_PROJECT_ID:-7fd6ed55-7b0c-5482-92f3-d03130168b70}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      INTERNAL_API_BASE: ${INTERNAL_API_BASE:-http://127.0.0.1:8000}
       SCRAPY_MCP_TOKEN: ${SCRAPY_MCP_TOKEN:-}
       SCRAPY_MCP_TOKENS_JSON: ${SCRAPY_MCP_TOKENS_JSON:-'{}'}
       SCRAPY_MCP_RATE_PER_MINUTE: ${SCRAPY_MCP_RATE_PER_MINUTE:-120}
@@ -111,7 +120,7 @@ services:
       context: ../../..
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://scrapy.lute-tlz-dddd.top
+        NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
         NEXT_PUBLIC_MOCK_API: "false"
     container_name: data_achieve_scrapy_web
     image: data_achieve_scrapy_web:latest
@@ -141,7 +150,7 @@ services:
       context: ../../..
       dockerfile: apps/scraper-console/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: https://scrapy.lute-tlz-dddd.top
+        NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
     container_name: data_achieve_scrapy_console
     image: data_achieve_scrapy_console:latest
     restart: unless-stopped
