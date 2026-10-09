@@ -88,6 +88,18 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | actor_failed | 5 | Apify actor run FAILED | reddit/booking/bluesky/amazon_bsr/amazon_competitor |
 | timeout / rate_limit | 2 | — | aliens_eye_domain / anysearch_tag_search |
 
+### 4.1 上线后（2026-10-09，分支 `feat/live-capability-verification-sink-notes`，生产 commit `b771909`）
+
+| 指标 | 上线前 | 上线后 |
+|---|---|---|
+| `/api/collectors/docs` | `tested=0, success=0` | `tested=273/278, success=191` |
+| `/providers/status` | 全部 `verified`（无证据也报 verified） | `verified 108 / degraded 59 / empty 55 / config-gated 26 / untested 1 / disabled 1` |
+| 坑点渲染 | 无 | 平台 playbook 含「坑点与规避」（`web` 的 `platform_notes=8`） |
+| `/mcp/` | **对所有人 401，完全不可用** | 无 token 401；带 token 5 工具全通，`collect` 实测返回记录 |
+| 4 个 "not available" 端点 | 400 | 可执行（转为 config/param 类错误） |
+
+> 语义：`verified` = 最近一次 `[test]` 运行成功**且返回 ≥1 条记录**；`empty` = 运行成功但 0 条；`degraded` = 最近失败；`untested` = 无证据；`config-gated` = 缺 Provider 配置。
+
 ## 5. Catalog ↔ 页面覆盖
 
 - **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。

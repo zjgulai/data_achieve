@@ -80,13 +80,38 @@ python scripts/verify_platform_live.py --base-url <base> --project-id <uuid> \
 
 ### 6. 发布
 
-- 仅重建 api 与 console（notes 在 api 镜像内，**必须重建 api**）：
-  ```
-  docker compose -f configs/deploy/scrapy/docker-compose.yml build api console
-  docker compose -f configs/deploy/scrapy/docker-compose.yml up -d api console
-  ```
-  （先按 `docs/deployment-new-server.md` 确认 `scrapy.luteos.com` 挂的是 `scrapy` 还是 `scrapy-new` 的 compose。）
-- 复跑第 2 步 + `curl <base>/api/platform-packages/<id>/playbook | grep 坑点与规避` + `/skills/<id>` UI。
+生产实际形态（2026-10-09 实测）：`scrapy.luteos.com` → `43.163.92.244`，仓库在 **`/opt/data-achieve-scrapy/app`**，
+env 文件在 **`/opt/data-achieve-scrapy/.env.production`**，compose 项目目录 `configs/deploy/scrapy`。
+
+```bash
+# 服务器上
+cd /opt/data-achieve-scrapy/app
+git fetch origin <branch> && git reset --hard FETCH_HEAD   # 别用 fetch 到当前分支（会 Refusing）
+cd configs/deploy/scrapy
+ENV=/opt/data-achieve-scrapy/.env.production
+docker compose --env-file "$ENV" build api console
+docker compose --env-file "$ENV" up -d api console
+docker compose --env-file "$ENV" restart edge        # ⚠️ 必须，见下
+```
+
+> **坑 1（必踩）**：`edge` 容器启动时把 `api` 的 IP 解析并缓存住。`up -d api` 会重建 api 容器拿到**新 IP**，
+> 但 edge 不会自动重解析 → 外部一律 **502 Bad Gateway**，而容器内 `curl http://api:8000/api/health` 是 200。
+> 每次重建 api 后**必须 `restart edge`**。可通过 `docker logs edge` 里 `upstream: "http://172.26.0.6:8000/..."` 的旧 IP 确认。
+> **坑 2**：`git fetch origin <branch>:refs/heads/<branch>` 在当前分支上会 `fatal: Refusing to fetch into current branch`；
+> 用 `git fetch origin <branch> && git reset --hard FETCH_HEAD`。
+> **坑 3**：`pgrep -f "docker compose.*build"` 会匹配到你自己的 SSH 命令行本身 → 误判"还在构建"；用镜像 `Created` 时间戳判断更可靠。
+
+发布后自检：
+
+```bash
+B=https://scrapy.luteos.com
+curl -s $B/api/health
+curl -s $B/api/collectors/docs | python3 -m json.tool | head      # tested_endpoints 应 > 0
+curl -s $B/api/platform-packages | python3 -c 'import json,sys;print(json.load(sys.stdin)["catalog_digest"])'
+curl -s $B/api/platform-packages/web/playbook | grep -c 坑点与规避
+curl -s -o /dev/null -w '%{http_code}\n' $B/mcp/                  # 无 token → 401
+```
+
 
 ## 收尾
 
