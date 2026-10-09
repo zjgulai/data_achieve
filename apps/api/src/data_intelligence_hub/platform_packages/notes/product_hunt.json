@@ -1,0 +1,21 @@
+{
+  "platform_id": "product_hunt",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_product_hunt_scraper",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "入参已按 Actor schema 补齐（mode 必填，取值 today/yesterday/date），但 today 与 date=2026-10-01 两种模式都返回空数据集；happitap/product-hunt-daily-launch-scraper 当前不产出数据",
+      "workaround": "改用 apify_producthunt_scraper（maximedupre/product-hunt-scraper，实测返回 5 条，target=daily）",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "actor-broken"
+      ]
+    }
+  ]
+}

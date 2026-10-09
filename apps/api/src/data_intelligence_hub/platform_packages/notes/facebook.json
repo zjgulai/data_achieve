@@ -1,0 +1,21 @@
+{
+  "platform_id": "facebook",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_facebook_group_scraper",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "入参已按 Actor schema 补齐（startUrls 必填），但无论用演示群组还是公开群组 URL，whoareyouanas/facebook-group-scraper 都返回空数据集 —— 属 Actor 侧能力问题，不是入参问题",
+      "workaround": "改用 apify_facebook_posts_scraper（已验证返回记录）。判定方法：同一 Actor 用自己的公开样例 URL 也返回空，就不要再调参数",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "actor-broken"
+      ]
+    }
+  ]
+}

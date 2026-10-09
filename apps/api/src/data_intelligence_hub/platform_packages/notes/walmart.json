@@ -30,6 +30,22 @@
         "apify",
         "empty-records"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "walmart",
+      "symptom": "apify_walmart_scraper 运行成功但恒返回 0 条",
+      "cause": "Actor 换成了 web_wanderer/walmart-product-scraper（旧的 apify/walmart-scraper 已下架），product_ids 用的是该 Actor 自己的 inputSchema.prefill 里的 walmart.ca 商品 URL，并配 reg=CA；仍返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。）",
+      "workaround": "视为上游侧不可用；需要 Walmart 数据时优先用 apify_walmart_product_scraper 并确认代理链路",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "actor-broken"
+      ]
     }
   ]
 }

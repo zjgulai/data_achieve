@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`de6844b333a917002071d7e62c59a263a6cdcdf05088df233637d7f0cdca7a64`
-> 坑点总数：41 · 覆盖平台：21
+> 自动生成，请勿手工编辑。catalog_digest：`602e9f181f7ad236795807bd757aa817920d350f42077efececd5e0b80710b6b`
+> 坑点总数：46 · 覆盖平台：24
 
 ## actor_failed
 
@@ -37,11 +37,16 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但 0 条记录 | caffein.dev/ebay-sold-listings 的输入是搜索链接（Store 未提供示例入参，exampleRunInput 为 {"helloWorld":123}），演示参数 searchQuery 未必被识别 | 按“先看原始响应”的方法核对数据集；必要时改传 startUrls 形式的已售列表 URL | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| facebook | apify_facebook_group_scraper | 运行成功但恒返回 0 条 | 入参已按 Actor schema 补齐（startUrls 必填），但无论用演示群组还是公开群组 URL，whoareyouanas/facebook-group-scraper 都返回空数据集 —— 属 Actor 侧能力问题，不是入参问题 | 改用 apify_facebook_posts_scraper（已验证返回记录）。判定方法：同一 Actor 用自己的公开样例 URL 也返回空，就不要再调参数 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | linkedin | tikhub_linkedin_* 多个端点返回 records=0（无报错），apify_linkedin_jobs/company_search 亦为空 | LinkedIn 上游对无有效会话的请求返回空结果集；演示参数不足以触发真实数据 | 视为“需真实会话/参数”的高不稳定端点；不要据此判定能力可用，接入前用小样本人工验证 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| product_hunt | apify_product_hunt_scraper | 运行成功但恒返回 0 条 | 入参已按 Actor schema 补齐（mode 必填，取值 today/yesterday/date），但 today 与 date=2026-10-01 两种模式都返回空数据集；happitap/product-hunt-daily-launch-scraper 当前不产出数据 | 改用 apify_producthunt_scraper（maximedupre/product-hunt-scraper，实测返回 5 条，target=daily） | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | reddit | 搜索结果零记录；帖子字段名与通用归一化器预期不一致 | Reddit 走的是 GraphQL 风格响应：标题字段是 postTitle（不是 title）、正文在 content.markdown、作者在 authorInfo.name、时间在 createdAt（形如 2026-10-03T19:08:43.382000+0000）。_normalize_generic 认不出这些字段，即便取到条目也只会得到空 text。 | reddit 已单独走 _normalize_reddit_post；新增 reddit 端点时先确认字段名，不要直接复用 _normalize_generic。 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| reddit | reddit | apify_reddit_ads_scraper 运行成功但恒返回 0 条 | Actor 的 query 是必填键，已补齐；但 lexis-solutions/reddit-ads-scraper 的 schema 自己写明“没有 ads.reddit.com 会话 cookie 时最多返回约 30 条”，实测无 cookie 时直接返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。） | 按 Actor 入参 cookies 传入登录态 cookie（需含 token_v2）后才可能出数据；在此之前视为不可用 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | tikhub_reddit_search | quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records） | TikHub 的 app/fetch_dynamic_search 把结果放在 data.search，而 search 是 dict（search.dynamic.components.main.edges[].node.children[]），帖子挂在 __typename=SearchPost 的 node.post；归一化器只认 data.search 为 list，于是取到 0 条。 | 已在 _extract_items 中对 reddit 增加 _deep_find_typename(inner, "SearchPost") 深度查找，再由 _normalize_reddit_post 抽取 postTitle/url/score/authorInfo.name/subreddit.name/createdAt。实测同一响应由 0 条变为 7 条。 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| walmart | walmart | apify_walmart_scraper 运行成功但恒返回 0 条 | Actor 换成了 web_wanderer/walmart-product-scraper（旧的 apify/walmart-scraper 已下架），product_ids 用的是该 Actor 自己的 inputSchema.prefill 里的 walmart.ca 商品 URL，并配 reg=CA；仍返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。） | 视为上游侧不可用；需要 Walmart 数据时优先用 apify_walmart_product_scraper 并确认代理链路 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_product_scraper | 运行成功（run SUCCEEDED）但数据集 0 条 | e-commerce/walmart-product-detail-scraper 对演示商品 ID 没有返回结果；需按“先看原始响应”的方法确认是入参不匹配还是上游返回空页 | 改用真实商品 URL（而不是纯 ID）并确认 datasets 输出；同类 0 条问题不要默认是参数不足 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | robin_darkweb_search / _username / _email 返回 records=0（无报错） | Robin 暗网采集依赖 Tor 出口，生产容器未运行 Tor | 在服务器安装 tor 并以 INSTALL_OSINT=true 重建；否则应视为 config-gated 而非可采集 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| yelp | apify_yelp_scraper | 运行成功但恒返回 0 条 | 入参已按 Actor schema 修正（searchTerm/location 是无效键，正确键为 searchTerms/locations）。修正后仍为 0 条；改用 directUrls 直连一个 Yelp 商家页同样返回空 —— 属 Actor 侧问题（疑似需要代理） | 配 proxyConfig 后重试；否则视为不可用，别继续调 searchTerms | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | youtube | youtube | 搜索类端点全部零记录（tikhub_youtube_search / tikhub_youtube_video_search，后者当前未进 catalog 包），而直接调用 TikHub 上游却返回 HTTP 200 且负载很大 | TikHub 上游改版会改变嵌套层级；collector 按固定的 JSON 路径取值，一旦层级变化就静默返回空列表，不会报错。 | 排查 zero-record 时先取原始响应确认形状（而不是反复调参数）：从服务器用 TIKHUB_API_KEY 直接 curl 上游，再比对 _extract_items 的取值路径。新增归一化分支要同时加单测（tests/unit/test_tikhub_social_collector.py 的 YOUTUBE_SEARCH_RESPONSE）。 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | youtube | tikhub_youtube_search | quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records） | TikHub 的 web_v2/get_general_search 把搜索结果放在 data.contents，而 contents 是 dict（结构为 twoColumnSearchResultsRenderer→…→videoRenderer），不是 list；归一化器只认 list，于是静默取到 0 条。参数本身正确，换关键词也不会变。 | 已在 _extract_items 中对 youtube 增加深度查找兜底：_deep_find_dicts(inner, "videoRenderer")，再由 _normalize_youtube_video 抽取 videoId/title/ownerText/viewCountText。实测同一响应由 0 条变为 18 条。 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 

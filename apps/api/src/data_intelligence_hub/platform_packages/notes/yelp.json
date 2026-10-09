@@ -1,0 +1,21 @@
+{
+  "platform_id": "yelp",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_yelp_scraper",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "入参已按 Actor schema 修正（searchTerm/location 是无效键，正确键为 searchTerms/locations）。修正后仍为 0 条；改用 directUrls 直连一个 Yelp 商家页同样返回空 —— 属 Actor 侧问题（疑似需要代理）",
+      "workaround": "配 proxyConfig 后重试；否则视为不可用，别继续调 searchTerms",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "empty-records",
+        "anti-bot"
+      ]
+    }
+  ]
+}

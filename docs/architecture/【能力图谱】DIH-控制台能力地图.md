@@ -204,18 +204,32 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 真实取值优先级：`inputSchema.properties[key].prefill` > `default` > 猜。
 `exampleRunInput` 不可用（多为 `{"helloWorld":123}` 占位）。
 
-#### 4.4.4 实测复验（2026-10-09，33 个改动端点）
+#### 4.4.4 实测复验（2026-10-09）
 
-对全部改动端点跑了一轮真实采集（`label=[test] <endpoint_type>`）：
+三轮真实采集，全部用 `label=[test] <endpoint_type>`，第三轮起**不传任何 `params`**——
+只有端点的 `base_input` 生效，这才是对修复本身的验证。
 
-| 结果 | 数量 | 说明 |
+| 轮次 | 范围 | 结果 |
 |---|---|---|
-| 成功且 >0 条 | 27 | 换 Actor 与改入参的目的达成 |
-| 成功但 0 条 | 3 | `apify_walmart_scraper`（Actor 对自己的 prefill 也返回 `[]`）、`apify_reddit_ads_scraper`、`apify_amazon_...` 类，属上游/反爬，非入参 |
-| 失败 | 3 | 首轮 2 个是 `minimum: 10` 约束（`max_posts` / `limit`）；1 个是 `requestListSources` 形状 |
+| 第一轮 | 33 个改动端点 | 成功 30 / 失败 3 |
+| 第二轮 | 6 个复查 | 修好 2（`threads`、`google_shopping` 的 `minimum: 10`）、确认 1 个形状错、3 个待查 |
+| 第三轮 | 31 个重新验证（空 params） | 成功 26 / 失败 5 |
 
-`apify_alibaba_product_detail` 改对形状后不再 400，但 Actor 返回
-`{"error": "EMPTY_PAYLOAD"}`——输入合法、上游空页，状态应记为 `empty_records` 而非 `params_invalid`。
+第三轮的 5 个失败全部是**运行前 403**（`pinterest_scraper`、`pinterest_media_profile_scraper`、
+`telegram_scraper`、`web_scraper`、`shopify_full_catalog`）——Actor 级限制，改入参无效。
+
+**恒返回 0 条（入参已合规，Actor 侧不产出）**，共 5 个：
+
+| 端点 | 证据 |
+|---|---|
+| `apify_facebook_group_scraper` | 换成公开群组 URL 仍为 `[]` |
+| `apify_product_hunt_scraper` | `mode=today` 与 `mode=date` 均为 `[]` |
+| `apify_yelp_scraper` | 键名改对后仍为 `[]`；改用 `directUrls` 直连商家页同样 `[]` |
+| `apify_reddit_ads_scraper` | Actor 自述无 cookie 时受限，实测无 cookie 返回 `[]` |
+| `apify_walmart_scraper` | 用 Actor 自己的 `prefill` URL + `reg=CA` 仍为 `[]` |
+
+这 5 个已按平台写入坑点，状态应记为 `empty_records`，**不要再调参数**。
+`apify_alibaba_product_detail` 改对 `requestListSources` 形状后实测返回 1 条，问题解决。
 
 
 
