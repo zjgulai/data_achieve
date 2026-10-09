@@ -322,6 +322,7 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   4. `quick-collect` 的 `project_id` 必须属于 demo workspace；此前不校验，传错值直接撞外键 → **500 + 原始 SQL 栈**（2026-10-09 已改成 400 `Unknown project_id`）。
 - **坑点写错端点名会被静默丢弃吗**：不会了。`builder` 现在对"target 命中不了任何端点"和"坑点文件 platform_id 对不上平台包"**直接报错**（2026-10-09 前是静默忽略，写错的坑点会看起来已沉淀却从不出现）。
 - **quick-collect 一定会落库**：`QuickCollectRequest` **没有** `save_records` 开关，传了也被忽略——每次调用都会建 `Source`+`CollectionTask`+`TaskRun` 并**保存 `RawRecord`**（实测一次全量扫描留下 265 组运行 / 565 条记录）。做扫描时用 `label` 打 `[test]` 前缀以便回收，别指望"不保存"。
+- **quick-collect 曾把 `endpoint_type` 从任务 config 里剥掉**：各 `_validate_*_config` 返回白名单字典，只留采集参数；而数据集平台归因（`_dataset_origin_signals`）靠 `task.config["endpoint_type"]` 取端点。结果：quick-collect 存出的数据集 `platforms=[]`，永远落到粗分类兜底（2026-10-09 已修：`validated.setdefault("endpoint_type", ...)`，quick_collect.py）。判断旧数据是否受影响：列表接口 `platforms` 为空但 `collector_types` 非空，且该版本血缘里的任务建于修复前。
 - **实测证据只认精确 label**：`/providers/status` 与 `/collectors/docs` 的证据来自 task name 匹配 `^\[quick\](?: \[quick\])? \[test\] (.+)$`，捕获组就是 `endpoint_type`。label 写成 `[test] 冒烟 <ep>` 之类会被**静默忽略**，状态看起来从未测过。要刷新某个端点的真值，label 必须**恰好**是 `[test] <endpoint_type>`。
 - **MCP 鉴权**：`SCRAPY_MCP_TOKEN=`（空串）曾被当成有效 token，导致 `/mcp/` 对所有人 401（2026-10-09 已修）。生产要用 MCP 就必须**显式设置**一个非空 `SCRAPY_MCP_TOKEN`（或 `SCRAPY_MCP_TOKENS_JSON`）；不设置则中间件放行（等价开放）。
 - **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`，只允许出现 `deploy/scrapy-luteos-rebuild` 既有基线内的失败。
