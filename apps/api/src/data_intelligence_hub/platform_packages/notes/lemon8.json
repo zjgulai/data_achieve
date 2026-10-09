@@ -1,0 +1,37 @@
+{
+  "platform_id": "lemon8",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_lemon8_user_posts",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_user_profile 的 data.data 是**单个用户对象**（不是列表），且演示 user_id 是占位 12345",
+      "workaround": "已修：新增 lemon8 提取分支（区分 list 与单对象）；user_id 从 fetch_search 回收。实测 0 -> 1 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-10"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_lemon8_trending",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_discover_tab 的 data.data 是空列表（该 tab 需要额外参数或上游无内容）",
+      "workaround": "提取分支已覆盖该形状；数据为空属上游侧",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-10"
+      ]
+    }
+  ]
+}

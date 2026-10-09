@@ -14,6 +14,22 @@
       "tags": [
         "egress"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_kuaishou_user_posts",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "两处：(1) fetch_user_post_v2 的作品列表键是 feedback feeds，键清单里没有；(2) 演示 user_id 是占位 123456",
+      "workaround": "已修：补 feeds 键；user_id 从 search_comprehensive 回收。实测 0 -> 20 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-10"
+      ]
     }
   ]
 }

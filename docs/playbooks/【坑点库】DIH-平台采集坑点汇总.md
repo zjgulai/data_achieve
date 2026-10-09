@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`5f18612d9cf3cca19b1365df41d67ee4126aa2bf6df4ca26eab311546dfbce00`
-> 坑点总数：82 · 覆盖平台：30
+> 自动生成，请勿手工编辑。catalog_digest：`9234cf4b15090fbe4ed246b1f17403b7ee66e889b1fbc807d11166170e523cf8`
+> 坑点总数：87 · 覆盖平台：31
 
 ## actor_failed
 
@@ -42,8 +42,10 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | bilibili | tikhub_bilibili_video_search | 运行成功但恒返回 0 条 | 开量搜索的结果同样嵌在 data.data 下 | 已修：同上的作用域展开。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_brand_hot_search | 运行成功但恒返回 0 条 | fetch_brand_hot_search_list_detail 的榜单在 data.brand_list | 已修：补 brand_list 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_comments | 运行成功但恒返回 0 条 | 演示 aweme_id 是占位 123456；上游对不存在的视频不返回评论 | 需要真实视频 ID（可从 fetch_video_search_result 的结果里取） | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_comments | 运行成功但恒返回 0 条 | 两处：(1) fetch_video_comments 的评论在 data.comments，键清单里没有；(2) 演示 aweme_id 是占位 123456 | 已修：补 comments 键；aweme_id 从 fetch_video_search_v1 的结果回收。实测 0 -> 19 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_hot_search | 运行成功但恒返回 0 条 | fetch_hot_search_list 的热榜在 data.data.word_list / trending_list，多套了一层 data | 已修：作用域展开 + 补 word_list / trending_list 键。实测 0 -> 5 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_user_posts | 运行成功但恒返回 0 条 | 演示 sec_user_id 是占位 MS4wLjABAAAA（长度不足） | 需要真实 sec_user_id | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| douyin | tikhub_douyin_user_posts | 运行成功但恒返回 0 条 | 演示 sec_user_id 是占位 MS4wLjABAAAA，上游查不到该用户 | 已修：sec_user_id 从 fetch_video_search_v1 的 author.sec_uid 回收。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但 0 条记录 | caffein.dev/ebay-sold-listings 的输入是搜索链接（Store 未提供示例入参，exampleRunInput 为 {"helloWorld":123}），演示参数 searchQuery 未必被识别 | 按“先看原始响应”的方法核对数据集；必要时改传 startUrls 形式的已售列表 URL | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，Actor 的键是 keywords/count | 已修：keywords=["laptop"] + count=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | facebook | facebook | 曾有一个 apify_facebook_group_scraper 端点：运行成功但恒返回 0 条 | whoareyouanas/facebook-group-scraper 的入参已按 schema 补齐（startUrls 必填），但用演示群组和公开群组 URL 都返回空数据集——Actor 侧能力问题 | 该端点已于 2026-10-09 从目录下线。要采 Facebook 群组内容请用 apify_facebook_posts_scraper（已验证返回记录）；判定同类问题的方法：同一 Actor 用自己文档里的公开样例 URL 仍返回空，就不要再调参数 | warning | 2026-10-09 | reports/live-sweep/latest.json |
@@ -51,6 +53,9 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | google_ads | apify_google_ads_scraper | 运行成功但数据集 0 条 | 演示参数用了 keywords/maxItems，Actor 要 startUrls；且原来的 advertiser ID 是个不存在的占位值 | 已修：startUrls 换成 Actor prefill 里的真实 advertiser URL + maxItems=3，实测 3 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | google_maps | apify_google_maps_reviews_scraper | 运行成功但数据集 0 条 | 演示 startUrls 用的是 maps.google.com/maps?cid=… 这种短链，Actor 要求含 /maps/search、/maps/place 或 /maps/review 的完整 URL | 已修：换成 Actor prefill 里的 /maps/place/… 完整链接，实测返回记录 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | google_news | apify_google_news_media_search | 曾报运行成功但 0 条 | DB 里是 10:54 扫描的旧证据；用 keywords/maxArticles 直连 Actor 实测能返回 1 条 | 重跑即恢复，属证据过期而非代码问题 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| kuaishou | tikhub_kuaishou_user_posts | 运行成功但恒返回 0 条 | 两处：(1) fetch_user_post_v2 的作品列表键是 feedback feeds，键清单里没有；(2) 演示 user_id 是占位 123456 | 已修：补 feeds 键；user_id 从 search_comprehensive 回收。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| lemon8 | tikhub_lemon8_trending | 运行成功但恒返回 0 条 | fetch_discover_tab 的 data.data 是空列表（该 tab 需要额外参数或上游无内容） | 提取分支已覆盖该形状；数据为空属上游侧 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| lemon8 | tikhub_lemon8_user_posts | 运行成功但恒返回 0 条 | fetch_user_profile 的 data.data 是**单个用户对象**（不是列表），且演示 user_id 是占位 12345 | 已修：新增 lemon8 提取分支（区分 list 与单对象）；user_id 从 fetch_search 回收。实测 0 -> 1 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | linkedin | linkedin | tikhub_linkedin_* 多个端点返回 records=0（无报错），apify_linkedin_jobs/company_search 亦为空 | LinkedIn 上游对无有效会话的请求返回空结果集；演示参数不足以触发真实数据 | 视为“需真实会话/参数”的高不稳定端点；不要据此判定能力可用，接入前用小样本人工验证 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | apify_linkedin_company_search_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，而 khadinakbar/linkedin-company-search-scraper 的键是 keywords/maxResults；且 keywords 必须是**字符串**（传数组会被 400 must be string 拒绝） | 已修：keywords="software company" + maxResults=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | apify_linkedin_jobs_scraper | 运行成功但数据集 0 条 | 演示参数用了 title/location/maxJobs，而 freshdata/linkedin-job-scraper 的键是 keywords/geo_code/date_posted 等 | 已修：keywords="Python Developer"，实测 1 条（结果是响应信封，字段较浅） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
