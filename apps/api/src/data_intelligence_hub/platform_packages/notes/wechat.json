@@ -1,0 +1,35 @@
+{
+  "platform_id": "wechat",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "tikhub_wechat_search",
+      "symptom": "http_status_error: upstream returned 405 | {\"detail\":\"Method Not Allowed\"}",
+      "cause": "官方 spec 里 /api/v1/wechat_search/v2/fetch_search 只注册了 POST，collector 却走 GET",
+      "workaround": "已修：加入 _TIKHUB_POST_ENDPOINTS；collector.test() 一并改成按端点选方法",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "post-only",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_wechat_channels_video",
+      "symptom": "运行成功但 0 条（此前为 422：body.username 至少 10 字符）",
+      "cause": "该端点是 POST-only 且 body 必填 username，取值必须是视频号 finder id（形如 v2_<hex>@finder）；演示值无法凭空构造",
+      "workaround": "调用方需传真实 finder username；管道已修好（POST + 参数透传），仅缺真实业务 ID",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "post-only",
+        "needs-business-id"
+      ]
+    }
+  ]
+}

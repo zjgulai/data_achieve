@@ -134,6 +134,36 @@
         "meta-keys",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "autoscraper_enhanced_web",
+      "symptom": "AutoScraper build failed: No connection adapters were found for '<html ...>'",
+      "cause": "collector 把网页 HTML 当第一个**位置参数**传给 AutoScraper.build()/get_result()，而该位置参数是 url，库于是对 HTML 字符串发起 requests.get。另外 get_result() 返回 (similar, exact) 二元组，len() 恒为 0",
+      "workaround": "已修：改成 scraper.build(wanted_list=..., html=...)，并按 mode 调用 get_result_exact() / get_result_similar()。演示参数同步为 example.com + ['Example Domain']（实测 exact 模式抽到 1 条）",
+      "failure_class": "container_missing",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "autoscraper",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "anysearch_tag_search",
+      "symptom": "AnySearch HTTP 400: Invalid tag: python（改成合法 tag 后又报 Missing required params for tag 'code.doc': library）",
+      "cause": "tag 必须取自 AnySearch 的固定词表（如 code.doc / news），且带 tag 时还要在 **params 里**（不是顶层）附带该 tag 的必填参数",
+      "workaround": "已修：演示参数改为 {\"query\": \"requests\", \"tag\": \"code.doc\", \"params\": {\"library\": \"python\"}}，实测返回结果",
+      "failure_class": "params_invalid",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "anysearch",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

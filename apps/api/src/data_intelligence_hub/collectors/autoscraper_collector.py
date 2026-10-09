@@ -130,17 +130,21 @@ class AutoScraperEnhancedWebCollector(BaseCollector):
                 )
 
         try:
-            scraper.build(html_content, wanted_list)
+            # AutoScraper 的第一个位置参数是 url，直接传 HTML 会触发 requests.get(HTML)
+            # -> "No connection adapters were found for '<html ...'"（2026-10-09 实测）。
+            scraper.build(wanted_list=wanted_list, html=html_content)
         except Exception as exc:
             msg = f"AutoScraper build failed: {exc}"
             errors.append(msg)
             logs.append(collector_log("autoscraper_build_error", msg, level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        # get_result() 返回 (similar, exact) 二元组，不是列表：直接 len() 恒为 0…
+        # 而且它是按固定顺序返回两者，与 mode 无关。按 mode 取对应的方法才对。
         if mode == "exact":
-            results = scraper.get_result(html_content)
+            results = scraper.get_result_exact(html=html_content)
         else:
-            results = scraper.get_result_similar(html_content)
+            results = scraper.get_result_similar(html=html_content)
 
         if save_rules and rules_path:
             try:

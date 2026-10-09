@@ -46,6 +46,22 @@
         "empty-records",
         "requires-cookies"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_reddit_subreddit_posts",
+      "symptom": "quick-collect 报 422：subreddit_name 长度不足；修好参数后又恒返回 0 条",
+      "cause": "两个独立问题：(1) 参数白名单漏了 subreddit，_build_params 传出空串；(2) 上游把响应换成了 UI 结构 data.subredditV3.elements.edges[].node（__typename=CellGroup），帖子内容散在 cells[] 里，标题在 TitleCell.title、作者/时间在 MetadataCell，按 postTitle 取永远为空",
+      "workaround": "已修：白名单补齐 subreddit；_extract_items 增加 CellGroup 深度查找，_normalize_reddit_subreddit_post 按 cells 抽字段（groupId t3_xxx → https://www.reddit.com/comments/xxx）。同一响应由 0 条变 6 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }
