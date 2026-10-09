@@ -46,13 +46,48 @@ async def list_datasets(
     workspace_id: uuid.UUID,
     project_id: uuid.UUID | None = None,
     limit: int = 50,
+    offset: int = 0,
+    include_archived: bool = False,
 ) -> list[Dataset]:
     statement = select(Dataset).where(Dataset.workspace_id == workspace_id)
     if project_id is not None:
         statement = statement.where(Dataset.project_id == project_id)
-    statement = statement.order_by(desc(Dataset.created_at)).limit(limit)
+    if not include_archived:
+        statement = statement.where(Dataset.status != "archived")
+    statement = statement.order_by(desc(Dataset.created_at)).limit(limit).offset(offset)
     result = await session.execute(statement)
     return list(result.scalars().all())
+
+
+async def count_datasets(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID | None = None,
+    include_archived: bool = False,
+) -> int:
+    statement = select(func.count()).select_from(Dataset).where(
+        Dataset.workspace_id == workspace_id
+    )
+    if project_id is not None:
+        statement = statement.where(Dataset.project_id == project_id)
+    if not include_archived:
+        statement = statement.where(Dataset.status != "archived")
+    result = await session.execute(statement)
+    return int(result.scalar_one())
+
+
+async def archive_dataset(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> Dataset | None:
+    dataset = await get_dataset(session, workspace_id, dataset_id)
+    if dataset is None:
+        return None
+    dataset.status = "archived"
+    await session.commit()
+    await session.refresh(dataset)
+    return dataset
 
 
 async def get_latest_dataset_version(

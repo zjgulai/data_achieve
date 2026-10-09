@@ -96,8 +96,10 @@ from data_intelligence_hub.repositories.cleaning_plans import (
     next_cleaning_plan_version,
 )
 from data_intelligence_hub.repositories.datasets import (
+    archive_dataset,
     count_dataset_drift_events,
     count_dataset_versions,
+    count_datasets,
     create_dataset_drift_event,
     create_dataset_export_job,
     get_dataset,
@@ -4850,6 +4852,8 @@ async def list_product_datasets(
     workspace: Workspace,
     project_id: uuid.UUID | None = None,
     limit: int = 50,
+    offset: int = 0,
+    include_archived: bool = False,
     endpoint_platforms: dict[str, str] | None = None,
 ) -> AutomationProductDatasetListResponse:
     datasets = await list_datasets(
@@ -4857,6 +4861,14 @@ async def list_product_datasets(
         workspace.id,
         project_id=project_id,
         limit=limit,
+        offset=offset,
+        include_archived=include_archived,
+    )
+    total = await count_datasets(
+        session,
+        workspace.id,
+        project_id=project_id,
+        include_archived=include_archived,
     )
     items: list[AutomationProductDatasetListItemResponse] = []
     for dataset in datasets:
@@ -4911,7 +4923,7 @@ async def list_product_datasets(
         )
     return AutomationProductDatasetListResponse(
         items=items,
-        total=len(items),
+        total=total,
         run_started=False,
         alert_created=False,
     )
@@ -4939,6 +4951,18 @@ async def list_product_dataset_versions(
         run_started=False,
         alert_created=False,
     )
+
+
+async def archive_product_dataset(
+    session: AsyncSession,
+    workspace: Workspace,
+    dataset_id: uuid.UUID,
+) -> AutomationDatasetResponse:
+    """Archive a dataset (soft delete) so it leaves the console lists."""
+    dataset = await archive_dataset(session, workspace.id, dataset_id)
+    if dataset is None:
+        raise CollectorError("dataset_not_found")
+    return _dataset_response(dataset)
 
 
 async def create_product_dataset_export(

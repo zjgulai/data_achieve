@@ -612,7 +612,8 @@ source_type, content_kind, text_length
 | `POST` | `/api/automation/cleaning-plans` | 试跑请求 + `name` | `AutomationCleaningPlanCreateResponse` | 保存可复用清洗计划草案 |
 | `GET` | `/api/automation/cleaning-plans` | query: `project_id?`、`limit?` | `AutomationCleaningPlanListResponse` | 列出清洗计划资产 |
 | `POST` | `/api/automation/product-dataset-save` | `authorized`、`task_run_ids`、`fields?`、`max_rows?`、`name`、`description?`、`cleaning_plan_id?` | `AutomationProductDatasetSaveResponse` | 保存数据集版本，可追踪清洗计划 |
-| `GET` | `/api/automation/product-datasets` | query: `project_id?`、`limit?` | `AutomationProductDatasetListResponse` | 列出商品数据集资产 |
+| `GET` | `/api/automation/product-datasets` | query: `project_id?`、`limit?`、`offset?`、`include_archived?` | `AutomationProductDatasetListResponse` | 列出商品数据集资产。`total` 是真实 count，不随 offset 缩小；默认排除 `archived` |
+| `DELETE` | `/api/automation/product-datasets/{dataset_id}` | 无 | `AutomationDatasetResponse` | 归档数据集（软删 `status="archived"`）：默认列表不再返回，版本/导出/漂移记录保留。未知 id 返回 404 `dataset_not_found` |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/versions` | query: `limit?` | `AutomationProductDatasetVersionListResponse` | 列出数据集版本 |
 | `GET` | `/api/automation/product-datasets/{dataset_id}/versions/{version_id}/preview` | query: `limit?`（1–500，默认 50） | `AutomationProductDatasetVersionPreviewResponse` | 返回版本前 N 行样本（`rows`）、`fields`、`total_rows`，供控制台数据预览抽屉展示，不写文件 |
 

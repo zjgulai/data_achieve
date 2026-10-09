@@ -331,3 +331,42 @@ async def test_export_xlsx_is_a_valid_workbook(api: AsyncClient) -> None:
     header = [cell.value for cell in sheet[1]]
     assert header[:2] == SELECTED_FIELDS
     assert sheet.max_row == 3  # header + 2 data rows
+
+
+async def test_archive_hides_dataset_from_default_list(api: AsyncClient) -> None:
+    """DELETE 走软删：默认列表消失，include_archived=true 仍可见。"""
+    response = await api.delete(f"/api/automation/product-datasets/{DATASET_ID}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "archived"
+
+    listed = await api.get("/api/automation/product-datasets")
+    assert listed.status_code == 200
+    assert listed.json()["items"] == []
+    assert listed.json()["total"] == 0
+
+    archived_view = await api.get(
+        "/api/automation/product-datasets?include_archived=true"
+    )
+    assert archived_view.status_code == 200
+    assert len(archived_view.json()["items"]) == 1
+    assert archived_view.json()["items"][0]["dataset"]["status"] == "archived"
+
+
+async def test_archive_unknown_dataset_is_404(api: AsyncClient) -> None:
+    response = await api.delete(
+        f"/api/automation/product-datasets/{uuid.uuid4()}"
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "dataset_not_found"
+
+
+async def test_list_respects_limit_and_offset(api: AsyncClient) -> None:
+    """offset/limit 分页切片 + total 用真实 count（不随页缩小）。"""
+    full = await api.get("/api/automation/product-datasets?limit=100")
+    assert full.status_code == 200
+    assert full.json()["total"] == 1
+
+    page = await api.get("/api/automation/product-datasets?limit=100&offset=1")
+    assert page.status_code == 200
+    assert page.json()["items"] == []
+    assert page.json()["total"] == 1  # total 不随 offset 变化

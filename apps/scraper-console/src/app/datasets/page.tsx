@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Archive,
   Database,
   RefreshCw,
   Loader2,
@@ -25,6 +26,7 @@ import {
   type CategoryKey,
 } from "@/lib/platforms/catalog";
 import {
+  archiveDataset,
   exportAndDownload,
   fetchDatasets,
   type DatasetListItem,
@@ -161,8 +163,14 @@ export default function DatasetsPage() {
     const newThisWeek = enriched.filter(
       ({ item }) => new Date(item.dataset.created_at).getTime() >= weekAgo,
     ).length;
-    return { datasets: enriched.length, totalRows, platforms: platforms.size, newThisWeek };
-  }, [enriched]);
+    // Server-side total: reflects datasets beyond the fetched page.
+    return {
+      datasets: data?.total ?? enriched.length,
+      totalRows,
+      platforms: platforms.size,
+      newThisWeek,
+    };
+  }, [enriched, data?.total]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -206,22 +214,50 @@ export default function DatasetsPage() {
   async function runBatchExport() {
     const targets = visible.filter(({ item }) => selected.has(item.dataset.id));
     if (targets.length === 0) return;
-    setBatch({ running: true, message: `正在导出 ${targets.length} 个数据集…` });
+    setBatch({ running: true, message: `正在导出 0/${targets.length}…` });
     let done = 0;
-    for (const { item } of targets) {
+    const failed: string[] = [];
+    for (const [index, { item }] of targets.entries()) {
       if (!item.latest_version) continue;
+      setBatch({
+        running: true,
+        message: `正在导出 ${index + 1}/${targets.length}：${item.dataset.name}`,
+      });
       try {
         await exportAndDownload(item.dataset.id, item.latest_version.id, "csv");
         done += 1;
       } catch (err) {
-        setBatch({
-          running: false,
-          message: `导出「${item.dataset.name}」失败：${err instanceof Error ? err.message : "未知错误"}`,
-        });
-        return;
+        failed.push(
+          `${item.dataset.name}（${err instanceof Error ? err.message : "未知错误"}）`,
+        );
       }
     }
-    setBatch({ running: false, message: `已完成 ${done} 个数据集的导出` });
+    setBatch({
+      running: false,
+      message: failed.length > 0
+        ? `导出完成：成功 ${done}，失败 ${failed.length} —— ${failed.join("；")}`
+        : `已导出 ${done} 个数据集`,
+    });
+  }
+
+  async function runArchive(item: DatasetListItem) {
+    if (!window.confirm(`归档数据集「${item.dataset.name}」？归档后可从列表移除，数据保留。`)) {
+      return;
+    }
+    try {
+      await archiveDataset(item.dataset.id);
+      setSelected(prev => {
+        const next = new Set(prev);
+        next.delete(item.dataset.id);
+        return next;
+      });
+      await refetch();
+    } catch (err) {
+      setBatch({
+        running: false,
+        message: `归档失败：${err instanceof Error ? err.message : "未知错误"}`,
+      });
+    }
   }
 
   const allVisibleSelected =
@@ -483,18 +519,29 @@ export default function DatasetsPage() {
                         {formatDate(ds.updated_at)}
                       </td>
                       <td className="px-4 py-3">
-                        {version ? (
+                        <div className="flex items-center gap-1.5">
+                          {version ? (
+                            <button
+                              type="button"
+                              onClick={() => setDrawerItem(item)}
+                              className="flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--accent-1-soft)] hover:text-[var(--action-primary)]"
+                            >
+                              <Eye size={12} />
+                              预览
+                            </button>
+                          ) : (
+                            <span className="text-xs text-[var(--text-tertiary)]">无版本</span>
+                          )}
                           <button
                             type="button"
-                            onClick={() => setDrawerItem(item)}
-                            className="flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--accent-1-soft)] hover:text-[var(--action-primary)]"
+                            aria-label={`归档 ${ds.name}`}
+                            onClick={() => runArchive(item)}
+                            className="flex items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
                           >
-                            <Eye size={12} />
-                            预览
+                            <Archive size={12} />
+                            归档
                           </button>
-                        ) : (
-                          <span className="text-xs text-[var(--text-tertiary)]">无版本</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );

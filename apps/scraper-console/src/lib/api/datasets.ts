@@ -147,6 +147,18 @@ export async function fetchDatasetVersions(
   );
 }
 
+/**
+ * Archive a dataset (backend soft-deletes: `status = "archived"`).
+ * Archived datasets leave the default list; pass `include_archived=true`
+ * to the list call to still see them.
+ */
+export async function archiveDataset(datasetId: string): Promise<Dataset> {
+  return apiFetch<Dataset>(
+    `/api/automation/product-datasets/${encodeURIComponent(datasetId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export async function fetchVersionPreview(
   datasetId: string,
   versionId: string,

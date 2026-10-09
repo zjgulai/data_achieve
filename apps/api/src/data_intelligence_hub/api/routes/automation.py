@@ -36,6 +36,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationCleaningPlanDryRunRequest,
     AutomationCleaningPlanDryRunResponse,
     AutomationCleaningPlanListResponse,
+    AutomationDatasetResponse,
     AutomationExtractionPlanCreateRequest,
     AutomationExtractionPlanResponse,
     AutomationGitHubToolDatasetPreviewRequest,
@@ -101,6 +102,7 @@ from data_intelligence_hub.services.automation_service import (
     analyze_site_for_collection,
     approve_product_schedule,
     approve_public_content_schedule,
+    archive_product_dataset,
     build_browser_executor_contract,
     build_browser_production_metadata_run_gate,
     cancel_browser_diagnostic_job_asset,
@@ -1283,6 +1285,8 @@ async def list_product_datasets_route(
     session: SessionDep,
     project_id: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    include_archived: bool = False,
 ) -> AutomationProductDatasetListResponse:
     from data_intelligence_hub.repositories.workspaces import get_demo_workspace
     workspace = await get_demo_workspace(session)
@@ -1296,8 +1300,31 @@ async def list_product_datasets_route(
         workspace,
         project_id=project_id,
         limit=limit,
+        offset=offset,
+        include_archived=include_archived,
         endpoint_platforms=await _endpoint_platform_map(),
     )
+
+
+@router.delete("/product-datasets/{dataset_id}", response_model=AutomationDatasetResponse)
+async def archive_product_dataset_route(
+    dataset_id: uuid.UUID,
+    session: SessionDep,
+) -> AutomationDatasetResponse:
+    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
+    try:
+        return await archive_product_dataset(session, workspace, dataset_id)
+    except CollectorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get(
