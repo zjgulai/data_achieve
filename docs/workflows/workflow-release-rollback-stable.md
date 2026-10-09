@@ -14,19 +14,26 @@ source: human+ai
 
 ## 适用范围
 
-本文适用于 `https://scrapy.lute-tlz-dddd.top` 的生产发布。服务器路径固定为：
+本文优先适用于 `https://scrapy.luteos.com` 的生产发布，旧域名仅用于兼容检查。内网应用服务器路径固定为：
 
 ```text
-/opt/data-achieve-scrapy/app
+/home/lute/apps/data_scrapy
 ```
 
 生产 env 文件固定为：
 
 ```text
-/opt/data-achieve-scrapy/.env.production
+/data/scrapy/configs/.env.production
 ```
 
 不得把生产 env 内容写入仓库、日志或对话输出。
+
+公网链路为 `43.163.92.244` 共享 Nginx → relay → 受限 SSH 反向隧道 →
+`192.168.204.230:80`。发布 API/Console 后需检查隧道 systemd 服务、relay
+容器和 `/mcp/` Bearer Token 门禁。
+
+MCP 客户端应使用 `SCRAPY_MCP_TOKENS_JSON` 分配独立 Token。日志只允许记录
+Token 的短 SHA-256 标识，不得记录原始 Authorization header。
 
 ## V2 真实 API 验收边界（2026-07-14）
 
@@ -34,7 +41,7 @@ source: human+ai
 
 ## 生产环境变量要求（2026-08-15）
 
-`/opt/data-achieve-scrapy/.env.production` 必须包含以下键，否则 API 容器内 TikHub/Apify 采集调用将静默返回空结果：
+`/data/scrapy/configs/.env.production` 必须包含以下键，否则 API 容器内 TikHub/Apify 采集调用将静默返回空结果：
 
 ```
 TIKHUB_API_KEY=<值>
@@ -48,9 +55,9 @@ TIKHUB=$(docker inspect data_achieve_scrapy_api \
   --format '{{range .Config.Env}}{{println .}}{{end}}' | grep TIKHUB_API_KEY | cut -d= -f2-)
 APIFY=$(docker inspect data_achieve_scrapy_api \
   --format '{{range .Config.Env}}{{println .}}{{end}}' | grep APIFY_API_TOKEN | cut -d= -f2-)
-sed -i '/^TIKHUB_API_KEY/d;/^APIFY_API_TOKEN/d' /opt/data-achieve-scrapy/.env.production
-echo "TIKHUB_API_KEY=${TIKHUB}" >> /opt/data-achieve-scrapy/.env.production
-echo "APIFY_API_TOKEN=${APIFY}" >> /opt/data-achieve-scrapy/.env.production
+sed -i '/^TIKHUB_API_KEY/d;/^APIFY_API_TOKEN/d' /data/scrapy/configs/.env.production
+echo "TIKHUB_API_KEY=${TIKHUB}" >> /data/scrapy/configs/.env.production
+echo "APIFY_API_TOKEN=${APIFY}" >> /data/scrapy/configs/.env.production
 ```
 
 ## 热更新注意事项（⚠️ 临时措施，非标准流程）
@@ -104,18 +111,18 @@ pnpm -C apps/web build
 生产 preflight：
 
 ```bash
-ssh -i ~/.ssh/data_scrapy_ai_video.pem ubuntu@101.34.52.232 \
-  'cd /opt/data-achieve-scrapy/app && \
+ssh lute@192.168.204.230 \
+  'cd ~/apps/data_scrapy && \
    bash scripts/deploy-preflight-scrapy.sh \
-     --env-file /opt/data-achieve-scrapy/.env.production \
-     --compose-file configs/deploy/scrapy/docker-compose.yml'
+     --env-file /data/scrapy/configs/.env.production \
+     --compose-file configs/deploy/scrapy-new/docker-compose.yml'
 ```
 
 ## 发布步骤
 
 1. 确认 git 工作区只包含本次发布相关改动。
 2. 本地提交并 push 到 `origin/main`。
-3. 同步代码到服务器 `/opt/data-achieve-scrapy/app`。
+3. 同步代码到服务器 `/home/lute/apps/data_scrapy`。
 4. 在服务器运行 compose config 或 preflight。
 5. 构建镜像。
 6. 启动数据库。
@@ -129,9 +136,9 @@ ssh -i ~/.ssh/data_scrapy_ai_video.pem ubuntu@101.34.52.232 \
 生产 compose 命令必须显式加载 env：
 
 ```bash
-cd /opt/data-achieve-scrapy/app
-docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml build
-docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml up -d db
+cd /home/lute/apps/data_scrapy
+docker compose --env-file /data/scrapy/configs/.env.production -f configs/deploy/scrapy-new/docker-compose.yml build api console
+docker compose --env-file /data/scrapy/configs/.env.production -f configs/deploy/scrapy-new/docker-compose.yml up -d --no-deps api console
 ```
 
 迁移：
@@ -178,7 +185,7 @@ API smoke：
 set -a
 source ../.env.production
 set +a
-BASE_URL=https://scrapy.lute-tlz-dddd.top \
+BASE_URL=https://scrapy.luteos.com \
 SCRAPY_DEMO_EMAIL="${SCRAPY_DEMO_EMAIL:-owner@example.com}" \
 SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
 bash scripts/smoke-api-scrapy.sh
@@ -191,7 +198,7 @@ bash scripts/smoke-api-scrapy.sh
 1. `curl -ks https://scrapy.lute-tlz-dddd.top/api/health` 返回 `status=ok`、`database=connected`、`schema=current`。
 2. `docker compose ps` 显示 api、db、edge、web、console 全部 healthy。
 3. `bash scripts/reload-scrapy-gateway.sh --dry-run` 通过，外层网关可解析 `data_achieve_scrapy_proxy`。
-4. Collector catalog 验收：`curl -fsSL https://scrapy.lute-tlz-dddd.top/api/collectors/catalog` 返回 `verified=91, pending=0`。
+4. 平台包验收：`curl -fsSL https://scrapy.luteos.com/api/platform-packages` 返回 `platform_count=74, capability_count=278, unique_endpoint_count=250`。
 5. 主要页面返回 200：`/dashboard`、`/intelligence`、`/reports`、`/tasks`、`/sources`、`/alerts`、`/notifications`、`/projects`、`/signals`、`/raw-records`、`/entities`；Console `/platforms` 返回 200。
 6. 演示账号数据域覆盖 `competitor`、`ecommerce`、`osint`、`social`。
 7. 最新高价值情报不是 placeholder，至少包含开源、 电商、社媒、竞品四类。
@@ -213,7 +220,7 @@ bash scripts/smoke-api-scrapy.sh
 代码回滚：
 
 ```bash
-cd /opt/data-achieve-scrapy/app
+cd /home/lute/apps/data_scrapy
 git log --oneline -5
 git revert <bad_commit>
 docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-compose.yml build

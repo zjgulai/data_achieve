@@ -160,6 +160,25 @@ sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d your.domain.com
 ```
 
+> 当前生产公网入口不直接终止在内网主机。`scrapy.luteos.com` 由
+> `43.163.92.244` 的共享 Nginx 提供 TLS，再通过专用 relay 和受限 SSH
+> 反向隧道访问本机 80 端口。不要在内网主机申请公网证书或开放额外公网端口。
+
+MCP 生产变量：
+
+```dotenv
+SCRAPY_MCP_TOKEN=<随机高强度值>
+SCRAPY_MCP_TOKENS_JSON={"claude":"<独立Token>","codex":"<独立Token>"}
+SCRAPY_MCP_RATE_PER_MINUTE=120
+SCRAPY_MCP_CONCURRENT_CALLS=8
+SCRAPY_MCP_DAILY_COLLECTS=500
+```
+
+MCP 地址：`https://scrapy.luteos.com/mcp/`。
+
+优先使用 `SCRAPY_MCP_TOKENS_JSON` 为不同客户端分配独立 Token，便于单独吊销；
+`SCRAPY_MCP_TOKEN` 仅作为向后兼容单 Token。
+
 ---
 
 ## 第六步：健康验收

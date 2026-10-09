@@ -4,13 +4,13 @@
 
 ## 项目一句话定位
 
-**纯数据采集平台**。后端 FastAPI 提供 218 种采集能力（tikhub/apify/rss/browser/anysearch/jina/osint/spiderfoot/bestblogs/blackbird/autoscraper 等），前端 Next.js scraper-console 提供无需登录的采集管理台，生产部署在 `scrapy.lute-tlz-dddd.top`。
+**纯数据采集平台**。后端 FastAPI 提供 278 个能力视图（250 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
 
 ---
 
 ## 生产环境
 
-### 当前生产（腾讯云 · 已运行）
+### 旧生产（腾讯云 · 兼容保留）
 
 | 项目 | 值 |
 |---|---|
@@ -20,7 +20,7 @@
 | 部署分支 | `codex/social-api-private-matrix-20260708` |
 | 当前 commit | `42a0dc7` |
 | API health | `GET /api/health` → `{"status":"ok"}` |
-| 采集端点 | 207 verified / 11 disabled（总 218）|
+| 采集端点 | 历史快照，不作为当前口径 |
 | 认证模式 | **无需登录**，全路由使用 demo workspace `bf51c6a8-fba5-5528-ac91-89ffd84f85c2` |
 | docker-compose | `configs/deploy/scrapy/docker-compose.yml` |
 
@@ -34,11 +34,23 @@
 | 项目路径 | `~/apps/data_scrapy` |
 | 环境变量 | `/data/scrapy/configs/.env.production` |
 | API health | `http://192.168.204.230/api/health` → `{"status":"ok"}` |
-| 采集端点 | 207 verified / 11 disabled（总 218）|
+| 采集端点 | 278 capability views / 250 unique endpoint types |
 | docker-compose | `configs/deploy/scrapy-new/docker-compose.yml` |
 | 持久化路径 | Postgres: `/data/scrapy/postgres`，Exports: `/data/scrapy/exports` |
 | 部署文档 | [`docs/deployment-new-server.md`](docs/deployment-new-server.md) |
 | 部署日期 | 2026-09-01 |
+
+### 公网入口与 Skill/MCP（2026-10-09）
+
+| 项目 | 值 |
+|---|---|
+| 主域名 | `https://scrapy.luteos.com` |
+| 公网网关 | `43.163.92.244` |
+| 链路 | 共享 Nginx → relay → 受限 SSH 反向隧道 → `192.168.204.230:80` |
+| Skill 目录 | `/skills` |
+| MCP | `/mcp/`，生产要求 `SCRAPY_MCP_TOKEN` |
+| 平台包 | 74 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
+| 当前口径 | 278 capability views / 250 unique endpoint types |
 
 ### 容器（新服务器 192.168.204.230）
 
@@ -236,19 +248,18 @@ your_platform: { bg: "#XXXXXX", fg: "#fff", letter: "XX" },
 open_web: { ..., platforms: [..., "your_platform"] },
 ```
 
-### Step 7：热推部署
+### Step 7：正式部署
 
 ```bash
-# API 热推
-scp -i DDDD.pem apps/api/src/data_intelligence_hub/collectors/your_collector.py \
-  ubuntu@101.34.52.232:/tmp/your_collector.py
-ssh -i DDDD.pem ubuntu@101.34.52.232 \
-  "docker cp /tmp/your_collector.py \
-   data_achieve_scrapy_api:/app/src/data_intelligence_hub/collectors/your_collector.py \
-   && docker restart data_achieve_scrapy_api"
+ssh lute@192.168.204.230
+cd ~/apps/data_scrapy
+git pull origin codex/social-api-private-matrix-20260708
+docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
+  --env-file /data/scrapy/configs/.env.production \
+  up --build --no-deps --detach api console
 
 # 验收
-curl https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | \
+curl https://scrapy.luteos.com/api/collectors/catalog | \
   python3 -c "import sys,json; d=json.load(sys.stdin); \
   [print(e['endpoint_type'],e['status']) for g in d['collectors'] \
   for e in g['endpoints'] if 'your_endpoint' in e['endpoint_type']]"
@@ -271,28 +282,27 @@ curl https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | \
 ### SSH 登录
 
 ```bash
-ssh -i DDDD.pem ubuntu@101.34.52.232
+ssh lute@192.168.204.230
 ```
 
 ### 完整重建（code 已 push 后）
 
 ```bash
-cd /opt/data-achieve-scrapy/app
+cd ~/apps/data_scrapy
 git pull origin codex/social-api-private-matrix-20260708
-docker compose -f configs/deploy/scrapy/docker-compose.yml \
-  --env-file /opt/data-achieve-scrapy/.env.production \
+docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
+  --env-file /data/scrapy/configs/.env.production \
   up --build --no-deps --detach api console
 ```
 
 ### 健康检查
 
 ```bash
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/health
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | \
+curl -fsSL https://scrapy.luteos.com/api/health
+curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   python3 -c "import sys,json; d=json.load(sys.stdin); \
-  v=sum(1 for g in d['collectors'] for e in g['endpoints'] if e.get('status')=='verified'); \
-  print('verified:', v)"
-# 期望：verified: 207
+  print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])"
+# 期望：74 278 250
 ```
 
 ---

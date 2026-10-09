@@ -1,18 +1,18 @@
 # Data Intelligence Hub — 数据采集平台
 
-面向品牌和市场运营团队的多平台数据采集管理台。核心功能：通过统一 API 触发 162 种采集能力，结果落库为 RawRecord，供后续洞察使用。
+面向品牌和市场运营团队的多平台数据采集管理台。通过统一 API、平台 Skill 和共享 MCP Runtime 调用 278 个能力视图（250 个唯一 endpoint），结果落库为 RawRecord。
 
-## 生产状态（2026-08-16）
+## 生产状态（2026-10-09）
 
 | 项目 | 状态 |
 |---|---|
-| 生产域名 | `scrapy.lute-tlz-dddd.top` |
-| 服务器 | `101.34.52.232` (Ubuntu 22.04) |
+| 生产域名 | `https://scrapy.luteos.com` |
+| 应用服务器 | `192.168.204.230`（内网）|
+| 公网入口 | `43.163.92.244` → 受限 SSH 反向隧道 |
 | 当前分支 | `codex/social-api-private-matrix-20260708` |
-| 当前 commit | `b339f45` |
-| API schema | `202607160033` (current) |
-| 采集端点 | **151 verified / 11 disabled** |
-| 容器状态 | api / console / edge / db 全部 running |
+| 采集目录 | **74 平台 / 278 能力视图 / 250 唯一 endpoint** |
+| Skill/MCP | `/skills`、`/mcp/`、平台 ZIP 下载 |
+| 容器状态 | api / console / edge / db / maigret healthy |
 | 认证 | 全路由无需登录，使用 demo workspace fallback |
 
 ## 应用服务
@@ -108,44 +108,30 @@ data_scrapy/
 
 ## 部署
 
-### 热更新（紧急修复，下次正式构建前必须完整重建）
+当前标准部署目标为内网服务器 `192.168.204.230`，公网通过
+`scrapy.luteos.com` 的受限反向隧道访问。旧域名仅保留兼容。
+
+### 正式发布（当前生产）
 
 ```bash
-# 本地打包 API 文件
-scp -i DDDD.pem <file> ubuntu@101.34.52.232:/tmp/<file>
-ssh -i DDDD.pem ubuntu@101.34.52.232 \
-  "docker cp /tmp/<file> data_achieve_scrapy_api:/app/src/data_intelligence_hub/<path> && docker restart data_achieve_scrapy_api"
-
-# Console 前端热推
-cd apps/scraper-console && pnpm build
-tar czf /tmp/console_build.tar.gz .next
-scp -i DDDD.pem /tmp/console_build.tar.gz ubuntu@101.34.52.232:/tmp/
-ssh -i DDDD.pem ubuntu@101.34.52.232 \
-  "cd /tmp && mkdir -p cb && tar xzf console_build.tar.gz -C cb && docker cp cb/.next data_achieve_scrapy_console:/app/.next && docker restart data_achieve_scrapy_console"
-```
-
-### 完整重建（推荐，代码已 push 后）
-
-```bash
-ssh -i DDDD.pem ubuntu@101.34.52.232
-cd /opt/data-achieve-scrapy/app
+ssh lute@192.168.204.230
+cd ~/apps/data_scrapy
 git pull origin codex/social-api-private-matrix-20260708
-docker compose -f configs/deploy/scrapy/docker-compose.yml \
-  --env-file /opt/data-achieve-scrapy/.env.production \
+docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
+  --env-file /data/scrapy/configs/.env.production \
   up --build --no-deps --detach api console
 ```
 
 ### 验收
 
 ```bash
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/health
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | python3 -c "
+curl -fsSL https://scrapy.luteos.com/api/health
+curl -fsSL https://scrapy.luteos.com/api/platform-packages | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
-v = sum(1 for g in d['collectors'] for e in g['endpoints'] if e.get('status')=='verified')
-print(f'verified={v}')
+print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])
 "
-# 期望：verified=151
+# 期望：74 278 250
 ```
 
 ## 本地开发
