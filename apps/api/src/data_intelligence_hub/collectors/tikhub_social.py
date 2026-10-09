@@ -589,7 +589,7 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):
-            for key in ("aweme_list", "item_list", "items", "video_list", "result_list"):
+            for key in ("aweme_list", "item_list", "items", "video_list", "result_list", "followers"):
                 candidate = inner.get(key)
                 if isinstance(candidate, list) and candidate:
                     return candidate
