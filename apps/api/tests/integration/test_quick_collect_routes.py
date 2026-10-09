@@ -136,3 +136,51 @@ async def test_quick_collect_without_demo_workspace_returns_503(
 
     assert response.status_code == 503
     assert response.json()["detail"] == "demo_workspace_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_quick_collect_keeps_endpoint_type_in_task_config(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """完整跑一次 quick-collect，断言 endpoint_type 留在任务 config 里。
+
+    `_validate_*_config` 返回白名单字典；2026-10-09 前它会剥掉 endpoint_type，
+    数据集平台归因（`_dataset_origin_signals`）因此拿不到端点，数据集
+    `platforms` 永远为空。这里 patch 掉网络层，验证 config 落库形状。
+    """
+    project_id = await _seed_demo_workspace_and_project(client)
+
+    from data_intelligence_hub.collectors import generic_web as generic_web_module
+
+    async def fake_fetch_html(client: object, url: str) -> str:
+        return "<html><head><title>Demo</title></head><body><p>Hello</p></body></html>"
+
+    monkeypatch.setattr(generic_web_module, "_fetch_html", fake_fetch_html)
+
+    response = await client.post(
+        "/api/quick-collect",
+        json={
+            "project_id": str(project_id),
+            "endpoint_type": "generic_web",
+            "params": {"url": "https://example.com"},
+            "label": "[test] generic_web",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["status"] == "success"
+    assert body["records_count"] == 1
+
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    from data_intelligence_hub.models import CollectionTask, Source
+
+    async with session_factory() as session:
+        task = await session.get(CollectionTask, uuid.UUID(body["task_id"]))
+        assert task is not None
+        assert task.config["endpoint_type"] == "generic_web"
+        assert task.config["url"] == "https://example.com"
+        source = await session.get(Source, uuid.UUID(body["source_id"]))
+        assert source is not None
+        assert source.config["endpoint_type"] == "generic_web"
