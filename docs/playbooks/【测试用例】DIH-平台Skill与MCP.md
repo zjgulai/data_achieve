@@ -128,3 +128,17 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 测试步骤：比对 `set(COLLECTOR_REGISTRY) - {d.type for d in COLLECTOR_CATALOG}`。
 
 预期结果：差集为空。若不为空，对应端点在生产 `POST /api/quick-collect` 会返回 400 `Collector ... is not available`（曾于 `autoscraper_enhanced_web` / `bestblogs_articles` / `blackbird_*` 出现）。
+
+## DIH-SM-013 配置-空 MCP Token 不得锁死 MCP
+
+前置条件：无（纯配置用例）。
+
+测试步骤：
+
+1. `Settings(SCRAPY_MCP_TOKEN="")`，断言 `mcp_token is None` 且 `accepted_mcp_tokens == ()`。
+2. `Settings(SCRAPY_MCP_TOKENS_JSON={"claude": "", "codex": "  "})`，断言 `accepted_mcp_tokens == ()`。
+3. 用上述 settings 构造 `BearerTokenMiddleware`，不带 Authorization 请求，应放行（200）。
+
+预期结果：空/空白 token 一律视为未配置。
+
+> **历史坑（2026-10-09 生产事故）**：compose 用 `${SCRAPY_MCP_TOKEN:-}` 注入，未配置时传入**空字符串**，pydantic 解析成 `SecretStr("")` → `accepted_mcp_tokens=("",)` 非空 → 中间件对**所有**请求返回 401，且任何 token 都通不过。生产 `/mcp/` 曾因此 100% 不可用。修复见 `config.py` 的 `_blank_mcp_token_is_unset` 与 `accepted_mcp_tokens` 过滤。

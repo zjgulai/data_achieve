@@ -84,15 +84,34 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
 
+    @field_validator("mcp_token", mode="before")
+    @classmethod
+    def _blank_mcp_token_is_unset(cls, value: object) -> object:
+        """`SCRAPY_MCP_TOKEN=`（空串）必须视为未配置。
+
+        compose 用 `${SCRAPY_MCP_TOKEN:-}` 注入，未配置时会传空字符串；pydantic 会把
+        它当成 SecretStr("")，使 accepted_mcp_tokens 非空，从而对**所有人**返回 401
+        且任何 token 都无法通过。这里把空白值归一为 None。
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @property
     def sync_database_url(self) -> str:
         return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg://")
 
     @property
     def accepted_mcp_tokens(self) -> tuple[str, ...]:
-        values = [secret.get_secret_value() for secret in self.mcp_tokens.values()]
+        values = [
+            secret.get_secret_value()
+            for secret in self.mcp_tokens.values()
+            if secret.get_secret_value().strip()
+        ]
         if self.mcp_token is not None:
-            values.append(self.mcp_token.get_secret_value())
+            token = self.mcp_token.get_secret_value()
+            if token.strip():
+                values.append(token)
         return tuple(values)
 
 

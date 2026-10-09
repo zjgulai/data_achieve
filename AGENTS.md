@@ -318,6 +318,7 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **两个必须记住的坑**：
   1. catalog 的 `status="verified"` 只是静态声明，**不等于实测通过**；真实状态看 `/api/collectors/docs` 与 `/providers/status`（证据来自 `label=[test] <endpoint_type>` 的 quick-collect 运行）。
   2. 端点归属的 `platform` 未必等于 collector 名（例：Exa 端点的 platform 是 `web`）；写坑点/建 Skill 包时以 catalog 的 `platform` 字段为准。
+- **MCP 鉴权**：`SCRAPY_MCP_TOKEN=`（空串）曾被当成有效 token，导致 `/mcp/` 对所有人 401（2026-10-09 已修）。生产要用 MCP 就必须**显式设置**一个非空 `SCRAPY_MCP_TOKEN`（或 `SCRAPY_MCP_TOKENS_JSON`）；不设置则中间件放行（等价开放）。
 - **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`，只允许出现 `deploy/scrapy-luteos-rebuild` 既有基线内的失败。
 
 ---
