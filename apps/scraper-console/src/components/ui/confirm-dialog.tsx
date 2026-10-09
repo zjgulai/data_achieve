@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
+import { useFocusTrap } from "@/components/ui/use-focus-trap";
 
 /**
  * Small centered confirmation dialog.
@@ -28,6 +29,9 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, panelRef);
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -47,10 +51,12 @@ export function ConfirmDialog({
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-50 w-full max-w-sm rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 shadow-[var(--shadow-overlay)]"
+        tabIndex={-1}
+        className="relative z-50 w-full max-w-sm rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 shadow-[var(--shadow-overlay)] focus:outline-none"
       >
         <div className="flex items-start gap-3">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[var(--state-warning)]" />

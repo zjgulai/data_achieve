@@ -11230,9 +11230,14 @@ def _raw_record_extracted_fields(raw_record: RawRecord) -> dict[str, object]:
     if not isinstance(content, dict):
         return {}
     extracted = content.get("extracted_fields")
-    if not isinstance(extracted, dict):
-        return {}
-    return extracted
+    if isinstance(extracted, dict):
+        return extracted
+    # Apify records carry the actor's own item shape instead of extracted_fields;
+    # anything else without extracted_fields (github, feeds, ...) stays empty.
+    raw = content.get("raw")
+    if content.get("provider") == "apify" and isinstance(raw, dict):
+        return _marketplace_extracted_fields(raw, raw_record)
+    return {}
 
 
 def _has_field_value(value: object) -> bool:
@@ -13288,8 +13293,119 @@ def _product_page_records(raw_records: list[RawRecord]) -> list[RawRecord]:
     return [
         raw_record
         for raw_record in raw_records
-        if raw_record.record_type == "ecommerce_product_page"
+        if raw_record.record_type in PRODUCT_RECORD_TYPES
     ]
+
+
+# Record types that carry one marketplace product each. `ecommerce_product_page`
+# is the self-built page collector; the rest come from Apify marketplace actors
+# (see `apify_actor._infer_record_type`).
+PRODUCT_RECORD_TYPES = frozenset(
+    {
+        "ecommerce_product_page",
+        "amazon_product",
+        "walmart_product",
+        "ecommerce_product",
+    }
+)
+
+# Aliases from marketplace payloads to the canonical ECOMMERCE_PRODUCT_FIELDS.
+# First key present with a usable value wins.
+_MARKETPLACE_PRODUCT_ALIASES: dict[str, tuple[str, ...]] = {
+    "title": ("title", "name", "productTitle", "productName"),
+    "price": ("price", "currentPrice", "priceValue", "salePrice"),
+    "price_min": ("priceMin", "minPrice"),
+    "price_max": ("priceMax", "maxPrice"),
+    "currency": ("currency", "currencyCode"),
+    # `availability` stays a normalized enum; the actor's raw label goes to
+    # `availability_detail` (it is often duplicated, e.g. "In Stock  In Stock").
+    "availability": ("availability",),
+    "availability_detail": ("availabilityText", "availabilityMessage", "inStockText"),
+    "sku": ("asin", "originalAsin", "sku", "productId", "id"),
+    "variant": ("variant", "variantName", "selectedVariant"),
+    "brand": ("brand", "manufacturer", "byline"),
+    "category": ("category", "categoryName", "department", "breadcrumbs"),
+    "description": ("description", "productDescription", "summary"),
+    "image_url": ("thumbnailImage", "image", "imageUrl", "thumbnail", "mainImage"),
+    "canonical_url": ("url", "link", "productUrl", "canonicalUrl", "unNormalizedProductUrl"),
+}
+
+# Rows in the product-overview list that carry the brand under a fixed label.
+_PRODUCT_OVERVIEW_BRAND_KEYS = ("brand", "brand name", "marca")
+
+
+def _marketplace_scalar(value: object) -> object | None:
+    """Unwrap a marketplace field into a scalar.
+
+    Apify actors nest prices as ``{"value": 463.55, "currency": "$"}`` and
+    sometimes wrap labels as ``{"text": "..."}``; the dataset wants the leaf.
+    """
+    if isinstance(value, dict):
+        for key in ("value", "text", "name", "label", "amount"):
+            inner = value.get(key)
+            if inner is not None:
+                return inner
+        return None
+    if isinstance(value, list):
+        return value or None
+    return value
+
+
+def _marketplace_field(raw: dict[str, Any], field: str) -> object | None:
+    for key in _MARKETPLACE_PRODUCT_ALIASES[field]:
+        if key not in raw:
+            continue
+        value = _marketplace_scalar(raw.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _marketplace_extracted_fields(
+    raw: dict[str, Any],
+    raw_record: RawRecord,
+) -> dict[str, object]:
+    """Map a marketplace (Apify) payload onto the canonical product fields.
+
+    The self-built page collector writes ``content["extracted_fields"]``
+    directly; Apify actors ship the actor's own item shape under
+    ``content["raw"]``, so the field names must be resolved here.
+    """
+    fields: dict[str, object] = {}
+    for field in _MARKETPLACE_PRODUCT_ALIASES:
+        value = _marketplace_field(raw, field)
+        if value is not None:
+            fields[field] = value
+
+    # `currency` usually rides inside the nested price object.
+    price = raw.get("price")
+    if "currency" not in fields and isinstance(price, dict):
+        currency = price.get("currency")
+        if isinstance(currency, str) and currency.strip():
+            fields["currency"] = currency
+
+    # Brand lives in a labelled key/value list on several actors.
+    if "brand" not in fields:
+        overview = raw.get("productOverview")
+        if isinstance(overview, list):
+            for entry in overview:
+                if not isinstance(entry, dict):
+                    continue
+                label = str(entry.get("key") or entry.get("name") or "").strip().lower()
+                value = entry.get("value")
+                if label in _PRODUCT_OVERVIEW_BRAND_KEYS and value:
+                    fields["brand"] = value
+                    break
+
+    # Boolean stock flags read better than the raw flag.
+    if "availability" not in fields and isinstance(raw.get("inStock"), bool):
+        fields["availability"] = "in_stock" if raw["inStock"] else "out_of_stock"
+
+    # The record's own URL is the canonical one when the payload has none.
+    if "canonical_url" not in fields and raw_record.source_url:
+        fields["canonical_url"] = raw_record.source_url
+
+    return fields
 
 
 async def _lock_workspace_for_dataset_save(session: AsyncSession, workspace_id: uuid.UUID) -> None:

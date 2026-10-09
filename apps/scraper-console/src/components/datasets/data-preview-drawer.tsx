@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Loader2, Download, Table2, ListTree, History, AlertTriangle } from "lucide-react";
 import { PlatformLogo } from "@/components/platforms/platform-logo";
+import { useFocusTrap } from "@/components/ui/use-focus-trap";
 import { getPlatformLabel } from "@/lib/platforms/catalog";
 import {
   downloadExport,
@@ -152,6 +153,8 @@ export function DataPreviewDrawer({
   // is needed.
   const [tab, setTab] = useState<Tab>("rows");
   const [versionId, setVersionId] = useState<string | null>(initialVersion?.id ?? null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(open, panelRef);
 
   useEffect(() => {
     if (!open) return;
@@ -200,10 +203,12 @@ export function DataPreviewDrawer({
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={`数据集预览：${datasetName}`}
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-[var(--border-subtle)] bg-[var(--surface-primary)] shadow-[var(--shadow-overlay)]"
+        tabIndex={-1}
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col border-l border-[var(--border-subtle)] bg-[var(--surface-primary)] shadow-[var(--shadow-overlay)] focus:outline-none"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-[var(--border-subtle)] px-6 py-4">
