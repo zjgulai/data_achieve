@@ -249,8 +249,10 @@ class FirecrawlExtractCollector(BaseCollector):
         if config["prompt"]:
             extract_payload["prompt"] = config["prompt"]
 
+        # /v1/scrape 的 body 收 url（字符串）。传 urls（数组）会得到 400
+        # "Unrecognized key in body -- please review the v2 API documentation"（2026-10-09 实测）。
         payload: dict[str, Any] = {
-            "urls": [config["url"]],
+            "url": config["url"],
             "formats": ["extract"],
             "extract": extract_payload,
         }

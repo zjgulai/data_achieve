@@ -46,6 +46,11 @@ services:
     build:
       context: ../../../apps/api
       dockerfile: Dockerfile
+      # playwright_browser_* 需要镜像内带 Chromium；默认不带，端点会报
+      # playwright_not_installed。这里显式打开（镜像会大 ~400MB）。
+      args:
+        INSTALL_PLAYWRIGHT: ${SCRAPY_INSTALL_PLAYWRIGHT:-true}
+        INSTALL_OSINT: ${SCRAPY_INSTALL_OSINT:-false}
     container_name: data_achieve_scrapy_api
     depends_on:
       db:
