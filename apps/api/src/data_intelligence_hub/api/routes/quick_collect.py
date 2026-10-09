@@ -681,7 +681,9 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "marketplace-scrapers/amazon-bsr-scraper",
         # marketplaces 收 ISO 国家码（US/UK/DE…），传 "amazon.com" 会让 Actor 直接抛错退出；
         # asins 也必须在对应站点上真实存在。
-        {"asins": ["B09G9FPHY6"], "marketplaces": ["US"]},
+        # 用 Actor 自己的 prefill 值（作者测过）：marketplaces 收 ISO 国家码，
+        # asins 必须在该站点上有 BSR 榜（换 ASIN 会时有时无）。
+        {"asins": ["0735211299", "1612680194"], "marketplaces": ["UK"]},
     ),
     "apify_amazon_price_tracker": (
         "ramsford/ecommerce-price-tracker",

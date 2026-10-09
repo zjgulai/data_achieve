@@ -5,7 +5,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`1454e5ca2e7cf19c0eec7da95765f2eeda65b068a4405fe4e691aa07e6916413`
+> 自动生成，请勿手工编辑。catalog_digest：`fda70fb452b0d9bf3b6e5e5506bd600ce81a3cc9c2263b194acaa9c25f51706a`
 > 坑点总数：99 · 覆盖平台：32
 
 ## actor_failed
@@ -13,7 +13,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | amazon | amazon | apify_amazon_bsr_tracker、apify_amazon_competitor_research 的 Apify run 状态为 FAILED | 入参/代理被 Amazon 拒绝，失败发生在 Actor 内部（run 已创建），与 403 类不同——需要读 run log 才能定位 | 用 GET /v2/actor-runs/<runId>/log 看 Actor 自身日志；apify_amazon_product_scraper 与 apify_amazon_reviews_scraper 已验证可用，可作首选替代 | warning | 2026-10-09 | reports/live-sweep/latest.json |
-| amazon | apify_amazon_bsr_tracker | Apify run FAILED，日志 exit_code=91 | ValueError: marketplace 'amazon.com' not in ['AU','CA','DE','ES','FR','IT','JP','NL','UK','US'] —— marketplaces 收的是 ISO 国家码，不是站点域名；另外演示 ASIN 在该站点上不存在时也会返回 0 条 | 已修：marketplaces=['US']、asins 换成站点上真实存在的 ASIN，实测 1 条 | warning | 2026-10-10 | reports/live-sweep/latest.json |
+| amazon | apify_amazon_bsr_tracker | Apify run FAILED，日志 exit_code=91 | ValueError: marketplace 'amazon.com' not in ['AU','CA','DE','ES','FR','IT','JP','NL','UK','US'] —— marketplaces 收 ISO 国家码，不是站点域名。另外 ASIN 必须在该站点有 BSR 榜：同一个 ASIN 在不同时刻会时有时无（实测 B09G9FPHY6+US 一次 1 条、一次 0 条）。 | 已修：直接采用 Actor 自己的 prefill（asins=['0735211299','1612680194']、marketplaces=['UK']），实测 2 条。取 prefill 而不是自己挑值，这条对其它 Actor 同样适用。 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | amazon | apify_amazon_competitor_research | Apify run FAILED，日志 NO_USABLE_RESULTS | Actor 自述 No Amazon product pages were successfully extracted —— Amazon 反爬，加了 Apify 代理仍然失败 | Actor 侧/反爬问题，改入参无效；需要更强的住宅代理或换 Actor | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | reddit | apify_reddit_scraper | Apify run FAILED，日志 'startUrls and searches are empty' | endpoint 的 base_input 是 {}，而该 Actor 要求 startUrls 或 searches 至少给一个；演示参数里 searches 还写成了对象数组 | 已修：base_input 与演示参数都改为 searches=['python']（字符串数组）+ maxItems=5，实测 5 条 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | target | apify_target_products_scraper | Apify run 状态 FAILED | 入参已按 schema 修正（searchQueries/maxProductsPerSearch），run 能创建，但 Actor 自身以 FAILED 结束 | Actor 侧问题，改入参无效；需要读 run log 或换 Actor | blocker | 2026-10-09 | reports/live-sweep/latest.json |

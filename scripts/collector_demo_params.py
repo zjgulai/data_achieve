@@ -353,7 +353,7 @@ DEMO_PARAMS.update(
         "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/WATA-In-Ear-Waterproof-Sport-Earbud_1601685362945.html"]},
         "apify_amazon_bestsellers": {"categoryUrls": ["https://www.amazon.com/Best-Sellers/zgbs"], "maxItemsPerStartUrl": 5},
         "apify_amazon_competitor_research": {"asins": ["B09G9FPHY6"]},
-        "apify_amazon_bsr_tracker": {"asins": ["B09G9FPHY6"], "marketplaces": ["US"]},
+        "apify_amazon_bsr_tracker": {"asins": ["0735211299", "1612680194"], "marketplaces": ["UK"]},
         "apify_amazon_price_tracker": {"products": ["B09G9FPHY6"]},
         "apify_aliexpress_product_search_v2": {"queries": ["phone case"]},
         "apify_shopify_products_monitor": {"domains": ["allbirds.com"], "maxProducts": 5},
