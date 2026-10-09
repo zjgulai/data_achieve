@@ -31,6 +31,22 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_x_user_followers",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_user_followers 在 data.followers（list of 50），x 提取分支只找 timeline/trends；演示 username 曾是不存在的 python",
+      "workaround": "已修：新增 followers 分支，username 换成搜索结果里的真实账号。实测 0 -> 50 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

@@ -577,6 +577,10 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
             trends = inner.get("trends")
             if isinstance(trends, list) and trends:
                 return trends
+            # fetch_user_followers → data.followers (list)
+            followers = inner.get("followers")
+            if isinstance(followers, list) and followers:
+                return followers
         return []
 
     if platform in ("tiktok", "tiktok_shop"):
@@ -600,6 +604,13 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     candidate = deeper.get(key)
                     if isinstance(candidate, list) and candidate:
                         return candidate
+                # get_ads_detail → data.data 是单个广告对象
+                # fetch_live_room_info → data.data 是单个直播间对象
+                if isinstance(deeper, dict) and any(
+                    deeper.get(k) is not None
+                    for k in ("id", "id_str", "room_id", "ad_title", "owner")
+                ):
+                    return [deeper]
         return []
 
     if platform == "threads":
@@ -974,11 +985,19 @@ def _normalize_tiktok_live(
     owner = lives.get("author") if isinstance(lives.get("author"), dict) else {}
     if not owner:
         owner = anchor.get("owner_user_info") if isinstance(anchor.get("owner_user_info"), dict) else {}
+    if not owner:
+        # fetch_live_room_info → 单个直播间对象，主播在 item["owner"]
+        owner = item.get("owner") if isinstance(item.get("owner"), dict) else {}
     nickname = _safe_str(owner.get("nickname"))
-    uid = _safe_str(owner.get("uid"))
+    uid = _safe_str(owner.get("uid") or owner.get("id_str"))
     if nickname is None and uid is None:
         return _normalize_generic(item, "tiktok", collector_type)
-    room_id = _safe_str(lives.get("aweme_id")) or _safe_str(anchor.get("room_id"))
+    room_id = (
+        _safe_str(lives.get("aweme_id"))
+        or _safe_str(anchor.get("room_id"))
+        or _safe_str(item.get("id_str"))
+        or _safe_str(item.get("id"))
+    )
     return CollectorRawRecord(
         record_type="tiktok_live",
         source_url=f"https://www.tiktok.com/@{nickname}/live" if nickname else None,
@@ -987,9 +1006,10 @@ def _normalize_tiktok_live(
             "platform": "tiktok",
             "collector_type": collector_type,
             "schema_version": "tikhub_tiktok_live.v1",
-            "text": nickname or uid or "",
+            "text": nickname or _safe_str(item.get("title")) or uid or "",
             "uid": uid,
             "nickname": nickname,
+            "title": _safe_str(item.get("title")),
             "room_id": room_id,
             "live_info": anchor.get("live_info") or lives,
             "raw": item,
@@ -1032,7 +1052,7 @@ def _normalize_tiktok_ad(
 ) -> CollectorRawRecord | None:
     """ads/get_top_ads_spotlight 的条目：id / highlight / ctr / cost / video_info。"""
     ad_id = _safe_str(item.get("id"))
-    highlight = _safe_str(item.get("highlight"))
+    highlight = _safe_str(item.get("highlight") or item.get("highlight_text"))
     if ad_id is None and highlight is None:
         return _normalize_generic(item, "tiktok", collector_type)
     return CollectorRawRecord(
@@ -1210,7 +1230,11 @@ def _normalize_item(
     if platform in ("tiktok", "tiktok_shop"):
         if item.get("product_id"):
             return _normalize_tiktok_product(item, collector_type)
-        if isinstance(item.get("anchor"), dict) or isinstance(item.get("lives"), dict):
+        if (
+            isinstance(item.get("anchor"), dict)
+            or isinstance(item.get("lives"), dict)
+            or isinstance(item.get("owner"), dict)
+        ):
             return _normalize_tiktok_live(item, collector_type)
         if item.get("highlight") or (item.get("id") and item.get("video_info")):
             return _normalize_tiktok_ad(item, collector_type)

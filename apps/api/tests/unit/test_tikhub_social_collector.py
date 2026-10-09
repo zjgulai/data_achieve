@@ -968,6 +968,48 @@ def test_extract_items_threads_post_comments() -> None:
     assert record.content["text"] == "a reply"
 
 
+TIKTOK_LIVE_ROOM_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "status_code": 0,
+        "data": {
+            "id_str": "7694650101042170654",
+            "id": "7694650101042170654",
+            "title": "Morning Worship Prayer",
+            "owner": {"nickname": "Full Soul", "id_str": "7001"},
+        },
+        "extra": {},
+    },
+}
+
+X_FOLLOWERS_RESPONSE: dict[str, Any] = {
+    "code": 200,
+    "data": {
+        "followers_count": 1,
+        "followers": [{"user_id": "1153803242", "screen_name": "0xOrionVega", "description": "hi"}],
+        "next_cursor": "",
+    },
+}
+
+
+def test_extract_items_tiktok_live_room_detail() -> None:
+    """fetch_live_room_info 的 data.data 是单个直播间对象，不是列表。"""
+    items = _extract_items(TIKTOK_LIVE_ROOM_RESPONSE, "tiktok")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "tiktok", "tikhub_tiktok_live_room_detail")
+    assert record is not None
+    assert record.record_type == "tiktok_live"
+    assert record.content["room_id"] == "7694650101042170654"
+    assert record.content["nickname"] == "Full Soul"
+
+
+def test_extract_items_x_user_followers() -> None:
+    items = _extract_items(X_FOLLOWERS_RESPONSE, "x")
+    assert len(items) == 1
+    record = _normalize_item(items[0], "x", "tikhub_x_user_followers")
+    assert record is not None
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------

@@ -78,6 +78,22 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_reddit_post_comments",
+      "symptom": "运行成功但恒返回 0 条",
+      "cause": "fetch_post_comments 在 data.postInfoById（单条帖子 + commentForest），提取器只找 search/posts/SearchPost/CellGroup",
+      "workaround": "已修：新增 postInfoById 分支。实测 0 -> 1 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "normalizer",
+        "upstream-shape",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }
