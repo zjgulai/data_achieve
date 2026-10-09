@@ -235,6 +235,40 @@ class TestFirecrawlBatchScrapeCollector:
         assert cfg["urls"] == ["https://a.com", "https://b.com"]
 
     @pytest.mark.asyncio
+    async def test_collect_polls_async_job(self, monkeypatch):
+        """/v1/batch/scrape 首次只回 {"success", "id"}，必须再轮询才拿得到 data。
+
+        此前直接读 resp["data"] -> 永远 0 条（2026-10-09 实测）。
+        """
+        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
+        pages = [
+            {
+                "metadata": {"sourceURL": "https://example.com/", "title": "E"},
+                "markdown": "# E",
+            }
+        ]
+        with (
+            _post({"success": True, "id": "batch-1"}),
+            _poll({"status": "completed", "data": pages}),
+        ):
+            result = await FirecrawlBatchScrapeCollector(
+                config={"urls": ["https://example.com"]}
+            ).collect()
+        assert len(result.raw_records) == 1
+        assert result.raw_records[0].content["markdown"] == "# E"
+        assert not result.errors
+
+    @pytest.mark.asyncio
+    async def test_collect_without_id_reports_error(self, monkeypatch):
+        monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
+        with _post({"success": True}):
+            result = await FirecrawlBatchScrapeCollector(
+                config={"urls": ["https://example.com"]}
+            ).collect()
+        assert result.raw_records == []
+        assert any("neither data nor id" in e for e in result.errors)
+
+    @pytest.mark.asyncio
     async def test_collect_post_error_returns_error(self, monkeypatch):
         monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-test")
         with _post_error(CollectorError("network error")):

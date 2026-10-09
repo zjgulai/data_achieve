@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`9da54b1003787ca91075b447d1a0416d686a69cf0fc0ad876f02517989709223`
-> 坑点总数：46 · 覆盖平台：22
+> 自动生成，请勿手工编辑。catalog_digest：`999a6ddf983bfa2ed7925e0553fc2bd0f557929ab1b78b0161119b155046647f`
+> 坑点总数：47 · 覆盖平台：22
 
 ## actor_failed
 
@@ -47,6 +47,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | walmart | walmart | apify_walmart_scraper 运行成功但恒返回 0 条 | Actor 换成了 web_wanderer/walmart-product-scraper（旧的 apify/walmart-scraper 已下架），product_ids 用的是该 Actor 自己的 inputSchema.prefill 里的 walmart.ca 商品 URL，并配 reg=CA；仍返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。） | 视为上游侧不可用；需要 Walmart 数据时优先用 apify_walmart_product_scraper 并确认代理链路 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_product_scraper | 运行成功（run SUCCEEDED）但数据集 0 条 | e-commerce/walmart-product-detail-scraper 对演示商品 ID 没有返回结果；需按“先看原始响应”的方法确认是入参不匹配还是上游返回空页 | 改用真实商品 URL（而不是纯 ID）并确认 datasets 输出；同类 0 条问题不要默认是参数不足 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | robin_darkweb_search / _username / _email 返回 records=0（无报错） | Robin 暗网采集依赖 Tor 出口，生产容器未运行 Tor | 在服务器安装 tor 并以 INSTALL_OSINT=true 重建；否则应视为 config-gated 而非可采集 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| web | firecrawl_batch_scrape | 运行成功但恒返回 0 条（此前一度报 401，是旧证据） | /v1/batch/scrape 是异步接口，首次响应只有 {"success": true, "id": "..."}，没有 data；collector 直接读 resp["data"]，于是永远 0 条 | 已修：无 data 时用 /v1/batch/scrape/{id} 轮询到 completed 再取 data（_poll_job 增加 base_path 参数，crawl 仍用 /v1/crawl） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | wechat | tikhub_wechat_channels_video | 运行成功但 0 条（此前为 422：body.username 至少 10 字符） | 该端点是 POST-only 且 body 必填 username，取值必须是视频号 finder id（形如 v2_<hex>@finder）；演示值无法凭空构造 | 调用方需传真实 finder username；管道已修好（POST + 参数透传），仅缺真实业务 ID | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | youtube | youtube | 搜索类端点全部零记录（tikhub_youtube_search / tikhub_youtube_video_search，后者当前未进 catalog 包），而直接调用 TikHub 上游却返回 HTTP 200 且负载很大 | TikHub 上游改版会改变嵌套层级；collector 按固定的 JSON 路径取值，一旦层级变化就静默返回空列表，不会报错。 | 排查 zero-record 时先取原始响应确认形状（而不是反复调参数）：从服务器用 TIKHUB_API_KEY 直接 curl 上游，再比对 _extract_items 的取值路径。新增归一化分支要同时加单测（tests/unit/test_tikhub_social_collector.py 的 YOUTUBE_SEARCH_RESPONSE）。 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | youtube | tikhub_youtube_search | quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records） | TikHub 的 web_v2/get_general_search 把搜索结果放在 data.contents，而 contents 是 dict（结构为 twoColumnSearchResultsRenderer→…→videoRenderer），不是 list；归一化器只认 list，于是静默取到 0 条。参数本身正确，换关键词也不会变。 | 已在 _extract_items 中对 youtube 增加深度查找兜底：_deep_find_dicts(inner, "videoRenderer")，再由 _normalize_youtube_video 抽取 videoId/title/ownerText/viewCountText。实测同一响应由 0 条变为 18 条。 | blocker | 2026-10-09 | reports/live-sweep/latest.json |

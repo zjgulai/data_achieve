@@ -90,11 +90,15 @@ async def _get(path: str) -> dict[str, Any]:
     return r.json()
 
 
-async def _poll_job(job_id: str) -> dict[str, Any]:
-    """Poll a Firecrawl async job until it completes or times out."""
+async def _poll_job(job_id: str, base_path: str = "/v1/crawl") -> dict[str, Any]:
+    """Poll a Firecrawl async job until it completes or times out.
+
+    ``base_path`` 决定轮询哪个任务类型：crawl 用 /v1/crawl，batch scrape 用
+    /v1/batch/scrape（两者的 job id 不通用）。
+    """
     deadline = time.monotonic() + _MAX_POLL_SECONDS
     while time.monotonic() < deadline:
-        body = await _get(f"/v1/crawl/{job_id}")
+        body = await _get(f"{base_path}/{job_id}")
         status = body.get("status", "")
         if status in {"completed", "failed", "cancelled"}:
             return body
@@ -342,6 +346,27 @@ class FirecrawlBatchScrapeCollector(BaseCollector):
             errors.append(msg)
             logs.append(collector_log("firecrawl_collect_error", msg, level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
+        # /v1/batch/scrape 是异步的：首次响应只有 {"success": true, "id": "..."}，
+        # 没有 data。此前直接读 resp["data"] -> 永远 0 条（2026-10-09 实测）。
+        if not resp.get("data"):
+            job_id = resp.get("id")
+            if not job_id:
+                msg = f"Firecrawl batch scrape returned neither data nor id: {resp}"
+                errors.append(msg)
+                logs.append(collector_log("firecrawl_collect_error", msg, level="error"))
+                return CollectionResult(raw_records=[], logs=logs, errors=errors)
+            try:
+                resp = await _poll_job(str(job_id), base_path="/v1/batch/scrape")
+            except CollectorError as exc:
+                errors.append(str(exc))
+                logs.append(collector_log("firecrawl_collect_error", str(exc), level="error"))
+                return CollectionResult(raw_records=[], logs=logs, errors=errors)
+            if resp.get("status") not in {"completed", None}:
+                msg = f"Firecrawl batch scrape job {job_id!r} status={resp.get('status')!r}"
+                errors.append(msg)
+                logs.append(collector_log("firecrawl_collect_error", msg, level="error"))
+                return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
         pages = resp.get("data") or []
         records = [

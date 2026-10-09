@@ -164,6 +164,22 @@
         "anysearch",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "firecrawl_batch_scrape",
+      "symptom": "运行成功但恒返回 0 条（此前一度报 401，是旧证据）",
+      "cause": "/v1/batch/scrape 是异步接口，首次响应只有 {\"success\": true, \"id\": \"...\"}，没有 data；collector 直接读 resp[\"data\"]，于是永远 0 条",
+      "workaround": "已修：无 data 时用 /v1/batch/scrape/{id} 轮询到 completed 再取 data（_poll_job 增加 base_path 参数，crawl 仍用 /v1/crawl）",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "firecrawl",
+        "async-job",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }
