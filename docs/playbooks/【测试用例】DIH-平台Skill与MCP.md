@@ -19,6 +19,8 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 | DIH-SM-006 | UI | 网站-移动端详情-无横向溢出 | P1 |
 | DIH-SM-007 | 功能 | API-Playbook详情-返回对应平台 | P1 |
 | DIH-SM-008 | 异常 | 生产-MCP无Token-返回未授权 | P0 |
+| DIH-SM-014 | 异常 | 路由-quick-collect-未知 project_id 返回 400 | P0 |
+| DIH-SM-015 | 异常 | 归一化-非空响应不得产出零记录 | P0 |
 
 ## DIH-SM-001 生成-平台工具包-覆盖全部平台
 
@@ -142,3 +144,26 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 预期结果：空/空白 token 一律视为未配置。
 
 > **历史坑（2026-10-09 生产事故）**：compose 用 `${SCRAPY_MCP_TOKEN:-}` 注入，未配置时传入**空字符串**，pydantic 解析成 `SecretStr("")` → `accepted_mcp_tokens=("",)` 非空 → 中间件对**所有**请求返回 401，且任何 token 都通不过。生产 `/mcp/` 曾因此 100% 不可用。修复见 `config.py` 的 `_blank_mcp_token_is_unset` 与 `accepted_mcp_tokens` 过滤。
+
+## DIH-SM-014 路由-quick-collect-未知 project_id 返回 400
+
+前置条件：demo workspace 存在。
+
+测试步骤：
+
+1. 用不存在的 UUID 调 `POST /api/quick-collect`。
+2. 用真实 project_id + 不存在的 endpoint_type 调一次。
+
+预期结果：前者 400 且 `detail` 含 `Unknown project_id`（不是 500、不泄漏 SQL）；后者 400 且含 `Unknown endpoint_type`（证明 project 校验先于端点查表）。
+
+> **历史坑（2026-10-09 生产实测）**：`quick_collect` 从不校验 `body.project_id`，其值只进 `sources.project_id` / `collection_tasks.project_id` 外键。demo 项目被删后，任何沿用旧 id 的调用（含扫描脚本）都会撞 `ForeignKeyViolation` → **500 + 原始 SQL 栈**。已加显式 `get_project` 校验。回归测试见 `tests/integration/test_quick_collect_routes.py`（此前 quick-collect **零覆盖**）。
+
+## DIH-SM-015 归一化-非空响应不得产出零记录
+
+前置条件：可导入 `tikhub_social` 采集器。
+
+测试步骤：把线上真实响应（YouTube `data.contents` 为 dict、Reddit `data.search` 为 dict）喂给 `_extract_items` / `_normalize_item`。
+
+预期结果：YouTube 取到 `videoRenderer` 条目、Reddit 取到 `SearchPost.post` 条目，且 `text` 非空。
+
+> **历史坑（2026-10-09 生产实测）**：上游把嵌套结构由 list 改成 dict 后，`_extract_items` 按固定路径取值**静默返回空列表**，端点仍报 `status=success`、`records_count=0`；从参数侧排查永远查不出来。修复：`_deep_find_dicts` / `_deep_find_typename` 深度查找兜底 + `_normalize_youtube_video` / `_normalize_reddit_post`。实测 `tikhub_youtube_search` 0→11、`tikhub_reddit_search` 0→7。

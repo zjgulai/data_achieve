@@ -100,6 +100,11 @@ docker compose --env-file "$ENV" restart edge        # ⚠️ 必须，见下
 > **坑 2**：`git fetch origin <branch>:refs/heads/<branch>` 在当前分支上会 `fatal: Refusing to fetch into current branch`；
 > 用 `git fetch origin <branch> && git reset --hard FETCH_HEAD`。
 > **坑 3**：`pgrep -f "docker compose.*build"` 会匹配到你自己的 SSH 命令行本身 → 误判"还在构建"；用镜像 `Created` 时间戳判断更可靠。
+> **坑 4**：quick-collect 的 `project_id` 必须属于 demo workspace。传一个**已不存在**的 project id（例如此前扫描用的 demo id 被删掉后）会撞 `sources.project_id` 外键 → 500 + 原始 SQL 栈。
+> 2026-10-09 已改为 400 `Unknown project_id`；扫描前先 `curl $B/api/projects | jq '.[].id'` 取一个真实 id，别硬编码。
+> **坑 5**：本地 `.venv` 是 **editable 安装**，可能指向另一个检出（`python -c "import data_intelligence_hub as m; print(m.__file__)"` 可确认）。
+> 在 worktree 里跑 `python ../scripts/*.py` 时 `sys.path[0]` 是脚本目录而非 `src`，载入的可能是**别的检出的代码** → 生成/契约测试结果全部无效。
+> 必须显式 `PYTHONPATH=<worktree>/apps/api/src`。（`pytest` 不受影响：`pyproject.toml` 里有 `pythonpath=["src"]`。）
 
 发布后自检：
 

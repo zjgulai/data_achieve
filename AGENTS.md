@@ -315,9 +315,12 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **坑点单一事实源**：`apps/api/src/data_intelligence_hub/platform_packages/notes/<platform_id>.json`
   → 生成器把它渲染进每平台 `SKILL.md` / `README.md` / `references/playbook.md`，
   并经 `GET /api/platform-packages/<id>` 与控制台 `/skills/<id>` 展示。
-- **两个必须记住的坑**：
+- **四个必须记住的坑**：
   1. catalog 的 `status="verified"` 只是静态声明，**不等于实测通过**；真实状态看 `/api/collectors/docs` 与 `/providers/status`（证据来自 `label=[test] <endpoint_type>` 的 quick-collect 运行）。
   2. 端点归属的 `platform` 未必等于 collector 名（例：Exa 端点的 platform 是 `web`）；写坑点/建 Skill 包时以 catalog 的 `platform` 字段为准。
+  3. **`success` + `records_count=0` 通常是归一化形状过时，不是参数问题**。TikHub 会改嵌套层级（YouTube `data.contents` 由 list 变 dict、Reddit `data.search` 同理）；`_extract_items` 按固定路径取值会静默返回空列表。排查时**先取原始响应确认形状**（服务器上直接用 `TIKHUB_API_KEY` curl 上游），别反复调 `params`。
+  4. `quick-collect` 的 `project_id` 必须属于 demo workspace；此前不校验，传错值直接撞外键 → **500 + 原始 SQL 栈**（2026-10-09 已改成 400 `Unknown project_id`）。
+- **坑点写错端点名会被静默丢弃吗**：不会了。`builder` 现在对"target 命中不了任何端点"和"坑点文件 platform_id 对不上平台包"**直接报错**（2026-10-09 前是静默忽略，写错的坑点会看起来已沉淀却从不出现）。
 - **MCP 鉴权**：`SCRAPY_MCP_TOKEN=`（空串）曾被当成有效 token，导致 `/mcp/` 对所有人 401（2026-10-09 已修）。生产要用 MCP 就必须**显式设置**一个非空 `SCRAPY_MCP_TOKEN`（或 `SCRAPY_MCP_TOKENS_JSON`）；不设置则中间件放行（等价开放）。
 - **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`，只允许出现 `deploy/scrapy-luteos-rebuild` 既有基线内的失败。
 

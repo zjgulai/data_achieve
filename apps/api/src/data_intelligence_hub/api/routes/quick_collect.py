@@ -12,6 +12,7 @@ from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.collectors import get_collector_by_type
+from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.collector_catalog import (
     ensure_collectors_seeded,
@@ -716,6 +717,14 @@ async def quick_collect(
     Returns the completed (or failed) TaskRun synchronously.
     Suitable for small quick-collect requests (up to ~30 s) from the console UI.
     """
+    # 必须先确认 project 存在：sources/tasks 都有 project_id 外键，直接插入会撞
+    # ForeignKeyViolation → 500 并把原始 SQL 栈回给调用方（2026-10-09 生产实测）。
+    if await get_project(session, workspace.id, body.project_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown project_id: {body.project_id}",
+        )
+
     collector_type = _ENDPOINT_TO_COLLECTOR.get(body.endpoint_type)
     if collector_type is None:
         raise HTTPException(
