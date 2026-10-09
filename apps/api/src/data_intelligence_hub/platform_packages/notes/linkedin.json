@@ -31,6 +31,38 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_linkedin_company_search_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 searchQuery/maxItems，而 khadinakbar/linkedin-company-search-scraper 的键是 keywords/maxResults；且 keywords 必须是**字符串**（传数组会被 400 must be string 拒绝）",
+      "workaround": "已修：keywords=\"software company\" + maxResults=3，实测 3 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_linkedin_jobs_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 title/location/maxJobs，而 freshdata/linkedin-job-scraper 的键是 keywords/geo_code/date_posted 等",
+      "workaround": "已修：keywords=\"Python Developer\"，实测 1 条（结果是响应信封，字段较浅）",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

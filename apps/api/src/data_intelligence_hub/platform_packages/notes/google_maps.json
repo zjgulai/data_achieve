@@ -1,0 +1,21 @@
+{
+  "platform_id": "google_maps",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_google_maps_reviews_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示 startUrls 用的是 maps.google.com/maps?cid=… 这种短链，Actor 要求含 /maps/search、/maps/place 或 /maps/review 的完整 URL",
+      "workaround": "已修：换成 Actor prefill 里的 /maps/place/… 完整链接，实测返回记录",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
+    }
+  ]
+}

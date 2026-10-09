@@ -1,0 +1,20 @@
+{
+  "platform_id": "google_news",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_google_news_media_search",
+      "symptom": "曾报运行成功但 0 条",
+      "cause": "DB 里是 10:54 扫描的旧证据；用 keywords/maxArticles 直连 Actor 实测能返回 1 条",
+      "workaround": "重跑即恢复，属证据过期而非代码问题",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "stale-evidence"
+      ]
+    }
+  ]
+}

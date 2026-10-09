@@ -5,14 +5,15 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`e110a078ba9a5e37fbbf98cb3992c43ed9c76a690320e6801411371bd7b59bda`
-> 坑点总数：63 · 覆盖平台：23
+> 自动生成，请勿手工编辑。catalog_digest：`eecf0ab408b3e35e382805e64143f0ed940b1b366ce5bffb011774d83eedd7fd`
+> 坑点总数：71 · 覆盖平台：27
 
 ## actor_failed
 
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | amazon | amazon | apify_amazon_bsr_tracker、apify_amazon_competitor_research 的 Apify run 状态为 FAILED | 入参/代理被 Amazon 拒绝，失败发生在 Actor 内部（run 已创建），与 403 类不同——需要读 run log 才能定位 | 用 GET /v2/actor-runs/<runId>/log 看 Actor 自身日志；apify_amazon_product_scraper 与 apify_amazon_reviews_scraper 已验证可用，可作首选替代 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| target | apify_target_products_scraper | Apify run 状态 FAILED | 入参已按 schema 修正（searchQueries/maxProductsPerSearch），run 能创建，但 Actor 自身以 FAILED 结束 | Actor 侧问题，改入参无效；需要读 run log 或换 Actor | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 
 ## config_gated
 
@@ -38,8 +39,14 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | ebay | apify_ebay_sold_listings_scraper | 运行成功但 0 条记录 | caffein.dev/ebay-sold-listings 的输入是搜索链接（Store 未提供示例入参，exampleRunInput 为 {"helloWorld":123}），演示参数 searchQuery 未必被识别 | 按“先看原始响应”的方法核对数据集；必要时改传 startUrls 形式的已售列表 URL | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| ebay | apify_ebay_sold_listings_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，Actor 的键是 keywords/count | 已修：keywords=["laptop"] + count=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | facebook | facebook | 曾有一个 apify_facebook_group_scraper 端点：运行成功但恒返回 0 条 | whoareyouanas/facebook-group-scraper 的入参已按 schema 补齐（startUrls 必填），但用演示群组和公开群组 URL 都返回空数据集——Actor 侧能力问题 | 该端点已于 2026-10-09 从目录下线。要采 Facebook 群组内容请用 apify_facebook_posts_scraper（已验证返回记录）；判定同类问题的方法：同一 Actor 用自己文档里的公开样例 URL 仍返回空，就不要再调参数 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| glassdoor | apify_glassdoor_scraper | 运行成功但数据集 0 条 | 演示参数用了 keyword，而 memo23/glassdoor-scraper-ppr 靠 command(reviews/interviews/…) + startUrls（Glassdoor 公司页 URL）取数 | 已修：command=reviews + startUrls 用 Actor 自己的 prefill URL + maxItems=3 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| google_maps | apify_google_maps_reviews_scraper | 运行成功但数据集 0 条 | 演示 startUrls 用的是 maps.google.com/maps?cid=… 这种短链，Actor 要求含 /maps/search、/maps/place 或 /maps/review 的完整 URL | 已修：换成 Actor prefill 里的 /maps/place/… 完整链接，实测返回记录 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| google_news | apify_google_news_media_search | 曾报运行成功但 0 条 | DB 里是 10:54 扫描的旧证据；用 keywords/maxArticles 直连 Actor 实测能返回 1 条 | 重跑即恢复，属证据过期而非代码问题 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | linkedin | tikhub_linkedin_* 多个端点返回 records=0（无报错），apify_linkedin_jobs/company_search 亦为空 | LinkedIn 上游对无有效会话的请求返回空结果集；演示参数不足以触发真实数据 | 视为“需真实会话/参数”的高不稳定端点；不要据此判定能力可用，接入前用小样本人工验证 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| linkedin | apify_linkedin_company_search_scraper | 运行成功但数据集 0 条 | 演示参数用了 searchQuery/maxItems，而 khadinakbar/linkedin-company-search-scraper 的键是 keywords/maxResults；且 keywords 必须是**字符串**（传数组会被 400 must be string 拒绝） | 已修：keywords="software company" + maxResults=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| linkedin | apify_linkedin_jobs_scraper | 运行成功但数据集 0 条 | 演示参数用了 title/location/maxJobs，而 freshdata/linkedin-job-scraper 的键是 keywords/geo_code/date_posted 等 | 已修：keywords="Python Developer"，实测 1 条（结果是响应信封，字段较浅） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | linkedin | tikhub_linkedin_company_profile | 运行成功但恒返回 0 条 | get_company_profile 的 data 直接就是单个公司对象（id/name/followers/about/description/url），不是列表；没有 linkedin 分支时提取返回空 | 已修：_extract_items 增加 linkedin 分支（有 name/id 时返回 [data]） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | reddit | 搜索结果零记录；帖子字段名与通用归一化器预期不一致 | Reddit 走的是 GraphQL 风格响应：标题字段是 postTitle（不是 title）、正文在 content.markdown、作者在 authorInfo.name、时间在 createdAt（形如 2026-10-03T19:08:43.382000+0000）。_normalize_generic 认不出这些字段，即便取到条目也只会得到空 text。 | reddit 已单独走 _normalize_reddit_post；新增 reddit 端点时先确认字段名，不要直接复用 _normalize_generic。 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | reddit | reddit | apify_reddit_ads_scraper 运行成功但恒返回 0 条 | Actor 的 query 是必填键，已补齐；但 lexis-solutions/reddit-ads-scraper 的 schema 自己写明“没有 ads.reddit.com 会话 cookie 时最多返回约 30 条”，实测无 cookie 时直接返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。） | 按 Actor 入参 cookies 传入登录态 cookie（需含 token_v2）后才可能出数据；在此之前视为不可用 | warning | 2026-10-09 | reports/live-sweep/latest.json |
@@ -58,6 +65,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | tiktok | tikhub_tiktok_top_ads | 运行成功但恒返回 0 条 | get_top_ads_spotlight 放在 data.data.materials（list），字段是 id/highlight/ctr/cost/like/video_info | 已修：_normalize_tiktok_ad 抽 material_id/highlight/ctr/like/video_info。同一响应由 0 条变 5 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | walmart | apify_walmart_scraper 运行成功但恒返回 0 条 | Actor 换成了 web_wanderer/walmart-product-scraper（旧的 apify/walmart-scraper 已下架），product_ids 用的是该 Actor 自己的 inputSchema.prefill 里的 walmart.ca 商品 URL，并配 reg=CA；仍返回空数据集。（该 endpoint_type 只在 quick-collect 表里、不在 catalog 里，因此坑点只能挂在平台级。） | 视为上游侧不可用；需要 Walmart 数据时优先用 apify_walmart_product_scraper 并确认代理链路 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_product_scraper | 运行成功（run SUCCEEDED）但数据集 0 条 | e-commerce/walmart-product-detail-scraper 对演示商品 ID 没有返回结果；需按“先看原始响应”的方法确认是入参不匹配还是上游返回空页 | 改用真实商品 URL（而不是纯 ID）并确认 datasets 输出；同类 0 条问题不要默认是参数不足 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| walmart | apify_walmart_product_scraper | 运行成功但数据集 0 条 | 演示参数用了 productIds，而 e-commerce/walmart-product-detail-scraper 的键是 startUrls + maxProductsPerStartUrl | 已修：startUrls=[{url: https://walmart.com/search?q=tshirt}] + maxProductsPerStartUrl=3，实测 3 条 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | robin_darkweb_search / _username / _email 返回 records=0（无报错） | Robin 暗网采集依赖 Tor 出口，生产容器未运行 Tor | 在服务器安装 tor 并以 INSTALL_OSINT=true 重建；否则应视为 config-gated 而非可采集 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | web | firecrawl_batch_scrape | 运行成功但恒返回 0 条（此前一度报 401，是旧证据） | /v1/batch/scrape 是异步接口，首次响应只有 {"success": true, "id": "..."}，没有 data；collector 直接读 resp["data"]，于是永远 0 条 | 已修：无 data 时用 /v1/batch/scrape/{id} 轮询到 completed 再取 data（_poll_job 增加 base_path 参数，crawl 仍用 /v1/crawl） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | wechat | tikhub_wechat_channels_video | 运行成功但 0 条（此前为 422：body.username 至少 10 字符） | 该端点是 POST-only 且 body 必填 username，取值必须是视频号 finder id（形如 v2_<hex>@finder）；演示值无法凭空构造 | 调用方需传真实 finder username；管道已修好（POST + 参数透传），仅缺真实业务 ID | warning | 2026-10-09 | reports/live-sweep/latest.json |

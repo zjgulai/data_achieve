@@ -30,6 +30,22 @@
         "apify",
         "empty-records"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_ebay_sold_listings_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 searchQuery/maxItems，Actor 的键是 keywords/count",
+      "workaround": "已修：keywords=[\"laptop\"] + count=3，实测 3 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }

@@ -421,7 +421,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
     ),
     "apify_linkedin_company_posts_scraper": ("harvestapi/linkedin-company-posts", {}),
-    "apify_linkedin_jobs_scraper": ("freshdata/linkedin-job-scraper", {}),
+    "apify_linkedin_jobs_scraper": (
+        "freshdata/linkedin-job-scraper",
+        {"keywords": "Python Developer"},
+    ),
     "apify_linkedin_company_employees_scraper": (
         "apimaestro/linkedin-company-employees-scraper-no-cookies",
         {
@@ -429,7 +432,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
             "max_employees": 3,
         },
     ),
-    "apify_linkedin_company_search_scraper": ("khadinakbar/linkedin-company-search-scraper", {}),
+    "apify_linkedin_company_search_scraper": (
+        "khadinakbar/linkedin-company-search-scraper",
+        # 该 Actor 的 keywords 要**字符串**（传数组会 400 must be string）
+        {"keywords": "software company", "maxResults": 3},
+    ),
     "apify_x_tweet_scraper": ("apidojo/tweet-scraper", {}),
     "apify_threads_profile_scraper": (
         "apify/threads-profile-api-scraper",
@@ -448,7 +455,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "junglee/amazon-reviews-scraper",
         {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
     ),
-    "apify_walmart_product_scraper": ("e-commerce/walmart-product-detail-scraper", {}),
+    "apify_walmart_product_scraper": (
+        "e-commerce/walmart-product-detail-scraper",
+        {"startUrls": [{"url": "https://walmart.com/search?q=tshirt"}], "maxProductsPerStartUrl": 3},
+    ),
     "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
     "apify_temu_products_scraper": (
         "amit123/temu-products-scraper",
@@ -472,7 +482,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
             "proxyConfig": {"useApifyProxy": True},
         },
     ),
-    "apify_ebay_sold_listings_scraper": ("caffein.dev/ebay-sold-listings", {}),
+    "apify_ebay_sold_listings_scraper": (
+        "caffein.dev/ebay-sold-listings",
+        {"keywords": ["laptop"], "count": 3},
+    ),
     "apify_etsy_scraper": ("automation-lab/etsy-scraper", {"searchQuery": "handmade mug"}),
     "apify_shopify_scraper": (
         "clearpath/shopify-store-leads",
@@ -484,7 +497,13 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "python programming\nai tools", "maxPagesPerQuery": 1},
     ),
     "apify_google_maps_scraper": ("compass/crawler-google-places", {}),
-    "apify_google_maps_reviews_scraper": ("compass/Google-Maps-Reviews-Scraper", {}),
+    "apify_google_maps_reviews_scraper": (
+        "compass/Google-Maps-Reviews-Scraper",
+        {
+            "startUrls": [{"url": "https://www.google.com/maps/place/Yellowstone+National+Park/@44.5857951,-110.5140571,9z/data=!3m1!4b1!4m5!3m4!1s0x5351e55555555555:0xaca8f930348fe1bb!8m2!3d44.427963!4d-110.588455?hl=en-GB"}],
+            "maxReviews": 3,
+        },
+    ),
     "apify_google_trends_scraper": ("apify/google-trends-scraper", {}),
     "apify_google_news_media_search": (
         "data_xplorer/google-news-scraper-fast",
@@ -549,7 +568,14 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/google-search-scraper",
         {"queries": "site:crunchbase.com openai", "maxPagesPerQuery": 1},
     ),
-    "apify_glassdoor_scraper": ("memo23/glassdoor-scraper-ppr", {}),
+    "apify_glassdoor_scraper": (
+        "memo23/glassdoor-scraper-ppr",
+        {
+            "command": "reviews",
+            "startUrls": [{"url": "https://www.glassdoor.fr/Avis/Aza%C3%A9-Avis-E1360610.htm"}],
+            "maxItems": 3,
+        },
+    ),
     "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
     "apify_bluesky_scraper": (
         "fatihtahta/All-In-One-Bluesky-Scraper",
@@ -601,7 +627,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "pratikdani/tiktok-shop-search-scraper",
         {"keyword": "laptop", "country_code": "US"},
     ),
-    "apify_target_products_scraper": ("bovi/target-products", {}),
+    "apify_target_products_scraper": (
+        "bovi/target-products",
+        {"searchQueries": ["coffee maker"], "maxProductsPerSearch": 3},
+    ),
     "apify_facebook_marketplace_scraper": (
         "apify/facebook-marketplace-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/marketplace/search?query=laptop"}]},

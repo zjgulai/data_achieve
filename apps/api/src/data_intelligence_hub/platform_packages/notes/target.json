@@ -1,0 +1,20 @@
+{
+  "platform_id": "target",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_target_products_scraper",
+      "symptom": "Apify run 状态 FAILED",
+      "cause": "入参已按 schema 修正（searchQueries/maxProductsPerSearch），run 能创建，但 Actor 自身以 FAILED 结束",
+      "workaround": "Actor 侧问题，改入参无效；需要读 run log 或换 Actor",
+      "failure_class": "actor_failed",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "actor-failed"
+      ]
+    }
+  ]
+}

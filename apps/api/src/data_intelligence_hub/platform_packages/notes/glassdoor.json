@@ -1,0 +1,21 @@
+{
+  "platform_id": "glassdoor",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_glassdoor_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 keyword，而 memo23/glassdoor-scraper-ppr 靠 command(reviews/interviews/…) + startUrls（Glassdoor 公司页 URL）取数",
+      "workaround": "已修：command=reviews + startUrls 用 Actor 自己的 prefill URL + maxItems=3",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
+    }
+  ]
+}

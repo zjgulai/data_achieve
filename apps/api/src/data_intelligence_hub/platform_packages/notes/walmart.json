@@ -46,6 +46,22 @@
         "empty-records",
         "actor-broken"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_walmart_product_scraper",
+      "symptom": "运行成功但数据集 0 条",
+      "cause": "演示参数用了 productIds，而 e-commerce/walmart-product-detail-scraper 的键是 startUrls + maxProductsPerStartUrl",
+      "workaround": "已修：startUrls=[{url: https://walmart.com/search?q=tshirt}] + maxProductsPerStartUrl=3，实测 3 条",
+      "failure_class": "empty_records",
+      "severity": "blocker",
+      "verified_at": "2026-10-09",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "input-schema",
+        "fixed-2026-10-09"
+      ]
     }
   ]
 }
