@@ -178,6 +178,8 @@ services:
   proxy_rotator:
     container_name: data_achieve_scrapy_proxy_rotator
     image: kitabisa/mubeng:latest
+    profiles:
+      - proxy
     command: ["-a", "0.0.0.0:8080", "-f", "/proxies.txt", "-r", "30", "-v"]
     volumes:
       - ./proxies.txt:/proxies.txt:ro
