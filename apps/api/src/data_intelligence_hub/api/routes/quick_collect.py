@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from data_intelligence_hub.api.deps import SessionDep
+from data_intelligence_hub.collectors.apify_actor import DEFAULT_MAX_TOTAL_CHARGE_USD
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.collectors import get_collector_by_type
@@ -91,47 +92,31 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "tikhub_zhihu_search": "tikhub_social",
     "tikhub_zhihu_question_answers": "tikhub_social",
     # Apify Social (18 endpoints)
-    "apify_tiktok": "apify_actor",
     "apify_tiktok_scraper": "apify_actor",
     "apify_tiktok_comments_scraper": "apify_actor",
     "apify_tiktok_shop_scraper": "apify_actor",
-    "apify_instagram": "apify_actor",
     "apify_instagram_scraper": "apify_actor",
     "apify_instagram_profile_scraper": "apify_actor",
-    "apify_instagram_hashtag_scraper": "apify_actor",
-    "apify_youtube": "apify_actor",
     "apify_youtube_scraper": "apify_actor",
     "apify_youtube_comments_scraper": "apify_actor",
-    "apify_youtube_comment_scraper": "apify_actor",
     "apify_reddit_scraper": "apify_actor",
-    "apify_reddit_community_monitor": "apify_actor",
     "apify_facebook_posts_scraper": "apify_actor",
     "apify_facebook_comments_scraper": "apify_actor",
-    "apify_linkedin_profile_scraper": "apify_actor",
-    "apify_linkedin_company_scraper": "apify_actor",
     "apify_linkedin_company_posts_scraper": "apify_actor",
     "apify_linkedin_jobs_scraper": "apify_actor",
     "apify_linkedin_company_employees_scraper": "apify_actor",
     "apify_linkedin_company_search_scraper": "apify_actor",
-    "apify_x_scraper": "apify_actor",
     "apify_x_tweet_scraper": "apify_actor",
-    "apify_threads_scraper": "apify_actor",
     "apify_threads_profile_scraper": "apify_actor",
     "apify_threads_posts_scraper": "apify_actor",
-    "apify_pinterest_scraper": "apify_actor",
-    "apify_snapchat_profile_scraper": "apify_actor",
-    "apify_snapchat_scraper": "apify_actor",
     # Apify E-commerce (13 endpoints)
     "apify_amazon_product_scraper": "apify_actor",
-    "apify_amazon_review_scraper": "apify_actor",
     "apify_amazon_reviews_scraper": "apify_actor",
-    "apify_walmart_scraper": "apify_actor",
     "apify_walmart_product_scraper": "apify_actor",
     "apify_walmart_reviews_scraper": "apify_actor",
     "apify_temu_products_scraper": "apify_actor",
     "apify_shein_product_scraper": "apify_actor",
     "apify_aliexpress_products_scraper": "apify_actor",
-    "apify_ebay_scraper": "apify_actor",
     "apify_ebay_product_scraper": "apify_actor",
     "apify_ebay_sold_listings_scraper": "apify_actor",
     "apify_etsy_scraper": "apify_actor",
@@ -141,49 +126,30 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_google_maps_scraper": "apify_actor",
     "apify_google_maps_reviews_scraper": "apify_actor",
     "apify_google_trends_scraper": "apify_actor",
-    "apify_google_shopping_scraper": "apify_actor",
-    "apify_google_play_scraper": "apify_actor",
     "apify_google_news_media_search": "apify_actor",
     "apify_google_news_scraper": "apify_actor",
     "apify_google_ai_overviews_scraper": "apify_actor",
     # Apify AI Search (6 endpoints)
-    "apify_perplexity_scraper": "apify_actor",
     "apify_perplexity_search_scraper": "apify_actor",
-    "apify_chatgpt_scraper": "apify_actor",
     "apify_chatgpt_search_scraper": "apify_actor",
-    "apify_gemini_scraper": "apify_actor",
     "apify_gemini_search_scraper": "apify_actor",
     # Apify Ads (10 endpoints)
-    "apify_google_ads_transparency_scraper": "apify_actor",
     "apify_google_ads_scraper": "apify_actor",
-    "apify_meta_ads_library_scraper": "apify_actor",
     "apify_facebook_ads_scraper": "apify_actor",
-    "apify_tiktok_ads_library_scraper": "apify_actor",
     "apify_tiktok_ads_scraper": "apify_actor",
-    "apify_linkedin_ads_scraper": "apify_actor",
-    "apify_reddit_ads_scraper": "apify_actor",
-    "apify_x_ads_transparency_scraper": "apify_actor",
     "apify_pinterest_ads_scraper": "apify_actor",
     "apify_snapchat_ads_scraper": "apify_actor",
     # Apify B2B (13 endpoints)
-    "apify_trustpilot_scraper": "apify_actor",
     "apify_trustpilot_reviews_scraper": "apify_actor",
-    "apify_appstore_scraper": "apify_actor",
     "apify_appstore_reviews_scraper": "apify_actor",
     "apify_google_play_reviews_scraper": "apify_actor",
-    "apify_tripadvisor_scraper": "apify_actor",
     "apify_tripadvisor_reviews_scraper": "apify_actor",
-    "apify_yelp_scraper": "apify_actor",
     "apify_booking_scraper": "apify_actor",
     "apify_airbnb_scraper": "apify_actor",
     "apify_crunchbase_scraper": "apify_actor",
-    "apify_producthunt_scraper": "apify_actor",
-    "apify_product_hunt_scraper": "apify_actor",
     "apify_glassdoor_scraper": "apify_actor",
     "apify_hacker_news_scraper": "apify_actor",
     "apify_bluesky_scraper": "apify_actor",
-    "apify_telegram_scraper": "apify_actor",
-    "apify_indeed_scraper": "apify_actor",
     "apify_indeed_jobs_scraper": "apify_actor",
     # Apify Media (7 endpoints)
     "apify_instagram_media_profile_scraper": "apify_actor",
@@ -191,15 +157,12 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_youtube_media_channel_scraper": "apify_actor",
     "apify_facebook_media_page_scraper": "apify_actor",
     "apify_x_media_account_scraper": "apify_actor",
-    "apify_pinterest_media_profile_scraper": "apify_actor",
     # Apify Open Web (3 endpoints)
     "apify_website_content_crawler": "apify_actor",
-    "apify_web_scraper": "apify_actor",
     "apify_rag_web_browser": "apify_actor",
     "apify_tiktok_transcript_extractor": "apify_actor",
     "apify_youtube_transcript_scraper": "apify_actor",
     "apify_tiktok_creative_center": "apify_actor",
-    "apify_facebook_group_scraper": "apify_actor",
     "apify_similarweb_scraper": "apify_actor",
     "apify_tiktok_shop_search_scraper": "apify_actor",
     "apify_target_products_scraper": "apify_actor",
@@ -220,7 +183,6 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_aliexpress_product_search_v2": "apify_actor",
     # 独立站竞品 (2 endpoints)
     "apify_shopify_products_monitor": "apify_actor",
-    "apify_shopify_full_catalog":     "apify_actor",
     # GitHub (2 endpoints)
     "github_repo": "github_repo",
     "github_topic": "github_topic",
@@ -433,21 +395,14 @@ def build_apify_actor_input(base_input: dict[str, Any], params: dict[str, Any]) 
 
 _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Social
-    "apify_tiktok": ("clockworks/free-tiktok-scraper", {}),
     "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),
     "apify_tiktok_comments_scraper": ("clockworks/tiktok-comments-scraper", {}),
     "apify_tiktok_shop_scraper": ("clockworks/tiktok-shop-scraper", {"keywords": ["laptop"]}),
-    "apify_instagram": ("apify/instagram-scraper", {}),
     "apify_instagram_scraper": ("apify/instagram-scraper", {}),
     "apify_instagram_profile_scraper": (
         "apify/instagram-profile-scraper",
         {"usernames": ["humansofny"]},
     ),
-    "apify_instagram_hashtag_scraper": (
-        "apify/instagram-hashtag-scraper",
-        {"hashtags": ["natgeo"]},
-    ),
-    "apify_youtube": ("streamers/youtube-scraper", {}),
     "apify_youtube_scraper": (
         "streamers/youtube-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxResults": 3},
@@ -456,15 +411,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "streamers/youtube-comments-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
     ),
-    "apify_youtube_comment_scraper": (
-        "streamers/youtube-comments-scraper",
-        {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
-    ),
     "apify_reddit_scraper": ("trudax/reddit-scraper-lite", {}),
-    "apify_reddit_community_monitor": (
-        "trudax/reddit-scraper-lite",
-        {"searches": ["python"], "maxItems": 5},
-    ),
     "apify_facebook_posts_scraper": (
         "apify/facebook-posts-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
@@ -472,15 +419,6 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_facebook_comments_scraper": (
         "apify/facebook-comments-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
-    ),
-    "apify_linkedin_profile_scraper": (
-        "harvestapi/linkedin-profile-scraper",
-        {"profileScraperMode": "Profile details no email ($4 per 1k)",
-         "queries": ["guido-van-rossum"]},
-    ),
-    "apify_linkedin_company_scraper": (
-        "harvestapi/linkedin-company",
-        {"companies": ["https://www.linkedin.com/company/python-software-foundation/"]},
     ),
     "apify_linkedin_company_posts_scraper": ("harvestapi/linkedin-company-posts", {}),
     "apify_linkedin_jobs_scraper": ("freshdata/linkedin-job-scraper", {}),
@@ -492,12 +430,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         },
     ),
     "apify_linkedin_company_search_scraper": ("khadinakbar/linkedin-company-search-scraper", {}),
-    "apify_x_scraper": ("apidojo/tweet-scraper", {}),
     "apify_x_tweet_scraper": ("apidojo/tweet-scraper", {}),
-    "apify_threads_scraper": (
-        "futurizerush/meta-threads-scraper",
-        {"mode": "user", "usernames": ["zuck"], "max_posts": 10},
-    ),
     "apify_threads_profile_scraper": (
         "apify/threads-profile-api-scraper",
         {"usernames": ["guinnessworldrecords"]},
@@ -506,34 +439,14 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "futurizerush/meta-threads-scraper",
         {"mode": "user", "usernames": ["zuck"], "max_posts": 10},
     ),
-    "apify_pinterest_scraper": (
-        "danielmilevski9/pinterest-crawler",
-        {"startUrls": ["pinterest.com/poltronafrau"], "proxyConfig": {"useApifyProxy": True}},
-    ),
-    "apify_snapchat_profile_scraper": (
-        "tri_angle/snapchat-scraper",
-        {"profilesInput": ["fcbarcelona"]},
-    ),
-    "apify_snapchat_scraper": (
-        "tri_angle/snapchat-scraper",
-        {"profilesInput": ["fcbarcelona"]},
-    ),
     # E-commerce
     "apify_amazon_product_scraper": (
         "junglee/amazon-crawler",
         {"categoryOrProductUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}]},
     ),
-    "apify_amazon_review_scraper": (
-        "junglee/amazon-reviews-scraper",
-        {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
-    ),
     "apify_amazon_reviews_scraper": (
         "junglee/amazon-reviews-scraper",
         {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
-    ),
-    "apify_walmart_scraper": (
-        "web_wanderer/walmart-product-scraper",
-        {"product_ids": ["https://www.walmart.ca/en/ip/Samsung-Galaxy-Watch6-Classic-GPS-Brand-New-47mm-Smartwatch-with-Heart-Rate-Mon"], "reg": "CA"},
     ),
     "apify_walmart_product_scraper": ("e-commerce/walmart-product-detail-scraper", {}),
     "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
@@ -550,14 +463,6 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_aliexpress_products_scraper": (
         "devcake/aliexpress-products-scraper",
         {"searchQueries": ["laptop stand"]},
-    ),
-    "apify_ebay_scraper": (
-        "dtrungtin/ebay-items-scraper",
-        {
-            "startUrls": [{"url": "https://www.ebay.com/sch/i.html?_nkw=laptop"}],
-            "maxItems": 5,
-            "proxyConfig": {"useApifyProxy": True},
-        },
     ),
     "apify_ebay_product_scraper": (
         "dtrungtin/ebay-items-scraper",
@@ -581,14 +486,6 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_google_maps_scraper": ("compass/crawler-google-places", {}),
     "apify_google_maps_reviews_scraper": ("compass/Google-Maps-Reviews-Scraper", {}),
     "apify_google_trends_scraper": ("apify/google-trends-scraper", {}),
-    "apify_google_shopping_scraper": (
-        "burbn/google-shopping-scraper",
-        {"searchQuery": "laptop", "limit": 10},
-    ),
-    "apify_google_play_scraper": (
-        "curious_coder/google-play-scraper",
-        {"action": "scrapeAppSearch", "scrapeAppSearch.keywords": ["maps"], "count": 3},
-    ),
     "apify_google_news_media_search": (
         "data_xplorer/google-news-scraper-fast",
         {"keywords": [], "maxArticles": 10, "timeframe": "7d"},
@@ -599,16 +496,8 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "python programming"},
     ),
     # AI Search
-    "apify_perplexity_scraper": (
-        "apify/perplexity-search-scraper",
-        {"queries": "what is python"},
-    ),
     "apify_perplexity_search_scraper": (
         "apify/perplexity-search-scraper",
-        {"queries": "what is python"},
-    ),
-    "apify_chatgpt_scraper": (
-        "apify/chatgpt-search-scraper",
         {"queries": "what is python"},
     ),
     "apify_chatgpt_search_scraper": (
@@ -616,48 +505,20 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "what is python"},
     ),
     # gemini-scraper is deprecated — fall back to google-search-scraper
-    "apify_gemini_scraper": (
-        "apify/google-search-scraper",
-        {"queries": "site:gemini.google.com python programming", "maxPagesPerQuery": 1},
-    ),
     "apify_gemini_search_scraper": (
         "apify/google-search-scraper",
         {"queries": "python programming", "maxPagesPerQuery": 1},
     ),
     # Ads
-    "apify_google_ads_transparency_scraper": (
-        "solidcode/ads-transparency-scraper",
-        {"searchQuery": "Nike", "maxResults": 5},
-    ),
     "apify_google_ads_scraper": (
         "lexis-solutions/google-ads-scraper",
         {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR01694614460596224001?region=anywhere"}]},
-    ),
-    "apify_meta_ads_library_scraper": (
-        "igolaizola/facebook-ad-library-scraper",
-        {"query": "python", "country": "US", "maxItems": 5},
     ),
     "apify_facebook_ads_scraper": (
         "apify/facebook-ads-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=python&search_type=keyword_unordered"}]},
     ),
-    "apify_tiktok_ads_library_scraper": (
-        "brilliant_gum/tiktok-ads-library-scraper",
-        {"source": "library", "searchTerms": ["Nike"], "countries": ["DE"], "maxResults": 5},
-    ),
     "apify_tiktok_ads_scraper": ("lexis-solutions/tiktok-ads-scraper", {}),
-    "apify_linkedin_ads_scraper": (
-        "silva95gustavo/linkedin-ad-library-scraper",
-        {"startUrls": [{"url": "https://www.linkedin.com/company/nvidia/"}], "resultsLimit": 5},
-    ),
-    "apify_reddit_ads_scraper": (
-        "lexis-solutions/reddit-ads-scraper",
-        {"query": "crypto", "maxItems": 5},
-    ),
-    "apify_x_ads_transparency_scraper": (
-        "memo23/x-ads-transparency-scraper",
-        {"sources": ["political"], "maxItems": 5},
-    ),
     "apify_pinterest_ads_scraper": (
         "shahidirfan/Pinterest-Ads-Scraper",
         {"country": "FR", "results_limit": 5},
@@ -668,26 +529,13 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "site:snap.com/en-US/ad-policies python", "maxPagesPerQuery": 1},
     ),
     # B2B / Review / Community
-    "apify_trustpilot_scraper": (
-        "automation-lab/trustpilot",
-        {"companyUrls": ["https://www.trustpilot.com/review/amazon.com"], "maxReviewsPerCompany": 5},
-    ),
     "apify_trustpilot_reviews_scraper": ("memo23/trustpilot-scraper-ppe", {}),
-    "apify_appstore_scraper": (
-        "automation-lab/apple-app-store-scraper",
-        {"mode": "details", "appIds": ["284882215"], "maxItems": 3},
-    ),
     "apify_appstore_reviews_scraper": ("johnvc/apple-app-store-reviews-api", {}),
     "apify_google_play_reviews_scraper": (
         "neatrat/google-play-store-reviews-scraper",
         {"appIdOrUrl": "com.google.android.apps.maps", "maxReviews": 5},
     ),
-    "apify_tripadvisor_scraper": ("maxcopell/tripadvisor", {}),
     "apify_tripadvisor_reviews_scraper": ("maxcopell/tripadvisor-reviews", {}),
-    "apify_yelp_scraper": (
-        "tri_angle/yelp-scraper",
-        {"searchTerms": ["coffee"], "locations": ["New York"]},
-    ),
     "apify_booking_scraper": (
         "voyager/booking-scraper",
         {"startUrls": [{"url": "https://www.booking.com/hotel/gb/the-z-hotel-victoria.html"}]},
@@ -701,28 +549,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/google-search-scraper",
         {"queries": "site:crunchbase.com openai", "maxPagesPerQuery": 1},
     ),
-    "apify_producthunt_scraper": (
-        "maximedupre/product-hunt-scraper",
-        {"target": "daily", "maxNbItemsToScrape": 5},
-    ),
-    "apify_product_hunt_scraper": (
-        "happitap/product-hunt-daily-launch-scraper",
-        {"mode": "today", "maxProducts": 5},
-    ),
     "apify_glassdoor_scraper": ("memo23/glassdoor-scraper-ppr", {}),
     "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
     "apify_bluesky_scraper": (
         "fatihtahta/All-In-One-Bluesky-Scraper",
         {"actionToPerform": "searchPosts", "queries": ["atproto.com"], "maxItems": 3},
-    ),
-    "apify_telegram_scraper": (
-        "danielmilevski9/telegram-channel-scraper",
-        {"channels": ["mediumcom"]},
-    ),
-    "apify_indeed_scraper": (
-        "misceres/indeed-scraper",
-        {"position": "python developer", "location": "New York", "country": "US",
-         "maxItemsPerSearch": 3},
     ),
     "apify_indeed_jobs_scraper": ("misceres/indeed-scraper", {}),
     # Media account monitoring
@@ -743,24 +574,12 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
     ),
     "apify_x_media_account_scraper": ("apidojo/tweet-scraper", {}),
-    "apify_pinterest_media_profile_scraper": (
-        "danielmilevski9/pinterest-crawler",
-        {"startUrls": ["pinterest.com/poltronafrau"], "proxyConfig": {"useApifyProxy": True}},
-    ),
     # Open Web
     "apify_website_content_crawler": (
         "apify/website-content-crawler",
         {
             "startUrls": [{"url": "https://example.com"}],
             "maxCrawlPages": 2,
-            "proxyConfiguration": {"useApifyProxy": True},
-        },
-    ),
-    "apify_web_scraper": (
-        "apify/web-scraper",
-        {
-            "startUrls": [{"url": "https://example.com"}],
-            "pageFunction": "async function pageFunction(context) { return { url: context.request.url, title: context.$('title').text() }; }",
             "proxyConfiguration": {"useApifyProxy": True},
         },
     ),
@@ -774,10 +593,6 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "apify_youtube_transcript_scraper": ("johnvc/youtubetranscripts", {}),
     "apify_tiktok_creative_center": ("doliz/tiktok-creative-center-scraper", {}),
-    "apify_facebook_group_scraper": (
-        "whoareyouanas/facebook-group-scraper",
-        {"startUrls": [{"url": "https://www.facebook.com/groups/1280379818654162"}]},
-    ),
     "apify_similarweb_scraper": (
         "curious_coder/similarweb-scraper",
         {"domains": ["apify.com"]},
@@ -844,10 +659,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "trovevault/shopify-products-scraper",
         {"domains": ["allbirds.com"], "maxProducts": 5},
     ),
-    "apify_shopify_full_catalog": (
-        "pocesar/shopify-scraper",
-        {"startUrls": [{"url": "https://gymshark.com/products.json"}], "maxRequestsPerCrawl": 10},
-    ),
+
 }
 
 
@@ -920,7 +732,9 @@ async def quick_collect(
             "actor_id": actor_id,
             "actor_input": actor_input,
             "max_items": body.params.get("maxItems") or body.params.get("max_items") or 10,
-            "max_total_charge_usd": body.params.get("max_total_charge_usd", 1.0),
+            "max_total_charge_usd": body.params.get(
+                "max_total_charge_usd", DEFAULT_MAX_TOTAL_CHARGE_USD
+            ),
             "run_timeout_seconds": body.params.get("run_timeout_seconds", 600),
         }
 

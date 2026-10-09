@@ -14,9 +14,9 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 |---|---|
 | 生产域名 | `https://scrapy.luteos.com`（控制台）· `/api/*`（FastAPI）· `/mcp/`（共享 MCP） |
 | 部署分支 | `deploy/scrapy-luteos-rebuild` |
-| catalog 条目 | 278（266 verified + 12 disabled） |
+| catalog 条目 | 270（258 verified + 12 disabled） |
 | 唯一端点 | 250（按 endpoint_type 去重；非 disabled 的去重端点 249） |
-| 平台（Skill 包） | 74 |
+| 平台（Skill 包） | 70 |
 | collector group | 36 |
 | **生产实测状态（2026-10-09）** | `GET /api/collectors/docs` → `tested_endpoints=0`；`/api/platform-packages/providers/status` 全部 `last_test_status=null` |
 
@@ -58,7 +58,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 | 能力 | backing | 说明 |
 |---|---|---|
-| 平台工具包目录 | `GET /api/platform-packages` | 74 平台 / 278 能力视图 / 250 唯一端点 |
+| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 270 能力视图 / 242 唯一端点 |
 | 实时可用性 | `GET /api/platform-packages/providers/status` | 依赖 `task_runs` 证据；实测前全为 `verified`（**误导**） |
 | 平台详情 | `GET /api/platform-packages/{id}` | 含能力表、参数、**策展坑点 `platform_notes` / `notes`** |
 | Playbook | `GET /api/platform-packages/{id}/playbook` | 请求时实时渲染（含「坑点与规避」） |
@@ -231,12 +231,50 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 这 5 个已按平台写入坑点，状态应记为 `empty_records`，**不要再调参数**。
 `apify_alibaba_product_detail` 改对 `requestListSources` 形状后实测返回 1 条，问题解决。
 
+#### 4.4.5 下线记录（2026-10-09）
+
+按"跑不通就别占位"的原则做了两轮收缩：
+
+**a. 从 catalog 摘掉 8 个端点**（同时从 `_APIFY_ENDPOINT_DEFAULTS` 与
+`_ENDPOINT_TO_COLLECTOR` 移除，调用会返回 400 `Unknown endpoint_type`）：
+
+| 端点 | 原因 |
+|---|---|
+| `apify_pinterest_scraper`、`apify_pinterest_media_profile_scraper` | 运行前 403 |
+| `apify_telegram_scraper` | 运行前 403 |
+| `apify_web_scraper` | 运行前 403（官方 Actor，`apify/website-content-crawler` 可替代） |
+| `apify_shopify_full_catalog` | 运行前 403（`apify_shopify_products_monitor` 可替代） |
+| `apify_facebook_group_scraper` | 恒 0 条（`apify_facebook_posts_scraper` 可替代） |
+| `apify_product_hunt_scraper` | 恒 0 条（`apify_producthunt_scraper` 可替代） |
+| `apify_yelp_scraper` | 恒 0 条 |
+
+连带影响：`pinterest`、`telegram`、`product_hunt`、`yelp` 四个平台失去全部端点，
+平台包随之消失，对应的 `notes/*.json` 一并删除（否则触发 builder 的
+"orphan note file" 守卫）。
+
+**b. 从 `_APIFY_ENDPOINT_DEFAULTS` 删掉 31 个幽灵端点**（其中 `apify_tiktok`、
+`apify_youtube`、`apify_instagram`、`apify_tripadvisor_scraper`、`apify_ebay_scraper`、
+`apify_gemini_scraper` 等与 catalog 里的正式端点重名或重复）。
+
+计数收口：
+
+| 指标 | 之前 | 之后 |
+|---|---|---|
+| 平台包 | 74 | **70** |
+| 能力视图 | 278 | **270** |
+| 唯一端点 | 250 | **242** |
+
+> ⚠️ 被删的 31 个里有约 20 个当轮实测**是通的**（`apify_x_scraper` 1 条、
+> `apify_threads_scraper` 10 条、`apify_google_shopping_scraper` 10 条、
+> `apify_trustpilot_scraper` 5 条…）。它们现在不可达。若以后要用，需要重新
+> 补进 catalog 与 `_APIFY_ENDPOINT_DEFAULTS`——入参与 Actor 都还是对的。
+
 
 
 - **有 catalog 定义但无 UI 入口**：所有 `/tasks`（未进导航）、`/collect/[run_id]`（无链接）、`/dashboard` `/raw-records` `/settings/account`（stub）。
 - **有 UI 但无真实后端**：`/projects/[id]` 的"采集任务/最近运行/数据集"段、TopBar 的 ⌘K 命令搜索（无功能）。
 - **死链**：`/insight/dashboard`（导航外链，404）。
-- **端点 → 页面**：全部 278 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
+- **端点 → 页面**：全部 270 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
 
 ## 6. 死链与桩面清单
 

@@ -19,8 +19,6 @@ Organised into 10 groups:
 
 from __future__ import annotations
 
-import uuid
-from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -1180,19 +1178,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             method="apify",
         ),
         CollectorEndpointMetadata(
-            endpoint_type="apify_yelp_scraper",
-            label="Yelp Scraper",
-            platform="yelp",
-            description="Yelp 商家评价：本地口碑、服务反馈",
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["maxReviews"],
-            cost_hint="按事件计费",
-            provider="Apify Actor (tri_angle/yelp-scraper)",
-            content_type="review",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
             endpoint_type="apify_booking_scraper",
             label="Booking.com Scraper",
             platform="booking",
@@ -1509,19 +1494,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             method="apify",
         ),
         CollectorEndpointMetadata(
-            endpoint_type="apify_pinterest_scraper",
-            label="Pinterest Scraper",
-            platform="pinterest",
-            description="Pinterest Pin：视觉趋势、内容灵感",
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["maxPinsCnt"],
-            cost_hint="免费",
-            provider="Apify Actor (danielmilevski9/pinterest-crawler)",
-            content_type="post",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
             endpoint_type="apify_glassdoor_scraper",
             label="Glassdoor Scraper",
             platform="glassdoor",
@@ -1532,19 +1504,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             cost_hint="按事件计费",
             provider="Apify Actor (memo23/glassdoor-scraper-ppr)",
             content_type="review",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
-            endpoint_type="apify_product_hunt_scraper",
-            label="Product Hunt Scraper",
-            platform="product_hunt",
-            description="Product Hunt 每日发布：产品趋势、创新监测",
-            status="verified",
-            required_params=[],
-            optional_params=["maxDays"],
-            cost_hint="按事件计费",
-            provider="Apify Actor (happitap/product-hunt-daily-launch-scraper)",
-            content_type="product",
             method="apify",
         ),
         CollectorEndpointMetadata(
@@ -1583,19 +1542,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxItems"],
             cost_hint="按事件计费",
             provider="Apify Actor (fatihtahta/All-In-One-Bluesky-Scraper)",
-            content_type="post",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
-            endpoint_type="apify_telegram_scraper",
-            label="Telegram Channel Scraper",
-            platform="telegram",
-            description="Telegram 频道消息：私域流量、KOL 传播监测",
-            status="verified",
-            required_params=["channelUrls"],
-            optional_params=["maxMessages"],
-            cost_hint="按事件计费",
-            provider="Apify Actor (danielmilevski9/telegram-channel-scraper)",
             content_type="post",
             method="apify",
         ),
@@ -1701,19 +1647,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             method="apify",
         ),
         # Pinterest monitoring for S/A-level media accounts
-        CollectorEndpointMetadata(
-            endpoint_type="apify_pinterest_media_profile_scraper",
-            label="Pinterest 媒体账号监测",
-            platform="pinterest",
-            description="监测 S/A 级媒体 Pinterest：Parents、Babylist、Made for Mums、BabyCenter",
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["maxPinsCnt"],
-            cost_hint="免费",
-            provider="Apify Actor (danielmilevski9/pinterest-crawler)",
-            content_type="account",
-            method="apify",
-        ),
     ]
 
     # === Open Web Crawling (Website Content, Generic Scraper, RAG Browser) ===
@@ -1728,19 +1661,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxCrawlDepth", "maxCrawlPages"],
             cost_hint="按事件计费",
             provider="Apify Actor (apify/website-content-crawler)",
-            content_type="web_page",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
-            endpoint_type="apify_web_scraper",
-            label="Web Scraper",
-            platform="web",
-            description="通用网页抓取：自定义 CSS / XPath 选择器",
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["pageFunction", "maxCrawlDepth"],
-            cost_hint="按事件计费",
-            provider="Apify Actor (apify/web-scraper)",
             content_type="web_page",
             method="apify",
         ),
@@ -1794,19 +1714,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             cost_hint="按事件计费",
             provider="Apify Actor (doliz/tiktok-creative-center-scraper)",
             content_type="ad",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
-            endpoint_type="apify_facebook_group_scraper",
-            label="Facebook Group Scraper",
-            platform="facebook",
-            description="采集 Facebook 公开群组帖子和讨论，获取私域社群真实 VOC",
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["maxItems"],
-            cost_hint="按事件计费",
-            provider="Apify Actor (whoareyouanas/facebook-group-scraper)",
-            content_type="post",
             method="apify",
         ),
         CollectorEndpointMetadata(
@@ -2041,22 +1948,6 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             optional_params=["maxProducts"],
             cost_hint="按结果计费",
             provider="Apify Actor (trovevault/shopify-products-scraper)",
-            content_type="product",
-            method="apify",
-        ),
-        CollectorEndpointMetadata(
-            endpoint_type="apify_shopify_full_catalog",
-            label="Shopify 独立站全品类 SKU 采集",
-            platform="shopify",
-            description=(
-                "通过 /products.json 端点高效采集 Shopify 独立站全部商品、变体和元数据，"
-                "适合竞品完整品类分析。startUrls 包含 /products.json 路径。"
-            ),
-            status="verified",
-            required_params=["startUrls"],
-            optional_params=["maxProducts"],
-            cost_hint="按结果计费",
-            provider="Apify Actor (pocesar/shopify-scraper)",
             content_type="product",
             method="apify",
         ),

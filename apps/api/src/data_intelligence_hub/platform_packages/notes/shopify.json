@@ -16,21 +16,6 @@
         "dead-actor",
         "fixed-2026-10-09"
       ]
-    },
-    {
-      "scope": "endpoint",
-      "target": "apify_shopify_full_catalog",
-      "symptom": "403，1 秒内失败，run 未创建",
-      "cause": "pocesar/shopify-scraper 拒绝本账号发起运行（Store 元数据 pricingInfos 为空）；同属“运行前 403”这一类，与入参和代理无关",
-      "workaround": "优先用 apify_shopify_products_monitor 或 apify_shopify_scraper；若要继续用全量目录抓取，需先在 Apify 控制台确认该 Actor 是否可租用",
-      "failure_class": "upstream_4xx",
-      "severity": "warning",
-      "verified_at": "2026-10-09",
-      "source_ref": "reports/live-sweep/latest.json",
-      "tags": [
-        "apify",
-        "run-start-403"
-      ]
     }
   ]
 }

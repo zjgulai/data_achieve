@@ -179,6 +179,8 @@ python scripts/audit_apify_inputs.py      # 只读 schema，0 额度
 > **坑 9（Apify）**：`max_total_charge_usd` 调得太小不会"少抓一点"，而是让按事件计费的 Actor
 > 直接以 `ABORTED` 结束（实测 eBay scraper 传 0.3 → ABORTED，传 1.0 → 5 条）。
 > 要限流请用入参里的数量字段，不要用计费上限。
+> 2026-10-09 已把缺省值从 1.0 提到 **3.0**（常量 `DEFAULT_MAX_TOTAL_CHARGE_USD`），
+> 并在 `ABORTED` 的报错里直接提示这个原因。
 > **坑 10**：40x 的响应体是唯一线索，采集器原先只截前 120 字符，正好把
 > `...at positions [0] do not contain valid URLs` 砍掉。已放宽到 500（`collectors/base.py`）。
 

@@ -4,7 +4,7 @@
 
 ## 项目一句话定位
 
-**纯数据采集平台**。后端 FastAPI 提供 278 个能力视图（250 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
+**纯数据采集平台**。后端 FastAPI 提供 270 个能力视图（242 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
 
 ---
 
@@ -34,7 +34,7 @@
 | 项目路径 | `~/apps/data_scrapy` |
 | 环境变量 | `/data/scrapy/configs/.env.production` |
 | API health | `http://192.168.204.230/api/health` → `{"status":"ok"}` |
-| 采集端点 | 278 capability views / 250 unique endpoint types |
+| 采集端点 | 270 capability views / 242 unique endpoint types |
 | docker-compose | `configs/deploy/scrapy-new/docker-compose.yml` |
 | 持久化路径 | Postgres: `/data/scrapy/postgres`，Exports: `/data/scrapy/exports` |
 | 部署文档 | [`docs/deployment-new-server.md`](docs/deployment-new-server.md) |
@@ -49,8 +49,8 @@
 | 链路 | 共享 Nginx → relay → 受限 SSH 反向隧道 → `192.168.204.230:80` |
 | Skill 目录 | `/skills` |
 | MCP | `/mcp/`，生产要求 `SCRAPY_MCP_TOKEN` |
-| 平台包 | 74 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
-| 当前口径 | 278 capability views / 250 unique endpoint types |
+| 平台包 | 70 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
+| 当前口径 | 270 capability views / 242 unique endpoint types |
 
 ### 容器（新服务器 192.168.204.230）
 
@@ -302,7 +302,7 @@ curl -fsSL https://scrapy.luteos.com/api/health
 curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   python3 -c "import sys,json; d=json.load(sys.stdin); \
   print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])"
-# 期望：74 278 250
+# 期望：70 270 242
 ```
 
 ---

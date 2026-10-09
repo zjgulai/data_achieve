@@ -134,22 +134,6 @@
         "meta-keys",
         "fixed-2026-10-09"
       ]
-    },
-    {
-      "scope": "endpoint",
-      "target": "apify_web_scraper",
-      "symptom": "403，1 秒内失败（http_forbidden），调用方传的 startUrls/maxPagesPerCrawl 正确",
-      "cause": "403 发生在 POST /acts/apify~web-scraper/runs，run 根本没创建。该 Actor 与其它 403 的 Actor（danielmilevski9/pinterest-crawler、pocesar/shopify-scraper 等）共同点是 Store 元数据 pricingInfos 为空；但同样 pricingInfos 为空的 shahidirfan/Pinterest-Ads-Scraper 却能跑通，所以“无定价”不是充分条件，真实原因需读 403 响应体确认",
-      "workaround": "视为 Apify 账号侧不可运行；换用 apify/website-content-crawler 或 apify/rag-web-browser 覆盖同类网页采集需求",
-      "failure_class": "upstream_4xx",
-      "severity": "warning",
-      "verified_at": "2026-10-09",
-      "source_ref": "reports/live-sweep/latest.json",
-      "tags": [
-        "apify",
-        "run-start-403",
-        "unconfirmed"
-      ]
     }
   ]
 }

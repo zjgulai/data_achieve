@@ -2,11 +2,11 @@
   "platform_id": "facebook",
   "notes": [
     {
-      "scope": "endpoint",
-      "target": "apify_facebook_group_scraper",
-      "symptom": "运行成功但恒返回 0 条",
-      "cause": "入参已按 Actor schema 补齐（startUrls 必填），但无论用演示群组还是公开群组 URL，whoareyouanas/facebook-group-scraper 都返回空数据集 —— 属 Actor 侧能力问题，不是入参问题",
-      "workaround": "改用 apify_facebook_posts_scraper（已验证返回记录）。判定方法：同一 Actor 用自己的公开样例 URL 也返回空，就不要再调参数",
+      "scope": "platform",
+      "target": "facebook",
+      "symptom": "曾有一个 apify_facebook_group_scraper 端点：运行成功但恒返回 0 条",
+      "cause": "whoareyouanas/facebook-group-scraper 的入参已按 schema 补齐（startUrls 必填），但用演示群组和公开群组 URL 都返回空数据集——Actor 侧能力问题",
+      "workaround": "该端点已于 2026-10-09 从目录下线。要采 Facebook 群组内容请用 apify_facebook_posts_scraper（已验证返回记录）；判定同类问题的方法：同一 Actor 用自己文档里的公开样例 URL 仍返回空，就不要再调参数",
       "failure_class": "empty_records",
       "severity": "warning",
       "verified_at": "2026-10-09",
@@ -14,7 +14,8 @@
       "tags": [
         "apify",
         "empty-records",
-        "actor-broken"
+        "actor-broken",
+        "retired-2026-10-09"
       ]
     }
   ]

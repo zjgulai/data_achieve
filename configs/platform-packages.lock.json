@@ -1,7 +1,7 @@
 {
   "schema_version": "platform-packages.v1",
-  "catalog_digest": "602e9f181f7ad236795807bd757aa817920d350f42077efececd5e0b80710b6b",
-  "platform_count": 74,
-  "capability_count": 278,
-  "unique_endpoint_count": 250
+  "catalog_digest": "01cdd9c8b23a76c71a8d1850ca6b4e93b639595c37e83b8e18d3500eeaa3ca4b",
+  "platform_count": 70,
+  "capability_count": 270,
+  "unique_endpoint_count": 242
 }
