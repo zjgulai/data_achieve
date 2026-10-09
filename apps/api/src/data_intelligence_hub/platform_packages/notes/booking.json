@@ -1,0 +1,20 @@
+{
+  "platform_id": "booking",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_booking_scraper",
+      "symptom": "run SUCCEEDED 但数据集 0 条（早前那次是 ABORTED）",
+      "cause": "日志：The property doesn't exist, or the property URL might be invalid —— 演示酒店 URL 是编的。改用搜索 URL 则两次都 TIMED-OUT（>300s）",
+      "workaround": "需要真实的 booking 酒店页 URL；搜索类 URL 太慢，不适合同步采集",
+      "failure_class": "empty_records",
+      "severity": "warning",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-log"
+      ]
+    }
+  ]
+}

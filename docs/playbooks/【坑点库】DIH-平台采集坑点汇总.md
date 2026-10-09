@@ -5,15 +5,19 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`fff52e06c3c3a9a565d8c005f7adc4c818b895a38cac94325df0df3d2111e2d0`
-> 坑点总数：94 · 覆盖平台：31
+> 自动生成，请勿手工编辑。catalog_digest：`1454e5ca2e7cf19c0eec7da95765f2eeda65b068a4405fe4e691aa07e6916413`
+> 坑点总数：99 · 覆盖平台：32
 
 ## actor_failed
 
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | amazon | amazon | apify_amazon_bsr_tracker、apify_amazon_competitor_research 的 Apify run 状态为 FAILED | 入参/代理被 Amazon 拒绝，失败发生在 Actor 内部（run 已创建），与 403 类不同——需要读 run log 才能定位 | 用 GET /v2/actor-runs/<runId>/log 看 Actor 自身日志；apify_amazon_product_scraper 与 apify_amazon_reviews_scraper 已验证可用，可作首选替代 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| amazon | apify_amazon_bsr_tracker | Apify run FAILED，日志 exit_code=91 | ValueError: marketplace 'amazon.com' not in ['AU','CA','DE','ES','FR','IT','JP','NL','UK','US'] —— marketplaces 收的是 ISO 国家码，不是站点域名；另外演示 ASIN 在该站点上不存在时也会返回 0 条 | 已修：marketplaces=['US']、asins 换成站点上真实存在的 ASIN，实测 1 条 | warning | 2026-10-10 | reports/live-sweep/latest.json |
+| amazon | apify_amazon_competitor_research | Apify run FAILED，日志 NO_USABLE_RESULTS | Actor 自述 No Amazon product pages were successfully extracted —— Amazon 反爬，加了 Apify 代理仍然失败 | Actor 侧/反爬问题，改入参无效；需要更强的住宅代理或换 Actor | warning | 2026-10-10 | reports/live-sweep/latest.json |
+| reddit | apify_reddit_scraper | Apify run FAILED，日志 'startUrls and searches are empty' | endpoint 的 base_input 是 {}，而该 Actor 要求 startUrls 或 searches 至少给一个；演示参数里 searches 还写成了对象数组 | 已修：base_input 与演示参数都改为 searches=['python']（字符串数组）+ maxItems=5，实测 5 条 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | target | apify_target_products_scraper | Apify run 状态 FAILED | 入参已按 schema 修正（searchQueries/maxProductsPerSearch），run 能创建，但 Actor 自身以 FAILED 结束 | Actor 侧问题，改入参无效；需要读 run log 或换 Actor | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| target | apify_target_products_scraper | Apify run FAILED，日志 'Target page navigation failed while loading plp_search_v2.' | Actor 尝试轮换出口 IP 仍失败 —— Target 反爬 | Actor 侧/反爬问题，改入参无效 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 
 ## config_gated
 
@@ -47,6 +51,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 |---|---|---|---|---|---|---|---|
 | bilibili | tikhub_bilibili_user_videos | 运行成功但恒返回 0 条 | fetch_user_videos 的条目在 data.data.item（**单数** item），提取器的键清单里只有 item_list/items | 已修：提取器先把 inner / inner.data / inner.results 都收进候选作用域，并补上 item 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | bilibili | tikhub_bilibili_video_search | 运行成功但恒返回 0 条 | 开量搜索的结果同样嵌在 data.data 下 | 已修：同上的作用域展开。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| booking | apify_booking_scraper | run SUCCEEDED 但数据集 0 条（早前那次是 ABORTED） | 日志：The property doesn't exist, or the property URL might be invalid —— 演示酒店 URL 是编的。改用搜索 URL 则两次都 TIMED-OUT（>300s） | 需要真实的 booking 酒店页 URL；搜索类 URL 太慢，不适合同步采集 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_brand_hot_search | 运行成功但恒返回 0 条 | fetch_brand_hot_search_list_detail 的榜单在 data.brand_list | 已修：补 brand_list 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_comments | 运行成功但恒返回 0 条 | 演示 aweme_id 是占位 123456；上游对不存在的视频不返回评论 | 需要真实视频 ID（可从 fetch_video_search_result 的结果里取） | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | douyin | tikhub_douyin_comments | 运行成功但恒返回 0 条 | 两处：(1) fetch_video_comments 的评论在 data.comments，键清单里没有；(2) 演示 aweme_id 是占位 123456 | 已修：补 comments 键；aweme_id 从 fetch_video_search_v1 的结果回收。实测 0 -> 19 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |

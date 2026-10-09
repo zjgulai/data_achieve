@@ -93,7 +93,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "apify_youtube_media_channel_scraper": {"channelUrls": ["https://www.youtube.com/@Python"], "maxResults": 3},
     "apify_youtube_transcript_scraper":    {"videoUrls": ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"]},
     # Reddit
-    "apify_reddit_scraper":                {"searches": [{"keyword": "python"}], "maxItems": 3},
+    "apify_reddit_scraper":                {"searches": ["python"], "maxItems": 5},
     "apify_reddit_community_monitor":      {"searches": [{"keyword": "python"}], "maxItems": 3},
     "apify_reddit_ads_scraper":            {"keywords": ["python"], "maxItems": 3},
     # Facebook
@@ -353,7 +353,7 @@ DEMO_PARAMS.update(
         "apify_alibaba_product_detail": {"productUrls": ["https://www.alibaba.com/product-detail/WATA-In-Ear-Waterproof-Sport-Earbud_1601685362945.html"]},
         "apify_amazon_bestsellers": {"categoryUrls": ["https://www.amazon.com/Best-Sellers/zgbs"], "maxItemsPerStartUrl": 5},
         "apify_amazon_competitor_research": {"asins": ["B09G9FPHY6"]},
-        "apify_amazon_bsr_tracker": {"asins": ["B09G9FPHY6"]},
+        "apify_amazon_bsr_tracker": {"asins": ["B09G9FPHY6"], "marketplaces": ["US"]},
         "apify_amazon_price_tracker": {"products": ["B09G9FPHY6"]},
         "apify_aliexpress_product_search_v2": {"queries": ["phone case"]},
         "apify_shopify_products_monitor": {"domains": ["allbirds.com"], "maxProducts": 5},

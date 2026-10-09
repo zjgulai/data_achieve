@@ -15,6 +15,22 @@
         "apify",
         "actor-failed"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_target_products_scraper",
+      "symptom": "Apify run FAILED，日志 'Target page navigation failed while loading plp_search_v2.'",
+      "cause": "Actor 尝试轮换出口 IP 仍失败 —— Target 反爬",
+      "workaround": "Actor 侧/反爬问题，改入参无效",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-log",
+        "anti-bot"
+      ]
     }
   ]
 }

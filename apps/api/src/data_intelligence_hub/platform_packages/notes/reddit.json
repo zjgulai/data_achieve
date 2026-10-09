@@ -94,6 +94,22 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_reddit_scraper",
+      "symptom": "Apify run FAILED，日志 'startUrls and searches are empty'",
+      "cause": "endpoint 的 base_input 是 {}，而该 Actor 要求 startUrls 或 searches 至少给一个；演示参数里 searches 还写成了对象数组",
+      "workaround": "已修：base_input 与演示参数都改为 searches=['python']（字符串数组）+ maxItems=5，实测 5 条",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-log",
+        "fixed-2026-10-10"
+      ]
     }
   ]
 }

@@ -411,7 +411,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "streamers/youtube-comments-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
     ),
-    "apify_reddit_scraper": ("trudax/reddit-scraper-lite", {}),
+    "apify_reddit_scraper": (
+        "trudax/reddit-scraper-lite",
+        # 不传 startUrls 或 searches 时 Actor 直接报错退出（此前 base_input 是 {}）
+        {"searches": ["python"], "maxItems": 5},
+    ),
     "apify_facebook_posts_scraper": (
         "apify/facebook-posts-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
@@ -675,7 +679,9 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "apify_amazon_bsr_tracker": (
         "marketplace-scrapers/amazon-bsr-scraper",
-        {"asins": ["B08N5WRWNW"], "marketplaces": ["amazon.com"]},
+        # marketplaces 收 ISO 国家码（US/UK/DE…），传 "amazon.com" 会让 Actor 直接抛错退出；
+        # asins 也必须在对应站点上真实存在。
+        {"asins": ["B09G9FPHY6"], "marketplaces": ["US"]},
     ),
     "apify_amazon_price_tracker": (
         "ramsford/ecommerce-price-tracker",

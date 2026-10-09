@@ -31,6 +31,38 @@
         "apify",
         "actor-failed"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_amazon_bsr_tracker",
+      "symptom": "Apify run FAILED，日志 exit_code=91",
+      "cause": "ValueError: marketplace 'amazon.com' not in ['AU','CA','DE','ES','FR','IT','JP','NL','UK','US'] —— marketplaces 收的是 ISO 国家码，不是站点域名；另外演示 ASIN 在该站点上不存在时也会返回 0 条",
+      "workaround": "已修：marketplaces=['US']、asins 换成站点上真实存在的 ASIN，实测 1 条",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-log",
+        "fixed-2026-10-10"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_amazon_competitor_research",
+      "symptom": "Apify run FAILED，日志 NO_USABLE_RESULTS",
+      "cause": "Actor 自述 No Amazon product pages were successfully extracted —— Amazon 反爬，加了 Apify 代理仍然失败",
+      "workaround": "Actor 侧/反爬问题，改入参无效；需要更强的住宅代理或换 Actor",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-10",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "run-log",
+        "anti-bot"
+      ]
     }
   ]
 }
