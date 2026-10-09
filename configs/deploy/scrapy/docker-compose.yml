@@ -211,10 +211,10 @@ services:
       - scrapy_internal
 
   # SpiderFoot OSINT Platform - P0 Enterprise OSINT (200+ modules)
-  spiderfoot:
-    container_name: data_achieve_scrapy_spiderfoot
-    image: spiderfoot/spiderfoot:latest
-    command: ["-l", "0.0.0.0:5001"]
+  spiderfoot-real:
+    container_name: data_achieve_scrapy_spiderfoot_real
+    image: crivellarodiego/spiderfoot:latest
+    command: ["sf.py", "-l", "0.0.0.0:5001"]
     expose:
       - "5001"
     restart: unless-stopped
@@ -224,6 +224,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - scrapy_internal
+
+  spiderfoot:
+    container_name: data_achieve_scrapy_spiderfoot
+    build:
+      context: ../../../configs/bridges/spiderfoot-bridge
+      dockerfile: Dockerfile
+    image: spiderfoot_bridge:latest
+    environment:
+      SF_UPSTREAM: http://data_achieve_scrapy_spiderfoot_real:5001
+    expose:
+      - "5001"
+    restart: unless-stopped
+    depends_on:
+      spiderfoot-real:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/api/v1/scanlist', timeout=3)\" 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - scrapy_internal
 
