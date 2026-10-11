@@ -1,5 +1,12 @@
 FROM node:22-alpine AS deps
 
+# 生产 B 在国内，直连 npmjs ~220KB/s；允许构建时切换 registry，默认仍是官方源。
+# NPM_CONFIG_REGISTRY 给 pnpm 用，COREPACK_NPM_REGISTRY 给 corepack 拉取 pnpm 本体用。
+ARG NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
+ARG COREPACK_NPM_REGISTRY=https://registry.npmjs.org/
+ENV NPM_CONFIG_REGISTRY=${NPM_CONFIG_REGISTRY} \
+    COREPACK_NPM_REGISTRY=${COREPACK_NPM_REGISTRY}
+
 WORKDIR /app
 RUN corepack enable
 
@@ -9,6 +16,12 @@ COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile --filter data-intelligence-hub-web...
 
 FROM node:22-alpine AS builder
+
+# corepack 在 builder 阶段要再拉一次 pnpm 本体，这里同样需要镜像源。
+ARG NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
+ARG COREPACK_NPM_REGISTRY=https://registry.npmjs.org/
+ENV NPM_CONFIG_REGISTRY=${NPM_CONFIG_REGISTRY} \
+    COREPACK_NPM_REGISTRY=${COREPACK_NPM_REGISTRY}
 
 WORKDIR /app
 RUN corepack enable
