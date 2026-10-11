@@ -69,7 +69,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
         </div>
         <aside className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
           <InfoRow icon={<Code2 size={14} />} label="Skill" value={item.skill_path} />
-          <InfoRow icon={<Cable size={14} />} label="MCP" value="https://scrapy.luteos.com/mcp/" />
+          <InfoRow icon={<Cable size={14} />} label="MCP" value={`${API_BASE_URL}/mcp/`} />
           <InfoRow icon={<BookOpen size={14} />} label="Playbook" value={item.playbook_path} />
           <InfoRow icon={<ServerCog size={14} />} label="Catalog digest" value="由 API 响应提供" />
           {releaseQuery.data && (
@@ -89,11 +89,11 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <CodePanel title="REST 调用" code={`curl -X POST https://scrapy.luteos.com/api/quick-collect \\\n+  -H 'Content-Type: application/json' \\\n+  -d '${restExample.replaceAll("'", "'\\''")}'`} />
+        <CodePanel title="REST 调用" code={`curl -X POST ${API_BASE_URL}/api/quick-collect \\\n+  -H 'Content-Type: application/json' \\\n+  -d '${restExample.replaceAll("'", "'\\''")}'`} />
         <CodePanel title="MCP 配置" code={`{
   "mcpServers": {
     "data-intelligence-hub": {
-      "url": "https://scrapy.luteos.com/mcp/",
+      "url": "${API_BASE_URL}/mcp/",
       "headers": { "Authorization": "Bearer <SCRAPY_MCP_TOKEN>" }
     }
   }
