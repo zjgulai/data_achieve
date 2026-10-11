@@ -51,6 +51,11 @@ services:
       args:
         INSTALL_PLAYWRIGHT: ${SCRAPY_INSTALL_PLAYWRIGHT:-true}
         INSTALL_OSINT: ${SCRAPY_INSTALL_OSINT:-false}
+        # 构建期镜像源：默认官方源，生产 B 靠 .env.production 的 SCRAPY_* 键切换
+        PIP_INDEX_URL: ${SCRAPY_PIP_INDEX_URL:-https://pypi.org/simple}
+        UV_DEFAULT_INDEX: ${SCRAPY_PIP_INDEX_URL:-https://pypi.org/simple}
+        DEBIAN_MIRROR: ${SCRAPY_DEBIAN_MIRROR:-}
+        PLAYWRIGHT_DOWNLOAD_HOST: ${SCRAPY_PLAYWRIGHT_DOWNLOAD_HOST:-}
     container_name: data_achieve_scrapy_api
     depends_on:
       db:
@@ -137,6 +142,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
         NEXT_PUBLIC_MOCK_API: "false"
+        NPM_CONFIG_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
+        COREPACK_NPM_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: data_achieve_scrapy_web
     image: data_achieve_scrapy_web:latest
     restart: unless-stopped
@@ -166,6 +173,7 @@ services:
       dockerfile: apps/scraper-console/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
+        NPM_CONFIG_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: data_achieve_scrapy_console
     image: data_achieve_scrapy_console:latest
     restart: unless-stopped
@@ -259,6 +267,8 @@ services:
     build:
       context: ../../../configs/bridges/spiderfoot-bridge
       dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${SCRAPY_PIP_INDEX_URL:-https://pypi.org/simple}
     image: spiderfoot_bridge:latest
     environment:
       SF_UPSTREAM: http://data_achieve_scrapy_spiderfoot_real:5001

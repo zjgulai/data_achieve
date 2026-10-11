@@ -1,5 +1,9 @@
 FROM node:22-alpine AS deps
 
+# 生产 B 在国内，直连 npmjs ~220KB/s；允许构建时切换 registry，默认仍是官方源。
+ARG NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
+ENV NPM_CONFIG_REGISTRY=${NPM_CONFIG_REGISTRY}
+
 WORKDIR /app/apps/scraper-console
 RUN corepack enable
 
