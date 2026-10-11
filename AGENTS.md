@@ -1,94 +1,66 @@
+---
+name: data-intelligence-hub-agent-guide
+description: Data Intelligence Hub Agent 工程协作指南，涵盖项目定位、当前生产速查、关键代码、采集能力接入、实测坑点、验证和发布约束。当 AI Agent 或开发者修改本仓库时使用。
+---
+
 # Data Intelligence Hub — Agent 工作指南
 
-> 最后更新：2026-09-03 · 热推 · 分支 `codex/social-api-private-matrix-20260708`
+> 最后更新：2026-10-11。生产环境易变事实以 [生产环境基线](docs/【运维手册】生产环境基线.md) 为准。
 
-## 项目一句话定位
+## 项目定位
 
-**纯数据采集平台**。后端 FastAPI 提供 270 个能力视图（242 个唯一 endpoint），前端 Next.js scraper-console 提供采集管理台、74 个平台 Skill 卡片和共享 MCP Runtime，生产主域名为 `scrapy.luteos.com`。
+Data Intelligence Hub 是纯数据采集平台。FastAPI 后端提供统一 catalog、quick-collect、任务调度、平台 Skill 和 MCP Runtime。Next.js `scraper-console` 提供生产采集管理台。
 
----
+当前产品口径：
 
-## 生产环境
+- 70 个平台。
+- 270 个能力视图。
+- 242 个唯一 endpoint。
+- 实测状态：191 verified、21 config-gated、20 degraded、9 empty、1 disabled。
+- 生产主域名：`https://scrapy.luteos.com`。
 
-### 旧生产（腾讯云 · 兼容保留）
+## 当前生产速查
 
-| 项目 | 值 |
+| 项目 | 当前值 |
 |---|---|
-| 域名 | `scrapy.lute-tlz-dddd.top` |
-| 服务器 IP | `101.34.52.232`（公网）|
-| SSH key | `DDDD.pem`（项目根目录，**不得 commit**）|
-| 部署分支 | `codex/social-api-private-matrix-20260708` |
-| 当前 commit | `42a0dc7` |
-| API health | `GET /api/health` → `{"status":"ok"}` |
-| 采集端点 | 历史快照，不作为当前口径 |
-| 认证模式 | **无需登录**，全路由使用 demo workspace `bf51c6a8-fba5-5528-ac91-89ffd84f85c2` |
-| docker-compose | `configs/deploy/scrapy/docker-compose.yml` |
+| 腾讯云主机 | `ubuntu@43.163.92.244` |
+| 密钥 | 仓库根目录 `zhoujian_pachong.pem`（**不得 commit**）|
+| 项目路径 | `/opt/data-achieve-scrapy/app` |
+| 环境变量 | `/opt/data-achieve-scrapy/.env.production` |
+| 部署分支 | `feat/live-capability-verification-sink-notes` |
+| Compose | `configs/deploy/scrapy/docker-compose.yml` |
+| Compose 项目 | `data_achieve_scrapy` |
+| 数据库 schema | `202607280044` |
+| 共享网关 | `ai_video_nginx` |
+| 外部网络 | `lighthouse_ai_video_net` |
+| Edge 别名 | `data_achieve_scrapy_proxy` |
 
-### 新服务器（内网 · **已部署运行**）
+不要在本文固定当前 commit。需要时现场读取：
 
-| 项目 | 值 |
-|---|---|
-| 服务器 IP | `192.168.204.230`（内网）|
-| 规格 | 8 vCPU · 62 GB RAM · 200 GB 系统盘 + 1 TB `/data` 数据盘 |
-| 访问方式 | 堡垒机 `jumpserver.luteos.site:2222` → `lute@192.168.204.230` 密码登录 |
-| 项目路径 | `~/apps/data_scrapy` |
-| 环境变量 | `/data/scrapy/configs/.env.production` |
-| API health | `http://192.168.204.230/api/health` → `{"status":"ok"}` |
-| 采集端点 | 270 capability views / 242 unique endpoint types |
-| docker-compose | `configs/deploy/scrapy-new/docker-compose.yml` |
-| 持久化路径 | Postgres: `/data/scrapy/postgres`，Exports: `/data/scrapy/exports` |
-| 部署文档 | [`docs/deployment-new-server.md`](docs/deployment-new-server.md) |
-| 部署日期 | 2026-09-01 |
-
-### 公网入口与 Skill/MCP（2026-10-09）
-
-| 项目 | 值 |
-|---|---|
-| 主域名 | `https://scrapy.luteos.com` |
-| 公网网关 | `43.163.92.244` |
-| 链路 | 共享 Nginx → relay → 受限 SSH 反向隧道 → `192.168.204.230:80` |
-| Skill 目录 | `/skills` |
-| MCP | `/mcp/`，生产要求 `SCRAPY_MCP_TOKEN` |
-| 平台包 | 70 个，可从 `/api/platform-packages/{platform_id}/download` 下载 |
-| 当前口径 | 270 capability views / 242 unique endpoint types |
-
-### 容器（新服务器 192.168.204.230）
-
-| 容器名 | 镜像 | 端口 | 说明 |
-|---|---|---|---|
-| `data_achieve_scrapy_api` | `data_achieve_scrapy_api:latest` | 8000 | FastAPI 后端 |
-| `data_achieve_scrapy_console` | `data_achieve_scrapy_console:latest` | 3001 | 采集管理台 |
-| `data_achieve_scrapy_edge` | `nginx:1.27-alpine` | 8080 | 反向代理 |
-| `data_achieve_scrapy_db` | `postgres:16` | 5432 | 数据库 |
-| `data_achieve_scrapy_maigret` | `soxoj/maigret:latest` | 5000 | OSINT 用户名追踪 |
-| `data_achieve_scrapy_spiderfoot_real` | `crivellarodiego/spiderfoot:latest` | 5001（内部）| SpiderFoot Web UI |
-| `data_achieve_scrapy_spiderfoot` | `spiderfoot_bridge:latest` | 5001 | SpiderFoot REST API 桥接 |
-| `data_achieve_scrapy_mediacrawler` | `bllxk/mediacrawler-api:latest` | 8001（内部）| MediaCrawler 爬虫服务 |
-| `data_achieve_scrapy_mc_bridge` | `mediacrawler_bridge:latest` | 8080（内部）| MediaCrawler 路由桥接 |
-
-> Bridge 镜像源码在 `configs/bridges/`，需要在服务器上 build（`docker compose ... up --build`）。
-
-> MediaCrawler 需配置平台 cookies 才能获取真实数据：`BILIBILI_COOKIES`、`WEIBO_COOKIES`、`ZHIHU_COOKIES`、`KUAISHOU_COOKIES`（写入 `.env.production`）。
-
----
-
-## 代码结构（只需关注这几个文件）
-
+```bash
+git -C /opt/data-achieve-scrapy/app rev-parse HEAD
 ```
+
+生产拓扑、容器与数据卷见 [生产环境基线](docs/【运维手册】生产环境基线.md)。
+
+## 关键代码
+
+```text
 apps/api/src/data_intelligence_hub/
 ├── collectors/                   ★ 采集器实现
-│   ├── base.py                   — BaseCollector 基类
+│   ├── base.py                   — BaseCollector 基类与结果模型
 │   ├── registry.py               ★ COLLECTOR_REGISTRY 注册表
-│   ├── tikhub_social.py          — TikHub 61 端点
-│   ├── apify_actor.py            — Apify 75 端点
+│   ├── tikhub_social.py          — TikHub 社交采集
+│   ├── apify_actor.py            — Apify Actor 采集
 │   ├── public_feed.py            — RSS + Web crawl + AutoScraper
 │   ├── github_repo.py / github_topic.py
 │   ├── playwright_browser.py     — 浏览器采集（text/html/screenshot）
 │   ├── ecommerce_product_page.py / ecommerce_product_discovery.py
+│   ├── exa_collector.py          — Exa 搜索与内容
 │   ├── anysearch_collector.py    — AnySearch API
 │   ├── jina_reader.py            — Jina Reader（需代理）
-│   ├── spiderfoot_collector.py   — SpiderFoot 基础 3 端点
-│   ├── spiderfoot_extended_collectors.py — SpiderFoot 扩展 6 端点
+│   ├── firecrawl_collector.py    — Firecrawl 全站采集
+│   ├── spiderfoot_collector.py   / spiderfoot_extended_collectors.py
 │   ├── bestblogs_collector.py    — BestBlogs AI 精选文章
 │   ├── blackbird_collector.py    — Blackbird 邮箱/用户名 OSINT
 │   ├── autoscraper_collector.py  — AutoScraper 智能提取
@@ -100,110 +72,65 @@ apps/api/src/data_intelligence_hub/
 │   └── wappalyzer_collector.py   — 技术栈检测
 ├── api/routes/
 │   ├── collectors.py             ★ catalog 端点 + CollectorEndpoint 定义
-│   └── quick_collect.py          ★ _ENDPOINT_TO_COLLECTOR 映射
-└── services/
-    └── collector_catalog.py      ★ CollectorDefinition + _validate_* 函数
+│   ├── quick_collect.py          ★ _ENDPOINT_TO_COLLECTOR 映射 + Apify 缺省入参
+│   ├── platform_packages.py      — 平台 Skill 包与 Provider 状态
+│   └── ...
+├── services/
+│   └── collector_catalog.py      ★ CollectorDefinition + _validate_* 函数
+├── platform_packages/            — 平台包生成与渲染（notes/ 是坑点单一事实源）
+├── mcp_runtime/                  — 共享 MCP Runtime
+└── agents/tiktok_cdo/            — TikTok CDO 飞书入口
 
-apps/scraper-console/src/app/
-├── platforms/page.tsx            ★ 前端卡片渲染（PLATFORM_LOGOS / 分类 / 方法）
-├── dashboard/                    — 采集概览
-├── projects/                     — 项目管理
-├── tasks/                        — 任务列表
-├── runs/                         — 采集记录
-├── raw-records/                  — 原始数据
-└── datasets/                     — 数据集
+apps/scraper-console/src/
+├── app/platforms/                ★ 平台能力中心（PLATFORM_LOGOS / 分类 / 方法）
+├── app/skills/                   — Skill 与 MCP 目录
+├── app/projects/                 — 项目管理
+├── app/tasks/                    — 任务管理
+├── app/runs/                     — 运行记录
+├── app/raw-records/              — 原始数据
+├── app/datasets/                 — 数据集
+└── components/platforms/         — 快速采集抽屉
 
 configs/deploy/scrapy/
-├── docker-compose.yml            ★ 生产容器编排（含 API keys env）
-└── edge-nginx.conf               — Nginx 路由
+├── docker-compose.yml            ★ 当前生产编排（含 provider keys 显式 environment 列表）
+└── edge-nginx.conf               — 项目 edge 路由
+
+configs/bridges/
+├── spiderfoot-bridge/
+└── mediacrawler-bridge/
 ```
 
----
+## 新增采集能力
 
-## 当前任务状态
+### 1. 实现 collector
 
-### 已完成（生产可用）
-
-| 任务 | commit/热推 | 状态 |
-|---|---|---|
-| D4 监管 RSS（FDA/NHS/OPSS/PR Newswire）| `8d462e8` | ✅ verified×4 |
-| D5 AnySearch 采集器 | `7e8468a` | ✅ verified×2，records=10 |
-| D1 Jina Reader 采集器 | `ca8b647` | ✅ verified×3，本地 OK，生产需代理 |
-| 平台能力中心 UI 重设计 | `e59cbcc` | ✅ 去 emoji，PlatformLogo，工业质感行布局 |
-| 项目减负 | `b339f45` | ✅ git 干净，分支精简，文档更新 |
-| SpiderFoot 升级（6 扩展模块）| `5a37483` | ✅ spiderfoot 从 3→9 端点 |
-| BestBlogs AI 精选文章 | `5a37483` | ✅ verified×1，catalog 独立分组 |
-| Blackbird 邮箱/用户名 OSINT | `5a37483` | ✅ verified×2，catalog 独立分组 |
-| AutoScraper 智能提取 | `42a0dc7` | ✅ verified×1，已入 rss_web 组 |
-| MediaCrawler（B站/微博/知乎/快手）| `c299697` | ✅ 8 端点（cookies 需配置才生效）|
-| AnyCrawl SERP（百度/Bing/DDG）| `fedb26b` | ✅ 3 端点 |
-| Maigret/Sherlock OSINT | `cdc81e9` | ✅ 2 端点 |
-| twscrape X/Twitter | `cdc81e9` | ✅ 3 端点（多账号需配置）|
-| Firecrawl 全站采集 | `fe8cd0a` | ✅ 3 端点 |
-| 技术博客（Dev.to/掘金/Substack）| `11b5cf0` | ✅ 3 端点 |
-| Wappalyzer 技术栈检测 | `11b5cf0` | ✅ 1 端点 |
-| catalog 同步（bestblogs/blackbird/spiderfoot 扩展）| 热推 2026-08-31 | ✅ verified 197→207 |
-| **Aliens Eye ML-OSINT**（7 端点）| 热推 2026-09-03 | ✅ 207→217 verified，ML+840+平台 |
-| **Robin 暗网 OSINT**（3 端点）| 热推 2026-09-03 | ✅ catalog 已注册，需 Tor |
-| **Obscura CDP 接入**（3 端点质量提升）| 2026-09-03 | ✅ PlaywrightBrowserCollector 优先用 Obscura，降级 Chromium |
-| **browser-use AI 浏览器**（1 端点）| 2026-09-03 | ✅ BrowserUseCollector 已实现，需 LLM key |
-| **Aliens Eye ML-OSINT**（7 端点）| 热推 2026-09-03 | ✅ 207→217 verified，ML+840+平台 |
-| **Robin 暗网 OSINT**（3 端点）| 热推 2026-09-03 | ✅ catalog 已注册，需 Tor |
-| **Obscura CDP 接入**（3 端点质量提升）| 2026-09-03 | ✅ PlaywrightBrowserCollector 优先用 Obscura，降级 Chromium |
-| **browser-use AI 浏览器**（1 端点）| 2026-09-03 | ✅ BrowserUseCollector 已实现，需 LLM key |
-
-### 未完成 / 等待配置
-
-| 任务 | 说明 | 优先级 |
-|---|---|---|
-| E1: MediaCrawler cookies | 需用户提供 BILIBILI/WEIBO/ZHIHU/KUAISHOU cookies，写入 `.env.production` | **高** |
-| E2: Twitter 多账号 | 需用户提供 TWITTER_ACCOUNTS_JSON，写入 `.env.production` | **高** |
-| Robin Tor 配置 | 新服务器安装 Tor（`apt install tor`），docker-compose INSTALL_OSINT=true 重建 | 中 |
-| browser-use LLM key | 在 `.env.production` 配 ANTHROPIC_API_KEY 或 OPENAI_API_KEY | 中 |
-| Obscura 容器启动 | 新服务器 docker-compose 重建时自动拉取 `h4ckf0r0day/obscura:latest` | 中 |
-| Jina Reader 生产网络 | 服务器 IP 直连 `r.jina.ai` 超时，需配代理或中转 | 低 |
-| D2 Shopee | 生产 IP 被封（HTTP 403），暂不可行 | 取消 |
-| B1 Reddit collector | **永久取消**（用户明确要求）| 取消 |
-| B2 YouTube collector | **永久取消**（用户明确要求）| 取消 |
-
-### 下一步可做的事（代码已就绪，等配置）
-
-1. 提供 B站 Cookie → 立即激活 3 个 MediaCrawler 端点
-2. 提供微博/知乎/快手 Cookie → 各再激活若干端点
-3. 提供 Twitter 多账号 JSON → twscrape 3 端点稳定运行
-4. 新服务器 `docker compose up --build` → Obscura + Robin(Tor) + aliens-eye 全部生效
-
----
-
-## 新增采集卡片流程（5 步）
-
-### Step 1：新建 collector
+在 `apps/api/src/data_intelligence_hub/collectors/` 新建或扩展 collector，继承 `BaseCollector`，返回 `CollectionResult`。
 
 ```python
-# apps/api/src/data_intelligence_hub/collectors/your_collector.py
 from .base import BaseCollector, CollectionResult, RawRecord
 
 class YourCollector(BaseCollector):
     async def collect(self) -> CollectionResult:
         # self.config 包含前端传入的参数
         url = self.config.get("url", "")
-        # ... 实现采集逻辑
         record = RawRecord(content={"key": "value"}, metadata={})
         return CollectionResult(raw_records=[record], errors=[])
 ```
 
-### Step 2：注册
+### 2. 注册 collector
+
+在 `collectors/registry.py` 注册 collector type。
 
 ```python
-# collectors/registry.py
 from .your_collector import YourCollector
 COLLECTOR_REGISTRY["your_collector"] = YourCollector
 ```
 
-### Step 3：加 catalog 端点
+### 3. 添加 catalog endpoint
+
+在 `api/routes/collectors.py` 添加 `CollectorEndpoint`，明确 `endpoint_type`、`platform`、`method`、`content_type`、`status`、`required_params`、`optional_params`、`provider`。
 
 ```python
-# api/routes/collectors.py — 在对应 group 的 endpoints 列表里加：
 CollectorEndpoint(
     endpoint_type="your_endpoint_name",
     label="端点显示名称",
@@ -219,17 +146,19 @@ CollectorEndpoint(
 )
 ```
 
-### Step 4：加 quick_collect 映射
+### 4. 对齐 quick-collect
+
+在 `api/routes/quick_collect.py` 添加 `_ENDPOINT_TO_COLLECTOR` 映射、必要的 `_COLLECTOR_TEST_DEFAULTS`，以及 Apify endpoint 的缺省入参。
 
 ```python
-# api/routes/quick_collect.py — 在 _ENDPOINT_TO_COLLECTOR 加：
 "your_endpoint_name": ("your_collector", {"url": "url"}),
 ```
 
-### Step 5：加 validate 函数
+### 5. 添加配置校验
+
+在 `services/collector_catalog.py` 添加或复用 `_validate_*_config`。白名单必须覆盖 collector 实际读取的**所有**键，否则那些键会静默变成空串。
 
 ```python
-# services/collector_catalog.py
 def _validate_your_config(params: dict) -> dict:
     url = params.get("url", "").strip()
     if not url:
@@ -237,72 +166,33 @@ def _validate_your_config(params: dict) -> dict:
     return {"url": url}
 ```
 
-### Step 6（可选）：前端加平台 Logo
+### 6. 同步平台包与前端
+
+新增平台或参数形态时同步：
+
+- `configs/platform-packages.lock.json`（用 `--update-lock` 重新生成）
+- 平台包生成测试
+- `apps/scraper-console` 平台 Logo、分类或参数表单
+- 相关 Playbook 和测试用例
 
 ```typescript
 // apps/scraper-console/src/app/platforms/page.tsx
-// 在 PLATFORM_LOGOS 加：
 your_platform: { bg: "#XXXXXX", fg: "#fff", letter: "XX" },
-
-// 在 PLATFORM_GROUP_META 对应分组的 platforms[] 加平台名：
-open_web: { ..., platforms: [..., "your_platform"] },
+// 并在 PLATFORM_GROUP_META 对应分组的 platforms[] 里登记
 ```
 
-### Step 7：正式部署
+### 7. 验证
 
 ```bash
-ssh lute@192.168.204.230
-cd ~/apps/data_scrapy
-git pull origin codex/social-api-private-matrix-20260708
-docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
-  --env-file /data/scrapy/configs/.env.production \
-  up --build --no-deps --detach api console
+cd apps/api
+uv run ruff check <changed-paths>
+uv run mypy <changed-paths>
+uv run pytest <focused-tests>
 
-# 验收
-curl https://scrapy.luteos.com/api/collectors/catalog | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); \
-  [print(e['endpoint_type'],e['status']) for g in d['collectors'] \
-  for e in g['endpoints'] if 'your_endpoint' in e['endpoint_type']]"
-```
-
----
-
-## 关键约束（不可违反）
-
-- `provider_call=false` — 不得直接调用第三方 Provider API，只通过 collector 抽象层
-- B1(Reddit) / B2(YouTube) collector **永远不做**
-- D2(Shopee) **取消**，服务器 IP 被封
-- 热更新后必须在下次正式发布时完整重建镜像，否则 `docker compose up --build` 会回退
-- 不得 commit `DDDD.pem`、`.env.production`、API keys
-
----
-
-## 部署操作
-
-### SSH 登录
-
-```bash
-ssh lute@192.168.204.230
-```
-
-### 完整重建（code 已 push 后）
-
-```bash
-cd ~/apps/data_scrapy
-git pull origin codex/social-api-private-matrix-20260708
-docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
-  --env-file /data/scrapy/configs/.env.production \
-  up --build --no-deps --detach api console
-```
-
-### 健康检查
-
-```bash
-curl -fsSL https://scrapy.luteos.com/api/health
-curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); \
-  print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])"
-# 期望：70 270 242
+cd ../../
+pnpm --dir apps/scraper-console test
+pnpm --dir apps/scraper-console exec tsc --noEmit
+pnpm --dir apps/scraper-console build
 ```
 
 ---
@@ -325,9 +215,9 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   5. **Apify 的 403 ≠ 反爬**。看 TaskRun 耗时：**<2 秒**的 `http_forbidden` 来自 `POST /acts/<id>/runs`，Apify run 根本没创建（Actor 已下架，或拒绝本账号运行）；耗时长才是上游站点反爬。前者换参数、加代理都没用，只能换 Actor。
   6. **Apify Actor 的 `inputSchema` 是 `additionalProperties:false`**：缺必填键**或**多传未知键都整单 400。真实 schema 用 `GET https://api.apify.com/v2/acts/<user~name>/builds/default` 免鉴权取（`exampleRunInput` 常是 `{"helloWorld":123}` 占位，不能当示例用）。
   7. **quick-collect 的 Apify 元键白名单只该有 4 个采集开关**（`maxItems`/`max_items`/`max_total_charge_usd`/`run_timeout_seconds`，见 `_APIFY_META_KEYS`）。曾把 `query`/`url`/`keyword`/`asin`/… 也列进去，`apify_rag_web_browser` 必填的 `query` 因此被静默丢弃。
-- **Apify Actor 会下架**：`_APIFY_ENDPOINT_DEFAULTS` 的 103 个 distinct Actor 里，2026-10-09 巡检发现 **25 个已下架 + 2 个被标废弃**（对应 28 个 endpoint_type，已改指存活 Actor）。下架后调用一律返回 403（**不是** 404），极易误判为反爬。改 Actor 时三处要一起动：`_APIFY_ENDPOINT_DEFAULTS`、`scripts/collector_demo_params.py`、`api/routes/collectors.py` 的 `provider`/`required_params`。巡检方法（免额度、不产生 run）见 [运行手册](./docs/workflows/workflow-console-capability-live-verification-stable.md)。
-- **quick-collect 能跑的端点 ≠ 目录里有的端点**：`_APIFY_ENDPOINT_DEFAULTS` 有 118 个，`/api/collectors/catalog` 只暴露 87 个 Apify 端点，前者是后者的真超集——多出的 31 个"幽灵端点"无人可发现却照样消耗额度。回归测试 `tests/unit/test_quick_collect_apify_input.py` 钉住了 `catalog ⊆ defaults` 这一方向。**副作用**：幽灵端点没有平台包，所以它**不能挂 endpoint 级坑点**——写 `notes/<platform>.json` 时 `builder` 会直接报 `target unknown endpoint_type`。这类坑点要改成 `scope: "platform"`。
-- **改 Apify 入参前先跑 `python scripts/audit_apify_inputs.py`**（只读 schema，0 额度）。它会报缺必填键、键名不存在、editor 形状不符。2026-10-09 首次运行：118 个端点里 33 个不合格（17 个缺必填键，直接 400）。取默认值用 `inputSchema.properties[key].prefill`，不要用 `exampleRunInput`（常是 `{"helloWorld":123}` 占位）。
+- **Apify Actor 会下架**：2026-10-09 巡检时它含 118 个端点 / 103 个 distinct Actor，其中 **25 个已下架 + 2 个被标废弃**（对应 28 个 endpoint_type，已改指存活 Actor）。下架后调用一律返回 403（**不是** 404），极易误判为反爬。改 Actor 时三处要一起动：`_APIFY_ENDPOINT_DEFAULTS`、`scripts/collector_demo_params.py`、`api/routes/collectors.py` 的 `provider`/`required_params`。巡检方法（免额度、不产生 run）见 [运行手册](./docs/workflows/workflow-console-capability-live-verification-stable.md)。
+- **quick-collect 能跑的端点必须等于目录里有的端点**（2026-10-10 已收敛为相等）：此前 `_APIFY_ENDPOINT_DEFAULTS` 有 118 个而 catalog 只暴露 87 个 Apify 端点，多出的 31 个"幽灵端点"无人可发现却照样消耗额度，已全部删除。现在两边都是 **79 个**，回归测试 `tests/unit/test_quick_collect_apify_input.py` 双向钉住集合相等。**历史副作用**：幽灵端点没有平台包，所以它**不能挂 endpoint 级坑点**——写 `notes/<platform>.json` 时 `builder` 会直接报 `target unknown endpoint_type`，这类坑点只能写 `scope: "platform"`。
+- **改 Apify 入参前先跑 `python scripts/audit_apify_inputs.py`**（只读 schema，0 额度）。它会报缺必填键、键名不存在、editor 形状不符。2026-10-09 首次运行（当时 118 个端点）报 33 个不合格，其中 17 个缺必填键会直接 400。取默认值用 `inputSchema.properties[key].prefill`，不要用 `exampleRunInput`（常是 `{"helloWorld":123}` 占位）。
 - **`editor` 决定值的形状**：`requestListSources` 要 `[{"url": ...}]`，`stringList` 要裸字符串数组。传错形状即使值本身合法也报 `... do not contain valid URLs`。`minimum`/`maximum`/`enum` 也要照抄——`limit`、`max_posts` 常有 `minimum: 10`。
 - **`max_total_charge_usd` 不是限流开关**：调小会让按事件计费的 Actor 直接 `ABORTED`，而不是少返回几条。要限流用入参里的数量字段。
 - **排查 degraded 端点的顺序**：① 先读 400/422 的响应体（上游会点名是哪个字段）；② 拿官方 spec 比对路径与方法（TikHub 的 `https://api.tikhub.io/openapi.json` 免鉴权）；③ 确认参数真的传到了上游；④ "成功但 0 条"再去比原始响应形状。详见 [运行手册](./docs/workflows/workflow-console-capability-live-verification-stable.md)。
@@ -335,7 +225,7 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
 - **第三方库的位置参数与返回类型要核对**：`AutoScraper.build()` 的第一个位置参数是 `url`（传 HTML 会触发 `requests.get(HTML)`），`get_result()` 返回 `(similar, exact)` 二元组。
 - **TikHub 有 POST-only 端点**：走 GET 会得到 405/422；新增端点时先查 spec 的方法。
 - **坑点写错端点名会被静默丢弃吗**：不会了。`builder` 现在对"target 命中不了任何端点"和"坑点文件 platform_id 对不上平台包"**直接报错**（2026-10-09 前是静默忽略，写错的坑点会看起来已沉淀却从不出现）。
-- **quick-collect 一定会落库**：`QuickCollectRequest` **没有** `save_records` 开关，传了也被忽略——每次调用都会建 `Source`+`CollectionTask`+`TaskRun` 并**保存 `RawRecord`**（实测一次全量扫描留下 265 组运行 / 565 条记录）。做扫描时用 `label` 打 `[test]` 前缀以便回收，别指望"不保存"。
+- **quick-collect 一定会落库**：`QuickCollectRequest` **没有** `save_records` 开关，传了也被忽略——每次调用都会建 `Source`+`CollectionTask`+`TaskRun` 并**保存 `RawRecord`**（2026-10-09/10 两轮全量扫描累计留下 265 组运行 / 565 条记录）。做扫描时用 `label` 打 `[test]` 前缀以便回收，别指望"不保存"。
 - **quick-collect 曾把 `endpoint_type` 从任务 config 里剥掉**：各 `_validate_*_config` 返回白名单字典，只留采集参数；而数据集平台归因（`_dataset_origin_signals`）靠 `task.config["endpoint_type"]` 取端点。结果：quick-collect 存出的数据集 `platforms=[]`，永远落到粗分类兜底（2026-10-09 已修：`validated.setdefault("endpoint_type", ...)`，quick_collect.py）。判断旧数据是否受影响：列表接口 `platforms` 为空但 `collector_types` 非空，且该版本血缘里的任务建于修复前。
 - **实测证据只认精确 label**：`/providers/status` 与 `/collectors/docs` 的证据来自 task name 匹配 `^\[quick\](?: \[quick\])? \[test\] (.+)$`，捕获组就是 `endpoint_type`。label 写成 `[test] 冒烟 <ep>` 之类会被**静默忽略**，状态看起来从未测过。要刷新某个端点的真值，label 必须**恰好**是 `[test] <endpoint_type>`。
 - **新 provider key 只写 `.env.production` 不生效**：`configs/deploy/scrapy/docker-compose.yml` 的 api 服务用**显式 `environment:` 列表**注入变量，`--env-file` 只用于列表里那些 `${VAR:-}` 的插值。2026-10-09 前 `FIRECRAWL_API_KEY`（以及 bestblogs/blackbird/twscrape/browser_use 那几组）不在列表里，写进 env 文件也到不了容器。排查手法：`docker exec <api> python -c "import os;print(bool(os.environ.get('X')))"`。已补全（commit `fix(deploy): inject the provider keys the collectors read`）。
@@ -347,7 +237,9 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   **`product` 记录类型不属于商品**：那是包注册表（npm/PyPI/Go 等）的条目，别加进 `PRODUCT_RECORD_TYPES`。
   验证商品页路径可用免费的 `ecommerce_product_page` 端点抓带 JSON-LD/microdata 的公开页（实测 `books.toscrape.com` 仅 7% 完整度——无结构化标记；`scrapeme.live/shop/<name>/` 有 JSON-LD，79%）。
 - **MCP 鉴权**：`SCRAPY_MCP_TOKEN=`（空串）曾被当成有效 token，导致 `/mcp/` 对所有人 401（2026-10-09 已修）。生产要用 MCP 就必须**显式设置**一个非空 `SCRAPY_MCP_TOKEN`（或 `SCRAPY_MCP_TOKENS_JSON`）；不设置则中间件放行（等价开放）。
-- **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`，只允许出现 `deploy/scrapy-luteos-rebuild` 既有基线内的失败。
+- **回归**：改 collector 前先枚举调用点（无 GitNexus 时 `grep -rn <symbol> apps/api/src`）；改完跑 `cd apps/api && uv run pytest -q`。当前基线允许 **4 个**已知失败：`test_firecrawl_collector::test_test_fails_without_api_key`、`test_spiderfoot_collector::TestValidateConfig::test_valid_target`、`test_v2_traceability`、`test_workflow_executor_postgres_guard`。
+
+---
 
 ---
 
@@ -363,6 +255,96 @@ curl -fsSL https://scrapy.luteos.com/api/platform-packages | \
   `grep -oE "^\s*--[a-z0-9-]+" <token文件> | sort -u` 对比 `... src/app/globals.css | sort -u`，再对差异项 `grep -rn "var(--x)" src/` 确认是否被引用。
 
 ---
+
+---
+
+## 当前配置依赖
+
+代码已支持、但生产效果依赖 secrets 或外部服务的能力：
+
+| 能力 | 配置 |
+|---|---|
+| MediaCrawler（B站/微博/知乎/快手）| `MEDIACRAWLER_BASE_URL` 与各平台 cookies |
+| AnyCrawl SERP（百度/Bing/DDG）| `ANYCRAWL_BASE_URL` |
+| twscrape | `TWITTER_ACCOUNTS_JSON` |
+| TikHub | `TIKHUB_API_KEY` |
+| Apify | `APIFY_API_TOKEN` |
+| Exa | `EXA_API_KEY` |
+| Firecrawl | `FIRECRAWL_API_KEY` |
+| Jina Reader | `JINA_API_KEY` 与可用网络出口 |
+| SpiderFoot / Blackbird | `SPIDERFOOT_BASE_URL` / `BLACKBIRD_BASE_URL` |
+| Robin 暗网 OSINT | `TOR_PROXY_URL`（Compose 的 `tor` 服务，`socks5h://tor:9050`）|
+| MCP | `SCRAPY_MCP_TOKEN` 或 `SCRAPY_MCP_TOKENS_JSON` |
+| TikTok CDO | 飞书、DeepSeek 和 demo project 相关变量 |
+
+凭据缺失必须在 Provider 状态或采集结果中明确体现，不得把空结果标记为已验证成功。
+
+新增 provider key 时**只写 `.env.production` 不生效**：api 服务用显式 `environment:` 列表注入变量，`--env-file` 只用于列表里那些 `${VAR:-}` 的插值。漏加时排查手法：
+
+```bash
+docker exec <api容器> python -c "import os;print(bool(os.environ.get('X_API_KEY')))"
+```
+
+## 关键约束
+
+- `provider_call=false`：业务路由、Agent 和 UI 不得直接调用第三方 Provider，必须经过 collector 抽象层。
+- 不新增独立的官方 Reddit 或 YouTube collector；现有 TikHub/Apify 能力保持不变。
+- Shopee 直连方案已取消，不恢复被生产 IP 封禁的路径。
+- 不得提交 `.env.production`、SSH key、TLS 私钥、API key、Cookie 或账号 JSON。
+- 不得删除共享 `lighthouse_ai_video_net`，不得重启无关 Compose 项目。
+- `proxy_rotator` 位于显式 profile `proxy`，默认部署不启动。
+- 热替换容器文件不是正式发布；下一次部署必须重建镜像。
+- 历史 ADR 和执行日志中的旧域名、数量和 revision 是历史证据，不批量改写。
+
+## 发布
+
+```bash
+ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244
+cd /opt/data-achieve-scrapy/app
+git fetch origin feat/live-capability-verification-sink-notes
+git reset --hard FETCH_HEAD
+cd configs/deploy/scrapy
+ENV=/opt/data-achieve-scrapy/.env.production
+docker compose --env-file "$ENV" build api console
+docker compose --env-file "$ENV" up -d api console
+docker compose --env-file "$ENV" restart edge        # 必须，见下
+```
+
+只改 Console 时可 `build console` 加 `up -d --no-deps console`。
+
+**发布四坑**：
+
+1. **必须先 `git push`**。只提交到本地就上服务器发布，服务器会取到旧 commit，表现为"改动完全没生效"。
+2. **重建 api 后必须 `restart edge`**。edge 启动时把 api 的 IP 缓存住了，`up -d api` 换新 IP 后 edge 不重解析，外部一律 502，而容器内 `curl http://api:8000/api/health` 仍是 200。
+3. **不要用 `git pull`**。服务器上的本地分支没有 upstream，`git pull` 会静默返回 "Already up to date" 而不拉任何提交。用上面的 `fetch` + `reset --hard FETCH_HEAD`。
+4. **notes 改动要重建 api**。平台坑点在 api 镜像内，只重建 console 不会生效。
+
+完整步骤和回滚条件见 [发布与回滚清单](docs/workflows/workflow-release-rollback-stable.md)。
+
+## 健康验收
+
+```bash
+B=https://scrapy.luteos.com
+curl -fsSL $B/api/health
+curl -fsSL $B/api/platform-packages | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); \
+  print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])"
+# 期望：70 270 242
+curl -sS -L -o /dev/null -w '%{http_code}\n' $B/mcp
+# 无 Token 期望：401
+```
+
+其他真值来源：
+
+- `/api/collectors/docs` → `total_endpoints` / `tested_endpoints` / `success_endpoints`。
+- `/api/platform-packages/providers/status` → 逐端点的 `availability`，取值 `verified` / `config-gated` / `degraded` / `empty` / `disabled` / `untested`。
+
+## 文档规范
+
+- 当前生产事实只维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)。
+- 新增或重写 Markdown 必须包含 `name`、`description` Frontmatter。
+- 业务文档之间使用 Markdown 链接建立关系。
+- 历史材料顶部可增加"历史快照"提示，但不改写当时数据。
 
 <!-- gitnexus:start -->
 ## GitNexus — 代码图谱（可选）

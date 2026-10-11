@@ -1,18 +1,26 @@
 ---
 name: platform-collection-playbook
-description: 全平台数据采集方法手册，覆盖 TikHub、Apify 及内部采集器共 137 个已核验端点（50个平台、14种数据类型）。说明每个平台的采集能力、调用参数和成本估算。当需要接入新平台、确认采集路径、或在平台能力中心配置采集任务时使用。
+description: 全平台数据采集方法手册，说明 TikHub、Apify、Exa 及内部采集器的稳定调用模式、常用参数和成本边界。当接入新平台、确认采集路径或配置采集任务时使用；完整目录以生产 Catalog 为准。
 ---
 
 # 平台数据采集手册
 
-> **版本**：2026-08-16 · **状态**：已核验端点 137 / 禁用 11 · **负责人**：数据工程
+> **版本**：2026-10-09 · **当前目录**：74 个平台 / 278 个能力视图 / 250 个唯一 endpoint / 266 verified / 12 disabled
 >
-> 本手册覆盖系统当前所有已核验采集端点，包含调用示例和参数说明。
-> 调用入口统一为 `/api/collectors/catalog`，前端在「平台能力中心」页面渲染（三层矩阵：平台分类 → 内容类型 → 采集方式）。
+> 本手册保留稳定且常用的调用示例，不再手工穷举全部 endpoint。完整参数、状态和 Provider 以 `/api/collectors/catalog`、`/api/platform-packages` 和 Console「采集文档」为准。
 
 ---
 
 ## 概览
+
+生产目录查询：
+
+```bash
+curl -fsSL https://scrapy.luteos.com/api/collectors/catalog
+curl -fsSL https://scrapy.luteos.com/api/platform-packages
+```
+
+下表是主要采集方式示例，不作为当前完整数量清单。
 
 | 采集器组 | 方法 | 端点数 | 平台 |
 |---|---|---|---|
@@ -29,7 +37,7 @@ description: 全平台数据采集方法手册，覆盖 TikHub、Apify 及内部
 | GitHub | github_api | 2 | GitHub Repo / Topics |
 | RSS / 公开网页 | rss + web_crawl | 15 | RSS 订阅源 + Web Snapshot |
 
-**数据类型覆盖（14种）**：`post` · `comment` · `account` · `product` · `review` · `ad` · `job` · `trend` · `ai_answer` · `news` · `web_page` · `repo` · `feed` · `search`
+**数据类型覆盖（18 种）**：`account` · `ad` · `ai_answer` · `comment` · `feed` · `job` · `news` · `osint_report` · `post` · `product` · `repo` · `review` · `search` · `search_result` · `serp_result` · `trend` · `web_page` · `web_page_markdown`
 
 
 ## 1. TikHub Social
@@ -399,33 +407,21 @@ config = {
 
 ---
 
-## 11. 生产部署
+## 11. 生产调用与发布入口
 
-代码已推送至分支 `codex/social-api-private-matrix-20260708`。在服务器上执行以下命令更新生产环境：
+生产即时采集统一使用 `/api/quick-collect`，请求必须携带有效 `project_id`：
 
 ```bash
-# 在服务器 /opt/data-achieve-scrapy/app 目录执行
-
-# 1. 拉取最新代码
-git fetch origin
-git checkout codex/social-api-private-matrix-20260708
-git pull origin codex/social-api-private-matrix-20260708
-
-# 2. 预检
-bash scripts/deploy-preflight-scrapy.sh
-
-# 3. 重建并启动 API 容器（catalog 路由为纯内存计算，无需迁移）
-docker compose -f configs/deploy/scrapy/docker-compose.yml \
-  --env-file /opt/data-achieve-scrapy/.env.production \
-  up --build --detach api
-
-# 4. 验证
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/health
-curl -fsSL https://scrapy.lute-tlz-dddd.top/api/collectors/catalog | python3 -m json.tool | grep '"status": "verified"' | wc -l
-# 期望输出：91
+curl -X POST https://scrapy.luteos.com/api/quick-collect \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "project_id": "<project-uuid>",
+    "endpoint_type": "tikhub_tiktok_video_search",
+    "params": {"keyword": "bump", "max_items": 2}
+  }'
 ```
 
-> 前端无需重新部署。`/api/collectors/catalog` 是纯内存路由，重建 API 镜像即可生效。
+新增或修改 catalog、参数表单、Skill 包或 Provider 状态时，可能同时需要重建 API 与 Console。发布步骤见 [发布与回滚清单](workflow-release-rollback-stable.md)。
 
 ---
 

@@ -1,265 +1,205 @@
-# Data Intelligence Hub — 新服务器部署方案
-
-> 目标服务器：192.168.204.230（内网）· 8 vCPU · 62GB RAM · 1TB /data
-> 最后更新：2026-09-01
-
+---
+name: tencent-production-deployment
+description: Data Intelligence Hub 腾讯云生产部署说明，涵盖主机准备、代码、环境变量、空库迁移、共享网关和验收。当新建或恢复当前生产实例时使用。
 ---
 
-## 服务器基本信息
+# 腾讯云生产部署
 
-| 项目 | 值 |
+本文描述当前生产环境 `43.163.92.244` 的安装与恢复流程。日常增量发布优先使用 [发布与回滚清单](workflows/workflow-release-rollback-stable.md)；破坏性全量重建使用 [scrapy.luteos.com 全量重建](workflows/【运维手册】scrapy-luteos全量重建.md)。
+
+## 生产边界
+
+| 项目 | 当前值 |
 |---|---|
-| 内网 IP | `192.168.204.230` |
-| 系统 | Ubuntu 24.04.4 LTS |
-| 规格 | 8 vCPU · 62 GB RAM · 200 GB 系统盘 + 1 TB `/data` 数据盘 |
-| 访问方式 | 堡垒机 `jumpserver.luteos.site:2222` → lute@192.168.204.230 |
-| 登录用户 | `lute`（sudo） |
+| 公网 IP | `43.163.92.244` |
+| SSH 用户 | `ubuntu` |
+| 项目路径 | `/opt/data-achieve-scrapy/app` |
+| 环境变量 | `/opt/data-achieve-scrapy/.env.production` |
+| 生产域名 | `https://scrapy.luteos.com` |
+| Compose | `configs/deploy/scrapy/docker-compose.yml` |
+| Compose 项目 | `data_achieve_scrapy` |
+| 共享网关 | `ai_video_nginx` |
 
----
+最新能力数量和容器清单以 [生产环境基线](【运维手册】生产环境基线.md) 为准。
 
-## 与当前生产环境（101.34.52.232）的差异
+## 前置条件
 
-| 项目 | 旧服务器（腾讯云） | 新服务器（内网） |
-|---|---|---|
-| IP 性质 | 公网 IP | 内网 IP，需端口映射/反代才能公网访问 |
-| 数据盘 | 无独立数据盘 | 1 TB `/data`，所有持久化数据应挂载于此 |
-| SSH 入口 | 直连 + DDDD.pem | 堡垒机跳转 |
-| 内核参数 | 默认 | 已调优（open files 65535 / somaxconn） |
-| Docker | 已安装 | **待安装**（见下方步骤） |
+- Ubuntu 主机已安装 Docker Engine 和 Docker Compose v2。
+- `ubuntu` 用户可执行 Docker 命令。
+- 外部网络 `lighthouse_ai_video_net` 已存在。
+- 共享 `ai_video_nginx` 已连接该网络。
+- GitHub 仓库和生产分支可访问。
+- 生产 secrets 已准备，但未写入仓库。
 
----
-
-## 第一步：安装 Docker
+检查：
 
 ```bash
-# 连接服务器
-ssh lute@192.168.204.230
-# 或通过堡垒机：ssh -p 2222 zhoujian@jumpserver.luteos.site
-
-# 安装 Docker Engine
-curl -fsSL https://get.docker.com | sudo sh
-
-# 将 lute 加入 docker 组（免 sudo）
-sudo usermod -aG docker lute
-newgrp docker
-
-# 启动并设开机自启
-sudo systemctl enable --now docker
-
-# 验证
 docker version
-docker compose version   # 需 >= 2.x
+docker compose version
+docker network inspect lighthouse_ai_video_net
+docker inspect ai_video_nginx --format '{{.State.Status}} {{.State.Health.Status}}'
 ```
 
----
-
-## 第二步：准备目录结构
+## 准备目录和代码
 
 ```bash
-# 在数据盘创建所有持久化目录（关键：使用 /data 而非系统盘）
-sudo mkdir -p /data/scrapy/{postgres,exports/datasets,browser_data,configs}
-sudo chown -R lute:lute /data/scrapy
+sudo mkdir -p /opt/data-achieve-scrapy
+sudo chown ubuntu:ubuntu /opt/data-achieve-scrapy
 
-# 克隆/拉取项目代码
-mkdir -p ~/apps
-cd ~/apps
-git clone https://github.com/zjgulai/data_achieve.git data_scrapy
-cd data_scrapy
-git checkout codex/social-api-private-matrix-20260708
+git clone \
+  --branch codex/social-api-private-matrix-20260708 \
+  --single-branch \
+  https://github.com/zjgulai/data_achieve.git \
+  /opt/data-achieve-scrapy/app
+
+install -m 600 /dev/null /opt/data-achieve-scrapy/.env.production
 ```
 
----
+## 配置环境变量
 
-## 第三步：创建环境变量文件
-
-```bash
-# 复制模板并填写真实值
-cp .env.example /data/scrapy/configs/.env.production
-# 然后编辑：
-nano /data/scrapy/configs/.env.production
-```
-
-**必填变量**（参考旧服务器 /opt/data-achieve-scrapy/.env.production）：
+必须配置：
 
 ```dotenv
-# 数据库
-SCRAPY_POSTGRES_DB=data_intelligence_hub
-SCRAPY_POSTGRES_USER=scrapy_user
+SCRAPY_POSTGRES_DB=<数据库名>
+SCRAPY_POSTGRES_USER=<数据库用户>
 SCRAPY_POSTGRES_PASSWORD=<强密码>
-SCRAPY_JWT_SECRET=<随机64字符>
+SCRAPY_JWT_SECRET=<随机高强度值>
 SCRAPY_AUTH_COOKIE_SECURE=true
-
-# API Keys（从旧服务器迁移）
-TIKHUB_API_KEY=<from old server>
-APIFY_API_TOKEN=<from old server>
-ANYSEARCH_API_KEY=<from old server>
-JINA_API_KEY=<from old server>
-GITHUB_TOKEN=<from old server>
-
-# 调度器
-SCRAPY_SCHEDULER_ENABLED=true
-SCRAPY_SCHEDULER_POLL_INTERVAL_SECONDS=60
-
-# 域名（改为新域名或内网访问）
-# 如果对外：将 scrapy.lute-tlz-dddd.top 替换为新域名
-# 如果内网：可填 http://192.168.204.230
-
-# 数据导出目录（使用数据盘）
-SCRAPY_DATASET_EXPORT_DIR=/app/exports/datasets
-
-# 代理（可选）
-PROXY_ROTATOR_ENABLED=false
-HTTP_PROXY=
-HTTPS_PROXY=
-
-# OSINT 服务
-MAIGRET_URL=http://maigret:5000
-SPIDERFOOT_BASE_URL=http://spiderfoot:5001
-SPIDERFOOT_TIMEOUT=300
+SCRAPY_PUBLIC_URL=https://scrapy.luteos.com
+SCRAPY_DEMO_EMAIL=owner@example.com
+SCRAPY_DEMO_PASSWORD=<演示账号强密码>
 ```
 
----
-
-## 第四步：部署容器
-
-```bash
-cd ~/apps/data_scrapy
-
-# 首次完整构建（约 10-20 分钟，依网速）
-docker compose \
-  -f configs/deploy/scrapy-new/docker-compose.yml \
-  --env-file /data/scrapy/configs/.env.production \
-  up --build -d
-
-# 等待所有容器健康
-watch docker ps
-```
-
----
-
-## 第五步：配置宿主机 Nginx（对外暴露）
-
-```bash
-# 安装宿主机 Nginx
-sudo apt install -y nginx
-
-# 将配置写入 Nginx
-sudo cp ~/apps/data_scrapy/configs/deploy/scrapy-new/nginx.conf \
-  /etc/nginx/sites-available/scrapy
-
-sudo ln -sf /etc/nginx/sites-available/scrapy \
-  /etc/nginx/sites-enabled/scrapy
-
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-如果有公网域名，同步配置 SSL：
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d your.domain.com
-```
-
-> 当前生产公网入口不直接终止在内网主机。`scrapy.luteos.com` 由
-> `43.163.92.244` 的共享 Nginx 提供 TLS，再通过专用 relay 和受限 SSH
-> 反向隧道访问本机 80 端口。不要在内网主机申请公网证书或开放额外公网端口。
-
-MCP 生产变量：
+按启用能力配置：
 
 ```dotenv
-SCRAPY_MCP_TOKEN=<随机高强度值>
-SCRAPY_MCP_TOKENS_JSON={"claude":"<独立Token>","codex":"<独立Token>"}
-SCRAPY_MCP_RATE_PER_MINUTE=120
-SCRAPY_MCP_CONCURRENT_CALLS=8
-SCRAPY_MCP_DAILY_COLLECTS=500
+TIKHUB_API_KEY=
+APIFY_API_TOKEN=
+EXA_API_KEY=
+ANYSEARCH_API_KEY=
+JINA_API_KEY=
+GITHUB_TOKEN=
+PLATFORM_CREDENTIAL_MASTER_KEY=
+SCRAPY_MCP_TOKEN=
+SCRAPY_MCP_TOKENS_JSON={}
 ```
 
-MCP 地址：`https://scrapy.luteos.com/mcp/`。
+Cookie、Twitter 账号、代理、SMTP、CDO 和其他 Provider 变量按实际需要配置。不得在终端输出完整 env 文件或原始 Token。
 
-优先使用 `SCRAPY_MCP_TOKENS_JSON` 为不同客户端分配独立 Token，便于单独吊销；
-`SCRAPY_MCP_TOKEN` 仅作为向后兼容单 Token。
-
----
-
-## 第六步：健康验收
+## Preflight
 
 ```bash
-# API 健康检查
-curl http://192.168.204.230/api/health
-# 期望：{"status":"ok","database":"connected",...}
-
-# catalog 验收
-curl http://192.168.204.230/api/collectors/catalog | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); \
-  v=sum(1 for g in d['collectors'] for e in g['endpoints'] if e.get('status')=='verified'); \
-  print('verified:', v)"
-# 期望：verified: 207
+cd /opt/data-achieve-scrapy/app
+bash scripts/deploy-preflight-scrapy.sh \
+  --env-file /opt/data-achieve-scrapy/.env.production \
+  --compose-file configs/deploy/scrapy/docker-compose.yml \
+  --base-url https://scrapy.luteos.com
 ```
 
----
+## 空库部署顺序
 
-## 容器资源规划（62 GB RAM）
-
-| 容器 | 内存估算 | CPU 估算 |
-|---|---|---|
-| api (FastAPI) | 512 MB ~ 1 GB | 0.5 core |
-| console (Next.js) | 256 MB | 0.2 core |
-| db (Postgres) | 512 MB ~ 2 GB | 0.5 core |
-| maigret | 256 MB | 0.2 core |
-| spiderfoot | 512 MB | 0.3 core |
-| nginx (edge) | 64 MB | 微量 |
-| **合计** | **~5 GB** | **~2 core** |
-| **剩余可用** | **~57 GB** | **~6 core** |
-
-新服务器资源远超当前负载，可在同一台服务器上额外部署其他项目。
-
----
-
-## 从旧服务器迁移数据（可选）
-
-如需迁移 Postgres 数据：
+先启动数据库，再构建镜像和执行迁移，最后启动完整栈：
 
 ```bash
-# 旧服务器上导出
-ssh -i DDDD.pem ubuntu@101.34.52.232 \
-  "docker exec data_achieve_scrapy_db pg_dump -U scrapy_user data_intelligence_hub" \
-  > /tmp/scrapy_dump.sql
+cd /opt/data-achieve-scrapy/app
 
-# 传到新服务器
-scp /tmp/scrapy_dump.sql lute@192.168.204.230:/tmp/
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  up --detach db
 
-# 新服务器上导入（容器启动后）
-ssh lute@192.168.204.230
-docker exec -i data_achieve_scrapy_db \
-  psql -U scrapy_user data_intelligence_hub < /tmp/scrapy_dump.sql
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  build api console spiderfoot
+
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  run --rm --no-deps api alembic upgrade head
+
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  up --detach
 ```
 
----
+## Demo seed
 
-## 防火墙配置
+空库必须执行标准 demo seed，否则项目、Dashboard 和 quick-collect 会返回 `demo_workspace_unavailable`：
 
 ```bash
-# 开放 HTTP/HTTPS（给 Nginx 用）
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-# SSH 已开放（22/tcp）
+cd /opt/data-achieve-scrapy/app
+set -a
+source ../.env.production
+set +a
 
-# 验证
-sudo ufw status
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  run --rm \
+  -e SCRAPY_DEMO_EMAIL="$SCRAPY_DEMO_EMAIL" \
+  -e SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
+  api python -m data_intelligence_hub.seed.demo_data
 ```
 
----
+Seed 是幂等操作，创建一个 demo workspace 和四个业务域项目。
 
-## 路径对照表
+## 共享网关
 
-| 资产 | 旧服务器路径 | 新服务器路径 |
-|---|---|---|
-| 项目代码 | `/opt/data-achieve-scrapy/app` | `~/apps/data_scrapy` |
-| 环境变量 | `/opt/data-achieve-scrapy/.env.production` | `/data/scrapy/configs/.env.production` |
-| Postgres 数据 | Docker volume | `/data/scrapy/postgres`（bind mount） |
-| 导出文件 | Docker volume | `/data/scrapy/exports`（bind mount） |
-| docker-compose | `configs/deploy/scrapy/docker-compose.yml` | `configs/deploy/scrapy-new/docker-compose.yml` |
+`data_achieve_scrapy_edge` 必须连接 `lighthouse_ai_video_net`，并持有别名 `data_achieve_scrapy_proxy`。共享 Nginx upstream：
 
----
+```nginx
+upstream data_achieve_scrapy {
+    server data_achieve_scrapy_proxy:8080;
+}
+```
 
-*最后更新：2026-09-01*
+`scrapy.luteos.com` 的 `location /` 必须代理到 `http://data_achieve_scrapy`。修改共享配置前先备份，只执行配置检查和热重载：
+
+```bash
+docker exec ai_video_nginx nginx -t
+bash scripts/reload-scrapy-gateway.sh
+```
+
+不得删除 `lighthouse_ai_video_net`，不得为本项目单独占用宿主机 80/443。
+
+## 验收
+
+```bash
+cd /opt/data-achieve-scrapy/app
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file ../.env.production \
+  ps
+
+curl -fsSL https://scrapy.luteos.com/api/health
+curl -fsSL https://scrapy.luteos.com/api/platform-packages
+curl -fsSI https://scrapy.luteos.com/platforms
+curl -sS -L -o /dev/null -w '%{http_code}\n' https://scrapy.luteos.com/mcp
+```
+
+加载演示账号执行标准 API smoke：
+
+```bash
+set -a
+source /opt/data-achieve-scrapy/.env.production
+set +a
+
+BASE_URL=https://scrapy.luteos.com \
+SCRAPY_DEMO_EMAIL="$SCRAPY_DEMO_EMAIL" \
+SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
+bash scripts/smoke-api-scrapy.sh
+```
+
+预期：核心容器 healthy、schema 为 head、平台包为 `74 / 278 / 250`、未授权 MCP 返回 `401`。
+
+## 数据和回滚
+
+持久化数据使用以下 Docker volumes：
+
+- `data_achieve_scrapy_postgres_data`
+- `data_achieve_scrapy_export_data`
+- `data_achieve_scrapy_browser_data`
+
+升级前必须备份数据库、环境变量、导出文件、旧源码和共享网关配置。恢复步骤见 [发布与回滚清单](workflows/workflow-release-rollback-stable.md)。

@@ -1,182 +1,139 @@
-# Data Intelligence Hub — 数据采集平台
+---
+name: data-intelligence-hub-readme
+description: Data Intelligence Hub 项目入口文档，介绍产品能力、生产状态、本地开发和文档导航。当首次了解、开发或运维本项目时使用。
+---
 
-面向品牌和市场运营团队的多平台数据采集管理台。通过统一 API、平台 Skill 和共享 MCP Runtime 调用 278 个能力视图（250 个唯一 endpoint），结果落库为 RawRecord。
+# Data Intelligence Hub
 
-## 生产状态（2026-10-09）
+Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API、平台 Skill 和共享 MCP Runtime 调用采集能力，将结果保存为 `RawRecord`，并提供项目、任务、运行记录和数据集管理界面。
 
-| 项目 | 状态 |
+## 当前生产状态
+
+| 项目 | 当前值 |
 |---|---|
-| 生产域名 | `https://scrapy.luteos.com` |
-| 应用服务器 | `192.168.204.230`（内网）|
-| 公网入口 | `43.163.92.244` → 受限 SSH 反向隧道 |
-| 当前分支 | `codex/social-api-private-matrix-20260708` |
-| 采集目录 | **74 平台 / 278 能力视图 / 250 唯一 endpoint** |
-| Skill/MCP | `/skills`、`/mcp/`、平台 ZIP 下载 |
-| 容器状态 | api / console / edge / db / maigret healthy |
-| 认证 | 全路由无需登录，使用 demo workspace fallback |
+| 生产地址 | <https://scrapy.luteos.com> |
+| 平台目录 | 74 个平台 |
+| 能力视图 | 278 个 |
+| 唯一 endpoint | 250 个 |
+| 能力状态 | 266 个 verified / 12 个 disabled |
+| Skill 目录 | <https://scrapy.luteos.com/skills> |
+| MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token |
+| 数据库 schema | `202607280044` |
+| 部署分支 | `codex/social-api-private-matrix-20260708` |
 
-## 应用服务
+服务器、容器、网络和数据卷的当前事实统一维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)，不要在其他文档复制易变的 revision 或容器状态。
 
-| 服务 | 容器 | 端口 | 说明 |
-|---|---|---|---|
-| API | `data_achieve_scrapy_api` | 8000 | FastAPI 后端，所有采集逻辑 |
-| Scraper Console | `data_achieve_scrapy_console` | 3001 | 采集管理台（平台能力中心）|
-| Edge Nginx | `data_achieve_scrapy_edge` | 8080 | 反向代理 |
-| PostgreSQL | `data_achieve_scrapy_db` | 5432 | postgres:16 |
+## 产品界面
 
-> `apps/web`（洞察面板）已从生产路由移除（commit `241910c`），代码保留但容器不部署。
+| 页面 | 路径 | 用途 |
+|---|---|---|
+| 采集平台 | `/platforms` | 按平台、数据类型和 Provider 选择采集能力 |
+| Skill 与 MCP | `/skills` | 查看平台 Skill、Playbook、安装包和 MCP 能力 |
+| 项目 | `/projects` | 管理采集项目 |
+| 任务 | `/tasks` | 管理采集任务和手动运行 |
+| 运行记录 | `/runs` | 查看运行状态、记录数和原始结果 |
+| 数据集 | `/datasets` | 管理数据集、版本和导出 |
+| 采集文档 | `/collector-docs` | 查看采集器验证状态和参数说明 |
 
-## 采集能力总览（162 端点）
+公开目录页面可直接访问。项目数据和管理接口使用 demo workspace 与演示账号机制；生产账号和密码只存在于生产环境变量，不写入仓库。
 
-| 采集器组 | 方法 | verified | 代表平台 |
-|---|---|---|---|
-| TikHub Social | tikhub | 45 | TikTok / Instagram / 小红书 / YouTube / Reddit / X / Threads / LinkedIn / Lemon8 |
-| Apify Actor | apify | 75 | 社交/电商/评价/广告/B2B/AI搜索/通用爬取 |
-| GitHub | github_api | 2 | GitHub Repo / Topics |
-| RSS / Web | rss + web_crawl | 15 | RSS 订阅源 + Web 快照 |
-| 浏览器采集 | browser | 3 | Playwright text/html/screenshot |
-| 电商独立站 | web_crawl | 2 | 通用电商商品页 |
-| 监管公告 | rss | 4 | FDA / UK OPSS / UK NHS / PR Newswire |
-| AnySearch | anysearch | 2 | 品牌媒体搜索 / 竞品搜索 |
-| Jina Reader | jina_reader | 3 | 页面转 Markdown（需代理） |
+## 系统组成
 
-**数据类型（17种）**：post · comment · account · product · review · ad · job · trend · ai_answer · news · web_page · repo · feed · search · search_result · web_page_markdown · recall_notice
-
-## 项目结构
-
-```
-data_scrapy/
-├── apps/
-│   ├── api/                          # FastAPI 后端
-│   │   └── src/data_intelligence_hub/
-│   │       ├── collectors/           # ★ 采集器实现（新增采集卡片从这里开始）
-│   │       ├── api/routes/
-│   │       │   ├── collectors.py     # ★ catalog 端点定义
-│   │       │   └── quick_collect.py  # ★ quick_collect 端点映射
-│   │       └── services/
-│   │           └── collector_catalog.py  # ★ CollectorDefinition + validate
-│   ├── scraper-console/              # Next.js 采集管理台
-│   │   └── src/app/platforms/page.tsx  # ★ 前端卡片渲染（平台 Logo / 分类）
-│   └── web/                          # 洞察面板（未在生产部署）
-├── configs/deploy/scrapy/
-│   ├── docker-compose.yml            # 生产容器编排
-│   └── edge-nginx.conf               # Nginx 路由
-├── docs/
-│   ├── api/                          # API 合同
-│   ├── architecture/                 # 架构设计
-│   └── workflows/                    # 开发/部署/采集 SOP
-└── opendesign/design-systems/        # 设计 token + DESIGN.md
+```text
+Browser
+  → shared ai_video_nginx / TLS
+  → data_achieve_scrapy_edge
+  → data_achieve_scrapy_console 或 data_achieve_scrapy_api
+  → data_achieve_scrapy_db
 ```
 
-## 新增采集卡片流程（5步）
+主要代码目录：
 
-1. **新建 collector**：`apps/api/src/data_intelligence_hub/collectors/<name>.py`
-   - 继承 `BaseCollector`，实现 `async collect() -> CollectionResult`
-   - 返回 `CollectionResult(raw_records=[...], errors=[])`
-
-2. **注册 collector**：`collectors/registry.py`
-   ```python
-   from .your_collector import YourCollector
-   COLLECTOR_REGISTRY["your_collector"] = YourCollector
-   ```
-
-3. **加 catalog 定义**：`api/routes/collectors.py`
-   ```python
-   CollectorEndpoint(
-       endpoint_type="your_endpoint",
-       label="...", platform="...", method="your_method",
-       content_type="...", status="verified",
-       required_params=["param1"], ...
-   )
-   ```
-
-4. **加 quick_collect 映射**：`api/routes/quick_collect.py`
-   ```python
-   "your_endpoint": ("your_collector", {"key": "params_key"}),
-   ```
-
-5. **加 validate 函数**：`services/collector_catalog.py`
-   ```python
-   def _validate_your_config(params): ...
-   ```
-
-6. **前端加平台 Logo**（如有新平台）：`apps/scraper-console/src/app/platforms/page.tsx`
-   - 在 `PLATFORM_LOGOS` 加 `{ bg: "#...", fg: "#fff", letter: "XX" }`
-   - 在 `PLATFORM_GROUP_META` 的对应分组 `platforms[]` 加平台名
-
-7. **部署**：热推或完整重建（见下方）
-
-## 部署
-
-当前标准部署目标为内网服务器 `192.168.204.230`，公网通过
-`scrapy.luteos.com` 的受限反向隧道访问。旧域名仅保留兼容。
-
-### 正式发布（当前生产）
-
-```bash
-ssh lute@192.168.204.230
-cd ~/apps/data_scrapy
-git pull origin codex/social-api-private-matrix-20260708
-docker compose -f configs/deploy/scrapy-new/docker-compose.yml \
-  --env-file /data/scrapy/configs/.env.production \
-  up --build --no-deps --detach api console
-```
-
-### 验收
-
-```bash
-curl -fsSL https://scrapy.luteos.com/api/health
-curl -fsSL https://scrapy.luteos.com/api/platform-packages | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-print(d['platform_count'], d['capability_count'], d['unique_endpoint_count'])
-"
-# 期望：74 278 250
+```text
+apps/api/                       FastAPI API、采集器、调度器、Skill/MCP Runtime
+apps/scraper-console/           Next.js 采集管理台，生产公网主界面
+apps/web/                       保留的洞察应用，生产仅内部运行
+configs/deploy/scrapy/          当前生产 Docker Compose 与 edge Nginx
+configs/bridges/                SpiderFoot、MediaCrawler 等桥接服务
+docs/                           API、架构、运维和采集文档
+opendesign/design-systems/      前端设计系统
 ```
 
 ## 本地开发
 
+### 后端
+
 ```bash
-# 环境变量
-cp .env.example .env
-cp apps/api/.env.example apps/api/.env
-
-# 后端
-cd apps/api && uv sync
+cd apps/api
+uv sync
+uv run alembic upgrade head
 uv run uvicorn data_intelligence_hub.main:app --reload --port 8000
-
-# 采集管理台
-cd apps/scraper-console && pnpm install && pnpm dev
-# → http://localhost:3001
 ```
 
-**关键环境变量**
+### 采集管理台
 
-| 变量 | 用途 |
-|---|---|
-| `TIKHUB_API_KEY` | TikHub 社媒采集 |
-| `APIFY_API_TOKEN` | Apify Actor 调用 |
-| `ANYSEARCH_API_KEY` | AnySearch 搜索 API |
-| `JINA_API_KEY` | Jina Reader（国内需代理）|
-| `SCRAPY_POSTGRES_*` | 数据库连接 |
+```bash
+pnpm install --frozen-lockfile
+pnpm --dir apps/scraper-console dev
+```
 
-## 文档
-
-| 文档 | 用途 |
-|---|---|
-| [API 合同](docs/api/api-contract-data-intelligence-hub-stable.md) | 所有 API 端点规范 |
-| [架构设计](docs/architecture/architecture-data-intelligence-hub-stable.md) | 系统架构 |
-| [平台采集手册](docs/workflows/workflow-platform-collection-playbook-stable.md) | 所有端点参数与示例 |
-| [发布与回滚](docs/workflows/workflow-release-rollback-stable.md) | 生产部署 SOP |
-| [本地开发](docs/workflows/workflow-development-setup-stable.md) | 开发环境搭建 |
-| [设计系统](opendesign/design-systems/data-intelligence-product/DESIGN.md) | UI token + 规范 |
+本地访问：<http://localhost:3001>。
 
 ## 质量检查
 
 ```bash
 # 后端
-cd apps/api && uv run ruff check . && uv run mypy src && uv run pytest && uv run alembic heads
+cd apps/api
+uv run ruff check .
+uv run mypy src
+uv run pytest
+uv run alembic heads
 
-# 前端
-cd apps/scraper-console && pnpm tsc --noEmit && pnpm build
+# Console
+pnpm --dir apps/scraper-console test
+pnpm --dir apps/scraper-console exec tsc --noEmit
+pnpm --dir apps/scraper-console lint
+pnpm --dir apps/scraper-console build
+
+# 生产 Compose 配置
+docker compose \
+  -f configs/deploy/scrapy/docker-compose.yml \
+  --env-file /path/to/.env.production \
+  config --quiet
 ```
+
+完整测试套件可能包含依赖历史夹具或专用 PostgreSQL 环境的测试。发布时必须记录新增范围的测试结果和已知基线失败，不得将基线失败误报为本次回归。
+
+## 新增采集能力
+
+新增 endpoint 至少需要同步以下位置：
+
+1. `apps/api/src/data_intelligence_hub/collectors/`：实现 collector。
+2. `apps/api/src/data_intelligence_hub/collectors/registry.py`：注册 collector。
+3. `apps/api/src/data_intelligence_hub/api/routes/collectors.py`：添加 catalog 定义。
+4. `apps/api/src/data_intelligence_hub/api/routes/quick_collect.py`：添加 quick-collect 映射和默认参数。
+5. `apps/api/src/data_intelligence_hub/services/collector_catalog.py`：添加配置校验。
+6. `apps/scraper-console/`：仅在需要新平台展示或特殊参数表单时修改。
+7. 测试、平台包锁文件和相关 Playbook：按变更范围同步。
+
+所有第三方 Provider 调用必须经过 collector 抽象层，业务路由和 Agent 不得绕过 collector 直接调用 Provider API。
+
+## 部署
+
+日常发布、迁移、demo seed、共享网关 reload 和回滚按 [发布与回滚清单](docs/workflows/workflow-release-rollback-stable.md) 执行。
+
+全量销毁重建按 [scrapy.luteos.com 全量重建](docs/workflows/【运维手册】scrapy-luteos全量重建.md) 执行。
+
+生产安装说明见 [腾讯云生产部署](docs/deployment-new-server.md)。
+
+## 文档导航
+
+| 文档 | 用途 |
+|---|---|
+| [生产环境基线](docs/【运维手册】生产环境基线.md) | 当前域名、主机、容器、网络、数据卷和能力口径 |
+| [API 合同](docs/api/api-contract-data-intelligence-hub-stable.md) | API 路径、认证与请求响应合同 |
+| [技术架构](docs/architecture/architecture-data-intelligence-hub-stable.md) | 系统边界、运行拓扑和数据流 |
+| [平台采集手册](docs/workflows/workflow-platform-collection-playbook-stable.md) | 采集能力、参数和调用方式 |
+| [发布与回滚](docs/workflows/workflow-release-rollback-stable.md) | 日常生产发布和故障回滚 |
+| [本地开发](docs/workflows/workflow-development-setup-stable.md) | 开发环境搭建 |
+| [设计系统](opendesign/design-systems/data-intelligence-product/DESIGN.md) | Console 视觉和交互规范 |

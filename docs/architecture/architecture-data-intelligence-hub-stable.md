@@ -1,11 +1,12 @@
 ---
-title: Data Intelligence Hub 技术架构
+name: data-intelligence-hub-architecture
+description: Data Intelligence Hub 稳定技术架构文档，涵盖系统边界、生产拓扑、数据模型和核心流程。当进行架构设计、技术评审或影响分析时使用。
 doc_type: architecture
 module: system
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-07-24
+updated: 2026-10-09
 owner: self
 source: human+ai
 ---
@@ -18,30 +19,32 @@ Data Intelligence Hub 是数据采集工作台，不是静态展示站。系统�
 
 当前稳定边界：
 
-1. 前端使用 Next.js 15 + React 19，生产环境关闭 mock API。
+1. 生产主界面使用 Next.js 16 + React 19 的 `scraper-console`，生产环境关闭 mock API。
 2. 后端使用 FastAPI + SQLAlchemy 2.0 + PostgreSQL。
-3. 采集器支持 `github_repo`、`github_topic`、`generic_web`、`public_feed`、`manual_json`、`ecommerce_product_discovery`、`ecommerce_product_page`；商品页 collector 支持 JSON-LD Product 和静态 schema.org microdata 基础字段；公开网页结构预检属于 `/api/toolkit/preflight` 能力，不作为长期 Source collector。
+3. 采集器通过统一 Catalog 暴露 TikHub、Apify、Exa、GitHub、RSS、浏览器、公开 API、OSINT 和内部采集能力。当前数量以运行时 Catalog 为准。
 4. 自动采集工作台通过 `/api/automation` 串联站点分析、商品发现、fan-out、批量运行、Dataset 保存、漂移检查、告警和导出。
 5. 情报生成遵循证据优先：事实来自 RawRecord、EntitySnapshot、Signal、Evidence，LLM 或 mock LLM 只生成摘要文案。
-6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 环境内，不复用其他应用容器、数据库或 volume。
+6. 生产部署在腾讯云轻量服务器的独立 Docker Compose 项目内；仅通过外部网络接入共享 Nginx，不复用其他应用容器、数据库或 volume。
 7. GOAL-V2-03 Phase 1 Preview、Phase 2 persistence 与首个 Plan lifecycle foundation 已完成本地 L2 slice；Planner 仍不调度或执行计划。GOAL-V2-05A 新增独立 fixture-only `workflow_execution` bounded context，可对指定不可变 Version 生成本地 WorkflowRun/StepRun；Web 现提供只读 `/automation/runs` history surface，但不开放 live Provider 或执行授权。
 
 ## 运行拓扑
 
 ```mermaid
 flowchart LR
-  U["Browser"] --> H["Host Nginx"]
-  H --> E["data_achieve_scrapy_edge"]
-  E --> W["data_achieve_scrapy_web"]
+  U["Browser"] --> G["ai_video_nginx / TLS"]
+  G --> E["data_achieve_scrapy_edge"]
+  E --> C["data_achieve_scrapy_console"]
   E --> A["data_achieve_scrapy_api"]
   A --> D["data_achieve_scrapy_db"]
+  A --> O["OSINT / Bridge Services"]
 ```
 
 生产容器：
 
 | 服务 | 容器 | 职责 | 对外暴露 |
 |---|---|---|---|
-| `web` | `data_achieve_scrapy_web` | Next.js 页面服务 | 仅内部网络 |
+| `console` | `data_achieve_scrapy_console` | 生产采集管理台 | 由 edge 提供公网访问 |
+| `web` | `data_achieve_scrapy_web` | 保留的洞察应用 | 仅内部网络 |
 | `api` | `data_achieve_scrapy_api` | FastAPI、调度器、采集与情报服务 | 仅内部网络 |
 | `db` | `data_achieve_scrapy_db` | PostgreSQL 16 | 仅内部网络 |
 | `edge` | `data_achieve_scrapy_edge` | Nginx 反向代理 `/api` 与页面 | 通过外部网关网络接入 |
@@ -52,6 +55,8 @@ flowchart LR
 2. `lighthouse_ai_video_net` 仅用于让宿主机网关 Nginx 访问 `edge`。
 3. PostgreSQL volume 为 `data_achieve_scrapy_postgres_data`，不与其他应用共享。
 4. 生产敏感配置只在 `/opt/data-achieve-scrapy/.env.production`，不进入仓库。
+
+当前生产主机、容器、网络、schema 与能力数量见 [生产环境基线](../【运维手册】生产环境基线.md)。
 
 ## 自动采集工作台闭环
 
@@ -347,7 +352,9 @@ Task 13 实测证据（2026-07-16）仅来自 `127.0.0.1:55367/local_workflow_ex
 
 真实 LLM 接入前必须保留同一 schema guard，并新增 provider 级超时、重试、配额和审计日志。
 
-## 生产验收事实
+## 历史生产验收记录
+
+> 本节记录各阶段当时的生产证据，旧域名、revision、schema 和数量不得替换为当前值。当前生产验收以 [生产环境基线](../【运维手册】生产环境基线.md) 和 [发布与回滚清单](../workflows/workflow-release-rollback-stable.md) 为准。
 
 当前基线，截至 2026-06-29，已验证：
 

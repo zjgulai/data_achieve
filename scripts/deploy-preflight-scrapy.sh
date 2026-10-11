@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-/opt/data-achieve-scrapy/.env.production}"
 COMPOSE_FILE="${COMPOSE_FILE:-$ROOT_DIR/configs/deploy/scrapy/docker-compose.yml}"
-BASE_URL="${BASE_URL:-https://scrapy.lute-tlz-dddd.top}"
+BASE_URL="${BASE_URL:-https://scrapy.luteos.com}"
 CHECK_DOCKER=1
 
 usage() {

@@ -1,9 +1,16 @@
+---
+name: data-achieve-starred-repos-analysis-20260903
+description: Data-Achieve 2026 年 9 月 3 日 Starred Repos 历史分析，记录当时的候选工具、集成状态和 218 端点快照。当追溯采集能力选型历史时使用；不得作为当前生产能力清单。
+---
+
 # Data-Achieve Starred Repos 深度分析
+
+> 历史快照：本文中的 Star 数量、集成状态和 218 端点口径均为 2026-09-03 当时数据。当前生产能力以 [生产环境基线](【运维手册】生产环境基线.md) 和 `/api/collectors/catalog` 为准。
 
 > 生成时间：2026-09-03  
 > 来源：https://github.com/stars/zjgulai/lists/data-achieve  
 > 仓库总数：31  
-> 当前平台端点：218 (162 可用 / 56 配置依赖)
+> 当时平台端点：218（162 可用 / 56 配置依赖）
 
 ---
 

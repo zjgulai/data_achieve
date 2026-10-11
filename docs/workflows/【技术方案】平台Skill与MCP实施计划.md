@@ -1,9 +1,11 @@
 ---
-name: platform-skill-mcp-implementation-plan
-description: 平台 Skill 与 MCP 分阶段实施计划，涵盖生成器、MCP、网站、测试和生产发布。当执行平台工具包建设任务时使用。
+name: platform-skill-mcp-implementation-plan-historical
+description: 平台 Skill 与 MCP 历史实施计划，记录生成器、MCP、网站、测试和旧内网发布任务。当追溯 74 个平台包建设过程时使用；当前发布操作以生产运维文档为准。
 ---
 
 # Platform Skill And MCP Implementation Plan
+
+> 历史快照：本文是平台 Skill 与 MCP 功能建设时的执行计划，任务列表和 `scrapy-new`、`192.168.204.230` 等发布目标保留原貌。当前生产发布使用 [发布与回滚清单](workflow-release-rollback-stable.md)，当前环境见 [生产环境基线](../【运维手册】生产环境基线.md)。
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development or executing-plans to implement this plan task-by-task.
 

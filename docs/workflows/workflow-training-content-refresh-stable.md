@@ -1,11 +1,13 @@
 ---
+name: training-content-refresh-workflow
+description: Data Intelligence Hub 培训内容刷新流程，涵盖数据准备、增量发布、生产验收和内容质量门槛。当刷新演示或培训数据时使用。
 title: 培训内容增量更新执行计划
 doc_type: workflow
 module: operations
 topic: training-content-refresh
 status: stable
 created: 2026-06-15
-updated: 2026-06-17
+updated: 2026-10-09
 owner: self
 source: human+ai
 ---
@@ -259,7 +261,7 @@ docker compose --env-file ../.env.production -f configs/deploy/scrapy/docker-com
 
 验收标准：
 
-1. `https://scrapy.lute-tlz-dddd.top/api/health` 健康。
+1. `https://scrapy.luteos.com/api/health` 健康。
 2. 生产数据计数达到 training 内容阈值。
 3. 生产桌面真实 API E2E 通过。
 4. 生产移动真实 API E2E 通过。

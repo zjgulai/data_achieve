@@ -1,11 +1,13 @@
 ---
+name: real-api-e2e-strategy
+description: Data Intelligence Hub 真实 API E2E 策略，定义生产测试授权、账号隔离、数据清理和覆盖边界。当规划或执行命名定向生产 E2E 时使用。
 title: 真实 API E2E 策略
 doc_type: workflow
 module: qa
 topic: real-api-e2e
 status: stable
 created: 2026-06-14
-updated: 2026-07-17
+updated: 2026-10-09
 owner: self
 source: human+ai
 ---
@@ -40,7 +42,7 @@ RawRecord retention、cleanup/recount 和禁止触碰其他数据库取得单独
 
 ```bash
 PLAYWRIGHT_REAL_API=true \
-PLAYWRIGHT_BASE_URL="https://scrapy.lute-tlz-dddd.top" \
+PLAYWRIGHT_BASE_URL="https://scrapy.luteos.com" \
 SCRAPY_DEMO_EMAIL="$E2E_EMAIL" \
 SCRAPY_DEMO_PASSWORD="$E2E_PASSWORD" \
 pnpm -C apps/web exec playwright test

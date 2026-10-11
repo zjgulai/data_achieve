@@ -1,11 +1,12 @@
 ---
-title: Data Intelligence Hub API 合同
+name: data-intelligence-hub-api-contract
+description: Data Intelligence Hub 稳定 API 合同，涵盖生产 Base URL、认证、主要资源和请求响应约束。当开发或调用业务 API 时使用。
 doc_type: api
 module: api
 topic: data-intelligence-hub
 status: stable
 created: 2026-06-14
-updated: 2026-07-24
+updated: 2026-10-09
 owner: self
 source: human+ai
 ---
@@ -19,7 +20,7 @@ Base URL：
 | 环境 | URL |
 |---|---|
 | 本地 API | `http://localhost:8000` |
-| 生产 API | `https://scrapy.lute-tlz-dddd.top` |
+| 生产 API | `https://scrapy.luteos.com` |
 
 通用规则：
 
@@ -31,6 +32,8 @@ Base URL：
 6. 未认证返回 `401`，无权限或跨 workspace 资源不可见。
 7. 生产环境 cookie 必须启用 secure。
 8. 本文件是技术合同，endpoint、schema 和 response model 名称保留英文；面向用户页面应使用“采集任务、数据集版本、清洗计划、试跑”等中文业务文案。
+
+当前生产 schema、能力数量和运行拓扑见 [生产环境基线](../【运维手册】生产环境基线.md)。本合同不固定生产 commit。
 
 ## Auth
 

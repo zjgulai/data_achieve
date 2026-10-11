@@ -1,4 +1,6 @@
 ---
+name: real-data-closed-loop-historical-plan
+description: Data Intelligence Hub 2026 年 6 月真实数据闭环历史实施计划，记录当时的目标、阶段和验收证据。当追溯 MVP 演进过程时使用；不得作为当前生产操作手册。
 title: 真实数据闭环实施计划
 doc_type: workflow
 module: engineering
@@ -11,6 +13,8 @@ source: human+ai
 ---
 
 # 真实数据闭环实施计划
+
+> 历史快照：本文记录 2026 年 6 月 MVP 闭环实施过程。旧域名、旧页面边界和阶段性非目标均保留原貌。当前生产状态见 [生产环境基线](../【运维手册】生产环境基线.md)，当前发布操作见 [发布与回滚清单](workflow-release-rollback-stable.md)。
 
 ## 目标
 
@@ -34,7 +38,7 @@ source: human+ai
 
 ## 当前事实
 
-1. 线上域名 `https://scrapy.lute-tlz-dddd.top` 已部署可访问。
+1. 当时线上域名 `https://scrapy.lute-tlz-dddd.top` 已部署可访问。
 2. 线上前端已切换为 `NEXT_PUBLIC_MOCK_API=false`，主要业务页读取真实 FastAPI。
 3. 后端 FastAPI、PostgreSQL、Web、Edge 已纳入独立 Docker Compose 编排。
 4. Alembic 迁移和演示种子数据已在线上执行通过。
@@ -123,7 +127,7 @@ uv run python -m data_intelligence_hub.seed.demo_data
 验收：
 
 1. 本地指向开发服务可运行。
-2. 线上指向 `https://scrapy.lute-tlz-dddd.top` 可运行。
+2. 当时线上指向 `https://scrapy.lute-tlz-dddd.top` 可运行。
 
 ## 阶段 4：前端真实 API 稳定化
 
@@ -184,7 +188,7 @@ bash scripts/reload-scrapy-gateway.sh --dry-run
 
 验收：
 
-1. `https://scrapy.lute-tlz-dddd.top/api/health` 返回健康状态。
+1. 当时 `https://scrapy.lute-tlz-dddd.top/api/health` 返回健康状态。
 2. 演示账号可登录。
 3. 主要业务页面展示真实 API 数据。
 4. E2E 全部通过或仅跳过已明确非本轮目标的用例。

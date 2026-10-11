@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://scrapy.lute-tlz-dddd.top}"
+BASE_URL="${BASE_URL:-https://scrapy.luteos.com}"
 BASE_URL="${BASE_URL%/}"
 SCRAPY_DEMO_EMAIL="${SCRAPY_DEMO_EMAIL:-owner@example.com}"
 

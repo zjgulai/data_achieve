@@ -5,7 +5,7 @@ GATEWAY_CONTAINER="${GATEWAY_CONTAINER:-ai_video_nginx}"
 EDGE_CONTAINER="${EDGE_CONTAINER:-data_achieve_scrapy_edge}"
 EDGE_ALIAS="${EDGE_ALIAS:-data_achieve_scrapy_proxy}"
 EDGE_PORT="${EDGE_PORT:-8080}"
-BASE_URL="${BASE_URL:-https://scrapy.lute-tlz-dddd.top}"
+BASE_URL="${BASE_URL:-https://scrapy.luteos.com}"
 DRY_RUN=0
 PUBLIC_SMOKE=1
 
