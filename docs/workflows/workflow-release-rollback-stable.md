@@ -7,16 +7,16 @@ description: Data Intelligence Hub 生产发布与回滚操作清单，涵盖预
 
 ## 适用范围
 
-本文适用于 `https://scrapy.luteos.com` 的日常生产发布和回滚。
+本文适用于两套生产环境的日常发布和回滚。
 
-| 项目 | 当前值 |
-|---|---|
-| 主机 | `ubuntu@43.163.92.244` |
-| 项目路径 | `/opt/data-achieve-scrapy/app` |
-| 环境变量 | `/opt/data-achieve-scrapy/.env.production` |
-| 部署分支 | `feat/live-capability-verification-sink-notes` |
-| Compose | `configs/deploy/scrapy/docker-compose.yml` |
-| 共享网关 | `ai_video_nginx` |
+| 项目 | 生产 A | 生产 B |
+|---|---|---|
+| 主机 | `ubuntu@43.163.92.244` | `ubuntu@101.34.52.232` |
+| 项目路径 | `/opt/data-achieve-scrapy/app` | 同左 |
+| 环境变量 | `/opt/data-achieve-scrapy/.env.production` | 同左 |
+| 部署分支 | `main` | `deploy/tiktok-cdo-codex` |
+| Compose | `configs/deploy/scrapy/docker-compose.yml` | 同左 |
+| 共享网关 | `ai_video_nginx` | 同左 |
 
 生产拓扑和能力数量以 [生产环境基线](../【运维手册】生产环境基线.md) 为准。全量销毁重建使用 [scrapy.luteos.com 全量重建](【运维手册】scrapy-luteos全量重建.md)。
 
@@ -107,13 +107,24 @@ Console-only 且不修改网关时，可以只记录当前 Console 镜像 ID、r
 ### 1. 同步源码
 
 ```bash
-ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244
+ssh -i <密钥> ubuntu@<主机>
 cd /opt/data-achieve-scrapy/app
-git fetch origin feat/live-capability-verification-sink-notes
-git reset --hard FETCH_HEAD
+
+# fetch 带重试参数。生产 B 到 GitHub 常抖动。
+ok=0
+for i in 1 2 3 4 5; do
+  out=$(git -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1000 \
+        -c http.lowSpeedTime=20 fetch origin <部署分支> 2>&1); rc=$?
+  [ $rc = 0 ] && ok=1 && break
+  echo "第 $i 次失败: $(echo "$out" | tail -1)"; sleep 4
+done
+
+git merge --ff-only FETCH_HEAD
 git status --short --branch
 git log -1 --oneline
 ```
+
+必须用 `merge --ff-only`。不要用 `reset --hard`。工作区不干净时 ff-only 会拒绝，这是期望行为。fetch 重试全部失败时用 bundle 兜底。完整步骤见 `.claude/skills/production/production-sync-revision/`。
 
 ### 2. Compose 校验
 
@@ -281,6 +292,28 @@ SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
 bash scripts/smoke-api-scrapy.sh
 ```
 
+### 前端烧录复核
+
+console 与 web 的产物只应出现本机域名：
+
+```bash
+docker exec data_achieve_scrapy_console sh -c \
+  "grep -rhoE 'https://scrapy\.[a-z0-9.-]+' /app/.next/static | sort -u"
+docker exec data_achieve_scrapy_web sh -c \
+  "grep -rhoE 'https://scrapy\.[a-z0-9.-]+' /app/apps/web/.next/static | sort -u"
+```
+
+出现另一台机器的域名即为串台。必须修源码并重建镜像。
+
+### 隔离性核对
+
+共享宿主机的变更必须核对两项：
+
+1. 非 DIH 容器名集合零差异。
+2. `ai_video_nginx` 的 StartedAt 与 RestartCount 与变更前相同。
+
+命令与证据要求见 [生产变更的隔离与串台防线](../knowledge/生产变更的隔离与串台防线.md) 与 `.claude/skills/production/production-acceptance/`。
+
 ### 真实采集
 
 只有在已确认 Provider 凭据、预算和目标参数时运行。记录创建的 `task_run_id`、状态、记录数和清理策略。UI 必须将后端 `success` 状态显示为成功，不得误报“未知错误”。
@@ -339,7 +372,7 @@ docker compose \
 ```bash
 git log --oneline -10
 git revert <bad-commit>
-git push origin feat/live-capability-verification-sink-notes
+git push origin main        # 生产 B 用 deploy/tiktok-cdo-codex
 ```
 
 生产拉取 revert commit 后重建受影响服务。不得在生产分支 force-push。

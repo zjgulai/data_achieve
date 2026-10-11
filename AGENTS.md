@@ -302,10 +302,10 @@ docker exec <api容器> python -c "import os;print(bool(os.environ.get('X_API_KE
 ## 发布
 
 ```bash
-ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244
+ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244   # 生产 B 用 DDDD.pem 与 ubuntu@101.34.52.232
 cd /opt/data-achieve-scrapy/app
-git fetch origin feat/live-capability-verification-sink-notes
-git reset --hard FETCH_HEAD
+git fetch origin main                              # 生产 B 用 deploy/tiktok-cdo-codex
+git merge --ff-only FETCH_HEAD
 cd configs/deploy/scrapy
 ENV=/opt/data-achieve-scrapy/.env.production
 docker compose --env-file "$ENV" build api console
@@ -319,10 +319,10 @@ docker compose --env-file "$ENV" restart edge        # 必须，见下
 
 1. **必须先 `git push`**。只提交到本地就上服务器发布，服务器会取到旧 commit，表现为"改动完全没生效"。
 2. **重建 api 后必须 `restart edge`**。edge 启动时把 api 的 IP 缓存住了，`up -d api` 换新 IP 后 edge 不重解析，外部一律 502，而容器内 `curl http://api:8000/api/health` 仍是 200。
-3. **不要用 `git pull`**。服务器上的本地分支没有 upstream，`git pull` 会静默返回 "Already up to date" 而不拉任何提交。用上面的 `fetch` + `reset --hard FETCH_HEAD`。
+3. **不要用 `git pull`，也不要用 `git reset --hard`**。服务器上的本地分支没有 upstream，`git pull` 会静默返回 "Already up to date" 而不拉任何提交。用上面的 `fetch` + `merge --ff-only FETCH_HEAD`。生产 B 拉 GitHub 常抖动（GnuTLS、超时），fetch 要带重试参数，见 `.claude/skills/production/production-sync-revision/`。不要把 fetch 管道给 `tail`，管道会吞掉退出码。
 4. **notes 改动要重建 api**。平台坑点在 api 镜像内，只重建 console 不会生效。
 
-完整步骤和回滚条件见 [发布与回滚清单](docs/workflows/workflow-release-rollback-stable.md)。
+发布技能见 `.claude/skills/production/`：同步 revision、构建镜像、验收。完整步骤和回滚条件见 [发布与回滚清单](docs/workflows/workflow-release-rollback-stable.md)。
 
 ## 健康验收
 
