@@ -5,20 +5,21 @@ description: Data Intelligence Hub 腾讯云生产部署说明，涵盖主机准
 
 # 腾讯云生产部署
 
-本文描述当前生产环境 `43.163.92.244` 的安装与恢复流程。日常增量发布优先使用 [发布与回滚清单](workflows/workflow-release-rollback-stable.md)；破坏性全量重建使用 [scrapy.luteos.com 全量重建](workflows/【运维手册】scrapy-luteos全量重建.md)。
+本文描述新建一套生产实例的流程。当前有两套实例。日常增量发布优先使用 [发布与回滚清单](workflows/workflow-release-rollback-stable.md)；破坏性全量重建使用 [scrapy.luteos.com 全量重建](workflows/【运维手册】scrapy-luteos全量重建.md)。
 
 ## 生产边界
 
-| 项目 | 当前值 |
-|---|---|
-| 公网 IP | `43.163.92.244` |
-| SSH 用户 | `ubuntu` |
-| 项目路径 | `/opt/data-achieve-scrapy/app` |
-| 环境变量 | `/opt/data-achieve-scrapy/.env.production` |
-| 生产域名 | `https://scrapy.luteos.com` |
-| Compose | `configs/deploy/scrapy/docker-compose.yml` |
-| Compose 项目 | `data_achieve_scrapy` |
-| 共享网关 | `ai_video_nginx` |
+| 项目 | 生产 A | 生产 B |
+|---|---|---|
+| 公网 IP | `43.163.92.244` | `101.34.52.232` |
+| SSH 用户 | `ubuntu` | `ubuntu` |
+| 项目路径 | `/opt/data-achieve-scrapy/app` | 同左 |
+| 环境变量 | `/opt/data-achieve-scrapy/.env.production` | 同左 |
+| 生产域名 | `https://scrapy.luteos.com` | `https://scrapy.lute-tlz-dddd.top` |
+| 部署分支 | `main` | `deploy/tiktok-cdo-codex` |
+| Compose | `configs/deploy/scrapy/docker-compose.yml` | 同左 |
+| Compose 项目 | `data_achieve_scrapy` | 同左 |
+| 共享网关 | `ai_video_nginx` | 同左 |
 
 最新能力数量和容器清单以 [生产环境基线](【运维手册】生产环境基线.md) 为准。
 
@@ -47,13 +48,16 @@ sudo mkdir -p /opt/data-achieve-scrapy
 sudo chown ubuntu:ubuntu /opt/data-achieve-scrapy
 
 git clone \
-  --branch feat/live-capability-verification-sink-notes \
-  --single-branch \
+  --branch main \
   https://github.com/zjgulai/data_achieve.git \
   /opt/data-achieve-scrapy/app
 
 install -m 600 /dev/null /opt/data-achieve-scrapy/.env.production
 ```
+
+生产 B 用 `--branch deploy/tiktok-cdo-codex`。不要加 `--single-branch`。它会让其他分支的远程跟踪引用不存在。
+
+后续同步用 `git fetch` 加 `git merge --ff-only`。步骤见 `.claude/skills/production/production-sync-revision/`。
 
 ## 配置环境变量
 
@@ -70,6 +74,8 @@ SCRAPY_DEMO_EMAIL=owner@example.com
 SCRAPY_DEMO_PASSWORD=<演示账号强密码>
 ```
 
+每个实例的 `SCRAPY_PUBLIC_URL` 必须指向自己的域名。它是构建参数。构建后再改无效。改动域名必须重建 console 与 web 镜像。
+
 按启用能力配置：
 
 ```dotenv
@@ -85,6 +91,8 @@ SCRAPY_MCP_TOKENS_JSON={}
 ```
 
 Cookie、Twitter 账号、代理、SMTP、CDO 和其他 Provider 变量按实际需要配置。不得在终端输出完整 env 文件或原始 Token。
+
+国内主机（生产 B）另配四个构建镜像源键。值见于 [生产环境基线](【运维手册】生产环境基线.md)。方案与约束见 [国内主机构建加速](knowledge/国内主机构建加速.md)。
 
 ## Preflight
 
@@ -193,6 +201,8 @@ bash scripts/smoke-api-scrapy.sh
 ```
 
 预期：核心容器 healthy、schema 为 head、平台包为 `70 / 270 / 242`、未授权 MCP 返回 `401`。
+
+完整验收含烧录域名复核与隔离性核对。步骤见 `.claude/skills/production/production-acceptance/`。
 
 ## 数据和回滚
 
