@@ -296,6 +296,7 @@ docker exec <api容器> python -c "import os;print(bool(os.environ.get('X_API_KE
 - `proxy_rotator` 位于显式 profile `proxy`，默认部署不启动。
 - 热替换容器文件不是正式发布；下一次部署必须重建镜像。
 - 历史 ADR 和执行日志中的旧域名、数量和 revision 是历史证据，不批量改写。
+- `codex/social-api-private-matrix-20260708` 是 TikTok CDO 飞书 Agent 的第二套实现（main 版已在生产运行），保留为独立分支，不合并；需要其卡片回调、意图路由或 Exa 数据源时做带 spec 的功能移植。该分支的 `docs/playbook-full-2026-09.md` 是旧域名、旧内网地址口径的快照，不作现行文档引用。
 
 ## 发布
 
