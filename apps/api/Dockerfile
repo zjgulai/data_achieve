@@ -41,6 +41,16 @@ COPY alembic.ini ./
 COPY alembic ./alembic
 COPY src ./src
 
+# uv.lock 记录每个包的绝对下载地址（files.pythonhosted.org）。只设
+# UV_DEFAULT_INDEX 时，uv sync --frozen 仍按锁文件直连 pypi.org；生产 B
+# 实测只有 26-46KB/s（2026-10-11），构建会拖到数小时。这里换掉锁文件里的
+# 主机名：包路径与 sha256 都不变，uv 仍按锁文件校验哈希，镜像源换了也安全。
+# 文件主机由索引地址去掉 /simple/ 后缀得到，所以索引地址必须以 /simple/ 结尾。
+# 索引是官方源时整段跳过，生产 A 不受影响。
+RUN if [ "$PIP_INDEX_URL" != "https://pypi.org/simple" ]; then \
+      sed -i "s|https://files.pythonhosted.org|${PIP_INDEX_URL%/simple/}|g; s|https://pypi.org/simple|${PIP_INDEX_URL}|g" uv.lock; \
+    fi
+
 ARG INSTALL_PLAYWRIGHT=false
 ARG INSTALL_OSINT=false
 RUN uv sync --frozen --no-dev \
