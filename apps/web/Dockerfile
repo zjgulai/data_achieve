@@ -36,6 +36,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY apps/web ./apps/web
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# globals.css 用 ../../../../opendesign/... 引这份 token，路径落在 /app 根上。
+# 之前没 COPY，构建在 tailwindcss 解析处报 Can't resolve（2026-10-11 首次在
+# 生产 B 复现；本地构建因为在仓库根跑所以不报）。CSS 会被打进产物，runner 不需要。
+COPY opendesign ./opendesign
 
 RUN pnpm -C apps/web build
 
