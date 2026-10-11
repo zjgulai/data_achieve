@@ -49,7 +49,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 | 能力 | 用户动作 | backing endpoint(s) | collector_type | 实测 |
 |---|---|---|---|---|
-| 浏览全部采集能力 | 分类标签 + 搜索 | `GET /api/collectors/catalog` | 全部 36 组 | 静态声明 266 verified |
+| 浏览全部采集能力 | 分类标签 + 搜索 | `GET /api/collectors/catalog` | 全部 36 组 | 静态声明 258 verified / 12 disabled |
 | 单端点采集 | Quick Collect 抽屉提交 | `POST /api/quick-collect` | `_ENDPOINT_TO_COLLECTOR` 映射 | 见 §4 |
 | 批量采集 | 逐端点串行触发 | `POST /api/quick-collect` ×N | 同上 | 消耗额度 |
 | 选择归属项目 | 抽屉内项目下拉 | `GET /api/projects` | — | live |

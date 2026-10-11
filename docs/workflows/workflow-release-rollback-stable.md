@@ -14,7 +14,7 @@ description: Data Intelligence Hub 生产发布与回滚操作清单，涵盖预
 | 主机 | `ubuntu@43.163.92.244` |
 | 项目路径 | `/opt/data-achieve-scrapy/app` |
 | 环境变量 | `/opt/data-achieve-scrapy/.env.production` |
-| 部署分支 | `codex/social-api-private-matrix-20260708` |
+| 部署分支 | `feat/live-capability-verification-sink-notes` |
 | Compose | `configs/deploy/scrapy/docker-compose.yml` |
 | 共享网关 | `ai_video_nginx` |
 
@@ -109,7 +109,8 @@ Console-only 且不修改网关时，可以只记录当前 Console 镜像 ID、r
 ```bash
 ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244
 cd /opt/data-achieve-scrapy/app
-git pull --ff-only origin codex/social-api-private-matrix-20260708
+git fetch origin feat/live-capability-verification-sink-notes
+git reset --hard FETCH_HEAD
 git status --short --branch
 git log -1 --oneline
 ```

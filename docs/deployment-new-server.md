@@ -47,7 +47,7 @@ sudo mkdir -p /opt/data-achieve-scrapy
 sudo chown ubuntu:ubuntu /opt/data-achieve-scrapy
 
 git clone \
-  --branch codex/social-api-private-matrix-20260708 \
+  --branch feat/live-capability-verification-sink-notes \
   --single-branch \
   https://github.com/zjgulai/data_achieve.git \
   /opt/data-achieve-scrapy/app
@@ -192,7 +192,7 @@ SCRAPY_DEMO_PASSWORD="$SCRAPY_DEMO_PASSWORD" \
 bash scripts/smoke-api-scrapy.sh
 ```
 
-预期：核心容器 healthy、schema 为 head、平台包为 `74 / 278 / 250`、未授权 MCP 返回 `401`。
+预期：核心容器 healthy、schema 为 head、平台包为 `70 / 270 / 242`、未授权 MCP 返回 `401`。
 
 ## 数据和回滚
 

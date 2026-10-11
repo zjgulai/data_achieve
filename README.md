@@ -12,14 +12,14 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 | 项目 | 当前值 |
 |---|---|
 | 生产地址 | <https://scrapy.luteos.com> |
-| 平台目录 | 74 个平台 |
-| 能力视图 | 278 个 |
-| 唯一 endpoint | 250 个 |
-| 能力状态 | 266 个 verified / 12 个 disabled |
+| 平台目录 | 70 个平台 |
+| 能力视图 | 270 个 |
+| 唯一 endpoint | 242 个 |
+| 实测状态 | 191 个 verified / 21 个 config-gated / 20 个 degraded / 9 个 empty / 1 个 disabled |
 | Skill 目录 | <https://scrapy.luteos.com/skills> |
 | MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token |
 | 数据库 schema | `202607280044` |
-| 部署分支 | `codex/social-api-private-matrix-20260708` |
+| 部署分支 | `feat/live-capability-verification-sink-notes` |
 
 服务器、容器、网络和数据卷的当前事实统一维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)，不要在其他文档复制易变的 revision 或容器状态。
 

@@ -16,7 +16,8 @@ Data Intelligence Hub 是纯数据采集平台。FastAPI 后端提供统一 cata
 - 70 个平台。
 - 270 个能力视图。
 - 242 个唯一 endpoint。
-- 实测状态：191 verified、21 config-gated、20 degraded、9 empty、1 disabled。
+- Catalog 静态声明：258 verified / 12 disabled。
+- 实测状态（`providers/status` 的 `availability`）：191 verified、21 config-gated、20 degraded、9 empty、1 disabled。
 - 生产主域名：`https://scrapy.luteos.com`。
 
 ## 当前生产速查

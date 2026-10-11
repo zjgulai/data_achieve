@@ -19,7 +19,7 @@ description: Data Intelligence Hub 文档一致性治理实施计划，涵盖生
 - 当前生产主机为 `43.163.92.244`，登录用户为 `ubuntu`。
 - 当前项目路径为 `/opt/data-achieve-scrapy/app`。
 - 当前生产 Compose 为 `configs/deploy/scrapy/docker-compose.yml`。
-- 当前能力口径为 74 个平台、278 个能力视图、250 个唯一 endpoint、266 个 verified、12 个 disabled。
+- 能力口径不在本计划内固定，以 [生产环境基线](../../【运维手册】生产环境基线.md) 为唯一来源。
 - 当前数据库 schema 为 `202607280044`。
 - 历史 ADR、执行日志和阶段报告保留原始数字、域名和 revision。
 - 密钥、Token、证书和 `.env.production` 内容不得写入文档。

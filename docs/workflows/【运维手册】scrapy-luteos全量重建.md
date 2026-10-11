@@ -42,7 +42,7 @@ sudo rm -rf /opt/data-achieve-scrapy
 ```bash
 sudo mkdir -p /opt/data-achieve-scrapy
 sudo chown ubuntu:ubuntu /opt/data-achieve-scrapy
-git clone --branch codex/social-api-private-matrix-20260708 https://github.com/zjgulai/data_achieve.git /opt/data-achieve-scrapy/app
+git clone --branch feat/live-capability-verification-sink-notes https://github.com/zjgulai/data_achieve.git /opt/data-achieve-scrapy/app
 install -m 600 /dev/null /opt/data-achieve-scrapy/.env.production
 ```
 
