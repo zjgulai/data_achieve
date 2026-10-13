@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.collector import Collector
 from data_intelligence_hub.repositories.collectors import get_collector_by_type, list_collectors
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -775,23 +778,40 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
 
 
 async def ensure_collectors_seeded(session: AsyncSession) -> None:
+    """Insert any missing collector rows.
+
+    Two concurrent first requests can both see the same rows missing, so the
+    insert is wrapped in a SAVEPOINT: the loser's failure undoes only the seed.
+    A full ``session.rollback()`` here would expire every object in the request's
+    session, and the next attribute access on an already-loaded object (for
+    example ``workspace.id`` in ``quick_collect``) would then attempt a lazy
+    load outside the async greenlet and fail with ``MissingGreenlet`` — a 500
+    that only shows up under concurrency on a cold cache.
+    """
     existing = {collector.type for collector in await list_collectors(session)}
-    for definition in COLLECTOR_CATALOG:
-        if definition.type not in existing:
-            session.add(
-                Collector(
-                    type=definition.type,
-                    name=definition.name,
-                    description=definition.description,
-                    config_schema=definition.config_schema,
-                    enabled=True,
-                )
-            )
+    pending = [
+        Collector(
+            type=definition.type,
+            name=definition.name,
+            description=definition.description,
+            config_schema=definition.config_schema,
+            enabled=True,
+        )
+        for definition in COLLECTOR_CATALOG
+        if definition.type not in existing
+    ]
+    if not pending:
+        return
+
     try:
-        await session.flush()
-    except Exception:
-        await session.rollback()
-        pass
+        async with session.begin_nested():
+            session.add_all(pending)
+    except Exception as exc:  # noqa: BLE001 — the other writer won the race
+        logger.warning(
+            "collectors_seed_conflict",
+            attempted=len(pending),
+            error=f"{exc.__class__.__name__}: {exc}"[:200],
+        )
 
 
 async def require_collector(session: AsyncSession, collector_type: str) -> Collector:
