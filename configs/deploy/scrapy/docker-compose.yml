@@ -112,6 +112,10 @@ services:
       TOR_PROXY_URL: ${TOR_PROXY_URL:-socks5h://tor:9050}
       PROXY_ROTATOR_URL: ${PROXY_ROTATOR_URL:-http://proxy_rotator:8080}
       PROXY_ROTATOR_ENABLED: ${PROXY_ROTATOR_ENABLED:-false}
+      OBSCURA_CDP_URL: ${OBSCURA_CDP_URL:-}
+      OBSCURA_CDP_TOKEN: ${OBSCURA_CDP_TOKEN:-}
+      BROWSER_USE_BRIDGE_URL: ${BROWSER_USE_BRIDGE_URL:-http://browser-use:5002}
+      BROWSER_USE_TIMEOUT: ${BROWSER_USE_TIMEOUT:-120}
       MAIGRET_URL: ${MAIGRET_URL:-http://maigret:5000}
       SPIDERFOOT_BASE_URL: ${SPIDERFOOT_BASE_URL:-http://spiderfoot:5001}
       SPIDERFOOT_TIMEOUT: ${SPIDERFOOT_TIMEOUT:-300}
@@ -215,6 +219,73 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+    networks:
+      - scrapy_internal
+
+  # Obscura CDP 浏览器后端，供 Playwright 与 browser-use 使用（ADR-002 阶段一）。
+  #
+  # 按需启用：用 `--profile obscura` 启动，并在 .env.production 同时设
+  # OBSCURA_CDP_URL 与 OBSCURA_CDP_TOKEN。两个一起设或都不设——只设 URL 时，
+  # 每次浏览器采集都要先付一次连不上的 CDP 连接，然后才降级。
+  #
+  # 以下每一条没注意都会让部署白跑一轮：
+  #   - 上游子命令是 `serve`，没有 `server` 别名；镜像只在 Docker Hub，不在 GHCR。
+  #   - OBSCURA_CDP_TOKEN 必须 ≥32 字节；绑非回环地址时缺它会直接启动失败。
+  #   - 镜像是 distroless（无 shell、无 wget），CMD-SHELL 型 healthcheck 必然失败。
+  #   - 官方镜像以 `--features render` 构建，所以这里的 --stealth 只给一致的浏览器
+  #     指纹与 tracker 拦截；TLS 指纹仿冒要自建镜像（ADR-002 阶段二）。
+  obscura:
+    container_name: data_achieve_scrapy_obscura
+    image: h4ckf0r0day/obscura:0.2.4
+    command: ["serve", "--port", "9222", "--host", "0.0.0.0", "--stealth"]
+    profiles:
+      - obscura
+    environment:
+      OBSCURA_CDP_TOKEN: ${OBSCURA_CDP_TOKEN:-}
+    expose:
+      - "9222"
+    restart: unless-stopped
+    networks:
+      - scrapy_internal
+
+  # browser-use 桥：AI 浏览器 agent 单独成容器。
+  #
+  # browser-use 0.13.x 硬钉了一批依赖。装进 API 镜像会让锁文件从 207 包涨到
+  # 400 包，并降级 18 个现有包（protobuf 7→6、websockets 16→15、requests、
+  # rich、click、mcp 等）。所以它单独跑在这里，API 用 HTTP 调它，与 Maigret、
+  # SpiderFoot 侧车同一形态。
+  #
+  # 需要 LLM 密钥：ANTHROPIC_API_KEY（默认 provider）或 OPENAI_API_KEY。
+  # 设 OBSCURA_CDP_URL + OBSCURA_CDP_TOKEN 可让它改用 Obscura，不用自带的
+  # Chromium；此时把 SCRAPY_BROWSER_USE_CHROMIUM 设为 false 可省约 400MB。
+  #
+  # 按需启用：镜像约 2.3GB（含 Chromium），且没有 LLM 密钥时它只会回报
+  # degraded。所以挂在 `browser_use` profile 下——默认 `up -d` 不会构建它。
+  # 启用：在 .env.production 设 ANTHROPIC_API_KEY，再
+  #   docker compose --env-file ... --profile browser_use up -d --build browser-use
+  browser-use:
+    container_name: data_achieve_scrapy_browser_use
+    profiles:
+      - browser_use
+    build:
+      context: ../../../configs/bridges/browser-use-bridge
+      dockerfile: Dockerfile
+      args:
+        PIP_INDEX_URL: ${SCRAPY_PIP_INDEX_URL:-https://pypi.org/simple}
+        PLAYWRIGHT_DOWNLOAD_HOST: ${SCRAPY_PLAYWRIGHT_DOWNLOAD_HOST:-}
+        INSTALL_CHROMIUM: ${SCRAPY_BROWSER_USE_CHROMIUM:-true}
+    image: browser_use_bridge:latest
+    environment:
+      BROWSER_USE_LLM_PROVIDER: ${BROWSER_USE_LLM_PROVIDER:-anthropic}
+      BROWSER_USE_MODEL: ${BROWSER_USE_MODEL:-}
+      BROWSER_USE_TASK_TIMEOUT: ${BROWSER_USE_TASK_TIMEOUT:-120}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OBSCURA_CDP_URL: ${OBSCURA_CDP_URL:-}
+      OBSCURA_CDP_TOKEN: ${OBSCURA_CDP_TOKEN:-}
+    expose:
+      - "5002"
+    restart: unless-stopped
     networks:
       - scrapy_internal
 

@@ -1,11 +1,28 @@
-"""Bridge: wraps SpiderFoot Web UI routes into /api/v1/ REST API."""
-import asyncio, os, json, uuid, re
+"""Bridge: wraps SpiderFoot Web UI routes into /api/v1/ REST API.
+
+Row layouts below are fixed by the upstream web UI (sfwebui.py):
+
+  /scaneventresults  -> [lastseen, data, source, module, confidence, visibility,
+                         risk, hash, false_positive, parent_false_positive, type]
+                        `data` and `source` arrive HTML-escaped (upstream calls
+                        html.escape), so they are unescaped here. The event type
+                        sits at index 10 — index 4 is the confidence.
+  /scanstatus        -> [name, target, created, started, ended, status, riskmatrix]
+  /scanerrors        -> [generated, component, message]
+  /scancorrelations  -> [id, title, rule_id, rule_risk, rule_name, rule_descr,
+                         rule_logic, event_count]
+"""
+import asyncio, os, json, uuid, re, html
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 app = FastAPI()
 SF_URL = os.environ.get("SF_UPSTREAM", "http://spiderfoot:5001")
+
+# "passive" is the only use case that never runs active/invasive modules
+# (port scanners, nmap). Callers can request a broader group explicitly.
+DEFAULT_USECASE = "passive"
 
 
 async def _sf_get(path: str, params: dict | None = None):
@@ -39,7 +56,7 @@ async def start_scan(request: Request):
     target = body.get("scantarget", "")
     modules = body.get("modulelist", "")
     typelist = body.get("typelist", "")
-    usecase = body.get("usecase", "all")
+    usecase = body.get("usecase") or DEFAULT_USECASE
     try:
         result = await _sf_post_form("/startscan", {
             "scanname": scan_name,
@@ -75,8 +92,68 @@ async def scan_results(scan_id: str):
     try:
         result = await _sf_get(f"/scaneventresults", params={"id": scan_id})
         if isinstance(result, list):
-            items = [{"type": r[4], "data": r[1], "source": r[2]}
-                     for r in result if isinstance(r, list) and len(r) > 4]
+            items = [
+                {
+                    "type": r[10],
+                    "data": html.unescape(str(r[1])),
+                    "source": html.unescape(str(r[2])),
+                    "module": r[3],
+                    "confidence": r[4],
+                    "visibility": r[5],
+                    "risk": r[6],
+                    "false_positive": r[8],
+                    "parent_false_positive": r[9],
+                    "lastseen": r[0],
+                }
+                for r in result if isinstance(r, list) and len(r) >= 11
+            ]
+            return {"data": items, "total": len(items)}
+        return {"data": [], "total": 0}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/v1/scan/{scan_id}/errors")
+async def scan_errors(scan_id: str, limit: int = 50):
+    """Module-level errors (upstream filters tbl_scan_log by type='ERROR')."""
+    try:
+        result = await _sf_get(
+            "/scanerrors", params={"id": scan_id, "limit": str(limit)}
+        )
+        if isinstance(result, list):
+            items = [
+                {
+                    "time": r[0],
+                    "component": r[1],
+                    "message": html.unescape(str(r[2])),
+                }
+                for r in result if isinstance(r, list) and len(r) >= 3
+            ]
+            return {"data": items, "total": len(items)}
+        return {"data": [], "total": 0}
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.get("/api/v1/scan/{scan_id}/correlations")
+async def scan_correlations(scan_id: str):
+    """Cross-module correlation rules that fired during the scan."""
+    try:
+        result = await _sf_get("/scancorrelations", params={"id": scan_id})
+        if isinstance(result, list):
+            items = [
+                {
+                    "id": r[0],
+                    "title": r[1],
+                    "rule_id": r[2],
+                    "rule_risk": r[3],
+                    "rule_name": r[4],
+                    "rule_descr": r[5],
+                    "rule_logic": r[6],
+                    "event_count": r[7],
+                }
+                for r in result if isinstance(r, list) and len(r) >= 8
+            ]
             return {"data": items, "total": len(items)}
         return {"data": [], "total": 0}
     except Exception as e:

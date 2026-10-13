@@ -33,6 +33,20 @@ def _obscura_cdp_url() -> str | None:
     return os.environ.get("OBSCURA_CDP_URL", "").strip() or None
 
 
+def _obscura_cdp_token() -> str | None:
+    return os.environ.get("OBSCURA_CDP_TOKEN", "").strip() or None
+
+
+def _obscura_headers() -> dict[str, str]:
+    """Auth header for the Obscura CDP endpoint.
+
+    Obscura gates every route — including /json/* and the WebSocket upgrade —
+    behind a bearer token whenever it binds a non-loopback address.
+    """
+    token = _obscura_cdp_token()
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
 def _chromium_launch_kwargs() -> dict[str, Any]:
     exe = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH")
     kwargs: dict[str, Any] = {
@@ -79,14 +93,25 @@ class PlaywrightBrowserCollector(BaseCollector):
             "wait_selector": wait_selector,
         }
 
-    async def _get_browser(self, pw: Any) -> Any:
+    async def _get_browser(self, pw: Any) -> tuple[Any, str, str | None]:
+        """Return ``(browser, backend, fallback_reason)``.
+
+        ``backend`` describes what actually served the request. A configured
+        Obscura endpoint can still refuse the connection, and reporting
+        "obscura" after silently falling back to local Chromium hides the
+        failure, so the reason is returned instead of swallowed.
+        """
         cdp_url = _obscura_cdp_url()
         if cdp_url:
             try:
-                return await pw.chromium.connect_over_cdp(cdp_url)
-            except Exception:
-                pass
-        return await pw.chromium.launch(**_chromium_launch_kwargs())
+                browser = await pw.chromium.connect_over_cdp(
+                    cdp_url, headers=_obscura_headers()
+                )
+            except Exception as exc:
+                reason = f"{exc.__class__.__name__}: {exc}"[:200]
+                return await pw.chromium.launch(**_chromium_launch_kwargs()), "chromium", reason
+            return browser, "obscura", None
+        return await pw.chromium.launch(**_chromium_launch_kwargs()), "chromium", None
 
     async def test(self) -> CollectorTestResult:
         _assert_playwright_available()
@@ -94,7 +119,7 @@ class PlaywrightBrowserCollector(BaseCollector):
         from playwright.async_api import async_playwright
 
         async with async_playwright() as pw:
-            browser = await self._get_browser(pw)
+            browser, backend, fallback_reason = await self._get_browser(pw)
             try:
                 page = await browser.new_page()
                 response = await page.goto(
@@ -106,18 +131,26 @@ class PlaywrightBrowserCollector(BaseCollector):
             finally:
                 await browser.close()
 
+        logs = [collector_log("browser_test_ok", f"status={status} backend={backend}")]
+        if fallback_reason:
+            logs.insert(
+                0,
+                collector_log(
+                    "browser_obscura_fallback",
+                    f"Obscura unreachable, used local Chromium: {fallback_reason}",
+                    level="warning",
+                ),
+            )
         if status >= 400:
             return CollectorTestResult(
                 status="failed",
                 message=f"HTTP {status} from {config['url']}",
                 logs=[collector_log("browser_test_failed", f"status={status}")],
             )
-        backend = "obscura" if _obscura_cdp_url() else "chromium"
-        return CollectorTestResult(
-            status="ok",
-            message=f"Browser ({backend}) reached {config['url']} (HTTP {status})",
-            logs=[collector_log("browser_test_ok", f"status={status} backend={backend}")],
-        )
+        message = f"Browser ({backend}) reached {config['url']} (HTTP {status})"
+        if fallback_reason:
+            message += " — Obscura fallback, local Chromium used"
+        return CollectorTestResult(status="ok", message=message, logs=logs)
 
     async def collect(self) -> CollectionResult:
         _assert_playwright_available()
@@ -126,7 +159,7 @@ class PlaywrightBrowserCollector(BaseCollector):
 
         collected_at = datetime.now(UTC)
         async with async_playwright() as pw:
-            browser = await self._get_browser(pw)
+            browser, backend, fallback_reason = await self._get_browser(pw)
             try:
                 page = await browser.new_page()
                 response = await page.goto(
@@ -164,18 +197,25 @@ class PlaywrightBrowserCollector(BaseCollector):
                 "http_status": http_status,
                 "extract_mode": extract_mode,
                 "content": content,
-                "backend": "obscura" if _obscura_cdp_url() else "chromium",
+                "backend": backend,
+                "obscura_fallback_reason": fallback_reason,
             },
             collected_at=collected_at,
         )
-        return CollectionResult(
-            raw_records=[record],
-            errors=[],
-            logs=[
+        logs = [
+            collector_log(
+                "browser_collected",
+                f"url={final_url} extract_mode={extract_mode} backend={backend}",
+            )
+        ]
+        if fallback_reason:
+            logs.insert(
+                0,
                 collector_log(
-                    "browser_collected",
-                    f"url={final_url} extract_mode={extract_mode}",
-                )
-            ],
-        )
+                    "browser_obscura_fallback",
+                    f"Obscura unreachable, used local Chromium: {fallback_reason}",
+                    level="warning",
+                ),
+            )
+        return CollectionResult(raw_records=[record], errors=[], logs=logs)
 
