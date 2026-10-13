@@ -11,9 +11,19 @@ Unique capabilities vs sherlock/maigret:
   - Multiple output formats: JSON, CSV, HTML, Markdown, PDF, GEXF
 
 Environment variables (all optional):
-    OSINT_TIMEOUT         Per-site request timeout in seconds (default: 30)
-    OSINT_PROXY           HTTP/SOCKS proxy URL forwarded to aliens_eye
-    ALIENS_EYE_NO_ML      Set to "1" to disable ML and use heuristics only
+    OSINT_TIMEOUT          Per-request timeout in seconds, forwarded to
+                           aliens_eye as --timeout (default: 6)
+    OSINT_PROC_TIMEOUT     Subprocess kill budget in seconds (default: 240)
+    OSINT_RETRIES          Retries per site (default: 1)
+    OSINT_BACKOFF_CAP      Backoff ceiling in seconds (default: 3)
+    OSINT_CONCURRENT       Concurrent site checks (default: 50)
+    OSINT_PROXY            HTTP/SOCKS proxy URL forwarded to aliens_eye
+    ALIENS_EYE_NO_ML       Set to "1" to disable ML and use heuristics only
+
+Scan budget: aliens_eye derives a per-site deadline from
+(retries + 1) * (timeout + backoff_cap + jitter) * 1.5 + 1. With the defaults
+above that is ~29s per site, so a full 854-site scan stays inside the
+subprocess budget while a slow site can no longer stall the whole run.
 """
 from __future__ import annotations
 
@@ -36,15 +46,39 @@ from data_intelligence_hub.collectors.base import (
     require_text,
 )
 
-_DEFAULT_TIMEOUT = 120.0
-_DEFAULT_SITE_TIMEOUT = "30"
+_DEFAULT_PROC_TIMEOUT = 240.0
 
 
-def _timeout() -> float:
+def _env_float(name: str, default: float) -> float:
     try:
-        return float(os.environ.get("OSINT_TIMEOUT", _DEFAULT_SITE_TIMEOUT)) * 10
+        return float(os.environ.get(name, default))
     except ValueError:
-        return _DEFAULT_TIMEOUT
+        return default
+
+
+def _request_timeout() -> float:
+    """Per-request timeout. Forwarded as aliens_eye --timeout."""
+    return _env_float("OSINT_TIMEOUT", 6.0)
+
+
+def _proc_timeout() -> float:
+    """Subprocess kill budget, in seconds."""
+    return _env_float("OSINT_PROC_TIMEOUT", _DEFAULT_PROC_TIMEOUT)
+
+
+def _budget_args() -> list[str]:
+    """Bound the scan inside aliens_eye, not only outside it.
+
+    Without --timeout/--retries/--concurrent the CLI falls back to its own
+    defaults, which let a single unresponsive site hold the whole scan past the
+    client budget.
+    """
+    return [
+        "--timeout", str(_request_timeout()),
+        "--retries", str(int(_env_float("OSINT_RETRIES", 1))),
+        "--backoff-cap", str(_env_float("OSINT_BACKOFF_CAP", 3.0)),
+        "--concurrent", str(int(_env_float("OSINT_CONCURRENT", 50))),
+    ]
 
 
 def _proxy_args() -> list[str]:
@@ -72,7 +106,7 @@ def _aliens_eye_cmd() -> str:
     return "aliens_eye"
 
 
-async def _run(cmd: list[str], timeout: float = _DEFAULT_TIMEOUT) -> tuple[int, str, str]:
+async def _run(cmd: list[str], timeout: float = _DEFAULT_PROC_TIMEOUT) -> tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -132,6 +166,22 @@ def _parse_json_output(json_path: str) -> list[dict[str, Any]]:
     except Exception:
         pass
     return []
+
+
+def _parse_domains(json_path: str) -> list[dict[str, Any]]:
+    """Read the top-level ``domains`` block that aliens_eye writes for --domains.
+
+    Domain results never appear under ``variations`` — upstream stores them at
+    ``{"domains": {"results": [{"domain", "registered", "live"}]}}``.
+    """
+    try:
+        with open(json_path) as f:
+            data = json.load(f)
+    except Exception:
+        return []
+    domains = data.get("domains") if isinstance(data, dict) else None
+    results = domains.get("results") if isinstance(domains, dict) else None
+    return results if isinstance(results, list) else []
 
 
 # ─────────────────────────────────────────────
@@ -206,10 +256,11 @@ class AliensEyeBasicCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
                 *_no_ml_args(),
             ]
-            rc, stdout, stderr = await _run(cmd, timeout=_timeout())
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout())
             logs.append(collector_log("aliens_eye_basic_ran", f"rc={rc} username={username!r}"))
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
@@ -253,13 +304,14 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
                 *_no_ml_args(),
             ]
             if config["sites"]:
                 cmd += ["--site", config["sites"]]
 
-            rc, stdout, stderr = await _run(cmd, timeout=_timeout() * 2)
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * 2)
             logs.append(collector_log("aliens_eye_advanced_ran", f"rc={rc} username={username!r}"))
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
@@ -301,10 +353,11 @@ class AliensEyeCorrelateCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
                 *_no_ml_args(),
             ]
-            rc, stdout, stderr = await _run(cmd, timeout=_timeout() * 2)
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * 2)
             logs.append(collector_log("aliens_eye_correlate_ran", f"rc={rc} username={username!r}"))
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
@@ -362,10 +415,11 @@ class AliensEyeRecurseCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
                 *_no_ml_args(),
             ]
-            rc, stdout, stderr = await _run(cmd, timeout=_timeout() * (depth + 1))
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * (depth + 1))
             logs.append(collector_log("aliens_eye_recurse_ran", f"rc={rc} depth={depth}"))
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
@@ -406,28 +460,30 @@ class AliensEyeDomainCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
             ]
-            rc, stdout, stderr = await _run(cmd, timeout=60.0)
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout())
             logs.append(collector_log("aliens_eye_domain_ran", f"rc={rc}"))
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
                 errors.append(f"aliens_eye_error: rc={rc} stderr={stderr[:200]}")
                 return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
-            hits = _parse_json_output(found_file) if found_file else []
-            domain_hits = [h for h in hits if isinstance(h, dict) and h.get("type") == "domain"]
+            domain_hits = _parse_domains(found_file) if found_file else []
             logs.append(collector_log("aliens_eye_domain_hits", f"domains={len(domain_hits)}"))
             records = []
             for h in domain_hits:
+                if not isinstance(h, dict):
+                    continue
                 records.append(CollectorRawRecord(
                     record_type="account",
-                    source_url=h.get("url", ""),
+                    source_url=f"https://{h.get('domain', '')}",
                     content={
                         "username": username,
-                        "domain": h.get("domain") or h.get("site"),
-                        "registered": h.get("registered", True),
-                        "url": h.get("url"),
+                        "domain": h.get("domain"),
+                        "registered": h.get("registered"),
+                        "live": h.get("live"),
                         "raw": h,
                     },
                     collected_at=collected_at,
@@ -472,10 +528,11 @@ class AliensEyeBatchCollector(_AliensEyeCollector):
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
+                *_budget_args(),
                 *_proxy_args(),
                 *_no_ml_args(),
             ]
-            rc, stdout, stderr = await _run(cmd, timeout=_timeout() * len(usernames))
+            rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * len(usernames))
             logs.append(collector_log("aliens_eye_batch_ran", f"rc={rc} count={len(usernames)}"))
 
             for username in usernames:
@@ -509,7 +566,7 @@ class AliensEyeSelfcheckCollector(_AliensEyeCollector):
         collected_at = datetime.now(UTC)
 
         cmd = [_aliens_eye_cmd(), "selfcheck", "--report", "json", "--plain"]
-        rc, stdout, stderr = await _run(cmd, timeout=300.0)
+        rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * 2)
         logs.append(collector_log("aliens_eye_selfcheck_ran", f"rc={rc}"))
 
         records = []

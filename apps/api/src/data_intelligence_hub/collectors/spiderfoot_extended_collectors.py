@@ -3,6 +3,13 @@
 Each collector wraps the generic SpiderFootDomainCollector with a
 curated module set targeting a specific intelligence objective.
 
+Module names are verified against smicallef/spiderfoot `modules/`. SpiderFoot
+ignores names it does not know without failing the scan, so a typo silently
+reduces coverage instead of raising. Several modules below need their own API
+key inside SpiderFoot (e.g. sfp_shodan, sfp_censys, sfp_virustotal); without it
+they contribute nothing. Per-scan module errors are reported in the collected
+record's `module_errors`, which is how a key-gated module becomes visible.
+
 Environment variables:
     SPIDERFOOT_BASE_URL   Required — self-hosted SpiderFoot URL
     SPIDERFOOT_TIMEOUT    Total scan timeout in seconds (default 300)
@@ -13,7 +20,6 @@ from typing import Any
 
 from data_intelligence_hub.collectors.spiderfoot_collector import (
     _SpiderFootCollector,
-    require_text,
 )
 
 _SF_MODULES_SUBDOMAIN = [
@@ -25,28 +31,28 @@ _SF_MODULES_SUBDOMAIN = [
 _SF_MODULES_THREAT = [
     "sfp_virustotal", "sfp_threatcrowd", "sfp_alienvault",
     "sfp_greynoise", "sfp_ipinfo", "sfp_abuseipdb",
-    "sfp_blocklist_de", "sfp_spamhaus", "sfp_sans",
+    "sfp_blocklistde", "sfp_spamhaus",
 ]
 
 _SF_MODULES_BREACH = [
-    "sfp_haveibeenpwned", "sfp_dehashed", "sfp_leakcheck",
-    "sfp_hunterio", "sfp_emailrep",
+    "sfp_haveibeenpwned", "sfp_dehashed",
+    "sfp_hunter", "sfp_emailrep",
 ]
 
 _SF_MODULES_CERT = [
-    "sfp_crt", "sfp_certspotter", "sfp_circl",
-    "sfp_googlesafe", "sfp_ssltools",
+    "sfp_crt", "sfp_certspotter", "sfp_circllu",
+    "sfp_googlesafebrowsing",
 ]
 
 _SF_MODULES_DARKWEB = [
-    "sfp_ahmia", "sfp_onionscan", "sfp_darksearch",
+    "sfp_ahmia", "sfp_onionsearchengine",
     "sfp_torch",
 ]
 
 _SF_MODULES_ATTACK_SURFACE = [
     "sfp_shodan", "sfp_censys", "sfp_binaryedge",
     "sfp_hackertarget", "sfp_dnsbrute", "sfp_portscan_tcp",
-    "sfp_nmap", "sfp_crt", "sfp_dnsdumpster",
+    "sfp_tool_nmap", "sfp_crt", "sfp_dnsdumpster",
     "sfp_virustotal", "sfp_robtex",
 ]
 
@@ -56,8 +62,9 @@ class SpiderFootSubdomainCollector(_SpiderFootCollector):
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_SUBDOMAIN}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_SUBDOMAIN
+        return config
 
 
 class SpiderFootThreatIntelCollector(_SpiderFootCollector):
@@ -65,8 +72,9 @@ class SpiderFootThreatIntelCollector(_SpiderFootCollector):
     _target_type = "ip"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_THREAT}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_THREAT
+        return config
 
 
 class SpiderFootBreachCollector(_SpiderFootCollector):
@@ -74,8 +82,9 @@ class SpiderFootBreachCollector(_SpiderFootCollector):
     _target_type = "email"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_BREACH}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_BREACH
+        return config
 
 
 class SpiderFootCertCollector(_SpiderFootCollector):
@@ -83,8 +92,9 @@ class SpiderFootCertCollector(_SpiderFootCollector):
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_CERT}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_CERT
+        return config
 
 
 class SpiderFootDarkWebCollector(_SpiderFootCollector):
@@ -92,8 +102,9 @@ class SpiderFootDarkWebCollector(_SpiderFootCollector):
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_DARKWEB}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_DARKWEB
+        return config
 
 
 class SpiderFootAttackSurfaceCollector(_SpiderFootCollector):
@@ -101,5 +112,6 @@ class SpiderFootAttackSurfaceCollector(_SpiderFootCollector):
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
-        target = require_text(self.config, "target")
-        return {"target": target, "modules": _SF_MODULES_ATTACK_SURFACE}
+        config = super().validate_config()
+        config["modules"] = _SF_MODULES_ATTACK_SURFACE
+        return config

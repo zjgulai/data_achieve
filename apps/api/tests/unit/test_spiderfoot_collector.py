@@ -60,6 +60,22 @@ def _fake_client(responses: list[_FakeResponse]):
     return client
 
 
+@pytest.fixture(autouse=True)
+def _no_diagnostics_network(monkeypatch):
+    """Diagnostics endpoints are optional — keep unit tests off the network.
+
+    Tests that assert on `module_errors` / `correlations` override this.
+    """
+    async def _empty(scan_id: str, path: str, params: dict | None = None):
+        return []
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.collectors.spiderfoot_collector"
+        "._get_optional_diagnostics",
+        _empty,
+    )
+
+
 class TestRowToDict:
     def test_dict_passthrough(self):
         row = {"type": "IP_ADDRESS", "data": "1.2.3.4"}
@@ -194,7 +210,7 @@ class TestCollect:
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
         monkeypatch.setenv("SPIDERFOOT_TIMEOUT", "0")
 
-        async def _fake_create(target, scan_name, modules=None):
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
             return "scan-123"
 
         async def _fake_poll(scan_id):
@@ -218,7 +234,7 @@ class TestCollect:
     async def test_scan_error_status_returns_error(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None):
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
             return "scan-456"
 
         async def _fake_poll(scan_id):
@@ -248,7 +264,7 @@ class TestCollect:
             {"type": "WHOIS_REGISTRAR", "module": "sfp_whois", "data": "GoDaddy"},
         ]
 
-        async def _fake_create(target, scan_name, modules=None):
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
             return "scan-789"
 
         async def _fake_poll(scan_id):
@@ -289,7 +305,7 @@ class TestCollect:
     async def test_ip_collector_target_type(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None):
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
             return "scan-ip"
 
         async def _fake_poll(scan_id):
@@ -321,7 +337,7 @@ class TestCollect:
     async def test_email_collector_target_type(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None):
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
             return "scan-email"
 
         async def _fake_poll(scan_id):
@@ -348,3 +364,85 @@ class TestCollect:
 
         assert len(result.raw_records) == 1
         assert result.raw_records[0].content["target_type"] == "email"
+
+    @pytest.mark.asyncio
+    async def test_usecase_defaults_to_passive(self, monkeypatch):
+        """No explicit modules -> the scan runs the safe `passive` use case."""
+        monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
+        captured: dict[str, Any] = {}
+
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
+            captured["modules"] = modules
+            captured["usecase"] = usecase
+            return "scan-u"
+
+        async def _fake_poll(scan_id):
+            return "FINISHED"
+
+        async def _fake_results(scan_id):
+            return []
+
+        with (
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._create_scan",
+                side_effect=_fake_create,
+            ),
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._poll_scan",
+                side_effect=_fake_poll,
+            ),
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._get_results",
+                side_effect=_fake_results,
+            ),
+        ):
+            result = await _domain({"target": "example.com"}).collect()
+
+        assert captured["modules"] is None
+        assert captured["usecase"] == "passive"
+        assert result.raw_records[0].content["usecase"] == "passive"
+
+    @pytest.mark.asyncio
+    async def test_module_errors_and_correlations_land_in_record(self, monkeypatch):
+        monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
+
+        async def _fake_create(target, scan_name, modules=None, usecase=None):
+            return "scan-diag"
+
+        async def _fake_poll(scan_id):
+            return "FINISHED"
+
+        async def _fake_results(scan_id):
+            return [{"type": "IP_ADDRESS", "data": "1.2.3.4", "risk": "HIGH"}]
+
+        async def _fake_diagnostics(scan_id, path, params=None):
+            if path == "errors":
+                return [{"component": "sfp_shodan", "message": "API key not set"}]
+            return [{"title": "Multiple IPs", "rule_risk": "MEDIUM"}]
+
+        with (
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._create_scan",
+                side_effect=_fake_create,
+            ),
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._poll_scan",
+                side_effect=_fake_poll,
+            ),
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector._get_results",
+                side_effect=_fake_results,
+            ),
+            patch(
+                "data_intelligence_hub.collectors.spiderfoot_collector"
+                "._get_optional_diagnostics",
+                side_effect=_fake_diagnostics,
+            ),
+        ):
+            result = await _domain({"target": "example.com"}).collect()
+
+        content = result.raw_records[0].content
+        assert content["module_error_count"] == 1
+        assert content["module_errors"][0]["component"] == "sfp_shodan"
+        assert content["correlation_count"] == 1
+        assert content["risk_counts"] == {"HIGH": 1}

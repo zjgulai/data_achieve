@@ -60,3 +60,29 @@ description: 浏览器引擎选型决策。记录为何选择 Obscura（Rust CDP
 **部署依赖**：
 - `OBSCURA_CDP_URL=http://obscura:9222`（已写入 docker-compose）
 - `ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`（待用户配置）
+
+---
+
+## 2026-10-13 实施补记（阶段一落地）
+
+原文所说"已写入 docker-compose"指的是 `configs/deploy/scrapy-new/docker-compose.yml`，该文件**已废弃**
+（见 `scripts/deploy-new-server.sh` 顶部注释），生产权威是 `configs/deploy/scrapy/docker-compose.yml`。
+本轮把阶段一真正落到权威 compose，并纠正三处会导致部署失败的错误：
+
+| 项 | 事实 |
+|---|---|
+| 子命令 | 上游是 `serve`，**没有 `server` 别名**（镜像自带 `CMD ["serve", ...]`，`--help` 可验） |
+| 镜像源 | 只在 Docker Hub `h4ckf0r0day/obscura`（GHCR 无此镜像）；当前钉 `0.2.4` |
+| 认证 | 绑非回环地址时 `OBSCURA_CDP_TOKEN` **必填且 ≥32 字节**，否则启动即 bail |
+| 健康检查 | 镜像是 distroless，无 shell/wget，`CMD-SHELL` healthcheck 必失败 → 不配 |
+| stealth | 官方镜像以 `--features render` 构建，`--stealth` 只给指纹一致性与 tracker 拦截；TLS 仿冒需自建镜像（阶段二） |
+| 服务开关 | 挂在 compose `obscura` profile 下（默认不启动）；`OBSCURA_CDP_URL` 为空即禁用 |
+
+**阶段二（browser-use）改为侧车隔离**：browser-use 0.13.x 硬钉大量依赖（`pydantic==2.13.5`、
+`openai==2.26.0`、`google-api-python-client==2.188.0`、`mcp==2.1.1` …）。装进 API 镜像会让锁文件从
+207 包涨到 400 包并降级 18 个现有包（protobuf 7→6、websockets 16→15 等）。因此它独立成
+`configs/bridges/browser-use-bridge` 容器，采集器改为 HTTP 调用（与 Maigret/SpiderFoot 侧车同形），
+API 侧依赖零改动。它可复用 Obscura：设 `OBSCURA_CDP_URL`/`OBSCURA_CDP_TOKEN` 即走 CDP。
+
+**登录态**：`BrowserProfile` 支持 `cdp_url` + `headers`（复用 Obscura 的 `--storage-dir` 持久卷）
+与 `storage_state`；`BrowserProfile` 是 pydantic 模型，字段已在 0.13.11 实测确认。

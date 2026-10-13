@@ -14,7 +14,7 @@ dependencies = [
     "email-validator>=2.2.0",
     "fastapi>=0.115.0",
     "httpx>=0.28.0",
-    "aliens-eye>=2.2.2",
+    "aliens-eye==2.7.0",
     "beautifulsoup4>=4.12.0",
     "httpx[socks]>=0.28.0",
     "maigret>=0.4.4",

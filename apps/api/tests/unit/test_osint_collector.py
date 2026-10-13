@@ -8,18 +8,15 @@ import json
 import textwrap
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.collectors.osint_collector import (
     MaigretCollector,
     SherlockCollector,
-    _maigret_available,
-    _sherlock_available,
 )
-from data_intelligence_hub.collectors.base import CollectorError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -208,17 +205,39 @@ async def test_maigret_collect_binary_missing_returns_error():
 
 @pytest.mark.asyncio
 async def test_maigret_collect_parses_json_report(tmp_path: Path, monkeypatch):
+    """CLI fallback must follow upstream's real contract.
+
+    Upstream writes ``<folderoutput>/report_<username>_simple.json`` (there is
+    no ``--output`` flag) and nests the check result under ``status``.
+    """
+    monkeypatch.delenv("MAIGRET_URL", raising=False)
     report_data = {
-        "GitHub": {"status": "Claimed", "url": "https://github.com/bob"},
-        "Pinterest": {"status": "Available"},
-        "Twitter": {"status": "Claimed", "url": "https://twitter.com/bob"},
+        "GitHub": {
+            "status": {
+                "username": "bob",
+                "site_name": "GitHub",
+                "url": "https://github.com/bob",
+                "status": "Claimed",
+            },
+            "url_user": "https://github.com/bob",
+        },
+        "Twitter": {
+            "status": {
+                "username": "bob",
+                "site_name": "Twitter",
+                "url": "https://twitter.com/bob",
+                "status": "Claimed",
+            },
+            "url_user": "https://twitter.com/bob",
+        },
     }
 
     async def fake_run(cmd: list[str], timeout: float = 600.0):
-        # Find the --output path in cmd and write the JSON there
-        output_idx = cmd.index("--output") + 1
-        out_path = Path(cmd[output_idx])
-        out_path.write_text(json.dumps(report_data), encoding="utf-8")
+        folder_idx = cmd.index("--folderoutput") + 1
+        folder = Path(cmd[folder_idx])
+        folder.mkdir(parents=True, exist_ok=True)
+        report = folder / "report_bob_simple.json"
+        report.write_text(json.dumps(report_data), encoding="utf-8")
         return (0, "", "")
 
     with (
@@ -238,7 +257,103 @@ async def test_maigret_collect_parses_json_report(tmp_path: Path, monkeypatch):
     assert rec.record_type == "account"
     content = rec.content
     assert content["username"] == "bob"
+    assert content["source"] == "cli"
     assert content["total_claimed"] == 2
     assert "GitHub" in content["claimed_sites"]
     assert "Twitter" in content["claimed_sites"]
-    assert "Pinterest" not in content["claimed_sites"]
+    assert content["profile_urls"]["GitHub"] == "https://github.com/bob"
+
+
+@pytest.mark.asyncio
+async def test_maigret_collect_uses_sidecar_when_configured(monkeypatch):
+    monkeypatch.setenv("MAIGRET_URL", "http://maigret:5000")
+
+    async def fake_sidecar(username: str):
+        return {
+            "GitHub": {
+                "status": "Claimed",
+                "url": "https://github.com/bob",
+                "ids": {},
+                "username": username,
+            }
+        }
+
+    with patch(
+        "data_intelligence_hub.collectors.osint_collector._maigret_sidecar_scan",
+        side_effect=fake_sidecar,
+    ):
+        result = await _maigret({"username": "bob"}).collect()
+
+    content = result.raw_records[0].content
+    assert content["source"] == "sidecar"
+    assert content["total_claimed"] == 1
+    assert content["profile_urls"]["GitHub"] == "https://github.com/bob"
+
+
+@pytest.mark.asyncio
+async def test_maigret_falls_back_to_cli_when_sidecar_fails(monkeypatch):
+    monkeypatch.setenv("MAIGRET_URL", "http://maigret:5000")
+
+    async def fake_run(cmd: list[str], timeout: float = 600.0):
+        folder = Path(cmd[cmd.index("--folderoutput") + 1])
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "report_bob_simple.json").write_text(
+            json.dumps({"GitHub": {"status": {"status": "Claimed"}}}),
+            encoding="utf-8",
+        )
+        return (0, "", "")
+
+    with (
+        patch(
+            "data_intelligence_hub.collectors.osint_collector._maigret_sidecar_scan",
+            side_effect=CollectorError("sidecar down"),
+        ),
+        patch(
+            "data_intelligence_hub.collectors.osint_collector._maigret_available",
+            return_value=True,
+        ),
+        patch(
+            "data_intelligence_hub.collectors.osint_collector._run",
+            side_effect=fake_run,
+        ),
+    ):
+        result = await _maigret({"username": "bob"}).collect()
+
+    content = result.raw_records[0].content
+    assert content["source"] == "cli"
+    assert content["total_claimed"] == 1
+
+
+@pytest.mark.asyncio
+async def test_sherlock_collect_reads_url_user_column(monkeypatch):
+    """Sherlock's CSV columns are username,name,url_main,url_user,exists,..."""
+    csv_body = (
+        "username,name,url_main,url_user,exists,http_status,response_time_s\n"
+        "alice,GitHub,https://github.com/,https://github.com/alice,Claimed,200,0.5\n"
+        "alice,Twitter,https://twitter.com/,https://twitter.com/alice,Available,404,0.4\n"
+        "alice,Reddit,https://reddit.com/,https://reddit.com/user/alice,Unknown,,0.3\n"
+    )
+
+    async def fake_run(cmd: list[str], timeout: float = 300.0):
+        folder = Path(cmd[cmd.index("--folderoutput") + 1])
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "alice.csv").write_text(csv_body, encoding="utf-8")
+        return (0, "", "")
+
+    with (
+        patch(
+            "data_intelligence_hub.collectors.osint_collector._sherlock_available",
+            return_value=True,
+        ),
+        patch(
+            "data_intelligence_hub.collectors.osint_collector._run",
+            side_effect=fake_run,
+        ),
+    ):
+        result = await _sherlock({"username": "alice"}).collect()
+
+    content = result.raw_records[0].content
+    assert content["found_on"] == {"GitHub": "https://github.com/alice"}
+    assert content["total_found"] == 1
+    assert content["sites_checked"] == 3
+    assert content["status_counts"] == {"Claimed": 1, "Available": 1, "Unknown": 1}
