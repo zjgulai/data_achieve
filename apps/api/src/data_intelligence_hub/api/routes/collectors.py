@@ -3258,16 +3258,18 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
         CollectorEndpointMetadata(
             endpoint_type="aliens_eye_advanced",
-            label="Aliens Eye 高级扫描（含变体）",
+            label="Aliens Eye 变体扫描",
             platform="web",
             description=(
-                "带前缀/后缀用户名变体的全量平台扫描（full profile），"
-                "可通过 sites 参数指定目标平台子集。"
+                "全量平台扫描用户名及其常见变体（full profile）。默认 level=intermediate，"
+                "即 12 个变体；level=advanced 会加入前缀/后缀共 123 个变体，"
+                "约 10 万次请求，需配合较长的 run_timeout_seconds。"
+                "可用 sites 参数指定平台子集。"
             ),
             status="verified",
             required_params=["username"],
-            optional_params=["sites"],
-            cost_hint="免费（本地运行，耗时较长）",
+            optional_params=["sites", "level"],
+            cost_hint="免费（本地运行；默认约 1-5 分钟，level=advanced 更久）",
             provider="Aliens Eye (开源)",
             content_type="osint_report",
             method="web_crawl",
