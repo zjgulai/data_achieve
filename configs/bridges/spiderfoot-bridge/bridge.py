@@ -20,9 +20,10 @@ from fastapi.responses import JSONResponse
 app = FastAPI()
 SF_URL = os.environ.get("SF_UPSTREAM", "http://spiderfoot:5001")
 
-# "passive" is the only use case that never runs active/invasive modules
-# (port scanners, nmap). Callers can request a broader group explicitly.
-DEFAULT_USECASE = "passive"
+# Callers must pass `modulelist` or an explicit `usecase`. There is no default:
+# upstream `sfwebui.startscan` only tolerates usecase="all" (every other value
+# raises inside its module loop and it answers with a non-JSON error page), and
+# "all" pulls in active scanners (sfp_portscan_tcp, sfp_tool_nmap).
 
 
 async def _sf_get(path: str, params: dict | None = None):
@@ -56,7 +57,11 @@ async def start_scan(request: Request):
     target = body.get("scantarget", "")
     modules = body.get("modulelist", "")
     typelist = body.get("typelist", "")
-    usecase = body.get("usecase") or DEFAULT_USECASE
+    usecase = body.get("usecase", "")
+    if not (modules or typelist or usecase):
+        return JSONResponse(
+            {"error": "modulelist, typelist or usecase is required"}, status_code=400
+        )
     try:
         result = await _sf_post_form("/startscan", {
             "scanname": scan_name,

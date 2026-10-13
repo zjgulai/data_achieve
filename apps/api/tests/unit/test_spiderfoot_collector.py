@@ -4,8 +4,6 @@ All tests mock httpx.AsyncClient — no real SpiderFoot instance required.
 """
 from __future__ import annotations
 
-import json
-import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,6 +12,7 @@ import pytest
 
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.collectors.spiderfoot_collector import (
+    _FAST_DOMAIN_MODULES,
     SpiderFootDomainCollector,
     SpiderFootEmailCollector,
     SpiderFootIPCollector,
@@ -109,7 +108,7 @@ class TestValidateConfig:
     def test_valid_target(self):
         cfg = _domain({"target": "example.com"}).validate_config()
         assert cfg["target"] == "example.com"
-        assert cfg["modules"] == []
+        assert cfg["modules"] == _FAST_DOMAIN_MODULES
 
     def test_modules_list_preserved(self):
         cfg = _domain({"target": "t.com", "modules": ["sfp_dns", "sfp_whois"]}).validate_config()
@@ -210,7 +209,7 @@ class TestCollect:
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
         monkeypatch.setenv("SPIDERFOOT_TIMEOUT", "0")
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-123"
 
         async def _fake_poll(scan_id):
@@ -234,7 +233,7 @@ class TestCollect:
     async def test_scan_error_status_returns_error(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-456"
 
         async def _fake_poll(scan_id):
@@ -264,7 +263,7 @@ class TestCollect:
             {"type": "WHOIS_REGISTRAR", "module": "sfp_whois", "data": "GoDaddy"},
         ]
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-789"
 
         async def _fake_poll(scan_id):
@@ -305,7 +304,7 @@ class TestCollect:
     async def test_ip_collector_target_type(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-ip"
 
         async def _fake_poll(scan_id):
@@ -337,7 +336,7 @@ class TestCollect:
     async def test_email_collector_target_type(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-email"
 
         async def _fake_poll(scan_id):
@@ -366,14 +365,18 @@ class TestCollect:
         assert result.raw_records[0].content["target_type"] == "email"
 
     @pytest.mark.asyncio
-    async def test_usecase_defaults_to_passive(self, monkeypatch):
-        """No explicit modules -> the scan runs the safe `passive` use case."""
+    async def test_default_module_list_is_sent(self, monkeypatch):
+        """No explicit modules -> a verified, non-invasive default list is sent.
+
+        Upstream's `usecase` parameter only tolerates "all" (which includes active
+        scanners), and every other value makes it answer with a non-JSON error
+        page. The collector therefore always sends an explicit module list.
+        """
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
         captured: dict[str, Any] = {}
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             captured["modules"] = modules
-            captured["usecase"] = usecase
             return "scan-u"
 
         async def _fake_poll(scan_id):
@@ -398,15 +401,14 @@ class TestCollect:
         ):
             result = await _domain({"target": "example.com"}).collect()
 
-        assert captured["modules"] is None
-        assert captured["usecase"] == "passive"
-        assert result.raw_records[0].content["usecase"] == "passive"
+        assert captured["modules"] == _FAST_DOMAIN_MODULES
+        assert result.raw_records[0].content["modules"] == _FAST_DOMAIN_MODULES
 
     @pytest.mark.asyncio
     async def test_module_errors_and_correlations_land_in_record(self, monkeypatch):
         monkeypatch.setenv("SPIDERFOOT_BASE_URL", "http://sf:5001")
 
-        async def _fake_create(target, scan_name, modules=None, usecase=None):
+        async def _fake_create(target, scan_name, modules=None):
             return "scan-diag"
 
         async def _fake_poll(scan_id):

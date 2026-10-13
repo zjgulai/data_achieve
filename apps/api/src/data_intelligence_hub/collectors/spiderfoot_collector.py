@@ -10,10 +10,17 @@ API flow:
   4. GET  /api/v1/scan/{id}/errors and /correlations — diagnostics and
      cross-module correlation hits (both are optional; older bridges lack them)
 
-Module selection: pass `config.modules` for an explicit module list, or leave it
-empty to run a SpiderFoot use case group instead (`config.usecase`, default
-"passive"). "passive" is the only group that never runs active/invasive modules
-(port scanners, nmap); "footprint"/"investigate"/"all" do.
+Module selection: pass `config.modules` for an explicit list; otherwise the
+collector sends a default list of free, non-invasive modules (see the
+`_FAST_*_MODULES` tables below).
+
+Do NOT switch these back to SpiderFoot's `usecase` parameter. Upstream's
+`sfwebui.startscan` evaluates `usecase == 'all' or usecase in
+__modules__[mod]['group']`; only "all" short-circuits, and every other value
+raises inside the loop (modules without a `group` key), so upstream answers with
+a non-JSON error page — confirmed in production against `usecase=passive`.
+Sending an explicit module list skips that branch entirely. "all" is not a safe
+substitute either: it includes active scanners (sfp_portscan_tcp, sfp_tool_nmap).
 
 Environment variables:
     SPIDERFOOT_BASE_URL   Base URL of the SpiderFoot instance (required)
@@ -52,7 +59,6 @@ _POLL_INTERVAL = 5.0
 # Upstream terminal states (sf.py): FINISHED / ABORTED / ERROR-FAILED.
 # "ABORT-REQUESTED" is not terminal — the scan is still winding down.
 _FINISHED_STATUSES = {"FINISHED", "ABORTED", "ERROR-FAILED"}
-_DEFAULT_USECASE = "passive"
 
 
 def _is_terminal_status(status: str) -> bool:
@@ -89,7 +95,6 @@ async def _create_scan(
     target: str,
     scan_name: str,
     modules: list[str] | None = None,
-    usecase: str = _DEFAULT_USECASE,
 ) -> str:
     base = _base_url()
     payload: dict[str, Any] = {
@@ -97,7 +102,6 @@ async def _create_scan(
         "scantarget": target,
         "modulelist": ",".join(modules) if modules else "",
         "typelist": "",
-        "usecase": usecase,
     }
     try:
         async with _client() as c:
@@ -202,15 +206,14 @@ async def _get_optional_diagnostics(
 
 class _SpiderFootCollector(BaseCollector):
     _target_type: str = ""
-    _default_usecase: str = _DEFAULT_USECASE
+    _default_modules: list[str] = []
 
     def validate_config(self) -> dict[str, Any]:
         target = require_text(self.config, "target")
         modules: list[str] = self.config.get("modules", [])
         if not isinstance(modules, list):
             raise CollectorError("config.modules must be a list of module name strings")
-        usecase = str(self.config.get("usecase") or self._default_usecase)
-        return {"target": target, "modules": modules, "usecase": usecase}
+        return {"target": target, "modules": modules or self._default_modules}
 
     async def test(self) -> CollectorTestResult:
         try:
@@ -247,13 +250,10 @@ class _SpiderFootCollector(BaseCollector):
         collected_at = datetime.now(UTC)
         target: str = config["target"]
         modules: list[str] = config["modules"]
-        usecase: str = config.get("usecase") or self._default_usecase
 
         try:
             scan_name = f"dih-{self._target_type}-{target[:30]}"
-            scan_id = await _create_scan(
-                target, scan_name, modules or None, usecase=usecase
-            )
+            scan_id = await _create_scan(target, scan_name, modules or None)
         except CollectorError as exc:
             errors.append(str(exc))
             logs.append(collector_log("spiderfoot_create_error", str(exc), level="error"))
@@ -316,7 +316,6 @@ class _SpiderFootCollector(BaseCollector):
                 "target": target,
                 "target_type": self._target_type,
                 "scan_id": scan_id,
-                "usecase": usecase,
                 "modules": modules,
                 "total_findings": len(rows),
                 "finding_types": list(grouped.keys()),
@@ -339,27 +338,39 @@ class _SpiderFootCollector(BaseCollector):
         return CollectionResult(raw_records=[record], logs=logs, errors=errors)
 
 
-# The generic collectors below run the SpiderFoot "passive" use case by default
-# instead of a hand-written module list. SpiderFoot silently ignores unknown
-# module names, so the previous hardcoded lists degraded to a fraction of the
-# intended modules without failing: 17 of 57 names across this module and
-# spiderfoot_extended_collectors.py do not exist upstream (verified against
-# smicallef/spiderfoot modules/).
+# Default module sets for the generic collectors. Every name is verified against
+# smicallef/spiderfoot `modules/`, and none requires an API key or performs
+# active scanning — the previous hand-written lists had 17 of 57 names that do
+# not exist upstream, which SpiderFoot ignores silently, so those scans ran a
+# fraction of the intended modules and still reported success.
+_FAST_DOMAIN_MODULES = [
+    "sfp_dnsresolve", "sfp_whois", "sfp_sslcert", "sfp_crt",
+    "sfp_webserver", "sfp_webframework", "sfp_webanalytics",
+]
+_FAST_IP_MODULES = [
+    "sfp_dnsresolve", "sfp_whois", "sfp_arin", "sfp_webframework",
+]
+_FAST_EMAIL_MODULES = [
+    "sfp_emailformat", "sfp_accounts",
+]
 
 
 class SpiderFootDomainCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against a domain name."""
     collector_type = "spiderfoot_domain_osint"
     _target_type = "domain"
+    _default_modules = _FAST_DOMAIN_MODULES
 
 
 class SpiderFootIPCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against an IP address."""
     collector_type = "spiderfoot_ip_osint"
     _target_type = "ip"
+    _default_modules = _FAST_IP_MODULES
 
 
 class SpiderFootEmailCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against an e-mail address."""
     collector_type = "spiderfoot_email_osint"
     _target_type = "email"
+    _default_modules = _FAST_EMAIL_MODULES
