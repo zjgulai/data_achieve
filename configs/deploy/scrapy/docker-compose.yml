@@ -118,7 +118,10 @@ services:
       BROWSER_USE_TIMEOUT: ${BROWSER_USE_TIMEOUT:-120}
       MAIGRET_URL: ${MAIGRET_URL:-http://maigret:5000}
       SPIDERFOOT_BASE_URL: ${SPIDERFOOT_BASE_URL:-http://spiderfoot:5001}
-      SPIDERFOOT_TIMEOUT: ${SPIDERFOOT_TIMEOUT:-300}
+      # 子进程/轮询预算必须留在 nginx 的 quick-collect 上限（1800s）之内，
+      # 否则请求会先被代理掐断，拿不到 API 的结构化错误。
+      SPIDERFOOT_TIMEOUT: ${SPIDERFOOT_TIMEOUT:-1500}
+      OSINT_PROC_TIMEOUT: ${OSINT_PROC_TIMEOUT:-800}
     expose:
       - "8000"
     volumes:
