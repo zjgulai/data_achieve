@@ -42,7 +42,11 @@ MIN_COLLECTION_TIMEOUT_SECONDS = 0.1
 # so a runaway scan still surfaces as the collector's own structured timeout.
 # Callers can override per request with `run_timeout_seconds`.
 SLOW_ENDPOINT_TIMEOUT_SECONDS: dict[str, float] = {
-    "aliens_eye_advanced": 1200.0,
+    # Needs the full window: 391s on the fast host, but the slower (domestic) host
+    # was still scanning when 1200s expired on 2026-10-13. Still below the nginx
+    # ceiling so the API answers, and above the 1600s subprocess budget so a
+    # runaway scan surfaces as the collector's own timeout.
+    "aliens_eye_advanced": 1700.0,
     "aliens_eye_selfcheck": 1200.0,
     "aliens_eye_recurse": 1200.0,
     "spiderfoot_email_osint": 1200.0,
