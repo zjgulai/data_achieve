@@ -280,18 +280,32 @@ class AliensEyeBasicCollector(_AliensEyeCollector):
 # ─────────────────────────────────────────────
 
 class AliensEyeAdvancedCollector(_AliensEyeCollector):
-    """Advanced scan with username variations (prefix/suffix) across 840+ platforms."""
+    """Variation scan: the username plus common variations, across 840+ platforms.
+
+    Depth is capped at `intermediate` (12 username variants) by default. Upstream's
+    `advanced` level adds common prefixes and suffixes, which multiplies the
+    variants to 123 — against ~854 sites that is ~105k requests, and a production
+    run on 2026-10-13 ran the full 1600s subprocess budget without finishing.
+    Pass `level: "advanced"` to opt in; give it a long `run_timeout_seconds`.
+    """
 
     collector_type = "aliens_eye_advanced"
+    _SUPPORTED_LEVELS = frozenset({"basic", "intermediate", "advanced"})
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
         sites = self.config.get("sites", "")
-        return {"username": username, "sites": sites}
+        level = str(self.config.get("level") or "intermediate").strip().lower()
+        if level not in self._SUPPORTED_LEVELS:
+            raise CollectorError(
+                f"level must be one of: {sorted(self._SUPPORTED_LEVELS)}"
+            )
+        return {"username": username, "sites": sites, "level": level}
 
     async def collect(self) -> CollectionResult:
         config = self.validate_config()
         username: str = config["username"]
+        level: str = config["level"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
         collected_at = datetime.now(UTC)
@@ -300,7 +314,7 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
             cmd = [
                 _aliens_eye_cmd(), username,
                 "--profile", "full",
-                "-l", "advanced",
+                "-l", level,
                 "--format", "json",
                 "--output", tmpdir,
                 "--plain",
@@ -312,7 +326,12 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
                 cmd += ["--site", config["sites"]]
 
             rc, stdout, stderr = await _run(cmd, timeout=_proc_timeout() * 2)
-            logs.append(collector_log("aliens_eye_advanced_ran", f"rc={rc} username={username!r}"))
+            logs.append(
+                collector_log(
+                    "aliens_eye_advanced_ran",
+                    f"rc={rc} username={username!r} level={level}",
+                )
+            )
             found_file = _find_output_json(tmpdir, username)
             if rc not in (0, 1) and not found_file:
                 msg = f"aliens_eye_error: rc={rc} stderr={stderr[:200]}"

@@ -31,6 +31,25 @@ DEFAULT_COLLECTION_TIMEOUT_SECONDS = 300.0
 MAX_COLLECTION_TIMEOUT_SECONDS = 1800.0
 MIN_COLLECTION_TIMEOUT_SECONDS = 0.1
 
+# Endpoints whose scans routinely run past the 300s default, measured on the two
+# production hosts on 2026-10-13: aliens_eye_selfcheck 444s and the three
+# spiderfoot scans >300s on the slower (domestic) host, aliens_eye_recurse 252s.
+#
+# 1200s is chosen from both ends: it is well above every measured duration, below
+# the nginx quick-collect ceiling (1800s, so the API answers instead of the proxy
+# cutting the connection), and below the collector subprocess budgets
+# (OSINT_PROC_TIMEOUT=800 -> 1600s for advanced/selfcheck; SPIDERFOOT_TIMEOUT=1500)
+# so a runaway scan still surfaces as the collector's own structured timeout.
+# Callers can override per request with `run_timeout_seconds`.
+SLOW_ENDPOINT_TIMEOUT_SECONDS: dict[str, float] = {
+    "aliens_eye_advanced": 1200.0,
+    "aliens_eye_selfcheck": 1200.0,
+    "aliens_eye_recurse": 1200.0,
+    "spiderfoot_email_osint": 1200.0,
+    "spiderfoot_subdomain_enum": 1200.0,
+    "spiderfoot_attack_surface": 1200.0,
+}
+
 
 async def execute_collection_task(
     session: AsyncSession,
@@ -281,7 +300,12 @@ def _collection_timeout_seconds(config: dict[str, Any] | None) -> float:
         return DEFAULT_COLLECTION_TIMEOUT_SECONDS
     value = config.get("run_timeout_seconds")
     if not isinstance(value, int | float):
-        return DEFAULT_COLLECTION_TIMEOUT_SECONDS
+        # No explicit budget: fall back to the per-endpoint default when the
+        # endpoint is known to be slow, else the global default.
+        endpoint_type = str(config.get("endpoint_type") or "")
+        return SLOW_ENDPOINT_TIMEOUT_SECONDS.get(
+            endpoint_type, DEFAULT_COLLECTION_TIMEOUT_SECONDS
+        )
     return max(
         MIN_COLLECTION_TIMEOUT_SECONDS,
         min(float(value), MAX_COLLECTION_TIMEOUT_SECONDS),
