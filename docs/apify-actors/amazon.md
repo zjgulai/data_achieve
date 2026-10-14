@@ -9,7 +9,7 @@
 | 主题 | 覆盖 | 主力 | 降级① | 降级② |
 |---|---|---|---|---|
 | 商品详情/批量爬取 | ● | junglee/amazon-crawler | junglee/free-amazon-product-scraper | apify/rag-web-browser（页面正文兜底） |
-| 评论 | ● | axesso_data/amazon-reviews-scraper | web_wanderer/amazon-reviews-extractor | junglee/amazon-reviews-scraper |
+| 评论 | ● | axesso_data/amazon-reviews-scraper | ~~web_wanderer/amazon-reviews-extractor~~（2026-10-15 实测恒 0 条：Amazon 封禁其抓取端点，run SUCCEEDED 是假象） | junglee/amazon-reviews-scraper |
 | 榜单（Best Sellers） | ● | junglee/amazon-bestsellers | junglee/amazon-crawler（分类页 URL） | — |
 | 竞品研究 | ◐ | samstorm/amazon-competitor-research-scraper | junglee/amazon-crawler 多关键词 | — |
 | BSR 追踪 | ◐ | ~~marketplace-scrapers/amazon-bsr-scraper~~（已从 Store 下架） | junglee/amazon-bestsellers（position 字段） | — |
@@ -44,7 +44,7 @@
 ## 降级链
 
 1. **商品**：crawler 失败 → free-product-scraper → rag-web-browser 抓商品页正文（丢结构化，保标题/价格正则提取）。
-2. **评论**：axesso → web_wanderer（99.8%，42 字段，含 images/videos 多媒体评论）→ junglee/amazon-reviews-scraper（96.2%，同一家的旧版）。
+2. **评论**：axesso → junglee/amazon-reviews-scraper（96.2%）。web_wanderer 已失效（2026-10-15 实测恒 0 条，Amazon 封禁其端点；教训：SUCCEEDED ≠ 有数据，评论类验收必须看 records_count）。
 3. **BSR**：下架的 bsr-scraper → bestsellers.position → crawler 的 rank 字段。
 
 ## 坑点

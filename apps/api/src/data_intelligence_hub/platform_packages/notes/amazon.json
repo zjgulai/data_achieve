@@ -3,6 +3,22 @@
   "notes": [
     {
       "scope": "endpoint",
+      "target": "apify_amazon_reviews_extractor",
+      "symptom": "run SUCCEEDED（exit 0）但恒 0 条；日志报 NOTICE: Amazon US has restricted access to text reviews，实际请求 404（US/DE 双区实测）",
+      "cause": "web_wanderer/amazon-reviews-extractor 的评论抓取端点被 Amazon 封禁；Store 30 天成功率 99.8% 是假象——run 都成功退出但没有数据（2026-10-15 生产实测+直连复测发现）",
+      "workaround": "降级②改判失效。评论主力用 axesso（sweep 实测 10 条），降级①走 junglee/amazon-reviews-scraper（96.2%）。教训：SUCCEEDED ≠ 有数据，电商评论类端点验收必须看 records_count 而非 run 状态",
+      "failure_class": "empty_result",
+      "severity": "blocker",
+      "verified_at": "2026-10-15",
+      "source_ref": "reports/live-sweep/2026-10-15.jsonl",
+      "tags": [
+        "silent-failure",
+        "amazon-reviews",
+        "monthly-check"
+      ]
+    },
+    {
+      "scope": "endpoint",
       "target": "apify_amazon_bsr_tracker",
       "symptom": "marketplace-scrapers/amazon-bsr-scraper 已从 Apify Store 下架（API 仍可调但无商店页，随时可能停摆且无通知）",
       "cause": "作者下架或 Apify 审核移除；下架不影响存量调用但不保证持续",
@@ -10,7 +26,7 @@
       "failure_class": "upstream_deprecated",
       "severity": "blocker",
       "verified_at": "2026-10-14",
-      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "source_ref": "docs/apify-actors/RESEARCH-PLAN.md",
       "tags": [
         "delisted",
         "apify"

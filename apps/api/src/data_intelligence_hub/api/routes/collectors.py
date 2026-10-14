@@ -1129,7 +1129,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             endpoint_type="apify_amazon_reviews_extractor",
             label="Amazon Reviews Extractor",
             platform="amazon",
-            description="Amazon 评论降级②（99.8%）：含图片/视频多媒体评论",
+            description="Amazon 评论降级②（⚠️ 2026-10-15 实测恒 0 条：Amazon 封禁其抓取端点，SUCCEEDED 假象；勿依赖）",
             status="verified",
             required_params=["products"],
             optional_params=["limit", "sort", "stars"],

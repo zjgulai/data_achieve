@@ -1,0 +1,20 @@
+{
+  "platform_id": "aliexpress",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_aliexpress_product_search_v2",
+      "symptom": "skystone_labs/aliexpress-product-scraper 已从 Apify Store 下架（act API 仍可调但商店空，2026-10-15 月检发现）",
+      "cause": "作者清空或移除商店页",
+      "workaround": "月检告警。替代：devcake/aliexpress-products-scraper（项目已接入为 apify_aliexpress_products_scraper，95.6%）。本端点降为 deprecated 候选",
+      "failure_class": "upstream_deprecated",
+      "severity": "warning",
+      "verified_at": "2026-10-15",
+      "source_ref": "scripts/check_apify_store_presence.py",
+      "tags": [
+        "delisted",
+        "monthly-check"
+      ]
+    }
+  ]
+}

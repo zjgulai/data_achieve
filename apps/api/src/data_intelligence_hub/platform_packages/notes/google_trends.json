@@ -10,7 +10,7 @@
       "failure_class": "upstream_unstable",
       "severity": "blocker",
       "verified_at": "2026-10-14",
-      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "source_ref": "docs/apify-actors/RESEARCH-PLAN.md",
       "tags": [
         "actor-replacement",
         "apify"
