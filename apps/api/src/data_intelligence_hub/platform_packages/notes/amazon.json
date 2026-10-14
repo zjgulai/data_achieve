@@ -3,6 +3,21 @@
   "notes": [
     {
       "scope": "endpoint",
+      "target": "apify_amazon_bsr_tracker",
+      "symptom": "marketplace-scrapers/amazon-bsr-scraper 已从 Apify Store 下架（API 仍可调但无商店页，随时可能停摆且无通知）",
+      "cause": "作者下架或 Apify 审核移除；下架不影响存量调用但不保证持续",
+      "workaround": "2026-10-14 标记风险。BSR 追踪替代路径：apify_amazon_bestsellers 的 position + categoryFullName 字段（91.8% 成功率），或 junglee/amazon-crawler 的 rank 字段。建议接入清单加「Store 页存在性」月检",
+      "failure_class": "upstream_deprecated",
+      "severity": "blocker",
+      "verified_at": "2026-10-14",
+      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "tags": [
+        "delisted",
+        "apify"
+      ]
+    },
+    {
+      "scope": "endpoint",
       "target": "apify_amazon_bestsellers",
       "symptom": "403，1 秒内失败；Actor 元数据查询返回 record-not-found",
       "cause": "simpleapi/amazon-bestsellers-scraper 已从 Apify Store 下架，任何第三方发起运行都被 403 挡回（403 而不是 404，容易被误判为反爬）",

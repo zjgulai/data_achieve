@@ -109,9 +109,25 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_x_tweet_scraper": "apify_actor",
     "apify_threads_profile_scraper": "apify_actor",
     "apify_threads_posts_scraper": "apify_actor",
+    # Apify Social 专项补齐 (2026-10 深挖，见 docs/apify-actors/) (9 endpoints)
+    "apify_instagram_post_scraper": "apify_actor",
+    "apify_instagram_reel_scraper": "apify_actor",
+    "apify_instagram_hashtag_scraper": "apify_actor",
+    "apify_instagram_comment_scraper": "apify_actor",
+    "apify_linkedin_profile_scraper": "apify_actor",
+    "apify_twitter_user_scraper": "apify_actor",
+    "apify_tiktok_shop_product_detail": "apify_actor",
+    "apify_tiktok_shop_search_v2": "apify_actor",
+    "apify_facebook_groups_scraper": "apify_actor",
+    "apify_facebook_pages_scraper": "apify_actor",
+    "apify_facebook_search_scraper": "apify_actor",
     # Apify E-commerce (13 endpoints)
     "apify_amazon_product_scraper": "apify_actor",
     "apify_amazon_reviews_scraper": "apify_actor",
+    "apify_amazon_reviews_axesso": "apify_actor",
+    "apify_amazon_reviews_extractor": "apify_actor",
+    "apify_amazon_free_product_scraper": "apify_actor",
+    "apify_shopify_store_leads": "apify_actor",
     "apify_walmart_product_scraper": "apify_actor",
     "apify_walmart_reviews_scraper": "apify_actor",
     "apify_temu_products_scraper": "apify_actor",
@@ -129,6 +145,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_google_news_media_search": "apify_actor",
     "apify_google_news_scraper": "apify_actor",
     "apify_google_ai_overviews_scraper": "apify_actor",
+    "apify_serp_scraperlink": "apify_actor",
     # Apify AI Search (6 endpoints)
     "apify_perplexity_search_scraper": "apify_actor",
     "apify_chatgpt_search_scraper": "apify_actor",
@@ -136,6 +153,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     # Apify Ads (10 endpoints)
     "apify_google_ads_scraper": "apify_actor",
     "apify_facebook_ads_scraper": "apify_actor",
+    "apify_facebook_ads_library_scraper": "apify_actor",
     "apify_tiktok_ads_scraper": "apify_actor",
     "apify_pinterest_ads_scraper": "apify_actor",
     "apify_snapchat_ads_scraper": "apify_actor",
@@ -403,6 +421,25 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/instagram-profile-scraper",
         {"usernames": ["humansofny"]},
     ),
+    # — 2026-10 深挖新增专项（docs/apify-actors/instagram.md）—
+    "apify_instagram_post_scraper": (
+        "apify/instagram-post-scraper",
+        # 必填键是 username（stringList，可放 URL），不是 directUrls
+        {"username": ["natgeo"], "resultsLimit": 5},
+    ),
+    "apify_instagram_reel_scraper": (
+        "apify/instagram-reel-scraper",
+        {"username": ["natgeo"], "resultsLimit": 5},
+    ),
+    "apify_instagram_hashtag_scraper": (
+        "apify/instagram-hashtag-scraper",
+        {"hashtags": ["coffee"], "resultsType": "posts", "resultsLimit": 5},
+    ),
+    "apify_instagram_comment_scraper": (
+        "apify/instagram-comment-scraper",
+        # 正确名是单数 comment（复数 comments 版已 404 下架）
+        {"directUrls": ["https://www.instagram.com/p/CxKvUqSSiL6/"], "resultsLimit": 5},
+    ),
     "apify_youtube_scraper": (
         "streamers/youtube-scraper",
         {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxResults": 3},
@@ -412,9 +449,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
     ),
     "apify_reddit_scraper": (
-        "trudax/reddit-scraper-lite",
-        # 不传 startUrls 或 searches 时 Actor 直接报错退出（此前 base_input 是 {}）
-        {"searches": ["python"], "maxItems": 5},
+        "harshmaur/reddit-scraper",
+        # trudax/reddit-scraper-lite 30 天实测成功率仅 87.2%，主力换 harshmaur（97.7%，76 字段）。
+        # harshmaur 输入键是 searchTerms/maxPostsCount（不是 trudax 的 searches/maxItems）；
+        # 一条 run 会混出 post/comment/community/user 四类记录，按 dataType 分流。
+        {"searchTerms": ["python"], "maxPostsCount": 5},
     ),
     "apify_facebook_posts_scraper": (
         "apify/facebook-posts-scraper",
@@ -423,6 +462,19 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_facebook_comments_scraper": (
         "apify/facebook-comments-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
+    ),
+    "apify_facebook_groups_scraper": (
+        "apify/facebook-groups-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/groups/874728723021553"}], "resultsLimit": 5},
+    ),
+    "apify_facebook_pages_scraper": (
+        "apify/facebook-pages-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/cern"}]},
+    ),
+    "apify_facebook_search_scraper": (
+        "apify/facebook-search-scraper",
+        # required 是 categories（页面类目发现），searchType=pages
+        {"categories": ["Restaurant"], "searchType": "pages", "resultsLimit": 5},
     ),
     "apify_linkedin_company_posts_scraper": ("harvestapi/linkedin-company-posts", {}),
     "apify_linkedin_jobs_scraper": (
@@ -441,7 +493,18 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         # 该 Actor 的 keywords 要**字符串**（传数组会 400 must be string）
         {"keywords": "software company", "maxResults": 3},
     ),
+    "apify_linkedin_profile_scraper": (
+        "harvestapi/linkedin-profile-scraper",
+        # 100% 成功率 / 53 字段（docs/apify-actors/linkedin.md）；
+        # profileScraperMode 切带邮箱版（$0.01/份 vs $0.004/份），默认不带
+        {"queries": ["https://www.linkedin.com/in/williamhgates"]},
+    ),
     "apify_x_tweet_scraper": ("apidojo/tweet-scraper", {}),
+    "apify_twitter_user_scraper": (
+        "apidojo/twitter-user-scraper",
+        # 开 getFollowers 后按粉丝条数计费，量大先关（docs/apify-actors/x-twitter.md）
+        {"twitterHandles": ["naval"], "maxItems": 3},
+    ),
     "apify_threads_profile_scraper": (
         "apify/threads-profile-api-scraper",
         {"usernames": ["guinnessworldrecords"]},
@@ -458,6 +521,26 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_amazon_reviews_scraper": (
         "junglee/amazon-reviews-scraper",
         {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
+    ),
+    # axesso 99.9% 是 Amazon 评论类最稳（docs/apify-actors/amazon.md）；input 是对象数组（json editor）
+    "apify_amazon_reviews_axesso": (
+        "axesso_data/amazon-reviews-scraper",
+        {"input": [{"asin": "B08C1W5N87", "domainCode": "com", "sortBy": "recent", "maxPages": 1}]},
+    ),
+    "apify_amazon_reviews_extractor": (
+        "web_wanderer/amazon-reviews-extractor",
+        # 99.8% 降级②；products 收商品页 URL 数组
+        {"products": ["https://www.amazon.com/dp/B08C1W5N87"], "limit": 5},
+    ),
+    "apify_amazon_free_product_scraper": (
+        "junglee/free-amazon-product-scraper",
+        # 87.5% 应急通道（免费额度），非量大场景勿用
+        {"categoryUrls": [{"url": "https://www.amazon.com/s?k=headphones"}], "maxItemsPerStartUrl": 5},
+    ),
+    "apify_shopify_store_leads": (
+        "ecommerce_leads/store-leads-14m-e-commerce-leads",
+        # 1400 万店铺存量库（100% 成功率）；platform 是枚举必填
+        {"platform": "shopify", "category": "", "page": 1},
     ),
     "apify_walmart_product_scraper": (
         "e-commerce/walmart-product-detail-scraper",
@@ -505,11 +588,22 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_google_maps_reviews_scraper": (
         "compass/Google-Maps-Reviews-Scraper",
         {
+            # 只认完整 place URL（含 data=!...! CID 段）；placeIds 传 ChIJ 格式无效（实测 0 条）
             "startUrls": [{"url": "https://www.google.com/maps/place/Yellowstone+National+Park/@44.5857951,-110.5140571,9z/data=!3m1!4b1!4m5!3m4!1s0x5351e55555555555:0xaca8f930348fe1bb!8m2!3d44.427963!4d-110.588455?hl=en-GB"}],
             "maxReviews": 3,
         },
     ),
-    "apify_google_trends_scraper": ("apify/google-trends-scraper", {}),
+    "apify_serp_scraperlink": (
+        "scraperlink/google-search-results-serp-scraper",
+        # 99.9% SERP 降级①（docs/apify-actors/google.md）
+        {"keyword": "best crm software", "limit": "10"},
+    ),
+    # apify/google-trends-scraper 30 天实测成功率仅 56.6%，换 data_xplorer（99.5%）；
+    # timeframe 必须用官方枚举（"LAST_7_DAYS" 会被 400 拒收），见 docs/apify-actors/google.md
+    "apify_google_trends_scraper": (
+        "data_xplorer/google-trends-fast-scraper",
+        {"mode": "keyword", "keyword": "bitcoin", "predefinedTimeframe": "now 7-d"},
+    ),
     "apify_google_news_media_search": (
         "data_xplorer/google-news-scraper-fast",
         {"keywords": [], "maxArticles": 10, "timeframe": "7d"},
@@ -542,7 +636,16 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/facebook-ads-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=python&search_type=keyword_unordered"}]},
     ),
-    "apify_tiktok_ads_scraper": ("lexis-solutions/tiktok-ads-scraper", {}),
+    "apify_facebook_ads_library_scraper": (
+        "curious_coder/facebook-ads-library-scraper",
+        # 关键词/广告库 URL 驱动，37 字段含 spend/reach（docs/apify-actors/facebook.md）
+        {"urls": [{"url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&q=fitness"}], "count": 10},
+    ),
+    "apify_tiktok_ads_scraper": (
+        "lexis-solutions/tiktok-ads-scraper",
+        # query 是广告关键词搜索；$0.00049/条（docs/apify-actors/tiktok.md）
+        {"query": "headphones", "maxPages": 1},
+    ),
     "apify_pinterest_ads_scraper": (
         "shahidirfan/Pinterest-Ads-Scraper",
         {"country": "FR", "results_limit": 5},
@@ -553,6 +656,7 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         {"queries": "site:snap.com/en-US/ad-policies python", "maxPagesPerQuery": 1},
     ),
     # B2B / Review / Community
+    # memo23 全量跑一次实测 5 分钟+（docs/apify-actors/trustpilot.md），调用方需给 run_timeout_seconds>=600
     "apify_trustpilot_reviews_scraper": ("memo23/trustpilot-scraper-ppe", {}),
     "apify_appstore_reviews_scraper": ("johnvc/apple-app-store-reviews-api", {}),
     "apify_google_play_reviews_scraper": (
@@ -632,6 +736,11 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "pratikdani/tiktok-shop-search-scraper",
         {"keyword": "laptop", "country_code": "US"},
     ),
+    "apify_tiktok_shop_product_detail": (
+        "pratikdani/tiktok-shop-scraper",
+        # 54 字段含 GMV/销量/佣金（docs/apify-actors/tiktok.md）；url 是商品详情页
+        {"url": "https://shop.tiktok.com/view/product/1732417183133045688"},
+    ),
     "apify_target_products_scraper": (
         "bovi/target-products",
         {"searchQueries": ["coffee maker"], "maxProductsPerSearch": 3},
@@ -679,6 +788,8 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "apify_amazon_bsr_tracker": (
         "marketplace-scrapers/amazon-bsr-scraper",
+        # ⚠️ 2026-10-14 发现该 Actor 已从 Apify Store 下架（API 仍可调但无商店页，随时可能停）。
+        # BSR 追踪的替代路径：apify_amazon_bestsellers 的 position 字段（见 docs/apify-actors/amazon.md）。
         # marketplaces 收 ISO 国家码（US/UK/DE…），传 "amazon.com" 会让 Actor 直接抛错退出；
         # asins 也必须在对应站点上真实存在。
         # 用 Actor 自己的 prefill 值（作者测过）：marketplaces 收 ISO 国家码，

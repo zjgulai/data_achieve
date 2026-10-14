@@ -3,6 +3,21 @@
   "notes": [
     {
       "scope": "endpoint",
+      "target": "apify_reddit_scraper",
+      "symptom": "trudax/reddit-scraper-lite 30 天实测成功率仅 87.2%（Apify Store publicActorRunStats30Days），失败重试成本高",
+      "cause": "上游 Reddit 限流策略变化，trudax 量最大（7593 用户）但失败率最高",
+      "workaround": "2026-10-14 主力换 harshmaur/reddit-scraper（97.7%，76 实测字段）。注意输入键不同：searchTerms/maxPostsCount（trudax 是 searches/maxItems）；一条 run 混出 post/comment/community/user 四类记录，按 dataType 分流",
+      "failure_class": "upstream_unstable",
+      "severity": "warning",
+      "verified_at": "2026-10-14",
+      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "tags": [
+        "actor-replacement",
+        "apify"
+      ]
+    },
+    {
+      "scope": "endpoint",
       "target": "tikhub_reddit_search",
       "symptom": "quick-collect 返回 status=success，但 records_count=0（扫描归为 empty_records）",
       "cause": "TikHub 的 app/fetch_dynamic_search 把结果放在 data.search，而 search 是 dict（search.dynamic.components.main.edges[].node.children[]），帖子挂在 __typename=SearchPost 的 node.post；归一化器只认 data.search 为 list，于是取到 0 条。",
