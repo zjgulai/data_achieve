@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`fda70fb452b0d9bf3b6e5e5506bd600ce81a3cc9c2263b194acaa9c25f51706a`
-> 坑点总数：99 · 覆盖平台：32
+> 自动生成，请勿手工编辑。catalog_digest：`36d7f9cc23c4ca39ac9abf006ac2f7e89c0a1151f0a6af4a82b98eeaa966edee`
+> 坑点总数：104 · 覆盖平台：33
 
 ## actor_failed
 
@@ -119,6 +119,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | alibaba | apify_1688_advanced | 400 invalid-input：Field input.inputs is required | 调用方按想象传了 {"type":"keyword","queries":[...]}，而 dltik/1688-scraper 的 schema 只有 mode(detail/search/image) + inputs(数组) + maxResults，且 additionalProperties:false，所以既缺 inputs 又多出非法键 | 传 {"mode":"search","inputs":["<关键词或 offer id/URL>"],"maxResults":N}；_APIFY_ENDPOINT_DEFAULTS 已按真实 schema 修正 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | alibaba | apify_alibaba_product_detail | 400 invalid-input：Items in input.productUrls at positions ... | 演示参数里的商品 URL 是占位串（.../product-detail/10000000000000.html），xtracto/alibaba-product-scraper 会做 URL 校验，占位 ID 不是合法商品 | 必须传真实商品详情页 URL（形如 https://www.alibaba.com/product-detail/<slug>_<id>.html） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | ebay | apify_ebay_product_scraper | 400 invalid-input：Field input.startUrls is required | dtrungtin/ebay-items-scraper 的必填键是 startUrls（列表页 URL），且 proxyConfig 也标为必填；调用方传的是 listingUrls，键名不存在于 schema，additionalProperties:false 下直接整单拒绝 | 传 startUrls（如 https://www.ebay.com/sch/i.html?_nkw=<关键词>）+ maxItems + proxyConfig={useApifyProxy:true}；缺省值已按真实 schema 补齐 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| google_maps | apify_google_maps_reviews_scraper | startUrls 传搜索结果链接或 placeIds 传 ChIJ 格式 ID 时 run 成功但 0 条（日志显示 Place "" has no reviews） | compass/Google-Maps-Reviews-Scraper 只认完整 place URL（含 @lat,lng 与 data=!...! 十六进制 CID 段）；当前版本的 placeIds 参数解析 ChIJ 格式无效 | 2026-10-14 实测：用 schema prefill 同款完整 place URL（data=!3m1!4b1!4m5!3m4!1s0x...:0x...!8m2!3d..!4d..）可出数据，实测 2 条（51 字段含 stars/reviewId/textTranslated）。取 prefill 而不是自己构造链接，这条对其它 Actor 同样适用 | warning | 2026-10-14 | reports/apify-deep-research/RESEARCH-PLAN.md |
 | shein | apify_shein_product_scraper | 400 invalid-input：Property input.searchQuery is not allowed | Actor 的 inputSchema 是 additionalProperties:false，只接受 startUrl（必填）+ results_wanted + proxyConfiguration；调用方（扫描脚本的演示参数与 _APIFY_ENDPOINT_DEFAULTS 的缺省值曾不一致）多传了一个 searchQuery，整单被拒 | 只传 Actor schema 里存在的键。缺省值已统一为 {startUrl, results_wanted}；核对 schema 用 GET https://api.apify.com/v2/acts/shahidirfan~shein-product-scraper/builds/default 的 inputSchema 字段（免鉴权） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | tiktok | tikhub_tiktok_ads_search | http_status_error: upstream returned 422 / Field required: material_id | _build_params 对该端点返回 {}，而官方 spec 的 POST body 必填 material_id（industry / country_code 有默认值） | 已修：透传 material_id / industry / country_code；演示值取自 apify/tikhub 的 top ads 结果。注意 material_id 属业务 ID，调用方要传自己的素材 ID | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | autoscraper_enhanced_web / bestblogs_articles / blackbird_email_osint / blackbird_username_osint 曾一律返回 400 “Collector ... is not available” | 这四个 collector 已注册且有校验函数，但漏在播种清单 COLLECTOR_CATALOG 里，DB 中无 collector 行 | 已在本轮修复：向 COLLECTOR_CATALOG 补齐定义；重建 api 容器后生效。之后它们会返回真实的 config/param 错误 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
@@ -131,6 +132,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | google_trends | apify_google_trends_scraper | 客户端读超时（The read operation timed out），不是上游报错 | apify/google-trends-scraper 的 run 等待时间超过 quick-collect 的同步等待窗口；采集器内部 APIFY_TIMEOUT=30s、APIFY_RUN_WAIT_TIMEOUT=600s，而 quick-collect 路由是同步返回的 | 走异步任务（POST /api/tasks/{id}/run + 轮询 /api/tasks/runs）而不是 quick-collect；或调小 searchTerms 数量与 geo 范围 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| trustpilot | apify_trustpilot_reviews_scraper | memo23/trustpilot-scraper-ppe 全量跑一次实测 5 分钟+，短超时会 408 | Trustpilot 评论页体量大，actor 逐页滚动抓取 | 2026-10-14 确认：调用方需给 run_timeout_seconds>=600；或 scrapeAllReviews=false + sampling=first 降量。大批量按企业分批，失败单企重跑 | warning | 2026-10-14 | reports/apify-deep-research/RESEARCH-PLAN.md |
 | web | web | aliens_eye_basic/_advanced/_correlate/_recurse/_batch 请求超时（>180s） | Aliens Eye 全平台扫描耗时长，超出默认采集超时 | 增大超时或限定 sites 范围；对交互式调用不适用 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 
 ## upstream_4xx
@@ -146,4 +148,17 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | devto | devto_articles_search | http_forbidden: upstream returned 403（0.2s 内立即返回） | dev.to 走 Cloudflare：对 /api/articles 带**浏览器 User-Agent** 的请求返回 403，同一请求不带该 UA（或只带 Accept）返回 200。collector 给所有技术博客端点统一套了 Chrome UA | 已修：DevToArticlesCollector 改用中性 UA（data-intelligence-hub-collector/1.0）。判据：同一个 URL 换个 UA 就 200，说明是 UA 触发的拦截，与参数无关 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | shopify | apify_shopify_products_monitor | 404（http_not_found），Actor 元数据查询同样 404 | autofacts/shopify-scraper 已下架；原演示参数 {url: ...} 也不是该 Actor 的入参名 | 已改指 trovevault/shopify-products-scraper，入参是 domains（域名数组）+ maxProducts | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_reviews_scraper | 403，1 秒内失败 | e-commerce/walmart-reviews-scraper 拒绝本账号发起运行（run 未创建），与代理或商品 ID 无关 | 改用 web_wanderer/walmart-reviews-scraper；或先用 apify_walmart_product_scraper 验证代理链路（它返回 success 但 0 条，属于另一类问题） | warning | 2026-10-09 | reports/live-sweep/latest.json |
+
+## upstream_deprecated
+
+| 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
+|---|---|---|---|---|---|---|---|
+| amazon | apify_amazon_bsr_tracker | marketplace-scrapers/amazon-bsr-scraper 已从 Apify Store 下架（API 仍可调但无商店页，随时可能停摆且无通知） | 作者下架或 Apify 审核移除；下架不影响存量调用但不保证持续 | 2026-10-14 标记风险。BSR 追踪替代路径：apify_amazon_bestsellers 的 position + categoryFullName 字段（91.8% 成功率），或 junglee/amazon-crawler 的 rank 字段。建议接入清单加「Store 页存在性」月检 | blocker | 2026-10-14 | reports/apify-deep-research/RESEARCH-PLAN.md |
+
+## upstream_unstable
+
+| 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
+|---|---|---|---|---|---|---|---|
+| google_trends | apify_google_trends_scraper | apify/google-trends-scraper 30 天实测成功率仅 56.6%（官方出品但近半失败），本项目试跑也遇 408 超时 | 上游不稳定；官方 actor 维护质量与 Store 排名不匹配 | 2026-10-14 换 data_xplorer/google-trends-fast-scraper（99.5%）。注意：timeframe 必须用官方枚举（'now 7-d' 等），'LAST_7_DAYS' 会 400；keyword 模式不要传空字符串 geo | blocker | 2026-10-14 | reports/apify-deep-research/RESEARCH-PLAN.md |
+| reddit | apify_reddit_scraper | trudax/reddit-scraper-lite 30 天实测成功率仅 87.2%（Apify Store publicActorRunStats30Days），失败重试成本高 | 上游 Reddit 限流策略变化，trudax 量最大（7593 用户）但失败率最高 | 2026-10-14 主力换 harshmaur/reddit-scraper（97.7%，76 实测字段）。注意输入键不同：searchTerms/maxPostsCount（trudax 是 searches/maxItems）；一条 run 混出 post/comment/community/user 四类记录，按 dataType 分流 | warning | 2026-10-14 | reports/apify-deep-research/RESEARCH-PLAN.md |
 

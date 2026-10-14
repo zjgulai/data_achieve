@@ -1,59 +1,188 @@
+"""
+FastAPI 路由：TikTok CDO 飞书机器人 webhook。
+
+端点：
+  POST /api/agents/tiktok-cdo/webhook       ← 飞书事件推送
+  POST /api/agents/tiktok-cdo/webhook/callback ← 卡片按钮回调
+"""
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
+import logging
+from typing import Any
 
-from fastapi import APIRouter, Header, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 
-from .collector_client import collect
-from .config import get_cdo_settings
-from .models import Action, TikTokIntent
+from .card_builder import error_card, placeholder_card, result_card
+from .cleaner import clean_and_analyze
+from .config import get_cdo_config
+from .data_sources import gather_data
+from .intent import TikTokIntent, extract_intent
+from .lark_client import send_card, update_card
 
-router = APIRouter(tags=["tiktok-cdo"])
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
 
 
-def verify_signature(token: str, timestamp: str, nonce: str, body: str, signature: str) -> bool:
-    expected = hashlib.sha256(f"{timestamp}{nonce}{token}{body}".encode()).hexdigest()
-    return hmac.compare_digest(expected, signature)
-
-
-def parse_intent(text: str) -> TikTokIntent:
-    normalized = text.strip()
-    is_sentiment = any(word in normalized for word in ("舆情", "新闻", "监控"))
-    action: Action = "sentiment" if is_sentiment else "search"
-    return TikTokIntent(action=action, keyword=normalized)
-
+# ── webhook 主入口 ─────────────────────────────────────────────────────────────
 
 @router.post("/webhook")
-async def webhook(
+async def lark_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_lark_signature: str | None = Header(None),
     x_lark_request_timestamp: str | None = Header(None),
     x_lark_request_nonce: str | None = Header(None),
 ) -> Response:
-    body = await request.body()
-    text = body.decode()
-    event = json.loads(text)
-    if event.get("type") == "url_verification":
-        return Response(
-            content=json.dumps({"challenge": event.get("challenge", "")}),
-            media_type="application/json",
-        )
+    body_bytes = await request.body()
+    body_text = body_bytes.decode("utf-8")
 
-    settings = get_cdo_settings()
-    if settings.lark_cdo_verification_token and not verify_signature(
-        settings.lark_cdo_verification_token,
+    try:
+        event = json.loads(body_text)
+    except Exception:
+        return Response(content='{"code":400}', status_code=400)
+
+    # 处理 url_verification challenge（飞书订阅事件首次验证，不需要验签）
+    if event.get("type") == "url_verification":
+        challenge = event.get("challenge", "")
+        return Response(content=json.dumps({"challenge": challenge}), media_type="application/json")
+
+    # 正常事件：验签
+    config = get_cdo_config()
+    if config.lark_verification_token and not _verify_signature(
+        config.lark_verification_token,
         x_lark_request_timestamp or "",
         x_lark_request_nonce or "",
-        text,
+        body_text,
         x_lark_signature or "",
     ):
         return Response(content='{"code":403,"msg":"invalid signature"}', status_code=403)
 
-    message = ((event.get("event") or {}).get("message") or {}).get("content", "{}")
-    content = json.loads(message) if isinstance(message, str) else message
-    query = str(content.get("text", "")).strip()
-    if query:
-        await collect(parse_intent(query))
+    # 立即返回 200，异步处理
+    background_tasks.add_task(_handle_message, event)
     return Response(content='{"code":0}', media_type="application/json")
+
+
+# ── 卡片按钮回调 ───────────────────────────────────────────────────────────────
+
+@router.post("/webhook/callback")
+async def lark_card_callback(
+    request: Request, background_tasks: BackgroundTasks
+) -> dict[str, Any]:
+    body = await request.json()
+    action_val: dict[str, Any] = (body.get("action") or {}).get("value") or {}
+    action_type = action_val.get("action", "")
+
+    if action_type == "export_bitable":
+        # 暂存数据已丢失，此处仅返回提示；完整实现需 Redis 缓存结果
+        return {"toast": {"type": "info", "content": "导出功能需配置多维表格后生效"}}
+
+    if action_type == "re_collect":
+        raw_text = action_val.get("raw_text", "")
+        # 从回调中获取 chat_id
+        open_id = (body.get("sender") or {}).get("sender_id", {}).get("open_id", "")
+        background_tasks.add_task(_re_collect, raw_text, open_id)
+        return {"toast": {"type": "info", "content": "正在重新采集…"}}
+
+    return {"code": 0}
+
+
+# ── 异步消息处理 ───────────────────────────────────────────────────────────────
+
+async def _handle_message(event: dict[str, Any]) -> None:
+    try:
+        header = event.get("header") or {}
+        event_body = event.get("event") or {}
+
+        # 过滤非 im.message.receive 事件
+        if header.get("event_type") != "im.message.receive_v1":
+            return
+
+        message = event_body.get("message") or {}
+        msg_type = message.get("message_type", "")
+
+        # 只处理文本消息
+        if msg_type != "text":
+            return
+
+        # 解析消息内容
+        content_raw = message.get("content", "{}")
+        content = json.loads(content_raw) if isinstance(content_raw, str) else content_raw
+        text: str = content.get("text", "").strip()
+
+        # 去掉 @ 机器人的提及标记（飞书会在文本中插入 <at>...
+        import re
+        text = re.sub(r"<at[^>]*>.*?</at>", "", text).strip()
+
+        if not text:
+            return
+
+        # 获取 chat_id（群消息）或 open_id（单聊）
+        chat_id = message.get("chat_id", "")
+        sender_open_id = (event_body.get("sender") or {}).get("sender_id", {}).get("open_id", "")
+        target_id = chat_id or sender_open_id
+
+        if not target_id:
+            logger.warning("无法获取目标 ID，跳过消息处理")
+            return
+
+        # 1. 发送占位卡
+        intent_tmp = TikTokIntent(action="search", raw_text=text)
+        message_id = await send_card(target_id, placeholder_card(intent_tmp))
+
+        # 2. 意图提取
+        intent = await extract_intent(text)
+        logger.info("意图识别: %s kw=%s user=%s", intent.action, intent.keyword, intent.username)
+
+        if intent.action == "unknown":
+            await update_card(message_id, error_card(intent, "未能识别采集意图，请重新描述。"))
+            return
+
+        # 3. 更新占位卡（已知 action）
+        await update_card(message_id, placeholder_card(intent))
+
+        # 4. 采集数据
+        raw_data = await gather_data(intent)
+
+        # 5. 清洗 + L3 摘要
+        cleaned = await clean_and_analyze(raw_data, intent)
+
+        # 6. 更新结果卡
+        card = result_card(intent, cleaned)
+        await update_card(message_id, card)
+
+    except Exception as e:
+        logger.exception("消息处理异常: %s", e)
+
+
+async def _re_collect(raw_text: str, open_id: str) -> None:
+    if not raw_text or not open_id:
+        return
+    # 简单重触发：当作新消息处理
+    fake_event = {
+        "header": {"event_type": "im.message.receive_v1"},
+        "event": {
+            "sender": {"sender_id": {"open_id": open_id}},
+            "message": {
+                "message_type": "text",
+                "chat_id": open_id,
+                "content": json.dumps({"text": raw_text}),
+            },
+        },
+    }
+    await _handle_message(fake_event)
+
+
+# ── 工具函数 ───────────────────────────────────────────────────────────────────
+
+def _verify_signature(
+    token: str, timestamp: str, nonce: str, body: str, signature: str
+) -> bool:
+    """飞书 webhook 验签。"""
+    s = timestamp + nonce + token + body
+    expected = hashlib.sha256(s.encode("utf-8")).hexdigest()
+    return hmac.compare_digest(expected, signature)

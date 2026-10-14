@@ -1,0 +1,20 @@
+{
+  "platform_id": "trustpilot",
+  "notes": [
+    {
+      "scope": "endpoint",
+      "target": "apify_trustpilot_reviews_scraper",
+      "symptom": "memo23/trustpilot-scraper-ppe 全量跑一次实测 5 分钟+，短超时会 408",
+      "cause": "Trustpilot 评论页体量大，actor 逐页滚动抓取",
+      "workaround": "2026-10-14 确认：调用方需给 run_timeout_seconds>=600；或 scrapeAllReviews=false + sampling=first 降量。大批量按企业分批，失败单企重跑",
+      "failure_class": "timeout",
+      "severity": "warning",
+      "verified_at": "2026-10-14",
+      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "tags": [
+        "timeout-budget",
+        "apify"
+      ]
+    }
+  ]
+}

@@ -4,6 +4,21 @@
     {
       "scope": "endpoint",
       "target": "apify_google_maps_reviews_scraper",
+      "symptom": "startUrls 传搜索结果链接或 placeIds 传 ChIJ 格式 ID 时 run 成功但 0 条（日志显示 Place \"\" has no reviews）",
+      "cause": "compass/Google-Maps-Reviews-Scraper 只认完整 place URL（含 @lat,lng 与 data=!...! 十六进制 CID 段）；当前版本的 placeIds 参数解析 ChIJ 格式无效",
+      "workaround": "2026-10-14 实测：用 schema prefill 同款完整 place URL（data=!3m1!4b1!4m5!3m4!1s0x...:0x...!8m2!3d..!4d..）可出数据，实测 2 条（51 字段含 stars/reviewId/textTranslated）。取 prefill 而不是自己构造链接，这条对其它 Actor 同样适用",
+      "failure_class": "params_invalid",
+      "severity": "warning",
+      "verified_at": "2026-10-14",
+      "source_ref": "reports/apify-deep-research/RESEARCH-PLAN.md",
+      "tags": [
+        "prefill-only",
+        "apify"
+      ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_google_maps_reviews_scraper",
       "symptom": "运行成功但数据集 0 条",
       "cause": "演示 startUrls 用的是 maps.google.com/maps?cid=… 这种短链，Actor 要求含 /maps/search、/maps/place 或 /maps/review 的完整 URL",
       "workaround": "已修：换成 Actor prefill 里的 /maps/place/… 完整链接，实测返回记录",

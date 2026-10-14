@@ -87,6 +87,51 @@ const PARAM_FIELDS: Record<string, FieldDef[]> = {
     { key: "usernames", label: "账号名 (逗号分隔)", type: "text", required: true, placeholder: "forbesvetted,babylist" },
     { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "12", defaultValue: 12 },
   ],
+  apify_instagram_post_scraper: [
+    { key: "username", label: "账号名或帖子 URL (逗号分隔)", type: "text", required: true, placeholder: "natgeo" },
+    { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "20", defaultValue: 20 },
+  ],
+  apify_instagram_reel_scraper: [
+    { key: "username", label: "账号名 (逗号分隔)", type: "text", required: true, placeholder: "natgeo" },
+    { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "25", defaultValue: 25 },
+  ],
+  apify_instagram_comment_scraper: [
+    { key: "directUrls", label: "帖子 URL", type: "text", required: true, placeholder: "https://www.instagram.com/p/..." },
+    { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "15", defaultValue: 15 },
+  ],
+  apify_twitter_user_scraper: [
+    { key: "twitterHandles", label: "X 账号名 (逗号分隔)", type: "text", required: true, placeholder: "naval,elonmusk" },
+    { key: "maxItems", label: "最大条数", type: "number", required: false, placeholder: "20", defaultValue: 20 },
+  ],
+  apify_facebook_groups_scraper: [
+    { key: "startUrls", label: "Facebook 小组 URL", type: "text", required: true, placeholder: "https://www.facebook.com/groups/..." },
+    { key: "resultsLimit", label: "最大帖子数", type: "number", required: false, placeholder: "20", defaultValue: 20 },
+  ],
+  apify_facebook_pages_scraper: [
+    { key: "startUrls", label: "Facebook 页面 URL", type: "text", required: true, placeholder: "https://www.facebook.com/cern" },
+  ],
+  apify_facebook_search_scraper: [
+    { key: "categories", label: "页面类目 (逗号分隔)", type: "text", required: true, placeholder: "Restaurant" },
+    { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "20", defaultValue: 20 },
+  ],
+  apify_amazon_reviews_axesso: [
+    { key: "input", label: "ASIN 列表 (逗号分隔)", type: "text", required: true, placeholder: "B08C1W5N87" },
+  ],
+  apify_tiktok_shop_product_detail: [
+    { key: "url", label: "TikTok Shop 商品 URL", type: "text", required: true, placeholder: "https://shop.tiktok.com/view/product/..." },
+  ],
+  apify_shopify_store_leads: [
+    { key: "platform", label: "平台 (shopify/woocommerce/…)", type: "text", required: true, placeholder: "shopify", defaultValue: "shopify" },
+    { key: "country", label: "国家代码", type: "text", required: false, placeholder: "US" },
+  ],
+  apify_serp_scraperlink: [
+    { key: "keyword", label: "搜索关键词", type: "text", required: true, placeholder: "best crm software" },
+    { key: "limit", label: "结果数 (all/数字)", type: "text", required: false, placeholder: "20", defaultValue: "20" },
+  ],
+  apify_facebook_ads_library_scraper: [
+    { key: "urls", label: "广告库搜索 URL", type: "text", required: true, placeholder: "https://www.facebook.com/ads/library/?...&q=fitness" },
+    { key: "count", label: "最大广告数", type: "number", required: false, placeholder: "100", defaultValue: 100 },
+  ],
   apify_instagram_media_profile_scraper: [
     { key: "usernames", label: "媒体账号名 (逗号分隔)", type: "text", required: true, placeholder: "forbesvetted,consumerreports,parents" },
     { key: "resultsLimit", label: "最大条数", type: "number", required: false, placeholder: "12", defaultValue: 12 },
