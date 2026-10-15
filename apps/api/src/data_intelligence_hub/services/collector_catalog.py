@@ -1223,7 +1223,21 @@ def _validate_playwright_browser_config(config: dict[str, Any]) -> dict[str, Any
     extract_mode = config.get("extract_mode", "text")
     if extract_mode not in {"text", "html", "screenshot"}:
         raise CollectorConfigError
-    return {"url": url, "wait_for": wait_for, "extract_mode": extract_mode}
+    # 本函数返回值会被直接持久化为 source.config 与 task.config。
+    # 遗漏的参数不是"默认值不同"，而是永远到不了采集器。
+    # wait_selector 曾被漏在这里，导致端点元数据对外公告它、
+    # 类内 validate_config 也支持它，但经 API 传入的值被静默丢弃。
+    wait_selector = config.get("wait_selector")
+    if wait_selector is not None and (
+        not isinstance(wait_selector, str) or not wait_selector.strip()
+    ):
+        raise CollectorConfigError
+    return {
+        "url": url,
+        "wait_for": wait_for,
+        "extract_mode": extract_mode,
+        "wait_selector": wait_selector.strip() if wait_selector else None,
+    }
 
 
 def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
