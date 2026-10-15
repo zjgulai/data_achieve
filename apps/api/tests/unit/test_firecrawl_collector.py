@@ -61,12 +61,30 @@ class TestFirecrawlCrawlCollector:
         assert cfg["max_pages"] == 10
 
     @pytest.mark.asyncio
-    async def test_test_fails_without_api_key(self, monkeypatch):
+    async def test_test_passes_without_api_key(self, monkeypatch):
+        """采集器自检不预检 API key。
+
+        cb70d86 有意移除了「无 key 就在 test 阶段报错」的行为：
+        三个 firecrawl 端点实际上都需要 key，但错误留到运行时返回，
+        不在自检阶段预先失败。因此这里断言的是 ok，不是 failed。
+        这条用例在 2026-10-16 之前断言 failed，是过时断言。
+        """
         monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
         monkeypatch.delenv("FIRECRAWL_BASE_URL", raising=False)
         result = await FirecrawlCrawlCollector(config={"url": "https://x.com"}).test()
+        assert result.status == "ok"
+
+    @pytest.mark.asyncio
+    async def test_test_still_validates_config(self, monkeypatch):
+        """自检不做 key 预检，但仍校验配置本身。
+
+        缺少 url 时 test() 必须报 failed——这是它保留的职责。
+        """
+        monkeypatch.delenv("FIRECRAWL_API_KEY", raising=False)
+        monkeypatch.delenv("FIRECRAWL_BASE_URL", raising=False)
+        result = await FirecrawlCrawlCollector(config={}).test()
         assert result.status == "failed"
-        assert "FIRECRAWL_API_KEY" in result.message
+        assert "url" in result.message
 
     @pytest.mark.asyncio
     async def test_collect_post_error_returns_error(self, monkeypatch):
