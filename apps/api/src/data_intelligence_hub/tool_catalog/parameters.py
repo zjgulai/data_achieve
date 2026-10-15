@@ -84,6 +84,7 @@ class ToolParameterContract(BaseModel):
     contract_version: str = PARAMETER_CONTRACT_VERSION
     specs: tuple[ParameterSpec, ...] = ()
     conflicts: tuple[ParameterConflict, ...] = ()
+    notes: str | None = None
 
     def spec_for(self, name: str) -> ParameterSpec | None:
         for spec in self.specs:

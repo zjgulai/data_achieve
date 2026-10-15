@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from data_intelligence_hub.tool_catalog.reachability import ToolReachability
+
 ToolRiskClass = Literal["read", "generate", "outbound", "compute"]
 ToolRunMode = Literal["sync", "async"]
 ToolAvailability = Literal[
@@ -134,6 +136,7 @@ class ToolDescriptor(BaseModel):
     cost: ToolCostHint
     availability_view: ToolAvailabilityView
     authorization: ToolAuthorization
+    reachability: ToolReachability
     is_alias_view: bool
     canonical_tool_id: str
     executable: bool

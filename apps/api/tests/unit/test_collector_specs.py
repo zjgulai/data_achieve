@@ -1,10 +1,11 @@
 """collector_specs 契约的单元测试。
 
-覆盖三件事：
+覆盖四件事：
 
 1. 契约的键是注册表里真实存在的 ``collector_type``。
 2. 契约内容与审计判定一致（44 个不一致类型，规格来自实现）。
 3. 复核推翻过的条目已被修正（避免把已证伪的声明写进可采信来源）。
+4. 三个契约模块合起来覆盖全部已注册类型，互不重叠。
 """
 
 from __future__ import annotations
@@ -16,6 +17,9 @@ from data_intelligence_hub.tool_catalog.collector_specs import (
     CONTRACTS,
     build_collector_contracts,
 )
+from data_intelligence_hub.tool_catalog.collector_specs_baseline import (
+    CONTRACTS as BASELINE_CONTRACTS,
+)
 from data_intelligence_hub.tool_catalog.package_registry_specs import (
     CONTRACTS as PACKAGE_CONTRACTS,
 )
@@ -24,8 +28,8 @@ from data_intelligence_hub.tool_catalog.package_registry_specs import (
 _AUDITED_MISMATCH_COUNT = 44
 # 16 个包注册类类型判定一致，作为首批可采信来源。
 _PACKAGE_REGISTRY_COUNT = 16
-# 其余 26 个类型尚未登记规格。
-_UNCOVERED_COUNT = 26
+# 其余 26 个（审计判定一致或未被逐条核验），2026-10-16 补登记。
+_BASELINE_COUNT = 26
 
 
 def _registry_types() -> set[str]:
@@ -47,20 +51,34 @@ def test_every_key_is_a_real_collector_type() -> None:
     assert unknown == [], f"契约里的键不是注册表类型: {unknown}"
 
 
-def test_two_contract_modules_do_not_overlap() -> None:
-    """两个契约模块的键必须不相交，否则登记会互相覆盖。"""
-    overlap = sorted(set(CONTRACTS) & set(PACKAGE_CONTRACTS))
-    assert overlap == [], f"两个模块重复登记: {overlap}"
+def test_three_contract_modules_do_not_overlap() -> None:
+    """三个契约模块的键必须两两不相交，否则登记会互相覆盖。"""
+    a, b, c = set(CONTRACTS), set(PACKAGE_CONTRACTS), set(BASELINE_CONTRACTS)
+    for left, right, name in (
+        (a, b, "collector_specs ∩ package_registry_specs"),
+        (a, c, "collector_specs ∩ collector_specs_baseline"),
+        (b, c, "package_registry_specs ∩ collector_specs_baseline"),
+    ):
+        assert not (left & right), f"{name} 重复登记: {sorted(left & right)}"
 
 
-def test_registry_coverage_is_exactly_sixty() -> None:
-    """60 个类型已登记，26 个尚未。未覆盖数一旦变化应当被察觉。"""
-    covered = set(CONTRACTS) | set(PACKAGE_CONTRACTS)
+def test_registry_coverage_is_complete() -> None:
+    """三个模块合起来覆盖全部已注册类型，一个不漏、一个不多。
+
+    2026-10-16 补齐第三批后覆盖率达到 100%。此前是 60/86，
+    剩下 26 个未登记。这个断言把「全覆盖」这个状态钉住：
+    新增采集器类型而忘记登记契约时，它会失败。
+    """
+    covered = set(CONTRACTS) | set(PACKAGE_CONTRACTS) | set(BASELINE_CONTRACTS)
     registry = _registry_types()
-    assert covered <= registry
-    assert len(covered) == _AUDITED_MISMATCH_COUNT + _PACKAGE_REGISTRY_COUNT
-    remaining = sorted(registry - covered)
-    assert len(remaining) == _UNCOVERED_COUNT, f"未覆盖数变了: {remaining}"
+    assert covered <= registry, f"契约里有非注册表类型: {sorted(covered - registry)}"
+    assert len(covered) == len(registry), (
+        f"覆盖率不是 100%：已登记 {len(covered)}/{len(registry)}，"
+        f"缺 {sorted(registry - covered)}"
+    )
+    assert len(covered) == (
+        _AUDITED_MISMATCH_COUNT + _PACKAGE_REGISTRY_COUNT + _BASELINE_COUNT
+    )
 
 
 def test_every_spec_is_sourced_from_implementation() -> None:

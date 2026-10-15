@@ -26,6 +26,9 @@ from data_intelligence_hub.tool_catalog.models import (
     ToolRiskClass,
     ToolRunMode,
 )
+from data_intelligence_hub.tool_catalog.reachability import (
+    execution_reachability,
+)
 
 # 当前目录里的条目全部是采集类，即只读获取。
 # 生成、外发与计算类工具的映射在对应适配器落地时加入。
@@ -184,6 +187,7 @@ def build_tool_catalog(
                 cost=_cost(endpoint),
                 availability_view=availability_view,
                 authorization=_authorization(endpoint),
+                reachability=execution_reachability(endpoint.endpoint_type),
                 is_alias_view=endpoint.is_alias_view,
                 canonical_tool_id=canonical_tool_id,
                 executable=availability_view.availability
