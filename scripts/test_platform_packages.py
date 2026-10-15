@@ -91,14 +91,22 @@ def validate_packages(root: Path, platform_filter: str | None) -> dict[str, obje
             )
             if SECRET_VALUE_RE.search(combined) or _PRIVATE_KEY_RE.search(combined):
                 failures.append(f"secret_marker:{platform_id}")
-    expected_platforms = 1 if platform_filter else 70
+    # 期望值取自索引自身的声明，不写死数字。
+    # 写死会在每次采集目录增长后陈旧，且它核对的是
+    # 「索引自报的计数」与「实际遍历到的计数」是否一致，
+    # 那个不变量与具体数值无关。
+    expected_platforms = 1 if platform_filter else index["platform_count"]
     if len(packages) != expected_platforms:
         failures.append(f"platform_count:{len(packages)}:{expected_platforms}")
     if platform_filter is None:
-        if len(capability_ids) != 270:
-            failures.append(f"capability_count:{len(capability_ids)}:270")
-        if len(endpoint_types) != 242:
-            failures.append(f"endpoint_count:{len(endpoint_types)}:242")
+        if len(capability_ids) != index["capability_count"]:
+            failures.append(
+                f"capability_count:{len(capability_ids)}:{index['capability_count']}"
+            )
+        if len(endpoint_types) != index["unique_endpoint_count"]:
+            failures.append(
+                f"endpoint_count:{len(endpoint_types)}:{index['unique_endpoint_count']}"
+            )
         for key in (
             "schema_version",
             "catalog_digest",

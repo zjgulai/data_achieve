@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict
 
 PARAMETER_CONTRACT_VERSION = "tool-params.v1"
 
-ValueType = Literal["string", "integer", "number", "boolean", "enum", "string_list"]
+ValueType = Literal["string", "integer", "number", "boolean", "enum", "string_list", "list"]
 SpecSource = Literal[
     "upstream_schema",
     "collector_validation",
@@ -52,6 +52,26 @@ class ParameterSpec(BaseModel):
     pattern: str | None = None
 
 
+class ParameterConflict(BaseModel):
+    """同一参数在两处校验站点上的判定分歧。
+
+    服务层 ``validate_collector_config`` 与采集器类级 ``validate_config``
+    各自写了一份校验。两者对同一输入给出不同结论时，
+    标准路径上先执行的那一份生效，另一份只在绕过它的路径上可见。
+
+    本契约不替调用方选边。它把分歧记录在案，
+    因为擅自合并会掩盖「标准路径拒绝、直连路径放行」这类真实缺口。
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    param: str
+    standard_path_site: str
+    other_site: str
+    difference: str
+    impact: str
+
+
 class ToolParameterContract(BaseModel):
     """一个工具的参数契约。
 
@@ -63,11 +83,18 @@ class ToolParameterContract(BaseModel):
     tool_id: str
     contract_version: str = PARAMETER_CONTRACT_VERSION
     specs: tuple[ParameterSpec, ...] = ()
+    conflicts: tuple[ParameterConflict, ...] = ()
 
     def spec_for(self, name: str) -> ParameterSpec | None:
         for spec in self.specs:
             if spec.name == name:
                 return spec
+        return None
+
+    def conflict_for(self, name: str) -> ParameterConflict | None:
+        for conflict in self.conflicts:
+            if conflict.param == name:
+                return conflict
         return None
 
     @property
@@ -135,6 +162,12 @@ def _check_type(spec: ParameterSpec, value: object) -> ParameterViolation | None
     elif kind == "string_list":
         if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
             return _violation(spec.name, "wrong_type", "期望字符串列表")
+    elif kind == "list":
+        # 只校验容器类型，不校验元素。
+        # 用于实现仅做 isinstance(x, list) 的参数：
+        # 按 string_list 登记会拒绝运行时实际放行的 [1, 2]。
+        if not isinstance(value, list):
+            return _violation(spec.name, "wrong_type", "期望列表")
     return None
 
 
