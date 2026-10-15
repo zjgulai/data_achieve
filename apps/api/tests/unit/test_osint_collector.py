@@ -357,3 +357,7 @@ async def test_sherlock_collect_reads_url_user_column(monkeypatch):
     assert content["total_found"] == 1
     assert content["sites_checked"] == 3
     assert content["status_counts"] == {"Claimed": 1, "Available": 1, "Unknown": 1}
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

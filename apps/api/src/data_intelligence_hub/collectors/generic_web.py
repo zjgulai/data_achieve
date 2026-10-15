@@ -6,7 +6,7 @@ import ipaddress
 import socket
 from html.parser import HTMLParser
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import httpx
 
@@ -16,8 +16,6 @@ from data_intelligence_hub.collectors.base import (
     CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
-    collector_get_with_retry,
-    collector_http_error_message,
     collector_log,
     require_text,
 )
@@ -89,32 +87,19 @@ class GenericWebCollector(BaseCollector):
         )
 
     async def _get_html(self, url: str) -> str:
-        if self.http_client is not None:
-            return await _fetch_html(self.http_client, url)
-        async with httpx.AsyncClient() as client:
-            return await _fetch_html(client, url)
+        from data_intelligence_hub.collectors.guarded_http import collection_scope
+
+        with collection_scope(self.collector_type):
+            if self.http_client is not None:
+                return await _fetch_html(self.http_client, url)
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                return await _fetch_html(client, url)
 
 
 async def _fetch_html(client: httpx.AsyncClient, url: str) -> str:
-    current_url = url
-    for redirect_count in range(MAX_REDIRECTS + 1):
-        await _assert_public_http_url(current_url)
-        try:
-            response = await collector_get_with_retry(client, current_url)
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in HTTP_REDIRECT_STATUS_CODES:
-                raise CollectorError(collector_http_error_message(exc)) from exc
-            if redirect_count == MAX_REDIRECTS:
-                raise CollectorError("http_redirect_limit_exceeded") from exc
-            location = exc.response.headers.get("location")
-            if location is None or location.strip() == "":
-                raise CollectorError("http_redirect_invalid: missing location header") from exc
-            current_url = urljoin(str(exc.request.url), location)
-            continue
-        except httpx.HTTPError as exc:
-            raise CollectorError(collector_http_error_message(exc)) from exc
-        return response.text
-    raise CollectorError("http_redirect_limit_exceeded")
+    from data_intelligence_hub.collectors.guarded_http import guarded_get
+
+    return (await guarded_get(client, url)).text
 
 
 async def _assert_public_http_url(url: str) -> None:

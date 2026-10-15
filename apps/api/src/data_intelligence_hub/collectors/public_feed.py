@@ -14,12 +14,10 @@ from data_intelligence_hub.collectors.base import (
     CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
-    collector_get_with_retry,
-    collector_http_error_message,
     collector_log,
     require_text,
 )
-from data_intelligence_hub.collectors.generic_web import _assert_public_http_url
+from data_intelligence_hub.collectors.guarded_http import collection_scope, guarded_get
 
 MAX_FEED_ITEMS = 100
 
@@ -112,19 +110,15 @@ class PublicFeedCollector(BaseCollector):
         )
 
     async def _get_xml(self, url: str) -> str:
-        await _assert_public_http_url(url)
-        if self.http_client is not None:
-            return await _fetch_xml(self.http_client, url)
-        async with httpx.AsyncClient() as client:
-            return await _fetch_xml(client, url)
+        with collection_scope(self.collector_type):
+            if self.http_client is not None:
+                return await _fetch_xml(self.http_client, url)
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                return await _fetch_xml(client, url)
 
 
 async def _fetch_xml(client: httpx.AsyncClient, url: str) -> str:
-    try:
-        response = await collector_get_with_retry(client, url)
-    except httpx.HTTPError as exc:
-        raise CollectorError(collector_http_error_message(exc)) from exc
-    return response.text
+    return (await guarded_get(client, url)).text
 
 
 def parse_public_feed(

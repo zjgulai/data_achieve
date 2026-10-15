@@ -19,7 +19,6 @@ Organised into 10 groups:
 
 from __future__ import annotations
 
-
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -4268,7 +4267,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ),
     ]
 
-    return CollectorCatalogResponse(
+    catalog = CollectorCatalogResponse(
         collectors=[
             CollectorCatalogEntry(
                 collector_type="tikhub_social",
@@ -4488,6 +4487,14 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             ),
         ]
     )
+    from data_intelligence_hub.api.routes.quick_collect import _ENDPOINT_TO_COLLECTOR
+    from data_intelligence_hub.collectors.outbound_policy import policy_block_reason
+
+    for group in catalog.collectors:
+        for endpoint in group.endpoints:
+            actual_type = _ENDPOINT_TO_COLLECTOR.get(endpoint.endpoint_type, group.collector_type)
+            endpoint.policy_block_reason = policy_block_reason(actual_type)
+    return catalog
 
 
 class EndpointTestResult(BaseModel):
@@ -4513,6 +4520,7 @@ class CollectorDocsEndpoint(BaseModel):
     method: str
     param_fields: dict[str, str]
     test_result: EndpointTestResult | None
+    policy_block_reason: str | None = None
 
 
 class CollectorDocsEntry(BaseModel):
@@ -4594,6 +4602,7 @@ async def get_collector_docs(session: SessionDep) -> CollectorDocsResponse:
                 method=ep.method,
                 param_fields=ep.param_fields,
                 test_result=tr,
+                policy_block_reason=ep.policy_block_reason,
             ))
             total += 1
             if tr:

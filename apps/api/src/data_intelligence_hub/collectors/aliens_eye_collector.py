@@ -25,6 +25,7 @@ Scan budget: aliens_eye derives a per-site deadline from
 above that is ~29s per site, so a full 854-site scan stays inside the
 subprocess budget while a slow site can no longer stall the whole run.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,6 +46,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_PROC_TIMEOUT = 240.0
 
@@ -188,8 +190,10 @@ def _parse_domains(json_path: str) -> list[dict[str, Any]]:
 #  Base class
 # ─────────────────────────────────────────────
 
+
 class _AliensEyeCollector(BaseCollector):
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         if not _aliens_eye_available():
             msg = "aliens-eye not installed — run: pip install aliens-eye"
             return CollectorTestResult(
@@ -233,6 +237,7 @@ class _AliensEyeCollector(BaseCollector):
 #  1. Basic scan (quick profile)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeBasicCollector(_AliensEyeCollector):
     """Quick username scan across 840+ platforms using ML detection."""
 
@@ -243,6 +248,7 @@ class AliensEyeBasicCollector(_AliensEyeCollector):
         return {"username": username}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         logs: list[dict[str, Any]] = []
@@ -279,6 +285,7 @@ class AliensEyeBasicCollector(_AliensEyeCollector):
 #  2. Advanced scan (prefix/suffix variations)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeAdvancedCollector(_AliensEyeCollector):
     """Variation scan: the username plus common variations, across 840+ platforms.
 
@@ -303,6 +310,7 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
         return {"username": username, "sites": sites, "level": level}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         level: str = config["level"]
@@ -349,6 +357,7 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
 #  3. Correlation scan (cluster same-person accounts)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeCorrelateCollector(_AliensEyeCollector):
     """Scan + cross-site correlation: cluster accounts that look like the same person."""
 
@@ -359,6 +368,7 @@ class AliensEyeCorrelateCollector(_AliensEyeCollector):
         return {"username": username}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         logs: list[dict[str, Any]] = []
@@ -407,6 +417,7 @@ class AliensEyeCorrelateCollector(_AliensEyeCollector):
 #  4. Recursive expansion (follow bio links)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeRecurseCollector(_AliensEyeCollector):
     """Scan + recursively follow usernames found in bios."""
 
@@ -420,6 +431,7 @@ class AliensEyeRecurseCollector(_AliensEyeCollector):
         return {"username": username, "depth": depth}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         depth: int = config["depth"]
@@ -456,6 +468,7 @@ class AliensEyeRecurseCollector(_AliensEyeCollector):
 #  5. Domain check (is username.com registered?)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeDomainCollector(_AliensEyeCollector):
     """Check if common domain variants of the username are registered."""
 
@@ -466,6 +479,7 @@ class AliensEyeDomainCollector(_AliensEyeCollector):
         return {"username": username}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         logs: list[dict[str, Any]] = []
@@ -515,6 +529,7 @@ class AliensEyeDomainCollector(_AliensEyeCollector):
 #  6. Multi-username batch scan
 # ─────────────────────────────────────────────
 
+
 class AliensEyeBatchCollector(_AliensEyeCollector):
     """Scan multiple usernames in one call (up to 10)."""
 
@@ -533,6 +548,7 @@ class AliensEyeBatchCollector(_AliensEyeCollector):
         return {"usernames": usernames}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         usernames: list[str] = config["usernames"]
         logs: list[dict[str, Any]] = []
@@ -571,6 +587,7 @@ class AliensEyeBatchCollector(_AliensEyeCollector):
 #  7. Selfcheck (accuracy report — test mode)
 # ─────────────────────────────────────────────
 
+
 class AliensEyeSelfcheckCollector(_AliensEyeCollector):
     """Run aliens_eye selfcheck to report per-site accuracy metrics."""
 
@@ -580,6 +597,7 @@ class AliensEyeSelfcheckCollector(_AliensEyeCollector):
         return {}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
         collected_at = datetime.now(UTC)

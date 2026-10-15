@@ -12,6 +12,7 @@ Environment variables:
                             (default: /tmp/twscrape.db)
     HTTP_PROXY              Optional proxy forwarded to twscrape
 """
+
 from __future__ import annotations
 
 import json
@@ -28,6 +29,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DB_PATH = os.environ.get("TWITTER_DB_PATH", "/tmp/twscrape.db")
 _VALID_PRODUCTS = {"Latest", "Top", "Media"}
@@ -128,6 +130,7 @@ def _user_to_dict(user: Any) -> dict[str, Any]:
 #  TwscrapeSearchCollector
 # ─────────────────────────────────────────────
 
+
 class TwscrapeSearchCollector(BaseCollector):
     """Search X/Twitter for tweets matching a query."""
 
@@ -144,6 +147,7 @@ class TwscrapeSearchCollector(BaseCollector):
         return {"query": query, "limit": limit, "product": product}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             _get_api()
         except CollectorError as exc:
@@ -167,6 +171,7 @@ class TwscrapeSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -217,6 +222,7 @@ class TwscrapeSearchCollector(BaseCollector):
 #  TwscrapeUserTweetsCollector
 # ─────────────────────────────────────────────
 
+
 class TwscrapeUserTweetsCollector(BaseCollector):
     """Fetch the public timeline of an X/Twitter user."""
 
@@ -230,6 +236,7 @@ class TwscrapeUserTweetsCollector(BaseCollector):
         return {"username": username, "limit": limit}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             _get_api()
         except CollectorError as exc:
@@ -253,6 +260,7 @@ class TwscrapeUserTweetsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -304,6 +312,7 @@ class TwscrapeUserTweetsCollector(BaseCollector):
 #  TwscrapeTrendsCollector
 # ─────────────────────────────────────────────
 
+
 class TwscrapeTrendsCollector(BaseCollector):
     """Fetch X/Twitter trending topics for a given category."""
 
@@ -318,6 +327,7 @@ class TwscrapeTrendsCollector(BaseCollector):
         return {"category": category}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             _get_api()
         except CollectorError as exc:
@@ -333,6 +343,7 @@ class TwscrapeTrendsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

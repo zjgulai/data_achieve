@@ -291,3 +291,7 @@ class TestDuckDuckGoHtmlFallback:
         for rec in result.raw_records:
             assert rec.record_type == "serp_result"
             assert rec.source_url is not None
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

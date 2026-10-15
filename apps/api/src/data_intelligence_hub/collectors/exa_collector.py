@@ -16,6 +16,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 EXA_BASE_URL = "https://api.exa.ai"
 EXA_TIMEOUT = 60.0
@@ -49,6 +50,8 @@ def _exa_client(api_key: str) -> httpx.AsyncClient:
             "Accept": "application/json",
         },
         timeout=EXA_TIMEOUT,
+        trust_env=False,
+        follow_redirects=False,
     )
 
 
@@ -141,6 +144,7 @@ class ExaSearchCollector(BaseCollector):
     collector_type = "exa_search"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         query = require_text(self.config, "query")
         search_type = self.config.get("search_type", "auto")
         if search_type not in _VALID_SEARCH_TYPES:
@@ -198,6 +202,7 @@ class ExaSearchCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             config = self.validate_config()
             api_key = _get_api_key()
@@ -241,6 +246,7 @@ class ExaSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
@@ -300,6 +306,7 @@ class ExaFindSimilarCollector(BaseCollector):
     collector_type = "exa_find_similar"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         url = require_text(self.config, "url")
         num_results = self.config.get("num_results", 10)
         if not isinstance(num_results, int) or not (1 <= num_results <= 25):
@@ -319,6 +326,7 @@ class ExaFindSimilarCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             config = self.validate_config()
             api_key = _get_api_key()
@@ -359,6 +367,7 @@ class ExaFindSimilarCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
@@ -442,6 +451,7 @@ class ExaContentsCollector(BaseCollector):
     collector_type = "exa_contents"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         urls = self.config.get("urls", [])
         if not isinstance(urls, list) or not urls:
             raise CollectorError("urls must be a non-empty list of URL strings")
@@ -473,6 +483,7 @@ class ExaContentsCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             config = self.validate_config()
             api_key = _get_api_key()
@@ -512,6 +523,7 @@ class ExaContentsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
@@ -594,6 +606,7 @@ class ExaAnswerCollector(BaseCollector):
     collector_type = "exa_answer"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         query = require_text(self.config, "query")
         output_schema = self.config.get("output_schema")
         if output_schema is not None and not isinstance(output_schema, dict):
@@ -605,6 +618,7 @@ class ExaAnswerCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             config = self.validate_config()
             api_key = _get_api_key()
@@ -641,6 +655,7 @@ class ExaAnswerCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 

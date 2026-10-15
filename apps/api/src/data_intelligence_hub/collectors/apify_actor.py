@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from datetime import UTC, datetime
 from typing import Any, cast
 
@@ -25,6 +26,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 APIFY_BASE_URL = "https://api.apify.com/v2"
 APIFY_TIMEOUT = 30.0
@@ -78,6 +80,7 @@ async def _apify_post(
         params=params,
         headers=_apify_headers(token),
         timeout=APIFY_TIMEOUT,
+        follow_redirects=False,
     )
     try:
         resp.raise_for_status()
@@ -97,6 +100,7 @@ async def _apify_get(
         params=params,
         headers=_apify_headers(token),
         timeout=APIFY_TIMEOUT,
+        follow_redirects=False,
     )
     try:
         resp.raise_for_status()
@@ -330,9 +334,16 @@ class ApifyActorCollector(BaseCollector):
 
     collector_type = "apify_actor"
 
+    # 合法 actor_id 只允许 Apify Store 的 owner/name 形态：段内取字母数字._-，
+    # 两段都必须非空且不以点开头；URL、路径穿越、query/fragment 一律拒绝。
+    _ACTOR_ID_RE = re.compile(
+        r"^(?!\.)(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9._-]*/(?!\.)[A-Za-z0-9][A-Za-z0-9._-]*$"
+    )
+
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         actor_id = require_text(self.config, "actor_id")
-        if "/" not in actor_id:
+        if not self._ACTOR_ID_RE.fullmatch(actor_id):
             raise CollectorError(
                 f"apify_actor_id_invalid: expected 'username/name', got {actor_id!r}"
             )
@@ -364,6 +375,7 @@ class ApifyActorCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
             token = _get_api_token()
@@ -372,7 +384,7 @@ class ApifyActorCollector(BaseCollector):
             logs.append(collector_log("apify_test_failed", msg, level="error"))
             return CollectorTestResult(status="failed", message=msg, logs=logs)
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 resp = await _apify_get(client, "/users/me", {}, token)
             username = (
                 (resp.get("data") or {}).get("username", "unknown")
@@ -417,7 +429,7 @@ class ApifyActorCollector(BaseCollector):
         )
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 # 1. Start the Actor Run
                 run_resp = await _apify_post(
                     client,

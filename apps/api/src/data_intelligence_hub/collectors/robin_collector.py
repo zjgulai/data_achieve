@@ -12,24 +12,25 @@ Environment variables (all optional):
     DARKWEB_TIMEOUT      Per-engine request timeout in seconds (default: 40)
     DARKWEB_MAX_ENGINES  Max engines to query in parallel (default: 8)
 """
+
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 import re
 from datetime import UTC, datetime
 from typing import Any
-import os
 
 from data_intelligence_hub.collectors.base import (
     BaseCollector,
     CollectionResult,
-    CollectorError,
     CollectorRawRecord,
     CollectorTestResult,
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _TOR_PROXY = os.environ.get("TOR_PROXY_URL", "socks5://127.0.0.1:9050")
 _TIMEOUT = float(os.environ.get("DARKWEB_TIMEOUT", "40"))
@@ -119,6 +120,7 @@ def _tor_available() -> bool:
 
 class _RobinBase(BaseCollector):
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         if not _tor_available():
             msg = "Tor not running on 127.0.0.1:9050 — install tor and start the daemon"
             return CollectorTestResult(
@@ -169,6 +171,7 @@ class RobinKeywordCollector(_RobinBase):
         return {"keyword": keyword, "max_results": min(max_results, 100)}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         keyword: str = config["keyword"]
         max_results: int = config["max_results"]
@@ -202,6 +205,7 @@ class RobinUsernameCollector(_RobinBase):
         return {"username": username, "max_results": min(max_results, 100)}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username: str = config["username"]
         max_results: int = config["max_results"]
@@ -236,6 +240,7 @@ class RobinEmailCollector(_RobinBase):
         return {"email": email, "max_results": min(max_results, 100)}
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         email: str = config["email"]
         max_results: int = config["max_results"]

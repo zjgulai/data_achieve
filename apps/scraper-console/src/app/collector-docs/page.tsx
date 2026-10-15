@@ -123,11 +123,12 @@ function EndpointRow({ ep }: { ep: CollectorDocsEndpoint }) {
             <span className="text-sm text-[var(--text-secondary)]">{ep.label}</span>
           </span>
           <span className="text-xs text-[var(--text-tertiary)] line-clamp-1">{ep.description}</span>
+          {ep.policy_block_reason && <span className="text-xs text-[var(--state-warning)]">策略阻断：{ep.policy_block_reason}</span>}
         </span>
 
         <span className="ml-auto flex shrink-0 items-center gap-2">
           <MethodBadge method={ep.method} />
-          <StatusBadge status={ep.status} />
+          <StatusBadge status={ep.policy_block_reason ? "disabled" : ep.status} />
           <TestResultIcon result={ep.test_result} />
         </span>
       </button>

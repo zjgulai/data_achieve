@@ -151,6 +151,16 @@ async def test_quick_collect_keeps_endpoint_type_in_task_config(
     """
     project_id = await _seed_demo_workspace_and_project(client)
 
+    import json
+
+    from data_intelligence_hub.core.config import get_settings
+
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    monkeypatch.setenv("COLLECTION_HTTP_GRANTS", json.dumps([{
+        "collector_type": "generic_web", "hosts": ["example.com"],
+        "expires_at": "2099-01-01T00:00:00Z", "max_requests": 2,
+    }]))
+    get_settings.cache_clear()
     from data_intelligence_hub.collectors import generic_web as generic_web_module
 
     async def fake_fetch_html(client: object, url: str) -> str:
@@ -184,3 +194,37 @@ async def test_quick_collect_keeps_endpoint_type_in_task_config(
         source = await session.get(Source, uuid.UUID(body["source_id"]))
         assert source is not None
         assert source.config["endpoint_type"] == "generic_web"
+    get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_quick_collect_cannot_enroll_itself_in_a_schedule(client: AsyncClient) -> None:
+    project_id = await _seed_demo_workspace_and_project(client)
+    response = await client.post(
+        "/api/quick-collect",
+        json={
+            "project_id": str(project_id),
+            "endpoint_type": "aliens_eye_basic",
+            "params": {
+                "username": "nobody",
+                "schedule_policy": "auto_freshness",
+                "execution_origin": "scheduler",
+                "schedule_cron": "30 12 * * *",
+            },
+            "label": "[test] aliens_eye_basic",
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()["status"] == "failed"
+    assert response.json()["error_message"].startswith("collection_policy_denied:")
+    from datetime import UTC, datetime, timedelta
+
+    from data_intelligence_hub.models import CollectionTask
+    from data_intelligence_hub.services.task_schedule_policy import next_run_at
+
+    async with client.session_factory() as session:  # type: ignore[attr-defined]
+        task = await session.get(CollectionTask, uuid.UUID(response.json()["task_id"]))
+        assert task.schedule_cron is None
+        assert task.config["schedule_policy"] == "manual_refresh_only"
+        assert task.config["execution_origin"] == "quick_collect"
+        assert next_run_at(task, None, datetime.now(UTC) + timedelta(days=1)) is None

@@ -27,6 +27,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 TIKHUB_BASE_URL = "https://api.tikhub.io"
 TIKHUB_TIMEOUT = 30.0
@@ -414,6 +415,7 @@ async def _tikhub_get(
                 params={k: v for k, v in params.items() if v is not None},
                 headers=_tikhub_headers(api_key),
                 timeout=TIKHUB_TIMEOUT,
+                follow_redirects=False,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -444,6 +446,7 @@ async def _tikhub_post(
                 json={k: v for k, v in body.items() if v is not None},
                 headers=_tikhub_headers(api_key),
                 timeout=TIKHUB_TIMEOUT,
+                follow_redirects=False,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -1655,6 +1658,7 @@ class TikHubSocialCollector(BaseCollector):
         return {**self.config, "endpoint_type": endpoint_type, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
         endpoint_path, _, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
@@ -1662,7 +1666,7 @@ class TikHubSocialCollector(BaseCollector):
         test_params = _build_params({**config, "max_items": 1}, max_items=1)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 if endpoint_type in _TIKHUB_POST_ENDPOINTS:
                     data = await _tikhub_post(client, endpoint_path, test_params, api_key)
                 else:
@@ -1677,6 +1681,7 @@ class TikHubSocialCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
         endpoint_path, _record_type, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
@@ -1702,7 +1707,7 @@ class TikHubSocialCollector(BaseCollector):
         )
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 if endpoint_type in _TIKHUB_POST_ENDPOINTS:
                     data = await _tikhub_post(client, endpoint_path, params, api_key)
                 else:

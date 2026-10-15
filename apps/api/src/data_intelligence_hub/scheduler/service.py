@@ -11,7 +11,9 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
 from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
+from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
@@ -125,6 +127,10 @@ class CollectionScheduler:
             candidates = await _list_scheduled_tasks(session)
             scanned = len(candidates)
             for task, workspace, latest_run in candidates:
+                if (task.config or {}).get("execution_origin") == "quick_collect":
+                    continue
+                if latest_run is not None and is_policy_failure(latest_run.error_message):
+                    continue
                 if task.id in self._running_task_ids:
                     skipped_running += 1
                     continue
@@ -154,7 +160,7 @@ class CollectionScheduler:
                 due += 1
                 self._running_task_ids.add(task.id)
                 try:
-                    await execute_collection_task(session, workspace, task)
+                    await execute_collection_task(session, workspace, task, trigger="scheduler")
                     started += 1
                 except TaskAlreadyRunningError:
                     skipped_running += 1
@@ -257,6 +263,7 @@ async def _list_scheduled_tasks(
     statement = (
         select(CollectionTask, Workspace, TaskRun)
         .join(Workspace, CollectionTask.workspace_id == Workspace.id)
+        .join(Source, (CollectionTask.source_id == Source.id) & (Source.enabled.is_(True)))
         .outerjoin(latest_runs, CollectionTask.id == latest_runs.c.task_id)
         .outerjoin(
             TaskRun,

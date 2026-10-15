@@ -21,6 +21,29 @@ from data_intelligence_hub.services.automation_service import (
 TestIpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
 
+@pytest.fixture(autouse=True)
+def approved_fixture_domains(monkeypatch: pytest.MonkeyPatch):
+    import json
+    import socket
+
+    from data_intelligence_hub.core.config import get_settings
+
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    monkeypatch.setenv("COLLECTION_HTTP_GRANTS", json.dumps([
+        {"collector_type": collector_type, "hosts": ["shop.example"],
+         "expires_at": "2099-01-01T00:00:00Z", "max_requests": 5}
+        for collector_type in ("ecommerce_product_page", "ecommerce_product_discovery")
+    ]))
+    def no_connection(*args, **kwargs):
+        pytest.fail("automation mock test attempted real network")
+    monkeypatch.setattr(socket.socket, "connect", no_connection)
+    get_settings.cache_clear()
+    try:
+        yield
+    finally:
+        get_settings.cache_clear()
+
+
 async def resolve_as_public_host(hostname: str) -> list[TestIpAddress]:
     del hostname
     return [ipaddress.IPv4Address("93.184.216.34")]

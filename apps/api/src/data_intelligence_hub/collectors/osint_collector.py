@@ -18,6 +18,7 @@ Sidecar contract (upstream `maigret --web`, verified against soxoj/maigret):
     GET  /api/scan/<id>/stream  SSE; events carry `type`:
                                 start | found | progress | stopped | error | done
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -42,6 +43,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_TIMEOUT = "15"
 _SHERLOCK_MIN_SITES = 1
@@ -223,6 +225,7 @@ async def _run(cmd: list[str], timeout: float = 120.0) -> tuple[int, str, str]:
 #  SherlockCollector
 # ─────────────────────────────────────────────
 
+
 class SherlockCollector(BaseCollector):
     """Check a username across 400+ social networks via sherlock."""
 
@@ -236,6 +239,7 @@ class SherlockCollector(BaseCollector):
         return {"username": username, "sites": sites}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         if not _sherlock_available():
             msg = (
                 "sherlock not found — install with: "
@@ -262,6 +266,7 @@ class SherlockCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -354,6 +359,7 @@ class SherlockCollector(BaseCollector):
 #  MaigretCollector
 # ─────────────────────────────────────────────
 
+
 class MaigretCollector(BaseCollector):
     """Build a cross-platform dossier from a username via maigret (3000+ sites).
 
@@ -374,6 +380,7 @@ class MaigretCollector(BaseCollector):
         return {"username": username, "max_sites": max_sites}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         sidecar = _maigret_url()
         if sidecar:
             try:
@@ -443,6 +450,7 @@ class MaigretCollector(BaseCollector):
             return _load_maigret_report(report_path), rc
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

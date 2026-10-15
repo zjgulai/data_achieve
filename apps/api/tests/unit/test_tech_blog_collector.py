@@ -259,3 +259,7 @@ class TestSubstackPostsCollector:
                 config={"publication": "test", "max_items": 2}
             ).collect()
         assert len(result.raw_records) == 2
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

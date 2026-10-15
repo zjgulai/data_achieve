@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
 from .base import (
     BaseCollector,
     CollectionResult,
@@ -25,6 +27,16 @@ from .base import (
 HN_API_BASE = "https://hacker-news.firebaseio.com/v0"
 
 
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
+
+
 class HackerNewsFrontPageCollector(BaseCollector):
     """Collect top stories from Hacker News front page."""
 
@@ -37,10 +49,13 @@ class HackerNewsFrontPageCollector(BaseCollector):
         return {"max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs = []
         try:
-            async with httpx.AsyncClient() as client:
-                response = await collector_get_with_retry(client, f"{HN_API_BASE}/topstories.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                response = await collector_get_with_retry(
+                    _NoRedirectClient(client), f"{HN_API_BASE}/topstories.json"
+                )
                 story_ids = response.json()[:5]
                 logs.append(collector_log("test", f"fetched {len(story_ids)} story IDs"))
                 return CollectorTestResult(
@@ -53,6 +68,7 @@ class HackerNewsFrontPageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=str(exc), logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         max_items = config["max_items"]
         logs = []
@@ -60,8 +76,10 @@ class HackerNewsFrontPageCollector(BaseCollector):
         raw_records = []
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await collector_get_with_retry(client, f"{HN_API_BASE}/topstories.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                response = await collector_get_with_retry(
+                    _NoRedirectClient(client), f"{HN_API_BASE}/topstories.json"
+                )
                 story_ids = response.json()[:max_items]
                 logs.append(collector_log("fetch_ids", f"fetched {len(story_ids)} story IDs"))
 
@@ -87,7 +105,9 @@ class HackerNewsFrontPageCollector(BaseCollector):
 
     async def _fetch_story(self, client: httpx.AsyncClient, story_id: int) -> CollectorRawRecord | None:
         try:
-            response = await collector_get_with_retry(client, f"{HN_API_BASE}/item/{story_id}.json")
+            response = await collector_get_with_retry(
+                _NoRedirectClient(client), f"{HN_API_BASE}/item/{story_id}.json"
+            )
             data = response.json()
             if not data or data.get("type") not in ["story", "job", "poll"]:
                 return None
@@ -114,11 +134,14 @@ class HackerNewsSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs = []
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 url = "https://hn.algolia.com/api/v1/search"
-                response = await collector_get_with_retry(client, url, params={"query": "openai", "hitsPerPage": "3"})
+                response = await collector_get_with_retry(
+                    _NoRedirectClient(client), url, params={"query": "openai", "hitsPerPage": "3"}
+                )
                 data = response.json()
                 hits = data.get("hits", [])
                 logs.append(collector_log("test", f"search returned {len(hits)} results"))
@@ -132,6 +155,7 @@ class HackerNewsSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=str(exc), logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -140,7 +164,7 @@ class HackerNewsSearchCollector(BaseCollector):
         raw_records = []
 
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 url = "https://hn.algolia.com/api/v1/search"
                 response = await collector_get_with_retry(
                     client, url, params={"query": query, "hitsPerPage": str(max_items)}
@@ -182,10 +206,13 @@ class HackerNewsUserCollector(BaseCollector):
         return {"username": username, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs = []
         try:
-            async with httpx.AsyncClient() as client:
-                response = await collector_get_with_retry(client, f"{HN_API_BASE}/user/pg.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                response = await collector_get_with_retry(
+                    _NoRedirectClient(client), f"{HN_API_BASE}/user/pg.json"
+                )
                 data = response.json()
                 logs.append(collector_log("test", f"user has {len(data.get('submitted', []))} submissions"))
                 return CollectorTestResult(status="ok", message="Hacker News API reachable", logs=logs)
@@ -194,6 +221,7 @@ class HackerNewsUserCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=str(exc), logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         username = config["username"]
         max_items = config["max_items"]
@@ -202,8 +230,10 @@ class HackerNewsUserCollector(BaseCollector):
         raw_records = []
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await collector_get_with_retry(client, f"{HN_API_BASE}/user/{username}.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                response = await collector_get_with_retry(
+                    _NoRedirectClient(client), f"{HN_API_BASE}/user/{username}.json"
+                )
                 user_data = response.json()
                 submitted = user_data.get("submitted", [])[:max_items]
                 logs.append(collector_log("fetch_user", f"user has {len(submitted)} submissions"))
@@ -230,7 +260,9 @@ class HackerNewsUserCollector(BaseCollector):
 
     async def _fetch_item(self, client: httpx.AsyncClient, item_id: int) -> CollectorRawRecord | None:
         try:
-            response = await collector_get_with_retry(client, f"{HN_API_BASE}/item/{item_id}.json")
+            response = await collector_get_with_retry(
+                _NoRedirectClient(client), f"{HN_API_BASE}/item/{item_id}.json"
+            )
             data = response.json()
             if not data:
                 return None

@@ -10,6 +10,7 @@ Environment variables:
     BESTBLOGS_API_KEY   API key from bestblogs.dev/settings
     HTTP_PROXY          Optional proxy forwarded to httpx
 """
+
 from __future__ import annotations
 
 import os
@@ -27,6 +28,7 @@ from data_intelligence_hub.collectors.base import (
     collector_http_error_message,
     collector_log,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _BASE = "https://api.bestblogs.dev/openapi/v2"
 _VALID_CATEGORIES = {"programming", "ai", "product", "devops", "design", "security"}
@@ -77,6 +79,7 @@ class BestBlogsArticlesCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             _api_key()
         except CollectorError as exc:
@@ -105,6 +108,7 @@ class BestBlogsArticlesCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

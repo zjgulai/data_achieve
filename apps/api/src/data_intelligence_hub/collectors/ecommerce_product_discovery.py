@@ -170,11 +170,14 @@ async def _fetch_html(url: str, http_client: httpx.AsyncClient | None) -> str:
         if fixture_html is not None:
             return fixture_html
 
-    collector = GenericWebCollector(
-        {"url": url, "extract_mode": "full_html"},
-        http_client=http_client,
-    )
-    result = await collector.collect()
+    from data_intelligence_hub.collectors.guarded_http import collection_scope
+
+    with collection_scope("ecommerce_product_discovery"):
+        collector = GenericWebCollector(
+            {"url": url, "extract_mode": "full_html"},
+            http_client=http_client,
+        )
+        result = await collector.collect()
     if not result.raw_records:
         raise CollectorError("ecommerce_product_discovery_empty_response")
     content = result.raw_records[0].content

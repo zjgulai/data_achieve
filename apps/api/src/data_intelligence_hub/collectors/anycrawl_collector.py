@@ -20,6 +20,7 @@ Fallback: when ANYCRAWL_BASE_URL is not set or the service is
 unreachable, falls back to lightweight httpx scraping using
 DuckDuckGo HTML endpoint (no JS required).
 """
+
 from __future__ import annotations
 
 import os
@@ -39,6 +40,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_BASE_URL = "http://localhost:3001"
 _DEFAULT_TIMEOUT = 30.0
@@ -172,6 +174,7 @@ async def _ddg_html_fallback(keyword: str, max_items: int) -> list[dict[str, Any
 #  Base SERP collector
 # ─────────────────────────────────────────────
 
+
 class _SerpCollector(BaseCollector):
     """Shared logic for SERP collectors."""
 
@@ -185,6 +188,7 @@ class _SerpCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         base = _base_url()
         if base == _DEFAULT_BASE_URL:
             msg = (
@@ -201,6 +205,7 @@ class _SerpCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -281,6 +286,7 @@ class _SerpCollector(BaseCollector):
 # ─────────────────────────────────────────────
 #  Concrete SERP collectors
 # ─────────────────────────────────────────────
+
 
 class BaiduSearchCollector(_SerpCollector):
     """Collect Baidu organic search results for a keyword."""

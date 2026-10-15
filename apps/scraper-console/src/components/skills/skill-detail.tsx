@@ -158,11 +158,12 @@ function CapabilityRow({ endpoint }: { readonly endpoint: PackageEndpoint }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <code className="text-sm font-semibold text-[var(--text-primary)]">{endpoint.endpoint_type}</code>
-          <Status value={endpoint.status} />
+          <Status value={endpoint.policy_block_reason ? "策略阻断" : endpoint.status} />
           <Tag>{endpoint.method}</Tag>
         </div>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{endpoint.label}</p>
         <p className="mt-1 text-xs leading-5 text-[var(--text-tertiary)]">{endpoint.description}</p>
+        {endpoint.policy_block_reason && <p className="mt-1 text-xs text-[var(--state-warning)]">{endpoint.policy_block_reason}</p>}
       </div>
       <div className="flex max-w-md flex-wrap content-start gap-1.5 lg:justify-end">
         {endpoint.required_params.map((param) => <Param key={param} name={param} required />)}

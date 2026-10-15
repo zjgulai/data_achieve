@@ -258,3 +258,7 @@ async def test_collect_markitdown_conversion_error_returns_error():
 
     assert result.raw_records == []
     assert any("conversion" in e.lower() or "markitdown" in e.lower() for e in result.errors)
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

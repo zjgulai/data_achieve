@@ -23,6 +23,7 @@ export type CollectorDocsEndpoint = {
   method: string;
   param_fields: Record<string, string>;
   test_result: EndpointTestResult | null;
+  policy_block_reason?: string | null;
 };
 
 export type CollectorDocsEntry = {

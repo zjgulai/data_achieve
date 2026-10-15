@@ -4,6 +4,18 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
+
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
+
 from .base import (
     BaseCollector,
     CollectionResult,
@@ -28,7 +40,9 @@ async def _json_get(
     url: str,
     params: dict[str, str] | None = None,
 ) -> httpx.Response:
-    r = await client.get(url, params=params, headers=_NO_BROTLI_HEADERS, timeout=15)
+    r = await client.get(
+        url, params=params, headers=_NO_BROTLI_HEADERS, timeout=15, follow_redirects=False
+    )
     r.raise_for_status()
     return r
 
@@ -47,9 +61,10 @@ class PackagistPackageCollector(BaseCollector):
         return {"package": package}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _json_get(
                     client, "https://packagist.org/packages/laravel/framework.json"
                 )
@@ -62,13 +77,14 @@ class PackagistPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _json_get(
                     client, f"https://packagist.org/packages/{package}.json"
                 )
@@ -127,9 +143,10 @@ class PackagistSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _json_get(
                     client, "https://packagist.org/search.json",
                     params={"q": "laravel", "per_page": "3"},
@@ -143,6 +160,7 @@ class PackagistSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -151,7 +169,7 @@ class PackagistSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _json_get(
                     client, "https://packagist.org/search.json",
                     params={"q": query, "per_page": str(max_items)},
@@ -191,11 +209,12 @@ class NuGetPackageCollector(BaseCollector):
         return {"package": require_text(self.config, "package")}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://azuresearch-usnc.nuget.org/query",
                     params={"q": "newtonsoft.json", "take": "1", "prerelease": "false"},
                 )
@@ -208,15 +227,16 @@ class NuGetPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://azuresearch-usnc.nuget.org/query",
                     params={"q": package, "take": "1", "prerelease": "false"},
                 )
@@ -273,11 +293,12 @@ class NuGetSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://azuresearch-usnc.nuget.org/query",
                     params={"q": "json", "take": "3", "prerelease": "false"},
                 )
@@ -290,6 +311,7 @@ class NuGetSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -298,9 +320,9 @@ class NuGetSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://azuresearch-usnc.nuget.org/query",
                     params={"q": query, "take": str(max_items), "prerelease": "false"},
                 )
@@ -340,11 +362,12 @@ class PubDevPackageCollector(BaseCollector):
         return {"package": require_text(self.config, "package")}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://pub.dev/api/packages/http"
+                    _NoRedirectClient(client), "https://pub.dev/api/packages/http"
                 )
                 name = r.json().get("name", "")
                 logs.append(collector_log("test", f"pub.dev reachable, package={name!r}"))
@@ -355,15 +378,16 @@ class PubDevPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, f"https://pub.dev/api/packages/{package}"
+                    _NoRedirectClient(client), f"https://pub.dev/api/packages/{package}"
                 )
                 data = r.json()
         except httpx.HTTPError as exc:
@@ -412,11 +436,12 @@ class PubDevSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://pub.dev/api/search",
+                    _NoRedirectClient(client), "https://pub.dev/api/search",
                     params={"q": "http", "page": "1"},
                 )
                 count = len(r.json().get("packages", []))
@@ -428,6 +453,7 @@ class PubDevSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -436,12 +462,12 @@ class PubDevSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 collected = 0
                 page = 1
                 while collected < max_items:
                     r = await collector_get_with_retry(
-                        client, "https://pub.dev/api/search",
+                        _NoRedirectClient(client), "https://pub.dev/api/search",
                         params={"q": query, "page": str(page)},
                     )
                     data = r.json()

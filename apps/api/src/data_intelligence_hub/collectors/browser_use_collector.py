@@ -18,6 +18,7 @@ Environment variables:
                              The bridge also caps the task itself.
     BROWSER_USE_BRIDGE_KEY   Optional bearer token for the bridge
 """
+
 from __future__ import annotations
 
 import os
@@ -36,6 +37,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_BRIDGE_URL = "http://browser-use:5002"
 _DEFAULT_TIMEOUT = 120
@@ -83,6 +85,7 @@ class BrowserUseCollector(BaseCollector):
         return {"task": task, "url": url, "max_steps": max_steps}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         base = _bridge_url()
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
@@ -124,6 +127,7 @@ class BrowserUseCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         task: str = config["task"]
         start_url: str = config["url"]

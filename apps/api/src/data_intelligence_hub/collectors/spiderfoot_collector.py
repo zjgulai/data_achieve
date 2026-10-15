@@ -33,6 +33,7 @@ Supported endpoint_types:
     spiderfoot_ip_osint      — scan an IP address
     spiderfoot_email_osint   — scan an e-mail address
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -53,6 +54,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_TIMEOUT = 240.0
 _POLL_INTERVAL = 5.0
@@ -216,6 +218,7 @@ class _SpiderFootCollector(BaseCollector):
         return {"target": target, "modules": modules or self._default_modules}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             base = _base_url()
         except CollectorError as exc:
@@ -244,6 +247,7 @@ class _SpiderFootCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

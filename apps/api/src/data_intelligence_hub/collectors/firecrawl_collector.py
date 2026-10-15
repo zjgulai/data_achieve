@@ -13,6 +13,7 @@ Environment variables:
     FIRECRAWL_TIMEOUT    Request timeout in seconds (default: 60)
     HTTP_PROXY           Forwarded to httpx
 """
+
 from __future__ import annotations
 
 import json
@@ -33,6 +34,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_BASE_URL = "https://api.firecrawl.dev"
 _DEFAULT_TIMEOUT = 60.0
@@ -113,6 +115,7 @@ async def _poll_job(job_id: str, base_path: str = "/v1/crawl") -> dict[str, Any]
 #  FirecrawlCrawlCollector
 # ─────────────────────────────────────────────
 
+
 class FirecrawlCrawlCollector(BaseCollector):
     """Crawl an entire site and return each page as Markdown via Firecrawl."""
 
@@ -133,6 +136,7 @@ class FirecrawlCrawlCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             self.validate_config()
         except CollectorError as exc:
@@ -147,6 +151,7 @@ class FirecrawlCrawlCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -219,6 +224,7 @@ class FirecrawlCrawlCollector(BaseCollector):
 #  FirecrawlExtractCollector
 # ─────────────────────────────────────────────
 
+
 class FirecrawlExtractCollector(BaseCollector):
     """Extract structured JSON from a URL using a Firecrawl schema prompt."""
 
@@ -235,6 +241,7 @@ class FirecrawlExtractCollector(BaseCollector):
         return {"url": url, "schema": schema, "prompt": prompt}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"Firecrawl ready at {_base_url()}",
@@ -242,6 +249,7 @@ class FirecrawlExtractCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -300,6 +308,7 @@ class FirecrawlExtractCollector(BaseCollector):
 #  FirecrawlBatchScrapeCollector
 # ─────────────────────────────────────────────
 
+
 class FirecrawlBatchScrapeCollector(BaseCollector):
     """Scrape a list of URLs in parallel via Firecrawl, returning Markdown."""
 
@@ -317,6 +326,7 @@ class FirecrawlBatchScrapeCollector(BaseCollector):
         return {"urls": [u.strip() for u in urls]}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"Firecrawl batch scrape ready at {_base_url()}",
@@ -324,6 +334,7 @@ class FirecrawlBatchScrapeCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

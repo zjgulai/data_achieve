@@ -7,6 +7,7 @@ page's HTML, HTTP headers, and script URLs.
 Environment variables:
     HTTP_PROXY   Forwarded to httpx (optional)
 """
+
 from __future__ import annotations
 
 import re
@@ -25,6 +26,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -170,12 +172,14 @@ class TechStackDetectCollector(BaseCollector):
         return {"url": url}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok", message="TechStackDetect collector ready (httpx + built-in rules)",
             logs=[collector_log("tech_stack_test_ok", "ready")],
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

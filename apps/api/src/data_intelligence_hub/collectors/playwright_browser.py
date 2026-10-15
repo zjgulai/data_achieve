@@ -15,6 +15,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 PLAYWRIGHT_TIMEOUT_MS = 30_000
 PLAYWRIGHT_WAIT_MODES = frozenset({"load", "networkidle", "domcontentloaded"})
@@ -114,6 +115,7 @@ class PlaywrightBrowserCollector(BaseCollector):
         return await pw.chromium.launch(**_chromium_launch_kwargs()), "chromium", None
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         _assert_playwright_available()
         config = self.validate_config()
         from playwright.async_api import async_playwright
@@ -153,6 +155,7 @@ class PlaywrightBrowserCollector(BaseCollector):
         return CollectorTestResult(status="ok", message=message, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         _assert_playwright_available()
         config = self.validate_config()
         from playwright.async_api import async_playwright
@@ -218,4 +221,3 @@ class PlaywrightBrowserCollector(BaseCollector):
                 ),
             )
         return CollectionResult(raw_records=[record], errors=[], logs=logs)
-

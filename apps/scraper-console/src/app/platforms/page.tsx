@@ -10,6 +10,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer";
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
 import type { CollectorEndpoint } from "@/lib/api/collectors";
+import { canStartCollection } from "@/lib/collection-policy";
 import { useQuery } from "@tanstack/react-query";
 import { PlatformLogo } from "@/components/platforms/platform-logo";
 import {
@@ -60,7 +61,7 @@ function EndpointRow({
   selected: boolean;
   onToggleSelect: (ep: CollectorEndpoint) => void;
 }) {
-  const isVerified = endpoint.status === "verified";
+  const isVerified = canStartCollection(endpoint);
 
   function handleClick() {
     if (!isVerified) return;
@@ -94,7 +95,7 @@ function EndpointRow({
 
       {/* status dot */}
       <span className="mt-1.5 flex-shrink-0">
-        <StatusDot status={endpoint.status} />
+        <StatusDot status={endpoint.policy_block_reason ? "disabled" : endpoint.status} />
       </span>
 
       {/* label + description */}
@@ -110,6 +111,11 @@ function EndpointRow({
         <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-tertiary)] line-clamp-2">
           {endpoint.description}
         </p>
+        {endpoint.policy_block_reason && (
+          <p className="mt-1 text-xs text-[var(--state-warning)]">
+            策略阻断：{endpoint.policy_block_reason}
+          </p>
+        )}
         {endpoint.required_params.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
             {endpoint.required_params.slice(0, 4).map(p => (
@@ -399,7 +405,7 @@ export default function PlatformsPage() {
   }, [data]);
 
   const stats = useMemo(() => ({
-    total:     allEndpoints.filter(e => e.status === "verified").length,
+    total:     allEndpoints.filter(canStartCollection).length,
     platforms: new Set(allEndpoints.map(e => e.platform)).size,
     types:     new Set(allEndpoints.map(e => e.content_type)).size,
   }), [allEndpoints]);
@@ -409,9 +415,9 @@ export default function PlatformsPage() {
     const counts: Record<string, number> = {};
     for (const cat of CATEGORIES) {
       counts[cat.key] = cat.key === "all"
-        ? allEndpoints.filter(e => e.status === "verified").length
+        ? allEndpoints.filter(canStartCollection).length
         : allEndpoints.filter(e =>
-            e.status === "verified" && matchCategory(e.platform, cat.filterKeys)
+            canStartCollection(e) && matchCategory(e.platform, cat.filterKeys)
           ).length;
     }
     return counts;
@@ -478,7 +484,7 @@ export default function PlatformsPage() {
   }
 
   function startBatchCollect() {
-    const queue = allEndpoints.filter(ep => selectedEndpoints.has(ep.endpoint_type));
+    const queue = allEndpoints.filter(ep => selectedEndpoints.has(ep.endpoint_type) && canStartCollection(ep));
     if (!queue.length) return;
     setBatchQueue(queue);
     setBatchQueueIndex(0);
@@ -500,7 +506,7 @@ export default function PlatformsPage() {
   return (
     <AppShell
       title="平台能力中心"
-      description={`${stats.total} 种已验证采集能力 · ${stats.platforms} 个平台 · ${stats.types} 种数据类型`}
+      description={`${stats.total} 种可执行采集能力 · ${stats.platforms} 个平台 · ${stats.types} 种数据类型`}
       brief="选择平台和数据类型，然后选择采集方案启动"
     >
       {isLoading ? (
@@ -518,7 +524,7 @@ export default function PlatformsPage() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: "已验证采集能力", value: stats.total,     unit: "个" },
+              { label: "可执行采集能力", value: stats.total,     unit: "个" },
               { label: "覆盖平台",       value: stats.platforms, unit: "个" },
               { label: "数据类型",       value: stats.types,     unit: "种" },
             ].map(s => (

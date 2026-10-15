@@ -10,9 +10,7 @@ class CollectorEndpointMetadata(BaseModel):
     label: str = Field(description="Human-readable name")
     platform: str = Field(description="Target platform (tiktok, instagram, etc.)")
     description: str = Field(description="What this endpoint does")
-    status: str = Field(
-        default="verified", description="verified | pending | disabled"
-    )
+    status: str = Field(default="verified", description="verified | pending | disabled")
     required_params: list[str] = Field(default_factory=list)
     optional_params: list[str] = Field(default_factory=list)
     cost_hint: str | None = Field(default=None, description="Estimated cost per item")
@@ -31,6 +29,9 @@ class CollectorEndpointMetadata(BaseModel):
             "Collection method: tikhub | apify | github_api | rss"
             " | web_crawl | browser | jina | shopee_api | anysearch"
         ),
+    )
+    policy_block_reason: str | None = Field(
+        default=None, description="Current execution policy restriction"
     )
     param_fields: dict[str, str] = Field(
         default_factory=dict,

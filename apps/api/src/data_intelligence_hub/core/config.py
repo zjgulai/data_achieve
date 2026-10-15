@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -75,7 +76,15 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
+    collection_network_mode: Literal["offline", "restricted"] | None = None
+    collection_http_grants: list[dict[str, Any]] = Field(default_factory=list)
     cors_origins: list[str] = ["http://localhost:3000"]
+
+    @property
+    def effective_collection_network_mode(self) -> Literal["offline", "restricted"]:
+        if self.collection_network_mode is not None:
+            return self.collection_network_mode
+        return "restricted" if self.app_env == "production" else "offline"
 
     @field_validator("cors_origins", "email_live_recipient_allowlist", mode="before")
     @classmethod

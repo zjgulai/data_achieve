@@ -11,6 +11,7 @@ AutoScraper 通过用户提供的示例数据自动学习提取规则，
 Environment variables:
     HTTP_PROXY          Optional proxy forwarded to httpx
 """
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 def _client() -> httpx.AsyncClient:
@@ -70,6 +72,7 @@ class AutoScraperEnhancedWebCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             async with _client() as c:
                 r = await c.get("https://example.com")
@@ -91,6 +94,7 @@ class AutoScraperEnhancedWebCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -115,7 +119,7 @@ class AutoScraperEnhancedWebCollector(BaseCollector):
         html_content = r.text
 
         scraper = AutoScraper()
-        
+
         if rules_path and os.path.exists(rules_path):
             try:
                 scraper.load(rules_path)

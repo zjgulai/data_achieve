@@ -222,6 +222,9 @@ def build_collector(
     config: dict[str, Any],
     http_client: httpx.AsyncClient | None = None,
 ) -> BaseCollector:
+    from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
+    assert_collector_allowed(collector_type)
     collector_class = COLLECTOR_REGISTRY.get(collector_type)
     if collector_class is None:
         raise CollectorError(f"Collector is not registered: {collector_type}")

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { X, CheckCircle, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import type { CollectorEndpoint } from "@/lib/api/collectors";
+import { canStartCollection } from "@/lib/collection-policy";
 import { postQuickCollect, type QuickCollectResponse } from "@/lib/api/quick-collect";
 import { fetchProjects } from "@/lib/api/projects";
 import { ApiError } from "@/lib/api/client";
@@ -762,6 +763,7 @@ export function QuickCollectDrawer({ endpoint, open, onClose }: Props) {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!canStartCollection(endpoint)) return;
     mutation.mutate();
   }
 
@@ -820,6 +822,12 @@ export function QuickCollectDrawer({ endpoint, open, onClose }: Props) {
             )}
           </div>
 
+          {endpoint.policy_block_reason && (
+            <div role="alert" className="mb-4 rounded-[var(--radius-2)] border border-[var(--state-warning)] p-3 text-sm text-[var(--text-primary)]">
+              <p className="font-semibold">外访安全策略已阻止执行</p>
+              <p>{endpoint.policy_block_reason}</p>
+            </div>
+          )}
           {mutation.isSuccess ? (
             <>
               <RunResult result={mutation.data} />
@@ -906,7 +914,7 @@ export function QuickCollectDrawer({ endpoint, open, onClose }: Props) {
                 </button>
                 <button
                   type="submit"
-                  disabled={mutation.isPending || !projectId}
+                  disabled={mutation.isPending || !projectId || !canStartCollection(endpoint)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-inverse)] transition-colors hover:bg-[var(--action-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {mutation.isPending ? (

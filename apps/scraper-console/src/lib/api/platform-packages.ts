@@ -20,6 +20,7 @@ export type PackageEndpoint = Readonly<{
   platform: string;
   description: string;
   status: "verified" | "pending" | "disabled";
+  policy_block_reason?: string | null;
   required_params: readonly string[];
   optional_params: readonly string[];
   cost_hint: string | null;
@@ -72,6 +73,7 @@ export type EndpointAvailability = Readonly<{
   last_test_at: string | null;
   last_records_count: number | null;
   last_error_message: string | null;
+  policy_block_reason?: string | null;
 }>;
 
 export type ProviderStatus = Readonly<{

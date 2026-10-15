@@ -448,3 +448,7 @@ class TestCollect:
         assert content["module_errors"][0]["component"] == "sfp_shodan"
         assert content["correlation_count"] == 1
         assert content["risk_counts"] == {"HIGH": 1}
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

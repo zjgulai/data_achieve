@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import ipaddress
+import json
+import socket
+from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -20,8 +23,71 @@ from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
+from data_intelligence_hub.core.config import get_settings
 
 TestIpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
+
+# 服务端批准域（COLLECTION_HTTP_GRANTS）。本文件的用例全部走 httpx.MockTransport，
+# 不接真实网；这里的 hosts 必须与各用例的 fixture URL 一一对应。
+_FIXTURE_GRANTS = [
+    {
+        "collector_type": "generic_web",
+        "hosts": ["example.com", "webscraper.io"],
+        "expires_at": "2099-01-01T00:00:00Z",
+        "max_requests": 10,
+    },
+    {
+        "collector_type": "public_feed",
+        "hosts": ["example.com"],
+        "expires_at": "2099-01-01T00:00:00Z",
+        "max_requests": 10,
+    },
+    {
+        "collector_type": "ecommerce_product_page",
+        "hosts": ["shop.example", "webscraper.io"],
+        "expires_at": "2099-01-01T00:00:00Z",
+        "max_requests": 10,
+    },
+    {
+        "collector_type": "ecommerce_product_discovery",
+        "hosts": ["shop.example"],
+        "expires_at": "2099-01-01T00:00:00Z",
+        "max_requests": 10,
+    },
+]
+
+
+@pytest.fixture(autouse=True)
+def restricted_policy(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """所有联网用例都运行在 restricted 模式 + 服务端精确 grant 下。
+
+    三层防线，保证任何用例都碰不到真实网络：
+    1. 环境变量锁定 restricted + 精确 fixture grant；
+    2. socket.getaddrinfo 一律拒绝（真实 DNS 不可能被触发）；
+    3. generic_web._resolve_host_ips 只对 grant 内主机返回假公网地址。
+    """
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    monkeypatch.setenv("COLLECTION_HTTP_GRANTS", json.dumps(_FIXTURE_GRANTS))
+    get_settings.cache_clear()
+
+    def deny_real_dns(hostname, port, *args, **kwargs):  # noqa: ANN001, ANN202
+        raise AssertionError(f"real DNS lookup attempted: {hostname}")
+
+    monkeypatch.setattr(socket, "getaddrinfo", deny_real_dns)
+
+    def fixture_dns(hostname: str) -> list[TestIpAddress]:
+        assert hostname in {"example.com", "shop.example", "webscraper.io"}, (
+            f"unapproved DNS lookup: {hostname}"
+        )
+        return [ipaddress.IPv4Address("93.184.216.34")]
+
+    async def async_fixture_dns(hostname: str) -> list[TestIpAddress]:
+        return fixture_dns(hostname)
+
+    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", async_fixture_dns)
+    yield
+    get_settings.cache_clear()
 
 
 def assert_request_policy(request: httpx.Request) -> None:
@@ -31,9 +97,14 @@ def assert_request_policy(request: httpx.Request) -> None:
     assert timeout["connect"] == HTTP_TIMEOUT_SECONDS
 
 
-async def resolve_as_public_host(hostname: str) -> list[TestIpAddress]:
-    del hostname
-    return [ipaddress.IPv4Address("93.184.216.34")]
+@pytest.fixture()
+def mock_http_client_factory(monkeypatch: pytest.MonkeyPatch):
+    """构造带 MockTransport 的 AsyncClient；每用例独立，避免 ContextVar 预算串扰。"""
+
+    def build(handler) -> httpx.AsyncClient:
+        return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    return build
 
 
 @pytest.mark.asyncio
@@ -258,11 +329,7 @@ async def test_github_topic_collector_collects_repository_search_snapshot() -> N
 
 
 @pytest.mark.asyncio
-async def test_generic_web_collector_collects_html_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_generic_web_collector_collects_html_snapshot() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert_request_policy(request)
         return httpx.Response(
@@ -291,11 +358,7 @@ async def test_generic_web_collector_collects_html_snapshot(
 
 
 @pytest.mark.asyncio
-async def test_public_feed_collector_collects_rss_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_public_feed_collector_collects_rss_snapshot() -> None:
     rss_xml = """
     <rss version="2.0">
       <channel>
@@ -340,11 +403,7 @@ async def test_public_feed_collector_collects_rss_snapshot(
 
 
 @pytest.mark.asyncio
-async def test_public_feed_collector_collects_atom_snapshot(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_public_feed_collector_collects_atom_snapshot() -> None:
     atom_xml = """
     <feed xmlns="http://www.w3.org/2005/Atom">
       <title>Docs Feed</title>
@@ -381,11 +440,7 @@ async def test_public_feed_collector_collects_atom_snapshot(
 
 
 @pytest.mark.asyncio
-async def test_ecommerce_product_page_collector_extracts_product_fields(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_ecommerce_product_page_collector_extracts_product_fields() -> None:
     html = """
     <html>
       <head>
@@ -469,11 +524,7 @@ async def test_ecommerce_product_page_collector_extracts_product_fields(
 
 
 @pytest.mark.asyncio
-async def test_ecommerce_product_page_collector_extracts_static_microdata_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_ecommerce_product_page_collector_extracts_static_microdata_fallback() -> None:
     html = """
     <html>
       <head>
@@ -564,11 +615,7 @@ async def test_ecommerce_product_page_collector_uses_demo_fixture_without_http_c
 
 
 @pytest.mark.asyncio
-async def test_ecommerce_product_discovery_collector_detects_product_urls(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_ecommerce_product_discovery_collector_detects_product_urls() -> None:
     html = """
     <html>
       <head>
@@ -675,6 +722,12 @@ async def test_ecommerce_product_discovery_collector_uses_demo_fixture_without_h
 
 @pytest.mark.asyncio
 async def test_generic_web_collector_rejects_private_network_hosts() -> None:
+    """SSRF 防线：私有/本机地址在 DNS 之前就被外访策略拒绝。
+
+    新策略下 generic_web 只持有精确域名 grant（example.com / webscraper.io），
+    127.0.0.1、10.x、169.254.x、[::1]、localhost 都不在批准域内，canonical_host
+    在 budget.check 阶段直接抛 outbound_domain_denied，一次 DNS 都不会发生。
+    """
     for unsafe_url in [
         "http://127.0.0.1/admin",
         "http://10.0.0.1/admin",
@@ -683,15 +736,12 @@ async def test_generic_web_collector_rejects_private_network_hosts() -> None:
         "http://localhost/admin",
     ]:
         collector = GenericWebCollector({"url": unsafe_url})
-        with pytest.raises(CollectorError, match="url_host_not_public"):
+        with pytest.raises(CollectorError, match="outbound_domain_denied"):
             await collector.test()
 
 
 @pytest.mark.asyncio
-async def test_generic_web_collector_revalidates_redirect_targets(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
+async def test_generic_web_collector_revalidates_redirect_targets() -> None:
     requested_urls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -701,7 +751,7 @@ async def test_generic_web_collector_revalidates_redirect_targets(
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         collector = GenericWebCollector({"url": "https://example.com"}, client)
-        with pytest.raises(CollectorError, match="url_host_not_public"):
+        with pytest.raises(CollectorError, match="outbound_domain_denied"):
             await collector.collect()
 
     assert requested_urls == ["https://example.com"]
@@ -720,11 +770,7 @@ async def test_github_topic_collector_classifies_rate_limit_failure() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generic_web_collector_classifies_connection_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(generic_web_module, "_resolve_host_ips", resolve_as_public_host)
-
+async def test_generic_web_collector_classifies_connection_failure() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 

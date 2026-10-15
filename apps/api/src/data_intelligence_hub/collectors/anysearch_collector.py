@@ -15,6 +15,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 ANYSEARCH_ENDPOINT = "https://api.anysearch.com/v1/search"
 ANYSEARCH_TIMEOUT = 30.0
@@ -52,6 +53,7 @@ class AnySearchCollector(BaseCollector):
     collector_type = "anysearch"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         query = require_text(self.config, "query")
         num_results = self.config.get("num_results", 10)
         if not isinstance(num_results, int) or not (1 <= num_results <= ANYSEARCH_MAX_RESULTS):
@@ -79,7 +81,9 @@ class AnySearchCollector(BaseCollector):
         config = self.validate_config()
         api_key = _get_api_key()
         test_payload = _build_payload({**config, "num_results": 1})
-        async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
+        async with httpx.AsyncClient(
+            timeout=ANYSEARCH_TIMEOUT, trust_env=False, follow_redirects=False
+        ) as client:
             r = await client.post(
                 ANYSEARCH_ENDPOINT,
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -120,7 +124,9 @@ class AnySearchCollector(BaseCollector):
         collected_at = datetime.now(UTC)
         payload = _build_payload(config)
         try:
-            async with httpx.AsyncClient(timeout=ANYSEARCH_TIMEOUT) as client:
+            async with httpx.AsyncClient(
+                timeout=ANYSEARCH_TIMEOUT, trust_env=False, follow_redirects=False
+            ) as client:
                 r = await client.post(
                     ANYSEARCH_ENDPOINT,
                     headers={"Authorization": f"Bearer {api_key}"},

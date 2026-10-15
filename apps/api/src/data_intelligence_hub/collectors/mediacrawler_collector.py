@@ -21,6 +21,7 @@ Account notes:
   - Zhihu: ZHIHU_COOKIES env var in the MediaCrawler container
   Configure these in docker-compose.yml under the mediacrawler service.
 """
+
 from __future__ import annotations
 
 import os
@@ -39,6 +40,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_BASE_URL = "http://localhost:8080"
 _DEFAULT_TIMEOUT = 30.0
@@ -107,6 +109,7 @@ def _records_from(
 #  Bilibili collectors
 # ─────────────────────────────────────────────
 
+
 class BilibiliVideoSearchCollector(BaseCollector):
     """Search Bilibili videos by keyword via MediaCrawler."""
 
@@ -120,6 +123,7 @@ class BilibiliVideoSearchCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         url = f"{_base_url()}/bilibili/health"
         try:
             async with _client() as client:
@@ -143,6 +147,7 @@ class BilibiliVideoSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -181,6 +186,7 @@ class BilibiliUserVideosCollector(BaseCollector):
         return {"uid": uid, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -188,6 +194,7 @@ class BilibiliUserVideosCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -226,6 +233,7 @@ class BilibiliVideoCommentsCollector(BaseCollector):
         return {"bvid": bvid, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -233,6 +241,7 @@ class BilibiliVideoCommentsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -262,6 +271,7 @@ class BilibiliVideoCommentsCollector(BaseCollector):
 #  Weibo collectors
 # ─────────────────────────────────────────────
 
+
 class WeiboKeywordSearchCollector(BaseCollector):
     """Search Weibo posts by keyword via MediaCrawler."""
 
@@ -275,6 +285,7 @@ class WeiboKeywordSearchCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -282,6 +293,7 @@ class WeiboKeywordSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -320,6 +332,7 @@ class WeiboUserPostsCollector(BaseCollector):
         return {"uid": uid, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -327,6 +340,7 @@ class WeiboUserPostsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -361,6 +375,7 @@ class WeiboTrendingTopicsCollector(BaseCollector):
         return {}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -368,6 +383,7 @@ class WeiboTrendingTopicsCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
         collected_at = datetime.now(UTC)
@@ -393,6 +409,7 @@ class WeiboTrendingTopicsCollector(BaseCollector):
 #  Zhihu collectors
 # ─────────────────────────────────────────────
 
+
 class ZhihuQuestionAnswersCollector(BaseCollector):
     """Collect answers for a Zhihu question via MediaCrawler."""
 
@@ -406,6 +423,7 @@ class ZhihuQuestionAnswersCollector(BaseCollector):
         return {"question_id": question_id, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -413,6 +431,7 @@ class ZhihuQuestionAnswersCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -454,6 +473,7 @@ class ZhihuKeywordSearchCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -461,6 +481,7 @@ class ZhihuKeywordSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -495,6 +516,7 @@ class ZhihuHotListCollector(BaseCollector):
         return {}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -502,6 +524,7 @@ class ZhihuHotListCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
         collected_at = datetime.now(UTC)
@@ -527,6 +550,7 @@ class ZhihuHotListCollector(BaseCollector):
 #  Kuaishou collectors
 # ─────────────────────────────────────────────
 
+
 class KuaishouVideoSearchCollector(BaseCollector):
     """Search Kuaishou videos by keyword via MediaCrawler."""
 
@@ -540,6 +564,7 @@ class KuaishouVideoSearchCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -547,6 +572,7 @@ class KuaishouVideoSearchCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -585,6 +611,7 @@ class KuaishouUserVideosCollector(BaseCollector):
         return {"user_id": user_id, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok",
             message=f"MediaCrawler base URL: {_base_url()}",
@@ -592,6 +619,7 @@ class KuaishouUserVideosCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

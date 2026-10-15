@@ -61,6 +61,15 @@ opendesign/design-systems/      前端设计系统
 
 ## 本地开发
 
+### 外访安全默认值
+
+本地采集默认 `COLLECTION_NETWORK_MODE=offline`，不发送真实采集请求。
+快速采集保持一次性手动任务。扫描器、未受控浏览器和 sidecar 不允许直接执行。
+
+如需受控 HTTP，必须由维护者配置精确域名、有效期和请求预算；请求参数不能授予权限。
+参见 [采集外访安全边界](docs/standards/collection-outbound-safety.md)。
+该变更尚未部署，以上生产快照不代表新策略已在生产启用。
+
 ### 后端
 
 ```bash

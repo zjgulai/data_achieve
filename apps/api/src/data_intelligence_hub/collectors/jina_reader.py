@@ -16,6 +16,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 JINA_BASE_URL = "https://r.jina.ai/"
 JINA_TIMEOUT = 30.0
@@ -45,6 +46,7 @@ class JinaReaderCollector(BaseCollector):
         return {"url": url, "return_format": return_format}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         try:
             api_key = _get_api_key()
@@ -85,6 +87,7 @@ class JinaReaderCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

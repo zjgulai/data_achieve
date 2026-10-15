@@ -185,3 +185,7 @@ class TestCollect:
             result = await _collector({"task": "t"}).collect()
         assert result.raw_records == []
         assert any("unreachable" in e for e in result.errors)
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

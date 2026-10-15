@@ -16,12 +16,14 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 class GitHubRepoCollector(BaseCollector):
     collector_type = "github_repo"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         return {
             "owner": require_text(self.config, "owner"),
             "repo": require_text(self.config, "repo"),
@@ -59,7 +61,7 @@ class GitHubRepoCollector(BaseCollector):
         url = f"https://api.github.com/repos/{owner}/{repo}"
         if self.http_client is not None:
             return await _fetch_json(self.http_client, url)
-        async with httpx.AsyncClient(follow_redirects=True) as client:
+        async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
             return await _fetch_json(client, url)
 
     async def _get_latest_release(self, owner: str, repo: str) -> dict[str, Any] | None:
@@ -67,7 +69,7 @@ class GitHubRepoCollector(BaseCollector):
         try:
             if self.http_client is not None:
                 return await _fetch_json(self.http_client, url)
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
             if str(exc) == "http_not_found: upstream returned 404":
@@ -79,7 +81,7 @@ class GitHubRepoCollector(BaseCollector):
         try:
             if self.http_client is not None:
                 return await _fetch_json(self.http_client, url)
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
             if str(exc) == "http_not_found: upstream returned 404":
@@ -87,9 +89,19 @@ class GitHubRepoCollector(BaseCollector):
             raise
 
 
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
+
+
 async def _fetch_json(client: httpx.AsyncClient, url: str) -> dict[str, Any]:
     try:
-        response = await collector_get_with_retry(client, url)
+        response = await collector_get_with_retry(_NoRedirectClient(client), url)
         data = response.json()
     except httpx.HTTPError as exc:
         raise CollectorError(collector_http_error_message(exc)) from exc

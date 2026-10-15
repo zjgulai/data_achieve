@@ -571,7 +571,7 @@ async def test_collect_xiaohongshu_search_mock() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_missing_api_key_returns_error() -> None:
-    with patch.dict("os.environ", {}, clear=True):
+    with patch.dict("os.environ", {"COLLECTION_NETWORK_MODE": "restricted"}, clear=True):
         import os
         os.environ.pop("TIKHUB_API_KEY", None)
         collector = TikHubSocialCollector(
@@ -1079,3 +1079,23 @@ def test_tikhub_registered_in_registry() -> None:
 
     assert "tikhub_social" in COLLECTOR_REGISTRY
     assert COLLECTOR_REGISTRY["tikhub_social"] is TikHubSocialCollector
+
+
+@pytest.fixture(autouse=True)
+def restricted_mock_provider(monkeypatch: pytest.MonkeyPatch):
+    """Exercise Provider behavior with an explicit mode; never send real traffic."""
+    import socket
+
+    from data_intelligence_hub.core.config import get_settings
+
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    get_settings.cache_clear()
+
+    def forbidden_dns(*args, **kwargs):
+        pytest.fail("unexpected real DNS in mock Provider test")
+
+    monkeypatch.setattr(socket, "getaddrinfo", forbidden_dns)
+    try:
+        yield
+    finally:
+        get_settings.cache_clear()

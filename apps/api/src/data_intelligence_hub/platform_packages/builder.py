@@ -45,8 +45,7 @@ def build_platform_package_catalog(
             source_entry_count += 1
             unique_endpoint_types.add(endpoint.endpoint_type)
             capability_id = (
-                f"{endpoint.platform}:{group.collector_type}:"
-                f"{endpoint.endpoint_type}:{index}"
+                f"{endpoint.platform}:{group.collector_type}:{endpoint.endpoint_type}:{index}"
             )
             canonical_id = canonical_capabilities.setdefault(
                 endpoint.endpoint_type,
@@ -70,6 +69,7 @@ def build_platform_package_catalog(
                 content_type=endpoint.content_type,
                 method=endpoint.method,
                 param_fields=dict(endpoint.param_fields),
+                policy_block_reason=endpoint.policy_block_reason,
             )
             by_platform[endpoint.platform].append(packaged)
 
@@ -78,8 +78,7 @@ def build_platform_package_catalog(
     orphan_note_files = sorted(set(notes_by_platform) - set(by_platform))
     if orphan_note_files:
         raise ValueError(
-            "notes file(s) reference unknown platform_id(s): "
-            f"{', '.join(orphan_note_files)}"
+            f"notes file(s) reference unknown platform_id(s): {', '.join(orphan_note_files)}"
         )
     packages = tuple(
         _build_package(platform_id, endpoints, notes_by_platform.get(platform_id))
@@ -128,7 +127,9 @@ def _build_package(
         display_name=display_name,
         description=f"{display_name} 数据采集能力包，统一提供 Skill、MCP 与 Playbook。",
         endpoint_count=len(ordered),
-        verified_count=sum(item.status == "verified" for item in ordered),
+        verified_count=sum(
+            item.status == "verified" and not item.policy_block_reason for item in ordered
+        ),
         disabled_count=sum(item.status == "disabled" for item in ordered),
         provider_groups=tuple(sorted({item.provider_group for item in ordered})),
         methods=tuple(sorted({item.method for item in ordered})),

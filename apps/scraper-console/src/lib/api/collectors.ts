@@ -6,6 +6,7 @@ export type CollectorEndpoint = {
   platform: string;
   description: string;
   status: "verified" | "pending" | "disabled";
+  policy_block_reason?: string | null;
   required_params: string[];
   optional_params: string[];
   cost_hint: string | null;

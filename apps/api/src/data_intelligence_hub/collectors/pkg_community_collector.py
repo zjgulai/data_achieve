@@ -15,13 +15,26 @@ from .base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
+
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
 
 _CRATES_UA = "data-intelligence-hub/1.0 (scrapy.lute-tlz-dddd.top)"
 _CRATES_HEADERS = {"User-Agent": _CRATES_UA, "Accept": "application/json"}
 
 
 async def _crates_get(client: httpx.AsyncClient, url: str, params: dict[str, str] | None = None) -> httpx.Response:
-    r = await client.get(url, params=params, headers=_CRATES_HEADERS, timeout=15)
+    r = await client.get(
+        url, params=params, headers=_CRATES_HEADERS, timeout=15, follow_redirects=False
+    )
     r.raise_for_status()
     return r
 
@@ -33,9 +46,10 @@ class CratesIoPackageCollector(BaseCollector):
         return {"package": require_text(self.config, "package")}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _crates_get(client, "https://crates.io/api/v1/crates/serde")
                 name = r.json().get("crate", {}).get("name", "")
                 logs.append(collector_log("test", f"crates.io reachable, crate={name!r}"))
@@ -46,13 +60,14 @@ class CratesIoPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _crates_get(client, f"https://crates.io/api/v1/crates/{package}")
                 data = r.json()
         except httpx.HTTPError as exc:
@@ -105,9 +120,10 @@ class CratesIoSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _crates_get(
                     client, "https://crates.io/api/v1/crates",
                     params={"q": "serde", "per_page": "3"},
@@ -121,6 +137,7 @@ class CratesIoSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -129,7 +146,7 @@ class CratesIoSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await _crates_get(
                     client, "https://crates.io/api/v1/crates",
                     params={"q": query, "per_page": str(max_items)},
@@ -166,10 +183,13 @@ class RubyGemsPackageCollector(BaseCollector):
         return {"package": require_text(self.config, "package")}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                r = await collector_get_with_retry(client, "https://rubygems.org/api/v1/gems/rails.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                r = await collector_get_with_retry(
+                    _NoRedirectClient(client), "https://rubygems.org/api/v1/gems/rails.json"
+                )
                 name = r.json().get("name", "")
                 logs.append(collector_log("test", f"RubyGems reachable, gem={name!r}"))
                 return CollectorTestResult(status="ok", message=f"RubyGems reachable, fetched {name!r}", logs=logs)
@@ -179,14 +199,17 @@ class RubyGemsPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                r = await collector_get_with_retry(client, f"https://rubygems.org/api/v1/gems/{package}.json")
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
+                r = await collector_get_with_retry(
+                    _NoRedirectClient(client), f"https://rubygems.org/api/v1/gems/{package}.json"
+                )
                 data = r.json()
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
@@ -238,11 +261,12 @@ class RubyGemsSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://rubygems.org/api/v1/search.json",
+                    _NoRedirectClient(client), "https://rubygems.org/api/v1/search.json",
                     params={"query": "rails", "page": "1"},
                 )
                 count = len(r.json()) if isinstance(r.json(), list) else 0
@@ -254,6 +278,7 @@ class RubyGemsSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -262,9 +287,9 @@ class RubyGemsSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://rubygems.org/api/v1/search.json",
+                    _NoRedirectClient(client), "https://rubygems.org/api/v1/search.json",
                     params={"query": query, "page": "1"},
                 )
                 gems = r.json() if isinstance(r.json(), list) else []
@@ -299,11 +324,12 @@ class GoPackageCollector(BaseCollector):
         return {"package": require_text(self.config, "package")}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://pkg.go.dev/search",
+                    _NoRedirectClient(client), "https://pkg.go.dev/search",
                     params={"q": "fmt", "m": "package"},
                 )
                 ok = r.status_code == 200
@@ -319,15 +345,16 @@ class GoPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, f"https://pkg.go.dev/{package}?tab=overview",
+                    _NoRedirectClient(client), f"https://pkg.go.dev/{package}?tab=overview",
                 )
                 html = r.text
         except httpx.HTTPError as exc:
@@ -389,11 +416,12 @@ class GoSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://pkg.go.dev/search",
+                    _NoRedirectClient(client), "https://pkg.go.dev/search",
                     params={"q": "http", "m": "package"},
                 )
                 ok = r.status_code == 200
@@ -409,6 +437,7 @@ class GoSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -419,9 +448,9 @@ class GoSearchCollector(BaseCollector):
         try:
             from bs4 import BeautifulSoup
 
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 r = await collector_get_with_retry(
-                    client, "https://pkg.go.dev/search",
+                    _NoRedirectClient(client), "https://pkg.go.dev/search",
                     params={"q": query, "m": "package"},
                 )
                 soup = BeautifulSoup(r.text, "html.parser")

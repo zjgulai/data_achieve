@@ -6,11 +6,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
 from data_intelligence_hub.platform_packages.models import PlatformPackageCatalog
 
-Availability = Literal[
-    "verified", "config-gated", "degraded", "empty", "untested", "disabled"
-]
+Availability = Literal["verified", "config-gated", "degraded", "empty", "untested", "disabled"]
 
 
 class EndpointEvidence(BaseModel):
@@ -30,6 +29,7 @@ class EndpointAvailability(BaseModel):
     last_test_at: datetime | None
     last_records_count: int | None
     last_error_message: str | None
+    policy_block_reason: str | None = None
 
 
 class ProviderStatusResponse(BaseModel):
@@ -79,9 +79,12 @@ def build_provider_status(
                 if not any(configured.get(name, False) for name in group)
             )
             latest = evidence.get(endpoint.endpoint_type)
+            policy_reason = endpoint.policy_block_reason
+            if not policy_reason and latest and is_policy_failure(latest.error_message):
+                policy_reason = latest.error_message
             if endpoint.status == "disabled":
                 availability: Availability = "disabled"
-            elif missing:
+            elif policy_reason or missing:
                 availability = "config-gated"
             elif latest is None:
                 # 没有任何实测证据：不得谎报 verified，标记为 untested。
@@ -101,6 +104,7 @@ def build_provider_status(
                 last_test_at=latest.finished_at if latest else None,
                 last_records_count=latest.records_count if latest else None,
                 last_error_message=latest.error_message if latest else None,
+                policy_block_reason=policy_reason,
             )
     return ProviderStatusResponse(
         catalog_digest=catalog.catalog_digest,

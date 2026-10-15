@@ -36,7 +36,6 @@ def _collect_notes(package: PlatformPackage) -> list[CapabilityNote]:
     return notes
 
 
-
 def render_skill(package: PlatformPackage) -> str:
     endpoint_names = ", ".join(endpoint.endpoint_type for endpoint in package.endpoints[:8])
     more = max(0, package.endpoint_count - 8)
@@ -76,7 +75,7 @@ description: {description}
 ## 工作流
 
 1. 读取 `manifest.json`，按用户目标匹配 `content_type` 和 `method`。
-2. 优先选择 `verified` 能力；`disabled` 能力不得调用。
+2. 先检查 `policy_block_reason`；有策略限制或 `disabled` 的能力不得调用。
 3. 向用户补齐 `required_params`，不要索取 Provider API Key。
 4. 通过 MCP `collect` 或 REST `/api/quick-collect` 发起采集。
 5. 返回 records、errors 和可追溯的 endpoint_type。
@@ -89,7 +88,7 @@ description: {description}
 
 - 不直接调用第三方 Provider，所有请求经过平台 collector 抽象层。
 - 不把 Cookie、Token、密码或生产环境变量写入对话和文件。
-- Provider 缺配置时应报告 `config-gated`，不得声称采集成功。
+- Provider 缺配置或受外访策略限制时应报告 `config-gated`，不得声称采集成功。
 - 本 Skill 不负责发布、点赞、评论或修改第三方平台数据。
 {skill_notes_block}"""
 
@@ -111,6 +110,8 @@ def render_readme(package: PlatformPackage) -> str:
     return f"""# {package.display_name} Collector Skill
 
 {summary}
+
+执行前必须检查 manifest 的 `policy_block_reason`。存在策略限制时不得调用。
 
 ## 使用
 
@@ -137,7 +138,9 @@ def render_playbook(package: PlatformPackage) -> str:
             endpoint.label.replace("|", "/"),
             endpoint.method,
             endpoint.content_type,
-            endpoint.status,
+            ("策略阻断：" + _escape(endpoint.policy_block_reason))
+            if endpoint.policy_block_reason
+            else endpoint.status,
         )
         for endpoint in package.endpoints
     )
@@ -146,11 +149,7 @@ def render_playbook(package: PlatformPackage) -> str:
         f"验收和风险边界。当执行 {package.display_name} 采集任务时使用。"
     )
     notes = _collect_notes(package)
-    notes_block = (
-        "\n" + _notes_table(notes, "## 坑点与规避") + "\n"
-        if notes
-        else ""
-    )
+    notes_block = "\n" + _notes_table(notes, "## 坑点与规避") + "\n" if notes else ""
     return f"""---
 name: {package.platform_id}-collection-playbook
 description: {description}
@@ -183,7 +182,7 @@ description: {description}
 ## 验收
 
 - endpoint 必须属于本平台包。
-- disabled endpoint 不得执行。
+- disabled endpoint 或 `policy_block_reason` 非空的 endpoint 不得执行。
 - `errors` 非空时不得把任务标记为成功。
 - Provider 缺少配置时记录为 `config-gated`。
 

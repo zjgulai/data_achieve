@@ -77,6 +77,7 @@ async def update_source(
     payload: SourceUpdateRequest,
 ) -> Source:
     source = await get_source_or_raise(session, workspace, source_id)
+    one_shot = (source.config or {}).get("execution_origin") == "quick_collect"
     updates = payload.model_dump(exclude_unset=True)
     config_changed = "config" in updates and updates["config"] is not None
     url_was_provided = "url" in updates
@@ -87,6 +88,13 @@ async def update_source(
     if "name" in updates and isinstance(updates["name"], str):
         updates["name"] = updates["name"].strip()
 
+    if one_shot:
+        updates["config"] = {
+            **(updates.get("config") or source.config or {}),
+            "execution_origin": "quick_collect",
+            "schedule_policy": "manual_refresh_only",
+        }
+        updates["schedule_cron"] = None
     for field, value in updates.items():
         setattr(source, field, value)
 
@@ -108,7 +116,14 @@ async def test_source_config(
 ) -> Source:
     source = await get_source_or_raise(session, workspace, source_id)
     await require_collector(session, source.type)
+    one_shot = (source.config or {}).get("execution_origin") == "quick_collect"
     source.config = validate_collector_config(source.type, source.config)
+    if one_shot:
+        source.config = {
+            **source.config, "execution_origin": "quick_collect",
+            "schedule_policy": "manual_refresh_only",
+        }
+        source.schedule_cron = None
     await session.commit()
     await session.refresh(source)
     return source

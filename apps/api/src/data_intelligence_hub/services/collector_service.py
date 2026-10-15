@@ -13,6 +13,13 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from data_intelligence_hub.collectors import CollectorError, CollectorRawRecord, build_collector
 from data_intelligence_hub.collectors.base import collector_log
+from data_intelligence_hub.collectors.guarded_http import collection_scope
+from data_intelligence_hub.collectors.outbound_policy import (
+    POLICY_VERSION,
+    CollectionPolicyDenied,
+    assert_collector_allowed,
+    is_policy_failure,
+)
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -60,6 +67,8 @@ async def execute_collection_task(
     workspace: Workspace,
     task: CollectionTask,
     idempotency_key_hash: str | None = None,
+    *,
+    trigger: str = "manual",
 ) -> TaskRun:
     started_at = datetime.now(UTC)
     workspace_id = workspace.id
@@ -67,7 +76,7 @@ async def execute_collection_task(
     previous_task_status = task.status
     timeout_seconds = _collection_timeout_seconds(task.config)
     logs = [
-        collector_log("task_run_created", "Manual run requested."),
+        collector_log("task_run_created", f"Collection requested by {trigger}."),
         *_task_run_idempotency_logs(idempotency_key_hash),
         collector_log("collector_execution_started", f"Starting collector {task.collector_type}."),
         collector_log(
@@ -103,11 +112,30 @@ async def execute_collection_task(
 
     try:
         source = await _get_task_source_or_raise(session, workspace, task)
+        assert_collector_allowed(task.collector_type)
         collector = build_collector(task.collector_type, _collector_config(source, task))
         collector.validate_config()
         logs.append(collector_log("collector_config_valid", "Collector config validated."))
         try:
-            result = await asyncio.wait_for(collector.collect(), timeout=timeout_seconds)
+            with collection_scope(task.collector_type) as budget:
+                try:
+                    result = await asyncio.wait_for(collector.collect(), timeout=timeout_seconds)
+                finally:
+                    audit = collector_log(
+                        "outbound_policy_checked", "Collection safety policy applied."
+                    )
+                    audit.update(
+                        {
+                            "policy_version": POLICY_VERSION,
+                            "trigger": trigger,
+                            "collector_type": task.collector_type,
+                            "task_run_id": str(run_id),
+                            "task_id": str(task_id),
+                            "http_requests_sent": budget.requests_sent if budget else None,
+                            "approved_hosts_used": sorted(budget.hosts_used) if budget else [],
+                        }
+                    )
+                    logs.append(audit)
         except TimeoutError as exc:
             raise CollectorError(
                 f"collection_timeout: collector exceeded {timeout_seconds:g}s"
@@ -144,6 +172,24 @@ async def execute_collection_task(
         error_traceback = traceback.format_exc()
         failed_log = collector_log("collector_failed", error_message, level="error")
         failed_log["failure_reason"] = _collection_failure_reason(error_message)
+        if isinstance(exc, CollectionPolicyDenied):
+            failed_log.update(
+                {
+                    "policy_version": POLICY_VERSION,
+                    "policy_reason": exc.code,
+                    "trigger": trigger,
+                    "task_run_id": str(run_id),
+                    "collector_type": task.collector_type,
+                    "http_requests_sent": next(
+                        (
+                            log.get("http_requests_sent")
+                            for log in reversed(logs)
+                            if log.get("step") == "outbound_policy_checked"
+                        ),
+                        0,
+                    ),
+                }
+            )
         logs.append(failed_log)
 
     finished_at = datetime.now(UTC)
@@ -158,7 +204,11 @@ async def execute_collection_task(
         task.failure_count += 1
     else:
         task.success_count += 1
-    next_task_config = update_retry_state_after_run(task.config, status)
+    next_task_config = (
+        task.config
+        if is_policy_failure(error_message)
+        else update_retry_state_after_run(task.config, status)
+    )
     if next_task_config != task.config:
         task.config = next_task_config
         flag_modified(task, "config")
@@ -208,6 +258,8 @@ async def _get_task_source_or_raise(
     source = await get_source(session, workspace.id, task.source_id)
     if source is None:
         raise CollectorError("Task source is missing")
+    if not source.enabled:
+        raise CollectionPolicyDenied("采集来源已停用")
     return source
 
 
@@ -307,9 +359,7 @@ def _collection_timeout_seconds(config: dict[str, Any] | None) -> float:
         # No explicit budget: fall back to the per-endpoint default when the
         # endpoint is known to be slow, else the global default.
         endpoint_type = str(config.get("endpoint_type") or "")
-        return SLOW_ENDPOINT_TIMEOUT_SECONDS.get(
-            endpoint_type, DEFAULT_COLLECTION_TIMEOUT_SECONDS
-        )
+        return SLOW_ENDPOINT_TIMEOUT_SECONDS.get(endpoint_type, DEFAULT_COLLECTION_TIMEOUT_SECONDS)
     return max(
         MIN_COLLECTION_TIMEOUT_SECONDS,
         min(float(value), MAX_COLLECTION_TIMEOUT_SECONDS),
@@ -326,6 +376,8 @@ def _run_status(result_errors: list[str], created_records: int) -> str:
 
 def _collection_failure_reason(message: str) -> str:
     normalized = message.strip().lower()
+    if is_policy_failure(normalized):
+        return "policy_denied"
     if normalized.startswith("http_timeout") or normalized.startswith("collection_timeout"):
         return "timeout"
     if normalized.startswith("http_rate_limited"):

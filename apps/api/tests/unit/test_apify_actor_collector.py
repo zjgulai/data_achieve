@@ -369,7 +369,7 @@ async def test_collect_actor_run_failed_returns_error() -> None:
 
 @pytest.mark.asyncio
 async def test_collect_missing_api_token_returns_error() -> None:
-    with patch.dict("os.environ", {}, clear=True):
+    with patch.dict("os.environ", {"COLLECTION_NETWORK_MODE": "restricted"}, clear=True):
         import os
         os.environ.pop("APIFY_API_TOKEN", None)
         collector = ApifyActorCollector(
@@ -480,7 +480,7 @@ async def test_test_valid_token_returns_ok() -> None:
 
 @pytest.mark.asyncio
 async def test_test_missing_token_returns_failed() -> None:
-    with patch.dict("os.environ", {}, clear=True):
+    with patch.dict("os.environ", {"COLLECTION_NETWORK_MODE": "restricted"}, clear=True):
         import os
         os.environ.pop("APIFY_API_TOKEN", None)
         collector = ApifyActorCollector(
@@ -502,3 +502,23 @@ def test_apify_registered_in_registry() -> None:
 
     assert "apify_actor" in COLLECTOR_REGISTRY
     assert COLLECTOR_REGISTRY["apify_actor"] is ApifyActorCollector
+
+
+@pytest.fixture(autouse=True)
+def restricted_mock_provider(monkeypatch: pytest.MonkeyPatch):
+    """Exercise Provider behavior with an explicit mode; never send real traffic."""
+    import socket
+
+    from data_intelligence_hub.core.config import get_settings
+
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    get_settings.cache_clear()
+
+    def forbidden_dns(*args, **kwargs):
+        pytest.fail("unexpected real DNS in mock Provider test")
+
+    monkeypatch.setattr(socket, "getaddrinfo", forbidden_dns)
+    try:
+        yield
+    finally:
+        get_settings.cache_clear()

@@ -6,6 +6,7 @@ Everything runs on the existing httpx client already in the container.
 Environment variables:
     HTTP_PROXY   Forwarded to httpx (optional)
 """
+
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
@@ -24,6 +25,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -81,6 +83,7 @@ class DevToArticlesCollector(BaseCollector):
         }
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             async with _client(user_agent=_API_UA) as c:
                 r = await c.get("https://dev.to/api/articles?per_page=1")
@@ -102,6 +105,7 @@ class DevToArticlesCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -176,12 +180,14 @@ class JuejinArticlesCollector(BaseCollector):
         return {"keyword": keyword, "max_items": max_items, "category": category}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok", message="Juejin collector ready (httpx only)",
             logs=[collector_log("juejin_test_ok", "ready")],
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -273,12 +279,14 @@ class SubstackPostsCollector(BaseCollector):
         return {"publication": publication, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         return CollectorTestResult(
             status="ok", message="Substack RSS collector ready",
             logs=[collector_log("substack_test_ok", "ready")],
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

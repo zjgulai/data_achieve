@@ -16,12 +16,14 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 class GitHubTopicCollector(BaseCollector):
     collector_type = "github_topic"
 
     def validate_config(self) -> dict[str, Any]:
+        assert_collector_allowed(self.collector_type)
         max_results = self.config.get("max_results", 30)
         if not isinstance(max_results, int) or max_results < 1 or max_results > 100:
             raise CollectorError("max_results must be an integer from 1 to 100")
@@ -94,8 +96,18 @@ class GitHubTopicCollector(BaseCollector):
         }
         if self.http_client is not None:
             return await _fetch_json(self.http_client, url, params)
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
             return await _fetch_json(client, url, params)
+
+
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
 
 
 async def _fetch_json(
@@ -104,7 +116,7 @@ async def _fetch_json(
     params: dict[str, str],
 ) -> dict[str, Any]:
     try:
-        response = await collector_get_with_retry(client, url, params=params)
+        response = await collector_get_with_retry(_NoRedirectClient(client), url, params=params)
         data = response.json()
     except httpx.HTTPError as exc:
         raise CollectorError(collector_http_error_message(exc)) from exc

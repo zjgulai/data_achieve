@@ -259,3 +259,7 @@ class TestKuaishouUserVideos:
             ).collect()
         assert len(result.raw_records) == 1
         assert not result.errors
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

@@ -13,6 +13,8 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
 from .base import (
     BaseCollector,
     CollectionResult,
@@ -26,6 +28,16 @@ from .base import (
 )
 
 
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
+
+
 class NpmPackageCollector(BaseCollector):
     """Fetch package metadata and download stats from the npm registry."""
 
@@ -36,11 +48,12 @@ class NpmPackageCollector(BaseCollector):
         return {"package": package}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client, "https://registry.npmjs.org/react"
+                    _NoRedirectClient(client), "https://registry.npmjs.org/react"
                 )
                 name = response.json().get("name", "")
                 logs.append(collector_log("test", f"npm registry reachable, package={name!r}"))
@@ -55,15 +68,16 @@ class NpmPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client, f"https://registry.npmjs.org/{package}"
+                    _NoRedirectClient(client), f"https://registry.npmjs.org/{package}"
                 )
                 data: dict[str, Any] = response.json()
         except httpx.HTTPError as exc:
@@ -120,11 +134,12 @@ class NpmSearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://registry.npmjs.org/-/v1/search",
                     params={"text": "react", "size": "3"},
                 )
@@ -137,6 +152,7 @@ class NpmSearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -145,9 +161,9 @@ class NpmSearchCollector(BaseCollector):
         raw_records: list[CollectorRawRecord] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://registry.npmjs.org/-/v1/search",
                     params={"text": query, "size": str(max_items)},
                 )
@@ -195,11 +211,12 @@ class PyPIPackageCollector(BaseCollector):
         return {"package": package}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client, "https://pypi.org/pypi/requests/json"
+                    _NoRedirectClient(client), "https://pypi.org/pypi/requests/json"
                 )
                 name = response.json().get("info", {}).get("name", "")
                 logs.append(collector_log("test", f"PyPI reachable, package={name!r}"))
@@ -214,15 +231,16 @@ class PyPIPackageCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         package = config["package"]
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client, f"https://pypi.org/pypi/{package}/json"
+                    _NoRedirectClient(client), f"https://pypi.org/pypi/{package}/json"
                 )
                 data: dict[str, Any] = response.json()
         except httpx.HTTPError as exc:
@@ -284,11 +302,12 @@ class PyPISearchCollector(BaseCollector):
         return {"query": query, "max_items": max_items}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         logs: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://pypi.org/search/",
                     params={"q": "requests", "o": "-created"},
                 )
@@ -305,6 +324,7 @@ class PyPISearchCollector(BaseCollector):
             return CollectorTestResult(status="failed", message=msg, logs=logs)
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         query = config["query"]
         max_items = config["max_items"]
@@ -315,9 +335,9 @@ class PyPISearchCollector(BaseCollector):
         try:
             from bs4 import BeautifulSoup
 
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 response = await collector_get_with_retry(
-                    client,
+                    _NoRedirectClient(client),
                     "https://pypi.org/search/",
                     params={"q": query, "o": "-created"},
                 )

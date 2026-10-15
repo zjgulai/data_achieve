@@ -9,6 +9,7 @@ Environment variables:
     ANYDOC_MAX_FILE_MB   Maximum download size in MB (default: 50)
     HTTP_PROXY           Forwarded to httpx for the file download
 """
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _SUPPORTED_EXTS = {
     ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls",
@@ -81,6 +83,7 @@ class AnydocCollector(BaseCollector):
         return {"file_url": file_url, "file_type": file_type, "ext": ext}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             from markitdown import MarkItDown  # type: ignore[import-untyped]  # noqa: F401
         except ImportError:
@@ -105,6 +108,7 @@ class AnydocCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

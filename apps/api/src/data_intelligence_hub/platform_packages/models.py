@@ -43,6 +43,7 @@ class PackageEndpoint(BaseModel):
     content_type: str
     method: str
     param_fields: dict[str, str]
+    policy_block_reason: str | None = None
     notes: tuple[CapabilityNote, ...] = ()
 
 

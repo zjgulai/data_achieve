@@ -368,3 +368,7 @@ async def test_trends_collect_returns_trend_record(monkeypatch):
     names = [t["name"] for t in content["trends"]]
     assert "#AI" in names
     assert "#Python" in names
+
+
+# Pure adapter tests only; outbound policy is exercised separately with no gate bypass.
+pytestmark = pytest.mark.usefixtures("isolated_adapter_transport")

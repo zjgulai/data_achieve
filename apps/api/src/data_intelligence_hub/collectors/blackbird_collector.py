@@ -12,6 +12,7 @@ Environment variables:
                          e.g. http://localhost:5002
     HTTP_PROXY           Optional proxy forwarded to httpx
 """
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 def _base_url() -> str:
@@ -61,6 +63,7 @@ class BlackbirdEmailCollector(BaseCollector):
         return {"email": email}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             base = _base_url()
         except CollectorError as exc:
@@ -89,6 +92,7 @@ class BlackbirdEmailCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -147,6 +151,7 @@ class BlackbirdUsernameCollector(BaseCollector):
         return {"username": username}
 
     async def test(self) -> CollectorTestResult:
+        assert_collector_allowed(self.collector_type)
         try:
             base = _base_url()
         except CollectorError as exc:
@@ -175,6 +180,7 @@ class BlackbirdUsernameCollector(BaseCollector):
         )
 
     async def collect(self) -> CollectionResult:
+        assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         logs: list[dict[str, Any]] = []
         errors: list[str] = []

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, cron_interval
 
@@ -15,7 +16,7 @@ RETRY_ATTEMPTS_USED_CONFIG_KEY = "retry_attempts_used"
 
 
 def task_schedule_policy(config: dict[str, Any] | None) -> str:
-    if config is None:
+    if config is None or config.get("execution_origin") == "quick_collect":
         return MANUAL_REFRESH_POLICY
     value = config.get("schedule_policy")
     if value == AUTO_FRESHNESS_POLICY:
@@ -91,6 +92,10 @@ def next_run_at(
     now: datetime,
 ) -> datetime | None:
     current_time = _as_utc(now)
+    if (task.config or {}).get("execution_origin") == "quick_collect":
+        return None
+    if latest_run is not None and is_policy_failure(latest_run.error_message):
+        return None
     if task.status in {"paused", "disabled"}:
         return None
     if task.schedule_cron:
@@ -111,6 +116,8 @@ def next_run_at(
 
 def retry_after_at(task: CollectionTask, latest_run: TaskRun | None) -> datetime | None:
     if latest_run is None or latest_run.status != "failed":
+        return None
+    if is_policy_failure(latest_run.error_message):
         return None
     if retry_budget_exhausted(task, latest_run):
         return None

@@ -173,3 +173,23 @@ def test_exa_collectors_are_registered_and_validate_endpoint_configs() -> None:
     assert search["num_results"] == 20
     assert contents["urls"] == ["https://example.com"]
     assert contents["subpages"] == 2
+
+
+@pytest.fixture(autouse=True)
+def restricted_mock_provider(monkeypatch: pytest.MonkeyPatch):
+    """Exercise Provider behavior with an explicit mode; never send real traffic."""
+    import socket
+
+    from data_intelligence_hub.core.config import get_settings
+
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    get_settings.cache_clear()
+
+    def forbidden_dns(*args, **kwargs):
+        pytest.fail("unexpected real DNS in mock Provider test")
+
+    monkeypatch.setattr(socket, "getaddrinfo", forbidden_dns)
+    try:
+        yield
+    finally:
+        get_settings.cache_clear()

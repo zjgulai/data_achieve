@@ -867,16 +867,27 @@ async def quick_collect(
             detail=f"Collector {collector_type!r} is not available",
         )
 
-    config: dict[str, Any] = {"endpoint_type": body.endpoint_type, **body.params}
+    # Execution metadata is server-owned and must never become Actor input.
+    reserved = {
+        "execution_origin",
+        "schedule_policy",
+        "schedule_cron",
+        "freshness_target_hours",
+        "max_retry_attempts",
+        "retry_delay_minutes",
+        "retry_attempts_used",
+    }
+    params = {key: value for key, value in body.params.items() if key not in reserved}
+    config: dict[str, Any] = {"endpoint_type": body.endpoint_type, **params}
 
     collector_defaults = _COLLECTOR_TEST_DEFAULTS.get(collector_type)
     if collector_defaults is not None:
-        config = {"endpoint_type": body.endpoint_type, **collector_defaults, **body.params}
+        config = {"endpoint_type": body.endpoint_type, **collector_defaults, **params}
 
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        actor_input = build_apify_actor_input(base_input, body.params)
+        actor_input = build_apify_actor_input(base_input, params)
         config = {
             "actor_id": actor_id,
             "actor_input": actor_input,
@@ -896,7 +907,9 @@ async def quick_collect(
         ) from exc
     # Validators return a whitelist of collection parameters only. Keep the
     # endpoint_type: dataset platform attribution walks task.config["endpoint_type"].
-    validated.setdefault("endpoint_type", body.endpoint_type)
+    validated["endpoint_type"] = body.endpoint_type
+    validated["execution_origin"] = "quick_collect"
+    validated["schedule_policy"] = "manual_refresh_only"
 
     label = (body.label or body.endpoint_type).strip()[:200]
 
@@ -930,7 +943,9 @@ async def quick_collect(
     await session.commit()
 
     try:
-        run: TaskRun = await execute_collection_task(session, workspace, task)
+        run: TaskRun = await execute_collection_task(
+            session, workspace, task, trigger="quick_collect"
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

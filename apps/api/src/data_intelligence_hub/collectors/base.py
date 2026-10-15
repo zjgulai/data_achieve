@@ -5,7 +5,7 @@ import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 from urllib.parse import urlparse
 
 import httpx
@@ -127,8 +127,15 @@ def collector_http_error_message(exc: httpx.HTTPError) -> str:
     return f"http_request_failed: {exc.__class__.__name__}"
 
 
+class CollectorHttpClient(Protocol):
+    async def get(
+        self, url: str, *, params: dict[str, str] | None = None,
+        headers: dict[str, str], timeout: float,
+    ) -> httpx.Response: ...
+
+
 async def collector_get_with_retry(
-    client: httpx.AsyncClient,
+    client: CollectorHttpClient,
     url: str,
     params: dict[str, str] | None = None,
 ) -> httpx.Response:
