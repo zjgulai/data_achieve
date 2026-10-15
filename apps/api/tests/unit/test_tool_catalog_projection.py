@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+import asyncio
+
+from data_intelligence_hub.api.routes.collectors import get_collector_catalog
+from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
+from data_intelligence_hub.platform_packages.status import (
+    EndpointEvidence,
+    build_provider_status,
+)
+from data_intelligence_hub.tool_catalog.projection import build_tool_catalog
+
+
+def _catalog():
+    source = asyncio.run(get_collector_catalog())
+    return build_platform_package_catalog(source)
+
+
+def test_catalog_deduplicates_alias_views_by_endpoint_type() -> None:
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+    tool_ids = [item.tool_id for item in tools.tools]
+
+    assert len(tool_ids) == len(set(tool_ids)), "tool_id 必须唯一"
+    assert tools.canonical_tool_count == tools.tool_count
+    assert tools.tool_count == catalog.unique_endpoint_count
+
+
+def test_catalog_does_not_claim_verified_without_evidence() -> None:
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+    by_id = {item.tool_id: item for item in tools.tools}
+
+    assert by_id
+    for item in tools.tools:
+        assert item.availability_view.availability in {"untested", "disabled"}
+        assert item.availability_view.last_test_at is None
+
+    # 关键点：目录静态声明为 verified 的条目，没有运行证据时
+    # 也不得投影为 verified。
+    statically_verified = [
+        item for item in tools.tools if item.availability_view.catalog_status == "verified"
+    ]
+    assert statically_verified, "样本里应存在静态 verified 条目"
+    assert all(
+        item.availability_view.availability == "untested" for item in statically_verified
+    )
+
+
+def test_catalog_reports_executable_only_for_non_blocked_tools() -> None:
+    catalog = _catalog()
+    status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=12,
+            ),
+        },
+    )
+    tools = build_tool_catalog(catalog, status)
+    by_id = {item.tool_id: item for item in tools.tools}
+
+    verified = by_id["tikhub_tiktok_video_search"]
+    assert verified.availability_view.availability == "verified"
+    assert verified.availability_view.last_records_count == 12
+    assert verified.executable is True
+
+    # 缺配置或已禁用的条目可见，但不能执行。
+    for item in tools.tools:
+        if item.availability_view.availability in {"config-gated", "disabled"}:
+            assert item.executable is False, item.tool_id
+
+    # 成功但零条记录不得算作已验证。
+    empty_status = build_provider_status(
+        catalog,
+        configured={"TIKHUB_API_KEY": True},
+        evidence={
+            "tikhub_tiktok_video_search": EndpointEvidence(
+                status="success",
+                records_count=0,
+            ),
+        },
+    )
+    empty_tool = {
+        item.tool_id: item for item in build_tool_catalog(catalog, empty_status).tools
+    }["tikhub_tiktok_video_search"]
+    assert empty_tool.availability_view.availability == "empty"
+
+
+def test_catalog_does_not_invent_parameter_types() -> None:
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+    by_id = {item.tool_id: item for item in tools.tools}
+    endpoint = by_id["tikhub_tiktok_video_search"]
+
+    assert endpoint.required_parameters == ("keyword",)
+    assert [item.name for item in endpoint.parameters][0] == "keyword"
+    required = {item.name for item in endpoint.parameters if item.required}
+    assert required == set(endpoint.required_parameters)
+    # 现有目录没有类型信息，投影不得凭名称编造。
+    for item in endpoint.parameters:
+        assert item.typed is False
+        assert item.value_type is None
+
+
+def test_catalog_marks_upstream_cost_as_estimate_not_platform_price() -> None:
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+    by_id = {item.tool_id: item for item in tools.tools}
+    endpoint = by_id["tikhub_tiktok_video_search"]
+
+    assert endpoint.cost.source == "upstream_estimate"
+    assert endpoint.cost.summary is not None
+    assert all(item.cost.source != "platform_price" for item in tools.tools)
+
+
+def test_catalog_categories_match_tool_totals() -> None:
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+
+    assert sum(item.tool_count for item in tools.categories) == tools.tool_count
+    assert sum(item.executable_count for item in tools.categories) == tools.executable_count
+    assert tools.catalog_digest == catalog.catalog_digest
