@@ -274,7 +274,7 @@ curl -sS -L -o /dev/null -w '%{http_code}\n' https://scrapy.luteos.com/mcp
 期望：
 
 - health 为 `ok / connected / current`。
-- 平台包为 `70 / 270 / 242`。
+- 平台包为 `70 / 286 / 258`（2026-10-15 起；此前是 `70 / 270 / 242`）。
 - 实测状态见 `/api/platform-packages/providers/status`（`availability` 字段）。
 - `/platforms` 返回 `200`。
 - 未授权 `/mcp/` 返回 `401`。

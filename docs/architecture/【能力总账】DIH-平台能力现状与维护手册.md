@@ -5,11 +5,12 @@ description: Data Intelligence Hub 平台能力总账：可用/缺配置/上游�
 
 # DIH 平台能力总账与维护手册
 
-> 数据截止 **2026-10-10**（生产 `degraded` 实测）。上游会变，数字会漂。
+> 数据截止 **2026-10-15**（生产 A `fc1e60b` 实测）。上游会变，数字会漂。
 > 重新取数的命令见 §4。
 > 相邻文档：[能力图谱](./【能力图谱】DIH-控制台能力地图.md)（逐页映射）·
 > [运行手册](../workflows/workflow-console-capability-live-verification-stable.md)（操作步骤）·
-> [坑点库](../playbooks/【坑点库】DIH-平台采集坑点汇总.md)（自动生成）
+> [坑点库](../playbooks/【坑点库】DIH-平台采集坑点汇总.md)（自动生成）·
+> [Apify 方案卡](../apify-actors/README.md)（十平台主力/降级矩阵与字段表）
 
 ---
 
@@ -18,23 +19,25 @@ description: Data Intelligence Hub 平台能力总账：可用/缺配置/上游�
 | 指标 | 值 | 说明 |
 |---|---|---|
 | 平台包 | 70 | 2026-10-09 前是 74，下线 4 个平台所致 |
-| 能力视图 | 270 | catalog 条目数（同一端点可出现在多个平台视图） |
-| 唯一端点 | 242 | 按 `endpoint_type` 去重 |
-| 有实测证据的端点 | 269 / 270 | 证据来自 label 为 `[test] <endpoint_type>` 的 quick-collect 运行 |
-| 成功返回过记录 | 227 | `success_endpoints` |
+| 能力视图 | 286 | catalog 条目数（同一端点可出现在多个平台视图）；10-14 新增 16 个 Apify 端点 |
+| 唯一端点 | 258 | 按 `endpoint_type` 去重 |
+| 有实测证据的端点 | 285 / 286 | 证据来自 label 为 `[test] <endpoint_type>` 的 quick-collect 运行（10-15 补测 17 个新端点） |
+| 成功返回过记录 | 240 | `success_endpoints` |
 
-状态分布（`GET /api/platform-packages/providers/status`）：
+状态分布（`GET /api/platform-packages/providers/status`，2026-10-15）：
 
 | availability | 数量 | 含义 |
 |---|---|---|
-| `verified` | 189 | 最近一次实测成功**且返回 ≥1 条记录** |
+| `verified` | 209 | 最近一次实测成功**且返回 ≥1 条记录**（10-10 是 189，+20 来自新端点实测与主力更换） |
 | `config-gated` | 21 | **缺配置或缺少依赖的自建服务**，不是代码问题 |
-| `degraded` | 22 | 最近一次实测失败（上游或 Actor 侧） |
-| `empty` | 9 | 实测成功但 0 条记录 |
+| `degraded` | 17 | 最近一次实测失败（上游或 Actor 侧）；10-10 是 22 |
+| `empty` | 10 | 实测成功但 0 条记录 |
 | `disabled` | 1 | catalog 里标 disabled |
 
 > **语义要点**：`config-gated` 与 `degraded` 是两件事。
 > 前者是"没配所以没跑"，后者是"跑了但失败"。不要把前者当缺陷去修代码。
+> 另一条 10-15 新教训：**`verified`/SUCCEEDED 也不等于有数据**——
+> `apify_amazon_reviews_extractor` Store 30 天成功率 99.8%，实际恒 0 条（§2.3）。
 
 ---
 
@@ -59,23 +62,27 @@ description: Data Intelligence Hub 平台能力总账：可用/缺配置/上游�
 > 补齐方式：部署 MediaCrawler（注意它需要登录态 / 扫码）并设置
 > `MEDIACRAWLER_BASE_URL`。可选的 `HTTP_PROXY` / `HTTPS_PROXY` 是加分项，不是前置条件。
 
-### 2.2 上游故障（22 个）——我方改不动
+### 2.2 上游故障（17 个）——我方改不动
+
+2026-10-15 实测分布（10-10 是 22 个）。变化：aliens_eye 三件套修复后离场、
+google_trends 换主力后离场、1688_product_search 转为 Store 下架（归入 §2.5 监控）、
+reddit 换主力后修复。
 
 | 类型 | 数量 | 端点 | 依据 |
 |---|---|---|---|
 | TikHub 上游通用 400 | 11 | bilibili_comments、kuaishou_search、linkedin×5、threads_search、tiktok_creator_info、tiktok_live_user、x_user_tweets | 参数与官方 OpenAPI 逐字段核对一致；TikHub 回 "Request failed… You won't be charged" |
-| Apify Actor run FAILED | 5 | amazon_bsr_tracker、amazon_competitor_research、booking、reddit、target_products | run 创建成功但 Actor 自身失败，需读 run log |
-| 运行前 403 | 2 | apify_1688_product_search、apify_walmart_reviews_scraper | Actor 拒绝本账号发起运行，耗时 <2s |
-| 超时 | 3 | aliens_eye_advanced / _domain / _recurse | 单次扫描 >60s |
-| 超时 | 1 | apify_google_trends_scraper | 超出 quick-collect 同步等待窗口 |
+| Apify Actor run FAILED | 3 | amazon_competitor_research、booking、target_products | run 创建成功但 Actor 自身失败，需读 run log；amazon_competitor_research 10-15 月检再降（85.3%，基准 90） |
+| 运行前 403 | 1 | apify_walmart_reviews_scraper | Actor 拒绝本账号发起运行，耗时 <2s |
+| 超时 | 3 | aliens_eye_advanced / _domain / _recurse | 单次扫描 >60s（超时预算已放宽到 1700s，见 commit cd4c274） |
 
 > `aliens_eye_basic` / `_batch` / `_correlate` / `_selfcheck` 是 `verified` —— 证明这个
 > 采集器不需要 key，只是高级扫描太慢。**不要**给它加"缺 API key"的判定。
 
-### 2.3 运行成功但无数据（9 个）
+### 2.3 运行成功但无数据（10 个）
 
 | 端点 | 原因 |
 |---|---|
+| `apify_amazon_reviews_extractor` | **⚠️ 2026-10-15 新发现（blocker）**：Amazon 封禁其抓取端点，run SUCCEEDED 但恒 0 条（US/DE 双区日志 404）。Store 99.8% 是假象。评论链改走 axesso（主力，实测 10 条）+ junglee（降级）。**教训：SUCCEEDED ≠ 有数据，验收必须看 records_count** |
 | `tikhub_tiktok_creator_account_health` | spec 只收 cookie，必须登录态 |
 | `tikhub_tiktok_ads_search` / `_ads_keyword_suggest` | 参数正确，上游对演示种子词回空 |
 | `tikhub_tiktok_creator_insights` / `_trend` | 参数正确，上游回空 |
@@ -109,9 +116,62 @@ description: Data Intelligence Hub 平台能力总账：可用/缺配置/上游�
 写 `notes/<platform>.json` 时 `builder` 会直接报 `target unknown endpoint_type`。
 这类坑点要写成 `scope: "platform"`。
 
+### 2.5 Store 下架监控（2026-10-15 起）
+
+**Apify Store 下架是静默的**：act API 仍可调、run 仍能创建，只有商店页消失。
+bsr-scraper（10-14）与 1688/aliexpress 两例（10-15 月检发现）都是这样。
+
+已确认下架但端点保留的（调用随时会停，替代路径见 notes）：
+
+| Actor | 影响端点 | 替代路径 |
+|---|---|---|
+| marketplace-scrapers/amazon-bsr-scraper | apify_amazon_bsr_tracker | apify_amazon_bestsellers 的 position 字段 |
+| ecomscrape/1688-product-search-scraper | apify_1688_product_search | dltik/1688-scraper、zen-studio/alibaba-scraper（均在 Store） |
+| skystone_labs/aliexpress-product-scraper | apify_aliexpress_product_search_v2 | devcake/aliexpress-products-scraper（已接入，apify_aliexpress_products_scraper） |
+
+巡检命令（建议每月跑，非零退出码即告警）：
+
+```bash
+python scripts/check_apify_store_presence.py
+```
+
 ---
 
-## 3. 本轮变更（2026-10-09 ~ 10-10）
+## 3. 本轮变更（2026-10-14 ~ 10-15）
+
+上一轮（10-09~10-10，27 提交）的变更史见 git 与坑点库。本轮是 **Apify 十平台深挖**，
+研究方法与完整结论见 [Apify 方案卡](../apify-actors/README.md)。
+
+### 3.1 主力更换（数据驱动）
+
+| 端点 | 旧主力 | 新主力 | 依据 |
+|---|---|---|---|
+| `apify_reddit_scraper` | trudax/reddit-scraper-lite | harshmaur/reddit-scraper | 30 天成功率 87.2% → 97.7%，76 实测字段；输入键换 `searchTerms`/`maxPostsCount` |
+| `apify_google_trends_scraper` | apify/google-trends-scraper | data_xplorer/google-trends-fast-scraper | 56.6% → 99.5%；timeframe 必须官方枚举（"now 7-d"） |
+
+同步标记风险：`apify_amazon_bsr_tracker`（Store 下架，BSR 改走 bestsellers.position）、
+`apify_google_maps_reviews_scraper`（只认完整 place URL，placeIds 传 ChIJ 无效）。
+
+### 3.2 新增 16 个 Apify 端点（270 → 286）
+
+IG 四专项（post/reel/hashtag/comment）、LinkedIn 档案（harvestapi，100%/53 字段）、
+X 用户、TikTok Shop 商品详情（54 字段含 GMV）、FB groups/pages/search、
+FB 广告库关键词入口（curious_coder）、Amazon 评论 axesso+extractor+free、
+Shopify 14M 店库（ecommerce_leads）、scraperlink SERP。
+
+三注册面齐：`_ENDPOINT_TO_COLLECTOR` + `_APIFY_ENDPOINT_DEFAULTS` + catalog 元数据；
+前端 drawer 补 13 组表单字段。17 端点生产实测 16/17 有数据（唯一失败见 §2.3）。
+
+### 3.3 新增月检：Store 存在性
+
+`python scripts/check_apify_store_presence.py` —— 85 个已接入 actor 自动巡检
+（Store 下架 + 成功率衰减），非零退出码告警。首轮即发现 2 个新增无声下架
+（ecomscrape/1688-product-search、skystone_labs/aliexpress-product，见 §2.5）。
+**建议每月跑一次**；Amazon 案证明"act API 还能调"不等于"还能用"。
+
+### 3.4 上一轮（10-09 ~ 10-10）
+
+27 个提交。按主题归类，方便回溯。
 
 27 个提交。按主题归类，方便回溯。
 
@@ -230,6 +290,14 @@ python scripts/audit_apify_inputs.py     # 只读公开 inputSchema，0 额度�
 报三类问题：缺必填键 / 键名不在 schema 里 / `editor` 形状不符。
 取值优先级：`inputSchema.properties[key].prefill` > `default` > 猜。
 **`exampleRunInput` 不可用**（多为 `{"helloWorld":123}` 占位）。
+
+**Apify Store 存在性月检**（2026-10-15 起）
+
+```bash
+python scripts/check_apify_store_presence.py   # 匿名 Store API，0 额度、不产生 run
+```
+查两类问题：Store 下架（act API 还能调，静默失效前兆）/ 30 天成功率较基准跌 8pt。
+从 `_APIFY_ENDPOINT_DEFAULTS` 自动提取 actor 清单，无需手工维护。
 
 **TikHub 路径与方法**
 

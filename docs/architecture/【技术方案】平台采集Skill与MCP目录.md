@@ -14,7 +14,7 @@ description: 平台采集 Skill 与 MCP 技术方案，涵盖生成架构、运�
 - 每个平台一份 Playbook。
 - 网站 `/skills` 中可搜索、筛选和查看详情的卡片目录。
 
-平台边界使用 endpoint 的 `platform` 字段。当前生产 catalog 对应 70 个平台、242 个唯一端点。`collector_type` 只作为 Provider/实现来源，不额外生成重复包。
+平台边界使用 endpoint 的 `platform` 字段。当前生产 catalog 对应 70 个平台、258 个唯一端点（随接入增长，以现场为准）。`collector_type` 只作为 Provider/实现来源，不额外生成重复包。
 
 ## 2. 关键约束
 

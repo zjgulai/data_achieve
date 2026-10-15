@@ -7,6 +7,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 > 站点：`https://scrapy.luteos.com` · 采集后端：`apps/api/src/data_intelligence_hub` · 控制台：`apps/scraper-console`
 > 首次测绘：2026-10-09（基于生产实测，见 [测试计划](../playbooks/【测试计划】DIH-平台采集生产实测.md)）
+> 最近刷新：2026-10-15（Apify 十平台深挖 + 16 新端点 + 主力更换，见 [方案卡](../apify-actors/README.md)）
 > 现状总账与维护方法见 [平台能力总账](./【能力总账】DIH-平台能力现状与维护手册.md)
 
 ## 1. 概览
@@ -15,11 +16,11 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 |---|---|
 | 生产域名 | `https://scrapy.luteos.com`（控制台）· `/api/*`（FastAPI）· `/mcp/`（共享 MCP） |
 | 部署分支 | `deploy/scrapy-luteos-rebuild` |
-| catalog 条目 | 270（258 verified + 12 disabled） |
-| 唯一端点 | 250（按 endpoint_type 去重；非 disabled 的去重端点 249） |
+| catalog 条目 | 286（209 verified + 21 config-gated + 17 degraded + 10 empty + 1 disabled） |
+| 唯一端点 | 258（按 endpoint_type 去重） |
 | 平台（Skill 包） | 70 |
 | collector group | 36 |
-| **生产实测状态（2026-10-09）** | `GET /api/collectors/docs` → `tested_endpoints=0`；`/api/platform-packages/providers/status` 全部 `last_test_status=null` |
+| **生产实测状态（2026-10-15）** | `GET /api/collectors/docs` → `tested_endpoints=285/286`、`success_endpoints=248`；状态分布见 [能力总账 §1](./【能力总账】DIH-平台能力现状与维护手册.md) |
 
 > ⚠️ **既有能力声明 ≠ 实测可用**。测绘当日 catalog 里 266 个端点标 `verified`，但平台从未记录过任何一条真实测试结果；本轮全量实测（249 唯一端点）显示仅 **101 个真正返回数据**。`/collector-docs` 与 `/skills` 详情页的"验证比例/最近测试"在此之前一直是空的。
 
@@ -58,7 +59,7 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 | 能力 | backing | 说明 |
 |---|---|---|
-| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 270 能力视图 / 242 唯一端点 |
+| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 286 能力视图 / 258 唯一端点 |
 | 实时可用性 | `GET /api/platform-packages/providers/status` | 依赖 `task_runs` 证据；实测前全为 `verified`（**误导**） |
 | 平台详情 | `GET /api/platform-packages/{id}` | 含能力表、参数、**策展坑点 `platform_notes` / `notes`** |
 | Playbook | `GET /api/platform-packages/{id}/playbook` | 请求时实时渲染（含「坑点与规避」） |
@@ -258,11 +259,11 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 
 计数收口：
 
-| 指标 | 之前 | 之后 |
+| 指标 | 10-09 清理后 | 10-14 深挖后（当前） |
 |---|---|---|
-| 平台包 | 74 | **70** |
-| 能力视图 | 278 | **270** |
-| 唯一端点 | 250 | **242** |
+| 平台包 | **70** | **70** |
+| 能力视图 | **270** | **286**（+16 新 Apify 端点） |
+| 唯一端点 | **242** | **258** |
 
 > ⚠️ 被删的 31 个里有约 20 个当轮实测**是通的**（`apify_x_scraper` 1 条、
 > `apify_threads_scraper` 10 条、`apify_google_shopping_scraper` 10 条、
@@ -274,7 +275,7 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 - **有 catalog 定义但无 UI 入口**：`/settings/account`（stub，生产 demo 模式无用户上下文）。`/tasks` 与 `/collect/[run_id]` 已于 2026-10-09 接上入口。
 - **有 UI 但无真实后端**：`/projects/[id]` 的"最近运行"段（接口按 task 维度，无 project 聚合）；"采集任务"段已于 2026-10-09 接真实数据。
 - **死链**：无（`/insight/dashboard` 与 `/tasks/new` 已于 2026-10-09 清除）。
-- **端点 → 页面**：全部 270 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
+- **端点 → 页面**：全部 286 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
 
 ## 6. 死链与桩面清单
 

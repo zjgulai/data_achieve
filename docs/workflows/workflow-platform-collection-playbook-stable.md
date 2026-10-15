@@ -5,8 +5,8 @@ description: 全平台数据采集方法手册，说明 TikHub、Apify、Exa 及
 
 # 平台数据采集手册
 
-> **版本**：2026-10-11 · **当前目录**：70 个平台 / 270 个能力视图 / 242 个唯一 endpoint
-> **实测状态**：191 个 verified / 21 个 config-gated / 20 个 degraded / 9 个 empty / 1 个 disabled
+> **版本**：2026-10-15 · **当前目录**：70 个平台 / 286 个能力视图 / 258 个唯一 endpoint（10-14 Apify 深挖 +16 端点）
+> **实测状态**：209 个 verified / 21 个 config-gated / 17 个 degraded / 10 个 empty / 1 个 disabled（2026-10-15）
 >
 > 本手册保留稳定且常用的调用示例，不再手工穷举全部 endpoint。完整参数、状态和 Provider 以 `/api/collectors/catalog`、`/api/platform-packages` 和 Console「采集文档」为准。
 

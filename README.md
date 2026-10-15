@@ -11,15 +11,15 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 
 | 项目 | 当前值 |
 |---|---|
-| 生产地址 | <https://scrapy.luteos.com> |
+| 生产地址 | <https://scrapy.luteos.com>（A 主站）· <https://scrapy.lute-tlz-dddd.top>（B） |
 | 平台目录 | 70 个平台 |
-| 能力视图 | 270 个 |
-| 唯一 endpoint | 242 个 |
-| 实测状态 | 191 个 verified / 21 个 config-gated / 20 个 degraded / 9 个 empty / 1 个 disabled |
+| 能力视图 | 286 个（2026-10-14 Apify 十平台深挖 +16 端点，见 `docs/apify-actors/`） |
+| 唯一 endpoint | 258 个 |
+| 实测状态 | 209 个 verified / 21 个 config-gated / 17 个 degraded / 10 个 empty / 1 个 disabled（2026-10-15） |
 | Skill 目录 | <https://scrapy.luteos.com/skills> |
 | MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token |
 | 数据库 schema | `202607280044` |
-| 部署分支 | `feat/live-capability-verification-sink-notes` |
+| 部署分支 | A=`main` / B=`deploy/tiktok-cdo-codex`（双机 @ `fc1e60b`） |
 
 服务器、容器、网络和数据卷的当前事实统一维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)，不要在其他文档复制易变的 revision 或容器状态。
 

@@ -33,7 +33,7 @@ description: Data Intelligence Hub 平台 Skill 与 MCP 测试用例，覆盖生
 1. 运行 `cd apps/api && uv run python ../../scripts/generate_platform_packages.py`。
 2. 运行 `uv run python ../../scripts/test_platform_packages.py`。
 
-预期结果：生成 70 个平台目录、270 个能力视图、242 个唯一 endpoint；每个目录包含 Skill、README、manifest、trigger cases 和 Playbook。
+预期结果：生成 70 个平台目录、286 个能力视图、258 个唯一 endpoint（2026-10-15 起；每次接入新端点后此数会变，以 `GET /api/platform-packages` 实测为准）；每个目录包含 Skill、README、manifest、trigger cases 和 Playbook。
 
 ## DIH-SM-002 生成-密钥边界-阻止敏感信息
 
