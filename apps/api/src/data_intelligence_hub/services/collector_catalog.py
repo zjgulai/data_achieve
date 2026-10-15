@@ -1222,6 +1222,11 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
         "material_id", "industry", "country_code", "label", "tag",
         "since_id", "feature", "filter_type", "month", "search_type",
         "end_cursor", "pcursor",
+        # camelCase：端点元数据对 tikhub_kuaishou_user_posts 声明必填 userId，
+        # 实现也读它（tikhub_social.py 的 `config.get("userId")` 回退），
+        # 但此前不在白名单，于是按元数据传参的调用方必然失败。
+        # 2026-10-16 复核发现：旧契约测试的正则只匹配小写，漏采了这个键。
+        "userId",
     ):
         if key in config and config[key] is not None:
             out[key] = config[key]

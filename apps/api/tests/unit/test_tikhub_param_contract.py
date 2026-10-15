@@ -29,9 +29,14 @@ PROBE = "probe-value"
 
 
 def _read_keys() -> set[str]:
-    """_build_params 里所有 ``config.get("X")`` 的键。"""
+    """_build_params 里所有 ``config.get("X")`` 的键。
+
+    正则必须同时匹配大小写。旧版只写 ``[a-z_0-9]+``，
+    于是 camelCase 的 ``userId`` 永远不被采集，
+    d143d48 补白名单时漏掉它而测试全绿（2026-10-16 复核发现）。
+    """
     src = inspect.getsource(_build_params)
-    return set(re.findall(r'config\.get\("([a-z_0-9]+)"\)', src))
+    return set(re.findall(r'config\.get\("([A-Za-z_0-9]+)"\)', src))
 
 
 def test_build_params_reads_at_least_one_key() -> None:

@@ -134,13 +134,34 @@ def test_adversarial_review_corrections_are_applied() -> None:
 
 
 def test_tikhub_conflicts_surface_the_metadata_whitelist_gap() -> None:
-    """tikhub 的元数据声明了实现拿不到的参数。
+    """tikhub 元数据声明、白名单放行、实现三者仍有未对齐处。
 
-    userId 与 oid 由端点元数据声明为必填，但服务层白名单会先剥掉它们。
+    userId 曾属此类：元数据声明必填，白名单却先剥掉它，
+    实现里的 ``config.get("userId")`` 回退因此在标准路径不可达。
+    2026-10-16 已把 userId 加入白名单，缺口关闭，
+    对应的分歧记录也随之移除——契约只记当前仍然成立的差异。
+
+    oid 仍未决：元数据声明必填，白名单没有它，
+    实现消费的是 bvid/video_id，且上游实际参数名还需实测确认。
     """
     tikhub = CONTRACTS["tikhub_social"]
-    for param in ("userId", "oid"):
-        assert tikhub.conflict_for(param) is not None, param
+
+    # 已修复：userId 不再记为分歧，且确实能穿过白名单。
+    assert tikhub.conflict_for("userId") is None, (
+        "userId 的白名单缺口已修，不应再作为分歧登记"
+    )
+    from data_intelligence_hub.services.collector_catalog import (
+        validate_collector_config,
+    )
+
+    validated = validate_collector_config(
+        "tikhub_social",
+        {"endpoint_type": "tikhub_kuaishou_user_posts", "userId": "probe"},
+    )
+    assert validated["userId"] == "probe"
+
+    # 仍未决：oid 必须继续留在分歧记录里。
+    assert tikhub.conflict_for("oid") is not None
 
 
 def test_builder_returns_a_fresh_mapping_each_call() -> None:

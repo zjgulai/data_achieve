@@ -2018,29 +2018,6 @@ CONTRACTS: dict[str, ToolParameterContract] = {
             ),
     ),
     ParameterConflict(
-        param="userId",
-        standard_path_site=(
-            "端点元数据 api/routes/collectors.py:781-793（:787 "
-            "`required_params=[\"userId\"],`； "
-            "经 tool_catalog/projection.py:64-67 投影为 required=True "
-            "的工具参数，对外声明必填）"
-            ),
-        other_site=(
-            "服务层白名单 services/collector_catalog.py:1171-1187（57 键无 userId； "
-            "非白名单键在 :1186-1187 静默丢弃）"
-            ),
-        difference=(
-            "元数据声明 tikhub_kuaishou_user_posts 必填 userId， "
-            "但入库前即被白名单丢弃，tikhub_social.py:1510 `config.get(\"user_id\") or "
-            "config.get(\"userId\") or \"\"` 的回退在标准路径不可达， "
-            "上游收到 user_id=\"\" → 400/422。真正生效的键 user_id 反而未在元数据声明。"
-            ),
-        impact=(
-            "二选一后保持元数据/白名单/实现三层一致：A) 白名单补 userId， "
-            "并放宽契约测试正则以覆盖 camelCase；B) 元数据 required_params 改为 user_id。"
-            ),
-    ),
-    ParameterConflict(
         param="oid",
         standard_path_site=(
             "端点元数据 api/routes/collectors.py:729-741（:735 "
