@@ -138,6 +138,37 @@ def test_catalog_marks_upstream_cost_as_estimate_not_platform_price() -> None:
     assert all(item.cost.source != "platform_price" for item in tools.tools)
 
 
+def test_catalog_declares_authorization_without_claiming_enforcement() -> None:
+    """授权字段必须如实描述现状，不得伪装成已保护。
+
+    2026-10-15 侦察确认执行入口没有鉴权依赖，
+    匿名调用被当作共享演示工作区的业主。
+    契约把「应然要求」与「实然依据」分开声明，
+    并且 enforced 必须为 False——在强制落地之前。
+    """
+    catalog = _catalog()
+    tools = build_tool_catalog(catalog)
+
+    assert tools.tools
+    for item in tools.tools:
+        authorization = item.authorization
+        assert authorization.requirement == "project_member", item.tool_id
+        assert authorization.basis == "demo_workspace", item.tool_id
+        # 核心断言：没有强制就不能声称有。
+        assert authorization.enforced is False, item.tool_id
+        assert authorization.note, item.tool_id
+
+
+def test_authorization_contract_rejects_unknown_basis() -> None:
+    """未知的授权依据必须被拒，避免写入无法解释的字符串。"""
+    from pydantic import ValidationError
+
+    from data_intelligence_hub.tool_catalog.models import ToolAuthorization
+
+    with pytest.raises(ValidationError):
+        ToolAuthorization(requirement="project_member", basis="trust_me")  # type: ignore[arg-type]
+
+
 def test_catalog_categories_match_tool_totals() -> None:
     catalog = _catalog()
     tools = build_tool_catalog(catalog)

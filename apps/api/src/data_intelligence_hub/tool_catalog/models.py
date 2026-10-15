@@ -19,7 +19,48 @@ ToolAvailability = Literal[
 ]
 ToolOutputKind = Literal["records", "text", "image", "audio", "video", "file", "action"]
 
+# 工具调用所需的授权强度。
+# 目前只用于声明与校验策略制定，不改变任何执行路径的行为。
+ToolAuthRequirement = Literal[
+    "anonymous_read",  # 可匿名读取，不产生副作用与费用
+    "identified_user",  # 需要真实登录身份
+    "project_member",  # 还需要调用者属于该项目
+    "operator_only",  # 仅运维可执行
+]
+
+# 调用方声明的「为何可以执行」。
+# 2026-10-15 侦察证实多数执行接口当前不校验身份，
+# 因此该字段目前只记录事实，不构成强制。
+ToolAuthBasis = Literal[
+    "demo_workspace",  # 回退到共享演示工作区
+    "session_user",  # 来自有效登录会话
+    "mcp_token",  # 来自 MCP Bearer token
+    "unverified",  # 未发现任何鉴权依据
+]
+
 TOOL_CONTRACT_VERSION = "tool.v1"
+
+
+class ToolAuthorization(BaseModel):
+    """一次工具调用的授权声明。
+
+    本契约记录「需要什么授权」与「当前提供了什么依据」。
+    它不执行强制，只让授权现状可被审计与投影。
+
+    背景：2026-10-15 侦察确认 POST /api/quick-collect、
+    POST /api/tasks/{id}/run、POST /api/sources/{id}/enable
+    等执行入口没有鉴权依赖，匿名调用被当作 demo workspace 业主。
+    在补齐强制之前，把事实显式声明出来，
+    以免「看起来有鉴权」掩盖真实缺口。
+    详见 docs/architecture/【审计报告】DIH参数类型声明审计.md 与侦察记录。
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    requirement: ToolAuthRequirement
+    basis: ToolAuthBasis
+    enforced: bool = False
+    note: str | None = None
 
 
 class ToolParameter(BaseModel):
@@ -92,6 +133,7 @@ class ToolDescriptor(BaseModel):
     optional_parameters: tuple[str, ...]
     cost: ToolCostHint
     availability_view: ToolAvailabilityView
+    authorization: ToolAuthorization
     is_alias_view: bool
     canonical_tool_id: str
     executable: bool

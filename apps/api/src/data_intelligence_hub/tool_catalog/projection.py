@@ -13,6 +13,9 @@ from data_intelligence_hub.platform_packages.models import (
 from data_intelligence_hub.platform_packages.status import ProviderStatusResponse
 from data_intelligence_hub.tool_catalog.models import (
     TOOL_CONTRACT_VERSION,
+    ToolAuthBasis,
+    ToolAuthorization,
+    ToolAuthRequirement,
     ToolAvailabilityView,
     ToolCatalog,
     ToolCategory,
@@ -35,6 +38,20 @@ _DEFAULT_OUTPUT_KIND: ToolOutputKind = "records"
 
 # 采集走 quick-collect 同步等待结果。
 _DEFAULT_RUN_MODE: ToolRunMode = "sync"
+
+# 这些端点会调用上游并可能产生费用，且写入某个项目。
+# 因此「应该」要求调用者属于该项目。
+_AUTH_REQUIREMENT: ToolAuthRequirement = "project_member"
+
+# 但 2026-10-15 侦察确认，执行入口当前没有鉴权依赖，
+# 匿名调用被当作共享演示工作区的业主。
+# 在强制落地前如实声明这一点，不伪装成已保护。
+_AUTH_BASIS: ToolAuthBasis = "demo_workspace"
+
+_AUTH_NOTE = (
+    "执行入口当前不校验身份，匿名调用回退到共享演示工作区（2026-10-15 侦察）。"
+    "本字段声明应然要求与实然依据，不构成强制。"
+)
 
 
 def _parameters(endpoint: PackageEndpoint) -> tuple[ToolParameter, ...]:
@@ -65,6 +82,25 @@ def _cost(endpoint: PackageEndpoint) -> ToolCostHint:
     if endpoint.cost_hint is None:
         return ToolCostHint(summary=None, source="unknown")
     return ToolCostHint(summary=endpoint.cost_hint, source="upstream_estimate")
+
+
+def _authorization(endpoint: PackageEndpoint) -> ToolAuthorization:
+    """声明端点的授权要求与当前依据。
+
+    接受 ``endpoint`` 是为了让授权与端点一一对应，
+    即使当前所有端点共用同一份声明。
+    将来若某族端点真正落地鉴权，只需在此按类型分派。
+
+    本函数不读取请求上下文，也不执行任何强制。
+    ``enforced`` 恒为 False，直到执行入口真的校验身份。
+    """
+    del endpoint
+    return ToolAuthorization(
+        requirement=_AUTH_REQUIREMENT,
+        basis=_AUTH_BASIS,
+        enforced=False,
+        note=_AUTH_NOTE,
+    )
 
 
 def _availability(
@@ -147,6 +183,7 @@ def build_tool_catalog(
                 optional_parameters=endpoint.optional_params,
                 cost=_cost(endpoint),
                 availability_view=availability_view,
+                authorization=_authorization(endpoint),
                 is_alias_view=endpoint.is_alias_view,
                 canonical_tool_id=canonical_tool_id,
                 executable=availability_view.availability
