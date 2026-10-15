@@ -9,7 +9,9 @@ description: Monid 网站（monid.ai）公开 UI/UX 与能力图谱逆向报告�
 > 逆向日期：2026-10-15
 > 方法来源：[rea](https://github.com/morluto/rea)（实际运行）· [reverse-skill](https://github.com/zhaoxuya520/reverse-skill)（方法迁移）
 > 相邻文档：[整站能力整合方案](./【技术方案】DIH整站能力整合方案.md) · [首页与目录视觉规范](./【设计规范】DIH首页与目录视觉规范.md)
-> 原始证据：`/Users/lute/.agent-reach/research/monid-20261015-XPkhQt/evidence-Hli5q3/`（本机路径，含证据索引与哈希）
+> 原始证据存放于逆向执行机的本机研究目录，未随仓库分发。
+> 因此本报告的截图与数据无法在本仓库内直接复核，只能复核结论与来源描述。
+> 需要长期留存时，应把证据副本与哈希索引一并归档到仓库或对象存储。
 
 ## 1. 结论
 
@@ -244,16 +246,28 @@ MIT 许可不得解释为商标或整站素材授权。
 
 ## 9. 证据清单
 
-`evidence-Hli5q3/` 保存 REA 原始 JSON、截图与摘要。
+证据分两类，来源与可信度不同，不可混用。
+
+### 9.1 REA 证据（12 组，有哈希背书）
+
+REA 结构检查与 REA 截图各 12 次。
 截图从 REA base64 解码，并核验 SHA-256 与字节数。
 `EVIDENCE-INDEX.json` 记录全部文件哈希。
-12 次结构检查与 12 次 REA 截图，均无截断、无丢弃事件。
+12 组检查均无截断、无丢弃事件。
 
-关键证据文件：
+REA 截图文件：`monid-tools-desktop.png`、`monid-tools-search.png`、
+`monid-tiktok-desktop.png`、`monid-endpoint-dialog.png`、`monid-endpoint-mobile.png`、
+`monid-image-generation.png`、`designeer-desktop.png`、`designeer-search.png`、
+`designeer-search-empty.png`、`designeer-grid.png`、`monid-docs.png` 等。
 
-- `monid-home-anatomy.json`：首页完整解剖数据。
-- `home-01-hero.png` 至 `home-07-provider.png`：首页分段截图。
-- `monid-tools-desktop.png`、`monid-tools-search.png`：工具目录。
-- `monid-tiktok-desktop.png`、`monid-endpoint-dialog.png`：能力详情。
-- `monid-image-generation.png`：生成类目。
-- `designeer-desktop.png`、`designeer-search-empty.png`：参考目录。
+### 9.2 浏览器辅助证据（无 REA 来源背书）
+
+以下证据由 `agent-browser` 直接采集，没有 REA 来源，不在哈希核验范围内。
+引用时必须区分。
+
+- `monid-home-anatomy.json`：首页解剖数据，来自浏览器 `eval` 计算结果。
+- `home-01-hero.png` 至 `home-07-provider.png`：首页分段截图，来自浏览器截图。
+- `monid-css-mobile.png`、`designeer-css-mobile.png`：CSS 视口移动截图。
+
+首页解剖数据的分级为 O，但来源是浏览器计算样式，不是 REA 结构快照。
+其数值随参考站改版而变化，仅代表 2026-10-15 当天状态。

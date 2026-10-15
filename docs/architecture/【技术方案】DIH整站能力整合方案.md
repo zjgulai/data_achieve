@@ -25,6 +25,28 @@ description: DIH 整站能力整合方案，把数据采集控制台扩展为通
 整站改造不等于同时上线所有工具类别。
 通信、计算与存储属于后续扩展。
 
+## 1.1 术语与命名
+
+引入通用平台后，「工具」「能力」「端点」「平台包」必须定名。
+否则目录、详情和 API 会出现三套叫法。
+
+| 术语 | 含义 | 不要用 |
+|---|---|---|
+| 工具 | 用户可调用的最小单元，对应一个 `tool_id` | capability、function |
+| 能力视图 | 工具在某个平台分类下的展示条目 | 端点（易混） |
+| 端点 | 上游服务的实际接口，属于实现细节 | 工具 |
+| 平台包 | 平台维度的 Skill 打包单元，沿用现有定义 | 工具包、能力包 |
+| 调用 | 一次工具执行，对应一个 `ToolCall` | 任务、作业 |
+| 采集任务 | 现有 `CollectionTask`，仅指采集类 | 调用 |
+| 运行 | 一次调用的执行记录，采集类由 `TaskRun` 承载 | 任务 |
+| 产物 | 调用的输出资产，对应 `Artifact` | 结果文件、输出物 |
+| 数据集 | 现有 `Dataset` 定义，沿用 | 数据资产 |
+| 抽屉 | 右侧滑出面板 | 弹窗、侧边栏 |
+| 对话框 | 覆盖式模态框 | 弹窗 |
+
+术语表需同步写入 [写作标准](../standards/writing-standard-ste.md)。
+在新词定型前，文档只用本表左列。
+
 ## 2. 已确认范围
 
 | 维度 | 已确认 |
@@ -93,10 +115,35 @@ description: DIH 整站能力整合方案，把数据采集控制台扩展为通
 ### 4.3 页面承载与旧链接
 
 - 以 `apps/scraper-console` 承载公开区与授权区。
-- 保留 `/projects`、`/tasks`、`/runs`、`/datasets` 已有标识与链接。
-- `/platforms`、`/skills`、`/collector-docs` 逐项映射到新版视图。
-- 保持平台筛选、项目与详情参数，不做丢参数跳转。
+- 保留既有标识与链接，不丢参数跳转。
 - 内部 `apps/web` 不同时改造上线，仅按需复用界面模式。
+
+现有控制台路由与新 IA 的对照：
+
+| 现有路由 | 新位置 | 处理方式 |
+|---|---|---|
+| `/` | `/` | 由重定向到 `/platforms` 改为公开首页 |
+| `/platforms` | `/tools` | 重定向，保留筛选参数 |
+| `/skills` | `/tools` | 重定向，保留筛选参数 |
+| `/skills/[platformId]` | `/tools/[toolId]` | 重定向，保留平台标识 |
+| `/collector-docs` | `/docs` | 重定向 |
+| `/projects` | `/projects` | 保持路径 |
+| `/projects/[id]` | `/projects/[id]` | 保持路径 |
+| `/tasks` | `/tasks` | 保持路径 |
+| `/runs` | `/runs` | 保持路径 |
+| `/collect/[run_id]` | `/runs/[runId]` | 重定向，保留运行标识 |
+| `/datasets` | `/assets` | 重定向，保留数据集筛选 |
+| `/raw-records` | `/assets/records` | 重定向，保留查询条件 |
+| `/dashboard` | `/dashboard` | 保持路径，内容按新 IA 重排 |
+| `/settings/account` | `/settings/account` | 保持路径 |
+| `/settings/credentials` | `/settings/credentials` | 保持路径，纳入管理员设置 |
+| 新增 | `/connect` | 新增接入页 |
+| 新增 | `/tools/[toolId]` | 新增工具详情 |
+| 新增 | `/settings/providers` | 新增供应商凭据管理 |
+| 新增 | `/settings/members` | 新增用户与授权管理 |
+
+重定向表在 P0 冻结，逐条写测试。
+不保留无参数兜底的丢参跳转。
 
 ## 5. 三条首期主流程
 

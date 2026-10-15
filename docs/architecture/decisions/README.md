@@ -16,6 +16,7 @@ description: Data Intelligence Hub 架构决策记录（ADR）索引。列出所
 | [ADR-003](ADR-003-osint-upgrade-aliens-eye-robin.md) | OSINT 能力升级（Aliens Eye + Robin，补充而非替换） | 已采纳 | 2026-09-03 |
 | [ADR-004](ADR-004-mediacrawler-cookie-strategy.md) | MediaCrawler Cookies 管理策略（手动优先，ego-lite 长效） | 已采纳（阶段一执行中）| 2026-09-03 |
 | [ADR-005](ADR-005-implementation-priority-order.md) | 研发优先级排序（2026-09-03 批次） | 已采纳 | 2026-09-03 |
+| [ADR-006](ADR-006-general-tool-platform-integration.md) | 通用 Agent 工具平台整合（单目录、单调用门、受控适配器） | 提议中 | 2026-10-15 |
 
 ## ADR 状态说明
 
