@@ -1,14 +1,34 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
+
+import pytest
 
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
 from data_intelligence_hub.platform_packages.status import (
     EndpointEvidence,
     build_provider_status,
 )
 from data_intelligence_hub.tool_catalog.projection import build_tool_catalog
+
+
+@pytest.fixture()
+def restricted_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """在受限联网模式下运行。
+
+    采集外访策略规定本地与测试环境默认 offline，
+    provider_api 类采集器会被整体拦下，无法验证「按证据判断可用性」的行为。
+    这里显式切到 restricted，让固定 Provider 端点具备执行资格。
+    策略本身的行为由 outbound 系列测试覆盖，不在本文件重复。
+    """
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 def _catalog():
@@ -47,7 +67,9 @@ def test_catalog_does_not_claim_verified_without_evidence() -> None:
     )
 
 
-def test_catalog_reports_executable_only_for_non_blocked_tools() -> None:
+def test_catalog_reports_executable_only_for_non_blocked_tools(
+    restricted_network: None,
+) -> None:
     catalog = _catalog()
     status = build_provider_status(
         catalog,

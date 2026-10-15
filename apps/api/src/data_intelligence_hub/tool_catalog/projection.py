@@ -93,6 +93,8 @@ def build_availability_views(
     """把 Provider 状态转成按端点索引的运行证据视图。
 
     这里不填 ``catalog_status``。它由投影在合并端点时补齐。
+    ``policy_block_reason`` 是策略阻断的说明，映射到 ``block_reason``。
+    它与 ``missing_configuration`` 不同：前者是策略拒绝，后者是缺配置。
     """
     return {
         item.endpoint_type: ToolAvailabilityView(
@@ -102,6 +104,7 @@ def build_availability_views(
             last_test_at=item.last_test_at,
             last_records_count=item.last_records_count,
             missing_configuration=item.missing_configuration,
+            block_reason=item.policy_block_reason,
         )
         for item in status.endpoints
     }

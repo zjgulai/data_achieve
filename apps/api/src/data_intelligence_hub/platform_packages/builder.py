@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
+from typing import Any
 
 from data_intelligence_hub.platform_packages.models import (
     PackageEndpoint,
@@ -84,7 +85,20 @@ def build_platform_package_catalog(
         _build_package(platform_id, endpoints, notes_by_platform.get(platform_id))
         for platform_id, endpoints in sorted(by_platform.items())
     )
-    digest_payload = [package.model_dump(mode="json") for package in packages]
+    # 摘要标识「目录内容」，不是运行环境状态。
+    # policy_block_reason 与 verified_count 由运行时策略派生（COLLECTION_NETWORK_MODE
+    # 与域名批准），同一份源码在不同环境会得到不同摘要。若把它们计入，
+    # CI 锁文件比对、生成的 SKILL.md 标识与发布版本号都会随环境漂移。
+    # 注意：pydantic 的 exclude 不会用扁平集合递归到嵌套模型，
+    # 端点的 policy_block_reason 必须用 {"__all__": ...} 形式排除。
+    # 详见 docs/standards/collection-outbound-safety.md 与 tool-catalog 契约。
+    digest_exclude: dict[str, Any] = {
+        "verified_count": True,
+        "endpoints": {"__all__": {"policy_block_reason"}},
+    }
+    digest_payload = [
+        package.model_dump(mode="json", exclude=digest_exclude) for package in packages
+    ]
     digest = hashlib.sha256(
         json.dumps(digest_payload, ensure_ascii=False, sort_keys=True).encode()
     ).hexdigest()
