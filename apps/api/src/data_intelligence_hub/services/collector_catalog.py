@@ -915,6 +915,28 @@ def _require_text(config: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
+def _carry_timeout(config: dict[str, Any], validated: dict[str, Any]) -> None:
+    """把调用方给出的执行超时预算带进校验结果。
+
+    ``run_timeout_seconds`` 不是采集器自己的入参，而是执行层用来决定
+    「等多久」的预算。它由 `collector_service._collection_timeout_seconds`
+    读取，因此必须穿过服务层白名单，否则会在校验时被静默丢掉——
+    传入值失效、执行层反而回落到更短的默认预算。
+
+    只在调用方显式给出时才写入。缺省时保持原状：由执行层按端点级或
+    全局默认回落，不在这里替它选一个值。
+
+    这里刻意不做数值校验，保持与原先 passthrough 类型一致的行为：
+    非数值由 `_collection_timeout_seconds` 的 isinstance 分支回落到默认，
+    数值由它钳制到 [0.1, 1800]。新增一层校验会在生产上引入新的拒绝路径，
+    与本修复要解决的问题无关。
+    """
+    raw = config.get("run_timeout_seconds")
+    if raw is None:
+        return
+    validated["run_timeout_seconds"] = raw
+
+
 def _validate_github_repo_config(config: dict[str, Any]) -> dict[str, Any]:
     url = config.get("url", "")
     if url and isinstance(url, str):
@@ -1185,6 +1207,7 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
     ):
         if key in config and config[key] is not None:
             out[key] = config[key]
+    _carry_timeout(config, out)
     return out
 
 
@@ -1205,12 +1228,14 @@ def _validate_apify_actor_config(config: dict[str, Any]) -> dict[str, Any]:
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {
+    out = {
         "actor_id": actor_id,
         "actor_input": actor_input,
         "max_items": max_items,
         "max_total_charge_usd": float(max_charge),
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_playwright_browser_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1312,7 +1337,7 @@ def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(exclude_domains, list):
         raise CollectorConfigError
 
-    return {
+    out = {
         "query": query,
         "search_type": search_type,
         "category": category,
@@ -1329,6 +1354,8 @@ def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
         "summary_query": config.get("summary_query"),
         "text_max_characters": config.get("text_max_characters"),
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_exa_find_similar_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1341,7 +1368,7 @@ def _validate_exa_find_similar_config(config: dict[str, Any]) -> dict[str, Any]:
     exclude_source = config.get("exclude_source_domain", True)
     if not isinstance(exclude_source, bool):
         raise CollectorConfigError
-    return {
+    out = {
         "url": url,
         "num_results": num_results,
         "exclude_source_domain": exclude_source,
@@ -1351,6 +1378,8 @@ def _validate_exa_find_similar_config(config: dict[str, Any]) -> dict[str, Any]:
         "start_published_date": config.get("start_published_date"),
         "end_published_date": config.get("end_published_date"),
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1375,7 +1404,7 @@ def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(subpages, int) or not (0 <= subpages <= 100):
         raise CollectorConfigError
 
-    return {
+    out = {
         "urls": [u.strip() for u in urls],
         "contents_mode": contents_mode,
         "max_age_hours": config.get("max_age_hours"),
@@ -1384,6 +1413,8 @@ def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
         "summary_query": config.get("summary_query"),
         "text_max_characters": config.get("text_max_characters"),
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_exa_answer_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1393,11 +1424,13 @@ def _validate_exa_answer_config(config: dict[str, Any]) -> dict[str, Any]:
     output_schema = config.get("output_schema")
     if output_schema is not None and not isinstance(output_schema, dict):
         raise CollectorConfigError
-    return {
+    out = {
         "query": query,
         "output_schema": output_schema,
         "text": config.get("text", False),
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_passthrough_config(config: dict[str, Any]) -> dict[str, Any]:

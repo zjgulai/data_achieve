@@ -52,6 +52,89 @@ class TestCollectionTimeoutSeconds:
         assert max(SLOW_ENDPOINT_TIMEOUT_SECONDS.values()) < 1800.0
 
 
+class TestRunTimeoutSurvivesServiceValidation:
+    """`run_timeout_seconds` 必须穿过服务层白名单。
+
+    2026-10-16 修复的缺陷：quick_collect 构造了该键，但服务层专用校验函数
+    的返回白名单不含它，于是值被静默剥除。执行层读不到，回落到全局 300s，
+    而采集器内层仍按自己的 600s 自等——内层等 600s，外层 300s 先取消它。
+
+    受影响的是六个有专用校验函数的类型；passthrough 类型本就透传。
+    """
+
+    _APIFY = {"actor_id": "apify/instagram-scraper", "actor_input": {}}
+
+    @pytest.mark.parametrize(
+        "collector_type,config",
+        [
+            ("apify_actor", _APIFY),
+            ("exa_answer", {"query": "q"}),
+            ("exa_contents", {"urls": ["https://example.com"]}),
+            ("exa_find_similar", {"url": "https://example.com"}),
+        ],
+    )
+    def test_validator_keeps_the_key(self, collector_type: str, config: dict):
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config(
+            collector_type, {**config, "run_timeout_seconds": 900}
+        )
+        assert validated["run_timeout_seconds"] == 900
+
+    def test_budget_chain_is_connected_for_apify(self):
+        """端到端：调用方给的预算必须一路到达执行层。"""
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config(
+            "apify_actor", {**self._APIFY, "run_timeout_seconds": 900}
+        )
+        assert _collection_timeout_seconds(validated) == 900.0
+
+    def test_absent_key_still_falls_back(self):
+        """不传时保持原状，由执行层回落，而不是由校验层替它选值。"""
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config("apify_actor", dict(self._APIFY))
+        assert "run_timeout_seconds" not in validated
+        assert _collection_timeout_seconds(validated) == DEFAULT_COLLECTION_TIMEOUT_SECONDS
+
+    def test_ceiling_still_applies_after_validation(self):
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config(
+            "apify_actor", {**self._APIFY, "run_timeout_seconds": 99_999}
+        )
+        assert _collection_timeout_seconds(validated) == MAX_COLLECTION_TIMEOUT_SECONDS
+
+    def test_inner_wait_must_not_outlast_the_outer_budget(self):
+        """透传修好后仍存在的设计约束：内层自等不得长于外层预算。
+
+        apify 采集器内层默认自等 600s。若调用方给的预算更短，
+        外层仍会先取消——这正是原缺陷的形态，只是触发条件变了。
+        这条断言把这个边界钉住，避免将来有人把内层默认值调大。
+        """
+        from data_intelligence_hub.collectors.apify_actor import APIFY_RUN_WAIT_TIMEOUT
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config(
+            "apify_actor", {**self._APIFY, "run_timeout_seconds": 300}
+        )
+        outer = _collection_timeout_seconds(validated)
+        assert outer < APIFY_RUN_WAIT_TIMEOUT, (
+            "外层预算短于内层自等，长任务会在采集器自己超时前被取消"
+        )
+
+
 class TestAdvancedCollectorLevel:
     def _collector(self, config):
         return AliensEyeAdvancedCollector(config=config)
