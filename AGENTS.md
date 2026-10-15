@@ -203,6 +203,12 @@ pnpm --dir apps/scraper-console build
 - **能力总账（先读这份）**：`docs/architecture/【能力总账】DIH-平台能力现状与维护手册.md`
   （可用/缺配置/上游故障/恒空端点清单、现状快照、维护方法、待补清单）
 - **能力图谱**：`docs/architecture/【能力图谱】DIH-控制台能力地图.md`（逐页 → 后端 → 实测状态）
+- **整站能力整合方案**：`docs/architecture/【技术方案】DIH整站能力整合方案.md`
+  （从采集控制台扩展为通用 Agent 工具平台：信息架构、最小后端契约、授权与额度边界、分期验收）
+- **首页与目录视觉规范**：`docs/architecture/【设计规范】DIH首页与目录视觉规范.md`
+  （排版尺度、间距、组件角色、文案规则、品牌映射）
+- **Monid 逆向报告**：`docs/architecture/【逆向报告】Monid网站UI与能力逆向.md`
+  （参考站 UI/UX 与能力图谱逆向、证据分级、首页解剖、未覆盖项）
 - **测试计划**：`docs/playbooks/【测试计划】DIH-平台采集生产实测.md`（L1–L8 分层 + 通过标准）
 - **坑点库（自动生成）**：`docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md`
 - **坑点单一事实源**：`apps/api/src/data_intelligence_hub/platform_packages/notes/<platform_id>.json`
