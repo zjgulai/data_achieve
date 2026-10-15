@@ -942,8 +942,12 @@ def _validate_github_repo_config(config: dict[str, Any]) -> dict[str, Any]:
     if url and isinstance(url, str):
         parts = url.rstrip("/").split("/")
         if len(parts) >= 2:
-            return {"owner": parts[-2], "repo": parts[-1]}
-    return {"owner": _require_text(config, "owner"), "repo": _require_text(config, "repo")}
+            out = {"owner": parts[-2], "repo": parts[-1]}
+            _carry_timeout(config, out)
+            return out
+    out = {"owner": _require_text(config, "owner"), "repo": _require_text(config, "repo")}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_github_topic_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -953,7 +957,9 @@ def _validate_github_topic_config(config: dict[str, Any]) -> dict[str, Any]:
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"topic": topic, "max_results": max_results}
+    out = {"topic": topic, "max_results": max_results}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_generic_web_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -968,7 +974,9 @@ def _validate_generic_web_config(config: dict[str, Any]) -> dict[str, Any]:
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"url": url, "extract_mode": extract_mode}
+    out = {"url": url, "extract_mode": extract_mode}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_autoscraper_enhanced_web_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -990,13 +998,15 @@ def _validate_autoscraper_enhanced_web_config(config: dict[str, Any]) -> dict[st
         raise CollectorConfigError
     save_rules = config.get("save_rules", False)
     rules_path = config.get("rules_path")
-    return {
+    out = {
         "url": url,
         "wanted_list": wanted_list,
         "mode": mode,
         "save_rules": save_rules,
         "rules_path": rules_path,
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_public_feed_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1016,7 +1026,9 @@ def _validate_public_feed_config(config: dict[str, Any]) -> dict[str, Any]:
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"url": url, "feed_type": feed_type, "max_items": max_items}
+    out = {"url": url, "feed_type": feed_type, "max_items": max_items}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_manual_json_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1026,7 +1038,9 @@ def _validate_manual_json_config(config: dict[str, Any]) -> dict[str, Any]:
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"entity_type": entity_type, "json_data": json_data}
+    out = {"entity_type": entity_type, "json_data": json_data}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_ecommerce_product_page_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1087,7 +1101,9 @@ def _validate_ecommerce_product_page_config(config: dict[str, Any]) -> dict[str,
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"url": url, "fields": normalized_fields, "platform_hint": platform_hint}
+    out = {"url": url, "fields": normalized_fields, "platform_hint": platform_hint}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_ecommerce_product_discovery_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1107,7 +1123,9 @@ def _validate_ecommerce_product_discovery_config(config: dict[str, Any]) -> dict
         from data_intelligence_hub.services.exceptions import CollectorConfigError
 
         raise CollectorConfigError
-    return {"url": url, "max_products": max_products, "platform_hint": platform_hint}
+    out = {"url": url, "max_products": max_products, "platform_hint": platform_hint}
+    _carry_timeout(config, out)
+    return out
 
 
 _TIKHUB_ENDPOINT_TYPES = {
@@ -1257,12 +1275,14 @@ def _validate_playwright_browser_config(config: dict[str, Any]) -> dict[str, Any
         not isinstance(wait_selector, str) or not wait_selector.strip()
     ):
         raise CollectorConfigError
-    return {
+    out = {
         "url": url,
         "wait_for": wait_for,
         "extract_mode": extract_mode,
         "wait_selector": wait_selector.strip() if wait_selector else None,
     }
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1281,7 +1301,9 @@ def _validate_anysearch_config(config: dict[str, Any]) -> dict[str, Any]:
     params = config.get("params")
     if params is not None and not isinstance(params, dict):
         raise CollectorConfigError
-    return {"query": query, "num_results": num_results, "site": site, "tag": tag, "params": params}
+    out = {"query": query, "num_results": num_results, "site": site, "tag": tag, "params": params}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -1291,7 +1313,9 @@ def _validate_jina_reader_config(config: dict[str, Any]) -> dict[str, Any]:
     return_format = config.get("return_format", "markdown")
     if return_format not in {"markdown", "text", "html"}:
         raise CollectorConfigError
-    return {"url": url, "return_format": return_format}
+    out = {"url": url, "return_format": return_format}
+    _carry_timeout(config, out)
+    return out
 
 
 def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:

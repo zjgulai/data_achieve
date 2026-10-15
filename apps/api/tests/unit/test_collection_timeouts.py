@@ -55,44 +55,77 @@ class TestCollectionTimeoutSeconds:
 class TestRunTimeoutSurvivesServiceValidation:
     """`run_timeout_seconds` 必须穿过服务层白名单。
 
-    2026-10-16 修复的缺陷：quick_collect 构造了该键，但服务层专用校验函数
-    的返回白名单不含它，于是值被静默剥除。执行层读不到，回落到全局 300s，
+    2026-10-16 修复的缺陷：quick_collect 构造了该键，但专用校验函数的
+    返回白名单不含它，于是值被静默剥除。执行层读不到，回落到全局 300s，
     而采集器内层仍按自己的 600s 自等——内层等 600s，外层 300s 先取消它。
 
-    受影响的是六个有专用校验函数的类型；passthrough 类型本就透传。
+    覆盖全部 17 个专用校验函数。首轮只修了 6 个（apify/tikhub/exa×4），
+    其余 10 个仍在丢弃，同批补齐。passthrough 类型本就透传。
     """
 
     _APIFY = {"actor_id": "apify/instagram-scraper", "actor_input": {}}
 
-    @pytest.mark.parametrize(
-        "collector_type,config",
-        [
-            ("apify_actor", _APIFY),
-            ("exa_answer", {"query": "q"}),
-            ("exa_contents", {"urls": ["https://example.com"]}),
-            ("exa_find_similar", {"url": "https://example.com"}),
-        ],
-    )
-    def test_validator_keeps_the_key(self, collector_type: str, config: dict):
+    # 17 个专用校验函数各一份最小有效配置。
+    _VALID_CONFIGS = {
+        "github_repo": {"owner": "a", "repo": "b"},
+        "github_topic": {"topic": "python"},
+        "generic_web": {"url": "https://example.com"},
+        "autoscraper_enhanced_web": {"url": "https://example.com", "wanted_list": ["x"]},
+        "public_feed": {"url": "https://example.com/feed"},
+        "manual_json": {"entity_type": "t", "json_data": []},
+        "ecommerce_product_page": {"url": "https://example.com/p"},
+        "ecommerce_product_discovery": {"url": "https://example.com", "max_products": 5},
+        "tikhub_social": {
+            "endpoint_type": "tikhub_tiktok_video_search",
+            "keyword": "k",
+        },
+        "apify_actor": _APIFY,
+        "playwright_browser": {"url": "https://example.com"},
+        "anysearch": {"query": "q"},
+        "jina_reader": {"url": "https://example.com"},
+        "exa_search": {"query": "q"},
+        "exa_find_similar": {"url": "https://example.com"},
+        "exa_contents": {"urls": ["https://example.com"]},
+        "exa_answer": {"query": "q"},
+    }
+
+    @pytest.mark.parametrize("collector_type", sorted(_VALID_CONFIGS))
+    def test_every_dedicated_validator_keeps_the_key(self, collector_type: str):
+        """覆盖全部 17 个专用校验函数，不抽样。
+
+        抽样是首轮漏掉 10 个的原因：当时只挑了 apify 与三个 exa。
+        """
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
         )
 
         validated = validate_collector_config(
-            collector_type, {**config, "run_timeout_seconds": 900}
+            collector_type, {**self._VALID_CONFIGS[collector_type], "run_timeout_seconds": 700}
         )
-        assert validated["run_timeout_seconds"] == 900
+        assert validated["run_timeout_seconds"] == 700
 
-    def test_budget_chain_is_connected_for_apify(self):
+    @pytest.mark.parametrize("collector_type", sorted(_VALID_CONFIGS))
+    def test_budget_chain_is_connected(self, collector_type: str):
         """端到端：调用方给的预算必须一路到达执行层。"""
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
         )
 
         validated = validate_collector_config(
-            "apify_actor", {**self._APIFY, "run_timeout_seconds": 900}
+            collector_type, {**self._VALID_CONFIGS[collector_type], "run_timeout_seconds": 700}
         )
-        assert _collection_timeout_seconds(validated) == 900.0
+        assert _collection_timeout_seconds(validated) == 700.0
+
+    def test_passthrough_types_keep_it_too(self):
+        """passthrough 类型没有专用函数，本来就透传；这里防止将来改坏。"""
+        from data_intelligence_hub.services.collector_catalog import (
+            validate_collector_config,
+        )
+
+        validated = validate_collector_config(
+            "npm_package", {"package": "express", "run_timeout_seconds": 700}
+        )
+        assert _collection_timeout_seconds(validated) == 700.0
 
     def test_absent_key_still_falls_back(self):
         """不传时保持原状，由执行层回落，而不是由校验层替它选值。"""
