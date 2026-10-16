@@ -4,7 +4,8 @@ import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchProject, DOMAIN_LABELS, DOMAIN_COLORS } from "@/lib/api/projects";
-import { fetchTasks, fetchTaskRuns } from "@/lib/api/tasks";
+import { fetchTasks } from "@/lib/api/tasks";
+import { fetchAllRuns } from "@/lib/api/runs";
 import { fetchDatasets } from "@/lib/api/datasets";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
 import { Loader2, PlayCircle, Database, Calendar } from "lucide-react";
@@ -41,23 +42,14 @@ export default function ProjectDetailPage({ params }: Props) {
     queryFn: () => fetchTasks({ project_id: id }),
   });
 
-  // 最近运行。后端 /api/tasks/runs 不支持按项目过滤，
-  // 故按本项目任务逐个取运行记录再合并。
-  const taskIds = (tasks ?? []).map(task => task.id);
+  // 最近运行。后端按 project_id 过滤。单次请求。
   const {
     data: recentRuns,
     isLoading: runsLoading,
     error: runsError,
   } = useQuery({
-    queryKey: ["project-runs", id, taskIds.join(",")],
-    enabled: taskIds.length > 0,
-    queryFn: async () => {
-      const perTask = await Promise.all(taskIds.map(taskId => fetchTaskRuns(taskId)));
-      return perTask
-        .flat()
-        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
-        .slice(0, 10);
-    },
+    queryKey: ["project-runs", id],
+    queryFn: () => fetchAllRuns({ project_id: id, limit: 10 }),
   });
 
   // 本项目数据集。
@@ -169,11 +161,7 @@ export default function ProjectDetailPage({ params }: Props) {
               <Calendar size={18} />
               最近运行
             </h2>
-            {taskIds.length === 0 ? (
-              <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
-                暂无运行记录。在「采集任务」中运行任务后，记录会出现在这里。
-              </div>
-            ) : runsLoading ? (
+            {runsLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 size={20} className="animate-spin text-[var(--text-tertiary)]" />
               </div>

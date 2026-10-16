@@ -9,6 +9,11 @@ export type TaskRun = {
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
+  /**
+   * 运行日志。后端 `TaskRunResponse.logs` 返回。
+   * 每条含 step / message / level / timestamp。失败日志另有 failure_reason 等键。
+   */
+  logs: Array<{ step: string; message: string; level: string; timestamp: string }>;
 };
 
 /**
@@ -37,10 +42,14 @@ export type RawRecord = {
 export async function fetchAllRuns(params?: {
   limit?: number;
   status?: string;
+  /** 按项目过滤。后端 GET /api/tasks/runs 支持。 */
+  project_id?: string;
 }): Promise<TaskRun[]> {
   const qs = new URLSearchParams();
   if (params?.limit) qs.set("limit", String(params.limit));
   if (params?.status) qs.set("status", params.status);
+  // 空串会让后端返回 422。只用真值。
+  if (params?.project_id) qs.set("project_id", params.project_id);
   const query = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<TaskRun[]>(`/api/tasks/runs${query}`);
 }

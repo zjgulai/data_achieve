@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.core.config import get_settings
-from data_intelligence_hub.models.task import TaskRun
+from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
@@ -69,6 +69,7 @@ async def list_all_task_run_items(
     session: SessionDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
+    project_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> list[TaskRunResponse]:
     workspace = await get_demo_workspace(session)
     if workspace is None:
@@ -84,6 +85,13 @@ async def list_all_task_run_items(
     )
     if status_filter:
         q = q.where(TaskRun.status == status_filter)
+    if project_id is not None:
+        # 按项目过滤：运行属于任务，任务属于项目。
+        q = q.where(
+            TaskRun.task_id.in_(
+                select(CollectionTask.id).where(CollectionTask.project_id == project_id)
+            )
+        )
     result = await session.execute(q)
     runs = result.scalars().all()
     return [TaskRunResponse.from_run(run) for run in runs]

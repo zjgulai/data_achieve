@@ -3827,6 +3827,119 @@ async def test_manual_task_run_idempotency_key_replays_existing_run(
     ]
 
 
+async def _run_manual_json_task_once(
+    client: AsyncClient,
+    *,
+    project_id: str,
+    source_name: str,
+    product_name: str,
+) -> dict[str, Any]:
+    """给指定项目建 manual_json 源，启用后手动跑一次，返回真实 TaskRun。
+
+    源先以禁用状态建好，enable 生成任务，手动运行走完整任务管线并落库
+    一条 TaskRun，供全局运行列表用例断言过滤行为。
+    """
+    source_response = await client.post(
+        "/api/sources",
+        json={
+            "project_id": project_id,
+            "name": source_name,
+            "type": "manual_json",
+            "config": {
+                "entity_type": "product",
+                "json_data": {"name": product_name, "price": 19},
+            },
+            "schedule_cron": None,
+        },
+    )
+    assert source_response.status_code == 201
+    source = source_response.json()
+
+    enable_response = await client.post(f"/api/sources/{source['id']}/enable")
+    assert enable_response.status_code == 200
+    task = enable_response.json()
+
+    run_response = await client.post(f"/api/tasks/{task['id']}/run")
+    assert run_response.status_code == 201
+    run = run_response.json()
+    assert run["status"] == "success"
+    assert run["task_id"] == task["id"]
+    return run
+
+
+@pytest.mark.asyncio
+async def test_global_runs_endpoint_filters_by_project_id(
+    client: AsyncClient,
+) -> None:
+    # 两个项目各有一个真实运行，才能证明 project_id 过滤有区分度。
+    project_a_id = await register_and_create_project(client)
+
+    project_b_response = await client.post(
+        "/api/projects",
+        json={
+            "name": "Runs Filter Second Project",
+            "description": "Second project for global run filtering.",
+            "domain": "ecommerce",
+        },
+    )
+    assert project_b_response.status_code == 201
+    project_b_id = str(project_b_response.json()["id"])
+
+    run_a = await _run_manual_json_task_once(
+        client,
+        project_id=project_a_id,
+        source_name="Filter Runs Source A",
+        product_name="Filter Runs Product A",
+    )
+    run_b = await _run_manual_json_task_once(
+        client,
+        project_id=project_b_id,
+        source_name="Filter Runs Source B",
+        product_name="Filter Runs Product B",
+    )
+
+    # 边界 1：带 project_id 时只返回该项目的运行。
+    filtered_a_response = await client.get(
+        "/api/tasks/runs", params={"project_id": project_a_id}
+    )
+    assert filtered_a_response.status_code == 200
+    filtered_a_runs = filtered_a_response.json()
+    assert [item["id"] for item in filtered_a_runs] == [run_a["id"]]
+    assert filtered_a_runs[0]["task_id"] == run_a["task_id"]
+
+    filtered_b_response = await client.get(
+        "/api/tasks/runs", params={"project_id": project_b_id}
+    )
+    assert filtered_b_response.status_code == 200
+    filtered_b_runs = filtered_b_response.json()
+    assert [item["id"] for item in filtered_b_runs] == [run_b["id"]]
+    assert filtered_b_runs[0]["task_id"] == run_b["task_id"]
+
+    # 边界 2：不带 project_id 时返回全量，行为不变。
+    all_runs_response = await client.get("/api/tasks/runs")
+    assert all_runs_response.status_code == 200
+    all_runs = all_runs_response.json()
+    assert len(all_runs) == 2
+    # 条数差异是过滤生效的直接证据：全量 2 条，单项目过滤各 1 条。
+    assert len(all_runs) == len(filtered_a_runs) + len(filtered_b_runs)
+    assert {item["id"] for item in all_runs} == {run_a["id"], run_b["id"]}
+
+    # 边界 3：合法但不存在的项目 UUID 返回 200 与空数组，不是 404。
+    missing_project_id = str(uuid.uuid4())
+    missing_response = await client.get(
+        "/api/tasks/runs", params={"project_id": missing_project_id}
+    )
+    assert missing_response.status_code == 200
+    assert missing_response.json() == []
+
+    # 边界 4：不是合法 UUID 的 project_id 返回 422。
+    invalid_response = await client.get(
+        "/api/tasks/runs", params={"project_id": "not-a-uuid"}
+    )
+    assert invalid_response.status_code == 422
+    assert invalid_response.json()["detail"][0]["loc"] == ["query", "project_id"]
+
+
 @pytest.mark.asyncio
 async def test_ecommerce_product_page_source_runs_into_product_entity(
     client: AsyncClient,
