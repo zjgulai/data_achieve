@@ -3,8 +3,11 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from data_intelligence_hub.agents.tiktok_cdo.router import router as tiktok_cdo_router
 from data_intelligence_hub.api.routes.alerts import (
@@ -50,6 +53,7 @@ from data_intelligence_hub.api.routes.workflow_runs import (
 )
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.core.logging import configure_logging
 from data_intelligence_hub.mcp_runtime import (
     BearerTokenMiddleware,
     mcp_app,
@@ -77,6 +81,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    # 关掉异常回溯里的局部变量渲染。默认配置会把密钥等取值打进日志，
+    # 详见 core/logging.py 的说明。
+    configure_logging()
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
@@ -93,6 +100,30 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 这一条路径的 request 校验失败必须返回固定且不含输入的 422。
+    # 契约 docs/api/api-contract-data-intelligence-hub-stable.md:943/973 要求
+    # detail 固定为 youtube_read_plan_request_invalid，且不回显输入——
+    # 该请求体里可能带 api_key 或 credential_reference。
+    # 其他路径继续走 FastAPI 默认处理器，全局错误合同不变。
+    _sanitized_422_paths = {
+        "/api/automation/social-provider-youtube-read-plan",
+    }
+
+    @app.exception_handler(RequestValidationError)
+    async def _sanitize_validation_error(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        if request.url.path in _sanitized_422_paths:
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "youtube_read_plan_request_invalid"},
+            )
+        return JSONResponse(
+            status_code=422,
+            content={"detail": jsonable_encoder(exc.errors())},
+        )
 
     app.include_router(health_router)
     app.include_router(health_router, prefix="/api")

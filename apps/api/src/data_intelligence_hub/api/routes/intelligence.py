@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import SessionDep
+from data_intelligence_hub.repositories.users import get_user_by_id
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.intelligence import (
     EvidenceResponse,
@@ -142,12 +143,21 @@ async def post_intelligence_feedback(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="demo_workspace_unavailable",
         )
+    # 反馈必须挂在某个用户名下，而模型里 user_id 是非空外键。
+    # 去认证改造后这里一度传 None，于是每次提交反馈必然 500。
+    # 演示工作区的所有者就是这条无鉴权路径的归属人。
+    author = await get_user_by_id(session, workspace.owner_id)
+    if author is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_owner_unavailable",
+        )
     try:
         feedback = await submit_intelligence_feedback(
             session,
             workspace,
             intelligence_id,
-            None,
+            author.id,
             payload.feedback_type,
             payload.comment,
         )
