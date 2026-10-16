@@ -709,13 +709,12 @@ async def test_internal_failure_real_renderer_redacts_exception_value(
     assert response.headers["X-Request-ID"]
     assert "workflow_plan_preview_failed" in rendered
     assert "RuntimeError" in rendered
-    # 已知缺口（2026-10-16 归因，未改产品代码，待人工决策）：
-    # structlog 26.1.0 的 ConsoleRenderer 默认 exception_formatter 是
-    # RichTracebackFormatter(show_locals=True, extra_lines=3)。实测 rendered 里
-    # workflow_plans.py:523 帧的局部变量 exc、fail_planner 帧 locals 与源码上下文
-    # 都会带出原始值；_sanitized_exc_info 只替换异常显示行（末行 RuntimeError:
-    # RuntimeError 已脱敏），挡不住 locals。需产品侧给 renderer 关
-    # show_locals/extra_lines；断言保持原样。
+    # 脱敏依赖 core/logging.py 的配置，不依赖断言本身。
+    # 背景（2026-10-16）：structlog 26.1.0 装 rich 时默认用
+    # RichTracebackFormatter(show_locals=True, extra_lines=3)，会把异常帧的
+    # 局部变量连同取值渲染出来——_sanitized_exc_info 只替换异常显示行，
+    # 挡不住 locals。修复是在 core/logging.py 里关掉 show_locals 与 extra_lines，
+    # 由 create_app 调用。若有人改回默认配置，下面三条断言会失败。
     assert private_marker not in rendered
     assert "example.com" not in rendered
     assert "topsecret" not in rendered

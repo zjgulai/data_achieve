@@ -381,14 +381,14 @@ async def test_youtube_read_plan_route_is_authenticated_strict_and_fixture_only(
     assert "agentic workflows" not in rendered
     assert "env:YOUTUBE_API_KEY" not in rendered
 
-    # 已知缺口（2026-10-16 归因，未改产品代码，待人工决策）：
+    # 这三条断言锁定契约要求，不依赖默认处理器行为。
     # 合同 docs/api/api-contract-data-intelligence-hub-stable.md:943/973 要求该精确
     # path 的 request validation 返回「固定且不含输入」的 422
     # youtube_read_plan_request_invalid（:929 另要求不回显 reference）。
-    # 实测产品走 FastAPI 默认 validation handler：detail 为错误列表且原样回显
-    # input（如 {'type': 'extra_forbidden', 'input': 'must-not-be-accepted'}）；
-    # 该 detail 字符串全仓库（含 git 历史）只存在于本测试文件。缺口是路径级
-    # 脱敏 422 处理器从未随统一生产快照入库；断言保持原样，修复属产品侧范围。
+    # 背景（2026-10-16）：产品曾走 FastAPI 默认 handler，detail 为错误列表且
+    # 原样回显 input。修复是在 main.py 里加路径级脱敏处理器，
+    # 只对该 path 生效，其他 path 仍走默认处理器。
+    # 若有人移除该处理器，下面三条断言会失败。
     rejected = await client.post(
         "/api/automation/social-provider-youtube-read-plan",
         json={

@@ -96,9 +96,12 @@ python3 -c "import json;d=json.load(open('generated/platform-packages.json'));pr
 | 套件 | 结果 |
 |---|---|
 | 单元测试 | 1719 通过，0 失败 |
-| 集成测试 | 380 通过，3 失败 |
+| 集成测试 | 383 通过，0 失败 |
 
-3 个失败是真缺陷，已定位未修，见 5.2。
+两个套件全绿。**不要引入新失败。**
+
+本日稍早集成测试还有 3 个失败，根因是三个后端真缺陷，已修（提交 `967532c`）。
+原来的缺陷描述留在 5.2，供你了解这些端点的历史。
 
 ## 3. 实施对象
 
@@ -229,25 +232,30 @@ python3 -c "import json;d=json.load(open('generated/platform-packages.json'));pr
 - 分类筛选是子串匹配，7 个平台串类
 - `/collect` 页面截断到 100 条但谎报总数
 
-### 5.2 后端已知缺陷（已定位，未修）
+### 5.2 后端缺陷（2026-10-16 已修，提交 `967532c`）
 
-**这三条是集成测试仍在失败的原因。** 它们不是前端的问题，但会影响你的页面。
+这三条曾是集成测试最后 3 个失败的根因。**现已全部修好，测试全绿。**
+保留在此是因为它们会影响你对这些端点行为的理解。
 
-**A. `POST /api/intelligence/{id}/feedback` 必定 500**
+**A. `POST /api/intelligence/{id}/feedback` 曾必定 500**
 
-`api/routes/intelligence.py:150` 把 `None` 当 `user_id` 传给服务层，而模型里 `user_id` 是 `nullable=False`。
+`api/routes/intelligence.py` 曾把 `None` 当 `user_id` 传给服务层，而模型里
+`user_id` 是 `nullable=False`。已改为取演示工作区的所有者。
 
-与 2026-10-16 已修的 `POST /api/projects` 是同类缺陷。修法：取演示工作区的所有者。
+**B. YouTube 读取计划的 422 曾回显用户密钥**
 
-**B. YouTube 读取计划的 422 会回显用户密钥**
+`social-provider-youtube-read-plan` 曾缺路径级脱敏处理器，框架默认 422
+会把原始请求体回显，含用户传入的 `api_key`。已新增路径级处理器，
+只对那一条路径生效；其他路径仍走默认处理器。
 
-`social-provider-youtube-read-plan` 缺路径级脱敏处理器，框架默认 422 会把原始请求体回显，含用户传入的 `api_key`。
+**C. 内部错误日志曾带出局部变量（含密钥）**
 
-**C. 内部错误日志会带出局部变量（含密钥）**
+`structlog 26.1.0` 的 `ConsoleRenderer` 默认 `show_locals=True`，
+会把异常帧的局部变量写进日志——各路由的 `_sanitized_exc_info`
+挡不住 locals。已在 `core/logging.py` 关掉它。
 
-`structlog 26.1.0` 的 `ConsoleRenderer` 默认 `show_locals=True`。工作流规划器的内部错误会把异常帧的局部变量写进 stderr。
-
-本仓库没有 `structlog.configure`，走的是默认值。修法：配置 renderer 关掉 `show_locals`。
+**对前端的实际影响：** 这三条都在后端，你不必处理。提到它们是为了让你知道
+`/api/intelligence/{id}/feedback` 与 YouTube 读取计划这两个端点的当前状态。
 
 ### 5.3 设计文档的空白
 
@@ -455,7 +463,7 @@ print(Counter(execution_kind(t) for t in COLLECTOR_REGISTRY))"
 
 # 测试状态
 ./.venv/bin/python -m pytest tests/unit -q          # 期望 1719 passed
-./.venv/bin/python -m pytest tests/integration -q   # 期望 3 failed / 380 passed
+./.venv/bin/python -m pytest tests/integration -q   # 期望 383 passed, 0 failed
 
 # 路由数
 ./.venv/bin/python -c "
