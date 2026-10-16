@@ -4,10 +4,11 @@ import { use } from "react";
 import { SkillDetail } from "@/components/skills/skill-detail";
 
 type Props = Readonly<{
-  params: Promise<{ platformId: string }>;
+  // 键名必须与目录名 [toolId] 一致。Next.js 按目录名传参。
+  params: Promise<{ toolId: string }>;
 }>;
 
 export default function SkillDetailPage({ params }: Props) {
-  const { platformId } = use(params);
-  return <SkillDetail platformId={platformId} />;
+  const { toolId } = use(params);
+  return <SkillDetail platformId={toolId} />;
 }

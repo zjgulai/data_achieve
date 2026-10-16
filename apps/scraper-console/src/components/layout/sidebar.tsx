@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Cable, ListChecks } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Cable, ListChecks, LayoutDashboard } from "lucide-react";
 
 // 新 IA 的领域。见整合方案 §4.2。
 const navigation = [
+  { name: "工作台", href: "/dashboard", icon: LayoutDashboard },
   { name: "工具",   href: "/tools",     icon: Grid3x3 },
   { name: "项目",   href: "/projects",  icon: FolderKanban },
   { name: "任务",   href: "/tasks",     icon: ListChecks },

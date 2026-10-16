@@ -7,6 +7,7 @@ import {
   CheckSquare, Square, Play,
   LayoutGrid, Globe, Package,
 } from "lucide-react";
+import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer";
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
@@ -351,7 +352,7 @@ function PlatformSection({
       {/* Platform header */}
       <div className="flex items-center gap-4 border-b border-[var(--border-subtle)] bg-[var(--surface-muted)] px-6 py-5">
         <PlatformLogo platform={platform} size={48} />
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-base font-bold text-[var(--text-primary)] leading-tight">
             {getPlatformLabel(platform)}
           </h2>
@@ -359,6 +360,12 @@ function PlatformSection({
             {endpoints.length} 种采集能力
           </p>
         </div>
+        <Link
+          href={`/tools/${encodeURIComponent(platform)}`}
+          className="flex-shrink-0 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--text-primary)]"
+        >
+          平台详情
+        </Link>
       </div>
 
       {/* Content-type tabs (Level 2) */}
