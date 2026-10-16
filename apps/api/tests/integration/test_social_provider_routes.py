@@ -5,10 +5,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import social_provider as social_provider_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
@@ -81,6 +83,16 @@ async def register_and_login(client: AsyncClient) -> None:
     assert register.status_code == 201
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 def test_youtube_read_plan_openapi_preserves_typed_request_body() -> None:
     operation = app.openapi()["paths"]["/api/automation/social-provider-youtube-read-plan"]["post"]
     schema = operation["requestBody"]["content"]["application/json"]["schema"]
@@ -104,7 +116,12 @@ async def test_youtube_read_plan_validation_sanitizer_is_path_scoped(
 
 @pytest.mark.asyncio
 async def test_social_provider_routes_require_authentication(client: AsyncClient) -> None:
-    response = await client.get("/api/automation/social-provider-catalog")
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        response = await client.get("/api/automation/social-provider-catalog")
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
+
     assert response.status_code == 401
 
 
@@ -307,10 +324,14 @@ async def test_youtube_read_plan_route_is_authenticated_strict_and_fixture_only(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    unauthorized = await client.post(
-        "/api/automation/social-provider-youtube-read-plan",
-        json={"query": {"query": "agentic workflows"}},
-    )
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        unauthorized = await client.post(
+            "/api/automation/social-provider-youtube-read-plan",
+            json={"query": {"query": "agentic workflows"}},
+        )
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
     assert unauthorized.status_code == 401
 
     await register_and_login(client)
@@ -360,6 +381,14 @@ async def test_youtube_read_plan_route_is_authenticated_strict_and_fixture_only(
     assert "agentic workflows" not in rendered
     assert "env:YOUTUBE_API_KEY" not in rendered
 
+    # 已知缺口（2026-10-16 归因，未改产品代码，待人工决策）：
+    # 合同 docs/api/api-contract-data-intelligence-hub-stable.md:943/973 要求该精确
+    # path 的 request validation 返回「固定且不含输入」的 422
+    # youtube_read_plan_request_invalid（:929 另要求不回显 reference）。
+    # 实测产品走 FastAPI 默认 validation handler：detail 为错误列表且原样回显
+    # input（如 {'type': 'extra_forbidden', 'input': 'must-not-be-accepted'}）；
+    # 该 detail 字符串全仓库（含 git 历史）只存在于本测试文件。缺口是路径级
+    # 脱敏 422 处理器从未随统一生产快照入库；断言保持原样，修复属产品侧范围。
     rejected = await client.post(
         "/api/automation/social-provider-youtube-read-plan",
         json={

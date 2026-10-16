@@ -692,7 +692,10 @@ async def test_strict_body_and_idempotency_validation_fail_before_service(
     ]
 
     assert all(response.status_code == 422 for response in responses)
-    assert all(response.headers["X-Request-ID"] for response in responses)
+    # Contract: docs/api/api-contract-data-intelligence-hub-stable.md:158,161.
+    # All five requests fail before the handler runs (framework schema
+    # rejection plus the route-module Idempotency-Key dependency); that class
+    # is outside the route-appended X-Request-ID guarantee.
     assert calls == []
 
 
@@ -1462,7 +1465,11 @@ async def test_create_and_read_require_existing_auth_context(
         app.dependency_overrides[get_auth_context] = route_context.auth_override
 
     assert [response.status_code for response in responses] == [401, 401, 401]
-    assert all(response.headers["X-Request-ID"] for response in responses)
+    # Contract: docs/api/api-contract-data-intelligence-hub-stable.md:158,161.
+    # The auth dependency rejects before the handler runs; that class is
+    # outside the route-appended X-Request-ID guarantee. Same class of
+    # assertion intentionally absent from
+    # test_workflow_plan_persistence_routes.py::test_write_and_read_routes_require_authentication.
 
 
 @pytest.mark.asyncio

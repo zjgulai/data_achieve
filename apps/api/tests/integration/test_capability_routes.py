@@ -4,10 +4,12 @@ from collections.abc import AsyncGenerator, AsyncIterator
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import capabilities as capability_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
@@ -67,16 +69,30 @@ async def register_and_login(client: AsyncClient) -> None:
     assert register.status_code == 201
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 @pytest.mark.asyncio
 async def test_capability_routes_require_authentication(client: AsyncClient) -> None:
-    for path in (
-        "/api/capabilities/matrix",
-        "/api/capabilities/assertions",
-        "/api/capabilities/implementations",
-        "/api/capabilities/implementations/youtube.v3",
-    ):
-        response = await client.get(path)
-        assert response.status_code == 401
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        for path in (
+            "/api/capabilities/matrix",
+            "/api/capabilities/assertions",
+            "/api/capabilities/implementations",
+            "/api/capabilities/implementations/youtube.v3",
+        ):
+            response = await client.get(path)
+            assert response.status_code == 401
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
 
 
 @pytest.mark.asyncio

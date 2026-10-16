@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from fastapi.routing import APIRoute
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event, func, select
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import capability_discovery as discovery_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
@@ -98,6 +100,16 @@ async def register_and_login(client: AsyncClient) -> None:
     assert response.status_code == 201
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 async def count_all_tables(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> dict[str, int]:
@@ -113,10 +125,14 @@ async def count_all_tables(
 async def test_discovery_preview_requires_authentication(
     route_context: DiscoveryRouteTestContext,
 ) -> None:
-    response = await route_context.client.post(
-        "/api/capabilities/discovery/preview",
-        json=VALID_PAYLOAD,
-    )
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        response = await route_context.client.post(
+            "/api/capabilities/discovery/preview",
+            json=VALID_PAYLOAD,
+        )
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Authentication required"

@@ -52,13 +52,18 @@ async def _build_client(*, seed_demo: bool = False) -> AsyncIterator[AsyncClient
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+        async_client.session_factory = session_factory  # type: ignore[attr-defined]
         yield async_client
 
     app.dependency_overrides.clear()
     await engine.dispose()
 
 
-async def _seed_demo_workspace(session_factory: async_sessionmaker[AsyncSession]) -> None:
+async def _seed_demo_workspace(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    with_project: bool = True,
+) -> None:
     owner_id = uuid.uuid4()
     workspace_id = uuid.uuid4()
     async with session_factory() as session:
@@ -78,6 +83,10 @@ async def _seed_demo_workspace(session_factory: async_sessionmaker[AsyncSession]
                     owner_id=owner_id,
                 ),
                 WorkspaceMember(workspace_id=workspace_id, user_id=owner_id, role="owner"),
+            ]
+        )
+        if with_project:
+            session.add(
                 Project(
                     workspace_id=workspace_id,
                     owner_id=owner_id,
@@ -87,9 +96,8 @@ async def _seed_demo_workspace(session_factory: async_sessionmaker[AsyncSession]
                     ),
                     domain="osint",
                     status="active",
-                ),
-            ]
-        )
+                )
+            )
         await session.commit()
 
 
@@ -162,6 +170,13 @@ async def test_login_rejects_invalid_password(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_project_crud_is_scoped_to_current_workspace(client: AsyncClient) -> None:
+    # 项目路由固定服务 demo 工作区（无鉴权路径，缺它 503）。
+    # 这里只种工作区不种项目：本用例用 domain=osint 断言列表只含新建项目。
+    await _seed_demo_workspace(
+        client.session_factory,  # type: ignore[attr-defined]
+        with_project=False,
+    )
+
     await client.post(
         "/api/auth/register",
         json={"email": "owner@example.com", "password": "strong-password", "name": "Owner"},
@@ -197,9 +212,14 @@ async def test_project_crud_is_scoped_to_current_workspace(client: AsyncClient) 
 
 
 @pytest.mark.asyncio
-async def test_projects_require_authentication(client: AsyncClient) -> None:
-    client.cookies.clear()
+async def test_projects_without_login_are_served_from_demo_workspace(
+    demo_client: AsyncClient,
+) -> None:
+    # 去认证改造后 /api/projects 对所有调用方固定服务 demo 工作区，
+    # 匿名请求不再 401；无 demo 工作区才是失败态（503 demo_workspace_unavailable）。
+    demo_client.cookies.clear()
 
-    response = await client.get("/api/projects")
+    response = await demo_client.get("/api/projects")
 
-    assert response.status_code == 401
+    assert response.status_code == 200
+    assert [project["name"] for project in response.json()] == ["Training Intelligence Corpus"]

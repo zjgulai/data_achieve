@@ -11,6 +11,7 @@ from typing import NoReturn, cast
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from httpx import Response as HttpxResponse
 from sqlalchemy import event, func, select
@@ -22,6 +23,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import workflow_plans as workflow_plan_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.core.security import create_access_token
@@ -216,6 +218,16 @@ async def planner_context() -> AsyncIterator[PlannerTestContext]:
         await engine.dispose()
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 def load_periodic_request() -> dict[str, object]:
     return cast(
         dict[str, object],
@@ -324,10 +336,14 @@ async def test_preview_endpoint_requires_authentication(
     planner_context: PlannerTestContext,
 ) -> None:
     planner_context.client.cookies.clear()
-    response = await planner_context.client.post(
-        f"/api/projects/{planner_context.active_project.id}/workflow-plans/preview",
-        json=load_periodic_request(),
-    )
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        response = await planner_context.client.post(
+            f"/api/projects/{planner_context.active_project.id}/workflow-plans/preview",
+            json=load_periodic_request(),
+        )
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
 
     assert response.status_code == 401
 
@@ -693,6 +709,13 @@ async def test_internal_failure_real_renderer_redacts_exception_value(
     assert response.headers["X-Request-ID"]
     assert "workflow_plan_preview_failed" in rendered
     assert "RuntimeError" in rendered
+    # 已知缺口（2026-10-16 归因，未改产品代码，待人工决策）：
+    # structlog 26.1.0 的 ConsoleRenderer 默认 exception_formatter 是
+    # RichTracebackFormatter(show_locals=True, extra_lines=3)。实测 rendered 里
+    # workflow_plans.py:523 帧的局部变量 exc、fail_planner 帧 locals 与源码上下文
+    # 都会带出原始值；_sanitized_exc_info 只替换异常显示行（末行 RuntimeError:
+    # RuntimeError 已脱敏），挡不住 locals。需产品侧给 renderer 关
+    # show_locals/extra_lines；断言保持原样。
     assert private_marker not in rendered
     assert "example.com" not in rendered
     assert "topsecret" not in rendered

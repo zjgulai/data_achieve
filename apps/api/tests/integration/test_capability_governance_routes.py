@@ -7,11 +7,13 @@ from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import (
     capability_governance as governance_routes,
 )
@@ -147,6 +149,16 @@ async def route_context() -> AsyncIterator[GovernanceRouteContext]:
         await engine.dispose()
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 def _preview() -> CapabilityDiscoveryPreviewResponse:
     return build_capability_discovery_preview(
         CapabilityDiscoveryPreviewRequest(
@@ -215,10 +227,17 @@ async def test_governance_routes_require_authentication(
 ) -> None:
     route_context.client.cookies.clear()
 
-    response = await route_context.client.get(f"{GOVERNANCE_PATH}/candidates")
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        response = await route_context.client.get(f"{GOVERNANCE_PATH}/candidates")
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
 
     assert response.status_code == 401
-    assert response.headers["X-Request-ID"]
+    # X-Request-ID：契约 docs/api/api-contract-data-intelligence-hub-stable.md:158,161
+    # 只保证 route 体内追加的 header；该 401 由依赖在进入 handler 前抛出，
+    # 不在保证范围内，故此处不断言（与 test_workflow_execution_routes.py
+    # 的同类处理一致）。
 
 
 @pytest.mark.asyncio
@@ -284,7 +303,12 @@ async def test_import_candidate_and_task_routes_are_strict_and_auditable(
         json=payload,
     )
     assert missing_key.status_code == 422
-    assert missing_key.headers["X-Request-ID"]
+    # X-Request-ID：契约 docs/api/api-contract-data-intelligence-hub-stable.md:158,161
+    # 只保证 route 体内追加的 header，不泛化到 handler 前的框架校验错误。
+    # 下面三处 strict-validation 失败都发生在进入 handler 之前（框架 schema
+    # 拒绝 + 路由依赖抛出的 422），不在保证范围内，故不断言（与
+    # test_workflow_execution_routes.py 的
+    # test_strict_body_and_idempotency_validation_fail_before_service 同类处理一致）。
 
     invalid_key = await route_context.client.post(
         f"{GOVERNANCE_PATH}/imports",
@@ -293,7 +317,7 @@ async def test_import_candidate_and_task_routes_are_strict_and_auditable(
     )
     assert invalid_key.status_code == 422
     assert invalid_key.json()["detail"][0]["msg"] == "idempotency_key_invalid"
-    assert invalid_key.headers["X-Request-ID"]
+    # 同上：pre-handler 失败，不在 X-Request-ID 保证范围内。
 
     extra_field = await route_context.client.post(
         f"{GOVERNANCE_PATH}/imports",
@@ -301,7 +325,7 @@ async def test_import_candidate_and_task_routes_are_strict_and_auditable(
         headers={"Idempotency-Key": "route-import-extra-0001"},
     )
     assert extra_field.status_code == 422
-    assert extra_field.headers["X-Request-ID"]
+    # 同上：pre-handler 失败，不在 X-Request-ID 保证范围内。
 
     key = "route-import-success-0001"
     created = await route_context.client.post(

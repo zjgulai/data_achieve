@@ -5,10 +5,12 @@ from collections.abc import AsyncGenerator, AsyncIterator
 import pytest
 import pytest_asyncio
 from cryptography.fernet import Fernet
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context
 from data_intelligence_hub.api.routes import platform_credentials as credential_routes
 from data_intelligence_hub.core.config import Settings
 from data_intelligence_hub.core.database import get_session
@@ -63,11 +65,26 @@ async def register_owner(client: AsyncClient) -> None:
     assert response.status_code == 201
 
 
+async def _deny_authentication() -> AuthContext:
+    """注入拒绝鉴权的 auth 依赖替身。
+
+    get_auth_context 对匿名请求走 demo workspace 回退（无 demo 工作区时
+    503），永不 401；「鉴权被拒 -> 401」这条契约只能靠依赖替身演练，
+    与 test_workflow_plan_persistence_routes.py 的 deny_authentication 同法。
+    """
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 @pytest.mark.asyncio
 async def test_platform_credential_routes_require_authentication(
     client: AsyncClient,
 ) -> None:
-    response = await client.get("/api/settings/platform-credentials")
+    app.dependency_overrides[get_auth_context] = _deny_authentication
+    try:
+        response = await client.get("/api/settings/platform-credentials")
+    finally:
+        app.dependency_overrides.pop(get_auth_context, None)
+
     assert response.status_code == 401
 
 

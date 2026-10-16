@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import UTC, datetime, timedelta
 
@@ -13,6 +14,9 @@ from data_intelligence_hub.core.config import Settings
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.workspaces import DEMO_WORKSPACE_SLUG
 from data_intelligence_hub.services import notification_service
 from data_intelligence_hub.services.notification_service import EmailDeliveryResult
 
@@ -37,18 +41,39 @@ async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+        async_client.session_factory = session_factory  # type: ignore[attr-defined]
         yield async_client
 
     app.dependency_overrides.clear()
     await engine.dispose()
 
 
-async def register_and_create_project(client: AsyncClient) -> str:
-    register_response = await client.post(
-        "/api/auth/register",
-        json={"email": "owner@example.com", "password": "strong-password", "name": "Owner"},
-    )
-    assert register_response.status_code == 201
+async def seed_demo_workspace_and_create_project(client: AsyncClient) -> str:
+    """种出免鉴权控制台流程依赖的 demo workspace，再经 API 建一个项目。
+
+    e7d13d2「全路由去认证」把 projects/sources/tasks/alerts/reports 改为
+    直接取 slug=DEMO_WORKSPACE_SLUG 的工作区；91067ac(F2) 又让
+    get_auth_context 在无登录态时兜底返回该工作区的属主。缺这个工作区时
+    上述端点一律 503 demo_workspace_unavailable。
+    这里不再走注册流程：带 cookie 的请求会以注册用户为操作主体，而预警
+    通知按 workspace 属主投递（alert_service 中 user_id=workspace.owner_id），
+    两边对不上。免鉴权请求全程以 demo 属主为主体，与生产控制台一致。
+    属主邮箱固定为 owner@example.com，与 email-channel 用例的收件人断言一致。
+    """
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        owner = User(email="owner@example.com", password_hash="x", name="Owner")
+        session.add(owner)
+        await session.flush()
+        session.add(
+            Workspace(
+                id=uuid.uuid4(),
+                name="Demo",
+                slug=DEMO_WORKSPACE_SLUG,
+                owner_id=owner.id,
+            )
+        )
+        await session.commit()
 
     project_response = await client.post(
         "/api/projects",
@@ -111,7 +136,7 @@ async def trigger_star_growth_intelligence(client: AsyncClient, project_id: str)
 async def test_alert_rule_matches_signal_and_creates_notification(
     client: AsyncClient,
 ) -> None:
-    project_id = await register_and_create_project(client)
+    project_id = await seed_demo_workspace_and_create_project(client)
 
     rule_response = await client.post(
         "/api/alert-rules",
@@ -175,7 +200,7 @@ async def test_alert_rule_matches_signal_and_creates_notification(
 async def test_report_generation_send_and_notification_read_flow(
     client: AsyncClient,
 ) -> None:
-    project_id = await register_and_create_project(client)
+    project_id = await seed_demo_workspace_and_create_project(client)
     intelligence_id = await trigger_star_growth_intelligence(client, project_id)
 
     report_response = await client.post(
@@ -310,7 +335,7 @@ async def test_report_generation_send_and_notification_read_flow(
 
 @pytest.mark.asyncio
 async def test_email_channel_status_and_test_flow(client: AsyncClient) -> None:
-    await register_and_create_project(client)
+    await seed_demo_workspace_and_create_project(client)
 
     status_response = await client.get("/api/notifications/email-channel")
     assert status_response.status_code == 200
@@ -369,7 +394,7 @@ async def test_email_channel_status_and_test_flow(client: AsyncClient) -> None:
 async def test_email_provider_live_gate_preflight_is_fail_closed(
     client: AsyncClient,
 ) -> None:
-    await register_and_create_project(client)
+    await seed_demo_workspace_and_create_project(client)
 
     unconfirmed_response = await client.post(
         "/api/notifications/email-channel/provider-live-gate",
@@ -438,7 +463,7 @@ async def test_email_provider_live_gate_preflight_is_fail_closed(
 async def test_email_provider_live_send_gate_defaults_to_deny(
     client: AsyncClient,
 ) -> None:
-    await register_and_create_project(client)
+    await seed_demo_workspace_and_create_project(client)
 
     readiness_response = await client.get(
         "/api/notifications/email-channel/live-send-readiness"
@@ -569,7 +594,7 @@ async def test_email_provider_live_send_gate_fake_sender_replays_without_provide
 
     monkeypatch.setattr(notification_service, "send_email_notification", fake_sender)
 
-    await register_and_create_project(client)
+    await seed_demo_workspace_and_create_project(client)
     readiness_response = await client.get(
         "/api/notifications/email-channel/live-send-readiness"
     )
@@ -647,7 +672,7 @@ async def test_email_provider_live_send_gate_fake_sender_replays_without_provide
 
 @pytest.mark.asyncio
 async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
-    project_id = await register_and_create_project(client)
+    project_id = await seed_demo_workspace_and_create_project(client)
 
     empty_response = await client.get("/api/reports/subscriptions")
     assert empty_response.status_code == 200
@@ -869,7 +894,7 @@ async def test_report_subscription_upsert_flow(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_report_includes_alert_events_from_same_period(client: AsyncClient) -> None:
-    project_id = await register_and_create_project(client)
+    project_id = await seed_demo_workspace_and_create_project(client)
 
     rule_response = await client.post(
         "/api/alert-rules",
@@ -900,7 +925,7 @@ async def test_report_includes_alert_events_from_same_period(client: AsyncClient
 
 @pytest.mark.asyncio
 async def test_report_generation_respects_custom_period(client: AsyncClient) -> None:
-    project_id = await register_and_create_project(client)
+    project_id = await seed_demo_workspace_and_create_project(client)
     await trigger_star_growth_intelligence(client, project_id)
 
     now = datetime.now(UTC)

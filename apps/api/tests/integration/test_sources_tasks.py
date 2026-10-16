@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import subprocess
-from collections.abc import AsyncGenerator, AsyncIterator
+import uuid
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -25,9 +27,15 @@ from data_intelligence_hub.collectors.ecommerce_product_discovery import (
 )
 from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
+from data_intelligence_hub.repositories.workspaces import (
+    DEMO_WORKSPACE_SLUG,
+    get_workspace_by_slug,
+)
 from data_intelligence_hub.schemas.automation import (
     AutomationCleaningStepResponse,
     AutomationFieldCandidateResponse,
@@ -37,6 +45,7 @@ from data_intelligence_hub.schemas.automation import (
     AutomationSourceDraftResponse,
     AutomationToolRecommendationResponse,
 )
+from data_intelligence_hub.services.collector_catalog import COLLECTOR_CATALOG
 
 
 @pytest_asyncio.fixture()
@@ -59,10 +68,79 @@ async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
 
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+        async_client.session_factory = session_factory  # type: ignore[attr-defined]
         yield async_client
 
     app.dependency_overrides.clear()
     await engine.dispose()
+
+
+@pytest.fixture()
+def fixture_collection_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """把出口策略切到 restricted，让夹具采集器能跑完任务管线。
+
+    产品默认（development 环境且未设 COLLECTION_NETWORK_MODE）是 offline：
+    assert_collector_allowed 会以 collection_policy_denied 拒绝一切非本地
+    采集器，POST /api/tasks/{id}/run 必然 failed。本文件的用例用夹具采集器
+    验证管线与数据集行为、不发真实请求；与 test_quick_collect_routes 的既有
+    做法一致：显式声明 restricted，并为全部 guarded_http 采集器提供合法的
+    服务端域名批准（夹具不做请求，主机名只用于满足批准校验的形状）。
+    get_settings 是 lru_cache，因此 setup 与 teardown 各清一次缓存，
+    避免 restricted 设置泄漏到后续用例。
+    """
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    monkeypatch.setenv(
+        "COLLECTION_HTTP_GRANTS",
+        json.dumps(
+            [
+                {
+                    "collector_type": collector_type,
+                    "hosts": hosts,
+                    "expires_at": "2099-01-01T00:00:00Z",
+                    "max_requests": 10,
+                }
+                for collector_type, hosts in {
+                    "generic_web": ["example.com"],
+                    "public_feed": ["example.com"],
+                    "ecommerce_product_page": ["shop.example"],
+                    "ecommerce_product_discovery": ["shop.example"],
+                }.items()
+            ]
+        ),
+    )
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+async def _seed_demo_workspace(client: AsyncClient, *, owner_id: uuid.UUID) -> None:
+    """建 slug=DEMO_WORKSPACE_SLUG 的演示工作区，属主是注册用户。
+
+    /api/projects、/api/sources、/api/tasks 等路由（以及 get_auth_context
+    的兜底分支）都要求库里存在这个工作区，缺它时这些端点一律 503
+    demo_workspace_unavailable。
+
+    属主直接挂注册用户，而不是另建一个用户：自动化告警端点把站内通知
+    发给 workspace.owner_id，而 GET /api/notifications 按登录用户过滤，
+    两者必须是同一个人。同时补 WorkspaceMember，让
+    get_default_workspace_for_user 把 demo 工作区解析为该用户的默认
+    工作区（与注册流程的 ensure_demo_workspace_membership 行为一致）。
+    """
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        if await get_workspace_by_slug(session, DEMO_WORKSPACE_SLUG) is not None:
+            return
+
+        workspace = Workspace(
+            id=uuid.uuid4(),
+            name="Demo",
+            slug=DEMO_WORKSPACE_SLUG,
+            owner_id=owner_id,
+        )
+        session.add(workspace)
+        await session.flush()
+        session.add(WorkspaceMember(workspace_id=workspace.id, user_id=owner_id, role="owner"))
+        await session.commit()
 
 
 async def register_and_create_project(client: AsyncClient) -> str:
@@ -71,6 +149,12 @@ async def register_and_create_project(client: AsyncClient) -> str:
         json={"email": "owner@example.com", "password": "strong-password", "name": "Owner"},
     )
     assert register_response.status_code == 201
+    registered_user_id = uuid.UUID(register_response.json()["user"]["id"])
+
+    # 先注册再种工作区：注册发生在 demo 工作区尚不存在时，注册流程会
+    # 优雅降级到个人工作区；随后把 demo 工作区属主设为注册用户，
+    # 使登录用户与工作区属主这两个身份在后续断言里一致。
+    await _seed_demo_workspace(client, owner_id=registered_user_id)
 
     project_response = await client.post(
         "/api/projects",
@@ -90,7 +174,12 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
 
     assert response.status_code == 200
     collector_types = {collector["type"] for collector in response.json()}
-    assert collector_types == {
+    # 该端点把产品种子目录 COLLECTOR_CATALOG 全量落库后返回；
+    # 原先这里硬编码 9 个类型当快照，目录扩展到 99 个后快照失真。
+    # 改为与产品侧唯一权威来源严格相等（不降级为子集判断），
+    # 另加关键内置采集器在场断言，防止等式两边被同时改掉时静默通过。
+    assert collector_types == {definition.type for definition in COLLECTOR_CATALOG}
+    assert {
         "github_repo",
         "github_topic",
         "generic_web",
@@ -100,7 +189,7 @@ async def test_collectors_are_available(client: AsyncClient) -> None:
         "ecommerce_product_page",
         "tikhub_social",
         "apify_actor",
-    }
+    } <= collector_types
 
 
 @pytest.mark.asyncio
@@ -2022,6 +2111,7 @@ async def test_github_topic_source_derives_traceable_url(client: AsyncClient) ->
 async def test_github_topic_radar_saves_tool_dataset_and_export(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixtureGitHubTopicCollector(BaseCollector):
         collector_type = "github_topic"
@@ -2562,6 +2652,7 @@ async def test_github_topic_radar_saves_tool_dataset_and_export(
 async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixturePublicFeedCollector(BaseCollector):
         collector_type = "public_feed"
@@ -3015,6 +3106,7 @@ async def test_public_feed_saves_public_content_dataset_and_reports_hash_drift(
 async def test_public_content_schedule_approval_updates_public_task_without_running(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixturePublicFeedCollector(BaseCollector):
         collector_type = "public_feed"
@@ -3224,6 +3316,7 @@ async def test_public_content_schedule_approval_updates_public_task_without_runn
 async def test_generic_web_docs_snapshot_saves_public_content_dataset_and_reports_hash_drift(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixtureGenericDocsCollector(BaseCollector):
         collector_type = "generic_web"
@@ -3738,6 +3831,7 @@ async def test_manual_task_run_idempotency_key_replays_existing_run(
 async def test_ecommerce_product_page_source_runs_into_product_entity(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixtureEcommerceCollector(EcommerceProductPageCollector):
         async def collect(self) -> CollectionResult:
@@ -3828,6 +3922,7 @@ async def test_ecommerce_product_page_source_runs_into_product_entity(
 async def test_ecommerce_product_discovery_source_runs_into_product_catalog_entity(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixtureEcommerceDiscoveryCollector(EcommerceProductDiscoveryCollector):
         async def collect(self) -> CollectionResult:
@@ -4081,6 +4176,7 @@ async def test_automation_product_fanout_reuses_one_source_when_duplicates_exist
 async def test_automation_product_batch_run_returns_field_completeness(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     class FixtureEcommerceCollector(EcommerceProductPageCollector):
         async def collect(self) -> CollectionResult:
@@ -5258,6 +5354,7 @@ async def test_automation_product_batch_run_returns_field_completeness(
 async def test_shopify_independent_ecommerce_package_runs_local_authorized_e2e_gate(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     collection_url = "https://shop.example/collections/m4-authorized-fixture"
     product_urls = {
@@ -5623,6 +5720,7 @@ async def test_shopify_independent_ecommerce_package_runs_local_authorized_e2e_g
 async def test_product_drift_detects_m4_catalog_presence_and_price_layers(
     client: AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
+    fixture_collection_network: None,
 ) -> None:
     phase = "baseline"
     task_url = "https://shop.example/products/catalog-watch"
