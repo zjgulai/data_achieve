@@ -28,8 +28,12 @@ type Snapshot = {
   }[];
 };
 
+// 默认读 generated/ 下的快照。可用第一个参数覆盖路径。
+// 该目录不入库。快照由 scripts/gen-contract-snapshot.py 生成。
+// 一条命令同时生成并比对：pnpm acceptance
+const SNAPSHOT = new URL("../../../generated/console-contract-snapshot.json", import.meta.url);
 const snap: Snapshot = JSON.parse(
-  readFileSync(process.argv[2] ?? "/tmp/dih-b1/contract.json", "utf8")
+  readFileSync(process.argv[2] ?? SNAPSHOT, "utf8")
 );
 
 /** 服务端保留键。表单不渲染。 */

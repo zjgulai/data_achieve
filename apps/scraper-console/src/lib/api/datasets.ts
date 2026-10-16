@@ -126,13 +126,6 @@ export async function createExport(
   });
 }
 
-/** Poll/refresh a single export job by id. */
-export async function fetchExportJob(exportJobId: string): Promise<ExportJob> {
-  return apiFetch<ExportJob>(
-    `/api/automation/product-dataset-exports/${encodeURIComponent(exportJobId)}`,
-  );
-}
-
 export type DatasetVersionsResponse = {
   dataset: Dataset;
   versions: DatasetVersion[];
