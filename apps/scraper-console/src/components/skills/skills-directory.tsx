@@ -29,7 +29,7 @@ function PackageCard({ item, availability }: { readonly item: PlatformPackage; r
   const gated = availability.filter((entry) => entry.availability === "config-gated").length;
   return (
     <Link
-      href={`/skills/${encodeURIComponent(item.platform_id)}`}
+      href={`/tools/${encodeURIComponent(item.platform_id)}`}
       className="group flex min-h-64 flex-col rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-primary)]"
     >
       <div className="flex items-start gap-3">

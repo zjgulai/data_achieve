@@ -6,15 +6,15 @@ import { AppShell } from "@/components/layout/app-shell";
 import { fetchRunRecords } from "@/lib/api/runs";
 import { CheckCircle, AlertCircle, Loader2, FileText } from "lucide-react";
 
-type Props = { params: Promise<{ run_id: string }> };
+type Props = { params: Promise<{ runId: string }> };
 
 export default function CollectResultPage({ params }: Props) {
-  const { run_id } = use(params);
+  const { runId } = use(params);
 
   const { data: records, isLoading: recordsLoading } = useQuery({
-    queryKey: ["run-records", run_id],
-    queryFn: () => fetchRunRecords(run_id),
-    enabled: !!run_id,
+    queryKey: ["run-records", runId],
+    queryFn: () => fetchRunRecords(runId),
+    enabled: !!runId,
   });
 
   const isOk = records && records.length > 0;
@@ -25,7 +25,7 @@ export default function CollectResultPage({ params }: Props) {
       description="查看本次采集的原始数据"
       breadcrumbs={[
         { label: "运行记录", href: "/runs" },
-        { label: `结果 ${run_id.slice(0, 8)}…` },
+        { label: `结果 ${runId.slice(0, 8)}…` },
       ]}
     >
       {/* Status bar */}
@@ -112,7 +112,7 @@ export default function CollectResultPage({ params }: Props) {
       )}
 
       <div className="text-xs text-[var(--text-tertiary)]">
-        运行 ID: <code className="font-mono">{run_id}</code>
+        运行 ID: <code className="font-mono">{runId}</code>
       </div>
     </AppShell>
   );

@@ -130,7 +130,7 @@ function RunRow({ run }: { run: TaskRun }) {
             <span>{run.id.slice(0, 8)}…</span>
             {run.records_count > 0 ? (
               <Link
-                href={`/collect/${run.id}`}
+                href={`/runs/${run.id}`}
                 onClick={event => event.stopPropagation()}
                 className="font-sans text-[var(--action-primary)] underline"
               >

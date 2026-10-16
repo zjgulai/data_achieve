@@ -109,7 +109,7 @@ export default function RawRecordsPage() {
                     </span>
                     {record.task_run_id ? (
                       <Link
-                        href={`/collect/${record.task_run_id}`}
+                        href={`/runs/${record.task_run_id}`}
                         className="text-xs text-[var(--action-primary)] underline"
                       >
                         查看该次运行

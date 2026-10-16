@@ -72,7 +72,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
       title={`${item.display_name} Skill`}
       description={`${item.endpoint_count} 个能力视图 · ${item.provider_groups.length} 个 Provider`}
       breadcrumbs={[
-        { label: "Skill 与 MCP", href: "/skills" },
+        { label: "工具", href: "/tools" },
         { label: item.display_name },
       ]}
     >
@@ -166,7 +166,7 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
           <p className="mt-4 text-sm text-[var(--state-danger)]">Playbook 加载失败。</p>
         )}
       </section>
-      <Link href="/skills" className="text-sm font-semibold text-[var(--action-primary)] hover:underline">返回 Skill 目录</Link>
+      <Link href="/tools" className="text-sm font-semibold text-[var(--action-primary)] hover:underline">返回能力目录</Link>
     </AppShell>
   );
 }

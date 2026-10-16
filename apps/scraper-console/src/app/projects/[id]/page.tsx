@@ -217,7 +217,7 @@ export default function ProjectDetailPage({ params }: Props) {
                       </span>
                       {run.records_count > 0 && (
                         <Link
-                          href={`/collect/${run.id}`}
+                          href={`/runs/${run.id}`}
                           className="text-[var(--action-primary)] underline"
                         >
                           查看结果
@@ -239,7 +239,7 @@ export default function ProjectDetailPage({ params }: Props) {
               数据集
             </h2>
             {datasetsData && datasetsData.total > datasets.length && (
-              <Link href="/datasets" className="text-xs text-[var(--action-primary)] underline">
+              <Link href="/assets" className="text-xs text-[var(--action-primary)] underline">
                 全部 {datasetsData.total} 个
               </Link>
             )}
@@ -257,7 +257,7 @@ export default function ProjectDetailPage({ params }: Props) {
               {datasets.map(item => (
                 <li key={item.dataset.id} className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2">
                   <Link
-                    href="/datasets"
+                    href="/assets"
                     className="block truncate text-sm font-medium text-[var(--text-primary)] hover:text-[var(--action-primary)]"
                   >
                     {item.dataset.name}

@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Boxes, ListChecks } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Cable, ListChecks } from "lucide-react";
 
+// 新 IA 的领域。见整合方案 §4.2。
 const navigation = [
-  { name: "采集平台", href: "/platforms",       icon: Grid3x3 },
-  { name: "Skill 与 MCP", href: "/skills",      icon: Boxes },
-  { name: "我的项目", href: "/projects",         icon: FolderKanban },
-  { name: "采集任务", href: "/tasks",            icon: ListChecks },
-  { name: "运行记录", href: "/runs",             icon: Clock },
-  { name: "数据集",   href: "/datasets",         icon: Database },
-  { name: "采集文档", href: "/collector-docs",   icon: BookOpen },
+  { name: "工具",   href: "/tools",     icon: Grid3x3 },
+  { name: "项目",   href: "/projects",  icon: FolderKanban },
+  { name: "任务",   href: "/tasks",     icon: ListChecks },
+  { name: "运行",   href: "/runs",      icon: Clock },
+  { name: "资产",   href: "/assets",    icon: Database },
+  { name: "接入",   href: "/connect",   icon: Cable },
+  { name: "文档",   href: "/docs",      icon: BookOpen },
 ];
 
 const secondaryNav = [
-  { name: "凭证配置", href: "/settings/credentials", icon: Key },
+  { name: "凭证设置", href: "/settings/credentials", icon: Key },
 ];
 
 export function Sidebar() {
@@ -27,7 +28,7 @@ export function Sidebar() {
 
   return (
     <aside className="hidden min-h-screen w-[17rem] overflow-y-auto border-r border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 py-5 lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
-      <Link className="mb-7 flex items-center gap-3 px-2" href="/platforms">
+      <Link className="mb-7 flex items-center gap-3 px-2" href="/tools">
         <span className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-3)] bg-[var(--action-primary)] text-[var(--text-inverse)]">
           <Grid3x3 size={20} aria-hidden="true" />
         </span>
