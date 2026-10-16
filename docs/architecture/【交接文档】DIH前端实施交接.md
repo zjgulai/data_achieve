@@ -291,9 +291,23 @@ python3 -c "import json;d=json.load(open('generated/platform-packages.json'));pr
 
 ### 6.3 每步都跑测试
 
+仓库当前的静态检查门槛本身已有大量错误，不能把「命令非零」一概归因到你的改动。2026-10-16 同环境实测：
+
+| 检出点 | `ruff check .` | `mypy src tests` |
+|---|---:|---:|
+| `origin/main` (`7c35d2a`) | 162 错 | 659 错 / 508 文件 |
+| 本会话起点 (`dfd5693`) | 159 错 | 703 错 / 531 文件 |
+| 当前分支 | 159 错 | 693 错 / 539 文件 |
+
+CI 对这两步不设 `continue-on-error`，因此从任意检出点运行，两个命令都会以退出码 1 结束。当前分支相对本会话起点：ruff 净变化 0，mypy 净减少 10 条。**只在你改过的文件上运行并修复新增错误**；不要把全仓基线错误算到自己头上，也不要用 `--fix` 批量改其他文件。
+
+单元测试门槛：
+
 ```bash
-cd apps/api && ./.venv/bin/python -m pytest tests/unit -q      # 必须 1719 passed
+cd apps/api && ./.venv/bin/python -m pytest tests/unit -q      # 1719 passed
 ```
+
+当前集成测试状态：3 个已知产品缺陷仍失败；处理前先看本文 §5.2，不要把这 3 条静默改成通过。
 
 前端改动后跑 console 自己的门：
 
