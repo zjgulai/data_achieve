@@ -50,6 +50,9 @@ drafts/
 archive/
 ref/
 assets/
+# 例外：新 IA 的资产域目录。宽泛的 assets/ 会静默吞掉它。
+!apps/scraper-console/src/app/assets/
+!apps/scraper-console/src/app/assets/**
 generated/
 docs/playbooks/platforms/
 .playwright-cli/
@@ -63,3 +66,5 @@ data_scrapy-apify-docs/
 *.html
 !apps/scraper-console/public/**/*.html
 !apps/web/public/**/*.html
+# 例外：设计稿预览需入库。仓库曾因缺这条丢过文件。
+!docs/design/**/*.html

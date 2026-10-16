@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>平台能力中心 · 修订稿预览（按真值）</title>
+<style>
+/* ─── Design Tokens（取自 apps/scraper-console/src/app/globals.css） ─── */
+:root {
+  --fg-1: #241b1b;
+  --fg-2: #5b5050;
+  --fg-3: #786d6a;
+  --fg-inverse: #ffffff;
+  --bg-1: #f7f2ed;
+  --bg-2: #ffffff;
+  --bg-3: #fffdfb;
+  --bg-4: #f4ece7;
+  --bg-diagnostic: #2e201c;
+  --accent-1: #9b4355;
+  --accent-1-hover: #823747;
+  --accent-1-soft: #f8e6e2;
+  --accent-2: #284e7a;
+  --accent-2-soft: #e9f0f7;
+  --success-1: #287a45;
+  --success-soft: #eaf7ee;
+  --warning-1: #87611b;
+  --warning-soft: #fff4de;
+  --danger-1: #a04437;
+  --danger-soft: #fff0ed;
+  --border-1: #ded3cc;
+  --border-2: #c9b8af;
+  --focus-1: #284e7a;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
+
+  --radius-1: 0.25rem;
+  --radius-2: 0.5rem;
+  --radius-3: 0.75rem;
+  --radius-4: 1rem;
+  --radius-pill: 999px;
+  --sidebar-width: 17rem;
+
+  /* 语义别名（与 globals.css 一致） */
+  --surface-canvas: var(--bg-1);
+  --surface-primary: var(--bg-2);
+  --surface-secondary: var(--bg-3);
+  --surface-muted: var(--bg-4);
+  --text-primary: var(--fg-1);
+  --text-secondary: var(--fg-2);
+  --text-tertiary: var(--fg-3);
+  --text-inverse: var(--fg-inverse);
+  --border-subtle: var(--border-1);
+  --border-strong: var(--border-2);
+  --action-primary: var(--accent-1);
+  --action-primary-hover: var(--accent-1-hover);
+  --state-info: var(--accent-2);
+  --state-success: var(--success-1);
+  --state-warning: var(--warning-1);
+  --state-danger: var(--danger-1);
+  --focus-ring: 0 0 0 3px rgb(40 78 122 / 24%);
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--surface-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+h1, h2, h3, p { margin: 0; }
+code { font-family: var(--font-mono); }
+.tabnum { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+
+.ico { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+/* ─── 来源标记 ─── */
+.src { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; color: var(--text-tertiary); white-space: nowrap; line-height: 1.4; }
+.src::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-tertiary); flex-shrink: 0; }
+.src.s-both::before { background: var(--state-success); }
+.src.s-prod::before { background: var(--state-info); }
+.src.s-undep::before { background: var(--state-warning); }
+.src.s-decide { color: var(--state-warning); font-weight: 700; }
+.src.s-decide::before { background: var(--state-warning); }
+
+/* ─── 顶部说明栏 ─── */
+.topnote { background: var(--bg-diagnostic); color: var(--text-inverse); font-size: 12.5px; line-height: 1.75; }
+.topnote-in { max-width: 1400px; margin: 0 auto; padding: 10px 28px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.tn-tag { background: var(--accent-1-soft); color: var(--action-primary); font-size: 11px; font-weight: 700; border-radius: var(--radius-pill); padding: 2px 10px; letter-spacing: 0.02em; }
+.topnote code { background: rgb(255 255 255 / 12%); border-radius: var(--radius-1); padding: 1px 6px; font-size: 11px; color: var(--accent-1-soft); }
+.tn-sep { color: rgb(255 255 255 / 40%); }
+
+/* ─── 标记图例条 ─── */
+.legendbar { background: var(--surface-secondary); border-bottom: 1px solid var(--border-subtle); }
+.legendbar-in { max-width: 1400px; margin: 0 auto; padding: 7px 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: 11px; color: var(--text-secondary); }
+.legendbar .src { font-size: 11px; }
+
+/* ─── 页面骨架 ─── */
+.shell { display: flex; align-items: flex-start; }
+.sidebar {
+  position: sticky; top: 0;
+  height: 100vh; overflow-y: auto;
+  width: var(--sidebar-width); flex: 0 0 var(--sidebar-width);
+  background: var(--surface-primary);
+  border-right: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  padding: 20px 16px;
+}
+.main { flex: 1; min-width: 0; }
+.main-inner { max-width: 1280px; margin: 0 auto; padding: 36px 40px 80px; }
+@media (max-width: 1023px) {
+  .sidebar { display: none; }
+  .main-inner { padding: 24px 20px 64px; }
+}
+
+/* ─── 侧栏 ─── */
+.brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; margin-bottom: 24px; }
+.brand-mark { width: 40px; height: 40px; border-radius: var(--radius-3); background: var(--action-primary); color: var(--text-inverse); display: flex; align-items: center; justify-content: center; }
+.brand-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.brand-sub { font-size: 11px; color: var(--text-tertiary); }
+.nav { display: grid; gap: 4px; }
+.nav a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: var(--radius-2); font-size: 13.5px; font-weight: 600; color: var(--text-secondary); cursor: default; }
+.nav a[aria-current="page"] { background: var(--accent-1-soft); color: var(--action-primary); }
+.nav a:not([aria-current]) .ico { color: var(--text-tertiary); }
+.nav .side-sep { margin: 8px 0 4px; border-top: 1px solid var(--border-subtle); }
+.dot-decide { width: 7px; height: 7px; border-radius: 50%; background: var(--state-warning); margin-left: auto; flex-shrink: 0; }
+.side-meta { margin-top: auto; border-top: 1px solid var(--border-subtle); padding-top: 14px; display: grid; gap: 10px; }
+.side-badge { border: 1px solid var(--border-subtle); background: var(--surface-secondary); border-radius: var(--radius-3); padding: 12px 14px; }
+.side-badge .num { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.1; }
+.side-badge .num .unit { font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin-left: 4px; }
+.side-badge .label { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+.side-badge .sub { font-size: 11px; color: var(--text-secondary); margin-top: 6px; }
+.side-badge .src { margin-top: 6px; }
+
+/* ─── 页头 ─── */
+.page-head h1 { font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -0.5px; }
+.page-head .desc { margin-top: 8px; font-size: 14px; color: var(--text-secondary); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.page-head .brief { margin-top: 4px; font-size: 12px; color: var(--text-tertiary); }
+
+/* ─── 区块通用 ─── */
+.stack { display: grid; gap: 28px; margin-top: 24px; position: relative; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; clip: rect(0 0 0 0); overflow: hidden; white-space: nowrap; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.sec-head h2 { font-size: 18px; line-height: 24px; font-weight: 600; }
+.sec-head .spacer { flex: 1; }
+.caption { font-size: 11.5px; color: var(--text-tertiary); line-height: 1.7; margin-top: 8px; }
+.caption .tabnum { color: var(--text-secondary); font-weight: 600; }
+.tag-decide { display: inline-flex; align-items: center; background: var(--warning-soft); border: 1px solid var(--state-warning); color: var(--state-warning); border-radius: var(--radius-pill); padding: 1px 9px; font-size: 10.5px; font-weight: 700; }
+.tag-keep { display: inline-flex; align-items: center; background: var(--success-soft); border: 1px solid var(--state-success); color: var(--state-success); border-radius: var(--radius-pill); padding: 1px 9px; font-size: 10.5px; font-weight: 700; }
+
+/* ─── 横幅（分态） ─── */
+.banner { display: flex; gap: 12px; align-items: flex-start; background: var(--warning-soft); border: 1px solid var(--border-subtle); border-radius: var(--radius-3); padding: 14px 16px; }
+.banner .ico { color: var(--state-warning); margin-top: 2px; }
+.banner-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.banner .b-title { font-size: 13px; font-weight: 700; }
+.banner .b-line { font-size: 12.5px; color: var(--text-secondary); margin-top: 5px; }
+.banner .b-line b { color: var(--text-primary); font-weight: 700; }
+.b-mode { display: none; }
+.banner .b-note { font-size: 11px; color: var(--text-tertiary); margin-top: 8px; line-height: 1.7; }
+#m-off:checked ~ .banner .b-mode.off { display: block; }
+#m-res:checked ~ .banner .b-mode.res { display: block; }
+.segmented { display: inline-flex; gap: 2px; background: var(--surface-muted); border: 1px solid var(--border-subtle); border-radius: var(--radius-pill); padding: 3px; }
+.seg-opt { padding: 4px 13px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; color: var(--text-tertiary); cursor: pointer; user-select: none; }
+.seg-opt:hover { color: var(--text-primary); }
+#m-off:checked ~ .banner label[for="m-off"],
+#m-res:checked ~ .banner label[for="m-res"] {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  box-shadow: 0 1px 2px rgb(46 32 28 / 14%);
+}
+#m-off:focus-visible ~ .banner label[for="m-off"],
+#m-res:focus-visible ~ .banner label[for="m-res"] { box-shadow: var(--focus-ring); }
+
+/* ─── 统计块 ─── */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stats.three { grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+@media (max-width: 1180px) { .stats, .stats.three { grid-template-columns: repeat(2, 1fr); } }
+.stat { background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-3); padding: 14px 16px; }
+.stat .num { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; }
+.stat .num .unit { font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin-left: 4px; }
+.stat .label { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+.stat .sub { font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; line-height: 1.6; }
+.stat .sub .tabnum { color: var(--text-primary); font-weight: 600; }
+.stat .src { margin-top: 8px; }
+
+/* ─── 检索框与工具栏 ─── */
+.toolbar { display: flex; align-items: center; gap: 16px; background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-3); padding: 14px 16px; flex-wrap: wrap; }
+.search { position: relative; flex: 1; min-width: 200px; }
+.search .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-tertiary); }
+.search input {
+  width: 100%; height: 36px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2);
+  background: var(--surface-primary);
+  padding: 0 12px 0 34px;
+  font: inherit; font-size: 13.5px; color: var(--text-primary);
+}
+.search input::placeholder { color: var(--text-tertiary); }
+.search input:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--focus-1); }
+.toolbar .count { font-size: 12px; color: var(--text-tertiary); white-space: nowrap; }
+.toolbar-right { display: grid; gap: 4px; justify-items: end; }
+.switch { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); user-select: none; }
+.sw-track { width: 34px; height: 20px; border-radius: var(--radius-pill); background: var(--border-strong); position: relative; transition: background 150ms; flex-shrink: 0; }
+.sw-knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface-primary); transition: transform 150ms; }
+#hide-disabled:checked ~ .toolbar .sw-track { background: var(--action-primary); }
+#hide-disabled:checked ~ .toolbar .sw-knob { transform: translateX(14px); }
+#hide-disabled:checked ~ .table-sec .catalog tbody tr.is-disabled { display: none; }
+.switch .sw-sub { font-size: 10.5px; font-weight: 500; color: var(--text-tertiary); }
+
+/* ─── 芯片 ─── */
+.chiprow { margin-top: 10px; }
+.chiprow:first-of-type { margin-top: 0; }
+.chiprow-label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+.chiprow-label .src { font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-primary);
+  color: var(--text-secondary);
+  font-size: 13px; font-weight: 500;
+  cursor: default;
+}
+.chip .n { font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: var(--surface-muted); border-radius: var(--radius-pill); padding: 1px 7px; font-variant-numeric: tabular-nums; }
+.chip.on { background: var(--action-primary); border-color: var(--action-primary); color: var(--text-inverse); }
+.chip.on .n { background: rgb(255 255 255 / 18%); color: var(--text-inverse); }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); }
+.chip.g-env { background: var(--accent-2-soft); color: var(--state-info); }
+.chip.g-env .dot { background: var(--state-info); }
+.chip.g-grant { background: var(--warning-soft); color: var(--state-warning); }
+.chip.g-grant .dot { background: var(--state-warning); }
+.chip.g-perm { background: var(--danger-soft); color: var(--state-danger); }
+.chip.g-perm .dot { background: var(--state-danger); }
+.chip.zero { background: var(--surface-primary); color: var(--text-tertiary); }
+.chip.zero .dot { background: var(--border-strong); }
+
+/* ─── 门控区 ─── */
+.mode-tag { font-size: 10.5px; font-weight: 700; color: var(--text-tertiary); border: 1px solid var(--border-subtle); background: var(--surface-secondary); border-radius: var(--radius-pill); padding: 2px 9px; }
+.chips.mode-off, .chips.mode-res { display: none; }
+#m-off:checked ~ .gating .chips.mode-off { display: flex; }
+#m-res:checked ~ .gating .chips.mode-res { display: flex; }
+
+/* ─── 表格 ─── */
+.table-scroll { max-height: 800px; overflow: auto; border: 1px solid var(--border-subtle); border-radius: var(--radius-3); background: var(--surface-primary); }
+table.catalog { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.catalog thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface-secondary);
+  text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  padding: 10px 12px; border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.catalog thead .src { font-size: 9.5px; }
+.catalog tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+.catalog tbody tr:last-child td { border-bottom: 0; }
+.catalog tbody tr:hover td { background: var(--surface-muted); }
+.catalog tfoot td {
+  position: sticky; bottom: 0; z-index: 2;
+  background: var(--surface-secondary);
+  border-top: 1px solid var(--border-strong);
+  padding: 11px 12px;
+}
+.cap-name { font-size: 13px; font-weight: 600; }
+.cap-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 2px; word-break: break-all; }
+.cellnote { display: block; font-size: 10.5px; color: var(--text-tertiary); margin-top: 4px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.pill.p-verified { background: var(--success-soft); color: var(--state-success); }
+.pill.p-warn { background: var(--warning-soft); color: var(--state-warning); }
+.pill.p-info { background: var(--accent-2-soft); color: var(--state-info); }
+.pill.p-disabled { background: var(--surface-muted); color: var(--text-secondary); }
+.pcount { font-size: 11.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.params { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); line-height: 1.8; word-break: break-word; margin-top: 3px; }
+.params .dash { color: var(--text-tertiary); }
+.testrec { font-size: 11.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.testrec.ok { color: var(--state-success); font-weight: 600; }
+.testrec.bad { color: var(--state-danger); font-weight: 600; }
+.testrec .err { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-top: 3px; word-break: break-all; font-weight: 400; }
+.tfoot-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.tfoot-row .tf-label { font-size: 10.5px; font-weight: 700; color: var(--action-primary); background: var(--accent-1-soft); border-radius: var(--radius-pill); padding: 2px 10px; }
+.tfoot-row .tf-main { font-size: 12.5px; font-weight: 600; }
+.tfoot-row .tf-main .mono { font-size: 11.5px; color: var(--text-secondary); }
+.tfoot-row .tf-note { font-size: 11px; color: var(--text-tertiary); width: 100%; line-height: 1.7; }
+
+/* ─── 修正清单 ─── */
+table.corr { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface-primary); border: 1px solid var(--border-subtle); border-radius: var(--radius-3); overflow: hidden; font-size: 12.5px; }
+.corr th { background: var(--surface-muted); text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary); padding: 10px 14px; }
+.corr td { padding: 11px 14px; border-top: 1px solid var(--border-subtle); vertical-align: top; line-height: 1.65; }
+.corr .old { color: var(--text-tertiary); }
+.corr .new { color: var(--text-primary); }
+.corr .basis { color: var(--text-secondary); font-size: 12px; }
+.corr code { font-family: var(--font-mono); font-size: 11px; background: var(--surface-muted); border-radius: var(--radius-1); padding: 1px 5px; word-break: break-all; }
+.corr b { font-weight: 700; }
+
+/* ─── 页脚 ─── */
+.page-foot { margin-top: 44px; border-top: 1px solid var(--border-subtle); padding-top: 14px; display: grid; gap: 4px; font-size: 12px; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+
+<!-- ═══ 顶部说明栏 ═══ -->
+<div class="topnote">
+  <div class="topnote-in">
+    <span class="tn-tag">修订稿预览</span>
+    <span>本页按真值生成（2026-10-16 实测），供与设计稿截图对照。设计稿与真值的逐项差异见配套文档：</span>
+    <code>docs/architecture/【修订稿】DIH平台能力中心-真值版.md</code>
+    <span class="tn-sep">·</span>
+    <span>本页另附「修正清单」。</span>
+  </div>
+</div>
+
+<!-- ═══ 标记图例条 ═══ -->
+<div class="legendbar">
+  <div class="legendbar-in">
+    <span>来源标记：</span>
+    <span class="src s-both">本机＋生产实测</span>
+    <span class="src s-prod">生产实测</span>
+    <span class="src s-undep">本机实测·未部署</span>
+    <span class="src s-decide">需产品决策</span>
+    <span>本页只写有实测依据的数字；无依据的数字不出现（视觉规范 §8）。</span>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- ═══ 侧栏 ═══ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="ico" viewBox="0 0 24 24" style="width:20px;height:20px;"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      </span>
+      <span>
+        <span class="brand-name">采集控制台</span><br>
+        <span class="brand-sub">Data Intelligence Hub</span>
+      </span>
+    </div>
+
+    <nav class="nav" aria-label="主导航">
+      <a aria-current="page" href="#">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        平台能力
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h14v18H6a2 2 0 0 1-2-2z"/><path d="M4 19a2 2 0 0 1 2-2h14"/></svg>
+        采集文档
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="13" height="13" rx="1.5"/><path d="M8 21h13V8"/></svg>
+        Skill 目录
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        项目
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10"/></svg>
+        采集任务
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        运行记录
+      </a>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+        数据集
+      </a>
+      <div class="side-sep" role="presentation"></div>
+      <a href="#">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4"/><path d="M11 11l8-8M16.5 5.5l2 2M14 8l2 2"/></svg>
+        凭证设置
+      </a>
+      <a href="#" title="需产品决策：控制台无对应页面，建议首期删除">
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+        系统设置
+        <span class="dot-decide" aria-hidden="true"></span>
+      </a>
+    </nav>
+
+    <div class="side-meta">
+      <div class="side-badge">
+        <div class="num tabnum">70<span class="unit">个平台包</span></div>
+        <div class="sub">含 <b class="tabnum">286</b> 个能力视图 · <b class="tabnum">258</b> 个唯一端点</div>
+        <span class="src s-both">本机＋生产实测</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ 主内容 ═══ -->
+  <main class="main">
+    <div class="main-inner">
+
+      <!-- 页头 -->
+      <header class="page-head">
+        <h1>平台能力中心</h1>
+        <div class="desc">
+          <span>共 <b class="tabnum">286</b> 能力视图 / <b class="tabnum">258</b> 唯一端点</span>
+          <span class="src s-both">本机＋生产实测</span>
+          <span>· <b class="tabnum">258</b> 个工具 <span class="src s-undep">需 /api/tools 部署</span></span>
+        </div>
+        <p class="brief">数字为 2026-10-16 实测。三套「已核验」口径的分工见统计块。引用注意「能力视图（行）」与「唯一端点」的区分。</p>
+      </header>
+
+      <div class="stack">
+        <input class="vh" type="radio" name="netmode" id="m-off" checked>
+        <input class="vh" type="radio" name="netmode" id="m-res">
+        <input class="vh" type="checkbox" id="hide-disabled">
+
+        <!-- 横幅（分态） -->
+        <section class="banner" aria-label="阻断状态">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.5" r="0.5" fill="currentColor" stroke="none"/></svg>
+          <div style="flex:1; min-width:0;">
+            <div class="banner-head">
+              <span class="b-title">阻断状态（分态渲染）</span>
+              <span class="src s-undep">本机实测·未部署</span>
+              <span class="spacer" style="flex:1;"></span>
+              <div class="segmented" role="group" aria-label="预览网络模式（真机由环境变量决定）">
+                <label class="seg-opt" for="m-off">离线（默认）</label>
+                <label class="seg-opt" for="m-res">受限（无批准）</label>
+              </div>
+            </div>
+            <div class="b-mode off">
+              <p class="b-line">当前执行环境为离线模式。<b class="tabnum">286</b> 个能力视图全部被阻断。<b class="tabnum">229</b> 个换执行环境即可放行。<b class="tabnum">57</b> 个为永久阻断，换执行环境也不放行。</p>
+            </div>
+            <div class="b-mode res">
+              <p class="b-line">当前执行环境为受限模式。<b class="tabnum">197</b> 个能力视图可放行。<b class="tabnum">89</b> 个被阻断。其中 <b class="tabnum">32</b> 个缺服务端域名批准。<b class="tabnum">57</b> 个为永久阻断，换执行环境也不放行。</p>
+            </div>
+            <p class="b-note">
+              设计稿原文「当前网络模式阻止全部目录端点。切换执行环境即可放行。」两处断言均不成立（对 57 个永久拒绝端点，「切换即可放行」为假）。其余状态：受限（批准齐全）229 放行 / 57 永久。生产现网未部署 <code>policy_block_reason</code>，横幅与门控芯片都不显示（生产实测）。预览开关仅为对照设计用。真机上模式由 <code>COLLECTION_NETWORK_MODE</code> 决定。
+            </p>
+          </div>
+        </section>
+
+        <!-- 统计块 -->
+        <section aria-label="统计块">
+          <div class="sec-head">
+            <h2>统计块（口径 A · 测试证据）</h2>
+            <span class="src s-prod">生产实测</span>
+            <span class="spacer"></span>
+            <span class="caption" style="margin-top:0;">分母 = 286 能力视图。设计稿「已核验 226 / 待测试 60 / 禁用 11」（和 297 ≠ 286）由此替换。</span>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="num tabnum">285<span class="unit">已实测</span></div>
+              <div class="label">未实测 1（pypi_search）· 合计 286</div>
+              <div class="sub">依据：<code>GET /api/collectors/docs</code> 顶层 <span class="tabnum">tested_endpoints</span></div>
+              <span class="src s-prod">生产实测</span>
+            </div>
+            <div class="stat">
+              <div class="num tabnum">248<span class="unit">实测成功</span></div>
+              <div class="label">实测失败 37 · 实测合计 285</div>
+              <div class="sub">逐行 <span class="tabnum">test_result.last_run_status</span>：success 248 / failed 37 / 无记录 1</div>
+              <span class="src s-prod">生产实测</span>
+            </div>
+            <div class="stat">
+              <div class="num tabnum">99.7%<span class="unit">实测覆盖率</span></div>
+              <div class="label">285 / 286</div>
+              <div class="sub">替换设计稿「核验率 79%」（只能等于 226/286，分子不存在）</div>
+              <span class="src s-prod">生产实测</span>
+            </div>
+            <div class="stat">
+              <div class="num tabnum">86.7%<span class="unit">实测成功率</span></div>
+              <div class="label">248 / 286</div>
+              <div class="sub">满足设计规范「已验证必须来自真实测试证据」（§6.3）</div>
+              <span class="src s-prod">生产实测</span>
+            </div>
+          </div>
+          <div class="stats three">
+            <div class="stat">
+              <div class="num tabnum" style="font-size:22px;">209 / 21 / 17 / 10 / 1</div>
+              <div class="label">口径 B · 可用性（分母 = 258 唯一端点）</div>
+              <div class="sub">verified 209 · config-gated 21 · degraded 17 · empty 10 · disabled 1。建议用于表格「状态」列（决策 2）。</div>
+              <span class="src s-prod">生产实测</span>
+            </div>
+            <div class="stat">
+              <div class="num tabnum" style="font-size:22px;">274 / 12</div>
+              <div class="label">声明值 status（分母 = 286 能力视图）</div>
+              <div class="sub">verified 274 · disabled 12 · pending 0。静态声明仅作目录定位，不得标「已验证」，不进状态 UI。</div>
+              <span class="src s-both">本机＋生产实测</span>
+            </div>
+            <div class="stat">
+              <div class="num tabnum" style="font-size:22px;">286 · 258 · 70 · 36</div>
+              <div class="label">目录规模：能力视图 · 唯一端点 · 平台包 · 采集器分组</div>
+              <div class="sub">286 行按 <code>endpoint_type</code> 去重后为 258。重复 28 行来自两个标识：<code>public_feed</code> 计 23 行（多出 22 行）、<code>generic_web</code> 计 7 行（多出 6 行）。两套生产域名响应逐字节一致：126,092 字节 · sha256 前 16 位 <code>c241b8dfd563d8dc</code>。</div>
+              <span class="src s-both">本机＋生产实测</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 检索框 + 开关 -->
+        <section class="toolbar" aria-label="检索与开关">
+          <div class="search">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="text" placeholder="搜索平台、采集能力…（静态预览，检索不生效）" aria-label="搜索">
+          </div>
+          <div class="toolbar-right">
+            <span class="count"><b class="tabnum">286</b> 行 · <b class="tabnum">258</b> 个唯一端点</span>
+            <span class="count">URL 状态（示意）：<code>/platforms?cat=all&amp;q=</code></span>
+          </div>
+          <label class="switch" for="hide-disabled">
+            <span class="sw-track"><span class="sw-knob"></span></span>
+            <span>
+              不展示 <b class="tabnum">12</b> 个禁用端点
+              <span class="sw-sub">行口径 12 · 按端点类型去重 3 · 计数取实时值</span>
+            </span>
+          </label>
+        </section>
+
+        <!-- 分类芯片行 -->
+        <section aria-label="分类筛选">
+          <div class="sec-head">
+            <h2>分类芯片</h2>
+            <span class="tag-decide">需产品决策（决策 1）</span>
+            <span class="src s-both">本机＋生产实测</span>
+          </div>
+
+          <div class="chiprow">
+            <div class="chiprow-label">方案 A（建议首期）：沿用现有 12 类 · 计数即时可用</div>
+            <div class="chips">
+              <span class="chip on">全部<span class="n">286</span></span>
+              <span class="chip">国际社媒<span class="n">94</span></span>
+              <span class="chip">中文社媒<span class="n">27</span></span>
+              <span class="chip">电商<span class="n">26</span></span>
+              <span class="chip">评价<span class="n">9</span></span>
+              <span class="chip">搜索 &amp; AI<span class="n">6</span></span>
+              <span class="chip">中文搜索<span class="n">3</span></span>
+              <span class="chip">广告情报<span class="n">6</span></span>
+              <span class="chip">B2B &amp; 开源<span class="n">19</span></span>
+              <span class="chip">监管公告<span class="n">4</span></span>
+              <span class="chip">开放网络<span class="n">86</span></span>
+              <span class="chip">OSINT 情报<span class="n">0</span></span>
+            </div>
+            <p class="caption">
+              规则：<code>matchCategory</code> 子串匹配。计数口径 = 286 能力视图全量（不含运行态门控）。偏差必须随页注明：11 个非全部芯片合计 <span class="tabnum">280</span>。其中 27 个能力视图未命中，21 个重复命中。子串误配 10 个能力视图（aliexpress ×2、tiktok_shop ×2、facebook_ads ×2、tiktok_ads、snapchat_ads、pinterest_ads、perplexity）。这些行都同时命中「国际社媒」。
+            </p>
+            <p class="caption">
+              运行态差异（写进验收）。页面叠加可执行门控后，本机 offline 全部芯片计 0。生产「全部」= <span class="tabnum">274</span>、「开放网络」= <span class="tabnum">75</span>。其余 10 项不变（生产实测）。
+            </p>
+          </div>
+
+          <div class="chiprow" style="margin-top:16px;">
+            <div class="chiprow-label">方案 B（备选）：设计稿 IA（8 类）· 互斥瀑布真值 · 7 类合计 286</div>
+            <div class="chips">
+              <span class="chip on">全部<span class="n">286</span></span>
+              <span class="chip">搜索与提取<span class="n">84</span></span>
+              <span class="chip">社交与内容<span class="n">109</span></span>
+              <span class="chip">电商与商品<span class="n">43</span></span>
+              <span class="chip">情报与风控<span class="n">26</span></span>
+              <span class="chip">代码与仓库<span class="n">18</span></span>
+              <span class="chip">边缘与逆向<span class="n">2</span></span>
+              <span class="chip">沙箱与拟人<span class="n">4</span></span>
+            </div>
+            <p class="caption">
+              设计稿原数字：全部 286 / 136 / 49 / 29 / 24 / 15 / 13 / 13（7 数和 <span class="tabnum">279</span>）。标签全仓 0 命中，数字无字段可产出。弱项（须先解决）：「边缘与逆向」无忠实定义。代理规则仅覆盖 2 个端点。「电商与商品」含 12 个临时归属行。「搜索与提取」是未命中余项。
+            </p>
+          </div>
+        </section>
+
+        <!-- 门控芯片行 -->
+        <section class="gating" aria-label="门控芯片">
+          <div class="sec-head">
+            <h2>门控芯片</h2>
+            <span class="src s-undep">本机实测·未部署</span>
+            <span class="spacer"></span>
+            <span class="mode-tag">数字随网络模式实时取值（顶部预览开关联动）</span>
+          </div>
+          <div class="chips mode-off">
+            <span class="chip g-env"><span class="dot"></span>环境门控 · by 环境<span class="n">229</span></span>
+            <span class="chip zero"><span class="dot"></span>环境门控 · by 授权<span class="n">0</span></span>
+            <span class="chip g-perm"><span class="dot"></span>永久拒绝<span class="n">57</span></span>
+          </div>
+          <div class="chips mode-res">
+            <span class="chip zero"><span class="dot"></span>环境门控 · by 环境<span class="n">0</span></span>
+            <span class="chip g-grant"><span class="dot"></span>环境门控 · by 授权<span class="n">32</span></span>
+            <span class="chip g-perm"><span class="dot"></span>永久拒绝<span class="n">57</span></span>
+          </div>
+          <p class="caption">
+            加和关系：offline <b>229 + 0 + 57 = 286</b>；restricted 阻断 <b>89</b>（0 + 32 + 57），放行 <b>197</b>（197 + 89 = 286）。两枚「by 环境 / by 授权」不能单独加和（229 + 32 + 57 = 318 ≠ 286）。两族是同一批 guarded_http 行随模式迁移。
+          </p>
+          <p class="caption">
+            唯一端点口径：by 环境 <span class="tabnum">201</span> · by 授权 <span class="tabnum">4</span> · 永久拒绝 <span class="tabnum">57</span>（本机实测）。原因文案。环境：「当前执行环境为离线模式」。授权：「缺少唯一的服务端域名批准配置」。永久：「{类型} 未具备受控出口，禁止执行」。
+          </p>
+          <p class="caption">
+            前置：生产未部署 <code>policy_block_reason</code>（catalog 每行 12 键，无该字段）。部署前横幅与门控芯片不可用。「永久拒绝」57 与 <code>/api/tools</code> 的 <code>permanently_blocked=true</code> 同值；该路由生产同样未部署（404）。
+          </p>
+        </section>
+
+        <!-- 表格 -->
+        <section class="table-sec" aria-label="能力目录表">
+          <div class="sec-head">
+            <h2>能力目录</h2>
+            <span class="spacer"></span>
+            <span class="caption" style="margin-top:0;">8 行真实端点（覆盖多种状态与参数形态）＋底部固定行。</span>
+          </div>
+          <div class="table-scroll">
+            <table class="catalog">
+              <colgroup>
+                <col style="width:23%"><col style="width:8%"><col style="width:20%"><col style="width:9%"><col style="width:9%"><col style="width:11%"><col style="width:20%">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">端点</th>
+                  <th scope="col">平台</th>
+                  <th scope="col">参数 <span class="src s-both">本机＋生产实测</span></th>
+                  <th scope="col">方法</th>
+                  <th scope="col">内容</th>
+                  <th scope="col">状态 <span class="src s-prod">生产实测</span></th>
+                  <th scope="col">测试记录 <span class="src s-prod">生产实测</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cap-name">1688 商品搜索</div><div class="cap-id">apify_1688_product_search</div></td>
+                  <td><span class="mono" style="font-size:12px;">alibaba</span></td>
+                  <td><div class="pcount">1 必需 / 1 可选</div><div class="params">必需：keyword<br>可选：max_items_per_url</div></td>
+                  <td>apify</td>
+                  <td>product</td>
+                  <td><span class="pill p-warn">degraded</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec bad">failed · 0 条 · 2026-10-09</span><span class="err">http_forbidden: upstream returned 403</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">阿里巴巴国际站商品搜索（含规格/证书）</div><div class="cap-id">apify_alibaba_product_search</div></td>
+                  <td><span class="mono" style="font-size:12px;">alibaba</span></td>
+                  <td><div class="pcount">0 必需 / 4 可选</div><div class="params">可选：maxItems、includeSpecSheet、includeCertificates、includePackagingAndWeight</div></td>
+                  <td>apify</td>
+                  <td>product</td>
+                  <td><span class="pill p-verified">verified</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec ok">success · 5 条 · 2026-10-09</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">SHEIN Product Scraper</div><div class="cap-id">apify_shein_product_scraper</div></td>
+                  <td><span class="mono" style="font-size:12px;">shein</span></td>
+                  <td><div class="pcount">1 必需 / 1 可选</div><div class="params">必需：startUrl<br>可选：maxItems</div></td>
+                  <td>apify</td>
+                  <td>product</td>
+                  <td><span class="pill p-verified">verified</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec ok">success · 3 条 · 2026-10-09</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">TikTok Ads Scraper</div><div class="cap-id">apify_tiktok_ads_scraper</div></td>
+                  <td><span class="mono" style="font-size:12px;">tiktok_ads</span></td>
+                  <td><div class="pcount">1 必需 / 1 可选</div><div class="params">必需：searchTerms<br>可选：maxItems</div></td>
+                  <td>apify</td>
+                  <td>ad</td>
+                  <td><span class="pill p-verified">verified</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec ok">success · 3 条 · 2026-10-09</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">抖音热搜榜</div><div class="cap-id">tikhub_douyin_hot_search</div></td>
+                  <td><span class="mono" style="font-size:12px;">douyin</span></td>
+                  <td><div class="pcount">0 必需 / 0 可选</div><div class="params"><span class="dash">—</span></div></td>
+                  <td>tikhub</td>
+                  <td>trend</td>
+                  <td><span class="pill p-verified">verified</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec ok">success · 5 条 · 2026-10-09</span></td>
+                </tr>
+                <tr class="is-disabled">
+                  <td><div class="cap-name">PyPI 包搜索</div><div class="cap-id">pypi_search</div></td>
+                  <td><span class="mono" style="font-size:12px;">pypi</span></td>
+                  <td><div class="pcount">1 必需 / 1 可选</div><div class="params">必需：query<br>可选：max_items</div></td>
+                  <td>api</td>
+                  <td>product</td>
+                  <td><span class="pill p-disabled">disabled</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec">无记录（唯一未实测）</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">微博关键词搜索</div><div class="cap-id">weibo_keyword_search</div></td>
+                  <td><span class="mono" style="font-size:12px;">weibo</span></td>
+                  <td><div class="pcount">1 必需 / 1 可选</div><div class="params">必需：keyword<br>可选：max_items</div></td>
+                  <td>web_crawl</td>
+                  <td>post</td>
+                  <td><span class="pill p-info">config-gated</span><span class="cellnote">缺 MEDIACRAWLER_BASE_URL</span></td>
+                  <td><span class="testrec bad">failed · 0 条 · 2026-10-09</span><span class="err">http_connection_failed: upstream connection failed</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cap-name">GitHub 仓库监测</div><div class="cap-id">github_repo</div></td>
+                  <td><span class="mono" style="font-size:12px;">github</span></td>
+                  <td><div class="pcount">2 必需 / 0 可选</div><div class="params">必需：owner、repo</div></td>
+                  <td>github_api</td>
+                  <td>repo</td>
+                  <td><span class="pill p-verified">verified</span><span class="cellnote">可用性口径</span></td>
+                  <td><span class="testrec ok">success · 1 条 · 2026-10-09</span></td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="7">
+                    <div class="tfoot-row">
+                      <span class="tf-label">底部固定行</span>
+                      <span class="tf-main">anysearch_brand_media <span class="mono">（AnySearch 品牌×媒体覆盖查询）</span></span>
+                      <span class="pill p-info" style="background:var(--surface-muted); color:var(--text-secondary);">web / anysearch / search_result</span>
+                      <span class="pill p-verified">1 必需（query）/ 2 可选（site、num_results）</span>
+                      <span class="pill p-verified">verified · success 10 条 · 2026-10-09</span>
+                      <span class="src s-prod">生产实测</span>
+                      <span class="tf-note">
+                        设计稿原行为不存在的 <span class="mono">web_search</span>（2 必需 / 1 可选）。258 个端点中无「2 必需 / 1 可选」组合，该分组必须删。若版面必须出现「2 必需」，用 <span class="mono">anysearch_tag_search</span>（2 必需 query、tag / 3 可选）。供应商：AnySearch API；费用 $0.001/query（上游估算）。
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="caption">
+            字段口径：端点 / 平台 / 参数 = 本机＋生产实测。状态列 = 生产可用性 <code>availability</code>。决策 2 建议：状态列用可用性；静态声明不进状态 UI。测试记录 = 生产实测。最近一次测试 2026-10-09，数据来自数据库测试运行。状态与枚举到界面词表的映射仍缺文档（交接文档 §5.3）。本预览直接展示原始枚举值。
+          </p>
+          <p class="caption">
+            「—」空态规则（真值示例：抖音热搜榜）：两者皆空 = <span class="tabnum">5</span> 个端点。全目录「必填为空」= <span class="tabnum">16</span> 个。设计稿给 <code>apify_1688_product_search</code> 标「参数 —」是错的：它 1 必需 keyword / 1 可选 max_items_per_url。
+          </p>
+        </section>
+
+        <!-- 修正清单 -->
+        <section id="corrections" aria-label="修正清单">
+          <div class="sec-head">
+            <h2>修正清单</h2>
+            <span class="spacer"></span>
+            <span class="caption" style="margin-top:0;">设计稿 → 真值，逐项对照；处置栏标明保留 / 改为真值 / 需产品决策。全部真值可复算（命令见配套文档 §7）。</span>
+          </div>
+          <table class="corr">
+            <colgroup>
+              <col style="width:16%"><col style="width:26%"><col style="width:40%"><col style="width:18%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">元素</th>
+                <th scope="col">设计稿值</th>
+                <th scope="col">真值</th>
+                <th scope="col">依据与处置</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>页头标题</td>
+                <td class="old">「平台能力中心」</td>
+                <td class="new">与现值一致，不动。</td>
+                <td class="basis"><span class="tag-keep">保留</span> 本机源码核对（<code>platforms/page.tsx:508</code>）。</td>
+              </tr>
+              <tr>
+                <td>页头副标题</td>
+                <td class="old">「共 286 视图 / 258 唯一端点 · 258 个工具」</td>
+                <td class="new">「共 <b>286 能力视图</b> / 258 唯一端点」；「· 258 个工具」等 <code>/api/tools</code> 部署后再加。</td>
+                <td class="basis">286 / 258：本机＋生产实测。「258 个工具」依赖未部署路由（生产 404，生产实测）。<b>处置：改为真值 + 部署前置。</b></td>
+              </tr>
+              <tr>
+                <td>横幅</td>
+                <td class="old">「当前网络模式阻止全部目录端点。切换执行环境即可放行。」</td>
+                <td class="new">分态阻断文案（四态，见横幅区块）：offline / 受限（无批准）/ 受限（批准齐全）/ 生产（不显示）。对 57 个永久拒绝端点，「切换即可放行」为假。</td>
+                <td class="basis">本机两模式实测；生产未部署该字段（生产实测）。<b>处置：改为真值。</b></td>
+              </tr>
+              <tr>
+                <td>统计块</td>
+                <td class="old">「已核验 226 / 待测试 60 / 禁用 11」（和 297 ≠ 286）</td>
+                <td class="new">口径 A：已实测 <b>285</b> / 未实测 <b>1</b>（pypi_search）。实测成功 <b>248</b> / 失败 <b>37</b>。覆盖率 <b>99.7%</b> / 成功率 <b>86.7%</b>。</td>
+                <td class="basis">生产实测（<code>/api/collectors/docs</code>）。<b>处置：改为真值（口径 A，另有口径 B 可用性 209/21/17/10/1）。</b></td>
+              </tr>
+              <tr>
+                <td>核验率</td>
+                <td class="old">「79%」</td>
+                <td class="new">覆盖率 <b>99.7%</b>（285/286）· 成功率 <b>86.7%</b>（248/286）。79% 只能等于 226/286，分子 226 无来源。</td>
+                <td class="basis">生产实测 + 算术复核。<b>处置：改为真值。</b></td>
+              </tr>
+              <tr>
+                <td>分类芯片（8 个）</td>
+                <td class="old">全部 286 / 搜索与提取 136 / 社交与内容 49 / 电商与商品 29 / 情报与风控 24 / 代码与仓库 15 / 边缘与逆向 13 / 沙箱与拟人 13。7 数和 279，标签全仓 0 命中。</td>
+                <td class="new">方案 A（建议）：现有 12 类真值。全部 286 · 国际社媒 94 · … · 开放网络 86 · OSINT 0。方案 B（备选）：设计 IA 互斥瀑布真值。全部 286。其余 7 类：搜索与提取 84 · 社交与内容 109 · 电商与商品 43 · 情报与风控 26 · 代码与仓库 18 · 边缘与逆向 2 · 沙箱与拟人 4。</td>
+                <td class="basis">两条芯片栏均为本机＋双生产实测。规则为提案。<span class="tag-decide">需产品决策（决策 1，建议 A）</span></td>
+              </tr>
+              <tr>
+                <td>门控芯片</td>
+                <td class="old">「环境门控 by 环境」「环境门控 by 授权」计数缺失；无第三枚</td>
+                <td class="new">by 环境：offline <b>229 行 / 201 唯一</b>，restricted 0。by 授权：offline 0，restricted <b>32 行 / 4 唯一</b>。新增「永久拒绝」<b>57 / 57</b>（模式无关）。</td>
+                <td class="basis">本机两模式实测（受限为模拟）。<b>处置：改为真值 + 新增。</b> 生产未部署该字段。</td>
+              </tr>
+              <tr>
+                <td>开关</td>
+                <td class="old">「不展示 11 个禁用端点」</td>
+                <td class="new">「不展示 <b>12</b> 个禁用端点」（行口径；按端点类型去重 = 3：public_feed、generic_web、pypi_search）。</td>
+                <td class="basis">12 与 3：本机 offline 实测；12 为生产实测。<b>处置：改为真值。</b></td>
+              </tr>
+              <tr>
+                <td>侧栏徽标</td>
+                <td class="old">「26 平台包」</td>
+                <td class="new"><b>70</b> 个平台包（现侧栏无徽标代码，本轮新增）。</td>
+                <td class="basis"><code>configs/platform-packages.lock.json</code> platform_count=70；生产实测同值。<b>处置：改为真值。</b></td>
+              </tr>
+              <tr>
+                <td>侧栏导航（9 项）</td>
+                <td class="old">平台能力 / 采集文档 / Skill 目录 / 项目 / 采集任务 / 运行记录 / 数据集 / 凭证设置 / 系统设置</td>
+                <td class="new">8 项已有路由可用。4 项改名：平台能力（现「采集平台」）、Skill 目录（现「Skill 与 MCP」）、项目（现「我的项目」）、凭证设置（现「凭证配置」）。「系统设置」无对应页面。</td>
+                <td class="basis">本机源码核对。<b>处置：改名；</b><span class="tag-decide">系统设置需产品决策（决策 3，建议首期删除）</span></td>
+              </tr>
+              <tr>
+                <td>示例行 <code>apify_shein_product_detail</code></td>
+                <td class="old">（示例行名）</td>
+                <td class="new">不存在。替换为 <code>apify_shein_product_scraper</code>（SHEIN Product Scraper · 1 必需 startUrl / 1 可选 maxItems）。</td>
+                <td class="basis">全仓 0 命中；<code>collectors.py:1193</code>。<b>处置：替换。</b></td>
+              </tr>
+              <tr>
+                <td>示例行 <code>apify_tiktok_ads_library_scraper</code></td>
+                <td class="old">（示例行名）</td>
+                <td class="new">不在采集目录。替换为 <code>apify_tiktok_ads_scraper</code>（TikTok Ads Scraper · 1 必需 searchTerms / 1 可选 maxItems）。旧名仅两处硬编码：<code>quick-collect-drawer.tsx:636</code>、<code>scripts/collector_demo_params.py:77</code>。</td>
+                <td class="basis"><code>collectors.py:1569</code>；该名在 258 端点中 0 命中。<b>处置：替换。</b></td>
+              </tr>
+              <tr>
+                <td><code>apify_1688_product_search</code> 参数「—」</td>
+                <td class="old">参数列显示「—」</td>
+                <td class="new">错。1 必需 <code>keyword</code> / 1 可选 <code>max_items_per_url</code>。「—」的真值场景：两者皆空 5 个；必填为空 16 个。</td>
+                <td class="basis"><code>collectors.py:1982-1996</code>；本机＋生产实测。<b>处置：改为真值；「—」空态规则保留并写清。</b></td>
+              </tr>
+              <tr>
+                <td>底部固定行 <code>web_search</code></td>
+                <td class="old">web_search（2 必需 / 1 可选）</td>
+                <td class="new">端点不存在；「2 必需 / 1 可选」组合在 258 端点中为空集。替换为 <code>anysearch_brand_media</code>（1 必需 query / 2 可选 site、num_results）。需要「2 必需」时用 <code>anysearch_tag_search</code>（2 必需 query、tag / 3 可选）。</td>
+                <td class="basis">全仓 0 命中；参数组合全扫（本机实测）。<b>处置：替换。</b></td>
+              </tr>
+              <tr>
+                <td>部署前置（工程项）</td>
+                <td class="old">—</td>
+                <td class="new"><code>policy_block_reason</code> 与 <code>/api/tools</code> 生产未部署。横幅、门控芯片、工具级可用性依赖这两项。</td>
+                <td class="basis">生产实测（catalog 每行 12 键；<code>/api/tools</code> 404）。<b>处置：工程前置，不属产品决策。</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- 页脚 -->
+        <footer class="page-foot">
+          <span>修订稿 v1 · 2026-10-16 · 复核基线：<code>feat/dih-p0-on-guardrails</code>（本机）＋生产 <code>scrapy.luteos.com</code> / <code>scrapy.lute-tlz-dddd.top</code>（只读 GET）</span>
+          <span>本页与配套文档 <code>docs/architecture/【修订稿】DIH平台能力中心-真值版.md</code> 配套。数字复核命令见该文档 §7。写作与视觉遵守 <code>docs/architecture/【设计规范】DIH首页与目录视觉规范.md</code> §8：不出现未经核验的数字。</span>
+        </footer>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
