@@ -12,6 +12,15 @@ import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer"
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
 import type { CollectorEndpoint } from "@/lib/api/collectors";
 import { canStartCollection } from "@/lib/collection-policy";
+import { fetchProviderStatus } from "@/lib/api/platform-packages";
+import {
+  BlockerList,
+  ReachabilityBadge,
+  ReachabilityProvider,
+  useAvailability,
+  type AvailabilityLookup,
+} from "@/components/ui/reachability-badge";
+import { resolveReachability } from "@/lib/reachability";
 import { endpointRowKey } from "@/lib/endpoint-key";
 import {
   mergeParams,
@@ -69,10 +78,23 @@ function EndpointRow({
   selected: boolean;
   onToggleSelect: (ep: CollectorEndpoint) => void;
 }) {
+  const availability = useAvailability(endpoint.endpoint_type);
   const isVerified = canStartCollection(endpoint);
 
+  // 可达性输入。结构性字段优先，策略原因兜底。
+  const reachabilityInput = {
+    catalogStatus: endpoint.status,
+    policyBlockReason: endpoint.policy_block_reason ?? availability?.policy_block_reason ?? null,
+    missingConfiguration: availability?.missing_configuration ?? [],
+    availability: availability?.availability ?? null,
+  };
+  const reachability = resolveReachability(reachabilityInput);
+
+  // 永久不可达与已停用不留操作入口。
+  const canAct = isVerified && reachability.canRun;
+
   function handleClick() {
-    if (!isVerified) return;
+    if (!canAct) return;
     if (batchMode) onToggleSelect(endpoint);
     else onCollect(endpoint);
   }
@@ -80,12 +102,12 @@ function EndpointRow({
   return (
     <div
       role="button"
-      tabIndex={isVerified ? 0 : -1}
+      tabIndex={canAct ? 0 : -1}
       onClick={handleClick}
       onKeyDown={e => e.key === "Enter" && handleClick()}
       className={[
         "group flex items-start gap-3 rounded-lg border px-4 py-3 transition-all duration-100",
-        isVerified
+        canAct
           ? selected
             ? "border-[var(--action-primary)] bg-[var(--accent-1-soft)] cursor-pointer"
             : "border-[var(--border-subtle)] bg-[var(--surface-primary)] cursor-pointer hover:border-[var(--border-strong)] hover:bg-[var(--surface-muted)]"
@@ -93,7 +115,7 @@ function EndpointRow({
       ].join(" ")}
     >
       {/* batch checkbox */}
-      {batchMode && isVerified && (
+      {batchMode && canAct && (
         <span className="mt-0.5 flex-shrink-0 text-[var(--text-tertiary)]">
           {selected
             ? <CheckSquare size={14} className="text-[var(--action-primary)]" />
@@ -101,9 +123,10 @@ function EndpointRow({
         </span>
       )}
 
-      {/* status dot */}
-      <span className="mt-1.5 flex-shrink-0">
+      {/* status dot + 可达性徽标 */}
+      <span className="mt-1.5 flex flex-shrink-0 items-center gap-1.5">
         <StatusDot status={endpoint.policy_block_reason ? "disabled" : endpoint.status} />
+        <ReachabilityBadge input={reachabilityInput} />
       </span>
 
       {/* label + description */}
@@ -119,10 +142,8 @@ function EndpointRow({
         <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-tertiary)] line-clamp-2">
           {endpoint.description}
         </p>
-        {endpoint.policy_block_reason && (
-          <p className="mt-1 text-xs text-[var(--state-warning)]">
-            策略阻断：{endpoint.policy_block_reason}
-          </p>
+        {reachability.blockers.length > 0 && (
+          <BlockerList reachability={reachability} />
         )}
         {endpoint.required_params.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -148,7 +169,7 @@ function EndpointRow({
         {endpoint.cost_hint && (
           <span className="text-[10px] text-[var(--text-tertiary)]">{endpoint.cost_hint}</span>
         )}
-        {isVerified && !batchMode && (
+        {canAct && !batchMode && (
           <ChevronRight
             size={14}
             className="text-[var(--text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity"
@@ -441,6 +462,18 @@ function PlatformsPageContent() {
     if (!data) return [];
     return data.collectors.flatMap(c => c.endpoints).filter(e => e.status !== "disabled");
   }, [data]);
+
+  // 实时可用性。三态标记的唯一来源。
+  const providerStatus = useQuery({
+    queryKey: ["provider-status"],
+    queryFn: fetchProviderStatus,
+  });
+  const availabilityLookup: AvailabilityLookup = useMemo(() => {
+    const map = new Map(
+      (providerStatus.data?.endpoints ?? []).map(e => [e.endpoint_type, e])
+    );
+    return (endpointType: string) => map.get(endpointType) ?? null;
+  }, [providerStatus.data]);
 
   // URL 深链：由 ep + label 定位一行。
   // label 单用会撞名，endpoint_type 单用会撞到同类型的 23 行。
@@ -758,6 +791,7 @@ function PlatformsPageContent() {
               </button>
             </div>
           ) : (
+            <ReachabilityProvider lookup={availabilityLookup}>
             <div className="flex flex-col gap-6">
               {byPlatform.map(({ platform, endpoints }) => (
                 <PlatformSection
@@ -771,6 +805,7 @@ function PlatformsPageContent() {
                 />
               ))}
             </div>
+            </ReachabilityProvider>
           )}
         </div>
       )}

@@ -8,7 +8,15 @@ import {
   fetchPlatformPackage,
   fetchPlatformPlaybook,
   fetchPlatformRelease,
+  fetchProviderStatus,
 } from "@/lib/api/platform-packages";
+import {
+  BlockerList,
+  ReachabilityProvider,
+  useAvailability,
+  type AvailabilityLookup,
+} from "@/components/ui/reachability-badge";
+import { resolveReachability } from "@/lib/reachability";
 import type { CapabilityNote, PackageEndpoint } from "@/lib/api/platform-packages";
 import { API_BASE_URL } from "@/lib/api/client";
 
@@ -25,6 +33,15 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
     queryKey: ["platform-release", platformId],
     queryFn: () => fetchPlatformRelease(platformId),
   });
+  // 实时可用性。三态标记的唯一来源。
+  const statusQuery = useQuery({
+    queryKey: ["provider-status"],
+    queryFn: fetchProviderStatus,
+  });
+  const availabilityLookup: AvailabilityLookup = (endpointType: string) => {
+    const hit = statusQuery.data?.endpoints.find(e => e.endpoint_type === endpointType);
+    return hit ?? null;
+  };
   const item = packageQuery.data;
 
   if (packageQuery.isLoading) {
@@ -118,9 +135,11 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
           <h2 className="font-bold">能力清单</h2>
           <p className="mt-1 text-xs text-[var(--text-tertiary)]">参数来自生产 catalog，disabled 能力不可执行。</p>
         </div>
-        <div className="divide-y divide-[var(--border-subtle)]">
-          {item.endpoints.map((endpoint) => <CapabilityRow key={endpoint.capability_id} endpoint={endpoint} />)}
-        </div>
+        <ReachabilityProvider lookup={availabilityLookup}>
+          <div className="divide-y divide-[var(--border-subtle)]">
+            {item.endpoints.map((endpoint) => <CapabilityRow key={endpoint.capability_id} endpoint={endpoint} />)}
+          </div>
+        </ReachabilityProvider>
       </section>
 
       {notes.length > 0 ? (
@@ -153,17 +172,27 @@ export function SkillDetail({ platformId }: { readonly platformId: string }) {
 }
 
 function CapabilityRow({ endpoint }: { readonly endpoint: PackageEndpoint }) {
+  const availability = useAvailability(endpoint.endpoint_type);
+  const reachability = resolveReachability({
+    catalogStatus: endpoint.status,
+    policyBlockReason: endpoint.policy_block_reason ?? availability?.policy_block_reason ?? null,
+    missingConfiguration: availability?.missing_configuration ?? [],
+    availability: availability?.availability ?? null,
+  });
   return (
     <article className="grid gap-3 px-5 py-4 lg:grid-cols-[1fr_auto]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <code className="text-sm font-semibold text-[var(--text-primary)]">{endpoint.endpoint_type}</code>
-          <Status value={endpoint.policy_block_reason ? "策略阻断" : endpoint.status} />
+          <Status value={endpoint.status} />
           <Tag>{endpoint.method}</Tag>
+          <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-tertiary)]">
+            {reachability.label}
+          </span>
         </div>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{endpoint.label}</p>
         <p className="mt-1 text-xs leading-5 text-[var(--text-tertiary)]">{endpoint.description}</p>
-        {endpoint.policy_block_reason && <p className="mt-1 text-xs text-[var(--state-warning)]">{endpoint.policy_block_reason}</p>}
+        {reachability.blockers.length > 0 && <BlockerList reachability={reachability} />}
       </div>
       <div className="flex max-w-md flex-wrap content-start gap-1.5 lg:justify-end">
         {endpoint.required_params.map((param) => <Param key={param} name={param} required />)}
