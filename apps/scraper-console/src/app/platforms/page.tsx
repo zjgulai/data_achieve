@@ -11,6 +11,7 @@ import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer"
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
 import type { CollectorEndpoint } from "@/lib/api/collectors";
 import { canStartCollection } from "@/lib/collection-policy";
+import { dedupeByEndpointType } from "@/lib/quick-collect-form";
 import { useQuery } from "@tanstack/react-query";
 import { PlatformLogo } from "@/components/platforms/platform-logo";
 import {
@@ -484,11 +485,22 @@ export default function PlatformsPage() {
   }
 
   function startBatchCollect() {
-    const queue = allEndpoints.filter(ep => selectedEndpoints.has(ep.endpoint_type) && canStartCollection(ep));
+    const picked = allEndpoints.filter(
+      ep => selectedEndpoints.has(ep.endpoint_type) && canStartCollection(ep)
+    );
+    // 同一端点类型在目录里出现多次。队列只保留首个。
+    const queue = dedupeByEndpointType(picked);
     if (!queue.length) return;
     setBatchQueue(queue);
     setBatchQueueIndex(0);
     setActiveEndpoint(queue[0]);
+  }
+
+  function onBatchAbort() {
+    setBatchQueue([]);
+    setBatchQueueIndex(0);
+    setSelectedEndpoints(new Set());
+    setActiveEndpoint(null);
   }
 
   function onBatchDrawerClose() {
@@ -673,9 +685,16 @@ export default function PlatformsPage() {
 
       {activeEndpoint && (
         <QuickCollectDrawer
+          key={`${activeEndpoint.endpoint_type}:${activeEndpoint.label}`}
           endpoint={activeEndpoint}
           open={!!activeEndpoint}
           onClose={batchQueue.length > 0 ? onBatchDrawerClose : () => setActiveEndpoint(null)}
+          onAbort={batchQueue.length > 0 ? onBatchAbort : undefined}
+          batchProgress={
+            batchQueue.length > 0
+              ? { index: batchQueueIndex, total: batchQueue.length }
+              : null
+          }
         />
       )}
     </AppShell>

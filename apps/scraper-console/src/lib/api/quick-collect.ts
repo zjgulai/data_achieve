@@ -1,9 +1,19 @@
 import { apiFetch } from "./client";
 
+/** 提交参数值。后端模型是 `dict[str, Any]`。 */
+export type QuickCollectParamValue =
+  | string
+  | number
+  | boolean
+  | null
+  | string[]
+  | number[]
+  | Record<string, unknown>;
+
 export type QuickCollectRequest = {
   project_id: string;
   endpoint_type: string;
-  params: Record<string, string | number>;
+  params: Record<string, QuickCollectParamValue>;
   label?: string;
 };
 
