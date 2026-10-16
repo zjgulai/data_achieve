@@ -50,9 +50,11 @@ drafts/
 archive/
 ref/
 assets/
-# 例外：新 IA 的资产域目录。宽泛的 assets/ 会静默吞掉它。
-!apps/scraper-console/src/app/assets/
-!apps/scraper-console/src/app/assets/**
+# 例外：console 源码树下的资产域目录。
+# 宽泛的 assets/ 会静默吞掉它们，且不止一处。
+# 通配规则覆盖现有的与将来的，避免逐个补。
+!apps/scraper-console/src/**/assets/
+!apps/scraper-console/src/**/assets/**
 generated/
 docs/playbooks/platforms/
 .playwright-cli/

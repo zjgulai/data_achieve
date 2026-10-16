@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Search } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { AssetsTabs } from "@/components/assets/assets-tabs";
 import { fetchRawRecords, type RawRecord } from "@/lib/api/runs";
 
 const PAGE_SIZE = 25;
@@ -26,6 +27,24 @@ function summarize(content: Record<string, unknown>): string {
     if (parts.length >= 3) break;
   }
   return parts.join(" · ") || "—";
+}
+
+/** 截图缩略图。图片加载失败时整块移除，不留空位。 */
+function ScreenshotThumb({ url }: { url: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return null;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" title="打开截图" className="shrink-0">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="采集页面截图"
+        loading="lazy"
+        onError={() => setBroken(true)}
+        className="h-14 w-24 rounded-[var(--radius-1)] border border-[var(--border-subtle)] object-cover"
+      />
+    </a>
+  );
 }
 
 export default function RawRecordsPage() {
@@ -50,10 +69,12 @@ export default function RawRecordsPage() {
 
   return (
     <AppShell
-      title="原始数据"
+      title="原始记录"
       description="浏览所有原始采集记录"
       brief={`每页 ${PAGE_SIZE} 条，按采集时间倒序`}
     >
+      <AssetsTabs />
+
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
@@ -107,6 +128,14 @@ export default function RawRecordsPage() {
                     <span className="rounded-[var(--radius-pill)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
                       {record.record_type}
                     </span>
+                    {record.workflow_run_id ? (
+                      <span
+                        title={`工作流运行 ${record.workflow_run_id}`}
+                        className="rounded-[var(--radius-pill)] bg-[var(--accent-2-soft)] px-2 py-0.5 text-xs font-medium text-[var(--state-info)]"
+                      >
+                        工作流来源
+                      </span>
+                    ) : null}
                     {record.task_run_id ? (
                       <Link
                         href={`/runs/${record.task_run_id}`}
@@ -128,6 +157,15 @@ export default function RawRecordsPage() {
                 <p className="mt-1.5 truncate font-mono text-xs text-[var(--text-secondary)]">
                   {summarize(record.content)}
                 </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                  <span
+                    className="font-mono text-xs text-[var(--text-tertiary)]"
+                    title={record.content_hash}
+                  >
+                    {record.content_hash.slice(0, 8)}
+                  </span>
+                  {record.screenshot_url ? <ScreenshotThumb url={record.screenshot_url} /> : null}
+                </div>
               </div>
             ))}
           </div>

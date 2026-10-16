@@ -35,6 +35,7 @@ import {
   fetchDatasets,
   type DatasetListItem,
 } from "@/lib/api/datasets";
+import { AssetsTabs } from "@/components/assets/assets-tabs";
 
 /* Dataset types imply a coarse platform when the originating endpoint cannot
    be resolved server-side (e.g. records saved from a workflow). */
@@ -296,7 +297,9 @@ export default function DatasetsPage() {
     visible.length > 0 && visible.every(({ item }) => selected.has(item.dataset.id));
 
   return (
-    <AppShell title="数据集" description="按平台、分类与时间切片预览和导出所有采集数据资产">
+    <AppShell title="资产" description="按平台、分类与时间切片预览和导出所有采集数据资产">
+      <AssetsTabs />
+
       {/* Stats HUD */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile label="数据集" value={stats.datasets.toLocaleString()} />
