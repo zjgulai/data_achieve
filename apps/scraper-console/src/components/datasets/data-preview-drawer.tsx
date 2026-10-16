@@ -14,6 +14,7 @@ import {
   type DatasetExportFormat,
   type DatasetVersion,
   type DatasetPreviewRow,
+  type ExportJob,
 } from "@/lib/api/datasets";
 
 const FORMATS: DatasetExportFormat[] = ["csv", "xlsx", "json", "jsonl"];
@@ -51,6 +52,14 @@ function formatDateTime(value: string | null | undefined): string {
   });
 }
 
+/** 把字节数格式化成 B / KB / MB。 */
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "—";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function inferType(rows: DatasetPreviewRow[], field: string): string {
   for (const row of rows) {
     const v = row.values[field];
@@ -69,10 +78,12 @@ function ExportControl({
   datasetId,
   versionId,
   compact = false,
+  onExported,
 }: {
   datasetId: string;
   versionId: string;
   compact?: boolean;
+  onExported: (job: ExportJob) => void;
 }) {
   const [format, setFormat] = useState<DatasetExportFormat>("csv");
   const [pending, setPending] = useState(false);
@@ -83,6 +94,8 @@ function ExportControl({
     setError(null);
     try {
       const job = await createExport(datasetId, versionId, format);
+      // 先存 job，再触发下载。下载失败时卡片保留，可以重试。
+      onExported(job);
       await downloadExport(job);
     } catch (err) {
       setError(err instanceof Error ? err.message : "导出失败");
@@ -124,6 +137,83 @@ function ExportControl({
   );
 }
 
+/** 「最近导出」卡：显示最近一次导出作业的详情。 */
+function ExportJobCard({ job }: { job: ExportJob }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      await downloadExport(job);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "下载失败");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div className="border-b border-[var(--border-subtle)] px-6 py-3">
+      <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">最近导出</p>
+        <div className="mt-1.5 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-[var(--text-primary)]" title={job.filename}>
+              {job.filename}
+            </p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[var(--text-secondary)]">
+              <span className="rounded-[var(--radius-1)] border border-[var(--border-subtle)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+                {FORMAT_LABELS[job.export_format]}
+              </span>
+              <span className="tabular-nums">{formatBytes(job.artifact_size_bytes)}</span>
+              <span aria-hidden="true" className="text-[var(--text-tertiary)]">·</span>
+              <span className="tabular-nums">{job.row_count.toLocaleString()} 行</span>
+              <span aria-hidden="true" className="text-[var(--text-tertiary)]">·</span>
+              <span className="font-mono" title={job.checksum_sha256}>
+                sha256 {job.checksum_sha256.slice(0, 12)}…
+              </span>
+            </p>
+          </div>
+          {job.download_url ? (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="flex shrink-0 items-center gap-1 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] disabled:opacity-50"
+            >
+              {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              下载
+            </button>
+          ) : null}
+        </div>
+        {downloadError ? (
+          <p className="mt-1.5 flex items-center gap-1 text-xs text-[var(--state-danger)]">
+            <AlertTriangle size={12} />
+            {downloadError}
+          </p>
+        ) : null}
+        {job.blocked_reasons.length > 0 ? (
+          <div className="mt-2 rounded-[var(--radius-2)] bg-[var(--warning-soft)] px-2.5 py-2">
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--state-warning)]">
+              <AlertTriangle size={12} />
+              注意
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {job.blocked_reasons.map((reason, i) => (
+                <li key={i} className="text-xs text-[var(--state-warning)]">
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-2">
@@ -153,6 +243,8 @@ export function DataPreviewDrawer({
   // is needed.
   const [tab, setTab] = useState<Tab>("rows");
   const [versionId, setVersionId] = useState<string | null>(initialVersion?.id ?? null);
+  // 最近一次导出作业。抽屉按数据集重建，所以不需要清理。
+  const [lastExport, setLastExport] = useState<ExportJob | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, panelRef);
 
@@ -252,9 +344,16 @@ export function DataPreviewDrawer({
             </select>
           </label>
           {activeVersion ? (
-            <ExportControl datasetId={datasetId} versionId={activeVersion.id} />
+            <ExportControl
+              datasetId={datasetId}
+              versionId={activeVersion.id}
+              onExported={setLastExport}
+            />
           ) : null}
         </div>
+
+        {/* 最近导出卡 */}
+        {lastExport ? <ExportJobCard job={lastExport} /> : null}
 
         {/* Stats */}
         {activeVersion ? (

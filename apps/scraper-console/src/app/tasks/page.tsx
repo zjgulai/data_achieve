@@ -51,7 +51,10 @@ function TaskRow({ task }: { task: CollectionTask }) {
       <td className="px-4 py-3">
         <div>
           <p className="text-sm font-medium text-[var(--text-primary)]">{task.name}</p>
-          <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">{task.collector_type}</p>
+          <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+            {task.collector_type}
+            {task.source_name ? ` · ${task.source_name}` : ""}
+          </p>
         </div>
       </td>
       <td className="px-4 py-3">
@@ -71,6 +74,21 @@ function TaskRow({ task }: { task: CollectionTask }) {
       </td>
       <td className="px-4 py-3 text-sm tabular-nums text-[var(--text-secondary)]">
         {task.latest_run_records_count != null ? task.latest_run_records_count : "—"}
+      </td>
+      <td
+        className="px-4 py-3 text-sm tabular-nums"
+        title={`成功 ${task.success_count} 次，失败 ${task.failure_count} 次`}
+      >
+        <span className="text-[var(--state-success)]">{task.success_count}</span>
+        <span className="text-[var(--text-tertiary)]"> / </span>
+        <span className="text-[var(--state-danger)]">{task.failure_count}</span>
+      </td>
+      <td className="px-4 py-3 text-xs">
+        {task.schedule_cron ? (
+          <span className="font-mono text-[var(--text-secondary)]">{task.schedule_cron}</span>
+        ) : (
+          <span className="text-[var(--text-tertiary)]">手动</span>
+        )}
       </td>
       <td className="px-4 py-3 text-xs text-[var(--text-tertiary)]">{lastRunAt}</td>
       <td className="px-4 py-3">
@@ -153,10 +171,10 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] border-collapse text-left">
+            <table className="w-full min-w-[840px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)]">
-                  {["任务名称", "状态", "最近运行", "记录数", "最近执行", "操作"].map((h) => (
+                  {["任务名称", "状态", "最近运行", "记录数", "成功/失败", "定时", "最近执行", "操作"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wide"

@@ -32,16 +32,14 @@ export type DashboardTopIntelligence = {
   updated_at: string;
 };
 
+// 与后端 DashboardRecentFailureItem 对齐。
+// 后端只返回 task_id / task_name / status / error_message / created_at。
 export type DashboardRecentFailure = {
   task_id: string;
   task_name: string;
-  source_name: string | null;
-  project_name: string | null;
   status: string;
-  records_count: number;
   error_message: string | null;
-  started_at: string | null;
-  finished_at: string | null;
+  created_at: string;
 };
 
 export type DashboardOverview = {

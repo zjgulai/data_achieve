@@ -15,6 +15,23 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
+function formatScore(value: number): string {
+  return value.toFixed(1);
+}
+
+// 情报状态取自后端 IntelligenceStatus：
+// new / reviewed / following / dismissed / converted。
+function intelligenceStatus(status: string): { label: string; style: string } {
+  const map: Record<string, { label: string; style: string }> = {
+    new: { label: "新建", style: "text-[var(--state-info)]" },
+    reviewed: { label: "已审阅", style: "text-[var(--text-secondary)]" },
+    following: { label: "跟进中", style: "text-[var(--state-warning)]" },
+    dismissed: { label: "已忽略", style: "text-[var(--text-tertiary)]" },
+    converted: { label: "已转化", style: "text-[var(--state-success)]" },
+  };
+  return map[status] ?? { label: status, style: "text-[var(--text-secondary)]" };
+}
+
 function formatTimestamp(value: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -65,6 +82,11 @@ export default function DashboardPage() {
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatTile
+                label="情报总数"
+                value={formatNumber(data.intelligence_count)}
+                hint={`覆盖 ${formatNumber(data.domain_breakdown.length)} 个业务域`}
+              />
+              <StatTile
                 label="任务成功率"
                 value={formatPercent(data.task_success_rate)}
                 hint={`近 ${formatNumber(data.recent_runs)} 次运行`}
@@ -96,7 +118,7 @@ export default function DashboardPage() {
                 <ul className="mt-4 grid gap-2">
                   {data.task_health.recent_failures.map(failure => (
                     <li
-                      key={`${failure.task_id}-${failure.started_at ?? ""}`}
+                      key={`${failure.task_id}-${failure.created_at}`}
                       className="flex items-start gap-3 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2"
                     >
                       <AlertTriangle
@@ -109,7 +131,7 @@ export default function DashboardPage() {
                         </p>
                         <p className="mt-0.5 truncate text-xs text-[var(--text-tertiary)]">
                           {failure.error_message ?? failure.status} ·{" "}
-                          {formatTimestamp(failure.started_at)}
+                          {formatTimestamp(failure.created_at)}
                         </p>
                       </div>
                       <Link
@@ -120,6 +142,58 @@ export default function DashboardPage() {
                       </Link>
                     </li>
                   ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">最新情报</h2>
+              {data.top_intelligence.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--text-tertiary)]">
+                  暂无情报
+                </p>
+              ) : (
+                <ul className="mt-4 grid gap-2">
+                  {data.top_intelligence.map(item => {
+                    const status = intelligenceStatus(item.status);
+                    return (
+                      <li
+                        key={item.id}
+                        className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p
+                            title={item.title}
+                            className="truncate text-sm font-medium text-[var(--text-primary)]"
+                          >
+                            {item.title}
+                          </p>
+                          <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--text-secondary)]">
+                            评分 {formatScore(item.final_score)}
+                          </span>
+                        </div>
+                        <p
+                          title={item.summary}
+                          className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--text-tertiary)]"
+                        >
+                          {item.summary}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-tertiary)]">
+                          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                            {item.type}
+                          </span>
+                          <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
+                            {item.domain}
+                          </span>
+                          <span>{formatNumber(item.evidence_count)} 条证据</span>
+                          <span className={status.style}>{status.label}</span>
+                          <span className="ml-auto">
+                            更新于 {formatTimestamp(item.updated_at)}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>

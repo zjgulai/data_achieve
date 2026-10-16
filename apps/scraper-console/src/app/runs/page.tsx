@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchAllRuns, fetchRunRecords } from "@/lib/api/runs";
-import type { TaskRun, RawRecord } from "@/lib/api/runs";
+import type { TaskRun } from "@/lib/api/runs";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
 import {
   CheckCircle, AlertCircle, Clock, Loader2,
@@ -38,6 +38,72 @@ function dur(a: string | null, b: string | null) {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
   return `${Math.floor(ms / 60_000)}m${Math.floor((ms % 60_000) / 1000)}s`;
+}
+
+/* ── Run logs ── */
+/* 日志级别配色。只使用语义 token。 */
+const LOG_LEVEL_STYLE: Record<string, string> = {
+  info: "text-[var(--text-secondary)]",
+  warning: "text-[var(--state-warning)]",
+  error: "text-[var(--state-danger)]",
+};
+
+function formatLogTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleTimeString("zh-CN", { hour12: false });
+}
+
+/**
+ * 运行日志列表。
+ * 日志可能很大：默认折叠，展开才渲染。
+ */
+function RunLogList({ logs }: { logs: TaskRun["logs"] }) {
+  const [open, setOpen] = useState(false);
+
+  if (logs.length === 0) {
+    return (
+      <p className="mb-3 text-xs text-[var(--text-tertiary)]">本次运行无日志</p>
+    );
+  }
+
+  return (
+    <div className="mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs font-semibold uppercase text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        运行日志（{logs.length} 条）
+      </button>
+      {open && (
+        <ul className="mt-2 grid gap-1.5">
+          {logs.map((log, index) => (
+            <li
+              key={`${log.step}-${index}`}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-1.5"
+            >
+              <span
+                className={`shrink-0 text-xs font-semibold uppercase ${LOG_LEVEL_STYLE[log.level] ?? "text-[var(--text-secondary)]"}`}
+              >
+                {log.level}
+              </span>
+              <span className="shrink-0 font-mono text-xs text-[var(--text-tertiary)]">
+                {log.step}
+              </span>
+              <span className="min-w-0 flex-1 break-all text-xs text-[var(--text-secondary)]">
+                {log.message}
+              </span>
+              <span className="shrink-0 tabular-nums text-xs text-[var(--text-tertiary)]">
+                {formatLogTimestamp(log.timestamp)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 /* ── Raw record preview ── */
@@ -149,6 +215,8 @@ function RunRow({ run }: { run: TaskRun }) {
                 {run.error_message}
               </div>
             )}
+            {/* 运行日志。运行时防御 logs 缺失，旧数据可能没有该键。 */}
+            <RunLogList logs={run.logs ?? []} />
             <p className="mb-2 text-xs font-semibold uppercase text-[var(--text-tertiary)]">
               原始记录预览
             </p>
