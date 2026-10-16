@@ -112,6 +112,32 @@ def test_catalog_reports_executable_only_for_non_blocked_tools(
 
 
 def test_catalog_does_not_invent_parameter_types() -> None:
+    """参数类型只来自契约，不得凭参数名推断。
+
+    这条测试的初衷是禁止「看到 max_items 就猜它是整数」。
+    2026-10-16 之前投影拿不到类型，所以断言的是 typed 恒为 False。
+    现在投影会查参数契约，断言随之改为：带类型的参数必须能在
+    对应 collector_type 的契约里找到同名规格——即类型的唯一来源
+    是契约，而不是名称。
+
+    tikhub_tiktok_video_search 的 keyword 是这条规则的样本：
+    它未经校验，契约把它登记为 string 并在描述里注明 unchecked。
+    """
+    from data_intelligence_hub.api.routes.quick_collect import (
+        _ENDPOINT_TO_COLLECTOR,
+    )
+    from data_intelligence_hub.tool_catalog.collector_specs import (
+        CONTRACTS as MISMATCH,
+    )
+    from data_intelligence_hub.tool_catalog.collector_specs_baseline import (
+        CONTRACTS as BASELINE,
+    )
+    from data_intelligence_hub.tool_catalog.package_registry_specs import (
+        CONTRACTS as PACKAGE,
+    )
+
+    contracts = {**MISMATCH, **PACKAGE, **BASELINE}
+
     catalog = _catalog()
     tools = build_tool_catalog(catalog)
     by_id = {item.tool_id: item for item in tools.tools}
@@ -121,10 +147,29 @@ def test_catalog_does_not_invent_parameter_types() -> None:
     assert [item.name for item in endpoint.parameters][0] == "keyword"
     required = {item.name for item in endpoint.parameters if item.required}
     assert required == set(endpoint.required_parameters)
-    # 现有目录没有类型信息，投影不得凭名称编造。
+
+    # 带类型的参数必须能在契约里找到出处。
     for item in endpoint.parameters:
-        assert item.typed is False
-        assert item.value_type is None
+        if not item.typed:
+            assert item.value_type is None
+            continue
+        contract = contracts[_ENDPOINT_TO_COLLECTOR[endpoint.tool_id]]
+        spec = contract.spec_for(item.name)
+        assert spec is not None, f"{item.name} 有类型却查不到契约"
+        assert item.value_type == spec.value_type
+
+    # 全局：每个带类型的参数都要有契约出处，没有例外。
+    for tool in tools.tools:
+        collector_type = _ENDPOINT_TO_COLLECTOR.get(tool.tool_id)
+        for item in tool.parameters:
+            if not item.typed:
+                continue
+            assert collector_type is not None, tool.tool_id
+            contract = contracts.get(collector_type)
+            assert contract is not None, f"{tool.tool_id} → {collector_type} 无契约"
+            assert contract.spec_for(item.name) is not None, (
+                f"{tool.tool_id}.{item.name} 有类型却查不到契约"
+            )
 
 
 def test_catalog_marks_upstream_cost_as_estimate_not_platform_price() -> None:

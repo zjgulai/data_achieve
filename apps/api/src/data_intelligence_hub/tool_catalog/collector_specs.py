@@ -48,6 +48,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=False,
         source="collector_validation",
         default="",
+        enforced=False,
         description=(
             "零运行时校验：仅真值原样透传为 --site 实参， "
             "非字符串只会在 subprocess 参数组装阶段报 TypeError。 "
@@ -1010,6 +1011,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string_list",
         required=True,
         source="collector_validation",
+        enforced=False,
         description=(
             "两站一致：必填、非空 list；元素类型未校验（注解 list[str]， "
             "无元素 isinstance）。声明（collector_catalog.py:755）required 含本键。"
@@ -1033,6 +1035,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=False,
         source="collector_validation",
         default=False,
+        enforced=False,
         description=(
             "unchecked：两站均无类型校验；任意值原样持久化并按真值使用——字符串 "
             "\"false\" 也是真值、会被当作开启落盘。"
@@ -1043,6 +1046,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=False,
         source="collector_validation",
+        enforced=False,
         description=(
             "unchecked：无类型校验；非字符串在采集期按类型抛不同异常（dict 在 "
             "os.path.exists 处 TypeError）。"
@@ -1954,6 +1958,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=False,
         source="collector_validation",
+        enforced=False,
         description=(
             "unchecked：任一校验站点都不做类型检查，任意 JSON 值（如 "
             "keyword=123）原样到达 _build_params 并作为上游参数发出； "
@@ -1966,6 +1971,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=False,
         source="collector_validation",
+        enforced=False,
         description=(
             "unchecked（同 keyword）：无类型/非空校验， "
             "空值 `or \"\"` 兜底；读取处带 username 回退。"
@@ -1976,6 +1982,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=False,
         source="collector_validation",
+        enforced=False,
         description=(
             "unchecked。回退键 hashtag_id 同样未在 config_schema 声明（见 "
             "undeclared_but_read）。"
@@ -1986,6 +1993,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=False,
         source="collector_validation",
+        enforced=False,
         description=(
             "unchecked。:1510 的 camelCase 回退 `config.get(\"userId\")` "
             "在标准路径不可达（userId 不在白名单、入库前即被丢弃， "

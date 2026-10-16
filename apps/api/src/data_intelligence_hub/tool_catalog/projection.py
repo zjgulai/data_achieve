@@ -26,6 +26,10 @@ from data_intelligence_hub.tool_catalog.models import (
     ToolRiskClass,
     ToolRunMode,
 )
+from data_intelligence_hub.tool_catalog.parameters import (
+    ParameterSpec,
+    ToolParameterContract,
+)
 from data_intelligence_hub.tool_catalog.reachability import (
     execution_reachability,
 )
@@ -57,19 +61,92 @@ _AUTH_NOTE = (
 )
 
 
-def _parameters(endpoint: PackageEndpoint) -> tuple[ToolParameter, ...]:
-    """按名称构造参数列表。
+def _collector_type(endpoint: PackageEndpoint) -> str | None:
+    """查端点对应的 collector_type。
 
-    现有目录只有参数名，没有类型信息。
-    因此 ``typed`` 一律为 False。
-    不补类型、默认值或取值范围。
+    契约按 ``collector_type`` 索引，而投影按 ``endpoint_type`` 遍历，
+    两者不同名（例如组名 github 管辖端点 github_repo）。
+    映射表在 quick_collect.py，与目录同处一层，不引入新的依赖方向。
+
+    查不到时返回 None——调用方按「未登记规格」处理，不猜。
     """
+    from data_intelligence_hub.api.routes.quick_collect import (
+        _ENDPOINT_TO_COLLECTOR,
+    )
+
+    return _ENDPOINT_TO_COLLECTOR.get(endpoint.endpoint_type)
+
+
+def _contracts() -> dict[str, ToolParameterContract]:
+    """三个契约模块合并成一张表。
+
+    合并在此处做一次，避免每个端点都重建。
+    """
+    from data_intelligence_hub.tool_catalog.collector_specs import (
+        CONTRACTS as mismatch,
+    )
+    from data_intelligence_hub.tool_catalog.collector_specs_baseline import (
+        CONTRACTS as baseline,
+    )
+    from data_intelligence_hub.tool_catalog.package_registry_specs import (
+        CONTRACTS as package_registry,
+    )
+
+    merged: dict[str, ToolParameterContract] = {}
+    merged.update(mismatch)
+    merged.update(package_registry)
+    merged.update(baseline)
+    return merged
+
+
+def _one_tool_parameter(
+    name: str,
+    required: bool,
+    spec: ParameterSpec | None,
+) -> ToolParameter:
+    """构造单个参数。
+
+    没有规格时只声明名称与必填性，``typed`` 保持 False。
+    有规格时带上类型与约束——它们来自采集器校验实现。
+    """
+    if spec is None:
+        return ToolParameter(name=name, required=required)
+    return ToolParameter(
+        name=name,
+        required=required,
+        typed=True,
+        value_type=spec.value_type,
+        description=spec.description,
+        default=spec.default,
+        allowed_values=spec.allowed_values,
+        minimum=spec.minimum,
+        maximum=spec.maximum,
+        max_length=spec.max_length,
+        type_enforced=spec.enforced,
+    )
+
+
+def _parameters(
+    endpoint: PackageEndpoint,
+    contracts: dict[str, ToolParameterContract],
+) -> tuple[ToolParameter, ...]:
+    """构造参数列表，已登记的带上类型信息。
+
+    契约按 collector_type 索引。查不到契约时，该端点的参数
+    全部按未登记处理——名称与必填性照旧，但不编造类型。
+    """
+    collector_type = _collector_type(endpoint)
+    contract = contracts.get(collector_type) if collector_type else None
+
+    def spec_for(name: str) -> ParameterSpec | None:
+        return contract.spec_for(name) if contract else None
+
     parameters = [
-        ToolParameter(name=name, required=True)
+        _one_tool_parameter(name, True, spec_for(name))
         for name in endpoint.required_params
     ]
     parameters.extend(
-        ToolParameter(name=name, required=False)
+        _one_tool_parameter(name, False, spec_for(name))
         for name in endpoint.optional_params
         if name not in endpoint.required_params
     )
@@ -160,6 +237,7 @@ def build_tool_catalog(
     没有传入状态证据时，所有条目按 untested 或 disabled 处理。
     """
     status_by_endpoint = build_availability_views(status) if status else {}
+    contracts = _contracts()
     seen: set[str] = set()
     tools: list[ToolDescriptor] = []
     for package in catalog.packages:
@@ -181,7 +259,7 @@ def build_tool_catalog(
                 output_kind=_DEFAULT_OUTPUT_KIND,
                 run_mode=_DEFAULT_RUN_MODE,
                 cancellable=False,
-                parameters=_parameters(endpoint),
+                parameters=_parameters(endpoint, contracts),
                 required_parameters=endpoint.required_params,
                 optional_parameters=endpoint.optional_params,
                 cost=_cost(endpoint),

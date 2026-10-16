@@ -35,6 +35,11 @@ class ParameterSpec(BaseModel):
 
     ``source`` 说明规格来自哪里。
     没有明确来源的规格不得登记。
+
+    ``enforced`` 区分「声明类型」与「实现是否强制该类型」。
+    有些参数实现完全不校验类型，传入任意 JSON 值都能通过；
+    此时 ``value_type`` 仍是它应有的形状，但消费方不能据此
+    假定非法类型会被拒。这种参数标 ``enforced=False``。
     """
 
     model_config = ConfigDict(frozen=True)
@@ -50,6 +55,7 @@ class ParameterSpec(BaseModel):
     maximum: float | None = None
     max_length: int | None = None
     pattern: str | None = None
+    enforced: bool = True
 
 
 class ParameterConflict(BaseModel):

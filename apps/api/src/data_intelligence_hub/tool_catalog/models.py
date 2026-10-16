@@ -68,8 +68,9 @@ class ToolAuthorization(BaseModel):
 class ToolParameter(BaseModel):
     """单个输入参数。
 
-    现有目录只有参数名，没有类型。本契约在补齐前只声明名称与是否必填。
-    不虚构类型、默认值或取值范围。
+    未登记规格的参数只有名称与是否必填（``typed`` 为 False）。
+    已登记的参数带上类型、默认值、取值范围与枚举——
+    这些来自采集器校验实现，不是从参数名推断的。
     """
 
     model_config = ConfigDict(frozen=True)
@@ -78,6 +79,13 @@ class ToolParameter(BaseModel):
     required: bool
     typed: bool = False
     value_type: str | None = None
+    description: str | None = None
+    default: object | None = None
+    allowed_values: tuple[str, ...] = ()
+    minimum: float | None = None
+    maximum: float | None = None
+    max_length: int | None = None
+    type_enforced: bool = True
 
 
 class ToolCostHint(BaseModel):
