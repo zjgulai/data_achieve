@@ -14,7 +14,7 @@ inside `apps/web`.
 1. `DESIGN.md`
 2. `tokens/colors_and_type.css`
 3. `README.md`
-4. `../../../docs/product/data-intelligence-ui-ux-integrated-plan-2026-07-22.md`
+4. `../../../docs/product/data-intelligence-ui-ux-integrated-plan-2026-07-22.md`（历史文档，不是当前指令；当前权威见 `../../../docs/architecture/【审计报告】2026-10-17-历史UIUX方案与当前基线差异.md`）
 5. The current screen source and its tests
 
 ## Working rules
