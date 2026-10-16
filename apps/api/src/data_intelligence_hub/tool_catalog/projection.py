@@ -265,7 +265,12 @@ def build_tool_catalog(
                 cost=_cost(endpoint),
                 availability_view=availability_view,
                 authorization=_authorization(endpoint),
-                reachability=execution_reachability(endpoint.endpoint_type),
+                # 策略层按 collector_type 判定，不是 endpoint_type。
+                # 传 endpoint_type 会让 apify_*/tikhub_* 这类端点名
+                # 一律落到「未分类 → unsupported」，把可达端点误标为永久拒绝。
+                reachability=execution_reachability(
+                    _collector_type(endpoint) or endpoint.endpoint_type
+                ),
                 is_alias_view=endpoint.is_alias_view,
                 canonical_tool_id=canonical_tool_id,
                 executable=availability_view.availability
