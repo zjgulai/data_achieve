@@ -15,6 +15,14 @@ test("maps a real platform to its category tab", () => {
   assert.equal(categoryKeyForPlatforms(["zhihu"]), "social_cn");
 });
 
+test("resolves the alibaba and both hackernews platform spellings", () => {
+  // 电商 filterKeys 含 "alibaba"。
+  assert.equal(categoryKeyForPlatforms(["alibaba"]), "ecommerce");
+  // B2B filterKeys 含 "hackernews" 与 "hacker_news" 两个键。
+  assert.equal(categoryKeyForPlatforms(["hackernews"]), "b2b");
+  assert.equal(categoryKeyForPlatforms(["hacker_news"]), "b2b");
+});
+
 test("falls back to the backend category when platforms are unknown", () => {
   assert.equal(categoryKeyForPlatforms([], "ecommerce"), "ecommerce");
   assert.equal(categoryKeyForPlatforms([], "open_web"), "open_web");

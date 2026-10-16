@@ -524,17 +524,18 @@ function PlatformsPageContent() {
   }), [allEndpoints]);
 
   // Category counts
+  // 计数口径 = 目录全量（286 条）。不叠加 canStartCollection 门控，也不减停用行。
+  // 运行态由行内 availability 徽标承担，不混入分类计数。
   const categoryCounts = useMemo(() => {
+    const catalog = data?.collectors.flatMap(c => c.endpoints) ?? [];
     const counts: Record<string, number> = {};
     for (const cat of CATEGORIES) {
       counts[cat.key] = cat.key === "all"
-        ? allEndpoints.filter(canStartCollection).length
-        : allEndpoints.filter(e =>
-            canStartCollection(e) && matchCategory(e.platform, cat.filterKeys)
-          ).length;
+        ? catalog.length
+        : catalog.filter(e => matchCategory(e.platform, cat.filterKeys)).length;
     }
     return counts;
-  }, [allEndpoints]);
+  }, [data]);
 
   // Filter pipeline: category + search
   const filtered = useMemo(() => {

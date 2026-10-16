@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Search, ChevronDown, ChevronRight, CheckCircle2,
-  XCircle, Clock, AlertCircle, Loader2, RefreshCw, ExternalLink,
+  XCircle, Clock, Loader2, RefreshCw, ExternalLink,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchCollectorDocs } from "@/lib/api/collector-docs";
@@ -42,43 +42,33 @@ function MethodBadge({ method }: { method: string }) {
 }
 
 // ──────────────────────────────────────────────────────────────
-//  Status badge
+//  Evidence badge
 // ──────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: string }) {
-  if (status === "verified") return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--state-success)] bg-[var(--success-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-success)]">
-      <CheckCircle2 size={10} />已验证
-    </span>
-  );
-  if (status === "disabled") return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-tertiary)]">
-      <XCircle size={10} />已停用
-    </span>
-  );
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--state-warning)] bg-[var(--warning-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning)]">
-      <Clock size={10} />待验证
-    </span>
-  );
+// 证据三态。success 记实测成功，其余记录记实测失败，无记录记未实测。
+type EvidenceClass = "success" | "failed" | "untested";
+
+function evidenceClass(ep: CollectorDocsEndpoint): EvidenceClass {
+  if (!ep.test_result) return "untested";
+  return ep.test_result.last_run_status === "success" ? "success" : "failed";
 }
 
-// ──────────────────────────────────────────────────────────────
-//  Test result icon
-// ──────────────────────────────────────────────────────────────
-function TestResultIcon({ result }: { result: CollectorDocsEndpoint["test_result"] }) {
-  if (!result) return (
-    <span title="未测试" className="text-[var(--text-tertiary)]">
-      <AlertCircle size={14} />
+function EvidenceBadge({ ep }: { ep: CollectorDocsEndpoint }) {
+  const cls = evidenceClass(ep);
+  const t = ep.test_result;
+
+  if (cls === "success" && t) return (
+    <span title={`实测成功 · ${t.last_records_count ?? 0} 条 · ${t.last_run_at ?? ""}`} className="inline-flex items-center gap-1 rounded-full border border-[var(--state-success)] bg-[var(--success-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-success)]">
+      <CheckCircle2 size={10} />实测成功
     </span>
   );
-  if (result.last_run_status === "success") return (
-    <span title={`成功 · ${result.last_records_count ?? 0} 条 · ${result.last_run_at ?? ""}`} className="text-[var(--state-success)]">
-      <CheckCircle2 size={14} />
+  if (cls === "failed" && t) return (
+    <span title={t.last_error_message ?? "实测失败"} className="inline-flex items-center gap-1 rounded-full border border-[var(--state-danger)] bg-[var(--danger-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-danger)]">
+      <XCircle size={10} />实测失败
     </span>
   );
   return (
-    <span title={result.last_error_message ?? "失败"} className="text-[var(--state-danger)]">
-      <XCircle size={14} />
+    <span title="无实测记录" className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+      <Clock size={10} />未实测
     </span>
   );
 }
@@ -129,8 +119,12 @@ function EndpointRow({ ep }: { ep: CollectorDocsEndpoint }) {
 
         <span className="ml-auto flex shrink-0 items-center gap-2">
           <MethodBadge method={ep.method} />
-          <StatusBadge status={ep.policy_block_reason ? "disabled" : ep.status} />
-          <TestResultIcon result={ep.test_result} />
+          {(ep.policy_block_reason || ep.status === "disabled") && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+              <XCircle size={10} />已停用
+            </span>
+          )}
+          <EvidenceBadge ep={ep} />
         </span>
       </button>
 
@@ -231,8 +225,8 @@ function EndpointRow({ ep }: { ep: CollectorDocsEndpoint }) {
 // ──────────────────────────────────────────────────────────────
 function GroupSection({ entry }: { entry: CollectorDocsEntry }) {
   const [open, setOpen] = useState(true);
-  const verified = entry.endpoints.filter(e => e.status === "verified").length;
-  const tested   = entry.endpoints.filter(e => e.test_result).length;
+  const tested = entry.endpoints.filter(e => e.test_result).length;
+  const passed = entry.endpoints.filter(e => e.test_result?.last_run_status === "success").length;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)]">
@@ -247,8 +241,8 @@ function GroupSection({ entry }: { entry: CollectorDocsEntry }) {
         <span className="flex-1 font-semibold text-[var(--text-primary)]">{entry.label}</span>
         <span className="flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
           <span>{entry.endpoints.length} 个端点</span>
-          <span className="text-[var(--state-success)]">{verified} 已验证</span>
-          <span>{tested} 已测试</span>
+          <span>{tested} 已实测</span>
+          <span className="text-[var(--state-success)]">{passed} 实测成功</span>
         </span>
       </button>
 
@@ -269,7 +263,7 @@ function GroupSection({ entry }: { entry: CollectorDocsEntry }) {
 export default function CollectorDocsPage() {
   const [search, setSearch] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterEvidence, setFilterEvidence] = useState("");
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["collector-docs"],
@@ -284,7 +278,7 @@ export default function CollectorDocsPage() {
       .map(g => ({
         ...g,
         endpoints: g.endpoints.filter(ep => {
-          if (filterStatus && ep.status !== filterStatus) return false;
+          if (filterEvidence && evidenceClass(ep) !== filterEvidence) return false;
           if (filterMethod && ep.method !== filterMethod) return false;
           if (!q) return true;
           return (
@@ -297,7 +291,7 @@ export default function CollectorDocsPage() {
         }),
       }))
       .filter(g => g.endpoints.length > 0);
-  }, [data, search, filterMethod, filterStatus]);
+  }, [data, search, filterMethod, filterEvidence]);
 
   const methods = useMemo(() => {
     if (!data) return [];
@@ -318,9 +312,9 @@ export default function CollectorDocsPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "总端点", value: data.total_endpoints, color: "text-[var(--text-primary)]" },
-            { label: "已测试", value: data.tested_endpoints, color: "text-[var(--action-primary)]" },
-            { label: "测试通过", value: data.success_endpoints, color: "text-[var(--state-success)]" },
-            { label: "失败/未测", value: data.total_endpoints - data.success_endpoints, color: "text-[var(--state-danger)]" },
+            { label: "已实测", value: data.tested_endpoints, color: "text-[var(--action-primary)]" },
+            { label: "实测成功", value: data.success_endpoints, color: "text-[var(--state-success)]" },
+            { label: "失败或未测", value: data.total_endpoints - data.success_endpoints, color: "text-[var(--state-danger)]" },
           ].map(s => (
             <div key={s.label} className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 py-3">
               <p className="text-xs text-[var(--text-tertiary)]">{s.label}</p>
@@ -352,14 +346,14 @@ export default function CollectorDocsPage() {
         </select>
 
         <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
+          value={filterEvidence}
+          onChange={e => setFilterEvidence(e.target.value)}
           className="h-9 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 text-sm text-[var(--text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-1)]"
         >
-          <option value="">全部状态</option>
-          <option value="verified">已验证</option>
-          <option value="pending">待验证</option>
-          <option value="disabled">已停用</option>
+          <option value="">全部证据</option>
+          <option value="success">实测成功</option>
+          <option value="failed">实测失败</option>
+          <option value="untested">未实测</option>
         </select>
 
         <button
@@ -371,7 +365,7 @@ export default function CollectorDocsPage() {
           刷新
         </button>
 
-        {(search || filterMethod || filterStatus) && (
+        {(search || filterMethod || filterEvidence) && (
           <span className="text-xs text-[var(--text-tertiary)]">
             显示 {totalShown} 个端点
           </span>

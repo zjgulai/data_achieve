@@ -219,8 +219,10 @@ export const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[]
   },
   {
     key: "ecommerce",    label: "电商",
+    // "alibaba" 是独立 platform 值，覆盖 1688 与 Alibaba 端点。
     filterKeys: ["amazon", "walmart", "temu", "shein", "aliexpress",
-                 "tiktok_shop", "ebay", "etsy", "shopify", "target", "ecommerce"],
+                 "tiktok_shop", "ebay", "etsy", "shopify", "target", "ecommerce",
+                 "alibaba"],
   },
   {
     key: "review",       label: "评价",
@@ -243,8 +245,9 @@ export const CATEGORIES: { key: CategoryKey; label: string; filterKeys: string[]
   },
   {
     key: "b2b",          label: "B2B & 开源",
+    // 两个键都保留："hackernews" 是现役 platform 值，"hacker_news" 是旧值。
     filterKeys: ["linkedin", "product_hunt", "crunchbase",
-                 "hacker_news", "indeed", "github", "devto", "juejin", "substack"],
+                 "hacker_news", "hackernews", "indeed", "github", "devto", "juejin", "substack"],
   },
   {
     key: "regulatory",   label: "监管公告",
