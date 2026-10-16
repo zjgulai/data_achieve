@@ -79,6 +79,15 @@
   --focus-ring: 0 0 0 3px rgb(40 78 122 / 24%);
   --shadow-overlay: 0 18px 48px rgb(46 32 28 / 18%);
 
+  /* 公开区：深色卡与页脚字标 */
+  --surface-terminal: var(--bg-diagnostic);
+  --terminal-text: #f4ece7;
+  --terminal-text-muted: #c4b2aa;
+  --terminal-accent: #eec2cb;
+  --terminal-success: #9cd8ae;
+  --terminal-divider: #4c3a33;
+  --footer-wordmark: #4a3731;
+
   /* shadcn/ui compatibility */
   --background: var(--surface-canvas);
   --foreground: var(--text-primary);
@@ -144,4 +153,82 @@ button, input { font: inherit; }
 ::selection {
   background: var(--accent-1-soft);
   color: var(--text-primary);
+}
+
+/* ─── 公开区动效 ───
+   过渡与动画只在允许动效时启用。
+   禁止动效时元素保持静态可见。 */
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 480ms var(--ease-standard),
+      transform 480ms var(--ease-standard);
+    /* 错峰。延迟上限 6 档，避免长列表出现长等待。 */
+    transition-delay: calc(min(var(--reveal-index, 0), 6) * 70ms);
+  }
+
+  .landing-reveal.is-shown {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .landing-breathe { animation: landing-breathe 7s ease-in-out infinite; }
+  .landing-glow { animation: landing-glow 8s ease-in-out infinite; }
+
+  .landing-hop {
+    animation: landing-hop 1.2s step-end infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .landing-blink {
+    animation: landing-blink 4.4s step-end infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .landing-term-line {
+    opacity: 0;
+    transition: opacity 220ms var(--ease-standard);
+  }
+
+  .landing-term-line.is-shown { opacity: 1; }
+}
+
+@keyframes landing-breathe {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.16; }
+}
+
+@keyframes landing-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
+
+@keyframes landing-hop {
+  0%, 100% { transform: translateY(0); }
+  25%, 75% { transform: translateY(-3px); }
+}
+
+@keyframes landing-blink {
+  0%, 90% { transform: scaleY(1); }
+  91%, 93% { transform: scaleY(0.12); }
+  94%, 100% { transform: scaleY(1); }
+}
+
+/* 无脚本环境下内容直接可见。
+   揭示容器与终端逐行回放都靠 JS 加类。
+   没有脚本时不能让它们停在初始隐藏态。 */
+@media (scripting: none) {
+  .landing-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .landing-term-line {
+    opacity: 1 !important;
+  }
 }
