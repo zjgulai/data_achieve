@@ -14,6 +14,12 @@ from data_intelligence_hub.api.routes.alerts import (
 from data_intelligence_hub.api.routes.auth import router as auth_router
 from data_intelligence_hub.api.routes.automation import router as automation_router
 from data_intelligence_hub.api.routes.capabilities import router as capabilities_router
+from data_intelligence_hub.api.routes.capability_discovery import (
+    router as capability_discovery_router,
+)
+from data_intelligence_hub.api.routes.capability_governance import (
+    router as capability_governance_router,
+)
 from data_intelligence_hub.api.routes.collectors import router as collectors_router
 from data_intelligence_hub.api.routes.dashboard import router as dashboard_router
 from data_intelligence_hub.api.routes.entities import router as entities_router
@@ -38,6 +44,9 @@ from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tools import router as tools_router
 from data_intelligence_hub.api.routes.workflow_plans import (
     router as workflow_plans_router,
+)
+from data_intelligence_hub.api.routes.workflow_runs import (
+    router as workflow_runs_router,
 )
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
@@ -93,7 +102,15 @@ def create_app() -> FastAPI:
     app.include_router(quick_collect_router, prefix="/api/quick-collect")
     app.include_router(projects_router, prefix="/api/projects")
     app.include_router(workflow_plans_router, prefix="/api/projects")
+    # 这三个模块早已实现并有集成测试覆盖，但从未挂载，
+    # 于是它们的端点一律返回 404——测试断言 404 != 201 的根因。
+    # 2026-10-16 归因发现，随 b339f45 批量入库时漏了接线。
+    app.include_router(workflow_runs_router, prefix="/api/projects")
     app.include_router(capabilities_router, prefix="/api/capabilities")
+    app.include_router(capability_discovery_router, prefix="/api/capabilities")
+    # governance 的路径自带前缀段（/candidates、/imports 等），
+    # 而它的对外契约是 /api/capabilities/governance/*，故此处补齐该段。
+    app.include_router(capability_governance_router, prefix="/api/capabilities/governance")
     app.include_router(sources_router, prefix="/api/sources")
     app.include_router(tasks_router, prefix="/api/tasks")
     app.include_router(raw_records_router, prefix="/api/raw-records")

@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 
 from data_intelligence_hub.api.deps import SessionDep
+from data_intelligence_hub.repositories.users import get_user_by_id
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.project import (
     ProjectCreateRequest,
@@ -56,7 +57,16 @@ async def create_project_item(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="demo_workspace_unavailable",
         )
-    project = await create_project(session, None, workspace, payload)
+    # 项目必须挂在某个用户名下。去认证改造后这里一度传 None，
+    # 而 create_project 会读取 user.id，于是每次建项目必然 500。
+    # 演示工作区的所有者就是这条无鉴权路径的归属人。
+    owner = await get_user_by_id(session, workspace.owner_id)
+    if owner is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_owner_unavailable",
+        )
+    project = await create_project(session, owner, workspace, payload)
     return ProjectResponse.model_validate(project)
 
 @router.get("/{project_id}", response_model=ProjectResponse)
