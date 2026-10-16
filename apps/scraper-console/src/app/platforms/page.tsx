@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   Search, X, ChevronDown, ChevronRight,
   CheckSquare, Square, Play,
@@ -11,7 +12,13 @@ import { QuickCollectDrawer } from "@/components/platforms/quick-collect-drawer"
 import { fetchCollectorCatalog } from "@/lib/api/collectors";
 import type { CollectorEndpoint } from "@/lib/api/collectors";
 import { canStartCollection } from "@/lib/collection-policy";
-import { dedupeByEndpointType } from "@/lib/quick-collect-form";
+import { endpointRowKey } from "@/lib/endpoint-key";
+import {
+  mergeParams,
+  hrefWithParams,
+  SEARCH_DEBOUNCE_MS,
+  type ParamUpdates,
+} from "@/lib/url-state";
 import { useQuery } from "@tanstack/react-query";
 import { PlatformLogo } from "@/components/platforms/platform-logo";
 import {
@@ -185,11 +192,11 @@ function MethodSection({
       <div className="flex flex-col gap-2">
         {endpoints.map(ep => (
           <EndpointRow
-            key={ep.endpoint_type}
+            key={endpointRowKey(ep)}
             endpoint={ep}
             onCollect={onCollect}
             batchMode={batchMode}
-            selected={selectedEndpoints.has(ep.endpoint_type)}
+            selected={selectedEndpoints.has(endpointRowKey(ep))}
             onToggleSelect={onToggleSelect}
           />
         ))}
@@ -385,15 +392,45 @@ function PlatformSection({
    Main page
 ───────────────────────────────────────────────────────────── */
 
-export default function PlatformsPage() {
-  const [activeEndpoint, setActiveEndpoint] = useState<CollectorEndpoint | null>(null);
-  const [category, setCategory] = useState<CategoryKey>("all");
-  const [search, setSearch] = useState("");
+function PlatformsPageContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // 批量流程的当前端点。不进 URL。
+  const [batchEndpoint, setBatchEndpoint] = useState<CollectorEndpoint | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedEndpoints, setSelectedEndpoints] = useState<Set<string>>(new Set());
   const [batchQueue, setBatchQueue] = useState<CollectorEndpoint[]>([]);
   const [batchQueueIndex, setBatchQueueIndex] = useState(0);
+  // 本次打开是否压入过历史。关闭时据此决定 Back 还是清除参数。
+  const [openedViaPush, setOpenedViaPush] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 分类与搜索词存在 URL。便于分享与返回。
+  const categoryParam = searchParams.get("cat");
+  const category: CategoryKey =
+    categoryParam && CATEGORIES.some(c => c.key === categoryParam)
+      ? (categoryParam as CategoryKey)
+      : "all";
+  const search = searchParams.get("q") ?? "";
+
+  // 搜索框草稿。只在它基于的 URL 值仍是当前值时才生效。
+  // 这样浏览器返回与前进时以 URL 为准。
+  const [searchDraft, setSearchDraft] = useState<{ base: string; value: string } | null>(null);
+  const searchValue = searchDraft && searchDraft.base === search ? searchDraft.value : search;
+
+  // 写入 URL。替换当前记录，避免每次按键留一条历史。
+  function applyParams(updates: ParamUpdates) {
+    const query = mergeParams(new URLSearchParams(searchParams.toString()), updates);
+    router.replace(hrefWithParams(pathname, query), { scroll: false });
+  }
+
+  // 卸载时清掉待写入的搜索词。
+  useEffect(() => () => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["collector-catalog"],
@@ -404,6 +441,41 @@ export default function PlatformsPage() {
     if (!data) return [];
     return data.collectors.flatMap(c => c.endpoints).filter(e => e.status !== "disabled");
   }, [data]);
+
+  // URL 深链：由 ep + label 定位一行。
+  // label 单用会撞名，endpoint_type 单用会撞到同类型的 23 行。
+  const epParam = searchParams.get("ep");
+  const labelParam = searchParams.get("label");
+  const deepLinkKey = epParam && labelParam ? `${epParam}:${labelParam}` : null;
+
+  // URL 深链的抽屉目标。纯派生，不需要同步 effect。
+  const deepLinkEndpoint = useMemo(() => {
+    if (!deepLinkKey) return null;
+    return allEndpoints.find(e => endpointRowKey(e) === deepLinkKey) ?? null;
+  }, [deepLinkKey, allEndpoints]);
+
+  // 抽屉目标。批量流程优先。
+  const activeEndpoint = batchEndpoint ?? deepLinkEndpoint;
+
+  // 打开抽屉。写入 URL，使链接可分享、Back 可关闭。
+  function openEndpoint(ep: CollectorEndpoint) {
+    setOpenedViaPush(true);
+    const query = mergeParams(new URLSearchParams(searchParams.toString()), {
+      ep: ep.endpoint_type,
+      label: ep.label,
+    });
+    router.push(hrefWithParams(pathname, query), { scroll: false });
+  }
+
+  // 关闭抽屉。压过历史就回退一步，否则清掉 URL 参数。
+  function closeEndpoint() {
+    if (openedViaPush) {
+      setOpenedViaPush(false);
+      router.back();
+      return;
+    }
+    applyParams({ ep: null, label: null });
+  }
 
   const stats = useMemo(() => ({
     total:     allEndpoints.filter(canStartCollection).length,
@@ -469,10 +541,13 @@ export default function PlatformsPage() {
   }, [filtered]);
 
   // Batch helpers
+  // 选择集以行标识为键。同一 endpoint_type 的多行互不影响。
   const toggleSelect = useCallback((ep: CollectorEndpoint) => {
     setSelectedEndpoints(prev => {
       const n = new Set(prev);
-      n.has(ep.endpoint_type) ? n.delete(ep.endpoint_type) : n.add(ep.endpoint_type);
+      const key = endpointRowKey(ep);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
       return n;
     });
   }, []);
@@ -485,33 +560,35 @@ export default function PlatformsPage() {
   }
 
   function startBatchCollect() {
-    const picked = allEndpoints.filter(
-      ep => selectedEndpoints.has(ep.endpoint_type) && canStartCollection(ep)
+    // 行标识已唯一。队列保留用户实际勾选的行。
+    const queue = allEndpoints.filter(
+      ep => selectedEndpoints.has(endpointRowKey(ep)) && canStartCollection(ep)
     );
-    // 同一端点类型在目录里出现多次。队列只保留首个。
-    const queue = dedupeByEndpointType(picked);
     if (!queue.length) return;
     setBatchQueue(queue);
     setBatchQueueIndex(0);
-    setActiveEndpoint(queue[0]);
+    setOpenedViaPush(false);
+    setBatchEndpoint(queue[0]);
   }
 
   function onBatchAbort() {
     setBatchQueue([]);
     setBatchQueueIndex(0);
     setSelectedEndpoints(new Set());
-    setActiveEndpoint(null);
+    setOpenedViaPush(false);
+    setBatchEndpoint(null);
   }
 
   function onBatchDrawerClose() {
-    setActiveEndpoint(null);
+    setOpenedViaPush(false);
     const next = batchQueueIndex + 1;
     if (next < batchQueue.length) {
       setBatchQueueIndex(next);
-      setActiveEndpoint(batchQueue[next]);
+      setBatchEndpoint(batchQueue[next]);
     } else {
       setBatchQueue([]);
       setBatchQueueIndex(0);
+      setBatchEndpoint(null);
     }
   }
 
@@ -565,7 +642,7 @@ export default function PlatformsPage() {
                 return (
                   <button
                     key={cat.key}
-                    onClick={() => setCategory(cat.key)}
+                    onClick={() => applyParams({ cat: cat.key === "all" ? null : cat.key })}
                     className={[
                       "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-all duration-100",
                       active
@@ -600,14 +677,25 @@ export default function PlatformsPage() {
                 <input
                   ref={searchRef}
                   type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  value={searchValue}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setSearchDraft({ base: search, value: next });
+                    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                    searchTimerRef.current = setTimeout(() => {
+                      applyParams({ q: next.trim() || null });
+                    }, SEARCH_DEBOUNCE_MS);
+                  }}
                   placeholder="搜索平台、采集能力…"
                   className="h-9 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-primary)] pl-8 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-1)]"
                 />
                 {search && (
                   <button
-                    onClick={() => setSearch("")}
+                    onClick={() => {
+                      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                      setSearchDraft(null);
+                      applyParams({ q: null });
+                    }}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
                   >
                     <X size={13} />
@@ -659,7 +747,11 @@ export default function PlatformsPage() {
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-primary)] py-20 text-center">
               <p className="text-sm text-[var(--text-tertiary)]">没有匹配的采集能力</p>
               <button
-                onClick={() => { setSearch(""); setCategory("all"); }}
+                onClick={() => {
+                  if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                  setSearchDraft(null);
+                  applyParams({ q: null, cat: null });
+                }}
                 className="mt-2 text-xs text-[var(--action-primary)] underline"
               >
                 清空筛选
@@ -672,7 +764,7 @@ export default function PlatformsPage() {
                   key={platform}
                   platform={platform}
                   endpoints={endpoints}
-                  onCollect={setActiveEndpoint}
+                  onCollect={openEndpoint}
                   batchMode={batchMode}
                   selectedEndpoints={selectedEndpoints}
                   onToggleSelect={toggleSelect}
@@ -688,7 +780,7 @@ export default function PlatformsPage() {
           key={`${activeEndpoint.endpoint_type}:${activeEndpoint.label}`}
           endpoint={activeEndpoint}
           open={!!activeEndpoint}
-          onClose={batchQueue.length > 0 ? onBatchDrawerClose : () => setActiveEndpoint(null)}
+          onClose={batchQueue.length > 0 ? onBatchDrawerClose : closeEndpoint}
           onAbort={batchQueue.length > 0 ? onBatchAbort : undefined}
           batchProgress={
             batchQueue.length > 0
@@ -698,5 +790,21 @@ export default function PlatformsPage() {
         />
       )}
     </AppShell>
+  );
+}
+
+export default function PlatformsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell title="平台能力中心" description="">
+          <div className="flex items-center justify-center py-24">
+            <span className="text-sm text-[var(--text-tertiary)]">加载采集能力目录…</span>
+          </div>
+        </AppShell>
+      }
+    >
+      <PlatformsPageContent />
+    </Suspense>
   );
 }

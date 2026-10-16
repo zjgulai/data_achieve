@@ -9,6 +9,7 @@ import {
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchCollectorDocs } from "@/lib/api/collector-docs";
 import type { CollectorDocsEndpoint, CollectorDocsEntry } from "@/lib/api/collector-docs";
+import { endpointRowKey } from "@/lib/endpoint-key";
 
 // ──────────────────────────────────────────────────────────────
 //  Method badge colors
@@ -254,7 +255,7 @@ function GroupSection({ entry }: { entry: CollectorDocsEntry }) {
       {open && (
         <div className="border-t border-[var(--border-subtle)]">
           {entry.endpoints.map(ep => (
-            <EndpointRow key={ep.endpoint_type} ep={ep} />
+            <EndpointRow key={endpointRowKey(ep)} ep={ep} />
           ))}
         </div>
       )}

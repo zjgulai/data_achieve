@@ -501,15 +501,3 @@ export function submitBlockMessage(reason: SubmitBlockReason | null): string | n
       return null;
   }
 }
-
-/** 按端点类型去重。保留首个。 */
-export function dedupeByEndpointType<T extends { endpoint_type: string }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  const out: T[] = [];
-  for (const item of items) {
-    if (seen.has(item.endpoint_type)) continue;
-    seen.add(item.endpoint_type);
-    out.push(item);
-  }
-  return out;
-}

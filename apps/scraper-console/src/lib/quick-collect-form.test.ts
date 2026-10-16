@@ -4,7 +4,6 @@ import {
   buildForm,
   buildInitialValues,
   classifyHint,
-  dedupeByEndpointType,
   evaluateSubmit,
   hasEmptyRequired,
   parsePresetValue,
@@ -442,16 +441,3 @@ test("every block reason except pending has a message", () => {
 });
 
 /* ── 批量去重 ── */
-
-test("dedupeByEndpointType keeps the first row of each type", () => {
-  const rows = [
-    { endpoint_type: "public_feed", label: "A" },
-    { endpoint_type: "public_feed", label: "B" },
-    { endpoint_type: "generic_web", label: "C" },
-    { endpoint_type: "public_feed", label: "D" },
-  ];
-  assert.deepEqual(dedupeByEndpointType(rows), [
-    { endpoint_type: "public_feed", label: "A" },
-    { endpoint_type: "generic_web", label: "C" },
-  ]);
-});

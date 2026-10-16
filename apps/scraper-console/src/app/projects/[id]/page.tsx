@@ -4,8 +4,10 @@ import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchProject, DOMAIN_LABELS, DOMAIN_COLORS } from "@/lib/api/projects";
-import { fetchTasks } from "@/lib/api/tasks";
-import { Loader2, FolderKanban, PlayCircle, Database, Calendar } from "lucide-react";
+import { fetchTasks, fetchTaskRuns } from "@/lib/api/tasks";
+import { fetchDatasets } from "@/lib/api/datasets";
+import { isSuccessfulRunStatus } from "@/lib/run-status";
+import { Loader2, PlayCircle, Database, Calendar } from "lucide-react";
 import Link from "next/link";
 
 const TASK_STATUS_LABELS: Record<string, string> = {
@@ -38,6 +40,33 @@ export default function ProjectDetailPage({ params }: Props) {
     queryKey: ["project-tasks", id],
     queryFn: () => fetchTasks({ project_id: id }),
   });
+
+  // 最近运行。后端 /api/tasks/runs 不支持按项目过滤，
+  // 故按本项目任务逐个取运行记录再合并。
+  const taskIds = (tasks ?? []).map(task => task.id);
+  const {
+    data: recentRuns,
+    isLoading: runsLoading,
+    error: runsError,
+  } = useQuery({
+    queryKey: ["project-runs", id, taskIds.join(",")],
+    enabled: taskIds.length > 0,
+    queryFn: async () => {
+      const perTask = await Promise.all(taskIds.map(taskId => fetchTaskRuns(taskId)));
+      return perTask
+        .flat()
+        .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
+        .slice(0, 10);
+    },
+  });
+
+  // 本项目数据集。
+  const { data: datasetsData, isLoading: datasetsLoading } = useQuery({
+    queryKey: ["project-datasets", id],
+    queryFn: () => fetchDatasets({ project_id: id, limit: 10 }),
+  });
+  const datasets = datasetsData?.items ?? [];
+  const taskNames = new Map((tasks ?? []).map(task => [task.id, task.name]));
 
   if (isLoading) {
     return (
@@ -140,21 +169,110 @@ export default function ProjectDetailPage({ params }: Props) {
               <Calendar size={18} />
               最近运行
             </h2>
-            <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
-              暂无运行记录
-            </div>
+            {taskIds.length === 0 ? (
+              <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
+                暂无运行记录。在「采集任务」中运行任务后，记录会出现在这里。
+              </div>
+            ) : runsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={20} className="animate-spin text-[var(--text-tertiary)]" />
+              </div>
+            ) : runsError ? (
+              <div className="mt-6 text-center py-8 text-sm text-[var(--state-danger)]">
+                运行记录加载失败。{(runsError as Error).message}
+              </div>
+            ) : (recentRuns?.length ?? 0) === 0 ? (
+              <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
+                暂无运行记录。在「采集任务」中运行任务后，记录会出现在这里。
+              </div>
+            ) : (
+              <ul className="mt-4 grid gap-2">
+                {recentRuns!.map(run => (
+                  <li
+                    key={run.id}
+                    className="flex items-center justify-between gap-3 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+                        {taskNames.get(run.task_id) ?? run.task_id.slice(0, 8)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+                        {formatTimestamp(run.started_at ?? run.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 text-xs">
+                      <span
+                        className={
+                          isSuccessfulRunStatus(run.status)
+                            ? "text-[var(--state-success)]"
+                            : run.status === "failed"
+                              ? "text-[var(--state-danger)]"
+                              : "text-[var(--text-secondary)]"
+                        }
+                      >
+                        {run.status}
+                      </span>
+                      <span className="tabular-nums text-[var(--text-tertiary)]">
+                        {run.records_count} 条
+                      </span>
+                      {run.records_count > 0 && (
+                        <Link
+                          href={`/collect/${run.id}`}
+                          className="text-[var(--action-primary)] underline"
+                        >
+                          查看结果
+                        </Link>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
         {/* 右侧数据集 */}
         <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
-          <h2 className="flex items-center gap-2 text-base font-bold text-[var(--text-primary)]">
-            <Database size={18} />
-            数据集
-          </h2>
-          <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
-            暂无数据集
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-base font-bold text-[var(--text-primary)]">
+              <Database size={18} />
+              数据集
+            </h2>
+            {datasetsData && datasetsData.total > datasets.length && (
+              <Link href="/datasets" className="text-xs text-[var(--action-primary)] underline">
+                全部 {datasetsData.total} 个
+              </Link>
+            )}
           </div>
+          {datasetsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 size={20} className="animate-spin text-[var(--text-tertiary)]" />
+            </div>
+          ) : datasets.length === 0 ? (
+            <div className="mt-6 text-center py-8 text-sm text-[var(--text-tertiary)]">
+              暂无数据集。完成采集并保存后，数据集会出现在这里。
+            </div>
+          ) : (
+            <ul className="mt-4 grid gap-2">
+              {datasets.map(item => (
+                <li key={item.dataset.id} className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2">
+                  <Link
+                    href="/datasets"
+                    className="block truncate text-sm font-medium text-[var(--text-primary)] hover:text-[var(--action-primary)]"
+                  >
+                    {item.dataset.name}
+                  </Link>
+                  <p className="mt-0.5 text-xs text-[var(--text-tertiary)]">
+                    {item.latest_version
+                      ? `v${item.latest_version.version_number} · ${item.latest_version.row_count} 条`
+                      : "无版本"}
+                    {" · 更新 "}
+                    {formatTimestamp(item.dataset.updated_at)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </AppShell>
