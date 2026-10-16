@@ -61,7 +61,9 @@ class TestFirecrawlCrawlCollector:
         assert cfg["max_pages"] == 10
 
     @pytest.mark.asyncio
-    async def test_test_passes_without_api_key(self, monkeypatch):
+    async def test_test_passes_without_api_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """采集器自检不预检 API key。
 
         cb70d86 有意移除了「无 key 就在 test 阶段报错」的行为：
@@ -75,7 +77,9 @@ class TestFirecrawlCrawlCollector:
         assert result.status == "ok"
 
     @pytest.mark.asyncio
-    async def test_test_still_validates_config(self, monkeypatch):
+    async def test_test_still_validates_config(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """自检不做 key 预检，但仍校验配置本身。
 
         缺少 url 时 test() 必须报 failed——这是它保留的职责。

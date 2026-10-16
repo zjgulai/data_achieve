@@ -10,6 +10,8 @@ Covers the 2026-10-13 production findings:
 """
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from data_intelligence_hub.collectors.aliens_eye_collector import (
@@ -66,7 +68,7 @@ class TestRunTimeoutSurvivesServiceValidation:
     _APIFY = {"actor_id": "apify/instagram-scraper", "actor_input": {}}
 
     # 17 个专用校验函数各一份最小有效配置。
-    _VALID_CONFIGS = {
+    _VALID_CONFIGS: dict[str, dict[str, Any]] = {
         "github_repo": {"owner": "a", "repo": "b"},
         "github_topic": {"topic": "python"},
         "generic_web": {"url": "https://example.com"},
@@ -90,7 +92,7 @@ class TestRunTimeoutSurvivesServiceValidation:
     }
 
     @pytest.mark.parametrize("collector_type", sorted(_VALID_CONFIGS))
-    def test_every_dedicated_validator_keeps_the_key(self, collector_type: str):
+    def test_every_dedicated_validator_keeps_the_key(self, collector_type: str) -> None:
         """覆盖全部 17 个专用校验函数，不抽样。
 
         抽样是首轮漏掉 10 个的原因：当时只挑了 apify 与三个 exa。
@@ -105,7 +107,7 @@ class TestRunTimeoutSurvivesServiceValidation:
         assert validated["run_timeout_seconds"] == 700
 
     @pytest.mark.parametrize("collector_type", sorted(_VALID_CONFIGS))
-    def test_budget_chain_is_connected(self, collector_type: str):
+    def test_budget_chain_is_connected(self, collector_type: str) -> None:
         """端到端：调用方给的预算必须一路到达执行层。"""
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
@@ -116,7 +118,7 @@ class TestRunTimeoutSurvivesServiceValidation:
         )
         assert _collection_timeout_seconds(validated) == 700.0
 
-    def test_passthrough_types_keep_it_too(self):
+    def test_passthrough_types_keep_it_too(self) -> None:
         """passthrough 类型没有专用函数，本来就透传；这里防止将来改坏。"""
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
@@ -127,7 +129,7 @@ class TestRunTimeoutSurvivesServiceValidation:
         )
         assert _collection_timeout_seconds(validated) == 700.0
 
-    def test_absent_key_still_falls_back(self):
+    def test_absent_key_still_falls_back(self) -> None:
         """不传时保持原状，由执行层回落，而不是由校验层替它选值。"""
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
@@ -137,7 +139,7 @@ class TestRunTimeoutSurvivesServiceValidation:
         assert "run_timeout_seconds" not in validated
         assert _collection_timeout_seconds(validated) == DEFAULT_COLLECTION_TIMEOUT_SECONDS
 
-    def test_ceiling_still_applies_after_validation(self):
+    def test_ceiling_still_applies_after_validation(self) -> None:
         from data_intelligence_hub.services.collector_catalog import (
             validate_collector_config,
         )
@@ -147,7 +149,7 @@ class TestRunTimeoutSurvivesServiceValidation:
         )
         assert _collection_timeout_seconds(validated) == MAX_COLLECTION_TIMEOUT_SECONDS
 
-    def test_inner_wait_must_not_outlast_the_outer_budget(self):
+    def test_inner_wait_must_not_outlast_the_outer_budget(self) -> None:
         """透传修好后仍存在的设计约束：内层自等不得长于外层预算。
 
         apify 采集器内层默认自等 600s。若调用方给的预算更短，

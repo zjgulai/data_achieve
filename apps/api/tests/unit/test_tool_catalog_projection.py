@@ -8,6 +8,7 @@ import pytest
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
+from data_intelligence_hub.platform_packages.models import PlatformPackageCatalog
 from data_intelligence_hub.platform_packages.status import (
     EndpointEvidence,
     build_provider_status,
@@ -31,7 +32,7 @@ def restricted_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     get_settings.cache_clear()
 
 
-def _catalog():
+def _catalog() -> PlatformPackageCatalog:
     source = asyncio.run(get_collector_catalog())
     return build_platform_package_catalog(source)
 
@@ -165,9 +166,11 @@ def test_catalog_does_not_invent_parameter_types() -> None:
             if not item.typed:
                 continue
             assert collector_type is not None, tool.tool_id
-            contract = contracts.get(collector_type)
-            assert contract is not None, f"{tool.tool_id} → {collector_type} 无契约"
-            assert contract.spec_for(item.name) is not None, (
+            # 变量名与上面那个循环的 contract 区分开：mypy 会把两处
+            # 视为同一个变量，于是把 Optional 赋给已收窄的类型报错。
+            found_contract = contracts.get(collector_type)
+            assert found_contract is not None, f"{tool.tool_id} → {collector_type} 无契约"
+            assert found_contract.spec_for(item.name) is not None, (
                 f"{tool.tool_id}.{item.name} 有类型却查不到契约"
             )
 
@@ -211,7 +214,9 @@ def test_authorization_contract_rejects_unknown_basis() -> None:
     from data_intelligence_hub.tool_catalog.models import ToolAuthorization
 
     with pytest.raises(ValidationError):
-        ToolAuthorization(requirement="project_member", basis="trust_me")  # type: ignore[arg-type]
+        # 故意传非法取值，验证 pydantic 拒绝。无需 ignore：
+        # mypy 看不见 Literal 的运行时约束，这里本就是要绕过它。
+        ToolAuthorization(requirement="project_member", basis="trust_me")
 
 
 def test_catalog_categories_match_tool_totals() -> None:
