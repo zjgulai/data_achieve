@@ -530,18 +530,18 @@ table.corr { width: 100%; border-collapse: separate; border-spacing: 0; backgrou
               <span class="chip on">全部<span class="n">286</span></span>
               <span class="chip">国际社媒<span class="n">94</span></span>
               <span class="chip">中文社媒<span class="n">27</span></span>
-              <span class="chip">电商<span class="n">26</span></span>
+              <span class="chip">电商<span class="n">31</span></span>
               <span class="chip">评价<span class="n">9</span></span>
               <span class="chip">搜索 &amp; AI<span class="n">6</span></span>
               <span class="chip">中文搜索<span class="n">3</span></span>
               <span class="chip">广告情报<span class="n">6</span></span>
-              <span class="chip">B2B &amp; 开源<span class="n">19</span></span>
+              <span class="chip">B2B &amp; 开源<span class="n">22</span></span>
               <span class="chip">监管公告<span class="n">4</span></span>
               <span class="chip">开放网络<span class="n">86</span></span>
               <span class="chip">OSINT 情报<span class="n">0</span></span>
             </div>
             <p class="caption">
-              规则：<code>matchCategory</code> 子串匹配。计数口径 = 286 能力视图全量（不含运行态门控）。偏差必须随页注明：11 个非全部芯片合计 <span class="tabnum">280</span>。其中 27 个能力视图未命中，21 个重复命中。子串误配 10 个能力视图（aliexpress ×2、tiktok_shop ×2、facebook_ads ×2、tiktok_ads、snapchat_ads、pinterest_ads、perplexity）。这些行都同时命中「国际社媒」。
+              规则：<code>matchCategory</code> 子串匹配。计数口径 = 286 能力视图全量（不含运行态门控）。偏差必须随页注明：11 个非全部芯片合计 <span class="tabnum">288</span>。其中 19 个能力视图未命中，21 个重复命中。校验 286 − 19 + 21 = 288。重复命中两类：linkedin 11 行同时命中「国际社媒」与「B2B &amp; 开源」；其余 10 行是子串误配（aliexpress ×2、tiktok_shop ×2、facebook_ads ×2、tiktok_ads、snapchat_ads、pinterest_ads、perplexity），都同时命中「国际社媒」。
             </p>
             <p class="caption">
               运行态差异（写进验收）。页面叠加可执行门控后，本机 offline 全部芯片计 0。生产「全部」= <span class="tabnum">274</span>、「开放网络」= <span class="tabnum">75</span>。其余 10 项不变（生产实测）。

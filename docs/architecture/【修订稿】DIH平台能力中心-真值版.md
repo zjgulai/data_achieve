@@ -153,17 +153,18 @@ description: DIH 平台能力中心（/platforms）设计稿的真值修订稿�
 | 全部 | 286 |
 | 国际社媒 | 94 |
 | 中文社媒 | 27 |
-| 电商 | 26 |
+| 电商 | 31 |
 | 评价 | 9 |
 | 搜索 & AI | 6 |
 | 中文搜索 | 3 |
 | 广告情报 | 6 |
-| B2B & 开源 | 19 |
+| B2B & 开源 | 22 |
 | 监管公告 | 4 |
 | 开放网络 | 86 |
 | OSINT 情报 | 0 |
 
-- 必须随页注明两个偏差。11 个非全部芯片合计 280。其中 27 个能力视图未命中，21 个重复命中。子串误配 10 个能力视图（`aliexpress`×2、`tiktok_shop`×2、`facebook_ads`×2、`tiktok_ads`、`snapchat_ads`、`pinterest_ads`、`perplexity`）。这些行都同时命中「国际社媒」。
+- 必须随页注明两个偏差。11 个非全部芯片合计 288。其中 19 个能力视图未命中，21 个重复命中。校验：286 − 19 + 21 = 288。
+- 重复命中的两类来源：`linkedin` 11 行同时命中「国际社媒」与「B2B & 开源」；其余 10 行是子串误配（`aliexpress`×2、`tiktok_shop`×2、`facebook_ads`×2、`tiktok_ads`、`snapchat_ads`、`pinterest_ads`、`perplexity`），都同时命中「国际社媒」。
 - 文案原文：标签沿用 `catalog.ts` 现值；数字紧跟标签（如「国际社媒 94」）。
 - 运行态差异（必须写进验收）。页面叠加 `canStartCollection` 门控后，本机 offline 全部芯片计 0。生产上「全部」= 274、「开放网络」= 75。其余 10 项不变（生产实测）。
 
