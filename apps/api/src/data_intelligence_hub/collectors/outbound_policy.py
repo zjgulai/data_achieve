@@ -218,6 +218,40 @@ def policy_block_reason(collector_type: str) -> str | None:
     return None
 
 
+def host_block_reason(collector_type: str, url: str | None) -> str | None:
+    """判断一个固定目标 URL 是否在批准范围内。
+
+    类型级检查只回答「这个 collector 有没有有效批准」。
+    受控 HTTP 采集器还要逐主机匹配；不匹配时请求会在发出前被拒，
+    错误码是 ``outbound_domain_denied``。
+
+    目录投影若只用类型级结论，会把未批准的主机显示成可用，
+    用户点采集才失败。本函数让目录给出与执行一致的结论。
+
+    ``url`` 为空表示目标由调用方传入，无法预先判定，按类型级结论处理。
+    """
+    reason = policy_block_reason(collector_type)
+    if reason is not None:
+        return reason
+
+    if url is None or execution_kind(collector_type) != "guarded_http":
+        return None
+
+    try:
+        host = canonical_host(httpx.URL(url).host or "")
+    except (ValueError, UnicodeError, httpx.InvalidURL):
+        return "outbound_domain_denied: 目标地址不符合批准范围"
+
+    try:
+        grant = http_grant(collector_type)
+    except CollectionPolicyDenied as exc:
+        return str(exc)
+
+    if host not in grant.hosts:
+        return f"outbound_domain_denied: 目标主机未获批准：{host}"
+    return None
+
+
 def is_policy_failure(message: str | None) -> bool:
     return bool(
         message

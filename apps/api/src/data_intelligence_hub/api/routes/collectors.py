@@ -2254,6 +2254,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.forbes.com/innovation/feed2"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2267,6 +2268,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.nytimes.com/wirecutter/feed"},
         ),
         # S级媒体 RSS 监测 (待验证)
         CollectorEndpointMetadata(
@@ -2281,6 +2283,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.goodhousekeeping.com/rss/all.xml"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2294,6 +2297,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.babycenter.com/rss/babylink.pod"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2307,6 +2311,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.consumerreports.org/content/dam/cro/news_articles/health/CRPMI_RSS_Health.xml"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2320,6 +2325,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.parents.com/feeds/all.rss.xml"},
         ),
         # C/D 级母婴媒体 RSS (已验证可用)
         CollectorEndpointMetadata(
@@ -2334,6 +2340,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.momjunction.com/feed/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2347,6 +2354,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.madeformums.com/feed/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2360,6 +2368,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.mumsnet.com/rss"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2373,6 +2382,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.healthline.com/rss/health-news"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2386,6 +2396,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.babygaga.com/feed/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2399,6 +2410,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.romper.com/rss"},
         ),
         # C/D 级母婴媒体 RSS (不可用)
         CollectorEndpointMetadata(
@@ -2413,6 +2425,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.thebump.com/rss"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2426,6 +2439,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.whattoexpect.com/rss"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2439,6 +2453,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.verywellfamily.com/rss"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2452,6 +2467,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.scarymommy.com/feed"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2465,6 +2481,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="feed",
             method="rss",
+            param_fields={"url": "https://www.workingmother.com/rss"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="public_feed",
@@ -2475,6 +2492,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             required_params=["url"],
             optional_params=[],
             cost_hint="免费",
+            param_fields={"url": "https://thestir.cafemom.com/feed/"},
             provider="自研 HTTP Collector",
         ),
         # PR 媒体 Listicle 网页快照监测 (generic_web)
@@ -2490,6 +2508,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.forbes.com/sites/forbes-personal-shopper/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -2503,6 +2522,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.nytimes.com/wirecutter/baby-kids/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -2516,6 +2536,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.goodhousekeeping.com/childrens-products/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -2529,6 +2550,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.babylist.com/hello-baby/"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -2542,6 +2564,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.babycenter.com/baby-products"},
         ),
         CollectorEndpointMetadata(
             endpoint_type="generic_web",
@@ -2555,6 +2578,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             provider="自研 HTTP Collector",
             content_type="web_page",
             method="web_crawl",
+            param_fields={"url": "https://www.consumerreports.org/baby-kids/"},
         ),
     ]
 
@@ -4488,12 +4512,17 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
         ]
     )
     from data_intelligence_hub.api.routes.quick_collect import _ENDPOINT_TO_COLLECTOR
-    from data_intelligence_hub.collectors.outbound_policy import policy_block_reason
+    from data_intelligence_hub.collectors.outbound_policy import host_block_reason
 
+    # 逐端点判定。受控 HTTP 采集器的批准是主机级的，只看类型会把
+    # 未批准的主机显示成可用，用户点采集才失败。
+    # 固定目标 URL 登记在 param_fields["url"]；没有登记表示目标由调用方传入。
     for group in catalog.collectors:
         for endpoint in group.endpoints:
             actual_type = _ENDPOINT_TO_COLLECTOR.get(endpoint.endpoint_type, group.collector_type)
-            endpoint.policy_block_reason = policy_block_reason(actual_type)
+            endpoint.policy_block_reason = host_block_reason(
+                actual_type, endpoint.param_fields.get("url")
+            )
     return catalog
 
 

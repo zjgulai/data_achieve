@@ -30,6 +30,14 @@ test("a missing domain approval is a configuration reason", () => {
   );
 });
 
+test("an unapproved target host is a configuration reason", () => {
+  // 后端在请求发出前逐主机校验。固定目标不在批准列表时返回这个原因。
+  assert.equal(
+    classifyReason("outbound_domain_denied: 目标主机未获批准：www.mumsnet.com"),
+    "configuration"
+  );
+});
+
 test("an unknown reason defaults to configuration", () => {
   assert.equal(classifyReason("something new"), "configuration");
 });

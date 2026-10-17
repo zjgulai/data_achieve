@@ -63,7 +63,9 @@ export type Reachability = {
 /** 原因原文的识别片段。与后端字符串对应。 */
 const PERMANENT_MARKERS = ["未具备受控出口"];
 const ENVIRONMENT_MARKERS = ["离线模式", "网络模式"];
-const CONFIG_MARKERS = ["域名批准", "批准配置"];
+// 「未获批准」对应 outbound_domain_denied：主机不在批准列表内。
+// 它归配置类，但需管理员批准域名，不是用户补密钥能解决的。
+const CONFIG_MARKERS = ["域名批准", "批准配置", "未获批准"];
 
 /**
  * 由原因原文判断类型。
