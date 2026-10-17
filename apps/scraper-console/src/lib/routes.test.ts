@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   KEPT_ROUTES,
@@ -102,6 +104,19 @@ test("the three groups cover the frozen table exactly once", () => {
     15
   );
   assert.equal(NEW_ROUTES.length, 4);
+});
+
+test("each new route has a page file", () => {
+  // 声明了路由却没有页面，用户会得到 404。
+  // 本测试在 2026-10-17 之前缺失，导致 /settings/providers 与
+  // /settings/members 声明后长期无页面而无人发现。
+  const appDir = fileURLToPath(new URL("../app/", import.meta.url));
+  for (const route of NEW_ROUTES) {
+    // "/tools/[toolId]" -> "tools/[toolId]/page.tsx"
+    const segment = route.replace(/^\//, "");
+    const file = `${appDir}${segment}/page.tsx`;
+    assert.equal(existsSync(file), true, `路由 ${route} 缺少页面文件：${file}`);
+  }
 });
 
 test("the root route is not itself a redirect", () => {
