@@ -56,12 +56,23 @@ for h in ["www.forbes.com"]:
 
 规则：小写、不含端口与路径、不是 IP、不以 `.local` 或 `.onion` 结尾、必须含点。
 
-## 第 3 步：写配置
+## 第 3 步：写配置文件
 
-在 `.env.production` 里写一行。JSON 里不要换行。
+写一个 JSON 文件。不要直接改 `.env.production`，也不要写进命令行。
 
-```dotenv
-COLLECTION_HTTP_GRANTS=[{"collector_type":"public_feed","hosts":["www.forbes.com","www.nytimes.com"],"expires_at":"2027-01-15T00:00:00Z","max_requests":50,"max_domains":2,"timeout_seconds":60}]
+`/tmp/grants.json`：
+
+```json
+[
+  {
+    "collector_type": "public_feed",
+    "hosts": ["www.forbes.com", "www.nytimes.com"],
+    "expires_at": "2027-01-15T00:00:00Z",
+    "max_requests": 50,
+    "max_domains": 2,
+    "timeout_seconds": 60
+  }
+]
 ```
 
 字段要求：
@@ -69,7 +80,7 @@ COLLECTION_HTTP_GRANTS=[{"collector_type":"public_feed","hosts":["www.forbes.com
 | 字段 | 取值 |
 |---|---|
 | `collector_type` | 四类之一。必须精确匹配 |
-| `hosts` | 1 到 5 个主机名 |
+| `hosts` | 1 到 5 个主机名。不带协议、路径、端口 |
 | `expires_at` | 带时区的 ISO 8601。过期即拒 |
 | `max_requests` | 1 到 50。单次运行的请求上限 |
 | `max_domains` | 1 到 5，且不小于 `hosts` 的数量 |
@@ -88,24 +99,65 @@ COLLECTION_HTTP_GRANTS: ${COLLECTION_HTTP_GRANTS:-[]}
 
 默认值必须写 `:-[]`。未设置或空串会让服务启动失败。
 
-2026-10-17 起这两行已在仓库里。
+2026-10-17 起这两行已在仓库里。脚本会先检查，缺失时拒绝执行。
 
-## 第 5 步：校验再上线
+## 第 5 步：用脚本上线
 
-用样例 env 文件跑一次编排校验。不要在生产机上直接试。
+脚本会完成剩下的所有步骤。
 
 ```bash
-tmp=$(mktemp -d)
-printf 'SCRAPY_POSTGRES_USER=u\nSCRAPY_POSTGRES_PASSWORD=ppppppppppppppppppppppppp\nSCRAPY_POSTGRES_DB=d\nSCRAPY_JWT_SECRET=ssssssssssssssssssssssssssssssssssss\n' > "$tmp/env"
-docker compose --env-file "$tmp/env" -f configs/deploy/scrapy/docker-compose.yml config --quiet
-rm -rf "$tmp"
+# 先看要做什么
+./scripts/deploy-p0.sh --host both --grants-file /tmp/grants.json --dry-run
+
+# 正式执行
+./scripts/deploy-p0.sh --host both --grants-file /tmp/grants.json
 ```
 
-校验通过后再改生产。
+脚本按以下顺序执行，任一步失败即中止：
 
-## 第 6 步：重启 api
+1. 校验 JSON 结构。检查类型是否合法、是否重复、主机数量与字段范围。
+2. 读取当前被阻断行数，作为基线。
+3. 上传批准文件到远端，用文件传输而非命令行参数。
+4. 备份 `.env.production`，保留原权限与属主。
+5. 原子替换文件里那一行 `COLLECTION_HTTP_GRANTS`。
+6. 用镜像里的真实策略代码验证。失败则恢复备份，容器不动。
+7. 替换 api 容器，重启 edge。
+8. 等 api 健康。
+9. 重新取被阻断行数。若上升，自动回滚并报错。
 
-`get_settings()` 有进程内缓存。改环境变量不会热加载。
+只有脚本会做第 9 步。手工改配置时没有这道兜底。
+
+## 第 6 步：手工执行时要注意什么
+
+若不用脚本，按下面的顺序做。顺序错了会让服务起不来。
+
+```bash
+cd /opt/data-achieve-scrapy/app
+envf=/opt/data-achieve-scrapy/.env.production
+compose="docker compose --env-file $envf -f configs/deploy/scrapy/docker-compose.yml"
+
+# 1. 备份
+cp -p "$envf" "$envf.bak.$(date +%Y%m%dT%H%M%S)"
+
+# 2. 改那一行（保持文件权限）
+#    用编辑器改，或先删后追加
+grep -v '^COLLECTION_HTTP_GRANTS=' "$envf" > "$envf.new"
+printf 'COLLECTION_HTTP_GRANTS=%s\n' '<一行 JSON>' >> "$envf.new"
+chown --reference="$envf" "$envf.new" && chmod --reference="$envf" "$envf.new"
+mv "$envf.new" "$envf"
+
+# 3. 先验证再上线
+$compose run --rm --no-deps -T api python -c \
+  'from data_intelligence_hub.collectors.outbound_policy import http_grant; import json,os; [http_grant(g["collector_type"]) for g in json.loads(os.environ["COLLECTION_HTTP_GRANTS"])]; print("ok")'
+
+# 4. 重建 api
+$compose up -d --no-deps api
+$compose restart edge
+```
+
+`get_settings()` 有进程内缓存。改环境变量不会热加载，必须重建容器。
+
+不要用 `restart api`。`restart` 不重新读取 `--env-file` 的变量，容器拿到的仍是旧值。要用 `up -d --no-deps api`。
 
 ```bash
 cd /opt/data-achieve-scrapy/app

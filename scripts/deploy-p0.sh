@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 #
-# DIH P0 发布脚本。
+# DIH 发布脚本。
 #
-# 发布内容：apps/api 与 apps/scraper-console。没有数据库迁移。
+# 两种模式：
+#   1. 发布模式（默认）：拉源码，构建并替换 api 与 console。
+#   2. 批准模式（--grants-file）：只更新外访域名批准，不构建镜像。
+#
 # 不重建 web、db 与共享网关。重建 api/console 后必须重启 edge，
 # 否则 edge 缓存旧容器 IP，公网 502。
 #
 # 用法：
-#   scripts/deploy-p0.sh --host a            # 生产 A
-#   scripts/deploy-p0.sh --host b            # 生产 B
-#   scripts/deploy-p0.sh --host both         # 两台
-#   scripts/deploy-p0.sh --host a --dry-run  # 只打印，不执行
+#   scripts/deploy-p0.sh --host a
+#   scripts/deploy-p0.sh --host both
+#   scripts/deploy-p0.sh --host a --dry-run
+#   scripts/deploy-p0.sh --host both --grants-file /tmp/grants.json
 #
 # 退出码：0 成功。1 失败（含目标名非法）。2 参数错误。
 
@@ -20,6 +23,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 HOST=""
 DRY_RUN=0
+GRANTS_FILE=""
 WAIT_SECONDS="${WAIT_SECONDS:-180}"
 
 # 两台生产的固定信息。
@@ -39,16 +43,20 @@ COMPOSE_REL="configs/deploy/scrapy/docker-compose.yml"
 
 usage() {
   cat <<'EOF'
-用法：scripts/deploy-p0.sh --host <a|b|both> [--dry-run]
+用法：scripts/deploy-p0.sh --host <a|b|both> [选项]
 
 选项：
-  --host <a|b|both>  选择生产目标。
-  --dry-run          只打印将要执行的命令，不做任何改动。
-  -h, --help         显示本帮助。
+  --host <a|b|both>     选择生产目标。
+  --grants-file <路径>  只更新外访域名批准。文件内容为 JSON 数组。
+                        此模式不构建镜像，只替换 api 容器并重启 edge。
+  --dry-run             只打印将要执行的命令，不做任何改动。
+  -h, --help            显示本帮助。
 
 环境变量：
-  WAIT_SECONDS       等待容器健康的秒数。默认 180。
-  KEY_DIR            密钥所在目录。优先于其他候选位置。
+  WAIT_SECONDS          等待容器健康的秒数。默认 180。
+  KEY_DIR               密钥所在目录。优先于其他候选位置。
+
+批准文件的格式见 docs/standards/http-grant-runbook.md。
 EOF
 }
 
@@ -62,6 +70,11 @@ while [[ $# -gt 0 ]]; do
     --host)
       [[ $# -ge 2 ]] || { echo "--host 缺少取值" >&2; usage >&2; exit 2; }
       HOST="$2"
+      shift 2
+      ;;
+    --grants-file)
+      [[ $# -ge 2 ]] || { echo "--grants-file 缺少路径" >&2; usage >&2; exit 2; }
+      GRANTS_FILE="$2"
       shift 2
       ;;
     --dry-run)
@@ -86,22 +99,12 @@ case "$HOST" in
   *) die "host 只能是 a、b 或 both" ;;
 esac
 
-# 打印并执行。dry-run 时只打印。
-run() {
-  if [[ "$DRY_RUN" == "1" ]]; then
-    printf '  [dry-run] %s\n' "$*"
-    return 0
-  fi
-  printf '  $ %s\n' "$*"
-  "$@"
-}
-
 # 在远端执行一段脚本。走 stdin，避免引号转义。
 # 远端脚本自带 set -euo pipefail。
 run_remote() {
   local key="$1" target="$2" script="$3"
   if [[ "$DRY_RUN" == "1" ]]; then
-    printf '  [dry-run] ssh %s <<< %s\n' "$target" "$(printf '%s' "$script" | head -1)…"
+    printf '  [dry-run] ssh %s <<< %s\n' "$target" "$(printf '%s' "$script" | sed -n '2p')"
     return 0
   fi
   ssh -i "$key" -o StrictHostKeyChecking=no -o ConnectTimeout=20 "$target" 'bash -s' <<< "$script"
@@ -128,7 +131,87 @@ find_key() {
   return 1
 }
 
-# 本地检查。只检查本次要发布的目标。
+# ---------- 批准文件的本地校验 ----------
+
+# 读取并校验批准文件。校验通过后设置 GRANTS_JSON。
+#
+# 这里只做结构检查。权威校验在远端用真实策略代码执行。
+# 内容不以命令行参数传递，而是用 scp 上传后由远端脚本读文件，
+# 因此不需要做 shell 字符白名单。
+load_grants() {
+  [[ -f "$GRANTS_FILE" ]] || die "找不到批准文件：$GRANTS_FILE"
+
+  GRANTS_JSON="$(python3 - "$GRANTS_FILE" <<'PY'
+import json, sys
+
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as f:
+        grants = json.load(f)
+except Exception as exc:
+    sys.exit(f"不是合法 JSON：{exc}")
+
+if not isinstance(grants, list) or not grants:
+    sys.exit("顶层必须是至少含一项的数组")
+
+ALLOWED = {
+    "generic_web",
+    "public_feed",
+    "ecommerce_product_page",
+    "ecommerce_product_discovery",
+}
+
+seen = set()
+for i, g in enumerate(grants):
+    if not isinstance(g, dict):
+        sys.exit(f"第 {i + 1} 项不是对象")
+    ct = g.get("collector_type")
+    if ct not in ALLOWED:
+        sys.exit(f"第 {i + 1} 项的 collector_type 不合法：{ct!r}")
+    if ct in seen:
+        sys.exit(f"collector_type 重复：{ct}。同一类型只能有一条配置。")
+    seen.add(ct)
+
+    hosts = g.get("hosts")
+    if not isinstance(hosts, list) or not 1 <= len(hosts) <= 5:
+        sys.exit(f"{ct} 的 hosts 必须是 1 到 5 个主机名")
+    for h in hosts:
+        if not isinstance(h, str) or not h or "/" in h or ":" in h:
+            sys.exit(f"{ct} 的主机名不合法：{h!r}。只写主机名，不带协议、路径或端口。")
+
+    md = g.get("max_domains", 5)
+    if not isinstance(md, int) or isinstance(md, bool) or not 1 <= md <= 5:
+        sys.exit(f"{ct} 的 max_domains 必须是 1 到 5")
+    if len(hosts) > md:
+        sys.exit(f"{ct} 的 max_domains 小于 hosts 数量")
+
+    mr = g.get("max_requests", 50)
+    if not isinstance(mr, int) or isinstance(mr, bool) or not 1 <= mr <= 50:
+        sys.exit(f"{ct} 的 max_requests 必须是 1 到 50")
+
+    ts = g.get("timeout_seconds", 60)
+    if not isinstance(ts, (int, float)) or isinstance(ts, bool) or not 0 < ts <= 60:
+        sys.exit(f"{ct} 的 timeout_seconds 必须大于 0 且不超过 60")
+
+    exp = g.get("expires_at")
+    if not isinstance(exp, str) or "T" not in exp:
+        sys.exit(f"{ct} 的 expires_at 必须是带时区的 ISO 8601")
+
+# 去掉空白，供日志显示。
+print(json.dumps(grants, separators=(",", ":"), ensure_ascii=False))
+PY
+)" || die "批准文件不合法"
+
+  echo "  批准文件结构有效"
+  python3 - "$GRANTS_JSON" <<'PY'
+import json, sys
+for g in json.loads(sys.argv[1]):
+    print(f"    {g['collector_type']}: {len(g['hosts'])} 个主机")
+PY
+}
+
+# ---------- 本地检查 ----------
+
 preflight_local() {
   echo "== 本地检查 =="
 
@@ -149,6 +232,12 @@ preflight_local() {
   if [[ "$HOST" == "b" || "$HOST" == "both" ]]; then
     B_KEY="$(find_key "$B_KEY_FILE")" || die "找不到密钥 $B_KEY_FILE"
     echo "  B 密钥：$B_KEY"
+  fi
+
+  if [[ -n "$GRANTS_FILE" ]]; then
+    echo
+    echo "== 批准文件 =="
+    load_grants
   fi
 }
 
@@ -174,11 +263,7 @@ check_remote_branches() {
   done
 }
 
-# 发布前的卷检查。只读，不打印任何密钥值。
-#
-# 本脚本不含数据库迁移。若 /api/health 报 schema 不在 head，
-# 说明本次发布与数据库状态不匹配，必须停下人工判断。
-# 缺表时 api 容器会起不来，由后置健康检查兜住。
+# 发布前的只读检查。
 preflight_remote() {
   local key="$1" ssh_target="$2"
   echo "-- 发布前检查"
@@ -200,25 +285,30 @@ docker inspect -f '  发布前 console={{.State.Health.Status}}' data_achieve_sc
 "
 }
 
-# 等待两个容器健康。
+# 等待指定容器健康。
 #
 # 三个终态：healthy 通过；unhealthy 失败；死活不出健康态则超时失败。
-# missing 与 <no value> 都按未就绪处理，不当作通过。
+# missing 与 nohealth 都按未就绪处理，不当作通过。
 wait_healthy() {
-  local key="$1" ssh_target="$2"
+  local key="$1" ssh_target="$2" names="$3"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 deadline=\$(( \$(date +%s) + $WAIT_SECONDS ))
 while :; do
-  api=\$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' data_achieve_scrapy_api 2>/dev/null || echo missing)
-  con=\$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' data_achieve_scrapy_console 2>/dev/null || echo missing)
-  echo \"  api=\$api console=\$con\"
-  if [ \"\$api\" = healthy ] && [ \"\$con\" = healthy ]; then exit 0; fi
-  if [ \"\$api\" = unhealthy ] || [ \"\$con\" = unhealthy ]; then
-    echo '容器不健康。日志尾部：' >&2
-    docker logs --tail 40 data_achieve_scrapy_api 2>&1 | tail -20 >&2 || true
-    docker logs --tail 40 data_achieve_scrapy_console 2>&1 | tail -20 >&2 || true
-    exit 1
-  fi
+  line=''
+  bad=0
+  for n in $names; do
+    s=\$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' "data_achieve_scrapy_\$n" 2>/dev/null || echo missing)
+    line=\"\$line \$n=\$s\"
+    [ \"\$s\" = unhealthy ] && bad=1
+  done
+  echo \"  \$line\"
+  [ \"\$bad\" = 1 ] && { echo '容器不健康。日志尾部：' >&2; docker logs --tail 40 data_achieve_scrapy_api 2>&1 | tail -20 >&2 || true; exit 1; }
+  ok=1
+  for n in $names; do
+    s=\$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}nohealth{{end}}' \"data_achieve_scrapy_\$n\" 2>/dev/null || echo missing)
+    [ \"\$s\" = healthy ] || ok=0
+  done
+  [ \"\$ok\" = 1 ] && exit 0
   if [ \$(date +%s) -ge \$deadline ]; then
     echo '等待健康超时。' >&2
     docker logs --tail 40 data_achieve_scrapy_api 2>&1 | tail -20 >&2 || true
@@ -228,10 +318,22 @@ while :; do
 done"
 }
 
-# 单台发布。任何一步失败都必须中止。
-#
-# 不用 `deploy_one ... || status=1`：那会让整个函数体的 errexit 失效，
-# 后续步骤继续跑，失败被吞掉。
+# 取公网目录里被策略阻断的行数。失败时输出空串。
+blocked_count() {
+  local url="$1"
+  curl -s --max-time 40 "$url/api/collectors/catalog" | python3 -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+rows = [e for g in d.get("collectors", []) for e in g.get("endpoints", [])]
+print(sum(1 for e in rows if e.get("policy_block_reason")))
+' 2>/dev/null
+}
+
+# ---------- 发布模式 ----------
+
 deploy_one() {
   local tag="$1" key="$2" ssh_target="$3" branch="$4" url="$5"
 
@@ -297,10 +399,160 @@ sleep 3
 docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
 
   echo "-- 5/5 等待健康"
-  wait_healthy "$key" "$ssh_target"
+  wait_healthy "$key" "$ssh_target" "api console"
 }
 
-# 公网验收。任何一项不符即为失败。
+# ---------- 批准模式 ----------
+
+# 把一条批准写入远端 env 文件，用真实策略代码验证，再替换 api。
+#
+# 关键顺序：先备份，再写，再验证，验证失败立刻恢复。
+# 验证不通过时容器还没重启，生产仍在用旧配置。
+apply_grants_one() {
+  local tag="$1" key="$2" ssh_target="$3" url="$4"
+
+  echo
+  echo "== 生产 ${tag}：$url =="
+
+  local before
+  before="$(blocked_count "$url")"
+  if [[ -z "$before" ]]; then
+    die "$tag 取不到当前被阻断行数，停止。发布会掩盖问题。"
+  fi
+  echo "  当前被阻断行：$before"
+
+  echo "-- 1/4 写入并验证批准"
+
+  # 批准内容用文件传输，不内联进 shell 命令。
+  # 内联 JSON 会引入引号与元字符问题；实测括号表达式也无法可靠拦截。
+  local local_grants remote_grants
+  local_grants="$(mktemp)"
+  printf '%s\n' "$GRANTS_JSON" > "$local_grants"
+  remote_grants="/tmp/dih-grants-$$.json"
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf '  [dry-run] scp %s %s:%s\n' "$local_grants" "$ssh_target" "$remote_grants"
+  else
+    scp -q -i "$key" -o StrictHostKeyChecking=no -o ConnectTimeout=20 \
+      "$local_grants" "$ssh_target:$remote_grants" \
+      || { rm -f "$local_grants"; die "上传批准文件失败"; }
+  fi
+  rm -f "$local_grants"
+
+  local script
+  script=$(cat <<REMOTE
+set -euo pipefail
+cd $REMOTE_APP
+
+envf=$REMOTE_ENV
+composefile=$REMOTE_APP/$COMPOSE_REL
+compose="docker compose --env-file \$envf -f \$composefile"
+
+# 编排必须已声明该变量。否则只改 env 文件不会进容器。
+grep -q 'COLLECTION_HTTP_GRANTS' "\$composefile" \
+  || { echo '  编排未声明 COLLECTION_HTTP_GRANTS。先跑一次发布模式。' >&2; exit 1; }
+
+# 批准值必须在一行内。compose 的 .env 解析不支持多行值。
+grants_line=\$(tr -d '\n\r' < $remote_grants)
+[ -n "\$grants_line" ] || { echo '  批准文件为空' >&2; exit 1; }
+
+# 备份。保留权限与属主。
+backup="\$envf.bak.\$(date +%Y%m%dT%H%M%S)"
+cp -p "\$envf" "\$backup"
+echo "  已备份：\$backup"
+
+owner=\$(stat -c '%u:%g' "\$envf")
+mode=\$(stat -c '%a' "\$envf")
+
+# 原子替换。先删旧行，再追加新行，最后整体换入。
+tmp="\$envf.new.\$\$"
+grep -v '^COLLECTION_HTTP_GRANTS=' "\$envf" > "\$tmp" || true
+printf 'COLLECTION_HTTP_GRANTS=%s\n' "\$grants_line" >> "\$tmp"
+chown "\$owner" "\$tmp"
+chmod "\$mode" "\$tmp"
+mv "\$tmp" "\$envf"
+echo '  已写入 env 文件'
+
+# 用镜像里的真实策略代码验证。
+# 失败就恢复备份，此时容器还没动，生产不受影响。
+if ! \$compose run --rm --no-deps -T api python -c '
+from data_intelligence_hub.collectors.outbound_policy import http_grant
+import json, os
+grants = json.loads(os.environ["COLLECTION_HTTP_GRANTS"])
+if not isinstance(grants, list):
+    raise SystemExit("not a list")
+seen = set()
+for g in grants:
+    ct = g["collector_type"]
+    if ct in seen:
+        raise SystemExit("duplicate collector_type: " + ct)
+    seen.add(ct)
+    http_grant(ct)
+print("  策略校验通过：" + str(len(grants)) + " 条")
+'; then
+  echo '  策略校验失败，恢复备份。' >&2
+  cp -p "\$backup" "\$envf"
+  exit 1
+fi
+
+rm -f $remote_grants
+echo "\$backup"
+REMOTE
+)
+  run_remote "$key" "$ssh_target" "$script"
+
+  echo "-- 2/4 替换 api 并重启 edge"
+  run_remote "$key" "$ssh_target" "set -euo pipefail
+cd $REMOTE_APP
+compose=\"docker compose --env-file $REMOTE_ENV -f $REMOTE_APP/$COMPOSE_REL\"
+\$compose up -d --no-deps api
+\$compose restart edge
+sleep 3
+docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
+
+  echo "-- 3/4 等待 api 健康"
+  wait_healthy "$key" "$ssh_target" "api"
+
+  echo "-- 4/4 验收"
+  local after
+  after="$(blocked_count "$url")"
+  if [[ -z "$after" ]]; then
+    die "$tag 取不到新的被阻断行数。请人工核对 $url"
+  fi
+  echo "  被阻断行：$before → $after"
+
+  if (( after > before )); then
+    echo "  被阻断行上升，说明配置让某类采集整体被拒。" >&2
+    echo "  回滚中：恢复备份并重建 api。" >&2
+    rollback_grants "$key" "$ssh_target"
+    die "$tag 批准失败，已回滚"
+  fi
+
+  if (( after == before )); then
+    echo "  警告：被阻断行数未变化。确认这批主机对应的端点是否已解除。" >&2
+  else
+    echo "  解除 $(( before - after )) 行"
+  fi
+}
+
+# 恢复最近一份 env 备份并重建 api。
+rollback_grants() {
+  local key="$1" ssh_target="$2"
+  run_remote "$key" "$ssh_target" "set -euo pipefail
+cd $REMOTE_APP
+envf=$REMOTE_ENV
+last=\$(ls -1t \"\$envf\".bak.* 2>/dev/null | head -1 || true)
+[ -n \"\$last\" ] || { echo '  找不到备份，无法自动回滚。' >&2; exit 1; }
+cp -p \"\$last\" \"\$envf\"
+echo \"  已恢复：\$last\"
+compose=\"docker compose --env-file \$envf -f $REMOTE_APP/$COMPOSE_REL\"
+\$compose up -d --no-deps api
+\$compose restart edge
+" || echo "  自动回滚失败，请人工处理。" >&2
+}
+
+# ---------- 公网验收 ----------
+
 verify_public() {
   local url="$1"
   local fail=0
@@ -385,6 +637,20 @@ print(len(rows), keyed, blocked)
 # ---------- 主流程 ----------
 
 preflight_local
+
+if [[ -n "$GRANTS_FILE" ]]; then
+  # 批准模式不动代码，跳过远端同步检查。
+  if [[ "$HOST" == "a" || "$HOST" == "both" ]]; then
+    apply_grants_one A "$A_KEY" "$A_SSH" "$A_URL"
+  fi
+  if [[ "$HOST" == "b" || "$HOST" == "both" ]]; then
+    apply_grants_one B "$B_KEY" "$B_SSH" "$B_URL"
+  fi
+  echo
+  echo "批准完成。"
+  exit 0
+fi
+
 check_remote_branches
 
 if [[ "$HOST" == "a" || "$HOST" == "both" ]]; then
