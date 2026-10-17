@@ -514,6 +514,11 @@ docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
   wait_healthy "$key" "$ssh_target" "api"
 
   echo "-- 4/4 验收"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  [dry-run] 上线后重新取被阻断行数，仅上升时回滚。"
+    return 0
+  fi
+
   local after
   after="$(blocked_count "$url")"
   if [[ -z "$after" ]]; then
