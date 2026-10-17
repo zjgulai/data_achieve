@@ -73,6 +73,11 @@ services:
       LOG_LEVEL: INFO
       SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-false}
       SCHEDULER_POLL_INTERVAL_SECONDS: ${SCRAPY_SCHEDULER_POLL_INTERVAL_SECONDS:-60}
+      # 外访策略。见 docs/standards/collection-outbound-safety.md。
+      # 默认值必须写 :-[]。未设置或空串会让 pydantic-settings 解析失败。
+      # 这两个键必须在本列表里声明；只写 .env.production 不会进容器。
+      COLLECTION_NETWORK_MODE: ${COLLECTION_NETWORK_MODE:-restricted}
+      COLLECTION_HTTP_GRANTS: ${COLLECTION_HTTP_GRANTS:-[]}
       SMTP_FROM: ${SCRAPY_SMTP_FROM:-}
       SMTP_HOST: ${SCRAPY_SMTP_HOST:-}
       SMTP_PASSWORD: ${SCRAPY_SMTP_PASSWORD:-}
