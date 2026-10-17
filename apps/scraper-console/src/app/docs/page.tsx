@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen, Search, ChevronDown, ChevronRight, CheckCircle2,
-  XCircle, Clock, Loader2, RefreshCw, ExternalLink,
+  XCircle, Clock, Loader2, RefreshCw, AlertCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchCollectorDocs } from "@/lib/api/collector-docs";
@@ -44,12 +44,25 @@ function MethodBadge({ method }: { method: string }) {
 // ──────────────────────────────────────────────────────────────
 //  Evidence badge
 // ──────────────────────────────────────────────────────────────
-// 证据三态。success 记实测成功，其余记录记实测失败，无记录记未实测。
-type EvidenceClass = "success" | "failed" | "untested";
+// 证据五态。按后端 TaskRun.status 的真实词表。
+// success 实测成功；partial_success 部分成功；failed 实测失败；
+// running 进行中；无记录未实测。
+// 后端取值见 services/collector_service.py 的 _status_for。
+// 不能把 running 与 partial_success 一起记作失败。
+type EvidenceClass = "success" | "partial" | "failed" | "running" | "untested";
 
 function evidenceClass(ep: CollectorDocsEndpoint): EvidenceClass {
   if (!ep.test_result) return "untested";
-  return ep.test_result.last_run_status === "success" ? "success" : "failed";
+  switch (ep.test_result.last_run_status) {
+    case "success":
+      return "success";
+    case "partial_success":
+      return "partial";
+    case "running":
+      return "running";
+    default:
+      return "failed";
+  }
 }
 
 function EvidenceBadge({ ep }: { ep: CollectorDocsEndpoint }) {
@@ -59,6 +72,16 @@ function EvidenceBadge({ ep }: { ep: CollectorDocsEndpoint }) {
   if (cls === "success" && t) return (
     <span title={`实测成功 · ${t.last_records_count ?? 0} 条 · ${t.last_run_at ?? ""}`} className="inline-flex items-center gap-1 rounded-full border border-[var(--state-success)] bg-[var(--success-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-success)]">
       <CheckCircle2 size={10} />实测成功
+    </span>
+  );
+  if (cls === "partial" && t) return (
+    <span title={`部分成功 · ${t.last_records_count ?? 0} 条`} className="inline-flex items-center gap-1 rounded-full border border-[var(--state-warning)] bg-[var(--warning-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--state-warning)]">
+      <AlertCircle size={10} />部分成功
+    </span>
+  );
+  if (cls === "running" && t) return (
+    <span title="最近一次运行还在进行中" className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+      <Clock size={10} />进行中
     </span>
   );
   if (cls === "failed" && t) return (
@@ -226,7 +249,7 @@ function EndpointRow({ ep }: { ep: CollectorDocsEndpoint }) {
 function GroupSection({ entry }: { entry: CollectorDocsEntry }) {
   const [open, setOpen] = useState(true);
   const tested = entry.endpoints.filter(e => e.test_result).length;
-  const passed = entry.endpoints.filter(e => e.test_result?.last_run_status === "success").length;
+  const passed = entry.endpoints.filter(e => evidenceClass(e) === "success").length;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)]">
@@ -352,7 +375,9 @@ export default function CollectorDocsPage() {
         >
           <option value="">全部证据</option>
           <option value="success">实测成功</option>
+          <option value="partial">部分成功</option>
           <option value="failed">实测失败</option>
+          <option value="running">进行中</option>
           <option value="untested">未实测</option>
         </select>
 

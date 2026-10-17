@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   Search, X, ChevronDown, ChevronRight,
   CheckSquare, Square, Play,
-  LayoutGrid, Globe, Package,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
