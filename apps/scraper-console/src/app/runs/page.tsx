@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchAllRuns, fetchRunRecords, MAX_RUNS_LIMIT } from "@/lib/api/runs";
+import { fetchAllRuns, fetchRunRecords, MAX_RUNS_LIMIT, rawRecordEntries } from "@/lib/api/runs";
 import type { TaskRun } from "@/lib/api/runs";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
 import {
@@ -141,7 +141,7 @@ function RecordPreview({ runId }: { runId: string }) {
           </div>
           {/* Show first 3 content keys */}
           <div className="mt-1.5 grid gap-0.5">
-            {Object.entries(rec.content ?? {}).slice(0, 3).map(([k, v]) => (
+            {rawRecordEntries(rec.content).slice(0, 3).map(([k, v]) => (
               <div key={k} className="flex gap-2 text-xs">
                 <span className="shrink-0 font-mono text-[var(--text-tertiary)]">{k}:</span>
                 <span className="truncate text-[var(--text-secondary)]">

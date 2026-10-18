@@ -1,10 +1,10 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchRunById, fetchRunRecords } from "@/lib/api/runs";
-import type { TaskRun } from "@/lib/api/runs";
+import { fetchRunById, fetchRunRecords, rawRecordEntries } from "@/lib/api/runs";
+import type { RawRecord, TaskRun } from "@/lib/api/runs";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
 import { AlertCircle, CheckCircle, Clock, FileText, Loader2 } from "lucide-react";
 
@@ -73,6 +73,142 @@ function RunStatusIcon({
     return <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-[var(--state-info)]" />;
   }
   return <Clock size={20} className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />;
+}
+
+/** 标量值直接显示，保持原值。 */
+function formatScalar(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "—";
+  return String(value);
+}
+
+function isScalar(value: unknown): boolean {
+  return value === null || typeof value !== "object";
+}
+
+function formatJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2) ?? formatScalar(value);
+  } catch {
+    return formatScalar(value);
+  }
+}
+
+function sizeHint(value: unknown): string {
+  if (Array.isArray(value)) return `数组 · ${value.length} 项`;
+  if (value !== null && typeof value === "object") {
+    return `对象 · ${Object.keys(value).length} 个键`;
+  }
+  return "";
+}
+
+/**
+ * 显示一条记录的全部字段。
+ * 标量直接显示；对象、数组和 raw 键默认折叠。
+ */
+function RecordContent({ content }: { content: RawRecord["content"] }) {
+  const entries = rawRecordEntries(content);
+  const collapsibleKeys = entries
+    .filter(([key, value]) => key === "raw" || !isScalar(value))
+    .map(([key]) => key);
+  const [openKeys, setOpenKeys] = useState<Set<string>>(
+    () =>
+      new Set(
+        entries
+          .filter(([key, value]) => key !== "raw" && isScalar(value))
+          .map(([key]) => key),
+      ),
+  );
+
+  if (entries.length === 0) {
+    return <p className="mt-3 text-xs text-[var(--text-tertiary)]">该记录内容为空</p>;
+  }
+
+  const allOpen =
+    collapsibleKeys.length > 0 &&
+    collapsibleKeys.every(key => openKeys.has(key));
+
+  function toggleAll() {
+    setOpenKeys(
+      allOpen ? new Set() : new Set(entries.map(([key]) => key)),
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs text-[var(--text-tertiary)]">
+          {Array.isArray(content)
+            ? `共 ${entries.length} 项`
+            : `共 ${entries.length} 个字段`}
+        </span>
+        {collapsibleKeys.length > 0 ? (
+          <button
+            type="button"
+            onClick={toggleAll}
+            className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+          >
+            {allOpen ? "收起全部" : "展开全部"}
+          </button>
+        ) : null}
+      </div>
+
+      <dl className="grid gap-1.5">
+        {entries.map(([key, value]) => {
+          const collapsible = key === "raw" || !isScalar(value);
+
+          if (!collapsible) {
+            return (
+              <div key={key} className="flex gap-3 text-xs">
+                <dt className="w-28 shrink-0 break-all font-mono text-[var(--text-tertiary)]">
+                  {key}
+                </dt>
+                <dd className="min-w-0 flex-1 whitespace-pre-wrap break-all text-[var(--text-secondary)]">
+                  {formatScalar(value)}
+                </dd>
+              </div>
+            );
+          }
+
+          const isOpen = openKeys.has(key);
+          return (
+            <details
+              key={key}
+              open={isOpen}
+              onToggle={event => {
+                const nextOpen = event.currentTarget.open;
+                setOpenKeys(current => {
+                  const next = new Set(current);
+                  if (nextOpen) next.add(key);
+                  else next.delete(key);
+                  return next;
+                });
+              }}
+              className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-2"
+            >
+              <summary className="cursor-pointer break-all font-mono text-xs text-[var(--text-tertiary)]">
+                {key}
+                <span className="ml-2 font-sans">{sizeHint(value)}</span>
+              </summary>
+              {isOpen ? (
+                <div className="mt-2 max-h-96 overflow-auto">
+                  {isScalar(value) ? (
+                    <p className="whitespace-pre-wrap break-all text-xs text-[var(--text-secondary)]">
+                      {formatScalar(value)}
+                    </p>
+                  ) : (
+                    <pre className="whitespace-pre-wrap break-all font-mono text-xs text-[var(--text-secondary)]">
+                      {formatJson(value)}
+                    </pre>
+                  )}
+                </div>
+              ) : null}
+            </details>
+          );
+        })}
+      </dl>
+    </div>
+  );
 }
 
 export default function CollectResultPage({ params }: Props) {
@@ -189,23 +325,7 @@ export default function CollectResultPage({ params }: Props) {
                 </p>
               ) : null}
 
-              <div className="mt-3 grid gap-1.5">
-                {Object.entries(rec.content ?? {})
-                  .filter(([k]) => k !== "raw")
-                  .slice(0, 6)
-                  .map(([k, v]) => (
-                    <div key={k} className="flex gap-3 text-xs">
-                      <span className="w-28 shrink-0 font-mono text-[var(--text-tertiary)] truncate">
-                        {k}
-                      </span>
-                      <span className="truncate text-[var(--text-secondary)]">
-                        {typeof v === "object"
-                          ? JSON.stringify(v).slice(0, 80)
-                          : String(v ?? "").slice(0, 120)}
-                      </span>
-                    </div>
-                  ))}
-              </div>
+              <RecordContent content={rec.content} />
             </div>
           ))}
         </div>

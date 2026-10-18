@@ -32,12 +32,26 @@ export type RawRecord = {
   workflow_step_run_id: string | null;
   record_type: string;
   source_url: string | null;
-  content: Record<string, unknown>;
+  /** 后端允许对象或数组。见 `schemas/raw_record.py`。 */
+  content: Record<string, unknown> | unknown[];
   content_hash: string;
   screenshot_url: string | null;
   collected_at: string;
   created_at: string;
 };
+
+/** 把 content 统一成键值对。数组用下标作键。 */
+export function rawRecordEntries(
+  content: RawRecord["content"],
+): Array<[string, unknown]> {
+  if (Array.isArray(content)) {
+    return content.map((value, index): [string, unknown] => [String(index), value]);
+  }
+  if (content !== null && typeof content === "object") {
+    return Object.entries(content);
+  }
+  return [];
+}
 
 /** 后端 GET /api/tasks/runs 的 limit 上限。 */
 export const MAX_RUNS_LIMIT = 200;

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Search } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { AssetsTabs } from "@/components/assets/assets-tabs";
-import { fetchRawRecords, type RawRecord } from "@/lib/api/runs";
+import { fetchRawRecords, rawRecordEntries, type RawRecord } from "@/lib/api/runs";
 
 const PAGE_SIZE = 25;
 
@@ -17,9 +17,9 @@ function formatTimestamp(value: string | null): string {
   return date.toLocaleString("zh-CN", { hour12: false });
 }
 
-function summarize(content: Record<string, unknown>): string {
+function summarize(content: RawRecord["content"]): string {
   const parts: string[] = [];
-  for (const [key, value] of Object.entries(content)) {
+  for (const [key, value] of rawRecordEntries(content)) {
     if (key === "raw" || key === "html_content") continue;
     if (value === null || value === undefined || value === "") continue;
     const text = typeof value === "object" ? JSON.stringify(value) : String(value);
