@@ -189,16 +189,59 @@ for e in blocked[:5]:
 
 ## 第 8 步：分批轮换
 
-超过 5 个主机时只能分批。步骤：
+超过 5 个主机时只能分批。每批是一份现成的配置文件，放在
+`configs/deploy/scrapy/grants/`。切换是一条命令：
 
-1. 改同一条配置里的 `hosts`。不要新增第二条。
-2. 重启 api。
-3. 跑该批任务。
-4. 换下一批，重复。
+```bash
+./scripts/deploy-p0.sh --host both \
+  --grants-file configs/deploy/scrapy/grants/batch-1-regulatory.json
+```
 
-不在当前批次的主机会收到 `collection_policy_denied`。
+先加 `--dry-run` 看它要做什么。
 
-策略拒绝不是瞬时故障。scheduler 不会自动重试。换批后需人工发起一次。
+### 现有批次
+
+| 文件 | `public_feed` 的主机 | 用途 |
+|---|---|---|
+| `batch-0-fix-generic-web.json` | forbes、nytimes、goodhousekeeping、momjunction、madeformums | 母婴媒体基线。`generic_web` 含 scrapingbee |
+| `batch-1-regulatory.json` | gov.uk、fda.gov、prnewswire、mumsnet、healthline | 监管源优先。当前生产在用 |
+| `batch-2-media.json` | 同 batch-0 | 回切到母婴媒体 |
+| `batch-3-remaining.json` | gov.uk、fda.gov、prnewswire、babygaga、romper | 补齐剩余两个已验证媒体源 |
+
+`generic_web` 四份都相同：babycenter、babylist、forbes、goodhousekeeping、scrapingbee。
+其中 `scrapingbee.com` 是生产任务「竞品公开页面快照采集」的目标，移出会让该任务失败。
+
+### 轮换前必须确认
+
+换出某个主机前，先确认没有任务依赖它。策略拒绝不会自动重试，
+任务会在下次执行时失败，并把 `next_run_at` 置空。
+
+```bash
+curl -s https://scrapy.luteos.com/api/tasks | python3 -c '
+import json, sys
+tasks = json.load(sys.stdin)
+for t in tasks:
+    if t.get("collector_type") not in ("public_feed", "generic_web"):
+        continue
+    url = (t.get("config") or {}).get("url") or t.get("source_url") or ""
+    host = url.split("//")[-1].split("/")[0].lower()
+    print(t["name"], "|", host, "| next:", t.get("next_run_at"))
+'
+```
+
+2026-10-18 实测：全库 577 个任务的 `schedule_cron` 全为空，
+唯一依赖 `public_feed` 的任务采集 `hnrss.org`（未批准），
+唯一依赖 `generic_web` 的定时任务采集 `www.scrapingbee.com`。
+
+### 换出后再换回会怎样
+
+不会自动恢复。任务收到 `collection_policy_denied` 或
+`outbound_domain_denied` 后，`next_run_at` 变为空，scheduler 不重试。
+需要手动跑一次成功，调度才回来：
+
+```bash
+curl -s -X POST https://scrapy.luteos.com/api/tasks/<task_id>/run
+```
 
 ## 常见错误
 
@@ -209,6 +252,8 @@ for e in blocked[:5]:
 | 服务起不来 | 默认值写成 `${VAR}` 而不是 `${VAR:-[]}` |
 | 主机名被拒 | 带了端口、路径、大写或 IP |
 | 批准了仍被拒 | 端点 `status` 是 `disabled`，前端不放行 |
+| 改 host 后被阻断行数没变 | 该主机不是目录固定端点，是任务自带 URL。看任务运行结果判断 |
+| 任务每天失败一次 | 目标主机未批准。查容器里 `COLLECTION_HTTP_GRANTS` 的实际值 |
 
 ## 2026-10-17 的实测基线
 
@@ -216,7 +261,7 @@ for e in blocked[:5]:
 
 | collector | 待批主机 | 上限 | 能否一次批完 |
 |---|---|---|---|
-| `public_feed` | 19 | 5 | 否 |
+| `public_feed` | 21 | 5 | 否 |
 | `generic_web` | 7（2 个端点 disabled） | 5 | 否 |
 | `ecommerce_product_page` | 由调用方传入 | 5 | 需先定站点 |
 | `ecommerce_product_discovery` | 由调用方传入 | 5 | 需先定站点 |
