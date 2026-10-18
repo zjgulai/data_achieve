@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchAllRuns, fetchRunRecords } from "@/lib/api/runs";
+import { fetchAllRuns, fetchRunRecords, MAX_RUNS_LIMIT } from "@/lib/api/runs";
 import type { TaskRun } from "@/lib/api/runs";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
 import {
@@ -229,12 +229,22 @@ function RunRow({ run }: { run: TaskRun }) {
 }
 
 /* ── Page ── */
+/** 每次「加载更多」追加的记录数。 */
+const RUNS_PAGE_SIZE = 50;
+
 export default function RunsPage() {
-  const { data: runs, isLoading, error } = useQuery({
+  const [visibleCount, setVisibleCount] = useState(RUNS_PAGE_SIZE);
+  const { data: allRuns, isLoading, error } = useQuery({
     queryKey: ["all-runs"],
-    queryFn: () => fetchAllRuns({ limit: 50 }),
+    queryFn: () => fetchAllRuns({ limit: MAX_RUNS_LIMIT }),
     refetchInterval: 15_000,
   });
+
+  const runs = allRuns?.slice(0, visibleCount);
+  const loadedCount = runs?.length ?? 0;
+  const hasMore = (allRuns?.length ?? 0) > loadedCount;
+  const reachedLimit = (allRuns?.length ?? 0) >= MAX_RUNS_LIMIT;
+  const showLoadMore = !isLoading && !error && loadedCount > 0 && (hasMore || reachedLimit);
 
   return (
     <AppShell
@@ -286,8 +296,26 @@ export default function RunsPage() {
         )}
       </div>
 
+      {showLoadMore && (
+        <div className="flex flex-col items-center gap-1">
+          {hasMore ? (
+            <button
+              type="button"
+              onClick={() => setVisibleCount(count => count + RUNS_PAGE_SIZE)}
+              className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-4 py-2 text-sm font-medium text-[var(--action-primary)] hover:bg-[var(--surface-muted)]"
+            >
+              加载更多
+            </button>
+          ) : (
+            <p className="text-xs text-[var(--text-tertiary)]">
+              最多显示最近 {MAX_RUNS_LIMIT} 条记录
+            </p>
+          )}
+        </div>
+      )}
+
       <p className="text-xs text-[var(--text-tertiary)]">
-        点击行可展开原始记录预览，共 {runs?.length ?? 0} 条记录，每 15 秒自动刷新
+        点击行可展开原始记录预览，已加载 {loadedCount} 条记录，每 15 秒自动刷新
       </p>
     </AppShell>
   );

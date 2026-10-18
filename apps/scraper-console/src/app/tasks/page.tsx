@@ -114,11 +114,17 @@ export default function TasksPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const qc = useQueryClient();
 
-  const { data: tasks, isLoading, error } = useQuery({
-    queryKey: ["tasks", statusFilter],
-    queryFn: () => fetchTasks({ status: statusFilter || undefined }),
+  const { data: allTasks, isLoading, error } = useQuery({
+    queryKey: ["tasks", "all"],
+    queryFn: () => fetchTasks(),
     refetchInterval: 10_000,
   });
+
+  const tasks = statusFilter
+    ? (allTasks ?? []).filter((task) => task.status === statusFilter)
+    : allTasks;
+  const totalCount = allTasks?.length ?? 0;
+  const filteredCount = tasks?.length ?? 0;
 
   return (
     <AppShell
@@ -164,10 +170,28 @@ export default function TasksPage() {
           </div>
         ) : !tasks || tasks.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-[var(--text-tertiary)]">暂无采集任务</p>
-            <p className="mt-1 text-xs text-[var(--text-tertiary)]">
-              在「平台能力中心」点击「快速采集」可以自动创建任务
-            </p>
+            {totalCount === 0 ? (
+              <>
+                <p className="text-sm text-[var(--text-tertiary)]">暂无采集任务</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  在「平台能力中心」点击「快速采集」可以自动创建任务
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--text-tertiary)]">当前筛选下没有任务</p>
+                <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+                  全部 {totalCount} 个任务中，没有「{STATUS_CONFIG[statusFilter]?.label ?? statusFilter}」状态的任务
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("")}
+                  className="mt-3 rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                >
+                  查看全部任务
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -195,7 +219,9 @@ export default function TasksPage() {
       </div>
 
       <p className="text-xs text-[var(--text-tertiary)]">
-        共 {tasks?.length ?? 0} 个任务，每 10 秒自动刷新
+        {statusFilter
+          ? `筛选 ${filteredCount} / 全部 ${totalCount} 个任务，每 10 秒自动刷新`
+          : `共 ${totalCount} 个任务，每 10 秒自动刷新`}
       </p>
     </AppShell>
   );

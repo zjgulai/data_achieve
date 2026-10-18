@@ -39,9 +39,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "非空字符串，strip 后使用；非字符串、空串或纯空白抛 CollectorError； "
-        "无长度与字符集校验。服务层 passthrough 不查， "
-        "违反只在采集期拒绝（失败 TaskRun，非 400）。"
+        "必填。用户名，不能为空；首尾空白自动去掉。"
         ),
     ),
         ),
@@ -55,9 +53,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "非空字符串，strip 后使用；非字符串、空串或纯空白抛 CollectorError； "
-        "无长度与字符集校验。服务层 passthrough 不查， "
-        "违反只在采集期拒绝（失败 TaskRun，非 400）。"
+        "必填。用户名，不能为空；首尾空白自动去掉。"
         ),
     ),
         ),
@@ -71,9 +67,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "非空字符串，strip 后使用；非字符串、空串或纯空白抛 CollectorError； "
-        "无长度与字符集校验。服务层 passthrough 不查， "
-        "违反只在采集期拒绝（失败 TaskRun，非 400）。"
+        "必填。用户名，不能为空；首尾空白自动去掉。"
         ),
     ),
         ),
@@ -95,9 +89,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 检查、strip 后为空即抛 CollectorError， "
-        "返回 strip 后的值使用；不做域名格式校验（`_target_type = \"domain\"` 是类属性、 "
-        "非配置参数，collectors/spiderfoot_collector.py:365）。"
+        "必填。目标域名，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -115,10 +107,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         "sfp_webanalytics",
         ],
         description=(
-        "可选；仅 isinstance(list) 检查，元素零校验（错误文案称 'module name strings' "
-        "但无对应实现）。非空列表整体替换默认模块表并作为 modulelist 实参； "
-        "空列表或缺省回落 _FAST_DOMAIN_MODULES（:218 `modules or "
-        "self._default_modules`）。"
+        "模块列表，可选。留空时使用默认模块；填非空列表则替换默认模块。"
         ),
     ),
         ),
@@ -132,9 +121,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 检查、strip 后为空即抛 CollectorError， "
-        "返回 strip 后的值使用；不做邮箱格式校验（`_target_type = \"email\"` 是类属性、 "
-        "非配置参数，collectors/spiderfoot_collector.py:379）。"
+        "必填。目标邮箱地址，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -144,10 +131,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         default=["sfp_emailformat", "sfp_accounts"],
         description=(
-        "可选；仅 isinstance(list) 检查，元素零校验（错误文案称 'module name strings' "
-        "但无对应实现）。非空列表整体替换默认模块表并作为 modulelist 实参； "
-        "空列表或缺省回落 _FAST_EMAIL_MODULES（:218 `modules or "
-        "self._default_modules`）。"
+        "模块列表，可选。留空时使用默认模块；填非空列表则替换默认模块。"
         ),
     ),
         ),
@@ -161,9 +145,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 检查、strip 后为空即抛 CollectorError， "
-        "返回 strip 后的值使用；不做 IP 格式校验（`_target_type = \"ip\"` 是类属性、 "
-        "非配置参数，collectors/spiderfoot_collector.py:372）。"
+        "必填。目标 IP 地址，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -173,10 +155,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         default=["sfp_dnsresolve", "sfp_whois", "sfp_arin", "sfp_webframework"],
         description=(
-        "可选；仅 isinstance(list) 检查，元素零校验（错误文案称 'module name strings' "
-        "但无对应实现）。非空列表整体替换默认模块表并作为 modulelist 实参； "
-        "空列表或缺省回落 _FAST_IP_MODULES（:218 `modules or "
-        "self._default_modules`）。"
+        "模块列表，可选。留空时使用默认模块；填非空列表则替换默认模块。"
         ),
     ),
         ),
@@ -194,8 +173,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=500,
         description=(
-        "返回条数上限，整数 1 到 500。类级默认 30；经 quick_collect 时入口注入 10， "
-        "故该路径缺省为 10。服务层是 passthrough 不做校验，非法值在执行期由类级拒绝。"
+        "返回条数上限，可选。整数 1 到 500，默认 30；快速采集未填时为 10。"
         ),
     ),
         ),
@@ -209,8 +187,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串。经 quick_collect 时入口注入默认值 python， "
-        "故该路径缺省时不报错；经建源路径缺失则在采集期被拒。"
+        "必填。搜索关键词，不能为空；快速采集未填时使用默认值 python。"
         ),
     ),
     ParameterSpec(
@@ -222,8 +199,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=500,
         description=(
-        "返回条数上限，整数 1 到 500。类级默认 30；经 quick_collect 时入口注入 10。 "
-        "服务层是 passthrough 不做校验，非法值在执行期由类级拒绝。"
+        "返回条数上限，可选。整数 1 到 500，默认 30；快速采集未填时为 10。"
         ),
     ),
         ),
@@ -237,8 +213,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串。经 quick_collect 时入口注入默认值 pg， "
-        "故该路径缺省时不报错；经建源路径缺失则在采集期被拒。"
+        "必填。Hacker News 用户名，不能为空；快速采集未填时使用默认值 pg。"
         ),
     ),
     ParameterSpec(
@@ -250,8 +225,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=500,
         description=(
-        "返回条数上限，整数 1 到 500。类级默认 30；经 quick_collect 时入口注入 10。 "
-        "服务层是 passthrough 不做校验，非法值在执行期由类级拒绝。"
+        "返回条数上限，可选。整数 1 到 500，默认 30；快速采集未填时为 10。"
         ),
     ),
         ),
@@ -266,8 +240,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填；须为非空字符串（返回 strip 后的值）；非 str（含缺失、 "
-        "数字）或 strip 后为空均抛 CollectorError。"
+        "必填。搜索关键词，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -279,9 +252,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=200,
         description=(
-        "返回条数上限，整数 1 到 200，默认 20。实现用 int() 强转， "
-        "故数字字符串与浮点被接受。True 被当作 1 通过；False 变 0，不满足下界 1， "
-        "抛错。"
+        "返回条数上限，可选。整数 1 到 200，默认 20。"
         ),
     ),
         ),
@@ -308,8 +279,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必须是非空 str（strip 后非空），且解析后 scheme 为 http 或 https、 "
-        "netloc 非空；strip 后的值被持久化并用于请求。"
+        "必填。要抓取的网页地址，必须是完整的 http 或 https 地址。"
         ),
     ),
     ParameterSpec(
@@ -320,8 +290,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default="main_content",
         allowed_values=("main_content", "full_html",),
         description=(
-        "枚举 main_content / full_html，默认 main_content；集合成员判定， "
-        "非成员值（数字、布尔等）被拒；不可哈希值（list/dict）在判定处抛 TypeError。"
+        "内容提取方式，可选。可选值：main_content、full_html；默认 main_content。"
         ),
     ),
         ),
@@ -334,7 +303,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         value_type="string",
         required=True,
         source="collector_validation",
-        description="必须是非空 str（strip 后非空）；无正则、无 topic 字符集校验。",
+        description="必填。GitHub 话题名称，不能为空。",
     ),
     ParameterSpec(
         name="max_results",
@@ -345,9 +314,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=100,
         description=(
-        "整数 1–100（含端点），默认 30；严格 isinstance(int)， "
-        "数字字符串与浮点被拒；True 通过（isinstance(True, int)）并随后以 str(True) "
-        "作为 per_page 发出，False 被下界拒绝。"
+        "返回仓库数上限，可选。整数 1 到 100，默认 30。"
         ),
     ),
         ),
@@ -392,8 +359,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必须是非空 str（strip 后非空），且解析后 scheme 为 http 或 https、 "
-        "netloc 非空。"
+        "必填。订阅源地址，必须是完整的 http 或 https 地址。"
         ),
     ),
     ParameterSpec(
@@ -403,7 +369,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         default="auto",
         allowed_values=("auto", "rss", "atom",),
-        description="枚举 auto / rss / atom，默认 auto；集合成员判定，非成员值（含非字符串）被拒。",
+        description="订阅源类型，可选。可选值：auto、rss、atom；默认 auto。",
     ),
     ParameterSpec(
         name="max_items",
@@ -414,9 +380,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=100,
         description=(
-        "整数 1–100（含端点），默认 20；严格 isinstance(int)， "
-        "数字字符串与浮点被拒；True 通过（isinstance(True, int)）并按 1 参与条目截取， "
-        "False 被下界拒绝。"
+        "返回条目数上限，可选。整数 1 到 100，默认 20。"
         ),
     ),
         ),
@@ -434,8 +398,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必须是非空 str（strip 后非空）；不校验 URL 格式（无 scheme/netloc 检查）， "
-        "任意字符串通过，后续直接拼接到 https://r.jina.ai/ 前缀。"
+        "必填。要读取的网页地址，不能为空；请填完整网址。"
         ),
     ),
     ParameterSpec(
@@ -446,8 +409,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default="markdown",
         allowed_values=("markdown", "text", "html",),
         description=(
-        "枚举 markdown / text / html，默认 markdown；集合成员判定， "
-        "非成员值（含非字符串）被拒。"
+        "返回格式，可选。可选值：markdown、text、html；默认 markdown。"
         ),
     ),
         ),
@@ -463,8 +425,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "非空字符串，strip 后使用；须为绝对 http/https URL（scheme ∈ {http,https} 且 "
-        "netloc 非空），否则拒绝。两处站点判定相同。"
+        "必填。商品详情页地址，必须是完整的 http 或 https 地址。"
         ),
     ),
     ParameterSpec(
@@ -489,11 +450,10 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         "canonical_url",
         ],
         description=(
-        "可选，缺省为全部 14 个字段（仅键缺省时；显式 null 被拒）；须为非空 list， "
-        "元素限固定 14 "
-        "值枚举：title/price/price_min/price_max/currency/availability/availability_de "
-        "tail/sku/variant/brand/category/description/image_url/canonical_url。 "
-        "枚举外元素两处均拒；重复允许、条数无上限。"
+        "要提取的字段，可选。默认提取全部 14 个字段。"
+        "可选值：title、price、price_min、price_max、currency、"
+        "availability、availability_detail、sku、variant、brand、"
+        "category、description、image_url、canonical_url。"
         ),
     ),
     ParameterSpec(
@@ -504,9 +464,8 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default="auto",
         allowed_values=("auto", "shopify", "independent_ecommerce",),
         description=(
-        "三值枚举，缺省 auto（仅键缺省时；显式 null 被拒）。 "
-        "判定为集合成员测试、无 isinstance：数组/对象等不可哈希值抛未包装 TypeError "
-        "而非 CollectorError。该参数仅参与校验，采集逻辑不消费其值；两处判定相同。"
+        "平台类型提示，可选。可选值：auto、shopify、"
+        "independent_ecommerce；默认 auto。该参数不影响采集行为。"
         ),
     ),
         ),
@@ -520,8 +479,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "非空字符串，strip 后使用；须为绝对 http/https URL（scheme ∈ {http,https} 且 "
-        "netloc 非空），否则拒绝。两处站点判定相同。"
+        "必填。商品列表页地址，必须是完整的 http 或 https 地址。"
         ),
     ),
     ParameterSpec(
@@ -533,10 +491,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         minimum=1,
         maximum=200,
         description=(
-        "严格 isinstance(int)，无 int() 强转：浮点与数字字符串被拒。 "
-        "范围 1-200（含端点），缺省 50（仅键缺省时；显式 null 被拒）。 "
-        "布尔是 int 子类：true 通过并当 1 使用（[:max_products]）， "
-        "false 因 0<1 被拒。两处站点判定相同。"
+        "最多发现的商品数，可选。整数 1 到 200，默认 50。"
         ),
     ),
     ParameterSpec(
@@ -547,9 +502,8 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default="auto",
         allowed_values=("auto", "shopify", "independent_ecommerce",),
         description=(
-        "三值枚举，缺省 auto（仅键缺省时；显式 null 被拒）。 "
-        "判定为集合成员测试、无 isinstance：数组/对象等不可哈希值抛未包装 TypeError "
-        "而非 CollectorError。该参数仅参与校验，采集逻辑不消费其值；两处判定相同。"
+        "平台类型提示，可选。可选值：auto、shopify、"
+        "independent_ecommerce；默认 auto。该参数不影响采集行为。"
         ),
     ),
         ),
@@ -564,9 +518,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 且 strip() 后非空， "
-        "否则抛 CollectorError；返回 strip 后的值。数字/布尔因类型检查被拒； "
-        "无长度、字符集或格式约束。"
+        "必填。要查询的用户名，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -576,10 +528,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         default=[],
         description=(
-        "可选，默认 []；仅校验 isinstance(list)， "
-        "非 list 抛 CollectorError。元素不校验：非字符串元素通过校验， "
-        "在 subprocess 参数组装时抛 TypeError，由执行层兜底为失败任务。空 list 合法， "
-        "等于不加 --site、扫全量站点。"
+        "站点列表，可选。留空表示查询全部站点。"
         ),
     ),
         ),
@@ -597,9 +546,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 且 strip() 后非空， "
-        "否则抛 CollectorError；另要求字面包含 \"@\"（子串检查而非正则/格式校验， "
-        "\"@\" 自身也通过），否则抛 CollectorError；返回 strip 后的值，无长度上限。"
+        "必填。要查询的邮箱地址，不能为空，且必须包含 @。"
         ),
     ),
         ),
@@ -617,8 +564,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填非空字符串：isinstance(str) 且 strip() 后非空， "
-        "否则抛 CollectorError；返回 strip 后的值。无长度、字符集或格式约束。"
+        "必填。要查询的用户名，不能为空。"
         ),
     ),
         ),
@@ -637,9 +583,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填；须为 str 且 strip 后非空（require_text，base.py:96-100）， "
-        "返回去首尾空白后的值；数字/布尔/null 等非字符串一律拒绝。服务层零校验， "
-        "缺失或非法到采集期才失败（failed TaskRun，非建源 400）。"
+        "必填。要转换的文件地址，不能为空。"
         ),
     ),
     ParameterSpec(
@@ -649,8 +593,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         default="",
         description=(
-        "文件类型提示，默认空字符串。实现直接对其调用字符串方法， "
-        "传入非字符串会抛属性错误，由执行层兜底为失败任务。"
+        "文件类型提示，可选。默认空字符串，由系统自行判断。"
         ),
     ),
         ),
@@ -669,11 +612,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         source="collector_validation",
         max_length=100,
         description=(
-        "必填。必须是 str 组成的非空 list；非 list、空 list、 "
-        "元素非字符串或 strip 后为空都抛 CollectorError， "
-        "返回值为逐项 strip 后的列表。条目数上限 100， "
-        "超出即拒（max_length=100 指条目数）。.get(\"urls\", []) 的缺省 [] 同被拒， "
-        "故不可省略。"
+        "必填。要抓取的网页地址列表，1 到 100 条，每条不能为空。"
         ),
     ),
         ),
@@ -693,10 +632,8 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default="news",
         allowed_values=("news", "sport", "entertainment", "trending",),
         description=(
-        "可选，缺省 news（:322）。四值封闭枚举（:36）， "
-        "区分大小写、无 strip/lower 归一；任意非成员值（含数字、 "
-        "布尔）抛 CollectorError；list/dict 等不可哈希值在集合成员判定处抛裸 "
-        "TypeError。目录与端点元数据仅把它声明为 string，枚举只存在于实现。"
+        "趋势分类，可选。可选值：news、sport、entertainment、"
+        "trending；默认 news。区分大小写。"
         ),
     ),
         ),
@@ -714,10 +651,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description=(
-        "必填；非空 str（strip 后非空，base.py:96-100）， "
-        "返回去空白后的值。urlparse 后的 scheme 必须是 http 或 https， "
-        "否则 CollectorError；不校验主机名（\"http://\" 之类空 netloc 也通过校验， "
-        "httpx 在采集期才失败）。报错文案写 start with，实际判定是解析后的 scheme。"
+        "必填。要检测的网页地址，必须是 http 或 https 地址。"
         ),
     ),
         ),

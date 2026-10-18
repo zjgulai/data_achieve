@@ -39,6 +39,9 @@ export type RawRecord = {
   created_at: string;
 };
 
+/** 后端 GET /api/tasks/runs 的 limit 上限。 */
+export const MAX_RUNS_LIMIT = 200;
+
 export async function fetchAllRuns(params?: {
   limit?: number;
   status?: string;
@@ -52,6 +55,17 @@ export async function fetchAllRuns(params?: {
   if (params?.project_id) qs.set("project_id", params.project_id);
   const query = qs.toString() ? `?${qs.toString()}` : "";
   return apiFetch<TaskRun[]>(`/api/tasks/runs${query}`);
+}
+
+/**
+ * 按 ID 读取一次运行。
+ *
+ * 后端没有单次运行的查询端点，只能读取最近的运行再匹配。
+ * 超过最近 MAX_RUNS_LIMIT 条的旧运行返回 null。
+ */
+export async function fetchRunById(runId: string): Promise<TaskRun | null> {
+  const runs = await fetchAllRuns({ limit: MAX_RUNS_LIMIT });
+  return runs.find(run => run.id === runId) ?? null;
 }
 
 export async function fetchRawRecords(params?: {

@@ -524,7 +524,8 @@ function PlatformsPageContent() {
   }), [allEndpoints]);
 
   // Category counts
-  // 计数口径 = 目录全量（286 条）。不叠加 canStartCollection 门控，也不减停用行。
+  // 「全部」= 目录总数（286 条）。分类 = 可渲染行（allEndpoints），不含停用行。
+  // 一个平台可命中多个分类，因此分类计数合计可大于结果行。
   // 运行态由行内 availability 徽标承担，不混入分类计数。
   const categoryCounts = useMemo(() => {
     const catalog = data?.collectors.flatMap(c => c.endpoints) ?? [];
@@ -532,10 +533,10 @@ function PlatformsPageContent() {
     for (const cat of CATEGORIES) {
       counts[cat.key] = cat.key === "all"
         ? catalog.length
-        : catalog.filter(e => matchCategory(e.platform, cat.filterKeys)).length;
+        : allEndpoints.filter(e => matchCategory(e.platform, cat.filterKeys)).length;
     }
     return counts;
-  }, [data]);
+  }, [data, allEndpoints]);
 
   // Filter pipeline: category + search
   const filtered = useMemo(() => {
@@ -708,6 +709,11 @@ function PlatformsPageContent() {
               })}
             </div>
 
+            {/* 计数口径说明 */}
+            <p className="text-[11px] leading-relaxed text-[var(--text-tertiary)]">
+              「全部」为目录总数。分类计数与结果不含停用能力。一个平台可计入多个分类。
+            </p>
+
             {/* Search + batch */}
             <div className="flex items-center gap-3">
               <div className="relative flex-1 min-w-48">
@@ -777,7 +783,7 @@ function PlatformsPageContent() {
 
               {/* result count */}
               <span className="ml-auto flex-shrink-0 text-xs tabular-nums text-[var(--text-tertiary)]">
-                {filtered.length} 个能力
+                当前显示 {filtered.length} 个能力
                 {search && <span className="ml-1">(已搜索)</span>}
               </span>
             </div>
