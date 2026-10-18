@@ -10,6 +10,7 @@ from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
+from data_intelligence_hub.repositories.tasks import list_task_runs_by_ids
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
@@ -95,6 +96,27 @@ async def list_all_task_run_items(
     result = await session.execute(q)
     runs = result.scalars().all()
     return [TaskRunResponse.from_run(run) for run in runs]
+
+@router.get("/runs/{run_id}", response_model=TaskRunResponse)
+async def get_task_run_item(
+    run_id: uuid.UUID,
+    session: SessionDep,
+) -> TaskRunResponse:
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo_workspace_unavailable",
+        )
+    # 单条查询同样按 workspace 过滤；不存在与跨 workspace 统一返回 404。
+    runs = await list_task_runs_by_ids(session, workspace.id, {run_id})
+    run = runs.get(run_id)
+    if run is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="task_run_not_found",
+        )
+    return TaskRunResponse.from_run(run)
 
 @router.get("/{task_id}", response_model=CollectionTaskResponse)
 async def get_task_item(
