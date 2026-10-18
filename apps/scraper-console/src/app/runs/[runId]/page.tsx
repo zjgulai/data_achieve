@@ -226,7 +226,7 @@ export default function CollectResultPage({ params }: Props) {
                 本次运行失败，未产生原始记录
               </p>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                失败原因：{errorReason(run)}
+                失败原因见上方状态区。
               </p>
             </>
           ) : isRunning ? (
