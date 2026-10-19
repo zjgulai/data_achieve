@@ -94,6 +94,11 @@ https://open.feishu.cn/app/cli_aa10f960fbb99cb3/auth?q=application:application:p
 
 ## 4. 部署
 
+> **部署范围（2026-10-19 决定）**：只在生产 A `scrapy.luteos.com` 部署。生产 B
+> `scrapy.lute-tlz-dddd.top` 暂不部署。飞书事件请求地址只能指向一个 URL，当前指向 A；
+> 若以后要让 B 接事件，需要另一个飞书应用或切换请求地址。
+
+
 ```bash
 # 服务器
 cd /opt/data-achieve-scrapy/app
