@@ -928,11 +928,23 @@ R1 月预算上限 300 美元。
 
 ### 25.5 验证
 
-1. 单元测试 1968 通过。
-2. 新增 31 个测试，覆盖回填、电商归一化、电商入库、电商工具、CDO 路由。
+1. 单元测试 1972 通过。
+2. 新增 40 个测试，覆盖回填、电商归一化、电商入库、电商工具、CDO 路由。
 3. 控制台 `tsc --noEmit`、`eslint`、`next build` 通过。
 
-### 25.6 已知限制
+### 25.6 生产 A 验证（2026-10-19）
+
+1. 回填预检：扫描 431 个运行、1392 条 RawRecord，其中 189 条可回填。
+2. 回填执行：189 条全部投影，失败 0。
+3. 回填新增：`product` 17、`product_snapshot` 17、`shop` 13、`transcript` 3、`trend_topic` 70、`video_hashtag` 396。
+4. `tiktok_product_search`：success，3 条，约 7.7 秒。
+5. `tiktok_product_detail`：success，1 条，约 8.8 秒；价格 84.49、30 天销量 304、30 天 GMV 25,680。
+6. `tiktok_product_reviews`：success，10 条，约 5.1 秒。
+7. `tiktok_creator_commerce`：success，1 条，约 7.6 秒；粉丝 151,353、GMV 1,098,437、销量 12,428。
+8. 运行列表与详情页已显示工具名、端点、调用 ID 与参数。
+9. CDO `search` 意图通过 `run_intent_tool` 返回 3 条视频，状态 success。
+
+### 25.7 已知限制
 
 1. `video_product` 与 `creator_product` 暂无生产者，保留表与仓储，等待新端点或 Actor 验证。
 2. `ad` 与 `ad_creative` 仍只有迁移，无 ORM、无工具。
