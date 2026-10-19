@@ -156,6 +156,12 @@ curl -s -X POST https://scrapy.luteos.com/api/agents/shusuo/webhook \
 参数规则：`key=value`；`true/false` 转布尔；整数、小数转数字；以 `[` 或 `{`
 开头的值按 JSON 解析。
 
+## 5.1 自由文本问答
+
+未识别的文本会调用 DeepSeek 只读问答：只回答问题，不执行采集；调用失败或未配置
+`DEEPSEEK_API_KEY` 时回退到帮助菜单。配置项沿用 `DEEPSEEK_API_KEY`、
+`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`（compose 已注入）。
+
 ## 6. 排障
 
 | 现象 | 原因 | 处置 |
