@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from fastapi.testclient import TestClient
 
+from data_intelligence_hub.agents.shusuo import capabilities as shusuo_capabilities
 from data_intelligence_hub.agents.shusuo import commands
 from data_intelligence_hub.agents.shusuo import router as shusuo_router
 from data_intelligence_hub.agents.shusuo.config import get_shushuo_config
@@ -252,3 +253,44 @@ def test_parse_command_rejects_malformed_params() -> None:
 
 def test_clean_text_removes_mentions() -> None:
     assert commands.clean_text("@_user_1 帮助") == "帮助"
+
+
+def _availability(**overrides):
+    from data_intelligence_hub.platform_packages.status import EndpointAvailability
+
+    values = {
+        "endpoint_type": "demo",
+        "availability": "verified",
+        "missing_configuration": (),
+        "last_test_status": None,
+        "last_test_at": None,
+        "last_records_count": None,
+        "last_error_message": None,
+        "policy_block_reason": None,
+    }
+    values.update(overrides)
+    return EndpointAvailability(**values)
+
+
+def test_block_reason_blocks_policy_denied() -> None:
+    live = _availability(
+        availability="config-gated",
+        policy_block_reason="collection_policy_denied: no controlled egress",
+    )
+    reason = shusuo_capabilities._block_reason("demo", live)
+    assert reason is not None
+    assert "外访策略" in reason
+
+
+def test_block_reason_blocks_missing_configuration() -> None:
+    live = _availability(
+        availability="config-gated",
+        missing_configuration=("MEDIACRAWLER_BASE_URL",),
+    )
+    reason = shusuo_capabilities._block_reason("demo", live)
+    assert reason is not None
+    assert "MEDIACRAWLER_BASE_URL" in reason
+
+
+def test_block_reason_allows_verified() -> None:
+    assert shusuo_capabilities._block_reason("demo", _availability()) is None
