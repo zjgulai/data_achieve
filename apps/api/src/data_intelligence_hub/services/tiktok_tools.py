@@ -168,6 +168,110 @@ _TOOL_ROLE_BY_ENDPOINT = {
 }
 
 
+def _number(value: Any) -> float | None:
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("amount")
+    if value is None or value == "":
+        return None
+    text = str(value).strip()
+    multiplier = 1
+    if text and text[-1].upper() in {"K", "M", "B"}:
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
+            text[-1].upper()
+        ]
+        text = text[:-1]
+    match = re.search(r"[-+]?\d[\d,]*\.?\d*", text)
+    if match is None:
+        return None
+    try:
+        return float(match.group(0).replace(",", "")) * multiplier
+    except ValueError:
+        return None
+
+
+def _money_field(value: Any) -> float | None:
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("amount")
+    if value is None or value == "":
+        return None
+    text = str(value).replace(",", "")
+    multiplier = 1
+    if text and text[-1].upper() in {"K", "M", "B"}:
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
+            text[-1].upper()
+        ]
+        text = text[:-1]
+    match = re.search(r"[-+]?\d[\d,]*\.?\d*", text)
+    if match is None:
+        return None
+    try:
+        return float(match.group(0).replace(",", "")) * multiplier
+    except ValueError:
+        return None
+
+
+def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
+    raw = record.get("raw")
+    if not isinstance(raw, dict):
+        return record
+    out = dict(record)
+    region = raw.get("region")
+    if isinstance(region, dict):
+        region = region.get("key") or region.get("id") or region.get("name")
+    seller = raw.get("seller")
+    seller = seller if isinstance(seller, dict) else {}
+    prices = str(raw.get("real_price") or raw.get("price") or "")
+    price_parts = re.findall(r"\d[\d,]*\.?\d*", prices.replace(",", ""))
+    price_amount = _money_field(price_parts[0]) if price_parts else None
+    max_price = _money_field(price_parts[-1]) if price_parts else None
+    out.update(
+        {
+            "product_id": raw.get("product_id") or raw.get("id"),
+            "region": str(region or record.get("region") or "").upper() or None,
+            "title": raw.get("product_name") or raw.get("product_title") or raw.get("title"),
+            "text": raw.get("product_name") or raw.get("product_title") or raw.get("title"),
+            "price_amount": price_amount,
+            "min_price_amount": _money_field(raw.get("min_price")),
+            "max_price_amount": _money_field(raw.get("max_price")) or max_price,
+            "original_price_amount": _money_field(
+                str(raw.get("original_price") or "").split(" - ")[0]
+            ),
+            "currency": "USD" if "$" in prices else raw.get("currency"),
+            "sale_count": _number(raw.get("total_sale_cnt")),
+            "sale_count_30d": _number(raw.get("total_sale_30d_cnt")),
+            "gmv_amount_30d": _money_field(raw.get("total_sale_gmv_30d_amt")),
+            "commission_rate": _number(raw.get("commission")),
+            "review_count": _number(raw.get("review_count")),
+            "rating": _number(raw.get("product_rating")),
+            "seller_id": seller.get("seller_id") or seller.get("id"),
+            "shop_name": seller.get("shop_name") or seller.get("name"),
+            "shop_id": seller.get("shop_id"),
+            "product_url": raw.get("product_url")
+            or raw.get("seo_url")
+            or raw.get("url"),
+            "image_urls": [raw["cover_url"]]
+            if isinstance(raw.get("cover_url"), str)
+            else raw.get("image_urls"),
+            "skus_json": raw.get("skus"),
+            "sku_count": len(raw["skus"]) if isinstance(raw.get("skus"), list) else None,
+            "free_shipping": bool(raw.get("is_free_shipping"))
+            if raw.get("is_free_shipping") is not None
+            else None,
+            "is_hot": bool(raw.get("is_hot"))
+            if raw.get("is_hot") is not None
+            else None,
+        }
+    )
+    return out
+
+
+def _canonicalize_tool_record(record: dict[str, Any]) -> dict[str, Any]:
+    role = record.get("_tool_role")
+    if role == "product":
+        return _canonicalize_product(record)
+    return record
+
+
 async def _fetch_records(task_run_id: uuid.UUID, limit: int) -> list[dict[str, Any]]:
     async with collect_session_factory() as session:
         workspace = await get_demo_workspace(session)
@@ -189,7 +293,7 @@ async def _fetch_records(task_run_id: uuid.UUID, limit: int) -> list[dict[str, A
             role = _TOOL_ROLE_BY_ENDPOINT.get(endpoint)
             if role:
                 record["_tool_role"] = role
-            records.append(record)
+            records.append(_canonicalize_tool_record(record))
         elif isinstance(raw.content, list):
             records.append({"items": raw.content})
     return records
