@@ -1147,6 +1147,42 @@ async def _ingest_creator_commerce(
         result.skipped += 1
         return
     market = _commerce_region(content, context)
+    raw = content.get("raw")
+    raw = raw if isinstance(raw, dict) else {}
+    stats = raw.get("stats")
+    stats = stats if isinstance(stats, dict) else {}
+    gmv = stats.get("gmv") if isinstance(stats.get("gmv"), dict) else {}
+    gpm = stats.get("gpm") if isinstance(stats.get("gpm"), dict) else {}
+    followers = (
+        stats.get("followers") if isinstance(stats.get("followers"), dict) else {}
+    )
+    avg_views = (
+        stats.get("avgViews") if isinstance(stats.get("avgViews"), dict) else {}
+    )
+    avg_likes = (
+        stats.get("avgLikes") if isinstance(stats.get("avgLikes"), dict) else {}
+    )
+    avg_comments = (
+        stats.get("avgComments") if isinstance(stats.get("avgComments"), dict) else {}
+    )
+    avg_shares = (
+        stats.get("avgShares") if isinstance(stats.get("avgShares"), dict) else {}
+    )
+    engagement = (
+        stats.get("engagementRate")
+        if isinstance(stats.get("engagementRate"), dict)
+        else {}
+    )
+    commission = (
+        stats.get("avgCommission")
+        if isinstance(stats.get("avgCommission"), dict)
+        else {}
+    )
+    frequency = (
+        stats.get("contentFrequency")
+        if isinstance(stats.get("contentFrequency"), dict)
+        else {}
+    )
     await add_creator_commerce(
         session,
         workspace_id=context.workspace_id,
@@ -1158,38 +1194,75 @@ async def _ingest_creator_commerce(
             "period_days": 30,
             "window_start": captured_at - timedelta(days=30),
             "window_end": captured_at,
-            "gmv_amount": _pick(content, "gmv_amount", "gmv"),
-            "currency": _pick(content, "currency"),
-            "units_sold": _pick(content, "units_sold", "unitsSold"),
-            "gpm_amount": _pick(content, "gpm_amount", "gpm"),
-            "video_gpm_amount": _pick(content, "video_gpm_amount"),
-            "live_gpm_amount": _pick(content, "live_gpm_amount"),
+            "gmv_amount": _money(
+                _pick(content, "gmv_amount", "gmv") or gmv.get("total")
+            ),
+            "currency": _pick(content, "currency") or gmv.get("currency"),
+            "units_sold": _count(
+                _pick(content, "units_sold", "unitsSold")
+                or stats.get("unitsSold")
+            ),
+            "gpm_amount": _money(
+                _pick(content, "gpm_amount", "gpm") or gpm.get("amount")
+            ),
+            "video_gpm_amount": _money(
+                _pick(content, "video_gpm_amount") or gpm.get("videoGpm")
+            ),
+            "live_gpm_amount": _money(
+                _pick(content, "live_gpm_amount") or gpm.get("liveGpm")
+            ),
             "avg_commission_rate": _rate(
                 _pick(content, "avg_commission_rate", "commission_rate")
+                or commission.get("value")
             ),
-            "brand_collaboration_count": _pick(
-                content, "brand_collaboration_count"
+            "brand_collaboration_count": _count(
+                _pick(content, "brand_collaboration_count")
+                or stats.get("totalBrandCollaborations")
             ),
-            "promoted_product_count": _pick(
-                content, "promoted_product_count", "product_count"
+            "promoted_product_count": _count(
+                _pick(content, "promoted_product_count", "product_count")
+                or stats.get("promotedProducts")
             ),
-            "avg_views": _pick(content, "avg_views"),
-            "avg_likes": _pick(content, "avg_likes"),
-            "avg_comments": _pick(content, "avg_comments"),
-            "avg_shares": _pick(content, "avg_shares"),
-            "engagement_rate": _rate(_pick(content, "engagement_rate")),
-            "content_frequency": _pick(content, "content_frequency"),
-            "post_rate": _pick(content, "post_rate"),
-            "rating": _pick(content, "rating"),
-            "promotion_performance_score": _pick(
-                content, "promotion_performance_score"
+            "avg_views": _count(
+                _pick(content, "avg_views") or avg_views.get("video")
             ),
-            "follower_count": _pick(content, "follower_count", "fans"),
-            "top_brands": _pick(content, "top_brands"),
-            "category_list": _pick(content, "category_list"),
-            "audience_json": _pick(content, "audience_json"),
-            "gmv_distribution_json": _pick(content, "gmv_distribution_json"),
-            "is_estimated": bool(_pick(content, "is_estimated", "gmv_amount")),
+            "avg_likes": _count(
+                _pick(content, "avg_likes") or avg_likes.get("video")
+            ),
+            "avg_comments": _count(
+                _pick(content, "avg_comments") or avg_comments.get("video")
+            ),
+            "avg_shares": _count(
+                _pick(content, "avg_shares") or avg_shares.get("video")
+            ),
+            "engagement_rate": _rate(
+                _pick(content, "engagement_rate") or engagement.get("video")
+            ),
+            "content_frequency": _count(
+                _pick(content, "content_frequency") or frequency.get("videos")
+            ),
+            "post_rate": _money(
+                _pick(content, "post_rate") or stats.get("postRate")
+            ),
+            "rating": _rating(_pick(content, "rating") or stats.get("rating")),
+            "promotion_performance_score": _money(
+                _pick(content, "promotion_performance_score")
+                or stats.get("promotionPerformanceScore")
+            ),
+            "follower_count": _count(
+                _pick(content, "follower_count", "fans")
+                or followers.get("total")
+            ),
+            "top_brands": _pick(content, "top_brands") or stats.get("topBrands"),
+            "category_list": _pick(content, "category_list")
+            or stats.get("categoryList"),
+            "audience_json": _pick(content, "audience_json")
+            or followers.get("topDemographics"),
+            "gmv_distribution_json": _pick(content, "gmv_distribution_json")
+            or stats.get("gmvDistribution"),
+            "is_estimated": bool(
+                _pick(content, "is_estimated", "gmv_amount") or gmv
+            ),
         },
         provider=context.provider,
         endpoint_type=context.endpoint_type,

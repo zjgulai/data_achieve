@@ -254,3 +254,50 @@ async def test_creator_commerce_creates_creator_and_observation(
     assert row.period_days == 30
     assert float(row.avg_commission_rate) == pytest.approx(0.15)
     assert float(row.engagement_rate) == pytest.approx(0.035)
+
+
+@pytest.mark.asyncio
+async def test_apify_creator_commerce_nested_stats(
+    session: AsyncSession,
+) -> None:
+    workspace_id, project_id = await _seed_tenant(session)
+    content = {
+        "record_type": "tiktok_video",
+        "provider": "apify",
+        "actor_id": "lemur/tiktok-shop-creators",
+        "raw": {
+            "username": "dealswithty",
+            "nickname": "Ty",
+            "region": "US",
+            "stats": {
+                "gmv": {"total": "1098437.17", "currency": "USD"},
+                "gpm": {"amount": 41.332},
+                "unitsSold": 12428,
+                "followers": {"total": 151353},
+                "avgViews": {"video": 5022},
+                "avgLikes": {"video": 22},
+                "avgComments": {"video": 1},
+                "avgShares": {"video": 4},
+                "engagementRate": {"video": 0.9},
+                "avgCommission": {"value": 7.5},
+                "postRate": 44.56,
+                "rating": "5.0",
+                "promotedProducts": 212,
+                "totalBrandCollaborations": 48,
+                "contentFrequency": {"videos": 187},
+            },
+        },
+    }
+    await ingest_tiktok_content(
+        session,
+        [content],
+        _context(workspace_id, project_id, "apify_tiktok_shop_creators"),
+    )
+    row = await session.scalar(select(CreatorCommerce))
+    assert row is not None
+    assert float(row.gmv_amount) == 1098437.17
+    assert row.units_sold == 12428
+    assert row.follower_count == 151353
+    assert row.avg_views == 5022
+    assert float(row.avg_commission_rate) == pytest.approx(0.075)
+    assert row.promoted_product_count == 212
