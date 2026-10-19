@@ -34,6 +34,7 @@ description: 数说飞书机器人的接入、事件回调配置、生产部署�
 
 - 飞书要求 3 秒内返回 HTTP 200。处理方法放进 `BackgroundTasks`。
 - 同一 `event_id` 只处理一次，避免飞书重推导致重复采集。
+- **群聊只在被 @ 时回复**；未 @ 的消息静默忽略。单聊始终回复。
 - 采集前检查实时可用性：`config-gated`、`policy_block_reason` 非空、`disabled` 一律拒绝。
 - 默认写入项目 `7fd6ed55-7b0c-5482-92f3-d03130168b70`（竞品网站采集哨兵）。
 
@@ -170,6 +171,7 @@ curl -s -X POST https://scrapy.luteos.com/api/agents/shusuo/webhook \
 | 日志 `encrypt key is not configured`，响应 400、长度 50 | 飞书事件是密文，服务端没有 Encrypt Key | 配置 `LARK_SHUSUO_ENCRYPT_KEY` |
 | 日志 `invalid verification token`，响应 403 | 事件 token 与服务端不一致 | 对齐飞书「加密策略」与 env，然后重启 |
 | `code: 99991672` | 缺少 `application:application:patch` | 打开授权深链并开通 |
+| 群里发消息没反应 | 没有 @ 机器人 | 用 @数说 再发一次；单聊不需要 @ |
 | 回调 200 但没有回复 | 事件类型不是 `im.message.receive_v1`（例如 `task.task.update_tenant_v1`） | 在单聊或群里 @机器人 发文字 |
 | 采集被拒 `config-gated` | 缺 Provider 配置或外访策略限制 | 用「详情」看 `missing_configuration` / `policy_block_reason` |
 | 采集成功但 0 条 | 上游改版或种子参数不合适 | 先看原始响应；状态会显示「可用但最近为空」 |

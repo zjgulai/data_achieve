@@ -420,3 +420,76 @@ async def test_unknown_uses_llm_answer(monkeypatch) -> None:
     monkeypatch.setattr(commands.llm, "answer_question", fake_answer)
     reply = await commands.execute(commands.Command("unknown", "飞书会被墙挡吗"))
     assert reply.text == "回答：飞书会被墙挡吗"
+
+
+def _group_envelope(*, mentions: list[dict[str, object]] | None = None) -> dict[str, object]:
+    return {
+        "header": {"event_type": "im.message.receive_v1", "event_id": "evt-group"},
+        "event": {
+            "sender": {"sender_type": "user", "sender_id": {"open_id": "ou_user"}},
+            "message": {
+                "message_id": "om_group",
+                "chat_id": "oc_group",
+                "chat_type": "group",
+                "message_type": "text",
+                "content": json.dumps({"text": "@_user_1 帮助"}),
+                "mentions": mentions or [],
+            },
+        },
+    }
+
+
+async def _run_group_case(monkeypatch, envelope) -> list[str]:
+    replies: list[str] = []
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        replies.append(text)
+        return "om_reply"
+
+    async def fake_bot_open_id() -> str:
+        return "ou_bot"
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    await shusuo_router._handle_envelope(envelope)
+    return replies
+
+
+async def test_group_message_without_mention_is_ignored(monkeypatch) -> None:
+    replies = await _run_group_case(monkeypatch, _group_envelope())
+    assert replies == []
+
+
+async def test_group_message_with_mention_is_answered(monkeypatch) -> None:
+    envelope = _group_envelope(mentions=[{"id": {"open_id": "ou_bot"}, "name": "数说"}])
+    replies = await _run_group_case(monkeypatch, envelope)
+    assert replies and "数说" in replies[0]
+
+
+async def test_p2p_message_is_answered_without_mention(monkeypatch) -> None:
+    replies: list[str] = []
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        replies.append(text)
+        return "om_reply"
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    envelope = {
+        "header": {"event_type": "im.message.receive_v1", "event_id": "evt-p2p"},
+        "event": {
+            "sender": {"sender_type": "user", "sender_id": {"open_id": "ou_user"}},
+            "message": {
+                "message_id": "om_p2p",
+                "chat_id": "oc_p2p",
+                "chat_type": "p2p",
+                "message_type": "text",
+                "content": json.dumps({"text": "帮助"}),
+            },
+        },
+    }
+    await shusuo_router._handle_envelope(envelope)
+    assert replies and "数说" in replies[0]

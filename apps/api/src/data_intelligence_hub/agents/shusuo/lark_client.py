@@ -18,6 +18,7 @@ logger = structlog.get_logger(__name__)
 
 _LARK_BASE = "https://open.feishu.cn/open-apis"
 _token_cache: dict[str, Any] = {"token": "", "expires_at": 0.0}
+_bot_cache: dict[str, str] = {"open_id": ""}
 
 
 class LarkAPIError(RuntimeError):
@@ -56,6 +57,26 @@ async def get_tenant_token() -> str:
     _token_cache["token"] = token
     _token_cache["expires_at"] = now + expire
     return token
+
+
+async def get_bot_open_id() -> str:
+    """机器人自己的 open_id。用于判断群消息是否 @ 了机器人。"""
+    if _bot_cache["open_id"]:
+        return _bot_cache["open_id"]
+    token = await get_tenant_token()
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(
+            f"{_LARK_BASE}/bot/v3/info",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    if data.get("code") != 0:
+        return ""
+    bot = data.get("bot") or {}
+    open_id = str(bot.get("open_id", "")) if isinstance(bot, dict) else ""
+    _bot_cache["open_id"] = open_id
+    return open_id
 
 
 async def _request(

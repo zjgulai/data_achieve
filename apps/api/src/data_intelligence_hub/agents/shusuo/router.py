@@ -158,6 +158,19 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         chat_id = str(message.get("chat_id", ""))
         open_id = str((sender.get("sender_id") or {}).get("open_id", ""))
 
+        # 群聊只在被 @ 时回复；未 @ 的消息直接忽略，不插话。
+        if message.get("chat_type") == "group":
+            mentions = message.get("mentions") or []
+            bot_open_id = await lark_client.get_bot_open_id()
+            mentioned = bool(bot_open_id) and any(
+                str((mention.get("id") or {}).get("open_id", "")) == bot_open_id
+                for mention in mentions
+                if isinstance(mention, dict)
+            )
+            if not mentioned:
+                logger.debug("shusuo_group_message_ignored message_id=%s", message_id)
+                return
+
         config = get_shushuo_config()
         if config.allowed_open_ids and open_id not in config.allowed_open_ids:
             await lark_client.reply_text(
