@@ -89,6 +89,10 @@ def build_provider_status(
             elif latest is None:
                 # 没有任何实测证据：不得谎报 verified，标记为 untested。
                 availability = "untested"
+            elif latest.status == "empty":
+                # 运行完成但返回 0 条记录。这是明确的空产出状态，
+                # 不是运行故障，因此不记作 degraded。
+                availability = "empty"
             elif latest.status not in {"success", "ok"}:
                 availability = "degraded"
             elif not (latest.records_count or 0):

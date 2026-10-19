@@ -6,30 +6,42 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchAllRuns, fetchRunRecords, MAX_RUNS_LIMIT, rawRecordEntries } from "@/lib/api/runs";
 import type { TaskRun } from "@/lib/api/runs";
-import { isSuccessfulRunStatus } from "@/lib/run-status";
+import { RUN_STATUS_TEXT_CLASS, runStatusMeta } from "@/lib/run-status";
+import type { RunStatusIconName } from "@/lib/run-status";
 import {
-  CheckCircle, AlertCircle, Clock, Loader2,
+  CheckCircle, AlertCircle, Clock, Loader2, Inbox,
   ChevronDown, ChevronRight, FileText,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 /* ── Status helpers ── */
+const RUN_STATUS_ICONS: Record<RunStatusIconName, LucideIcon> = {
+  check: CheckCircle,
+  alert: AlertCircle,
+  loader: Loader2,
+  clock: Clock,
+  inbox: Inbox,
+};
+
 function RunStatusIcon({ status }: { status: string }) {
-  if (isSuccessfulRunStatus(status)) return <CheckCircle size={16} className="text-[var(--state-success)]" />;
-  if (status === "failed")    return <AlertCircle size={16} className="text-[var(--state-danger)]" />;
-  if (status === "running")   return <Loader2    size={16} className="animate-spin text-[var(--state-info)]" />;
-  return <Clock size={16} className="text-[var(--text-tertiary)]" />;
+  const meta = runStatusMeta(status);
+  const Icon = RUN_STATUS_ICONS[meta.icon];
+  const className = `shrink-0 ${RUN_STATUS_TEXT_CLASS[meta.tone]}${
+    meta.icon === "loader" ? " animate-spin" : ""
+  }`;
+  return <Icon size={16} className={className} />;
 }
 
 function RunStatusLabel({ status }: { status: string }) {
-  const map: Record<string, { label: string; style: string }> = {
-    completed: { label: "已完成", style: "text-[var(--state-success)]" },
-    success:   { label: "成功",   style: "text-[var(--state-success)]" },
-    failed:    { label: "失败",   style: "text-[var(--state-danger)]" },
-    running:   { label: "运行中", style: "text-[var(--state-info)]" },
-    pending:   { label: "等待中", style: "text-[var(--text-tertiary)]" },
-  };
-  const cfg = map[status] ?? { label: status, style: "text-[var(--text-secondary)]" };
-  return <span className={`text-sm font-medium ${cfg.style}`}>{cfg.label}</span>;
+  const meta = runStatusMeta(status);
+  return (
+    <span
+      className={`text-sm font-medium ${RUN_STATUS_TEXT_CLASS[meta.tone]}`}
+      title={meta.description || undefined}
+    >
+      {meta.label}
+    </span>
+  );
 }
 
 function dur(a: string | null, b: string | null) {

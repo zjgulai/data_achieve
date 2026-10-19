@@ -162,6 +162,7 @@ class TechStackDetectCollector(BaseCollector):
     """Detect the technology stack of a given URL using HTML/header fingerprinting."""
 
     collector_type = "tech_stack_detect"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

@@ -59,6 +59,7 @@ _SF_MODULES_ATTACK_SURFACE = [
 
 class SpiderFootSubdomainCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_subdomain_enum"
+    allow_empty = True
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
@@ -69,6 +70,7 @@ class SpiderFootSubdomainCollector(_SpiderFootCollector):
 
 class SpiderFootThreatIntelCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_threat_intel"
+    allow_empty = True
     _target_type = "ip"
 
     def validate_config(self) -> dict[str, Any]:
@@ -79,6 +81,7 @@ class SpiderFootThreatIntelCollector(_SpiderFootCollector):
 
 class SpiderFootBreachCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_breach_check"
+    allow_empty = True
     _target_type = "email"
 
     def validate_config(self) -> dict[str, Any]:
@@ -89,6 +92,7 @@ class SpiderFootBreachCollector(_SpiderFootCollector):
 
 class SpiderFootCertCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_cert_transparency"
+    allow_empty = True
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
@@ -99,6 +103,7 @@ class SpiderFootCertCollector(_SpiderFootCollector):
 
 class SpiderFootDarkWebCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_dark_web"
+    allow_empty = True
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:
@@ -109,6 +114,7 @@ class SpiderFootDarkWebCollector(_SpiderFootCollector):
 
 class SpiderFootAttackSurfaceCollector(_SpiderFootCollector):
     collector_type = "spiderfoot_attack_surface"
+    allow_empty = True
     _target_type = "domain"
 
     def validate_config(self) -> dict[str, Any]:

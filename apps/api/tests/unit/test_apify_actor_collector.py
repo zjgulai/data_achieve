@@ -7,7 +7,7 @@ required.
 from __future__ import annotations
 
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -17,6 +17,7 @@ from data_intelligence_hub.collectors.apify_actor import (
     _actor_id_to_path,
     _extract_source_url,
     _extract_text,
+    _fetch_dataset_items,
     _infer_platform,
     _infer_record_type,
     normalize_apify_item,
@@ -452,6 +453,153 @@ async def test_collect_all_items_unnormalizable_adds_error() -> None:
 
     assert any("apify_normalize_all_failed" in e for e in result.errors)
     assert result.raw_records == []
+
+
+# ---------------------------------------------------------------------------
+# Dataset response shape and zero-record policy
+# ---------------------------------------------------------------------------
+
+
+def _patch_apify_get(payload: Any) -> Any:
+    return patch(
+        "data_intelligence_hub.collectors.apify_actor._apify_get",
+        new=AsyncMock(return_value=payload),
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_unknown_shape_raises() -> None:
+    with (
+        _patch_apify_get({"unexpected": "shape"}),
+        pytest.raises(CollectorError, match="apify_dataset_response_shape_unknown"),
+    ):
+        await _fetch_dataset_items(None, "ds_001", 10, "token")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_wrong_data_type_raises() -> None:
+    with (
+        _patch_apify_get({"data": {"not": "a list"}}),
+        pytest.raises(CollectorError, match="apify_dataset_response_shape_unknown"),
+    ):
+        await _fetch_dataset_items(None, "ds_001", 10, "token")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_non_object_items_raise() -> None:
+    with (
+        _patch_apify_get(["not-an-object"]),
+        pytest.raises(CollectorError, match="apify_dataset_response_shape_unknown"),
+    ):
+        await _fetch_dataset_items(None, "ds_001", 10, "token")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_null_data_is_upstream_empty() -> None:
+    with (
+        _patch_apify_get({"data": None}),
+        pytest.raises(CollectorError, match="apify_dataset_upstream_empty"),
+    ):
+        await _fetch_dataset_items(None, "ds_001", 10, "token")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_empty_array_returns_empty() -> None:
+    with _patch_apify_get([]):
+        assert await _fetch_dataset_items(None, "ds_001", 10, "token") == []  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_fetch_dataset_items_accepts_data_envelope() -> None:
+    item = {"url": "https://example.com/item"}
+    with _patch_apify_get({"data": [item]}):
+        assert await _fetch_dataset_items(None, "ds_001", 10, "token") == [item]  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_collect_unknown_dataset_shape_returns_error() -> None:
+    run_id = "run_shape_001"
+    dataset_id = "ds_shape_001"
+
+    transport = _make_sequence_transport([
+        ("/runs", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/actor-runs/{run_id}", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/datasets/{dataset_id}/items", {"unexpected": "shape"}),
+    ])
+
+    collector = ApifyActorCollector(
+        config={"actor_id": "apify/instagram-scraper", "actor_input": {"search": "test"}}
+    )
+
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
+        result = await collector.collect()
+
+    assert result.raw_records == []
+    assert any("apify_dataset_response_shape_unknown" in e for e in result.errors)
+
+
+@pytest.mark.asyncio
+async def test_collect_empty_dataset_with_strict_endpoint_reports_error() -> None:
+    run_id = "run_strict_empty_001"
+    dataset_id = "ds_strict_empty_001"
+
+    transport = _make_sequence_transport([
+        ("/runs", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/actor-runs/{run_id}", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/datasets/{dataset_id}/items", []),
+    ])
+
+    collector = ApifyActorCollector(
+        config={
+            "actor_id": "apify/instagram-scraper",
+            "actor_input": {"search": "test"},
+            "endpoint_type": "apify_amazon_product_scraper",
+        }
+    )
+
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
+        result = await collector.collect()
+
+    assert result.raw_records == []
+    assert any(
+        e.startswith("collector_empty_result: expected >= 1 record(s), got 0")
+        for e in result.errors
+    )
+
+
+@pytest.mark.asyncio
+async def test_collect_empty_dataset_with_permissive_endpoint_stays_empty() -> None:
+    run_id = "run_permissive_empty_001"
+    dataset_id = "ds_permissive_empty_001"
+
+    transport = _make_sequence_transport([
+        ("/runs", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/actor-runs/{run_id}", _run_response(run_id, "SUCCEEDED", dataset_id)),
+        (f"/datasets/{dataset_id}/items", []),
+    ])
+
+    collector = ApifyActorCollector(
+        config={
+            "actor_id": "apify/instagram-scraper",
+            "actor_input": {"search": "test"},
+            "endpoint_type": "apify_amazon_reviews_scraper",
+        }
+    )
+
+    with (
+        patch(_PATCH_TOKEN, return_value="fake_token"),
+        patch(_PATCH_CLIENT, _patched_client(transport)),
+    ):
+        result = await collector.collect()
+
+    assert result.raw_records == []
+    assert result.errors == []
 
 
 # ---------------------------------------------------------------------------

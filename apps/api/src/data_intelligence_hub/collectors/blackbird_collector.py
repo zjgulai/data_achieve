@@ -55,6 +55,7 @@ def _client() -> httpx.AsyncClient:
 
 class BlackbirdEmailCollector(BaseCollector):
     collector_type = "blackbird_email_osint"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         email = require_text(self.config, "email")
@@ -145,6 +146,7 @@ class BlackbirdEmailCollector(BaseCollector):
 
 class BlackbirdUsernameCollector(BaseCollector):
     collector_type = "blackbird_username_osint"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")

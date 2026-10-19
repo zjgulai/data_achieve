@@ -42,6 +42,8 @@ class NpmPackageCollector(BaseCollector):
     """Fetch package metadata and download stats from the npm registry."""
 
     collector_type = "npm_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         package = require_text(self.config, "package")
@@ -125,6 +127,7 @@ class NpmSearchCollector(BaseCollector):
     """Search npm packages by keyword."""
 
     collector_type = "npm_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -205,6 +208,8 @@ class PyPIPackageCollector(BaseCollector):
     """Fetch package metadata from PyPI."""
 
     collector_type = "pypi_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         package = require_text(self.config, "package")
@@ -293,6 +298,7 @@ class PyPISearchCollector(BaseCollector):
     """Search PyPI packages by keyword (HTML scrape)."""
 
     collector_type = "pypi_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")

@@ -230,6 +230,7 @@ class SherlockCollector(BaseCollector):
     """Check a username across 400+ social networks via sherlock."""
 
     collector_type = "sherlock"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -371,6 +372,7 @@ class MaigretCollector(BaseCollector):
     """
 
     collector_type = "maigret"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")

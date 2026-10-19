@@ -4,10 +4,11 @@ All HTTP calls are mocked via httpx.AsyncMock — no real MediaCrawler required.
 """
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from data_intelligence_hub.collectors.base import CollectorError
@@ -23,9 +24,9 @@ from data_intelligence_hub.collectors.mediacrawler_collector import (
     ZhihuHotListCollector,
     ZhihuKeywordSearchCollector,
     ZhihuQuestionAnswersCollector,
+    _mc_get,
     _records_from,
 )
-from datetime import UTC, datetime
 
 
 def _mc_response(data: list[dict[str, Any]], code: int = 0) -> MagicMock:
@@ -82,7 +83,9 @@ class TestBilibiliVideoSearch:
 
     def test_max_items_bounds(self):
         with pytest.raises(CollectorError):
-            BilibiliVideoSearchCollector(config={"keyword": "k", "max_items": 999}).validate_config()
+            BilibiliVideoSearchCollector(
+                config={"keyword": "k", "max_items": 999}
+            ).validate_config()
 
     def test_valid_config(self):
         cfg = BilibiliVideoSearchCollector(config={"keyword": "python"}).validate_config()
@@ -259,6 +262,133 @@ class TestKuaishouUserVideos:
             ).collect()
         assert len(result.raw_records) == 1
         assert not result.errors
+
+
+class _FakeResponse:
+    def __init__(self, payload: Any, text: str = "") -> None:
+        self._payload = payload
+        self.text = text
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> Any:
+        if isinstance(self._payload, Exception):
+            raise self._payload
+        return self._payload
+
+
+class _FakeClient:
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    async def __aenter__(self) -> _FakeClient:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+    async def get(self, url: str, params: Any = None) -> _FakeResponse:
+        return self._response
+
+
+def _patch_mc_client(response: _FakeResponse):
+    return patch(
+        "data_intelligence_hub.collectors.mediacrawler_collector._client",
+        return_value=_FakeClient(response),
+    )
+
+
+class TestMcGetResponseShape:
+    def test_unknown_body_shape_raises(self):
+        with (
+            _patch_mc_client(_FakeResponse("not-a-mapping")),
+            pytest.raises(CollectorError, match="mediacrawler_response_shape_unknown"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_missing_code_raises(self):
+        with (
+            _patch_mc_client(_FakeResponse({"data": []})),
+            pytest.raises(CollectorError, match="mediacrawler_response_shape_unknown"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_null_data_is_upstream_empty(self):
+        with (
+            _patch_mc_client(_FakeResponse({"code": 0, "data": None})),
+            pytest.raises(CollectorError, match="mediacrawler_upstream_empty"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_non_list_data_raises(self):
+        with (
+            _patch_mc_client(_FakeResponse({"code": 0, "data": {"not": "a list"}})),
+            pytest.raises(CollectorError, match="mediacrawler_response_shape_unknown"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_non_object_items_raise(self):
+        with (
+            _patch_mc_client(_FakeResponse({"code": 0, "data": ["not-an-object"]})),
+            pytest.raises(CollectorError, match="mediacrawler_response_shape_unknown"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_empty_data_array_returns_empty(self):
+        with _patch_mc_client(_FakeResponse({"code": 0, "data": []})):
+            assert asyncio.run(_mc_get("/test")) == []
+
+    def test_bare_empty_array_returns_empty(self):
+        with _patch_mc_client(_FakeResponse([])):
+            assert asyncio.run(_mc_get("/test")) == []
+
+    def test_empty_body_is_upstream_empty(self):
+        with (
+            _patch_mc_client(_FakeResponse(ValueError("no json"), text="")),
+            pytest.raises(CollectorError, match="mediacrawler_upstream_empty"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+    def test_invalid_json_body_raises(self):
+        with (
+            _patch_mc_client(_FakeResponse(ValueError("bad json"), text="<html>")),
+            pytest.raises(CollectorError, match="mediacrawler_response_shape_unknown"),
+        ):
+                asyncio.run(_mc_get("/test"))
+
+
+class TestEmptyResultPolicy:
+    @pytest.mark.asyncio
+    async def test_strict_collector_empty_items_reports_error(self):
+        with _patch_mc_get([]):
+            result = await BilibiliVideoSearchCollector(config={"keyword": "python"}).collect()
+        assert result.raw_records == []
+        assert any(
+            e.startswith("collector_empty_result: expected >= 1 record(s), got 0")
+            for e in result.errors
+        )
+
+    @pytest.mark.asyncio
+    async def test_permissive_collector_empty_items_has_no_error(self):
+        with _patch_mc_get([]):
+            result = await BilibiliVideoCommentsCollector(config={"bvid": "BV1xx"}).collect()
+        assert result.raw_records == []
+        assert result.errors == []
+
+    @pytest.mark.asyncio
+    async def test_strict_trend_collector_does_not_build_empty_record(self):
+        with _patch_mc_get([]):
+            result = await WeiboTrendingTopicsCollector(config={}).collect()
+        assert result.raw_records == []
+        assert any("collector_empty_result" in e for e in result.errors)
+
+    @pytest.mark.asyncio
+    async def test_second_strict_trend_collector_does_not_build_empty_record(self):
+        with _patch_mc_get([]):
+            result = await ZhihuHotListCollector(config={}).collect()
+        assert result.raw_records == []
+        assert any("collector_empty_result" in e for e in result.errors)
 
 
 # Pure adapter tests only; outbound policy is exercised separately with no gate bypass.

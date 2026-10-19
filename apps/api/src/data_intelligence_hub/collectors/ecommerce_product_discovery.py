@@ -26,6 +26,7 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 
 class EcommerceProductDiscoveryCollector(BaseCollector):
     collector_type = "ecommerce_product_discovery"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

@@ -5,22 +5,27 @@ import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchRunById, fetchRunRecords, rawRecordEntries } from "@/lib/api/runs";
 import type { RawRecord, TaskRun } from "@/lib/api/runs";
-import { isSuccessfulRunStatus } from "@/lib/run-status";
-import { AlertCircle, CheckCircle, Clock, FileText, Loader2 } from "lucide-react";
+import {
+  RUN_STATUS_CARD_CLASS,
+  RUN_STATUS_TEXT_CLASS,
+  isCompletedRunStatus,
+  runStatusMeta,
+} from "@/lib/run-status";
+import type { RunStatusIconName } from "@/lib/run-status";
+import {
+  AlertCircle, CheckCircle, Clock, FileText, Inbox, Loader2,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type Props = { params: Promise<{ runId: string }> };
 
-const STATUS_LABELS: Record<string, string> = {
-  completed: "已完成",
-  success: "成功",
-  failed: "失败",
-  running: "运行中",
-  pending: "等待中",
+const RUN_STATUS_ICONS: Record<RunStatusIconName, LucideIcon> = {
+  check: CheckCircle,
+  alert: AlertCircle,
+  loader: Loader2,
+  clock: Clock,
+  inbox: Inbox,
 };
-
-function statusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status;
-}
 
 function formatDateTime(value: string | null): string {
   if (!value) return "—";
@@ -44,13 +49,8 @@ function errorReason(run: TaskRun): string {
 }
 
 function statusCardStyle(run: TaskRun | null | undefined): string {
-  if (run?.status === "failed") {
-    return "border-[var(--state-danger)] bg-[var(--danger-soft)]";
-  }
-  if (run && isSuccessfulRunStatus(run.status)) {
-    return "border-[var(--state-success)] bg-[var(--success-soft)]";
-  }
-  return "border-[var(--border-subtle)] bg-[var(--surface-primary)]";
+  if (!run) return RUN_STATUS_CARD_CLASS.neutral;
+  return RUN_STATUS_CARD_CLASS[runStatusMeta(run.status).tone];
 }
 
 function RunStatusIcon({
@@ -63,16 +63,16 @@ function RunStatusIcon({
   if (loading) {
     return <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-[var(--text-tertiary)]" />;
   }
-  if (run?.status === "failed") {
-    return <AlertCircle size={20} className="mt-0.5 shrink-0 text-[var(--state-danger)]" />;
+  if (!run) {
+    return <Clock size={20} className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />;
   }
-  if (run && isSuccessfulRunStatus(run.status)) {
-    return <CheckCircle size={20} className="mt-0.5 shrink-0 text-[var(--state-success)]" />;
-  }
-  if (run?.status === "running") {
-    return <Loader2 size={20} className="mt-0.5 shrink-0 animate-spin text-[var(--state-info)]" />;
-  }
-  return <Clock size={20} className="mt-0.5 shrink-0 text-[var(--text-tertiary)]" />;
+
+  const meta = runStatusMeta(run.status);
+  const Icon = RUN_STATUS_ICONS[meta.icon];
+  const className = `mt-0.5 shrink-0 ${RUN_STATUS_TEXT_CLASS[meta.tone]}${
+    meta.icon === "loader" ? " animate-spin" : ""
+  }`;
+  return <Icon size={20} className={className} />;
 }
 
 /** 标量值直接显示，保持原值。 */
@@ -230,8 +230,10 @@ export default function CollectResultPage({ params }: Props) {
     enabled: !!runId,
   });
 
+  const meta = run ? runStatusMeta(run.status) : null;
   const isFailed = run?.status === "failed";
-  const isSuccess = run ? isSuccessfulRunStatus(run.status) : false;
+  const isEmpty = run?.status === "empty";
+  const isCompleted = run ? isCompletedRunStatus(run.status) : false;
   const isRunning = run?.status === "running" || run?.status === "pending";
   const hasRecords = !!records && records.length > 0;
 
@@ -250,8 +252,14 @@ export default function CollectResultPage({ params }: Props) {
           <RunStatusIcon run={run} loading={runLoading} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-[var(--text-primary)]">
-              {runLoading ? "加载运行信息..." : run ? statusLabel(run.status) : "运行状态未知"}
+              {runLoading ? "加载运行信息..." : meta ? meta.label : "运行状态未知"}
             </p>
+
+            {!runLoading && meta?.description ? (
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                {meta.description}
+              </p>
+            ) : null}
 
             {runLoading && (
               <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
@@ -359,7 +367,17 @@ export default function CollectResultPage({ params }: Props) {
                 运行结束后，原始记录会显示在这里
               </p>
             </>
-          ) : isSuccess ? (
+          ) : isEmpty ? (
+            <>
+              <Inbox size={32} className="mx-auto text-[var(--state-warning)]" />
+              <p className="mt-3 text-sm font-medium text-[var(--text-primary)]">
+                运行完成，但没有取到数据
+              </p>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                本次运行没有错误，采集器返回 0 条记录。
+              </p>
+            </>
+          ) : isCompleted ? (
             <>
               <FileText size={32} className="mx-auto text-[var(--text-tertiary)]" />
               <p className="mt-3 text-sm text-[var(--text-secondary)]">

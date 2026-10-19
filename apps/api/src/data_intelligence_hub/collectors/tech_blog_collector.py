@@ -65,6 +65,7 @@ class DevToArticlesCollector(BaseCollector):
     """Search published articles on Dev.to using the public REST API."""
 
     collector_type = "devto_articles"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         tag = self.config.get("tag", "").strip()
@@ -160,6 +161,7 @@ class JuejinArticlesCollector(BaseCollector):
     """Search articles on 掘金 (Juejin) using the public API."""
 
     collector_type = "juejin_articles"
+    allow_empty = False
 
     _CATE_MAP = {
         "frontend": "6809637767543259144",
@@ -266,6 +268,7 @@ class SubstackPostsCollector(BaseCollector):
     """Collect recent posts from a Substack publication via its public RSS feed."""
 
     collector_type = "substack_posts"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         publication = require_text(self.config, "publication")

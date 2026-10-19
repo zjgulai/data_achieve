@@ -60,6 +60,12 @@ class CollectionResult:
 class BaseCollector(ABC):
     collector_type: str
 
+    # Zero-record policy. A collector that promises records overrides
+    # allow_empty with False. Detail collectors also set
+    # min_expected_records to 1.
+    allow_empty: bool = True
+    min_expected_records: int = 0
+
     def __init__(
         self,
         config: dict[str, Any],

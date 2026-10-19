@@ -21,6 +21,7 @@ from data_intelligence_hub.collectors.outbound_policy import assert_collector_al
 
 class GitHubTopicCollector(BaseCollector):
     collector_type = "github_topic"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)

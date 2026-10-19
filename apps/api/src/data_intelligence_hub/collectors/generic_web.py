@@ -27,6 +27,7 @@ IpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
 class GenericWebCollector(BaseCollector):
     collector_type = "generic_web"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

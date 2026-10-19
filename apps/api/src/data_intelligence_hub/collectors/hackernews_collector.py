@@ -41,6 +41,7 @@ class HackerNewsFrontPageCollector(BaseCollector):
     """Collect top stories from Hacker News front page."""
 
     collector_type = "hackernews_front_page"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         max_items = self.config.get("max_items", 30)
@@ -125,6 +126,7 @@ class HackerNewsSearchCollector(BaseCollector):
     """Search Hacker News stories."""
 
     collector_type = "hackernews_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -197,6 +199,7 @@ class HackerNewsUserCollector(BaseCollector):
     """Collect a Hacker News user's submissions."""
 
     collector_type = "hackernews_user"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")

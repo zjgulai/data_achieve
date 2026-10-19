@@ -73,6 +73,7 @@ class BrowserUseCollector(BaseCollector):
     """AI-driven browser automation: natural language task → structured extraction."""
 
     collector_type = "browser_use_task"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         task = require_text(self.config, "task")

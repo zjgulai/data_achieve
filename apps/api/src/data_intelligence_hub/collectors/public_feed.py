@@ -33,6 +33,7 @@ class ParsedFeed:
 
 class PublicFeedCollector(BaseCollector):
     collector_type = "public_feed"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

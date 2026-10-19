@@ -40,10 +40,56 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.empty_result_policy import (
+    empty_result_error,
+    resolve_empty_result_policy,
+)
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 _DEFAULT_BASE_URL = "http://localhost:8080"
 _DEFAULT_TIMEOUT = 30.0
+
+
+def _apply_empty_result_policy(
+    collector: BaseCollector,
+    collected_records: int,
+    errors: list[str],
+    logs: list[dict[str, Any]],
+    endpoint_type: str | None = None,
+) -> None:
+    """Turn a strict zero-record run into a structured error.
+
+    A permissive policy leaves the result untouched: the service emits the
+    `empty` warning log so the two layers never log the same event twice.
+    """
+    if collected_records > 0:
+        return
+    policy = resolve_empty_result_policy(
+        collector_type=collector.collector_type,
+        config=collector.config,
+        collector_class=type(collector),
+        task_config=collector.config,
+    )
+    if policy.allow_empty:
+        return
+    message = empty_result_error(
+        collector_type=collector.collector_type,
+        endpoint_type=endpoint_type,
+        expected_records=policy.effective_min_expected_records,
+    )
+    errors.append(message)
+    log = collector_log("collector_empty_result", message, level="error")
+    log.update(
+        {
+            "collector_type": collector.collector_type,
+            "endpoint_type": endpoint_type,
+            "allow_empty": policy.allow_empty,
+            "min_expected_records": policy.min_expected_records,
+            "collected_records": collected_records,
+            "enforced": True,
+        }
+    )
+    logs.append(log)
 
 
 def _base_url() -> str:
@@ -62,6 +108,17 @@ def _client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=_timeout(), proxy=proxy or None)
 
 
+def _dict_items(items: list[Any], path: str) -> list[dict[str, Any]]:
+    """Keep object items; any other item type means the shape is unknown."""
+    result = [item for item in items if isinstance(item, dict)]
+    if len(result) != len(items):
+        raise CollectorError(
+            "mediacrawler_response_shape_unknown: expected list items to be JSON "
+            f"objects, got {len(items) - len(result)} non-object item(s) (path={path})"
+        )
+    return result
+
+
 async def _mc_get(path: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Call a MediaCrawler API endpoint and return the data list."""
     url = f"{_base_url()}{path}"
@@ -72,17 +129,54 @@ async def _mc_get(path: str, params: dict[str, Any] | None = None) -> list[dict[
     except httpx.HTTPError as exc:
         raise CollectorError(collector_http_error_message(exc)) from exc
 
-    body = r.json()
-    # MediaCrawler API responds with {"code": 0, "data": [...]}
+    try:
+        body = r.json()
+    except ValueError as exc:
+        if not r.text.strip():
+            raise CollectorError(
+                f"mediacrawler_upstream_empty: upstream returned an empty body (path={path})"
+            ) from exc
+        raise CollectorError(
+            "mediacrawler_response_shape_unknown: upstream response is not valid JSON "
+            f"(path={path})"
+        ) from exc
+
+    # MediaCrawler API responds with {"code": 0, "data": [...]}.
     if isinstance(body, dict):
+        if "code" not in body:
+            raise CollectorError(
+                "mediacrawler_response_shape_unknown: response has no 'code' field "
+                f"(path={path})"
+            )
         if body.get("code") != 0:
             detail = body.get("msg") or body.get("message") or "unknown error"
             raise CollectorError(f"MediaCrawler API error: {detail}")
-        data = body.get("data", [])
-        return data if isinstance(data, list) else [data]
+        if "data" not in body:
+            raise CollectorError(
+                "mediacrawler_response_shape_unknown: response has no 'data' field "
+                f"(path={path})"
+            )
+        data = body["data"]
+        if data is None:
+            raise CollectorError(
+                f"mediacrawler_upstream_empty: response 'data' is null (path={path})"
+            )
+        if not isinstance(data, list):
+            raise CollectorError(
+                "mediacrawler_response_shape_unknown: expected 'data' to be a list, "
+                f"got {type(data).__name__} (path={path})"
+            )
+        return _dict_items(data, path)
     if isinstance(body, list):
-        return body
-    return []
+        return _dict_items(body, path)
+    if body is None:
+        raise CollectorError(
+            f"mediacrawler_upstream_empty: upstream returned JSON null (path={path})"
+        )
+    raise CollectorError(
+        "mediacrawler_response_shape_unknown: expected a JSON object or array, "
+        f"got {type(body).__name__} (path={path})"
+    )
 
 
 def _records_from(
@@ -114,6 +208,7 @@ class BilibiliVideoSearchCollector(BaseCollector):
     """Search Bilibili videos by keyword via MediaCrawler."""
 
     collector_type = "bilibili_video_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         keyword = require_text(self.config, "keyword")
@@ -163,6 +258,7 @@ class BilibiliVideoSearchCollector(BaseCollector):
             logs.append(collector_log("bilibili_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -177,6 +273,7 @@ class BilibiliUserVideosCollector(BaseCollector):
     """Collect a Bilibili user's public video list via MediaCrawler."""
 
     collector_type = "bilibili_user_videos"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         uid = require_text(self.config, "uid")
@@ -210,6 +307,7 @@ class BilibiliUserVideosCollector(BaseCollector):
             logs.append(collector_log("bilibili_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -224,6 +322,7 @@ class BilibiliVideoCommentsCollector(BaseCollector):
     """Collect comments for a Bilibili video via MediaCrawler."""
 
     collector_type = "bilibili_video_comments"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         bvid = require_text(self.config, "bvid")
@@ -257,6 +356,7 @@ class BilibiliVideoCommentsCollector(BaseCollector):
             logs.append(collector_log("bilibili_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "comment", None, collected_at)
         logs.append(
             collector_log(
@@ -276,6 +376,7 @@ class WeiboKeywordSearchCollector(BaseCollector):
     """Search Weibo posts by keyword via MediaCrawler."""
 
     collector_type = "weibo_keyword_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         keyword = require_text(self.config, "keyword")
@@ -309,6 +410,7 @@ class WeiboKeywordSearchCollector(BaseCollector):
             logs.append(collector_log("weibo_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -323,6 +425,7 @@ class WeiboUserPostsCollector(BaseCollector):
     """Collect a Weibo user's public posts via MediaCrawler."""
 
     collector_type = "weibo_user_posts"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         uid = require_text(self.config, "uid")
@@ -356,6 +459,7 @@ class WeiboUserPostsCollector(BaseCollector):
             logs.append(collector_log("weibo_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -370,6 +474,7 @@ class WeiboTrendingTopicsCollector(BaseCollector):
     """Collect Weibo trending topics list via MediaCrawler."""
 
     collector_type = "weibo_trending_topics"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         return {}
@@ -395,6 +500,10 @@ class WeiboTrendingTopicsCollector(BaseCollector):
             logs.append(collector_log("weibo_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
+        if not items:
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         record = CollectorRawRecord(
             record_type="trend",
             source_url="https://weibo.com/hot/search",
@@ -414,6 +523,7 @@ class ZhihuQuestionAnswersCollector(BaseCollector):
     """Collect answers for a Zhihu question via MediaCrawler."""
 
     collector_type = "zhihu_question_answers"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         question_id = require_text(self.config, "question_id")
@@ -450,6 +560,7 @@ class ZhihuQuestionAnswersCollector(BaseCollector):
             logs.append(collector_log("zhihu_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -464,6 +575,7 @@ class ZhihuKeywordSearchCollector(BaseCollector):
     """Search Zhihu questions/answers by keyword via MediaCrawler."""
 
     collector_type = "zhihu_keyword_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         keyword = require_text(self.config, "keyword")
@@ -497,6 +609,7 @@ class ZhihuKeywordSearchCollector(BaseCollector):
             logs.append(collector_log("zhihu_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -511,6 +624,7 @@ class ZhihuHotListCollector(BaseCollector):
     """Collect the Zhihu hot list (热榜) via MediaCrawler."""
 
     collector_type = "zhihu_hot_list"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         return {}
@@ -536,6 +650,10 @@ class ZhihuHotListCollector(BaseCollector):
             logs.append(collector_log("zhihu_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
+        if not items:
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
+
         record = CollectorRawRecord(
             record_type="trend",
             source_url="https://www.zhihu.com/hot",
@@ -555,6 +673,7 @@ class KuaishouVideoSearchCollector(BaseCollector):
     """Search Kuaishou videos by keyword via MediaCrawler."""
 
     collector_type = "kuaishou_video_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         keyword = require_text(self.config, "keyword")
@@ -588,6 +707,7 @@ class KuaishouVideoSearchCollector(BaseCollector):
             logs.append(collector_log("kuaishou_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(
@@ -602,6 +722,7 @@ class KuaishouUserVideosCollector(BaseCollector):
     """Collect a Kuaishou user's public video list via MediaCrawler."""
 
     collector_type = "kuaishou_user_videos"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         user_id = require_text(self.config, "user_id")
@@ -635,6 +756,7 @@ class KuaishouUserVideosCollector(BaseCollector):
             logs.append(collector_log("kuaishou_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
+        _apply_empty_result_policy(self, len(items), errors, logs)
         records = _records_from(items, "post", "url", collected_at)
         logs.append(
             collector_log(

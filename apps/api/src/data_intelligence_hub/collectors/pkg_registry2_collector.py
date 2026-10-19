@@ -53,6 +53,8 @@ async def _json_get(
 
 class PackagistPackageCollector(BaseCollector):
     collector_type = "packagist_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         package = require_text(self.config, "package")
@@ -134,6 +136,7 @@ class PackagistPackageCollector(BaseCollector):
 
 class PackagistSearchCollector(BaseCollector):
     collector_type = "packagist_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -204,6 +207,8 @@ class PackagistSearchCollector(BaseCollector):
 
 class NuGetPackageCollector(BaseCollector):
     collector_type = "nuget_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         return {"package": require_text(self.config, "package")}
@@ -284,6 +289,7 @@ class NuGetPackageCollector(BaseCollector):
 
 class NuGetSearchCollector(BaseCollector):
     collector_type = "nuget_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -357,6 +363,8 @@ class NuGetSearchCollector(BaseCollector):
 
 class PubDevPackageCollector(BaseCollector):
     collector_type = "pubdev_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         return {"package": require_text(self.config, "package")}
@@ -427,6 +435,7 @@ class PubDevPackageCollector(BaseCollector):
 
 class PubDevSearchCollector(BaseCollector):
     collector_type = "pubdev_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")

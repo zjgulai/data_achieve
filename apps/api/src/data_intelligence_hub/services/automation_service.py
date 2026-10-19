@@ -2430,7 +2430,9 @@ async def run_reviewed_product_batch(
         )
         field_completeness = _product_field_completeness(task, raw_records)
         item_status = (
-            "run_completed" if run.status in {"success", "partial_success"} else "run_failed"
+            "run_completed" if run.status in {"success", "partial_success"}
+            else "run_empty" if run.status == "empty"
+            else "run_failed"
         )
         effective_records_count = (
             len(raw_records) if reused_deduplicated_records else run.records_count
@@ -11315,7 +11317,11 @@ def _product_batch_summary(
     requested_task_ids: list[uuid.UUID],
     items: list[AutomationProductBatchRunItemResponse],
 ) -> AutomationProductBatchRunSummaryResponse:
-    run_items = [item for item in items if item.status in {"run_completed", "run_failed"}]
+    run_items = [
+        item
+        for item in items
+        if item.status in {"run_completed", "run_empty", "run_failed"}
+    ]
     blocked_items = [item for item in items if item.status == "blocked"]
     successful = [
         item

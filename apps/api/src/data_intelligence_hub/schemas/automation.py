@@ -1193,7 +1193,7 @@ class AutomationProductBatchRunItemResponse(BaseModel):
     task_name: str | None
     source_id: uuid.UUID | None
     source_url: str | None
-    status: Literal["run_completed", "run_failed", "blocked"]
+    status: Literal["run_completed", "run_empty", "run_failed", "blocked"]
     blocked_reason: str | None
     run: TaskRunResponse | None
     records_count: int
