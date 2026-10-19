@@ -86,7 +86,10 @@ async def shusuo_webhook(
     # 加密事件：先验签，再解密。URL 校验请求可能不带签名头。
     if "encrypt" in envelope:
         if not config.encrypt_enabled:
-            logger.error("shusuo_webhook_encrypted_but_no_key")
+            logger.error(
+                "shusuo_webhook_encrypted_but_no_key",
+                encrypted_length=len(str(envelope.get("encrypt", ""))),
+            )
             return _json({"code": 400, "msg": "encrypt key is not configured"}, 400)
         if x_lark_signature and not verify_signature(
             encrypt_key=config.encrypt_key,
@@ -104,9 +107,12 @@ async def shusuo_webhook(
             return _json({"code": 400, "msg": "decrypt failed"}, 400)
 
     if envelope.get("type") == "url_verification":
+        # URL 校验只回显 challenge，没有副作用。飞书在“应用新 token 之前”就会用旧
+        # token 来校验地址；若这里强制比对 token，会形成死锁（210042）。真正的
+        # 事件在下面对 token 做强制校验。
         token = str(envelope.get("token", ""))
         if config.verification_token and token != config.verification_token:
-            return _json({"code": 403, "msg": "invalid verification token"}, 403)
+            logger.warning("shusuo_url_verification_token_mismatch")
         return _json({"challenge": envelope.get("challenge", "")})
 
     header = envelope.get("header") or {}

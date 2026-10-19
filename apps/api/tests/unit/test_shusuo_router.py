@@ -71,13 +71,33 @@ def test_webhook_challenge_is_echoed(monkeypatch) -> None:
     assert response.json() == {"challenge": "challenge-token"}
 
 
-def test_webhook_rejects_wrong_verification_token(monkeypatch) -> None:
+def test_url_verification_echoes_even_if_token_mismatches(monkeypatch) -> None:
+    """飞书在应用新 token 之前会用旧 token 校验地址，必须仍回显 challenge。"""
     monkeypatch.setenv("LARK_SHUSUO_VERIFICATION_TOKEN", "expected")
     get_shushuo_config.cache_clear()
     client = TestClient(app)
     response = client.post(
         WEBHOOK_PATH,
-        json={"type": "url_verification", "challenge": "x", "token": "wrong"},
+        json={"type": "url_verification", "challenge": "x", "token": "old"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"challenge": "x"}
+
+
+def test_event_rejects_wrong_verification_token(monkeypatch) -> None:
+    monkeypatch.setenv("LARK_SHUSUO_VERIFICATION_TOKEN", "expected")
+    get_shushuo_config.cache_clear()
+    client = TestClient(app)
+    response = client.post(
+        WEBHOOK_PATH,
+        json={
+            "header": {
+                "event_type": "im.message.receive_v1",
+                "event_id": "evt-wrong-token",
+                "token": "wrong",
+            },
+            "event": {},
+        },
     )
     assert response.status_code == 403
 
