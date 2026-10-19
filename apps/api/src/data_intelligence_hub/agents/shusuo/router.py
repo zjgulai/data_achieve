@@ -139,7 +139,13 @@ async def shusuo_webhook(
 async def _handle_envelope(envelope: dict[str, Any]) -> None:
     try:
         header = envelope.get("header") or {}
-        if header.get("event_type") != "im.message.receive_v1":
+        event_type = str(header.get("event_type", ""))
+        logger.info(
+            "shusuo_event_received",
+            event_type=event_type,
+            event_id=str(header.get("event_id", "")),
+        )
+        if event_type != "im.message.receive_v1":
             return
         event = envelope.get("event") or {}
         sender = event.get("sender") or {}
