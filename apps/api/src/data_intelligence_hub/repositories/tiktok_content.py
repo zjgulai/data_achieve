@@ -88,7 +88,25 @@ def _governance(
 
 def _check_tenant(obj: Any, workspace_id: uuid.UUID, project_id: uuid.UUID) -> None:
     if obj.workspace_id != workspace_id or obj.project_id != project_id:
-        raise ValueError("tiktok_entity_belongs_to_another_tenant")
+        identity = next(
+            (
+                getattr(obj, key)
+                for key in (
+                    "creator_id",
+                    "video_id",
+                    "comment_id",
+                    "hashtag_id",
+                    "sound_id",
+                    "product_key",
+                    "shop_key",
+                )
+                if getattr(obj, key, None) is not None
+            ),
+            "",
+        )
+        raise ValueError(
+            f"tiktok_entity_belongs_to_another_tenant:{type(obj).__name__}:{identity}"
+        )
 
 
 def _filter_values(

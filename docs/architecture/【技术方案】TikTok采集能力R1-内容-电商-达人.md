@@ -937,6 +937,8 @@ R1 月预算上限 300 美元。
 1. 回填预检：扫描 431 个运行、1392 条 RawRecord，其中 189 条可回填。
 2. 回填执行：189 条全部投影，失败 0。
 3. 回填新增：`product` 17、`product_snapshot` 17、`shop` 13、`transcript` 3、`trend_topic` 70、`video_hashtag` 396。
+4. 追加 Phase 0 口径：可回填 345 条，执行后失败 0；2 条跨项目实体冲突被记录。
+5. 回填后总量：`creator` 139、`video` 102、`comment` 51、`hashtag` 228、`product` 23、`product_snapshot` 33、`product_review` 20、`creator_commerce` 3、`shop` 17。
 4. `tiktok_product_search`：success，3 条，约 7.7 秒。
 5. `tiktok_product_detail`：success，1 条，约 8.8 秒；价格 84.49、30 天销量 304、30 天 GMV 25,680。
 6. `tiktok_product_reviews`：success，10 条，约 5.1 秒。
@@ -950,4 +952,5 @@ R1 月预算上限 300 美元。
 2. `ad` 与 `ad_creative` 仍只有迁移，无 ORM、无工具。
 3. `shop.rating`、`shop.follower_count`、`shop.product_count` 在现有 Apify 详情中多数为空。
 4. 回填默认排除 Phase 0 旧端点，避免误收。需要时显式加 `--include-phase0-tikhub`。
+5. 规范表主键是全局的，租户是行属性。同一实体被多个项目采集时，回填会记录 `tiktok_entity_belongs_to_another_tenant`。本次生产出现 2 条，已跳过，不影响其余记录。
 
