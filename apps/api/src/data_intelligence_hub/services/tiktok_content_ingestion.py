@@ -696,8 +696,34 @@ def _money(value: Any) -> float | None:
         value = value.get("value") or value.get("amount") or value.get("price")
     if value is None or value == "":
         return None
+    text = str(value).replace("$", "").replace(",", "").strip()
+    multiplier = 1
+    if text and text[-1].upper() in {"K", "M", "B"}:
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
+            text[-1].upper()
+        ]
+        text = text[:-1]
     try:
-        return float(str(value).replace("$", "").replace(",", "").strip())
+        return float(text) * multiplier
+    except (TypeError, ValueError):
+        return None
+
+
+def _count(value: Any) -> int | None:
+    """Parse '1,234', '192.98K', '1.2M' and numeric objects."""
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("count") or value.get("sold_count")
+    if value is None or value == "":
+        return None
+    text = str(value).strip().replace(",", "")
+    multiplier = 1
+    if text and text[-1].upper() in {"K", "M", "B"}:
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
+            text[-1].upper()
+        ]
+        text = text[:-1]
+    try:
+        return int(float(text) * multiplier)
     except (TypeError, ValueError):
         return None
 
@@ -708,10 +734,7 @@ def _review_count(content: dict[str, Any]) -> int | None:
         rating = _pick(content, "rating", "product_rating")
         if isinstance(rating, dict):
             value = rating.get("reviewCount") or rating.get("review_count")
-    try:
-        return int(value) if value is not None else None
-    except (TypeError, ValueError):
-        return None
+    return _count(value)
 
 
 def _rating(value: Any) -> float | None:
@@ -1011,11 +1034,11 @@ async def _ingest_commerce_product(
                 _pick(content, "avg_price_amount", "avg_price")
             ),
             "currency": _currency(content),
-            "sale_count": _pick(
-                content, "sale_count", "sale_cnt", "saleCount", "sales"
+            "sale_count": _count(
+                _pick(content, "sale_count", "sale_cnt", "saleCount", "sales")
             ),
-            "sale_count_30d": _pick(
-                content, "sale_count_30d", "sale_30d_cnt", "saleCount30d"
+            "sale_count_30d": _count(
+                _pick(content, "sale_count_30d", "sale_30d_cnt", "saleCount30d")
             ),
             "gmv_amount_30d": _pick(
                 content, "gmv_amount_30d", "gmv_30d_amt", "gmv30d", "gmv"
@@ -1023,17 +1046,25 @@ async def _ingest_commerce_product(
             "commission_rate": _rate(
                 _pick(content, "commission_rate", "commission")
             ),
-            "stock_count": _pick(
-                content, "stock_count", "total_stock_cnt",
-                "availableQuantity", "stock"
+            "stock_count": _count(
+                _pick(
+                    content, "stock_count", "total_stock_cnt",
+                    "availableQuantity", "stock"
+                )
             ),
             "review_count": _review_count(content),
             "rating": _rating(
                 _pick(content, "rating", "product_rating", "stars", "score")
             ),
-            "video_count_30d": _pick(content, "video_count_30d", "video_30d_cnt"),
-            "live_count_30d": _pick(content, "live_count_30d", "live_30d_cnt"),
-            "ifl_count_30d": _pick(content, "ifl_count_30d", "ifl_30d_cnt"),
+            "video_count_30d": _count(
+                _pick(content, "video_count_30d", "video_30d_cnt")
+            ),
+            "live_count_30d": _count(
+                _pick(content, "live_count_30d", "live_30d_cnt")
+            ),
+            "ifl_count_30d": _count(
+                _pick(content, "ifl_count_30d", "ifl_30d_cnt")
+            ),
             "is_hot": _pick(content, "is_hot"),
             "free_shipping": _pick(content, "free_shipping"),
             "shipping_price": _money(_pick(content, "shipping_price")),
