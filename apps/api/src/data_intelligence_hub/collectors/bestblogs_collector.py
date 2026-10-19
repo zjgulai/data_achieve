@@ -55,6 +55,7 @@ def _client() -> httpx.AsyncClient:
 
 class BestBlogsArticlesCollector(BaseCollector):
     collector_type = "bestblogs_articles"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         category = self.config.get("category", "").strip().lower()

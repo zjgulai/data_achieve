@@ -242,6 +242,7 @@ class AliensEyeBasicCollector(_AliensEyeCollector):
     """Quick username scan across 840+ platforms using ML detection."""
 
     collector_type = "aliens_eye_basic"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -297,6 +298,7 @@ class AliensEyeAdvancedCollector(_AliensEyeCollector):
     """
 
     collector_type = "aliens_eye_advanced"
+    allow_empty = True
     _SUPPORTED_LEVELS = frozenset({"basic", "intermediate", "advanced"})
 
     def validate_config(self) -> dict[str, Any]:
@@ -362,6 +364,7 @@ class AliensEyeCorrelateCollector(_AliensEyeCollector):
     """Scan + cross-site correlation: cluster accounts that look like the same person."""
 
     collector_type = "aliens_eye_correlate"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -422,6 +425,7 @@ class AliensEyeRecurseCollector(_AliensEyeCollector):
     """Scan + recursively follow usernames found in bios."""
 
     collector_type = "aliens_eye_recurse"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -473,6 +477,7 @@ class AliensEyeDomainCollector(_AliensEyeCollector):
     """Check if common domain variants of the username are registered."""
 
     collector_type = "aliens_eye_domain"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -534,6 +539,7 @@ class AliensEyeBatchCollector(_AliensEyeCollector):
     """Scan multiple usernames in one call (up to 10)."""
 
     collector_type = "aliens_eye_batch"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         usernames_raw = self.config.get("usernames", [])
@@ -592,6 +598,7 @@ class AliensEyeSelfcheckCollector(_AliensEyeCollector):
     """Run aliens_eye selfcheck to report per-site accuracy metrics."""
 
     collector_type = "aliens_eye_selfcheck"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         return {}

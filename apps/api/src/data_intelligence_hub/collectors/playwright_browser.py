@@ -70,6 +70,7 @@ def _assert_public_url(url: str) -> None:
 
 class PlaywrightBrowserCollector(BaseCollector):
     collector_type = "playwright_browser"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

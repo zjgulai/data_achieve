@@ -362,6 +362,7 @@ _FAST_EMAIL_MODULES = [
 class SpiderFootDomainCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against a domain name."""
     collector_type = "spiderfoot_domain_osint"
+    allow_empty = True
     _target_type = "domain"
     _default_modules = _FAST_DOMAIN_MODULES
 
@@ -369,6 +370,7 @@ class SpiderFootDomainCollector(_SpiderFootCollector):
 class SpiderFootIPCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against an IP address."""
     collector_type = "spiderfoot_ip_osint"
+    allow_empty = True
     _target_type = "ip"
     _default_modules = _FAST_IP_MODULES
 
@@ -376,5 +378,6 @@ class SpiderFootIPCollector(_SpiderFootCollector):
 class SpiderFootEmailCollector(_SpiderFootCollector):
     """Run a SpiderFoot OSINT scan against an e-mail address."""
     collector_type = "spiderfoot_email_osint"
+    allow_empty = True
     _target_type = "email"
     _default_modules = _FAST_EMAIL_MODULES

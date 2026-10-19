@@ -37,6 +37,7 @@ def _jina_client() -> httpx.AsyncClient:
 
 class JinaReaderCollector(BaseCollector):
     collector_type = "jina_reader"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

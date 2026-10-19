@@ -31,7 +31,53 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.empty_result_policy import (
+    empty_result_error,
+    resolve_empty_result_policy,
+)
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
+
+def _apply_empty_result_policy(
+    collector: BaseCollector,
+    collected_records: int,
+    errors: list[str],
+    logs: list[dict[str, Any]],
+    endpoint_type: str | None = None,
+) -> None:
+    """Turn a strict zero-record run into a structured error.
+
+    A permissive policy leaves the result untouched: the service emits the
+    `empty` warning log so the two layers never log the same event twice.
+    """
+    if collected_records > 0:
+        return
+    policy = resolve_empty_result_policy(
+        collector_type=collector.collector_type,
+        config=collector.config,
+        collector_class=type(collector),
+        task_config=collector.config,
+    )
+    if policy.allow_empty:
+        return
+    message = empty_result_error(
+        collector_type=collector.collector_type,
+        endpoint_type=endpoint_type,
+        expected_records=policy.effective_min_expected_records,
+    )
+    errors.append(message)
+    log = collector_log("collector_empty_result", message, level="error")
+    log.update(
+        {
+            "collector_type": collector.collector_type,
+            "endpoint_type": endpoint_type,
+            "allow_empty": policy.allow_empty,
+            "min_expected_records": policy.min_expected_records,
+            "collected_records": collected_records,
+            "enforced": True,
+        }
+    )
+    logs.append(log)
 
 
 def _client() -> httpx.AsyncClient:
@@ -48,6 +94,7 @@ def _client() -> httpx.AsyncClient:
 
 class AutoScraperEnhancedWebCollector(BaseCollector):
     collector_type = "autoscraper_enhanced_web"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")
@@ -168,6 +215,10 @@ class AutoScraperEnhancedWebCollector(BaseCollector):
         if not results:
             msg = f"AutoScraper extracted 0 items (wanted_list={wanted_list})"
             logs.append(collector_log("autoscraper_no_results", msg, level="warning"))
+            endpoint_type_raw = self.config.get("endpoint_type")
+            endpoint_type = str(endpoint_type_raw) if endpoint_type_raw else None
+            _apply_empty_result_policy(self, 0, errors, logs, endpoint_type)
+            return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
         record = CollectorRawRecord(
             record_type="web_page",

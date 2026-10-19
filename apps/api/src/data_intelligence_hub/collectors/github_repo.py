@@ -21,6 +21,8 @@ from data_intelligence_hub.collectors.outbound_policy import assert_collector_al
 
 class GitHubRepoCollector(BaseCollector):
     collector_type = "github_repo"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)

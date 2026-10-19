@@ -142,6 +142,7 @@ def _extract_result_content(
 
 class ExaSearchCollector(BaseCollector):
     collector_type = "exa_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)
@@ -304,6 +305,7 @@ class ExaSearchCollector(BaseCollector):
 
 class ExaFindSimilarCollector(BaseCollector):
     collector_type = "exa_find_similar"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)
@@ -449,6 +451,8 @@ class ExaFindSimilarCollector(BaseCollector):
 
 class ExaContentsCollector(BaseCollector):
     collector_type = "exa_contents"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)
@@ -604,6 +608,7 @@ class ExaContentsCollector(BaseCollector):
 
 class ExaAnswerCollector(BaseCollector):
     collector_type = "exa_answer"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)

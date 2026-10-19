@@ -291,16 +291,19 @@ class _SerpCollector(BaseCollector):
 class BaiduSearchCollector(_SerpCollector):
     """Collect Baidu organic search results for a keyword."""
     collector_type = "baidu_search"
+    allow_empty = False
     engine = "baidu"
 
 
 class BingSearchCollector(_SerpCollector):
     """Collect Bing organic search results for a keyword."""
     collector_type = "bing_search"
+    allow_empty = False
     engine = "bing"
 
 
 class DuckDuckGoSearchCollector(_SerpCollector):
     """Collect DuckDuckGo organic search results (AnyCrawl or HTML fallback)."""
     collector_type = "duckduckgo_search"
+    allow_empty = False
     engine = "duckduckgo"

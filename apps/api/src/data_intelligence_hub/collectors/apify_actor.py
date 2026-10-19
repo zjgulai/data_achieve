@@ -26,6 +26,10 @@ from data_intelligence_hub.collectors.base import (
     collector_log,
     require_text,
 )
+from data_intelligence_hub.collectors.empty_result_policy import (
+    empty_result_error,
+    resolve_empty_result_policy,
+)
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 APIFY_BASE_URL = "https://api.apify.com/v2"
@@ -43,6 +47,48 @@ APIFY_MAX_ITEMS_LIMIT = 1000
 DEFAULT_MAX_TOTAL_CHARGE_USD = 3.0
 
 APIFY_TERMINAL_STATUSES = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"})
+
+
+def _apply_empty_result_policy(
+    collector: BaseCollector,
+    collected_records: int,
+    errors: list[str],
+    logs: list[dict[str, Any]],
+    endpoint_type: str | None = None,
+) -> None:
+    """Turn a strict zero-record run into a structured error.
+
+    A permissive policy leaves the result untouched: the service emits the
+    `empty` warning log so the two layers never log the same event twice.
+    """
+    if collected_records > 0:
+        return
+    policy = resolve_empty_result_policy(
+        collector_type=collector.collector_type,
+        config=collector.config,
+        collector_class=type(collector),
+        task_config=collector.config,
+    )
+    if policy.allow_empty:
+        return
+    message = empty_result_error(
+        collector_type=collector.collector_type,
+        endpoint_type=endpoint_type,
+        expected_records=policy.effective_min_expected_records,
+    )
+    errors.append(message)
+    log = collector_log("collector_empty_result", message, level="error")
+    log.update(
+        {
+            "collector_type": collector.collector_type,
+            "endpoint_type": endpoint_type,
+            "allow_empty": policy.allow_empty,
+            "min_expected_records": policy.min_expected_records,
+            "collected_records": collected_records,
+            "enforced": True,
+        }
+    )
+    logs.append(log)
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +116,20 @@ def _apify_headers(token: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
+def _apify_json(resp: httpx.Response, context: str) -> Any:
+    """Parse a JSON body and distinguish an empty body from an unknown shape."""
+    try:
+        return resp.json()
+    except ValueError as exc:
+        if not resp.text.strip():
+            raise CollectorError(
+                f"apify_upstream_empty: upstream returned an empty body ({context})"
+            ) from exc
+        raise CollectorError(
+            f"apify_response_invalid_json: upstream response is not valid JSON ({context})"
+        ) from exc
+
+
 async def _apify_post(
     client: httpx.AsyncClient,
     path: str,
@@ -89,7 +149,7 @@ async def _apify_post(
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
         raise CollectorError(collector_http_error_message(exc)) from exc
-    return cast(dict[str, Any], resp.json())
+    return cast(dict[str, Any], _apify_json(resp, f"path={path}"))
 
 
 async def _apify_get(
@@ -109,7 +169,7 @@ async def _apify_get(
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
         raise CollectorError(collector_http_error_message(exc)) from exc
-    return resp.json()
+    return _apify_json(resp, f"path={path}")
 
 
 async def _wait_for_run(
@@ -134,6 +194,59 @@ async def _wait_for_run(
         await asyncio.sleep(APIFY_POLL_INTERVAL)
 
 
+def _dict_items(items: list[Any], dataset_id: str) -> list[dict[str, Any]]:
+    """Keep object items; any other item type means the shape is unknown."""
+    result = [item for item in items if isinstance(item, dict)]
+    if len(result) != len(items):
+        raise CollectorError(
+            "apify_dataset_response_shape_unknown: expected dataset items to be "
+            f"JSON objects, got {len(items) - len(result)} non-object item(s) "
+            f"(dataset_id={dataset_id!r})"
+        )
+    return result
+
+
+def _dataset_items_from_response(
+    response: Any,
+    dataset_id: str,
+) -> list[dict[str, Any]]:
+    """Validate the dataset payload shape.
+
+    A valid empty array is a real empty result. Any other shape is a contract
+    error and must not be mistaken for an empty dataset.
+    """
+    if isinstance(response, list):
+        return _dict_items(response, dataset_id)
+    if isinstance(response, dict):
+        if "data" not in response:
+            keys = ", ".join(sorted(str(key) for key in response))
+            raise CollectorError(
+                "apify_dataset_response_shape_unknown: response object has no 'data' "
+                f"field (dataset_id={dataset_id!r}, keys=[{keys}])"
+            )
+        data = response["data"]
+        if data is None:
+            raise CollectorError(
+                "apify_dataset_upstream_empty: response 'data' is null "
+                f"(dataset_id={dataset_id!r})"
+            )
+        if isinstance(data, list):
+            return _dict_items(data, dataset_id)
+        raise CollectorError(
+            "apify_dataset_response_shape_unknown: expected 'data' to be a list, "
+            f"got {type(data).__name__} (dataset_id={dataset_id!r})"
+        )
+    if response is None:
+        raise CollectorError(
+            "apify_dataset_upstream_empty: upstream returned JSON null "
+            f"(dataset_id={dataset_id!r})"
+        )
+    raise CollectorError(
+        "apify_dataset_response_shape_unknown: expected a JSON array or an object "
+        f"with 'data', got {type(response).__name__} (dataset_id={dataset_id!r})"
+    )
+
+
 async def _fetch_dataset_items(
     client: httpx.AsyncClient,
     dataset_id: str,
@@ -147,13 +260,7 @@ async def _fetch_dataset_items(
         {"format": "json", "clean": "1", "limit": str(min(limit, APIFY_MAX_ITEMS_LIMIT))},
         token,
     )
-    if isinstance(resp, list):
-        return [item for item in resp if isinstance(item, dict)]
-    if isinstance(resp, dict):
-        data = resp.get("data")
-        if isinstance(data, list):
-            return [item for item in data if isinstance(item, dict)]
-    return []
+    return _dataset_items_from_response(resp, dataset_id)
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +473,11 @@ class ApifyActorCollector(BaseCollector):
             else APIFY_RUN_WAIT_TIMEOUT
         )
         charge_raw = self.config.get("max_total_charge_usd")
-        max_charge = float(charge_raw) if isinstance(charge_raw, (int, float, str)) else DEFAULT_MAX_TOTAL_CHARGE_USD
+        max_charge = (
+            float(charge_raw)
+            if isinstance(charge_raw, (int, float, str))
+            else DEFAULT_MAX_TOTAL_CHARGE_USD
+        )
 
         return {
             "actor_id": actor_id,
@@ -411,6 +522,8 @@ class ApifyActorCollector(BaseCollector):
         run_timeout: float = config["run_timeout_seconds"]
         max_charge: float = config["max_total_charge_usd"]
         record_type: str | None = config["record_type"]
+        endpoint_type_raw = self.config.get("endpoint_type")
+        endpoint_type = str(endpoint_type_raw) if endpoint_type_raw else None
 
         logs: list[dict[str, Any]] = []
         errors: list[str] = []
@@ -509,6 +622,9 @@ class ApifyActorCollector(BaseCollector):
                 f"normalized={len(raw_records)}/{len(items)} items from {actor_id}",
             )
         )
+
+        if not items:
+            _apply_empty_result_policy(self, 0, errors, logs, endpoint_type)
 
         if items and not raw_records:
             errors.append(

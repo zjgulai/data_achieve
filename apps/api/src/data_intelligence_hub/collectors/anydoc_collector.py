@@ -70,6 +70,7 @@ class AnydocCollector(BaseCollector):
     """Convert a remote document file to Markdown using markitdown."""
 
     collector_type = "anydoc_file_to_markdown"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         file_url = require_text(self.config, "file_url")

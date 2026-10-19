@@ -120,6 +120,7 @@ class FirecrawlCrawlCollector(BaseCollector):
     """Crawl an entire site and return each page as Markdown via Firecrawl."""
 
     collector_type = "firecrawl_crawl"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")
@@ -229,6 +230,7 @@ class FirecrawlExtractCollector(BaseCollector):
     """Extract structured JSON from a URL using a Firecrawl schema prompt."""
 
     collector_type = "firecrawl_extract"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")
@@ -313,6 +315,7 @@ class FirecrawlBatchScrapeCollector(BaseCollector):
     """Scrape a list of URLs in parallel via Firecrawl, returning Markdown."""
 
     collector_type = "firecrawl_batch_scrape"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         urls = self.config.get("urls", [])

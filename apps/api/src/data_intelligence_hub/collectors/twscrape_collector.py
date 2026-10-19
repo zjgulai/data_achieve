@@ -135,6 +135,7 @@ class TwscrapeSearchCollector(BaseCollector):
     """Search X/Twitter for tweets matching a query."""
 
     collector_type = "twscrape_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -227,6 +228,7 @@ class TwscrapeUserTweetsCollector(BaseCollector):
     """Fetch the public timeline of an X/Twitter user."""
 
     collector_type = "twscrape_user_tweets"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -317,6 +319,7 @@ class TwscrapeTrendsCollector(BaseCollector):
     """Fetch X/Twitter trending topics for a given category."""
 
     collector_type = "twscrape_trends"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         category = self.config.get("category", "news")

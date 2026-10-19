@@ -41,6 +41,8 @@ async def _crates_get(client: httpx.AsyncClient, url: str, params: dict[str, str
 
 class CratesIoPackageCollector(BaseCollector):
     collector_type = "crates_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         return {"package": require_text(self.config, "package")}
@@ -111,6 +113,7 @@ class CratesIoPackageCollector(BaseCollector):
 
 class CratesIoSearchCollector(BaseCollector):
     collector_type = "crates_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -178,6 +181,8 @@ class CratesIoSearchCollector(BaseCollector):
 
 class RubyGemsPackageCollector(BaseCollector):
     collector_type = "rubygems_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         return {"package": require_text(self.config, "package")}
@@ -252,6 +257,7 @@ class RubyGemsPackageCollector(BaseCollector):
 
 class RubyGemsSearchCollector(BaseCollector):
     collector_type = "rubygems_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")
@@ -319,6 +325,8 @@ class RubyGemsSearchCollector(BaseCollector):
 
 class GoPackageCollector(BaseCollector):
     collector_type = "go_package"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         return {"package": require_text(self.config, "package")}
@@ -407,6 +415,7 @@ class GoPackageCollector(BaseCollector):
 
 class GoSearchCollector(BaseCollector):
     collector_type = "go_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         query = require_text(self.config, "query")

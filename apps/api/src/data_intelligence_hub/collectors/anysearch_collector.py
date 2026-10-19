@@ -51,6 +51,7 @@ def _build_payload(config: dict[str, Any]) -> dict[str, Any]:
 
 class AnySearchCollector(BaseCollector):
     collector_type = "anysearch"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         assert_collector_allowed(self.collector_type)

@@ -13,6 +13,11 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from data_intelligence_hub.collectors import CollectorError, CollectorRawRecord, build_collector
 from data_intelligence_hub.collectors.base import collector_log
+from data_intelligence_hub.collectors.empty_result_policy import (
+    EmptyResultPolicy,
+    empty_result_error,
+    resolve_empty_result_policy,
+)
 from data_intelligence_hub.collectors.guarded_http import collection_scope
 from data_intelligence_hub.collectors.outbound_policy import (
     POLICY_VERSION,
@@ -28,8 +33,15 @@ from data_intelligence_hub.repositories.raw_records import get_raw_record_by_has
 from data_intelligence_hub.repositories.sources import get_source
 from data_intelligence_hub.services.exceptions import TaskAlreadyRunningError, TaskNotRunnableError
 from data_intelligence_hub.services.normalization_service import normalize_raw_record
+from data_intelligence_hub.services.run_status import (
+    EMPTY,
+    FAILED,
+    PARTIAL_SUCCESS,
+    run_status,
+)
 from data_intelligence_hub.services.signal_service import (
     detect_data_quality_anomaly,
+    detect_empty_output_anomaly,
     detect_signals_for_snapshots,
 )
 from data_intelligence_hub.services.task_schedule_policy import update_retry_state_after_run
@@ -147,8 +159,6 @@ async def execute_collection_task(
                 f"collection_timeout: collector exceeded {timeout_seconds:g}s"
             ) from exc
         logs.extend(result.logs)
-        for error in result.errors:
-            logs.append(collector_log("collector_warning", error, level="warning"))
         records_count, entities_count, signals_count = await _store_raw_records(
             session=session,
             workspace=workspace,
@@ -160,9 +170,27 @@ async def execute_collection_task(
         )
         if signals_count > 0:
             logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
-        status = _run_status(result_errors=result.errors, created_records=records_count)
-        if status in ("failed", "partial_success") and result.errors:
-            error_message = "; ".join(result.errors[:3])
+        collected_records = len(result.raw_records)
+        policy = resolve_empty_result_policy(
+            collector_type=task.collector_type,
+            config=collector.config,
+            collector_class=type(collector),
+            task_config=task.config,
+        )
+        status, result_errors, empty_log = _resolve_run_status(
+            result_errors=result.errors,
+            collected_records=collected_records,
+            created_records=records_count,
+            policy=policy,
+            collector_type=task.collector_type,
+            endpoint_type=_endpoint_type(collector.config),
+        )
+        for error in result.errors:
+            logs.append(collector_log("collector_warning", error, level="warning"))
+        if empty_log is not None:
+            logs.append(empty_log)
+        if status in (FAILED, PARTIAL_SUCCESS) and result_errors:
+            error_message = "; ".join(result_errors[:3])
     except Exception as exc:
         await session.rollback()
         refreshed_workspace = await session.get(Workspace, workspace_id)
@@ -206,9 +234,9 @@ async def execute_collection_task(
     run.error_message = error_message
     run.error_traceback = error_traceback
     task.last_run_at = finished_at
-    if status == "failed":
+    if status == FAILED:
         task.failure_count += 1
-    else:
+    elif status != EMPTY:
         task.success_count += 1
     next_task_config = (
         task.config
@@ -227,6 +255,14 @@ async def execute_collection_task(
             collector_log(
                 "signals_detected",
                 f"Detected data quality signal {quality_signal.id}.",
+            )
+        )
+    empty_signal = await detect_empty_output_anomaly(session, workspace, task, run)
+    if empty_signal is not None:
+        logs.append(
+            collector_log(
+                "signals_detected",
+                f"Detected empty output signal {empty_signal.id}.",
             )
         )
     run.logs = [dict(log) for log in logs]
@@ -372,16 +408,84 @@ def _collection_timeout_seconds(config: dict[str, Any] | None) -> float:
     )
 
 
-def _run_status(result_errors: list[str], created_records: int) -> str:
-    if result_errors and created_records > 0:
-        return "partial_success"
-    if result_errors:
-        return "failed"
-    return "success"
+def _run_status(
+    result_errors: list[str],
+    collected_records: int,
+    created_records: int,
+) -> str:
+    return run_status(
+        result_errors=result_errors,
+        collected_records=collected_records,
+        created_records=created_records,
+    )
+
+
+def _endpoint_type(config: dict[str, Any]) -> str | None:
+    value = config.get("endpoint_type")
+    return value if isinstance(value, str) else None
+
+
+def _resolve_run_status(
+    *,
+    result_errors: list[str],
+    collected_records: int,
+    created_records: int,
+    policy: EmptyResultPolicy,
+    collector_type: str,
+    endpoint_type: str | None,
+) -> tuple[str, list[str], dict[str, Any] | None]:
+    """Apply the zero-record policy and return status, errors and a log entry.
+
+    The `empty` status means the collector returned zero raw records without
+    errors. A strict policy turns that state into `failed` and appends one
+    error. A permissive policy keeps `empty` and emits a warning log.
+    """
+    status = _run_status(
+        result_errors=result_errors,
+        collected_records=collected_records,
+        created_records=created_records,
+    )
+    errors = list(result_errors)
+    if status != EMPTY:
+        return status, errors, None
+
+    details = {
+        "collector_type": collector_type,
+        "endpoint_type": endpoint_type,
+        "allow_empty": policy.allow_empty,
+        "min_expected_records": policy.min_expected_records,
+        "collected_records": collected_records,
+        "enforced": not policy.allow_empty,
+    }
+    if policy.allow_empty:
+        log = collector_log(
+            "collector_empty_result",
+            (
+                "collector returned 0 records "
+                f"(collector_type={collector_type}, endpoint_type={endpoint_type}, "
+                "allow_empty=true)"
+            ),
+            level="warning",
+        )
+        log.update(details)
+        return EMPTY, errors, log
+
+    message = empty_result_error(
+        collector_type=collector_type,
+        endpoint_type=endpoint_type,
+        expected_records=policy.effective_min_expected_records,
+    )
+    errors.append(message)
+    log = collector_log("collector_empty_result", message, level="error")
+    log.update(details)
+    log["failure_reason"] = _collection_failure_reason(message)
+    return FAILED, errors, log
 
 
 def _collection_failure_reason(message: str) -> str:
     normalized = message.strip().lower()
+    if normalized.startswith("collector_empty_result"):
+        return "empty_result"
     if is_policy_failure(normalized):
         return "policy_denied"
     if normalized.startswith("http_timeout") or normalized.startswith("collection_timeout"):

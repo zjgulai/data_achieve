@@ -205,6 +205,64 @@ async def detect_data_quality_anomaly(
     )
 
 
+async def detect_empty_output_anomaly(
+    session: AsyncSession,
+    workspace: Workspace,
+    task: CollectionTask,
+    run: TaskRun,
+) -> Signal | None:
+    """Detect a task that keeps finishing without collecting anything.
+
+    One empty run can be normal. Three in a row means the source or the
+    parameters stopped working while the run still reports no error.
+    """
+    if run.status != "empty":
+        return None
+
+    runs = await list_task_runs(session, workspace.id, task.id)
+    recent_runs = runs[:10]
+    if not recent_runs:
+        return None
+    consecutive_empty = _consecutive_empty(recent_runs)
+    if consecutive_empty < 3:
+        return None
+
+    # 空产出不写快照，用该来源最近的快照作挂载点。
+    snapshots = await list_recent_snapshots_for_source(session, task.source_id, limit=2)
+    if not snapshots:
+        return None
+    current_snapshot = snapshots[0]
+    previous_snapshot = snapshots[1] if len(snapshots) > 1 else current_snapshot
+    entity = await get_entity(session, workspace.id, current_snapshot.entity_id)
+    if entity is None:
+        return None
+
+    severity = "high" if consecutive_empty >= 5 else "medium"
+    draft = SignalDraft(
+        signal_type="empty_output_anomaly",
+        previous_snapshot_id=previous_snapshot.id,
+        current_snapshot_id=current_snapshot.id,
+        current_value=float(consecutive_empty),
+        previous_value=None,
+        delta=None,
+        delta_ratio=None,
+        confidence=80.0,
+        severity=severity,
+        metadata={
+            "task_id": str(task.id),
+            "task_run_id": str(run.id),
+            "consecutive_empty_runs": consecutive_empty,
+        },
+    )
+    return await _create_signal_if_new(
+        session=session,
+        workspace=workspace,
+        project_id=task.project_id,
+        entity_id=entity.id,
+        draft=draft,
+    )
+
+
 async def _create_signal_if_new(
     session: AsyncSession,
     workspace: Workspace,
@@ -346,6 +404,15 @@ def _consecutive_failures(runs: list[TaskRun]) -> int:
     count = 0
     for run in runs:
         if run.status != "failed":
+            break
+        count += 1
+    return count
+
+
+def _consecutive_empty(runs: list[TaskRun]) -> int:
+    count = 0
+    for run in runs:
+        if run.status != "empty":
             break
         count += 1
     return count

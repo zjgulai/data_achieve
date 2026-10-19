@@ -42,6 +42,8 @@ ECOMMERCE_PRODUCT_FIELDS = (
 
 class EcommerceProductPageCollector(BaseCollector):
     collector_type = "ecommerce_product_page"
+    allow_empty = False
+    min_expected_records = 1
 
     def validate_config(self) -> dict[str, Any]:
         url = require_text(self.config, "url")

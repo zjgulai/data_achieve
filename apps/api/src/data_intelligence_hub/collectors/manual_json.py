@@ -16,6 +16,7 @@ from data_intelligence_hub.collectors.base import (
 
 class ManualJsonCollector(BaseCollector):
     collector_type = "manual_json"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         entity_type = require_text(self.config, "entity_type")

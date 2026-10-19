@@ -164,6 +164,7 @@ class RobinKeywordCollector(_RobinBase):
     """Search dark web search engines for a keyword via Tor."""
 
     collector_type = "robin_darkweb_search"
+    allow_empty = False
 
     def validate_config(self) -> dict[str, Any]:
         keyword = require_text(self.config, "keyword")
@@ -198,6 +199,7 @@ class RobinUsernameCollector(_RobinBase):
     """Search dark web for a username — leaked creds, forum posts, market listings."""
 
     collector_type = "robin_darkweb_username"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         username = require_text(self.config, "username")
@@ -233,6 +235,7 @@ class RobinEmailCollector(_RobinBase):
     """Search dark web for an email address in leaked credential dumps."""
 
     collector_type = "robin_darkweb_email"
+    allow_empty = True
 
     def validate_config(self) -> dict[str, Any]:
         email = require_text(self.config, "email")
