@@ -6,6 +6,7 @@ insert. Observation rows use the shared UUIDv5 snapshot id helper.
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime
 from typing import Any
@@ -14,6 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.tiktok_commerce import (
+    Ad,
+    AdCreative,
     CreatorCommerce,
     CreatorProduct,
     Product,
@@ -440,5 +443,114 @@ async def add_creator_product(
         **clean_values,
     )
     session.add(obj)
+    await session.flush()
+    return obj
+
+
+async def upsert_ad(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    ad_id: str,
+    values: dict[str, Any],
+    provider: str,
+    endpoint_type: str,
+    schema_version: str,
+    captured_at: datetime,
+    run_id: str | None = None,
+    raw_ref: str | None = None,
+    quality_flags: list[Any] | None = None,
+) -> Ad:
+    return await _upsert_master(
+        session,
+        Ad,
+        "ad_id",
+        ad_id,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        values=values,
+        governance=_governance(
+            provider=provider,
+            endpoint_type=endpoint_type,
+            schema_version=schema_version,
+            captured_at=captured_at,
+            run_id=run_id,
+            raw_ref=raw_ref,
+            quality_flags=quality_flags,
+        ),
+    )
+
+
+def make_creative_id(ad_id: str, format: str, asset_hash: str) -> str:
+    raw = "|".join((ad_id, format, asset_hash))
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+async def upsert_ad_creative(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    ad_id: str,
+    format: str,
+    asset_hash: str,
+    values: dict[str, Any],
+    provider: str,
+    endpoint_type: str,
+    schema_version: str,
+    captured_at: datetime,
+    run_id: str | None = None,
+    raw_ref: str | None = None,
+    quality_flags: list[Any] | None = None,
+) -> AdCreative:
+    creative_id = make_creative_id(ad_id, format, asset_hash)
+    governance = _governance(
+        provider=provider,
+        endpoint_type=endpoint_type,
+        schema_version=schema_version,
+        captured_at=captured_at,
+        run_id=run_id,
+        raw_ref=raw_ref,
+        quality_flags=quality_flags,
+    )
+    clean_values = _filter_values(
+        AdCreative,
+        values,
+        {
+            "creative_id",
+            "workspace_id",
+            "project_id",
+            "ad_id",
+            "format",
+            "asset_hash",
+            *governance.keys(),
+        },
+    )
+    obj = await session.get(AdCreative, creative_id)
+    if obj is None:
+        obj = AdCreative(
+            creative_id=creative_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            ad_id=ad_id,
+            format=format,
+            asset_hash=asset_hash,
+            **governance,
+            **clean_values,
+        )
+        session.add(obj)
+    else:
+        _check_tenant(obj, workspace_id, project_id)
+        if (
+            BACKFILL_ONLY_IF_NEWER.get()
+            and obj.captured_at is not None
+            and obj.captured_at > captured_at
+        ):
+            return obj
+        for key, value in clean_values.items():
+            setattr(obj, key, value)
+        for key, value in governance.items():
+            setattr(obj, key, value)
     await session.flush()
     return obj

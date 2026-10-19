@@ -381,6 +381,69 @@ async def tiktok_creator_commerce(
         return result.as_dict()
 
 
+@mcp_server.tool(structured_output=True)
+async def tiktok_video_products(
+    context: Context,
+    project_id: str,
+    video_id: str,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_video_products", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_video_products",
+            _parse_project_id(project_id),
+            {"video_id": video_id},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_creator_showcase(
+    context: Context,
+    project_id: str,
+    offset: int = 0,
+    limit: int = 20,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_creator_showcase", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_creator_showcase",
+            _parse_project_id(project_id),
+            {"offset": offset, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_ads_top(
+    context: Context,
+    project_id: str,
+    query: str = "",
+    period: int = 7,
+    limit: int = 20,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_ads_top", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_ads_top",
+            _parse_project_id(project_id),
+            {"query": query, "period": period, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_ads_detail(
+    context: Context,
+    project_id: str,
+    ad_id: str,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_ads_detail", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_ads_detail",
+            _parse_project_id(project_id),
+            {"ad_id": ad_id},
+        )
+        return result.as_dict()
+
+
 mcp_app = mcp_server.streamable_http_app(
     streamable_http_path="/",
     json_response=True,

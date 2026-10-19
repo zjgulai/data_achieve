@@ -92,7 +92,8 @@ ALLOW_TIKHUB = _names(
     tikhub_instagram_post_comments tikhub_linkedin_post_comments
     tikhub_reddit_post_comments tikhub_threads_post_comments
     tikhub_youtube_video_comments tikhub_zhihu_question_answers
-    tikhub_tiktok_shop_reviews_v2"""
+    tikhub_tiktok_shop_reviews_v2 tikhub_tiktok_video_products
+    tikhub_tiktok_creator_showcase"""
 )
 
 STRICT_APIFY = _names(

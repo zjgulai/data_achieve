@@ -60,6 +60,8 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.tiktok_commerce import (
+    Ad,
+    AdCreative,
     CreatorCommerce,
     CreatorProduct,
     Product,
@@ -130,6 +132,8 @@ from data_intelligence_hub.models.workflow_template import (
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 
 __all__ = [
+    "Ad",
+    "AdCreative",
     "AlertEvent",
     "AlertRule",
     "Base",

@@ -1197,6 +1197,8 @@ _TIKHUB_ENDPOINT_TYPES = {
     "tikhub_tiktok_shop_search_v2",
     "tikhub_tiktok_shop_hot_products",
     "tikhub_tiktok_shop_reviews_v2",
+    "tikhub_tiktok_video_products",
+    "tikhub_tiktok_creator_showcase",
     "tikhub_douyin_video_search",
     "tikhub_douyin_user_posts",
     "tikhub_douyin_hot_search",
@@ -1255,6 +1257,8 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
         # Phase 1 commerce endpoints
         "product_id", "page_start", "sort_rule", "filter_type",
         "filter_value", "page_token", "exclude_product_ids",
+        # Creator relation endpoints
+        "item_ids", "start_date", "creator_id", "handle",
     ):
         if key in config and config[key] is not None:
             out[key] = config[key]

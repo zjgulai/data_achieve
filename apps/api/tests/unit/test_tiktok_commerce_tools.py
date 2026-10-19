@@ -12,10 +12,14 @@ from data_intelligence_hub.services.tiktok_tools import (
     _canonicalize_commerce_profile,
     _canonicalize_product,
     run_tiktok_tool,
+    tiktok_ads_detail,
+    tiktok_ads_top,
     tiktok_creator_commerce,
+    tiktok_creator_showcase,
     tiktok_product_detail,
     tiktok_product_reviews,
     tiktok_product_search,
+    tiktok_video_products,
 )
 
 PROJECT_ID = uuid.uuid4()
@@ -185,6 +189,55 @@ async def test_creator_commerce_uses_apify(monkeypatch) -> None:
     result = await tiktok_creator_commerce(PROJECT_ID, {"handle": "@alice"})
     assert result.records_count == 1
     assert calls[0][1]["username"] == "alice"
+
+
+@pytest.mark.asyncio
+async def test_ads_tools_use_tikhub(monkeypatch) -> None:
+    calls: list[Any] = []
+    fake = _fake_collect_factory(
+        {
+            "tikhub_tiktok_top_ads": [{"material_id": "ad1"}],
+            "tikhub_tiktok_ads_detail": [{"material_id": "ad1"}],
+        },
+        calls,
+    )
+    monkeypatch.setattr("data_intelligence_hub.services.tiktok_tools._collect", fake)
+    top = await tiktok_ads_top(PROJECT_ID, {"query": "beauty", "limit": 3})
+    assert top.records_count == 1
+    assert calls[0][0] == "tikhub_tiktok_top_ads"
+    detail = await tiktok_ads_detail(PROJECT_ID, {"ad_id": "ad1"})
+    assert detail.records_count == 1
+    assert calls[1][1]["ads_id"] == "ad1"
+
+
+@pytest.mark.asyncio
+async def test_relation_tools_require_cookie(monkeypatch) -> None:
+    monkeypatch.delenv("TIKHUB_TIKTOK_CREATOR_COOKIE", raising=False)
+    video = await tiktok_video_products(PROJECT_ID, {"video_id": "v1"})
+    assert video.status == "failed"
+    assert "tikhub_creator_cookie_not_configured" in video.errors
+    showcase = await tiktok_creator_showcase(PROJECT_ID, {})
+    assert showcase.status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_relation_tools_call_endpoints_with_cookie(monkeypatch) -> None:
+    monkeypatch.setenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "sessionid=x")
+    calls: list[Any] = []
+    fake = _fake_collect_factory(
+        {
+            "tikhub_tiktok_video_products": [{"product_id": "p1"}],
+            "tikhub_tiktok_creator_showcase": [{"product_id": "p2"}],
+        },
+        calls,
+    )
+    monkeypatch.setattr("data_intelligence_hub.services.tiktok_tools._collect", fake)
+    video = await tiktok_video_products(PROJECT_ID, {"video_id": "v1"})
+    assert video.records_count == 1
+    assert calls[0][1]["item_ids"] == ["v1"]
+    showcase = await tiktok_creator_showcase(PROJECT_ID, {"limit": 2})
+    assert showcase.records_count == 1
+    assert calls[1][0] == "tikhub_tiktok_creator_showcase"
 
 
 @pytest.mark.asyncio

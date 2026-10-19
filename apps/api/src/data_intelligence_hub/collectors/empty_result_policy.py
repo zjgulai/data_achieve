@@ -66,6 +66,8 @@ TIKHUB_EMPTY_RESULT_POLICY: dict[str, EmptyResultPolicy] = {
     "tikhub_tiktok_shop_search_v2": _STRICT,
     "tikhub_tiktok_shop_hot_products": _STRICT,
     "tikhub_tiktok_shop_reviews_v2": _ALLOW_EMPTY,
+    "tikhub_tiktok_video_products": _ALLOW_EMPTY,
+    "tikhub_tiktok_creator_showcase": _ALLOW_EMPTY,
     # List, subscription and ranking endpoints (25)
     "tikhub_tiktok_user_posts": _STRICT,
     "tikhub_tiktok_hashtag_posts": _STRICT,

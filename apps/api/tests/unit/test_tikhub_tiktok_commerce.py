@@ -75,11 +75,15 @@ def _review_response() -> dict:
     }
 
 
-def test_commerce_endpoint_map_has_three_endpoints() -> None:
+def test_commerce_endpoint_map_has_expected_endpoints() -> None:
     assert set(TIKHUB_COMMERCE_ENDPOINT_MAP) == {
         "tikhub_tiktok_shop_search_v2",
         "tikhub_tiktok_shop_hot_products",
         "tikhub_tiktok_shop_reviews_v2",
+        "tikhub_tiktok_video_products",
+        "tikhub_tiktok_creator_showcase",
+        "tikhub_tiktok_top_ads",
+        "tikhub_tiktok_ads_detail",
     }
 
 

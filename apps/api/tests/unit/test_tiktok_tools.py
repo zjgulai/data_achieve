@@ -44,8 +44,8 @@ def _fake_collect_factory(records: dict[str, list[dict[str, Any]]], calls: list)
 
 
 @pytest.mark.asyncio
-async def test_twelve_tools_are_registered() -> None:
-    assert len(TOOL_IDS) == 12
+async def test_sixteen_tools_are_registered() -> None:
+    assert len(TOOL_IDS) == 16
     assert set(TOOL_IDS) == set(TOOL_SPECS)
 
 
@@ -188,7 +188,7 @@ def test_rest_tools_list_and_unknown() -> None:
     client = TestClient(app)
     response = client.get("/api/tiktok/tools")
     assert response.status_code == 200
-    assert len(response.json()) == 12
+    assert len(response.json()) == 16
     response = client.post(
         "/api/tiktok/tools/nope",
         json={"project_id": str(PROJECT_ID), "params": {}},

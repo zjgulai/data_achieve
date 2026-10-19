@@ -13,11 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from data_intelligence_hub.models.base import Base
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.tiktok_commerce import (
+    Ad,
+    AdCreative,
     CreatorCommerce,
+    CreatorProduct,
     Product,
     ProductReview,
     ProductSnapshot,
     Shop,
+    VideoProduct,
 )
 from data_intelligence_hub.models.tiktok_content import Creator
 from data_intelligence_hub.models.user import User
@@ -41,6 +45,8 @@ TABLES = [
     "creator_commerce",
     "video_product",
     "creator_product",
+    "ad",
+    "ad_creative",
 ]
 
 
@@ -301,3 +307,69 @@ async def test_apify_creator_commerce_nested_stats(
     assert row.avg_views == 5022
     assert float(row.avg_commission_rate) == pytest.approx(0.075)
     assert row.promoted_product_count == 212
+
+
+@pytest.mark.asyncio
+async def test_ad_writes_master_and_creative(session: AsyncSession) -> None:
+    workspace_id, project_id = await _seed_tenant(session)
+    content = {
+        "record_type": "tiktok_ad",
+        "provider": "tikhub",
+        "material_id": "ad1",
+        "ad_title": "Perfume repack",
+        "brand_name": "microperfumes",
+        "highlight_text": "Showcase a real-time comparison",
+        "ctr": 0.22,
+        "cost": 2,
+        "like_count": 33506,
+        "comment_count": 845,
+        "share_count": 273,
+        "landing_page": "https://example.com",
+        "country_code": ["US"],
+        "objective_key": "campaign_objective_conversion",
+        "industry_key": "beauty",
+        "video_info": {
+            "vid": "vid1",
+            "duration": 43.5,
+            "cover": "https://img/cover.jpg",
+            "video_url": {"720p": "https://video/720.mp4"},
+        },
+    }
+    result = await ingest_tiktok_content(
+        session, [content], _context(workspace_id, project_id, "tikhub_tiktok_ads_detail")
+    )
+    assert result.ads == 1
+    assert result.ad_creatives == 1
+    ad = await session.get(Ad, "ad1")
+    assert ad is not None
+    assert ad.advertiser_name == "microperfumes"
+    assert ad.landing_url == "https://example.com"
+    creative = await session.scalar(select(AdCreative))
+    assert creative is not None
+    assert creative.asset_hash == "vid1"
+    assert creative.video_url == "https://video/720.mp4"
+
+
+@pytest.mark.asyncio
+async def test_video_product_relation_derives_creator_product(
+    session: AsyncSession,
+) -> None:
+    workspace_id, project_id = await _seed_tenant(session)
+    content = {
+        "record_type": "tiktok_video_product",
+        "provider": "tikhub",
+        "video_id": "v1",
+        "creator_id": "u1",
+        "product_id": "p1",
+        "region": "US",
+        "title": "Product",
+    }
+    result = await ingest_tiktok_content(
+        session,
+        [content],
+        _context(workspace_id, project_id, "tikhub_tiktok_video_products"),
+    )
+    assert result.video_products == 1
+    assert result.creator_products == 1
+    assert await session.scalar(select(VideoProduct)) is not None
+    assert await session.scalar(select(CreatorProduct)) is not None

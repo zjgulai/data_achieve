@@ -97,6 +97,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "tikhub_tiktok_shop_search_v2": "tikhub_social",
     "tikhub_tiktok_shop_hot_products": "tikhub_social",
     "tikhub_tiktok_shop_reviews_v2": "tikhub_social",
+    "tikhub_tiktok_video_products": "tikhub_social",
+    "tikhub_tiktok_creator_showcase": "tikhub_social",
     "tikhub_douyin_video_search": "tikhub_social",
     "tikhub_douyin_user_posts": "tikhub_social",
     "tikhub_douyin_hot_search": "tikhub_social",

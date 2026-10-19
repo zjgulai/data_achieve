@@ -7,6 +7,7 @@ projects records into the 12 canonical tables.
 
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from contextvars import ContextVar
@@ -29,6 +30,10 @@ TOOL_IDS = (
     "tiktok_product_detail",
     "tiktok_product_reviews",
     "tiktok_creator_commerce",
+    "tiktok_video_products",
+    "tiktok_creator_showcase",
+    "tiktok_ads_top",
+    "tiktok_ads_detail",
 )
 
 TOOL_SPECS: dict[str, dict[str, Any]] = {
@@ -98,6 +103,26 @@ TOOL_SPECS: dict[str, dict[str, Any]] = {
         "label": "TikTok 达人带货",
         "description": "按达人 handle 获取带货主页与商业指标。",
         "inputs": ["project_id", "handle", "region?"],
+    },
+    "tiktok_video_products": {
+        "label": "TikTok 视频关联商品",
+        "description": "按视频 ID 获取关联商品；需要创作者 Cookie。",
+        "inputs": ["project_id", "video_id"],
+    },
+    "tiktok_creator_showcase": {
+        "label": "TikTok 达人橱窗商品",
+        "description": "获取达人橱窗商品；需要创作者 Cookie。",
+        "inputs": ["project_id", "offset?", "limit?"],
+    },
+    "tiktok_ads_top": {
+        "label": "TikTok 热门广告",
+        "description": "获取 TikTok 热门广告素材与互动指标。",
+        "inputs": ["project_id", "query?", "period?", "limit?"],
+    },
+    "tiktok_ads_detail": {
+        "label": "TikTok 广告详情",
+        "description": "按广告 ID 获取广告主、落地页与素材详情。",
+        "inputs": ["project_id", "ad_id"],
     },
 }
 
@@ -847,6 +872,80 @@ async def tiktok_creator_commerce(
     return _result("tiktok_creator_commerce", records, [run])
 
 
+def _creator_cookie_configured() -> bool:
+    return bool(os.getenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "").strip())
+
+
+async def tiktok_video_products(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    video_id = _require_text(params, "video_id")
+    if not _creator_cookie_configured():
+        return ToolResult(
+            tool_id="tiktok_video_products",
+            status="failed",
+            errors=["tikhub_creator_cookie_not_configured"],
+        )
+    records, run = await _collect(
+        project_id,
+        "tikhub_tiktok_video_products",
+        {"item_ids": [video_id]},
+        100,
+    )
+    return _result("tiktok_video_products", records, [run])
+
+
+async def tiktok_creator_showcase(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    if not _creator_cookie_configured():
+        return ToolResult(
+            tool_id="tiktok_creator_showcase",
+            status="failed",
+            errors=["tikhub_creator_cookie_not_configured"],
+        )
+    limit = _limit(params, default=20)
+    records, run = await _collect(
+        project_id,
+        "tikhub_tiktok_creator_showcase",
+        {"offset": int(params.get("offset") or 0)},
+        limit,
+    )
+    return _result("tiktok_creator_showcase", records, [run])
+
+
+async def tiktok_ads_top(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    query = str(params.get("query") or "").strip()
+    limit = _limit(params, default=20)
+    records, run = await _collect(
+        project_id,
+        "tikhub_tiktok_top_ads",
+        {
+            "query": query,
+            "period": int(params.get("period") or 7),
+            "page": 1,
+            "max_items": limit,
+        },
+        limit,
+    )
+    return _result("tiktok_ads_top", records, [run])
+
+
+async def tiktok_ads_detail(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    ad_id = _require_text(params, "ad_id")
+    records, run = await _collect(
+        project_id,
+        "tikhub_tiktok_ads_detail",
+        {"ads_id": ad_id},
+        1,
+    )
+    return _result("tiktok_ads_detail", records, [run])
+
+
 TOOL_HANDLERS = {
     "tiktok_trend_rank": tiktok_trend_rank,
     "tiktok_hashtag_videos": tiktok_hashtag_videos,
@@ -860,6 +959,10 @@ TOOL_HANDLERS = {
     "tiktok_product_detail": tiktok_product_detail,
     "tiktok_product_reviews": tiktok_product_reviews,
     "tiktok_creator_commerce": tiktok_creator_commerce,
+    "tiktok_video_products": tiktok_video_products,
+    "tiktok_creator_showcase": tiktok_creator_showcase,
+    "tiktok_ads_top": tiktok_ads_top,
+    "tiktok_ads_detail": tiktok_ads_detail,
 }
 
 

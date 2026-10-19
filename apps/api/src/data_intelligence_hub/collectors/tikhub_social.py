@@ -494,6 +494,30 @@ TIKHUB_COMMERCE_ENDPOINT_MAP: dict[str, tuple[str, str, str, str]] = {
         "tiktok_shop",
         "shop_reviews",
     ),
+    "tikhub_tiktok_video_products": (
+        "/api/v1/tiktok/creator/get_video_associated_product_list",
+        "tiktok_video_product",
+        "tiktok_shop",
+        "video_products",
+    ),
+    "tikhub_tiktok_creator_showcase": (
+        "/api/v1/tiktok/creator/get_showcase_product_list",
+        "tiktok_creator_product",
+        "tiktok_shop",
+        "creator_showcase",
+    ),
+    "tikhub_tiktok_top_ads": (
+        "/api/v1/tiktok/ads/get_top_ads_spotlight",
+        "tiktok_ad",
+        "tiktok",
+        "ads_top",
+    ),
+    "tikhub_tiktok_ads_detail": (
+        "/api/v1/tiktok/ads/get_ads_detail",
+        "tiktok_ad",
+        "tiktok",
+        "ads_detail",
+    ),
 }
 
 
@@ -507,6 +531,15 @@ def _get_api_key() -> str:
     if not key:
         raise CollectorError("tikhub_api_key_missing: TIKHUB_API_KEY env var not set")
     return key
+
+
+def _get_creator_cookie() -> str:
+    cookie = os.getenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "").strip()
+    if not cookie:
+        raise CollectorError(
+            "tikhub_creator_cookie_missing: set TIKHUB_TIKTOK_CREATOR_COOKIE"
+        )
+    return cookie
 
 
 def _tikhub_headers(api_key: str) -> dict[str, str]:
@@ -602,6 +635,8 @@ _TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
     "tikhub_wechat_channels_video",
     "tikhub_wechat_search",
     "tikhub_douyin_video_search",
+    "tikhub_tiktok_video_products",
+    "tikhub_tiktok_creator_showcase",
 })
 
 
@@ -698,6 +733,8 @@ _TIKHUB_REQUIRED_PARAMS: dict[str, tuple[tuple[str, ...], ...]] = {
     "tikhub_tiktok_shop_search_v2": (("search_word", "keyword"),),
     "tikhub_tiktok_shop_hot_products": (),
     "tikhub_tiktok_shop_reviews_v2": (("product_id",),),
+    "tikhub_tiktok_video_products": (("item_ids", "video_id"),),
+    "tikhub_tiktok_creator_showcase": (),
 }
 
 
@@ -1443,10 +1480,22 @@ def _normalize_tiktok_ad(
             "collector_type": collector_type,
             "schema_version": "tikhub_tiktok_ad.v1",
             "material_id": ad_id,
+            "ad_id": ad_id,
+            "ad_title": _safe_str(item.get("ad_title")),
+            "brand_name": _safe_str(item.get("brand_name")),
             "text": highlight or "",
             "ctr": item.get("ctr"),
             "cost": item.get("cost"),
             "like_count": item.get("like"),
+            "comment_count": item.get("comment"),
+            "share_count": item.get("share"),
+            "landing_page": _safe_str(
+                item.get("landing_page") or item.get("landing_url")
+            ),
+            "objective_key": _safe_str(item.get("objective_key")),
+            "industry_key": _safe_str(item.get("industry_key")),
+            "country_code": item.get("country_code"),
+            "source": _safe_str(item.get("source")),
             "video_info": item.get("video_info"),
             "raw": item,
         },
@@ -1568,13 +1617,75 @@ def _url_list(value: Any) -> list[str]:
     return []
 
 
+def _find_product_like(node: Any) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    if isinstance(node, dict):
+        if node.get("product_id") or node.get("productId"):
+            found.append(node)
+            return found
+        for value in node.values():
+            found.extend(_find_product_like(value))
+    elif isinstance(node, list):
+        for value in node:
+            found.extend(_find_product_like(value))
+    return found
+
+
+def _find_ad_like(node: Any) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    if isinstance(node, dict):
+        if node.get("video_info") and (node.get("id") or node.get("ad_title")):
+            found.append(node)
+            return found
+        for value in node.values():
+            found.extend(_find_ad_like(value))
+    elif isinstance(node, list):
+        for value in node:
+            found.extend(_find_ad_like(value))
+    return found
+
+
 def _extract_commerce_items(
-    data: dict[str, Any], mode: str
+    data: dict[str, Any],
+    mode: str,
+    config: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Phase 1 commerce extractors. Shop endpoints nest data two levels deep."""
     inner = data.get("data")
     if not isinstance(inner, dict):
         return []
+
+    if mode == "ads_detail":
+        payload = inner.get("data")
+        return [payload] if isinstance(payload, dict) and payload.get("id") else []
+
+    if mode == "ads_top":
+        payload = inner.get("data")
+        if isinstance(payload, list):
+            return [item for item in payload if isinstance(item, dict)]
+        return _find_ad_like(inner)
+
+    if mode in {"video_products", "creator_showcase"}:
+        items = _find_product_like(inner)
+        config = config or {}
+        if mode == "video_products":
+            item_ids = config.get("item_ids") or []
+            if isinstance(item_ids, list) and len(item_ids) == 1:
+                for item in items:
+                    item.setdefault("_video_id", str(item_ids[0]))
+            elif config.get("video_id"):
+                for item in items:
+                    item.setdefault("_video_id", str(config["video_id"]))
+        else:
+            hint = (
+                config.get("unique_id")
+                or config.get("handle")
+                or config.get("creator_id")
+            )
+            if hint:
+                for item in items:
+                    item.setdefault("_creator_hint", str(hint))
+        return items
 
     if mode == "shop_reviews":
         payload = inner.get("data")
@@ -1709,6 +1820,23 @@ def _normalize_commerce_item(
         return _normalize_tiktok_product_v2(item, collector_type, region)
     if mode == "shop_reviews":
         return _normalize_tiktok_product_review(item, collector_type, region)
+    if mode in {"ads_top", "ads_detail"}:
+        return _normalize_tiktok_ad(item, collector_type)
+    if mode in {"video_products", "creator_showcase"}:
+        record = _normalize_tiktok_product_v2(item, collector_type, region)
+        if record is None:
+            return None
+        relation_type = (
+            "tiktok_video_product"
+            if mode == "video_products"
+            else "tiktok_creator_product"
+        )
+        record.record_type = relation_type
+        if item.get("_video_id"):
+            record.content["video_id"] = item["_video_id"]
+        if item.get("_creator_hint"):
+            record.content["unique_id"] = item["_creator_hint"]
+        return record
     return None
 
 
@@ -2421,7 +2549,12 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "country_code": config.get("country_code") or "US",
         }
     if endpoint_type == "tikhub_tiktok_top_ads":
-        return {}
+        return {
+            "query": config.get("keyword") or config.get("query") or "",
+            "period": config.get("period") or 7,
+            "count": max_items,
+            "page": config.get("page") or 1,
+        }
     if endpoint_type == "tikhub_tiktok_ads_detail":
         return {"ads_id": config.get("ads_id") or config.get("ad_id") or ""}
     if endpoint_type == "tikhub_tiktok_ads_keyword_suggest":
@@ -2571,6 +2704,22 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "filter_value": config.get("filter_value") or 6,
             "region": config.get("region") or "US",
         }
+    if endpoint_type == "tikhub_tiktok_video_products":
+        item_ids = config.get("item_ids")
+        if not isinstance(item_ids, list) or not item_ids:
+            video_id = config.get("video_id")
+            item_ids = [video_id] if video_id else []
+        return {
+            "item_ids": [str(item) for item in item_ids],
+            "cookie": _get_creator_cookie(),
+            "start_date": config.get("start_date") or "04-01-2025",
+        }
+    if endpoint_type == "tikhub_tiktok_creator_showcase":
+        return {
+            "cookie": _get_creator_cookie(),
+            "count": max_items,
+            "offset": config.get("offset") or 0,
+        }
     return {}
 
 
@@ -2642,7 +2791,7 @@ class TikHubSocialCollector(BaseCollector):
             if mode is not None:
                 items = _extract_content_items(data, mode)
             elif commerce_mode is not None:
-                items = _extract_commerce_items(data, commerce_mode)
+                items = _extract_commerce_items(data, commerce_mode, config)
             else:
                 items = _extract_items(data, platform)
             msg = f"TikHub endpoint {endpoint_type!r} reachable; got {len(items)} items."
@@ -2704,7 +2853,7 @@ class TikHubSocialCollector(BaseCollector):
         if mode is not None:
             items = _extract_content_items(data, mode)
         elif commerce_mode is not None:
-            items = _extract_commerce_items(data, commerce_mode)
+            items = _extract_commerce_items(data, commerce_mode, config)
         else:
             items = _extract_items(data, platform)
         logs.append(collector_log("tikhub_items_received", f"raw_count={len(items)}"))

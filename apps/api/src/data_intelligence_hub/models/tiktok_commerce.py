@@ -1,19 +1,19 @@
 """TikTok R1 commerce canonical models.
 
-Seven of the nine commerce tables from the R1 schema. The ``ad`` and
-``ad_creative`` tables stay in the migration but have no ORM model yet: the
-selected R1 commerce modules are products, reviews and creator commerce.
+Nine commerce tables from the R1 schema: products, reviews, creator commerce,
+video/creator product relations, and ads with creatives.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
     JSON,
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -290,3 +290,62 @@ class CreatorProduct(TikTokTenantMixin, TikTokGovernanceMixin, Base):
     relation_type: Mapped[str] = mapped_column(String(32), nullable=False)
     confidence: Mapped[float | None] = mapped_column(Numeric(6, 5))
     match_method: Mapped[str | None] = mapped_column(String(32))
+
+
+class Ad(TikTokTenantMixin, TikTokGovernanceMixin, TikTokMasterTimestampsMixin, Base):
+    __tablename__ = "ad"
+
+    ad_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    ad_id_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    advertiser_id: Mapped[str | None] = mapped_column(Text)
+    advertiser_tt_user_id: Mapped[str | None] = mapped_column(Text)
+    advertiser_name: Mapped[str | None] = mapped_column(Text)
+    ad_title: Mapped[str | None] = mapped_column(Text)
+    ad_text: Mapped[str | None] = mapped_column(Text)
+    ad_type: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(Text)
+    audit_status: Mapped[str | None] = mapped_column(Text)
+    rejection_info: Mapped[str | None] = mapped_column(Text)
+    landing_url: Mapped[str | None] = mapped_column(Text)
+    start_date: Mapped[date | None] = mapped_column(Date)
+    end_date: Mapped[date | None] = mapped_column(Date)
+    region: Mapped[str | None] = mapped_column(Text)
+    target_regions_json: Mapped[list[Any] | None] = mapped_column(JSON)
+    objective: Mapped[str | None] = mapped_column(Text)
+    industry: Mapped[str | None] = mapped_column(Text)
+    brand_name: Mapped[str | None] = mapped_column(Text)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+
+
+class AdCreative(TikTokTenantMixin, TikTokGovernanceMixin, Base):
+    __tablename__ = "ad_creative"
+    __table_args__ = (
+        UniqueConstraint(
+            "ad_id", "format", "asset_hash", name="uq_ad_creative_asset"
+        ),
+    )
+
+    creative_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    ad_id: Mapped[str] = mapped_column(ForeignKey("ad.ad_id"), nullable=False)
+    asset_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    format: Mapped[str] = mapped_column(String(16), nullable=False)
+    video_url: Mapped[str | None] = mapped_column(Text)
+    cover_url: Mapped[str | None] = mapped_column(Text)
+    image_urls: Mapped[list[Any] | None] = mapped_column(JSON)
+    headline: Mapped[str | None] = mapped_column(Text)
+    body_text: Mapped[str | None] = mapped_column(Text)
+    cta_text: Mapped[str | None] = mapped_column(Text)
+    landing_url: Mapped[str | None] = mapped_column(Text)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    organic_video_id: Mapped[str | None] = mapped_column(Text)
+    transcript_id: Mapped[str | None] = mapped_column(Text)
+    performance_score: Mapped[float | None] = mapped_column(Numeric(18, 4))
+    ctr: Mapped[float | None] = mapped_column(Numeric(6, 5))
+    likes: Mapped[int | None] = mapped_column(BigInteger)
+    comments: Mapped[int | None] = mapped_column(BigInteger)
+    shares: Mapped[int | None] = mapped_column(BigInteger)
+    cost_score: Mapped[float | None] = mapped_column(Numeric(18, 4))
+    is_spark_ad: Mapped[bool | None] = mapped_column(Boolean)
+    impressions_range_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    spend_tier: Mapped[str | None] = mapped_column(Text)
+    period_days: Mapped[int | None] = mapped_column(Integer)

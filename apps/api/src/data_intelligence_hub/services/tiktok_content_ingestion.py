@@ -24,9 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.collectors.base import CollectorRawRecord
 from data_intelligence_hub.repositories.tiktok_commerce import (
     add_creator_commerce,
+    add_creator_product,
     add_product_snapshot,
+    add_video_product,
     make_product_key,
     make_shop_key,
+    upsert_ad,
+    upsert_ad_creative,
     upsert_product,
     upsert_product_review,
     upsert_shop,
@@ -85,6 +89,10 @@ class IngestionResult:
     product_snapshots: int = 0
     product_reviews: int = 0
     creator_commerce: int = 0
+    video_products: int = 0
+    creator_products: int = 0
+    ads: int = 0
+    ad_creatives: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -107,6 +115,10 @@ class IngestionResult:
             "product_snapshots": self.product_snapshots,
             "product_reviews": self.product_reviews,
             "creator_commerce": self.creator_commerce,
+            "video_products": self.video_products,
+            "creator_products": self.creator_products,
+            "ads": self.ads,
+            "ad_creatives": self.ad_creatives,
             "skipped": self.skipped,
             "errors": self.errors,
         }
@@ -1273,6 +1285,278 @@ async def _ingest_creator_commerce(
     result.creator_commerce += 1
 
 
+async def _ensure_relation_video(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    video_id = _pick(content, "video_id", "item_id", "aweme_id")
+    video_id = _safe_text(video_id)
+    if video_id is None:
+        return None
+    existing = await get_video(
+        session, context.workspace_id, context.project_id, video_id
+    )
+    if existing is not None:
+        return video_id
+    creator_id = _ensure_creator_identity(content, context)
+    await upsert_video(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        video_id=video_id,
+        values={
+            "creator_id": creator_id,
+            "caption": _pick(content, "text"),
+            "web_video_url": _pick(content, "web_video_url"),
+            "is_ad": False,
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return video_id
+
+
+async def _ingest_video_product(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    video_id = await _ensure_relation_video(session, context, content, captured_at)
+    product_key = _product_key_for(content, context)
+    if product_key is None:
+        product_key = await _ensure_commerce_product(
+            session, context, content, captured_at
+        )
+    if video_id is None or product_key is None:
+        result.skipped += 1
+        return
+    region = _commerce_region(content, context)
+    product_id = _commerce_product_id(content)
+    relation_type = str(_pick(content, "relation_type") or "promoted_in_video")
+    confidence = _rate(_pick(content, "confidence")) or 1.0
+    await add_video_product(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        video_id=video_id,
+        product_key=product_key,
+        relation_type=relation_type,
+        captured_at=captured_at,
+        values={
+            "product_id": product_id,
+            "region": region,
+            "confidence": confidence,
+            "match_method": _safe_text(
+                _pick(content, "match_method") or "video_product_endpoint"
+            ),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.video_products += 1
+    video = await get_video(
+        session, context.workspace_id, context.project_id, video_id
+    )
+    creator_id = video.creator_id if video is not None else None
+    if creator_id:
+        await add_creator_product(
+            session,
+            workspace_id=context.workspace_id,
+            project_id=context.project_id,
+            creator_id=creator_id,
+            product_key=product_key,
+            relation_type="promoted_in_video",
+            captured_at=captured_at,
+            values={
+                "product_id": product_id,
+                "region": region,
+                "confidence": confidence,
+                "match_method": "video_creator_derived",
+            },
+            provider=context.provider,
+            endpoint_type=context.endpoint_type,
+            schema_version=context.schema_version,
+            run_id=context.run_id,
+            raw_ref=context.raw_ref,
+        )
+        result.creator_products += 1
+
+
+async def _ingest_creator_product(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    creator_id = await _ensure_creator_commerce_master(
+        session, context, content, captured_at
+    )
+    product_key = _product_key_for(content, context)
+    if product_key is None:
+        product_key = await _ensure_commerce_product(
+            session, context, content, captured_at
+        )
+    if creator_id is None or product_key is None:
+        result.skipped += 1
+        return
+    await add_creator_product(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        creator_id=creator_id,
+        product_key=product_key,
+        relation_type=str(_pick(content, "relation_type") or "showcase"),
+        captured_at=captured_at,
+        values={
+            "product_id": _commerce_product_id(content),
+            "region": _commerce_region(content, context),
+            "confidence": _rate(_pick(content, "confidence")) or 1.0,
+            "match_method": _safe_text(
+                _pick(content, "match_method") or "creator_showcase_endpoint"
+            ),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.creator_products += 1
+
+
+def _ad_id(content: dict[str, Any]) -> str | None:
+    value = _pick(content, "ad_id", "material_id", "id")
+    return _safe_text(value)
+
+
+async def _ensure_ad_master(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    ad_id = _ad_id(content)
+    if ad_id is None:
+        return None
+    countries = _pick(content, "country_code", "target_regions_json")
+    if isinstance(countries, str):
+        countries = [countries]
+    if not isinstance(countries, list):
+        countries = None
+    region = _commerce_region(content, context)
+    video_info = _pick(content, "video_info")
+    video_info = video_info if isinstance(video_info, dict) else {}
+    await upsert_ad(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        ad_id=ad_id,
+        values={
+            "ad_id_type": "tikhub_material",
+            "advertiser_name": _safe_text(_pick(content, "brand_name")),
+            "ad_title": _safe_text(_pick(content, "ad_title")),
+            "ad_text": _safe_text(
+                _pick(content, "highlight_text", "highlight", "text")
+            ),
+            "ad_type": _safe_text(_pick(content, "source", "ad_type")),
+            "landing_url": _safe_text(
+                _pick(content, "landing_page", "landing_url")
+            ),
+            "region": region,
+            "target_regions_json": countries,
+            "objective": _safe_text(_pick(content, "objective_key")),
+            "industry": _safe_text(_pick(content, "industry_key")),
+            "brand_name": _safe_text(_pick(content, "brand_name")),
+            "duration_ms": _duration_ms(video_info.get("duration")),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return ad_id
+
+
+async def _ingest_ad(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    ad_id = await _ensure_ad_master(session, context, content, captured_at)
+    if ad_id is None:
+        result.skipped += 1
+        return
+    result.ads += 1
+    video_info = _pick(content, "video_info")
+    video_info = video_info if isinstance(video_info, dict) else {}
+    urls = video_info.get("video_url")
+    video_url = None
+    if isinstance(urls, dict):
+        video_url = urls.get("720p") or next(iter(urls.values()), None)
+    elif isinstance(urls, str):
+        video_url = urls
+    asset_hash = _safe_text(video_info.get("vid")) or _safe_text(
+        content.get("asset_hash")
+    )
+    if asset_hash is None and video_url:
+        import hashlib
+
+        asset_hash = hashlib.sha1(video_url.encode("utf-8")).hexdigest()
+    format = "video" if (video_url or asset_hash) else "image"
+    if asset_hash is None:
+        result.skipped += 1
+        return
+    await upsert_ad_creative(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        ad_id=ad_id,
+        format=format,
+        asset_hash=asset_hash,
+        captured_at=captured_at,
+        values={
+            "video_url": video_url,
+            "cover_url": _safe_text(video_info.get("cover")),
+            "headline": _safe_text(_pick(content, "ad_title")),
+            "body_text": _safe_text(
+                _pick(content, "highlight_text", "highlight", "text")
+            ),
+            "landing_url": _safe_text(
+                _pick(content, "landing_page", "landing_url")
+            ),
+            "duration_ms": _duration_ms(video_info.get("duration")),
+            "ctr": _money(_pick(content, "ctr")),
+            "likes": _count(_pick(content, "like_count", "like")),
+            "comments": _count(_pick(content, "comment_count", "comment")),
+            "shares": _count(_pick(content, "share_count", "share")),
+            "cost_score": _money(_pick(content, "cost")),
+            "period_days": context.period_days,
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.ad_creatives += 1
+
+
 def _effective_record_type(
     content: dict[str, Any], context: IngestionContext
 ) -> str | None:
@@ -1509,6 +1793,22 @@ async def ingest_tiktok_content(
                 await _ensure_creator_commerce_master(
                     session, context, content, captured_at
                 )
+            elif record_type == "tiktok_video_product":
+                await _ensure_relation_video(
+                    session, context, content, captured_at
+                )
+                await _ensure_commerce_product(
+                    session, context, content, captured_at
+                )
+            elif record_type == "tiktok_creator_product":
+                await _ensure_creator_commerce_master(
+                    session, context, content, captured_at
+                )
+                await _ensure_commerce_product(
+                    session, context, content, captured_at
+                )
+            elif record_type == "tiktok_ad":
+                await _ensure_ad_master(session, context, content, captured_at)
             elif record_type == "tiktok_hashtag":
                 hashtag_id = content.get("hashtag_id")
                 if hashtag_id and content.get("name"):
@@ -1566,6 +1866,16 @@ async def ingest_tiktok_content(
                 await _ingest_creator_commerce(
                     session, context, content, captured_at, result
                 )
+            elif record_type == "tiktok_video_product":
+                await _ingest_video_product(
+                    session, context, content, captured_at, result
+                )
+            elif record_type == "tiktok_creator_product":
+                await _ingest_creator_product(
+                    session, context, content, captured_at, result
+                )
+            elif record_type == "tiktok_ad":
+                await _ingest_ad(session, context, content, captured_at, result)
             elif record_type == "tiktok_hashtag":
                 await _ingest_hashtag(session, context, content, captured_at, result)
             elif record_type == "tiktok_trend":
