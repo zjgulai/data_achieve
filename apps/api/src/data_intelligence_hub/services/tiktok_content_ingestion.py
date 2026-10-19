@@ -702,6 +702,25 @@ def _money(value: Any) -> float | None:
         return None
 
 
+def _review_count(content: dict[str, Any]) -> int | None:
+    value = _pick(content, "review_count", "reviewsCount", "reviewCount")
+    if value is None:
+        rating = _pick(content, "rating", "product_rating")
+        if isinstance(rating, dict):
+            value = rating.get("reviewCount") or rating.get("review_count")
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _rating(value: Any) -> float | None:
+    """Some actors return {score, reviewCount} for rating."""
+    if isinstance(value, dict):
+        value = value.get("score") or value.get("rating") or value.get("value")
+    return _money(value)
+
+
 def _currency(content: dict[str, Any]) -> str | None:
     value = _pick(content, "currency")
     if isinstance(value, dict):
@@ -992,11 +1011,9 @@ async def _ingest_commerce_product(
                 content, "stock_count", "total_stock_cnt",
                 "availableQuantity", "stock"
             ),
-            "review_count": _pick(
-                content, "review_count", "reviewsCount", "reviewCount"
-            ),
-            "rating": _pick(
-                content, "rating", "product_rating", "stars", "score"
+            "review_count": _review_count(content),
+            "rating": _rating(
+                _pick(content, "rating", "product_rating", "stars", "score")
             ),
             "video_count_30d": _pick(content, "video_count_30d", "video_30d_cnt"),
             "live_count_30d": _pick(content, "live_count_30d", "live_30d_cnt"),

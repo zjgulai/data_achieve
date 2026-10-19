@@ -160,6 +160,8 @@ async def test_apify_money_dict_is_normalized(session: AsyncSession) -> None:
     content["price_amount"] = {"value": 299, "currency": "USD"}
     content["original_price_amount"] = {"value": 399, "currency": "USD"}
     content["currency"] = None
+    content["rating"] = {"score": 4.6, "reviewCount": 12}
+    content.pop("review_count", None)
     await ingest_tiktok_content(
         session, [content], _context(workspace_id, project_id)
     )
@@ -168,6 +170,8 @@ async def test_apify_money_dict_is_normalized(session: AsyncSession) -> None:
     assert float(snapshot.price_amount) == 299.0
     assert float(snapshot.original_price_amount) == 399.0
     assert snapshot.currency == "USD"
+    assert float(snapshot.rating) == 4.6
+    assert snapshot.review_count == 12
 
 
 @pytest.mark.asyncio
