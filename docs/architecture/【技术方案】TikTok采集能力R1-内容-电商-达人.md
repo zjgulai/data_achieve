@@ -812,3 +812,68 @@ R1 月预算上限 300 美元。
 3. 回填历史 RawRecord。
 4. 迁移 CDO 意图到工具层。
 5. 在运行记录页展示工具调用。
+
+## 24. 生产 A 实测记录（2026-10-19）
+
+### 24.1 部署口径
+
+1. 目标：生产 A，`https://scrapy.luteos.com`。
+2. 分支：`main`。
+3. 提交：`d8c23e5`（R1 主体）→ `894eabd`（cover 修复）→ `a551cd3`（字幕入库）。
+4. 数据库备份：`/opt/data-achieve-scrapy/backups/tiktok_r1_pre_20261019_205338.dump`，8.5 MB。
+5. 迁移：`202607280044` → `202610190045`。
+6. 表数核验：21/21 张表存在。
+
+### 24.2 工具实测
+
+| tool_id | 状态 | 记录数 | 耗时 | 备注 |
+|---|---|---:|---:|---|
+| `tiktok_trend_rank` | success | 20 | 1.39s | 页面复跑 50 条成功 |
+| `tiktok_video_search` | success | 10 | 2.44s | 修复 cover 后通过 |
+| `tiktok_hashtag_videos` | success | 3 | 2.18s | 上游搜索 10 条，客户端过滤后 3 条 |
+| `tiktok_video_detail` | success | 1 | 1.79s | 详情字段完整 |
+| `tiktok_video_comments` | success | 51 | 7.87s | 20 条主评论 + 31 条回复 |
+| `tiktok_creator_profile` | success | 16 | 4.33s | 1 条资料 + 15 条作品 |
+| `tiktok_creator_search` | success | 9 | 2.23s | 视频作者代理 |
+| `tiktok_transcript` | success | 1 | 29.9s | 修复后写入 transcript 表 |
+
+### 24.3 规范表核验
+
+首轮内容工具运行后的行数：
+
+| 表 | 行数 |
+|---|---:|
+| `creator` | 53 |
+| `creator_snapshot` | 1 |
+| `video` | 27 |
+| `video_snapshot` | 46 |
+| `comment` | 51 |
+| `comment_snapshot` | 51 |
+| `hashtag` | 162 |
+| `hashtag_snapshot` | 20 |
+| `video_hashtag` | 396 |
+| `trend_topic` | 20 |
+| `sound` | 27 |
+
+字幕修复后 `transcript` 表新增 1 行，`video_id=7670318941658483981`，`language=en`，`transcript_source=third_party_asr`，`word_count=49`。
+
+### 24.4 实测发现与修复
+
+1. Web 搜索的 `video.cover` 是 URL 字符串，App 详情才是 `{url_list: [...]}`。旧归一化对字符串调用 `.get`，导致 `tiktok_video_search` 全部失败。修复：`_normalize_tiktok_video` 同时接受字符串与对象，并给 `author`、`stats`、`music` 加类型护栏。
+2. 字幕记录此前只写 `RawRecord`，`transcript` 表为空。原因：入库钩子只匹配 `tikhub_social`。修复：钩子支持 `apify_tiktok_transcript_extractor`，新增字幕主表与 `transcript` 写入。
+3. 两条修复都补了回归测试。
+
+### 24.5 验证结果
+
+1. 单元测试：1930 通过。
+2. 控制台：`tsc --noEmit`、`eslint`、`next build` 全部通过。
+3. 生产页面 `/tools/tiktok` 正常加载项目、页签、运行状态与结果表。
+4. 页面实测趋势工具：50 条记录、1 次上游调用、0 错误。
+
+### 24.6 尚未完成
+
+1. 回填历史 `RawRecord` 到规范表。
+2. 迁移 CDO 意图到工具层。
+3. 在运行记录页展示工具调用。
+4. 电商与达人商务表的工具层尚未接入。
+
