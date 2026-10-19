@@ -833,13 +833,17 @@ async def _ensure_commerce_shop(
         values={
             "shop_id": shop_id,
             "seller_id": seller_id,
-            "shop_name": _pick(content, "shop_name", "seller_name")
-            or _commerce_seller(content).get("shop_name")
-            or _commerce_seller(content).get("name"),
-            "shop_type": _pick(content, "shop_type"),
-            "seller_type": _pick(content, "seller_type"),
+            "shop_name": _safe_text(
+                _pick(content, "shop_name", "seller_name")
+                or _commerce_seller(content).get("shop_name")
+                or _commerce_seller(content).get("name")
+            ),
+            "shop_type": _safe_text(_pick(content, "shop_type")),
+            "seller_type": _safe_text(_pick(content, "seller_type")),
             "region": region,
-            "logo_url": _pick(content, "shop_logo_url", "shop_logo"),
+            "logo_url": _safe_text(
+                _pick(content, "shop_logo_url", "shop_logo")
+            ),
             "rating": _pick(content, "shop_rating"),
             "follower_count": _pick(content, "shop_follower_count"),
             "product_count": _pick(content, "shop_product_count"),
@@ -879,16 +883,28 @@ async def _ensure_commerce_product(
             "shop_key": shop_key,
             "shop_id": _pick(content, "shop_id"),
             "seller_id": _pick(content, "seller_id"),
-            "title": _pick(
-                content, "title", "product_name", "productName", "text"
+            "title": _safe_text(
+                _pick(content, "title", "product_name", "productName", "text")
             ),
-            "description": _pick(content, "description", "product_desc"),
-            "brand": _pick(content, "brand"),
-            "category_l1": _pick(content, "category_l1", "category1"),
-            "category_l2": _pick(content, "category_l2", "category2"),
-            "category_l3": _pick(content, "category_l3", "category3"),
-            "category_path": _pick(content, "category_path", "categories"),
-            "product_url": _pick(content, "product_url", "url"),
+            "description": _safe_text(
+                _pick(content, "description", "product_desc")
+            ),
+            "brand": _safe_text(_pick(content, "brand")),
+            "category_l1": _safe_text(
+                _pick(content, "category_l1", "category1")
+            ),
+            "category_l2": _safe_text(
+                _pick(content, "category_l2", "category2")
+            ),
+            "category_l3": _safe_text(
+                _pick(content, "category_l3", "category3")
+            ),
+            "category_path": _safe_text(
+                _pick(content, "category_path", "categories")
+            ),
+            "product_url": _safe_text(
+                _pick(content, "product_url", "url")
+            ),
             "image_urls": _pick(content, "image_urls", "images"),
             "sku_count": _pick(content, "sku_count"),
             "skus_json": _pick(content, "skus_json", "skus"),
