@@ -1040,8 +1040,8 @@ async def _ingest_commerce_product(
             "sale_count_30d": _count(
                 _pick(content, "sale_count_30d", "sale_30d_cnt", "saleCount30d")
             ),
-            "gmv_amount_30d": _pick(
-                content, "gmv_amount_30d", "gmv_30d_amt", "gmv30d", "gmv"
+            "gmv_amount_30d": _money(
+                _pick(content, "gmv_amount_30d", "gmv_30d_amt", "gmv30d", "gmv")
             ),
             "commission_rate": _rate(
                 _pick(content, "commission_rate", "commission")
