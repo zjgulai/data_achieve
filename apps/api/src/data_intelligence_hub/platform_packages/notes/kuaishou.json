@@ -45,6 +45,21 @@
         "self-hosted",
         "mediacrawler"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_kuaishou_search",
+      "symptom": "此前 400 / 0 条",
+      "cause": "上游瞬态或权重恢复；参数 keyword 符合规范",
+      "workaround": "2026-10-19 复测通过（16 条）",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tikhub",
+        "recovered-2026-10-19"
+      ]
     }
   ]
 }

@@ -62,6 +62,21 @@
         "input-schema",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_walmart_reviews_scraper",
+      "symptom": "启动 run 时报 http_forbidden: upstream returned 403",
+      "cause": "响应体指出 full-permission-actor-not-approved：该 Actor 需要账户侧批准权限",
+      "workaround": "到 Apify 控制台批准后重试：https://console.apify.com/actors/GrCGuxb9wLSi0OI5O?approvePermissions=true",
+      "failure_class": "config_gated",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "account-approval"
+      ]
     }
   ]
 }

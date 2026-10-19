@@ -108,6 +108,21 @@
         "rental",
         "unconfirmed"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_1688_product_search",
+      "symptom": "启动 run 时报 http_forbidden: upstream returned 403",
+      "cause": "响应体指出 full-permission-actor-not-approved：该 Actor 需要账户侧批准权限。不是入参问题——失败发生在 run 创建前",
+      "workaround": "到 Apify 控制台批准后重试：https://console.apify.com/actors/eQi6Kcean09c2Rva0?approvePermissions=true",
+      "failure_class": "config_gated",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "account-approval"
+      ]
     }
   ]
 }

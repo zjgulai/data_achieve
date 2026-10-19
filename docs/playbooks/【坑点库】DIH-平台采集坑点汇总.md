@@ -5,8 +5,8 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`1e5511964fd0c3c6f9be1e4d11dbdae961ecc8fd2220b0adb0e863375838526c`
-> 坑点总数：107 · 覆盖平台：34
+> 自动生成，请勿手工编辑。catalog_digest：`ef17e6ce0e58869595c51054b37b04bb5c216f16633e97b06b8f09636df56bc1`
+> 坑点总数：119 · 覆盖平台：34
 
 ## actor_failed
 
@@ -15,20 +15,25 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | amazon | amazon | apify_amazon_bsr_tracker、apify_amazon_competitor_research 的 Apify run 状态为 FAILED | 入参/代理被 Amazon 拒绝，失败发生在 Actor 内部（run 已创建），与 403 类不同——需要读 run log 才能定位 | 用 GET /v2/actor-runs/<runId>/log 看 Actor 自身日志；apify_amazon_product_scraper 与 apify_amazon_reviews_scraper 已验证可用，可作首选替代 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | amazon | apify_amazon_bsr_tracker | Apify run FAILED，日志 exit_code=91 | ValueError: marketplace 'amazon.com' not in ['AU','CA','DE','ES','FR','IT','JP','NL','UK','US'] —— marketplaces 收 ISO 国家码，不是站点域名。另外 ASIN 必须在该站点有 BSR 榜：同一个 ASIN 在不同时刻会时有时无（实测 B09G9FPHY6+US 一次 1 条、一次 0 条）。 | 已修：直接采用 Actor 自己的 prefill（asins=['0735211299','1612680194']、marketplaces=['UK']），实测 2 条。取 prefill 而不是自己挑值，这条对其它 Actor 同样适用。 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | amazon | apify_amazon_competitor_research | Apify run FAILED，日志 NO_USABLE_RESULTS | Actor 自述 No Amazon product pages were successfully extracted —— Amazon 反爬，加了 Apify 代理仍然失败 | Actor 侧/反爬问题，改入参无效；需要更强的住宅代理或换 Actor | warning | 2026-10-10 | reports/live-sweep/latest.json |
+| amazon | apify_amazon_competitor_research | 此前 Apify run FAILED（NO_USABLE_RESULTS） | Actor 侧反爬；入参无误 | 2026-10-19 复测通过（1 条）。判定为上游瞬态，保留观察 | warning | 2026-10-19 | reports/live-sweep/latest.json |
+| booking | apify_booking_scraper | 2026-10-19 复测仍 Apify run FAILED | 入参已按 schema 提供（search/checkIn/checkOut），Actor 自身失败 | 读 run log 或换 Actor；一个 sprint 内无替代就退役 | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | reddit | apify_reddit_scraper | Apify run FAILED，日志 'startUrls and searches are empty' | endpoint 的 base_input 是 {}，而该 Actor 要求 startUrls 或 searches 至少给一个；演示参数里 searches 还写成了对象数组 | 已修：base_input 与演示参数都改为 searches=['python']（字符串数组）+ maxItems=5，实测 5 条 | warning | 2026-10-10 | reports/live-sweep/latest.json |
 | target | apify_target_products_scraper | Apify run 状态 FAILED | 入参已按 schema 修正（searchQueries/maxProductsPerSearch），run 能创建，但 Actor 自身以 FAILED 结束 | Actor 侧问题，改入参无效；需要读 run log 或换 Actor | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | target | apify_target_products_scraper | Apify run FAILED，日志 'Target page navigation failed while loading plp_search_v2.' | Actor 尝试轮换出口 IP 仍失败 —— Target 反爬 | Actor 侧/反爬问题，改入参无效 | warning | 2026-10-10 | reports/live-sweep/latest.json |
+| target | apify_target_products_scraper | 2026-10-19 复测仍 Apify run FAILED（93s） | Actor 尝试轮换出口 IP 仍被 Target 反爬拦截，与 10-09/10-10 结论一致 | 读 run log 或换 Actor；一个 sprint 内无替代就退役 | blocker | 2026-10-19 | reports/live-sweep/latest.json |
 
 ## config_gated
 
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
+| alibaba | apify_1688_product_search | 启动 run 时报 http_forbidden: upstream returned 403 | 响应体指出 full-permission-actor-not-approved：该 Actor 需要账户侧批准权限。不是入参问题——失败发生在 run 创建前 | 到 Apify 控制台批准后重试：https://console.apify.com/actors/eQi6Kcean09c2Rva0?approvePermissions=true | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | baidu | baidu | baidu_search_results 报 “ANYCRAWL_BASE_URL is not configured” | SERP 采集依赖 AnyCrawl 服务，生产未配置 ANYCRAWL_BASE_URL | 配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | baidu | baidu | ANYCRAWL_BASE_URL is not configured — Baidu SERP requires AnyCrawl | SERP 端点走自建 AnyCrawl（默认 http://localhost:3001），容器里同样 Connection refused；未部署 | 部署 AnyCrawl 并设置 ANYCRAWL_BASE_URL；缺失时 serp 组已归为 config-gated | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | bilibili | bilibili | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | bing | bing | bing_search_results 报 “ANYCRAWL_BASE_URL is not configured” | 同上，Bing SERP 依赖 AnyCrawl | 配置 ANYCRAWL_BASE_URL（及 ANYCRAWL_API_KEY）后重建 api 容器 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 | bing | bing | ANYCRAWL_BASE_URL is not configured — Bing SERP requires AnyCrawl | 同 baidu：AnyCrawl 未部署 | 部署 AnyCrawl 并设置 ANYCRAWL_BASE_URL | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | kuaishou | kuaishou | http_connection_failed: upstream connection failed（0.2s 内立即失败） | 这些端点走自建的 MediaCrawler 服务，默认地址 http://localhost:8080。容器里连它得到 ConnectError [Errno 111] Connection refused —— 是**服务没部署**，不是出口被墙。（此前把这一批误判为"需要代理"。） | 部署 MediaCrawler 并设置 MEDIACRAWLER_BASE_URL 指向它；MEDIACRAWLER_BASE_URL 缺失时本平台端点已归为 config-gated。MediaCrawler 需要登录态（扫码），部署前先确认账号方案。 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
+| walmart | apify_walmart_reviews_scraper | 启动 run 时报 http_forbidden: upstream returned 403 | 响应体指出 full-permission-actor-not-approved：该 Actor 需要账户侧批准权限 | 到 Apify 控制台批准后重试：https://console.apify.com/actors/GrCGuxb9wLSi0OI5O?approvePermissions=true | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | web | web | Exa 系列端点（exa_search_auto / exa_answer / exa_contents / exa_deep_* 等 16 个）调用后 records=0，错误为 “EXA_API_KEY not set” | 生产 API 容器运行时环境未注入 EXA_API_KEY；compose 已声明该变量但服务器 .env.production 未提供值 | 在服务器 .env.production 增加 EXA_API_KEY=<key> 后重建 api 容器；在此之前不要把 Exa 端点视为可采集 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | firecrawl_crawl / firecrawl_extract / firecrawl_batch_scrape 报缺 FIRECRAWL_API_KEY | FIRECRAWL_API_KEY 未在 compose/.env.production 中配置 | 配置 FIRECRAWL_API_KEY（及可选 FIRECRAWL_BASE_URL）后重建 api 容器 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | web | web | robin_darkweb_search / _username / _email 曾返回 0 条（无报错） | 采集器要一个 Tor SOCKS5 出口（TOR_PROXY_URL，默认 socks5://127.0.0.1:9050），而 api 容器里没有 tor 守护进程 | 已修：compose 增加 tor sidecar（alpine + tor，只暴露 9050），api 的 TOR_PROXY_URL 设为 socks5h://tor:9050（h 让 DNS 也走 Tor，.onion 必须）。实测三个端点各返回 5 条。给其它需要 Tor 的端点复用同一个 URL 即可 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
@@ -49,6 +54,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
+| bilibili | tikhub_bilibili_comments | 运行成功但恒返回 0 条（19 条评论被丢） | fetch_video_comments 的评论在 data.data.replies；bilibili 分支的键表里有 comments 没有 replies | 已修：键表补 replies，并让通用归一化从嵌套 content.message 取正文。实测 0 -> 19 条 | blocker | 2026-10-19 | reports/live-sweep/latest.json |
 | bilibili | tikhub_bilibili_user_videos | 运行成功但恒返回 0 条 | fetch_user_videos 的条目在 data.data.item（**单数** item），提取器的键清单里只有 item_list/items | 已修：提取器先把 inner / inner.data / inner.results 都收进候选作用域，并补上 item 键。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | bilibili | tikhub_bilibili_video_search | 运行成功但恒返回 0 条 | 开量搜索的结果同样嵌在 data.data 下 | 已修：同上的作用域展开。实测 0 -> 20 条 | blocker | 2026-10-10 | reports/live-sweep/latest.json |
 | booking | apify_booking_scraper | run SUCCEEDED 但数据集 0 条（早前那次是 ABORTED） | 日志：The property doesn't exist, or the property URL might be invalid —— 演示酒店 URL 是编的。改用搜索 URL 则两次都 TIMED-OUT（>300s） | 需要真实的 booking 酒店页 URL；搜索类 URL 太慢，不适合同步采集 | warning | 2026-10-10 | reports/live-sweep/latest.json |
@@ -138,6 +144,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | 平台 | 范围 | 症状 | 原因 | 规避/修复 | 严重度 | 已验证 | 来源 |
 |---|---|---|---|---|---|---|---|
 | google_trends | apify_google_trends_scraper | 客户端读超时（The read operation timed out），不是上游报错 | apify/google-trends-scraper 的 run 等待时间超过 quick-collect 的同步等待窗口；采集器内部 APIFY_TIMEOUT=30s、APIFY_RUN_WAIT_TIMEOUT=600s，而 quick-collect 路由是同步返回的 | 走异步任务（POST /api/tasks/{id}/run + 轮询 /api/tasks/runs）而不是 quick-collect；或调小 searchTerms 数量与 geo 范围 | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| google_trends | apify_google_trends_scraper | 此前 collection_timeout: collector exceeded 300s | 服务层预算 300s 小于 Apify 内部 600s 等待，服务先取消采集器 | 已修：服务层默认预算提到 660s（大于内部 600s）。2026-10-19 复测通过，1 条 | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | trustpilot | apify_trustpilot_reviews_scraper | memo23/trustpilot-scraper-ppe 全量跑一次实测 5 分钟+，短超时会 408 | Trustpilot 评论页体量大，actor 逐页滚动抓取 | 2026-10-14 确认：调用方需给 run_timeout_seconds>=600；或 scrapeAllReviews=false + sampling=first 降量。大批量按企业分批，失败单企重跑 | warning | 2026-10-14 | docs/apify-actors/RESEARCH-PLAN.md |
 | web | web | aliens_eye_basic/_advanced/_correlate/_recurse/_batch 请求超时（>180s） | Aliens Eye 全平台扫描耗时长，超出默认采集超时 | 增大超时或限定 sites 范围；对交互式调用不适用 | warning | 2026-10-09 | reports/live-sweep/latest.json |
 
@@ -152,8 +159,13 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 | amazon | apify_amazon_bestsellers | 403，1 秒内失败；Actor 元数据查询返回 record-not-found | simpleapi/amazon-bestsellers-scraper 已从 Apify Store 下架，任何第三方发起运行都被 403 挡回（403 而不是 404，容易被误判为反爬） | 已改指 junglee/amazon-bestsellers（categoryUrls 必填、maxItemsPerStartUrl 限流、depthOfCrawl 控制子类目） | blocker | 2026-10-09 | reports/live-sweep/latest.json |
 | devto | devto | devto_articles_search 报 http_forbidden (403) | Dev.to API/站点对生产出口 IP 返回 403 | 配置代理或改用其它技术博客端点（juejin/substack） | info | 2026-10-09 | reports/live-sweep/latest.json |
 | devto | devto_articles_search | http_forbidden: upstream returned 403（0.2s 内立即返回） | dev.to 走 Cloudflare：对 /api/articles 带**浏览器 User-Agent** 的请求返回 403，同一请求不带该 UA（或只带 Accept）返回 200。collector 给所有技术博客端点统一套了 Chrome UA | 已修：DevToArticlesCollector 改用中性 UA（data-intelligence-hub-collector/1.0）。判据：同一个 URL 换个 UA 就 200，说明是 UA 触发的拦截，与参数无关 | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| kuaishou | tikhub_kuaishou_search | 此前 400 / 0 条 | 上游瞬态或权重恢复；参数 keyword 符合规范 | 2026-10-19 复测通过（16 条） | warning | 2026-10-19 | reports/live-sweep/latest.json |
+| linkedin | linkedin | 2026-10-19 复测：tikhub_linkedin_* 五个端点仍全部 400 | 错误体是上游通用拒绝（Request failed. Please retry... You won't be charged）。已用 TikHub OpenAPI 核对：路径在规范内，参数与规范一致（get_user_posts 发 url、get_post_comments 发 urn、search_jobs 发 keywords）。判定为上游侧/账号级限制 | 带 request_id 报 TikHub 支持；在此之前不要把 tikhub_linkedin_* 当可用能力 | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | shopify | apify_shopify_products_monitor | 404（http_not_found），Actor 元数据查询同样 404 | autofacts/shopify-scraper 已下架；原演示参数 {url: ...} 也不是该 Actor 的入参名 | 已改指 trovevault/shopify-products-scraper，入参是 domains（域名数组）+ maxProducts | blocker | 2026-10-09 | reports/live-sweep/latest.json |
+| threads | tikhub_threads_search | 2026-10-19 复测仍 400 | 参数 query 与 OpenAPI 规范一致（required），上游仍返回通用拒绝。属上游侧问题 | 带 request_id 报 TikHub 支持 | warning | 2026-10-19 | reports/live-sweep/latest.json |
+| tiktok | tikhub_tiktok_creator_info、tikhub_tiktok_live_user | 2026-10-19 复测仍 400 | 两端点共用上游 fetch_creator_info，参数 creator_uid 为真实数字 uid 且符合规范（required），上游仍返回通用拒绝。属上游侧问题 | 带 request_id 报 TikHub 支持 | warning | 2026-10-19 | reports/live-sweep/latest.json |
 | walmart | apify_walmart_reviews_scraper | 403，1 秒内失败 | e-commerce/walmart-reviews-scraper 拒绝本账号发起运行（run 未创建），与代理或商品 ID 无关 | 改用 web_wanderer/walmart-reviews-scraper；或先用 apify_walmart_product_scraper 验证代理链路（它返回 success 但 0 条，属于另一类问题） | warning | 2026-10-09 | reports/live-sweep/latest.json |
+| x | tikhub_x_user_tweets | 2026-10-19 复测仍 400 | 参数 screen_name 与 OpenAPI 规范一致，上游仍返回通用拒绝。属上游侧问题 | 带 request_id 报 TikHub 支持 | warning | 2026-10-19 | reports/live-sweep/latest.json |
 
 ## upstream_deprecated
 

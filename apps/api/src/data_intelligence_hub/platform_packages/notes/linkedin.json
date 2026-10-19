@@ -63,6 +63,21 @@
         "input-schema",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "linkedin",
+      "symptom": "2026-10-19 复测：tikhub_linkedin_* 五个端点仍全部 400",
+      "cause": "错误体是上游通用拒绝（Request failed. Please retry... You won't be charged）。已用 TikHub OpenAPI 核对：路径在规范内，参数与规范一致（get_user_posts 发 url、get_post_comments 发 urn、search_jobs 发 keywords）。判定为上游侧/账号级限制",
+      "workaround": "带 request_id 报 TikHub 支持；在此之前不要把 tikhub_linkedin_* 当可用能力",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tikhub",
+        "upstream-side"
+      ]
     }
   ]
 }

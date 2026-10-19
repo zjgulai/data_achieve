@@ -15,6 +15,21 @@
         "apify",
         "run-log"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_booking_scraper",
+      "symptom": "2026-10-19 复测仍 Apify run FAILED",
+      "cause": "入参已按 schema 提供（search/checkIn/checkOut），Actor 自身失败",
+      "workaround": "读 run log 或换 Actor；一个 sprint 内无替代就退役",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "actor-side"
+      ]
     }
   ]
 }

@@ -32,6 +32,21 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "tikhub_threads_search",
+      "symptom": "2026-10-19 复测仍 400",
+      "cause": "参数 query 与 OpenAPI 规范一致（required），上游仍返回通用拒绝。属上游侧问题",
+      "workaround": "带 request_id 报 TikHub 支持",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tikhub",
+        "upstream-side"
+      ]
     }
   ]
 }

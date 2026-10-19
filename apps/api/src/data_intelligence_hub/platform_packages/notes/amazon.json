@@ -94,6 +94,22 @@
         "run-log",
         "anti-bot"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_amazon_competitor_research",
+      "symptom": "此前 Apify run FAILED（NO_USABLE_RESULTS）",
+      "cause": "Actor 侧反爬；入参无误",
+      "workaround": "2026-10-19 复测通过（1 条）。判定为上游瞬态，保留观察",
+      "failure_class": "actor_failed",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "transient",
+        "recovered-2026-10-19"
+      ]
     }
   ]
 }

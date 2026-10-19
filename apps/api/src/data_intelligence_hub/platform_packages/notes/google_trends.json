@@ -31,6 +31,22 @@
         "timeout",
         "quick-collect"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_google_trends_scraper",
+      "symptom": "此前 collection_timeout: collector exceeded 300s",
+      "cause": "服务层预算 300s 小于 Apify 内部 600s 等待，服务先取消采集器",
+      "workaround": "已修：服务层默认预算提到 660s（大于内部 600s）。2026-10-19 复测通过，1 条",
+      "failure_class": "timeout",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "timeout-budget",
+        "fixed-2026-10-19"
+      ]
     }
   ]
 }

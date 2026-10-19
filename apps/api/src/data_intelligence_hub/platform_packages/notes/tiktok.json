@@ -128,6 +128,21 @@
         "upstream-shape",
         "fixed-2026-10-09"
       ]
+    },
+    {
+      "scope": "platform",
+      "target": "tikhub_tiktok_creator_info、tikhub_tiktok_live_user",
+      "symptom": "2026-10-19 复测仍 400",
+      "cause": "两端点共用上游 fetch_creator_info，参数 creator_uid 为真实数字 uid 且符合规范（required），上游仍返回通用拒绝。属上游侧问题",
+      "workaround": "带 request_id 报 TikHub 支持",
+      "failure_class": "upstream_4xx",
+      "severity": "warning",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "tikhub",
+        "upstream-side"
+      ]
     }
   ]
 }

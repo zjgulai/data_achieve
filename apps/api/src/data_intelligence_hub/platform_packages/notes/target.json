@@ -31,6 +31,21 @@
         "run-log",
         "anti-bot"
       ]
+    },
+    {
+      "scope": "endpoint",
+      "target": "apify_target_products_scraper",
+      "symptom": "2026-10-19 复测仍 Apify run FAILED（93s）",
+      "cause": "Actor 尝试轮换出口 IP 仍被 Target 反爬拦截，与 10-09/10-10 结论一致",
+      "workaround": "读 run log 或换 Actor；一个 sprint 内无替代就退役",
+      "failure_class": "actor_failed",
+      "severity": "blocker",
+      "verified_at": "2026-10-19",
+      "source_ref": "reports/live-sweep/latest.json",
+      "tags": [
+        "apify",
+        "actor-side"
+      ]
     }
   ]
 }
