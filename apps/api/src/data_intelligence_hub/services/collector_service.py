@@ -193,6 +193,7 @@ async def execute_collection_task(
                 + ingestion.hashtag_snapshots
                 + ingestion.trend_topics
                 + ingestion.video_hashtags
+                + ingestion.transcripts
             )
             logs.append(collector_log(
                 "tiktok_content_projected",
@@ -317,12 +318,24 @@ async def _ingest_tiktok_content_if_needed(
     A projection failure must not fail the collection itself. The savepoint
     keeps the raw-record transaction usable.
     """
-    if task.collector_type != "tikhub_social":
-        return None
     config = task.config or {}
     endpoint_type = str(config.get("endpoint_type") or "")
-    if endpoint_type not in TIKHUB_CONTENT_ENDPOINT_MAP:
+    is_tikhub_content = (
+        task.collector_type == "tikhub_social"
+        and endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP
+    )
+    is_apify_transcript = (
+        task.collector_type == "apify_actor"
+        and endpoint_type == "apify_tiktok_transcript_extractor"
+    )
+    if not (is_tikhub_content or is_apify_transcript):
         return None
+    provider = "apify" if is_apify_transcript else "tikhub"
+    schema_version = (
+        "apify_tiktok_video.v1"
+        if is_apify_transcript
+        else "tikhub_tiktok_content.v1"
+    )
 
     raw_period = config.get("period")
     try:
@@ -333,9 +346,9 @@ async def _ingest_tiktok_content_if_needed(
     context = IngestionContext(
         workspace_id=workspace.id,
         project_id=task.project_id,
-        provider="tikhub",
+        provider=provider,
         endpoint_type=endpoint_type,
-        schema_version="tikhub_tiktok_content.v1",
+        schema_version=schema_version,
         run_id=str(run.id),
         captured_at=run.started_at or datetime.now(UTC),
         country_code=str(config.get("country_code") or "US"),

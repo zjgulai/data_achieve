@@ -12,6 +12,7 @@ minimal video row so the relation is not lost.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from dataclasses import dataclass, field
@@ -33,6 +34,7 @@ from data_intelligence_hub.repositories.tiktok_content import (
     upsert_creator,
     upsert_hashtag,
     upsert_sound,
+    upsert_transcript,
     upsert_video,
 )
 
@@ -68,6 +70,7 @@ class IngestionResult:
     video_hashtags: int = 0
     trend_topics: int = 0
     sounds: int = 0
+    transcripts: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -84,6 +87,7 @@ class IngestionResult:
             "video_hashtags": self.video_hashtags,
             "trend_topics": self.trend_topics,
             "sounds": self.sounds,
+            "transcripts": self.transcripts,
             "skipped": self.skipped,
             "errors": self.errors,
         }
@@ -656,6 +660,153 @@ async def _ingest_trend(
     result.trend_topics += 1
 
 
+def _is_transcript_content(
+    content: dict[str, Any], context: IngestionContext
+) -> bool:
+    """Apify transcript items arrive as tiktok_video records with raw text."""
+    if not isinstance(content.get("raw"), dict):
+        return False
+    return (
+        content.get("schema_version") == "apify_tiktok_video.v1"
+        or context.endpoint_type == "apify_tiktok_transcript_extractor"
+    )
+
+
+def _transcript_video_values(raw: dict[str, Any]) -> dict[str, Any]:
+    video_meta = raw.get("videoMeta")
+    video_meta = video_meta if isinstance(video_meta, dict) else {}
+    challenges = raw.get("hashtags")
+    hashtags = [
+        str(item.get("name"))
+        for item in (challenges if isinstance(challenges, list) else [])
+        if isinstance(item, dict) and item.get("name")
+    ]
+    return {
+        key: value
+        for key, value in {
+            "caption": raw.get("text"),
+            "text_language": raw.get("textLanguage"),
+            "published_at": _dt(raw.get("createTimeISO")),
+            "duration_ms": _duration_ms(video_meta.get("duration")),
+            "cover_url": video_meta.get("coverUrl"),
+            "web_video_url": raw.get("webVideoUrl"),
+            "is_ad": raw.get("isAd"),
+            "hashtags": hashtags or None,
+        }.items()
+        if value is not None
+    }
+
+
+async def _ensure_transcript_master(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    raw = content.get("raw")
+    raw = raw if isinstance(raw, dict) else {}
+    video_id = str(raw.get("id") or raw.get("videoId") or "").strip()
+    if not video_id:
+        return None
+    author = raw.get("authorMeta")
+    author = author if isinstance(author, dict) else {}
+    creator_id = str(author.get("id") or "").strip() or None
+    if creator_id:
+        await upsert_creator(
+            session,
+            workspace_id=context.workspace_id,
+            project_id=context.project_id,
+            creator_id=creator_id,
+            values={
+                key: value
+                for key, value in {
+                    "unique_id": author.get("name"),
+                    "nickname": author.get("nickName"),
+                    "avatar_url": author.get("avatar"),
+                    "signature": author.get("signature"),
+                    "follower_count": author.get("fans"),
+                    "following_count": author.get("following"),
+                    "heart_count": author.get("heart"),
+                    "video_count": author.get("video"),
+                    "is_verified": author.get("verified"),
+                    "profile_url": author.get("profileUrl"),
+                    "identity_quality": "exact",
+                }.items()
+                if value is not None
+            },
+            provider=context.provider,
+            endpoint_type=context.endpoint_type,
+            schema_version=context.schema_version,
+            captured_at=captured_at,
+            run_id=context.run_id,
+            raw_ref=context.raw_ref,
+        )
+    values = _transcript_video_values(raw)
+    values["creator_id"] = creator_id
+    await upsert_video(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        video_id=video_id,
+        values=values,
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return video_id
+
+
+async def _ingest_transcript(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    raw = content.get("raw")
+    raw = raw if isinstance(raw, dict) else {}
+    video_id = str(raw.get("id") or raw.get("videoId") or "").strip()
+    text = str(content.get("text") or raw.get("text") or "").strip()
+    if not video_id or not text:
+        result.skipped += 1
+        return
+    language = str(raw.get("textLanguage") or "unknown")
+    source = "third_party_asr"
+    content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    transcript_id = hashlib.sha1(
+        "\x1f".join((video_id, language, source, content_hash)).encode("utf-8")
+    ).hexdigest()
+    video_meta = raw.get("videoMeta")
+    video_meta = video_meta if isinstance(video_meta, dict) else {}
+    await upsert_transcript(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        transcript_id=transcript_id,
+        values={
+            "video_id": video_id,
+            "language": language,
+            "transcript_source": source,
+            "text": text,
+            "word_count": len(text.split()),
+            "duration_ms": _duration_ms(video_meta.get("duration")),
+            "is_auto_generated": True,
+            "content_hash": content_hash,
+            "source_url": raw.get("webVideoUrl"),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.transcripts += 1
+
+
 async def ingest_tiktok_content(
     session: AsyncSession,
     records: list[CollectorRawRecord | dict[str, Any]],
@@ -678,7 +829,9 @@ async def ingest_tiktok_content(
             is_video = record_type == "tiktok_video" or (
                 not record_type and content.get("video_id")
             )
-            if is_video:
+            if _is_transcript_content(content, context):
+                await _ensure_transcript_master(session, context, content, captured_at)
+            elif is_video:
                 creator_id = await _ensure_creator(session, context, content, captured_at)
                 sound_id = await _ensure_sound(session, context, content, captured_at)
                 video_id = content.get("video_id")
@@ -743,7 +896,11 @@ async def ingest_tiktok_content(
             is_video = record_type == "tiktok_video" or (
                 not record_type and content.get("video_id")
             )
-            if is_video:
+            if _is_transcript_content(content, context):
+                await _ingest_transcript(
+                    session, context, content, captured_at, result
+                )
+            elif is_video:
                 if content.get("video_id"):
                     await _ingest_video(session, context, content, captured_at, result)
             elif record_type == "tiktok_comment":

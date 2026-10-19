@@ -21,6 +21,7 @@ from data_intelligence_hub.models.tiktok_content import (
     Hashtag,
     HashtagSnapshot,
     Sound,
+    Transcript,
     TrendTopic,
     Video,
     VideoHashtag,
@@ -392,6 +393,116 @@ async def test_collector_service_projects_tiktok_content(session: AsyncSession) 
     assert result is not None
     assert result.videos == 1
     assert await session.get(Video, "v1") is not None
+
+
+@pytest.mark.asyncio
+async def test_collector_service_projects_apify_transcript(
+    session: AsyncSession,
+) -> None:
+    from types import SimpleNamespace
+
+    from data_intelligence_hub.collectors.base import CollectorRawRecord
+
+    workspace_id, project_id = await _seed_tenant(session)
+    task = CollectionTask(
+        id=uuid.uuid4(),
+        workspace_id=workspace_id,
+        project_id=project_id,
+        source_id=uuid.uuid4(),
+        collector_type="apify_actor",
+        name="transcript",
+        status="enabled",
+        config={"endpoint_type": "apify_tiktok_transcript_extractor"},
+    )
+    run = TaskRun(
+        id=uuid.uuid4(),
+        task_id=task.id,
+        workspace_id=workspace_id,
+        status="running",
+        started_at=NOW,
+        records_count=0,
+        entities_count=0,
+        logs=[],
+        created_at=NOW,
+    )
+    raw = {
+        "id": "v-transcript",
+        "text": "spoken words",
+        "textLanguage": "en",
+        "authorMeta": {"id": "u1", "name": "alice"},
+        "videoMeta": {"duration": 10},
+    }
+    record = CollectorRawRecord(
+        record_type="tiktok_video",
+        source_url=None,
+        content={
+            "provider": "apify",
+            "schema_version": "apify_tiktok_video.v1",
+            "text": raw["text"],
+            "raw": raw,
+        },
+        collected_at=NOW,
+    )
+    result = await _ingest_tiktok_content_if_needed(
+        session=session,
+        workspace=SimpleNamespace(id=workspace_id),
+        task=task,
+        run=run,
+        raw_records=[record],
+    )
+    await session.commit()
+    assert result is not None
+    assert result.transcripts == 1
+    assert await session.scalar(select(Transcript)) is not None
+
+
+@pytest.mark.asyncio
+async def test_ingest_apify_transcript_writes_transcript(
+    session: AsyncSession,
+) -> None:
+    workspace_id, project_id = await _seed_tenant(session)
+    raw = {
+        "id": "7670318941658483981",
+        "text": "hello world from transcript",
+        "textLanguage": "en",
+        "createTimeISO": "2026-08-04T23:15:18.000Z",
+        "authorMeta": {
+            "id": "7527113447973487646",
+            "name": "summercooljinny",
+            "nickName": "Jinny",
+            "fans": 115300,
+        },
+        "videoMeta": {"duration": 76, "coverUrl": "https://cover"},
+        "webVideoUrl": "https://www.tiktok.com/@summercooljinny/video/7670318941658483981",
+    }
+    content = {
+        "record_type": "tiktok_video",
+        "provider": "apify",
+        "platform": "tiktok",
+        "schema_version": "apify_tiktok_video.v1",
+        "text": raw["text"],
+        "raw": raw,
+    }
+    result = await ingest_tiktok_content(
+        session,
+        [{"record_type": "tiktok_video", "content": content}],
+        IngestionContext(
+            workspace_id=workspace_id,
+            project_id=project_id,
+            provider="apify",
+            endpoint_type="apify_tiktok_transcript_extractor",
+            schema_version="apify_tiktok_video.v1",
+            captured_at=NOW,
+        ),
+    )
+    assert result.transcripts == 1
+    transcript = await session.scalar(select(Transcript))
+    assert transcript is not None
+    assert transcript.video_id == raw["id"]
+    assert transcript.text == raw["text"]
+    assert transcript.language == "en"
+    assert transcript.transcript_source == "third_party_asr"
+    assert await session.get(Video, raw["id"]) is not None
 
 
 @pytest.mark.asyncio
