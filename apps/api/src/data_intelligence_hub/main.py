@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from data_intelligence_hub.agents.shusuo.router import router as shusuo_router
 from data_intelligence_hub.agents.tiktok_cdo.router import router as tiktok_cdo_router
 from data_intelligence_hub.api.routes.alerts import (
     alert_events_router,
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(platform_credentials_router, prefix="/api/settings")
     app.include_router(platform_packages_router, prefix="/api/platform-packages")
     app.include_router(tools_router, prefix="/api/tools")
+    app.include_router(shusuo_router, prefix="/api/agents/shusuo")
     app.include_router(tiktok_cdo_router, prefix="/api/agents/tiktok-cdo")
     app.mount("/mcp", BearerTokenMiddleware(mcp_app))
     return app
