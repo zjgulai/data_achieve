@@ -15,6 +15,13 @@ from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 
+# 已归档任务的状态。仪表盘的活跃口径统一排除这些任务。
+_ARCHIVED_TASK_STATUSES = ("paused", "disabled")
+
+
+def _active_task_condition() -> Any:
+    return CollectionTask.status.not_in(_ARCHIVED_TASK_STATUSES)
+
 
 class TopIntelligenceRow(NamedTuple):
     item: IntelligenceItem
@@ -189,11 +196,12 @@ async def task_run_status_counts(
     from_time: datetime | None,
     to_time: datetime | None,
 ) -> dict[str, int]:
+    # 已归档任务（paused/disabled）的运行不计入成功率分子与分母。
     statement = (
         select(TaskRun.status, func.count(TaskRun.id))
         .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
         .join(Project, CollectionTask.project_id == Project.id)
-        .where(TaskRun.workspace_id == workspace_id)
+        .where(TaskRun.workspace_id == workspace_id, _active_task_condition())
         .group_by(TaskRun.status)
     )
     statement = _apply_task_run_filters(statement, Project, project_id, domain, from_time, to_time)
@@ -209,11 +217,12 @@ async def get_latest_task_run_at(
     from_time: datetime | None,
     to_time: datetime | None,
 ) -> datetime | None:
+    # 「最近采集」只统计活跃任务。已归档任务（paused/disabled）的运行不计入。
     statement = (
         select(func.max(func.coalesce(TaskRun.finished_at, TaskRun.created_at)))
         .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
         .join(Project, CollectionTask.project_id == Project.id)
-        .where(TaskRun.workspace_id == workspace_id)
+        .where(TaskRun.workspace_id == workspace_id, _active_task_condition())
     )
     statement = _apply_task_run_filters(statement, Project, project_id, domain, from_time, to_time)
     result = await session.execute(statement)
@@ -260,6 +269,7 @@ async def count_latest_failed_tasks(
     project_id: uuid.UUID | None,
     domain: str | None,
 ) -> int:
+    # 已归档任务（paused/disabled）的最新失败不计入 failed_tasks。
     run_completed_at = func.coalesce(TaskRun.finished_at, TaskRun.created_at)
     latest_runs = (
         select(TaskRun.task_id, func.max(run_completed_at).label("latest_completed_at"))
@@ -280,6 +290,7 @@ async def count_latest_failed_tasks(
         .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
         .join(Project, CollectionTask.project_id == Project.id)
         .where(TaskRun.workspace_id == workspace_id, TaskRun.status == "failed")
+        .where(_active_task_condition())
     )
     statement = _apply_project_filters(statement, Project, project_id, domain)
     result = await session.execute(statement)
@@ -316,6 +327,7 @@ async def list_recent_failures(
     domain: str | None,
     limit: int,
 ) -> list[RecentFailureRow]:
+    # 已归档任务（paused/disabled）的运行不出现在 recent_failures。
     statement = (
         select(
             CollectionTask.id,
@@ -327,6 +339,7 @@ async def list_recent_failures(
         .join(CollectionTask, TaskRun.task_id == CollectionTask.id)
         .join(Project, CollectionTask.project_id == Project.id)
         .where(TaskRun.workspace_id == workspace_id, TaskRun.status == "failed")
+        .where(_active_task_condition())
         .order_by(TaskRun.created_at.desc())
         .limit(limit)
     )

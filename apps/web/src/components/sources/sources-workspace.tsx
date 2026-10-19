@@ -232,7 +232,13 @@ export function SourcesWorkspace() {
         .filter((value): value is string => Boolean(value)),
     );
   }, [tasks]);
-  const latestFailedRunCount = tasks.filter((task) => task.latestRunStatus === "failed").length;
+  // 已归档任务（paused/disabled）的失败不算活跃告警。
+  const latestFailedRunCount = tasks.filter(
+    (task) =>
+      task.status !== "paused" &&
+      task.status !== "disabled" &&
+      task.latestRunStatus === "failed",
+  ).length;
   const trainingSources = useMemo(
     () => sources.filter((source) => isTrainingSource(source)),
     [sources],

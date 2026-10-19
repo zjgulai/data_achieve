@@ -172,8 +172,15 @@ export function TasksWorkspace() {
   }, [runLogOpen, selectedTaskRunId]);
 
   const summary = useMemo(() => {
-    const totalRuns = tasks.reduce((sum, task) => sum + task.successCount + task.failureCount, 0);
-    const totalSuccess = tasks.reduce((sum, task) => sum + task.successCount, 0);
+    // 累计成功率只统计活跃任务。已归档任务（paused/disabled）不计入。
+    const activeTasks = tasks.filter(
+      (task) => task.status !== "paused" && task.status !== "disabled",
+    );
+    const totalRuns = activeTasks.reduce(
+      (sum, task) => sum + task.successCount + task.failureCount,
+      0,
+    );
+    const totalSuccess = activeTasks.reduce((sum, task) => sum + task.successCount, 0);
     const successRate = totalRuns > 0 ? (totalSuccess / totalRuns) * 100 : 0;
     const enabledCount = tasks.filter((task) => task.status === "enabled").length;
     const failedCount = tasks.filter((task) => getTaskHealth(task) === "failed").length;
