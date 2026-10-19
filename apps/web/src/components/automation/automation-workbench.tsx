@@ -4586,7 +4586,9 @@ function BatchRunResult({
               "rounded-xl border p-3",
               item.status === "blocked"
                 ? "border-[#F0C8C0] bg-[#FFF2EF]"
-                : "border-[#E0E8D5] bg-[#FAFCF7]",
+                : item.status === "run_empty"
+                  ? "border-[#E8DCB8] bg-[#FFFCF4]"
+                  : "border-[#E0E8D5] bg-[#FAFCF7]",
             )}
             key={`${item.taskId}-${item.status}`}
           >
@@ -4604,10 +4606,16 @@ function BatchRunResult({
                   "rounded-full px-2.5 py-1 text-xs font-semibold",
                   item.status === "blocked"
                     ? "bg-[#F6ECE8] text-[#9E5C4D]"
-                    : "bg-[#ECF7EA] text-[#4E7C45]",
+                    : item.status === "run_empty"
+                      ? "bg-[#FFF3D6] text-[#8C6824]"
+                      : "bg-[#ECF7EA] text-[#4E7C45]",
                 )}
               >
-                {item.status === "blocked" ? item.blockedReason : item.run?.status}
+                {item.status === "blocked"
+                  ? item.blockedReason
+                  : item.status === "run_empty"
+                    ? "完成但无数据"
+                    : item.run?.status}
               </span>
             </div>
             {item.fieldCompleteness ? (

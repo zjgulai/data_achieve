@@ -899,7 +899,8 @@ type AutomationProductBatchRunResponse = {
     task_name: string | null;
     source_id: string | null;
     source_url: string | null;
-    status: "run_completed" | "run_failed" | "blocked";
+    // run_empty：运行完成但没有取到数据。它既不算成功也不算失败。
+    status: "run_completed" | "run_empty" | "run_failed" | "blocked";
     blocked_reason: string | null;
     run: {
       id: string;

@@ -923,7 +923,8 @@ export type AutomationProductBatchRunItem = {
   taskName: string | null;
   sourceId: string | null;
   sourceUrl: string | null;
-  status: "run_completed" | "run_failed" | "blocked";
+  // run_empty：运行完成但没有取到数据。它既不算成功也不算失败。
+  status: "run_completed" | "run_empty" | "run_failed" | "blocked";
   blockedReason: string | null;
   run: {
     id: string;
