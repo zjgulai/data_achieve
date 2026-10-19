@@ -877,3 +877,65 @@ R1 月预算上限 300 美元。
 3. 在运行记录页展示工具调用。
 4. 电商与达人商务表的工具层尚未接入。
 
+## 25. 收尾实施记录（2026-10-19）
+
+### 25.1 历史 RawRecord 回填
+
+1. 新增 `services/tiktok_content_backfill.py`。
+2. 新增 `maintenance/tiktok_raw_record_backfill.py`。
+3. 新增 `scripts/backfill-tiktok-raw-records.sh`。
+4. 默认 dry-run。`--execute` 才写库。
+5. 复用原始 `run_id` 与逐条 `collected_at`，快照 ID 保持幂等。
+6. 逐条 savepoint。单条失败不中断整批。
+7. 默认只回填内容与电商端点。`--include-phase0-tikhub` 可纳入旧 Phase 0 端点。
+8. 回填期间启用“旧数据不覆盖新数据”保护。
+
+### 25.2 CDO 工具层迁移
+
+1. 新增 `agents/tiktok_cdo/tool_router.py`。
+2. `search`、`hashtag`、`user_posts`、`creator`、`followers` 改走工具层。
+3. `top_ads`、`ads_search`、`live` 保留直连。`sentiment` 保留 Exa。
+4. `LARK_CDO_TOOL_ROUTING=off|hybrid|all` 控制灰度，默认 `hybrid`。
+5. `LARK_CDO_TOOL_ACTIONS` 控制 hybrid 下启用的动作。
+6. 直连回退修正为发送 `project_id`，并按 `task_run_id` 读取 RawRecord。
+7. 清洗器与卡片兼容规范字段。
+
+### 25.3 运行页工具标识
+
+1. `CollectionTask.config["tool_call"]` 保存工具调用元数据，不需要新迁移。
+2. 工具调用写入 `tool_call_id`、`tool_id`、标签、角色与参数摘要。
+3. `TaskRunResponse` 返回工具字段、任务名、端点与项目。
+4. 运行列表新增「工具」列。
+5. 运行详情新增工具调用卡片。
+6. 服务端配置合并时剔除 `tool_call`，避免进入采集器或 Actor 输入。
+
+### 25.4 电商与达人带货
+
+1. 新增 7 张电商 ORM：`shop`、`product`、`product_snapshot`、`product_review`、`creator_commerce`、`video_product`、`creator_product`。
+2. 新增 3 个 TikHub 端点：商品搜索 V2、热卖商品、商品评论 V2。
+3. 新增 4 个工具：
+   - `tiktok_product_search`
+   - `tiktok_product_detail`
+   - `tiktok_product_reviews`
+   - `tiktok_creator_commerce`
+4. 商品搜索主链 Apify，回退 TikHub。
+5. 商品详情主链 Apify。
+6. 商品评论走 TikHub V2。
+7. 达人与带货走 Apify `lemur/tiktok-shop-creators`。
+8. 入库支持商品、店铺、商品快照、评论与达人带货观察。
+9. `product_key` 使用 `region:product_id`。`shop_key` 使用 `shop:region:shop_id`。
+10. 百分比字段统一从 0–100 换算为 0–1。
+
+### 25.5 验证
+
+1. 单元测试 1968 通过。
+2. 新增 31 个测试，覆盖回填、电商归一化、电商入库、电商工具、CDO 路由。
+3. 控制台 `tsc --noEmit`、`eslint`、`next build` 通过。
+
+### 25.6 已知限制
+
+1. `video_product` 与 `creator_product` 暂无生产者，保留表与仓储，等待新端点或 Actor 验证。
+2. `ad` 与 `ad_creative` 仍只有迁移，无 ORM、无工具。
+3. `shop.rating`、`shop.follower_count`、`shop.product_count` 在现有 Apify 详情中多数为空。
+4. 回填默认排除 Phase 0 旧端点，避免误收。需要时显式加 `--include-phase0-tikhub`。
+
