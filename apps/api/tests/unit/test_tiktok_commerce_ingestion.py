@@ -154,6 +154,23 @@ async def test_product_writes_shop_product_and_snapshot(session: AsyncSession) -
 
 
 @pytest.mark.asyncio
+async def test_apify_money_dict_is_normalized(session: AsyncSession) -> None:
+    workspace_id, project_id = await _seed_tenant(session)
+    content = _product_content()
+    content["price_amount"] = {"value": 299, "currency": "USD"}
+    content["original_price_amount"] = {"value": 399, "currency": "USD"}
+    content["currency"] = None
+    await ingest_tiktok_content(
+        session, [content], _context(workspace_id, project_id)
+    )
+    snapshot = await session.scalar(select(ProductSnapshot))
+    assert snapshot is not None
+    assert float(snapshot.price_amount) == 299.0
+    assert float(snapshot.original_price_amount) == 399.0
+    assert snapshot.currency == "USD"
+
+
+@pytest.mark.asyncio
 async def test_review_creates_minimal_product(session: AsyncSession) -> None:
     workspace_id, project_id = await _seed_tenant(session)
     review = {

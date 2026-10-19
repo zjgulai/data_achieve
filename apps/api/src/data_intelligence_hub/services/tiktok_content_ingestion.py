@@ -690,6 +690,37 @@ def _pick(content: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _money(value: Any) -> float | None:
+    """Apify shop actors return {value, currency} for money fields."""
+    if isinstance(value, dict):
+        value = value.get("value") or value.get("amount") or value.get("price")
+    if value is None or value == "":
+        return None
+    try:
+        return float(str(value).replace("$", "").replace(",", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _currency(content: dict[str, Any]) -> str | None:
+    value = _pick(content, "currency")
+    if isinstance(value, dict):
+        return _safe_text(value.get("currency"))
+    if value:
+        return _safe_text(value)
+    for key in (
+        "price_amount",
+        "original_price_amount",
+        "price",
+        "salePrice",
+        "original_price",
+    ):
+        raw = _pick(content, key)
+        if isinstance(raw, dict):
+            return _safe_text(raw.get("currency"))
+    return None
+
+
 def _rate(value: Any) -> float | None:
     """Normalize percent values (0-100) to rates (0-1)."""
     if value is None or value == "":
@@ -842,7 +873,7 @@ async def _ensure_commerce_product(
             "image_urls": _pick(content, "image_urls", "images"),
             "sku_count": _pick(content, "sku_count"),
             "skus_json": _pick(content, "skus_json", "skus"),
-            "currency": _pick(content, "currency"),
+            "currency": _currency(content),
             "is_active": _pick(content, "is_active", "product_status"),
             "identity_quality": "exact",
         },
@@ -920,9 +951,9 @@ async def _ingest_commerce_product(
         result.skipped += 1
         return
     region = _commerce_region(content, context)
-    price = _pick(content, "price_amount", "price", "real_price", "salePrice")
-    original = _pick(
-        content, "original_price_amount", "original_price", "originalPrice"
+    price = _money(_pick(content, "price_amount", "price", "real_price", "salePrice"))
+    original = _money(
+        _pick(content, "original_price_amount", "original_price", "originalPrice")
     )
     await add_product_snapshot(
         session,
@@ -935,10 +966,16 @@ async def _ingest_commerce_product(
         values={
             "price_amount": price,
             "original_price_amount": original,
-            "min_price_amount": _pick(content, "min_price_amount", "min_price"),
-            "max_price_amount": _pick(content, "max_price_amount", "max_price"),
-            "avg_price_amount": _pick(content, "avg_price_amount", "avg_price"),
-            "currency": _pick(content, "currency"),
+            "min_price_amount": _money(
+                _pick(content, "min_price_amount", "min_price")
+            ),
+            "max_price_amount": _money(
+                _pick(content, "max_price_amount", "max_price")
+            ),
+            "avg_price_amount": _money(
+                _pick(content, "avg_price_amount", "avg_price")
+            ),
+            "currency": _currency(content),
             "sale_count": _pick(
                 content, "sale_count", "sale_cnt", "saleCount", "sales"
             ),
@@ -966,7 +1003,7 @@ async def _ingest_commerce_product(
             "ifl_count_30d": _pick(content, "ifl_count_30d", "ifl_30d_cnt"),
             "is_hot": _pick(content, "is_hot"),
             "free_shipping": _pick(content, "free_shipping"),
-            "shipping_price": _pick(content, "shipping_price"),
+            "shipping_price": _money(_pick(content, "shipping_price")),
             "is_estimated": bool(
                 _pick(content, "is_estimated", "gmv_amount_30d", "gmv_30d_amt")
             ),
