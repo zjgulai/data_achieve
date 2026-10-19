@@ -181,7 +181,7 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             return
 
         command = commands.parse_command(text)
-        reply = await commands.execute(command)
+        reply = await commands.execute(command, context_key=chat_id or open_id)
         if reply.ack:
             await lark_client.reply_text(message_id, reply.ack)
         await lark_client.reply_text(message_id, _truncate(reply.text))

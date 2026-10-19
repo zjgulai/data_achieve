@@ -1,8 +1,8 @@
 """数说的命令解析与回复文本。
 
 设计原则：
-- 先支持确定性的命令，避免模型幻觉导致误采集。
-- 自由文本不直接触发采集；最多给出建议。
+- 显式命令优先；场景词进入确定性的意图层。
+- 自由文本只生成提案，用户回复「确认」后才执行采集。
 """
 
 from __future__ import annotations
@@ -12,24 +12,36 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import capabilities
+from . import capabilities, intents
 
 HELP_TEXT = """数说 · 全域外部数据助手
 
-可用命令：
-- 帮助：显示本说明
-- 平台 [关键词]：列出平台包
-- 能力 <平台或关键词>：列出端点
-- 详情 <端点>：查看参数与坑点
-- 采集 <端点> [key=value ...]：立即采集
-- 总览：查看能力统计
+场景命令（直接说人话，先给提案，回复「确认」才执行）：
+- 搜 [平台] <关键词>：TikTok/抖音/小红书/微博/B站/YouTube/Instagram/X/Reddit；省略平台走 Exa
+- 评论 <URL>：TikTok / Reddit / YouTube 评论
+- 账号 <平台> <handle>：TikTok / Instagram / X 资料
+- 热点 [平台]：抖音 / X / YouTube / Reddit
+- 新闻 <关键词>：新闻搜索
+- 选品 <关键词>：AliExpress 选品
+- 价格 <URL 或 ASIN>：Amazon 价格追踪
+
+管理命令：
+- 帮助 / 总览
+- 平台 [关键词]
+- 能力 <平台或关键词>
+- 详情 <端点>
+- 采集 <端点> [key=value ...]
+- 结果 <run_id>：查看最近一次运行的原始记录
+- 确认 / 取消：执行或放弃当前提案
 
 示例：
-- 能力 github
-- 详情 tikhub_reddit_search
+- 搜 reddit AI
+- 评论 https://www.tiktok.com/@user/video/123
+- 账号 instagram nike
+- 新闻 新能源汽车
 - 采集 tikhub_reddit_search keyword=AI max_items=5
 
-提示：端点名可在「能力」结果中复制。采集会消耗上游额度。
+提示：场景命令的参数可加 max_items=20。采集会消耗上游额度。
 """
 
 _PLATFORM_HINTS = {"平台", "平台列表", "platform", "platforms"}
@@ -38,6 +50,10 @@ _DESCRIBE_HINTS = {"详情", "说明", "describe"}
 _COLLECT_HINTS = {"采集", "抓取", "收集", "collect", "run"}
 _STATUS_HINTS = {"总览", "状态", "overview", "status"}
 _HELP_HINTS = {"帮助", "菜单", "help", "你好", "hi", "hello", "?"}
+_RESULT_HINTS = {"结果", "数据", "result"}
+_CONFIRM_HINTS = {"确认", "执行", "confirm", "ok"}
+_CANCEL_HINTS = {"取消", "放弃", "cancel"}
+_INTENT_HINTS = {"搜", "搜索", "评论", "账号", "热点", "热搜", "新闻", "选品", "价格"}
 
 _MENTION_PATTERN = re.compile(r"@_user_\d+|@_all")
 
@@ -103,12 +119,18 @@ def parse_command(text: str) -> Command:
         return Command("help")
     if head in {h.casefold() for h in _STATUS_HINTS}:
         return Command("status")
+    if head in {h.casefold() for h in _CONFIRM_HINTS}:
+        return Command("confirm")
+    if head in {h.casefold() for h in _CANCEL_HINTS}:
+        return Command("cancel")
     if head in {h.casefold() for h in _PLATFORM_HINTS}:
         return Command("platforms", " ".join(rest).strip())
     if head in {h.casefold() for h in _CAPABILITY_HINTS}:
         return Command("capabilities", " ".join(rest).strip())
     if head in {h.casefold() for h in _DESCRIBE_HINTS}:
         return Command("describe", rest[0] if rest else "")
+    if head in {h.casefold() for h in _RESULT_HINTS}:
+        return Command("result", rest[0] if rest else "")
     if head in {h.casefold() for h in _COLLECT_HINTS}:
         if not rest:
             return Command("collect_error", "缺少端点名")
@@ -117,11 +139,13 @@ def parse_command(text: str) -> Command:
         except ValueError as exc:
             return Command("collect_error", str(exc))
         return Command("collect", rest[0], params)
+    if head in {h.casefold() for h in _INTENT_HINTS}:
+        return Command("intent", cleaned)
 
     return Command("unknown", cleaned)
 
 
-async def execute(command: Command) -> Reply:
+async def execute(command: Command, context_key: str = "") -> Reply:
     if command.name == "help":
         return Reply(HELP_TEXT)
     if command.name == "status":
@@ -134,16 +158,36 @@ async def execute(command: Command) -> Reply:
         if not command.argument:
             return Reply("用法：详情 <端点名>")
         return Reply(await capabilities.describe_text(command.argument))
+    if command.name == "result":
+        if not command.argument:
+            return Reply("用法：结果 <run_id>")
+        return Reply(await capabilities.run_records_text(command.argument))
     if command.name == "collect_error":
         return Reply(f"命令格式有误：{command.argument}\n\n{HELP_TEXT}")
     if command.name == "collect":
         outcome = await capabilities.collect(command.argument, command.params)
         return Reply(outcome.text, ack=f"正在采集 {command.argument}，请稍候…")
+    if command.name == "intent":
+        proposal = intents.build_proposal(command.argument)
+        if isinstance(proposal, str):
+            return Reply(proposal)
+        intents.set_pending(context_key, proposal)
+        return Reply(intents.proposal_reply(proposal))
+    if command.name == "confirm":
+        proposal = intents.take_pending(context_key)
+        if proposal is None:
+            return Reply("没有待确认的操作。请先发一个场景命令，例如「搜 reddit AI」。")
+        outcome = await capabilities.collect(proposal.endpoint_type, proposal.params)
+        return Reply(outcome.text, ack=f"正在采集 {proposal.endpoint_type}，请稍候…")
+    if command.name == "cancel":
+        intents.clear_pending(context_key)
+        return Reply("已取消待确认的操作。")
     if command.name == "unknown":
         return Reply(
             "我没有识别这条指令。可以试试：\n"
-            "- 平台\n"
-            "- 能力 <关键词>\n"
+            "- 帮助\n"
+            "- 平台 / 能力 <关键词>\n"
+            "- 搜 reddit AI\n"
             "- 采集 <端点> key=value\n\n"
             + HELP_TEXT
         )

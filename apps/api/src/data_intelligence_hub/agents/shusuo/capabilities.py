@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -25,6 +26,8 @@ from data_intelligence_hub.platform_packages.service import (
     get_provider_status,
 )
 from data_intelligence_hub.platform_packages.status import EndpointAvailability
+from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+from data_intelligence_hub.services.raw_record_service import get_raw_records
 
 from .config import get_shushuo_config
 
@@ -326,3 +329,62 @@ async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:
         f"采集未返回数据\n端点：{endpoint_type}\n状态：{result.status}\n原因：{reason}\n"
         f"运行 ID：{result.task_run_id}",
     )
+
+
+def _record_title(record: Any) -> tuple[str, str]:
+    content = record.content
+    title = ""
+    url = record.source_url or ""
+    if isinstance(content, dict):
+        for key in ("title", "name", "text", "content", "post_title", "description"):
+            value = content.get(key)
+            if isinstance(value, str) and value.strip():
+                title = value.strip()
+                break
+        for key in ("url", "link", "source_url", "post_url"):
+            value = content.get(key)
+            if isinstance(value, str) and value.startswith("http"):
+                url = value
+                break
+    elif isinstance(content, list) and content:
+        first = content[0]
+        if isinstance(first, dict):
+            for key in ("title", "name", "text"):
+                value = first.get(key)
+                if isinstance(value, str) and value.strip():
+                    title = value.strip()
+                    break
+    if not title:
+        title = json.dumps(content, ensure_ascii=False)[:160]
+    return title.replace("\n", " "), url
+
+
+async def run_records_text(run_id: str, limit: int = 5) -> str:
+    """读取一次运行的原始记录，给飞书返回前 N 条。"""
+    try:
+        parsed_run_id = uuid.UUID(run_id)
+    except ValueError:
+        return "运行 ID 格式不对。请从采集结果的「运行 ID」复制。"
+    try:
+        async with async_session_factory() as session:
+            workspace = await get_demo_workspace(session)
+            if workspace is None:
+                return "demo workspace 不可用。"
+            records = await get_raw_records(
+                session, workspace, None, parsed_run_id, limit, 0
+            )
+    except Exception as exc:  # noqa: BLE001 - 回给用户，不要吞掉
+        logger.exception("shusuo_run_records_failed run_id=%s", run_id)
+        return f"读取运行记录失败：{type(exc).__name__}: {exc}"
+
+    if not records:
+        return f"运行 {run_id} 没有记录，或运行 ID 不存在。"
+    config = get_shushuo_config()
+    lines = [f"运行 {run_id} 的前 {len(records)} 条："]
+    for index, record in enumerate(records, 1):
+        title, url = _record_title(record)
+        lines.append(f"{index}. {title[:160]}")
+        if url:
+            lines.append(f"   {url}")
+    lines.append(f"控制台：{config.console_base_url}/collect/{run_id}")
+    return "\n".join(lines)

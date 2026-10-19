@@ -47,7 +47,7 @@ description: 数说飞书机器人的接入、事件回调配置、生产部署�
 | `LARK_SHUSUO_ENCRYPT_KEY` | 建议 | 与飞书「加密策略」中的 Encrypt Key 一致；配置后事件为密文 |
 | `SHUSUO_DEFAULT_PROJECT_ID` | 否 | 默认采集项目 |
 | `SHUSUO_CONSOLE_BASE_URL` | 否 | 默认 `https://scrapy.luteos.com`，用于回结果链接 |
-| `SHUSUO_ALLOWED_OPEN_IDS` | 否 | 逗号分隔白名单；留空表示租户内可用 |
+| `SHUSUO_ALLOWED_OPEN_IDS` | 否 | 逗号分隔白名单；当前生产 A 已配置 8 位群成员 |
 
 生产 A 的值放在 `/opt/data-achieve-scrapy/.env.production`。compose 的 `api.environment`
 必须列出这些键（`configs/deploy/scrapy/docker-compose.yml`）；只改 env 文件不生效。
@@ -128,6 +128,17 @@ curl -s -X POST https://scrapy.luteos.com/api/agents/shusuo/webhook \
 | `能力 <平台或关键词>` | 端点列表，带可用性 |
 | `详情 <端点>` | 参数、最近实测、坑点、策略限制 |
 | `采集 <端点> [key=value ...]` | 立即采集，返回记录数与运行链接 |
+| `结果 <run_id>` | 查看一次运行的前 5 条原始记录 |
+| `搜 [平台] <关键词>` | 社媒搜索；省略平台走 Exa |
+| `评论 <URL>` | TikTok / Reddit / YouTube 评论 |
+| `账号 <平台> <handle>` | TikTok / Instagram / X 资料 |
+| `热点 [平台]` | 抖音 / X / YouTube / Reddit |
+| `新闻 <关键词>` | 新闻搜索 |
+| `选品 <关键词>` | AliExpress 选品 |
+| `价格 <URL 或 ASIN>` | Amazon 价格追踪 |
+| `确认` / `取消` | 执行或放弃当前场景提案 |
+
+场景命令只生成提案，回复「确认」后才执行采集；提案 10 分钟有效。
 
 示例：
 
@@ -165,5 +176,5 @@ shusuo_collect_failed endpoint_type=...
 
 - `url_verification` 只回显 challenge，不产生副作用；事件强制校验 token。
 - 配置 Encrypt Key 时，校验 `X-Lark-Signature = SHA256(timestamp + nonce + EncryptKey + body)`。
-- `SHUSUO_ALLOWED_OPEN_IDS` 可按用户限制；留空时租户内可用。
+- `SHUSUO_ALLOWED_OPEN_IDS` 按用户限制；当前已加入群内 8 位成员。新增成员时改 env 并重启 api。
 - 采集会消耗上游额度。当前只有显式 `采集` 命令会触发，不会根据自由文本自动采集。

@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from data_intelligence_hub.agents.shusuo import capabilities as shusuo_capabilities
 from data_intelligence_hub.agents.shusuo import commands
+from data_intelligence_hub.agents.shusuo import intents as shusuo_intents
 from data_intelligence_hub.agents.shusuo import router as shusuo_router
 from data_intelligence_hub.agents.shusuo.config import get_shushuo_config
 from data_intelligence_hub.main import app
@@ -314,3 +315,93 @@ def test_block_reason_blocks_missing_configuration() -> None:
 
 def test_block_reason_allows_verified() -> None:
     assert shusuo_capabilities._block_reason("demo", _availability()) is None
+
+
+def test_intent_social_search_with_platform() -> None:
+    proposal = shusuo_intents.build_proposal("搜 reddit AI max_items=5")
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "tikhub_reddit_search"
+    assert proposal.params == {"keyword": "AI", "max_items": 5}
+
+
+def test_intent_social_search_without_platform_uses_exa() -> None:
+    proposal = shusuo_intents.build_proposal("搜 AI 应用")
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "exa_search_auto"
+    assert proposal.params["query"] == "AI 应用"
+
+
+def test_intent_comment_parses_tiktok_url() -> None:
+    proposal = shusuo_intents.build_proposal(
+        "评论 https://www.tiktok.com/@user/video/123 max_items=8"
+    )
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "apify_tiktok_comments_scraper"
+    assert proposal.params["postURLs"] == ["https://www.tiktok.com/@user/video/123"]
+    assert proposal.params["commentsPerPost"] == 8
+
+
+def test_intent_comment_parses_reddit_url() -> None:
+    proposal = shusuo_intents.build_proposal(
+        "评论 https://www.reddit.com/r/test/comments/abc123/title/"
+    )
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "tikhub_reddit_post_comments"
+    assert proposal.params["post_id"] == "abc123"
+
+
+def test_intent_comment_parses_youtube_url() -> None:
+    proposal = shusuo_intents.build_proposal(
+        "评论 https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    )
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "tikhub_youtube_video_comments"
+    assert proposal.params["video_id"] == "dQw4w9WgXcQ"
+
+
+def test_intent_price_accepts_asin() -> None:
+    proposal = shusuo_intents.build_proposal("价格 B000000001")
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "apify_amazon_price_tracker"
+    assert proposal.params["products"] == ["https://www.amazon.com/dp/B000000001"]
+
+
+def test_intent_unknown_platform_returns_hint() -> None:
+    result = shusuo_intents.build_proposal("账号 facebook nike")
+    assert isinstance(result, str)
+    assert "tiktok" in result
+
+
+async def test_confirm_executes_pending_proposal(monkeypatch) -> None:
+    monkeypatch.setattr(shusuo_intents, "_PENDING", {})
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"keyword": "AI", "max_items": 3},
+        title="Reddit 搜索",
+    )
+    shusuo_intents.set_pending("chat-1", proposal)
+
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    async def fake_collect(endpoint_type, params):
+        calls.append((endpoint_type, params))
+        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+
+    monkeypatch.setattr(shusuo_capabilities, "collect", fake_collect)
+    reply = await commands.execute(commands.Command("confirm"), context_key="chat-1")
+    assert calls == [("tikhub_reddit_search", {"keyword": "AI", "max_items": 3})]
+    assert reply.text == "采集完成"
+
+
+async def test_confirm_without_pending_returns_hint() -> None:
+    shusuo_intents.clear_pending("chat-empty")
+    reply = await commands.execute(commands.Command("confirm"), context_key="chat-empty")
+    assert "没有待确认" in reply.text
+
+
+def test_intent_proposal_reply_requires_confirmation() -> None:
+    proposal = shusuo_intents.build_proposal("热点 x")
+    assert not isinstance(proposal, str)
+    text = shusuo_intents.proposal_reply(proposal)
+    assert "确认" in text
+    assert "tikhub_x_trending" in text
