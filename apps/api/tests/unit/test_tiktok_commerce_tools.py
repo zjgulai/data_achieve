@@ -9,6 +9,7 @@ import pytest
 
 from data_intelligence_hub.services.tiktok_tools import (
     TOOL_SPECS,
+    _canonicalize_commerce_profile,
     _canonicalize_product,
     run_tiktok_tool,
     tiktok_creator_commerce,
@@ -69,6 +70,42 @@ def test_apify_product_raw_is_flattened() -> None:
     assert out["review_count"] == 253
     assert out["shop_name"] == "Momcozy"
     assert out["free_shipping"] is True
+
+
+def test_apify_commerce_profile_is_flattened() -> None:
+    record = {
+        "_tool_role": "commerce_profile",
+        "raw": {
+            "username": "dealswithty",
+            "nickname": "Ty",
+            "region": "US",
+            "stats": {
+                "gmv": {"total": "1098437.17", "currency": "USD"},
+                "gpm": {"amount": 41.332},
+                "unitsSold": 12428,
+                "followers": {"total": 151353},
+                "avgViews": {"video": 5022},
+                "avgLikes": {"video": 22},
+                "avgComments": {"video": 1},
+                "avgShares": {"video": 4},
+                "engagementRate": {"video": 0.9},
+                "avgCommission": {"value": 7.5},
+                "postRate": 44.56,
+                "rating": "5.0",
+                "promotedProducts": 212,
+                "totalBrandCollaborations": 48,
+                "contentFrequency": {"videos": 187},
+            },
+        },
+    }
+    out = _canonicalize_commerce_profile(record)
+    assert out["unique_id"] == "dealswithty"
+    assert out["follower_count"] == 151353
+    assert out["gmv_amount"] == 1098437.17
+    assert out["units_sold"] == 12428
+    assert out["avg_commission_rate"] == 7.5
+    assert out["avg_views"] == 5022
+    assert out["promoted_product_count"] == 212
 
 
 def test_commerce_tools_are_registered() -> None:

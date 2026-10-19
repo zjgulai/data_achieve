@@ -246,14 +246,25 @@ def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
                 str(raw.get("original_price") or "").split(" - ")[0]
             ),
             "currency": "USD" if "$" in prices else raw.get("currency"),
-            "sale_count": _number(raw.get("total_sale_cnt")),
-            "sale_count_30d": _number(raw.get("total_sale_30d_cnt")),
-            "gmv_amount_30d": _money_field(raw.get("total_sale_gmv_30d_amt")),
+            "sale_count": _number(
+                raw.get("total_sale_cnt") or raw.get("sale_cnt")
+            ),
+            "sale_count_30d": _number(
+                raw.get("total_sale_30d_cnt") or raw.get("sale_30d_cnt")
+            ),
+            "gmv_amount_30d": _money_field(
+                raw.get("total_sale_gmv_30d_amt") or raw.get("gmv_30d_amt")
+            ),
             "commission_rate": _number(raw.get("commission")),
+            "stock_count": _number(raw.get("total_stock_cnt")),
             "review_count": _number(raw.get("review_count")),
             "rating": _number(raw.get("product_rating")),
+            "description": raw.get("product_desc"),
+            "category_path": raw.get("categories"),
             "seller_id": seller.get("seller_id") or seller.get("id"),
-            "shop_name": seller.get("shop_name") or seller.get("name"),
+            "shop_name": seller.get("shop_name")
+            or seller.get("seller_name")
+            or seller.get("name"),
             "shop_id": seller.get("shop_id"),
             "product_url": raw.get("product_url")
             or raw.get("seo_url")
@@ -274,10 +285,89 @@ def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _canonicalize_commerce_profile(record: dict[str, Any]) -> dict[str, Any]:
+    raw = record.get("raw")
+    if not isinstance(raw, dict):
+        return record
+    stats = raw.get("stats")
+    stats = stats if isinstance(stats, dict) else {}
+    gmv = stats.get("gmv") if isinstance(stats.get("gmv"), dict) else {}
+    gpm = stats.get("gpm") if isinstance(stats.get("gpm"), dict) else {}
+    followers = (
+        stats.get("followers") if isinstance(stats.get("followers"), dict) else {}
+    )
+    avg_views = (
+        stats.get("avgViews") if isinstance(stats.get("avgViews"), dict) else {}
+    )
+    avg_likes = (
+        stats.get("avgLikes") if isinstance(stats.get("avgLikes"), dict) else {}
+    )
+    avg_comments = (
+        stats.get("avgComments") if isinstance(stats.get("avgComments"), dict) else {}
+    )
+    avg_shares = (
+        stats.get("avgShares") if isinstance(stats.get("avgShares"), dict) else {}
+    )
+    engagement = (
+        stats.get("engagementRate")
+        if isinstance(stats.get("engagementRate"), dict)
+        else {}
+    )
+    commission = (
+        stats.get("avgCommission")
+        if isinstance(stats.get("avgCommission"), dict)
+        else {}
+    )
+    frequency = (
+        stats.get("contentFrequency")
+        if isinstance(stats.get("contentFrequency"), dict)
+        else {}
+    )
+    out = dict(record)
+    out.update(
+        {
+            "creator_id": raw.get("id"),
+            "unique_id": raw.get("username"),
+            "nickname": raw.get("nickname"),
+            "avatar_url": raw.get("avatar"),
+            "signature": raw.get("bio"),
+            "region": raw.get("region"),
+            "follower_count": _number(followers.get("total")),
+            "gmv_amount": _money_field(gmv.get("total")),
+            "currency": gmv.get("currency"),
+            "units_sold": _number(stats.get("unitsSold")),
+            "gpm_amount": _money_field(gpm.get("amount")),
+            "avg_commission_rate": _number(commission.get("value")),
+            "brand_collaboration_count": _number(
+                stats.get("totalBrandCollaborations")
+            ),
+            "promoted_product_count": _number(stats.get("promotedProducts")),
+            "avg_views": _number(avg_views.get("video")),
+            "avg_likes": _number(avg_likes.get("video")),
+            "avg_comments": _number(avg_comments.get("video")),
+            "avg_shares": _number(avg_shares.get("video")),
+            "engagement_rate": _number(engagement.get("video")),
+            "content_frequency": _number(frequency.get("videos")),
+            "post_rate": _number(stats.get("postRate")),
+            "rating": _number(stats.get("rating")),
+            "promotion_performance_score": _number(
+                stats.get("promotionPerformanceScore")
+            ),
+            "top_brands": stats.get("topBrands"),
+            "category_list": stats.get("categoryList"),
+            "audience_json": followers.get("topDemographics"),
+            "gmv_distribution_json": stats.get("gmvDistribution"),
+        }
+    )
+    return out
+
+
 def _canonicalize_tool_record(record: dict[str, Any]) -> dict[str, Any]:
     role = record.get("_tool_role")
     if role == "product":
         return _canonicalize_product(record)
+    if role == "commerce_profile":
+        return _canonicalize_commerce_profile(record)
     return record
 
 

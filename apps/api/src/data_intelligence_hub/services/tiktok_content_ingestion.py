@@ -819,6 +819,7 @@ def _commerce_shop_identity(
     shop_name = (
         _pick(content, "shop_name", "seller_name")
         or seller.get("shop_name")
+        or seller.get("seller_name")
         or seller.get("name")
         or (seller if isinstance(seller, str) else None)
     )
