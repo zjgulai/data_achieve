@@ -25,6 +25,7 @@ from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services.tiktok_content_backfill import (
     BackfillFilters,
+    _load_runs,
     backfill_tiktok_content,
 )
 

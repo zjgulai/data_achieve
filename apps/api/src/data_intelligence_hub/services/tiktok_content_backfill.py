@@ -248,8 +248,8 @@ async def _load_runs(
         query = query.where(TaskRun.created_at >= filters.since)
     if filters.until is not None:
         query = query.where(TaskRun.created_at <= filters.until)
-    limit = filters.limit if filters.limit is not None else batch_size
-    query = query.limit(limit)
+    if filters.limit is not None:
+        query = query.limit(filters.limit)
     result = await session.execute(query)
     return list(result.all())
 
