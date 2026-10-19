@@ -8,11 +8,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections import OrderedDict
 from typing import Any
 
-import structlog
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 from fastapi.responses import JSONResponse
 
@@ -20,7 +20,7 @@ from . import commands, lark_client
 from .config import get_shushuo_config
 from .crypto import FeishuCryptoError, decrypt_event, verify_signature
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["shusuo"])
 
@@ -87,8 +87,8 @@ async def shusuo_webhook(
     if "encrypt" in envelope:
         if not config.encrypt_enabled:
             logger.error(
-                "shusuo_webhook_encrypted_but_no_key",
-                encrypted_length=len(str(envelope.get("encrypt", ""))),
+                "shusuo_webhook_encrypted_but_no_key encrypted_length=%d",
+                len(str(envelope.get("encrypt", ""))),
             )
             return _json({"code": 400, "msg": "encrypt key is not configured"}, 400)
         if x_lark_signature and not verify_signature(
@@ -103,7 +103,7 @@ async def shusuo_webhook(
         try:
             envelope = decrypt_event(str(envelope["encrypt"]), config.encrypt_key)
         except FeishuCryptoError as exc:
-            logger.warning("shusuo_webhook_decrypt_failed", error=str(exc))
+            logger.warning("shusuo_webhook_decrypt_failed: %s", exc)
             return _json({"code": 400, "msg": "decrypt failed"}, 400)
 
     if envelope.get("type") == "url_verification":
@@ -125,7 +125,7 @@ async def shusuo_webhook(
             return _json({"code": 403, "msg": "invalid verification token"}, 403)
 
     if config.app_id and header.get("app_id") and header.get("app_id") != config.app_id:
-        logger.warning("shusuo_webhook_other_app", app_id=header.get("app_id"))
+        logger.warning("shusuo_webhook_other_app app_id=%s", header.get("app_id"))
         return _json({"code": 403, "msg": "unexpected app"}, 403)
 
     event_id = str(header.get("event_id", ""))
@@ -141,9 +141,9 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         header = envelope.get("header") or {}
         event_type = str(header.get("event_type", ""))
         logger.info(
-            "shusuo_event_received",
-            event_type=event_type,
-            event_id=str(header.get("event_id", "")),
+            "shusuo_event_received event_type=%s event_id=%s",
+            event_type,
+            header.get("event_id", ""),
         )
         if event_type != "im.message.receive_v1":
             return
@@ -166,6 +166,12 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             )
             return
 
+        logger.info(
+            "shusuo_message_received message_type=%s chat_id=%s open_id=%s",
+            message.get("message_type"),
+            chat_id,
+            open_id,
+        )
         text = _extract_text(message)
         if not text:
             await lark_client.reply_text(
@@ -180,14 +186,14 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             await lark_client.reply_text(message_id, reply.ack)
         await lark_client.reply_text(message_id, _truncate(reply.text))
         logger.info(
-            "shusuo_command_handled",
-            command=command.name,
-            argument=command.argument,
-            chat_id=chat_id,
-            open_id=open_id,
+            "shusuo_command_handled command=%s argument=%s chat_id=%s open_id=%s",
+            command.name,
+            command.argument,
+            chat_id,
+            open_id,
         )
     except Exception as exc:  # noqa: BLE001 - webhook 必须吞掉异常，避免飞书无限重试
-        logger.exception("shusuo_event_failed", error=str(exc))
+        logger.exception("shusuo_event_failed: %s", exc)
 
 
 def _extract_text(message: dict[str, Any]) -> str:

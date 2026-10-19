@@ -8,13 +8,12 @@
 
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any
-
-import structlog
 
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
@@ -29,7 +28,7 @@ from data_intelligence_hub.platform_packages.status import EndpointAvailability
 
 from .config import get_shushuo_config
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 _STATUS_LABELS = {
     "verified": "可用",
@@ -68,7 +67,7 @@ async def live_status() -> dict[str, EndpointAvailability]:
         async with async_session_factory() as session:
             response = await get_provider_status(session)
     except Exception as exc:  # noqa: BLE001 - 状态不可用时退回静态目录
-        logger.warning("shusuo_live_status_failed", error=str(exc))
+        logger.warning("shusuo_live_status_failed: %s", exc)
         return {}
     items = {item.endpoint_type: item for item in response.endpoints}
     _status_cache["at"] = now
@@ -308,7 +307,7 @@ async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:
     try:
         result = await collect_capability(endpoint_type, project_id, params)
     except Exception as exc:  # noqa: BLE001 - 采集端错误要回给用户，不要吞掉
-        logger.exception("shushuo_collect_failed", endpoint_type=endpoint_type)
+        logger.exception("shushuo_collect_failed endpoint_type=%s", endpoint_type)
         return CollectOutcome(False, f"采集失败：{type(exc).__name__}: {exc}")
 
     if result.status == "success" and result.records_count > 0:
