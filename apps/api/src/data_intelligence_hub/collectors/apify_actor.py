@@ -30,6 +30,9 @@ from data_intelligence_hub.collectors.outbound_policy import assert_collector_al
 
 APIFY_BASE_URL = "https://api.apify.com/v2"
 APIFY_TIMEOUT = 30.0
+# 服务层默认预算（collector_service.DEFAULT_COLLECTION_TIMEOUT_SECONDS = 660s）
+# 必须大于本值。否则外层 asyncio.wait_for 先取消 collect()，
+# 调用方只拿到 collection_timeout，拿不到这里的 apify_run_timeout。
 APIFY_RUN_WAIT_TIMEOUT = 600.0   # seconds
 APIFY_POLL_INTERVAL = 5.0        # seconds between status polls
 APIFY_MAX_ITEMS_LIMIT = 1000

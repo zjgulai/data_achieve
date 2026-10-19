@@ -474,6 +474,96 @@ _TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
 })
 
 
+# endpoint_type → 必填参数组。
+# 外层每个元组是一组候选键：组内任意一个非空即可，组与组之间全部必填。
+# 这张表按官方 OpenAPI 与 _build_params 的实际取值键共同维护。
+_TIKHUB_REQUIRED_PARAMS: dict[str, tuple[tuple[str, ...], ...]] = {
+    "tikhub_tiktok_video_search": (("keyword",),),
+    "tikhub_tiktok_user_posts": (("sec_user_id", "unique_id", "username"),),
+    "tikhub_tiktok_hashtag_posts": (("ch_id", "hashtag_id"),),
+    "tikhub_instagram_user_posts": (("user_id",),),
+    "tikhub_instagram_search": (("keyword",),),
+    "tikhub_xiaohongshu_search": (("keyword",),),
+    "tikhub_youtube_search": (("keyword", "query"),),
+    "tikhub_youtube_channel_videos": (("channel_id",),),
+    "tikhub_reddit_search": (("keyword", "query"),),
+    "tikhub_reddit_subreddit_posts": (("subreddit",),),
+    "tikhub_x_search": (("keyword", "query"),),
+    "tikhub_x_user_tweets": (("username", "screen_name"),),
+    "tikhub_douyin_video_search": (("keyword",),),
+    "tikhub_douyin_user_posts": (("sec_user_id", "user_id"),),
+    "tikhub_douyin_hot_search": (),
+    "tikhub_douyin_comments": (("aweme_id", "video_id"),),
+    "tikhub_douyin_brand_hot_search": (),
+    "tikhub_bilibili_video_search": (("keyword",),),
+    "tikhub_bilibili_user_videos": (("mid", "uid", "user_id"),),
+    "tikhub_bilibili_comments": (("bvid", "video_id"),),
+    "tikhub_weibo_search": (("keyword", "query"),),
+    "tikhub_weibo_user_posts": (("uid", "user_id"),),
+    "tikhub_kuaishou_search": (("keyword",),),
+    "tikhub_kuaishou_user_posts": (("user_id", "userId"),),
+    "tikhub_wechat_search": (("keyword",),),
+    "tikhub_wechat_channels_video": (("username", "video_id"),),
+    "tikhub_zhihu_search": (("keyword",),),
+    "tikhub_zhihu_question_answers": (("question_id",),),
+    "tikhub_youtube_video_search": (("keyword", "query"),),
+    "tikhub_threads_search": (("keyword", "query"),),
+    "tikhub_threads_user_posts": (("user_id", "username"),),
+    "tikhub_threads_post_comments": (("post_id",),),
+    "tikhub_linkedin_user_posts": (("url", "username"),),
+    "tikhub_linkedin_company_profile": (("url", "company_username", "company_name"),),
+    "tikhub_linkedin_company_posts": (("url", "company_username", "company_name"),),
+    "tikhub_linkedin_search_jobs": (("keyword", "keywords"),),
+    "tikhub_linkedin_job_detail": (("url", "job_id"),),
+    "tikhub_linkedin_post_comments": (("urn", "post_urn", "post_id"),),
+    "tikhub_lemon8_search": (("keyword", "query"),),
+    "tikhub_lemon8_user_posts": (("user_id", "username"),),
+    "tikhub_lemon8_trending": (),
+    "tikhub_tiktok_ads_search": (("material_id",),),
+    "tikhub_tiktok_top_ads": (),
+    "tikhub_tiktok_ads_detail": (("ads_id", "ad_id"),),
+    "tikhub_tiktok_ads_keyword_suggest": (("keyword", "query"),),
+    "tikhub_tiktok_shop_products": (("keyword", "search_word"),),
+    "tikhub_tiktok_creator_info": (("creator_uid",),),
+    "tikhub_tiktok_creator_insights": (),
+    "tikhub_tiktok_creator_insights_trend": (),
+    "tikhub_tiktok_creator_account_health": (),
+    "tikhub_tiktok_live_search": (("keyword",),),
+    "tikhub_tiktok_live_room_detail": (("room_id",),),
+    "tikhub_tiktok_live_user": (("creator_uid",),),
+    "tikhub_youtube_trending": (),
+    "tikhub_reddit_trending": (),
+    "tikhub_x_trending": (),
+    "tikhub_tiktok_user_followers": (("sec_user_id", "unique_id"),),
+    "tikhub_instagram_user_followers": (("user_id",),),
+    "tikhub_x_user_followers": (("username", "screen_name"),),
+    "tikhub_instagram_post_comments": (("code_or_url", "shortcode", "post_id"),),
+    "tikhub_youtube_video_comments": (("video_id",),),
+    "tikhub_reddit_post_comments": (("post_id",),),
+}
+
+
+def _param_has_value(value: Any) -> bool:
+    """参数是否有值。None、空字符串、纯空白都算缺失。"""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip() != ""
+    return True
+
+
+def _missing_required_params(config: dict[str, Any], endpoint_type: str) -> list[str]:
+    """返回该端点缺失的必填参数说明。
+
+    每个候选组写进列表一次，组内用 " or " 连接。
+    """
+    missing: list[str] = []
+    for alternatives in _TIKHUB_REQUIRED_PARAMS.get(endpoint_type, ()):
+        if not any(_param_has_value(config.get(key)) for key in alternatives):
+            missing.append(" or ".join(alternatives))
+    return missing
+
+
 # ---------------------------------------------------------------------------
 # Response extraction
 # ---------------------------------------------------------------------------
@@ -1489,9 +1579,9 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "user_id": str(config.get("mid") or config.get("uid") or config.get("user_id") or ""),
         }
     if endpoint_type == "tikhub_bilibili_comments":
-        return {
-            "bvid": config.get("bvid") or config.get("video_id") or "",
-        }
+        # 上游 app 端点的字段名是 bv_id。旧代码发 bvid，上游直接忽略。
+        bvid = config.get("bvid") or config.get("video_id") or ""
+        return {"bv_id": bvid}
     if endpoint_type == "tikhub_weibo_search":
         return {
             "query": config.get("keyword") or config.get("query") or "",
@@ -1515,7 +1605,8 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
         }
     if endpoint_type == "tikhub_wechat_channels_video":
         return {
-            "username": config.get("username") or "",
+            # 上游 body 字段叫 username，部分源配置用 video_id 存同一个 finder 值。
+            "username": config.get("username") or config.get("video_id") or "",
         }
         return {
             "keyword": config.get("keyword") or "",
@@ -1589,7 +1680,8 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_tiktok_shop_products":
         return {"search_word": config.get("keyword") or config.get("search_word") or ""}
     if endpoint_type == "tikhub_tiktok_creator_info":
-        return {"creator_uid": config.get("creator_uid") or config.get("unique_id") or config.get("username") or ""}
+        # 上游必填 creator_uid（数字 uid）。unique_id 是账号 handle，不能顶替。
+        return {"creator_uid": config.get("creator_uid") or ""}
     if endpoint_type == "tikhub_tiktok_creator_insights":
         return {"keyword": config.get("keyword") or config.get("unique_id") or ""}
     if endpoint_type == "tikhub_tiktok_creator_insights_trend":
@@ -1601,7 +1693,8 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_tiktok_live_room_detail":
         return {"room_id": config.get("room_id") or ""}
     if endpoint_type == "tikhub_tiktok_live_user":
-        return {"creator_uid": config.get("creator_uid") or config.get("unique_id") or ""}
+        # 与 creator_info 共用上游端点，同样只接受数字 creator_uid。
+        return {"creator_uid": config.get("creator_uid") or ""}
     if endpoint_type == "tikhub_youtube_trending":
         return {"search_query": config.get("keyword") or "trending"}
     if endpoint_type == "tikhub_reddit_trending":
@@ -1649,6 +1742,11 @@ class TikHubSocialCollector(BaseCollector):
             raise CollectorError(
                 f"tikhub_endpoint_type_unknown: {endpoint_type!r}. "
                 f"Supported: {sorted(TIKHUB_ENDPOINT_MAP)}"
+            )
+        missing = _missing_required_params(self.config, endpoint_type)
+        if missing:
+            raise CollectorError(
+                f"tikhub_missing_param: {endpoint_type} requires {', '.join(missing)}"
             )
         max_items_raw = self.config.get("max_items")
         max_items = min(

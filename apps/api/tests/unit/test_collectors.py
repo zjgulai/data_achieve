@@ -13,6 +13,7 @@ from data_intelligence_hub.collectors.base import (
     HTTP_TIMEOUT_SECONDS,
     HTTP_USER_AGENT,
     CollectorError,
+    collector_http_error_message,
 )
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
@@ -778,3 +779,43 @@ async def test_generic_web_collector_classifies_connection_failure() -> None:
         collector = GenericWebCollector({"url": "https://example.com"}, client)
         with pytest.raises(CollectorError, match="http_connection_failed"):
             await collector.collect()
+
+
+def _http_status_error(status_code: int, body: str) -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", "https://example.com/resource")
+    response = httpx.Response(status_code, text=body, request=request)
+    return httpx.HTTPStatusError("upstream error", request=request, response=response)
+
+
+@pytest.mark.parametrize(
+    ("status_code", "prefix"),
+    [
+        (403, "http_forbidden: upstream returned 403"),
+        (404, "http_not_found: upstream returned 404"),
+        (503, "http_upstream_error: upstream returned 503"),
+    ],
+)
+def test_collector_http_error_message_keeps_response_body(
+    status_code: int, prefix: str
+) -> None:
+    body = '{"type":"WAF_BLOCK","detail":"request blocked by firewall"}'
+
+    message = collector_http_error_message(_http_status_error(status_code, body))
+
+    assert message.startswith(prefix)
+    assert '{"type":"WAF_BLOCK"' in message
+    assert len(message) <= 500
+
+
+def test_collector_http_error_message_truncates_long_response_body() -> None:
+    message = collector_http_error_message(_http_status_error(403, "x" * 2000))
+
+    assert message.startswith("http_forbidden: upstream returned 403 | ")
+    assert len(message) <= 500
+
+
+@pytest.mark.parametrize("body", ["", "   \n  "])
+def test_collector_http_error_message_omits_empty_response_body(body: str) -> None:
+    message = collector_http_error_message(_http_status_error(403, body))
+
+    assert message == "http_forbidden: upstream returned 403"

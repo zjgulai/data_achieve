@@ -72,7 +72,7 @@ class GitHubRepoCollector(BaseCollector):
             async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
-            if str(exc) == "http_not_found: upstream returned 404":
+            if str(exc).startswith("http_not_found:"):
                 return None
             raise
 
@@ -84,7 +84,7 @@ class GitHubRepoCollector(BaseCollector):
             async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as client:
                 return await _fetch_json(client, url)
         except CollectorError as exc:
-            if str(exc) == "http_not_found: upstream returned 404":
+            if str(exc).startswith("http_not_found:"):
                 return None
             raise
 

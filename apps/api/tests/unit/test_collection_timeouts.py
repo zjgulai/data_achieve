@@ -34,6 +34,20 @@ class TestCollectionTimeoutSeconds:
     def test_missing_config_uses_global_default(self):
         assert _collection_timeout_seconds(None) == DEFAULT_COLLECTION_TIMEOUT_SECONDS
 
+    def test_default_budget_outlasts_the_apify_inner_wait(self):
+        """服务层默认预算必须长于 Apify 内层自等。
+
+        APIFY_RUN_WAIT_TIMEOUT 默认 600s。服务层若更短（旧值 300s），
+        外层 asyncio.wait_for 先取消 collect()，调用方只拿到
+        collection_timeout，拿不到 apify_run_timeout 结构化错误。
+        """
+        from data_intelligence_hub.collectors.apify_actor import APIFY_RUN_WAIT_TIMEOUT
+
+        assert DEFAULT_COLLECTION_TIMEOUT_SECONDS > APIFY_RUN_WAIT_TIMEOUT, (
+            f"服务层默认 {DEFAULT_COLLECTION_TIMEOUT_SECONDS}s 必须长于 "
+            f"Apify 内层自等 {APIFY_RUN_WAIT_TIMEOUT}s"
+        )
+
     @pytest.mark.parametrize("endpoint_type", sorted(SLOW_ENDPOINT_TIMEOUT_SECONDS))
     def test_slow_endpoints_get_their_own_default(self, endpoint_type: str):
         assert _collection_timeout_seconds({"endpoint_type": endpoint_type}) == (

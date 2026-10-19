@@ -34,11 +34,17 @@ from data_intelligence_hub.services.signal_service import (
 )
 from data_intelligence_hub.services.task_schedule_policy import update_retry_state_after_run
 
-DEFAULT_COLLECTION_TIMEOUT_SECONDS = 300.0
+# The service budget must stay above the Apify collector's inner wait
+# (APIFY_RUN_WAIT_TIMEOUT = 600s in collectors/apify_actor.py). If the service
+# budget is shorter, asyncio.wait_for cancels collect() first. The caller then
+# sees only `collection_timeout`, while the Apify run keeps going and billing.
+# The 60s margin covers the start-run POST (APIFY_TIMEOUT = 30s) and the 5s
+# poll interval, so the collector can return its own structured timeout.
+DEFAULT_COLLECTION_TIMEOUT_SECONDS = 660.0
 MAX_COLLECTION_TIMEOUT_SECONDS = 1800.0
 MIN_COLLECTION_TIMEOUT_SECONDS = 0.1
 
-# Endpoints whose scans routinely run past the 300s default, measured on the two
+# Endpoints whose scans routinely run past the default budget, measured on the two
 # production hosts on 2026-10-13: aliens_eye_selfcheck 444s and the three
 # spiderfoot scans >300s on the slower (domestic) host, aliens_eye_recurse 252s.
 #

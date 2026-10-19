@@ -100,6 +100,22 @@ def require_text(config: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
+HTTP_ERROR_BODY_MAX_CHARS = 500
+
+
+def _http_error_with_body(prefix: str, response: httpx.Response) -> str:
+    """在错误前缀后追加响应体片段。响应体为空时只返回前缀。"""
+    body = response.text
+    if not body:
+        return prefix
+    separator = " | "
+    body_limit = HTTP_ERROR_BODY_MAX_CHARS - len(prefix) - len(separator)
+    body_hint = body[:body_limit].strip().replace("\n", " ")
+    if not body_hint:
+        return prefix
+    return f"{prefix}{separator}{body_hint}"
+
+
 def collector_http_error_message(exc: httpx.HTTPError) -> str:
     if isinstance(exc, httpx.TimeoutException):
         return f"http_timeout: upstream did not respond within {HTTP_TIMEOUT_SECONDS:g}s"
@@ -110,11 +126,13 @@ def collector_http_error_message(exc: httpx.HTTPError) -> str:
         if status_code == 429:
             return f"http_rate_limited: upstream returned 429{retry_hint}"
         if status_code == 404:
-            return "http_not_found: upstream returned 404"
+            return _http_error_with_body("http_not_found: upstream returned 404", exc.response)
         if status_code == 403:
-            return "http_forbidden: upstream returned 403"
+            return _http_error_with_body("http_forbidden: upstream returned 403", exc.response)
         if status_code >= 500:
-            return f"http_upstream_error: upstream returned {status_code}"
+            return _http_error_with_body(
+                f"http_upstream_error: upstream returned {status_code}", exc.response
+            )
         # 400 的响应体是唯一的诊断线索（Apify 的 invalid-input 会指明是哪个字段），
         # 截太短会把关键信息砍掉：120 字符时 "Items in input.productUrls at positions…"
         # 正好断在原因之前（2026-10-09 实测）。

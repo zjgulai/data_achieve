@@ -14,8 +14,10 @@ import pytest
 
 from data_intelligence_hub.collectors.base import CollectorError, CollectorRawRecord
 from data_intelligence_hub.collectors.tikhub_social import (
+    _TIKHUB_REQUIRED_PARAMS,
     TIKHUB_ENDPOINT_MAP,
     TikHubSocialCollector,
+    _build_params,
     _extract_hashtags,
     _extract_items,
     _normalize_instagram_post,
@@ -158,17 +160,156 @@ def test_validate_config_valid_tiktok_search() -> None:
 
 def test_validate_config_max_items_capped_at_100() -> None:
     collector = TikHubSocialCollector(
-        config={"endpoint_type": "tikhub_tiktok_video_search", "max_items": 9999}
+        config={
+            "endpoint_type": "tikhub_tiktok_video_search",
+            "keyword": "test",
+            "max_items": 9999,
+        }
     )
     cfg = collector.validate_config()
     assert cfg["max_items"] == 100
 
 
+def _minimal_valid_config(endpoint_type: str) -> dict[str, Any]:
+    """按必填表给每个端点填第一个候选键，其他校验条件保持为空。"""
+    config: dict[str, Any] = {"endpoint_type": endpoint_type}
+    for alternatives in _TIKHUB_REQUIRED_PARAMS[endpoint_type]:
+        config[alternatives[0]] = "probe-value"
+    return config
+
+
 def test_validate_config_all_endpoint_types_accepted() -> None:
     for endpoint_type in TIKHUB_ENDPOINT_MAP:
-        collector = TikHubSocialCollector(config={"endpoint_type": endpoint_type})
+        collector = TikHubSocialCollector(config=_minimal_valid_config(endpoint_type))
         cfg = collector.validate_config()
         assert cfg["endpoint_type"] == endpoint_type
+
+
+# 每个已修正的端点各一条：缺必填参数时必须在本地抛错，不发往上游。
+@pytest.mark.parametrize(
+    "endpoint_type",
+    [
+        "tikhub_wechat_channels_video",
+        "tikhub_tiktok_creator_info",
+        "tikhub_tiktok_live_user",
+        "tikhub_bilibili_comments",
+        "tikhub_reddit_subreddit_posts",
+        "tikhub_linkedin_user_posts",
+        "tikhub_linkedin_company_profile",
+        "tikhub_linkedin_company_posts",
+        "tikhub_linkedin_search_jobs",
+        "tikhub_linkedin_job_detail",
+        "tikhub_linkedin_post_comments",
+    ],
+)
+def test_validate_config_rejects_missing_required_param(endpoint_type: str) -> None:
+    collector = TikHubSocialCollector(config={"endpoint_type": endpoint_type})
+    with pytest.raises(CollectorError, match="tikhub_missing_param"):
+        collector.validate_config()
+
+
+@pytest.mark.parametrize(
+    ("endpoint_type", "key"),
+    [
+        ("tikhub_wechat_channels_video", "username"),
+        ("tikhub_tiktok_creator_info", "creator_uid"),
+        ("tikhub_tiktok_live_user", "creator_uid"),
+        ("tikhub_bilibili_comments", "bvid"),
+        ("tikhub_reddit_subreddit_posts", "subreddit"),
+        ("tikhub_linkedin_user_posts", "url"),
+        ("tikhub_linkedin_company_profile", "url"),
+        ("tikhub_linkedin_company_posts", "url"),
+        ("tikhub_linkedin_search_jobs", "keyword"),
+        ("tikhub_linkedin_job_detail", "job_id"),
+        ("tikhub_linkedin_post_comments", "urn"),
+    ],
+)
+def test_validate_config_rejects_empty_required_param(
+    endpoint_type: str, key: str
+) -> None:
+    collector = TikHubSocialCollector(config={"endpoint_type": endpoint_type, key: "  "})
+    with pytest.raises(CollectorError, match=key):
+        collector.validate_config()
+
+
+@pytest.mark.parametrize(
+    ("endpoint_type", "config"),
+    [
+        ("tikhub_wechat_channels_video", {"username": "v2_abc@finder"}),
+        ("tikhub_wechat_channels_video", {"video_id": "v2_abc@finder"}),
+        ("tikhub_tiktok_creator_info", {"creator_uid": "6555451606845243393"}),
+        ("tikhub_tiktok_live_user", {"creator_uid": "6555451606845243393"}),
+        ("tikhub_bilibili_comments", {"bvid": "BV18SCrBGE9E"}),
+        ("tikhub_reddit_subreddit_posts", {"subreddit": "python"}),
+        ("tikhub_linkedin_user_posts", {"username": "williamhgates"}),
+        ("tikhub_linkedin_company_profile", {"company_username": "microsoft"}),
+        ("tikhub_linkedin_company_posts", {"company_username": "microsoft"}),
+        ("tikhub_linkedin_search_jobs", {"keyword": "data engineer"}),
+        ("tikhub_linkedin_job_detail", {"job_id": "3768164426"}),
+        ("tikhub_linkedin_post_comments", {"post_urn": "7234567890123456"}),
+    ],
+)
+def test_validate_config_accepts_corrected_endpoints(
+    endpoint_type: str, config: dict[str, Any]
+) -> None:
+    collector = TikHubSocialCollector(config={"endpoint_type": endpoint_type, **config})
+    assert collector.validate_config()["endpoint_type"] == endpoint_type
+
+
+@pytest.mark.parametrize(
+    ("endpoint_type", "config", "expected"),
+    [
+        (
+            "tikhub_wechat_channels_video",
+            {"video_id": "v2_abc@finder"},
+            {"username": "v2_abc@finder"},
+        ),
+        (
+            "tikhub_tiktok_creator_info",
+            {"creator_uid": "6555451606845243393", "unique_id": "tiktok"},
+            {"creator_uid": "6555451606845243393"},
+        ),
+        (
+            "tikhub_tiktok_live_user",
+            {"creator_uid": "6555451606845243393", "unique_id": "tiktok"},
+            {"creator_uid": "6555451606845243393"},
+        ),
+        (
+            "tikhub_bilibili_comments",
+            {"bvid": "BV18SCrBGE9E"},
+            {"bv_id": "BV18SCrBGE9E"},
+        ),
+        (
+            "tikhub_reddit_subreddit_posts",
+            {"subreddit": "python"},
+            {"subreddit_name": "python"},
+        ),
+        (
+            "tikhub_linkedin_user_posts",
+            {"username": "williamhgates"},
+            {"url": "https://www.linkedin.com/in/williamhgates/"},
+        ),
+        (
+            "tikhub_linkedin_company_posts",
+            {"company_username": "microsoft"},
+            {"url": "https://www.linkedin.com/company/microsoft/"},
+        ),
+        (
+            "tikhub_linkedin_job_detail",
+            {"job_id": "3768164426"},
+            {"url": "https://www.linkedin.com/jobs/view/3768164426/"},
+        ),
+        (
+            "tikhub_linkedin_post_comments",
+            {"post_urn": "7234567890123456"},
+            {"urn": "7234567890123456"},
+        ),
+    ],
+)
+def test_build_params_maps_corrected_endpoints(
+    endpoint_type: str, config: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    assert _build_params({"endpoint_type": endpoint_type, **config}, max_items=10) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -515,7 +656,7 @@ async def test_collect_instagram_user_posts_mock() -> None:
     ):
         transport = _make_mock_transport(TIKHUB_INSTAGRAM_RESPONSE)
         collector = TikHubSocialCollector(
-            config={"endpoint_type": "tikhub_instagram_user_posts", "username": "momcozy_us"}
+            config={"endpoint_type": "tikhub_instagram_user_posts", "user_id": "11223344"}
         )
         import httpx as _httpx
         original_client = _httpx.AsyncClient
