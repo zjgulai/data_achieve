@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import capabilities, intents
+from . import capabilities, intents, llm
 
 HELP_TEXT = """数说 · 全域外部数据助手
 
@@ -183,6 +183,9 @@ async def execute(command: Command, context_key: str = "") -> Reply:
         intents.clear_pending(context_key)
         return Reply("已取消待确认的操作。")
     if command.name == "unknown":
+        answer = await llm.answer_question(command.argument)
+        if answer:
+            return Reply(answer)
         return Reply(
             "我没有识别这条指令。可以试试：\n"
             "- 帮助\n"

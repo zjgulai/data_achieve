@@ -405,3 +405,18 @@ def test_intent_proposal_reply_requires_confirmation() -> None:
     text = shusuo_intents.proposal_reply(proposal)
     assert "确认" in text
     assert "tikhub_x_trending" in text
+
+
+async def test_unknown_without_llm_key_returns_help(monkeypatch) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    reply = await commands.execute(commands.Command("unknown", "飞书会被墙挡吗"))
+    assert "帮助" in reply.text
+
+
+async def test_unknown_uses_llm_answer(monkeypatch) -> None:
+    async def fake_answer(question: str) -> str:
+        return f"回答：{question}"
+
+    monkeypatch.setattr(commands.llm, "answer_question", fake_answer)
+    reply = await commands.execute(commands.Command("unknown", "飞书会被墙挡吗"))
+    assert reply.text == "回答：飞书会被墙挡吗"
