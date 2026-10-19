@@ -78,6 +78,15 @@ def test_search_extracts_item_from_rows() -> None:
     assert record.content["video_id"] == "v1"
 
 
+def test_web_video_cover_can_be_a_string() -> None:
+    """Web API 的 video.cover 是 URL 字符串，不是 {url_list: [...]}。"""
+    item = _video_item()
+    item["video"] = {"duration": 15, "cover": "https://cover.example/x.jpg"}
+    record = _normalize_content_item(item, "search", "tikhub_tiktok_search_web")
+    assert record is not None
+    assert record.content["cover_url"] == "https://cover.example/x.jpg"
+
+
 def test_comments_normalize_reply_and_interaction() -> None:
     data = {
         "data": {

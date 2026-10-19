@@ -1013,21 +1013,31 @@ def _extract_hashtags(text: str) -> list[str]:
 def _normalize_tiktok_video(
     item: dict[str, Any], collector_type: str
 ) -> CollectorRawRecord | None:
-    video_id = (
-        item.get("aweme_id")
-        or item.get("id")
-        or (_safe_str((item.get("video") or {}).get("id")))
-    )
+    video_meta_raw = item.get("video")
+    video_meta: dict[str, Any] = video_meta_raw if isinstance(video_meta_raw, dict) else {}
+    video_id = item.get("aweme_id") or item.get("id") or _safe_str(video_meta.get("id"))
     if not isinstance(video_id, str) or not video_id.strip():
         return None
     video_id = video_id.strip()
 
     desc = str(item.get("desc") or item.get("text") or "")
-    author: dict[str, Any] = item.get("author") or {}
-    stats: dict[str, Any] = item.get("statistics") or item.get("stats") or {}
-    video_meta: dict[str, Any] = item.get("video") or {}
-    cover_urls: list[Any] = (video_meta.get("cover") or {}).get("url_list") or []
-    music: dict[str, Any] = item.get("music") or {}
+    author_raw = item.get("author")
+    author: dict[str, Any] = author_raw if isinstance(author_raw, dict) else {}
+    stats_raw = item.get("statistics") or item.get("stats")
+    stats: dict[str, Any] = stats_raw if isinstance(stats_raw, dict) else {}
+    music_raw = item.get("music")
+    music: dict[str, Any] = music_raw if isinstance(music_raw, dict) else {}
+    # Web API 的 cover 是 URL 字符串；App API 的是带 url_list 的对象。
+    cover = video_meta.get("cover")
+    if isinstance(cover, dict):
+        cover_urls: list[Any] = cover.get("url_list") or []
+    elif isinstance(cover, str) and cover:
+        cover_urls = [cover]
+    else:
+        cover_urls = []
+    cover_urls = cover_urls or video_meta.get("originCover") or video_meta.get("dynamicCover") or []
+    if isinstance(cover_urls, str):
+        cover_urls = [cover_urls]
     challenges: list[Any] = item.get("cha_list") or item.get("challenges") or []
     author_handle = _safe_str(
         author.get("unique_id") or author.get("uniqueId")
