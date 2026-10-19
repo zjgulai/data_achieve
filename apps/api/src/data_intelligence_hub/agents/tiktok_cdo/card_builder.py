@@ -139,20 +139,30 @@ def error_card(intent: TikTokIntent, error_msg: str) -> dict[str, Any]:
 def _format_record_line(rec: dict[str, Any], action: str, idx: int) -> str:
     """将单条记录格式化为 markdown 行。"""
     if action in ("search", "hashtag", "user_posts"):
-        desc = rec.get("desc", "")[:50]
-        plays = _fmt_num(rec.get("_plays", 0))
+        desc = str(rec.get("desc") or rec.get("text") or "")[:50]
+        plays = _fmt_num(rec.get("_plays", rec.get("play_count", 0)))
         er = rec.get("_engagement_rate", 0)
-        author = (rec.get("authorMeta") or {}).get("nickname", "")
+        author = (
+            (rec.get("authorMeta") or {}).get("nickname")
+            or rec.get("author_nickname")
+            or rec.get("author_username")
+            or ""
+        )
         return f"{idx}. **{desc}** | @{author} | 播放 {plays} | 互动率 {er}%"
 
     if action == "top_ads":
-        title = rec.get("ad_title", "")[:40]
+        title = str(rec.get("ad_title") or rec.get("text") or "")[:40]
         brand = rec.get("brand_name", "")
         eff = rec.get("_ad_efficiency", 0)
         return f"{idx}. **{title}** | {brand} | 效率分 {eff}"
 
     if action in ("creator", "followers"):
-        name = rec.get("nickname", "")
+        name = (
+            rec.get("nickname")
+            or rec.get("unique_id")
+            or rec.get("author_nickname")
+            or ""
+        )
         fans = _fmt_num(rec.get("follower_count", 0))
         er = rec.get("avg_engagement_rate", "")
         return f"{idx}. **{name}** | 粉丝 {fans} | 互动率 {er}"

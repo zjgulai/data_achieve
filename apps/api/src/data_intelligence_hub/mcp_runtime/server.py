@@ -310,6 +310,77 @@ async def tiktok_transcript(
         return result.as_dict()
 
 
+@mcp_server.tool(structured_output=True)
+async def tiktok_product_search(
+    context: Context,
+    project_id: str,
+    query: str,
+    region: str = "US",
+    limit: int = 20,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_product_search", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_product_search",
+            _parse_project_id(project_id),
+            {"query": query, "region": region, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_product_detail(
+    context: Context,
+    project_id: str,
+    product_id: str | None = None,
+    product_url: str | None = None,
+    region: str = "US",
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_product_detail", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_product_detail",
+            _parse_project_id(project_id),
+            {
+                "product_id": product_id,
+                "product_url": product_url,
+                "region": region,
+            },
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_product_reviews(
+    context: Context,
+    project_id: str,
+    product_id: str,
+    region: str = "US",
+    limit: int = 20,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_product_reviews", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_product_reviews",
+            _parse_project_id(project_id),
+            {"product_id": product_id, "region": region, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_creator_commerce(
+    context: Context,
+    project_id: str,
+    handle: str,
+    region: str = "US",
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_creator_commerce", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_creator_commerce",
+            _parse_project_id(project_id),
+            {"handle": handle, "region": region},
+        )
+        return result.as_dict()
+
+
 mcp_app = mcp_server.streamable_http_app(
     streamable_http_path="/",
     json_response=True,

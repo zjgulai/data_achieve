@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -24,6 +25,10 @@ TOOL_IDS = (
     "tiktok_creator_profile",
     "tiktok_creator_search",
     "tiktok_transcript",
+    "tiktok_product_search",
+    "tiktok_product_detail",
+    "tiktok_product_reviews",
+    "tiktok_creator_commerce",
 )
 
 TOOL_SPECS: dict[str, dict[str, Any]] = {
@@ -74,9 +79,50 @@ TOOL_SPECS: dict[str, dict[str, Any]] = {
         "description": "按视频 URL 提取字幕或转写。",
         "inputs": ["project_id", "video_urls", "limit?"],
     },
+    "tiktok_product_search": {
+        "label": "TikTok Shop 商品搜索",
+        "description": "按关键词搜索 Shop 商品，返回价格、销量、评分与店铺。",
+        "inputs": ["project_id", "query", "region?", "limit?"],
+    },
+    "tiktok_product_detail": {
+        "label": "TikTok Shop 商品详情",
+        "description": "按商品 ID 或 URL 获取商品详情、GMV、销量与 SKU。",
+        "inputs": ["project_id", "product_id?", "product_url?", "region?"],
+    },
+    "tiktok_product_reviews": {
+        "label": "TikTok Shop 商品评论",
+        "description": "按商品 ID 获取评论、评分与图片。",
+        "inputs": ["project_id", "product_id", "region?", "limit?"],
+    },
+    "tiktok_creator_commerce": {
+        "label": "TikTok 达人带货",
+        "description": "按达人 handle 获取带货主页与商业指标。",
+        "inputs": ["project_id", "handle", "region?"],
+    },
 }
 
 _VIDEO_ID_RE = re.compile(r"/video/(\d+)")
+
+
+_CURRENT_TOOL_CALL: ContextVar[dict[str, Any] | None] = ContextVar(
+    "tiktok_current_tool_call", default=None
+)
+
+
+def _summarize_params(params: dict[str, Any]) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for key, value in params.items():
+        if value is None:
+            continue
+        if any(secret in key.lower() for secret in ("token", "secret", "password", "key")):
+            continue
+        if isinstance(value, str) and len(value) > 200:
+            summary[key] = value[:200] + "…"
+        elif isinstance(value, list) and len(value) > 10:
+            summary[key] = value[:10]
+        else:
+            summary[key] = value
+    return summary
 
 
 @dataclass
@@ -88,10 +134,12 @@ class ToolResult:
     runs: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    tool_call_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "tool_id": self.tool_id,
+            "tool_call_id": self.tool_call_id,
             "status": self.status,
             "records": self.records,
             "records_count": self.records_count,
@@ -99,6 +147,25 @@ class ToolResult:
             "errors": self.errors,
             "metadata": self.metadata,
         }
+
+
+_TOOL_ROLE_BY_ENDPOINT = {
+    "tikhub_tiktok_user_profile_web": "profile",
+    "tikhub_tiktok_user_fans_web": "fan",
+    "tikhub_tiktok_user_posts_web": "video",
+    "tikhub_tiktok_search_web": "video",
+    "tikhub_tiktok_tag_posts_web": "video",
+    "tikhub_tiktok_video_detail": "video",
+    "tikhub_tiktok_comments_app": "comment",
+    "tikhub_tiktok_comment_replies_app": "comment",
+    "apify_tiktok_transcript_extractor": "transcript",
+    "tikhub_tiktok_shop_search_v2": "product",
+    "tikhub_tiktok_shop_hot_products": "product",
+    "apify_tiktok_shop_product_detail": "product",
+    "apify_tiktok_shop_search_scraper": "product",
+    "tikhub_tiktok_shop_reviews_v2": "review",
+    "apify_tiktok_shop_creators": "commerce_profile",
+}
 
 
 async def _fetch_records(task_run_id: uuid.UUID, limit: int) -> list[dict[str, Any]]:
@@ -117,7 +184,12 @@ async def _fetch_records(task_run_id: uuid.UUID, limit: int) -> list[dict[str, A
     records: list[dict[str, Any]] = []
     for raw in raw_records:
         if isinstance(raw.content, dict):
-            records.append(raw.content)
+            record = dict(raw.content)
+            endpoint = str(record.get("collector_type") or "")
+            role = _TOOL_ROLE_BY_ENDPOINT.get(endpoint)
+            if role:
+                record["_tool_role"] = role
+            records.append(record)
         elif isinstance(raw.content, list):
             records.append({"items": raw.content})
     return records
@@ -135,12 +207,18 @@ async def _collect(
     endpoint_type: str,
     params: dict[str, Any],
     limit: int,
+    *,
+    role: str = "primary",
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     # Lazy import breaks the mcp_runtime -> server -> tiktok_tools cycle.
     from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 
+    context = _CURRENT_TOOL_CALL.get()
+    tool_call = {**context, "role": role} if context else None
     try:
-        response = await collect_capability(endpoint_type, project_id, params)
+        response = await collect_capability(
+            endpoint_type, project_id, params, tool_call=tool_call
+        )
     except Exception as exc:
         return [], {
             "endpoint_type": endpoint_type,
@@ -149,10 +227,13 @@ async def _collect(
         }
     run = {
         "endpoint_type": endpoint_type,
+        "task_id": str(response.task_id),
         "run_id": str(response.task_run_id),
         "status": response.status,
         "records_count": response.records_count,
         "error": response.error_message,
+        "tool_call_id": context.get("tool_call_id") if context else None,
+        "role": role,
     }
     if response.status == "failed" and not response.records_count:
         return [], run
@@ -176,6 +257,7 @@ def _result(
         status = "partial_success" if errors else "success"
     else:
         status = "failed" if errors else "empty"
+    context = _CURRENT_TOOL_CALL.get()
     return ToolResult(
         tool_id=tool_id,
         status=status,
@@ -184,6 +266,7 @@ def _result(
         runs=runs,
         errors=errors,
         metadata=metadata or {},
+        tool_call_id=context.get("tool_call_id") if context else None,
     )
 
 
@@ -194,7 +277,7 @@ def _require_text(params: dict[str, Any], key: str) -> str:
     return value.strip()
 
 
-def _limit(params: dict[str, Any], default: int = 50, maximum: int = 200) -> int:
+def _limit(params: dict[str, Any], default: int = 50, maximum: int = 100) -> int:
     value = params.get("limit", default)
     try:
         parsed = int(value)
@@ -380,21 +463,27 @@ async def tiktok_creator_profile(
         1,
     )
     runs = [profile_run]
+    video_limit = _limit(
+        {"limit": params.get("video_limit", 20)}, default=20
+    )
     if params.get("include_videos", True) and sec_uid:
         videos, video_run = await _collect(
             project_id,
             "tikhub_tiktok_user_posts_web",
-            {"sec_user_id": sec_uid, "max_items": _limit(params, default=20)},
-            _limit(params, default=20),
+            {"sec_user_id": sec_uid, "max_items": video_limit},
+            video_limit,
         )
         runs.append(video_run)
         records.extend(videos)
     if params.get("include_fans") and sec_uid:
+        fan_limit = _limit(
+            {"limit": params.get("fan_limit", 50)}, default=50
+        )
         fans, fan_run = await _collect(
             project_id,
             "tikhub_tiktok_user_fans_web",
-            {"sec_user_id": sec_uid, "max_items": 50},
-            50,
+            {"sec_user_id": sec_uid, "max_items": fan_limit},
+            fan_limit,
         )
         runs.append(fan_run)
         records.extend(fans)
@@ -465,6 +554,93 @@ async def tiktok_transcript(
     return _result("tiktok_transcript", records, [run])
 
 
+async def tiktok_product_search(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    query = _require_text(params, "query")
+    region = str(params.get("region") or "US").upper()
+    limit = _limit(params, default=20)
+    records, run = await _collect(
+        project_id,
+        "apify_tiktok_shop_search_scraper",
+        {
+            "keyword": query,
+            "country_code": region,
+            "limit": min(limit, 10),
+            "page": int(params.get("page") or 1),
+        },
+        limit,
+    )
+    runs = [run]
+    if not records:
+        fallback, fallback_run = await _collect(
+            project_id,
+            "tikhub_tiktok_shop_search_v2",
+            {"search_word": query, "region": region, "offset": 0},
+            limit,
+        )
+        fallback_run["superseded_by"] = run.get("run_id")
+        runs.append(fallback_run)
+        records = fallback
+    return _result("tiktok_product_search", records, runs)
+
+
+async def tiktok_product_detail(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    product_id = str(params.get("product_id") or "").strip()
+    product_url = str(params.get("product_url") or "").strip()
+    region = str(params.get("region") or "US").upper()
+    if not product_url and product_id:
+        product_url = f"https://shop.tiktok.com/view/product/{product_id}"
+    if not product_url:
+        return ToolResult(
+            tool_id="tiktok_product_detail",
+            status="failed",
+            errors=["product_id_or_url_required"],
+        )
+    records, run = await _collect(
+        project_id,
+        "apify_tiktok_shop_product_detail",
+        {"url": product_url, "region": region, "maxItems": 1},
+        1,
+    )
+    return _result("tiktok_product_detail", records, [run])
+
+
+async def tiktok_product_reviews(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    product_id = _require_text(params, "product_id")
+    region = str(params.get("region") or "US").upper()
+    limit = _limit(params, default=20)
+    records, run = await _collect(
+        project_id,
+        "tikhub_tiktok_shop_reviews_v2",
+        {
+            "product_id": product_id,
+            "region": region,
+            "page_start": int(params.get("page_start") or 1),
+        },
+        limit,
+    )
+    return _result("tiktok_product_reviews", records, [run])
+
+
+async def tiktok_creator_commerce(
+    project_id: uuid.UUID, params: dict[str, Any]
+) -> ToolResult:
+    handle = _require_text(params, "handle").lstrip("@")
+    region = str(params.get("region") or "US").upper()
+    records, run = await _collect(
+        project_id,
+        "apify_tiktok_shop_creators",
+        {"username": handle, "region": region, "maxItems": 1},
+        1,
+    )
+    return _result("tiktok_creator_commerce", records, [run])
+
+
 TOOL_HANDLERS = {
     "tiktok_trend_rank": tiktok_trend_rank,
     "tiktok_hashtag_videos": tiktok_hashtag_videos,
@@ -474,6 +650,10 @@ TOOL_HANDLERS = {
     "tiktok_creator_profile": tiktok_creator_profile,
     "tiktok_creator_search": tiktok_creator_search,
     "tiktok_transcript": tiktok_transcript,
+    "tiktok_product_search": tiktok_product_search,
+    "tiktok_product_detail": tiktok_product_detail,
+    "tiktok_product_reviews": tiktok_product_reviews,
+    "tiktok_creator_commerce": tiktok_creator_commerce,
 }
 
 
@@ -485,7 +665,24 @@ async def run_tiktok_tool(
     handler = TOOL_HANDLERS.get(tool_id)
     if handler is None:
         raise ValueError(f"unknown_tiktok_tool: {tool_id}")
+    tool_call_id = f"tc_{uuid.uuid4().hex[:12]}"
+    spec = TOOL_SPECS.get(tool_id, {})
+    token = _CURRENT_TOOL_CALL.set(
+        {
+            "tool_call_id": tool_call_id,
+            "tool_id": tool_id,
+            "label": spec.get("label", tool_id),
+            "params": _summarize_params(params),
+        }
+    )
     try:
         return await handler(project_id, params)
     except ValueError as exc:
-        return ToolResult(tool_id=tool_id, status="failed", errors=[str(exc)])
+        return ToolResult(
+            tool_id=tool_id,
+            status="failed",
+            errors=[str(exc)],
+            tool_call_id=tool_call_id,
+        )
+    finally:
+        _CURRENT_TOOL_CALL.reset(token)

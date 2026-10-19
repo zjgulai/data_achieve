@@ -8,6 +8,7 @@ the same code works on PostgreSQL and on the SQLite unit-test path.
 from __future__ import annotations
 
 import uuid
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
@@ -27,6 +28,13 @@ from data_intelligence_hub.models.tiktok_content import (
     Video,
     VideoHashtag,
     VideoSnapshot,
+)
+
+
+# Backfill sets this flag so an older historical record never overwrites a
+# newer live observation. Normal collection keeps the existing overwrite path.
+BACKFILL_ONLY_IF_NEWER: ContextVar[bool] = ContextVar(
+    "tiktok_backfill_only_if_newer", default=False
 )
 
 
@@ -133,6 +141,12 @@ async def _upsert_master(
         session.add(obj)
     else:
         _check_tenant(obj, workspace_id, project_id)
+        if (
+            BACKFILL_ONLY_IF_NEWER.get()
+            and obj.last_updated_at is not None
+            and obj.last_updated_at > governance["captured_at"]
+        ):
+            return obj
         for key, value in clean_values.items():
             setattr(obj, key, value)
         for key, value in governance.items():

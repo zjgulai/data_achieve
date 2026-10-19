@@ -26,7 +26,10 @@ from data_intelligence_hub.collectors.outbound_policy import (
     assert_collector_allowed,
     is_policy_failure,
 )
-from data_intelligence_hub.collectors.tikhub_social import TIKHUB_CONTENT_ENDPOINT_MAP
+from data_intelligence_hub.collectors.tikhub_social import (
+    TIKHUB_COMMERCE_ENDPOINT_MAP,
+    TIKHUB_CONTENT_ENDPOINT_MAP,
+)
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -194,6 +197,9 @@ async def execute_collection_task(
                 + ingestion.trend_topics
                 + ingestion.video_hashtags
                 + ingestion.transcripts
+                + ingestion.product_snapshots
+                + ingestion.product_reviews
+                + ingestion.creator_commerce
             )
             logs.append(collector_log(
                 "tiktok_content_projected",
@@ -324,16 +330,40 @@ async def _ingest_tiktok_content_if_needed(
         task.collector_type == "tikhub_social"
         and endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP
     )
+    is_tikhub_commerce = (
+        task.collector_type == "tikhub_social"
+        and endpoint_type in TIKHUB_COMMERCE_ENDPOINT_MAP
+    )
     is_apify_transcript = (
         task.collector_type == "apify_actor"
         and endpoint_type == "apify_tiktok_transcript_extractor"
     )
-    if not (is_tikhub_content or is_apify_transcript):
+    is_apify_commerce = (
+        task.collector_type == "apify_actor"
+        and endpoint_type
+        in {
+            "apify_tiktok_shop_scraper",
+            "apify_tiktok_shop_product_detail",
+            "apify_tiktok_shop_search_v2",
+            "apify_tiktok_shop_search_scraper",
+            "apify_tiktok_shop_creators",
+        }
+    )
+    if not (
+        is_tikhub_content
+        or is_tikhub_commerce
+        or is_apify_transcript
+        or is_apify_commerce
+    ):
         return None
-    provider = "apify" if is_apify_transcript else "tikhub"
+    provider = "apify" if (is_apify_transcript or is_apify_commerce) else "tikhub"
     schema_version = (
-        "apify_tiktok_video.v1"
+        "apify_tiktok_commerce.v1"
+        if is_apify_commerce
+        else "apify_tiktok_video.v1"
         if is_apify_transcript
+        else "tikhub_tiktok_commerce.v1"
+        if is_tikhub_commerce
         else "tikhub_tiktok_content.v1"
     )
 
@@ -482,6 +512,8 @@ def _collector_config(source: Source, task: CollectionTask) -> dict[str, Any]:
     config = dict(source.config)
     if task.config:
         config.update(task.config)
+    # Server-owned run metadata must not reach a collector or an Actor input.
+    config.pop("tool_call", None)
     return config
 
 

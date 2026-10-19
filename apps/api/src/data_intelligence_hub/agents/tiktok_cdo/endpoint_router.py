@@ -25,15 +25,16 @@ def build_collect_params(intent: TikTokIntent) -> list[tuple[str, dict[str, Any]
         return [
             (
                 "tikhub_tiktok_video_search",
-                {"keyword": kw, "count": limit, "cursor": 0},
+                {"keyword": kw, "max_items": limit},
             )
         ]
 
     if action == "hashtag":
+        ch_id = (intent.extra or {}).get("ch_id")
         return [
             (
                 "tikhub_tiktok_hashtag_posts",
-                {"name": kw, "count": limit, "cursor": 0},
+                {"ch_id": ch_id or kw, "max_items": limit},
             )
         ]
 
@@ -41,7 +42,7 @@ def build_collect_params(intent: TikTokIntent) -> list[tuple[str, dict[str, Any]
         return [
             (
                 "tikhub_tiktok_user_posts",
-                {"sec_user_id": username, "count": limit, "cursor": 0},
+                {"unique_id": username, "max_items": limit},
             )
         ]
 
@@ -49,33 +50,29 @@ def build_collect_params(intent: TikTokIntent) -> list[tuple[str, dict[str, Any]
         return [
             (
                 "tikhub_tiktok_top_ads",
-                {
-                    "industry_key": "",
-                    "keyword": kw,
-                    "period": 7,
-                    "count": limit,
-                },
+                {"keyword": kw, "period": 7, "max_items": limit},
             )
         ]
 
     if action == "ads_search":
+        # The search endpoint requires material_id. Without one, use the top
+        # ads list and let the cleaner filter by keyword.
         return [
             (
-                "tikhub_tiktok_ads_search",
-                {"keyword": kw, "count": limit, "cursor": 0},
+                "tikhub_tiktok_top_ads",
+                {"keyword": kw, "period": 7, "max_items": limit},
             )
         ]
 
     if action == "creator":
-        # 并发调两个端点
         return [
             (
                 "tikhub_tiktok_creator_info",
-                {"sec_user_id": username or kw},
+                {"creator_uid": username or kw, "max_items": limit},
             ),
             (
                 "tikhub_tiktok_creator_insights",
-                {"sec_user_id": username or kw},
+                {"keyword": username or kw, "max_items": limit},
             ),
         ]
 
@@ -83,7 +80,7 @@ def build_collect_params(intent: TikTokIntent) -> list[tuple[str, dict[str, Any]
         return [
             (
                 "tikhub_tiktok_user_followers",
-                {"sec_user_id": username or kw, "count": limit, "cursor": 0},
+                {"unique_id": username or kw, "max_items": limit},
             )
         ]
 
@@ -91,7 +88,7 @@ def build_collect_params(intent: TikTokIntent) -> list[tuple[str, dict[str, Any]
         return [
             (
                 "tikhub_tiktok_live_search",
-                {"keyword": kw, "count": limit, "cursor": 0},
+                {"keyword": kw, "max_items": limit},
             )
         ]
 

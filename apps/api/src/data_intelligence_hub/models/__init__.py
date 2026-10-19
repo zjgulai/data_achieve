@@ -59,6 +59,15 @@ from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
+from data_intelligence_hub.models.tiktok_commerce import (
+    CreatorCommerce,
+    CreatorProduct,
+    Product,
+    ProductReview,
+    ProductSnapshot,
+    Shop,
+    VideoProduct,
+)
 from data_intelligence_hub.models.tiktok_content import (
     Comment,
     CommentSnapshot,
@@ -145,6 +154,8 @@ __all__ = [
     "Comment",
     "CommentSnapshot",
     "Creator",
+    "CreatorCommerce",
+    "CreatorProduct",
     "CreatorSnapshot",
     "Hashtag",
     "HashtagSnapshot",
@@ -153,6 +164,7 @@ __all__ = [
     "TrendTopic",
     "Video",
     "VideoHashtag",
+    "VideoProduct",
     "VideoSnapshot",
     "Dataset",
     "DatasetDriftEvent",
@@ -172,6 +184,9 @@ __all__ = [
     "MonitoringScopeTemplate",
     "Notification",
     "PlatformCredentialBundle",
+    "Product",
+    "ProductReview",
+    "ProductSnapshot",
     "ProviderHealthRouteFeedback",
     "ProviderHealthSnapshot",
     "Project",
@@ -183,6 +198,7 @@ __all__ = [
     "ReportSubscriptionRun",
     "SchedulerLease",
     "SchedulerTick",
+    "Shop",
     "Signal",
     "SiteAnalysis",
     "Source",

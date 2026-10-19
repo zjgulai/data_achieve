@@ -10,7 +10,7 @@ import { RUN_STATUS_TEXT_CLASS, runStatusMeta } from "@/lib/run-status";
 import type { RunStatusIconName } from "@/lib/run-status";
 import {
   CheckCircle, AlertCircle, Clock, Loader2, Inbox,
-  ChevronDown, ChevronRight, FileText,
+  ChevronDown, ChevronRight, FileText, TrendingUp,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -173,6 +173,31 @@ function RecordPreview({ runId }: { runId: string }) {
   );
 }
 
+function toolName(run: TaskRun): string {
+  return run.tool_label || run.tool_id || run.endpoint_type || run.task_name || "—";
+}
+
+function ToolBadge({ run }: { run: TaskRun }) {
+  const name = toolName(run);
+  const isTool = Boolean(run.tool_id);
+  return (
+    <span
+      className={`inline-flex max-w-[16rem] items-center gap-1 truncate rounded-[var(--radius-2)] px-2 py-1 text-xs font-medium ${
+        isTool
+          ? "bg-[var(--accent-1-soft)] text-[var(--action-primary)]"
+          : "bg-[var(--surface-muted)] text-[var(--text-tertiary)]"
+      }`}
+      title={run.tool_id ?? run.endpoint_type ?? undefined}
+    >
+      {isTool ? <TrendingUp size={12} /> : null}
+      <span className="truncate">{name}</span>
+      {run.tool_role && run.tool_role !== "primary" ? (
+        <span className="text-[10px] uppercase opacity-70">{run.tool_role}</span>
+      ) : null}
+    </span>
+  );
+}
+
 /* ── Run row with expandable detail ── */
 function RunRow({ run }: { run: TaskRun }) {
   const [expanded, setExpanded] = useState(false);
@@ -195,6 +220,9 @@ function RunRow({ run }: { run: TaskRun }) {
             <RunStatusIcon status={run.status} />
             <RunStatusLabel status={run.status} />
           </div>
+        </td>
+        <td className="px-4 py-3">
+          <ToolBadge run={run} />
         </td>
         <td className="px-4 py-3 text-sm tabular-nums text-[var(--text-secondary)]">
           {run.records_count}
@@ -221,7 +249,7 @@ function RunRow({ run }: { run: TaskRun }) {
 
       {expanded && (
         <tr className="border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)]">
-          <td colSpan={5} className="px-6 pb-4 pt-2">
+          <td colSpan={6} className="px-6 pb-4 pt-2">
             {run.error_message && (
               <div className="mb-3 rounded-[var(--radius-2)] border border-[var(--state-danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--state-danger)]">
                 {run.error_message}
@@ -285,10 +313,10 @@ export default function RunsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-left">
+            <table className="w-full min-w-[720px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-[var(--border-subtle)]">
-                  {["状态", "记录数", "开始时间", "耗时", "运行 ID"].map((h) => (
+                  {["状态", "工具", "记录数", "开始时间", "耗时", "运行 ID"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]"

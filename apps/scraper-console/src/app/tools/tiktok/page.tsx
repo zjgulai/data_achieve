@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   AlertCircle,
+  Database,
   FileText,
   Loader2,
   Play,
@@ -21,9 +22,10 @@ import {
   type TikTokToolRun,
 } from "@/lib/api/tiktok-tools";
 
-type Tab = "trends" | "videos" | "creators";
+type Tab = "trends" | "videos" | "creators" | "products";
 type VideoMode = "search" | "hashtag" | "detail" | "comments";
 type CreatorMode = "profile" | "search";
+type ProductMode = "search" | "detail" | "reviews";
 
 type Column = { key: string; label: string };
 
@@ -92,6 +94,38 @@ function columnsFor(toolId?: string): Column[] {
       { key: "video_id", label: "视频 ID" },
       { key: "language", label: "语言" },
       { key: "text", label: "字幕/转写" },
+    ];
+  }
+  if (toolId === "tiktok_product_reviews") {
+    return [
+      { key: "review_id", label: "评论 ID" },
+      { key: "rating", label: "评分" },
+      { key: "text", label: "评论" },
+      { key: "verified_purchase", label: "验证购买" },
+      { key: "review_time", label: "时间" },
+    ];
+  }
+  if (
+    toolId === "tiktok_product_search" ||
+    toolId === "tiktok_product_detail"
+  ) {
+    return [
+      { key: "product_id", label: "商品 ID" },
+      { key: "title", label: "标题" },
+      { key: "price_amount", label: "价格" },
+      { key: "sale_count", label: "销量" },
+      { key: "rating", label: "评分" },
+      { key: "review_count", label: "评论数" },
+      { key: "shop_name", label: "店铺" },
+    ];
+  }
+  if (toolId === "tiktok_creator_commerce") {
+    return [
+      { key: "creator_id", label: "达人 ID" },
+      { key: "unique_id", label: "账号" },
+      { key: "follower_count", label: "粉丝" },
+      { key: "gmv_amount", label: "GMV" },
+      { key: "units_sold", label: "销量" },
     ];
   }
   return VIDEO_COLUMNS;
@@ -188,6 +222,12 @@ export default function TikTokWorkbenchPage() {
   const [includeVideos, setIncludeVideos] = useState(true);
   const [includeFans, setIncludeFans] = useState(false);
 
+  const [productMode, setProductMode] = useState<ProductMode>("search");
+  const [productQuery, setProductQuery] = useState("");
+  const [productId, setProductId] = useState("");
+  const [productRegion, setProductRegion] = useState("US");
+  const [productLimit, setProductLimit] = useState(20);
+
   const mutation = useMutation({
     mutationFn: async ({
       toolId,
@@ -253,6 +293,35 @@ export default function TikTokWorkbenchPage() {
         },
       };
     }
+    if (tab === "products") {
+      if (productMode === "search") {
+        return {
+          toolId: "tiktok_product_search",
+          params: {
+            query: productQuery.trim(),
+            region: productRegion,
+            limit: productLimit,
+          },
+        };
+      }
+      if (productMode === "detail") {
+        return {
+          toolId: "tiktok_product_detail",
+          params: {
+            product_id: productId.trim() || undefined,
+            region: productRegion,
+          },
+        };
+      }
+      return {
+        toolId: "tiktok_product_reviews",
+        params: {
+          product_id: productId.trim(),
+          region: productRegion,
+          limit: productLimit,
+        },
+      };
+    }
     if (creatorMode === "profile") {
       return {
         toolId: "tiktok_creator_profile",
@@ -306,6 +375,18 @@ export default function TikTokWorkbenchPage() {
       setFormError("请输入搜索词");
       return;
     }
+    if (request.toolId === "tiktok_product_search" && !request.params.query) {
+      setFormError("请输入商品关键词");
+      return;
+    }
+    if (
+      (request.toolId === "tiktok_product_detail" ||
+        request.toolId === "tiktok_product_reviews") &&
+      !request.params.product_id
+    ) {
+      setFormError("请输入商品 ID");
+      return;
+    }
     mutation.mutate(request);
   }
 
@@ -314,8 +395,8 @@ export default function TikTokWorkbenchPage() {
   return (
     <AppShell
       title="TikTok 工作台"
-      description="内容与趋势采集工具台"
-      brief="按趋势、视频、达人三个页签调用 TikTok 内容工具。每次运行返回记录、状态与上游 run。"
+      description="内容、趋势与电商采集工具台"
+      brief="按趋势、视频、达人、商品四个页签调用 TikTok 工具。每次运行返回记录、状态与上游 run。"
       breadcrumbs={[{ label: "工具" }, { label: "TikTok" }]}
     >
       <section className="flex flex-wrap items-end gap-3 rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-5 py-4">
@@ -356,6 +437,7 @@ export default function TikTokWorkbenchPage() {
           { id: "trends" as Tab, label: "趋势", icon: TrendingUp },
           { id: "videos" as Tab, label: "视频", icon: Play },
           { id: "creators" as Tab, label: "达人", icon: Users },
+          { id: "products" as Tab, label: "商品", icon: Database },
         ].map((item) => {
           const Icon = item.icon;
           const active = tab === item.id;
@@ -591,6 +673,82 @@ export default function TikTokWorkbenchPage() {
                 </div>
               ) : null}
             </div>
+          </div>
+        ) : null}
+
+        {tab === "products" ? (
+          <div className="grid gap-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "search" as ProductMode, label: "商品搜索" },
+                { id: "detail" as ProductMode, label: "商品详情" },
+                { id: "reviews" as ProductMode, label: "商品评论" },
+              ].map((mode) => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => setProductMode(mode.id)}
+                  className={`min-h-9 rounded-[var(--radius-2)] border px-3 text-xs font-semibold ${
+                    productMode === mode.id
+                      ? "border-[var(--action-primary)] bg-[var(--accent-1-soft)] text-[var(--action-primary)]"
+                      : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {productMode === "search" ? (
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  关键词
+                  <input
+                    className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                    value={productQuery}
+                    onChange={(event) => setProductQuery(event.target.value)}
+                    placeholder="breast pump"
+                  />
+                </label>
+              ) : (
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  商品 ID
+                  <input
+                    className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                    value={productId}
+                    onChange={(event) => setProductId(event.target.value)}
+                    placeholder="1732417183133045688"
+                  />
+                </label>
+              )}
+              <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                市场
+                <select
+                  className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                  value={productRegion}
+                  onChange={(event) => setProductRegion(event.target.value)}
+                >
+                  {COUNTRIES.map((country) => (
+                    <option key={country.value} value={country.value}>
+                      {country.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                条数
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                  value={productLimit}
+                  onChange={(event) => setProductLimit(Number(event.target.value))}
+                />
+              </label>
+            </div>
+            <p className="text-xs text-[var(--text-tertiary)]">
+              商品搜索优先走 Apify，失败后回退 TikHub。美国商品发现使用 TikHub V2。
+            </p>
           </div>
         ) : null}
 

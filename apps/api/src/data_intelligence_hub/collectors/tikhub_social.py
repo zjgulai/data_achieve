@@ -474,6 +474,29 @@ TIKHUB_CONTENT_ENDPOINT_MAP: dict[str, tuple[str, str, str, str]] = {
 }
 
 
+# Phase 1 commerce endpoints. Tuple: (path, record_type, platform, extraction_mode).
+TIKHUB_COMMERCE_ENDPOINT_MAP: dict[str, tuple[str, str, str, str]] = {
+    "tikhub_tiktok_shop_search_v2": (
+        "/api/v1/tiktok/shop/web/fetch_search_products_list_v2",
+        "tiktok_product",
+        "tiktok_shop",
+        "shop_search",
+    ),
+    "tikhub_tiktok_shop_hot_products": (
+        "/api/v1/tiktok/shop/web/fetch_hot_selling_products_list",
+        "tiktok_product",
+        "tiktok_shop",
+        "shop_hot",
+    ),
+    "tikhub_tiktok_shop_reviews_v2": (
+        "/api/v1/tiktok/shop/web/fetch_product_reviews_v2",
+        "tiktok_product_review",
+        "tiktok_shop",
+        "shop_reviews",
+    ),
+}
+
+
 # ---------------------------------------------------------------------------
 # Auth helpers
 # ---------------------------------------------------------------------------
@@ -671,6 +694,10 @@ _TIKHUB_REQUIRED_PARAMS: dict[str, tuple[tuple[str, ...], ...]] = {
     "tikhub_tiktok_fake_views": (("item_id", "aweme_id"),),
     "tikhub_tiktok_comment_keywords": (("item_id", "aweme_id"),),
     "tikhub_tiktok_ads_trends": (),
+    # Phase 1 commerce endpoints
+    "tikhub_tiktok_shop_search_v2": (("search_word", "keyword"),),
+    "tikhub_tiktok_shop_hot_products": (),
+    "tikhub_tiktok_shop_reviews_v2": (("product_id",),),
 }
 
 
@@ -1496,6 +1523,193 @@ def _extract_content_items(data: dict[str, Any], mode: str) -> list[dict[str, An
         return [inner] if inner else []
 
     return []
+
+
+def _decimal(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(str(value).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def _epoch_ms_to_iso(value: Any) -> str | None:
+    """TikHub review_time is a millisecond epoch string."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        seconds = value / 1000 if value >= 1_000_000_000_000 else value
+        try:
+            return datetime.fromtimestamp(seconds, tz=UTC).isoformat()
+        except (OSError, OverflowError, ValueError):
+            return None
+    if isinstance(value, str) and value.strip().isdigit():
+        return _epoch_ms_to_iso(int(value))
+    return _safe_ts(value)
+
+
+def _contains_text(node: Any, needle: str) -> bool:
+    lowered = needle.lower()
+    if isinstance(node, str):
+        return lowered in node.lower()
+    if isinstance(node, dict):
+        return any(_contains_text(value, needle) for value in node.values())
+    if isinstance(node, list):
+        return any(_contains_text(value, needle) for value in node)
+    return False
+
+
+def _url_list(value: Any) -> list[str]:
+    if isinstance(value, dict):
+        urls = value.get("url_list")
+        if isinstance(urls, list):
+            return [str(url) for url in urls if isinstance(url, str) and url]
+    if isinstance(value, str) and value:
+        return [value]
+    return []
+
+
+def _extract_commerce_items(
+    data: dict[str, Any], mode: str
+) -> list[dict[str, Any]]:
+    """Phase 1 commerce extractors. Shop endpoints nest data two levels deep."""
+    inner = data.get("data")
+    if not isinstance(inner, dict):
+        return []
+
+    if mode == "shop_reviews":
+        payload = inner.get("data")
+        rows = payload.get("product_reviews") if isinstance(payload, dict) else None
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+    if mode == "shop_hot":
+        rows = inner.get("productList")
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+    if mode == "shop_search":
+        payload = inner.get("data")
+        component = payload.get("component_data") if isinstance(payload, dict) else None
+        rows = component.get("products") if isinstance(component, dict) else None
+        return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+    return []
+
+
+def _normalize_tiktok_product_v2(
+    item: dict[str, Any],
+    collector_type: str,
+    region: str,
+) -> CollectorRawRecord | None:
+    product_id = _safe_str(item.get("product_id"))
+    title = _safe_str(item.get("title"))
+    if product_id is None:
+        return None
+    price_info = item.get("product_price_info")
+    price_info = price_info if isinstance(price_info, dict) else {}
+    rate_info = item.get("rate_info")
+    rate_info = rate_info if isinstance(rate_info, dict) else {}
+    sold_info = item.get("sold_info")
+    sold_info = sold_info if isinstance(sold_info, dict) else {}
+    seller_info = item.get("seller_info")
+    seller_info = seller_info if isinstance(seller_info, dict) else {}
+    seo_url = item.get("seo_url")
+    product_url = (
+        seo_url.get("canonical_url")
+        if isinstance(seo_url, dict)
+        else _safe_str(seo_url)
+    )
+    skus = item.get("sku_info")
+    skus = skus if isinstance(skus, list) else []
+    image_urls = _url_list(item.get("image"))
+    marketing = item.get("product_marketing_info")
+    free_shipping = (
+        _contains_text(marketing, "free shipping")
+        or _contains_text(marketing, "free_shipping")
+        if marketing
+        else None
+    )
+    return CollectorRawRecord(
+        record_type="tiktok_product",
+        source_url=product_url,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok_shop",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_product.v1",
+            "product_id": product_id,
+            "region": region,
+            "title": title,
+            "text": title or "",
+            "image_urls": image_urls or None,
+            "price_amount": _decimal(price_info.get("sale_price_decimal")),
+            "original_price_amount": _decimal(
+                price_info.get("raw_origin_price_decimal")
+            ),
+            "currency": _safe_str(price_info.get("currency_name")),
+            "rating": _decimal(rate_info.get("score")),
+            "review_count": _safe_int(rate_info.get("review_count")),
+            "sale_count": _safe_int(sold_info.get("sold_count")),
+            "seller_id": _safe_str(seller_info.get("seller_id")),
+            "shop_name": _safe_str(seller_info.get("shop_name")),
+            "shop_logo_url": (_url_list(seller_info.get("shop_logo")) or [None])[0],
+            "product_url": product_url,
+            "skus_json": skus or None,
+            "sku_count": len(skus) or None,
+            "free_shipping": free_shipping,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_product_review(
+    item: dict[str, Any],
+    collector_type: str,
+    region: str,
+) -> CollectorRawRecord | None:
+    review_id = _safe_str(item.get("review_id"))
+    product_id = _safe_str(item.get("product_id"))
+    if review_id is None or product_id is None:
+        return None
+    images = item.get("review_images")
+    return CollectorRawRecord(
+        record_type="tiktok_product_review",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok_shop",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_product_review.v1",
+            "review_id": review_id,
+            "product_id": product_id,
+            "region": region,
+            "sku_id": _safe_str(item.get("sku_id")),
+            "rating": _safe_int(item.get("review_rating")),
+            "text": _safe_str(item.get("review_text")) or "",
+            "review_time": _epoch_ms_to_iso(item.get("review_time")),
+            "verified_purchase": item.get("is_verified_purchase"),
+            "incentivized": item.get("is_incentivized_review"),
+            "images": images if isinstance(images, list) else None,
+            "sku_specification": _safe_str(item.get("sku_specification")),
+            "reviewer_name_masked": _safe_str(item.get("reviewer_name")),
+            "reviewer_avatar_url": _safe_str(item.get("reviewer_avatar_url")),
+            "review_country": _safe_str(item.get("review_country")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_commerce_item(
+    item: dict[str, Any],
+    mode: str,
+    collector_type: str,
+    region: str,
+) -> CollectorRawRecord | None:
+    if mode in {"shop_search", "shop_hot"}:
+        return _normalize_tiktok_product_v2(item, collector_type, region)
+    if mode == "shop_reviews":
+        return _normalize_tiktok_product_review(item, collector_type, region)
+    return None
 
 
 def _normalize_content_item(
@@ -2333,6 +2547,30 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             "page": config.get("page") or 1,
             "limit": max_items,
         }
+
+    # ── Phase 1 commerce endpoints ────────────────────────────────────────
+    if endpoint_type == "tikhub_tiktok_shop_search_v2":
+        return {
+            "search_word": config.get("search_word") or config.get("keyword") or "",
+            "offset": config.get("offset") or 0,
+            "page_token": config.get("page_token") or "",
+            "region": config.get("region") or "US",
+        }
+    if endpoint_type == "tikhub_tiktok_shop_hot_products":
+        return {
+            "region": config.get("region") or "MY",
+            "count": max_items,
+            "exclude_product_ids": config.get("exclude_product_ids") or "",
+        }
+    if endpoint_type == "tikhub_tiktok_shop_reviews_v2":
+        return {
+            "product_id": config.get("product_id") or "",
+            "page_start": config.get("page_start") or 1,
+            "sort_rule": config.get("sort_rule") or 2,
+            "filter_type": config.get("filter_type") or 1,
+            "filter_value": config.get("filter_value") or 6,
+            "region": config.get("region") or "US",
+        }
     return {}
 
 
@@ -2359,10 +2597,12 @@ class TikHubSocialCollector(BaseCollector):
         if (
             endpoint_type not in TIKHUB_ENDPOINT_MAP
             and endpoint_type not in TIKHUB_CONTENT_ENDPOINT_MAP
+            and endpoint_type not in TIKHUB_COMMERCE_ENDPOINT_MAP
         ):
             raise CollectorError(
                 f"tikhub_endpoint_type_unknown: {endpoint_type!r}. "
-                f"Supported: {sorted(TIKHUB_ENDPOINT_MAP | TIKHUB_CONTENT_ENDPOINT_MAP)}"
+                "Supported: "
+                f"{sorted(TIKHUB_ENDPOINT_MAP | TIKHUB_CONTENT_ENDPOINT_MAP | TIKHUB_COMMERCE_ENDPOINT_MAP)}"
             )
         missing = _missing_required_params(self.config, endpoint_type)
         if missing:
@@ -2381,8 +2621,13 @@ class TikHubSocialCollector(BaseCollector):
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
         mode: str | None = None
+        commerce_mode: str | None = None
         if endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP:
             endpoint_path, _, platform, mode = TIKHUB_CONTENT_ENDPOINT_MAP[endpoint_type]
+        elif endpoint_type in TIKHUB_COMMERCE_ENDPOINT_MAP:
+            endpoint_path, _, platform, commerce_mode = TIKHUB_COMMERCE_ENDPOINT_MAP[
+                endpoint_type
+            ]
         else:
             endpoint_path, _, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
         api_key = _get_api_key()
@@ -2394,11 +2639,12 @@ class TikHubSocialCollector(BaseCollector):
                     data = await _tikhub_post(client, endpoint_path, test_params, api_key)
                 else:
                     data = await _tikhub_get(client, endpoint_path, test_params, api_key)
-            items = (
-                _extract_content_items(data, mode)
-                if mode is not None
-                else _extract_items(data, platform)
-            )
+            if mode is not None:
+                items = _extract_content_items(data, mode)
+            elif commerce_mode is not None:
+                items = _extract_commerce_items(data, commerce_mode)
+            else:
+                items = _extract_items(data, platform)
             msg = f"TikHub endpoint {endpoint_type!r} reachable; got {len(items)} items."
             logs.append(collector_log("tikhub_test", msg))
             return CollectorTestResult(status="ok", message=msg, logs=logs)
@@ -2412,10 +2658,15 @@ class TikHubSocialCollector(BaseCollector):
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
         mode: str | None = None
+        commerce_mode: str | None = None
         if endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP:
             endpoint_path, _record_type, platform, mode = TIKHUB_CONTENT_ENDPOINT_MAP[
                 endpoint_type
             ]
+        elif endpoint_type in TIKHUB_COMMERCE_ENDPOINT_MAP:
+            endpoint_path, _record_type, platform, commerce_mode = (
+                TIKHUB_COMMERCE_ENDPOINT_MAP[endpoint_type]
+            )
         else:
             endpoint_path, _record_type, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
         max_items: int = config["max_items"]
@@ -2450,21 +2701,28 @@ class TikHubSocialCollector(BaseCollector):
             logs.append(collector_log("tikhub_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
-        items = (
-            _extract_content_items(data, mode)
-            if mode is not None
-            else _extract_items(data, platform)
-        )
+        if mode is not None:
+            items = _extract_content_items(data, mode)
+        elif commerce_mode is not None:
+            items = _extract_commerce_items(data, commerce_mode)
+        else:
+            items = _extract_items(data, platform)
         logs.append(collector_log("tikhub_items_received", f"raw_count={len(items)}"))
 
         for item in items[:max_items]:
             if not isinstance(item, dict):
                 continue
-            record = (
-                _normalize_content_item(item, mode, endpoint_type)
-                if mode is not None
-                else _normalize_item(item, platform, endpoint_type)
-            )
+            if mode is not None:
+                record = _normalize_content_item(item, mode, endpoint_type)
+            elif commerce_mode is not None:
+                record = _normalize_commerce_item(
+                    item,
+                    commerce_mode,
+                    endpoint_type,
+                    str(config.get("region") or "US"),
+                )
+            else:
+                record = _normalize_item(item, platform, endpoint_type)
             if record is not None:
                 raw_records.append(record)
 

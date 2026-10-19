@@ -18,6 +18,7 @@ from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.registry import COLLECTOR_REGISTRY
 from data_intelligence_hub.collectors.tikhub_social import (
+    TIKHUB_COMMERCE_ENDPOINT_MAP,
     TIKHUB_ENDPOINT_MAP,
     TikHubSocialCollector,
 )
@@ -74,7 +75,8 @@ STRICT_TIKHUB = _names(
     tikhub_tiktok_creator_info tikhub_tiktok_creator_insights
     tikhub_tiktok_creator_insights_trend
     tikhub_tiktok_creator_account_health tikhub_tiktok_live_room_detail
-    tikhub_tiktok_live_user"""
+    tikhub_tiktok_live_user tikhub_tiktok_shop_search_v2
+    tikhub_tiktok_shop_hot_products"""
 )
 
 DETAIL_TIKHUB = _names(
@@ -89,7 +91,8 @@ ALLOW_TIKHUB = _names(
     """tikhub_bilibili_comments tikhub_douyin_comments
     tikhub_instagram_post_comments tikhub_linkedin_post_comments
     tikhub_reddit_post_comments tikhub_threads_post_comments
-    tikhub_youtube_video_comments tikhub_zhihu_question_answers"""
+    tikhub_youtube_video_comments tikhub_zhihu_question_answers
+    tikhub_tiktok_shop_reviews_v2"""
 )
 
 STRICT_APIFY = _names(
@@ -179,7 +182,8 @@ class TestRegistryCoverage:
 
 class TestTikHubPolicy:
     def test_every_endpoint_has_a_policy(self):
-        assert set(TIKHUB_EMPTY_RESULT_POLICY) == set(TIKHUB_ENDPOINT_MAP)
+        expected = set(TIKHUB_ENDPOINT_MAP) | set(TIKHUB_COMMERCE_ENDPOINT_MAP)
+        assert set(TIKHUB_EMPTY_RESULT_POLICY) == expected
 
     def test_strict_set_is_exact(self):
         actual = {

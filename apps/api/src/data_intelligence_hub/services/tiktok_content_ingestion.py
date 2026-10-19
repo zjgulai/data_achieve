@@ -16,12 +16,21 @@ import hashlib
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.collectors.base import CollectorRawRecord
+from data_intelligence_hub.repositories.tiktok_commerce import (
+    add_creator_commerce,
+    add_product_snapshot,
+    make_product_key,
+    make_shop_key,
+    upsert_product,
+    upsert_product_review,
+    upsert_shop,
+)
 from data_intelligence_hub.repositories.tiktok_content import (
     add_comment_snapshot,
     add_creator_snapshot,
@@ -71,6 +80,11 @@ class IngestionResult:
     trend_topics: int = 0
     sounds: int = 0
     transcripts: int = 0
+    shops: int = 0
+    products: int = 0
+    product_snapshots: int = 0
+    product_reviews: int = 0
+    creator_commerce: int = 0
     skipped: int = 0
     errors: list[str] = field(default_factory=list)
 
@@ -88,6 +102,11 @@ class IngestionResult:
             "trend_topics": self.trend_topics,
             "sounds": self.sounds,
             "transcripts": self.transcripts,
+            "shops": self.shops,
+            "products": self.products,
+            "product_snapshots": self.product_snapshots,
+            "product_reviews": self.product_reviews,
+            "creator_commerce": self.creator_commerce,
             "skipped": self.skipped,
             "errors": self.errors,
         }
@@ -660,6 +679,445 @@ async def _ingest_trend(
     result.trend_topics += 1
 
 
+def _pick(content: dict[str, Any], *keys: str) -> Any:
+    raw = content.get("raw")
+    raw = raw if isinstance(raw, dict) else {}
+    for source in (content, raw):
+        for key in keys:
+            value = source.get(key)
+            if value is not None and value != "":
+                return value
+    return None
+
+
+def _rate(value: Any) -> float | None:
+    """Normalize percent values (0-100) to rates (0-1)."""
+    if value is None or value == "":
+        return None
+    try:
+        number = float(str(value).replace("%", "").replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+    return number / 100 if abs(number) > 1 else number
+
+
+def _commerce_region(content: dict[str, Any], context: IngestionContext) -> str:
+    return str(
+        _pick(content, "region", "country_code")
+        or context.country_code
+        or "US"
+    ).upper()
+
+
+def _commerce_product_id(content: dict[str, Any]) -> str | None:
+    value = _pick(content, "product_id", "productId", "id")
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _product_key_for(content: dict[str, Any], context: IngestionContext) -> str | None:
+    product_id = _commerce_product_id(content)
+    if product_id is None:
+        return None
+    return make_product_key(_commerce_region(content, context), product_id)
+
+
+def _commerce_seller(content: dict[str, Any]) -> dict[str, Any]:
+    raw = content.get("raw")
+    for source in (content, raw if isinstance(raw, dict) else {}):
+        seller = source.get("seller")
+        if isinstance(seller, dict):
+            return seller
+    return {}
+
+
+def _commerce_shop_identity(
+    content: dict[str, Any], region: str
+) -> tuple[str | None, str | None, str | None]:
+    seller = _commerce_seller(content)
+    shop_id = _pick(content, "shop_id") or seller.get("shop_id")
+    seller_id = (
+        _pick(content, "seller_id")
+        or seller.get("seller_id")
+        or seller.get("id")
+    )
+    shop_name = (
+        _pick(content, "shop_name", "seller_name")
+        or seller.get("shop_name")
+        or seller.get("name")
+        or (seller if isinstance(seller, str) else None)
+    )
+    if shop_id or seller_id:
+        shop_key = make_shop_key(region, _safe_text(shop_id), _safe_text(seller_id))
+    elif shop_name:
+        shop_key = f"name:{region}:{_normalize_name(shop_name)}"
+    else:
+        return None, None, None
+    return shop_key, _safe_text(shop_id), _safe_text(seller_id)
+
+
+def _safe_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+async def _ensure_commerce_shop(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    region = _commerce_region(content, context)
+    shop_key, shop_id, seller_id = _commerce_shop_identity(content, region)
+    if shop_key is None:
+        return None
+    await upsert_shop(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        shop_key=shop_key,
+        values={
+            "shop_id": shop_id,
+            "seller_id": seller_id,
+            "shop_name": _pick(content, "shop_name", "seller_name")
+            or _commerce_seller(content).get("shop_name")
+            or _commerce_seller(content).get("name"),
+            "shop_type": _pick(content, "shop_type"),
+            "seller_type": _pick(content, "seller_type"),
+            "region": region,
+            "logo_url": _pick(content, "shop_logo_url", "shop_logo"),
+            "rating": _pick(content, "shop_rating"),
+            "follower_count": _pick(content, "shop_follower_count"),
+            "product_count": _pick(content, "shop_product_count"),
+            "is_mall_recommended": _pick(content, "is_mall_recommended"),
+            "shop_url": _pick(content, "shop_url"),
+            "identity_quality": "partial" if shop_id is None else "exact",
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return shop_key
+
+
+async def _ensure_commerce_product(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    product_key = _product_key_for(content, context)
+    if product_key is None:
+        return None
+    region = _commerce_region(content, context)
+    shop_key = await _ensure_commerce_shop(session, context, content, captured_at)
+    await upsert_product(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        product_key=product_key,
+        values={
+            "product_id": _commerce_product_id(content),
+            "region": region,
+            "shop_key": shop_key,
+            "shop_id": _pick(content, "shop_id"),
+            "seller_id": _pick(content, "seller_id"),
+            "title": _pick(
+                content, "title", "product_name", "productName", "text"
+            ),
+            "description": _pick(content, "description", "product_desc"),
+            "brand": _pick(content, "brand"),
+            "category_l1": _pick(content, "category_l1", "category1"),
+            "category_l2": _pick(content, "category_l2", "category2"),
+            "category_l3": _pick(content, "category_l3", "category3"),
+            "category_path": _pick(content, "category_path", "categories"),
+            "product_url": _pick(content, "product_url", "url"),
+            "image_urls": _pick(content, "image_urls", "images"),
+            "sku_count": _pick(content, "sku_count"),
+            "skus_json": _pick(content, "skus_json", "skus"),
+            "currency": _pick(content, "currency"),
+            "is_active": _pick(content, "is_active", "product_status"),
+            "identity_quality": "exact",
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return product_key
+
+
+def _ensure_creator_identity(
+    content: dict[str, Any], context: IngestionContext
+) -> str | None:
+    creator_id = _pick(content, "creator_id", "author_id", "uid", "user_id")
+    if creator_id is not None:
+        return str(creator_id)
+    unique_id = _pick(content, "unique_id", "username", "handle", "author_username")
+    if unique_id:
+        return f"name:{_normalize_name(unique_id)}"
+    return None
+
+
+async def _ensure_creator_commerce_master(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+) -> str | None:
+    creator_id = _ensure_creator_identity(content, context)
+    if creator_id is None:
+        return None
+    await upsert_creator(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        creator_id=creator_id,
+        values={
+            key: value
+            for key, value in {
+                "unique_id": _pick(content, "unique_id", "username", "handle"),
+                "nickname": _pick(content, "nickname", "nick_name"),
+                "avatar_url": _pick(content, "avatar_url", "avatar"),
+                "signature": _pick(content, "signature", "bio"),
+                "follower_count": _pick(content, "follower_count", "fans"),
+                "region": _commerce_region(content, context),
+                "is_seller": _pick(content, "is_seller", "tt_seller"),
+                "identity_quality": "exact" if _pick(
+                    content, "creator_id", "author_id", "uid", "user_id"
+                ) else "derived",
+            }.items()
+            if value is not None
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    return creator_id
+
+
+async def _ingest_commerce_product(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    product_key = _product_key_for(content, context)
+    if product_key is None:
+        result.skipped += 1
+        return
+    region = _commerce_region(content, context)
+    price = _pick(content, "price_amount", "price", "real_price", "salePrice")
+    original = _pick(
+        content, "original_price_amount", "original_price", "originalPrice"
+    )
+    await add_product_snapshot(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        product_key=product_key,
+        product_id=str(_commerce_product_id(content)),
+        region=region,
+        captured_at=captured_at,
+        values={
+            "price_amount": price,
+            "original_price_amount": original,
+            "min_price_amount": _pick(content, "min_price_amount", "min_price"),
+            "max_price_amount": _pick(content, "max_price_amount", "max_price"),
+            "avg_price_amount": _pick(content, "avg_price_amount", "avg_price"),
+            "currency": _pick(content, "currency"),
+            "sale_count": _pick(
+                content, "sale_count", "sale_cnt", "saleCount", "sales"
+            ),
+            "sale_count_30d": _pick(
+                content, "sale_count_30d", "sale_30d_cnt", "saleCount30d"
+            ),
+            "gmv_amount_30d": _pick(
+                content, "gmv_amount_30d", "gmv_30d_amt", "gmv30d", "gmv"
+            ),
+            "commission_rate": _rate(
+                _pick(content, "commission_rate", "commission")
+            ),
+            "stock_count": _pick(
+                content, "stock_count", "total_stock_cnt",
+                "availableQuantity", "stock"
+            ),
+            "review_count": _pick(
+                content, "review_count", "reviewsCount", "reviewCount"
+            ),
+            "rating": _pick(
+                content, "rating", "product_rating", "stars", "score"
+            ),
+            "video_count_30d": _pick(content, "video_count_30d", "video_30d_cnt"),
+            "live_count_30d": _pick(content, "live_count_30d", "live_30d_cnt"),
+            "ifl_count_30d": _pick(content, "ifl_count_30d", "ifl_30d_cnt"),
+            "is_hot": _pick(content, "is_hot"),
+            "free_shipping": _pick(content, "free_shipping"),
+            "shipping_price": _pick(content, "shipping_price"),
+            "is_estimated": bool(
+                _pick(content, "is_estimated", "gmv_amount_30d", "gmv_30d_amt")
+            ),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.product_snapshots += 1
+
+
+async def _ingest_product_review(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    review_id = _pick(content, "review_id")
+    product_key = _product_key_for(content, context)
+    if review_id is None or product_key is None:
+        result.skipped += 1
+        return
+    await upsert_product_review(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        review_id=str(review_id),
+        values={
+            "product_key": product_key,
+            "product_id": _commerce_product_id(content),
+            "region": _commerce_region(content, context),
+            "shop_id": _pick(content, "shop_id"),
+            "sku_id": _pick(content, "sku_id"),
+            "rating": _pick(content, "rating", "review_rating"),
+            "text": _pick(content, "text", "review_text") or "",
+            "text_language": _pick(content, "text_language", "review_language"),
+            "review_time": _dt(_pick(content, "review_time")),
+            "verified_purchase": _pick(
+                content, "verified_purchase", "is_verified_purchase"
+            ),
+            "incentivized": _pick(
+                content, "incentivized", "is_incentivized_review"
+            ),
+            "helpful_count": _pick(content, "helpful_count"),
+            "images": _pick(content, "images", "review_images"),
+            "variant": _pick(content, "variant"),
+            "sku_specification": _pick(content, "sku_specification"),
+            "reviewer_name_masked": _pick(
+                content, "reviewer_name_masked", "reviewer_name"
+            ),
+            "reviewer_avatar_url": _pick(content, "reviewer_avatar_url"),
+            "review_country": _pick(content, "review_country"),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        captured_at=captured_at,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.product_reviews += 1
+
+
+async def _ingest_creator_commerce(
+    session: AsyncSession,
+    context: IngestionContext,
+    content: dict[str, Any],
+    captured_at: datetime,
+    result: IngestionResult,
+) -> None:
+    creator_id = _ensure_creator_identity(content, context)
+    if creator_id is None:
+        result.skipped += 1
+        return
+    market = _commerce_region(content, context)
+    await add_creator_commerce(
+        session,
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        creator_id=creator_id,
+        market=market,
+        captured_at=captured_at,
+        values={
+            "period_days": 30,
+            "window_start": captured_at - timedelta(days=30),
+            "window_end": captured_at,
+            "gmv_amount": _pick(content, "gmv_amount", "gmv"),
+            "currency": _pick(content, "currency"),
+            "units_sold": _pick(content, "units_sold", "unitsSold"),
+            "gpm_amount": _pick(content, "gpm_amount", "gpm"),
+            "video_gpm_amount": _pick(content, "video_gpm_amount"),
+            "live_gpm_amount": _pick(content, "live_gpm_amount"),
+            "avg_commission_rate": _rate(
+                _pick(content, "avg_commission_rate", "commission_rate")
+            ),
+            "brand_collaboration_count": _pick(
+                content, "brand_collaboration_count"
+            ),
+            "promoted_product_count": _pick(
+                content, "promoted_product_count", "product_count"
+            ),
+            "avg_views": _pick(content, "avg_views"),
+            "avg_likes": _pick(content, "avg_likes"),
+            "avg_comments": _pick(content, "avg_comments"),
+            "avg_shares": _pick(content, "avg_shares"),
+            "engagement_rate": _rate(_pick(content, "engagement_rate")),
+            "content_frequency": _pick(content, "content_frequency"),
+            "post_rate": _pick(content, "post_rate"),
+            "rating": _pick(content, "rating"),
+            "promotion_performance_score": _pick(
+                content, "promotion_performance_score"
+            ),
+            "follower_count": _pick(content, "follower_count", "fans"),
+            "top_brands": _pick(content, "top_brands"),
+            "category_list": _pick(content, "category_list"),
+            "audience_json": _pick(content, "audience_json"),
+            "gmv_distribution_json": _pick(content, "gmv_distribution_json"),
+            "is_estimated": bool(_pick(content, "is_estimated", "gmv_amount")),
+        },
+        provider=context.provider,
+        endpoint_type=context.endpoint_type,
+        schema_version=context.schema_version,
+        run_id=context.run_id,
+        raw_ref=context.raw_ref,
+    )
+    result.creator_commerce += 1
+
+
+def _effective_record_type(
+    content: dict[str, Any], context: IngestionContext
+) -> str | None:
+    """Map provider record types onto the commerce ingestion routes.
+
+    Apify infers ``tiktok_shop_product`` for every Shop actor, and the creator
+    commerce actor is inferred as ``tiktok_video``. The actor id is the only
+    reliable discriminator.
+    """
+    actor = str(content.get("actor_id") or "")
+    if "tiktok-shop-creators" in actor:
+        return "tiktok_creator_commerce"
+    if "tiktok-shop" in actor:
+        return "tiktok_product"
+    record_type = content.get("record_type")
+    if record_type == "tiktok_shop_product":
+        return "tiktok_product"
+    return record_type
+
+
 def _is_transcript_content(
     content: dict[str, Any], context: IngestionContext
 ) -> bool:
@@ -825,7 +1283,7 @@ async def ingest_tiktok_content(
     # Pass 1: master data. This satisfies FKs before observations.
     for content, captured_at in contents:
         try:
-            record_type = content.get("record_type")
+            record_type = _effective_record_type(content, context)
             is_video = record_type == "tiktok_video" or (
                 not record_type and content.get("video_id")
             )
@@ -862,6 +1320,20 @@ async def ingest_tiktok_content(
                     )
             elif record_type == "tiktok_user":
                 await _ensure_creator(session, context, content, captured_at)
+            elif record_type == "tiktok_product":
+                product_key = await _ensure_commerce_product(
+                    session, context, content, captured_at
+                )
+                if product_key is not None:
+                    result.products += 1
+                    result.shops += 1 if _pick(content, "shop_id", "seller_id") else 0
+            elif record_type == "tiktok_product_review":
+                # Reviews may arrive without a prior product run.
+                await _ensure_commerce_product(session, context, content, captured_at)
+            elif record_type == "tiktok_creator_commerce":
+                await _ensure_creator_commerce_master(
+                    session, context, content, captured_at
+                )
             elif record_type == "tiktok_hashtag":
                 hashtag_id = content.get("hashtag_id")
                 if hashtag_id and content.get("name"):
@@ -892,7 +1364,7 @@ async def ingest_tiktok_content(
     # Pass 2: observations.
     for content, captured_at in contents:
         try:
-            record_type = content.get("record_type")
+            record_type = _effective_record_type(content, context)
             is_video = record_type == "tiktok_video" or (
                 not record_type and content.get("video_id")
             )
@@ -907,6 +1379,18 @@ async def ingest_tiktok_content(
                 await _ingest_comment(session, context, content, captured_at, result)
             elif record_type == "tiktok_user":
                 await _ingest_user(session, context, content, captured_at, result)
+            elif record_type == "tiktok_product":
+                await _ingest_commerce_product(
+                    session, context, content, captured_at, result
+                )
+            elif record_type == "tiktok_product_review":
+                await _ingest_product_review(
+                    session, context, content, captured_at, result
+                )
+            elif record_type == "tiktok_creator_commerce":
+                await _ingest_creator_commerce(
+                    session, context, content, captured_at, result
+                )
             elif record_type == "tiktok_hashtag":
                 await _ingest_hashtag(session, context, content, captured_at, result)
             elif record_type == "tiktok_trend":
