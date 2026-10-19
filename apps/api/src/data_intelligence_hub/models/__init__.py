@@ -59,6 +59,20 @@ from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
+from data_intelligence_hub.models.tiktok_content import (
+    Comment,
+    CommentSnapshot,
+    Creator,
+    CreatorSnapshot,
+    Hashtag,
+    HashtagSnapshot,
+    Sound,
+    Transcript,
+    TrendTopic,
+    Video,
+    VideoHashtag,
+    VideoSnapshot,
+)
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workflow_action import (
     WorkflowRunActionApprovalConsumption,
@@ -128,6 +142,18 @@ __all__ = [
     "CleaningPlan",
     "CollectionTask",
     "Collector",
+    "Comment",
+    "CommentSnapshot",
+    "Creator",
+    "CreatorSnapshot",
+    "Hashtag",
+    "HashtagSnapshot",
+    "Sound",
+    "Transcript",
+    "TrendTopic",
+    "Video",
+    "VideoHashtag",
+    "VideoSnapshot",
     "Dataset",
     "DatasetDriftEvent",
     "DatasetExportJob",

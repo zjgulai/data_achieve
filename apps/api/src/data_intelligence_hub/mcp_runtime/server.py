@@ -15,6 +15,15 @@ from data_intelligence_hub.platform_packages.service import (
     get_platform_package_catalog,
     get_platform_playbook,
 )
+from data_intelligence_hub.services.tiktok_tools import run_tiktok_tool
+
+
+def _parse_project_id(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError as exc:
+        raise ValueError("project_id_invalid") from exc
+
 
 mcp_server = MCPServer(
     "Data Intelligence Hub",
@@ -147,6 +156,158 @@ async def collect(
             raise ValueError("project_id_invalid") from exc
         result = await collect_capability(endpoint_type, parsed_project_id, params)
         return result.model_dump(mode="json")
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_trend_rank(
+    context: Context,
+    project_id: str,
+    country_code: str = "US",
+    period: int = 7,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_trend_rank", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_trend_rank",
+            _parse_project_id(project_id),
+            {"country_code": country_code, "period": period, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_hashtag_videos(
+    context: Context,
+    project_id: str,
+    hashtag: str | None = None,
+    ch_id: str | None = None,
+    challenge_id: str | None = None,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_hashtag_videos", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_hashtag_videos",
+            _parse_project_id(project_id),
+            {
+                "hashtag": hashtag,
+                "ch_id": ch_id,
+                "challenge_id": challenge_id,
+                "limit": limit,
+            },
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_video_search(
+    context: Context,
+    project_id: str,
+    query: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_video_search", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_video_search",
+            _parse_project_id(project_id),
+            {"query": query, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_video_detail(
+    context: Context,
+    project_id: str,
+    video_id: str | None = None,
+    video_url: str | None = None,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_video_detail", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_video_detail",
+            _parse_project_id(project_id),
+            {"video_id": video_id, "video_url": video_url},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_video_comments(
+    context: Context,
+    project_id: str,
+    video_id: str,
+    video_url: str | None = None,
+    limit: int = 100,
+    include_replies: bool = True,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_video_comments", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_video_comments",
+            _parse_project_id(project_id),
+            {
+                "video_id": video_id,
+                "video_url": video_url,
+                "limit": limit,
+                "include_replies": include_replies,
+            },
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_creator_profile(
+    context: Context,
+    project_id: str,
+    handle: str | None = None,
+    sec_uid: str | None = None,
+    include_videos: bool = True,
+    video_limit: int = 20,
+    include_fans: bool = False,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_creator_profile", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_creator_profile",
+            _parse_project_id(project_id),
+            {
+                "handle": handle,
+                "sec_uid": sec_uid,
+                "include_videos": include_videos,
+                "video_limit": video_limit,
+                "include_fans": include_fans,
+            },
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_creator_search(
+    context: Context,
+    project_id: str,
+    query: str,
+    limit: int = 50,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_creator_search", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_creator_search",
+            _parse_project_id(project_id),
+            {"query": query, "limit": limit},
+        )
+        return result.as_dict()
+
+
+@mcp_server.tool(structured_output=True)
+async def tiktok_transcript(
+    context: Context,
+    project_id: str,
+    video_urls: list[str],
+    limit: int = 20,
+) -> dict[str, object]:
+    async with governed_tool(context, "tiktok_transcript", is_collect=True):
+        result = await run_tiktok_tool(
+            "tiktok_transcript",
+            _parse_project_id(project_id),
+            {"video_urls": video_urls, "limit": limit},
+        )
+        return result.as_dict()
 
 
 mcp_app = mcp_server.streamable_http_app(

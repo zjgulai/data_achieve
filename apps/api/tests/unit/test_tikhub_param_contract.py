@@ -18,6 +18,7 @@ import pytest
 
 from data_intelligence_hub.collectors.tikhub_social import (
     _TIKHUB_POST_ENDPOINTS,
+    TIKHUB_CONTENT_ENDPOINT_MAP,
     TIKHUB_ENDPOINT_MAP,
     _build_params,
 )
@@ -53,7 +54,8 @@ def test_every_key_build_params_reads_survives_the_whitelist(key: str) -> None:
 
 
 def test_post_endpoints_are_all_known_endpoints() -> None:
-    unknown = _TIKHUB_POST_ENDPOINTS - set(TIKHUB_ENDPOINT_MAP)
+    known = set(TIKHUB_ENDPOINT_MAP) | set(TIKHUB_CONTENT_ENDPOINT_MAP)
+    unknown = _TIKHUB_POST_ENDPOINTS - known
     assert not unknown, f"_TIKHUB_POST_ENDPOINTS 指向未知端点: {sorted(unknown)}"
 
 

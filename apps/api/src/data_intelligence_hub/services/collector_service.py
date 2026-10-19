@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import traceback
 from datetime import UTC, datetime
 from typing import Any
@@ -25,6 +26,7 @@ from data_intelligence_hub.collectors.outbound_policy import (
     assert_collector_allowed,
     is_policy_failure,
 )
+from data_intelligence_hub.collectors.tikhub_social import TIKHUB_CONTENT_ENDPOINT_MAP
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -45,6 +47,12 @@ from data_intelligence_hub.services.signal_service import (
     detect_signals_for_snapshots,
 )
 from data_intelligence_hub.services.task_schedule_policy import update_retry_state_after_run
+from data_intelligence_hub.services.tiktok_content_ingestion import (
+    IngestionContext,
+    ingest_tiktok_content,
+)
+
+logger = logging.getLogger(__name__)
 
 # The service budget must stay above the Apify collector's inner wait
 # (APIFY_RUN_WAIT_TIMEOUT = 600s in collectors/apify_actor.py). If the service
@@ -170,6 +178,30 @@ async def execute_collection_task(
         )
         if signals_count > 0:
             logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
+        ingestion = await _ingest_tiktok_content_if_needed(
+            session=session,
+            workspace=workspace,
+            task=task,
+            run=run,
+            raw_records=result.raw_records,
+        )
+        if ingestion is not None:
+            projected = (
+                ingestion.creator_snapshots
+                + ingestion.video_snapshots
+                + ingestion.comment_snapshots
+                + ingestion.hashtag_snapshots
+                + ingestion.trend_topics
+                + ingestion.video_hashtags
+            )
+            logs.append(collector_log(
+                "tiktok_content_projected",
+                (
+                    f"Projected {projected} TikTok content observations "
+                    f"(videos={ingestion.videos}, comments={ingestion.comments}, "
+                    f"creators={ingestion.creators}, skipped={ingestion.skipped})."
+                ),
+            ))
         collected_records = len(result.raw_records)
         policy = resolve_empty_result_policy(
             collector_type=task.collector_type,
@@ -270,6 +302,53 @@ async def execute_collection_task(
     await session.commit()
     await session.refresh(run)
     return run
+
+
+async def _ingest_tiktok_content_if_needed(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    task: CollectionTask,
+    run: TaskRun,
+    raw_records: list[CollectorRawRecord],
+) -> Any | None:
+    """Project TikTok content runs into the canonical content tables.
+
+    A projection failure must not fail the collection itself. The savepoint
+    keeps the raw-record transaction usable.
+    """
+    if task.collector_type != "tikhub_social":
+        return None
+    config = task.config or {}
+    endpoint_type = str(config.get("endpoint_type") or "")
+    if endpoint_type not in TIKHUB_CONTENT_ENDPOINT_MAP:
+        return None
+
+    raw_period = config.get("period")
+    try:
+        period_days = int(raw_period) if raw_period is not None else 7
+    except (TypeError, ValueError):
+        period_days = 7
+
+    context = IngestionContext(
+        workspace_id=workspace.id,
+        project_id=task.project_id,
+        provider="tikhub",
+        endpoint_type=endpoint_type,
+        schema_version="tikhub_tiktok_content.v1",
+        run_id=str(run.id),
+        captured_at=run.started_at or datetime.now(UTC),
+        country_code=str(config.get("country_code") or "US"),
+        period_days=period_days,
+        time_window=f"{period_days}d",
+        language=str(config.get("language") or "unknown"),
+    )
+    try:
+        async with session.begin_nested():
+            return await ingest_tiktok_content(session, list(raw_records), context)
+    except Exception as exc:
+        logger.warning("TikTok content ingestion failed for run %s: %s", run.id, exc)
+        return None
 
 
 async def _lock_task_for_run_or_raise(

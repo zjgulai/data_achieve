@@ -367,6 +367,113 @@ TIKHUB_ENDPOINT_MAP: dict[str, tuple[str, str, str]] = {
 }
 
 
+# Phase 1 content endpoints. Tuple: (path, record_type, platform, extraction_mode).
+TIKHUB_CONTENT_ENDPOINT_MAP: dict[str, tuple[str, str, str, str]] = {
+    "tikhub_tiktok_sec_uid": (
+        "/api/v1/tiktok/web/get_sec_user_id",
+        "tiktok_identity",
+        "tiktok",
+        "sec_uid",
+    ),
+    "tikhub_tiktok_user_id": (
+        "/api/v1/tiktok/web/get_user_id",
+        "tiktok_identity",
+        "tiktok",
+        "user_id",
+    ),
+    "tikhub_tiktok_identity_by_username": (
+        "/api/v1/tiktok/app/v3/get_user_id_and_sec_user_id_by_username",
+        "tiktok_identity",
+        "tiktok",
+        "identity",
+    ),
+    "tikhub_tiktok_video_detail": (
+        "/api/v1/tiktok/web/fetch_post_detail",
+        "tiktok_video",
+        "tiktok",
+        "video_detail",
+    ),
+    "tikhub_tiktok_user_posts_web": (
+        "/api/v1/tiktok/web/fetch_user_post",
+        "tiktok_video",
+        "tiktok",
+        "user_posts",
+    ),
+    "tikhub_tiktok_search_web": (
+        "/api/v1/tiktok/web/fetch_general_search",
+        "tiktok_video",
+        "tiktok",
+        "search",
+    ),
+    "tikhub_tiktok_comments_app": (
+        "/api/v1/tiktok/app/v3/fetch_video_comments",
+        "tiktok_comment",
+        "tiktok",
+        "comments",
+    ),
+    "tikhub_tiktok_comment_replies_app": (
+        "/api/v1/tiktok/app/v3/fetch_video_comment_replies",
+        "tiktok_comment",
+        "tiktok",
+        "replies",
+    ),
+    "tikhub_tiktok_user_profile_web": (
+        "/api/v1/tiktok/web/fetch_user_profile",
+        "tiktok_user",
+        "tiktok",
+        "profile",
+    ),
+    "tikhub_tiktok_user_fans_web": (
+        "/api/v1/tiktok/web/fetch_user_fans",
+        "tiktok_user",
+        "tiktok",
+        "fans",
+    ),
+    "tikhub_tiktok_hashtag_detail_app": (
+        "/api/v1/tiktok/app/v3/fetch_hashtag_detail",
+        "tiktok_hashtag",
+        "tiktok",
+        "hashtag_detail",
+    ),
+    "tikhub_tiktok_tag_posts_web": (
+        "/api/v1/tiktok/web/fetch_tag_post",
+        "tiktok_video",
+        "tiktok",
+        "tag_posts",
+    ),
+    "tikhub_tiktok_trending_searchwords": (
+        "/api/v1/tiktok/web/fetch_trending_searchwords",
+        "tiktok_trend",
+        "tiktok",
+        "trending_searchwords",
+    ),
+    "tikhub_tiktok_music_chart": (
+        "/api/v1/tiktok/app/v3/fetch_music_chart_list",
+        "tiktok_trend",
+        "tiktok",
+        "music_chart",
+    ),
+    "tikhub_tiktok_fake_views": (
+        "/api/v1/tiktok/analytics/detect_fake_views",
+        "tiktok_analytics",
+        "tiktok",
+        "fake_views",
+    ),
+    "tikhub_tiktok_comment_keywords": (
+        "/api/v1/tiktok/analytics/fetch_comment_keywords",
+        "tiktok_analytics",
+        "tiktok",
+        "comment_keywords",
+    ),
+    "tikhub_tiktok_ads_trends": (
+        "/api/v1/tiktok/ads/get_trends_hashtag_list",
+        "tiktok_trend",
+        "tiktok",
+        "ads_trends",
+    ),
+}
+
+
 # ---------------------------------------------------------------------------
 # Auth helpers
 # ---------------------------------------------------------------------------
@@ -468,6 +575,7 @@ _TIKHUB_POST_ENDPOINTS: frozenset[str] = frozenset({
     "tikhub_tiktok_ads_detail",
     "tikhub_tiktok_ads_keyword_suggest",
     "tikhub_tiktok_creator_account_health",
+    "tikhub_tiktok_ads_trends",
     "tikhub_wechat_channels_video",
     "tikhub_wechat_search",
     "tikhub_douyin_video_search",
@@ -540,6 +648,29 @@ _TIKHUB_REQUIRED_PARAMS: dict[str, tuple[tuple[str, ...], ...]] = {
     "tikhub_instagram_post_comments": (("code_or_url", "shortcode", "post_id"),),
     "tikhub_youtube_video_comments": (("video_id",),),
     "tikhub_reddit_post_comments": (("post_id",),),
+    # Phase 1 TikTok content endpoints
+    "tikhub_tiktok_sec_uid": (("url",),),
+    "tikhub_tiktok_user_id": (("url",),),
+    "tikhub_tiktok_identity_by_username": (("username", "unique_id"),),
+    "tikhub_tiktok_video_detail": (("item_id", "aweme_id", "video_id"),),
+    "tikhub_tiktok_user_posts_web": (("sec_user_id", "sec_uid"),),
+    "tikhub_tiktok_search_web": (("keyword",),),
+    "tikhub_tiktok_comments_app": (("aweme_id", "video_id"),),
+    "tikhub_tiktok_comment_replies_app": (
+        ("item_id", "aweme_id"),
+        ("comment_id",),
+    ),
+    "tikhub_tiktok_user_profile_web": (
+        ("unique_id", "username", "sec_user_id", "sec_uid"),
+    ),
+    "tikhub_tiktok_user_fans_web": (("sec_user_id", "sec_uid"),),
+    "tikhub_tiktok_hashtag_detail_app": (("ch_id", "hashtag_id"),),
+    "tikhub_tiktok_tag_posts_web": (("challenge_id", "ch_id"),),
+    "tikhub_tiktok_trending_searchwords": (),
+    "tikhub_tiktok_music_chart": (),
+    "tikhub_tiktok_fake_views": (("item_id", "aweme_id"),),
+    "tikhub_tiktok_comment_keywords": (("item_id", "aweme_id"),),
+    "tikhub_tiktok_ads_trends": (),
 }
 
 
@@ -898,11 +1029,14 @@ def _normalize_tiktok_video(
     cover_urls: list[Any] = (video_meta.get("cover") or {}).get("url_list") or []
     music: dict[str, Any] = item.get("music") or {}
     challenges: list[Any] = item.get("cha_list") or item.get("challenges") or []
+    author_handle = _safe_str(
+        author.get("unique_id") or author.get("uniqueId")
+    ) or ""
 
     return CollectorRawRecord(
         record_type="tiktok_video",
         source_url=(
-            f"https://www.tiktok.com/@{author.get('unique_id', 'unknown')}/video/{video_id}"
+            f"https://www.tiktok.com/@{author_handle or 'unknown'}/video/{video_id}"
         ),
         content={
             "provider": "tikhub",
@@ -912,19 +1046,65 @@ def _normalize_tiktok_video(
             "video_id": video_id,
             "text": desc[:2000],
             "author_id": _safe_str(author.get("uid") or author.get("id")) or "",
-            "author_username": _safe_str(author.get("unique_id")) or "",
-            "author_nickname": _safe_str(author.get("nickname")) or "",
-            "created_at": _safe_ts(item.get("create_time")),
-            "play_count": _safe_int(stats.get("play_count")),
-            "like_count": _safe_int(stats.get("digg_count") or stats.get("like_count")),
-            "comment_count": _safe_int(stats.get("comment_count")),
-            "share_count": _safe_int(stats.get("share_count")),
-            "collect_count": _safe_int(stats.get("collect_count")),
+            "author_username": author_handle,
+            "author_nickname": _safe_str(
+                author.get("nickname") or author.get("nickName")
+            ) or "",
+            "created_at": _safe_ts(item.get("create_time") or item.get("createTime")),
+            "play_count": _safe_int(stats.get("play_count") or stats.get("playCount")),
+            "like_count": _safe_int(
+                stats.get("digg_count")
+                or stats.get("diggCount")
+                or stats.get("like_count")
+                or stats.get("likeCount")
+            ),
+            "comment_count": _safe_int(
+                stats.get("comment_count") or stats.get("commentCount")
+            ),
+            "share_count": _safe_int(
+                stats.get("share_count") or stats.get("shareCount")
+            ),
+            "collect_count": _safe_int(
+                stats.get("collect_count") or stats.get("collectCount")
+            ),
+            "repost_count": _safe_int(
+                stats.get("repost_count") or stats.get("repostCount")
+            ),
             "duration": _safe_int(video_meta.get("duration")),
             "cover_url": _safe_str(cover_urls[0] if cover_urls else None),
-            "music_title": _safe_str(music.get("title")),
+            "web_video_url": (
+                f"https://www.tiktok.com/@{author_handle}/video/{video_id}"
+                if author_handle
+                else None
+            ),
+            "is_ad": bool(item.get("isAd") or item.get("is_ad")),
+            "is_sponsored": bool(
+                item.get("isSponsored") or item.get("is_sponsored")
+            ),
+            "is_pinned": bool(item.get("isPinned") or item.get("is_pinned")),
+            "is_slideshow": bool(
+                item.get("isSlideshow") or item.get("is_slideshow")
+            ),
+            "has_shop_product": bool(
+                item.get("hasTikTokShopProduct") or item.get("has_shop_product")
+            ),
+            "music_id": _safe_str(
+                music.get("id") or music.get("mid") or music.get("musicId")
+            ),
+            "music_title": _safe_str(
+                music.get("title") or music.get("musicName")
+            ),
+            "music_author": _safe_str(
+                music.get("author") or music.get("musicAuthor")
+            ),
             "hashtags": [
-                str(ch.get("cha_name") or ch.get("title") or "")
+                str(
+                    ch.get("cha_name")
+                    or ch.get("challenge_name")
+                    or ch.get("title")
+                    or ch.get("name")
+                    or ""
+                )
                 for ch in challenges
                 if isinstance(ch, dict)
             ][:20],
@@ -1231,6 +1411,349 @@ def _normalize_tiktok_ad(
             "cost": item.get("cost"),
             "like_count": item.get("like"),
             "video_info": item.get("video_info"),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _extract_content_items(data: dict[str, Any], mode: str) -> list[dict[str, Any]]:
+    """Phase 1 content endpoint extractors.
+
+    Each mode knows the exact envelope of its endpoint. The legacy
+    ``_extract_items`` stays untouched for every existing endpoint.
+    """
+    inner = data.get("data")
+    if isinstance(inner, list):
+        return [item for item in inner if isinstance(item, dict)]
+
+    if mode in {"sec_uid", "user_id", "identity"}:
+        return [{"data": inner}] if inner is not None else []
+
+    if not isinstance(inner, dict):
+        return []
+
+    if mode == "video_detail":
+        item_info = inner.get("itemInfo")
+        item = item_info.get("itemStruct") if isinstance(item_info, dict) else None
+        if isinstance(item, dict) and item:
+            return [item]
+        return [item_info] if isinstance(item_info, dict) and item_info else []
+
+    if mode in {"user_posts", "tag_posts"}:
+        items = inner.get("itemList")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode == "search":
+        rows = inner.get("data")
+        if not isinstance(rows, list):
+            return []
+        items = []
+        for row in rows:
+            if isinstance(row, dict) and isinstance(row.get("item"), dict):
+                items.append(row["item"])
+        return items
+
+    if mode in {"comments", "replies"}:
+        items = inner.get("comments")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode == "profile":
+        user_info = inner.get("userInfo")
+        return [user_info] if isinstance(user_info, dict) and user_info else []
+
+    if mode == "fans":
+        items = inner.get("userList")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode == "hashtag_detail":
+        ch_info = inner.get("ch_info")
+        return [ch_info] if isinstance(ch_info, dict) and ch_info else []
+
+    if mode == "trending_searchwords":
+        items = inner.get("trending_search_words")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode == "music_chart":
+        items = inner.get("music_list")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode == "ads_trends":
+        items = inner.get("items")
+        return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+    if mode in {"fake_views", "comment_keywords"}:
+        return [inner] if inner else []
+
+    return []
+
+
+def _normalize_content_item(
+    item: dict[str, Any],
+    mode: str,
+    collector_type: str,
+) -> CollectorRawRecord | None:
+    if mode == "video_detail" or mode in {"user_posts", "search", "tag_posts"}:
+        return _normalize_tiktok_video(item, collector_type)
+    if mode in {"comments", "replies"}:
+        return _normalize_tiktok_comment(item, collector_type)
+    if mode == "profile":
+        return _normalize_tiktok_profile(item, collector_type)
+    if mode == "fans":
+        return _normalize_tiktok_fan(item, collector_type)
+    if mode == "hashtag_detail":
+        return _normalize_tiktok_hashtag(item, collector_type)
+    if mode in {"trending_searchwords", "music_chart", "ads_trends"}:
+        return _normalize_tiktok_trend(item, mode, collector_type)
+    if mode in {"fake_views", "comment_keywords"}:
+        return _normalize_tiktok_analytics(item, mode, collector_type)
+    if mode in {"sec_uid", "user_id", "identity"}:
+        return _normalize_tiktok_identity(item, mode, collector_type)
+    return None
+
+
+def _normalize_tiktok_comment(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    cid = _safe_str(item.get("cid") or item.get("comment_id"))
+    if not cid:
+        return None
+    user = item.get("user") if isinstance(item.get("user"), dict) else {}
+    parent = item.get("reply_id") or item.get("parent_comment_id")
+    if isinstance(parent, str) and parent.strip() in {"", "0"}:
+        parent = None
+    root = item.get("reply_to_reply_id")
+    if isinstance(root, str) and root.strip() in {"", "0"}:
+        root = None
+    video_id = _safe_str(item.get("aweme_id") or item.get("item_id"))
+    return CollectorRawRecord(
+        record_type="tiktok_comment",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_comment.v1",
+            "comment_id": cid,
+            "video_id": video_id,
+            "parent_comment_id": _safe_str(parent),
+            "root_comment_id": _safe_str(root),
+            "is_reply": bool(parent),
+            "text": str(item.get("text") or "")[:2000],
+            "text_language": _safe_str(item.get("comment_language")),
+            "like_count": _safe_int(item.get("digg_count")),
+            "reply_count": _safe_int(item.get("reply_comment_total")),
+            "is_pinned": bool(item.get("author_pin")),
+            "creator_interacted": bool(item.get("is_author_digged")),
+            "is_high_purchase_intent": bool(item.get("is_high_purchase_intent")),
+            "author_id": _safe_str(user.get("uid") or user.get("id")),
+            "author_unique_id": _safe_str(user.get("unique_id") or user.get("uniqueId")),
+            "author_nickname": _safe_str(user.get("nickname")),
+            "published_at": _safe_ts(item.get("create_time")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _tiktok_user_content(
+    user: dict[str, Any],
+    stats: dict[str, Any],
+    raw: dict[str, Any],
+    collector_type: str,
+) -> CollectorRawRecord | None:
+    unique_id = _safe_str(user.get("uniqueId") or user.get("unique_id"))
+    uid = _safe_str(user.get("id") or user.get("uid"))
+    if not unique_id and not uid:
+        return None
+    source_url = f"https://www.tiktok.com/@{unique_id}" if unique_id else None
+    return CollectorRawRecord(
+        record_type="tiktok_user",
+        source_url=source_url,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_user.v2",
+            "text": _safe_str(user.get("nickname")) or unique_id or uid or "",
+            "uid": uid,
+            "unique_id": unique_id,
+            "sec_uid": _safe_str(user.get("secUid") or user.get("sec_uid")),
+            "nickname": _safe_str(user.get("nickname")),
+            "signature": _safe_str(user.get("signature")),
+            "region": _safe_str(user.get("region") or user.get("account_region")),
+            "language": _safe_str(user.get("language")),
+            "avatar_url": _safe_str(
+                user.get("avatarLarger") or user.get("avatarMedium") or user.get("avatar_thumb")
+            ),
+            "follower_count": _safe_int(
+                stats.get("followerCount") or user.get("follower_count")
+            ),
+            "following_count": _safe_int(
+                stats.get("followingCount") or user.get("following_count")
+            ),
+            "friend_count": _safe_int(stats.get("friendCount") or user.get("friend_count")),
+            "video_count": _safe_int(stats.get("videoCount") or user.get("aweme_count")),
+            "heart_count": _safe_int(
+                stats.get("heartCount") or stats.get("heart") or user.get("heart")
+            ),
+            "digg_count": _safe_int(stats.get("diggCount") or user.get("digg_count")),
+            "verified": bool(user.get("verified")),
+            "private_account": bool(user.get("privateAccount")),
+            "tt_seller": bool(user.get("ttSeller")),
+            "commerce_user_info": user.get("commerceUserInfo"),
+            "account_created_at": _safe_ts(user.get("createTime")),
+            "profile_url": source_url,
+            "raw": raw,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_profile(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    user = item.get("user") if isinstance(item.get("user"), dict) else {}
+    stats = item.get("stats") if isinstance(item.get("stats"), dict) else {}
+    return _tiktok_user_content(user, stats, item, collector_type)
+
+
+def _normalize_tiktok_fan(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    user = item.get("user") if isinstance(item.get("user"), dict) else {}
+    stats = item.get("stats") if isinstance(item.get("stats"), dict) else {}
+    return _tiktok_user_content(user, stats, item, collector_type)
+
+
+def _normalize_tiktok_hashtag(
+    item: dict[str, Any], collector_type: str
+) -> CollectorRawRecord | None:
+    hashtag_id = _safe_str(item.get("cid") or item.get("ch_id") or item.get("id"))
+    name = _safe_str(item.get("cha_name") or item.get("title") or item.get("name"))
+    if not hashtag_id and not name:
+        return None
+    return CollectorRawRecord(
+        record_type="tiktok_hashtag",
+        source_url=f"https://www.tiktok.com/tag/{name}" if name else None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_hashtag.v1",
+            "text": name or hashtag_id or "",
+            "hashtag_id": hashtag_id,
+            "name": name,
+            "description": _safe_str(item.get("desc")),
+            "video_count": _safe_int(item.get("use_count")),
+            "user_count": _safe_int(item.get("user_count")),
+            "view_count": _safe_int(item.get("view_count")),
+            "is_commerce": bool(item.get("is_commerce")),
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_trend(
+    item: dict[str, Any], mode: str, collector_type: str
+) -> CollectorRawRecord | None:
+    if mode == "trending_searchwords":
+        name = _safe_str(item.get("trendingSearchWord"))
+        trend_type = _safe_str(item.get("trendingSearchWordType")) or "search_word"
+        entity_id = None
+        rank = None
+        post_count = None
+        view_count = None
+    elif mode == "music_chart":
+        music = item.get("music_info") if isinstance(item.get("music_info"), dict) else {}
+        name = _safe_str(music.get("title")) or _safe_str(item.get("id"))
+        trend_type = "music"
+        entity_id = _safe_str(item.get("id"))
+        rank = None
+        post_count = None
+        view_count = _safe_int(music.get("user_count"))
+    else:
+        name = _safe_str(item.get("hashtagName"))
+        trend_type = "hashtag"
+        entity_id = _safe_str(item.get("hashtagID"))
+        rank = _safe_int(item.get("rankIndex"))
+        post_count = _safe_int(item.get("publishCnt"))
+        view_count = _safe_int(item.get("vv"))
+    if not name and not entity_id:
+        return None
+    return CollectorRawRecord(
+        record_type="tiktok_trend",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_trend.v1",
+            "text": name or entity_id or "",
+            "trend_type": trend_type,
+            "entity_id": entity_id,
+            "name": name,
+            "rank": rank,
+            "post_count": post_count,
+            "view_count": view_count,
+            "value": item,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_analytics(
+    item: dict[str, Any], mode: str, collector_type: str
+) -> CollectorRawRecord | None:
+    video_id = _safe_str(item.get("video_id") or item.get("item_id"))
+    return CollectorRawRecord(
+        record_type="tiktok_analytics",
+        source_url=f"https://www.tiktok.com/video/{video_id}" if video_id else None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_analytics.v1",
+            "text": _safe_str(item.get("view_pattern_type")) or video_id or "",
+            "analytics_type": mode,
+            "video_id": video_id,
+            "payload": item,
+            "raw": item,
+        },
+        collected_at=datetime.now(UTC),
+    )
+
+
+def _normalize_tiktok_identity(
+    item: dict[str, Any], mode: str, collector_type: str
+) -> CollectorRawRecord | None:
+    data = item.get("data")
+    user_id = None
+    sec_user_id = None
+    value = None
+    if isinstance(data, dict):
+        user_id = _safe_str(data.get("user_id"))
+        sec_user_id = _safe_str(data.get("sec_user_id"))
+        value = user_id or sec_user_id
+    elif isinstance(data, (str, int)):
+        value = _safe_str(data)
+    if not value and not user_id and not sec_user_id:
+        return None
+    return CollectorRawRecord(
+        record_type="tiktok_identity",
+        source_url=None,
+        content={
+            "provider": "tikhub",
+            "platform": "tiktok",
+            "collector_type": collector_type,
+            "schema_version": "tikhub_tiktok_identity.v1",
+            "text": value or "",
+            "identity_type": mode,
+            "value": value,
+            "user_id": user_id,
+            "sec_user_id": sec_user_id,
             "raw": item,
         },
         collected_at=datetime.now(UTC),
@@ -1722,6 +2245,84 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
         return {"video_id": config.get("video_id") or ""}
     if endpoint_type == "tikhub_reddit_post_comments":
         return {"post_id": config.get("post_id") or ""}
+
+    # ── Phase 1 TikTok content endpoints ──────────────────────────────────
+    if endpoint_type in {"tikhub_tiktok_sec_uid", "tikhub_tiktok_user_id"}:
+        return {"url": config.get("url") or ""}
+    if endpoint_type == "tikhub_tiktok_identity_by_username":
+        return {"username": config.get("username") or config.get("unique_id") or ""}
+    if endpoint_type == "tikhub_tiktok_video_detail":
+        return {
+            "itemId": (
+                config.get("item_id")
+                or config.get("aweme_id")
+                or config.get("video_id")
+                or ""
+            ),
+            "region": config.get("region") or "US",
+        }
+    if endpoint_type == "tikhub_tiktok_user_posts_web":
+        return {
+            "secUid": config.get("sec_user_id") or config.get("sec_uid") or "",
+            "count": max_items,
+            "cursor": config.get("cursor") or 0,
+        }
+    if endpoint_type == "tikhub_tiktok_search_web":
+        return {
+            "keyword": config.get("keyword") or "",
+            "offset": config.get("offset") or 0,
+            "search_id": config.get("search_id") or "",
+        }
+    if endpoint_type == "tikhub_tiktok_comments_app":
+        return {
+            "aweme_id": config.get("aweme_id") or config.get("video_id") or "",
+            "count": max_items,
+            "cursor": config.get("cursor") or 0,
+        }
+    if endpoint_type == "tikhub_tiktok_comment_replies_app":
+        return {
+            "item_id": config.get("item_id") or config.get("aweme_id") or "",
+            "comment_id": config.get("comment_id") or "",
+            "count": max_items,
+            "cursor": config.get("cursor") or 0,
+        }
+    if endpoint_type == "tikhub_tiktok_user_profile_web":
+        return {
+            "uniqueId": config.get("unique_id") or config.get("username") or "",
+            "secUid": config.get("sec_user_id") or config.get("sec_uid") or "",
+        }
+    if endpoint_type == "tikhub_tiktok_user_fans_web":
+        return {
+            "secUid": config.get("sec_user_id") or config.get("sec_uid") or "",
+            "count": max_items,
+            "maxCursor": config.get("max_cursor") or 0,
+        }
+    if endpoint_type == "tikhub_tiktok_hashtag_detail_app":
+        return {
+            "ch_id": config.get("ch_id") or config.get("hashtag_id") or "",
+            "region": config.get("region") or "US",
+        }
+    if endpoint_type == "tikhub_tiktok_tag_posts_web":
+        return {
+            "challengeID": config.get("challenge_id") or config.get("ch_id") or "",
+            "count": max_items,
+            "cursor": config.get("cursor") or 0,
+        }
+    if endpoint_type == "tikhub_tiktok_trending_searchwords":
+        return {}
+    if endpoint_type == "tikhub_tiktok_music_chart":
+        return {"count": max_items, "cursor": config.get("cursor") or 0}
+    if endpoint_type == "tikhub_tiktok_fake_views":
+        return {"item_id": config.get("item_id") or config.get("aweme_id") or ""}
+    if endpoint_type == "tikhub_tiktok_comment_keywords":
+        return {"item_id": config.get("item_id") or config.get("aweme_id") or ""}
+    if endpoint_type == "tikhub_tiktok_ads_trends":
+        return {
+            "time_range": config.get("period") or 7,
+            "country_code": config.get("country_code") or "US",
+            "page": config.get("page") or 1,
+            "limit": max_items,
+        }
     return {}
 
 
@@ -1745,10 +2346,13 @@ class TikHubSocialCollector(BaseCollector):
 
     def validate_config(self) -> dict[str, Any]:
         endpoint_type = require_text(self.config, "endpoint_type")
-        if endpoint_type not in TIKHUB_ENDPOINT_MAP:
+        if (
+            endpoint_type not in TIKHUB_ENDPOINT_MAP
+            and endpoint_type not in TIKHUB_CONTENT_ENDPOINT_MAP
+        ):
             raise CollectorError(
                 f"tikhub_endpoint_type_unknown: {endpoint_type!r}. "
-                f"Supported: {sorted(TIKHUB_ENDPOINT_MAP)}"
+                f"Supported: {sorted(TIKHUB_ENDPOINT_MAP | TIKHUB_CONTENT_ENDPOINT_MAP)}"
             )
         missing = _missing_required_params(self.config, endpoint_type)
         if missing:
@@ -1766,7 +2370,11 @@ class TikHubSocialCollector(BaseCollector):
         assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
-        endpoint_path, _, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
+        mode: str | None = None
+        if endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP:
+            endpoint_path, _, platform, mode = TIKHUB_CONTENT_ENDPOINT_MAP[endpoint_type]
+        else:
+            endpoint_path, _, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
         api_key = _get_api_key()
         test_params = _build_params({**config, "max_items": 1}, max_items=1)
         logs: list[dict[str, Any]] = []
@@ -1776,7 +2384,11 @@ class TikHubSocialCollector(BaseCollector):
                     data = await _tikhub_post(client, endpoint_path, test_params, api_key)
                 else:
                     data = await _tikhub_get(client, endpoint_path, test_params, api_key)
-            items = _extract_items(data, platform)
+            items = (
+                _extract_content_items(data, mode)
+                if mode is not None
+                else _extract_items(data, platform)
+            )
             msg = f"TikHub endpoint {endpoint_type!r} reachable; got {len(items)} items."
             logs.append(collector_log("tikhub_test", msg))
             return CollectorTestResult(status="ok", message=msg, logs=logs)
@@ -1789,7 +2401,13 @@ class TikHubSocialCollector(BaseCollector):
         assert_collector_allowed(self.collector_type)
         config = self.validate_config()
         endpoint_type: str = config["endpoint_type"]
-        endpoint_path, _record_type, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
+        mode: str | None = None
+        if endpoint_type in TIKHUB_CONTENT_ENDPOINT_MAP:
+            endpoint_path, _record_type, platform, mode = TIKHUB_CONTENT_ENDPOINT_MAP[
+                endpoint_type
+            ]
+        else:
+            endpoint_path, _record_type, platform = TIKHUB_ENDPOINT_MAP[endpoint_type]
         max_items: int = config["max_items"]
 
         logs: list[dict[str, Any]] = []
@@ -1822,13 +2440,21 @@ class TikHubSocialCollector(BaseCollector):
             logs.append(collector_log("tikhub_collect_error", str(exc), level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
-        items = _extract_items(data, platform)
+        items = (
+            _extract_content_items(data, mode)
+            if mode is not None
+            else _extract_items(data, platform)
+        )
         logs.append(collector_log("tikhub_items_received", f"raw_count={len(items)}"))
 
         for item in items[:max_items]:
             if not isinstance(item, dict):
                 continue
-            record = _normalize_item(item, platform, endpoint_type)
+            record = (
+                _normalize_content_item(item, mode, endpoint_type)
+                if mode is not None
+                else _normalize_item(item, platform, endpoint_type)
+            )
             if record is not None:
                 raw_records.append(record)
 
