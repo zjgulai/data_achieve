@@ -149,6 +149,14 @@ class ToolResult:
         }
 
 
+_ACTOR_TO_ENDPOINT = {
+    "pratikdani/tiktok-shop-search-scraper": "apify_tiktok_shop_search_scraper",
+    "pratikdani/tiktok-shop-scraper": "apify_tiktok_shop_product_detail",
+    "clockworks/tiktok-shop-scraper": "apify_tiktok_shop_scraper",
+    "lemur/tiktok-shop-creators": "apify_tiktok_shop_creators",
+    "clockworks/tiktok-transcript-extractor": "apify_tiktok_transcript_extractor",
+}
+
 _TOOL_ROLE_BY_ENDPOINT = {
     "tikhub_tiktok_user_profile_web": "profile",
     "tikhub_tiktok_user_fans_web": "fan",
@@ -163,6 +171,7 @@ _TOOL_ROLE_BY_ENDPOINT = {
     "tikhub_tiktok_shop_hot_products": "product",
     "apify_tiktok_shop_product_detail": "product",
     "apify_tiktok_shop_search_scraper": "product",
+    "apify_tiktok_shop_scraper": "product",
     "tikhub_tiktok_shop_reviews_v2": "review",
     "apify_tiktok_shop_creators": "commerce_profile",
 }
@@ -290,6 +299,9 @@ async def _fetch_records(task_run_id: uuid.UUID, limit: int) -> list[dict[str, A
         if isinstance(raw.content, dict):
             record = dict(raw.content)
             endpoint = str(record.get("collector_type") or "")
+            if not endpoint:
+                actor = str(record.get("actor_id") or "")
+                endpoint = _ACTOR_TO_ENDPOINT.get(actor, "")
             role = _TOOL_ROLE_BY_ENDPOINT.get(endpoint)
             if role:
                 record["_tool_role"] = role
