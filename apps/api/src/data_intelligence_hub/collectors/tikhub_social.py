@@ -791,6 +791,7 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
         if isinstance(inner, dict):
             # 这些平台的响应常常再套一层或两层 data / results，条目数组藏在里面：
             #   bilibili fetch_user_videos → data.item
+            #   bilibili fetch_video_comments → data.data.replies
             #   douyin   fetch_hot_search_list → data.data.word_list
             #   douyin   fetch_brand_hot_..._detail → data.brand_list
             #   weibo    fetch_user_posts → data.data.list
@@ -806,7 +807,7 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
                     "aweme_list", "item_list", "items", "item", "video_list",
                     "list", "result_list", "statuses", "cards", "answer_list",
                     "search_result", "result", "videos", "brand_list",
-                    "trending_list", "word_list", "comments", "mixFeeds",
+                    "trending_list", "word_list", "comments", "replies", "mixFeeds",
                     "feeds", "data",
                 ):
                     candidate = scope.get(key)
@@ -1448,7 +1449,13 @@ def _normalize_generic(
             text = val.strip()[:2000]
             break
     else:
-        text = ""
+        # bilibili 评论的正文在嵌套的 content.message 里。
+        nested_content = item.get("content")
+        if isinstance(nested_content, dict):
+            message = nested_content.get("message")
+            text = message.strip()[:2000] if isinstance(message, str) else ""
+        else:
+            text = ""
     record_type_map = {
         "youtube": "youtube_video",
         "reddit": "reddit_post",

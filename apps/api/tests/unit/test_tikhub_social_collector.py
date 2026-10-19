@@ -1210,6 +1210,55 @@ def test_extract_items_nested_domestic_scopes(key: str, expected: int) -> None:
     assert len(items) == expected
 
 
+# 2026-10-19 实测的上游响应形状：评论数组在 data.data.replies。
+BILIBILI_COMMENTS_RESPONSE: dict[str, Any] = {
+    "data": {
+        "code": 200,
+        "message": "success",
+        "ttl": 1,
+        "data": {
+            "cursor": {"is_end": False, "next": 2},
+            "replies": [
+                {
+                    "rpid_str": "1001",
+                    "oid_str": "52080698",
+                    "mid_str": "123",
+                    "content": {"message": "第一条评论"},
+                    "like": 12,
+                    "ctime": 1700000000,
+                },
+                {
+                    "rpid_str": "1002",
+                    "oid_str": "52080698",
+                    "mid_str": "456",
+                    "content": {"message": "第二条评论"},
+                    "like": 3,
+                    "ctime": 1700000100,
+                },
+            ],
+            "top": {},
+            "upper": {"mid": 999},
+        },
+    }
+}
+
+
+def test_extract_items_bilibili_comments_reads_replies() -> None:
+    items = _extract_items(BILIBILI_COMMENTS_RESPONSE, "bilibili")
+
+    assert len(items) == 2
+    assert items[0]["rpid_str"] == "1001"
+
+
+def test_normalize_bilibili_comment_uses_nested_message() -> None:
+    items = _extract_items(BILIBILI_COMMENTS_RESPONSE, "bilibili")
+    record = _normalize_item(items[0], "bilibili", "tikhub_bilibili_comments")
+
+    assert record is not None
+    assert record.content["text"] == "第一条评论"
+    assert record.content["platform"] == "bilibili"
+
+
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
