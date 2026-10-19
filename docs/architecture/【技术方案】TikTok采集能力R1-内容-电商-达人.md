@@ -948,9 +948,44 @@ R1 月预算上限 300 美元。
 
 ### 25.7 已知限制
 
-1. `video_product` 与 `creator_product` 暂无生产者，保留表与仓储，等待新端点或 Actor 验证。
-2. `ad` 与 `ad_creative` 仍只有迁移，无 ORM、无工具。
-3. `shop.rating`、`shop.follower_count`、`shop.product_count` 在现有 Apify 详情中多数为空。
-4. 回填默认排除 Phase 0 旧端点，避免误收。需要时显式加 `--include-phase0-tikhub`。
-5. 规范表主键是全局的，租户是行属性。同一实体被多个项目采集时，回填会记录 `tiktok_entity_belongs_to_another_tenant`。本次生产出现 2 条，已跳过，不影响其余记录。
+1. `shop.rating`、`shop.follower_count`、`shop.product_count` 在现有 Apify 详情中多数为空。
+2. 回填默认排除 Phase 0 旧端点，避免误收。需要时显式加 `--include-phase0-tikhub`。
+3. 规范表主键是全局的，租户是行属性。同一实体被多个项目采集时，回填会记录 `tiktok_entity_belongs_to_another_tenant`。本次生产出现 2 条，已跳过，不影响其余记录。
+
+## 26. 广告与商品关系补齐（2026-10-19）
+
+### 26.1 广告
+
+1. 新增 `Ad` 与 `AdCreative` ORM、仓储与入库。
+2. 新增工具 `tiktok_ads_top` 与 `tiktok_ads_detail`。
+3. 列表工具返回素材、CTR、成本与互动指标。
+4. 详情工具补充广告主、落地页、行业与目标。
+5. 生产实测：`tiktok_ads_top` 返回 3 条；`tiktok_ads_detail` 返回 1 条；`ad` 与 `ad_creative` 各写入 3 行。
+
+### 26.2 视频与达人商品关系
+
+1. 新增端点：
+   - `tikhub_tiktok_video_products`
+   - `tikhub_tiktok_creator_showcase`
+2. 新增工具：
+   - `tiktok_video_products`
+   - `tiktok_creator_showcase`
+3. 两个端点需要 `TIKHUB_TIKTOK_CREATOR_COOKIE`。未配置时工具返回 `tikhub_creator_cookie_not_configured`，不发起计费请求。
+4. 视频商品入库可自动派生达人商品关系，`relation_type=promoted_in_video`。
+5. 当前生产未配置 Cookie，两张关系表保持为空。配置 Cookie 后即可写入。
+
+### 26.3 跨项目实体冲突
+
+1. 回填报告新增 `cross_tenant_conflicts` 计数。
+2. 冲突记录仍保留在 `errors` 中，包含实体类型与 ID。
+3. 当前策略：跳过冲突记录，不覆盖其他项目的实体。
+
+### 26.4 工具总数
+
+TikTok 工具从 12 个增加到 16 个：
+
+- 8 个内容工具
+- 4 个电商工具
+- 2 个商品关系工具（Cookie 门控）
+- 2 个广告工具
 

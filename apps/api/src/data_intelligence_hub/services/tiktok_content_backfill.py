@@ -89,6 +89,7 @@ class BackfillReport:
     projected_records: int = 0
     skipped_records: int = 0
     failed_records: int = 0
+    cross_tenant_conflicts: int = 0
     table_counts: dict[str, int] = field(default_factory=dict)
     by_endpoint: dict[str, int] = field(default_factory=dict)
     errors: list[dict[str, Any]] = field(default_factory=list)
@@ -100,6 +101,11 @@ class BackfillReport:
                 continue
             if isinstance(value, int):
                 self.table_counts[key] = self.table_counts.get(key, 0) + value
+        self.cross_tenant_conflicts += sum(
+            1
+            for error in result.errors
+            if "tiktok_entity_belongs_to_another_tenant" in error
+        )
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -111,6 +117,7 @@ class BackfillReport:
             "projected_records": self.projected_records,
             "skipped_records": self.skipped_records,
             "failed_records": self.failed_records,
+            "cross_tenant_conflicts": self.cross_tenant_conflicts,
             "table_counts": self.table_counts,
             "by_endpoint": self.by_endpoint,
             "errors": self.errors,

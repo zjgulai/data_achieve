@@ -25,7 +25,7 @@ from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services.tiktok_content_backfill import (
     BackfillFilters,
-    _load_runs,
+    BackfillReport,
     backfill_tiktok_content,
 )
 
@@ -168,6 +168,20 @@ async def _seed(
     )
     await db.commit()
     return workspace_id, project_id, run.id
+
+
+def test_report_counts_cross_tenant_conflicts() -> None:
+    class _Result:
+        errors = [
+            "master:ValueError:tiktok_entity_belongs_to_another_tenant:Creator:u1"
+        ]
+
+        def as_dict(self):
+            return {"creators": 0, "errors": self.errors}
+
+    report = BackfillReport()
+    report.add_result(_Result())
+    assert report.cross_tenant_conflicts == 1
 
 
 @pytest.mark.asyncio
