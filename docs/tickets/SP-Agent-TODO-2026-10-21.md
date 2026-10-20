@@ -6,7 +6,7 @@
 
 飞书多维表格：SP-Agent-TODO · https://momcozy-in.feishu.cn/base/XXz5bHAwCa7qv5sTzrCci3jPnxd?table=tbli8kAkAqrndUvJ
 
-共 55 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
+共 65 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
 
 ## 对比结论
 
@@ -78,3 +78,13 @@
 | SP-53 更新生产验收与镜像构建技能，去掉过期数字 | 工作台 | 发布与运维 | bug | 更新 .claude/skills/production/production-acceptance/SKILL.md：路由 /platforms→/tools，计数 70/270/242→70/309/281，schema 改逐主机期望；在 production-image-build/SKILL.md 增加 edge 固定 IP、`up -d --no-deps api console`、`restart edge`、网关 reload 失败的处理；加版本戳与季度复核。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
 | SP-54 发布后数据级验收：不只 200，还要有数据 | 工作台 | 凭证与提供方 | 存量需求 | 扩展验收脚本：调用 /api/collectors/docs 断言 tested/success 计数，调用 /providers/status 断言状态分布，选 1 个已知可用端点跑 quick-collect 并断言 records>0；失败即阻断发布。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
 | SP-55 TikTok 工作台增加广告页签与成本预估 | 工作台 | TikTok R1 工具与工作台 | 新需求 | 在工作台增加广告页签，接入 tiktok_ads_top 与 tiktok_ads_detail。列表展示广告主、标题、CTR、点赞、评论、分享；详情补齐落地页与行业。每个工具显示单次成本上限与预估。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-56 平台包 verified_count 改为实时证据 | 工作台 | Skill 与 MCP 目录（平台包） | bug | 平台包的 verified_count 不再写静态值。每个包从 /api/platform-packages/providers/status 的 live 状态聚合，或在页面明确标注“静态声明”。TikTok 包必须显示 15 verified/17 untested/5 empty/2 degraded，而不是 39/39。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-57 修正 /api/collectors/docs 的 success 语义 | 工作台 | 采集文档（/docs） | bug | success 只统计 last_records_count>0 的运行。last_run_status=success 且 0 条记录归入 empty。页面“失败或未测”计入 empty。当前 254 success 中 11 个是 0 条。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-58 完成 23 个未测端点与 16 个 TikTok 工具首测 | Agent机器人 | TikTok R1 工具与工作台 | 存量需求 | 按能力总账 §4.3 跑全量实测或按优先级抽样。23 个 untested 端点与 16 个 TikTok 工具至少各跑一次真实调用，记录 run_id、记录数、错误分类与耗时。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-59 修正 /api/tools 的 executable_now 与汇总计数 | 工作台 | 工具目录与计数 | bug | executable_now 必须与 availability!=disabled 且顶层 executable 一致。修正 pypi_search 的 disabled 但 executable_now=true。汇总 executable_count 与 executable_now 数量必须相等。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-60 给 config-gated 端点补原因与下一步 | 工作台 | 提供方状态（/settings/providers） | bug | 59 个 config-gated 端点必须显示可执行原因：缺哪个凭据、哪个批准、哪个服务。区分“补配置可解”与“策略永久阻断”。不要再给用户“补 key 即可用”的错误预期。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-61 给 TikTok CDO 增加健康端点 | Agent机器人 | Agent：TikTok CDO | 新需求 | 新增 GET /api/agents/tiktok-cdo/health，返回 ready、项目 ID 是否合法、工具路由开关、最近事件时间、错误计数。纳入生产监控与能力图谱。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-62 控制台无效 ID 返回 404 与错误态 | 工作台 | 运行记录（/runs 与 /runs/[runId]） | bug | /runs/{不存在 UUID}、/projects/{不存在 UUID}、/tools/{非平台 ID} 不再永久加载。API 返回 404 后页面显示“记录不存在”并提供返回链接。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-63 梳理 0/7 平台凭证与官方 Provider 取舍 | 工作台 | 凭证与提供方 | 存量需求 | 盘点 7 个平台的必填字段与当前 0 条凭证，决定哪些走官方 API、哪些走 TikHub/Apify、哪些暂缓。为每个平台给出“需要谁提供、何时可配”的结论。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-64 未测端点从 Agent/MCP 默认可执行面隐藏 | Agent机器人 | 工具目录与计数 | 新需求 | discover/list_capabilities 默认只返回 availability=verified 且最近实测有记录的工具。untested/config-gated/degraded 需显式 include_unverified=true 才出现，并标注原因。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-65 建立实测证据 TTL 与过期提醒 | 工作台 | 采集文档（/docs） | 方案迭代 | 为 last_test_at 设 TTL（建议 14 天）。超过 TTL 标为 stale，不计入 verified。Dashboard 与 /docs 显示过期数量，并生成复测清单。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
