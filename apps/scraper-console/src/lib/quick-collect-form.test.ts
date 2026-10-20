@@ -246,7 +246,7 @@ test("hint keys present in the contract are not presets", () => {
 });
 
 test("a null tool yields an empty form", () => {
-  assert.deepEqual(buildForm(null, null), { fields: [], presets: {} });
+  assert.deepEqual(buildForm(null, null), { fields: [], presets: {}, fixedTargetUrl: null });
 });
 
 /* ── 值处理 ── */
@@ -435,9 +435,61 @@ test("an endpoint with no parameters stays submittable", () => {
 test("every block reason except pending has a message", () => {
   assert.equal(submitBlockMessage(null), null);
   assert.equal(submitBlockMessage("pending"), null);
-  for (const reason of ["no_project", "policy", "permanently_blocked", "contract_unavailable", "empty_required"] as const) {
+  for (const reason of [
+    "no_project",
+    "policy",
+    "unavailable",
+    "missing_config",
+    "permanently_blocked",
+    "contract_unavailable",
+    "empty_required",
+  ] as const) {
     assert.ok(submitBlockMessage(reason));
   }
+});
+
+test("策略拒绝与缺配置给出不同提示", () => {
+  const policy = submitBlockMessage("policy");
+  const missing = submitBlockMessage("missing_config");
+  const unavailable = submitBlockMessage("unavailable");
+  assert.notEqual(policy, missing);
+  assert.notEqual(policy, unavailable);
+  assert.notEqual(missing, unavailable);
+});
+
+test("缺配置优先于策略拒绝", () => {
+  const form = buildForm(tool([]), null);
+  assert.equal(
+    evaluateSubmit(
+      gate({
+        endpointAllowed: false,
+        missingConfiguration: ["APIFY_API_TOKEN"],
+        form,
+        values: {},
+      })
+    ),
+    "missing_config"
+  );
+});
+
+test("未验证端点报不可用而不是策略拒绝", () => {
+  const form = buildForm(tool([]), null);
+  assert.equal(
+    evaluateSubmit(
+      gate({ endpointAllowed: false, endpointStatus: "pending", form, values: {} })
+    ),
+    "unavailable"
+  );
+});
+
+test("已验证但被策略阻断的端点报策略拒绝", () => {
+  const form = buildForm(tool([]), null);
+  assert.equal(
+    evaluateSubmit(
+      gate({ endpointAllowed: false, endpointStatus: "verified", form, values: {} })
+    ),
+    "policy"
+  );
 });
 
 /* ── 批量去重 ── */

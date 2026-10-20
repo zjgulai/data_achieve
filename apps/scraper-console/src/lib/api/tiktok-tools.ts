@@ -1,12 +1,5 @@
 import { apiFetch } from "./client";
 
-export type TikTokToolSpec = {
-  tool_id: string;
-  label: string;
-  description: string;
-  inputs: string[];
-};
-
 export type TikTokToolRun = {
   endpoint_type: string;
   run_id?: string;
@@ -27,10 +20,6 @@ export type TikTokToolResult = {
   errors: string[];
   metadata: Record<string, unknown>;
 };
-
-export async function fetchTikTokTools(): Promise<TikTokToolSpec[]> {
-  return apiFetch<TikTokToolSpec[]>("/api/tiktok/tools");
-}
 
 export async function runTikTokTool(
   toolId: string,

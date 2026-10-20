@@ -46,6 +46,14 @@ export type ParamField = {
 export type ParamForm = {
   fields: ParamField[];
   presets: Record<string, QuickCollectParamValue>;
+  /**
+   * 服务端固定的目标地址。
+   *
+   * 来源是 `param_fields.url`。它随 presets 静默发送，
+   * 用户在表单里改同一个键不会生效。
+   * 界面必须把它渲染成只读，否则用户会以为可以改。
+   */
+  fixedTargetUrl: string | null;
 };
 
 /** 服务端保留键。不渲染，不发送。 */
@@ -315,7 +323,7 @@ export function buildForm(
   paramFields: Record<string, string> | null | undefined
 ): ParamForm {
   if (!tool || !Array.isArray(tool.parameters)) {
-    return { fields: [], presets: {} };
+    return { fields: [], presets: {}, fixedTargetUrl: null };
   }
 
   const fields: ParamField[] = [];
@@ -342,7 +350,15 @@ export function buildForm(
     });
   }
 
-  return { fields, presets: collectPresets(tool.parameters, paramFields) };
+  const fixedRaw = paramFields?.url;
+  const fixedTargetUrl =
+    typeof fixedRaw === "string" && fixedRaw.trim() !== "" ? fixedRaw.trim() : null;
+
+  return {
+    fields,
+    presets: collectPresets(tool.parameters, paramFields),
+    fixedTargetUrl,
+  };
 }
 
 /** 取表单的初始值集合。 */
@@ -446,6 +462,8 @@ export type SubmitBlockReason =
   | "pending"
   | "no_project"
   | "policy"
+  | "unavailable"
+  | "missing_config"
   | "permanently_blocked"
   | "contract_unavailable"
   | "empty_required";
@@ -455,6 +473,12 @@ export type SubmitGateInput = {
   projectId: string;
   /** 端点是否可采集。已含状态与策略阻断判定。 */
   endpointAllowed: boolean;
+  /** 端点状态。用于区分「未验证」与「策略拒绝」。 */
+  endpointStatus?: string;
+  /** 运行证据的可用性。缺配置时与策略拒绝是两回事。 */
+  availability?: string;
+  /** 缺失的配置项。非空表示可配置后恢复。 */
+  missingConfiguration?: readonly string[];
   /** 工具契约是否永久阻断。契约未加载时为 false。 */
   permanentlyBlocked: boolean;
   /** 契约是否加载中。 */
@@ -472,7 +496,20 @@ export type SubmitGateInput = {
 export function evaluateSubmit(input: SubmitGateInput): SubmitBlockReason | null {
   if (input.isPending) return "pending";
   if (!input.projectId) return "no_project";
-  if (!input.endpointAllowed) return "policy";
+  if (!input.endpointAllowed) {
+    // 区分三种阻断：未验证、缺配置、策略拒绝。
+    // 三者的处置不同，混成一个提示会让用户误判。
+    if (input.missingConfiguration && input.missingConfiguration.length > 0) {
+      return "missing_config";
+    }
+    if (input.availability === "disabled" || input.availability === "empty") {
+      return "unavailable";
+    }
+    if (input.endpointStatus && input.endpointStatus !== "verified") {
+      return "unavailable";
+    }
+    return "policy";
+  }
   if (input.permanentlyBlocked) return "permanently_blocked";
   // 契约没加载好，但端点有必填参数。此时不得放行。
   if ((input.toolFailed || input.toolLoading) && input.endpointRequiredCount > 0) {
@@ -491,6 +528,10 @@ export function submitBlockMessage(reason: SubmitBlockReason | null): string | n
       return "请先选择项目。";
     case "policy":
       return "当前执行环境不放行该端点。";
+    case "unavailable":
+      return "该端点尚未验证或当前不可用。请稍后再试或换端点。";
+    case "missing_config":
+      return "该端点缺少必要配置。请联系管理员补齐凭据或域名授权。";
     case "permanently_blocked":
       return "该端点被策略永久阻断。换执行环境也不放行。";
     case "contract_unavailable":

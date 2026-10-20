@@ -295,6 +295,9 @@ export function QuickCollectDrawer({ endpoint, open, onClose, onAbort, batchProg
   const blockReason = evaluateSubmit({
     projectId,
     endpointAllowed: canStartCollection(endpoint),
+    endpointStatus: endpoint.status,
+    availability: tool?.availability.availability,
+    missingConfiguration: tool?.availability.missing_configuration,
     permanentlyBlocked: tool?.permanently_blocked === true,
     toolLoading,
     toolFailed,
@@ -468,6 +471,18 @@ export function QuickCollectDrawer({ endpoint, open, onClose, onAbort, batchProg
                     onChange={handleChange}
                   />
                 ))
+              )}
+
+              {/* 服务端固定目标地址。只读：随 presets 发送，改表单不生效。 */}
+              {form.fixedTargetUrl && (
+                <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2">
+                  <p className="text-xs font-medium text-[var(--text-tertiary)]">
+                    固定采集地址（不可修改）
+                  </p>
+                  <p className="mt-1 break-all font-mono text-xs text-[var(--text-secondary)]">
+                    {form.fixedTargetUrl}
+                  </p>
+                </div>
               )}
 
               {/* 提交阻断提示 */}

@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/run-status.test.ts src/lib/platforms/catalog.test.ts src/lib/collection-policy.test.ts src/lib/quick-collect-form.test.ts src/lib/endpoint-key.test.ts src/lib/url-state.test.ts src/lib/reachability.test.ts src/lib/routes.test.ts",
+    "test": "node --test \"src/**/*.test.ts\"",
     "acceptance": "node scripts/acceptance-quick-collect-form.ts",
     "snapshot": "cd ../api && ./.venv/bin/python ../scraper-console/scripts/gen-contract-snapshot.py"
   },
