@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { fetchRunById, fetchRunRecords, rawRecordEntries } from "@/lib/api/runs";
@@ -306,6 +307,47 @@ export default function CollectResultPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Tool call metadata */}
+      {!runLoading && run?.tool_id ? (
+        <div className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-[var(--radius-2)] bg-[var(--accent-1-soft)] px-2 py-1 text-xs font-semibold text-[var(--action-primary)]">
+              {run.tool_label || run.tool_id}
+            </span>
+            <code className="font-mono text-xs text-[var(--text-tertiary)]">
+              {run.tool_id}
+            </code>
+            {run.tool_role ? (
+              <span className="text-xs text-[var(--text-tertiary)]">
+                角色 {run.tool_role}
+              </span>
+            ) : null}
+            <Link
+              href="/tools/tiktok"
+              className="ml-auto text-xs font-medium text-[var(--action-primary)] underline"
+            >
+              打开 TikTok 工作台
+            </Link>
+          </div>
+          <dl className="mt-3 grid gap-1.5 text-xs text-[var(--text-secondary)]">
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-[var(--text-tertiary)]">上游端点</dt>
+              <dd className="font-mono break-all">{run.endpoint_type ?? "—"}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-[var(--text-tertiary)]">调用 ID</dt>
+              <dd className="font-mono break-all">{run.tool_call_id ?? "—"}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-24 shrink-0 text-[var(--text-tertiary)]">参数</dt>
+              <dd className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono">
+                {run.tool_params ? JSON.stringify(run.tool_params, null, 2) : "—"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
 
       {/* Records */}
       {hasRecords && (

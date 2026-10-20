@@ -14,6 +14,16 @@ export type TaskRun = {
    * 每条含 step / message / level / timestamp。失败日志另有 failure_reason 等键。
    */
   logs: Array<{ step: string; message: string; level: string; timestamp: string }>;
+  /** Tool metadata is present only for runs created by the TikTok tool layer. */
+  project_id?: string | null;
+  task_name?: string | null;
+  collector_type?: string | null;
+  endpoint_type?: string | null;
+  tool_call_id?: string | null;
+  tool_id?: string | null;
+  tool_label?: string | null;
+  tool_role?: string | null;
+  tool_params?: Record<string, unknown> | null;
 };
 
 /**

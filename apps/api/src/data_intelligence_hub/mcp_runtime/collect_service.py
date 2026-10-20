@@ -14,11 +14,14 @@ async def collect_capability(
     endpoint_type: str,
     project_id: uuid.UUID,
     params: dict[str, object],
+    *,
+    tool_call: dict[str, object] | None = None,
 ) -> QuickCollectResponse:
     body = QuickCollectRequest(
         project_id=project_id,
         endpoint_type=endpoint_type,
         params=params,
+        tool_call=tool_call,
     )
     async with async_session_factory() as session:
         return await quick_collect(body, session)

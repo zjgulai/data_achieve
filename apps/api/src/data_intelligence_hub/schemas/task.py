@@ -130,24 +130,50 @@ class TaskRunResponse(BaseModel):
     idempotency_replayed: bool = False
     idempotency_scope: str | None = None
     idempotency_key_hash: str | None = None
+    project_id: uuid.UUID | None = None
+    task_name: str | None = None
+    collector_type: str | None = None
+    endpoint_type: str | None = None
+    tool_call_id: str | None = None
+    tool_id: str | None = None
+    tool_label: str | None = None
+    tool_role: str | None = None
+    tool_params: dict[str, Any] | None = None
 
     @classmethod
     def from_run(
         cls,
         run: TaskRun,
         *,
+        task: CollectionTask | None = None,
         idempotency_replayed: bool = False,
         idempotency_key_hash: str | None = None,
     ) -> TaskRunResponse:
         response = cls.model_validate(run)
         detected_key_hash = idempotency_key_hash or _task_run_idempotency_key_hash(run.logs)
-        return response.model_copy(
-            update={
-                "idempotency_replayed": idempotency_replayed,
-                "idempotency_scope": "task_manual_run" if detected_key_hash else None,
-                "idempotency_key_hash": detected_key_hash,
-            }
-        )
+        update: dict[str, Any] = {
+            "idempotency_replayed": idempotency_replayed,
+            "idempotency_scope": "task_manual_run" if detected_key_hash else None,
+            "idempotency_key_hash": detected_key_hash,
+        }
+        if task is not None:
+            config = task.config or {}
+            tool_call = config.get("tool_call")
+            tool_call = tool_call if isinstance(tool_call, dict) else {}
+            update.update(
+                {
+                    "project_id": task.project_id,
+                    "task_name": task.name,
+                    "collector_type": task.collector_type,
+                    "endpoint_type": config.get("endpoint_type"),
+                    "tool_call_id": tool_call.get("tool_call_id"),
+                    "tool_id": tool_call.get("tool_id"),
+                    "tool_label": tool_call.get("label"),
+                    "tool_role": tool_call.get("role"),
+                    "tool_params": tool_call.get("params"),
+                }
+            )
+        return response.model_copy(update=update)
 
 
 def _task_run_idempotency_key_hash(logs: list[dict[str, Any]]) -> str | None:

@@ -8,6 +8,7 @@ FastAPI 路由：TikTok CDO 飞书机器人 webhook。
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -145,18 +146,30 @@ async def _handle_message(event: dict[str, Any]) -> None:
         # 3. 更新占位卡（已知 action）
         await update_card(message_id, placeholder_card(intent))
 
-        # 4. 采集数据
-        raw_data = await gather_data(intent)
+        # 4. 采集数据 + 清洗 + L3 摘要
+        config = get_cdo_config()
+        try:
+            cleaned = await asyncio.wait_for(
+                _collect_and_clean(intent),
+                timeout=config.tool_timeout_seconds,
+            )
+        except TimeoutError:
+            await update_card(
+                message_id, error_card(intent, "采集超时，请稍后重试。")
+            )
+            return
 
-        # 5. 清洗 + L3 摘要
-        cleaned = await clean_and_analyze(raw_data, intent)
-
-        # 6. 更新结果卡
+        # 5. 更新结果卡
         card = result_card(intent, cleaned)
         await update_card(message_id, card)
 
     except Exception as e:
         logger.exception("消息处理异常: %s", e)
+
+
+async def _collect_and_clean(intent: TikTokIntent) -> dict[str, Any]:
+    raw_data = await gather_data(intent)
+    return await clean_and_analyze(raw_data, intent)
 
 
 async def _re_collect(raw_text: str, open_id: str) -> None:

@@ -27,6 +27,15 @@ export type TaskRun = {
   finished_at: string | null;
   created_at: string;
   logs: Array<{ step: string; message: string; level: string; timestamp: string }>;
+  project_id?: string | null;
+  task_name?: string | null;
+  collector_type?: string | null;
+  endpoint_type?: string | null;
+  tool_call_id?: string | null;
+  tool_id?: string | null;
+  tool_label?: string | null;
+  tool_role?: string | null;
+  tool_params?: Record<string, unknown> | null;
 };
 
 export async function fetchTasks(params?: {
