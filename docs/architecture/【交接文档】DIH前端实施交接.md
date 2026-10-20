@@ -494,5 +494,5 @@ print(len([r for r in app.routes if getattr(r,'path','').startswith('/api')]))"
 | [能力图谱](./【能力图谱】DIH-控制台能力地图.md) | 逐页能力清单。§4 是 10-09 历史层 |
 | [能力总账](./【能力总账】DIH-平台能力现状与维护手册.md) | 状态分布、外访策略 |
 | [Monid 逆向报告](./【逆向报告】Monid网站UI与能力逆向.md) | 首页结构与尺度 |
-| [写作标准](../../standards/writing-standard-ste.md) | 中文写作规则 |
+| [写作标准](../standards/writing-standard-ste.md) | 中文写作规则 |
 | `opendesign/design-systems/data-intelligence-product/DESIGN.md` | 设计系统（注意：它的 §13 蓝图是 apps/web 的屏幕，含新 IA 里不存在的 Planner） |

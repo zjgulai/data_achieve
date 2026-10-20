@@ -43,7 +43,7 @@ goal_execution: goal_v2_05b_pad_01_application_preflight_locally_complete
 >
 > **当前执行边界**：`GOAL-V2-03 status=payload_bound_fixture_materialization_postgres_accepted_live_provider_pending`。已实现 server-registered offline payload envelope、lineage-preview v2 和 authenticated/idempotent materialization POST，本地 SQLite 证明 RawRecord/DatasetVersion/ledger 原子写、rollback 与 exact replay。API full `976 passed / 72 skipped / 6 warnings`；warnings 为 1 个既有 passlib deprecation 和 5 个既有 retention 测试的 aiosqlite event-loop-close warnings。Alembic source head 为 `202607170034`，精确授权目标 `127.0.0.1:55367/local_workflow_lineage_test` 已通过 `033→034→033→034` 与 PostgreSQL `13/13`，cleanup head 034 且相关业务表零行。`provider_call=false`、`DAT-003=fixture_only`、`production unchanged`；这些证据不等于 live Provider、real API、CI、共享/生产数据库、部署或 live execution 验收。
 >
-> **技术设计**：[全社媒自动化数据采集平台 V2 总体设计](../superpowers/specs/2026-07-10-social-media-automation-platform-v2-design.md)
+> **技术设计**：原设计稿已由提交 `b339f45` 删除，可从 `b339f45^` 恢复；当前需求追踪见 [V2.0 需求追踪账本](./product-prd-social-media-automation-platform-v2-traceability.md)。
 
 ## 1. 产品定义
 
