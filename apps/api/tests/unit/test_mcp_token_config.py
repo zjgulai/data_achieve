@@ -42,3 +42,24 @@ async def test_blank_token_env_allows_unauthenticated_transport(
         response = await client.post("/")
 
     assert response.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_production_without_tokens_rejects_anonymous(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """生产未配置全局 token 时，无凭据请求必须 401。
+
+    开发与测试保留放行，否则本地 MCP 无法联调。
+    见计划 R7：全局 token 退役后，无项目 key 的请求返回 401。
+    """
+    import data_intelligence_hub.mcp_runtime.auth as auth_module
+
+    # app_env 没有 validation_alias，只能按字段名传。
+    settings = config.Settings(SCRAPY_MCP_TOKEN="", app_env="production")
+    monkeypatch.setattr(auth_module, "get_settings", lambda: settings)
+    transport = ASGITransport(app=BearerTokenMiddleware(_ok_app))
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post("/")
+
+    assert response.status_code == 401
