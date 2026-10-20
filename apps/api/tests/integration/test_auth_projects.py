@@ -170,8 +170,8 @@ async def test_login_rejects_invalid_password(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_project_crud_is_scoped_to_current_workspace(client: AsyncClient) -> None:
-    # 项目路由固定服务 demo 工作区（无鉴权路径，缺它 503）。
-    # 这里只种工作区不种项目：本用例用 domain=osint 断言列表只含新建项目。
+    # 用例注册新用户，项目路由用该用户自己的工作区。
+    # 这里只种 demo 工作区不种项目：确保列表断言只命中新建项目。
     await _seed_demo_workspace(
         client.session_factory,  # type: ignore[attr-defined]
         with_project=False,
@@ -212,14 +212,16 @@ async def test_project_crud_is_scoped_to_current_workspace(client: AsyncClient) 
 
 
 @pytest.mark.asyncio
-async def test_projects_without_login_are_served_from_demo_workspace(
-    demo_client: AsyncClient,
-) -> None:
-    # 去认证改造后 /api/projects 对所有调用方固定服务 demo 工作区，
-    # 匿名请求不再 401；无 demo 工作区才是失败态（503 demo_workspace_unavailable）。
+async def test_projects_without_login_are_rejected(demo_client: AsyncClient) -> None:
+    """匿名请求不得读到任何工作区的项目。
+
+    B1 之前 /api/projects 对所有调用方固定服务 demo 工作区，匿名也能列项目。
+    该行为已移除：项目路由改用 get_authenticated_context，无 cookie 一律 401。
+    见 ADR-007 D2 与 B1-08。
+    """
     demo_client.cookies.clear()
 
     response = await demo_client.get("/api/projects")
 
-    assert response.status_code == 200
-    assert [project["name"] for project in response.json()] == ["Training Intelligence Corpus"]
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Authentication required"
