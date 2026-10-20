@@ -30,7 +30,8 @@ B1 批次修地基。目标有三项：写路径 fail-closed、事务边界回�
 不得改写 main。
 不得对 A 执行 downgrade 或 stamp。
 B 单列为待升级环境，按独立发布流程处理。
-046 的 `down_revision` 必须是 `202610190045`。
+046（TaskRun 幂等列）的 `down_revision` 必须是 `202610190045`。
+047（`tool_catalog` 表）的 `down_revision` 必须是 `202610200046`。
 `alembic heads` 必须只有一行。
 
 ### 后果
@@ -191,7 +192,7 @@ CI 失败时必须打印失败清单。
 - B 应用 045 的时间与备份方案待定。
 - 读接口迁移到 `get_authenticated_context` 的分批顺序待定。
 - MCP 与 agent 的 demo 回退收紧方案待定。
-- 046 迁移落地前，`alembic heads` 必须保持一行。
+- 046 与 047 迁移落地前，`alembic heads` 必须保持一行。
 
 ## 相关证据
 
