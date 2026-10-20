@@ -1325,16 +1325,11 @@ async def list_product_datasets_route(
 async def archive_product_dataset_route(
     dataset_id: uuid.UUID,
     session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationDatasetResponse:
-    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
+    # 归档是写路径，必须 fail-closed。不回退 demo 工作区。
     try:
-        return await archive_product_dataset(session, workspace, dataset_id)
+        return await archive_product_dataset(session, context.workspace, dataset_id)
     except CollectorError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
