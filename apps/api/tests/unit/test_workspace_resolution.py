@@ -448,6 +448,62 @@ async def test_owner_adds_and_removes_member(
 
 
 @pytest.mark.asyncio
+async def test_member_writes_persist_across_sessions(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """成员写入必须在请求会话关闭后仍可见（service 层提交）。"""
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.workspaces import (
+        add_current_workspace_member,
+        remove_current_workspace_member,
+    )
+    from data_intelligence_hub.schemas.workspace import AddWorkspaceMemberRequest
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        owner = await session.get(User, _ids()["shared_owner"])
+        assert shared_workspace is not None
+        assert owner is not None
+        await add_current_workspace_member(
+            AddWorkspaceMemberRequest(email="member@example.com"),
+            session,
+            AuthContext(user=owner, workspace=shared_workspace),
+        )
+
+    async with session_factory() as fresh:
+        persisted = (
+            await fresh.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == _ids()["shared_ws"],
+                    WorkspaceMember.user_id == _ids()["member"],
+                )
+            )
+        ).scalar_one_or_none()
+        assert persisted is not None
+
+        shared_workspace = await fresh.get(Workspace, _ids()["shared_ws"])
+        owner = await fresh.get(User, _ids()["shared_owner"])
+        assert shared_workspace is not None
+        assert owner is not None
+        await remove_current_workspace_member(
+            _ids()["member"],
+            fresh,
+            AuthContext(user=owner, workspace=shared_workspace),
+        )
+
+    async with session_factory() as fresh:
+        gone = (
+            await fresh.execute(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == _ids()["shared_ws"],
+                    WorkspaceMember.user_id == _ids()["member"],
+                )
+            )
+        ).scalar_one_or_none()
+        assert gone is None
+
+
+@pytest.mark.asyncio
 async def test_owner_cannot_remove_owner(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:

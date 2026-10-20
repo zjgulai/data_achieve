@@ -18,11 +18,9 @@ from data_intelligence_hub.api.deps import (
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.repositories.users import get_user_by_email
 from data_intelligence_hub.repositories.workspaces import (
-    add_workspace_member,
     get_workspace_for_member,
     list_workspace_members,
     list_workspaces_for_user,
-    remove_workspace_member,
     user_belongs_to_workspace,
 )
 from data_intelligence_hub.schemas.auth import (
@@ -34,6 +32,10 @@ from data_intelligence_hub.schemas.workspace import (
     AddWorkspaceMemberRequest,
     WorkspaceMemberResponse,
     WorkspaceMembershipResponse,
+)
+from data_intelligence_hub.services.workspace_service import (
+    add_member,
+    remove_member,
 )
 
 router = APIRouter(tags=["workspaces"])
@@ -126,7 +128,7 @@ async def add_current_workspace_member(
             status_code=status.HTTP_409_CONFLICT,
             detail="workspace_member_exists",
         )
-    member = await add_workspace_member(
+    member = await add_member(
         session, context.workspace.id, user.id, payload.role
     )
     return WorkspaceMemberResponse(
@@ -151,7 +153,7 @@ async def remove_current_workspace_member(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="workspace_owner_immovable",
         )
-    removed = await remove_workspace_member(session, context.workspace.id, user_id)
+    removed = await remove_member(session, context.workspace.id, user_id)
     if not removed:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
