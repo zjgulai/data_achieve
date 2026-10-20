@@ -131,13 +131,15 @@ def check_invariants(summary: dict[str, object]) -> list[str]:
         problems.append(f"策略组合计 {total} 与去重后 {summary['policy_classified_total']} 不符")
 
     generated = summary.get("generated")
-    if isinstance(generated, dict):
-        if generated.get("source_entry_count") != summary["endpoint_mappings"]:
-            problems.append(
-                "generated 条目数 "
-                f"{generated.get('source_entry_count')} 与端点映射 {summary['endpoint_mappings']} 不一致；"
-                "生成物可能过期"
-            )
+    if (
+        isinstance(generated, dict)
+        and generated.get("source_entry_count") != summary["endpoint_mappings"]
+    ):
+        problems.append(
+            "generated 条目数 "
+            f"{generated.get('source_entry_count')} "
+            f"与端点映射 {summary['endpoint_mappings']} 不一致；生成物可能过期"
+        )
     return problems
 
 
@@ -176,22 +178,16 @@ def main() -> int:
             print("\nOK: 全部不变量通过。")
 
     if args.update_lock:
-        generated = summary.get("generated") or {}
-        payload = {
-            "schema_version": "tool-catalog.v1",
-            "contract_version": "tool.v1",
-            "catalog_digest": generated.get("catalog_digest"),
-            "tool_count": summary["endpoint_mappings"],
-            "canonical_tool_count": generated.get("unique_endpoint_count"),
-            "executable_count": sum(
-                count
-                for kind, count in summary["policy"].items()  # type: ignore[union-attr]
-                if kind != "unsupported"
-            ),
-        }
-        lock_path = args.root / "configs/tool-catalog.lock.json"
-        lock_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        print(f"\nwrote {lock_path}")
+        # 锁文件只有 `scripts/test_tool_catalog.py --update-lock` 一个写入方。
+        # 本脚本不写它：两者口径不同。
+        #   本脚本读生成的 platform-packages.json，可能落后于工作树；
+        #   锁文件记录运行期目录，由 test_tool_catalog 从源码实时构建。
+        # 之前这里也写锁文件，写出的数字与校验方读取的数字对不上，
+        # 导致「更新锁文件之后仍然 tool_lock_mismatch」。已移除写入路径。
+        print(
+            "\n提示：锁文件请用 scripts/test_tool_catalog.py --update-lock 更新。"
+            "本脚本只做对账，不写锁文件。"
+        )
 
     return 1 if problems else 0
 
