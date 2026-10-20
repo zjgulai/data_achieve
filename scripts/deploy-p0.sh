@@ -6,7 +6,8 @@
 #   1. 发布模式（默认）：拉源码，构建并替换 api 与 console。
 #   2. 批准模式（--grants-file）：只更新外访域名批准，不构建镜像。
 #
-# 不重建 web、db 与共享网关。重建 api/console 后必须重启 edge，
+# 不重建 web、db 与共享网关。构建后用新镜像执行 alembic upgrade head；
+# 迁移失败会中止发布，旧容器继续服务。重建 api/console 后必须重启 edge，
 # 否则 edge 缓存旧容器 IP，公网 502。替换完容器还会尝试重载共享网关
 # （scripts/reload-scrapy-gateway.sh）；重载失败只告警，不中止发布。
 #
@@ -387,11 +388,18 @@ echo '  编排有效'"
 cd $REMOTE_APP
 $compose build api console"
 
-  # 第 4 步：替换容器，然后重启 edge。
+  # 第 4 步：应用数据库迁移。用新镜像跑 alembic，失败则中止发布，
+  # 旧容器仍在运行。迁移只应向前，回滚需人工处理。
+  echo "-- 4/7 应用数据库迁移"
+  run_remote "$key" "$ssh_target" "set -euo pipefail
+cd $REMOTE_APP
+$compose run --rm --no-deps api alembic upgrade head"
+
+  # 第 5 步：替换容器，然后重启 edge。
   # --no-deps 避免连带重启 db 等依赖。
   # 重启 edge 是必须的：edge 的 nginx 用静态 proxy_pass 主机名，
   # 只在启动时解析一次，容器换 IP 后会一直打旧地址。
-  echo "-- 4/6 替换容器并重启 edge"
+  echo "-- 5/7 替换容器并重启 edge"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose up -d --no-deps api console
@@ -399,10 +407,10 @@ $compose restart edge
 sleep 3
 docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
 
-  echo "-- 5/6 等待健康"
+  echo "-- 6/7 等待健康"
   wait_healthy "$key" "$ssh_target" "api console"
 
-  echo "-- 6/6 重载共享网关"
+  echo "-- 7/7 重载共享网关"
   reload_gateway "$key" "$ssh_target"
 }
 
