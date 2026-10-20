@@ -5,7 +5,7 @@ description: Data Intelligence Hub Agent 工程协作指南，涵盖项目定位
 
 # Data Intelligence Hub — Agent 工作指南
 
-> 最后更新：2026-10-11。生产环境易变事实以 [生产环境基线](docs/【运维手册】生产环境基线.md) 为准。
+> 最后更新：2026-10-20。生产环境易变事实以 [生产环境基线](docs/【运维手册】生产环境基线.md) 为准。
 
 ## 项目定位
 
@@ -13,11 +13,11 @@ Data Intelligence Hub 是纯数据采集平台。FastAPI 后端提供统一 cata
 
 当前产品口径：
 
-- 70 个平台。
-- 270 个能力视图。
-- 242 个唯一 endpoint。
-- Catalog 静态声明：258 verified / 12 disabled。
-- 实测状态（`providers/status` 的 `availability`）：191 verified、21 config-gated、20 degraded、9 empty、1 disabled。
+- 平台目录：70 个平台。生产 catalog、仓库生成物与工作树三处一致（2026-10-20 核对）。
+- 能力视图：生产 catalog 309 个（2026-10-20 采集，`catalog_digest=dad20448…`）；仓库生成物 286 个（2026-10-15 生成）。两套口径不得混用。
+- 唯一 endpoint：生产 catalog 281 个（2026-10-20 采集）；仓库生成物 258 个（2026-10-15 生成）；工作树端点映射 290 条（2026-10-20 对账）。
+- Catalog 静态声明：274 verified / 12 disabled（仓库生成物 286 个端点口径，2026-10-15 生成）。
+- 实测状态（`providers/status` 的 `availability`，2026-10-15 生产，当时 258 个唯一端点口径）：209 verified、21 config-gated、17 degraded、10 empty、1 disabled。
 - 生产主域名：`https://scrapy.luteos.com`。
 
 ## 当前生产速查
@@ -31,7 +31,7 @@ Data Intelligence Hub 是纯数据采集平台。FastAPI 后端提供统一 cata
 | 部署分支 | `feat/live-capability-verification-sink-notes` |
 | Compose | `configs/deploy/scrapy/docker-compose.yml` |
 | Compose 项目 | `data_achieve_scrapy` |
-| 数据库 schema | `202607280044` |
+| 数据库 schema | A=`202610190045` / B=`202607280044`（2026-10-20 `/api/health` 实测） |
 | 共享网关 | `ai_video_nginx` |
 | 外部网络 | `lighthouse_ai_video_net` |
 | Edge 别名 | `data_achieve_scrapy_proxy` |
