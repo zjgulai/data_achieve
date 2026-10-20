@@ -76,6 +76,10 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
+    # demo_mode: 允许无 token 请求回退到 demo workspace。
+    # None 表示未显式设置，此时按 app_env 推导：生产关闭，其他环境开启。
+    # 显式设置 DEMO_MODE=true / false 可覆盖推导结果。
+    demo_mode: bool | None = None
     collection_network_mode: Literal["offline", "restricted"] | None = None
     collection_http_grants: list[dict[str, Any]] = Field(default_factory=list)
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -85,6 +89,17 @@ class Settings(BaseSettings):
         if self.collection_network_mode is not None:
             return self.collection_network_mode
         return "restricted" if self.app_env == "production" else "offline"
+
+    @property
+    def effective_demo_mode(self) -> bool:
+        """demo 回退是否启用。
+
+        显式设置优先。未设置时，生产关闭，其他环境开启。
+        这条推导保证生产默认为 fail-closed，同时不破坏本地开发与测试。
+        """
+        if self.demo_mode is not None:
+            return self.demo_mode
+        return self.app_env != "production"
 
     @field_validator("cors_origins", "email_live_recipient_allowlist", mode="before")
     @classmethod
