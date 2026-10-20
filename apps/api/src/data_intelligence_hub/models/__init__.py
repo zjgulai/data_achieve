@@ -44,6 +44,7 @@ from data_intelligence_hub.models.notification import (
 )
 from data_intelligence_hub.models.platform_credential import PlatformCredentialBundle
 from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.models.provider_health import (
     ProviderHealthRouteFeedback,
     ProviderHealthSnapshot,
@@ -195,6 +196,7 @@ __all__ = [
     "ProviderHealthRouteFeedback",
     "ProviderHealthSnapshot",
     "Project",
+    "ProjectApiKey",
     "QueryTerm",
     "RawRecord",
     "Report",
