@@ -69,49 +69,76 @@ async def gather_data(intent: TikTokIntent) -> dict[str, Any]:
 
 
 async def _call_tikhub(endpoint_type: str, params: dict[str, Any]) -> dict[str, Any]:
+    """进程内调用采集服务。
+
+    不走 HTTP 回环。原因：
+    1. quick-collect 路由已改为 fail-closed，回环请求不带 token 会 401。
+    2. 进程内调用免去自己打自己的网络往返与超时。
+
+    workspace 未传，服务层回退 demo workspace，与改造前行为一致。
+    """
     config = get_cdo_config()
-    url = f"{config.internal_api_base}/api/quick-collect"
-    payload = {
-        "project_id": config.project_id,
-        "endpoint_type": endpoint_type,
-        "params": params,
-    }
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(url, json=payload)
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
-            run_id = data.get("task_run_id")
-            if run_id:
-                data["records"] = await _fetch_raw_records(str(run_id))
-            if data.get("error_message") and not data.get("records"):
-                data["error"] = str(data["error_message"])
-            return data
-    except httpx.TimeoutException:
-        logger.error("TikHub 采集超时: %s", endpoint_type)
-        return {"records": [], "error": "采集超时，请稍后重试"}
+        project_id = uuid.UUID(config.project_id)
+    except ValueError:
+        logger.error("LARK_CDO_PROJECT_ID 不是合法 UUID: %s", config.project_id)
+        return {"records": [], "error": "项目配置无效"}
+
+    from data_intelligence_hub.core.database import async_session_factory
+    from data_intelligence_hub.services.quick_collect_service import (
+        QuickCollectRequest,
+        run_quick_collect,
+    )
+
+    body = QuickCollectRequest(
+        project_id=project_id,
+        endpoint_type=endpoint_type,
+        params=params,
+    )
+    try:
+        async with async_session_factory() as session:
+            outcome = await run_quick_collect(session, body)
+            records = await _fetch_raw_records(session, outcome.run.id)
+        data: dict[str, Any] = {
+            "task_run_id": str(outcome.run.id),
+            "status": outcome.run.status,
+            "records_count": outcome.run.records_count,
+            "records": records,
+        }
+        if outcome.run.error_message and not records:
+            data["error"] = str(outcome.run.error_message)
+        return data
     except Exception as e:
         logger.error("TikHub 采集失败: %s %s", endpoint_type, e)
         return {"records": [], "error": "采集失败，请稍后重试"}
 
 
-async def _fetch_raw_records(task_run_id: str) -> list[dict[str, Any]]:
-    config = get_cdo_config()
-    url = f"{config.internal_api_base}/api/raw-records"
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.get(
-                url,
-                params={"task_run_id": task_run_id, "limit": 100},
-            )
-            resp.raise_for_status()
-            rows = resp.json()
-    except Exception as e:
-        logger.error("读取 RawRecord 失败: %s", e)
+async def _fetch_raw_records(
+    session: Any,
+    task_run_id: uuid.UUID,
+    *,
+    limit: int = 100,
+) -> list[dict[str, Any]]:
+    """直接读 RawRecord。
+
+    走仓储层而不是 HTTP，理由同 _call_tikhub。
+    """
+    from data_intelligence_hub.repositories.raw_records import list_raw_records
+    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+
+    workspace = await get_demo_workspace(session)
+    if workspace is None:
+        logger.error("读取 RawRecord 失败: demo workspace 不存在")
         return []
+    rows = await list_raw_records(
+        session,
+        workspace.id,
+        task_run_id=task_run_id,
+        limit=limit,
+    )
     records: list[dict[str, Any]] = []
-    for row in rows if isinstance(rows, list) else []:
-        content = row.get("content") if isinstance(row, dict) else None
+    for row in rows:
+        content = getattr(row, "content", None)
         if isinstance(content, dict):
             records.append(content)
         elif isinstance(content, list):

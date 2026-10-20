@@ -20,6 +20,7 @@ from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.core.security import create_access_token
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import (
     Base,
@@ -31,6 +32,7 @@ from data_intelligence_hub.models import (
     TaskRun,
     User,
     Workspace,
+    WorkspaceMember,
 )
 
 NOW = datetime(2026, 10, 9, 12, 0, tzinfo=UTC)
@@ -74,6 +76,16 @@ async def _seed(session) -> None:
             name="Demo",
             slug="data-achieve-demo",
             owner_id=USER_ID,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    # 写接口已改 fail-closed；种子用户必须是该工作区成员，严格鉴权才能解析。
+    session.add(
+        WorkspaceMember(
+            workspace_id=WORKSPACE_ID,
+            user_id=USER_ID,
+            role="owner",
             created_at=NOW,
             updated_at=NOW,
         )
@@ -313,6 +325,7 @@ async def _app_client(
     transport = ASGITransport(app=app)
     try:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
+            client.cookies.set("access_token", create_access_token(USER_ID))
             yield client
     finally:
         app.dependency_overrides.clear()

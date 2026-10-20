@@ -5,7 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import (
+    AuthContext,
+    SessionDep,
+    get_auth_context,
+    get_authenticated_context,
+)
 from data_intelligence_hub.schemas.intelligence import EvidenceResponse, IntelligenceResponse
 from data_intelligence_hub.schemas.report import (
     ReportAuditEventCreateRequest,
@@ -69,7 +74,7 @@ async def list_report_items(
 async def generate_report_item(
     payload: ReportGenerateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ReportResponse:
     try:
         report = await generate_report(session, context.workspace, context.user, payload)
@@ -94,7 +99,7 @@ async def list_report_subscription_items(
 async def upsert_report_subscription_item(
     payload: ReportSubscriptionUpsertRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ReportSubscriptionResponse:
     try:
         item = await upsert_report_subscription(
@@ -113,7 +118,7 @@ async def run_report_subscription_item(
     subscription_id: uuid.UUID,
     payload: ReportSubscriptionRunRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportSubscriptionResponse:
     try:
@@ -173,7 +178,7 @@ async def retry_report_subscription_run_item(
     run_id: uuid.UUID,
     payload: ReportSubscriptionRetryRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportSubscriptionResponse:
     try:
@@ -267,7 +272,7 @@ async def create_report_audit_event_item(
     report_id: uuid.UUID,
     payload: ReportAuditEventCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ReportAuditEventResponse:
     try:
         event = await record_report_share_event(
@@ -301,7 +306,7 @@ async def send_report_item(
     report_id: uuid.UUID,
     payload: ReportSendRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> ReportResponse:
     try:

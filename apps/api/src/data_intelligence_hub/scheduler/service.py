@@ -310,6 +310,8 @@ async def _record_scheduler_tick(
             error_message=result.error_message,
         ),
     )
+    # 事务边界在调用方。repository 只 flush。
+    await session.commit()
 
 
 async def _acquire_scheduler_lease(

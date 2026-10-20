@@ -1,0 +1,1907 @@
+{
+  "families": {
+    "anysearch": {
+      "description": "AnySearch 搜索端点。",
+      "fields": [
+        "query",
+        "tag",
+        "params",
+        "site",
+        "title",
+        "url",
+        "snippet",
+        "published_date",
+        "source",
+        "score",
+        "request_id"
+      ]
+    },
+    "apify_1688": {
+      "description": "Apify 1688 商品搜索与详情端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "moq",
+        "supplier",
+        "sales"
+      ]
+    },
+    "apify_airbnb": {
+      "description": "Apify Airbnb 房源端点。",
+      "fields": [
+        "listingId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "rating",
+        "reviewsCount",
+        "location",
+        "images",
+        "host"
+      ]
+    },
+    "apify_alibaba": {
+      "description": "Apify 阿里巴巴国际站商品端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "moq",
+        "supplier",
+        "sales"
+      ]
+    },
+    "apify_aliexpress": {
+      "description": "Apify AliExpress 商品端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "rating",
+        "orders",
+        "shipping"
+      ]
+    },
+    "apify_amazon": {
+      "description": "Apify Amazon 商品、评论、榜单与竞品端点。",
+      "fields": [
+        "title",
+        "url",
+        "asin",
+        "brand",
+        "price",
+        "value",
+        "currency",
+        "listPrice",
+        "shippingPrice",
+        "inStock",
+        "inStockText",
+        "stars",
+        "starsBreakdown",
+        "reviewsCount",
+        "soldBy",
+        "sellerInfo",
+        "features",
+        "description",
+        "images",
+        "categories",
+        "rank",
+        "badge",
+        "coupon",
+        "statusCode",
+        "statusMessage",
+        "productTitle",
+        "currentPage",
+        "sortStrategy",
+        "countReviews",
+        "countRatings",
+        "productRating",
+        "reviewSummary",
+        "reviewId",
+        "text",
+        "date",
+        "rating",
+        "userName",
+        "numberOfHelpful",
+        "variationId",
+        "imageUrlList",
+        "variationList",
+        "locale",
+        "verified",
+        "vine",
+        "videoUrlList",
+        "profilePath",
+        "domainCode",
+        "filters",
+        "name",
+        "position",
+        "numberOfOffers",
+        "thumbnailUrl",
+        "categoryName",
+        "categoryFullName",
+        "subcategories",
+        "categoryUrl",
+        "input"
+      ]
+    },
+    "apify_appstore": {
+      "description": "Apify App Store 评论端点。",
+      "fields": [
+        "appId",
+        "title",
+        "developer",
+        "rating",
+        "reviewsCount",
+        "version",
+        "reviewId",
+        "reviewTitle",
+        "reviewText",
+        "reviewerName",
+        "reviewDate"
+      ]
+    },
+    "apify_bluesky": {
+      "description": "Apify Bluesky 帖子端点。",
+      "fields": [
+        "id",
+        "text",
+        "author",
+        "handle",
+        "createdAt",
+        "likeCount",
+        "replyCount",
+        "repostCount",
+        "url"
+      ]
+    },
+    "apify_booking": {
+      "description": "Apify Booking.com 住宿端点。",
+      "fields": [
+        "hotelId",
+        "name",
+        "url",
+        "address",
+        "rating",
+        "reviewsCount",
+        "price",
+        "currency",
+        "roomType"
+      ]
+    },
+    "apify_chatgpt": {
+      "description": "Apify ChatGPT 搜索端点。",
+      "fields": [
+        "query",
+        "answer",
+        "sources",
+        "citations"
+      ]
+    },
+    "apify_crunchbase": {
+      "description": "Apify Crunchbase 公司端点。当前回退到 Google SERP。",
+      "fields": [
+        "companyName",
+        "url",
+        "description",
+        "industry",
+        "location",
+        "fundingTotal",
+        "employees",
+        "foundedAt"
+      ]
+    },
+    "apify_ebay": {
+      "description": "Apify eBay 商品与已售列表端点。",
+      "fields": [
+        "itemId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "condition",
+        "soldDate",
+        "seller",
+        "shipping"
+      ]
+    },
+    "apify_etsy": {
+      "description": "Apify Etsy 商品端点。",
+      "fields": [
+        "listingId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "shopName",
+        "rating",
+        "reviewsCount"
+      ]
+    },
+    "apify_facebook": {
+      "description": "Apify Facebook 帖子、页面、评论、小组与站内搜索端点。",
+      "fields": [
+        "facebookUrl",
+        "postId",
+        "pageName",
+        "url",
+        "time",
+        "timestamp",
+        "user",
+        "text",
+        "textReferences",
+        "link",
+        "likes",
+        "comments",
+        "shares",
+        "topReactionsCount",
+        "reactionLikeCount",
+        "reactionLoveCount",
+        "reactionWowCount",
+        "reactionCareCount",
+        "reactionHahaCount",
+        "isVideo",
+        "viewsCount",
+        "media",
+        "feedbackId",
+        "paidPartnership",
+        "topComments",
+        "title",
+        "pageId",
+        "pageUrl",
+        "categories",
+        "info",
+        "intro",
+        "followers",
+        "websites",
+        "email",
+        "phone",
+        "address",
+        "rating",
+        "ratingCount",
+        "commentId",
+        "commentUrl",
+        "date",
+        "profileId",
+        "profileName",
+        "likesCount",
+        "threadingDepth",
+        "groupTitle",
+        "attachments",
+        "id",
+        "legacyId"
+      ]
+    },
+    "apify_facebook_ads": {
+      "description": "Apify Facebook 广告库端点。",
+      "fields": [
+        "ad_archive_id",
+        "ad_id",
+        "page_id",
+        "page_name",
+        "page_is_deleted",
+        "is_active",
+        "snapshot",
+        "start_date",
+        "end_date",
+        "total_active_time",
+        "impressions_with_index",
+        "reach_estimate",
+        "spend",
+        "currency",
+        "publisher_platform",
+        "targeted_or_reached_countries",
+        "categories",
+        "ad_library_url",
+        "adArchiveID",
+        "pageID",
+        "pageName",
+        "isActive",
+        "startDateFormatted",
+        "endDateFormatted",
+        "impressionsWithIndex",
+        "reachEstimate",
+        "stateMediaRunLabel",
+        "gatedType",
+        "isAaaEligible"
+      ]
+    },
+    "apify_facebook_marketplace": {
+      "description": "Apify Facebook Marketplace 商品端点。",
+      "fields": [
+        "facebookUrl",
+        "listingUrl",
+        "id",
+        "primary_listing_photo",
+        "listing_price",
+        "formatted_price",
+        "location",
+        "marketplace_listing_title",
+        "custom_title",
+        "is_sold",
+        "is_pending",
+        "is_hidden",
+        "is_live",
+        "min_listing_price",
+        "max_listing_price",
+        "comparable_price",
+        "delivery_types",
+        "marketplace_listing_category_id",
+        "listing_video",
+        "parent_listing"
+      ]
+    },
+    "apify_gemini": {
+      "description": "Apify Gemini 搜索端点。当前回退到 Google SERP。",
+      "fields": [
+        "query",
+        "answer",
+        "sources",
+        "citations",
+        "organicResults"
+      ]
+    },
+    "apify_glassdoor": {
+      "description": "Apify Glassdoor 评论端点。",
+      "fields": [
+        "employerId",
+        "employerName",
+        "url",
+        "rating",
+        "reviewId",
+        "reviewText",
+        "reviewerRole",
+        "reviewDate",
+        "pros",
+        "cons"
+      ]
+    },
+    "apify_google": {
+      "description": "Apify Google SERP 与 AI Overview 端点。",
+      "fields": [
+        "searchQuery",
+        "url",
+        "hasNextPage",
+        "serpProviderCode",
+        "organicResults",
+        "paidResults",
+        "paidProducts",
+        "relatedQueries",
+        "suggestedResults",
+        "peopleAlsoAsk",
+        "aiOverview",
+        "customData",
+        "htmlSnapshotUrl",
+        "query",
+        "type",
+        "text",
+        "sources",
+        "error"
+      ]
+    },
+    "apify_google_ads": {
+      "description": "Apify Google Ads 素材端点。",
+      "fields": [
+        "id",
+        "advertiserId",
+        "advertiserName",
+        "creativeId",
+        "format",
+        "url",
+        "previewUrl",
+        "firstShownAt",
+        "lastShownAt",
+        "impressions",
+        "shownCountries",
+        "countryStats"
+      ]
+    },
+    "apify_google_maps": {
+      "description": "Apify Google Maps 商户端点。",
+      "fields": [
+        "searchString",
+        "rank",
+        "title",
+        "subTitle",
+        "description",
+        "price",
+        "categoryName",
+        "address",
+        "neighborhood",
+        "street",
+        "city",
+        "postalCode",
+        "state",
+        "countryCode",
+        "website",
+        "phone",
+        "plusCode",
+        "openingHours",
+        "categories",
+        "totalScore",
+        "reviewsCount",
+        "photos",
+        "location",
+        "placeId",
+        "fid",
+        "cid"
+      ]
+    },
+    "apify_google_maps_reviews": {
+      "description": "Apify Google Maps 评论端点。",
+      "fields": [
+        "reviewerId",
+        "reviewerUrl",
+        "name",
+        "reviewerNumberOfReviews",
+        "isLocalGuide",
+        "reviewerPhotoUrl",
+        "text",
+        "textTranslated",
+        "publishAt",
+        "publishedAtDate",
+        "likesCount",
+        "reviewId",
+        "reviewUrl",
+        "reviewOrigin",
+        "stars",
+        "rating",
+        "responseFromOwnerDate"
+      ]
+    },
+    "apify_google_news": {
+      "description": "Apify Google News 端点。",
+      "fields": [
+        "title",
+        "source",
+        "url",
+        "publishedAt",
+        "publishedTimestamp",
+        "image",
+        "description",
+        "metadata",
+        "keyword",
+        "sourceType"
+      ]
+    },
+    "apify_google_play": {
+      "description": "Apify Google Play 评论端点。",
+      "fields": [
+        "appId",
+        "title",
+        "developer",
+        "rating",
+        "reviewsCount",
+        "reviewId",
+        "reviewText",
+        "reviewerName",
+        "reviewDate",
+        "thumbsUp"
+      ]
+    },
+    "apify_google_trends": {
+      "description": "Apify Google Trends 端点。",
+      "fields": [
+        "geo",
+        "language",
+        "trending_searches",
+        "trends_url",
+        "timeframe_hours",
+        "max_items",
+        "timestamp",
+        "keyword",
+        "interest_over_time"
+      ]
+    },
+    "apify_hacker_news": {
+      "description": "Apify Hacker News 端点。",
+      "fields": [
+        "id",
+        "title",
+        "url",
+        "score",
+        "author",
+        "createdAt",
+        "commentsCount",
+        "type"
+      ]
+    },
+    "apify_indeed": {
+      "description": "Apify Indeed 职位端点。",
+      "fields": [
+        "jobId",
+        "title",
+        "company",
+        "location",
+        "salary",
+        "url",
+        "postedAt",
+        "description"
+      ]
+    },
+    "apify_instagram": {
+      "description": "Apify Instagram 帖子、Reels、账号、话题与评论端点。",
+      "fields": [
+        "inputUrl",
+        "id",
+        "type",
+        "shortCode",
+        "caption",
+        "hashtags",
+        "mentions",
+        "url",
+        "commentsCount",
+        "firstComment",
+        "latestComments",
+        "dimensionsHeight",
+        "dimensionsWidth",
+        "displayUrl",
+        "images",
+        "alt",
+        "likesCount",
+        "videoUrl",
+        "videoViewCount",
+        "videoPlayCount",
+        "timestamp",
+        "childPosts",
+        "ownerFullName",
+        "ownerUsername",
+        "ownerId",
+        "isCommentsDisabled",
+        "productType",
+        "paidPartnership",
+        "sponsors",
+        "taggedUsers",
+        "isPinned",
+        "coauthorProducers",
+        "audioUrl",
+        "videoDuration",
+        "musicInfo",
+        "username",
+        "fullName",
+        "biography",
+        "externalUrls",
+        "followersCount",
+        "followsCount",
+        "postsCount",
+        "isBusinessAccount",
+        "businessCategoryName",
+        "private",
+        "verified",
+        "profilePicUrl",
+        "repliesCount",
+        "replies"
+      ]
+    },
+    "apify_linkedin": {
+      "description": "Apify LinkedIn 档案、员工、职位与公司帖子端点。",
+      "fields": [
+        "id",
+        "publicIdentifier",
+        "linkedinUrl",
+        "firstName",
+        "lastName",
+        "headline",
+        "about",
+        "emails",
+        "websites",
+        "location",
+        "industry",
+        "openToWork",
+        "hiring",
+        "premium",
+        "influencer",
+        "creator",
+        "verified",
+        "connectionsCount",
+        "followerCount",
+        "registeredAt",
+        "currentPosition",
+        "profileTopEducation",
+        "topSkills",
+        "skills",
+        "experience",
+        "education",
+        "certifications",
+        "projects",
+        "volunteering",
+        "receivedRecommendations",
+        "publications",
+        "courses",
+        "patents",
+        "honorsAndAwards",
+        "languages",
+        "organizations",
+        "causes",
+        "featured",
+        "sectionTotals",
+        "profilePicture",
+        "coverPicture",
+        "company_url",
+        "profile_url",
+        "fullname",
+        "companyName",
+        "companyLinkedinUrl",
+        "title",
+        "salaryInfo",
+        "postedAt",
+        "applicantsCount",
+        "applyUrl",
+        "descriptionHtml",
+        "descriptionText",
+        "type",
+        "content",
+        "author",
+        "interaction",
+        "media"
+      ]
+    },
+    "apify_perplexity": {
+      "description": "Apify Perplexity 搜索端点。",
+      "fields": [
+        "query",
+        "answer",
+        "sources",
+        "citations",
+        "model"
+      ]
+    },
+    "apify_pinterest_ads": {
+      "description": "Apify Pinterest 广告端点。",
+      "fields": [
+        "adId",
+        "advertiserName",
+        "title",
+        "description",
+        "imageUrl",
+        "landingUrl",
+        "country",
+        "status"
+      ]
+    },
+    "apify_rag_web_browser": {
+      "description": "Apify 通用网页兜底端点。",
+      "fields": [
+        "crawl",
+        "metadata",
+        "query",
+        "markdown"
+      ]
+    },
+    "apify_reddit": {
+      "description": "Apify Reddit 帖子、评论、社区与用户端点。",
+      "fields": [
+        "id",
+        "parsedId",
+        "title",
+        "body",
+        "bodyHtml",
+        "contentUrl",
+        "postUrl",
+        "createdAt",
+        "crawledAt",
+        "dataType",
+        "searchTerm",
+        "postType",
+        "flair",
+        "images",
+        "upVotes",
+        "score",
+        "upvoteRatio",
+        "commentsCount",
+        "over18",
+        "isSelf",
+        "isVideo",
+        "isGallery",
+        "spoiler",
+        "locked",
+        "archived",
+        "pinned",
+        "stickied",
+        "edited",
+        "numCrossposts",
+        "totalAwardsReceived",
+        "gilded",
+        "domain",
+        "thumbnail",
+        "media",
+        "secureMedia",
+        "mediaMetadata",
+        "galleryData",
+        "galleryImages",
+        "mediaAssets",
+        "galleryCount",
+        "videoUrl",
+        "mediaType",
+        "hasMedia",
+        "authorId",
+        "authorName",
+        "authorFlairText",
+        "authorPremium",
+        "communityName",
+        "communityId",
+        "engagementTotal",
+        "scorePerHour",
+        "commentsPerHour"
+      ]
+    },
+    "apify_serp": {
+      "description": "Apify SERP 降级端点。",
+      "fields": [
+        "keyword",
+        "limit",
+        "organicResults",
+        "paidResults",
+        "relatedQueries",
+        "url"
+      ]
+    },
+    "apify_shein": {
+      "description": "Apify SHEIN 商品端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "images",
+        "rating",
+        "reviewsCount"
+      ]
+    },
+    "apify_shopify": {
+      "description": "Apify Shopify 商品目录与店铺线索端点。",
+      "fields": [
+        "store",
+        "productId",
+        "handle",
+        "vendor",
+        "title",
+        "url",
+        "featuredImage",
+        "imageUrls",
+        "imageCount",
+        "imageAltTexts",
+        "images",
+        "currency",
+        "priceMin",
+        "priceMax",
+        "compareAtPrice",
+        "onSale",
+        "available",
+        "fullyOutOfStock",
+        "requiresShipping",
+        "weightAndUnit",
+        "variantCount",
+        "variants",
+        "options",
+        "productOptions",
+        "productType",
+        "tags",
+        "description",
+        "descriptionHtml",
+        "createdAt",
+        "publishedAt",
+        "updatedAt",
+        "platform",
+        "domain",
+        "merchant",
+        "category",
+        "categories",
+        "country",
+        "region",
+        "city",
+        "emails",
+        "phones",
+        "instagram",
+        "facebook",
+        "tiktok",
+        "youtube",
+        "linkedin",
+        "twitter",
+        "pinterest",
+        "id",
+        "name",
+        "websiteUrl",
+        "myshopifyDomain",
+        "shareUrl",
+        "address1",
+        "address2",
+        "zone",
+        "query",
+        "inStock"
+      ]
+    },
+    "apify_similarweb": {
+      "description": "Apify SimilarWeb 域名端点。",
+      "fields": [
+        "domain",
+        "globalRank",
+        "categoryRank",
+        "monthlyVisits",
+        "bounceRate",
+        "avgVisitDuration",
+        "trafficSources",
+        "topCountries"
+      ]
+    },
+    "apify_snapchat_ads": {
+      "description": "Apify Snapchat 广告端点。当前回退到 Google SERP。",
+      "fields": [
+        "adId",
+        "advertiserName",
+        "title",
+        "description",
+        "imageUrl",
+        "landingUrl",
+        "status"
+      ]
+    },
+    "apify_target": {
+      "description": "Apify Target 商品端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "rating",
+        "reviewsCount",
+        "images"
+      ]
+    },
+    "apify_temu": {
+      "description": "Apify Temu 商品端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "rating",
+        "reviewsCount",
+        "images",
+        "soldCount"
+      ]
+    },
+    "apify_threads": {
+      "description": "Apify Threads 账号与帖子端点。",
+      "fields": [
+        "id",
+        "text",
+        "username",
+        "url",
+        "createdAt",
+        "likeCount",
+        "replyCount",
+        "repostCount",
+        "ownerUsername",
+        "ownerId"
+      ]
+    },
+    "apify_tiktok": {
+      "description": "Apify TikTok 帖子、评论、账号、字幕与 Shop 端点。",
+      "fields": [
+        "id",
+        "text",
+        "textLanguage",
+        "createTime",
+        "createTimeISO",
+        "isAd",
+        "authorMeta",
+        "musicMeta",
+        "webVideoUrl",
+        "videoMeta",
+        "diggCount",
+        "shareCount",
+        "playCount",
+        "collectCount",
+        "commentCount",
+        "repostCount",
+        "mentions",
+        "detailedMentions",
+        "hashtags",
+        "effectStickers",
+        "isSlideshow",
+        "slideshowImageLinks",
+        "isPinned",
+        "isSponsored",
+        "mediaUrls",
+        "searchQuery",
+        "profileScrapeSections",
+        "hasTikTokShopProduct",
+        "locationMeta",
+        "fromProfileSection",
+        "input"
+      ]
+    },
+    "apify_tiktok_ads": {
+      "description": "Apify TikTok 广告素材端点。",
+      "fields": [
+        "adId",
+        "adTitle",
+        "adType",
+        "adLandingUrl",
+        "adSpent",
+        "adVideoUrl",
+        "adVideoCover",
+        "adImageUrls",
+        "adStartDate",
+        "adEndDate",
+        "advertiserId",
+        "advertiserName",
+        "username",
+        "status",
+        "auditStatus",
+        "rejectionInfo"
+      ]
+    },
+    "apify_tiktok_creative": {
+      "description": "Apify TikTok Creative Center 趋势端点。响应是信封形。",
+      "fields": [
+        "code",
+        "msg",
+        "request_id",
+        "data"
+      ]
+    },
+    "apify_tiktok_shop": {
+      "description": "Apify TikTok Shop 商品详情、搜索与达人端点。",
+      "fields": [
+        "product_id",
+        "product_name",
+        "product_desc",
+        "product_url",
+        "price",
+        "original_price",
+        "real_price",
+        "min_price",
+        "max_price",
+        "avg_price",
+        "currency",
+        "commission",
+        "gmv_amt",
+        "gmv_30d_amt",
+        "sale_cnt",
+        "sale_30d_cnt",
+        "ifl_30d_cnt",
+        "live_30d_cnt",
+        "video_30d_cnt",
+        "total_stock_cnt",
+        "review_count",
+        "skus",
+        "specification",
+        "seller",
+        "seller_type",
+        "shop_type",
+        "shipping_price",
+        "categories",
+        "labels",
+        "is_hot",
+        "is_mall_recommended",
+        "category1",
+        "category2",
+        "category3",
+        "comment_rate",
+        "commission_rate",
+        "free_shipping",
+        "country_code"
+      ]
+    },
+    "apify_tiktok_transcript": {
+      "description": "Apify TikTok 字幕端点。",
+      "fields": [
+        "text",
+        "textLanguage",
+        "subtitleLinks",
+        "playCount",
+        "diggCount",
+        "authorMeta"
+      ]
+    },
+    "apify_tripadvisor": {
+      "description": "Apify Tripadvisor 评论端点。",
+      "fields": [
+        "id",
+        "title",
+        "url",
+        "rating",
+        "reviewsCount",
+        "location",
+        "reviewId",
+        "reviewText",
+        "reviewerName",
+        "reviewDate",
+        "tripType"
+      ]
+    },
+    "apify_trustpilot": {
+      "description": "Apify Trustpilot 评论端点。",
+      "fields": [
+        "id",
+        "title",
+        "text",
+        "rating",
+        "language",
+        "source",
+        "isVerified",
+        "verificationLevel",
+        "status",
+        "numberOfLikes",
+        "dates",
+        "consumer",
+        "reviewerName",
+        "reviewerCountry",
+        "reviewerNumberOfReviews",
+        "reply",
+        "report",
+        "businessName",
+        "businessUnitId",
+        "businessUrl",
+        "url",
+        "scrapedAt"
+      ]
+    },
+    "apify_twitter": {
+      "description": "Apify X 用户资料端点。",
+      "fields": [
+        "userName",
+        "id",
+        "name",
+        "isVerified",
+        "profilePicture",
+        "coverPicture",
+        "description",
+        "location",
+        "followers",
+        "following",
+        "statusesCount",
+        "mediaCount",
+        "favouritesCount",
+        "createdAt",
+        "protected",
+        "canDm",
+        "pinnedTweetIds",
+        "entities"
+      ]
+    },
+    "apify_walmart": {
+      "description": "Apify Walmart 商品与评论端点。",
+      "fields": [
+        "productId",
+        "title",
+        "url",
+        "price",
+        "currency",
+        "rating",
+        "reviewsCount",
+        "seller",
+        "availability",
+        "images"
+      ]
+    },
+    "apify_website_content": {
+      "description": "Apify 网站正文抓取端点。",
+      "fields": [
+        "url",
+        "title",
+        "text",
+        "markdown",
+        "metadata",
+        "crawl"
+      ]
+    },
+    "apify_x": {
+      "description": "Apify X 推文与账号媒体端点。",
+      "fields": [
+        "type",
+        "id",
+        "url",
+        "twitterUrl",
+        "text",
+        "fullText",
+        "source",
+        "retweetCount",
+        "replyCount",
+        "likeCount",
+        "quoteCount",
+        "viewCount",
+        "createdAt",
+        "lang",
+        "bookmarkCount",
+        "isReply",
+        "inReplyToId",
+        "conversationId",
+        "inReplyToUserId",
+        "inReplyToUsername",
+        "author",
+        "extendedEntities",
+        "card",
+        "place",
+        "entities",
+        "isRetweet",
+        "isQuote",
+        "media",
+        "videos",
+        "isConversationControlled"
+      ]
+    },
+    "apify_youtube": {
+      "description": "Apify YouTube 视频、频道、评论与字幕端点。",
+      "fields": [
+        "title",
+        "url",
+        "text",
+        "channelName",
+        "channelUrl",
+        "viewCount",
+        "likes",
+        "commentsCount",
+        "publishedAt",
+        "duration",
+        "thumbnailUrl",
+        "transcript",
+        "language",
+        "subtitles"
+      ]
+    },
+    "apify_youtube_transcript": {
+      "description": "Apify YouTube 字幕端点。",
+      "fields": [
+        "videoId",
+        "title",
+        "transcript",
+        "language",
+        "duration"
+      ]
+    },
+    "crates": {
+      "description": "crates.io 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "description",
+        "version",
+        "downloads",
+        "recent_downloads",
+        "max_version",
+        "repository",
+        "homepage",
+        "documentation",
+        "keywords",
+        "categories",
+        "updated_at"
+      ]
+    },
+    "ecommerce_product_discovery": {
+      "description": "电商商品发现页结构分析端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "url",
+        "platform_profile",
+        "page_structure",
+        "product_candidates",
+        "tool_recommendations",
+        "discovery_plan"
+      ]
+    },
+    "ecommerce_product_page": {
+      "description": "电商商品详情页结构分析端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "url",
+        "platform_profile",
+        "page_structure",
+        "field_schema",
+        "selected_fields",
+        "extracted_fields",
+        "tool_recommendations",
+        "cleaning_plan"
+      ]
+    },
+    "exa_answer": {
+      "description": "Exa 问答端点。",
+      "fields": [
+        "query",
+        "answer",
+        "citations",
+        "grounding",
+        "request_id"
+      ]
+    },
+    "exa_company": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_contents": {
+      "description": "Exa 正文抓取端点。",
+      "fields": [
+        "url",
+        "title",
+        "published_date",
+        "author",
+        "text",
+        "summary",
+        "request_id"
+      ]
+    },
+    "exa_deep": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_domain": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_financial": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_find_similar": {
+      "description": "Exa 相似链接端点。",
+      "fields": [
+        "seed_url",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "request_id"
+      ]
+    },
+    "exa_people": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_personal": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_research": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "exa_search": {
+      "description": "Exa 搜索端点。",
+      "fields": [
+        "query",
+        "search_type",
+        "category",
+        "id",
+        "title",
+        "url",
+        "score",
+        "published_date",
+        "author",
+        "image",
+        "favicon",
+        "highlights",
+        "highlight_scores",
+        "text",
+        "summary",
+        "structured_output",
+        "grounding",
+        "request_id",
+        "resolved_search_type"
+      ]
+    },
+    "generic_web": {
+      "description": "通用网页正文抓取端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "schema_version",
+        "url",
+        "title",
+        "text_content",
+        "text_length",
+        "content_hash",
+        "extract_mode",
+        "html_content",
+        "provenance"
+      ]
+    },
+    "github_repo": {
+      "description": "GitHub 仓库端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "schema_version",
+        "owner",
+        "owner_login",
+        "owner_type",
+        "name",
+        "full_name",
+        "html_url",
+        "description",
+        "stargazers_count",
+        "forks_count",
+        "open_issues_count",
+        "watchers_count",
+        "subscribers_count",
+        "language",
+        "topics",
+        "license_spdx_id",
+        "license_name",
+        "default_branch",
+        "homepage",
+        "archived",
+        "fork",
+        "disabled",
+        "visibility",
+        "created_at",
+        "pushed_at",
+        "updated_at",
+        "readme",
+        "issue_activity",
+        "commit_freshness",
+        "latest_release"
+      ]
+    },
+    "github_topic": {
+      "description": "GitHub 话题搜索端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "schema_version",
+        "topic",
+        "total_count",
+        "repositories",
+        "provenance"
+      ]
+    },
+    "go": {
+      "description": "Go 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "version",
+        "description",
+        "url",
+        "published_at",
+        "license",
+        "imported_by",
+        "stars",
+        "imports"
+      ]
+    },
+    "hackernews": {
+      "description": "Hacker News 首页、搜索与用户端点。",
+      "fields": [
+        "id",
+        "type",
+        "by",
+        "time",
+        "title",
+        "url",
+        "text",
+        "score",
+        "descendants",
+        "kids",
+        "deleted",
+        "dead",
+        "parent"
+      ]
+    },
+    "npm": {
+      "description": "npm 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "description",
+        "version",
+        "license",
+        "homepage",
+        "repository",
+        "keywords",
+        "author",
+        "maintainers",
+        "dist_tags",
+        "versions_count",
+        "time_created",
+        "time_modified",
+        "dependencies",
+        "peer_dependencies",
+        "score",
+        "search_score",
+        "date",
+        "links",
+        "query"
+      ]
+    },
+    "nuget": {
+      "description": "NuGet 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "version",
+        "description",
+        "authors",
+        "license",
+        "projectUrl",
+        "tags",
+        "package_types",
+        "totalDownloads",
+        "verified"
+      ]
+    },
+    "packagist": {
+      "description": "Packagist 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "description",
+        "version",
+        "url",
+        "repository",
+        "license",
+        "authors",
+        "downloads",
+        "favers",
+        "time",
+        "require"
+      ]
+    },
+    "pubdev": {
+      "description": "pub.dev 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "version",
+        "description",
+        "homepage",
+        "repository",
+        "authors",
+        "license",
+        "downloads",
+        "likes",
+        "popularity",
+        "topics"
+      ]
+    },
+    "public_feed": {
+      "description": "RSS 与 Atom 公共订阅源端点。",
+      "fields": [
+        "provider",
+        "kind",
+        "schema_version",
+        "feed_url",
+        "feed_type",
+        "title",
+        "site_url",
+        "description",
+        "item_count",
+        "max_items",
+        "entries",
+        "feed_content_hash",
+        "provenance"
+      ]
+    },
+    "pypi": {
+      "description": "PyPI 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "version",
+        "description",
+        "url",
+        "released",
+        "query",
+        "author",
+        "license",
+        "requires_python",
+        "summary",
+        "keywords"
+      ]
+    },
+    "rubygems": {
+      "description": "RubyGems 包元数据与搜索端点。",
+      "fields": [
+        "name",
+        "version",
+        "description",
+        "authors",
+        "homepage",
+        "licenses",
+        "downloads",
+        "dependencies",
+        "runtime",
+        "development"
+      ]
+    },
+    "tikhub_bilibili": {
+      "description": "B 站视频、用户视频与评论端点。",
+      "fields": [
+        "video_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_douyin": {
+      "description": "抖音视频、用户、热榜与评论端点。",
+      "fields": [
+        "video_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_instagram": {
+      "description": "Instagram 帖子、评论、账号与粉丝端点。",
+      "fields": [
+        "post_id",
+        "shortcode",
+        "caption",
+        "author_id",
+        "author_username",
+        "media_type",
+        "like_count",
+        "comment_count",
+        "taken_at",
+        "hashtags",
+        "follower_count",
+        "raw"
+      ]
+    },
+    "tikhub_kuaishou": {
+      "description": "快手视频搜索与用户视频端点。",
+      "fields": [
+        "video_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_lemon8": {
+      "description": "Lemon8 搜索、用户帖子与趋势端点。",
+      "fields": [
+        "post_id",
+        "text",
+        "raw"
+      ]
+    },
+    "tikhub_linkedin": {
+      "description": "LinkedIn 帖子、公司资料、职位与评论端点。",
+      "fields": [
+        "post_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_reddit": {
+      "description": "Reddit 帖子、社区、评论与趋势端点。",
+      "fields": [
+        "post_id",
+        "text",
+        "body",
+        "subreddit",
+        "author",
+        "score",
+        "comment_count",
+        "created_at",
+        "url",
+        "raw"
+      ]
+    },
+    "tikhub_threads": {
+      "description": "Threads 帖子、用户帖子与评论端点。",
+      "fields": [
+        "post_id",
+        "code",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_tiktok": {
+      "description": "TikTok 视频、账号、评论、直播、趋势、广告与电商端点。字段来自 tikhub_social 归一化输出。",
+      "fields": [
+        "video_id",
+        "product_id",
+        "comment_id",
+        "uid",
+        "unique_id",
+        "sec_uid",
+        "nickname",
+        "text",
+        "title",
+        "author_id",
+        "author_username",
+        "author_nickname",
+        "created_at",
+        "published_at",
+        "play_count",
+        "like_count",
+        "comment_count",
+        "share_count",
+        "collect_count",
+        "repost_count",
+        "duration",
+        "cover_url",
+        "web_video_url",
+        "hashtags",
+        "music_id",
+        "music_title",
+        "music_author",
+        "is_ad",
+        "is_sponsored",
+        "is_pinned",
+        "is_slideshow",
+        "has_shop_product",
+        "price_amount",
+        "original_price_amount",
+        "currency",
+        "rating",
+        "review_count",
+        "sale_count",
+        "seller_id",
+        "shop_name",
+        "product_url",
+        "skus_json",
+        "sku_count",
+        "free_shipping",
+        "room_id",
+        "live_info",
+        "ad_id",
+        "ad_title",
+        "brand_name",
+        "ctr",
+        "cost",
+        "landing_page",
+        "trend_type",
+        "entity_id",
+        "post_count",
+        "view_count",
+        "following_count",
+        "video_count",
+        "heart_count",
+        "avatar_url",
+        "signature",
+        "raw"
+      ]
+    },
+    "tikhub_tiktok_ads": {
+      "description": "TikTok 广告素材与趋势端点。",
+      "fields": [
+        "adId",
+        "adTitle",
+        "adType",
+        "adLandingUrl",
+        "adSpent",
+        "adVideoUrl",
+        "adVideoCover",
+        "adImageUrls",
+        "adStartDate",
+        "adEndDate",
+        "advertiserId",
+        "advertiserName",
+        "username",
+        "status",
+        "auditStatus",
+        "rejectionInfo"
+      ]
+    },
+    "tikhub_wechat": {
+      "description": "微信搜索与视频号端点。",
+      "fields": [
+        "post_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_weibo": {
+      "description": "微博搜索、用户帖子与热搜端点。",
+      "fields": [
+        "post_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    },
+    "tikhub_x": {
+      "description": "X 搜索、用户推文与趋势端点。",
+      "fields": [
+        "text",
+        "description",
+        "context",
+        "raw"
+      ]
+    },
+    "tikhub_xiaohongshu": {
+      "description": "小红书笔记搜索端点。",
+      "fields": [
+        "note_id",
+        "title",
+        "desc",
+        "author_id",
+        "author_nickname",
+        "like_count",
+        "comment_count",
+        "collect_count",
+        "note_type",
+        "raw"
+      ]
+    },
+    "tikhub_youtube": {
+      "description": "YouTube 视频、频道、评论与趋势端点。",
+      "fields": [
+        "video_id",
+        "comment_id",
+        "text",
+        "channel",
+        "published_time",
+        "view_count_text",
+        "like_count",
+        "reply_count",
+        "reply_level",
+        "raw"
+      ]
+    },
+    "tikhub_zhihu": {
+      "description": "知乎搜索与问答端点。",
+      "fields": [
+        "answer_id",
+        "question_id",
+        "text",
+        "author",
+        "raw"
+      ]
+    }
+  },
+  "schema_version": "output_schemas.v1"
+}

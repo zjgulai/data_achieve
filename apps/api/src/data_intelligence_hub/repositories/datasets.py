@@ -85,7 +85,7 @@ async def archive_dataset(
     if dataset is None:
         return None
     dataset.status = "archived"
-    await session.commit()
+    await session.flush()
     await session.refresh(dataset)
     return dataset
 
@@ -158,7 +158,7 @@ async def create_dataset_drift_event(
     event: DatasetDriftEvent,
 ) -> DatasetDriftEvent:
     session.add(event)
-    await session.commit()
+    await session.flush()
     await session.refresh(event)
     return event
 
@@ -256,7 +256,7 @@ async def create_dataset_export_job(
     export_job: DatasetExportJob,
 ) -> DatasetExportJob:
     session.add(export_job)
-    await session.commit()
+    await session.flush()
     await session.refresh(export_job)
     return export_job
 

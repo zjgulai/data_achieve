@@ -3,9 +3,13 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import AuthContextDep, SessionDep, WorkspaceDep
+from data_intelligence_hub.api.deps import (
+    AuthContext,
+    SessionDep,
+    get_authenticated_context,
+)
 from data_intelligence_hub.schemas.project import (
     ProjectCreateRequest,
     ProjectDomain,
@@ -27,13 +31,13 @@ router = APIRouter(tags=["projects"])
 @router.get("", response_model=list[ProjectResponse])
 async def list_project_items(
     session: SessionDep,
-    workspace: WorkspaceDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     domain: Annotated[ProjectDomain | None, Query()] = None,
     status_filter: Annotated[ProjectStatus | None, Query(alias="status")] = None,
 ) -> list[ProjectResponse]:
     projects = await get_projects(
         session,
-        workspace,
+        context.workspace,
         domain=domain,
         status=status_filter,
     )
@@ -43,10 +47,10 @@ async def list_project_items(
 async def create_project_item(
     payload: ProjectCreateRequest,
     session: SessionDep,
-    context: AuthContextDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ProjectResponse:
-    # 项目挂在当前用户名下。workspace.owner_id 是工作区所有者，
-    # 不是发起请求的人；多成员工作区里两者不同。
+    # 项目必须挂在某个用户名下。
+    # 这里用已鉴权请求方的身份，不再回退 demo 工作区业主。
     project = await create_project(session, context.user, context.workspace, payload)
     return ProjectResponse.model_validate(project)
 
@@ -54,10 +58,10 @@ async def create_project_item(
 async def get_project_item(
     project_id: uuid.UUID,
     session: SessionDep,
-    workspace: WorkspaceDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ProjectResponse:
     try:
-        project = await get_project_or_raise(session, workspace, project_id)
+        project = await get_project_or_raise(session, context.workspace, project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return ProjectResponse.model_validate(project)
@@ -67,10 +71,10 @@ async def update_project_item(
     project_id: uuid.UUID,
     payload: ProjectUpdateRequest,
     session: SessionDep,
-    workspace: WorkspaceDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ProjectResponse:
     try:
-        project = await update_project(session, workspace, project_id, payload)
+        project = await update_project(session, context.workspace, project_id, payload)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return ProjectResponse.model_validate(project)
@@ -79,10 +83,10 @@ async def update_project_item(
 async def archive_project_item(
     project_id: uuid.UUID,
     session: SessionDep,
-    workspace: WorkspaceDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> ProjectResponse:
     try:
-        project = await archive_project(session, workspace, project_id)
+        project = await archive_project(session, context.workspace, project_id)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
     return ProjectResponse.model_validate(project)

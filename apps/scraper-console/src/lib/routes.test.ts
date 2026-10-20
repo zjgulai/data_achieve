@@ -97,11 +97,11 @@ test("kept routes are not redirected", () => {
 });
 
 test("the three groups cover the frozen table exactly once", () => {
-  // 冻结表共 15 条现有路由。
+  // 冻结表原为 15 条现有路由；B1-17 删除死页 /settings/account 后为 14 条。
   // 根路由自成一类：路径不变，用途由重定向改为公开首页。
   assert.equal(
     ROUTE_REDIRECTS.length + KEPT_ROUTES.length + (ROOT_ROUTE ? 1 : 0),
-    15
+    14
   );
   assert.equal(NEW_ROUTES.length, 4);
 });

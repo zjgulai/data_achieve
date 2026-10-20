@@ -21,7 +21,7 @@ async def commit_and_refresh_cleaning_plan(
     session: AsyncSession,
     cleaning_plan: CleaningPlan,
 ) -> CleaningPlan:
-    await session.commit()
+    await session.flush()
     await session.refresh(cleaning_plan)
     return cleaning_plan
 

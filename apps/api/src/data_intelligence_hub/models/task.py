@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from data_intelligence_hub.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -43,6 +43,18 @@ class CollectionTask(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class TaskRun(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "task_runs"
+    __table_args__ = (
+        # 同一任务下，同一个幂等键只能有一个运行。
+        # 幂等键可为空：手动触发且未带 key 的运行不受约束，
+        # Postgres 与 SQLite 都允许多行 NULL，符合预期。
+        # 应用层先查后插仍是主路径；本索引兜住并发下的重复插入。
+        Index(
+            "uq_task_runs_task_idempotency",
+            "task_id",
+            "idempotency_key_hash",
+            unique=True,
+        ),
+    )
 
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("collection_tasks.id"), nullable=False)
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
@@ -55,6 +67,10 @@ class TaskRun(UUIDPrimaryKeyMixin, Base):
     error_traceback: Mapped[str | None] = mapped_column(Text)
     logs: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # 幂等键摘要。空值表示该运行没有携带幂等键。
+    # 历史上该值只存在 logs 里，列是后加的；
+    # 读取时先看列，为空再回退解析 logs，保留一个发布周期。
+    idempotency_key_hash: Mapped[str | None] = mapped_column(String(64))
 
     task: Mapped[CollectionTask] = relationship(back_populates="runs")
     raw_records: Mapped[list[RawRecord]] = relationship(back_populates="task_run")

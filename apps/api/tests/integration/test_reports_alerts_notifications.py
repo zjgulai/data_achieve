@@ -12,10 +12,11 @@ from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.core.config import Settings
 from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.core.security import create_access_token
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.user import User
-from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 from data_intelligence_hub.repositories.workspaces import DEMO_WORKSPACE_SLUG
 from data_intelligence_hub.services import notification_service
 from data_intelligence_hub.services.notification_service import EmailDeliveryResult
@@ -65,15 +66,20 @@ async def seed_demo_workspace_and_create_project(client: AsyncClient) -> str:
         owner = User(email="owner@example.com", password_hash="x", name="Owner")
         session.add(owner)
         await session.flush()
+        workspace = Workspace(
+            id=uuid.uuid4(),
+            name="Demo",
+            slug=DEMO_WORKSPACE_SLUG,
+            owner_id=owner.id,
+        )
+        session.add(workspace)
+        await session.flush()
         session.add(
-            Workspace(
-                id=uuid.uuid4(),
-                name="Demo",
-                slug=DEMO_WORKSPACE_SLUG,
-                owner_id=owner.id,
-            )
+            WorkspaceMember(workspace_id=workspace.id, user_id=owner.id, role="owner")
         )
         await session.commit()
+        # 写接口已改 fail-closed；以 demo 属主身份登录，保持原有主体语义。
+        client.cookies.set("access_token", create_access_token(owner.id))
 
     project_response = await client.post(
         "/api/projects",

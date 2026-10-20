@@ -84,6 +84,7 @@ from data_intelligence_hub.models.tiktok_content import (
     VideoHashtag,
     VideoSnapshot,
 )
+from data_intelligence_hub.models.tool_catalog import ToolCatalogEntry
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workflow_action import (
     WorkflowRunActionApprovalConsumption,
@@ -218,6 +219,7 @@ __all__ = [
     "WorkflowExecutionLeaseRecord",
     "WorkflowFallbackDecision",
     "TaskRun",
+    "ToolCatalogEntry",
     "User",
     "Workspace",
     "WorkspaceMember",

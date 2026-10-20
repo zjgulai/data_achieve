@@ -64,7 +64,7 @@ async def commit_and_refresh_browser_diagnostic_job(
     session: AsyncSession,
     diagnostic_job: BrowserDiagnosticJob,
 ) -> BrowserDiagnosticJob:
-    await session.commit()
+    await session.flush()
     await session.refresh(diagnostic_job)
     return diagnostic_job
 
@@ -73,7 +73,7 @@ async def commit_and_refresh_browser_diagnostic_job_run(
     session: AsyncSession,
     diagnostic_job_run: BrowserDiagnosticJobRun,
 ) -> BrowserDiagnosticJobRun:
-    await session.commit()
+    await session.flush()
     await session.refresh(diagnostic_job_run)
     return diagnostic_job_run
 
@@ -139,7 +139,7 @@ async def commit_and_refresh_site_analysis_plan(
     site_analysis: SiteAnalysis,
     extraction_plan: ExtractionPlan,
 ) -> tuple[SiteAnalysis, ExtractionPlan]:
-    await session.commit()
+    await session.flush()
     await session.refresh(site_analysis)
     await session.refresh(extraction_plan)
     return site_analysis, extraction_plan
@@ -149,7 +149,7 @@ async def commit_and_refresh_extraction_plan(
     session: AsyncSession,
     extraction_plan: ExtractionPlan,
 ) -> ExtractionPlan:
-    await session.commit()
+    await session.flush()
     await session.refresh(extraction_plan)
     return extraction_plan
 

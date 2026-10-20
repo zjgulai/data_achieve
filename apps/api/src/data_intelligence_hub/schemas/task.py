@@ -150,7 +150,13 @@ class TaskRunResponse(BaseModel):
         idempotency_key_hash: str | None = None,
     ) -> TaskRunResponse:
         response = cls.model_validate(run)
-        detected_key_hash = idempotency_key_hash or _task_run_idempotency_key_hash(run.logs)
+        # 列优先：新运行把摘要写进列。历史行列为空，回退解析 logs。
+        # 回退保留一个发布周期，之后随迁移一起删除。
+        detected_key_hash = (
+            idempotency_key_hash
+            or run.idempotency_key_hash
+            or _task_run_idempotency_key_hash(run.logs)
+        )
         update: dict[str, Any] = {
             "idempotency_replayed": idempotency_replayed,
             "idempotency_scope": "task_manual_run" if detected_key_hash else None,

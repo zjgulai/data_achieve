@@ -16,7 +16,7 @@ from __future__ import annotations
 import pytest
 
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
-from data_intelligence_hub.api.routes.quick_collect import (
+from data_intelligence_hub.collectors.endpoint_catalog import (
     _APIFY_ENDPOINT_DEFAULTS,
     _APIFY_META_KEYS,
     _ENDPOINT_TO_COLLECTOR,
@@ -42,12 +42,12 @@ ACTOR_INPUT_KEYS = (
 
 
 def test_meta_keys_only_hold_collector_knobs() -> None:
-    assert _APIFY_META_KEYS == {
+    assert {
         "maxItems",
         "max_items",
         "max_total_charge_usd",
         "run_timeout_seconds",
-    }
+    } == _APIFY_META_KEYS
 
 
 @pytest.mark.parametrize("key", ACTOR_INPUT_KEYS)

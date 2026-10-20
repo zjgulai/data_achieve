@@ -30,7 +30,6 @@ from data_intelligence_hub.models.tiktok_content import (
     VideoSnapshot,
 )
 
-
 # Backfill sets this flag so an older historical record never overwrites a
 # newer live observation. Normal collection keeps the existing overwrite path.
 BACKFILL_ONLY_IF_NEWER: ContextVar[bool] = ContextVar(

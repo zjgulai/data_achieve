@@ -11,7 +11,7 @@ async def create_scheduler_tick(
     tick: SchedulerTick,
 ) -> SchedulerTick:
     session.add(tick)
-    await session.commit()
+    await session.flush()
     await session.refresh(tick)
     return tick
 

@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.api.deps import AuthContext, get_auth_context
+from data_intelligence_hub.api.deps import AuthContext, get_auth_context, get_authenticated_context
 from data_intelligence_hub.api.routes import workflow_plans as workflow_plan_routes
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.main import app
@@ -142,6 +142,7 @@ async def route_context() -> AsyncIterator[RouteContext]:
     previous_auth_override = app.dependency_overrides.get(get_auth_context)
     app.dependency_overrides[get_session] = override_session
     app.dependency_overrides[get_auth_context] = override_auth_context
+    app.dependency_overrides[get_authenticated_context] = override_auth_context
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),
@@ -165,8 +166,10 @@ async def route_context() -> AsyncIterator[RouteContext]:
             app.dependency_overrides[get_session] = previous_session_override
         if previous_auth_override is None:
             app.dependency_overrides.pop(get_auth_context, None)
+            app.dependency_overrides.pop(get_authenticated_context, None)
         else:
             app.dependency_overrides[get_auth_context] = previous_auth_override
+            app.dependency_overrides[get_authenticated_context] = previous_auth_override
 
 
 def _planning_input() -> PlanningInput:
@@ -1163,6 +1166,7 @@ async def test_write_and_read_routes_require_authentication(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     app.dependency_overrides[get_auth_context] = deny_authentication
+    app.dependency_overrides[get_authenticated_context] = deny_authentication
     try:
         path = f"/api/projects/{route_context.project_id}/workflow-plans"
         write_response = await route_context.client.post(
@@ -1173,6 +1177,7 @@ async def test_write_and_read_routes_require_authentication(
         read_response = await route_context.client.get(path)
     finally:
         app.dependency_overrides[get_auth_context] = route_context.auth_override
+        app.dependency_overrides[get_authenticated_context] = route_context.auth_override
 
     assert write_response.status_code == 401
     assert read_response.status_code == 401

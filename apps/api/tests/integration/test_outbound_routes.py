@@ -21,11 +21,12 @@ from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.core.security import create_access_token
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.user import User
-from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 from data_intelligence_hub.repositories.workspaces import DEMO_WORKSPACE_SLUG
 
 
@@ -79,6 +80,10 @@ async def seed_demo_workspace_and_project(client: AsyncClient) -> uuid.UUID:
         workspace = Workspace(name="Demo", slug=DEMO_WORKSPACE_SLUG, owner_id=owner.id)
         session.add(workspace)
         await session.flush()
+        session.add(
+            WorkspaceMember(workspace_id=workspace.id, user_id=owner.id, role="owner")
+        )
+        await session.flush()
         project = Project(
             workspace_id=workspace.id,
             name="Outbound Policy",
@@ -87,6 +92,7 @@ async def seed_demo_workspace_and_project(client: AsyncClient) -> uuid.UUID:
         )
         session.add(project)
         await session.commit()
+        client.cookies.set("access_token", create_access_token(owner.id))
         return project.id
 
 
