@@ -220,7 +220,8 @@
       "required_credentials": [
         "access_token",
         "app_id",
-        "app_secret"
+        "app_secret",
+        "creator_cookie"
       ],
       "supported_endpoints": [
         "video.search",

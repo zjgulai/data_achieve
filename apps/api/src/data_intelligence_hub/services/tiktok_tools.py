@@ -440,12 +440,17 @@ async def _collect(
     limit: int,
     *,
     role: str = "primary",
+    creator_cookie: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     # Lazy import breaks the mcp_runtime -> server -> tiktok_tools cycle.
+    from data_intelligence_hub.collectors.tikhub_social import (
+        CREATOR_COOKIE_OVERRIDE,
+    )
     from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 
     context = _CURRENT_TOOL_CALL.get()
     tool_call = {**context, "role": role} if context else None
+    token = CREATOR_COOKIE_OVERRIDE.set(creator_cookie or "")
     try:
         response = await collect_capability(
             endpoint_type, project_id, params, tool_call=tool_call
@@ -456,6 +461,8 @@ async def _collect(
             "status": "failed",
             "error": str(exc),
         }
+    finally:
+        CREATOR_COOKIE_OVERRIDE.reset(token)
     run = {
         "endpoint_type": endpoint_type,
         "task_id": str(response.task_id),
@@ -872,25 +879,51 @@ async def tiktok_creator_commerce(
     return _result("tiktok_creator_commerce", records, [run])
 
 
-def _creator_cookie_configured() -> bool:
-    return bool(os.getenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "").strip())
+async def _resolve_creator_cookie(project_id: uuid.UUID) -> str | None:
+    env_cookie = os.getenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "").strip()
+    if env_cookie:
+        return env_cookie
+    from data_intelligence_hub.core.config import get_settings
+    from data_intelligence_hub.models.project import Project
+    from data_intelligence_hub.services.platform_credentials import (
+        PlatformCredentialCipher,
+        get_platform_credential_values,
+    )
+
+    master_key = get_settings().platform_credential_master_key
+    if master_key is None:
+        return None
+    async with collect_session_factory() as session:
+        project = await session.get(Project, project_id)
+        if project is None:
+            return None
+        cipher = PlatformCredentialCipher.from_secret(master_key)
+        values = await get_platform_credential_values(
+            session,
+            workspace_id=project.workspace_id,
+            provider_id="tiktok_research",
+            cipher=cipher,
+        )
+    return values.get("creator_cookie") or None
 
 
 async def tiktok_video_products(
     project_id: uuid.UUID, params: dict[str, Any]
 ) -> ToolResult:
     video_id = _require_text(params, "video_id")
-    if not _creator_cookie_configured():
+    cookie = await _resolve_creator_cookie(project_id)
+    if not cookie:
         return ToolResult(
             tool_id="tiktok_video_products",
             status="failed",
-            errors=["tikhub_creator_cookie_not_configured"],
+            errors=["credential_required:tiktok.creator_cookie"],
         )
     records, run = await _collect(
         project_id,
         "tikhub_tiktok_video_products",
         {"item_ids": [video_id]},
         100,
+        creator_cookie=cookie,
     )
     return _result("tiktok_video_products", records, [run])
 
@@ -898,11 +931,12 @@ async def tiktok_video_products(
 async def tiktok_creator_showcase(
     project_id: uuid.UUID, params: dict[str, Any]
 ) -> ToolResult:
-    if not _creator_cookie_configured():
+    cookie = await _resolve_creator_cookie(project_id)
+    if not cookie:
         return ToolResult(
             tool_id="tiktok_creator_showcase",
             status="failed",
-            errors=["tikhub_creator_cookie_not_configured"],
+            errors=["credential_required:tiktok.creator_cookie"],
         )
     limit = _limit(params, default=20)
     records, run = await _collect(
@@ -910,6 +944,7 @@ async def tiktok_creator_showcase(
         "tikhub_tiktok_creator_showcase",
         {"offset": int(params.get("offset") or 0)},
         limit,
+        creator_cookie=cookie,
     )
     return _result("tiktok_creator_showcase", records, [run])
 

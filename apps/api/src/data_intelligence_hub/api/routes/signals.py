@@ -5,8 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import SessionDep
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.schemas.signal import (
     SignalResponse,
     SignalSnapshotCompareResponse,
@@ -28,17 +27,12 @@ router = APIRouter(tags=["signals"])
 @router.get("", response_model=list[SignalResponse])
 async def list_signal_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
     entity_id: Annotated[uuid.UUID | None, Query()] = None,
     type_filter: Annotated[str | None, Query(alias="type")] = None,
     severity: Annotated[str | None, Query()] = None,
 ) -> list[SignalResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     signals = await get_signals(
         session,
         workspace,
@@ -53,13 +47,8 @@ async def list_signal_items(
 async def get_signal_item(
     signal_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SignalResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         signal = await get_signal_or_raise(session, workspace, signal_id)
     except SignalNotFoundError as exc:
@@ -70,13 +59,8 @@ async def get_signal_item(
 async def get_signal_snapshot_compare_item(
     signal_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SignalSnapshotCompareResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         compare = await get_signal_snapshot_compare(session, workspace, signal_id)
     except SignalNotFoundError as exc:

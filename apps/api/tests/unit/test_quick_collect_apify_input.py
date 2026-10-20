@@ -126,3 +126,36 @@ def test_defaults_use_canonical_actor_id_form() -> None:
         assert "/" in actor_id, f"{endpoint}: actor_id 必须是 'username/name' 形式"
         assert actor_id == actor_id.strip()
         assert isinstance(base_input, dict), f"{endpoint}: base_input 必须是 dict"
+
+
+def test_1688_search_input_builder_maps_keyword_to_inputs() -> None:
+    """dltik/1688-scraper 的搜索模式用 inputs 列表，不认 keyword。"""
+    from data_intelligence_hub.collectors.endpoint_catalog import (
+        _APIFY_INPUT_BUILDERS,
+        _build_1688_search_input,
+    )
+
+    built = _build_1688_search_input({"keyword": "phone case", "max_items_per_url": 5})
+
+    assert built == {
+        "mode": "search",
+        "inputs": ["phone case"],
+        "maxResults": 5,
+        "shippingCountry": "US",
+    }
+    assert _APIFY_INPUT_BUILDERS["apify_1688_product_search"] is _build_1688_search_input
+
+
+def test_1688_search_uses_limited_permission_actor() -> None:
+    """2026-10-20 换掉 full-permission actor，改走可 API 直跑的受限权限 actor。"""
+    actor_id, _ = _APIFY_ENDPOINT_DEFAULTS["apify_1688_product_search"]
+    assert actor_id == "dltik/1688-scraper"
+
+
+def test_walmart_reviews_uses_limited_permission_actor() -> None:
+    actor_id, base_input = _APIFY_ENDPOINT_DEFAULTS["apify_walmart_reviews_scraper"]
+
+    assert actor_id == "web_wanderer/walmart-reviews-scraper"
+    assert base_input["product_ids"] == []
+    assert base_input["limit"] == 1
+    assert base_input["reg"] == "US"

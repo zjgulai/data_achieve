@@ -6,12 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Header, HTTPException, Query, Response, status
 from sqlalchemy import select
 
-from data_intelligence_hub.api.deps import SessionDep
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.repositories.scheduler import get_latest_scheduler_tick
 from data_intelligence_hub.repositories.tasks import list_task_runs_by_ids
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.scheduler import SchedulerOverviewResponse
 from data_intelligence_hub.schemas.task import CollectionTaskResponse, TaskRunResponse
 from data_intelligence_hub.services.exceptions import (
@@ -33,15 +32,10 @@ router = APIRouter(tags=["tasks"])
 @router.get("", response_model=list[CollectionTaskResponse])
 async def list_task_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[CollectionTaskResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     tasks = await get_collection_tasks(session, workspace, project_id, status_filter)
     return [
         CollectionTaskResponse.from_task(
@@ -68,16 +62,11 @@ async def get_scheduler_overview_item(
 @router.get("/runs", response_model=list[TaskRunResponse])
 async def list_all_task_run_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> list[TaskRunResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     q = (
         select(TaskRun, CollectionTask)
         .join(CollectionTask, CollectionTask.id == TaskRun.task_id)
@@ -100,13 +89,8 @@ async def list_all_task_run_items(
 async def get_task_run_item(
     run_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> TaskRunResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     # 单条查询同样按 workspace 过滤；不存在与跨 workspace 统一返回 404。
     runs = await list_task_runs_by_ids(session, workspace.id, {run_id})
     run = runs.get(run_id)
@@ -122,13 +106,8 @@ async def get_task_run_item(
 async def get_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> CollectionTaskResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         task = await get_task_or_raise(session, workspace, task_id)
     except TaskNotFoundError as exc:
@@ -139,15 +118,10 @@ async def get_task_item(
 async def run_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
     response: Response,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TaskRunResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         result = await run_task_now(
             session,
@@ -171,13 +145,8 @@ async def run_task_item(
 async def pause_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> CollectionTaskResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         task = await pause_task(session, workspace, task_id)
     except TaskNotFoundError as exc:
@@ -188,13 +157,8 @@ async def pause_task_item(
 async def resume_task_item(
     task_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> CollectionTaskResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         task = await resume_task(session, workspace, task_id)
     except TaskNotFoundError as exc:
@@ -205,13 +169,8 @@ async def resume_task_item(
 async def list_task_run_items(
     task_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> list[TaskRunResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         runs = await get_task_runs(session, workspace, task_id)
     except TaskNotFoundError as exc:

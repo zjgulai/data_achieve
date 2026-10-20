@@ -6,8 +6,10 @@
 #   1. 发布模式（默认）：拉源码，构建并替换 api 与 console。
 #   2. 批准模式（--grants-file）：只更新外访域名批准，不构建镜像。
 #
-# 不重建 web、db 与共享网关。重建 api/console 后必须重启 edge，
-# 否则 edge 缓存旧容器 IP，公网 502。
+# 不重建 web、db 与共享网关。构建后用新镜像执行 alembic upgrade head；
+# 迁移失败会中止发布，旧容器继续服务。重建 api/console 后必须重启 edge，
+# 否则 edge 缓存旧容器 IP，公网 502。替换完容器还会尝试重载共享网关
+# （scripts/reload-scrapy-gateway.sh）；重载失败只告警，不中止发布。
 #
 # 用法：
 #   scripts/deploy-p0.sh --host a
@@ -345,7 +347,7 @@ deploy_one() {
   # 第 1 步：拉取源码。
   # 生产 B 的 GitHub 拉取常报 GnuTLS recv error -110 / -54 与 too slow。
   # 必须重试，且不能把 fetch 接到管道——管道会吞掉退出码。
-  echo "-- 1/5 拉取源码"
+  echo "-- 1/6 拉取源码"
   local fetch_script
   fetch_script=$(cat <<REMOTE
 set -euo pipefail
@@ -374,23 +376,30 @@ REMOTE
   local compose
   compose="docker compose --env-file $REMOTE_ENV -f $REMOTE_APP/$COMPOSE_REL"
 
-  echo "-- 2/5 校验编排"
+  echo "-- 2/6 校验编排"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose config --quiet
 echo '  编排有效'"
 
   # 第 3 步：构建 api 与 console。只构建这两个。
-  echo "-- 3/5 构建镜像"
+  echo "-- 3/6 构建镜像"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose build api console"
 
-  # 第 4 步：替换容器，然后重启 edge。
+  # 第 4 步：应用数据库迁移。用新镜像跑 alembic，失败则中止发布，
+  # 旧容器仍在运行。迁移只应向前，回滚需人工处理。
+  echo "-- 4/7 应用数据库迁移"
+  run_remote "$key" "$ssh_target" "set -euo pipefail
+cd $REMOTE_APP
+$compose run --rm --no-deps api alembic upgrade head"
+
+  # 第 5 步：替换容器，然后重启 edge。
   # --no-deps 避免连带重启 db 等依赖。
   # 重启 edge 是必须的：edge 的 nginx 用静态 proxy_pass 主机名，
   # 只在启动时解析一次，容器换 IP 后会一直打旧地址。
-  echo "-- 4/5 替换容器并重启 edge"
+  echo "-- 5/7 替换容器并重启 edge"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose up -d --no-deps api console
@@ -398,8 +407,31 @@ $compose restart edge
 sleep 3
 docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
 
-  echo "-- 5/5 等待健康"
+  echo "-- 6/7 等待健康"
   wait_healthy "$key" "$ssh_target" "api console"
+
+  echo "-- 7/7 重载共享网关"
+  reload_gateway "$key" "$ssh_target"
+}
+
+# 尝试重载共享网关。失败只告警，不中止发布。
+#
+# 重载会用新 DNS 解析换掉网关里的静态上游地址。网关另有无关上游
+# （ai_video_backend）解析不到时，重载会失败，但本项目的 edge 不受影响：
+# 只要 edge 容器不重建，网关缓存的旧地址仍然有效。
+# 因此这里不把失败当发布失败，由后续公网验收给出最终结论。
+reload_gateway() {
+  local key="$1" ssh_target="$2"
+
+  # timeout 兜底：网关容器异常时 docker exec 可能长时间无响应。
+  run_remote "$key" "$ssh_target" "set -uo pipefail
+cd $REMOTE_APP
+if timeout 90 bash scripts/reload-scrapy-gateway.sh --skip-public-smoke; then
+  echo '  网关已重载'
+else
+  echo '  警告：网关重载失败。公网若 502，先查 scripts/reload-scrapy-gateway.sh --dry-run 的失败原因。' >&2
+  echo '  网关可重载前，保持 edge 容器不被重建；网关会继续使用其当前地址。' >&2
+fi"
 }
 
 # ---------- 批准模式 ----------

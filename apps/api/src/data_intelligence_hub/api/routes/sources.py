@@ -5,8 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import SessionDep
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.schemas.source import (
     SourceCreateRequest,
     SourceResponse,
@@ -36,15 +35,10 @@ router = APIRouter(tags=["sources"])
 @router.get("", response_model=list[SourceResponse])
 async def list_source_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
     type_filter: Annotated[SourceType | None, Query(alias="type")] = None,
 ) -> list[SourceResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     sources = await get_sources(session, workspace, project_id, type_filter)
     return [SourceResponse.model_validate(source) for source in sources]
 
@@ -52,13 +46,8 @@ async def list_source_items(
 async def create_source_item(
     payload: SourceCreateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SourceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         source = await create_source(session, workspace, payload)
     except ProjectNotFoundError as exc:
@@ -71,13 +60,8 @@ async def create_source_item(
 async def get_source_item(
     source_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SourceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         source = await get_source_or_raise(session, workspace, source_id)
     except SourceNotFoundError as exc:
@@ -89,13 +73,8 @@ async def update_source_item(
     source_id: uuid.UUID,
     payload: SourceUpdateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SourceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         source = await update_source(session, workspace, source_id, payload)
     except SourceNotFoundError as exc:
@@ -108,13 +87,8 @@ async def update_source_item(
 async def test_source_item(
     source_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SourceTestResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         source = await test_source_config(session, workspace, source_id)
     except SourceNotFoundError as exc:
@@ -131,13 +105,8 @@ async def test_source_item(
 async def enable_source_item(
     source_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> CollectionTaskResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         _, task = await enable_source(session, workspace, source_id)
     except SourceNotFoundError as exc:
@@ -150,13 +119,8 @@ async def enable_source_item(
 async def disable_source_item(
     source_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> SourceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         source, _ = await disable_source(session, workspace, source_id)
     except SourceNotFoundError as exc:
