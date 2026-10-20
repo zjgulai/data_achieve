@@ -1175,6 +1175,30 @@ _TIKHUB_ENDPOINT_TYPES = {
     "tikhub_tiktok_creator_account_health",
     "tikhub_tiktok_ads_detail",
     "tikhub_tiktok_ads_keyword_suggest",
+    # Phase 1 TikTok content endpoints
+    "tikhub_tiktok_sec_uid",
+    "tikhub_tiktok_user_id",
+    "tikhub_tiktok_identity_by_username",
+    "tikhub_tiktok_video_detail",
+    "tikhub_tiktok_user_posts_web",
+    "tikhub_tiktok_search_web",
+    "tikhub_tiktok_comments_app",
+    "tikhub_tiktok_comment_replies_app",
+    "tikhub_tiktok_user_profile_web",
+    "tikhub_tiktok_user_fans_web",
+    "tikhub_tiktok_hashtag_detail_app",
+    "tikhub_tiktok_tag_posts_web",
+    "tikhub_tiktok_trending_searchwords",
+    "tikhub_tiktok_music_chart",
+    "tikhub_tiktok_fake_views",
+    "tikhub_tiktok_comment_keywords",
+    "tikhub_tiktok_ads_trends",
+    # Phase 1 commerce endpoints
+    "tikhub_tiktok_shop_search_v2",
+    "tikhub_tiktok_shop_hot_products",
+    "tikhub_tiktok_shop_reviews_v2",
+    "tikhub_tiktok_video_products",
+    "tikhub_tiktok_creator_showcase",
     "tikhub_douyin_video_search",
     "tikhub_douyin_user_posts",
     "tikhub_douyin_hot_search",
@@ -1227,6 +1251,14 @@ def _validate_tikhub_social_config(config: dict[str, Any]) -> dict[str, Any]:
         # 但此前不在白名单，于是按元数据传参的调用方必然失败。
         # 2026-10-16 复核发现：旧契约测试的正则只匹配小写，漏采了这个键。
         "userId",
+        # Phase 1 TikTok content endpoints
+        "item_id", "comment_id", "challenge_id", "search_id",
+        "region", "period", "sec_uid", "content_category",
+        # Phase 1 commerce endpoints
+        "product_id", "page_start", "sort_rule", "filter_type",
+        "filter_value", "page_token", "exclude_product_ids",
+        # Creator relation endpoints
+        "item_ids", "start_date", "creator_id", "handle",
     ):
         if key in config and config[key] is not None:
             out[key] = config[key]

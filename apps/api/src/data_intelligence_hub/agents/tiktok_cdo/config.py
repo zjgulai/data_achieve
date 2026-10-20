@@ -24,9 +24,20 @@ class TikTokCDOConfig:
     # 内部 API
     internal_api_base: str
 
+    # 工具层路由
+    project_id: str
+    tool_routing: str
+    tool_actions: tuple[str, ...]
+    tool_timeout_seconds: float
+
     # 多维表格（可选，导出用）
     bitable_app_token: str
     bitable_table_id: str
+
+
+def _tool_actions() -> tuple[str, ...]:
+    raw = os.environ.get("LARK_CDO_TOOL_ACTIONS", "search,hashtag,user_posts,creator,followers")
+    return tuple(item.strip() for item in raw.split(",") if item.strip())
 
 
 @lru_cache(maxsize=1)
@@ -41,6 +52,14 @@ def get_cdo_config() -> TikTokCDOConfig:
         deepseek_model=os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
         exa_api_key=os.environ.get("EXA_API_KEY", ""),
         internal_api_base=os.environ.get("INTERNAL_API_BASE", "http://localhost:8000"),
+        project_id=os.environ.get(
+            "LARK_CDO_PROJECT_ID", "7fd6ed55-7b0c-5482-92f3-d03130168b70"
+        ),
+        tool_routing=os.environ.get("LARK_CDO_TOOL_ROUTING", "hybrid").strip().lower(),
+        tool_actions=_tool_actions(),
+        tool_timeout_seconds=float(
+            os.environ.get("LARK_CDO_TOOL_TIMEOUT_SECONDS", "90")
+        ),
         bitable_app_token=os.environ.get("LARK_CDO_BITABLE_APP_TOKEN", ""),
         bitable_table_id=os.environ.get("LARK_CDO_BITABLE_TABLE_ID", ""),
     )

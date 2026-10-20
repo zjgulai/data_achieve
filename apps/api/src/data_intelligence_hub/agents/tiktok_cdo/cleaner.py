@@ -21,14 +21,26 @@ _KEEP_FIELDS: dict[str, list[str]] = {
     "search": [
         "id", "desc", "author", "authorMeta", "stats",
         "videoMeta", "createTime", "challenges",
+        "video_id", "text", "author_username", "author_nickname",
+        "play_count", "like_count", "comment_count", "share_count",
+        "collect_count", "created_at", "hashtags", "web_video_url",
+        "_tool_role",
     ],
     "hashtag": [
         "id", "desc", "author", "authorMeta", "stats",
         "videoMeta", "createTime",
+        "video_id", "text", "author_username", "author_nickname",
+        "play_count", "like_count", "comment_count", "share_count",
+        "collect_count", "created_at", "hashtags", "web_video_url",
+        "_tool_role",
     ],
     "user_posts": [
         "id", "desc", "stats", "videoMeta", "createTime",
         "challenges", "duetInfo",
+        "video_id", "text", "author_username", "author_nickname",
+        "play_count", "like_count", "comment_count", "share_count",
+        "collect_count", "created_at", "hashtags", "web_video_url",
+        "_tool_role",
     ],
     "top_ads": [
         "ad_id", "ad_title", "brand_name", "industry_key",
@@ -43,10 +55,12 @@ _KEEP_FIELDS: dict[str, list[str]] = {
         "user_id", "sec_uid", "nickname", "follower_count",
         "following_count", "heart_count", "video_count",
         "avg_engagement_rate", "avg_views", "audience_countries",
+        "uid", "unique_id", "signature", "region", "_tool_role",
     ],
     "followers": [
         "user_id", "sec_uid", "nickname", "follower_count",
         "following_count", "verified",
+        "uid", "unique_id", "signature", "region", "_tool_role",
     ],
     "live": [
         "room_id", "title", "user_info", "user_count",
@@ -73,10 +87,10 @@ def _calc_metrics(record: dict[str, Any], action: str) -> dict[str, Any]:
 
     if action in ("search", "hashtag", "user_posts"):
         stats = r.get("stats") or {}
-        plays = int(stats.get("playCount", 0) or 0)
-        likes = int(stats.get("diggCount", 0) or 0)
-        comments = int(stats.get("commentCount", 0) or 0)
-        shares = int(stats.get("shareCount", 0) or 0)
+        plays = int(stats.get("playCount") or r.get("play_count") or 0)
+        likes = int(stats.get("diggCount") or r.get("like_count") or 0)
+        comments = int(stats.get("commentCount") or r.get("comment_count") or 0)
+        shares = int(stats.get("shareCount") or r.get("share_count") or 0)
         if plays > 0:
             r["_engagement_rate"] = round((likes + comments + shares) / plays * 100, 2)
         else:

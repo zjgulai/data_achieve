@@ -75,6 +75,30 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "tikhub_tiktok_creator_account_health": "tikhub_social",
     "tikhub_tiktok_ads_detail": "tikhub_social",
     "tikhub_tiktok_ads_keyword_suggest": "tikhub_social",
+    # Phase 1 content endpoints
+    "tikhub_tiktok_sec_uid": "tikhub_social",
+    "tikhub_tiktok_user_id": "tikhub_social",
+    "tikhub_tiktok_identity_by_username": "tikhub_social",
+    "tikhub_tiktok_video_detail": "tikhub_social",
+    "tikhub_tiktok_user_posts_web": "tikhub_social",
+    "tikhub_tiktok_search_web": "tikhub_social",
+    "tikhub_tiktok_comments_app": "tikhub_social",
+    "tikhub_tiktok_comment_replies_app": "tikhub_social",
+    "tikhub_tiktok_user_profile_web": "tikhub_social",
+    "tikhub_tiktok_user_fans_web": "tikhub_social",
+    "tikhub_tiktok_hashtag_detail_app": "tikhub_social",
+    "tikhub_tiktok_tag_posts_web": "tikhub_social",
+    "tikhub_tiktok_trending_searchwords": "tikhub_social",
+    "tikhub_tiktok_music_chart": "tikhub_social",
+    "tikhub_tiktok_fake_views": "tikhub_social",
+    "tikhub_tiktok_comment_keywords": "tikhub_social",
+    "tikhub_tiktok_ads_trends": "tikhub_social",
+    # Phase 1 commerce endpoints
+    "tikhub_tiktok_shop_search_v2": "tikhub_social",
+    "tikhub_tiktok_shop_hot_products": "tikhub_social",
+    "tikhub_tiktok_shop_reviews_v2": "tikhub_social",
+    "tikhub_tiktok_video_products": "tikhub_social",
+    "tikhub_tiktok_creator_showcase": "tikhub_social",
     "tikhub_douyin_video_search": "tikhub_social",
     "tikhub_douyin_user_posts": "tikhub_social",
     "tikhub_douyin_hot_search": "tikhub_social",
@@ -95,6 +119,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_tiktok_scraper": "apify_actor",
     "apify_tiktok_comments_scraper": "apify_actor",
     "apify_tiktok_shop_scraper": "apify_actor",
+    "apify_tiktok_shop_creators": "apify_actor",
     "apify_instagram_scraper": "apify_actor",
     "apify_instagram_profile_scraper": "apify_actor",
     "apify_youtube_scraper": "apify_actor",
@@ -438,6 +463,10 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),
     "apify_tiktok_comments_scraper": ("clockworks/tiktok-comments-scraper", {}),
     "apify_tiktok_shop_scraper": ("clockworks/tiktok-shop-scraper", {"keywords": ["laptop"]}),
+    "apify_tiktok_shop_creators": (
+        "lemur/tiktok-shop-creators",
+        {"username": "dealswithty", "region": "US"},
+    ),
     "apify_instagram_scraper": ("apify/instagram-scraper", {}),
     "apify_instagram_profile_scraper": (
         "apify/instagram-profile-scraper",
@@ -855,6 +884,8 @@ class QuickCollectRequest(BaseModel):
     endpoint_type: str = Field(min_length=1, max_length=100)
     params: dict[str, Any] = Field(default_factory=dict)
     label: str | None = Field(default=None, max_length=200)
+    # Server-owned tool metadata. Never merged into collector params.
+    tool_call: dict[str, Any] | None = None
 
 
 class QuickCollectResponse(BaseModel):
@@ -908,6 +939,7 @@ async def quick_collect(
     # Execution metadata is server-owned and must never become Actor input.
     reserved = {
         "execution_origin",
+        "tool_call",
         "schedule_policy",
         "schedule_cron",
         "freshness_target_hours",
@@ -953,6 +985,8 @@ async def quick_collect(
     validated["endpoint_type"] = body.endpoint_type
     validated["execution_origin"] = "quick_collect"
     validated["schedule_policy"] = "manual_refresh_only"
+    if body.tool_call:
+        validated["tool_call"] = body.tool_call
 
     label = (body.label or body.endpoint_type).strip()[:200]
 

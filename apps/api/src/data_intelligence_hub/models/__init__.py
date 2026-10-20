@@ -59,6 +59,31 @@ from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
+from data_intelligence_hub.models.tiktok_commerce import (
+    Ad,
+    AdCreative,
+    CreatorCommerce,
+    CreatorProduct,
+    Product,
+    ProductReview,
+    ProductSnapshot,
+    Shop,
+    VideoProduct,
+)
+from data_intelligence_hub.models.tiktok_content import (
+    Comment,
+    CommentSnapshot,
+    Creator,
+    CreatorSnapshot,
+    Hashtag,
+    HashtagSnapshot,
+    Sound,
+    Transcript,
+    TrendTopic,
+    Video,
+    VideoHashtag,
+    VideoSnapshot,
+)
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workflow_action import (
     WorkflowRunActionApprovalConsumption,
@@ -107,6 +132,8 @@ from data_intelligence_hub.models.workflow_template import (
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 
 __all__ = [
+    "Ad",
+    "AdCreative",
     "AlertEvent",
     "AlertRule",
     "Base",
@@ -128,6 +155,21 @@ __all__ = [
     "CleaningPlan",
     "CollectionTask",
     "Collector",
+    "Comment",
+    "CommentSnapshot",
+    "Creator",
+    "CreatorCommerce",
+    "CreatorProduct",
+    "CreatorSnapshot",
+    "Hashtag",
+    "HashtagSnapshot",
+    "Sound",
+    "Transcript",
+    "TrendTopic",
+    "Video",
+    "VideoHashtag",
+    "VideoProduct",
+    "VideoSnapshot",
     "Dataset",
     "DatasetDriftEvent",
     "DatasetExportJob",
@@ -146,6 +188,9 @@ __all__ = [
     "MonitoringScopeTemplate",
     "Notification",
     "PlatformCredentialBundle",
+    "Product",
+    "ProductReview",
+    "ProductSnapshot",
     "ProviderHealthRouteFeedback",
     "ProviderHealthSnapshot",
     "Project",
@@ -157,6 +202,7 @@ __all__ = [
     "ReportSubscriptionRun",
     "SchedulerLease",
     "SchedulerTick",
+    "Shop",
     "Signal",
     "SiteAnalysis",
     "Source",

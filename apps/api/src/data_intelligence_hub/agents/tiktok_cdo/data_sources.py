@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from datetime import UTC
 from typing import Any
 
@@ -16,17 +17,32 @@ import httpx
 from .config import get_cdo_config
 from .endpoint_router import build_collect_params
 from .intent import TikTokIntent
+from .tool_router import run_intent_tool, tool_routing_enabled
 
 logger = logging.getLogger(__name__)
-
-# demo workspace，与 AGENTS.md 一致
-_DEMO_WORKSPACE = "bf51c6a8-fba5-5528-ac91-89ffd84f85c2"
 
 
 async def gather_data(intent: TikTokIntent) -> dict[str, Any]:
     """根据 intent 采集数据，返回原始结果字典。"""
     if intent.action == "sentiment":
         return await _call_exa(intent)
+
+    config = get_cdo_config()
+    if tool_routing_enabled(intent):
+        try:
+            project_id = uuid.UUID(config.project_id)
+        except ValueError:
+            logger.error("LARK_CDO_PROJECT_ID 不是合法 UUID: %s", config.project_id)
+        else:
+            adapted = await run_intent_tool(intent, project_id)
+            if adapted is not None and adapted.get("status") != "failed":
+                return adapted
+            if adapted is not None:
+                logger.warning(
+                    "工具层失败，回退直连: %s %s",
+                    adapted.get("tool_id"),
+                    adapted.get("error"),
+                )
 
     params_list = build_collect_params(intent)
     if not params_list:
@@ -56,22 +72,51 @@ async def _call_tikhub(endpoint_type: str, params: dict[str, Any]) -> dict[str, 
     config = get_cdo_config()
     url = f"{config.internal_api_base}/api/quick-collect"
     payload = {
-        "workspace_id": _DEMO_WORKSPACE,
+        "project_id": config.project_id,
         "endpoint_type": endpoint_type,
         "params": params,
     }
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
+            run_id = data.get("task_run_id")
+            if run_id:
+                data["records"] = await _fetch_raw_records(str(run_id))
+            if data.get("error_message") and not data.get("records"):
+                data["error"] = str(data["error_message"])
             return data
     except httpx.TimeoutException:
         logger.error("TikHub 采集超时: %s", endpoint_type)
         return {"records": [], "error": "采集超时，请稍后重试"}
     except Exception as e:
         logger.error("TikHub 采集失败: %s %s", endpoint_type, e)
-        return {"records": [], "error": str(e)}
+        return {"records": [], "error": "采集失败，请稍后重试"}
+
+
+async def _fetch_raw_records(task_run_id: str) -> list[dict[str, Any]]:
+    config = get_cdo_config()
+    url = f"{config.internal_api_base}/api/raw-records"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(
+                url,
+                params={"task_run_id": task_run_id, "limit": 100},
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+    except Exception as e:
+        logger.error("读取 RawRecord 失败: %s", e)
+        return []
+    records: list[dict[str, Any]] = []
+    for row in rows if isinstance(rows, list) else []:
+        content = row.get("content") if isinstance(row, dict) else None
+        if isinstance(content, dict):
+            records.append(content)
+        elif isinstance(content, list):
+            records.append({"items": content})
+    return records
 
 
 async def _call_exa(intent: TikTokIntent) -> dict[str, Any]:

@@ -44,6 +44,9 @@ from data_intelligence_hub.api.routes.signals import router as signals_router
 from data_intelligence_hub.api.routes.social_provider import router as social_provider_router
 from data_intelligence_hub.api.routes.sources import router as sources_router
 from data_intelligence_hub.api.routes.tasks import router as tasks_router
+from data_intelligence_hub.api.routes.tiktok_tools import (
+    router as tiktok_tools_router,
+)
 from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tools import router as tools_router
 from data_intelligence_hub.api.routes.workflow_plans import (
@@ -161,6 +164,7 @@ def create_app() -> FastAPI:
     app.include_router(tools_router, prefix="/api/tools")
     app.include_router(shusuo_router, prefix="/api/agents/shusuo")
     app.include_router(tiktok_cdo_router, prefix="/api/agents/tiktok-cdo")
+    app.include_router(tiktok_tools_router, prefix="/api/tiktok/tools")
     app.mount("/mcp", BearerTokenMiddleware(mcp_app))
     return app
 

@@ -79,7 +79,8 @@ async def list_all_task_run_items(
             detail="demo_workspace_unavailable",
         )
     q = (
-        select(TaskRun)
+        select(TaskRun, CollectionTask)
+        .join(CollectionTask, CollectionTask.id == TaskRun.task_id)
         .where(TaskRun.workspace_id == workspace.id)
         .order_by(TaskRun.created_at.desc())
         .limit(limit)
@@ -88,14 +89,12 @@ async def list_all_task_run_items(
         q = q.where(TaskRun.status == status_filter)
     if project_id is not None:
         # 按项目过滤：运行属于任务，任务属于项目。
-        q = q.where(
-            TaskRun.task_id.in_(
-                select(CollectionTask.id).where(CollectionTask.project_id == project_id)
-            )
-        )
+        q = q.where(CollectionTask.project_id == project_id)
     result = await session.execute(q)
-    runs = result.scalars().all()
-    return [TaskRunResponse.from_run(run) for run in runs]
+    return [
+        TaskRunResponse.from_run(run, task=task)
+        for run, task in result.all()
+    ]
 
 @router.get("/runs/{run_id}", response_model=TaskRunResponse)
 async def get_task_run_item(
@@ -116,7 +115,8 @@ async def get_task_run_item(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="task_run_not_found",
         )
-    return TaskRunResponse.from_run(run)
+    task = await session.get(CollectionTask, run.task_id)
+    return TaskRunResponse.from_run(run, task=task)
 
 @router.get("/{task_id}", response_model=CollectionTaskResponse)
 async def get_task_item(
