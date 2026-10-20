@@ -4,10 +4,9 @@
 
 部署口径：按 2026-10-21 指示，实际部署只做生产 A `43.163.92.244`。B 站相关 ticket 保留为待决策，状态标为阻塞或进行中。
 
-
 飞书多维表格：SP-Agent-TODO · https://momcozy-in.feishu.cn/base/XXz5bHAwCa7qv5sTzrCci3jPnxd?table=tbli8kAkAqrndUvJ
 
-共 40 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
+共 54 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
 
 | Ticket | 任务类型 | 所属图谱模块 | 任务属性 | 任务方案 | 完成状态 | 登记时间 | 预计完成时间 | 实际完成时间 |
 |---|---|---|---|---|---|---|---|---|
@@ -51,3 +50,17 @@
 | SP-38 工具数量与端点映射断言动态化 | 工作台 | 工具目录与计数 | bug | 测试不再写死 8/12/16 个工具。从 TOOL_IDS、TOOL_HANDLERS、TIKHUB map 与 _ENDPOINT_TO_COLLECTOR 派生期望值，并保留注册完整性测试。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
 | SP-39 生产重启手册与 edge 固定 IP 保护 | 工作台 | 生产运维 | 存量需求 | 写生产重启手册：只执行 up -d api console；禁止重建 edge；发布后检查 edge 在 172.20.0.16 且公网 200；网关不可 reload 时的回退路径。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
 | SP-40 清理全量测试既有失败基线 | 工作台 | 工具目录与计数 | bug | 修复或标记环境依赖的既有失败：firecrawl API key 断言、spiderfoot target、v2 traceability、workflow postgres guard。让全量单测在干净环境可重复通过。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-41 增加目录跨层对账守卫并接入 CI | 工作台 | 能力目录契约 | 新需求 | 新增 scripts/check_catalog_locks.py，比较 live build、configs/tool-catalog.lock.json、configs/platform-packages.lock.json、generated/platform-packages.json 的 digest 与四组计数；断言 tool_count == unique_endpoint_count；在 .github/workflows/ci.yml 的所有分支和 PR 运行；移除 tests/unit/test_catalog_reconciliation.py 中「生成物可落后于工作树」的豁免。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-42 建立文档漂移检查与刷新触发器 | 工作台 | 文档与能力图谱治理 | 新需求 | 新增 scripts/check_docs_drift.py：从 page.tsx 生成路由集合，与图谱 §2 对比；从 live build 取计数，与图谱、总账、README 的数字对比；CI 失败即报差异。新增 docs/standards/capability-graph-maintenance.md，列明路由变更、catalog digest 变更、迁移、新 MCP 工具四类触发条件与负责人。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-43 增加生产健康监控与飞书告警 | 工作台 | 发布与运维 | 新需求 | 新增 scripts/prod_health_check.py 与 .github/workflows/prod-health.yml（每 5-10 分钟）：检查 A/B 的 /api/health、/tools、/api/tools、/mcp 401、数据库 revision；失败通过数说机器人 webhook 告警；记录响应时间与 schema。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-44 增加文件尾洞/NUL 检查器与提交钩子 | 工作台 | CI 与回归守卫 | bug | 新增 scripts/check_file_integrity.py：对 staged/changed 文件比较 os.stat().st_size 与 len(read())，并统计 NUL；退出 1。新增 .githooks/pre-commit 调用它；在 CI 增加一步；文档写明 `git config core.hooksPath .githooks`。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-45 增加控制台 Playwright 路由 E2E 冒烟 | 工作台 | 工作台首页 | 新需求 | 新增 apps/scraper-console/playwright.config.ts 与 e2e/routes.spec.ts：遍历 routes.ts 的 redirects/kept/new 路由，断言 HTTP 200、main 文本长度、无 4xx/5xx 的 /api 响应、无 console error；对 /tools/[toolId]、/runs/[runId] 用真实 ID；加 390x844 与 1280x800 两个视口；接入 CI。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-46 增加 API 路由挂载守卫 | 工作台 | 平台能力中心 | bug | 新增 apps/api/tests/unit/test_router_mounting.py：导入 create_app，遍历 data_intelligence_hub/api/routes 下所有模块的 router，断言每个 router 的 (method, path) 都出现在 app.routes；同时断言总路由数下限。 | 未开始 | 2026-10-21 | 2026-10-24 |  |
+| SP-47 建立本机外访归因与出口审计 | Agent机器人 | 采集外访策略 | 新需求 | 新增 scripts/egress_audit.sh：在 20:15-20:45 采集 `lsof -nP -iTCP`、`nettop -P -l 1`、`log show --last 2h` 的进程、PID、父进程、域名；给出 PF anchor 或独立 VM/网络命名空间的 allowlist 方案；把 2026-10-15 告警写入 docs/standards/collection-outbound-safety.md 的未决项。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-48 评估拆分 collector_type 以提高主机批准上限 | Agent机器人 | 采集外访策略 | 方案迭代 | 写 ADR：给出 public_feed/generic_web 按主机组拆分或引入多配置的设计，评估 15-20 个文件、主机上限 5→10+、单次预算 50→100+ 的安全影响；经策略变更评审后再实施。 | 未开始 | 2026-10-21 | 2026-11-14 |  |
+| SP-49 把仓储层静默字段过滤改为显式报错 | Agent机器人 | TikTok R1 内容与电商 | bug | 修改 TikTok 仓储的 _filter_values：未知键记录 warning 或在严格模式抛错；新增 creator.bio/signature 回归测试；审计所有 TikTok 映射的字段名与 ORM 列名。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-50 增加提交范围守卫与合并复查清单 | 工作台 | CI 与回归守卫 | 新需求 | 新增 scripts/check_commit_scope.py 与 .githooks/commit-msg：`docs:` 提交不得含 apps/ 或 scripts/ 代码；合并他人分支后必须重跑 pytest、pnpm test、detect-changes 并在提交信息记录数字；把清单写入 docs/standards/acceptance-checklist.md。 | 未开始 | 2026-10-21 | 2026-11-14 |  |
+| SP-51 收敛本地分支并让 CI 覆盖 feature 分支 | 工作台 | CI 与回归守卫 | 方案迭代 | 推送 feat/tool-catalog-catalog 并开 PR；把 .github/workflows/ci.yml 的 on.push.branches 扩到 feat/** 或在 PR 上强制；每周执行 fetch 与集成；清理已合并的临时分支/worktree；记录每个分支的基线与负责人。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-52 把数说飞书机器人纳入能力图谱与部署监控 | Agent机器人 | 数说飞书机器人 | 存量需求 | 在能力图谱新增「数说机器人」模块：webhook、意图、DeepSeek 只读问答、执行边界；部署清单标注仅生产 A；把 webhook 可用性加入 T-06 监控；补 B 站部署评估。 | 未开始 | 2026-10-21 | 2026-11-14 |  |
+| SP-53 更新生产验收与镜像构建技能，去掉过期数字 | 工作台 | 发布与运维 | bug | 更新 .claude/skills/production/production-acceptance/SKILL.md：路由 /platforms→/tools，计数 70/270/242→70/309/281，schema 改逐主机期望；在 production-image-build/SKILL.md 增加 edge 固定 IP、`up -d --no-deps api console`、`restart edge`、网关 reload 失败的处理；加版本戳与季度复核。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-54 发布后数据级验收：不只 200，还要有数据 | 工作台 | 凭证与提供方 | 存量需求 | 扩展验收脚本：调用 /api/collectors/docs 断言 tested/success 计数，调用 /providers/status 断言状态分布，选 1 个已知可用端点跑 quick-collect 并断言 records>0；失败即阻断发布。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
