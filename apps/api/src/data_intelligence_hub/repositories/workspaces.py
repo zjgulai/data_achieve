@@ -126,7 +126,8 @@ async def add_workspace_member(
 ) -> WorkspaceMember:
     member = WorkspaceMember(workspace_id=workspace_id, user_id=user_id, role=role)
     session.add(member)
-    await session.commit()
+    # 提交权在 service 与 route 层，repository 只 flush。见 ADR-007 D4。
+    await session.flush()
     await session.refresh(member)
     return member
 
@@ -146,5 +147,6 @@ async def remove_workspace_member(
     if member is None:
         return False
     await session.delete(member)
-    await session.commit()
+    # 提交权在 service 与 route 层，repository 只 flush。见 ADR-007 D4。
+    await session.flush()
     return True
