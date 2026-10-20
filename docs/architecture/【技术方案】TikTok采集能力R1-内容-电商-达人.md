@@ -989,3 +989,42 @@ TikTok 工具从 12 个增加到 16 个：
 - 2 个商品关系工具（Cookie 门控）
 - 2 个广告工具
 
+## 27. 创作者 Cookie 的配置方式（2026-10-20）
+
+### 27.1 设计
+
+1. 不把 Cookie 写死为服务器环境变量。
+2. TikTok 凭证新增 `creator_cookie` 字段。
+3. Cookie 存入工作区加密凭证库 `platform_credential_bundles`。
+4. 商品关系工具在调用时从凭证库解析 Cookie。
+5. Cookie 通过 `ContextVar` 传入采集器，不写入 `CollectionTask.config`。
+6. 运行记录只显示工具与端点，不显示 Cookie。
+
+### 27.2 网站配置项
+
+1. 打开「凭证设置」。
+2. 找到 TikTok Research。
+3. 填写「TikTok creator Cookie」。
+4. 保存。
+
+凭证库需要 `PLATFORM_CREDENTIAL_MASTER_KEY`。生产 A 已配置有效 Fernet 密钥，权限 `600`。
+
+### 27.3 使用时的弹窗
+
+1. 在 TikTok 工作台选择「视频关联商品」或「达人橱窗」。
+2. 未配置 Cookie 时，工具返回 `credential_required:tiktok.creator_cookie`。
+3. 工作台弹出「连接 TikTok 创作者账号」窗口。
+4. 用户粘贴 Cookie 后点击「保存并继续」。
+5. 系统写入凭证库，并自动重试上一次工具调用。
+6. 不需要刷新页面。
+
+说明：TikTok 没有面向该端点的公开 OAuth。弹窗保存的是登录态 Cookie，不是 OAuth 授权。
+
+### 27.4 生产验证
+
+1. 凭证库加密与解密往返成功。
+2. 未配置 Cookie 时返回 `credential_required:tiktok.creator_cookie`。
+3. 工具列表为 16 个。
+4. 提供方目录已返回 `creator_cookie` 字段。
+5. 公网 `/api/health` 与 `/api/tiktok/tools` 恢复 200。
+
