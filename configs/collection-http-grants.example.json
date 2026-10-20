@@ -1,0 +1,34 @@
+[
+  {
+    "collector_type": "generic_web",
+    "hosts": ["www.who.int"],
+    "expires_at": "2027-12-31T23:59:59Z",
+    "max_requests": 20,
+    "max_domains": 1,
+    "timeout_seconds": 30
+  },
+  {
+    "collector_type": "public_feed",
+    "hosts": ["feeds.bbci.co.uk"],
+    "expires_at": "2027-12-31T23:59:59Z",
+    "max_requests": 20,
+    "max_domains": 1,
+    "timeout_seconds": 30
+  },
+  {
+    "collector_type": "ecommerce_product_page",
+    "hosts": ["www.walmart.com"],
+    "expires_at": "2027-12-31T23:59:59Z",
+    "max_requests": 20,
+    "max_domains": 1,
+    "timeout_seconds": 30
+  },
+  {
+    "collector_type": "ecommerce_product_discovery",
+    "hosts": ["www.target.com"],
+    "expires_at": "2027-12-31T23:59:59Z",
+    "max_requests": 20,
+    "max_domains": 1,
+    "timeout_seconds": 30
+  }
+]

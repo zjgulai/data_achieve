@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -47,14 +49,17 @@ from data_intelligence_hub.api.routes.tasks import router as tasks_router
 from data_intelligence_hub.api.routes.tiktok_tools import (
     router as tiktok_tools_router,
 )
-from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tool_catalog import router as tool_catalog_router
+from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tools import router as tools_router
 from data_intelligence_hub.api.routes.workflow_plans import (
     router as workflow_plans_router,
 )
 from data_intelligence_hub.api.routes.workflow_runs import (
     router as workflow_runs_router,
+)
+from data_intelligence_hub.collectors.outbound_policy import (
+    validate_collection_http_grants,
 )
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
@@ -65,6 +70,24 @@ from data_intelligence_hub.mcp_runtime import (
     mcp_server,
 )
 from data_intelligence_hub.scheduler import CollectionScheduler
+
+logger = structlog.get_logger(__name__)
+
+
+def warn_on_invalid_http_grants(grants: list[dict[str, Any]]) -> None:
+    """启动时校验域名授权配置。
+
+    配置有问题时记录一条 warning，并列出全部问题。
+    配置问题不阻断启动：生产环境可能暂时没有授权。
+    """
+    issues = validate_collection_http_grants(grants)
+    if not issues:
+        return
+    logger.warning(
+        "collection_http_grants_invalid",
+        issue_count=len(issues),
+        issues=issues,
+    )
 
 
 @asynccontextmanager
@@ -89,6 +112,8 @@ def create_app() -> FastAPI:
     # 关掉异常回溯里的局部变量渲染。默认配置会把密钥等取值打进日志，
     # 详见 core/logging.py 的说明。
     configure_logging()
+    # 域名授权配置有问题时只告警，不阻断启动。
+    warn_on_invalid_http_grants(settings.collection_http_grants)
     app = FastAPI(
         title=settings.app_name,
         version="0.1.0",
