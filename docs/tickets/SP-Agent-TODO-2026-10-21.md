@@ -4,6 +4,9 @@
 
 部署口径：按 2026-10-21 指示，实际部署只做生产 A `43.163.92.244`。B 站相关 ticket 保留为待决策，状态标为阻塞或进行中。
 
+
+飞书多维表格：SP-Agent-TODO · https://momcozy-in.feishu.cn/base/XXz5bHAwCa7qv5sTzrCci3jPnxd?table=tbli8kAkAqrndUvJ
+
 共 40 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
 
 | Ticket | 任务类型 | 所属图谱模块 | 任务属性 | 任务方案 | 完成状态 | 登记时间 | 预计完成时间 | 实际完成时间 |
