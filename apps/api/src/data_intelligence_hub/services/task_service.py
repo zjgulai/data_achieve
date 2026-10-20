@@ -147,12 +147,36 @@ async def _find_manual_task_run_by_idempotency_key_hash(
     task_id: uuid.UUID,
     idempotency_key_hash: str,
 ) -> TaskRun | None:
+    """按幂等键查找已有运行。
+
+    先查列。列是后加的，历史行的列为空，因此再回退解析 logs。
+    回退只为兼容既有数据，保留一个发布周期；
+    新写入的运行一律把摘要写进列。
+    """
     result = await session.execute(
         select(TaskRun)
-        .where(TaskRun.workspace_id == workspace_id, TaskRun.task_id == task_id)
+        .where(
+            TaskRun.workspace_id == workspace_id,
+            TaskRun.task_id == task_id,
+            TaskRun.idempotency_key_hash == idempotency_key_hash,
+        )
+        .order_by(TaskRun.created_at.desc())
+        .limit(1)
+    )
+    found = result.scalars().first()
+    if found is not None:
+        return found
+
+    legacy = await session.execute(
+        select(TaskRun)
+        .where(
+            TaskRun.workspace_id == workspace_id,
+            TaskRun.task_id == task_id,
+            TaskRun.idempotency_key_hash.is_(None),
+        )
         .order_by(TaskRun.created_at.desc())
     )
-    for run in result.scalars().all():
+    for run in legacy.scalars().all():
         if _task_run_idempotency_key_hash(run.logs) == idempotency_key_hash:
             return run
     return None

@@ -127,6 +127,8 @@ async def execute_collection_task(
         error_traceback=None,
         logs=logs,
         created_at=started_at,
+        # 同时写列与日志：列供索引与查询，日志保留人工排查细节。
+        idempotency_key_hash=idempotency_key_hash,
     )
     session.add(run)
     await session.flush()
