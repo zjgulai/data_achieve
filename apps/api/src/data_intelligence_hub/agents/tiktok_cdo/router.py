@@ -70,13 +70,54 @@ async def lark_webhook(
 
 # ── 卡片按钮回调 ───────────────────────────────────────────────────────────────
 
+# 卡片回调允许的动作白名单。
+# 新增动作必须先进白名单，避免外部构造 action 触发未审核的副作用。
+CALLBACK_ACTION_ALLOWLIST = frozenset({"re_collect", "export_bitable"})
+
+
 @router.post("/webhook/callback")
 async def lark_card_callback(
-    request: Request, background_tasks: BackgroundTasks
+    request: Request,
+    background_tasks: BackgroundTasks,
+    x_lark_signature: str | None = Header(None),
+    x_lark_request_timestamp: str | None = Header(None),
+    x_lark_request_nonce: str | None = Header(None),
 ) -> dict[str, Any]:
-    body = await request.json()
+    """处理飞书卡片按钮回调。
+
+    与 /webhook 同一套验签：回调也由飞书发出，必须校验签名。
+    未配置 verification token 时直接拒绝，不放行。
+    """
+    # 先读原始 body 用于验签；验签必须基于原始字节。
+    raw_body = await request.body()
+    body_text = raw_body.decode("utf-8")
+
+    config = get_cdo_config()
+    if not config.lark_verification_token:
+        logger.warning("cdo_callback_rejected: verification token 未配置")
+        return {"code": 403, "msg": "callback_verification_not_configured"}
+
+    if not _verify_signature(
+        config.lark_verification_token,
+        x_lark_request_timestamp or "",
+        x_lark_request_nonce or "",
+        body_text,
+        x_lark_signature or "",
+    ):
+        logger.warning("cdo_callback_rejected: 签名不匹配")
+        return {"code": 403, "msg": "invalid signature"}
+
+    try:
+        body: dict[str, Any] = json.loads(body_text)
+    except json.JSONDecodeError:
+        return {"code": 400, "msg": "invalid body"}
+
     action_val: dict[str, Any] = (body.get("action") or {}).get("value") or {}
     action_type = action_val.get("action", "")
+
+    if action_type not in CALLBACK_ACTION_ALLOWLIST:
+        logger.warning("cdo_callback_rejected: 未知动作 %s", action_type)
+        return {"code": 400, "msg": "unknown action"}
 
     if action_type == "export_bitable":
         # 暂存数据已丢失，此处仅返回提示；完整实现需 Redis 缓存结果

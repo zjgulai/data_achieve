@@ -1,4 +1,4 @@
-"""Contract tests for the twelve TikTok content and commerce tools."""
+"""Contract tests for the sixteen TikTok content and commerce tools."""
 
 from __future__ import annotations
 
@@ -8,7 +8,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from data_intelligence_hub.api.deps import get_current_user
 from data_intelligence_hub.main import app
+from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.workspace import WorkspaceMember
 from data_intelligence_hub.services.tiktok_tools import (
     TOOL_IDS,
     TOOL_SPECS,
@@ -26,6 +29,7 @@ from data_intelligence_hub.services.tiktok_tools import (
 )
 
 PROJECT_ID = uuid.uuid4()
+WORKSPACE_ID = uuid.uuid4()
 
 
 def _fake_collect_factory(records: dict[str, list[dict[str, Any]]], calls: list):
@@ -184,16 +188,59 @@ async def test_unknown_tool_raises() -> None:
         await run_tiktok_tool("nope", PROJECT_ID, {})
 
 
-def test_rest_tools_list_and_unknown() -> None:
-    client = TestClient(app)
-    response = client.get("/api/tiktok/tools")
-    assert response.status_code == 200
-    assert len(response.json()) == 16
-    response = client.post(
-        "/api/tiktok/tools/nope",
-        json={"project_id": str(PROJECT_ID), "params": {}},
+def _auth_override(*, workspace_ids: list[uuid.UUID]) -> User:
+    """构造一个带工作区成员关系的用户，并覆盖鉴权依赖。"""
+    user = User(
+        id=uuid.uuid4(),
+        email="owner@example.test",
+        password_hash="x",
+        name="Owner",
+        status="active",
     )
-    assert response.status_code == 404
+    user.workspace_memberships = [
+        WorkspaceMember(workspace_id=wid, user_id=user.id, role="owner")
+        for wid in workspace_ids
+    ]
+
+    async def override() -> User:
+        return user
+
+    app.dependency_overrides[get_current_user] = override
+    return user
+
+
+def test_rest_tools_require_authentication() -> None:
+    """无 token 时列表与执行都必须 401。
+
+    该路由不走 get_auth_context；后者会回退 demo workspace。
+    """
+    app.dependency_overrides.clear()
+    client = TestClient(app)
+    assert client.get("/api/tiktok/tools").status_code == 401
+    assert (
+        client.post(
+            "/api/tiktok/tools/nope",
+            json={"project_id": str(PROJECT_ID), "params": {}},
+        ).status_code
+        == 401
+    )
+
+
+def test_rest_tools_list_and_unknown() -> None:
+    app.dependency_overrides.clear()
+    _auth_override(workspace_ids=[])
+    try:
+        client = TestClient(app)
+        response = client.get("/api/tiktok/tools")
+        assert response.status_code == 200
+        assert len(response.json()) == 16
+        response = client.post(
+            "/api/tiktok/tools/nope",
+            json={"project_id": str(PROJECT_ID), "params": {}},
+        )
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_rest_tool_run(monkeypatch) -> None:
@@ -209,22 +256,39 @@ def test_rest_tool_run(monkeypatch) -> None:
         "data_intelligence_hub.api.routes.tiktok_tools.run_tiktok_tool",
         fake_run,
     )
-    client = TestClient(app)
-    response = client.post(
-        "/api/tiktok/tools/tiktok_video_search",
-        json={"project_id": str(PROJECT_ID), "params": {"query": "x"}},
+
+    class _FakeProject:
+        id = PROJECT_ID
+
+    async def fake_get_project(session: Any, workspace_id: Any, project_id: Any) -> Any:
+        del session, project_id
+        return _FakeProject() if workspace_id == WORKSPACE_ID else None
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.api.routes.tiktok_tools.get_project",
+        fake_get_project,
     )
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["status"] == "success"
-    assert payload["records_count"] == 1
+    app.dependency_overrides.clear()
+    _auth_override(workspace_ids=[WORKSPACE_ID])
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/api/tiktok/tools/tiktok_video_search",
+            json={"project_id": str(PROJECT_ID), "params": {"query": "x"}},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "success"
+        assert payload["records_count"] == 1
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_real_collect_is_async() -> None:
     assert callable(_real_collect)
 
 
-def test_mcp_registers_all_eight_tools() -> None:
+def test_mcp_registers_all_tiktok_tools() -> None:
     import asyncio
 
     from data_intelligence_hub.mcp_runtime.server import mcp_server
