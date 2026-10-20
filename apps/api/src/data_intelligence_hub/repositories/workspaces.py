@@ -116,3 +116,35 @@ async def user_belongs_to_workspace(
         )
     )
     return result.scalar_one_or_none() is not None
+
+
+async def add_workspace_member(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+    role: str = "member",
+) -> WorkspaceMember:
+    member = WorkspaceMember(workspace_id=workspace_id, user_id=user_id, role=role)
+    session.add(member)
+    await session.commit()
+    await session.refresh(member)
+    return member
+
+
+async def remove_workspace_member(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> bool:
+    result = await session.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if member is None:
+        return False
+    await session.delete(member)
+    await session.commit()
+    return True

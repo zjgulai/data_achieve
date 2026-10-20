@@ -297,3 +297,169 @@ async def test_create_project_owner_is_requesting_user(
             AuthContext(user=requesting_user, workspace=shared_workspace),
         )
     assert response.owner_id == _ids()["member"]
+
+
+@pytest.mark.asyncio
+async def test_list_projects_does_not_leak_across_workspaces(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """在 shared_ws 建项目，personal_ws 的列表必须看不到。"""
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.projects import list_project_items
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        personal_workspace = await session.get(Workspace, _ids()["personal_ws"])
+        requesting_user = await session.get(User, _ids()["shared_owner"])
+        assert shared_workspace is not None
+        assert personal_workspace is not None
+        assert requesting_user is not None
+        await create_project_item(
+            ProjectCreateRequest(name="Tenant Scoped", domain="mixed"),
+            session,
+            AuthContext(user=requesting_user, workspace=shared_workspace),
+        )
+        visible = await list_project_items(session, personal_workspace, None, None)
+    assert visible == []
+
+
+@pytest.mark.asyncio
+async def test_activate_workspace_sets_cookie(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from fastapi import Response
+
+    from data_intelligence_hub.api.deps import WORKSPACE_COOKIE_NAME, AuthContext
+    from data_intelligence_hub.api.routes.workspaces import activate_workspace_item
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        requesting_user = await session.get(User, _ids()["member"])
+        assert shared_workspace is not None
+        assert requesting_user is not None
+        # 先让 member 加入 shared_ws。
+        session.add(
+            WorkspaceMember(
+                workspace_id=shared_workspace.id,
+                user_id=requesting_user.id,
+                role="member",
+            )
+        )
+        await session.commit()
+        response = Response()
+        await activate_workspace_item(
+            shared_workspace.id,
+            session,
+            AuthContext(user=requesting_user, workspace=shared_workspace),
+            response,
+        )
+    cookie = response.headers.get("set-cookie", "")
+    assert f"{WORKSPACE_COOKIE_NAME}={shared_workspace.id}" in cookie
+
+
+@pytest.mark.asyncio
+async def test_activate_workspace_rejects_non_member(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from fastapi import HTTPException, Response
+
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.workspaces import activate_workspace_item
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        requesting_user = await session.get(User, _ids()["member"])
+        assert shared_workspace is not None
+        assert requesting_user is not None
+        with pytest.raises(HTTPException) as exc:
+            await activate_workspace_item(
+                shared_workspace.id,
+                session,
+                AuthContext(user=requesting_user, workspace=shared_workspace),
+                Response(),
+            )
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_add_member_requires_owner(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from fastapi import HTTPException
+
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.workspaces import (
+        add_current_workspace_member,
+    )
+    from data_intelligence_hub.schemas.workspace import AddWorkspaceMemberRequest
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        requesting_user = await session.get(User, _ids()["member"])
+        assert shared_workspace is not None
+        assert requesting_user is not None
+        with pytest.raises(HTTPException) as exc:
+            await add_current_workspace_member(
+                AddWorkspaceMemberRequest(email="shared-owner@example.com"),
+                session,
+                AuthContext(user=requesting_user, workspace=shared_workspace),
+            )
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_owner_adds_and_removes_member(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.workspaces import (
+        add_current_workspace_member,
+        remove_current_workspace_member,
+    )
+    from data_intelligence_hub.schemas.workspace import AddWorkspaceMemberRequest
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        owner = await session.get(User, _ids()["shared_owner"])
+        assert shared_workspace is not None
+        assert owner is not None
+        context = AuthContext(user=owner, workspace=shared_workspace)
+        added = await add_current_workspace_member(
+            AddWorkspaceMemberRequest(email="member@example.com"),
+            session,
+            context,
+        )
+        assert added.user.email == "member@example.com"
+        await remove_current_workspace_member(_ids()["member"], session, context)
+        remaining = await session.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == shared_workspace.id,
+                WorkspaceMember.user_id == _ids()["member"],
+            )
+        )
+        assert remaining.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_owner_cannot_remove_owner(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    from fastapi import HTTPException
+
+    from data_intelligence_hub.api.deps import AuthContext
+    from data_intelligence_hub.api.routes.workspaces import (
+        remove_current_workspace_member,
+    )
+
+    async with session_factory() as session:
+        shared_workspace = await session.get(Workspace, _ids()["shared_ws"])
+        owner = await session.get(User, _ids()["shared_owner"])
+        assert shared_workspace is not None
+        assert owner is not None
+        with pytest.raises(HTTPException) as exc:
+            await remove_current_workspace_member(
+                owner.id,
+                session,
+                AuthContext(user=owner, workspace=shared_workspace),
+            )
+    assert exc.value.status_code == 403

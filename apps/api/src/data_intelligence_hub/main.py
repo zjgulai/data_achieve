@@ -55,6 +55,7 @@ from data_intelligence_hub.api.routes.workflow_plans import (
 from data_intelligence_hub.api.routes.workflow_runs import (
     router as workflow_runs_router,
 )
+from data_intelligence_hub.api.routes.workspaces import router as workspaces_router
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.core.logging import configure_logging
@@ -132,6 +133,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api/auth")
+    app.include_router(workspaces_router, prefix="/api/workspaces")
     app.include_router(dashboard_router, prefix="/api/dashboard")
     app.include_router(collectors_router, prefix="/api/collectors")
     app.include_router(quick_collect_router, prefix="/api/quick-collect")

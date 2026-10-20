@@ -4,7 +4,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from data_intelligence_hub.api.deps import SessionDep, get_current_user
+from data_intelligence_hub.api.deps import (
+    WORKSPACE_COOKIE_NAME,
+    SessionDep,
+    get_current_user,
+)
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.schemas.auth import AuthSessionResponse, LoginRequest, RegisterRequest
@@ -63,6 +67,7 @@ async def login(
 async def logout(response: Response) -> Response:
     settings = get_settings()
     response.delete_cookie(key=settings.auth_cookie_name, path="/")
+    response.delete_cookie(key=WORKSPACE_COOKIE_NAME, path="/")
     return response
 
 
