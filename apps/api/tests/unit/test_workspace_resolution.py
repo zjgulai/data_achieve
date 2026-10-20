@@ -463,3 +463,64 @@ async def test_owner_cannot_remove_owner(
                 AuthContext(user=owner, workspace=shared_workspace),
             )
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_http_register_activate_and_switch_flow(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """走真实 HTTP：注册拿 Cookie，切换工作区后 /me 返回新工作区。"""
+    from fastapi import FastAPI
+    from httpx import ASGITransport, AsyncClient
+
+    from data_intelligence_hub.api.routes.auth import router as auth_router
+    from data_intelligence_hub.api.routes.workspaces import (
+        router as workspaces_router,
+    )
+    from data_intelligence_hub.core.database import get_session
+
+    app = FastAPI()
+    app.include_router(auth_router, prefix="/api/auth")
+    app.include_router(workspaces_router, prefix="/api/workspaces")
+
+    async with session_factory() as session:
+
+        async def override_session():
+            yield session
+
+        app.dependency_overrides[get_session] = override_session
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            registered = await client.post(
+                "/api/auth/register",
+                json={
+                    "email": "flow-user@example.com",
+                    "password": "test-secret-1",
+                    "name": "Flow User",
+                },
+            )
+            assert registered.status_code == 201
+
+            listing = await client.get("/api/workspaces")
+            assert listing.status_code == 200
+            personal = [
+                item
+                for item in listing.json()
+                if item["slug"] != DEMO_WORKSPACE_SLUG
+            ]
+            assert len(personal) == 1
+
+            switched = await client.post(
+                f"/api/workspaces/{personal[0]['id']}/activate"
+            )
+            assert switched.status_code == 200
+            assert switched.json()["workspace"]["id"] == personal[0]["id"]
+
+            me = await client.get("/api/auth/me")
+            assert me.status_code == 200
+            assert me.json()["workspace"]["id"] == personal[0]["id"]
+
+            denied = await client.post(
+                f"/api/workspaces/{_ids()['shared_ws']}/activate"
+            )
+            assert denied.status_code == 403

@@ -1,27 +1,28 @@
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from data_intelligence_hub.api.deps import (
     WORKSPACE_COOKIE_NAME,
+    AuthenticatedContextDep,
     SessionDep,
-    get_current_user,
 )
 from data_intelligence_hub.core.config import get_settings
-from data_intelligence_hub.models.user import User
-from data_intelligence_hub.schemas.auth import AuthSessionResponse, LoginRequest, RegisterRequest
+from data_intelligence_hub.schemas.auth import (
+    AuthSessionResponse,
+    LoginRequest,
+    RegisterRequest,
+    UserResponse,
+    WorkspaceResponse,
+)
 from data_intelligence_hub.services.auth_service import (
     AuthSession,
-    get_session_for_user,
     login_user,
     register_user,
 )
 from data_intelligence_hub.services.exceptions import (
     DuplicateEmailError,
     InvalidCredentialsError,
-    WorkspaceNotFoundError,
 )
 
 router = APIRouter(tags=["auth"])
@@ -72,18 +73,13 @@ async def logout(response: Response) -> Response:
 
 
 @router.get("/me", response_model=AuthSessionResponse)
-async def me(
-    session: SessionDep,
-    user: Annotated[User, Depends(get_current_user)],
-) -> AuthSessionResponse:
-    try:
-        auth_session = await get_session_for_user(session, user)
-    except WorkspaceNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=WorkspaceNotFoundError.message,
-        ) from exc
-    return AuthSessionResponse(user=auth_session.user, workspace=auth_session.workspace)
+async def me(context: AuthenticatedContextDep) -> AuthSessionResponse:
+    # 严格模式：无 token 401。工作区按 active_workspace Cookie 解析，
+    # 因此切换工作区后，本接口返回新的当前工作区。
+    return AuthSessionResponse(
+        user=UserResponse.model_validate(context.user),
+        workspace=WorkspaceResponse.model_validate(context.workspace),
+    )
 
 
 def _set_auth_cookie(response: Response, auth_session: AuthSession) -> None:
