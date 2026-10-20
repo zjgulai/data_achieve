@@ -15,6 +15,7 @@ import { Reveal } from "@/components/landing/Reveal";
 import { HeroTexture } from "@/components/landing/HeroTexture";
 import { AgentSprite } from "@/components/landing/AgentSprite";
 import { ConnectDiagram } from "@/components/landing/ConnectDiagram";
+import { StatBar } from "@/components/landing/StatBar";
 import { ToolWall } from "@/components/landing/ToolWall";
 import { TerminalDemo } from "@/components/landing/TerminalDemo";
 import { GiantMark } from "@/components/landing/GiantMark";
@@ -25,16 +26,8 @@ const CATALOG_COMMAND = "curl -s https://scrapy.luteos.com/api/collectors/catalo
 /** 行动区命令。读取实测计数。 */
 const DOCS_COMMAND = "curl -s https://scrapy.luteos.com/api/collectors/docs";
 
-/** 统计条。数值为生产快照，来源见区块脚注。 */
-const STATS = [
-  { label: "能力视图", value: "286", note: "catalog 条目" },
-  { label: "唯一端点", value: "258", note: "按 endpoint_type 去重" },
-  { label: "已实测", value: "285", note: "有生产运行记录" },
-  { label: "实测成功", value: "248", note: "返回过 ≥1 条记录" },
-];
-
 const STEPS = [
-  { title: "找能力", body: "按平台或分类筛选 286 个能力视图。" },
+  { title: "找能力", body: "按平台或分类筛选全部能力视图。" },
   { title: "发采集", body: "用 REST 或 MCP 提交参数。" },
   { title: "取产物", body: "运行完成后查看记录，导出数据集。" },
 ];
@@ -60,11 +53,11 @@ const ACCESS = [
 const FAQ = [
   {
     q: "目录里有多少采集能力？",
-    a: "286 个能力视图，对应 258 个唯一端点，分 36 个采集器分组。来源：GET /api/collectors/catalog。",
+    a: "全部能力视图汇总为唯一端点，分若干采集器分组。实时计数见本页统计条，数据来自 GET /api/tool-catalog。",
   },
   {
     q: "这些能力都验证过吗？",
-    a: "285 个端点有生产实测记录，248 个成功返回过数据。状态来自最近一次真实运行，不是静态声明。来源：GET /api/collectors/docs。",
+    a: "多数端点有生产实测记录。状态来自最近一次真实运行，不是静态声明。实时计数见本页统计条，数据来自 GET /api/collectors/docs。",
   },
   {
     q: "怎么接入？",
@@ -219,7 +212,7 @@ export default function HomePage() {
             </Reveal>
             <Reveal index={2}>
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
-                286 个能力视图覆盖社媒、电商、评价、搜索与开放网络。
+                能力视图覆盖社媒、电商、评价、搜索与开放网络。
               </p>
             </Reveal>
             <Reveal index={3}>
@@ -304,23 +297,8 @@ export default function HomePage() {
                 为 Agent 准备的数据采集层
               </h2>
             </Reveal>
-            <dl className="mt-12 grid grid-cols-2 gap-8 lg:grid-cols-4">
-              {STATS.map((stat, index) => (
-                <Reveal key={stat.label} index={index}>
-                  <div>
-                    <dt className="text-sm text-[var(--text-secondary)]">{stat.label}</dt>
-                    <dd className="mt-1 text-[40px] font-semibold leading-[46px] tabular-nums">
-                      {stat.value}
-                    </dd>
-                    <dd className="mt-1 text-xs text-[var(--text-tertiary)]">{stat.note}</dd>
-                  </div>
-                </Reveal>
-              ))}
-            </dl>
-            <Reveal index={4}>
-              <p className="mt-10 text-xs text-[var(--text-tertiary)]">
-                来源：GET /api/collectors/catalog 与 GET /api/collectors/docs（2026-10-15 生产快照）。
-              </p>
+            <Reveal index={0} className="mt-12">
+              <StatBar />
             </Reveal>
           </div>
         </section>

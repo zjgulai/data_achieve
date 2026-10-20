@@ -102,7 +102,9 @@ async def list_capabilities(
                 in f"{endpoint.endpoint_type} {endpoint.label} {endpoint.description}".casefold()
             )
         ]
+        catalog = await get_platform_package_catalog()
         return {
+            "catalog_digest": catalog.catalog_digest,
             "platform_id": platform_id,
             "capabilities": [item.model_dump(mode="json") for item in capabilities],
         }
