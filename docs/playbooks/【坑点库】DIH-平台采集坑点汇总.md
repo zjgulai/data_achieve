@@ -5,7 +5,7 @@ description: Data Intelligence Hub 全平台采集坑点与限制汇总，由平
 
 # 平台采集坑点库
 
-> 自动生成，请勿手工编辑。catalog_digest：`ef17e6ce0e58869595c51054b37b04bb5c216f16633e97b06b8f09636df56bc1`
+> 自动生成，请勿手工编辑。catalog_digest：`a7c5b037930312b57e0c5b449437663e52645af380dc983737ae9c014e4ecd61`
 > 坑点总数：119 · 覆盖平台：34
 
 ## actor_failed

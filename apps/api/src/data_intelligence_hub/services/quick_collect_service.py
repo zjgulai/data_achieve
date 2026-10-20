@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.collectors.apify_actor import DEFAULT_MAX_TOTAL_CHARGE_USD
 from data_intelligence_hub.collectors.endpoint_catalog import (
     _APIFY_ENDPOINT_DEFAULTS,
+    _APIFY_INPUT_BUILDERS,
     _COLLECTOR_TEST_DEFAULTS,
     _ENDPOINT_TO_COLLECTOR,
     build_apify_actor_input,
@@ -115,7 +116,12 @@ def build_collector_config(
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        actor_input = build_apify_actor_input(base_input, params)
+        input_builder = _APIFY_INPUT_BUILDERS.get(endpoint_type)
+        actor_input = (
+            input_builder(params)
+            if input_builder is not None
+            else build_apify_actor_input(base_input, params)
+        )
         config = {
             "actor_id": actor_id,
             "actor_input": actor_input,

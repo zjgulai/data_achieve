@@ -319,7 +319,14 @@ async def test_list_projects_does_not_leak_across_workspaces(
             session,
             AuthContext(user=requesting_user, workspace=shared_workspace),
         )
-        visible = await list_project_items(session, personal_workspace, None, None)
+        personal_user = await session.get(User, _ids()["member"])
+        assert personal_user is not None
+        visible = await list_project_items(
+            session,
+            AuthContext(user=personal_user, workspace=personal_workspace),
+            None,
+            None,
+        )
     assert visible == []
 
 

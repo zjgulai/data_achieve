@@ -130,7 +130,7 @@ def test_defaults_use_canonical_actor_id_form() -> None:
 
 def test_1688_search_input_builder_maps_keyword_to_inputs() -> None:
     """dltik/1688-scraper 的搜索模式用 inputs 列表，不认 keyword。"""
-    from data_intelligence_hub.api.routes.quick_collect import (
+    from data_intelligence_hub.collectors.endpoint_catalog import (
         _APIFY_INPUT_BUILDERS,
         _build_1688_search_input,
     )
