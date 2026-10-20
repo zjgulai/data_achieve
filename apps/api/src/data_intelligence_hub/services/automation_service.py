@@ -730,6 +730,8 @@ async def persist_site_analysis_plan(
         site_analysis,
         extraction_plan,
     )
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     plan_response = _extraction_plan_response(extraction_plan)
     result.site_analysis = _site_analysis_history_item(site_analysis, plan_response)
     result.extraction_plan = plan_response
@@ -848,6 +850,8 @@ async def create_extraction_plan_from_site_analysis(
     )
     await create_extraction_plan(session, extraction_plan)
     extraction_plan = await commit_and_refresh_extraction_plan(session, extraction_plan)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _extraction_plan_response(extraction_plan)
 
 
@@ -1041,6 +1045,8 @@ async def save_browser_automation_plan(
         site_analysis,
         extraction_plan,
     )
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     await session.refresh(diagnostic_run)
     plan_response = _extraction_plan_response(extraction_plan)
     return AutomationBrowserAutomationPlanResponse(
@@ -1282,6 +1288,8 @@ async def create_browser_diagnostic_job_asset(
         session,
         diagnostic_job,
     )
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _browser_diagnostic_job_response(diagnostic_job)
 
 
@@ -1358,6 +1366,8 @@ async def cancel_browser_diagnostic_job_asset(
         },
     ]
     job = await commit_and_refresh_browser_diagnostic_job(session, job)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _browser_diagnostic_job_response(job)
 
 
@@ -2098,6 +2108,8 @@ async def run_browser_diagnostic_job_local(
     )
     await create_browser_diagnostic_job_run(session, run_asset)
     run_asset = await commit_and_refresh_browser_diagnostic_job_run(session, run_asset)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _browser_local_runner_result_response(run_asset)
 
 
@@ -3038,6 +3050,8 @@ async def create_cleaning_plan_asset(
     )
     await create_cleaning_plan(session, cleaning_plan)
     cleaning_plan = await commit_and_refresh_cleaning_plan(session, cleaning_plan)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     plan_response = _cleaning_plan_response(cleaning_plan)
     return AutomationCleaningPlanCreateResponse(
         saved_at=datetime.now(UTC),
@@ -4090,6 +4104,8 @@ async def save_product_drift_event(
         created_at=created_at,
     )
     saved_event = await create_dataset_drift_event(session, event)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _drift_event_response(saved_event, checked.dataset, checked.version)
 
 
@@ -4170,6 +4186,8 @@ async def save_github_tool_drift_event(
         created_at=created_at,
     )
     saved_event = await create_dataset_drift_event(session, event)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _drift_event_response(saved_event, checked.dataset, checked.version)
 
 
@@ -4250,6 +4268,8 @@ async def save_public_content_drift_event(
         created_at=created_at,
     )
     saved_event = await create_dataset_drift_event(session, event)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _drift_event_response(saved_event, checked.dataset, checked.version)
 
 
@@ -4988,6 +5008,8 @@ async def archive_product_dataset(
     dataset = await archive_dataset(session, workspace.id, dataset_id)
     if dataset is None:
         raise CollectorError("dataset_not_found")
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _dataset_response(dataset)
 
 
@@ -5101,6 +5123,8 @@ async def create_product_dataset_export(
         finished_at=finished_at,
     )
     created_job = await create_dataset_export_job(session, export_job)
+    # 事务边界在 service。repository 只 flush。
+    await session.commit()
     return _dataset_export_job_response(
         created_job,
         dataset,
