@@ -118,45 +118,29 @@ description: DIH 整站能力整合方案，把数据采集控制台扩展为通
 - 保留既有标识与链接，不丢参数跳转。
 - 内部 `apps/web` 不同时改造上线，仅按需复用界面模式。
 
-**前置事实（2026-10-15 核验）**：现有 console 页面**不读取任何 URL 查询参数**。
-筛选与分页全部是组件内 `useState`，`searchParams` / `useSearchParams` /
-`location.search` 在 console 源码中零命中。
-
-这改变了下表的语义：
-「保留筛选参数」不是保持不变，而是**新增 URL 状态承载**。
-要让筛选条件可分享、可返回，须先实现 URL 参数读写。
-工作量按新增功能估，不按兼容估。
-
 现有控制台路由与新 IA 的对照：
 
 | 现有路由 | 新位置 | 处理方式 |
 |---|---|---|
 | `/` | `/` | 由重定向到 `/platforms` 改为公开首页 |
-| `/platforms` | `/tools` | 重定向；筛选状态需新增 URL 承载 |
-| `/skills` | `/tools` | 重定向；筛选状态需新增 URL 承载 |
-| `/skills/[platformId]` | `/tools/[toolId]` | 重定向，保留路径参数 |
+| `/platforms` | `/tools` | 重定向，保留筛选参数 |
+| `/skills` | `/tools` | 重定向，保留筛选参数 |
+| `/skills/[platformId]` | `/tools/[toolId]` | 重定向，保留平台标识 |
 | `/collector-docs` | `/docs` | 重定向 |
 | `/projects` | `/projects` | 保持路径 |
 | `/projects/[id]` | `/projects/[id]` | 保持路径 |
 | `/tasks` | `/tasks` | 保持路径 |
 | `/runs` | `/runs` | 保持路径 |
-| `/collect/[run_id]` | `/runs/[runId]` | 重定向，保留路径参数；段名风格由 snake_case 改为 camelCase |
-| `/datasets` | `/assets` | 重定向；筛选状态需新增 URL 承载 |
-| `/raw-records` | `/assets/records` | 重定向；查询条件需新增 URL 承载 |
+| `/collect/[run_id]` | `/runs/[runId]` | 重定向，保留运行标识 |
+| `/datasets` | `/assets` | 重定向，保留数据集筛选 |
+| `/raw-records` | `/assets/records` | 重定向，保留查询条件 |
 | `/dashboard` | `/dashboard` | 保持路径，内容按新 IA 重排 |
-| `/settings/account` | `/settings/account` | 保持路径；现为占位空页，需实现 |
+| `/settings/account` | `/settings/account` | 保持路径 |
 | `/settings/credentials` | `/settings/credentials` | 保持路径，纳入管理员设置 |
 | 新增 | `/connect` | 新增接入页 |
 | 新增 | `/tools/[toolId]` | 新增工具详情 |
 | 新增 | `/settings/providers` | 新增供应商凭据管理 |
 | 新增 | `/settings/members` | 新增用户与授权管理 |
-
-已核验：表中 15 条现有路由在 console 中全部真实存在，无遗漏无多余。
-新目标路径与现有路由零冲突，也不撞 API 前缀或 FastAPI 文档路径。
-
-**注意 `apps/web` 是独立路由集**，独有 20+ 路由，
-且与 console 共享 5 个同名路径（`/dashboard`、`/datasets`、`/projects`、
-`/raw-records`、`/tasks`）。做迁移时勿把 web 路由当成 console 的。
 
 重定向表在 P0 冻结，逐条写测试。
 不保留无参数兜底的丢参跳转。
