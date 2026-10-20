@@ -182,7 +182,7 @@
         "stability": "low",
         "self_host_priority": "p3",
         "api_version": "research",
-        "required_credentials": ["access_token", "app_id", "app_secret"],
+        "required_credentials": ["access_token", "app_id", "app_secret", "creator_cookie"],
         "supported_endpoints": [
           "video.search",
           "video.list",
