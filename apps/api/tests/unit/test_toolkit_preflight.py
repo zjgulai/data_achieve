@@ -7,10 +7,26 @@ import pytest
 
 from data_intelligence_hub.collectors import generic_web as generic_web_module
 from data_intelligence_hub.collectors.base import CollectorError
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.schemas.toolkit import ToolkitPreflightRequest
 from data_intelligence_hub.services.toolkit_preflight_service import run_toolkit_preflight
 
 TestIpAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
+
+
+@pytest.fixture(autouse=True)
+def restricted_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """预检必须通过服务端网络模式门禁。
+
+    默认开发环境是 offline，预检会被拒。
+    本文件测的是预检逻辑，因此显式置为 restricted。
+    离线拒绝本身由 test_outbound_policy 覆盖。
+    """
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("COLLECTION_NETWORK_MODE", "restricted")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 async def resolve_as_public_host(hostname: str) -> list[TestIpAddress]:

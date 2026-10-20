@@ -9,6 +9,8 @@ import httpx
 
 from data_intelligence_hub.collectors import generic_web as generic_web_module
 from data_intelligence_hub.collectors.base import HTTP_HEADERS, HTTP_TIMEOUT_SECONDS, CollectorError
+from data_intelligence_hub.collectors.outbound_policy import CollectionPolicyDenied
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.schemas.toolkit import (
     ToolkitPreflightAuthorizationGateResponse,
     ToolkitPreflightCollectionStrategyResponse,
@@ -48,6 +50,13 @@ async def run_toolkit_preflight(
         raise CollectorError("preflight_authorization_required")
     if len(requested_url) > 2_048:
         raise CollectorError("url_too_long")
+
+    # 预检直接发公网请求，必须先过服务端网络模式门禁。
+    # 只校验模式，不套 host grant：预检的目标由用户临时输入，
+    # 没有固定批准主机，套 grant 会让预检永远不可用。
+    if get_settings().effective_collection_network_mode == "offline":
+        raise CollectionPolicyDenied("当前执行环境为离线模式")
+
     await generic_web_module._assert_public_http_url(requested_url)
 
     if http_client is not None:

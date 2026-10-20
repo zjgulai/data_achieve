@@ -63,6 +63,8 @@ services:
         condition: service_completed_successfully
     environment:
       APP_ENV: production
+      COLLECTION_NETWORK_MODE: ${COLLECTION_NETWORK_MODE:-restricted}
+      COLLECTION_HTTP_GRANTS: ${COLLECTION_HTTP_GRANTS:-[]}
       AUTH_COOKIE_SECURE: ${SCRAPY_AUTH_COOKIE_SECURE:-true}
       # 替换为新服务器的实际域名或内网地址
       CORS_ORIGINS: ${SCRAPY_CORS_ORIGINS:-'["http://192.168.204.230","https://scrapy.lute-tlz-dddd.top"]'}
