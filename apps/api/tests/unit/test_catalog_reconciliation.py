@@ -22,7 +22,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 
 # 已知且被接受的差集。任何变化都要显式更新本表并说明原因。
-KNOWN_APIFY_MAPPED_WITHOUT_ACTOR = {"apify_tiktok_shop_search_v2"}
+# 2026-10-21 清空：apify_tiktok_shop_search_v2 无 Actor 配置、调用返回 400，
+# 已作为幽灵端点删除映射，现 Apify 映射与 Actor 配置一一对应。
+KNOWN_APIFY_MAPPED_WITHOUT_ACTOR: set[str] = set()
 
 
 def _reconcile() -> dict[str, object]:
@@ -86,6 +88,10 @@ def test_generated_catalog_exists_and_is_consistent() -> None:
 
 
 def test_endpoint_mapping_count_is_stable() -> None:
-    """端点映射总数。新增或删除端点必须显式更新此断言。"""
+    """端点映射总数。新增或删除端点必须显式更新此断言。
+
+    2026-10-21：删除 8 个幽灵端点映射，290 → 282。
+    幽灵端点与目录元数据现已对齐，差集为 0。
+    """
     summary = _reconcile()["summary"]
-    assert summary["endpoint_mappings"] == 290
+    assert summary["endpoint_mappings"] == 282

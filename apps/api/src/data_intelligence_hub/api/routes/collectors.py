@@ -155,6 +155,22 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             method="tikhub",
         ),
         CollectorEndpointMetadata(
+            endpoint_type="tikhub_youtube_video_search",
+            label="YouTube 视频搜索 v2",
+            platform="youtube",
+            description=(
+                "按关键词搜索 YouTube 公开视频，走 TikHub web_v2 通用搜索接口。"
+                "与 tikhub_youtube_search 同族，接口版本不同。"
+            ),
+            status="verified",
+            required_params=["keyword"],
+            optional_params=["max_items"],
+            cost_hint="~$0.001/条",
+            provider="TikHub REST API",
+            content_type="post",
+            method="tikhub",
+        ),
+        CollectorEndpointMetadata(
             endpoint_type="tikhub_reddit_search",
             label="Reddit 关键词搜索",
             platform="reddit",

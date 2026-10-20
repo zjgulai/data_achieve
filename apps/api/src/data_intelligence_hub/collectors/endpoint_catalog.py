@@ -132,7 +132,6 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "apify_linkedin_profile_scraper": "apify_actor",
     "apify_twitter_user_scraper": "apify_actor",
     "apify_tiktok_shop_product_detail": "apify_actor",
-    "apify_tiktok_shop_search_v2": "apify_actor",
     "apify_facebook_groups_scraper": "apify_actor",
     "apify_facebook_pages_scraper": "apify_actor",
     "apify_facebook_search_scraper": "apify_actor",
@@ -256,9 +255,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "jina_dtc_review": "jina_reader",
     "jina_news_article": "jina_reader",
     # OSINT (2 endpoints)
-    "sherlock_username": "sherlock",
     "sherlock_username_search": "sherlock",
-    "maigret_username": "maigret",
     "maigret_username_profile": "maigret",
     # X/Twitter twscrape (3 endpoints)
     "twscrape_search": "twscrape_search",
@@ -279,11 +276,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "zhihu_keyword_search": "zhihu_keyword_search",
     "zhihu_hot_list": "zhihu_hot_list",
     # SERP 搜索引擎 (3 endpoints)
-    "baidu_search": "baidu_search",
     "baidu_search_results": "baidu_search",
-    "bing_search": "bing_search",
     "bing_search_results": "bing_search",
-    "duckduckgo_search": "duckduckgo_search",
     "duckduckgo_search_results": "duckduckgo_search",
     # 快手 (2 endpoints)
     "kuaishou_video_search": "kuaishou_video_search",
@@ -293,9 +287,7 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "firecrawl_extract": "firecrawl_extract",
     "firecrawl_batch_scrape": "firecrawl_batch_scrape",
     # 技术博客 (3 endpoints)
-    "devto_articles": "devto_articles",
     "devto_articles_search": "devto_articles",
-    "juejin_articles": "juejin_articles",
     "juejin_articles_search": "juejin_articles",
     "substack_posts": "substack_posts",
     # 技术栈检测 (1 endpoint)
@@ -360,17 +352,17 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
 
 _COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
     "firecrawl_crawl":            {"url": "https://example.com", "max_pages": 2},
+    "baidu_search":               {"keyword": "python"},
+    "bing_search":                {"keyword": "python"},
+    "duckduckgo_search":          {"keyword": "python"},
+    "devto_articles":             {"keyword": "python"},
+    "juejin_articles":            {"keyword": "python"},
     "firecrawl_extract":          {"url": "https://example.com", "prompt": "Extract title and description"},
     "firecrawl_batch_scrape":     {"urls": ["https://example.com", "https://httpbin.org/get"]},
     "autoscraper_enhanced_web":   {"url": "https://books.toscrape.com", "wanted_list": ["Books to Scrape"]},
     "spiderfoot_cert_transparency": {"target": "example.com"},
     "spiderfoot_dark_web":          {"target": "example.com"},
     "spiderfoot_attack_surface":    {"target": "example.com"},
-    "baidu_search":               {"keyword": "python"},
-    "bing_search":                {"keyword": "python"},
-    "duckduckgo_search":          {"keyword": "python"},
-    "devto_articles":             {"keyword": "python"},
-    "juejin_articles":            {"keyword": "python"},
     "sherlock":                   {"username": "github"},
     "maigret":                    {"username": "github"},
     "aliens_eye_basic":           {"username": "github"},

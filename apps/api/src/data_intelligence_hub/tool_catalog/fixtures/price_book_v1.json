@@ -610,13 +610,6 @@
       "unit": "event",
       "unit_price": null
     },
-    "apify_tiktok_shop_search_v2": {
-      "confidence": "unknown",
-      "quantity_basis": null,
-      "source": "no_public_rate_card",
-      "unit": null,
-      "unit_price": null
-    },
     "apify_tiktok_transcript_extractor": {
       "confidence": "unknown",
       "quantity_basis": "subscription",

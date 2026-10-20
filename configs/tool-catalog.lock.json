@@ -1,8 +1,8 @@
 {
   "schema_version": "tool-catalog.v1",
   "contract_version": "tool.v1",
-  "catalog_digest": "dad20448f4befcde6060e1e8d08acd74741ca007285bea262f6bf14a0c4c155f",
-  "tool_count": 281,
-  "canonical_tool_count": 281,
-  "executable_count": 223
+  "catalog_digest": "29c128056a85e2156d0551cfeea781c17794a914d5b8f15d7b84ab6e4e9f7ffc",
+  "tool_count": 282,
+  "canonical_tool_count": 282,
+  "executable_count": 224
 }
