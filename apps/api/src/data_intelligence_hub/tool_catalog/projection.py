@@ -244,6 +244,10 @@ def build_tool_catalog(
         for endpoint in package.endpoints:
             availability_view = _availability(endpoint, status_by_endpoint)
             canonical_tool_id = endpoint.endpoint_type
+            # 提前算好：executable 与 reachability 两处共用同一次判定。
+            reachability = execution_reachability(
+                _collector_type(endpoint) or endpoint.endpoint_type
+            )
             described = ToolDescriptor(
                 tool_id=endpoint.endpoint_type,
                 contract_version=TOOL_CONTRACT_VERSION,
@@ -268,13 +272,21 @@ def build_tool_catalog(
                 # 策略层按 collector_type 判定，不是 endpoint_type。
                 # 传 endpoint_type 会让 apify_*/tikhub_* 这类端点名
                 # 一律落到「未分类 → unsupported」，把可达端点误标为永久拒绝。
-                reachability=execution_reachability(
-                    _collector_type(endpoint) or endpoint.endpoint_type
-                ),
+                reachability=reachability,
                 is_alias_view=endpoint.is_alias_view,
                 canonical_tool_id=canonical_tool_id,
-                executable=availability_view.availability
-                not in {"disabled", "config-gated"},
+                # executable 必须同时满足两件事：
+                #   1. 运行证据可用（不是 disabled / config-gated）
+                #   2. 策略分类不是 unsupported
+                #
+                # 不看 reachability.allowed_now：它是运行时状态。
+                # 开发环境默认 offline，allowed_now 恒为假；
+                # 若据此判定，目录会把全部端点标成不可执行。
+                # 「当前环境可否执行」由调用时的策略拒绝回答，不是目录属性。
+                executable=(
+                    availability_view.availability not in {"disabled", "config-gated"}
+                    and reachability.execution_kind != "unsupported"
+                ),
             )
             if canonical_tool_id in seen:
                 continue
