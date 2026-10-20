@@ -754,5 +754,19 @@
     "actual": "",
     "priority": "P1",
     "evidence": "2026-10-17 提供方页曾把 209/17/10 算成 236；3207cb4 前 4 个端点恒 0 条却记 success；10-17 会话记录 89→59 的假象只有逐行核对才发现。"
+  },
+  {
+    "ticket_id": "SP-55",
+    "ticket": "SP-55 TikTok 工作台增加广告页签与成本预估",
+    "task_type": "工作台",
+    "module": "TikTok R1 工具与工作台",
+    "task_attribute": "新需求",
+    "solution": "在工作台增加广告页签，接入 tiktok_ads_top 与 tiktok_ads_detail。列表展示广告主、标题、CTR、点赞、评论、分享；详情补齐落地页与行业。每个工具显示单次成本上限与预估。",
+    "status": "未开始",
+    "registered": "2026-10-21",
+    "due": "2026-10-31",
+    "actual": "",
+    "priority": "P1",
+    "evidence": "TikTok R1 §26.1 已交付 2 个广告工具；apps/scraper-console/src/app/tools/tiktok/page.tsx 只有趋势/视频/达人/商品 4 个页签；广告无 UI 入口。"
   }
 ]

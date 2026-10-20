@@ -6,6 +6,8 @@
 
 飞书多维表格：SP-Agent-TODO · https://momcozy-in.feishu.cn/base/XXz5bHAwCa7qv5sTzrCci3jPnxd?table=tbli8kAkAqrndUvJ
 
+共 55 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
+
 ## 对比结论
 
 | 模块 | 能力图谱基线（2026-10-15） | 2026-10-21 实际 | 差距 |
@@ -18,8 +20,6 @@
 | 生产 | A/B 两套，schema 未统一 | A 健康且 schema=202610190045；B 停在 044 | B 迁移门禁未执行 |
 | 广告与商品关系 | 仅迁移 | 广告已入库；关系工具已接，Cookie 未配置 | 关系表为空 |
 | 文档与验收 | 2026-10-15 快照 | 代码与生产已前进 | 多份文档和 skill 过期 |
-
-共 54 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
 
 | Ticket | 任务类型 | 所属图谱模块 | 任务属性 | 任务方案 | 完成状态 | 登记时间 | 预计完成时间 | 实际完成时间 |
 |---|---|---|---|---|---|---|---|---|
@@ -77,3 +77,4 @@
 | SP-52 把数说飞书机器人纳入能力图谱与部署监控 | Agent机器人 | 数说飞书机器人 | 存量需求 | 在能力图谱新增「数说机器人」模块：webhook、意图、DeepSeek 只读问答、执行边界；部署清单标注仅生产 A；把 webhook 可用性加入 T-06 监控；补 B 站部署评估。 | 未开始 | 2026-10-21 | 2026-11-14 |  |
 | SP-53 更新生产验收与镜像构建技能，去掉过期数字 | 工作台 | 发布与运维 | bug | 更新 .claude/skills/production/production-acceptance/SKILL.md：路由 /platforms→/tools，计数 70/270/242→70/309/281，schema 改逐主机期望；在 production-image-build/SKILL.md 增加 edge 固定 IP、`up -d --no-deps api console`、`restart edge`、网关 reload 失败的处理；加版本戳与季度复核。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
 | SP-54 发布后数据级验收：不只 200，还要有数据 | 工作台 | 凭证与提供方 | 存量需求 | 扩展验收脚本：调用 /api/collectors/docs 断言 tested/success 计数，调用 /providers/status 断言状态分布，选 1 个已知可用端点跑 quick-collect 并断言 records>0；失败即阻断发布。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
+| SP-55 TikTok 工作台增加广告页签与成本预估 | 工作台 | TikTok R1 工具与工作台 | 新需求 | 在工作台增加广告页签，接入 tiktok_ads_top 与 tiktok_ads_detail。列表展示广告主、标题、CTR、点赞、评论、分享；详情补齐落地页与行业。每个工具显示单次成本上限与预估。 | 未开始 | 2026-10-21 | 2026-10-31 |  |
