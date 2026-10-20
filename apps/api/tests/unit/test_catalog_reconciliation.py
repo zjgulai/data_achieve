@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 # 文件在 apps/api/tests/unit/，向上 4 级是仓库根。
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -78,10 +80,15 @@ def test_generated_catalog_exists_and_is_consistent() -> None:
 
     条目数与端点映射允许不同（生成物落后于工作树），
     但生成物内部三个计数必须自洽。
+
+    `generated/` 在 .gitignore 里（第 58 行）。全新 checkout 没有它，
+    因此缺少生成物时跳过，而不是失败。生成物是否最新由
+    `scripts/reconcile_catalog.py` 的违规输出回答，不由本测试回答。
     """
     summary = _reconcile()["summary"]
     generated = summary["generated"]
-    assert generated is not None, "generated/platform-packages.json 缺失"
+    if generated is None:
+        pytest.skip("generated/platform-packages.json 不存在（未纳入版本控制）")
     assert generated["platform_count"] == 70
     assert isinstance(generated["catalog_digest"], str)
     assert len(generated["catalog_digest"]) == 64
