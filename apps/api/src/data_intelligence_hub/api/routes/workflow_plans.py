@@ -11,7 +11,12 @@ import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy.exc import SQLAlchemyError
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import (
+    AuthContext,
+    SessionDep,
+    get_auth_context,
+    get_authenticated_context,
+)
 from data_intelligence_hub.schemas.workflow_plan_persistence import (
     MonitoringScopeListResponse,
     MonitoringScopeTemplateCopyRequest,
@@ -286,7 +291,7 @@ async def create_workflow_template_item(
     payload: WorkflowTemplateCreateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowTemplateMutationResponse:
     request_id = str(uuid.uuid4())
@@ -372,7 +377,7 @@ async def update_workflow_template_item(
     payload: WorkflowTemplateMetadataUpdateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowTemplateMutationResponse:
     request_id = str(uuid.uuid4())
@@ -408,7 +413,7 @@ async def append_workflow_template_revision_item(
     payload: WorkflowTemplateRevisionCreateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowTemplateMutationResponse:
     request_id = str(uuid.uuid4())
@@ -473,7 +478,7 @@ async def instantiate_workflow_template_item(
     payload: WorkflowTemplateInstantiateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowPlanSaveResponse:
     request_id = str(uuid.uuid4())
@@ -507,7 +512,7 @@ async def preview_workflow_plan_item(
     payload: PlanningInput,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> WorkflowPlanPreview:
     started = perf_counter()
     request_id = str(uuid.uuid4())
@@ -613,7 +618,7 @@ async def create_workflow_plan_item(
     payload: WorkflowPlanCreateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowPlanSaveResponse:
     request_id = str(uuid.uuid4())
@@ -648,7 +653,7 @@ async def clone_workflow_plan_item(
     payload: WorkflowPlanCloneRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowPlanCloneResponse:
     request_id = str(uuid.uuid4())
@@ -684,7 +689,7 @@ async def copy_monitoring_scope_template_item(
     payload: MonitoringScopeTemplateCopyRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> MonitoringScopeTemplateCopyResponse:
     request_id = str(uuid.uuid4())
@@ -719,7 +724,7 @@ async def transition_workflow_plan_status_item(
     payload: WorkflowPlanTransitionRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> WorkflowPlanTransitionResponse:
     request_id = str(uuid.uuid4())
     response.headers["X-Request-ID"] = request_id
@@ -750,7 +755,7 @@ async def create_workflow_version_item(
     payload: WorkflowVersionCreateRequest,
     response: Response,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: IdempotencyKeyDep,
 ) -> WorkflowPlanSaveResponse:
     request_id = str(uuid.uuid4())

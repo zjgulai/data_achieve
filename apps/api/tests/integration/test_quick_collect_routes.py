@@ -17,12 +17,15 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.core.database import get_session
+from data_intelligence_hub.core.security import create_access_token
 from data_intelligence_hub.main import app
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.user import User
-from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 from data_intelligence_hub.repositories.workspaces import DEMO_WORKSPACE_SLUG
+
+_LAST_OWNER_ID: uuid.UUID | None = None
 
 
 @pytest_asyncio.fixture()
@@ -74,6 +77,14 @@ async def _seed_demo_workspace_and_project(
                 )
             )
             await session.flush()
+            session.add(
+                WorkspaceMember(
+                    workspace_id=workspace_id,
+                    user_id=owner.id,
+                    role="owner",
+                )
+            )
+            await session.flush()
 
         project = Project(
             workspace_id=workspace_id,
@@ -83,12 +94,26 @@ async def _seed_demo_workspace_and_project(
         )
         session.add(project)
         await session.commit()
+        global _LAST_OWNER_ID
+        _LAST_OWNER_ID = owner.id
         return project.id
+
+
+def _authenticate(client: AsyncClient) -> None:
+    """给测试客户端注入已登录用户的 cookie。
+
+    quick-collect 已改为 fail-closed；这些用例测的是业务分支，
+    因此先登录再调用。鉴权本身由 test_auth_deps.py 覆盖。
+    """
+    assert _LAST_OWNER_ID is not None, "seed must run before authenticate"
+    client.cookies.set("access_token", create_access_token(_LAST_OWNER_ID))
+
 
 
 @pytest.mark.asyncio
 async def test_quick_collect_rejects_unknown_project_id(client: AsyncClient) -> None:
     await _seed_demo_workspace_and_project(client)
+    _authenticate(client)
 
     response = await client.post(
         "/api/quick-collect",
@@ -108,6 +133,7 @@ async def test_quick_collect_project_check_runs_before_endpoint_lookup(
     client: AsyncClient,
 ) -> None:
     project_id = await _seed_demo_workspace_and_project(client)
+    _authenticate(client)
 
     response = await client.post(
         "/api/quick-collect",
@@ -128,14 +154,17 @@ async def test_quick_collect_without_demo_workspace_returns_503(
     client: AsyncClient,
 ) -> None:
     project_id = await _seed_demo_workspace_and_project(client, with_workspace=False)
+    _authenticate(client)
 
     response = await client.post(
         "/api/quick-collect",
         json={"project_id": str(project_id), "endpoint_type": "tikhub_youtube_search"},
     )
 
-    assert response.status_code == 503
-    assert response.json()["detail"] == "demo_workspace_unavailable"
+    # fail-closed 鉴权先于服务层：该用户没有工作区，因此在依赖阶段就 403。
+    # 503 demo_workspace_unavailable 属于旧的回退路径，已被 401/403 取代。
+    assert response.status_code == 403
+    assert response.json()["detail"] == "workspace_not_found"
 
 
 @pytest.mark.asyncio
@@ -150,6 +179,7 @@ async def test_quick_collect_keeps_endpoint_type_in_task_config(
     `platforms` 永远为空。这里 patch 掉网络层，验证 config 落库形状。
     """
     project_id = await _seed_demo_workspace_and_project(client)
+    _authenticate(client)
 
     import json
 
@@ -200,6 +230,7 @@ async def test_quick_collect_keeps_endpoint_type_in_task_config(
 @pytest.mark.asyncio
 async def test_quick_collect_cannot_enroll_itself_in_a_schedule(client: AsyncClient) -> None:
     project_id = await _seed_demo_workspace_and_project(client)
+    _authenticate(client)
     response = await client.post(
         "/api/quick-collect",
         json={

@@ -275,3 +275,46 @@ class WorkflowTemplateNotEditableError(ServiceError):
 
 class WorkflowTemplateRevisionInvalidError(ServiceError):
     message = "workflow_template_revision_invalid"
+
+
+class QuickCollectDemoWorkspaceUnavailableError(ServiceError):
+    message = "demo_workspace_unavailable"
+
+
+class QuickCollectUnknownProjectError(ServiceError):
+    message = "unknown_project_id"
+
+    def __init__(self, project_id: str) -> None:
+        super().__init__(self.message)
+        self.project_id = project_id
+
+
+class QuickCollectUnknownEndpointError(ServiceError):
+    message = "unknown_endpoint_type"
+
+    def __init__(self, endpoint_type: str) -> None:
+        super().__init__(self.message)
+        self.endpoint_type = endpoint_type
+
+
+class QuickCollectCollectorUnavailableError(ServiceError):
+    message = "collector_unavailable"
+
+    def __init__(self, collector_type: str) -> None:
+        super().__init__(self.message)
+        self.collector_type = collector_type
+
+
+class QuickCollectExecutionError(ServiceError):
+    message = "Collection failed"
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        self.is_config_error = False
+
+    @classmethod
+    def invalid_config(cls, exc: Exception) -> QuickCollectExecutionError:
+        instance = cls(str(exc))
+        instance.is_config_error = True
+        return instance

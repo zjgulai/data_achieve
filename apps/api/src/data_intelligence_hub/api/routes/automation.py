@@ -6,7 +6,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import (
+    AuthContext,
+    SessionDep,
+    get_auth_context,
+    get_authenticated_context,
+)
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
     AutomationBrowserAutomationPlanRequest,
@@ -209,7 +214,7 @@ async def list_capability_probes_route(
 async def analyze_site(
     payload: AutomationSiteAnalysisRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationSiteAnalysisResponse:
     try:
         result = await analyze_site_for_collection(payload)
@@ -276,7 +281,7 @@ async def create_extraction_plan_route(
     site_analysis_id: uuid.UUID,
     payload: AutomationExtractionPlanCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationExtractionPlanResponse:
     try:
         return await create_extraction_plan_from_site_analysis(
@@ -305,7 +310,7 @@ async def create_extraction_plan_route(
 async def save_browser_automation_plan_route(
     payload: AutomationBrowserAutomationPlanRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserAutomationPlanResponse:
     try:
         return await save_browser_automation_plan(
@@ -350,7 +355,7 @@ async def list_browser_diagnostics_route(
 async def dry_run_browser_automation_spec_route(
     payload: AutomationBrowserExecutableSpecDryRunRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserExecutableSpecDryRunResponse:
     try:
         return await dry_run_browser_executable_spec(
@@ -377,7 +382,7 @@ async def dry_run_browser_automation_spec_route(
 async def create_browser_diagnostic_job_route(
     payload: AutomationBrowserDiagnosticJobCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserDiagnosticJobResponse:
     try:
         return await create_browser_diagnostic_job_asset(
@@ -456,7 +461,7 @@ async def get_browser_diagnostic_job_route(
 async def cancel_browser_diagnostic_job_route(
     diagnostic_job_id: uuid.UUID,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserDiagnosticJobResponse:
     try:
         return await cancel_browser_diagnostic_job_asset(
@@ -479,7 +484,7 @@ async def build_browser_executor_contract_route(
     diagnostic_job_id: uuid.UUID,
     payload: AutomationBrowserExecutorContractRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserExecutorContractResponse:
     try:
         return await build_browser_executor_contract(
@@ -508,7 +513,7 @@ async def build_browser_production_metadata_run_gate_route(
     diagnostic_job_id: uuid.UUID,
     payload: AutomationBrowserProductionMetadataRunGateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserProductionMetadataRunGateResponse:
     try:
         return await build_browser_production_metadata_run_gate(
@@ -537,7 +542,7 @@ async def run_browser_diagnostic_job_local_route(
     diagnostic_job_id: uuid.UUID,
     payload: AutomationBrowserLocalRunnerRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserLocalRunnerResultResponse:
     try:
         return await run_browser_diagnostic_job_local(
@@ -570,7 +575,7 @@ async def preview_browser_diagnostic_promotion_route(
     diagnostic_job_run_id: uuid.UUID,
     payload: AutomationBrowserPromotionPreviewRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserPromotionPreviewResponse:
     try:
         return await preview_browser_diagnostic_promotion(
@@ -603,7 +608,7 @@ async def dry_run_browser_promotion_execution_route(
     diagnostic_job_run_id: uuid.UUID,
     payload: AutomationBrowserPromotionExecutionDryRunRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserPromotionExecutionDryRunResponse:
     try:
         return await dry_run_browser_promotion_execution(
@@ -636,7 +641,7 @@ async def execute_browser_diagnostic_promotion_route(
     diagnostic_job_run_id: uuid.UUID,
     payload: AutomationBrowserPromotionExecutionRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationBrowserPromotionExecutionResponse:
     try:
         return await execute_browser_diagnostic_promotion(
@@ -686,7 +691,7 @@ async def list_browser_diagnostic_job_runs_route(
 @router.post("/product-discovery", response_model=AutomationProductDiscoveryResponse)
 async def discover_products(
     payload: AutomationProductDiscoveryRequest,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDiscoveryResponse:
     del context
     try:
@@ -701,7 +706,7 @@ async def discover_products(
 @router.post("/product-fanout-preview", response_model=AutomationProductFanoutPreviewResponse)
 async def preview_product_fanout_route(
     payload: AutomationProductFanoutPreviewRequest,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductFanoutPreviewResponse:
     del context
     try:
@@ -717,7 +722,7 @@ async def preview_product_fanout_route(
 async def create_product_fanout_route(
     payload: AutomationProductFanoutCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductFanoutCreateResponse:
     try:
         return await create_reviewed_product_fanout(session, context.workspace, payload)
@@ -734,7 +739,7 @@ async def create_product_fanout_route(
 async def run_product_batch_route(
     payload: AutomationProductBatchRunRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductBatchRunResponse:
     try:
         return await run_reviewed_product_batch(session, context.workspace, payload)
@@ -749,7 +754,7 @@ async def run_product_batch_route(
 async def preview_product_dataset_route(
     payload: AutomationProductDatasetPreviewRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetPreviewResponse:
     try:
         return await preview_product_dataset(session, context.workspace, payload)
@@ -767,7 +772,7 @@ async def preview_product_dataset_route(
 async def preview_github_tool_dataset_route(
     payload: AutomationGitHubToolDatasetPreviewRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetPreviewResponse:
     try:
         return await preview_github_tool_dataset(session, context.workspace, payload)
@@ -785,7 +790,7 @@ async def preview_github_tool_dataset_route(
 async def preview_public_content_dataset_route(
     payload: AutomationPublicContentDatasetPreviewRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetPreviewResponse:
     try:
         return await preview_public_content_dataset(session, context.workspace, payload)
@@ -800,7 +805,7 @@ async def preview_public_content_dataset_route(
 async def dry_run_cleaning_plan_route(
     payload: AutomationCleaningPlanDryRunRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationCleaningPlanDryRunResponse:
     try:
         return await dry_run_cleaning_plan(session, context.workspace, payload)
@@ -815,7 +820,7 @@ async def dry_run_cleaning_plan_route(
 async def create_cleaning_plan_route(
     payload: AutomationCleaningPlanCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationCleaningPlanCreateResponse:
     try:
         return await create_cleaning_plan_asset(
@@ -850,7 +855,7 @@ async def list_cleaning_plans_route(
 async def save_product_dataset_route(
     payload: AutomationProductDatasetSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetSaveResponse:
     try:
         return await save_product_dataset_version(session, context.workspace, context.user, payload)
@@ -865,7 +870,7 @@ async def save_product_dataset_route(
 async def save_github_tool_dataset_route(
     payload: AutomationGitHubToolDatasetSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetSaveResponse:
     try:
         return await save_github_tool_dataset_version(
@@ -885,7 +890,7 @@ async def save_github_tool_dataset_route(
 async def save_public_content_dataset_route(
     payload: AutomationPublicContentDatasetSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDatasetSaveResponse:
     try:
         return await save_public_content_dataset_version(
@@ -905,7 +910,7 @@ async def save_public_content_dataset_route(
 async def approve_product_schedule_route(
     payload: AutomationProductScheduleApproveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductScheduleApproveResponse:
     try:
         return await approve_product_schedule(session, context.workspace, payload)
@@ -923,7 +928,7 @@ async def approve_product_schedule_route(
 async def approve_public_content_schedule_route(
     payload: AutomationPublicContentScheduleApproveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductScheduleApproveResponse:
     try:
         return await approve_public_content_schedule(session, context.workspace, payload)
@@ -938,7 +943,7 @@ async def approve_public_content_schedule_route(
 async def check_product_drift_route(
     payload: AutomationProductDriftCheckRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftCheckResponse:
     try:
         return await check_product_drift(session, context.workspace, payload)
@@ -953,7 +958,7 @@ async def check_product_drift_route(
 async def check_github_tool_drift_route(
     payload: AutomationGitHubToolDriftCheckRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftCheckResponse:
     try:
         return await check_github_tool_drift(session, context.workspace, payload)
@@ -968,7 +973,7 @@ async def check_github_tool_drift_route(
 async def check_public_content_drift_route(
     payload: AutomationPublicContentDriftCheckRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftCheckResponse:
     try:
         return await check_public_content_drift(session, context.workspace, payload)
@@ -983,7 +988,7 @@ async def check_public_content_drift_route(
 async def save_product_drift_event_route(
     payload: AutomationProductDriftEventSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftEventResponse:
     try:
         return await save_product_drift_event(session, context.workspace, payload)
@@ -998,7 +1003,7 @@ async def save_product_drift_event_route(
 async def save_github_tool_drift_event_route(
     payload: AutomationGitHubToolDriftEventSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftEventResponse:
     try:
         return await save_github_tool_drift_event(session, context.workspace, payload)
@@ -1013,7 +1018,7 @@ async def save_github_tool_drift_event_route(
 async def save_public_content_drift_event_route(
     payload: AutomationPublicContentDriftEventSaveRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftEventResponse:
     try:
         return await save_public_content_drift_event(session, context.workspace, payload)
@@ -1079,7 +1084,7 @@ async def list_public_content_drift_events_route(
 async def generate_github_tool_report_route(
     payload: AutomationGitHubToolReportRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationGitHubToolReportResponse:
     try:
         return await generate_github_tool_report(session, context.workspace, payload)
@@ -1094,7 +1099,7 @@ async def generate_github_tool_report_route(
 async def generate_public_content_report_route(
     payload: AutomationPublicContentReportRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationPublicContentReportResponse:
     try:
         return await generate_public_content_report(session, context.workspace, payload)
@@ -1113,7 +1118,7 @@ async def generate_public_content_report_route(
 async def create_github_tool_report_asset_route(
     payload: AutomationGitHubToolReportAssetCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationGitHubToolReportAssetResponse:
     try:
@@ -1139,7 +1144,7 @@ async def create_github_tool_report_asset_route(
 async def create_public_content_report_asset_route(
     payload: AutomationPublicContentReportAssetCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationPublicContentReportAssetResponse:
     try:
@@ -1164,7 +1169,7 @@ async def create_public_content_report_asset_route(
 async def preview_product_drift_alert_rule_route(
     payload: AutomationProductDriftAlertPreviewRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftAlertPreviewResponse:
     try:
         return await preview_product_drift_alert_rule(session, context.workspace, payload)
@@ -1182,7 +1187,7 @@ async def preview_product_drift_alert_rule_route(
 async def create_product_drift_alert_rule_route(
     payload: AutomationProductDriftAlertRuleCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftAlertRuleCreateResponse:
     try:
         return await create_product_drift_alert_rule(session, context.workspace, payload)
@@ -1200,7 +1205,7 @@ async def create_product_drift_alert_rule_route(
 async def create_product_drift_alert_events_route(
     payload: AutomationProductDriftAlertEventCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> AutomationProductDriftAlertEventCreateResponse:
     try:
         return await create_product_drift_alert_events(session, context.workspace, payload)
@@ -1218,7 +1223,7 @@ async def create_product_drift_alert_events_route(
 async def send_product_drift_alert_notifications_route(
     payload: AutomationProductDriftAlertNotificationSendRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDriftAlertNotificationSendResponse:
     try:
@@ -1242,7 +1247,7 @@ async def send_product_drift_alert_notifications_route(
 async def send_product_drift_alert_emails_route(
     payload: AutomationProductDriftAlertEmailSendRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDriftAlertEmailSendResponse:
     try:
@@ -1394,7 +1399,7 @@ async def preview_product_dataset_version_route(
 async def create_product_dataset_export_route(
     payload: AutomationProductDatasetExportCreateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AutomationProductDatasetExportJobResponse:
     try:

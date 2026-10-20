@@ -70,7 +70,7 @@ def _collector_type(endpoint: PackageEndpoint) -> str | None:
 
     查不到时返回 None——调用方按「未登记规格」处理，不猜。
     """
-    from data_intelligence_hub.api.routes.quick_collect import (
+    from data_intelligence_hub.collectors.endpoint_catalog import (
         _ENDPOINT_TO_COLLECTOR,
     )
 

@@ -1,0 +1,831 @@
+"""端点与 Actor 的静态目录。
+
+本模块是零项目依赖的叶子：
+只 import typing，不 import 任何 data_intelligence_hub 模块。
+这样 routes、services、tool_catalog 都能安全引用它，不会成环。
+
+两个键空间不要混用：
+
+- ``_ENDPOINT_TO_COLLECTOR`` 与 ``_APIFY_ENDPOINT_DEFAULTS`` 按 endpoint_type 索引。
+- ``_COLLECTOR_TEST_DEFAULTS`` 按 collector_type 索引。
+"""
+
+# 数据表行（端点映射与 Actor 默认入参）原样迁入，不拆行。
+# ruff: noqa: E501
+
+from __future__ import annotations
+
+from typing import Any
+
+_ENDPOINT_TO_COLLECTOR: dict[str, str] = {
+    # TikHub Social (12 endpoints)
+    "tikhub_tiktok_video_search": "tikhub_social",
+    "tikhub_tiktok_user_posts": "tikhub_social",
+    "tikhub_tiktok_hashtag_posts": "tikhub_social",
+    "tikhub_instagram_search": "tikhub_social",
+    "tikhub_instagram_user_posts": "tikhub_social",
+    "tikhub_xiaohongshu_search": "tikhub_social",
+    "tikhub_youtube_video_search": "tikhub_social",
+    "tikhub_youtube_search": "tikhub_social",
+    "tikhub_youtube_channel_videos": "tikhub_social",
+    "tikhub_reddit_search": "tikhub_social",
+    "tikhub_reddit_subreddit_posts": "tikhub_social",
+    "tikhub_x_search": "tikhub_social",
+    "tikhub_x_user_tweets": "tikhub_social",
+    "tikhub_threads_search": "tikhub_social",
+    "tikhub_threads_user_posts": "tikhub_social",
+    "tikhub_threads_post_comments": "tikhub_social",
+    "tikhub_linkedin_user_posts": "tikhub_social",
+    "tikhub_linkedin_company_profile": "tikhub_social",
+    "tikhub_linkedin_company_posts": "tikhub_social",
+    "tikhub_linkedin_search_jobs": "tikhub_social",
+    "tikhub_linkedin_job_detail": "tikhub_social",
+    "tikhub_linkedin_post_comments": "tikhub_social",
+    "tikhub_lemon8_search": "tikhub_social",
+    "tikhub_lemon8_user_posts": "tikhub_social",
+    "tikhub_lemon8_trending": "tikhub_social",
+    "tikhub_tiktok_ads_search": "tikhub_social",
+    "tikhub_tiktok_top_ads": "tikhub_social",
+    "tikhub_tiktok_shop_products": "tikhub_social",
+    "tikhub_tiktok_creator_info": "tikhub_social",
+    "tikhub_instagram_post_comments": "tikhub_social",
+    "tikhub_youtube_video_comments": "tikhub_social",
+    "tikhub_reddit_post_comments": "tikhub_social",
+    "tikhub_tiktok_live_search": "tikhub_social",
+    "tikhub_tiktok_live_room_detail": "tikhub_social",
+    "tikhub_tiktok_live_user": "tikhub_social",
+    "tikhub_youtube_trending": "tikhub_social",
+    "tikhub_reddit_trending": "tikhub_social",
+    "tikhub_x_trending": "tikhub_social",
+    "tikhub_tiktok_user_followers": "tikhub_social",
+    "tikhub_instagram_user_followers": "tikhub_social",
+    "tikhub_x_user_followers": "tikhub_social",
+    "tikhub_tiktok_creator_insights": "tikhub_social",
+    "tikhub_tiktok_creator_insights_trend": "tikhub_social",
+    "tikhub_tiktok_creator_account_health": "tikhub_social",
+    "tikhub_tiktok_ads_detail": "tikhub_social",
+    "tikhub_tiktok_ads_keyword_suggest": "tikhub_social",
+    # Phase 1 content endpoints
+    "tikhub_tiktok_sec_uid": "tikhub_social",
+    "tikhub_tiktok_user_id": "tikhub_social",
+    "tikhub_tiktok_identity_by_username": "tikhub_social",
+    "tikhub_tiktok_video_detail": "tikhub_social",
+    "tikhub_tiktok_user_posts_web": "tikhub_social",
+    "tikhub_tiktok_search_web": "tikhub_social",
+    "tikhub_tiktok_comments_app": "tikhub_social",
+    "tikhub_tiktok_comment_replies_app": "tikhub_social",
+    "tikhub_tiktok_user_profile_web": "tikhub_social",
+    "tikhub_tiktok_user_fans_web": "tikhub_social",
+    "tikhub_tiktok_hashtag_detail_app": "tikhub_social",
+    "tikhub_tiktok_tag_posts_web": "tikhub_social",
+    "tikhub_tiktok_trending_searchwords": "tikhub_social",
+    "tikhub_tiktok_music_chart": "tikhub_social",
+    "tikhub_tiktok_fake_views": "tikhub_social",
+    "tikhub_tiktok_comment_keywords": "tikhub_social",
+    "tikhub_tiktok_ads_trends": "tikhub_social",
+    # Phase 1 commerce endpoints
+    "tikhub_tiktok_shop_search_v2": "tikhub_social",
+    "tikhub_tiktok_shop_hot_products": "tikhub_social",
+    "tikhub_tiktok_shop_reviews_v2": "tikhub_social",
+    "tikhub_tiktok_video_products": "tikhub_social",
+    "tikhub_tiktok_creator_showcase": "tikhub_social",
+    "tikhub_douyin_video_search": "tikhub_social",
+    "tikhub_douyin_user_posts": "tikhub_social",
+    "tikhub_douyin_hot_search": "tikhub_social",
+    "tikhub_douyin_comments": "tikhub_social",
+    "tikhub_douyin_brand_hot_search": "tikhub_social",
+    "tikhub_bilibili_video_search": "tikhub_social",
+    "tikhub_bilibili_user_videos": "tikhub_social",
+    "tikhub_bilibili_comments": "tikhub_social",
+    "tikhub_weibo_search": "tikhub_social",
+    "tikhub_weibo_user_posts": "tikhub_social",
+    "tikhub_kuaishou_search": "tikhub_social",
+    "tikhub_kuaishou_user_posts": "tikhub_social",
+    "tikhub_wechat_search": "tikhub_social",
+    "tikhub_wechat_channels_video": "tikhub_social",
+    "tikhub_zhihu_search": "tikhub_social",
+    "tikhub_zhihu_question_answers": "tikhub_social",
+    # Apify Social (18 endpoints)
+    "apify_tiktok_scraper": "apify_actor",
+    "apify_tiktok_comments_scraper": "apify_actor",
+    "apify_tiktok_shop_scraper": "apify_actor",
+    "apify_tiktok_shop_creators": "apify_actor",
+    "apify_instagram_scraper": "apify_actor",
+    "apify_instagram_profile_scraper": "apify_actor",
+    "apify_youtube_scraper": "apify_actor",
+    "apify_youtube_comments_scraper": "apify_actor",
+    "apify_reddit_scraper": "apify_actor",
+    "apify_facebook_posts_scraper": "apify_actor",
+    "apify_facebook_comments_scraper": "apify_actor",
+    "apify_linkedin_company_posts_scraper": "apify_actor",
+    "apify_linkedin_jobs_scraper": "apify_actor",
+    "apify_linkedin_company_employees_scraper": "apify_actor",
+    "apify_linkedin_company_search_scraper": "apify_actor",
+    "apify_x_tweet_scraper": "apify_actor",
+    "apify_threads_profile_scraper": "apify_actor",
+    "apify_threads_posts_scraper": "apify_actor",
+    # Apify Social 专项补齐 (2026-10 深挖，见 docs/apify-actors/) (9 endpoints)
+    "apify_instagram_post_scraper": "apify_actor",
+    "apify_instagram_reel_scraper": "apify_actor",
+    "apify_instagram_hashtag_scraper": "apify_actor",
+    "apify_instagram_comment_scraper": "apify_actor",
+    "apify_linkedin_profile_scraper": "apify_actor",
+    "apify_twitter_user_scraper": "apify_actor",
+    "apify_tiktok_shop_product_detail": "apify_actor",
+    "apify_tiktok_shop_search_v2": "apify_actor",
+    "apify_facebook_groups_scraper": "apify_actor",
+    "apify_facebook_pages_scraper": "apify_actor",
+    "apify_facebook_search_scraper": "apify_actor",
+    # Apify E-commerce (13 endpoints)
+    "apify_amazon_product_scraper": "apify_actor",
+    "apify_amazon_reviews_scraper": "apify_actor",
+    "apify_amazon_reviews_axesso": "apify_actor",
+    "apify_amazon_reviews_extractor": "apify_actor",
+    "apify_amazon_free_product_scraper": "apify_actor",
+    "apify_shopify_store_leads": "apify_actor",
+    "apify_walmart_product_scraper": "apify_actor",
+    "apify_walmart_reviews_scraper": "apify_actor",
+    "apify_temu_products_scraper": "apify_actor",
+    "apify_shein_product_scraper": "apify_actor",
+    "apify_aliexpress_products_scraper": "apify_actor",
+    "apify_ebay_product_scraper": "apify_actor",
+    "apify_ebay_sold_listings_scraper": "apify_actor",
+    "apify_etsy_scraper": "apify_actor",
+    "apify_shopify_scraper": "apify_actor",
+    # Apify Google (8 endpoints)
+    "apify_google_search_scraper": "apify_actor",
+    "apify_google_maps_scraper": "apify_actor",
+    "apify_google_maps_reviews_scraper": "apify_actor",
+    "apify_google_trends_scraper": "apify_actor",
+    "apify_google_news_media_search": "apify_actor",
+    "apify_google_news_scraper": "apify_actor",
+    "apify_google_ai_overviews_scraper": "apify_actor",
+    "apify_serp_scraperlink": "apify_actor",
+    # Apify AI Search (6 endpoints)
+    "apify_perplexity_search_scraper": "apify_actor",
+    "apify_chatgpt_search_scraper": "apify_actor",
+    "apify_gemini_search_scraper": "apify_actor",
+    # Apify Ads (10 endpoints)
+    "apify_google_ads_scraper": "apify_actor",
+    "apify_facebook_ads_scraper": "apify_actor",
+    "apify_facebook_ads_library_scraper": "apify_actor",
+    "apify_tiktok_ads_scraper": "apify_actor",
+    "apify_pinterest_ads_scraper": "apify_actor",
+    "apify_snapchat_ads_scraper": "apify_actor",
+    # Apify B2B (13 endpoints)
+    "apify_trustpilot_reviews_scraper": "apify_actor",
+    "apify_appstore_reviews_scraper": "apify_actor",
+    "apify_google_play_reviews_scraper": "apify_actor",
+    "apify_tripadvisor_reviews_scraper": "apify_actor",
+    "apify_booking_scraper": "apify_actor",
+    "apify_airbnb_scraper": "apify_actor",
+    "apify_crunchbase_scraper": "apify_actor",
+    "apify_glassdoor_scraper": "apify_actor",
+    "apify_hacker_news_scraper": "apify_actor",
+    "apify_bluesky_scraper": "apify_actor",
+    "apify_indeed_jobs_scraper": "apify_actor",
+    # Apify Media (7 endpoints)
+    "apify_instagram_media_profile_scraper": "apify_actor",
+    "apify_tiktok_media_profile_scraper": "apify_actor",
+    "apify_youtube_media_channel_scraper": "apify_actor",
+    "apify_facebook_media_page_scraper": "apify_actor",
+    "apify_x_media_account_scraper": "apify_actor",
+    # Apify Open Web (3 endpoints)
+    "apify_website_content_crawler": "apify_actor",
+    "apify_rag_web_browser": "apify_actor",
+    "apify_tiktok_transcript_extractor": "apify_actor",
+    "apify_youtube_transcript_scraper": "apify_actor",
+    "apify_tiktok_creative_center": "apify_actor",
+    "apify_similarweb_scraper": "apify_actor",
+    "apify_tiktok_shop_search_scraper": "apify_actor",
+    "apify_target_products_scraper": "apify_actor",
+    "apify_facebook_marketplace_scraper": "apify_actor",
+    # 跨境供应链 - 1688.com (3 endpoints)
+    "apify_1688_product_search":    "apify_actor",
+    "apify_1688_product_detail":    "apify_actor",
+    "apify_1688_advanced":          "apify_actor",
+    # 跨境供应链 - 阿里巴巴国际站 (2 endpoints)
+    "apify_alibaba_product_search": "apify_actor",
+    "apify_alibaba_product_detail": "apify_actor",
+    # Amazon 选品竞品 (4 endpoints)
+    "apify_amazon_bestsellers":          "apify_actor",
+    "apify_amazon_competitor_research":  "apify_actor",
+    "apify_amazon_bsr_tracker":          "apify_actor",
+    "apify_amazon_price_tracker":        "apify_actor",
+    # AliExpress 升级 (1 endpoint)
+    "apify_aliexpress_product_search_v2": "apify_actor",
+    # 独立站竞品 (2 endpoints)
+    "apify_shopify_products_monitor": "apify_actor",
+    # GitHub (2 endpoints)
+    "github_repo": "github_repo",
+    "github_topic": "github_topic",
+    # RSS / Web (3 endpoints)
+    "public_feed": "public_feed",
+    "generic_web": "generic_web",
+    "autoscraper_enhanced_web": "autoscraper_enhanced_web",
+    # Ecommerce Web (2 endpoints)
+    "ecommerce_product_page": "ecommerce_product_page",
+    "ecommerce_product_discovery": "ecommerce_product_discovery",
+    # Browser (3 endpoints)
+    "playwright_browser_text": "playwright_browser",
+    "playwright_browser_html": "playwright_browser",
+    "playwright_browser_screenshot": "playwright_browser",
+    # AnySearch (2 endpoints)
+    "anysearch_brand_media": "anysearch",
+    "anysearch_competitor": "anysearch",
+    "anysearch_code_doc": "anysearch",
+    "anysearch_tag_search": "anysearch",
+    "exa_search_auto": "exa_search",
+    "exa_search_news": "exa_search",
+    "exa_company_search": "exa_search",
+    "exa_research_paper": "exa_search",
+    "exa_people_search": "exa_search",
+    "exa_financial_report": "exa_search",
+    "exa_deep_research": "exa_search",
+    "exa_deep_reasoning": "exa_search",
+    "exa_search_instant": "exa_search",
+    "exa_search_fast": "exa_search",
+    "exa_personal_site": "exa_search",
+    "exa_domain_search": "exa_search",
+    "exa_deep_lite": "exa_search",
+    "exa_find_similar": "exa_find_similar",
+    "exa_contents": "exa_contents",
+    "exa_answer": "exa_answer",
+    # Jina Reader (3 endpoints)
+    "jina_page_content": "jina_reader",
+    "jina_dtc_review": "jina_reader",
+    "jina_news_article": "jina_reader",
+    # OSINT (2 endpoints)
+    "sherlock_username": "sherlock",
+    "sherlock_username_search": "sherlock",
+    "maigret_username": "maigret",
+    "maigret_username_profile": "maigret",
+    # X/Twitter twscrape (3 endpoints)
+    "twscrape_search": "twscrape_search",
+    "twscrape_user_tweets": "twscrape_user_tweets",
+    "twscrape_trends": "twscrape_trends",
+    # Document to Markdown (1 endpoint)
+    "anydoc_file_to_markdown": "anydoc_file_to_markdown",
+     # Bilibili / B站 (3 endpoints)
+     "bilibili_video_search": "bilibili_video_search",
+     "bilibili_user_videos": "bilibili_user_videos",
+     "bilibili_video_comments": "bilibili_video_comments",
+    # 微博 (3 endpoints)
+    "weibo_keyword_search": "weibo_keyword_search",
+    "weibo_user_posts": "weibo_user_posts",
+    "weibo_trending_topics": "weibo_trending_topics",
+    # 知乎 (3 endpoints)
+    "zhihu_question_answers": "zhihu_question_answers",
+    "zhihu_keyword_search": "zhihu_keyword_search",
+    "zhihu_hot_list": "zhihu_hot_list",
+    # SERP 搜索引擎 (3 endpoints)
+    "baidu_search": "baidu_search",
+    "baidu_search_results": "baidu_search",
+    "bing_search": "bing_search",
+    "bing_search_results": "bing_search",
+    "duckduckgo_search": "duckduckgo_search",
+    "duckduckgo_search_results": "duckduckgo_search",
+    # 快手 (2 endpoints)
+    "kuaishou_video_search": "kuaishou_video_search",
+    "kuaishou_user_videos": "kuaishou_user_videos",
+    # Firecrawl (3 endpoints)
+    "firecrawl_crawl": "firecrawl_crawl",
+    "firecrawl_extract": "firecrawl_extract",
+    "firecrawl_batch_scrape": "firecrawl_batch_scrape",
+    # 技术博客 (3 endpoints)
+    "devto_articles": "devto_articles",
+    "devto_articles_search": "devto_articles",
+    "juejin_articles": "juejin_articles",
+    "juejin_articles_search": "juejin_articles",
+    "substack_posts": "substack_posts",
+    # 技术栈检测 (1 endpoint)
+    "tech_stack_detect": "tech_stack_detect",
+    # SpiderFoot OSINT (3 + 6 extended endpoints)
+    "spiderfoot_domain_osint": "spiderfoot_domain_osint",
+    "spiderfoot_ip_osint": "spiderfoot_ip_osint",
+    "spiderfoot_email_osint": "spiderfoot_email_osint",
+    "spiderfoot_subdomain_enum": "spiderfoot_subdomain_enum",
+    "spiderfoot_threat_intel": "spiderfoot_threat_intel",
+    "spiderfoot_breach_check": "spiderfoot_breach_check",
+    "spiderfoot_cert_transparency": "spiderfoot_cert_transparency",
+    "spiderfoot_dark_web": "spiderfoot_dark_web",
+    "spiderfoot_attack_surface": "spiderfoot_attack_surface",
+    # BestBlogs (1 endpoint)
+    "bestblogs_articles": "bestblogs_articles",
+    # Blackbird OSINT (2 endpoints)
+    "blackbird_email_osint": "blackbird_email_osint",
+    "blackbird_username_osint": "blackbird_username_osint",
+    # Aliens Eye ML-OSINT (7 endpoints)
+    "aliens_eye_basic":     "aliens_eye_basic",
+    "aliens_eye_advanced":  "aliens_eye_advanced",
+    "aliens_eye_correlate": "aliens_eye_correlate",
+    "aliens_eye_recurse":   "aliens_eye_recurse",
+    "aliens_eye_domain":    "aliens_eye_domain",
+    "aliens_eye_batch":     "aliens_eye_batch",
+    "aliens_eye_selfcheck": "aliens_eye_selfcheck",
+    # Robin 暗网 OSINT (3 endpoints)
+    "robin_darkweb_search":   "robin_darkweb_search",
+    "robin_darkweb_username": "robin_darkweb_username",
+    "robin_darkweb_email":    "robin_darkweb_email",
+    "browser_use_task":       "browser_use_task",
+    # Hacker News (3 endpoints)
+    "hackernews_front_page":  "hackernews_front_page",
+    "hackernews_search":      "hackernews_search",
+    "hackernews_user":        "hackernews_user",
+    # npm registry (2 endpoints)
+    "npm_package":            "npm_package",
+    "npm_search":             "npm_search",
+    # PyPI (2 endpoints)
+    "pypi_package":           "pypi_package",
+    "pypi_search":            "pypi_search",
+    # crates.io Rust 包 (2 endpoints)
+    "crates_package":         "crates_package",
+    "crates_search":          "crates_search",
+    # RubyGems Ruby 包 (2 endpoints)
+    "rubygems_package":       "rubygems_package",
+    "rubygems_search":        "rubygems_search",
+    # Go 包 (2 endpoints)
+    "go_package":             "go_package",
+    "go_search":              "go_search",
+    # Packagist PHP 包 (2 endpoints)
+    "packagist_package":      "packagist_package",
+    "packagist_search":       "packagist_search",
+    # NuGet .NET 包 (2 endpoints)
+    "nuget_package":          "nuget_package",
+    "nuget_search":           "nuget_search",
+    # pub.dev Dart/Flutter 包 (2 endpoints)
+    "pubdev_package":         "pubdev_package",
+    "pubdev_search":          "pubdev_search",
+}
+
+_COLLECTOR_TEST_DEFAULTS: dict[str, dict[str, Any]] = {
+    "firecrawl_crawl":            {"url": "https://example.com", "max_pages": 2},
+    "firecrawl_extract":          {"url": "https://example.com", "prompt": "Extract title and description"},
+    "firecrawl_batch_scrape":     {"urls": ["https://example.com", "https://httpbin.org/get"]},
+    "autoscraper_enhanced_web":   {"url": "https://books.toscrape.com", "wanted_list": ["Books to Scrape"]},
+    "spiderfoot_cert_transparency": {"target": "example.com"},
+    "spiderfoot_dark_web":          {"target": "example.com"},
+    "spiderfoot_attack_surface":    {"target": "example.com"},
+    "baidu_search":               {"keyword": "python"},
+    "bing_search":                {"keyword": "python"},
+    "duckduckgo_search":          {"keyword": "python"},
+    "devto_articles":             {"keyword": "python"},
+    "juejin_articles":            {"keyword": "python"},
+    "sherlock":                   {"username": "github"},
+    "maigret":                    {"username": "github"},
+    "aliens_eye_basic":           {"username": "github"},
+    "aliens_eye_advanced":        {"username": "github"},
+    "aliens_eye_correlate":       {"username": "github"},
+    "aliens_eye_recurse":         {"username": "github", "depth": 1},
+    "aliens_eye_domain":          {"username": "github"},
+    "aliens_eye_batch":           {"usernames": "github,torvalds"},
+    "aliens_eye_selfcheck":       {},
+    "robin_darkweb_search":       {"keyword": "data breach", "max_results": 5},
+    "robin_darkweb_username":     {"username": "testuser", "max_results": 5},
+    "robin_darkweb_email":        {"email": "test@example.com", "max_results": 5},
+    "browser_use_task":           {"task": "Extract the page title and main heading", "url": "https://example.com", "max_steps": 5},
+    "hackernews_front_page":      {"max_items": 10},
+    "hackernews_search":          {"query": "python", "max_items": 10},
+    "hackernews_user":            {"username": "pg", "max_items": 10},
+    "npm_package":                {"package": "react"},
+    "npm_search":                 {"query": "typescript", "max_items": 10},
+    "pypi_package":               {"package": "requests"},
+    "pypi_search":                {"query": "fastapi", "max_items": 10},
+    "crates_package":             {"package": "serde"},
+    "crates_search":              {"query": "async", "max_items": 10},
+    "rubygems_package":           {"package": "rails"},
+    "rubygems_search":            {"query": "web", "max_items": 10},
+    "go_package":                 {"package": "github.com/gin-gonic/gin"},
+    "go_search":                  {"query": "http server", "max_items": 10},
+    "packagist_package":          {"package": "laravel/framework"},
+    "packagist_search":           {"query": "http", "max_items": 10},
+    "nuget_package":              {"package": "Newtonsoft.Json"},
+    "nuget_search":               {"query": "json", "max_items": 10},
+    "pubdev_package":             {"package": "http"},
+    "pubdev_search":              {"query": "flutter", "max_items": 10},
+}
+
+# Apify endpoint → (actor_id, base_input_defaults)
+# quick-collect 级别的采集开关，绝不能传给 Actor：Actor 的 inputSchema 是
+# additionalProperties:false，多一个键就整单 400。除此之外的入参一律透传。
+# 曾把 query/url/keyword/... 也列进这个集合，结果调用方传的 query 被静默丢弃
+# → 上游报 "Field input.query is required"（2026-10-09 实测 apify_rag_web_browser）。
+_APIFY_META_KEYS = frozenset(
+    {"maxItems", "max_items", "max_total_charge_usd", "run_timeout_seconds"}
+)
+
+
+def build_apify_actor_input(base_input: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    """把调用方入参并到端点的缺省 Actor 入参上。
+
+    只有采集开关（``_APIFY_META_KEYS``）留在 quick-collect 层，其余键一律透传给
+    Actor。Actor 的 inputSchema 是 ``additionalProperties: false``：漏传必填键或
+    多传未知键都会让整单 400，所以这里刻意不做白名单过滤，让上游的报错
+    （"Field input.X is required" / "Property input.X is not allowed"）直接暴露给调用方。
+    """
+    return {**base_input, **{k: v for k, v in params.items() if k not in _APIFY_META_KEYS}}
+
+
+_APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
+    # Social
+    "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),
+    "apify_tiktok_comments_scraper": ("clockworks/tiktok-comments-scraper", {}),
+    "apify_tiktok_shop_scraper": ("clockworks/tiktok-shop-scraper", {"keywords": ["laptop"]}),
+    "apify_tiktok_shop_creators": (
+        "lemur/tiktok-shop-creators",
+        {"username": "dealswithty", "region": "US"},
+    ),
+    "apify_instagram_scraper": ("apify/instagram-scraper", {}),
+    "apify_instagram_profile_scraper": (
+        "apify/instagram-profile-scraper",
+        {"usernames": ["humansofny"]},
+    ),
+    # — 2026-10 深挖新增专项（docs/apify-actors/instagram.md）—
+    "apify_instagram_post_scraper": (
+        "apify/instagram-post-scraper",
+        # 必填键是 username（stringList，可放 URL），不是 directUrls
+        {"username": ["natgeo"], "resultsLimit": 5},
+    ),
+    "apify_instagram_reel_scraper": (
+        "apify/instagram-reel-scraper",
+        {"username": ["natgeo"], "resultsLimit": 5},
+    ),
+    "apify_instagram_hashtag_scraper": (
+        "apify/instagram-hashtag-scraper",
+        {"hashtags": ["coffee"], "resultsType": "posts", "resultsLimit": 5},
+    ),
+    "apify_instagram_comment_scraper": (
+        "apify/instagram-comment-scraper",
+        # 正确名是单数 comment（复数 comments 版已 404 下架）
+        {"directUrls": ["https://www.instagram.com/p/CxKvUqSSiL6/"], "resultsLimit": 5},
+    ),
+    "apify_youtube_scraper": (
+        "streamers/youtube-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxResults": 3},
+    ),
+    "apify_youtube_comments_scraper": (
+        "streamers/youtube-comments-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"}], "maxComments": 5},
+    ),
+    "apify_reddit_scraper": (
+        "harshmaur/reddit-scraper",
+        # trudax/reddit-scraper-lite 30 天实测成功率仅 87.2%，主力换 harshmaur（97.7%，76 字段）。
+        # harshmaur 输入键是 searchTerms/maxPostsCount（不是 trudax 的 searches/maxItems）；
+        # 一条 run 会混出 post/comment/community/user 四类记录，按 dataType 分流。
+        {"searchTerms": ["python"], "maxPostsCount": 5},
+    ),
+    "apify_facebook_posts_scraper": (
+        "apify/facebook-posts-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
+    ),
+    "apify_facebook_comments_scraper": (
+        "apify/facebook-comments-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
+    ),
+    "apify_facebook_groups_scraper": (
+        "apify/facebook-groups-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/groups/874728723021553"}], "resultsLimit": 5},
+    ),
+    "apify_facebook_pages_scraper": (
+        "apify/facebook-pages-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/cern"}]},
+    ),
+    "apify_facebook_search_scraper": (
+        "apify/facebook-search-scraper",
+        # required 是 categories（页面类目发现），searchType=pages
+        {"categories": ["Restaurant"], "searchType": "pages", "resultsLimit": 5},
+    ),
+    "apify_linkedin_company_posts_scraper": ("harvestapi/linkedin-company-posts", {}),
+    "apify_linkedin_jobs_scraper": (
+        "freshdata/linkedin-job-scraper",
+        {"keywords": "Python Developer"},
+    ),
+    "apify_linkedin_company_employees_scraper": (
+        "apimaestro/linkedin-company-employees-scraper-no-cookies",
+        {
+            "identifier": "https://www.linkedin.com/company/python-software-foundation/",
+            "max_employees": 3,
+        },
+    ),
+    "apify_linkedin_company_search_scraper": (
+        "khadinakbar/linkedin-company-search-scraper",
+        # 该 Actor 的 keywords 要**字符串**（传数组会 400 must be string）
+        {"keywords": "software company", "maxResults": 3},
+    ),
+    "apify_linkedin_profile_scraper": (
+        "harvestapi/linkedin-profile-scraper",
+        # 100% 成功率 / 53 字段（docs/apify-actors/linkedin.md）；
+        # profileScraperMode 切带邮箱版（$0.01/份 vs $0.004/份），默认不带
+        {"queries": ["https://www.linkedin.com/in/williamhgates"]},
+    ),
+    "apify_x_tweet_scraper": ("apidojo/tweet-scraper", {}),
+    "apify_twitter_user_scraper": (
+        "apidojo/twitter-user-scraper",
+        # 开 getFollowers 后按粉丝条数计费，量大先关（docs/apify-actors/x-twitter.md）
+        {"twitterHandles": ["naval"], "maxItems": 3},
+    ),
+    "apify_threads_profile_scraper": (
+        "apify/threads-profile-api-scraper",
+        {"usernames": ["guinnessworldrecords"]},
+    ),
+    "apify_threads_posts_scraper": (
+        "futurizerush/meta-threads-scraper",
+        {"mode": "user", "usernames": ["zuck"], "max_posts": 10},
+    ),
+    # E-commerce
+    "apify_amazon_product_scraper": (
+        "junglee/amazon-crawler",
+        {"categoryOrProductUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}]},
+    ),
+    "apify_amazon_reviews_scraper": (
+        "junglee/amazon-reviews-scraper",
+        {"productUrls": [{"url": "https://www.amazon.com/dp/B09G9FPHY6"}], "maxReviews": 5},
+    ),
+    # axesso 99.9% 是 Amazon 评论类最稳（docs/apify-actors/amazon.md）；input 是对象数组（json editor）
+    "apify_amazon_reviews_axesso": (
+        "axesso_data/amazon-reviews-scraper",
+        {"input": [{"asin": "B08C1W5N87", "domainCode": "com", "sortBy": "recent", "maxPages": 1}]},
+    ),
+    "apify_amazon_reviews_extractor": (
+        "web_wanderer/amazon-reviews-extractor",
+        # 99.8% 降级②；products 收商品页 URL 数组
+        {"products": ["https://www.amazon.com/dp/B08C1W5N87"], "limit": 5},
+    ),
+    "apify_amazon_free_product_scraper": (
+        "junglee/free-amazon-product-scraper",
+        # 87.5% 应急通道（免费额度），非量大场景勿用
+        {"categoryUrls": [{"url": "https://www.amazon.com/s?k=headphones"}], "maxItemsPerStartUrl": 5},
+    ),
+    "apify_shopify_store_leads": (
+        "ecommerce_leads/store-leads-14m-e-commerce-leads",
+        # 1400 万店铺存量库（100% 成功率）；platform 是枚举必填
+        {"platform": "shopify", "category": "", "page": 1},
+    ),
+    "apify_walmart_product_scraper": (
+        "e-commerce/walmart-product-detail-scraper",
+        {"startUrls": [{"url": "https://walmart.com/search?q=tshirt"}], "maxProductsPerStartUrl": 3},
+    ),
+    "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
+    "apify_temu_products_scraper": (
+        "amit123/temu-products-scraper",
+        # maxResults 的下限是 20，传 3 会被 400 拒绝
+        {"searchQueries": ["women dress"], "maxResults": 20},
+    ),
+    "apify_shein_product_scraper": (
+        "shahidirfan/shein-product-scraper",
+        {"startUrl": "https://us.shein.com/New-in-Dresses-sc-00020466.html",
+         "results_wanted": 3},
+    ),
+
+    "apify_aliexpress_products_scraper": (
+        "devcake/aliexpress-products-scraper",
+        {"searchQueries": ["laptop stand"]},
+    ),
+    "apify_ebay_product_scraper": (
+        "dtrungtin/ebay-items-scraper",
+        {
+            "startUrls": [{"url": "https://www.ebay.com/sch/i.html?_nkw=laptop"}],
+            "maxItems": 5,
+            "proxyConfig": {"useApifyProxy": True},
+        },
+    ),
+    "apify_ebay_sold_listings_scraper": (
+        "caffein.dev/ebay-sold-listings",
+        {"keywords": ["laptop"], "count": 3},
+    ),
+    "apify_etsy_scraper": ("automation-lab/etsy-scraper", {"searchQuery": "handmade mug"}),
+    "apify_shopify_scraper": (
+        "clearpath/shopify-store-leads",
+        {"query": "sneakers", "maxItems": 3},
+    ),
+    # Google
+    "apify_google_search_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "python programming\nai tools", "maxPagesPerQuery": 1},
+    ),
+    "apify_google_maps_scraper": ("compass/crawler-google-places", {}),
+    "apify_google_maps_reviews_scraper": (
+        "compass/Google-Maps-Reviews-Scraper",
+        {
+            # 只认完整 place URL（含 data=!...! CID 段）；placeIds 传 ChIJ 格式无效（实测 0 条）
+            "startUrls": [{"url": "https://www.google.com/maps/place/Yellowstone+National+Park/@44.5857951,-110.5140571,9z/data=!3m1!4b1!4m5!3m4!1s0x5351e55555555555:0xaca8f930348fe1bb!8m2!3d44.427963!4d-110.588455?hl=en-GB"}],
+            "maxReviews": 3,
+        },
+    ),
+    "apify_serp_scraperlink": (
+        "scraperlink/google-search-results-serp-scraper",
+        # 99.9% SERP 降级①（docs/apify-actors/google.md）
+        {"keyword": "best crm software", "limit": "10"},
+    ),
+    # apify/google-trends-scraper 30 天实测成功率仅 56.6%，换 data_xplorer（99.5%）；
+    # timeframe 必须用官方枚举（"LAST_7_DAYS" 会被 400 拒收），见 docs/apify-actors/google.md
+    "apify_google_trends_scraper": (
+        "data_xplorer/google-trends-fast-scraper",
+        {"mode": "keyword", "keyword": "bitcoin", "predefinedTimeframe": "now 7-d"},
+    ),
+    "apify_google_news_media_search": (
+        "data_xplorer/google-news-scraper-fast",
+        {"keywords": [], "maxArticles": 10, "timeframe": "7d"},
+    ),
+    "apify_google_news_scraper": ("data_xplorer/google-news-scraper-fast", {}),
+    "apify_google_ai_overviews_scraper": (
+        "apify/google-ai-overviews-scraper",
+        {"queries": "python programming"},
+    ),
+    # AI Search
+    "apify_perplexity_search_scraper": (
+        "apify/perplexity-search-scraper",
+        {"queries": "what is python"},
+    ),
+    "apify_chatgpt_search_scraper": (
+        "apify/chatgpt-search-scraper",
+        {"queries": "what is python"},
+    ),
+    # gemini-scraper is deprecated — fall back to google-search-scraper
+    "apify_gemini_search_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "python programming", "maxPagesPerQuery": 1},
+    ),
+    # Ads
+    "apify_google_ads_scraper": (
+        "lexis-solutions/google-ads-scraper",
+        {"startUrls": [{"url": "https://adstransparency.google.com/advertiser/AR18135649662495883265?region=anywhere"}], "maxItems": 3},
+    ),
+    "apify_facebook_ads_scraper": (
+        "apify/facebook-ads-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q=python&search_type=keyword_unordered"}]},
+    ),
+    "apify_facebook_ads_library_scraper": (
+        "curious_coder/facebook-ads-library-scraper",
+        # 关键词/广告库 URL 驱动，37 字段含 spend/reach（docs/apify-actors/facebook.md）
+        {"urls": [{"url": "https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&q=fitness"}], "count": 10},
+    ),
+    "apify_tiktok_ads_scraper": (
+        "lexis-solutions/tiktok-ads-scraper",
+        # query 是广告关键词搜索；$0.00049/条（docs/apify-actors/tiktok.md）
+        {"query": "headphones", "maxPages": 1},
+    ),
+    "apify_pinterest_ads_scraper": (
+        "shahidirfan/Pinterest-Ads-Scraper",
+        {"country": "FR", "results_limit": 5},
+    ),
+    # snapchat-ads-library is deprecated — no public replacement found; disable
+    "apify_snapchat_ads_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "site:snap.com/en-US/ad-policies python", "maxPagesPerQuery": 1},
+    ),
+    # B2B / Review / Community
+    # memo23 全量跑一次实测 5 分钟+（docs/apify-actors/trustpilot.md），调用方需给 run_timeout_seconds>=600
+    "apify_trustpilot_reviews_scraper": ("memo23/trustpilot-scraper-ppe", {}),
+    "apify_appstore_reviews_scraper": ("johnvc/apple-app-store-reviews-api", {}),
+    "apify_google_play_reviews_scraper": (
+        "neatrat/google-play-store-reviews-scraper",
+        {"appIdOrUrl": "com.google.android.apps.maps", "maxReviews": 5},
+    ),
+    "apify_tripadvisor_reviews_scraper": ("maxcopell/tripadvisor-reviews", {}),
+    "apify_booking_scraper": (
+        "voyager/booking-scraper",
+        {"startUrls": [{"url": "https://www.booking.com/hotel/gb/the-z-hotel-victoria.html"}]},
+    ),
+    "apify_airbnb_scraper": (
+        "tri_angle/airbnb-scraper",
+        {"startUrls": [{"url": "https://www.airbnb.com/s/New-York--NY/homes?checkin=2025-12-01&checkout=2025-12-07&adults=2"}], "maxResults": 3},
+    ),
+    # crunchbase-scraper is deprecated — use google-search-scraper fallback
+    "apify_crunchbase_scraper": (
+        "apify/google-search-scraper",
+        {"queries": "site:crunchbase.com openai", "maxPagesPerQuery": 1},
+    ),
+    "apify_glassdoor_scraper": (
+        "memo23/glassdoor-scraper-ppr",
+        {
+            "command": "reviews",
+            "startUrls": [{"url": "https://www.glassdoor.fr/Avis/Aza%C3%A9-Avis-E1360610.htm"}],
+            "maxItems": 3,
+        },
+    ),
+    "apify_hacker_news_scraper": ("onescales/hacker-news-data", {}),
+    "apify_bluesky_scraper": (
+        "fatihtahta/All-In-One-Bluesky-Scraper",
+        {"actionToPerform": "searchPosts", "queries": ["atproto.com"], "maxItems": 3},
+    ),
+    "apify_indeed_jobs_scraper": ("misceres/indeed-scraper", {}),
+    # Media account monitoring
+    "apify_instagram_media_profile_scraper": (
+        "apify/instagram-profile-scraper",
+        {"usernames": ["humansofny"]},
+    ),
+    "apify_tiktok_media_profile_scraper": (
+        "clockworks/tiktok-scraper",
+        {"profiles": ["https://www.tiktok.com/@apple"], "resultsPerPage": 3},
+    ),
+    "apify_youtube_media_channel_scraper": (
+        "streamers/youtube-scraper",
+        {"startUrls": [{"url": "https://www.youtube.com/@mkbhd"}], "maxResults": 3},
+    ),
+    "apify_facebook_media_page_scraper": (
+        "apify/facebook-posts-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/humansofnewyork/"}]},
+    ),
+    "apify_x_media_account_scraper": ("apidojo/tweet-scraper", {}),
+    # Open Web
+    "apify_website_content_crawler": (
+        "apify/website-content-crawler",
+        {
+            "startUrls": [{"url": "https://example.com"}],
+            "maxCrawlPages": 2,
+            "proxyConfiguration": {"useApifyProxy": True},
+        },
+    ),
+    "apify_rag_web_browser": (
+        "apify/rag-web-browser",
+        {"query": "python programming", "maxResults": 1},
+    ),
+    "apify_tiktok_transcript_extractor": (
+        "clockworks/tiktok-transcript-extractor",
+        {"postURLs": ["https://www.tiktok.com/@tiktok/video/7106594312292453675"]},
+    ),
+    "apify_youtube_transcript_scraper": ("johnvc/youtubetranscripts", {}),
+    "apify_tiktok_creative_center": ("doliz/tiktok-creative-center-scraper", {}),
+    "apify_similarweb_scraper": (
+        "curious_coder/similarweb-scraper",
+        {"domains": ["apify.com"]},
+    ),
+    "apify_tiktok_shop_search_scraper": (
+        "pratikdani/tiktok-shop-search-scraper",
+        {"keyword": "laptop", "country_code": "US"},
+    ),
+    "apify_tiktok_shop_product_detail": (
+        "pratikdani/tiktok-shop-scraper",
+        # 54 字段含 GMV/销量/佣金（docs/apify-actors/tiktok.md）；url 是商品详情页
+        {"url": "https://shop.tiktok.com/view/product/1732417183133045688"},
+    ),
+    "apify_target_products_scraper": (
+        "bovi/target-products",
+        {"searchQueries": ["coffee maker"], "maxProductsPerSearch": 3},
+    ),
+    "apify_facebook_marketplace_scraper": (
+        "apify/facebook-marketplace-scraper",
+        {"startUrls": [{"url": "https://www.facebook.com/marketplace/search?query=laptop"}]},
+    ),
+    "apify_1688_product_search": (
+        "ecomscrape/1688-product-search-scraper",
+        {"keyword": "wireless earbuds", "max_items_per_url": 20},
+    ),
+    "apify_1688_product_detail": (
+        "dltik/1688-scraper",
+        {"mode": "detail", "inputs": ["https://detail.1688.com/offer/642952568827.html"]},
+    ),
+    "apify_1688_advanced": (
+        "dltik/1688-scraper",
+        {
+            "mode": "search",
+            "inputs": ["wireless earbuds"],
+            "maxResults": 20,
+            "shippingCountry": "US",
+        },
+    ),
+    "apify_alibaba_product_search": (
+        "zen-studio/alibaba-scraper",
+        {"resultType": "products", "keywords": ["led lights"], "maxResults": 5,
+         "shipToCountry": "US"},
+    ),
+    "apify_alibaba_product_detail": (
+        "xtracto/alibaba-product-scraper",
+        {"productUrls": [{"url": "https://www.alibaba.com/product-detail/WATA-In-Ear-Waterproof-Sport-Earbud_1601685362945.html"}]},
+    ),
+    "apify_amazon_bestsellers": (
+        "junglee/amazon-bestsellers",
+        {
+            "categoryUrls": ["https://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/"],
+            "maxItemsPerStartUrl": 5,
+        },
+    ),
+    "apify_amazon_competitor_research": (
+        "samstorm/amazon-competitor-research-scraper",
+        {"asins": ["B08N5WRWNW"], "marketplace": "amazon.com"},
+    ),
+    "apify_amazon_bsr_tracker": (
+        "marketplace-scrapers/amazon-bsr-scraper",
+        # ⚠️ 2026-10-14 发现该 Actor 已从 Apify Store 下架（API 仍可调但无商店页，随时可能停）。
+        # BSR 追踪的替代路径：apify_amazon_bestsellers 的 position 字段（见 docs/apify-actors/amazon.md）。
+        # marketplaces 收 ISO 国家码（US/UK/DE…），传 "amazon.com" 会让 Actor 直接抛错退出；
+        # asins 也必须在对应站点上真实存在。
+        # 用 Actor 自己的 prefill 值（作者测过）：marketplaces 收 ISO 国家码，
+        # asins 必须在该站点上有 BSR 榜（换 ASIN 会时有时无）。
+        {"asins": ["0735211299", "1612680194"], "marketplaces": ["UK"]},
+    ),
+    "apify_amazon_price_tracker": (
+        "ramsford/ecommerce-price-tracker",
+        {"products": [{"url": "https://www.amazon.com/dp/B08N5WRWNW"}]},
+    ),
+    "apify_aliexpress_product_search_v2": (
+        "skystone_labs/aliexpress-product-scraper",
+        {"queries": ["wireless earbuds"], "shipTo": "US", "currency": "USD", "maxPages": 3},
+    ),
+    "apify_shopify_products_monitor": (
+        "trovevault/shopify-products-scraper",
+        {"domains": ["allbirds.com"], "maxProducts": 5},
+    ),
+
+}

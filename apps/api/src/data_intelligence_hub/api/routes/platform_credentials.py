@@ -4,7 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import (
+    AuthContext,
+    SessionDep,
+    get_auth_context,
+    get_authenticated_context,
+)
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.schemas.platform_credentials import (
     PlatformCredentialSettings,
@@ -81,7 +86,7 @@ async def update_platform_credential_item(
     platform: str,
     payload: PlatformCredentialUpdateRequest,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> PlatformCredentialSettings:
     master_key = get_settings().platform_credential_master_key
     if master_key is None:
@@ -110,7 +115,7 @@ async def update_platform_credential_item(
 async def delete_platform_credential_item(
     platform: str,
     session: SessionDep,
-    context: Annotated[AuthContext, Depends(get_auth_context)],
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> PlatformCredentialSettings:
     try:
         return await remove_platform_credentials(

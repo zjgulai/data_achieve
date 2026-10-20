@@ -4812,7 +4812,7 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             ),
         ]
     )
-    from data_intelligence_hub.api.routes.quick_collect import _ENDPOINT_TO_COLLECTOR
+    from data_intelligence_hub.collectors.endpoint_catalog import _ENDPOINT_TO_COLLECTOR
     from data_intelligence_hub.collectors.outbound_policy import host_block_reason
 
     # 逐端点判定。受控 HTTP 采集器的批准是主机级的，只看类型会把

@@ -124,7 +124,7 @@ def test_catalog_does_not_invent_parameter_types() -> None:
     tikhub_tiktok_video_search 的 keyword 是这条规则的样本：
     它未经校验，契约把它登记为 string 并在描述里注明 unchecked。
     """
-    from data_intelligence_hub.api.routes.quick_collect import (
+    from data_intelligence_hub.collectors.endpoint_catalog import (
         _ENDPOINT_TO_COLLECTOR,
     )
     from data_intelligence_hub.tool_catalog.collector_specs import (
