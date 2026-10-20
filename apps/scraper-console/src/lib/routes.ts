@@ -89,7 +89,6 @@ export const KEPT_ROUTES: readonly string[] = [
   "/tasks",
   "/runs",
   "/dashboard",
-  "/settings/account",
   "/settings/credentials",
 ];
 
