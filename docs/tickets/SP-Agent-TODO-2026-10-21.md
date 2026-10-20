@@ -6,6 +6,19 @@
 
 飞书多维表格：SP-Agent-TODO · https://momcozy-in.feishu.cn/base/XXz5bHAwCa7qv5sTzrCci3jPnxd?table=tbli8kAkAqrndUvJ
 
+## 对比结论
+
+| 模块 | 能力图谱基线（2026-10-15） | 2026-10-21 实际 | 差距 |
+|---|---|---|---|
+| 控制台 IA | /platforms、/skills、/collector-docs、/datasets、/raw-records | /tools、/docs、/assets、/assets/records | 文档与验收 skill 仍引用旧路由 |
+| 目录计数 | 286 视图 / 258 唯一端点 | 309 视图 / 281 唯一端点 / 70 平台 | 图谱、总账、README 三处数字不一致 |
+| MCP | 5 个工具 | 21 个工具（5 基础 + 16 TikTok） | 图谱与 MCP 描述未刷新 |
+| TikTok R1 | 未进入能力图谱 | 16 工具、21 表、4 页签工作台 | 图谱缺模块；商品关系需 Cookie |
+| 身份与租户 | demo workspace 回退 | main 有严格鉴权基础设施，P1 未合并 | 56 个路由仍用 demo workspace |
+| 生产 | A/B 两套，schema 未统一 | A 健康且 schema=202610190045；B 停在 044 | B 迁移门禁未执行 |
+| 广告与商品关系 | 仅迁移 | 广告已入库；关系工具已接，Cookie 未配置 | 关系表为空 |
+| 文档与验收 | 2026-10-15 快照 | 代码与生产已前进 | 多份文档和 skill 过期 |
+
 共 54 条。任务类型：Agent机器人 / 工作台；任务属性：bug / 新需求 / 存量需求 / 方案迭代。
 
 | Ticket | 任务类型 | 所属图谱模块 | 任务属性 | 任务方案 | 完成状态 | 登记时间 | 预计完成时间 | 实际完成时间 |
