@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.security import create_access_token, hash_password, verify_password
 from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.models.user import User
@@ -58,7 +59,9 @@ async def register_user(session: AsyncSession, payload: RegisterRequest) -> Auth
     await session.flush()
 
     session.add(WorkspaceMember(workspace_id=workspace.id, user_id=user.id, role="owner"))
-    demo_workspace = await ensure_demo_workspace_membership(session, user.id)
+    demo_workspace = None
+    if get_settings().effective_demo_mode:
+        demo_workspace = await ensure_demo_workspace_membership(session, user.id)
     if demo_workspace is not None:
         await _ensure_training_workspace_notification(session, user, demo_workspace)
     auth_workspace = demo_workspace or workspace
@@ -87,7 +90,9 @@ async def login_user(session: AsyncSession, payload: LoginRequest) -> AuthSessio
 
     workspace = await _get_or_join_demo_workspace(session, user)
     if workspace is None:
-        workspace = await get_default_workspace_for_user(session, user.id)
+        workspace = await get_default_workspace_for_user(
+            session, user.id, prefer_demo=get_settings().effective_demo_mode
+        )
     if workspace is None:
         raise WorkspaceNotFoundError
 
@@ -97,7 +102,9 @@ async def login_user(session: AsyncSession, payload: LoginRequest) -> AuthSessio
 async def get_session_for_user(session: AsyncSession, user: User) -> AuthSession:
     workspace = await _get_or_join_demo_workspace(session, user)
     if workspace is None:
-        workspace = await get_default_workspace_for_user(session, user.id)
+        workspace = await get_default_workspace_for_user(
+            session, user.id, prefer_demo=get_settings().effective_demo_mode
+        )
     if workspace is None:
         raise WorkspaceNotFoundError
     return AuthSession(user=user, workspace=workspace, access_token=create_access_token(user.id))
@@ -121,6 +128,9 @@ def _slugify(value: str) -> str:
 
 
 async def _get_or_join_demo_workspace(session: AsyncSession, user: User) -> Workspace | None:
+    """demo 模式下自动加入 demo 工作区。生产模式不自动加入。"""
+    if not get_settings().effective_demo_mode:
+        return None
     workspace = await ensure_demo_workspace_membership(session, user.id)
     if workspace is None:
         return None
