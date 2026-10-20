@@ -1,0 +1,1589 @@
+{
+  "currency": "USD",
+  "entries": {
+    "anysearch_brand_media": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.001/query)",
+      "unit": "query",
+      "unit_price": 0.001
+    },
+    "anysearch_code_doc": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.001/query)",
+      "unit": "query",
+      "unit_price": 0.001
+    },
+    "anysearch_competitor": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.001/query)",
+      "unit": "query",
+      "unit_price": 0.001
+    },
+    "anysearch_tag_search": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.001/query)",
+      "unit": "query",
+      "unit_price": 0.001
+    },
+    "apify_1688_advanced": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_1688_product_detail": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_1688_product_search": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_airbnb_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_alibaba_product_detail": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_alibaba_product_search": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_aliexpress_product_search_v2": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_aliexpress_products_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_amazon_bestsellers": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_amazon_bsr_tracker": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($1.5/1K results)",
+      "unit": "result",
+      "unit_price": 0.0015
+    },
+    "apify_amazon_competitor_research": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_amazon_free_product_scraper": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/amazon.md#jungleefree-amazon-product-scraper",
+      "unit": "result",
+      "unit_price": 0.0
+    },
+    "apify_amazon_price_tracker": {
+      "confidence": "unknown",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按结果计费)",
+      "unit": "result",
+      "unit_price": null
+    },
+    "apify_amazon_product_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/amazon.md#jungleeamazon-crawler",
+      "unit": "result",
+      "unit_price": 0.005
+    },
+    "apify_amazon_reviews_axesso": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.003/条档)",
+      "unit": "result",
+      "unit_price": 0.003
+    },
+    "apify_amazon_reviews_extractor": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.003/条档)",
+      "unit": "result",
+      "unit_price": 0.003
+    },
+    "apify_amazon_reviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_appstore_reviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_bluesky_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_booking_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_chatgpt_search_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_crunchbase_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_search_result_page",
+      "source": "docs/apify-actors/google.md#apifygoogle-search-scraper(回退 actor)",
+      "unit": "serp_page",
+      "unit_price": 0.0027
+    },
+    "apify_ebay_product_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_ebay_sold_listings_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_etsy_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_facebook_ads_library_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.00075/条)",
+      "unit": "result",
+      "unit_price": 0.00075
+    },
+    "apify_facebook_ads_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_facebook_comments_scraper": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0017+)",
+      "unit": "result",
+      "unit_price": 0.0017
+    },
+    "apify_facebook_groups_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_facebook_marketplace_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "subscription",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按月计费)",
+      "unit": "month",
+      "unit_price": null
+    },
+    "apify_facebook_media_page_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/facebook.md#apifyfacebook-posts-scraper(同 actor)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_facebook_pages_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_facebook_posts_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/facebook.md#apifyfacebook-posts-scraper",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_facebook_search_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_gemini_search_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_search_result_page",
+      "source": "docs/apify-actors/google.md#apifygoogle-search-scraper(回退 actor)",
+      "unit": "serp_page",
+      "unit_price": 0.0027
+    },
+    "apify_glassdoor_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_ads_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_ai_overviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_maps_reviews_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_review",
+      "source": "docs/apify-actors/google.md#compassgoogle-maps-reviews-scraper",
+      "unit": "review",
+      "unit_price": 0.0005
+    },
+    "apify_google_maps_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_place_scraped",
+      "source": "docs/apify-actors/google.md#compasscrawler-google-places",
+      "unit": "place",
+      "unit_price": 0.004
+    },
+    "apify_google_news_media_search": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_news_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_play_reviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_google_search_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_search_result_page",
+      "source": "docs/apify-actors/google.md#apifygoogle-search-scraper",
+      "unit": "serp_page",
+      "unit_price": 0.0027
+    },
+    "apify_google_trends_scraper": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.004/条)",
+      "unit": "result",
+      "unit_price": 0.004
+    },
+    "apify_hacker_news_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_indeed_jobs_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_instagram_comment_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_instagram_hashtag_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_instagram_media_profile_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_instagram_post_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_instagram_profile_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_instagram_reel_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0027/条)",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_instagram_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/instagram.md#apifyinstagram-scraper",
+      "unit": "result",
+      "unit_price": 0.0027
+    },
+    "apify_linkedin_company_employees_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_linkedin_company_posts_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_linkedin_company_search_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_linkedin_jobs_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": null,
+      "source": "no_public_rate_card",
+      "unit": null,
+      "unit_price": null
+    },
+    "apify_linkedin_profile_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_profile",
+      "source": "docs/apify-actors/linkedin.md#harvestapilinkedin-profile-scraper",
+      "unit": "profile",
+      "unit_price": 0.004
+    },
+    "apify_perplexity_search_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_pinterest_ads_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_rag_web_browser": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_reddit_scraper": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.004/条)",
+      "unit": "result",
+      "unit_price": 0.004
+    },
+    "apify_serp_scraperlink": {
+      "confidence": "medium",
+      "quantity_basis": "per_search",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0029/搜索)",
+      "unit": "query",
+      "unit_price": 0.0029
+    },
+    "apify_shein_product_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_shopify_products_monitor": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/shopify.md#trovevaultshopify-products-scraper",
+      "unit": "result",
+      "unit_price": 0.001
+    },
+    "apify_shopify_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_shopify_store_leads": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.003/条档)",
+      "unit": "result",
+      "unit_price": 0.003
+    },
+    "apify_similarweb_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_snapchat_ads_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_search_result_page",
+      "source": "docs/apify-actors/google.md#apifygoogle-search-scraper(回退 actor)",
+      "unit": "serp_page",
+      "unit_price": 0.0027
+    },
+    "apify_target_products_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_temu_products_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_threads_posts_scraper": {
+      "confidence": "low",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005+)",
+      "unit": "result",
+      "unit_price": 0.005
+    },
+    "apify_threads_profile_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_ads_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/tiktok.md#lexis-solutionstiktok-ads-scraper",
+      "unit": "result",
+      "unit_price": 0.00049
+    },
+    "apify_tiktok_comments_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_creative_center": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_media_profile_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/tiktok.md#clockworkstiktok-scraper(同 actor)",
+      "unit": "result",
+      "unit_price": 0.0037
+    },
+    "apify_tiktok_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/tiktok.md#clockworkstiktok-scraper",
+      "unit": "result",
+      "unit_price": 0.0037
+    },
+    "apify_tiktok_shop_creators": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_shop_product_detail": {
+      "confidence": "low",
+      "quantity_basis": "per_run",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.002/run 起)",
+      "unit": "run",
+      "unit_price": 0.002
+    },
+    "apify_tiktok_shop_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_shop_search_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_tiktok_shop_search_v2": {
+      "confidence": "unknown",
+      "quantity_basis": null,
+      "source": "no_public_rate_card",
+      "unit": null,
+      "unit_price": null
+    },
+    "apify_tiktok_transcript_extractor": {
+      "confidence": "unknown",
+      "quantity_basis": "subscription",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按月计费)",
+      "unit": "month",
+      "unit_price": null
+    },
+    "apify_tripadvisor_reviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_trustpilot_reviews_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_review",
+      "source": "docs/apify-actors/trustpilot.md#memo23trustpilot-scraper-ppe(另有 actor-start 0.005 与 additional-data 0.001)",
+      "unit": "review",
+      "unit_price": 0.0029
+    },
+    "apify_twitter_user_scraper": {
+      "confidence": "medium",
+      "quantity_basis": "per_dataset_item",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.0004/条)",
+      "unit": "result",
+      "unit_price": 0.0004
+    },
+    "apify_walmart_product_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": null,
+      "source": "no_public_rate_card",
+      "unit": null,
+      "unit_price": null
+    },
+    "apify_walmart_reviews_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_website_content_crawler": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_x_media_account_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/x-twitter.md#apidologotweet-scraper(同 actor)",
+      "unit": "result",
+      "unit_price": 0.0004
+    },
+    "apify_x_tweet_scraper": {
+      "confidence": "high",
+      "quantity_basis": "per_dataset_item",
+      "source": "docs/apify-actors/x-twitter.md#apidologotweet-scraper",
+      "unit": "result",
+      "unit_price": 0.0004
+    },
+    "apify_youtube_comments_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": null,
+      "source": "no_public_rate_card",
+      "unit": null,
+      "unit_price": null
+    },
+    "apify_youtube_media_channel_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_youtube_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "apify_youtube_transcript_scraper": {
+      "confidence": "unknown",
+      "quantity_basis": "per_event",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(按事件计费)",
+      "unit": "event",
+      "unit_price": null
+    },
+    "crates_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "crates_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "ecommerce_product_discovery": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "ecommerce_product_page": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "exa_answer": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005/query)",
+      "unit": "query",
+      "unit_price": 0.005
+    },
+    "exa_company_search": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_contents": {
+      "confidence": "medium",
+      "quantity_basis": "per_page",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.001/page)",
+      "unit": "page",
+      "unit_price": 0.001
+    },
+    "exa_deep_lite": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.012/query)",
+      "unit": "query",
+      "unit_price": 0.012
+    },
+    "exa_deep_reasoning": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.015/query)",
+      "unit": "query",
+      "unit_price": 0.015
+    },
+    "exa_deep_research": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.012/query)",
+      "unit": "query",
+      "unit_price": 0.012
+    },
+    "exa_domain_search": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_financial_report": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_find_similar": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_people_search": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_personal_site": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_research_paper": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_search_auto": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "exa_search_fast": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005/query)",
+      "unit": "query",
+      "unit_price": 0.005
+    },
+    "exa_search_instant": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005/query)",
+      "unit": "query",
+      "unit_price": 0.005
+    },
+    "exa_search_news": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
+      "unit": "query",
+      "unit_price": 0.007
+    },
+    "generic_web": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "github_repo": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "github_topic": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "go_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "go_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "hackernews_front_page": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "hackernews_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "hackernews_user": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "npm_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "npm_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "nuget_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "nuget_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "packagist_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "packagist_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "pubdev_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "pubdev_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "public_feed": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "pypi_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "pypi_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "rubygems_package": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "rubygems_search": {
+      "confidence": "high",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(免费)",
+      "unit": "call",
+      "unit_price": 0.0
+    },
+    "tikhub_bilibili_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_bilibili_user_videos": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_bilibili_video_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_douyin_brand_hot_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_douyin_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_douyin_hot_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_douyin_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_douyin_video_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_instagram_post_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_instagram_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_instagram_user_followers": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_instagram_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_kuaishou_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_kuaishou_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_lemon8_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_lemon8_trending": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_lemon8_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_company_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_company_profile": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_job_detail": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_post_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_search_jobs": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_linkedin_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_reddit_post_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_reddit_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_reddit_subreddit_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_reddit_trending": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_threads_post_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_threads_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_threads_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_ads_detail": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_ads_keyword_suggest": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_ads_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_ads_trends": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_comment_keywords": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_comment_replies_app": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_comments_app": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_creator_account_health": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_creator_info": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_creator_insights": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_creator_insights_trend": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_creator_showcase": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_fake_views": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_hashtag_detail_app": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_hashtag_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_identity_by_username": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_live_room_detail": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_live_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_live_user": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_music_chart": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_search_web": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_sec_uid": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_shop_hot_products": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_shop_products": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_shop_reviews_v2": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_shop_search_v2": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_tag_posts_web": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_top_ads": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_trending_searchwords": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_fans_web": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_followers": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_id": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_posts_web": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_user_profile_web": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_video_detail": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_video_products": {
+      "confidence": "low",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/次); docs/playbook-full-2026-09.html",
+      "unit": "call",
+      "unit_price": 0.001
+    },
+    "tikhub_tiktok_video_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_wechat_channels_video": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_wechat_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_weibo_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_weibo_user_posts": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_x_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_x_trending": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_x_user_followers": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_x_user_tweets": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_xiaohongshu_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_youtube_channel_videos": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_youtube_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_youtube_trending": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_youtube_video_comments": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_youtube_video_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(None); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_zhihu_question_answers": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    },
+    "tikhub_zhihu_search": {
+      "confidence": "low",
+      "quantity_basis": "per_record",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
+      "unit": "record",
+      "unit_price": 0.001
+    }
+  },
+  "schema_version": "price_book.v1",
+  "updated_at": "2026-10-20"
+}
