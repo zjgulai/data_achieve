@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
@@ -533,8 +534,15 @@ def _get_api_key() -> str:
     return key
 
 
+CREATOR_COOKIE_OVERRIDE: ContextVar[str] = ContextVar(
+    "tikhub_creator_cookie_override", default=""
+)
+
+
 def _get_creator_cookie() -> str:
-    cookie = os.getenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "").strip()
+    cookie = CREATOR_COOKIE_OVERRIDE.get().strip() or os.getenv(
+        "TIKHUB_TIKTOK_CREATOR_COOKIE", ""
+    ).strip()
     if not cookie:
         raise CollectorError(
             "tikhub_creator_cookie_missing: set TIKHUB_TIKTOK_CREATOR_COOKIE"

@@ -26,7 +26,9 @@ PROJECT_ID = uuid.uuid4()
 
 
 def _fake_collect_factory(records, calls):
-    async def fake_collect(project_id, endpoint_type, params, limit, *, role="primary"):
+    async def fake_collect(
+        project_id, endpoint_type, params, limit, *, role="primary", creator_cookie=None
+    ):
         calls.append((endpoint_type, params, role))
         items = records.get(endpoint_type, [])
         return items, {
@@ -212,17 +214,29 @@ async def test_ads_tools_use_tikhub(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_relation_tools_require_cookie(monkeypatch) -> None:
-    monkeypatch.delenv("TIKHUB_TIKTOK_CREATOR_COOKIE", raising=False)
+    async def no_cookie(project_id):
+        return None
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.tiktok_tools._resolve_creator_cookie",
+        no_cookie,
+    )
     video = await tiktok_video_products(PROJECT_ID, {"video_id": "v1"})
     assert video.status == "failed"
-    assert "tikhub_creator_cookie_not_configured" in video.errors
+    assert "credential_required:tiktok.creator_cookie" in video.errors
     showcase = await tiktok_creator_showcase(PROJECT_ID, {})
     assert showcase.status == "failed"
 
 
 @pytest.mark.asyncio
 async def test_relation_tools_call_endpoints_with_cookie(monkeypatch) -> None:
-    monkeypatch.setenv("TIKHUB_TIKTOK_CREATOR_COOKIE", "sessionid=x")
+    async def cookie(project_id):
+        return "sessionid=x"
+
+    monkeypatch.setattr(
+        "data_intelligence_hub.services.tiktok_tools._resolve_creator_cookie",
+        cookie,
+    )
     calls: list[Any] = []
     fake = _fake_collect_factory(
         {
@@ -244,7 +258,9 @@ async def test_relation_tools_call_endpoints_with_cookie(monkeypatch) -> None:
 async def test_tool_call_metadata_reaches_the_run(monkeypatch) -> None:
     calls: list[Any] = []
 
-    async def fake_collect(project_id, endpoint_type, params, limit, *, role="primary"):
+    async def fake_collect(
+        project_id, endpoint_type, params, limit, *, role="primary", creator_cookie=None
+    ):
         calls.append((endpoint_type, params, role))
         return [], {
             "endpoint_type": endpoint_type,

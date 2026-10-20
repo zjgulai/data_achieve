@@ -6,15 +6,18 @@ import {
   AlertCircle,
   Database,
   FileText,
+  KeyRound,
   Loader2,
   Play,
   Search,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { StatTile } from "@/components/ui/stat-tile";
 import { ApiError } from "@/lib/api/client";
+import { updateCredential } from "@/lib/api/credentials";
 import { fetchProjects } from "@/lib/api/projects";
 import {
   runTikTokTool,
@@ -25,7 +28,12 @@ import {
 type Tab = "trends" | "videos" | "creators" | "products";
 type VideoMode = "search" | "hashtag" | "detail" | "comments";
 type CreatorMode = "profile" | "search";
-type ProductMode = "search" | "detail" | "reviews";
+type ProductMode =
+  | "search"
+  | "detail"
+  | "reviews"
+  | "video_products"
+  | "creator_showcase";
 
 type Column = { key: string; label: string };
 
@@ -107,7 +115,9 @@ function columnsFor(toolId?: string): Column[] {
   }
   if (
     toolId === "tiktok_product_search" ||
-    toolId === "tiktok_product_detail"
+    toolId === "tiktok_product_detail" ||
+    toolId === "tiktok_video_products" ||
+    toolId === "tiktok_creator_showcase"
   ) {
     return [
       { key: "product_id", label: "商品 ID" },
@@ -227,6 +237,16 @@ export default function TikTokWorkbenchPage() {
   const [productId, setProductId] = useState("");
   const [productRegion, setProductRegion] = useState("US");
   const [productLimit, setProductLimit] = useState(20);
+  const [productVideoId, setProductVideoId] = useState("");
+  const [showcaseOffset, setShowcaseOffset] = useState(0);
+  const [credentialModalOpen, setCredentialModalOpen] = useState(false);
+  const [cookieInput, setCookieInput] = useState("");
+  const [credentialError, setCredentialError] = useState<string | null>(null);
+  const [savingCredential, setSavingCredential] = useState(false);
+  const [lastRequest, setLastRequest] = useState<{
+    toolId: string;
+    params: Record<string, unknown>;
+  } | null>(null);
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -238,6 +258,14 @@ export default function TikTokWorkbenchPage() {
     }) => {
       if (!projectId) throw new Error("请先选择项目");
       return runTikTokTool(toolId, projectId, params);
+    },
+    onSuccess: (data) => {
+      const needsCredential = data.errors?.some((error) =>
+        error.startsWith("credential_required:")
+      );
+      if (needsCredential) {
+        setCredentialModalOpen(true);
+      }
     },
   });
 
@@ -311,6 +339,18 @@ export default function TikTokWorkbenchPage() {
             product_id: productId.trim() || undefined,
             region: productRegion,
           },
+        };
+      }
+      if (productMode === "video_products") {
+        return {
+          toolId: "tiktok_video_products",
+          params: { video_id: productVideoId.trim() },
+        };
+      }
+      if (productMode === "creator_showcase") {
+        return {
+          toolId: "tiktok_creator_showcase",
+          params: { offset: showcaseOffset, limit: productLimit },
         };
       }
       return {
@@ -387,7 +427,37 @@ export default function TikTokWorkbenchPage() {
       setFormError("请输入商品 ID");
       return;
     }
+    if (
+      request.toolId === "tiktok_video_products" &&
+      !request.params.video_id
+    ) {
+      setFormError("请输入视频 ID");
+      return;
+    }
+    setLastRequest(request);
     mutation.mutate(request);
+  }
+
+  async function saveCreatorCookie() {
+    const cookie = cookieInput.trim();
+    if (!cookie) {
+      setCredentialError("请输入 TikTok 创作者 Cookie");
+      return;
+    }
+    setCredentialError(null);
+    setSavingCredential(true);
+    try {
+      await updateCredential("tiktok", { creator_cookie: cookie });
+      setCredentialModalOpen(false);
+      setCookieInput("");
+      if (lastRequest) mutation.mutate(lastRequest);
+    } catch (error) {
+      setCredentialError(
+        error instanceof ApiError ? error.message : String(error)
+      );
+    } finally {
+      setSavingCredential(false);
+    }
   }
 
   const activeTool = result?.tool_id ?? buildRequest()?.toolId ?? "—";
@@ -683,6 +753,8 @@ export default function TikTokWorkbenchPage() {
                 { id: "search" as ProductMode, label: "商品搜索" },
                 { id: "detail" as ProductMode, label: "商品详情" },
                 { id: "reviews" as ProductMode, label: "商品评论" },
+                { id: "video_products" as ProductMode, label: "视频关联商品" },
+                { id: "creator_showcase" as ProductMode, label: "达人橱窗" },
               ].map((mode) => (
                 <button
                   key={mode.id}
@@ -707,6 +779,27 @@ export default function TikTokWorkbenchPage() {
                     value={productQuery}
                     onChange={(event) => setProductQuery(event.target.value)}
                     placeholder="breast pump"
+                  />
+                </label>
+              ) : productMode === "video_products" ? (
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  视频 ID
+                  <input
+                    className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                    value={productVideoId}
+                    onChange={(event) => setProductVideoId(event.target.value)}
+                    placeholder="7670318941658483981"
+                  />
+                </label>
+              ) : productMode === "creator_showcase" ? (
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  偏移量
+                  <input
+                    type="number"
+                    min={0}
+                    className="min-h-10 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 text-sm"
+                    value={showcaseOffset}
+                    onChange={(event) => setShowcaseOffset(Number(event.target.value))}
                   />
                 </label>
               ) : (
@@ -867,6 +960,78 @@ export default function TikTokWorkbenchPage() {
             </pre>
           </details>
         </section>
+      ) : null}
+
+      {credentialModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tiktok-cookie-title"
+        >
+          <div className="w-full max-w-lg rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <KeyRound size={18} className="text-[var(--action-primary)]" />
+                <h2
+                  id="tiktok-cookie-title"
+                  className="text-base font-semibold text-[var(--text-primary)]"
+                >
+                  连接 TikTok 创作者账号
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCredentialModalOpen(false)}
+                className="rounded p-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                aria-label="关闭"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              商品关系接口需要已登录 TikTok 网页版的 Cookie。Cookie 只保存在本工作区的加密凭证库，不会显示在运行记录中。
+            </p>
+            <label className="mt-4 grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+              Cookie
+              <textarea
+                value={cookieInput}
+                onChange={(event) => setCookieInput(event.target.value)}
+                rows={5}
+                placeholder="sessionid=...; ttwid=...;"
+                className="w-full rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-3 py-2 font-mono text-xs text-[var(--text-primary)]"
+              />
+            </label>
+            <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+              获取方法：登录 TikTok 网页版，打开开发者工具，复制任意请求的 Cookie 请求头。
+            </p>
+            {credentialError ? (
+              <p className="mt-2 text-sm text-[var(--state-danger)]">{credentialError}</p>
+            ) : null}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCredentialModalOpen(false)}
+                className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={saveCreatorCookie}
+                disabled={savingCredential}
+                className="inline-flex items-center gap-2 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-4 py-2 text-sm font-semibold text-[var(--text-inverse)] disabled:opacity-60"
+              >
+                {savingCredential ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <KeyRound size={14} />
+                )}
+                保存并继续
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </AppShell>
   );

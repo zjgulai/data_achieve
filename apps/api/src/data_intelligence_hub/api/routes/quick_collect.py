@@ -436,6 +436,28 @@ def build_apify_actor_input(base_input: dict[str, Any], params: dict[str, Any]) 
     return {**base_input, **{k: v for k, v in params.items() if k not in _APIFY_META_KEYS}}
 
 
+def _build_1688_search_input(params: dict[str, Any]) -> dict[str, Any]:
+    """把关键词入参转换成 dltik/1688-scraper 的搜索模式入参。
+
+    该 Actor 的 schema 用 ``inputs`` 列表而不是 ``keyword``。
+    与同站点的高级搜索端点共用同一套字段。
+    """
+    keyword = str(params.get("keyword") or "").strip()
+    max_items = params.get("max_items_per_url") or 20
+    return {
+        "mode": "search",
+        "inputs": [keyword],
+        "maxResults": int(max_items),
+        "shippingCountry": "US",
+    }
+
+
+# 需要自定义入参形状的端点。键与 _APIFY_ENDPOINT_DEFAULTS 对应。
+_APIFY_INPUT_BUILDERS: dict[str, Any] = {
+    "apify_1688_product_search": _build_1688_search_input,
+}
+
+
 _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Social
     "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),
@@ -575,7 +597,20 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "e-commerce/walmart-product-detail-scraper",
         {"startUrls": [{"url": "https://walmart.com/search?q=tshirt"}], "maxProductsPerStartUrl": 3},
     ),
-    "apify_walmart_reviews_scraper": ("e-commerce/walmart-reviews-scraper", {}),
+    # 2026-10-20 换用受限权限的 Actor：原 e-commerce/walmart-reviews-scraper
+    # 声明 FULL_PERMISSIONS，API 令牌无法批准、必须人工在控制台逐次授权。
+    "apify_walmart_reviews_scraper": (
+        "web_wanderer/walmart-reviews-scraper",
+        {
+            "product_ids": [],
+            "limit": 1,
+            "sort": "relevancy",
+            "ratings": ["all"],
+            "reg": "US",
+            "lang": "en",
+            "vp": False,
+        },
+    ),
     "apify_temu_products_scraper": (
         "amit123/temu-products-scraper",
         # maxResults 的下限是 20，传 3 会被 400 拒绝
@@ -778,9 +813,12 @@ _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
         "apify/facebook-marketplace-scraper",
         {"startUrls": [{"url": "https://www.facebook.com/marketplace/search?query=laptop"}]},
     ),
+    # 2026-10-20 换用受限权限的 Actor：原 ecomscrape/1688-product-search-scraper
+    # 声明 FULL_PERMISSIONS，API 令牌无法批准。dltik/1688-scraper 与本站的
+    # 详情/高级端点同源，已验证可用；入参由 _build_1688_search_input 转换。
     "apify_1688_product_search": (
-        "ecomscrape/1688-product-search-scraper",
-        {"keyword": "wireless earbuds", "max_items_per_url": 20},
+        "dltik/1688-scraper",
+        {},
     ),
     "apify_1688_product_detail": (
         "dltik/1688-scraper",
@@ -919,7 +957,12 @@ async def quick_collect(
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(body.endpoint_type)
     if apify_defaults is not None:
         actor_id, base_input = apify_defaults
-        actor_input = build_apify_actor_input(base_input, params)
+        input_builder = _APIFY_INPUT_BUILDERS.get(body.endpoint_type)
+        actor_input = (
+            input_builder(params)
+            if input_builder is not None
+            else build_apify_actor_input(base_input, params)
+        )
         config = {
             "actor_id": actor_id,
             "actor_input": actor_input,

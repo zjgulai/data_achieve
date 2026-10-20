@@ -135,7 +135,7 @@ DEMO_PARAMS: dict[str, dict[str, Any]] = {
     "apify_amazon_reviews_scraper":        {"productUrls": ["https://www.amazon.com/dp/B09G9FPHY6"], "maxReviews": 5},
     # Walmart
     "apify_walmart_product_scraper":       {"startUrls": [{"url": "https://walmart.com/search?q=tshirt"}], "maxProductsPerStartUrl": 3},
-    "apify_walmart_reviews_scraper":       {"productIds": ["565742697"], "maxReviews": 5},
+    "apify_walmart_reviews_scraper":       {"product_ids": ["https://www.walmart.com/ip/Hisense-58-Class-4K-UHD-LED-LCD-Roku-Smart-TV-HDR-R6-Series-58R6E3/587182688"], "limit": 1, "vp": True},
     "apify_walmart_scraper":               {"searchQuery": "laptop", "maxItems": 3},
     # eBay
     "apify_ebay_product_scraper":          {"startUrls": [{"url": "https://www.ebay.com/sch/i.html?_nkw=laptop"}], "maxItems": 3},

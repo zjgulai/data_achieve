@@ -32,6 +32,7 @@ FIELD_LABELS = {
     "app_id": "App ID",
     "app_secret": "App secret",
     "bearer_token": "Bearer token",
+    "creator_cookie": "TikTok creator Cookie",
     "client_id": "Client ID",
     "client_secret": "Client secret",
     "oauth_token": "OAuth token",
@@ -235,6 +236,19 @@ async def update_platform_credentials(
         vault_write_enabled=True,
     )
     return next(item for item in response.platforms if item.platform == provider.platform)
+
+
+async def get_platform_credential_values(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    provider_id: str,
+    cipher: PlatformCredentialCipher,
+) -> dict[str, str]:
+    bundle = await get_platform_credential_bundle(session, workspace_id, provider_id)
+    if bundle is None:
+        return {}
+    return cipher.decrypt(bundle.encrypted_payload)
 
 
 async def remove_platform_credentials(
