@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
-from data_intelligence_hub.api.deps import AuthContext, SessionDep, get_auth_context
+from data_intelligence_hub.api.deps import AuthContext, SessionDep, WorkspaceDep, get_auth_context
 from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.schemas.automation import (
     AutomationBrowserAutomationPlanRequest,
@@ -1292,18 +1292,12 @@ async def _endpoint_content_type_map() -> dict[str, str]:
 @router.get("/product-datasets", response_model=AutomationProductDatasetListResponse)
 async def list_product_datasets_route(
     session: SessionDep,
+    workspace: WorkspaceDep,
     project_id: uuid.UUID | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     include_archived: bool = False,
 ) -> AutomationProductDatasetListResponse:
-    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     return await list_product_datasets(
         session,
         workspace,
@@ -1320,14 +1314,8 @@ async def list_product_datasets_route(
 async def archive_product_dataset_route(
     dataset_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> AutomationDatasetResponse:
-    from data_intelligence_hub.repositories.workspaces import get_demo_workspace
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         return await archive_product_dataset(session, workspace, dataset_id)
     except CollectorError as exc:

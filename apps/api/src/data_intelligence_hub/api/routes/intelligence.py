@@ -5,9 +5,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import SessionDep
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.repositories.users import get_user_by_id
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.schemas.intelligence import (
     EvidenceResponse,
     IntelligenceFeedbackRequest,
@@ -29,18 +28,13 @@ router = APIRouter(tags=["intelligence"])
 @router.get("", response_model=list[IntelligenceResponse])
 async def list_intelligence(
     session: SessionDep,
+    workspace: WorkspaceDep,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
     type_filter: Annotated[str | None, Query(alias="type")] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     domain: Annotated[str | None, Query()] = None,
     sort: Annotated[str | None, Query()] = None,
 ) -> list[IntelligenceResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     items = await get_intelligence_items(
         session,
         workspace,
@@ -59,13 +53,8 @@ async def list_intelligence(
 async def get_intelligence(
     intelligence_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> IntelligenceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         result = await get_intelligence_or_raise(session, workspace, intelligence_id)
     except IntelligenceNotFoundError as exc:
@@ -77,13 +66,8 @@ async def patch_intelligence_status(
     intelligence_id: uuid.UUID,
     payload: IntelligenceStatusUpdateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> IntelligenceResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         result = await update_intelligence_status(
             session,
@@ -99,13 +83,8 @@ async def patch_intelligence_status(
 async def list_intelligence_evidences(
     intelligence_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> list[EvidenceResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         evidences = await get_evidences_for_intelligence(
             session,
@@ -136,13 +115,8 @@ async def post_intelligence_feedback(
     intelligence_id: uuid.UUID,
     payload: IntelligenceFeedbackRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> IntelligenceFeedbackResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     # 反馈必须挂在某个用户名下，而模型里 user_id 是非空外键。
     # 去认证改造后这里一度传 None，于是每次提交反馈必然 500。
     # 演示工作区的所有者就是这条无鉴权路径的归属人。

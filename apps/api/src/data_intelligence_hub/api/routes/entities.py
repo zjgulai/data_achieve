@@ -5,8 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import SessionDep
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.schemas.entity import EntityResponse, EntitySnapshotResponse
 from data_intelligence_hub.schemas.signal import SignalResponse
 from data_intelligence_hub.services.entity_service import (
@@ -22,16 +21,11 @@ router = APIRouter(tags=["entities"])
 @router.get("", response_model=list[EntityResponse])
 async def list_entity_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     entity_type: Annotated[str | None, Query()] = None,
     domain: Annotated[str | None, Query()] = None,
     project_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> list[EntityResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     entities = await get_entities(
         session,
         workspace,
@@ -45,13 +39,8 @@ async def list_entity_items(
 async def get_entity_item(
     entity_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> EntityResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         entity = await get_entity_or_raise(session, workspace, entity_id)
     except EntityNotFoundError as exc:
@@ -62,13 +51,8 @@ async def get_entity_item(
 async def list_entity_snapshot_items(
     entity_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> list[EntitySnapshotResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         snapshots = await get_snapshots_for_entity(session, workspace, entity_id)
     except EntityNotFoundError as exc:
@@ -79,13 +63,8 @@ async def list_entity_snapshot_items(
 async def list_entity_signal_items(
     entity_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> list[SignalResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         signals = await get_signals_for_entity(session, workspace, entity_id)
     except EntityNotFoundError as exc:

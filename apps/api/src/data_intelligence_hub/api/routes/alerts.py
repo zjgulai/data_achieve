@@ -5,8 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from data_intelligence_hub.api.deps import SessionDep
-from data_intelligence_hub.repositories.workspaces import get_demo_workspace
+from data_intelligence_hub.api.deps import SessionDep, WorkspaceDep
 from data_intelligence_hub.schemas.alert import (
     AlertEventResponse,
     AlertEventStatusUpdateRequest,
@@ -34,14 +33,9 @@ alert_events_router = APIRouter(tags=["alerts"])
 @alert_rules_router.get("", response_model=list[AlertRuleResponse])
 async def list_alert_rule_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     enabled: Annotated[bool | None, Query()] = None,
 ) -> list[AlertRuleResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     rules = await get_alert_rules(session, workspace, enabled=enabled)
     return [AlertRuleResponse.from_model(rule) for rule in rules]
 
@@ -53,13 +47,8 @@ async def list_alert_rule_items(
 async def create_alert_rule_item(
     payload: AlertRuleCreateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> AlertRuleResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         rule = await create_alert_rule(session, workspace, payload)
     except ProjectNotFoundError as exc:
@@ -71,13 +60,8 @@ async def update_alert_rule_item(
     rule_id: uuid.UUID,
     payload: AlertRuleUpdateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> AlertRuleResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         rule = await update_alert_rule(session, workspace, rule_id, payload)
     except AlertRuleNotFoundError as exc:
@@ -90,13 +74,8 @@ async def update_alert_rule_item(
 async def delete_alert_rule_item(
     rule_id: uuid.UUID,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> AlertRuleResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         rule = await delete_alert_rule(session, workspace, rule_id)
     except AlertRuleNotFoundError as exc:
@@ -106,15 +85,10 @@ async def delete_alert_rule_item(
 @alert_events_router.get("", response_model=list[AlertEventResponse])
 async def list_alert_event_items(
     session: SessionDep,
+    workspace: WorkspaceDep,
     rule_id: Annotated[uuid.UUID | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[AlertEventResponse]:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     events = await get_alert_events(
         session,
         workspace,
@@ -128,13 +102,8 @@ async def update_alert_event_status_item(
     event_id: uuid.UUID,
     payload: AlertEventStatusUpdateRequest,
     session: SessionDep,
+    workspace: WorkspaceDep,
 ) -> AlertEventResponse:
-    workspace = await get_demo_workspace(session)
-    if workspace is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="demo_workspace_unavailable",
-        )
     try:
         event = await update_alert_event_status(
             session,
