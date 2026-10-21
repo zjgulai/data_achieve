@@ -1,0 +1,842 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://data-intelligence-hub.local/schemas/report_contract.schema.json",
+  "title": "DIH report_contract v1.0.0",
+  "description": "报告合同。校验失败不得发布。字段与 Pydantic 模型逐字段对应。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "template_id",
+    "generated_at",
+    "identity",
+    "decision",
+    "gates",
+    "coverage",
+    "metrics",
+    "claims",
+    "evidences",
+    "run_ledger",
+    "limits",
+    "unknowns",
+    "artifact"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "合同版本。只接受 1.0.0。"
+    },
+    "template_id": {
+      "type": "string",
+      "enum": [
+        "t1_voc",
+        "t2_competitor",
+        "t3_selection",
+        "t4_creator",
+        "t5_compliance"
+      ],
+      "description": "模板 ID。取值来自 B2 的阈值表。"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "decision": {
+      "$ref": "#/$defs/decision"
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/gate"
+      }
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/metric"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim"
+      }
+    },
+    "evidences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "run_ledger": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/run_ledger_row"
+      }
+    },
+    "limits": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifact": {
+      "$ref": "#/$defs/artifact"
+    }
+  },
+  "$defs": {
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "时间窗。三个键都必填。",
+      "required": [
+        "start",
+        "end",
+        "days"
+      ],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "end": {
+          "type": "string",
+          "format": "date"
+        },
+        "days": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "family_child": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "家族成员。全部字段可选。",
+      "properties": {
+        "variant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sku": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "asin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "报告身份组。",
+      "required": [
+        "task_id",
+        "brand",
+        "category",
+        "markets",
+        "window"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "competitors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5
+        },
+        "markets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "window": {
+          "$ref": "#/$defs/window"
+        },
+        "product": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "variant_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sku": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "asin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parent_asin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bundle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mapping_confidence": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "family_children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/family_child"
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "决策组。三个固定槽位不得省略键。",
+      "required": [
+        "decision_question",
+        "answer",
+        "protect",
+        "resolve",
+        "prove"
+      ],
+      "properties": {
+        "decision_question": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        },
+        "protect": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resolve": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prove": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "门禁组的一个元素。",
+      "required": [
+        "gate_id",
+        "status"
+      ],
+      "properties": {
+        "gate_id": {
+          "type": "string",
+          "enum": [
+            "G0",
+            "G1",
+            "G2",
+            "G3",
+            "G4",
+            "G5",
+            "G6",
+            "G7",
+            "G8",
+            "G9",
+            "G10",
+            "G-Plan",
+            "G-Cost",
+            "G-Evidence",
+            "G-Claim",
+            "G-Publish"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "pass",
+            "fail",
+            "blocked",
+            "expired"
+          ]
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decided_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "coverage_cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "覆盖率的一个单元。",
+      "required": [
+        "source_tool_id",
+        "market",
+        "window",
+        "record_count",
+        "frame_member_count",
+        "status"
+      ],
+      "properties": {
+        "source_tool_id": {
+          "type": "string"
+        },
+        "market": {
+          "type": "string"
+        },
+        "window": {
+          "$ref": "#/$defs/window"
+        },
+        "record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frame_member_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "success",
+            "empty",
+            "failed"
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "覆盖组。只接受对象形状，不接受裸数组。",
+      "required": [
+        "cells"
+      ],
+      "properties": {
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coverage_cell"
+          }
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "指标组的一个元素。",
+      "required": [
+        "metric_id",
+        "label",
+        "numerator",
+        "denominator",
+        "count_type",
+        "frame",
+        "as_of"
+      ],
+      "properties": {
+        "metric_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "numerator": {
+          "type": "number"
+        },
+        "denominator": {
+          "type": "number"
+        },
+        "count_type": {
+          "type": "string",
+          "enum": [
+            "raw_object",
+            "occurrence",
+            "canonical_record",
+            "frame_member",
+            "annotation",
+            "metric_row"
+          ]
+        },
+        "frame": {
+          "type": "string"
+        },
+        "as_of": {
+          "type": "string",
+          "format": "date"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "claim_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "claim 的适用范围。三个键都必填。",
+      "required": [
+        "market",
+        "window",
+        "sample_n"
+      ],
+      "properties": {
+        "market": {
+          "type": "string"
+        },
+        "window": {
+          "$ref": "#/$defs/window"
+        },
+        "sample_n": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "主张组的一个元素。",
+      "required": [
+        "claim_id",
+        "text",
+        "claim_status",
+        "evidence_grade",
+        "scope",
+        "counterevidence_text",
+        "owner",
+        "evidence_ids"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "claim_status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "directional",
+            "hypothesis",
+            "evidence_gap",
+            "blocked"
+          ]
+        },
+        "evidence_grade": {
+          "type": "string",
+          "enum": [
+            "L0_unverified",
+            "L1_contract",
+            "L2_fixture_local",
+            "L3_live_single",
+            "L4_authorized_live"
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/claim_scope"
+        },
+        "counterevidence_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "证据组的一个元素。",
+      "required": [
+        "evidence_id",
+        "claim_id",
+        "role",
+        "source_tool_id",
+        "captured_at",
+        "market",
+        "locale",
+        "evidence_grade"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "support",
+            "counter",
+            "context",
+            "gap"
+          ]
+        },
+        "raw_record_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_tool_id": {
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "excerpt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "market": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "evidence_grade": {
+          "type": "string",
+          "enum": [
+            "L0_unverified",
+            "L1_contract",
+            "L2_fixture_local",
+            "L3_live_single",
+            "L4_authorized_live"
+          ]
+        }
+      }
+    },
+    "run_ledger_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "运行账本组的一个元素。",
+      "required": [
+        "run_id",
+        "tool_id",
+        "endpoint_type",
+        "unit",
+        "quantity",
+        "unit_price",
+        "total_cost_usd",
+        "evidence_grade",
+        "started_at",
+        "finished_at",
+        "outcome"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tool_id": {
+          "type": "string"
+        },
+        "endpoint_type": {
+          "type": "string"
+        },
+        "actor_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unit": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "unit_price": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "total_cost_usd": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "authorization_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "uuid"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_grade": {
+          "type": "string",
+          "enum": [
+            "L0_unverified",
+            "L1_contract",
+            "L2_fixture_local",
+            "L3_live_single",
+            "L4_authorized_live"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "success",
+            "empty",
+            "config_gated",
+            "failed"
+          ]
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "产物组。三个哈希由调用方写入。",
+      "required": [
+        "report_html_sha256",
+        "sop_html_sha256",
+        "contract_sha256"
+      ],
+      "properties": {
+        "report_html_sha256": {
+          "type": "string"
+        },
+        "sop_html_sha256": {
+          "type": "string"
+        },
+        "contract_sha256": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
