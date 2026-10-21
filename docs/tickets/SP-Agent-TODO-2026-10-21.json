@@ -804,7 +804,7 @@
     "module": "TikTok R1 工具与工作台",
     "task_attribute": "存量需求",
     "solution": "按能力总账 §4.3 跑全量实测或按优先级抽样。23 个 untested 端点与 16 个 TikTok 工具至少各跑一次真实调用，记录 run_id、记录数、错误分类与耗时。",
-    "status": "未开始",
+    "status": "进行中",
     "registered": "2026-10-21",
     "due": "2026-10-24",
     "actual": "",
