@@ -5,7 +5,10 @@ import hashlib
 import json
 import logging
 import traceback
+import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -91,6 +94,43 @@ SLOW_ENDPOINT_TIMEOUT_SECONDS: dict[str, float] = {
 }
 
 
+@dataclass(slots=True)
+class CollectionCallResult:
+    """一次 collector 调用的结果。
+
+    本对象不持有 ORM 对象。调用方按需要取字段。
+    ``status`` 沿用 task_runs 的采集状态词表。
+    证据字段供 RunExecutor 计算等级。B3 取值保守：
+    样本数取采集器返回的原始记录数，独立实体数固定为 0。
+    """
+
+    status: str
+    records_count: int
+    entities_count: int
+    error_message: str | None = None
+    # 本次调用真实外访。
+    live_call: bool = True
+    # 合格记录数。B3 尚未接 G6 门禁，先取原始记录数。
+    sample_n: int = 0
+    # 独立实体数。T4 需要达人数；采集层不计算，先固定为 0。
+    entity_count: int = 0
+    # 有效数据源数。一次调用只有一个来源。
+    source_count: int = 1
+    # 实际时间窗天数。由任务配置的 period 推出。
+    window_days: int = 0
+    # 契约结果。为空时由 status 推导。
+    outcome: str | None = None
+    # 关联的 task_runs 行。
+    task_run_id: uuid.UUID | None = None
+    # 采集器类型与端点类型。run_steps 的两列非空，由调用方直接取用。
+    collector_type: str | None = None
+    endpoint_type: str | None = None
+    unit: str | None = None
+    quantity: Decimal | None = None
+    unit_price: Decimal | None = None
+    total_cost_usd: Decimal | None = None
+
+
 async def execute_collection_task(
     session: AsyncSession,
     workspace: Workspace,
@@ -142,96 +182,19 @@ async def execute_collection_task(
     error_traceback: str | None = None
 
     try:
-        source = await _get_task_source_or_raise(session, workspace, task)
-        assert_collector_allowed(task.collector_type)
-        collector = build_collector(task.collector_type, _collector_config(source, task))
-        collector.validate_config()
-        logs.append(collector_log("collector_config_valid", "Collector config validated."))
-        try:
-            with collection_scope(task.collector_type) as budget:
-                try:
-                    result = await asyncio.wait_for(collector.collect(), timeout=timeout_seconds)
-                finally:
-                    audit = collector_log(
-                        "outbound_policy_checked", "Collection safety policy applied."
-                    )
-                    audit.update(
-                        {
-                            "policy_version": POLICY_VERSION,
-                            "trigger": trigger,
-                            "collector_type": task.collector_type,
-                            "task_run_id": str(run_id),
-                            "task_id": str(task_id),
-                            "http_requests_sent": budget.requests_sent if budget else None,
-                            "approved_hosts_used": sorted(budget.hosts_used) if budget else [],
-                        }
-                    )
-                    logs.append(audit)
-        except TimeoutError as exc:
-            raise CollectorError(
-                f"collection_timeout: collector exceeded {timeout_seconds:g}s"
-            ) from exc
-        logs.extend(result.logs)
-        records_count, entities_count, signals_count = await _store_raw_records(
+        call = await execute_collector_call(
             session=session,
             workspace=workspace,
-            source=source,
             task=task,
-            run=run,
-            raw_records=result.raw_records,
+            task_run=run,
+            trigger=trigger,
+            timeout_seconds=timeout_seconds,
             logs=logs,
         )
-        if signals_count > 0:
-            logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
-        ingestion = await _ingest_tiktok_content_if_needed(
-            session=session,
-            workspace=workspace,
-            task=task,
-            run=run,
-            raw_records=result.raw_records,
-        )
-        if ingestion is not None:
-            projected = (
-                ingestion.creator_snapshots
-                + ingestion.video_snapshots
-                + ingestion.comment_snapshots
-                + ingestion.hashtag_snapshots
-                + ingestion.trend_topics
-                + ingestion.video_hashtags
-                + ingestion.transcripts
-                + ingestion.product_snapshots
-                + ingestion.product_reviews
-                + ingestion.creator_commerce
-            )
-            logs.append(collector_log(
-                "tiktok_content_projected",
-                (
-                    f"Projected {projected} TikTok content observations "
-                    f"(videos={ingestion.videos}, comments={ingestion.comments}, "
-                    f"creators={ingestion.creators}, skipped={ingestion.skipped})."
-                ),
-            ))
-        collected_records = len(result.raw_records)
-        policy = resolve_empty_result_policy(
-            collector_type=task.collector_type,
-            config=collector.config,
-            collector_class=type(collector),
-            task_config=task.config,
-        )
-        status, result_errors, empty_log = _resolve_run_status(
-            result_errors=result.errors,
-            collected_records=collected_records,
-            created_records=records_count,
-            policy=policy,
-            collector_type=task.collector_type,
-            endpoint_type=_endpoint_type(collector.config),
-        )
-        for error in result.errors:
-            logs.append(collector_log("collector_warning", error, level="warning"))
-        if empty_log is not None:
-            logs.append(empty_log)
-        if status in (FAILED, PARTIAL_SUCCESS) and result_errors:
-            error_message = "; ".join(result_errors[:3])
+        records_count = call.records_count
+        entities_count = call.entities_count
+        status = call.status
+        error_message = call.error_message
     except Exception as exc:
         await session.rollback()
         refreshed_workspace = await session.get(Workspace, workspace_id)
@@ -311,6 +274,136 @@ async def execute_collection_task(
     await session.commit()
     await session.refresh(run)
     return run
+
+
+async def execute_collector_call(
+    *,
+    session: AsyncSession,
+    workspace: Workspace,
+    task: CollectionTask,
+    task_run: TaskRun,
+    trigger: str,
+    timeout_seconds: float,
+    logs: list[dict[str, Any]],
+) -> CollectionCallResult:
+    """执行一次 collector 调用。
+
+    本函数负责配置校验、外访策略断言、超时、采集、去重、规范化与信号。
+    日志原地追加到 ``logs``。失败路径也要读这些日志，所以不能用返回值传。
+    本函数不 commit，也不 rollback。事务边界由调用方控制。
+    异常原样抛出。调用方决定如何落库失败状态。
+    """
+    source = await _get_task_source_or_raise(session, workspace, task)
+    assert_collector_allowed(task.collector_type)
+    collector = build_collector(task.collector_type, _collector_config(source, task))
+    collector.validate_config()
+    logs.append(collector_log("collector_config_valid", "Collector config validated."))
+    try:
+        with collection_scope(task.collector_type) as budget:
+            try:
+                result = await asyncio.wait_for(collector.collect(), timeout=timeout_seconds)
+            finally:
+                audit = collector_log(
+                    "outbound_policy_checked", "Collection safety policy applied."
+                )
+                audit.update(
+                    {
+                        "policy_version": POLICY_VERSION,
+                        "trigger": trigger,
+                        "collector_type": task.collector_type,
+                        "task_run_id": str(task_run.id),
+                        "task_id": str(task.id),
+                        "http_requests_sent": budget.requests_sent if budget else None,
+                        "approved_hosts_used": sorted(budget.hosts_used) if budget else [],
+                    }
+                )
+                logs.append(audit)
+    except TimeoutError as exc:
+        raise CollectorError(
+            f"collection_timeout: collector exceeded {timeout_seconds:g}s"
+        ) from exc
+    logs.extend(result.logs)
+    records_count, entities_count, signals_count = await _store_raw_records(
+        session=session,
+        workspace=workspace,
+        source=source,
+        task=task,
+        run=task_run,
+        raw_records=result.raw_records,
+        logs=logs,
+    )
+    if signals_count > 0:
+        logs.append(collector_log("signals_detected", f"Detected {signals_count} signals."))
+    ingestion = await _ingest_tiktok_content_if_needed(
+        session=session,
+        workspace=workspace,
+        task=task,
+        run=task_run,
+        raw_records=result.raw_records,
+    )
+    if ingestion is not None:
+        projected = (
+            ingestion.creator_snapshots
+            + ingestion.video_snapshots
+            + ingestion.comment_snapshots
+            + ingestion.hashtag_snapshots
+            + ingestion.trend_topics
+            + ingestion.video_hashtags
+            + ingestion.transcripts
+            + ingestion.product_snapshots
+            + ingestion.product_reviews
+            + ingestion.creator_commerce
+        )
+        logs.append(collector_log(
+            "tiktok_content_projected",
+            (
+                f"Projected {projected} TikTok content observations "
+                f"(videos={ingestion.videos}, comments={ingestion.comments}, "
+                f"creators={ingestion.creators}, skipped={ingestion.skipped})."
+            ),
+        ))
+    collected_records = len(result.raw_records)
+    policy = resolve_empty_result_policy(
+        collector_type=task.collector_type,
+        config=collector.config,
+        collector_class=type(collector),
+        task_config=task.config,
+    )
+    status, result_errors, empty_log = _resolve_run_status(
+        result_errors=result.errors,
+        collected_records=collected_records,
+        created_records=records_count,
+        policy=policy,
+        collector_type=task.collector_type,
+        endpoint_type=_endpoint_type(collector.config),
+    )
+    for error in result.errors:
+        logs.append(collector_log("collector_warning", error, level="warning"))
+    if empty_log is not None:
+        logs.append(empty_log)
+    error_message = None
+    if status in (FAILED, PARTIAL_SUCCESS) and result_errors:
+        error_message = "; ".join(result_errors[:3])
+    return CollectionCallResult(
+        status=status,
+        records_count=records_count,
+        entities_count=entities_count,
+        error_message=error_message,
+        sample_n=collected_records,
+        window_days=_configured_period_days(task.config),
+        task_run_id=task_run.id,
+        collector_type=task.collector_type,
+        endpoint_type=_endpoint_type(collector.config),
+    )
+
+
+def _configured_period_days(config: dict[str, Any] | None) -> int:
+    """取任务配置的时间窗天数。没有配置时返回 0。"""
+    raw_period = (config or {}).get("period")
+    try:
+        return int(raw_period) if raw_period is not None else 0
+    except (TypeError, ValueError):
+        return 0
 
 
 async def _ingest_tiktok_content_if_needed(
