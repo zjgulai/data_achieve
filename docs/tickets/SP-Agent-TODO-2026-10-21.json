@@ -48,12 +48,12 @@
     "module": "生产运维",
     "task_attribute": "方案迭代",
     "solution": "仅生产 A（43.163.92.244）执行；B 站按 2026-10-21 指示暂缓。B 机从 main 或 release/2026-10-20 部署。应用 045 前备份并取得授权。逐主机读 /api/health 的 schema_revision。A 不 downgrade、不 stamp。046/047 应用前演练回滚。重建 api/console 后必须 restart edge。",
-    "status": "进行中",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-24",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P0",
-    "evidence": "ADR-007 D1 与『相关证据』；README『当前生产状态』；dih-p0-delivery-2026-10-18『发布工具』与『遗留』。"
+    "evidence": "生产 A 已对齐：/api/health 的 schema_revision 与 schema_head 均为 202610210053，与仓库 alembic head 一致；A 的代码提交包含 052/053 迁移。preflight 全部通过：公网 200、API healthy、edge 172.20.0.16、vault key 44、TikTok 工具 16、schema 053。未执行 downgrade 或 stamp。生产 B 按 2026-10-21 指示暂缓；runbook 已写明只部署 A。"
   },
   {
     "ticket_id": "SP-05",
