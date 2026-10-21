@@ -10,6 +10,8 @@ APP_DIR="${SCRAPY_PROD_APP_DIR:-/opt/data-achieve-scrapy/app}"
 ENV_FILE="${SCRAPY_PROD_ENV_FILE:-/opt/data-achieve-scrapy/.env.production}"
 PUBLIC_URL="${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}"
 EXPECTED_EDGE_IP="${SCRAPY_EXPECTED_EDGE_IP:-172.20.0.16}"
+EXPECTED_SCHEMA="${SCRAPY_EXPECTED_SCHEMA:-202610200048}"
+EXPECTED_TOOLS="${SCRAPY_EXPECTED_TIKTOK_TOOLS:-16}"
 FAIL=0
 
 pass() { printf 'PASS  %s\n' "$1"; }
@@ -34,8 +36,8 @@ fi
 echo "== Public =="
 HEALTH="$(curl -sS -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/health" || echo 000)"
 [[ "$HEALTH" == "200" ]] && pass "public health 200" || fail "public health $HEALTH"
-TOOLS="$(curl -sS "$PUBLIC_URL/api/tiktok/tools" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))' 2>/dev/null || echo 0)"
-[[ "$TOOLS" == "16" ]] && pass "TikTok tools = 16" || fail "TikTok tools = $TOOLS (expected 16)"
+AUTH="$(curl -sS -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/tiktok/tools" || echo 000)"
+[[ "$AUTH" == "401" ]] && pass "TikTok tools require authentication" || fail "TikTok tools auth status $AUTH (expected 401)"
 
 echo "== Remote =="
 ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "
@@ -50,6 +52,8 @@ echo -n 'API '
 docker ps --filter name=data_achieve_scrapy_api --format '{{.Status}}'
 echo -n 'VAULT_KEY_LEN '
 docker exec data_achieve_scrapy_api python -c 'import os; print(len(os.environ.get(\"PLATFORM_CREDENTIAL_MASTER_KEY\",\"\")))'
+echo -n 'TOOL_COUNT '
+docker exec data_achieve_scrapy_api python -c 'from data_intelligence_hub.services.tiktok_tools import TOOL_SPECS; print(len(TOOL_SPECS))'
 echo -n 'SCHEMA '
 docker exec data_achieve_scrapy_api python -c 'import urllib.request; print(urllib.request.urlopen(\"http://127.0.0.1:8000/api/health\", timeout=3).read().decode())'
 " > /tmp/scrapy_preflight_remote.txt 2>&1
@@ -70,10 +74,15 @@ if grep -q '^VAULT_KEY_LEN 44' /tmp/scrapy_preflight_remote.txt; then
 else
   fail "vault key missing or invalid (expected 44 chars)"
 fi
-if grep -q '"schema_revision":"202610190045"' /tmp/scrapy_preflight_remote.txt; then
-  pass "schema revision 202610190045"
+if grep -q "^TOOL_COUNT $EXPECTED_TOOLS$" /tmp/scrapy_preflight_remote.txt; then
+  pass "TikTok tools = $EXPECTED_TOOLS"
 else
-  fail "schema revision mismatch"
+  fail "TikTok tool count mismatch"
+fi
+if grep -q "\"schema_revision\":\"$EXPECTED_SCHEMA\"" /tmp/scrapy_preflight_remote.txt; then
+  pass "schema revision $EXPECTED_SCHEMA"
+else
+  fail "schema revision mismatch (expected $EXPECTED_SCHEMA)"
 fi
 
 echo "== Result =="
