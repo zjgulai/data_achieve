@@ -442,6 +442,24 @@ _APIFY_INPUT_BUILDERS: dict[str, Any] = {
 }
 
 
+# Exa 预设端点的缺省参数。调用方传入的同名参数优先。
+# 没有这张表，预设只是标签：search_type 会退回 auto，category 会丢失。
+_EXA_ENDPOINT_DEFAULTS: dict[str, dict[str, Any]] = {
+    "exa_search_lite": {"search_type": "lite"},
+    "exa_search_instant": {"search_type": "instant"},
+    "exa_search_fast": {"search_type": "fast"},
+    "exa_search_news": {"category": "news"},
+    "exa_company_search": {"category": "company"},
+    "exa_people_search": {"category": "people"},
+    "exa_research_paper": {"category": "publication"},
+    "exa_financial_report": {"category": "financial report"},
+    "exa_personal_site": {"category": "personal site"},
+    "exa_deep_lite": {"search_type": "deep-lite"},
+    "exa_deep_research": {"search_type": "deep"},
+    "exa_deep_reasoning": {"search_type": "deep-reasoning"},
+}
+
+
 _APIFY_ENDPOINT_DEFAULTS: dict[str, tuple[str, dict[str, Any]]] = {
     # Social
     "apify_tiktok_scraper": ("clockworks/tiktok-scraper", {}),

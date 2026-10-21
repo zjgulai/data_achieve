@@ -26,6 +26,7 @@ from data_intelligence_hub.collectors.endpoint_catalog import (
     _APIFY_INPUT_BUILDERS,
     _COLLECTOR_TEST_DEFAULTS,
     _ENDPOINT_TO_COLLECTOR,
+    _EXA_ENDPOINT_DEFAULTS,
     build_apify_actor_input,
 )
 from data_intelligence_hub.models.source import Source
@@ -157,6 +158,11 @@ def build_collector_config(
     collector_defaults = _COLLECTOR_TEST_DEFAULTS.get(collector_type)
     if collector_defaults is not None:
         config = {"endpoint_type": endpoint_type, **collector_defaults, **params}
+
+    # Exa 预设端点的缺省参数。调用方参数优先，所以缺省值放在前面。
+    exa_defaults = _EXA_ENDPOINT_DEFAULTS.get(endpoint_type)
+    if exa_defaults is not None:
+        config = {**exa_defaults, **config}
 
     apify_defaults = _APIFY_ENDPOINT_DEFAULTS.get(endpoint_type)
     if apify_defaults is not None:
