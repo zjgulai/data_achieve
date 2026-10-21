@@ -37,7 +37,6 @@ from data_intelligence_hub.schemas.run import (
 router = APIRouter(tags=["runs"])
 
 # 可取消的两个状态。终态不得再取消。
-_CANCELLABLE_STATUSES = frozenset({RunStatus.QUEUED, RunStatus.RUNNING})
 
 
 def _hash_idempotency_key(key: str) -> str:
@@ -182,32 +181,17 @@ async def cancel_run(
     只允许从 ``queued`` 或 ``running`` 转到 ``cancelled``。
     终态返回 409。
     """
-    run = await _get_run_or_404(session, context, run_id)
-    current_status = RunStatus(run.status)
-    if current_status not in _CANCELLABLE_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="run_not_cancellable",
-        )
-
-    try:
-        updated = await runs_repository.transition_run(
-            session,
-            workspace_id=context.workspace.id,
-            run_id=run_id,
-            status=RunStatus.CANCELLED,
-        )
-    except ValueError as exc:
-        # 同一运行可能被并发取消。迁移表会拒绝第二次迁移。
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="run_not_cancellable",
-        ) from exc
-
+    await _get_run_or_404(session, context, run_id)
+    updated = await runs_repository.cancel_run(
+        session,
+        workspace_id=context.workspace.id,
+        run_id=run_id,
+    )
     if updated is None:
+        # 已进入终态，或与 worker 的收尾写入并发。两者都返回 409。
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="run_not_found",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="run_not_cancellable",
         )
 
     await session.commit()

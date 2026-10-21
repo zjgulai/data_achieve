@@ -32,9 +32,13 @@ from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services.collector_service import (
     CollectionCallResult,
     _collection_timeout_seconds,
+    _lock_task_for_run_or_raise,
     execute_collector_call,
 )
 from data_intelligence_hub.services.run_executor import RunRecord
+from data_intelligence_hub.services.task_schedule_policy import (
+    update_retry_state_after_run,
+)
 
 RUN_QUEUE_TRIGGER = "run_queue"
 
@@ -57,6 +61,7 @@ class RunCollectorCall:
         self._trigger = trigger
         self._clock = clock or (lambda: datetime.now(UTC))
         self._task_run_ids: dict[uuid.UUID, uuid.UUID] = {}
+        self._previous_task_status: dict[uuid.UUID, str] = {}
 
     async def __call__(self, run: RunRecord) -> CollectionCallResult:
         workspace_id = _required_uuid(run, "workspace_id")
@@ -72,6 +77,12 @@ class RunCollectorCall:
         )
         if task is None:
             raise RuntimeError(f"采集任务不存在：{task_id}")
+
+        # 与调度器共用同一套任务护栏：
+        # 锁定任务行；已暂停任务拒绝执行；同一任务不得并发执行。
+        task = await _lock_task_for_run_or_raise(self._session, workspace, task)
+        self._previous_task_status[task.id] = task.status
+        task.status = "running"
 
         started_at = self._clock()
         timeout_seconds = _collection_timeout_seconds(task.config)
@@ -122,7 +133,7 @@ class RunCollectorCall:
                     logs=logs,
                 )
         except Exception as exc:
-            await self._mark_failed(task_run, exc, logs)
+            await self._mark_failed(task_run, task, exc, logs)
             raise
 
         await self._mark_finished(task_run, task, result, logs)
@@ -177,11 +188,13 @@ class RunCollectorCall:
         task_run.total_cost_usd = _as_decimal_or_none(result.total_cost_usd)
         task_run.logs = [dict(log) for log in logs]
         flag_modified(task_run, "logs")
+        self._restore_task(task, status=result.status)
         await self._session.flush()
 
     async def _mark_failed(
         self,
         task_run: TaskRun,
+        task: CollectionTask,
         exc: Exception,
         logs: list[dict[str, Any]],
     ) -> None:
@@ -194,7 +207,21 @@ class RunCollectorCall:
         logs.append(collector_log("collector_failed", error_message, level="error"))
         task_run.logs = [dict(log) for log in logs]
         flag_modified(task_run, "logs")
+        self._restore_task(task, status="failed")
         await self._session.flush()
+
+    def _restore_task(self, task: CollectionTask, *, status: str) -> None:
+        """恢复任务状态，并推进最近运行时间、计数与重试状态。"""
+        task.status = self._previous_task_status.pop(task.id, "enabled")
+        task.last_run_at = self._clock()
+        if status in {"success", "ok", "empty"}:
+            task.success_count += 1
+        else:
+            task.failure_count += 1
+        next_config = update_retry_state_after_run(task.config, status)
+        if next_config != task.config:
+            task.config = next_config
+            flag_modified(task, "config")
 
 
 def _required_uuid(run: RunRecord, name: str) -> uuid.UUID:

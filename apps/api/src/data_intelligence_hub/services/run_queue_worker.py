@@ -11,6 +11,8 @@ handler 的契约：
 
 - 正常返回：保留 handler 写入的状态。若仍是 ``running``，放回队列。
 - 抛异常：运行置为 ``failed``。
+- worker 被取消：保留 ``running`` 与租约。租约过期后由其他 worker 接管。
+  立即入队会重复调用上游。
 
 worker 在执行期间自动续期。续期用 ``expected_expires_at`` 做比较并交换。
 租约被接管后旧 worker 无法续期，也不会覆盖新 worker 的状态。
@@ -87,8 +89,9 @@ class RunQueueWorker:
         try:
             await handler(claimed)
         except asyncio.CancelledError:
+            # 停机不等于上游已停止。保留 running 与租约，让租约自然过期后
+            # 由其他 worker 重新领取。立即重新入队会造成第二次上游调用。
             await heartbeat.stop()
-            await self._release(claimed.run_id, final_status=None)
             raise
         except Exception:
             logger.exception("run_queue_handler_failed", run_id=str(claimed.run_id))
@@ -184,8 +187,17 @@ class _LeaseHeartbeat:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logger.exception("run_queue_lease_renewal_failed", run_id=str(self._run_id))
-                renewed = None
+                # 瞬时故障不等于丢租约。只要租约尚未到期就继续续期。
+                logger.exception(
+                    "run_queue_lease_renewal_failed", run_id=str(self._run_id)
+                )
+                if self._clock() >= self._last_expires_at:
+                    self.lost = True
+                    logger.warning(
+                        "run_queue_lease_renewal_lost", run_id=str(self._run_id)
+                    )
+                    return
+                continue
             if renewed is None:
                 self.lost = True
                 logger.warning("run_queue_lease_renewal_lost", run_id=str(self._run_id))

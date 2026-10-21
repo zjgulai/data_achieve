@@ -68,6 +68,22 @@ def test_evaluate_health_payload_accepts_ready_schema() -> None:
     assert detail == ""
 
 
+def test_evaluate_health_payload_follows_image_schema_head() -> None:
+    payload = {
+        **_ready_payload(),
+        "schema_revision": "202610210051",
+        "schema_head": "202610210051",
+    }
+
+    ok, detail = evaluate_health_payload(
+        200,
+        payload,
+        expected_schema=DEFAULT_EXPECTED_SCHEMA,
+    )
+
+    assert ok is True, detail
+
+
 def test_evaluate_health_payload_rejects_wrong_schema_revision() -> None:
     payload = {**_ready_payload(), "schema_revision": "202610200047"}
 

@@ -413,6 +413,7 @@ async def release_lease(
 
     传入 ``worker_id`` 且表有该列时，只释放自己持有的租约。
     旧 worker 不会误释放新 worker。
+    只允许从 ``running`` 释放。终态行或被取消的行不命中。
     返回是否释放成功。
     本函数只 flush，不 commit。
     """
@@ -439,7 +440,18 @@ async def release_lease(
     if final_status is not None and "finished_at" in resolved.c:
         released_values["finished_at"] = current
 
-    conditions: list[Any] = [resolved.c.id == run_id]
+    allowed_statuses: Any
+    if final_status is None:
+        # 执行器已提交终态时，只清租约，不改状态。
+        # 仍在 running 时，放回 queued。
+        allowed_statuses = or_(
+            resolved.c.status == RUN_STATUS_RUNNING,
+            resolved.c.status.in_(sorted(RUN_TERMINAL_STATUSES)),
+        )
+    else:
+        # 写终态只允许从 running 进入，不得覆盖已提交的终态。
+        allowed_statuses = resolved.c.status == RUN_STATUS_RUNNING
+    conditions: list[Any] = [resolved.c.id == run_id, allowed_statuses]
     if worker_id is not None and "worker_id" in resolved.c:
         conditions.append(resolved.c.worker_id == worker_id)
 

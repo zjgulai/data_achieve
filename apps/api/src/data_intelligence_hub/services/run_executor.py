@@ -129,6 +129,28 @@ class InvalidRunTransitionError(ServiceError):
         self.status = status
 
 
+class RunLeaseLostError(ServiceError):
+    """租约已不属于当前 worker。
+
+    旧 worker 不得提交终态。调用方必须回滚本次事务。
+    """
+
+    message = "run_lease_lost"
+
+    def __init__(
+        self,
+        run_id: uuid.UUID,
+        expected_worker: str | None,
+        actual_worker: str | None,
+    ) -> None:
+        super().__init__(
+            f"{self.message}: expected={expected_worker!r} actual={actual_worker!r}"
+        )
+        self.run_id = run_id
+        self.expected_worker = expected_worker
+        self.actual_worker = actual_worker
+
+
 class RunRecord(Protocol):
     """``runs`` 表的一行，外加适配器补齐的执行上下文。
 

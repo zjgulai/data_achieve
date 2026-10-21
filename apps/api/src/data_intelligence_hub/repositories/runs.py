@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Final
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.run import (
@@ -216,6 +216,36 @@ async def list_runs(
     query = query.order_by(Run.created_at.desc(), Run.id)
     result = await session.execute(query)
     return list(result.scalars().all())
+
+
+async def cancel_run(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    run_id: uuid.UUID,
+) -> Run | None:
+    """原子取消一次运行。
+
+    条件更新只命中 ``queued`` 与 ``running``。worker 已提交终态时返回 None。
+    worker 的终态写入也按 worker_id 与状态做围栏，两侧不会互相覆盖。
+    """
+    statement = (
+        update(Run)
+        .where(
+            Run.id == run_id,
+            Run.workspace_id == workspace_id,
+            Run.status.in_((RunStatus.QUEUED.value, RunStatus.RUNNING.value)),
+        )
+        .values(
+            status=RunStatus.CANCELLED.value,
+            finished_at=func.now(),
+        )
+    )
+    result = await session.execute(statement)
+    await session.flush()
+    if int(getattr(result, "rowcount", 0)) == 0:
+        return None
+    return await get_run(session, workspace_id=workspace_id, run_id=run_id)
 
 
 async def transition_run(

@@ -30,6 +30,7 @@ from data_intelligence_hub.services.run_executor import (
     GradeCalculator,
     InvalidRunTransitionError,
     RunExecutor,
+    RunLeaseLostError,
     RunNotFoundError,
     RunRepository,
 )
@@ -182,8 +183,13 @@ class RunWorkerRuntime:
             )
             try:
                 run = await bundle.executor.execute(claimed.run_id)
-            except (RunNotFoundError, InvalidRunTransitionError) as exc:
-                # 运行已被取消或已终结。保留原状态，不要覆盖。
+            except (
+                RunNotFoundError,
+                InvalidRunTransitionError,
+                RunLeaseLostError,
+            ) as exc:
+                # 运行已被取消、已终结，或租约已被接管。
+                # 保留数据库现状，不要覆盖。
                 logger.warning(
                     "run_worker_skip_run",
                     run_id=str(claimed.run_id),

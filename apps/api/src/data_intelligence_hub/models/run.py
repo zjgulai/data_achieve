@@ -135,6 +135,9 @@ class Run(UUIDPrimaryKeyMixin, Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 持有租约的 worker 标识。终态写入用它做围栏：
+    # 租约被接管后，旧 worker 的 UPDATE 不再命中。
+    worker_id: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

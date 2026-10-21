@@ -19,8 +19,9 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.authorization import Authorization
@@ -31,6 +32,8 @@ from data_intelligence_hub.models.workflow_plan import WorkflowVersion
 from data_intelligence_hub.models.workflow_template import WorkflowTemplate
 from data_intelligence_hub.repositories.run_evidence_grades import create_grade
 from data_intelligence_hub.services.run_executor import (
+    InvalidRunTransitionError,
+    RunLeaseLostError,
     RunLedgerWrite,
     RunRecord,
     RunStepWrite,
@@ -187,27 +190,75 @@ class OrmRunRepository:
         )
 
     async def save(self, run: RunRecord) -> None:
-        """写回运行行并 flush。本方法不提交事务。"""
+        """写回运行行并 flush。本方法不提交事务。
+
+        写入前锁定该行并校验两道围栏：
+
+        1. ``worker_id`` 必须仍是本执行器持有的值。租约被接管后，
+           旧 worker 不得覆盖新 worker。
+        2. 数据库里的终态不得被改成另一个终态。取消请求先落库后，
+           执行器的收尾写入不命中。
+        """
         if isinstance(run, OrmRunRecord):
             row = run.row
-            row.status = run.status
-            row.outcome = run.outcome
-            row.evidence_grade = run.evidence_grade
-            row.error_message = run.error_message
-            row.records_count = run.records_count
-            row.started_at = run.started_at
-            row.finished_at = run.finished_at
         elif isinstance(run, Run):
             row = run
         else:
             raise TypeError(f"不支持的运行记录类型：{type(run).__name__}")
 
+        row.status = run.status
+        row.outcome = run.outcome
+        row.evidence_grade = run.evidence_grade
+        row.error_message = run.error_message
+        row.records_count = run.records_count
+        row.started_at = run.started_at
+        row.finished_at = run.finished_at
+        values: dict[str, object] = {
+            "status": row.status,
+            "outcome": row.outcome,
+            "evidence_grade": row.evidence_grade,
+            "error_message": row.error_message,
+            "records_count": row.records_count,
+            "started_at": row.started_at,
+            "finished_at": row.finished_at,
+        }
         if row.status in _TERMINAL_RUN_STATUSES:
             total = await self._session.scalar(
                 select(func.sum(RunStep.total_cost_usd)).where(RunStep.run_id == row.id)
             )
             row.total_cost_usd = _decimal_or_none(total)
-        await self._session.flush()
+            values["total_cost_usd"] = row.total_cost_usd
+
+        # 条件写入不持有行锁。租约被接管后 worker_id 不再匹配；
+        # 取消先落库时 status 不再是 running。两种情况 rowcount 都是 0。
+        conditions: list[Any] = [
+            Run.id == row.id,
+            Run.worker_id == row.worker_id,
+        ]
+        if row.status in _TERMINAL_RUN_STATUSES:
+            conditions.append(Run.status == "running")
+        result = await self._session.execute(
+            update(Run)
+            .where(*conditions)
+            .values(**values)
+            .execution_options(synchronize_session=False)
+        )
+        if int(getattr(result, "rowcount", 0)) == 0:
+            state = (
+                await self._session.execute(
+                    select(Run.worker_id, Run.status).where(Run.id == row.id)
+                )
+            ).first()
+            if state is None:
+                raise InvalidRunTransitionError(row.id, "missing")
+            db_worker, db_status = state
+            if db_worker != row.worker_id:
+                raise RunLeaseLostError(row.id, row.worker_id, db_worker)
+            raise InvalidRunTransitionError(row.id, db_status)
+
+        # 写入已经落库。把 ORM 对象移出会话，避免提交时再写一遍。
+        if row in self._session:
+            self._session.expunge(row)
 
     async def _load_task(self, row: Run) -> CollectionTask | None:
         """按运行的工作区读取绑定的采集任务。"""
