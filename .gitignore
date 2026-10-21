@@ -70,3 +70,6 @@ data_scrapy-apify-docs/
 !apps/web/public/**/*.html
 # 例外：设计稿预览需入库。仓库曾因缺这条丢过文件。
 !docs/design/**/*.html
+
+# Baidu Cloud sync temp files
+*.baiduyun.uploading.cfg

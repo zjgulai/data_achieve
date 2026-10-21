@@ -4886,6 +4886,15 @@ class CollectorDocsResponse(BaseModel):
     success_endpoints: int
 
 
+def _counts_as_success(test_result: EndpointTestResult | None) -> bool:
+    """A success with zero records is an empty result, not a usable endpoint."""
+    return bool(
+        test_result is not None
+        and test_result.last_run_status == "success"
+        and (test_result.last_records_count or 0) > 0
+    )
+
+
 @router.get("/docs", response_model=CollectorDocsResponse)
 async def get_collector_docs(session: SessionDep) -> CollectorDocsResponse:
     catalog = await get_collector_catalog()
@@ -4956,7 +4965,9 @@ async def get_collector_docs(session: SessionDep) -> CollectorDocsResponse:
             total += 1
             if tr:
                 tested += 1
-                if tr.last_run_status == "success":
+                # A successful run with zero records is an empty result, not a
+                # usable endpoint. Counting it as success hides silent breaks.
+                if _counts_as_success(tr):
                     success += 1
         groups.append(CollectorDocsEntry(
             collector_type=entry.collector_type,

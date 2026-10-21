@@ -5,11 +5,11 @@ import hashlib
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict
 
+from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.platform_packages.models import (
     PlatformPackage,
     PlatformPackageCatalog,
 )
-from data_intelligence_hub.api.deps import SessionDep
 from data_intelligence_hub.platform_packages.service import (
     PlatformPackageNotFoundError,
     build_platform_skill_archive,
@@ -38,16 +38,42 @@ class PlatformReleaseResponse(BaseModel):
     download_url: str
 
 
+def _apply_live_verified_counts(
+    packages: tuple[PlatformPackage, ...],
+    statuses: ProviderStatusResponse,
+) -> tuple[PlatformPackage, ...]:
+    """Replace the static catalog count with the latest evidence count."""
+    availability = {
+        endpoint.endpoint_type: endpoint.availability
+        for endpoint in statuses.endpoints
+    }
+    return tuple(
+        package.model_copy(
+            update={
+                "verified_count": sum(
+                    1
+                    for endpoint in package.endpoints
+                    if availability.get(endpoint.endpoint_type) == "verified"
+                )
+            }
+        )
+        for package in packages
+    )
+
+
 @router.get("", response_model=PlatformPackageCatalog)
 async def list_platform_packages(
+    session: SessionDep,
     query: str | None = Query(default=None, max_length=100),
     status: str | None = Query(default=None, pattern="^(verified|pending|disabled)$"),
 ) -> PlatformPackageCatalog:
     catalog = await get_platform_package_catalog()
+    statuses = await get_provider_status(session)
+    packages = _apply_live_verified_counts(catalog.packages, statuses)
     normalized = query.casefold().strip() if query else None
     packages = tuple(
         package
-        for package in catalog.packages
+        for package in packages
         if _matches(package, normalized, status)
     )
     return catalog.model_copy(update={"packages": packages, "platform_count": len(packages)})
@@ -59,11 +85,15 @@ async def read_provider_status(session: SessionDep) -> ProviderStatusResponse:
 
 
 @router.get("/{platform_id}", response_model=PlatformPackage)
-async def read_platform_package(platform_id: str) -> PlatformPackage:
+async def read_platform_package(
+    platform_id: str, session: SessionDep
+) -> PlatformPackage:
     try:
-        return await get_platform_package(platform_id)
+        package = await get_platform_package(platform_id)
     except PlatformPackageNotFoundError as exc:
         raise HTTPException(status_code=404, detail="platform_package_not_found") from exc
+    statuses = await get_provider_status(session)
+    return _apply_live_verified_counts((package,), statuses)[0]
 
 
 @router.get("/{platform_id}/playbook", response_model=PlatformPlaybookResponse)
