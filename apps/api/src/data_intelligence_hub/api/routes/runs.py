@@ -86,6 +86,25 @@ async def create_run(
     """
     workspace_id = context.workspace.id
 
+    idempotency_key_hash = (
+        _hash_idempotency_key(body.idempotency_key)
+        if body.idempotency_key is not None
+        else None
+    )
+
+    # 幂等查重必须排在全部校验之前。
+    # 重放是「同一个请求再发一次」，它不该重新过一次当下的前置条件：
+    # 首次创建成功后任务可能被暂停，此时重放应返回已有运行，而不是 409。
+    # ``services/task_service.py`` 的 ``run_task_now`` 也是这个顺序。
+    if idempotency_key_hash is not None:
+        existing = await runs_repository.find_by_idempotency_key(
+            session,
+            workspace_id=workspace_id,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing is not None:
+            return RunResponse.model_validate(existing)
+
     if body.task_id is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
