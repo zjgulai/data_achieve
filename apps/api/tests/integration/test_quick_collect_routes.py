@@ -212,6 +212,23 @@ async def test_quick_collect_keeps_endpoint_type_in_task_config(
     body = response.json()
     assert body["status"] == "success"
     assert body["records_count"] == 1
+    assert len(body["records"]) == 1
+    assert body["records"][0]["record_type"]
+    assert body["records"][0]["content_truncated"] is False
+    assert body["output"]["records_returned"] == 1
+    assert body["output"]["records_truncated"] is False
+    assert body["output"]["limit"] == 20
+    assert set(body["usage"]) == {
+        "provider",
+        "provider_run_id",
+        "unit",
+        "quantity",
+        "unit_price",
+        "total_cost_usd",
+    }
+    assert body["timing"]["started_at"]
+    assert body["timing"]["finished_at"]
+    assert body["timing"]["duration_ms"] is not None
 
     session_factory = client.session_factory  # type: ignore[attr-defined]
     from data_intelligence_hub.models import CollectionTask, Source

@@ -33,6 +33,7 @@ from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.collectors import get_collector_by_type
 from data_intelligence_hub.repositories.projects import get_project
+from data_intelligence_hub.repositories.raw_records import list_raw_records
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.collector_catalog import (
     ensure_collectors_seeded,
@@ -48,6 +49,7 @@ from data_intelligence_hub.services.exceptions import (
     QuickCollectUnknownEndpointError,
     QuickCollectUnknownProjectError,
 )
+from data_intelligence_hub.services.raw_record_service import build_record_preview
 from data_intelligence_hub.services.run_queue import enqueue_run
 
 # 执行元数据由服务端拥有，绝不能变成 Actor input。
@@ -74,6 +76,10 @@ class QuickCollectRequest(BaseModel):
     tool_call: dict[str, Any] | None = None
 
 
+# 回执里最多返回多少条原始记录。完整记录仍可按 task_run_id 分页查询。
+QUICK_COLLECT_RECORDS_PREVIEW_LIMIT = 20
+
+
 class QuickCollectResponse(BaseModel):
     task_run_id: uuid.UUID
     task_id: uuid.UUID
@@ -81,6 +87,11 @@ class QuickCollectResponse(BaseModel):
     status: str
     records_count: int
     error_message: str | None
+    # 一次回执即可判断结果、看到样本、读到用量与耗时。
+    records: list[dict[str, Any]] = Field(default_factory=list)
+    output: dict[str, Any] = Field(default_factory=dict)
+    usage: dict[str, Any] = Field(default_factory=dict)
+    timing: dict[str, Any] = Field(default_factory=dict)
 
 
 class QuickCollectQueuedResponse(BaseModel):
@@ -99,6 +110,7 @@ class QuickCollectOutcome:
     run: TaskRun
     task_id: uuid.UUID
     source_id: uuid.UUID
+    records: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -193,10 +205,17 @@ async def run_quick_collect(
     except Exception as exc:
         raise QuickCollectExecutionError(str(exc)) from exc
 
+    preview = await list_raw_records(
+        session,
+        workspace_id=prepared.workspace.id,
+        task_run_id=run.id,
+        limit=QUICK_COLLECT_RECORDS_PREVIEW_LIMIT,
+    )
     return QuickCollectOutcome(
         run=run,
         task_id=prepared.task_id,
         source_id=prepared.source_id,
+        records=tuple(build_record_preview(record) for record in preview),
     )
 
 
@@ -312,14 +331,50 @@ async def _prepare_quick_collect(
     )
 
 
+def _decimal_text(value: Any) -> str | None:
+    return None if value is None else str(value)
+
+
+def _datetime_text(value: Any) -> str | None:
+    return None if value is None else value.isoformat()
+
+
 def to_response(outcome: QuickCollectOutcome) -> QuickCollectResponse:
+    run = outcome.run
+    duration_ms: int | None = None
+    if run.started_at is not None and run.finished_at is not None:
+        duration_ms = round(
+            (run.finished_at - run.started_at).total_seconds() * 1000
+        )
+    records = list(outcome.records)
     return QuickCollectResponse(
-        task_run_id=outcome.run.id,
+        task_run_id=run.id,
         task_id=outcome.task_id,
         source_id=outcome.source_id,
-        status=outcome.run.status,
-        records_count=outcome.run.records_count,
-        error_message=outcome.run.error_message,
+        status=run.status,
+        records_count=run.records_count,
+        error_message=run.error_message,
+        records=records,
+        output={
+            "records_count": run.records_count,
+            "entities_count": run.entities_count,
+            "records_returned": len(records),
+            "records_truncated": run.records_count > len(records),
+            "limit": QUICK_COLLECT_RECORDS_PREVIEW_LIMIT,
+        },
+        usage={
+            "provider": run.provider,
+            "provider_run_id": run.provider_run_id,
+            "unit": run.unit,
+            "quantity": _decimal_text(run.quantity),
+            "unit_price": _decimal_text(run.unit_price),
+            "total_cost_usd": _decimal_text(run.total_cost_usd),
+        },
+        timing={
+            "started_at": _datetime_text(run.started_at),
+            "finished_at": _datetime_text(run.finished_at),
+            "duration_ms": duration_ms,
+        },
     )
 
 
