@@ -42,6 +42,12 @@ class ProjectApiKeyContext:
     project_id: uuid.UUID
     key_prefix: str
     label: str
+    tool_allowlist: tuple[str, ...]
+    daily_collect_quota: int
+
+    def allows_tool(self, tool_name: str) -> bool:
+        """白名单外的工具不得调用。"""
+        return tool_name in self.tool_allowlist
 
 
 def _bearer_value(authorization: str) -> str:
@@ -137,6 +143,8 @@ class BearerTokenMiddleware:
             project_id=identity.project_id,
             key_prefix=identity.key_prefix,
             label=identity.label,
+            tool_allowlist=identity.tool_allowlist,
+            daily_collect_quota=identity.daily_collect_quota,
         )
 
     @staticmethod

@@ -58,8 +58,19 @@ class MCPGovernance:
         tool_name: str,
         *,
         is_collect: bool = False,
+        daily_collect_limit: int | None = None,
     ) -> AsyncIterator[GovernanceCall]:
+        """执行一次受治理的调用。
+
+        ``daily_collect_limit`` 是项目密钥的每日采集额度。
+        它只收紧上限，不放宽全局上限。
+        """
         token_id = hashlib.sha256(token.encode()).hexdigest()[:12]
+        daily_limit = self._limits.daily_collects
+        daily_code = "mcp_daily_collect_budget_exceeded"
+        if daily_collect_limit is not None and daily_collect_limit < daily_limit:
+            daily_limit = daily_collect_limit
+            daily_code = "project_daily_collect_quota_exceeded"
         async with self._lock:
             state = self._states[token_id]
             now = self._now()
@@ -73,8 +84,8 @@ class MCPGovernance:
             if state.collect_day != now.date():
                 state.collect_day = now.date()
                 state.collect_count = 0
-            if is_collect and state.collect_count >= self._limits.daily_collects:
-                raise MCPGovernanceError("mcp_daily_collect_budget_exceeded", token_id)
+            if is_collect and state.collect_count >= daily_limit:
+                raise MCPGovernanceError(daily_code, token_id)
             state.calls.append(now)
             state.active += 1
             if is_collect:
