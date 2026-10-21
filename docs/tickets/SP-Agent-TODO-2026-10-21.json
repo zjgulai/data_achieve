@@ -81,7 +81,7 @@
     "due": "2026-10-24",
     "actual": "2026-10-21",
     "priority": "P0",
-    "evidence": "生产 A：App Secret 已轮换。新 Secret 在写 env 前验证通过，token code=0；轮换后 API 健康、edge 固定 IP 172.20.0.16 未变、回调 challenge 正常、机器人发消息成功。白名单 8 人；默认项目切换为「数说 Agent」08872350-5ac8-4487-832a-775825072108，并已写入 demo seed 与默认值。飞书后台事件订阅 im.message.receive_v1 与回调 URL 已由用户确认。旧 Secret 已被飞书判为 invalid。"
+    "evidence": "生产 A：App Secret 已轮换。新 Secret 在写 env 前验证通过，token code=0；轮换后 API 健康、edge 固定 IP 172.20.0.16 未变、回调 challenge 正常、机器人发消息成功。白名单 8 人；默认项目切换为「数说 Agent」08872350-5ac8-4487-832a-775825072108，并已写入 demo seed 与默认值。飞书后台事件订阅 im.message.receive_v1 与回调 URL 已由用户确认。旧 Secret 已被飞书判为 invalid。用户私聊发送「帮助」已收到回复，事件接收链路实测通过。"
   },
   {
     "ticket_id": "SP-07",
