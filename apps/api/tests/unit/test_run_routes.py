@@ -1,6 +1,6 @@
 """``/api/runs`` 五个端点的路由级单元测试。
 
-覆盖六条语义：
+覆盖十一条语义：
 
 1. 无 cookie 一律 401。
 2. 跨工作区读取一律 404。
@@ -8,6 +8,11 @@
 4. 同幂等键二次创建返回同一 id。
 5. 取消终态运行返回 409。
 6. outcome 聚合字段齐全。
+7. 缺少 ``task_id`` 返回 422 业务码，且 ``runs`` 表行数不变。
+8. ``task_id`` 指向不存在的任务时返回 404，且 ``runs`` 表行数不变。
+9. ``task_id`` 属于别的 workspace 时返回 404，且 ``runs`` 表行数不变。
+10. ``task_id`` 属于同 workspace 的另一个 project 时返回 404，且 ``runs`` 表行数不变。
+11. 采集任务未启用时返回 409，且 ``runs`` 表行数不变。
 """
 
 from __future__ import annotations
@@ -36,6 +41,8 @@ from data_intelligence_hub.models.run import (
     RunStatus,
     RunStepStatus,
 )
+from data_intelligence_hub.models.source import Source
+from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 from data_intelligence_hub.repositories.runs import add_step, create_run
@@ -49,6 +56,7 @@ class SeededWorkspace(NamedTuple):
     user_id: uuid.UUID
     workspace_id: uuid.UUID
     project_id: uuid.UUID
+    task_id: uuid.UUID
 
 
 @pytest_asyncio.fixture()
@@ -110,12 +118,39 @@ async def _seed_workspace(
             owner_id=user.id,
         )
         session.add(project)
+        await session.flush()
+
+        source = Source(
+            workspace_id=workspace.id,
+            project_id=project.id,
+            name=f"{name} Source",
+            type="generic_web",
+            url=None,
+            config={"endpoint_type": "generic_web"},
+            schedule_cron=None,
+            enabled=True,
+        )
+        session.add(source)
+        await session.flush()
+
+        task = CollectionTask(
+            workspace_id=workspace.id,
+            project_id=project.id,
+            source_id=source.id,
+            collector_type="generic_web",
+            name=f"{name} Task",
+            schedule_cron=None,
+            status="enabled",
+            config={"endpoint_type": "generic_web"},
+        )
+        session.add(task)
         await session.commit()
 
         return SeededWorkspace(
             user_id=user.id,
             workspace_id=workspace.id,
             project_id=project.id,
+            task_id=task.id,
         )
 
 
@@ -123,11 +158,27 @@ def _authenticate(client: AsyncClient, user_id: uuid.UUID) -> None:
     client.cookies.set("access_token", create_access_token(user_id))
 
 
+async def _run_count(client: AsyncClient, workspace_id: uuid.UUID) -> int:
+    """返回一个工作区的运行行数。用于断言拒绝请求没有副作用。"""
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        count = await session.scalar(
+            select(func.count()).select_from(Run).where(Run.workspace_id == workspace_id)
+        )
+    return int(count or 0)
+
+
 _AUTH_REQUIRED_CASES = [
     pytest.param(
         "POST",
         "/api/runs",
-        {"json": {"project_id": str(uuid.uuid4()), "endpoint_type": "generic_web"}},
+        {
+            "json": {
+                "project_id": str(uuid.uuid4()),
+                "task_id": str(uuid.uuid4()),
+                "endpoint_type": "generic_web",
+            }
+        },
         id="create",
     ),
     pytest.param("GET", f"/api/runs/{_MISSING_RUN_ID}", {}, id="detail"),
@@ -161,6 +212,7 @@ async def test_create_run_starts_queued(client: AsyncClient) -> None:
         "/api/runs",
         json={
             "project_id": str(seed.project_id),
+            "task_id": str(seed.task_id),
             "endpoint_type": "generic_web",
             "trigger": "api",
         },
@@ -172,6 +224,7 @@ async def test_create_run_starts_queued(client: AsyncClient) -> None:
     assert body["outcome"] is None
     assert body["workspace_id"] == str(seed.workspace_id)
     assert body["project_id"] == str(seed.project_id)
+    assert body["task_id"] == str(seed.task_id)
     assert body["trigger"] == "api"
 
     run_id = uuid.UUID(body["id"])
@@ -181,6 +234,7 @@ async def test_create_run_starts_queued(client: AsyncClient) -> None:
         assert stored is not None
         assert stored.status == "queued"
         assert stored.workspace_id == seed.workspace_id
+        assert stored.task_id == seed.task_id
 
     detail = await client.get(f"/api/runs/{run_id}")
     assert detail.status_code == 200
@@ -195,6 +249,7 @@ async def test_idempotency_key_returns_same_run(client: AsyncClient) -> None:
 
     payload = {
         "project_id": str(seed.project_id),
+        "task_id": str(seed.task_id),
         "endpoint_type": "generic_web",
         "idempotency_key": "same-key-001",
     }
@@ -254,10 +309,140 @@ async def test_cross_workspace_access_returns_404(client: AsyncClient) -> None:
         "/api/runs",
         json={
             "project_id": str(stranger.project_id),
+            "task_id": str(stranger.task_id),
             "endpoint_type": "generic_web",
         },
     )
     assert create.status_code == 404
+    assert create.json()["detail"] == "project_not_found"
+
+
+@pytest.mark.asyncio
+async def test_create_run_without_task_id_returns_422(client: AsyncClient) -> None:
+    """缺少 task_id 必须在创建阶段拒绝。业务码必须稳定。"""
+    seed = await _seed_workspace(client, slug="no-task-ws", name="No Task")
+    _authenticate(client, seed.user_id)
+    before = await _run_count(client, seed.workspace_id)
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(seed.project_id),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "run_binding_required"
+    assert await _run_count(client, seed.workspace_id) == before
+
+
+@pytest.mark.asyncio
+async def test_create_run_with_unknown_task_id_returns_404(client: AsyncClient) -> None:
+    """task_id 不存在必须返回 404，且 runs 表行数不变。"""
+    seed = await _seed_workspace(client, slug="missing-task-ws", name="Missing Task")
+    _authenticate(client, seed.user_id)
+    before = await _run_count(client, seed.workspace_id)
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(seed.project_id),
+            "task_id": str(uuid.uuid4()),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "task_not_found"
+    assert await _run_count(client, seed.workspace_id) == before
+
+
+@pytest.mark.asyncio
+async def test_create_run_with_foreign_task_id_returns_404(client: AsyncClient) -> None:
+    """别的 workspace 的 task_id 必须返回 404，且 runs 表行数不变。"""
+    owner = await _seed_workspace(client, slug="task-owner-ws", name="Task Owner")
+    stranger = await _seed_workspace(client, slug="task-stranger-ws", name="Task Stranger")
+    _authenticate(client, owner.user_id)
+    before = await _run_count(client, owner.workspace_id)
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(owner.project_id),
+            "task_id": str(stranger.task_id),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "task_not_found"
+    assert await _run_count(client, owner.workspace_id) == before
+
+
+@pytest.mark.asyncio
+async def test_create_run_with_task_from_other_project_returns_404(
+    client: AsyncClient,
+) -> None:
+    """同 workspace 的另一个 project 下的 task_id 必须返回 404，且 runs 表行数不变。"""
+    seed = await _seed_workspace(client, slug="task-project-ws", name="Task Project")
+
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        other_project = Project(
+            workspace_id=seed.workspace_id,
+            name="Other Project",
+            domain="ecommerce",
+            owner_id=seed.user_id,
+        )
+        session.add(other_project)
+        await session.commit()
+        other_project_id = other_project.id
+
+    _authenticate(client, seed.user_id)
+    before = await _run_count(client, seed.workspace_id)
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(other_project_id),
+            "task_id": str(seed.task_id),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "task_not_found"
+    assert await _run_count(client, seed.workspace_id) == before
+
+
+@pytest.mark.asyncio
+async def test_create_run_with_disabled_task_returns_409(client: AsyncClient) -> None:
+    """未启用的任务必须在创建阶段拒绝，且 runs 表行数不变。"""
+    seed = await _seed_workspace(client, slug="paused-task-ws", name="Paused Task")
+
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        task = await session.get(CollectionTask, seed.task_id)
+        assert task is not None
+        task.status = "paused"
+        await session.commit()
+
+    _authenticate(client, seed.user_id)
+    before = await _run_count(client, seed.workspace_id)
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(seed.project_id),
+            "task_id": str(seed.task_id),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "task_not_runnable"
+    assert await _run_count(client, seed.workspace_id) == before
 
 
 @pytest.mark.asyncio

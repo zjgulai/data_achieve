@@ -125,8 +125,11 @@ async def create_run(
 ) -> Run:
     """插入一次运行并 flush。
 
+    ``task_id`` 可空是存储层属性。所有对外入口必须拦住缺少绑定来源的请求。
+    计划型运行将来会带 ``plan_id`` 而不是 ``task_id``。
+
     带幂等键时先查后插。已存在时返回原行，不新增。
-    数据库唯一索引兜住并发下的重复插入。
+    数据库唯一索引拦住并发下的重复插入。
     """
     if idempotency_key_hash is not None:
         existing = await session.scalar(

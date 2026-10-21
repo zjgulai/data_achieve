@@ -1,7 +1,7 @@
 """``/api/runs`` 的运行端点。
 
 五个端点都按 ``context.workspace`` 隔离。
-跨工作区一律返回 404。不返回 403，避免泄露资源存在性。
+资源不属于当前工作区时，端点返回 404。端点不返回 403，避免泄露资源存在性。
 所有端点都使用 ``get_authenticated_context``。无有效 cookie 一律 401。
 
 路由层负责提交事务。仓储只调用 ``flush``。
@@ -72,27 +72,43 @@ async def create_run(
 ) -> RunResponse:
     """创建一行 ``status=queued`` 的运行。
 
-    先确认项目属于当前工作区。跨工作区返回 404。
-    带幂等键时先查后插。并发重复由部分唯一索引兜底。
-    冲突后回滚并重查，返回已有行。
+    请求缺少绑定来源时，本端点返回 422。校验失败时，本端点不写入 ``runs`` 表。
+    项目不属于当前工作区时，本端点返回 404。
+    采集任务不属于当前工作区时，本端点返回 404。
+    采集任务不属于请求指定的项目时，本端点返回 404。
+    采集任务未启用时，本端点返回 409。
+    带幂等键时，本端点先查后插。部分唯一索引拦住并发重复插入。
+    并发冲突时，本端点回滚并重查，返回已有行。
 
     ``runs`` 表没有 ``endpoint_type`` 列。本端点只校验该字段。
-    执行时的端点由绑定的采集任务决定。见 ``services/run_executor.py``。
+    绑定的采集任务决定执行时的 ``endpoint_type`` 与采集器配置。
+    见 ``services/run_executor.py``。
     """
     workspace_id = context.workspace.id
+
+    if body.task_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="run_binding_required",
+        )
 
     if await get_project(session, workspace_id, body.project_id) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="project_not_found",
         )
-    if body.task_id is not None:
-        task = await get_task(session, workspace_id, body.task_id)
-        if task is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="task_not_found",
-            )
+
+    task = await get_task(session, workspace_id, body.task_id)
+    if task is None or task.project_id != body.project_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="task_not_found",
+        )
+    if task.status != "enabled":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="task_not_runnable",
+        )
 
     idempotency_key_hash = (
         _hash_idempotency_key(body.idempotency_key)
@@ -131,7 +147,7 @@ async def get_run(
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> RunResponse:
-    """按运行 ID 返回详情。跨工作区返回 404。"""
+    """按运行 ID 返回详情。运行不属于当前工作区时，本端点返回 404。"""
     run = await _get_run_or_404(session, context, run_id)
     return RunResponse.model_validate(run)
 
@@ -185,7 +201,7 @@ async def list_run_steps(
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_authenticated_context)],
 ) -> list[RunStepResponse]:
-    """按 ``step_index`` 升序返回运行的步骤。跨工作区返回 404。"""
+    """按 ``step_index`` 升序返回运行的步骤。运行不属于当前工作区时，本端点返回 404。"""
     run = await _get_run_or_404(session, context, run_id)
     steps = await runs_repository.list_steps(session, run_id=run.id)
     return [RunStepResponse.model_validate(step) for step in steps]

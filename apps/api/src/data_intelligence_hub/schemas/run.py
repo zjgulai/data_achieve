@@ -19,13 +19,21 @@ from data_intelligence_hub.models.run import RunOutcome, RunStatus, RunStepStatu
 class RunCreateRequest(BaseModel):
     """创建运行的请求体。
 
+    ``task_id`` 可为空。创建端点负责校验绑定来源。
+    绑定的采集任务决定执行时的 ``endpoint_type`` 与采集器配置。
     ``endpoint_type`` 必须非空，最长 80 字符。
     ``trigger`` 只允许三个来源。
     ``idempotency_key`` 由客户端提供。同一工作区内同一个键只建一行。
     """
 
     project_id: uuid.UUID
-    task_id: uuid.UUID | None = None
+    task_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "当前版本只接受 `task_id` 作为绑定来源。"
+            "一次运行可以包含多个采集步骤。计划型运行在后续批次加入，届时增加 `plan_id`。"
+        ),
+    )
     endpoint_type: str = Field(min_length=1, max_length=80)
     trigger: Literal["manual", "schedule", "api"] = "api"
     idempotency_key: str | None = Field(default=None, min_length=1, max_length=200)
