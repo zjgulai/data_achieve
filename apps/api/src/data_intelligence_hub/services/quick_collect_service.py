@@ -48,6 +48,7 @@ from data_intelligence_hub.services.exceptions import (
     QuickCollectUnknownEndpointError,
     QuickCollectUnknownProjectError,
 )
+from data_intelligence_hub.services.run_queue import enqueue_run
 
 # 执行元数据由服务端拥有，绝不能变成 Actor input。
 RESERVED_PARAM_KEYS = frozenset(
@@ -82,6 +83,15 @@ class QuickCollectResponse(BaseModel):
     error_message: str | None
 
 
+class QuickCollectQueuedResponse(BaseModel):
+    """异步提交的返回体。状态固定为 queued。"""
+
+    run_id: uuid.UUID
+    task_id: uuid.UUID
+    source_id: uuid.UUID
+    status: str
+
+
 @dataclass(frozen=True)
 class QuickCollectOutcome:
     """服务返回值。与响应模型分开，便于调用方按需取字段。"""
@@ -89,6 +99,29 @@ class QuickCollectOutcome:
     run: TaskRun
     task_id: uuid.UUID
     source_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class QuickCollectQueuedOutcome:
+    """异步提交的返回值。对应 ``runs`` 里的一行 queued。"""
+
+    run_id: uuid.UUID
+    task_id: uuid.UUID
+    source_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class PreparedQuickCollect:
+    """一次 quick-collect 的落库结果。
+
+    Source 与 CollectionTask 已 flush。事务尚未提交。
+    """
+
+    workspace: Workspace
+    task: CollectionTask
+    source_id: uuid.UUID
+    task_id: uuid.UUID
+    collector_type: str
 
 
 def build_collector_config(
@@ -140,10 +173,74 @@ async def run_quick_collect(
     *,
     workspace: Workspace | None = None,
 ) -> QuickCollectOutcome:
-    """执行一次 quick-collect。
+    """同步执行一次 quick-collect。
 
     workspace 为 None 时回退 demo workspace。HTTP 路由必须显式传入，
     否则 fail-closed 鉴权形同虚设。
+
+    同步路径的行为保持不变：先落 Source 与 Task，再同步执行，最后返回 TaskRun。
+    """
+    prepared = await _prepare_quick_collect(session, body, workspace)
+    await session.commit()
+
+    try:
+        run: TaskRun = await execute_collection_task(
+            session,
+            prepared.workspace,
+            prepared.task,
+            trigger="quick_collect",
+        )
+    except Exception as exc:
+        raise QuickCollectExecutionError(str(exc)) from exc
+
+    return QuickCollectOutcome(
+        run=run,
+        task_id=prepared.task_id,
+        source_id=prepared.source_id,
+    )
+
+
+async def enqueue_quick_collect(
+    session: AsyncSession,
+    body: QuickCollectRequest,
+    *,
+    workspace: Workspace | None = None,
+) -> QuickCollectQueuedOutcome:
+    """异步提交一次 quick-collect。
+
+    Source、Task 与 ``runs`` 行在同一个事务里提交。
+    worker 用 ``runs.task_id`` 找到要执行的任务。
+
+    ``runs`` 表不可用时抛 ``RunQueueUnavailableError``。
+    路由把它映射为 503。同步路径不受影响。
+    """
+    prepared = await _prepare_quick_collect(session, body, workspace)
+    run_id = await enqueue_run(
+        session,
+        values={
+            "workspace_id": prepared.workspace.id,
+            "project_id": body.project_id,
+            "task_id": prepared.task_id,
+            "trigger": "api",
+        },
+    )
+    await session.commit()
+    return QuickCollectQueuedOutcome(
+        run_id=run_id,
+        task_id=prepared.task_id,
+        source_id=prepared.source_id,
+    )
+
+
+async def _prepare_quick_collect(
+    session: AsyncSession,
+    body: QuickCollectRequest,
+    workspace: Workspace | None,
+) -> PreparedQuickCollect:
+    """校验请求并落 Source 与 CollectionTask。
+
+    只 flush，不 commit。调用方决定事务边界。
+    同步路径在提交后执行。异步路径在同一次提交里再写一行 runs。
     """
     resolved = workspace if workspace is not None else await get_demo_workspace(session)
     if resolved is None:
@@ -205,18 +302,14 @@ async def run_quick_collect(
     )
     session.add(task)
     await session.flush()
-    source_id = source.id
-    task_id = task.id
-    await session.commit()
 
-    try:
-        run: TaskRun = await execute_collection_task(
-            session, resolved, task, trigger="quick_collect"
-        )
-    except Exception as exc:
-        raise QuickCollectExecutionError(str(exc)) from exc
-
-    return QuickCollectOutcome(run=run, task_id=task_id, source_id=source_id)
+    return PreparedQuickCollect(
+        workspace=resolved,
+        task=task,
+        source_id=source.id,
+        task_id=task.id,
+        collector_type=collector_type,
+    )
 
 
 def to_response(outcome: QuickCollectOutcome) -> QuickCollectResponse:
@@ -227,4 +320,13 @@ def to_response(outcome: QuickCollectOutcome) -> QuickCollectResponse:
         status=outcome.run.status,
         records_count=outcome.run.records_count,
         error_message=outcome.run.error_message,
+    )
+
+
+def to_queued_response(outcome: QuickCollectQueuedOutcome) -> QuickCollectQueuedResponse:
+    return QuickCollectQueuedResponse(
+        run_id=outcome.run_id,
+        task_id=outcome.task_id,
+        source_id=outcome.source_id,
+        status="queued",
     )
