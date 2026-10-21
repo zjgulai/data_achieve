@@ -38,6 +38,9 @@ from data_intelligence_hub.api.routes.platform_credentials import (
 from data_intelligence_hub.api.routes.platform_packages import (
     router as platform_packages_router,
 )
+from data_intelligence_hub.api.routes.project_api_keys import (
+    router as project_api_keys_router,
+)
 from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
@@ -176,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(collectors_router, prefix="/api/collectors")
     app.include_router(quick_collect_router, prefix="/api/quick-collect")
     app.include_router(projects_router, prefix="/api/projects")
+    app.include_router(project_api_keys_router, prefix="/api/projects")
     app.include_router(workflow_plans_router, prefix="/api/projects")
     # 这三个模块早已实现并有集成测试覆盖，但从未挂载，
     # 于是它们的端点一律返回 404——测试断言 404 != 201 的根因。

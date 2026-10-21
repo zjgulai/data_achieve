@@ -14,7 +14,10 @@ from mcp.server.mcpserver import Context
 
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
-from data_intelligence_hub.repositories.project_api_keys import find_by_id
+from data_intelligence_hub.repositories.project_api_keys import (
+    consume_daily_quota,
+    find_by_id,
+)
 
 EXPENSIVE_TOOLS = frozenset({"deep_research"})
 
@@ -38,3 +41,15 @@ async def enforce_tool_policy(context: Context, tool_name: str) -> None:
     allowlist = [str(item) for item in (key.tool_allowlist or [])]
     if not tool_allowed(tool_name, allowlist):
         raise ValueError("tool_not_allowed")
+
+
+async def enforce_quota(context: Context) -> None:
+    """项目密钥的日额度硬拦。超额度拒绝；全局 token 不计数。"""
+    identity = project_api_key_context(context)
+    if identity is None:
+        return
+    async with async_session_factory() as session:
+        allowed = await consume_daily_quota(session, identity.key_id)
+        await session.commit()
+    if not allowed:
+        raise ValueError("quota_exceeded")

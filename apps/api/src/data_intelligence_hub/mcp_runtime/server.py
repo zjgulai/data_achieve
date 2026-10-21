@@ -20,7 +20,10 @@ from data_intelligence_hub.mcp_runtime.run_service import (
     stop_run,
 )
 from data_intelligence_hub.mcp_runtime.runtime import governed_tool
-from data_intelligence_hub.mcp_runtime.tool_policy import enforce_tool_policy
+from data_intelligence_hub.mcp_runtime.tool_policy import (
+    enforce_quota,
+    enforce_tool_policy,
+)
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -260,13 +263,25 @@ async def _run_tool(
     params: dict[str, object],
 ) -> dict[str, object]:
     await enforce_tool_policy(context, tool_name)
+    await enforce_quota(context)
     result = await collect_capability(
         endpoint_type,
         _parse_project_id(project_id),
         params,
         workspace_id=_workspace_binding(context),
+        tool_call=_tool_call_metadata(context, tool_name),
     )
     return result.model_dump(mode="json")
+
+
+def _tool_call_metadata(context: Context, tool_name: str) -> dict[str, object]:
+    """运行配置里的调用来源。项目密钥记 key_id，便于按密钥审计与对账。"""
+    identity = project_api_key_context(context)
+    metadata: dict[str, object] = {"origin": "mcp", "tool": tool_name}
+    if identity is not None:
+        metadata["key_id"] = str(identity.key_id)
+        metadata["project_id"] = str(identity.project_id)
+    return metadata
 
 
 @_tool(

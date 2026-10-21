@@ -12,7 +12,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import case, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.project_api_key import ProjectApiKey
@@ -108,4 +108,43 @@ async def find_by_id(session: AsyncSession, key_id: uuid.UUID) -> ProjectApiKey 
     return result.scalar_one_or_none()
 
 
-__all__ = ["create_key", "find_by_hash", "find_by_id", "list_keys", "revoke_key"]
+async def consume_daily_quota(session: AsyncSession, key_id: uuid.UUID) -> bool:
+    """原子占用一次当日额度。
+
+    跨日或当日未满时计数加一并返回 True；当日已满返回 False。
+    判定写进 UPDATE 的 WHERE：先读后写会留下竞态。
+    """
+    today = datetime.now(UTC).date()
+    statement = (
+        update(ProjectApiKey)
+        .where(
+            ProjectApiKey.id == key_id,
+            ProjectApiKey.revoked_at.is_(None),
+            or_(
+                ProjectApiKey.quota_date.is_(None),
+                ProjectApiKey.quota_date != today,
+                ProjectApiKey.quota_used < ProjectApiKey.daily_collect_quota,
+            ),
+        )
+        .values(
+            quota_used=case(
+                (ProjectApiKey.quota_date == today, ProjectApiKey.quota_used + 1),
+                else_=1,
+            ),
+            quota_date=today,
+            last_used_at=datetime.now(UTC),
+        )
+        .returning(ProjectApiKey.quota_used)
+    )
+    row = (await session.execute(statement)).scalar_one_or_none()
+    return row is not None
+
+
+__all__ = [
+    "consume_daily_quota",
+    "create_key",
+    "find_by_hash",
+    "find_by_id",
+    "list_keys",
+    "revoke_key",
+]
