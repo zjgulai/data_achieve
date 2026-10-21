@@ -48,12 +48,12 @@
     "module": "生产运维",
     "task_attribute": "方案迭代",
     "solution": "仅生产 A（43.163.92.244）执行；B 站按 2026-10-21 指示暂缓。B 机从 main 或 release/2026-10-20 部署。应用 045 前备份并取得授权。逐主机读 /api/health 的 schema_revision。A 不 downgrade、不 stamp。046/047 应用前演练回滚。重建 api/console 后必须 restart edge。",
-    "status": "进行中",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-24",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P0",
-    "evidence": "ADR-007 D1 与『相关证据』；README『当前生产状态』；dih-p0-delivery-2026-10-18『发布工具』与『遗留』。"
+    "evidence": "生产 A 已对齐：/api/health 的 schema_revision 与 schema_head 均为 202610210053，与仓库 alembic head 一致；A 的代码提交包含 052/053 迁移。preflight 全部通过：公网 200、API healthy、edge 172.20.0.16、vault key 44、TikTok 工具 16、schema 053。未执行 downgrade 或 stamp。生产 B 按 2026-10-21 指示暂缓；runbook 已写明只部署 A。"
   },
   {
     "ticket_id": "SP-05",
@@ -76,12 +76,12 @@
     "module": "Agent：数说",
     "task_attribute": "bug",
     "solution": "仅生产 A（43.163.92.244）执行；B 站按 2026-10-21 指示暂缓。重置在对话中出现过的 App Secret。设置 SHUSUO_ALLOWED_OPEN_IDS。确认 SHUSUO_DEFAULT_PROJECT_ID 是数说专用项目。在飞书后台确认事件订阅 im.message.receive_v1 与回调 URL。按需部署生产 B。",
-    "status": "进行中",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-24",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P0",
-    "evidence": "生产 A 已完成：白名单 8 人；公网回调 challenge 通过，事件 token 校验生效；新建「数说 Agent」专用项目 08872350-5ac8-4487-832a-775825072108 并切换为默认项目；健康接口 ready=true。已上线 scripts/rotate-shusuo-secret.sh 与 docs/ops/shusuo-secret-rotation.md。待办：飞书后台重置 App Secret；确认事件订阅 im.message.receive_v1 与回调 URL。重置后执行轮换脚本并复验。"
+    "evidence": "生产 A：App Secret 已轮换。新 Secret 在写 env 前验证通过，token code=0；轮换后 API 健康、edge 固定 IP 172.20.0.16 未变、回调 challenge 正常、机器人发消息成功。白名单 8 人；默认项目切换为「数说 Agent」08872350-5ac8-4487-832a-775825072108，并已写入 demo seed 与默认值。飞书后台事件订阅 im.message.receive_v1 与回调 URL 已由用户确认。旧 Secret 已被飞书判为 invalid。用户私聊发送「帮助」已收到回复，事件接收链路实测通过。"
   },
   {
     "ticket_id": "SP-07",

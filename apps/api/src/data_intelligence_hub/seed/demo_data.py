@@ -146,6 +146,8 @@ def _build_context() -> DemoContext:
             "ecommerce": _id("project-ecommerce"),
             "social": _id("project-social"),
             "competitor": _id("project-competitor"),
+            # 数说飞书机器人的专用项目。生产 A 使用同一个 UUID。
+            "shusuo": uuid.UUID("08872350-5ac8-4487-832a-775825072108"),
         },
         source_ids={
             "osint": _id("source-osint"),
@@ -882,6 +884,17 @@ async def _merge_projects(session: AsyncSession, context: DemoContext, now: date
                 status="active",
                 owner_id=context.user_id,
                 created_at=now - timedelta(days=16),
+                updated_at=now,
+            ),
+            Project(
+                id=context.project_ids["shusuo"],
+                workspace_id=context.workspace_id,
+                name="数说 Agent",
+                description="数说飞书机器人的默认采集项目。",
+                domain="mixed",
+                status="active",
+                owner_id=context.user_id,
+                created_at=now,
                 updated_at=now,
             ),
         ],
