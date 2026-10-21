@@ -11,6 +11,13 @@ class CollectorEndpointMetadata(BaseModel):
     platform: str = Field(description="Target platform (tiktok, instagram, etc.)")
     description: str = Field(description="What this endpoint does")
     status: str = Field(default="verified", description="verified | pending | disabled")
+    live_status: str | None = Field(
+        default=None,
+        description=(
+            "Runtime availability from providers/status: "
+            "verified | config-gated | degraded | empty | untested | disabled"
+        ),
+    )
     required_params: list[str] = Field(default_factory=list)
     optional_params: list[str] = Field(default_factory=list)
     cost_hint: str | None = Field(default=None, description="Estimated cost per item")

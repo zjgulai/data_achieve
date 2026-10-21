@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test \"src/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "test:e2e:list": "playwright test --list",
     "acceptance": "node scripts/acceptance-quick-collect-form.ts",
     "snapshot": "cd ../api && ./.venv/bin/python ../scraper-console/scripts/gen-contract-snapshot.py"
   },
@@ -23,6 +25,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

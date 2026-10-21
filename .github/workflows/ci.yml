@@ -277,3 +277,98 @@ jobs:
 
       - name: Playwright E2E
         run: pnpm -C apps/web test:e2e
+
+  console-routes-e2e:
+    name: Console Route E2E (non-blocking)
+    runs-on: ubuntu-latest
+    # 在稳定的 API fixture 出现前保持非阻塞。
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm -C apps/scraper-console exec playwright install --with-deps chromium
+
+      - name: Prepare optional authenticated state
+        env:
+          CONSOLE_E2E_STORAGE_STATE_JSON: ${{ secrets.CONSOLE_E2E_STORAGE_STATE_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CONSOLE_E2E_STORAGE_STATE_JSON:-}" ]; then
+            storage_state_path="${RUNNER_TEMP}/console-storage-state.json"
+            printf '%s' "$CONSOLE_E2E_STORAGE_STATE_JSON" > "$storage_state_path"
+            echo "PLAYWRIGHT_STORAGE_STATE=$storage_state_path" >> "$GITHUB_ENV"
+            echo "Authenticated route assertions are enabled."
+          else
+            echo "No CONSOLE_E2E_STORAGE_STATE_JSON secret. Authenticated route assertions are disabled."
+          fi
+
+      - name: Start console on port 3001
+        working-directory: apps/scraper-console
+        env:
+          CONSOLE_E2E_API_URL: ${{ vars.CONSOLE_E2E_API_URL }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CONSOLE_E2E_API_URL:-}" ]; then
+            echo "Building console against dedicated API: ${CONSOLE_E2E_API_URL}"
+            NEXT_PUBLIC_API_URL="${CONSOLE_E2E_API_URL}" pnpm exec next build
+            NEXT_PUBLIC_API_URL="${CONSOLE_E2E_API_URL}" nohup pnpm exec next start --port 3001 > /tmp/console-e2e.log 2>&1 &
+          else
+            echo "No dedicated API configured. Starting next dev; API-backed assertions will be skipped."
+            NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}" \
+              nohup pnpm exec next dev --port 3001 > /tmp/console-e2e.log 2>&1 &
+          fi
+
+          for attempt in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3001/login; then
+              echo "Console ready after $attempt attempt(s)."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Console did not become ready."
+          cat /tmp/console-e2e.log
+          exit 1
+
+      - name: Run route and redirect E2E
+        working-directory: apps/scraper-console
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3001
+          CONSOLE_E2E_API_URL: ${{ vars.CONSOLE_E2E_API_URL }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CONSOLE_E2E_API_URL:-}" ] && [ -n "${PLAYWRIGHT_STORAGE_STATE:-}" ]; then
+            pnpm exec playwright test
+          else
+            echo "API-backed assertions are skipped: configure CONSOLE_E2E_API_URL and CONSOLE_E2E_STORAGE_STATE_JSON to enable them."
+            pnpm exec playwright test --grep-invert @authenticated
+          fi
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-playwright-report
+          path: |
+            tmp/playwright-console-report/
+            tmp/playwright-console-results/
+          if-no-files-found: ignore
+          retention-days: 7

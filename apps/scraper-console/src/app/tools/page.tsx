@@ -81,13 +81,18 @@ function EndpointRow({
 }) {
   const availability = useAvailability(endpoint.endpoint_type);
   const isVerified = canStartCollection(endpoint);
+  // 状态圆点优先显示运行态；没有实时状态时回落到目录声明。
+  const statusDot = endpoint.live_status
+    ?? (endpoint.policy_block_reason ? "disabled" : endpoint.status);
 
   // 可达性输入。结构性字段优先，策略原因兜底。
+  // availability 优先用目录返回的 live_status；没有实时状态时才回落到
+  // providers/status 查询结果。
   const reachabilityInput = {
     catalogStatus: endpoint.status,
     policyBlockReason: endpoint.policy_block_reason ?? availability?.policy_block_reason ?? null,
     missingConfiguration: availability?.missing_configuration ?? [],
-    availability: availability?.availability ?? null,
+    availability: endpoint.live_status ?? availability?.availability ?? null,
   };
   const reachability = resolveReachability(reachabilityInput);
 
@@ -126,7 +131,7 @@ function EndpointRow({
 
       {/* status dot + 可达性徽标 */}
       <span className="mt-1.5 flex flex-shrink-0 items-center gap-1.5">
-        <StatusDot status={endpoint.policy_block_reason ? "disabled" : endpoint.status} />
+        <StatusDot status={statusDot} />
         <ReachabilityBadge input={reachabilityInput} />
       </span>
 

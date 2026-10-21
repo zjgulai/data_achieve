@@ -19,6 +19,9 @@ Organised into 10 groups:
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Mapping
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -34,6 +37,24 @@ from data_intelligence_hub.schemas.collector_catalog import (
 from data_intelligence_hub.services.collector_catalog import ensure_collectors_seeded
 
 router = APIRouter(tags=["collectors"])
+logger = logging.getLogger(__name__)
+
+
+def _apply_live_status(
+    endpoints: list[CollectorEndpointMetadata],
+    statuses: Mapping[str, str],
+) -> list[CollectorEndpointMetadata]:
+    """Copy endpoints and fill live_status from runtime provider status.
+
+    The static catalog ``status`` is a declaration and is left untouched.
+    Endpoints missing from ``statuses`` keep ``live_status=None``.
+    """
+    return [
+        endpoint.model_copy(update={"live_status": statuses[endpoint.endpoint_type]})
+        if endpoint.endpoint_type in statuses
+        else endpoint
+        for endpoint in endpoints
+    ]
 
 
 @router.get("", response_model=list[CollectorResponse])
@@ -44,10 +65,17 @@ async def list_collector_items(session: SessionDep) -> list[CollectorResponse]:
 
 
 @router.get("/catalog", response_model=CollectorCatalogResponse)
-async def get_collector_catalog() -> CollectorCatalogResponse:
+async def get_collector_catalog(
+    # Optional so the service layer and unit tests can call this catalog
+    # without a DB session; FastAPI still injects SessionDep on the route.
+    session: SessionDep = None,  # type: ignore[assignment]
+) -> CollectorCatalogResponse:
     """Capability catalog: all registered collectors and their endpoints.
 
     Used by the Console /platforms page to render ability cards.
+
+    ``status`` is the static catalog declaration. ``live_status`` is the
+    runtime availability from providers/status, when a session is available.
     """
     tikhub_endpoints = [
         CollectorEndpointMetadata(
@@ -4843,7 +4871,35 @@ async def get_collector_catalog() -> CollectorCatalogResponse:
             endpoint.policy_block_reason = host_block_reason(
                 actual_type, endpoint.param_fields.get("url")
             )
-    return catalog
+
+    # Runtime availability. Direct callers (service layer, unit tests) pass no
+    # session and keep the static catalog. The HTTP route gets a session, so
+    # live_status reflects providers/status without changing static status.
+    if session is None:
+        return catalog
+
+    try:
+        # Imported here: platform_packages.service imports this module, so a
+        # module-level import would be circular.
+        from data_intelligence_hub.platform_packages.service import get_provider_status
+
+        provider_status = await get_provider_status(session)
+    except Exception as exc:
+        logger.warning("collector_catalog_live_status_failed: %s", exc)
+        return catalog
+
+    statuses = {
+        endpoint.endpoint_type: endpoint.availability
+        for endpoint in provider_status.endpoints
+    }
+    return CollectorCatalogResponse(
+        collectors=[
+            entry.model_copy(
+                update={"endpoints": _apply_live_status(entry.endpoints, statuses)}
+            )
+            for entry in catalog.collectors
+        ]
+    )
 
 
 class EndpointTestResult(BaseModel):
