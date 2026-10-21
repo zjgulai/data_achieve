@@ -7,6 +7,9 @@ description: DIH 前端实施交接文档，面向新会话。给出权威事实
 
 > 写于 2026-10-16 · 基线分支 `feat/dih-p0-on-guardrails` · HEAD `7366a17`
 > 依据文档：[整站能力整合方案](./【技术方案】DIH整站能力整合方案.md) · [视觉规范](./【设计规范】DIH首页与目录视觉规范.md) · [能力图谱](./【能力图谱】DIH-控制台能力地图.md) · [能力总账](./【能力总账】DIH-平台能力现状与维护手册.md)
+>
+> **2026-10-21 更新**：生产 A 当前 311 个能力视图 / 283 个唯一端点；MCP 25 个工具；
+> schema `202610210053`；部署分支 `main`，只部署 A。本文第 2 节与第 5 节的历史数字保留为 2026-10-16 快照。
 
 ## 0. 这份文档怎么用
 
@@ -111,23 +114,27 @@ python3 -c "import json;d=json.load(open('generated/platform-packages.json'));pr
 
 技术栈：Next.js 16 App Router、React 19、TanStack Query、TypeScript。
 
-它现有 15 个页面：
+2026-10-21 更新：路由已按冻结表改名。旧路径由 Next.js 永久重定向，页面实际路径如下。
 
 | 路径 | 状态 |
 |---|---|
-| `/` | 重定向到 `/platforms` |
-| `/platforms` | 已实现。平台能力中心，默认首页 |
-| `/skills` `/skills/[platformId]` | 已实现。Skill 目录与详情 |
-| `/projects` `/projects/[id]` | 已实现。详情页有两块假空态，见 5.1 |
-| `/runs` | 已实现。运行记录 |
-| `/collect/[run_id]` | 已实现。采集结果 |
+| `/` | 公开首页 |
+| `/tools` | 已实现。能力目录（旧 `/platforms`、`/skills` 重定向到此） |
+| `/tools/[toolId]` | 已实现。平台详情（旧 `/skills/[platformId]`） |
+| `/tools/tiktok` | 已实现。TikTok 工具台 |
+| `/projects` `/projects/[id]` | 已实现。详情页已接真实任务、运行与数据集 |
+| `/runs` `/runs/[runId]` | 已实现。运行记录与运行详情（旧 `/collect/[runId]`） |
 | `/tasks` | 已实现。采集任务 |
-| `/datasets` | 已实现。最完整的页面 |
-| `/collector-docs` | 已实现。采集文档 |
+| `/assets` `/assets/records` | 已实现。资产与原始记录（旧 `/datasets`、`/raw-records`） |
+| `/docs` | 已实现。采集文档（旧 `/collector-docs`） |
 | `/settings/credentials` | 已实现。凭证配置 |
-| `/settings/account` | **占位空页。无入口** |
-| `/dashboard` | 已实现。**但无入口** |
-| `/raw-records` | 已实现。**但无入口** |
+| `/settings/providers` | 已实现。供应商状态 |
+| `/settings/members` | 已实现。工作区成员 |
+| `/connect` | 已实现。连接与登录 |
+| `/monitors` | 已实现。搜索监控 |
+| `/usage` | 已实现。用量与成本 |
+| `/dashboard` | 已实现。工作台 |
+| ~~`/settings/account`~~ | 已删除。能力拆到三个设置页 |
 
 ### 3.2 `apps/web` 不要动
 
@@ -200,17 +207,13 @@ python3 -c "import json;d=json.load(open('generated/platform-packages.json'));pr
 
 修法：改用 `(endpoint_type, label)` 复合键，或让目录提供稳定的 `capability_id`。
 
-**C. 项目详情页有两块假空态**
+**C. 项目详情页有两块假空态（已修）**
 
-`projects/[id]/page.tsx:138-146` 的「最近运行」与 `:150-158` 的「数据集」写死显示「暂无」，从不请求。有数据也显示空。
+2026-10-21 复核：`projects/[id]/page.tsx` 已请求 `fetchTasks`、`fetchAllRuns`、`fetchDatasets`，并传 `project_id` 过滤。「最近运行」与「数据集」不再写死「暂无」。
 
-数据集可直接用现有 `fetchDatasets({project_id})`。运行记录需要后端加过滤，或前端按项目任务循环。
+**D. 页面入口（已修）**
 
-**D. 三个页面没有入口**
-
-`/dashboard`、`/raw-records`、`/settings/account` 在任何导航里都没有链接。前两个功能完整，第三个是空占位。
-
-`/settings/account/page.tsx:10` 只有「账户设置建设中...」一句。侧边栏 `sidebar.tsx:7-19` 的两份导航数组都不含它们。
+2026-10-21 复核：`/dashboard`、`/assets/records`（旧 `/raw-records`）与三个设置页均有导航入口。`/settings/account` 已删除，不再有占位页。
 
 **E. 参数默认值提示没人渲染**
 
