@@ -1,0 +1,50 @@
+[
+  {
+    "collector_type": "public_feed",
+    "hosts": [
+      "www.gov.uk",
+      "www.fda.gov",
+      "www.prnewswire.com",
+      "www.babygaga.com",
+      "www.romper.com"
+    ],
+    "expires_at": "2027-01-15T00:00:00Z",
+    "max_requests": 50,
+    "max_domains": 5,
+    "timeout_seconds": 60
+  },
+  {
+    "collector_type": "generic_web",
+    "hosts": [
+      "www.babycenter.com",
+      "www.babylist.com",
+      "www.forbes.com",
+      "www.goodhousekeeping.com",
+      "www.scrapingbee.com"
+    ],
+    "expires_at": "2027-01-15T00:00:00Z",
+    "max_requests": 50,
+    "max_domains": 5,
+    "timeout_seconds": 60
+  },
+  {
+    "collector_type": "ecommerce_product_page",
+    "hosts": [
+      "www.goodhousekeeping.com"
+    ],
+    "expires_at": "2027-01-15T00:00:00Z",
+    "max_requests": 50,
+    "max_domains": 1,
+    "timeout_seconds": 60
+  },
+  {
+    "collector_type": "ecommerce_product_discovery",
+    "hosts": [
+      "www.goodhousekeeping.com"
+    ],
+    "expires_at": "2027-01-15T00:00:00Z",
+    "max_requests": 50,
+    "max_domains": 1,
+    "timeout_seconds": 60
+  }
+]
