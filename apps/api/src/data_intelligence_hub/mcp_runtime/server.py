@@ -6,6 +6,10 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
+from data_intelligence_hub.mcp_runtime.run_service import (
+    get_run_detail,
+    list_run_records,
+)
 from data_intelligence_hub.mcp_runtime.runtime import governed_tool
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
@@ -158,6 +162,33 @@ async def collect(
             raise ValueError("project_id_invalid") from exc
         result = await collect_capability(endpoint_type, parsed_project_id, params)
         return result.model_dump(mode="json")
+
+
+@mcp_server.tool(structured_output=True)
+async def get_run(context: Context, run_id: str) -> dict[str, object]:
+    """Return one run with its status, outcome, cost and steps."""
+    async with governed_tool(context, "get_run"):
+        try:
+            parsed = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise ValueError("run_id_invalid") from exc
+        return await get_run_detail(parsed)
+
+
+@mcp_server.tool(structured_output=True)
+async def list_records(
+    context: Context,
+    run_id: str,
+    limit: int = 20,
+    cursor: str | None = None,
+) -> dict[str, object]:
+    """List raw records for one run. Page with limit and cursor."""
+    async with governed_tool(context, "list_records"):
+        try:
+            parsed = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise ValueError("run_id_invalid") from exc
+        return await list_run_records(parsed, limit=limit, cursor=cursor)
 
 
 @mcp_server.tool(structured_output=True)

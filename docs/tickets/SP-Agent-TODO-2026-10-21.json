@@ -118,12 +118,12 @@
     "module": "运行记录",
     "task_attribute": "方案迭代",
     "solution": "QuickCollectResponse 与 MCP collect 增加 records、output、usage、timing。新增 GET /api/runs/{id}。MCP 新增 get_run 与 list_records。复用 TaskRun 与 RawRecord，不新建重复状态。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-31",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P1",
-    "evidence": "Monid 差距 §5.3 P2（9-16 人日）；TikTok R1 §4.5 C1；§11.3。"
+    "evidence": "生产 A 已部署 8e2c6ba。POST /api/quick-collect 返回 records、output、usage、timing：5 条记录，单条内容 4000 字符截断标记生效，provider=tikhub，duration 1883ms。MCP get_run 返回平铺状态、结果、成本与步骤；list_records 返回 items 与 next_cursor，13 条记录分页正常。记录预览上限 20 条。"
   },
   {
     "ticket_id": "SP-10",

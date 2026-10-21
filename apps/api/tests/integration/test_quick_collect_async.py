@@ -171,4 +171,8 @@ async def test_sync_quick_collect_still_returns_task_run(client: AsyncClient) ->
         "status",
         "records_count",
         "error_message",
+        "records",
+        "output",
+        "usage",
+        "timing",
     }

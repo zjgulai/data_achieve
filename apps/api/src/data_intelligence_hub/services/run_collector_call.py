@@ -182,6 +182,7 @@ class RunCollectorCall:
         task_run.entities_count = result.entities_count
         task_run.error_message = result.error_message
         task_run.endpoint_type = result.endpoint_type or _endpoint_type(task.config)
+        task_run.provider = result.provider
         task_run.unit = result.unit
         task_run.quantity = _as_decimal_or_none(result.quantity)
         task_run.unit_price = _as_decimal_or_none(result.unit_price)
