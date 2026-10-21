@@ -8,21 +8,22 @@ description: 数说飞书应用 App Secret 轮换步骤。轮换在飞书开发�
 ## 结论
 
 1. 飞书不提供公开的 App Secret 轮换 API。重置只能在飞书开发者后台完成。
-2. 重置后立即执行 `scripts/rotate-shusuo-secret.sh`。脚本备份 env、更新密钥、重建 API、验证 tenant token。
-3. 失败时脚本自动恢复旧 env 并重启 API。
+2. 重置后旧 Secret 立即作废。不要回滚到旧值。
+3. 服务器侧执行 `scripts/rotate-shusuo-secret.sh`。脚本先验证新 Secret，再写 env。
+4. 写 env 后失败时保留新值，修好问题后继续，不回滚。
 
 ## 前置检查
 
 1. 只有生产 A（`ubuntu@43.163.92.244`）执行。
-2. 当前 `/api/agents/shusuo/health` 返回 `ready=true`。
-3. 已备份 `/opt/data-achieve-scrapy/.env.production`。
+2. `/api/agents/shusuo/health` 返回 `ready=true`。
+3. 记录当前时间，预留 10 到 15 分钟维护窗口。
 
 ## 飞书后台
 
 1. 打开飞书开发者后台，进入数说应用。
 2. 进入「凭证与基础信息」。
 3. 重置 App Secret。
-4. 记录新 Secret，不写入聊天、不写入仓库。
+4. 新 Secret 直接输入服务器隐藏提示，或存入密码管理器。不要发到聊天、工单或截图。
 
 ## 服务器
 
@@ -32,17 +33,37 @@ description: 数说飞书应用 App Secret 轮换步骤。轮换在飞书开发�
 bash scripts/rotate-shusuo-secret.sh
 ```
 
-脚本提示时输入新 Secret。输入不回显。
+脚本按以下顺序执行：
 
-脚本执行以下动作：
+1. 从 env 读取 App ID。
+2. 隐藏输入读取新 Secret。
+3. 先用新 Secret 换取 tenant token。失败则退出，env 不变。
+4. 原子替换 env，保留权限与属主。
+5. 校验 compose 配置。
+6. 强制重建 api，只重建 api。
+7. 重启 edge，不重建 edge。
+8. 轮询 `/api/agents/shusuo/health`，要求 `ready=true`。
+9. 在容器内再用新 Secret 换一次 token。
 
-1. 备份 env 文件。
-2. 替换 `LARK_SHUSUO_APP_SECRET`。
-3. 校验 compose 配置。
-4. 只重建 api，不动 edge。
-5. 轮询 `/api/agents/shusuo/health`。
-6. 用新 Secret 换取 tenant token。
-7. 任一步失败时恢复备份并重启。
+## 失败处理
+
+写 env 之前失败：env 不变。重新在飞书后台重置，再执行脚本。
+
+写 env 之后失败：新 Secret 已生效，旧值已作废。不要回滚。按报错修好后执行：
+
+```bash
+curl -sS https://scrapy.luteos.com/api/agents/shusuo/health
+```
+
+需要时手工重建 api 并重启 edge：
+
+```bash
+cd /opt/data-achieve-scrapy/app
+ENVF=/opt/data-achieve-scrapy/.env.production
+CF=configs/deploy/scrapy/docker-compose.yml
+docker compose --env-file "$ENVF" -f "$CF" up -d --no-deps --force-recreate api
+docker compose --env-file "$ENVF" -f "$CF" restart edge
+```
 
 ## 验收
 
@@ -51,13 +72,9 @@ bash scripts/rotate-shusuo-secret.sh
 3. 在飞书私聊机器人发送「帮助」，能收到回复。
 4. 日志没有 `shusuo_webhook_bad_signature`。
 
-## 回滚
+## 轮换后清理
 
-脚本失败会自动回滚。手工回滚：
-
-```bash
-cp /opt/data-achieve-scrapy/.env.production.bak.<stamp> /opt/data-achieve-scrapy/.env.production
-cd /opt/data-achieve-scrapy/app
-docker compose --env-file /opt/data-achieve-scrapy/.env.production \
-  -f configs/deploy/scrapy/docker-compose.yml up -d api
-```
+1. 本机 `.env` 权限改为 `600`。
+2. 扫描本机 Claude 会话文件与 shell 历史，确认旧 Secret 已被替换或删除。
+3. 扫描生产日志与备份，确认没有旧 Secret 明文。
+4. 旧 Secret 已作废。清理只降低残留风险，不能替代轮换。

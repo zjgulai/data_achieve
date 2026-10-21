@@ -53,7 +53,13 @@ from data_intelligence_hub.seed.demo_data import (
 def test_demo_seed_covers_navigation_domains() -> None:
     context = _build_context()
 
-    assert set(context.project_ids) == {"osint", "ecommerce", "social", "competitor"}
+    assert set(context.project_ids) == {
+        "osint",
+        "ecommerce",
+        "social",
+        "competitor",
+        "shusuo",
+    }
     assert set(context.source_ids) == {"osint", "amazon", "social", "competitor"}
     assert set(context.dataset_ids) == {"ecommerce-tools"}
     assert set(context.dataset_version_ids) == {"ecommerce-tools-v1"}
