@@ -804,12 +804,12 @@
     "module": "TikTok R1 工具与工作台",
     "task_attribute": "存量需求",
     "solution": "按能力总账 §4.3 跑全量实测或按优先级抽样。23 个 untested 端点与 16 个 TikTok 工具至少各跑一次真实调用，记录 run_id、记录数、错误分类与耗时。",
-    "status": "进行中",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-24",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P0",
-    "evidence": "生产审计：providers/status 有 23 个 untested；16 个 TikTok 工具中至少 11 个主路径依赖未测或 pending 端点。"
+    "evidence": "已实测 22/24 个未测端点：21 个 verified，1 个 degraded（tikhub_tiktok_user_fans_web 用文档示例参数仍返回上游 400）。16 个 TikTok 工具实测 14 个成功；tiktok_video_products 与 tiktok_creator_showcase 需要创作者 Cookie，按网站配置项设计保持 config-gated。修复热卖商品两层 data 取值后 tikhub_tiktok_shop_hot_products 返回 20 条。Apify 达人带货 apify_tiktok_shop_creators 返回 1 条。"
   },
   {
     "ticket_id": "SP-59",
