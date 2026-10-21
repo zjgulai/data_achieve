@@ -276,6 +276,11 @@ async def execute_collection_task(
     flag_modified(run, "logs")
     await session.commit()
     await session.refresh(run)
+    # 监控任务：判定本次新增结果，写信号与通知。
+    # 局部导入避免与 quick_collect_service 形成模块循环。
+    from data_intelligence_hub.services.monitor_service import process_monitor_run
+
+    await process_monitor_run(session, task, run)
     return run
 
 

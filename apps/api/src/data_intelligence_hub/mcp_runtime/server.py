@@ -8,6 +8,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import ToolAnnotations
 
+from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
 from data_intelligence_hub.mcp_runtime.capability_service import (
     describe_capability_public,
@@ -32,6 +33,12 @@ from data_intelligence_hub.platform_packages.service import (
     get_platform_package_catalog,
     get_platform_playbook,
 )
+from data_intelligence_hub.repositories.projects import get_project
+from data_intelligence_hub.repositories.workspaces import (
+    get_demo_workspace,
+    get_workspace_by_id,
+)
+from data_intelligence_hub.services import monitor_service
 from data_intelligence_hub.services.tiktok_tools import run_tiktok_tool
 
 
@@ -426,6 +433,95 @@ async def deep_research(
         return await _run_tool(
             context, "deep_research", "exa_deep_research", project_id, params
         )
+
+
+# ── Monitors ──────────────────────────────────────────────────────────────
+
+
+async def _monitor_workspace(context: Context):
+    identity = project_api_key_context(context)
+    async with async_session_factory() as session:
+        if identity is not None:
+            workspace = await get_workspace_by_id(session, identity.workspace_id)
+        else:
+            workspace = await get_demo_workspace(session)
+    if workspace is None:
+        raise ValueError("workspace_unavailable")
+    return workspace
+
+
+@_tool(
+    description="Create a search monitor on one endpoint; it reruns on a fixed interval.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def create_monitor(
+    context: Context,
+    project_id: str,
+    name: str,
+    endpoint_type: str,
+    params: dict[str, object] | None = None,
+    interval_hours: int = 24,
+) -> dict[str, object]:
+    """Create a search monitor. New results become signals and notifications."""
+    async with governed_tool(context, "create_monitor", is_collect=True):
+        await enforce_tool_policy(context, "create_monitor")
+        workspace = await _monitor_workspace(context)
+        parsed_project_id = _parse_project_id(project_id)
+        async with async_session_factory() as session:
+            project = await get_project(session, workspace.id, parsed_project_id)
+            if project is None:
+                raise ValueError("project_not_found")
+            monitor = await monitor_service.create_monitor(
+                session,
+                workspace=workspace,
+                project_id=parsed_project_id,
+                name=name,
+                endpoint_type=endpoint_type,
+                params=params or {},
+                interval_hours=interval_hours,
+            )
+        return _monitor_payload(monitor)
+
+
+@_tool(
+    description="List search monitors in the current workspace.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=True,
+)
+async def list_monitors(
+    context: Context,
+    project_id: str | None = None,
+) -> dict[str, object]:
+    """List monitors. Optionally filter by project."""
+    async with governed_tool(context, "list_monitors"):
+        workspace = await _monitor_workspace(context)
+        parsed = _parse_project_id(project_id) if project_id else None
+        async with async_session_factory() as session:
+            monitors = await monitor_service.list_monitors(
+                session, workspace_id=workspace.id, project_id=parsed
+            )
+        return {"monitors": [_monitor_payload(item) for item in monitors]}
+
+
+def _monitor_payload(monitor) -> dict[str, object]:
+    return {
+        "id": str(monitor.id),
+        "project_id": str(monitor.project_id),
+        "name": monitor.name,
+        "endpoint_type": monitor.endpoint_type,
+        "interval_hours": monitor.interval_hours,
+        "status": monitor.status,
+        "task_id": str(monitor.task_id) if monitor.task_id else None,
+        "last_checked_at": (
+            monitor.last_checked_at.isoformat() if monitor.last_checked_at else None
+        ),
+        "last_new_count": monitor.last_new_count,
+    }
 
 
 @_tool(

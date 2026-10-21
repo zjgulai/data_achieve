@@ -305,5 +305,5 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 | P0-A Exa 3.0 刷新（lite、100 条上限、快照与 objective 参数、价格簿修正、preset 生效修复） | **已上线验收**（2026-10-21，main=8ecf3b5） |
 | P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research） | **已上线验收**（2026-10-21）：四工具实跑成功（3/1/1/3 条）；monitor 随 P1 |
 | P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | **已上线验收**（2026-10-21，b043c95）：签发→调用成功→超额度拒绝→撤销后 401 |
-| P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | 未开始 |
+| P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | 已实现，待发布验收（2026-10-21） |
 | 工具目录计数 | 283 条（新增 exa_search_lite） |

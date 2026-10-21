@@ -1469,6 +1469,16 @@ def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(subpages, int) or not (0 <= subpages <= 100):
         raise CollectorConfigError
 
+    extras_image_links = config.get("extras_image_links", 0)
+    if not isinstance(extras_image_links, int) or not (0 <= extras_image_links <= 10):
+        raise CollectorConfigError
+    livecrawl_timeout = config.get("livecrawl_timeout")
+    if livecrawl_timeout is not None and (
+        not isinstance(livecrawl_timeout, int)
+        or not (1000 <= livecrawl_timeout <= 60000)
+    ):
+        raise CollectorConfigError
+
     out = {
         "urls": [u.strip() for u in urls],
         "contents_mode": contents_mode,
@@ -1477,6 +1487,10 @@ def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
         "subpage_target": config.get("subpage_target", []),
         "summary_query": config.get("summary_query"),
         "text_max_characters": config.get("text_max_characters"),
+        "extras_image_links": extras_image_links,
+        "livecrawl_timeout": livecrawl_timeout,
+        "include_sections": config.get("include_sections", []),
+        "exclude_sections": config.get("exclude_sections", []),
     }
     _carry_timeout(config, out)
     return out

@@ -31,6 +31,7 @@ from data_intelligence_hub.api.routes.dashboard import router as dashboard_route
 from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
+from data_intelligence_hub.api.routes.monitors import router as monitors_router
 from data_intelligence_hub.api.routes.notifications import router as notifications_router
 from data_intelligence_hub.api.routes.platform_credentials import (
     router as platform_credentials_router,
@@ -56,6 +57,7 @@ from data_intelligence_hub.api.routes.tiktok_tools import (
 from data_intelligence_hub.api.routes.tool_catalog import router as tool_catalog_router
 from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tools import router as tools_router
+from data_intelligence_hub.api.routes.usage import router as usage_router
 from data_intelligence_hub.api.routes.workflow_plans import (
     router as workflow_plans_router,
 )
@@ -206,7 +208,9 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router, prefix="/api/notifications")
     app.include_router(platform_credentials_router, prefix="/api/settings")
     app.include_router(platform_packages_router, prefix="/api/platform-packages")
+    app.include_router(monitors_router, prefix="/api/monitors")
     app.include_router(tools_router, prefix="/api/tools")
+    app.include_router(usage_router, prefix="/api/usage")
     app.include_router(tool_catalog_router, prefix="/api/tool-catalog")
     app.include_router(shusuo_router, prefix="/api/agents/shusuo")
     app.include_router(tiktok_cdo_router, prefix="/api/agents/tiktok-cdo")

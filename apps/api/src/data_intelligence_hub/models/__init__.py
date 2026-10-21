@@ -37,6 +37,7 @@ from data_intelligence_hub.models.intelligence import (
     IntelligenceFeedback,
     IntelligenceItem,
 )
+from data_intelligence_hub.models.monitor import Monitor
 from data_intelligence_hub.models.notification import (
     EmailChannelTestRun,
     EmailProviderLiveGateRun,
@@ -260,6 +261,7 @@ __all__ = [
     "WorkflowStepCheckpoint",
     "WorkflowVersion",
     "WorkflowVersionScope",
+    "Monitor",
     "WorkflowTemplate",
     "WorkflowTemplateMutationRequest",
     "WorkflowTemplateRevision",

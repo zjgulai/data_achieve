@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Cable, ListChecks, LayoutDashboard, HeartPulse, Users, TrendingUp } from "lucide-react";
+import { Grid3x3, FolderKanban, Clock, Database, Key, BookOpen, Cable, ListChecks, LayoutDashboard, HeartPulse, Users, TrendingUp, BarChart3, Radar } from "lucide-react";
 
 // 新 IA 的领域。见整合方案 §4.2。
 const navigation = [
@@ -12,12 +12,14 @@ const navigation = [
   { name: "项目",   href: "/projects",  icon: FolderKanban },
   { name: "任务",   href: "/tasks",     icon: ListChecks },
   { name: "运行",   href: "/runs",      icon: Clock },
+  { name: "监控",   href: "/monitors",  icon: Radar },
   { name: "资产",   href: "/assets",    icon: Database },
   { name: "接入",   href: "/connect",   icon: Cable },
   { name: "文档",   href: "/docs",      icon: BookOpen },
 ];
 
 const secondaryNav = [
+  { name: "用量与成本", href: "/usage", icon: BarChart3 },
   { name: "凭证设置", href: "/settings/credentials", icon: Key },
   { name: "提供方状态", href: "/settings/providers", icon: HeartPulse },
   { name: "成员与工作区", href: "/settings/members", icon: Users },
