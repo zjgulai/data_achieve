@@ -41,7 +41,9 @@ async def test_mcp_lists_platforms_and_describes_capability(
     assert capability.structured_content is not None
     assert capability.structured_content["tool_id"] == "tikhub_tiktok_video_search"
     assert capability.structured_content["input_schema"]["type"] == "object"
-    assert capability.structured_content["output_schema"] is not None
+    output_schema = capability.structured_content["output_schema"]
+    assert output_schema["type"] == "object"
+    assert output_schema["$schema"]
     assert "policy_block_reason" not in capability.structured_content
     assert "authorization" not in capability.structured_content
 

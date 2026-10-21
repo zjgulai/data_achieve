@@ -235,10 +235,13 @@ def test_project_balance_sums_ledger_and_budget(
     monkeypatch.setattr(run_service, "async_session_factory", factory)
 
     result = asyncio.run(run_service.get_project_balance(project_id))
-    assert result["spent_usd"] == "1.250000"
-    assert result["authorized_budget_usd"] == "10.000000"
-    assert result["remaining_usd"] == "8.750000"
+    assert result["metering_status"] == "accrued_only"
+    assert result["spent_usd"] is None
+    assert result["accrued_usd"] == "1.250000"
+    assert result["authorized_ceiling_usd"] == "10.000000"
+    assert result["remaining_against_ceiling_usd"] is None
     assert result["ledger_entries"] == 1
+    assert result["authorization_count"] == 1
 
 
 def test_list_records_rejects_invalid_limit(
