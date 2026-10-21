@@ -111,7 +111,7 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" restart edge || fail_forwar
 ready=0
 for _ in $(seq 1 60); do
   if curl -fsS "$PUBLIC_URL/api/agents/shusuo/health" 2>/dev/null \
-    | python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin).get("ready") is True else 1)'
+    | python3 -c 'import json,sys; raise SystemExit(0 if json.load(sys.stdin).get("ready") is True else 1)' 2>/dev/null
   then
     ready=1
     break
