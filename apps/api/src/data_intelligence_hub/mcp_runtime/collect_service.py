@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.repositories.workspaces import get_workspace_by_id
 from data_intelligence_hub.services.quick_collect_service import (
     QuickCollectRequest,
     QuickCollectResponse,
@@ -25,13 +26,14 @@ async def collect_capability(
     project_id: uuid.UUID,
     params: dict[str, object],
     *,
+    workspace_id: uuid.UUID | None = None,
     tool_call: dict[str, object] | None = None,
 ) -> QuickCollectResponse:
     """执行一次采集。
 
-    workspace 不传：MCP 目前是全局 token，没有 workspace 绑定。
-    服务层回退 demo workspace，与改造前行为一致。
-    若将来 MCP 支持项目级密钥，在这里解析并传入 workspace。
+    workspace_id 为 None 时回退 demo workspace：全局 token 路径没有
+    workspace 绑定，与改造前行为一致。项目密钥路径必须传它，
+    否则记录会落到 demo 工作区。
     """
     body = QuickCollectRequest(
         project_id=project_id,
@@ -40,5 +42,8 @@ async def collect_capability(
         tool_call=tool_call,
     )
     async with async_session_factory() as session:
-        outcome = await run_quick_collect(session, body)
+        workspace = None
+        if workspace_id is not None:
+            workspace = await get_workspace_by_id(session, workspace_id)
+        outcome = await run_quick_collect(session, body, workspace=workspace)
         return to_response(outcome)

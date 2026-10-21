@@ -5,12 +5,14 @@ import uuid
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
+from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 from data_intelligence_hub.mcp_runtime.run_service import (
     get_run_detail,
     list_run_records,
 )
 from data_intelligence_hub.mcp_runtime.runtime import governed_tool
+from data_intelligence_hub.mcp_runtime.tool_policy import enforce_tool_policy
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -162,6 +164,165 @@ async def collect(
             raise ValueError("project_id_invalid") from exc
         result = await collect_capability(endpoint_type, parsed_project_id, params)
         return result.model_dump(mode="json")
+
+
+# ── Exa MCP Pack ──────────────────────────────────────────────────────────
+# 通用命名的搜索/抓取/问答/研究工具。默认路由 Exa；web_fetch 支持 jina。
+# 项目密钥调用按 tool_allowlist 判定，见 mcp_runtime/tool_policy.py。
+
+_SEARCH_ENDPOINTS = {
+    "lite": "exa_search_lite",
+    "instant": "exa_search_instant",
+    "fast": "exa_search_fast",
+    "auto": "exa_search_auto",
+    "deep-lite": "exa_deep_lite",
+    "deep": "exa_deep_research",
+    "deep-reasoning": "exa_deep_reasoning",
+}
+
+_FETCH_ENDPOINTS = {"exa": "exa_contents", "jina": "jina_page_content"}
+
+
+def _workspace_binding(context: Context) -> uuid.UUID | None:
+    identity = project_api_key_context(context)
+    return identity.workspace_id if identity is not None else None
+
+
+async def _run_tool(
+    context: Context,
+    tool_name: str,
+    endpoint_type: str,
+    project_id: str,
+    params: dict[str, object],
+) -> dict[str, object]:
+    await enforce_tool_policy(context, tool_name)
+    result = await collect_capability(
+        endpoint_type,
+        _parse_project_id(project_id),
+        params,
+        workspace_id=_workspace_binding(context),
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp_server.tool(structured_output=True)
+async def web_search(
+    context: Context,
+    project_id: str,
+    query: str,
+    search_type: str = "auto",
+    num_results: int = 10,
+    category: str | None = None,
+    include_domains: list[str] | None = None,
+    exclude_domains: list[str] | None = None,
+    contents_mode: str = "highlights",
+    start_published_date: str | None = None,
+    end_published_date: str | None = None,
+    objective: str | None = None,
+    provider: str = "exa",
+) -> dict[str, object]:
+    """Search the web and persist results. Default provider: exa."""
+    async with governed_tool(context, "web_search", is_collect=True):
+        if provider != "exa":
+            raise ValueError("provider_not_supported")
+        endpoint_type = _SEARCH_ENDPOINTS.get(search_type)
+        if endpoint_type is None:
+            raise ValueError("search_type_invalid")
+        params: dict[str, object] = {
+            "query": query,
+            "num_results": num_results,
+            "contents_mode": contents_mode,
+        }
+        if category is not None:
+            params["category"] = category
+        if include_domains:
+            params["include_domains"] = include_domains
+        if exclude_domains:
+            params["exclude_domains"] = exclude_domains
+        if start_published_date is not None:
+            params["start_published_date"] = start_published_date
+        if end_published_date is not None:
+            params["end_published_date"] = end_published_date
+        if objective is not None:
+            params["objective"] = objective
+        return await _run_tool(context, "web_search", endpoint_type, project_id, params)
+
+
+@mcp_server.tool(structured_output=True)
+async def web_fetch(
+    context: Context,
+    project_id: str,
+    urls: list[str],
+    contents_mode: str = "text",
+    max_age_hours: int | None = None,
+    summary_query: str | None = None,
+    provider: str = "exa",
+) -> dict[str, object]:
+    """Fetch page content for up to 100 URLs. Default provider: exa; jina takes one URL."""
+    async with governed_tool(context, "web_fetch", is_collect=True):
+        endpoint_type = _FETCH_ENDPOINTS.get(provider)
+        if endpoint_type is None:
+            raise ValueError("provider_not_supported")
+        if not urls:
+            raise ValueError("urls_required")
+        if provider == "jina":
+            if len(urls) != 1:
+                raise ValueError("provider_urls_limit")
+            params: dict[str, object] = {"url": urls[0], "return_format": "markdown"}
+        else:
+            params = {"urls": urls, "contents_mode": contents_mode}
+            if max_age_hours is not None:
+                params["max_age_hours"] = max_age_hours
+            if summary_query is not None:
+                params["summary_query"] = summary_query
+        return await _run_tool(context, "web_fetch", endpoint_type, project_id, params)
+
+
+@mcp_server.tool(structured_output=True)
+async def answer(
+    context: Context,
+    project_id: str,
+    query: str,
+    output_schema: dict[str, object] | None = None,
+    text: bool = False,
+) -> dict[str, object]:
+    """Answer a question with citations from the public web."""
+    async with governed_tool(context, "answer", is_collect=True):
+        params: dict[str, object] = {"query": query}
+        if output_schema is not None:
+            params["output_schema"] = output_schema
+        if text:
+            params["text"] = True
+        return await _run_tool(context, "answer", "exa_answer", project_id, params)
+
+
+@mcp_server.tool(structured_output=True)
+async def deep_research(
+    context: Context,
+    project_id: str,
+    query: str,
+    num_results: int = 10,
+    output_schema: dict[str, object] | None = None,
+    system_prompt: str | None = None,
+    include_domains: list[str] | None = None,
+    contents_mode: str = "highlights",
+) -> dict[str, object]:
+    """Multi-step deep research. Expensive tool; project keys need it in their allowlist."""
+    async with governed_tool(context, "deep_research", is_collect=True):
+        params: dict[str, object] = {
+            "query": query,
+            "num_results": num_results,
+            "contents_mode": contents_mode,
+        }
+        if output_schema is not None:
+            params["output_schema"] = output_schema
+        if system_prompt is not None:
+            params["system_prompt"] = system_prompt
+        if include_domains:
+            params["include_domains"] = include_domains
+        return await _run_tool(
+            context, "deep_research", "exa_deep_research", project_id, params
+        )
 
 
 @mcp_server.tool(structured_output=True)

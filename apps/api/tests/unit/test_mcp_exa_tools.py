@@ -1,0 +1,193 @@
+"""Exa MCP Pack：工具注册、端点映射与授权判定。
+
+不触碰网络：collect_capability 被替换为记录器。
+"""
+
+from __future__ import annotations
+
+import uuid
+from types import SimpleNamespace
+
+import pytest
+from mcp.client import Client
+
+from data_intelligence_hub.mcp_runtime import server as server_module
+from data_intelligence_hub.mcp_runtime import tool_policy
+from data_intelligence_hub.mcp_runtime.server import mcp_server
+from data_intelligence_hub.services.quick_collect_service import QuickCollectResponse
+
+pytestmark = pytest.mark.anyio
+
+
+class _CollectRecorder:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    async def __call__(
+        self,
+        endpoint_type: str,
+        project_id: uuid.UUID,
+        params: dict[str, object],
+        *,
+        workspace_id: uuid.UUID | None = None,
+        tool_call: dict[str, object] | None = None,
+    ) -> QuickCollectResponse:
+        self.calls.append(
+            {
+                "endpoint_type": endpoint_type,
+                "project_id": project_id,
+                "params": params,
+                "workspace_id": workspace_id,
+            }
+        )
+        return QuickCollectResponse(
+            task_run_id=uuid.uuid4(),
+            task_id=uuid.uuid4(),
+            source_id=uuid.uuid4(),
+            status="success",
+            records_count=1,
+            error_message=None,
+        )
+
+
+@pytest.fixture()
+def recorder(monkeypatch: pytest.MonkeyPatch) -> _CollectRecorder:
+    rec = _CollectRecorder()
+    monkeypatch.setattr(server_module, "collect_capability", rec)
+    return rec
+
+
+async def test_mcp_registers_exa_pack_tools() -> None:
+    tools = await mcp_server.list_tools()
+    names = {tool.name for tool in tools}
+    assert {"web_search", "web_fetch", "answer", "deep_research"} <= names
+
+
+async def test_web_search_maps_type_to_preset_endpoint(recorder: _CollectRecorder) -> None:
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        result = await client.call_tool(
+            "web_search",
+            {
+                "project_id": str(uuid.uuid4()),
+                "query": "exa pricing",
+                "search_type": "lite",
+                "num_results": 7,
+                "objective": "找到定价页",
+            },
+        )
+
+    assert result.is_error is False
+    assert len(recorder.calls) == 1
+    call = recorder.calls[0]
+    assert call["endpoint_type"] == "exa_search_lite"
+    assert call["params"]["query"] == "exa pricing"
+    assert call["params"]["num_results"] == 7
+    assert call["params"]["objective"] == "找到定价页"
+
+
+async def test_web_search_rejects_unknown_type_and_provider(
+    recorder: _CollectRecorder,
+) -> None:
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        bad_type = await client.call_tool(
+            "web_search",
+            {"project_id": str(uuid.uuid4()), "query": "q", "search_type": "turbo"},
+        )
+        bad_provider = await client.call_tool(
+            "web_search",
+            {"project_id": str(uuid.uuid4()), "query": "q", "provider": "bing"},
+        )
+
+    assert bad_type.is_error is True
+    assert bad_provider.is_error is True
+    assert recorder.calls == []
+
+
+async def test_web_fetch_routes_to_jina_for_one_url(recorder: _CollectRecorder) -> None:
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        ok = await client.call_tool(
+            "web_fetch",
+            {
+                "project_id": str(uuid.uuid4()),
+                "urls": ["https://example.com/a"],
+                "provider": "jina",
+            },
+        )
+        too_many = await client.call_tool(
+            "web_fetch",
+            {
+                "project_id": str(uuid.uuid4()),
+                "urls": ["https://example.com/a", "https://example.com/b"],
+                "provider": "jina",
+            },
+        )
+
+    assert ok.is_error is False
+    assert too_many.is_error is True
+    assert len(recorder.calls) == 1
+    call = recorder.calls[0]
+    assert call["endpoint_type"] == "jina_page_content"
+    assert call["params"]["url"] == "https://example.com/a"
+
+
+async def test_web_fetch_exa_passes_urls_and_options(recorder: _CollectRecorder) -> None:
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        result = await client.call_tool(
+            "web_fetch",
+            {
+                "project_id": str(uuid.uuid4()),
+                "urls": ["https://example.com/a", "https://example.com/b"],
+                "contents_mode": "summary",
+                "max_age_hours": -1,
+                "summary_query": "定价",
+            },
+        )
+
+    assert result.is_error is False
+    call = recorder.calls[0]
+    assert call["endpoint_type"] == "exa_contents"
+    assert call["params"]["urls"] == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+    assert call["params"]["contents_mode"] == "summary"
+    assert call["params"]["max_age_hours"] == -1
+    assert call["params"]["summary_query"] == "定价"
+
+
+def test_tool_allowed_layers() -> None:
+    # 贵工具默认关：不在白名单一律拒绝，即使白名单为空。
+    assert tool_policy.tool_allowed("deep_research", []) is False
+    assert tool_policy.tool_allowed("deep_research", ["web_search"]) is False
+    assert tool_policy.tool_allowed("deep_research", ["deep_research"]) is True
+    # 便宜工具默认开；白名单非空时收窄。
+    assert tool_policy.tool_allowed("web_search", []) is True
+    assert tool_policy.tool_allowed("web_search", ["web_search"]) is True
+    assert tool_policy.tool_allowed("web_search", ["answer"]) is False
+
+
+async def test_enforce_tool_policy_uses_key_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity = SimpleNamespace(key_id=uuid.uuid4())
+
+    async def fake_find_by_id(session: object, key_id: uuid.UUID) -> object:
+        return SimpleNamespace(revoked_at=None, tool_allowlist=["web_search"])
+
+    monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: identity)
+    monkeypatch.setattr(tool_policy, "find_by_id", fake_find_by_id)
+
+    # 便宜工具在白名单内：放行。
+    await tool_policy.enforce_tool_policy(None, "web_search")  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError) as exc:
+        await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]
+    assert str(exc.value) == "tool_not_allowed"
+
+
+async def test_enforce_tool_policy_skips_global_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: None)
+    # 全局 token：不设限，也不查库。
+    await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]

@@ -102,4 +102,10 @@ async def find_by_hash(session: AsyncSession, key_hash: str) -> ProjectApiKey | 
     return result.scalar_one_or_none()
 
 
-__all__ = ["create_key", "find_by_hash", "list_keys", "revoke_key"]
+async def find_by_id(session: AsyncSession, key_id: uuid.UUID) -> ProjectApiKey | None:
+    """按主键查一行。鉴权后按身份复核白名单与额度时使用。"""
+    result = await session.execute(select(ProjectApiKey).where(ProjectApiKey.id == key_id))
+    return result.scalar_one_or_none()
+
+
+__all__ = ["create_key", "find_by_hash", "find_by_id", "list_keys", "revoke_key"]
