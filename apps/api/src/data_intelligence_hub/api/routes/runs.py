@@ -72,7 +72,7 @@ async def create_run(
 ) -> RunResponse:
     """创建一行 ``status=queued`` 的运行。
 
-    请求缺少绑定来源时，本端点返回 422。校验失败时，本端点不写入 ``runs`` 表。
+    请求缺少绑定来源时，本端点返回 422。上述校验失败时，本端点不写入 ``runs`` 表。
     项目不属于当前工作区时，本端点返回 404。
     采集任务不属于当前工作区时，本端点返回 404。
     采集任务不属于请求指定的项目时，本端点返回 404。
@@ -81,7 +81,7 @@ async def create_run(
     并发冲突时，本端点回滚并重查，返回已有行。
 
     ``runs`` 表没有 ``endpoint_type`` 列。本端点只校验该字段。
-    绑定的采集任务决定执行时的 ``endpoint_type`` 与采集器配置。
+    绑定的采集任务决定对应执行步骤的 ``endpoint_type`` 与采集器配置。
     见 ``services/run_executor.py``。
     """
     workspace_id = context.workspace.id

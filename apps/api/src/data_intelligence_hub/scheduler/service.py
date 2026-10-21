@@ -404,7 +404,7 @@ async def _renew_scheduler_lease(
         )
         result = await session.execute(statement)
         await session.commit()
-        return result.rowcount == 1
+        return int(getattr(result, "rowcount", 0)) == 1
 
 
 class _SchedulerLeaseHeartbeat:

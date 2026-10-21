@@ -116,12 +116,13 @@ async def find_by_idempotency_key(
     这样重放返回的是首次创建的那一行，不会被当下的配置变化挡住。
     ``create_run`` 内部也调用它，避免两处各写一份查询。
     """
-    return await session.scalar(
+    result: Run | None = await session.scalar(
         select(Run).where(
             Run.workspace_id == workspace_id,
             Run.idempotency_key_hash == idempotency_key_hash,
         )
     )
+    return result
 
 
 async def create_run(
@@ -145,18 +146,17 @@ async def create_run(
 ) -> Run:
     """插入一次运行并 flush。
 
-    ``task_id`` 可空是存储层属性。所有对外入口必须拦住缺少绑定来源的请求。
-    计划型运行将来会带 ``plan_id`` 而不是 ``task_id``。
+    ``task_id`` 在存储层可空。所有对外入口必须拦住缺少绑定来源的请求。
+    后续批次加入带 ``plan_id`` 的运行。
 
     带幂等键时先查后插。已存在时返回原行，不新增。
     数据库唯一索引拦住并发下的重复插入。
     """
     if idempotency_key_hash is not None:
-        existing = await session.scalar(
-            select(Run).where(
-                Run.workspace_id == workspace_id,
-                Run.idempotency_key_hash == idempotency_key_hash,
-            )
+        existing = await find_by_idempotency_key(
+            session,
+            workspace_id=workspace_id,
+            idempotency_key_hash=idempotency_key_hash,
         )
         if existing is not None:
             return existing

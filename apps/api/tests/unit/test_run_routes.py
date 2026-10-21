@@ -27,7 +27,7 @@ from typing import NamedTuple
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -613,3 +613,118 @@ async def test_outcome_aggregates_all_fields(client: AsyncClient) -> None:
     assert body["step_counts"]["empty"] == 1
     assert body["step_counts"]["failed"] == 1
     assert body["step_counts"]["pending"] == 0
+
+
+@pytest.mark.asyncio
+async def test_idempotent_replay_survives_task_pause(client: AsyncClient) -> None:
+    """任务被暂停后，同幂等键重放必须返回已有运行，不得 409。
+
+    重放是「同一个请求再发一次」。它不该重新过一次当下的前置条件。
+    首次创建成功后任务可能被暂停；此时重放若被 ``task_not_runnable`` 挡住，
+    客户端会把已成功的创建当成失败。
+    ``services/task_service.py`` 的 ``run_task_now`` 也是先查后校验。
+    """
+    seed = await _seed_workspace(client, slug="idem-pause", name="Idem Pause")
+    _authenticate(client, seed.user_id)
+
+    payload = {
+        "project_id": str(seed.project_id),
+        "task_id": str(seed.task_id),
+        "endpoint_type": "generic_web",
+        "idempotency_key": "pause-replay-001",
+    }
+
+    first = await client.post("/api/runs", json=payload)
+    assert first.status_code == 201
+
+    # 把任务置为不可运行。
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        await session.execute(
+            update(CollectionTask)
+            .where(CollectionTask.id == seed.task_id)
+            .values(status="paused")
+        )
+        await session.commit()
+
+    replay = await client.post("/api/runs", json=payload)
+
+    assert replay.status_code == 201, (
+        f"重放返回 {replay.status_code}；任务状态变化不应影响已创建运行的幂等重放"
+    )
+    assert replay.json()["id"] == first.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_idempotent_replay_survives_task_moved_to_other_project(
+    client: AsyncClient,
+) -> None:
+    """任务的 project 归属变化后，重放仍返回已有运行。
+
+    与上一条同理：幂等语义只认「首次创建这一事实」，
+    不重新验证当下的绑定关系。
+    """
+    seed = await _seed_workspace(client, slug="idem-move", name="Idem Move")
+    _authenticate(client, seed.user_id)
+
+    payload = {
+        "project_id": str(seed.project_id),
+        "task_id": str(seed.task_id),
+        "endpoint_type": "generic_web",
+        "idempotency_key": "move-replay-001",
+    }
+
+    first = await client.post("/api/runs", json=payload)
+    assert first.status_code == 201
+
+    # 另建一个项目，把任务挂过去。
+    session_factory = client.session_factory  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        other_project = Project(
+            workspace_id=seed.workspace_id,
+            owner_id=seed.user_id,
+            name="Other Project",
+            domain="ecommerce",
+            status="active",
+        )
+        session.add(other_project)
+        await session.flush()
+        other_project_id = other_project.id
+        await session.execute(
+            update(CollectionTask)
+            .where(CollectionTask.id == seed.task_id)
+            .values(project_id=other_project_id)
+        )
+        await session.commit()
+
+    replay = await client.post("/api/runs", json=payload)
+
+    assert replay.status_code == 201
+    assert replay.json()["id"] == first.json()["id"]
+    assert replay.json()["project_id"] == str(seed.project_id), (
+        "重放必须返回首次创建时写入的 project_id，不得按当下绑定关系改写"
+    )
+
+
+@pytest.mark.asyncio
+async def test_missing_task_id_without_cookie_returns_401_not_422(
+    client: AsyncClient,
+) -> None:
+    """鉴权先于绑定校验。无 cookie 且缺 task_id 时返回 401。
+
+    这条固定校验顺序。若顺序颠倒，未认证请求会先拿到 422，
+    对外暴露「该端点需要哪些请求体字段」。
+    """
+    seed = await _seed_workspace(client, slug="auth-order", name="Auth Order")
+    client.cookies.clear()
+
+    response = await client.post(
+        "/api/runs",
+        json={
+            "project_id": str(seed.project_id),
+            "endpoint_type": "generic_web",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Authentication required"

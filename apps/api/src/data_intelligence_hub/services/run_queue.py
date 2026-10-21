@@ -46,7 +46,7 @@ from __future__ import annotations
 
 import importlib
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol, runtime_checkable
@@ -148,7 +148,7 @@ class ClaimedRun:
     task_id: uuid.UUID | None = None
     payload: dict[str, Any] | None = None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[object]:
         yield self.run_id
         yield self.lease_expires_at
 
@@ -389,7 +389,7 @@ async def renew_lease(
     statement = update(resolved).where(*conditions).values(**renewal_values)
     result = await session.execute(statement)
     await session.flush()
-    if result.rowcount == 0:
+    if int(getattr(result, "rowcount", 0)) == 0:
         return None
     return expires_at
 
@@ -446,7 +446,7 @@ async def release_lease(
     statement = update(resolved).where(*conditions).values(**released_values)
     result = await session.execute(statement)
     await session.flush()
-    return result.rowcount > 0
+    return int(getattr(result, "rowcount", 0)) > 0
 
 
 def _eligible_clause(table: Table, now: datetime) -> Any:
