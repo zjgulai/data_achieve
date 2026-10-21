@@ -35,7 +35,8 @@ tmp/**
 *.key
 
 # Local verification sweep reports (machine-readable artifacts)
-reports/
+# 只忽略仓库根目录的 reports/。控制台页面 src/app/reports/ 必须入库。
+/reports/
 
 # Local autonomous loop control
 .Codex/

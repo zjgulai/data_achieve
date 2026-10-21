@@ -1,0 +1,253 @@
+{
+  "schema_version": "1.0.0",
+  "template_id": "t1_voc",
+  "generated_at": "2026-10-21T00:00:00Z",
+  "identity": {
+    "task_id": "11111111-1111-1111-1111-111111111111",
+    "brand": "Fixture Brand",
+    "category": "可穿戴吸乳器",
+    "competitors": [
+      "Fixture Competitor"
+    ],
+    "markets": [
+      "US",
+      "DE"
+    ],
+    "window": {
+      "start": "2026-06-20",
+      "end": "2026-09-20",
+      "days": 92
+    },
+    "product": "结构夹具产品",
+    "model": "FIX-T1",
+    "variant_id": "v-fixture-1",
+    "sku": "SKU-FIXTURE-1",
+    "asin": "B0FIXTURE1",
+    "parent_asin": null,
+    "bundle": "单支装",
+    "offer": "1 件",
+    "mapping_confidence": 0.9,
+    "family_children": []
+  },
+  "decision": {
+    "decision_question": "Fit 与支撑，哪个是主要摩擦？",
+    "answer": "结构夹具只演示合同结构，不作业务结论。",
+    "protect": [
+      "夹具结构完整性"
+    ],
+    "resolve": [
+      "夹具与真实采集的边界"
+    ],
+    "prove": [
+      "真实 T1 需要 2 品牌 × 2 市场"
+    ]
+  },
+  "gates": [
+    {
+      "gate_id": "G-Plan",
+      "status": "pass",
+      "note": "夹具计划已登记。"
+    },
+    {
+      "gate_id": "G-Cost",
+      "status": "pending",
+      "note": "夹具不产生真实成本。"
+    },
+    {
+      "gate_id": "G-Evidence",
+      "status": "pending",
+      "note": "夹具等级最高 L2。"
+    },
+    {
+      "gate_id": "G-Claim",
+      "status": "pending",
+      "note": "夹具不产生真实 claim。"
+    },
+    {
+      "gate_id": "G-Publish",
+      "status": "blocked",
+      "note": "结构夹具不得发布。"
+    }
+  ],
+  "coverage": {
+    "cells": [
+      {
+        "source_tool_id": "apify_amazon_reviews_axesso",
+        "market": "US",
+        "window": {
+          "start": "2026-06-20",
+          "end": "2026-09-20",
+          "days": 92
+        },
+        "record_count": 4,
+        "frame_member_count": 4,
+        "status": "success"
+      },
+      {
+        "source_tool_id": "apify_trustpilot_reviews_scraper",
+        "market": "DE",
+        "window": {
+          "start": "2026-06-20",
+          "end": "2026-09-20",
+          "days": 92
+        },
+        "record_count": 3,
+        "frame_member_count": 3,
+        "status": "success"
+      }
+    ]
+  },
+  "metrics": [
+    {
+      "metric_id": "fit_annotation_count",
+      "label": "Fit 维度夹具标注数",
+      "numerator": 3,
+      "denominator": 4,
+      "count_type": "annotation",
+      "frame": "T1 US 夹具帧",
+      "as_of": "2026-09-20",
+      "note": "夹具数字，不代表真实样本。"
+    },
+    {
+      "metric_id": "support_annotation_count",
+      "label": "支撑维度夹具标注数",
+      "numerator": 1,
+      "denominator": 4,
+      "count_type": "annotation",
+      "frame": "T1 US 夹具帧",
+      "as_of": "2026-09-20",
+      "note": "夹具数字，不代表真实样本。"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "c-t1-us-fit",
+      "text": "夹具样本显示，Fit 相关表述多于支撑表述。",
+      "claim_status": "hypothesis",
+      "evidence_grade": "L2_fixture_local",
+      "scope": {
+        "market": "US",
+        "window": {
+          "start": "2026-06-20",
+          "end": "2026-09-20",
+          "days": 92
+        },
+        "sample_n": 4
+      },
+      "counterevidence_text": "未发现反证。夹具不构成真实反证。",
+      "owner": "22222222-2222-2222-2222-222222222222",
+      "evidence_ids": [
+        "e-t1-us-support",
+        "e-t1-us-gap"
+      ]
+    },
+    {
+      "claim_id": "c-t1-de-gap",
+      "text": "夹具样本显示，DE 市场缺少支撑维度的可用记录。",
+      "claim_status": "evidence_gap",
+      "evidence_grade": "L2_fixture_local",
+      "scope": {
+        "market": "DE",
+        "window": {
+          "start": "2026-06-20",
+          "end": "2026-09-20",
+          "days": 92
+        },
+        "sample_n": 3
+      },
+      "counterevidence_text": "未发现反证。缺口由夹具结构演示。",
+      "owner": "22222222-2222-2222-2222-222222222222",
+      "evidence_ids": [
+        "e-t1-de-gap"
+      ]
+    }
+  ],
+  "evidences": [
+    {
+      "evidence_id": "e-t1-us-support",
+      "claim_id": "c-t1-us-fit",
+      "role": "support",
+      "raw_record_id": "44444444-4444-4444-4444-444444444401",
+      "source_tool_id": "apify_amazon_reviews_axesso",
+      "url": "https://example.com/fixture/t1/us/review-1",
+      "excerpt": "夹具摘录：贴合，没漏。",
+      "captured_at": "2026-09-01T00:00:00Z",
+      "market": "US",
+      "locale": "en-US",
+      "evidence_grade": "L2_fixture_local"
+    },
+    {
+      "evidence_id": "e-t1-us-gap",
+      "claim_id": "c-t1-us-fit",
+      "role": "gap",
+      "raw_record_id": null,
+      "source_tool_id": "apify_amazon_reviews_axesso",
+      "url": null,
+      "excerpt": "夹具缺口：没有支撑维度的标注记录。",
+      "captured_at": "2026-09-01T00:00:00Z",
+      "market": "US",
+      "locale": "en-US",
+      "evidence_grade": "L2_fixture_local"
+    },
+    {
+      "evidence_id": "e-t1-de-gap",
+      "claim_id": "c-t1-de-gap",
+      "role": "gap",
+      "raw_record_id": null,
+      "source_tool_id": "apify_trustpilot_reviews_scraper",
+      "url": null,
+      "excerpt": "夹具未匹配到 DE 的支撑维度记录。",
+      "captured_at": "2026-09-02T00:00:00Z",
+      "market": "DE",
+      "locale": "de-DE",
+      "evidence_grade": "L2_fixture_local"
+    }
+  ],
+  "run_ledger": [
+    {
+      "run_id": "33333333-3333-3333-3333-333333333301",
+      "tool_id": "apify_amazon_reviews_axesso",
+      "endpoint_type": "apify_amazon_reviews_axesso",
+      "actor_id": "axesso_data/amazon-reviews-scraper",
+      "unit": "request",
+      "quantity": 1,
+      "unit_price": "0.000000",
+      "total_cost_usd": "0.000000",
+      "authorization_id": null,
+      "evidence_grade": "L2_fixture_local",
+      "started_at": "2026-09-20T00:00:00Z",
+      "finished_at": "2026-09-20T00:00:01Z",
+      "outcome": "success"
+    },
+    {
+      "run_id": "33333333-3333-3333-3333-333333333302",
+      "tool_id": "apify_trustpilot_reviews_scraper",
+      "endpoint_type": "apify_trustpilot_reviews_scraper",
+      "actor_id": "memo23/trustpilot-scraper-ppe",
+      "unit": "request",
+      "quantity": 1,
+      "unit_price": "0.000000",
+      "total_cost_usd": "0.000000",
+      "authorization_id": null,
+      "evidence_grade": "L2_fixture_local",
+      "started_at": "2026-09-20T00:00:02Z",
+      "finished_at": "2026-09-20T00:00:03Z",
+      "outcome": "success"
+    }
+  ],
+  "limits": [
+    "本文件是结构夹具（fixture），不是真实黄金报告。",
+    "夹具数据不来自真实采集，不得用于业务决策。",
+    "T1 的 prevalence 只能在 L4 且每层 30 条时书写。",
+    "社媒样本必须单列。不得并入自然口碑。"
+  ],
+  "unknowns": [
+    "真实黄金报告需要 T1 跑 2 品牌 × 2 市场。",
+    "夹具不含真实评论原文。"
+  ],
+  "artifact": {
+    "report_html_sha256": "",
+    "sop_html_sha256": "",
+    "contract_sha256": "749702c3e11ffb73a0455dd4bcd83f03c80afbf8682abc15d966fc22da31f208"
+  }
+}

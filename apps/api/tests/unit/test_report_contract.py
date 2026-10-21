@@ -27,6 +27,7 @@ from data_intelligence_hub.schemas.report_contract import (
     ReportContract,
     canonical_json_bytes,
     contract_sha256,
+    max_claim_status_for_grade,
     to_json,
     validate_contract,
 )
@@ -613,6 +614,91 @@ def test_validate_contract_allows_forbidden_word_at_l4() -> None:
     contract.claims[0].text = "确认防胀气卖点有效。"
 
     assert validate_contract(contract) == []
+
+
+@pytest.mark.parametrize(
+    ("grade", "expected"),
+    [
+        (EvidenceGrade.L4_AUTHORIZED_LIVE, ClaimState.CONFIRMED),
+        (EvidenceGrade.L3_LIVE_SINGLE, ClaimState.DIRECTIONAL),
+        (EvidenceGrade.L2_FIXTURE_LOCAL, ClaimState.HYPOTHESIS),
+        (EvidenceGrade.L1_CONTRACT, ClaimState.HYPOTHESIS),
+    ],
+)
+def test_max_claim_status_for_grade(
+    grade: EvidenceGrade,
+    expected: ClaimState,
+) -> None:
+    """四档等级各有唯一的 claim 状态上限。表来自 UI 规格 6.4.1。"""
+    assert max_claim_status_for_grade(grade) == expected
+
+
+def test_validate_contract_rejects_confirmed_claim_at_l3() -> None:
+    """confirmed + L3 必须被抓。渲染器不得输出「已确认」。"""
+    contract = _contract()
+    claim = contract.claims[0]
+    claim.claim_status = ClaimState.CONFIRMED
+    claim.evidence_grade = EvidenceGrade.L3_LIVE_SINGLE
+
+    issues = validate_contract(contract)
+
+    assert any(
+        "c-1" in issue
+        and "confirmed" in issue
+        and "L3_live_single" in issue
+        and "directional" in issue
+        for issue in issues
+    )
+
+
+def test_validate_contract_accepts_directional_claim_at_l3() -> None:
+    """directional + L3 合法。"""
+    contract = _contract()
+    contract.claims[0].claim_status = ClaimState.DIRECTIONAL
+    contract.claims[0].evidence_grade = EvidenceGrade.L3_LIVE_SINGLE
+
+    assert validate_contract(contract) == []
+
+
+def test_validate_contract_accepts_confirmed_claim_at_l4() -> None:
+    """confirmed + L4 合法。"""
+    contract = _contract()
+    contract.claims[0].claim_status = ClaimState.CONFIRMED
+
+    assert validate_contract(contract) == []
+
+
+def test_validate_contract_accepts_evidence_gap_claim_at_l2() -> None:
+    """evidence_gap 是结果状态。L2 也允许。"""
+    contract = _contract()
+    contract.claims[0].claim_status = ClaimState.EVIDENCE_GAP
+    contract.claims[0].evidence_grade = EvidenceGrade.L2_FIXTURE_LOCAL
+    for evidence in contract.evidences:
+        evidence.evidence_grade = EvidenceGrade.L2_FIXTURE_LOCAL
+
+    assert validate_contract(contract) == []
+
+
+def test_validate_contract_uses_the_contract_minimum_grade() -> None:
+    """一条 L3 证据会把整个合同的上限压到 directional。"""
+    contract = _contract()
+    contract.claims[0].claim_status = ClaimState.CONFIRMED
+    contract.evidences[1].evidence_grade = EvidenceGrade.L3_LIVE_SINGLE
+
+    issues = validate_contract(contract)
+
+    assert any("c-1" in issue and "L3_live_single" in issue for issue in issues)
+
+
+def test_validate_contract_rejects_l1_claim() -> None:
+    """L1 不能写结论。PRD 5.4.2 原文如此。"""
+    contract = _contract()
+    contract.claims[0].claim_status = ClaimState.HYPOTHESIS
+    contract.claims[0].evidence_grade = EvidenceGrade.L1_CONTRACT
+
+    issues = validate_contract(contract)
+
+    assert any("c-1" in issue and "不得生成 claim" in issue for issue in issues)
 
 
 def test_validate_contract_flags_illegal_gate_id() -> None:

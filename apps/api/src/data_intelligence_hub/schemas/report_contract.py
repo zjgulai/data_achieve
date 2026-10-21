@@ -81,6 +81,31 @@ CountType = Literal[
 # 任一 claim 低于 L4 时，text 不得含这三个词。
 BELOW_L4_FORBIDDEN_WORDS: Final[tuple[str, ...]] = ("确认", "证明", "必然")
 
+# UI 规格 6.4.1 与 PRD 5.4.2：证据等级决定 claim 状态的上限。
+# 本表是唯一事实源。校验与构建都读它。不得另写第二张表。
+_MAX_CLAIM_STATUS_BY_GRADE: Final[dict[EvidenceGrade, ClaimState]] = {
+    EvidenceGrade.L4_AUTHORIZED_LIVE: ClaimState.CONFIRMED,
+    EvidenceGrade.L3_LIVE_SINGLE: ClaimState.DIRECTIONAL,
+    EvidenceGrade.L2_FIXTURE_LOCAL: ClaimState.HYPOTHESIS,
+    EvidenceGrade.L1_CONTRACT: ClaimState.HYPOTHESIS,
+    EvidenceGrade.L0_UNVERIFIED: ClaimState.HYPOTHESIS,
+}
+
+# claim 状态的强弱顺序。evidence_gap 与 blocked 是结果状态，不进本表。
+_CLAIM_STATUS_ORDER: Final[dict[ClaimState, int]] = {
+    ClaimState.HYPOTHESIS: 0,
+    ClaimState.DIRECTIONAL: 1,
+    ClaimState.CONFIRMED: 2,
+}
+
+# 这两个状态本身就是「证据不足」的表达。任何等级都允许。
+_ANY_GRADE_CLAIM_STATUSES: Final[frozenset[ClaimState]] = frozenset(
+    {ClaimState.EVIDENCE_GAP, ClaimState.BLOCKED}
+)
+
+# L0 与 L1 不得生成 claim。PRD 5.4.2 如此规定。
+_MIN_CLAIM_GRADE_ORDER: Final[int] = GRADE_ORDER[EvidenceGrade.L2_FIXTURE_LOCAL]
+
 # 指标与数量的 JSON 类型。int 与 float 都接受。
 Number = int | float
 
@@ -536,6 +561,17 @@ def contract_sha256(contract: ReportContract | Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical_json_bytes(contract)).hexdigest()
 
 
+def max_claim_status_for_grade(grade: EvidenceGrade) -> ClaimState:
+    """返回该证据等级允许的最高 claim 状态。
+
+    表来自 UI 规格 6.4.1 与 PRD 5.4.2。L4 允许 confirmed，
+    L3 允许 directional，L2 与更低等级只允许 hypothesis。
+    L0 与 L1 本身不得生成 claim。本函数仍返回 hypothesis 作下限，
+    :func:`validate_contract` 会单独拒绝这两个等级上的 claim。
+    """
+    return _MAX_CLAIM_STATUS_BY_GRADE[grade]
+
+
 def validate_contract(contract: ReportContract) -> list[str]:
     """检查合同的语义问题。
 
@@ -553,6 +589,10 @@ def validate_contract(contract: ReportContract) -> list[str]:
        ``status='empty'`` 与 ``status='failed'`` 的单元不要求有对应证据。
     3. claim 等级低于 L4 时，``text`` 不得含「确认」「证明」「必然」。
     4. ``gates[].gate_id`` 必须是合法取值。
+    5. claim 的证据等级不得低于 L2。L0 与 L1 不得生成 claim。
+    6. claim 的 ``claim_status`` 不得超过合同最低证据等级允许的上限。
+       上限表见 :func:`max_claim_status_for_grade`。
+       ``evidence_gap`` 与 ``blocked`` 不受本检查限制。
     """
     issues: list[str] = []
 
@@ -583,6 +623,32 @@ def validate_contract(contract: ReportContract) -> list[str]:
         for word in BELOW_L4_FORBIDDEN_WORDS:
             if word in claim.text:
                 issues.append(f"claim {claim.claim_id} 的等级低于 L4，text 不得含「{word}」")
+
+    # 规则来自 PRD 5.4.2 与 UI 规格 6.4.1：等级决定 claim 状态上限。
+    # 合同最低等级取所有 claim 与 evidence 的最小值。
+    floor: EvidenceGrade | None = None
+    for claim in contract.claims:
+        if floor is None or GRADE_ORDER[claim.evidence_grade] < GRADE_ORDER[floor]:
+            floor = claim.evidence_grade
+    for evidence in contract.evidences:
+        if floor is None or GRADE_ORDER[evidence.evidence_grade] < GRADE_ORDER[floor]:
+            floor = evidence.evidence_grade
+
+    for claim in contract.claims:
+        if GRADE_ORDER[claim.evidence_grade] < _MIN_CLAIM_GRADE_ORDER:
+            issues.append(
+                f"claim {claim.claim_id} 的证据等级 {claim.evidence_grade.value} "
+                "不得生成 claim（PRD 5.4.2：L0 只能出现在计划里，L1 不能写结论）"
+            )
+        if floor is None or claim.claim_status in _ANY_GRADE_CLAIM_STATUSES:
+            continue
+        allowed = max_claim_status_for_grade(floor)
+        if _CLAIM_STATUS_ORDER[claim.claim_status] > _CLAIM_STATUS_ORDER[allowed]:
+            issues.append(
+                f"claim {claim.claim_id} 的 claim_status {claim.claim_status.value} "
+                f"超过合同最低证据等级 {floor.value} 允许的上限 "
+                f"{allowed.value}"
+            )
 
     for index, gate in enumerate(contract.gates):
         if gate.gate_id not in GATE_IDS:
