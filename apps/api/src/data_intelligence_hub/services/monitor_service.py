@@ -203,6 +203,23 @@ async def process_monitor_run(
             new_rows=new_rows,
         )
     await session.commit()
+
+    if new_rows:
+        from data_intelligence_hub.services.webhook_service import dispatch_event
+
+        await dispatch_event(
+            session,
+            workspace_id=monitor.workspace_id,
+            event_type="monitor.new_results",
+            payload={
+                "monitor_id": str(monitor.id),
+                "monitor_name": monitor.name,
+                "endpoint_type": monitor.endpoint_type,
+                "new_count": len(new_rows),
+                "new_urls": [url for _, url in new_rows[:20]],
+                "run_id": str(run.id),
+            },
+        )
     return len(new_rows)
 
 

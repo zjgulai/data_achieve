@@ -60,7 +60,19 @@ def recorder(monkeypatch: pytest.MonkeyPatch) -> _CollectRecorder:
 async def test_mcp_registers_exa_pack_tools() -> None:
     tools = await mcp_server.list_tools()
     names = {tool.name for tool in tools}
-    assert {"web_search", "web_fetch", "answer", "deep_research"} <= names
+    assert {
+        "web_search",
+        "web_fetch",
+        "answer",
+        "deep_research",
+        "deep_research_start",
+        "deep_research_check",
+        "workspace_answer",
+        "create_monitor",
+        "list_monitors",
+        "enrich_list",
+        "enrichment_check",
+    } <= names
 
 
 async def test_web_search_maps_type_to_preset_endpoint(recorder: _CollectRecorder) -> None:

@@ -52,10 +52,11 @@ def test_policy_groups_cover_registry_exactly() -> None:
 def test_policy_group_counts() -> None:
     """四组计数固定。变化说明有采集器被改分类，需要显式确认。"""
     summary = _reconcile()["summary"]
+    # 2026-10-21：exa_agent 走 provider_api，28 → 29。
     assert summary["policy"] == {
         "offline": 1,
         "guarded_http": 4,
-        "provider_api": 28,
+        "provider_api": 29,
         "unsupported": 53,
     }
 
@@ -71,7 +72,8 @@ def test_collector_declarations_match_registry() -> None:
     """只声明未实现的类型数量固定。"""
     summary = _reconcile()["summary"]
     assert summary["collector_definitions"] == 99
-    assert summary["collector_registered"] == 86
+    # 2026-10-21：新增 exa_agent 采集器，注册数 86 → 87。
+    assert summary["collector_registered"] == 87
     assert len(summary["collector_declared_without_impl"]) == 13
 
 
@@ -100,6 +102,7 @@ def test_endpoint_mapping_count_is_stable() -> None:
     2026-10-21：删除 8 个幽灵端点映射，290 → 282。
     幽灵端点与目录元数据现已对齐，差集为 0。
     2026-10-21（Exa 3.0 刷新）：新增 exa_search_lite，282 → 283。
+    2026-10-21（P1 后续）：新增 exa_agent_research，283 → 284。
     """
     summary = _reconcile()["summary"]
-    assert summary["endpoint_mappings"] == 283
+    assert summary["endpoint_mappings"] == 284

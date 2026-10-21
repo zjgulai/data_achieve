@@ -306,4 +306,5 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 | P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research） | **已上线验收**（2026-10-21）：四工具实跑成功（3/1/1/3 条）；monitor 随 P1 |
 | P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | **已上线验收**（2026-10-21，b043c95）：签发→调用成功→超额度拒绝→撤销后 401 |
 | P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | **已上线验收**（2026-10-21）：监控首轮新 3 条、二轮去重 0 条；信号 1、通知 1；用量页有数据；Contents summary 运行成功 |
-| 工具目录计数 | 283 条（新增 exa_search_lite） |
+| P1 后续（Exa Agent、Workspace Answer、Enrichment、出站 Webhook） | 已实现，待发布验收（2026-10-21） |
+| 工具目录计数 | 284 条（新增 exa_agent_research） |

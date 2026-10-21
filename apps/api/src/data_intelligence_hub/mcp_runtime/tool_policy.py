@@ -19,7 +19,7 @@ from data_intelligence_hub.repositories.project_api_keys import (
     find_by_id,
 )
 
-EXPENSIVE_TOOLS = frozenset({"deep_research"})
+EXPENSIVE_TOOLS = frozenset({"deep_research", "deep_research_start"})
 
 
 def tool_allowed(tool_name: str, allowlist: list[str]) -> bool:

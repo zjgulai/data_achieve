@@ -577,6 +577,69 @@ CONTRACTS: dict[str, ToolParameterContract] = {
     ),
         ),
     ),
+    "exa_agent": ToolParameterContract(
+        tool_id="exa_agent",
+        specs=(
+    ParameterSpec(
+        name="query",
+        value_type="string",
+        required=True,
+        source="collector_validation",
+        description="必填。研究问题，不能为空。",
+    ),
+    ParameterSpec(
+        name="effort",
+        value_type="enum",
+        required=False,
+        source="collector_validation",
+        default="medium",
+        allowed_values=(
+            "minimal", "low", "medium", "high", "xhigh", "auto", "ultra",
+        ),
+        description=(
+            "研究投入档位，可选。默认 medium；auto 与 ultra 按用量计费，"
+            "固定档位按次计费。"
+        ),
+    ),
+    ParameterSpec(
+        name="output_schema",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description=(
+            "输出 JSON Schema，可选。填 JSON 对象字符串；"
+            "填后返回结构化结果与字段级引用。"
+        ),
+    ),
+    ParameterSpec(
+        name="system_prompt",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description="系统提示词，可选。用于约束研究风格与输出语言。",
+    ),
+    ParameterSpec(
+        name="max_cost_dollars",
+        value_type="number",
+        required=False,
+        source="collector_validation",
+        default=5,
+        minimum=1,
+        maximum=100,
+        description="单次研究成本上限，可选。美元，1 到 100，默认 5。",
+    ),
+    ParameterSpec(
+        name="timeout_seconds",
+        value_type="integer",
+        required=False,
+        source="collector_validation",
+        default=600,
+        minimum=30,
+        maximum=1800,
+        description="等待研究完成的秒数，可选。30 到 1800，默认 600。",
+    ),
+        ),
+    ),
     # ── social-cn ──
     "bilibili_user_videos": ToolParameterContract(
         tool_id="bilibili_user_videos",

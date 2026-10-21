@@ -25,6 +25,7 @@ from data_intelligence_hub.mcp_runtime.tool_policy import (
     enforce_quota,
     enforce_tool_policy,
 )
+from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -38,7 +39,11 @@ from data_intelligence_hub.repositories.workspaces import (
     get_demo_workspace,
     get_workspace_by_id,
 )
-from data_intelligence_hub.services import monitor_service
+from data_intelligence_hub.services import enrichment_service, monitor_service
+from data_intelligence_hub.services.answer_service import (
+    workspace_answer as run_workspace_answer,
+)
+from data_intelligence_hub.services.research_service import start_research
 from data_intelligence_hub.services.tiktok_tools import run_tiktok_tool
 
 
@@ -522,6 +527,181 @@ def _monitor_payload(monitor) -> dict[str, object]:
         ),
         "last_new_count": monitor.last_new_count,
     }
+
+
+@_tool(
+    description="Answer a question from this workspace's records, with citations.",
+    read_only=True,
+    open_world=True,
+    destructive=False,
+    idempotent=True,
+)
+async def workspace_answer(
+    context: Context,
+    query: str,
+    project_id: str | None = None,
+    limit: int = 5,
+    allow_external: bool = True,
+) -> dict[str, object]:
+    """Answer from workspace records first; optionally supplement with Exa."""
+    async with governed_tool(context, "workspace_answer"):
+        workspace = await _monitor_workspace(context)
+        parsed = _parse_project_id(project_id) if project_id else None
+        async with async_session_factory() as session:
+            if parsed is not None:
+                project = await get_project(session, workspace.id, parsed)
+                if project is None:
+                    raise ValueError("project_not_found")
+            return await run_workspace_answer(
+                session,
+                workspace_id=workspace.id,
+                project_id=parsed,
+                query=query,
+                limit=limit,
+                allow_external=allow_external,
+            )
+
+
+@_tool(
+    description="Start an async deep research run; poll deep_research_check with the run_id.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def deep_research_start(
+    context: Context,
+    project_id: str,
+    query: str,
+    effort: str = "medium",
+    output_schema: dict[str, object] | None = None,
+    max_cost_dollars: float = 5.0,
+    timeout_seconds: int = 600,
+) -> dict[str, object]:
+    """Queue an Exa Agent research run. Expensive; keys need it in their allowlist."""
+    async with governed_tool(context, "deep_research_start", is_collect=True):
+        await enforce_tool_policy(context, "deep_research_start")
+        await enforce_quota(context)
+        workspace = await _monitor_workspace(context)
+        parsed_project_id = _parse_project_id(project_id)
+        async with async_session_factory() as session:
+            project = await get_project(session, workspace.id, parsed_project_id)
+            if project is None:
+                raise ValueError("project_not_found")
+            run_id = await start_research(
+                session,
+                workspace=workspace,
+                project_id=parsed_project_id,
+                query=query,
+                effort=effort,
+                output_schema=output_schema,
+                max_cost_dollars=max_cost_dollars,
+                timeout_seconds=timeout_seconds,
+            )
+        return {"run_id": str(run_id), "status": "queued"}
+
+
+@_tool(
+    description="Check an async research run: status, steps and records.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=True,
+)
+async def deep_research_check(
+    context: Context,
+    run_id: str,
+) -> dict[str, object]:
+    """Return one research run's status, steps and records."""
+    async with governed_tool(context, "deep_research_check"):
+        parsed = uuid.UUID(run_id)
+        identity = project_api_key_context(context)
+        if identity is not None:
+            async with async_session_factory() as session:
+                run = await session.get(Run, parsed)
+            if run is None or run.workspace_id != identity.workspace_id:
+                raise ValueError("run_not_found")
+        detail = await get_run_detail(parsed)
+        records = await list_run_records(parsed, limit=20)
+        return {"run": detail, "records": records}
+
+
+@_tool(
+    description="Start an enrichment job over a list of rows with an output schema.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
+async def enrich_list(
+    context: Context,
+    project_id: str,
+    name: str,
+    query_template: str,
+    items: list[dict[str, object]],
+    output_schema: dict[str, object],
+) -> dict[str, object]:
+    """Enrich rows one by one. Non-PII fields only; up to 100 rows."""
+    async with governed_tool(context, "enrich_list", is_collect=True):
+        await enforce_tool_policy(context, "enrich_list")
+        workspace = await _monitor_workspace(context)
+        parsed_project_id = _parse_project_id(project_id)
+        async with async_session_factory() as session:
+            project = await get_project(session, workspace.id, parsed_project_id)
+            if project is None:
+                raise ValueError("project_not_found")
+            job = await enrichment_service.start_enrichment(
+                session,
+                workspace=workspace,
+                project_id=parsed_project_id,
+                name=name,
+                query_template=query_template,
+                items=items,
+                output_schema=output_schema,
+            )
+        return {
+            "job_id": str(job.id),
+            "status": job.status,
+            "total": job.total,
+        }
+
+
+@_tool(
+    description="Check an enrichment job: status plus per-row output.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=True,
+)
+async def enrichment_check(
+    context: Context,
+    job_id: str,
+) -> dict[str, object]:
+    """Return one enrichment job with its rows."""
+    async with governed_tool(context, "enrichment_check"):
+        workspace = await _monitor_workspace(context)
+        parsed = uuid.UUID(job_id)
+        async with async_session_factory() as session:
+            job = await enrichment_service.get_job(session, workspace.id, parsed)
+            if job is None:
+                raise ValueError("enrichment_job_not_found")
+            rows = await enrichment_service.get_rows(session, job.id)
+            return {
+                "job_id": str(job.id),
+                "status": job.status,
+                "total": job.total,
+                "processed": job.processed,
+                "failed": job.failed,
+                "rows": [
+                    {
+                        "row_index": row.row_index,
+                        "status": row.status,
+                        "output": row.output,
+                        "error": row.error,
+                    }
+                    for row in rows
+                ],
+            }
 
 
 @_tool(

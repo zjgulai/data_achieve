@@ -860,6 +860,8 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         return _validate_exa_contents_config(config)
     if collector_type == "exa_answer":
         return _validate_exa_answer_config(config)
+    if collector_type == "exa_agent":
+        return _validate_exa_agent_config(config)
 
     if collector_type in {
         "sherlock", "maigret",
@@ -1491,6 +1493,39 @@ def _validate_exa_contents_config(config: dict[str, Any]) -> dict[str, Any]:
         "livecrawl_timeout": livecrawl_timeout,
         "include_sections": config.get("include_sections", []),
         "exclude_sections": config.get("exclude_sections", []),
+    }
+    _carry_timeout(config, out)
+    return out
+
+
+def _validate_exa_agent_config(config: dict[str, Any]) -> dict[str, Any]:
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    valid_efforts = {"minimal", "low", "medium", "high", "xhigh", "auto", "ultra"}
+    query = _require_text(config, "query")
+    effort = config.get("effort", "medium")
+    if effort not in valid_efforts:
+        raise CollectorConfigError
+    output_schema = config.get("output_schema")
+    if output_schema is not None and not isinstance(output_schema, dict):
+        raise CollectorConfigError
+    max_cost = config.get("max_cost_dollars", 5)
+    if not isinstance(max_cost, (int, float)) or not (1 <= max_cost <= 100):
+        raise CollectorConfigError
+    timeout_seconds = config.get("timeout_seconds", 600)
+    if not isinstance(timeout_seconds, int) or not (30 <= timeout_seconds <= 1800):
+        raise CollectorConfigError
+    poll_interval = config.get("poll_interval_seconds", 2)
+    if not isinstance(poll_interval, (int, float)) or not (1 <= poll_interval <= 30):
+        raise CollectorConfigError
+    out = {
+        "query": query,
+        "effort": effort,
+        "output_schema": output_schema,
+        "system_prompt": config.get("system_prompt"),
+        "max_cost_dollars": max_cost,
+        "timeout_seconds": timeout_seconds,
+        "poll_interval_seconds": poll_interval,
     }
     _carry_timeout(config, out)
     return out

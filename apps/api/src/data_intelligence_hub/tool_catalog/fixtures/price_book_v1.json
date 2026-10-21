@@ -1582,6 +1582,13 @@
       "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.004/query)",
       "unit": "query",
       "unit_price": 0.004
+    },
+    "exa_agent_research": {
+      "confidence": "medium",
+      "quantity_basis": "per_request",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.10/run (medium))",
+      "unit": "run",
+      "unit_price": 0.1
     }
   },
   "schema_version": "price_book.v1",

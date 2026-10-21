@@ -4523,6 +4523,29 @@ async def get_collector_catalog(
             },
         ),
         CollectorEndpointMetadata(
+            endpoint_type="exa_agent_research",
+            label="Exa Agent 深度研究",
+            platform="web",
+            description=(
+                "异步研究任务：多步检索、列表构建与结构化输出。按 effort 计费，"
+                "medium 约 $0.10/次；结果返回文本、结构化输出与字段级引用。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "effort", "output_schema", "system_prompt",
+                "max_cost_dollars", "timeout_seconds",
+            ],
+            cost_hint="$0.10/run (medium)",
+            provider="Exa API",
+            content_type="research",
+            method="exa",
+            param_fields={
+                "effort": "medium",
+                "max_cost_dollars": "5",
+            },
+        ),
+        CollectorEndpointMetadata(
             endpoint_type="exa_search_instant",
             label="Exa 极速搜索（instant）",
             platform="web",

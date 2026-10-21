@@ -36,6 +36,7 @@ PROVIDER_API_COLLECTORS = frozenset(
         "exa_find_similar",
         "exa_contents",
         "exa_answer",
+        "exa_agent",
         "hackernews_front_page",
         "hackernews_search",
         "hackernews_user",
