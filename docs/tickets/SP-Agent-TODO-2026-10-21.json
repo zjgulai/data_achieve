@@ -132,12 +132,12 @@
     "module": "运行记录",
     "task_attribute": "新需求",
     "solution": "先持久受理，再返回 run id。用现有数据库做租约与心跳。保存 provider_run_id 与 dataset_id。超时与重启可恢复。取消请求要与上游已停止区分。",
-    "status": "未开始",
+    "status": "进行中",
     "registered": "2026-10-21",
     "due": "2026-10-31",
     "actual": "",
     "priority": "P1",
-    "evidence": "Monid 差距 §4.3 行11、§5.3；TikTok R1 §11.1-§11.2；下一批迭代 B3。"
+    "evidence": "B3 已合并 main 并部署生产 A（8dbe407）。迁移 049/050/051 已应用，schema 051。生产实测：POST /api/runs 201；同幂等键重放返回同一 run；13 条记录；L3；账本 1 条；任务状态恢复 enabled。停机后入队、重启后 worker 自动完成。L4 已在本地 Postgres 15 用真实 TikHub 调用验证。剩余：provider_run_id/dataset_id 未落库；取消未传给上游 collector。"
   },
   {
     "ticket_id": "SP-11",
