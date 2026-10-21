@@ -50,6 +50,8 @@ function tool(params: PublicToolParameter[], over: Partial<PublicTool> = {}): Pu
     parameters: params,
     required_parameters: params.filter((p) => p.required).map((p) => p.name),
     optional_parameters: params.filter((p) => !p.required).map((p) => p.name),
+    // 后端 `PublicTool.cost` 必须存在。夹具也带一份。
+    cost: { summary: null, source: "unknown" },
     availability: {
       availability: "config-gated",
       catalog_status: "verified",
