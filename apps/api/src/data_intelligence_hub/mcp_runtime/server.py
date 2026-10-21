@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
+from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp_types import ToolAnnotations
 
+from data_intelligence_hub.mcp_runtime.capability_service import (
+    describe_capability_public,
+)
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 from data_intelligence_hub.mcp_runtime.run_service import (
+    get_project_balance,
     get_run_detail,
     list_run_records,
+    stop_run,
 )
 from data_intelligence_hub.mcp_runtime.runtime import governed_tool
 from data_intelligence_hub.platform_packages.service import (
@@ -37,6 +45,34 @@ mcp_server = MCPServer(
     ),
 )
 
+def _public_endpoint_payload(endpoint: object) -> dict[str, object]:
+    """去掉策略拒绝原文。它是内部治理信息。"""
+    payload: dict[str, Any] = endpoint.model_dump(mode="json")  # type: ignore[attr-defined]
+    payload.pop("policy_block_reason", None)
+    return payload
+
+
+def _tool(
+    *,
+    description: str,
+    read_only: bool,
+    open_world: bool,
+    destructive: bool = False,
+    idempotent: bool = False,
+) -> Callable[[Any], Any]:
+    """统一注册带描述与注解的工具。"""
+    return mcp_server.tool(
+        description=description,
+        annotations=ToolAnnotations(
+            readOnlyHint=read_only,
+            destructiveHint=destructive,
+            idempotentHint=idempotent,
+            openWorldHint=open_world,
+        ),
+        structured_output=True,
+    )
+
+
 MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
     allowed_hosts=[
         "scrapy.luteos.com",
@@ -57,7 +93,13 @@ MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
 )
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="List available data platforms and their endpoint counts.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def list_platforms(context: Context, query: str | None = None) -> dict[str, object]:
     async with governed_tool(context, "list_platforms"):
         catalog = await get_platform_package_catalog()
@@ -83,7 +125,13 @@ async def list_platforms(context: Context, query: str | None = None) -> dict[str
         }
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="List capabilities for one platform, with optional text and status filters.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def list_capabilities(
     context: Context,
     platform_id: str,
@@ -110,24 +158,34 @@ async def list_capabilities(
         return {
             "catalog_digest": catalog.catalog_digest,
             "platform_id": platform_id,
-            "capabilities": [item.model_dump(mode="json") for item in capabilities],
+            "capabilities": [
+                _public_endpoint_payload(item) for item in capabilities
+            ],
         }
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Describe one capability with typed input and output JSON schemas.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def describe_capability(
     context: Context,
     endpoint_type: str,
 ) -> dict[str, object]:
     async with governed_tool(context, "describe_capability", endpoint_type=endpoint_type):
-        try:
-            endpoint = await get_capability(endpoint_type)
-        except CapabilityNotFoundError as exc:
-            raise ValueError("capability_not_found") from exc
-        return endpoint.model_dump(mode="json")
+        return await describe_capability_public(endpoint_type)
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Return the platform playbook in Markdown.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def get_playbook(context: Context, platform_id: str) -> dict[str, str]:
     async with governed_tool(context, "get_playbook"):
         try:
@@ -137,7 +195,13 @@ async def get_playbook(context: Context, platform_id: str) -> dict[str, str]:
         return {"platform_id": platform_id, "markdown": markdown}
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Run one collection and return records, output, usage and timing.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def collect(
     context: Context,
     endpoint_type: str,
@@ -164,7 +228,13 @@ async def collect(
         return result.model_dump(mode="json")
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Return one run with status, outcome, cost and steps.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def get_run(context: Context, run_id: str) -> dict[str, object]:
     """Return one run with its status, outcome, cost and steps."""
     async with governed_tool(context, "get_run"):
@@ -175,7 +245,13 @@ async def get_run(context: Context, run_id: str) -> dict[str, object]:
         return await get_run_detail(parsed)
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="List raw records for one run with cursor pagination.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
 async def list_records(
     context: Context,
     run_id: str,
@@ -191,7 +267,47 @@ async def list_records(
         return await list_run_records(parsed, limit=limit, cursor=cursor)
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Cancel a queued or running run.",
+    read_only=False,
+    open_world=False,
+    destructive=True,
+    idempotent=False,
+)
+async def stop(context: Context, run_id: str) -> dict[str, object]:
+    """Cancel a queued or running run."""
+    async with governed_tool(context, "stop"):
+        try:
+            parsed = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise ValueError("run_id_invalid") from exc
+        return await stop_run(parsed)
+
+
+@_tool(
+    description="Report project spend and remaining authorized budget.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
+async def balance(context: Context, project_id: str) -> dict[str, object]:
+    """Report project spend and remaining authorized budget."""
+    async with governed_tool(context, "balance"):
+        try:
+            parsed = uuid.UUID(project_id)
+        except ValueError as exc:
+            raise ValueError("project_id_invalid") from exc
+        return await get_project_balance(parsed)
+
+
+@_tool(
+    description="TikTok trend ranking from Creative Center.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_trend_rank(
     context: Context,
     project_id: str,
@@ -208,7 +324,13 @@ async def tiktok_trend_rank(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Videos for a TikTok hashtag.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_hashtag_videos(
     context: Context,
     project_id: str,
@@ -231,7 +353,13 @@ async def tiktok_hashtag_videos(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Search public TikTok videos by keyword.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_video_search(
     context: Context,
     project_id: str,
@@ -247,7 +375,13 @@ async def tiktok_video_search(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get one TikTok video by id or URL.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_video_detail(
     context: Context,
     project_id: str,
@@ -263,7 +397,13 @@ async def tiktok_video_detail(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get comments for a TikTok video, optionally with replies.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_video_comments(
     context: Context,
     project_id: str,
@@ -286,7 +426,13 @@ async def tiktok_video_comments(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get a TikTok creator profile, optionally with videos and fans.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_creator_profile(
     context: Context,
     project_id: str,
@@ -311,7 +457,13 @@ async def tiktok_creator_profile(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Find TikTok creator candidates from keyword video results.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_creator_search(
     context: Context,
     project_id: str,
@@ -327,7 +479,13 @@ async def tiktok_creator_search(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Extract a transcript or captions for TikTok videos.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_transcript(
     context: Context,
     project_id: str,
@@ -343,7 +501,13 @@ async def tiktok_transcript(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Search TikTok Shop products by keyword.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_product_search(
     context: Context,
     project_id: str,
@@ -360,7 +524,13 @@ async def tiktok_product_search(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get TikTok Shop product detail, GMV and SKUs.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_product_detail(
     context: Context,
     project_id: str,
@@ -381,7 +551,13 @@ async def tiktok_product_detail(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get TikTok Shop product reviews and ratings.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_product_reviews(
     context: Context,
     project_id: str,
@@ -398,7 +574,13 @@ async def tiktok_product_reviews(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get a TikTok creator commerce profile by handle.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_creator_commerce(
     context: Context,
     project_id: str,
@@ -414,7 +596,13 @@ async def tiktok_creator_commerce(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get products linked to a TikTok video. Needs a creator cookie.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_video_products(
     context: Context,
     project_id: str,
@@ -429,7 +617,13 @@ async def tiktok_video_products(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get a TikTok creator showcase product list. Needs a creator cookie.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_creator_showcase(
     context: Context,
     project_id: str,
@@ -445,7 +639,13 @@ async def tiktok_creator_showcase(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get top TikTok ads with engagement metrics.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_ads_top(
     context: Context,
     project_id: str,
@@ -462,7 +662,13 @@ async def tiktok_ads_top(
         return result.as_dict()
 
 
-@mcp_server.tool(structured_output=True)
+@_tool(
+    description="Get TikTok ad detail, advertiser and landing page.",
+    read_only=False,
+    open_world=True,
+    destructive=False,
+    idempotent=False,
+)
 async def tiktok_ads_detail(
     context: Context,
     project_id: str,

@@ -12,8 +12,10 @@ from typing import Any
 from sqlalchemy import func, select
 
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.models.authorization import Authorization
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.run import Run
+from data_intelligence_hub.models.run_ledger import RunLedgerEntry
 from data_intelligence_hub.models.task import TaskRun
 from data_intelligence_hub.repositories import runs as runs_repository
 from data_intelligence_hub.schemas.run import RunResponse, RunStepResponse
@@ -114,3 +116,70 @@ async def list_run_records(
             "next_cursor": str(next_offset) if next_offset < total_count else None,
             "records_total": total_count,
         }
+
+
+async def stop_run(run_id: uuid.UUID) -> dict[str, Any]:
+    """取消一次运行。已进入终态时返回 ``cancelled=False``。"""
+    async with async_session_factory() as session:
+        run = await session.get(Run, run_id)
+        if run is None:
+            raise ValueError("run_not_found")
+        workspace_id = run.workspace_id
+        updated = await runs_repository.cancel_run(
+            session,
+            workspace_id=workspace_id,
+            run_id=run_id,
+        )
+        await session.commit()
+        if updated is not None:
+            return {
+                "run_id": str(run_id),
+                "status": updated.status,
+                "cancelled": True,
+            }
+        current = await session.get(Run, run_id)
+        return {
+            "run_id": str(run_id),
+            "status": current.status if current is not None else "unknown",
+            "cancelled": False,
+        }
+
+
+async def get_project_balance(project_id: uuid.UUID) -> dict[str, Any]:
+    """返回项目已花费金额与有效授权预算。
+
+    ``budget_usd`` 是当前仍有效的 ``gate_status=pass`` 授权额度之和。
+    没有有效授权时为 ``None``，不把 0 当成已知预算。
+    """
+    async with async_session_factory() as session:
+        spent = await session.scalar(
+            select(func.coalesce(func.sum(RunLedgerEntry.amount_usd), 0))
+            .select_from(RunLedgerEntry)
+            .join(Run, Run.id == RunLedgerEntry.run_id)
+            .where(Run.project_id == project_id)
+        )
+        entry_count = await session.scalar(
+            select(func.count())
+            .select_from(RunLedgerEntry)
+            .join(Run, Run.id == RunLedgerEntry.run_id)
+            .where(Run.project_id == project_id)
+        )
+        budget = await session.scalar(
+            select(func.sum(Authorization.max_cost_usd)).where(
+                Authorization.project_id == project_id,
+                Authorization.gate_status == "pass",
+                Authorization.revoked_at.is_(None),
+                Authorization.expires_at > func.now(),
+            )
+        )
+    spent_text = str(spent or 0)
+    budget_text = None if budget is None else str(budget)
+    remaining_text = None if budget is None else str(budget - (spent or 0))
+    return {
+        "project_id": str(project_id),
+        "currency": "USD",
+        "spent_usd": spent_text,
+        "authorized_budget_usd": budget_text,
+        "remaining_usd": remaining_text,
+        "ledger_entries": int(entry_count or 0),
+    }
