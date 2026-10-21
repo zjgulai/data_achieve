@@ -41,6 +41,31 @@ def _parameter_schema(parameter: Any) -> dict[str, Any]:
     return schema
 
 
+def build_output_schema(endpoint_type: str) -> dict[str, Any] | None:
+    """把输出家族夹具包成合法 JSON Schema。
+
+    夹具只有字段名，没有类型。这里不编造类型：
+    每个字段给空 schema，并置 ``additionalProperties=true``。
+    """
+    family = _output_schema_for(endpoint_type)
+    if family is None:
+        return None
+    fields = family.get("fields")
+    properties: dict[str, Any] = (
+        {name: {} for name in fields if isinstance(name, str)}
+        if isinstance(fields, list)
+        else {}
+    )
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "description": family.get("description"),
+        "properties": properties,
+        "additionalProperties": True,
+        "x-family": family.get("family"),
+    }
+
+
 def build_input_schema(tool: PublicTool) -> dict[str, Any]:
     """把公开参数投影成 JSON Schema。未登记类型的参数只保留名称。"""
     properties = {parameter.name: _parameter_schema(parameter) for parameter in tool.parameters}
@@ -64,5 +89,5 @@ async def describe_capability_public(endpoint_type: str) -> dict[str, Any]:
     return {
         **tool.model_dump(mode="json"),
         "input_schema": build_input_schema(tool),
-        "output_schema": _output_schema_for(endpoint_type),
+        "output_schema": build_output_schema(endpoint_type),
     }
