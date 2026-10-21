@@ -1,14 +1,22 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
+  B5_ROUTES,
   KEPT_ROUTES,
   NEW_ROUTES,
+  PRIMARY_NAVIGATION,
   ROOT_ROUTE,
   ROUTE_REDIRECTS,
+  SECONDARY_NAVIGATION,
+  activeNavigationHref,
   buildRedirects,
+  isActiveRoute,
+  openToolDetail,
   parametersOf,
+  resolveToolDetailState,
+  toolDetailHref,
 } from "./routes.ts";
 
 test("the redirect table has the seven frozen entries", () => {
@@ -96,14 +104,56 @@ test("kept routes are not redirected", () => {
   }
 });
 
-test("the three groups cover the frozen table exactly once", () => {
-  // 冻结表原为 15 条现有路由；B1-17 删除死页 /settings/account 后为 14 条。
-  // 根路由自成一类：路径不变，用途由重定向改为公开首页。
+test("the three route groups have explicit sizes", () => {
+  // 三组分别断言。合并求和会掩盖分组错误。
+  // B5 的 /workbench 已移到 NEW。它不再属于保持路径。
+  assert.equal(
+    KEPT_ROUTES.length,
+    6,
+    `KEPT_ROUTES 应为 6 条，实际 ${KEPT_ROUTES.length} 条`
+  );
+  // NEW 含 B5 的 3 条一级入口、2 条 B5 详情页与 4 条早前批次路由。
+  assert.equal(
+    NEW_ROUTES.length,
+    9,
+    `NEW_ROUTES 应为 9 条，实际 ${NEW_ROUTES.length} 条`
+  );
+  // 总计 = 7 条重定向 + 6 条保持 + 1 条根路由 + 9 条新增。
+  assert.equal(
+    ROUTE_REDIRECTS.length +
+      KEPT_ROUTES.length +
+      (ROOT_ROUTE ? 1 : 0) +
+      NEW_ROUTES.length,
+    23,
+    "三组加根路由应为 23 条"
+  );
+});
+
+test("the frozen table still has fourteen routes", () => {
+  // 冻结表原为 15 条现有路由。B1-17 删除死页 /settings/account 后为 14 条。
   assert.equal(
     ROUTE_REDIRECTS.length + KEPT_ROUTES.length + (ROOT_ROUTE ? 1 : 0),
     14
   );
-  assert.equal(NEW_ROUTES.length, 4);
+});
+
+test("the three B5 routes share the new-route group", () => {
+  // 三个路由都是 B5 新建。它们必须同组。
+  assert.equal(B5_ROUTES.length, 3);
+  for (const route of B5_ROUTES) {
+    assert.equal(NEW_ROUTES.includes(route), true, `${route} 应属于 NEW_ROUTES`);
+    assert.equal(KEPT_ROUTES.includes(route), false, `${route} 不应属于 KEPT_ROUTES`);
+  }
+});
+
+test("the report center and the report reader are registered", () => {
+  assert.equal(NEW_ROUTES.includes("/reports"), true);
+  assert.equal(NEW_ROUTES.includes("/reports/[artifactId]"), true);
+});
+
+test("the capability directory and its deep link are registered", () => {
+  assert.equal(NEW_ROUTES.includes("/capabilities"), true);
+  assert.equal(NEW_ROUTES.includes("/capabilities/[toolId]"), true);
 });
 
 test("each new route has a page file", () => {
@@ -141,4 +191,144 @@ test("every redirect is permanent", () => {
 
 test("each redirect states its purpose", () => {
   for (const r of ROUTE_REDIRECTS) assert.ok(r.note.length > 0, `${r.source} 缺说明`);
+});
+
+test("the sidebar primary navigation starts at the workbench", () => {
+  // UI 规格 §0.1：/workbench 是唯一任务入口。
+  assert.equal(PRIMARY_NAVIGATION[0]?.name, "工作台");
+  assert.equal(PRIMARY_NAVIGATION[0]?.href, "/workbench");
+});
+
+test("the sidebar links the three B5 pages", () => {
+  const hrefs = PRIMARY_NAVIGATION.map(item => item.href);
+  for (const route of B5_ROUTES) {
+    assert.equal(hrefs.includes(route), true, `一级导航缺少 ${route}`);
+  }
+});
+
+test("the dashboard is not a primary entry", () => {
+  assert.equal(
+    PRIMARY_NAVIGATION.some(item => item.href === "/dashboard"),
+    false,
+    "/dashboard 不得作为一级入口"
+  );
+  // 页面保留。入口降为二级。
+  assert.equal(
+    SECONDARY_NAVIGATION.some(item => item.href === "/dashboard"),
+    true,
+    "/dashboard 页面保留，应出现在二级导航"
+  );
+});
+
+test("the sidebar source renders the shared navigation config", () => {
+  // 导航数据在 routes.ts。侧栏必须从那里取，不能另抄一份。
+  const file = fileURLToPath(
+    new URL("../components/layout/sidebar.tsx", import.meta.url)
+  );
+  const source = readFileSync(file, "utf8");
+  assert.equal(source.includes("PRIMARY_NAVIGATION.map"), true);
+  assert.equal(source.includes("SECONDARY_NAVIGATION.map"), true);
+  assert.equal(source.includes("usePathname()"), true);
+  // 旧的「工作台 → /dashboard」硬编码必须消失。
+  assert.equal(
+    /name:\s*"工作台",\s*href:\s*"\/dashboard"/.test(source),
+    false,
+    "工作台不得再指向 /dashboard"
+  );
+});
+
+test("a deep capability link highlights the capability entry", () => {
+  // /capabilities/[toolId] 时父项高亮。
+  assert.equal(isActiveRoute("/capabilities/exa_search", "/capabilities"), true);
+  // 相邻路径不得误判。
+  assert.equal(isActiveRoute("/capabilities-archive", "/capabilities"), false);
+  const hrefs = [
+    ...PRIMARY_NAVIGATION.map(item => item.href),
+    ...SECONDARY_NAVIGATION.map(item => item.href),
+  ];
+  assert.equal(activeNavigationHref("/capabilities/exa_search", hrefs), "/capabilities");
+  assert.equal(activeNavigationHref("/capabilities", hrefs), "/capabilities");
+  assert.equal(activeNavigationHref("/workbench", hrefs), "/workbench");
+  // 更具体的路径只高亮最长匹配。工具有子页时二者不再同时高亮。
+  assert.equal(activeNavigationHref("/tools/tiktok", hrefs), "/tools/tiktok");
+  assert.equal(activeNavigationHref("/tools", hrefs), "/tools");
+  assert.equal(activeNavigationHref("/unknown", hrefs), null);
+});
+
+test("the tool detail link encodes the tool id", () => {
+  assert.equal(toolDetailHref("exa_search"), "/capabilities/exa_search");
+  // 工具标识可能含斜杠。斜杠必须编码，否则会多出一段路径。
+  assert.equal(toolDetailHref("provider/tool"), "/capabilities/provider%2Ftool");
+});
+
+test("a capability list row pushes the deep link", () => {
+  // 用 router.push 的替身断言跳转目标。
+  const pushed: string[] = [];
+  const router = {
+    push: (href: string) => {
+      pushed.push(href);
+    },
+  };
+  openToolDetail(router, "exa_search");
+  assert.deepEqual(pushed, ["/capabilities/exa_search"]);
+});
+
+test("the capability list row uses the deep link opener", () => {
+  const file = fileURLToPath(
+    new URL("../app/capabilities/page.tsx", import.meta.url)
+  );
+  const source = readFileSync(file, "utf8");
+  assert.equal(
+    source.includes("openToolDetail(router"),
+    true,
+    "列表行必须调用 openToolDetail"
+  );
+  // 抽屉已删除。列表不再自己打开详情。
+  assert.equal(source.includes("ToolDetailDrawer"), false);
+});
+
+test("the tool detail state treats 404 as a missing tool", () => {
+  assert.equal(
+    resolveToolDetailState({ isLoading: true, error: null, hasTool: false }),
+    "loading"
+  );
+  assert.equal(
+    resolveToolDetailState({ isLoading: false, error: { status: 404 }, hasTool: false }),
+    "not-found"
+  );
+  assert.equal(
+    resolveToolDetailState({ isLoading: false, error: { status: 500 }, hasTool: false }),
+    "error"
+  );
+  assert.equal(
+    resolveToolDetailState({ isLoading: false, error: null, hasTool: true }),
+    "ready"
+  );
+  // 没有数据也没有错误时也按不存在处理。不得显示空白页。
+  assert.equal(
+    resolveToolDetailState({ isLoading: false, error: null, hasTool: false }),
+    "not-found"
+  );
+});
+
+test("the capability detail page renders a missing-tool state", () => {
+  const file = fileURLToPath(
+    new URL("../app/capabilities/[toolId]/page.tsx", import.meta.url)
+  );
+  const source = readFileSync(file, "utf8");
+  assert.equal(
+    source.includes("工具不存在"),
+    true,
+    "404 分支必须显示「工具不存在」"
+  );
+  assert.equal(
+    source.includes("fetchTool"),
+    true,
+    "详情页必须调用 GET /api/tools/{tool_id}"
+  );
+  assert.equal(
+    source.includes('href="/capabilities"'),
+    true,
+    "详情页必须有返回列表的链接"
+  );
 });
