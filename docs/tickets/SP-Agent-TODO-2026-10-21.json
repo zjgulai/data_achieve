@@ -81,7 +81,7 @@
     "due": "2026-10-24",
     "actual": "",
     "priority": "P0",
-    "evidence": "数说能力图谱 §6『P0 待完成的上线动作』1-8；§0 记生产 B health 返回 404。"
+    "evidence": "生产 A 已完成：白名单 8 人；公网回调 challenge 通过，事件 token 校验生效；新建「数说 Agent」专用项目 08872350-5ac8-4487-832a-775825072108 并切换为默认项目；健康接口 ready=true。已上线 scripts/rotate-shusuo-secret.sh 与 docs/ops/shusuo-secret-rotation.md。待办：飞书后台重置 App Secret；确认事件订阅 im.message.receive_v1 与回调 URL。重置后执行轮换脚本并复验。"
   },
   {
     "ticket_id": "SP-07",
