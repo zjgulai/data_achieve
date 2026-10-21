@@ -302,7 +302,7 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 
 | 项 | 状态 |
 |---|---|
-| P0-A Exa 3.0 刷新（lite、100 条上限、快照与 objective 参数、价格簿修正） | 已实现，待发布验收 |
+| P0-A Exa 3.0 刷新（lite、100 条上限、快照与 objective 参数、价格簿修正、preset 生效修复） | **已上线验收**（2026-10-21，main=8ecf3b5） |
 | P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research / monitor） | 未开始 |
 | P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | 未开始 |
 | P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | 未开始 |
