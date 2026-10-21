@@ -42,6 +42,7 @@ from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
 from data_intelligence_hub.api.routes.reports import router as reports_router
+from data_intelligence_hub.api.routes.runs import router as runs_router
 from data_intelligence_hub.api.routes.signals import router as signals_router
 from data_intelligence_hub.api.routes.social_provider import router as social_provider_router
 from data_intelligence_hub.api.routes.sources import router as sources_router
@@ -71,6 +72,7 @@ from data_intelligence_hub.mcp_runtime import (
     mcp_server,
 )
 from data_intelligence_hub.scheduler import CollectionScheduler
+from data_intelligence_hub.services.run_worker_runtime import RunWorkerRuntime
 
 logger = structlog.get_logger(__name__)
 
@@ -95,6 +97,7 @@ def warn_on_invalid_http_grants(grants: list[dict[str, Any]]) -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     scheduler: CollectionScheduler | None = None
+    run_worker: RunWorkerRuntime | None = None
     async with mcp_server.session_manager.run():
         if settings.scheduler_enabled:
             scheduler = CollectionScheduler(
@@ -103,9 +106,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             )
             app.state.collection_scheduler = scheduler
             scheduler.start()
-        yield
-        if scheduler is not None:
-            await scheduler.stop()
+        # 运行队列 worker 默认关闭。测试与本地开发不启动后台循环。
+        if settings.run_worker_enabled:
+            run_worker = RunWorkerRuntime(session_factory=async_session_factory)
+            app.state.run_worker = run_worker
+            run_worker.start()
+        try:
+            yield
+        finally:
+            if run_worker is not None:
+                await run_worker.stop()
+            if scheduler is not None:
+                await scheduler.stop()
 
 
 def create_app() -> FastAPI:
@@ -184,6 +196,7 @@ def create_app() -> FastAPI:
     app.include_router(social_provider_router, prefix="/api/automation")
     app.include_router(toolkit_router, prefix="/api/toolkit")
     app.include_router(reports_router, prefix="/api/reports")
+    app.include_router(runs_router, prefix="/api/runs")
     app.include_router(alert_rules_router, prefix="/api/alert-rules")
     app.include_router(alert_events_router, prefix="/api/alert-events")
     app.include_router(notifications_router, prefix="/api/notifications")
