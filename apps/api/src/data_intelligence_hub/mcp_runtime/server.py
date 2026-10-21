@@ -8,10 +8,10 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import ToolAnnotations
 
+from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
 from data_intelligence_hub.mcp_runtime.capability_service import (
     describe_capability_public,
 )
-from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
 from data_intelligence_hub.mcp_runtime.collect_service import collect_capability
 from data_intelligence_hub.mcp_runtime.run_service import (
     get_project_balance,
@@ -379,7 +379,7 @@ async def answer(
 
 
 @_tool(
-    description="Multi-step deep research. Expensive tool; project keys need it in their allowlist.",
+    description="Multi-step deep research. Expensive; needs allowlist entry for keys.",
     read_only=False,
     open_world=True,
     destructive=False,
