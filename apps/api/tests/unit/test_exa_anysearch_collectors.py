@@ -193,3 +193,112 @@ def restricted_mock_provider(monkeypatch: pytest.MonkeyPatch):
         yield
     finally:
         get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_exa_lite_search_sends_lite_type_and_new_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """lite 类型与 3.0 新字段必须进入上游请求体。"""
+    captured_payload: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_payload.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "requestId": "req-lite",
+                "resolvedSearchType": "lite",
+                "results": [{"id": "d1", "url": "https://example.com/a"}],
+            },
+        )
+
+    monkeypatch.setenv("EXA_API_KEY", "test-key")
+    monkeypatch.setattr(
+        exa_module,
+        "_exa_client",
+        _client_factory(httpx.MockTransport(handler)),
+    )
+
+    collector = ExaSearchCollector(
+        {
+            "query": "exa pricing page",
+            "search_type": "lite",
+            "num_results": 7,
+            "contents_mode": "highlights",
+            "objective": "找到官方定价页",
+            "snapshot_as_of": "2026-10-01T00:00:00Z",
+            "user_identifier": "dih-test",
+            "user_location": "US",
+        }
+    )
+
+    await collector.collect()
+
+    assert captured_payload["type"] == "lite"
+    assert captured_payload["numResults"] == 7
+    assert captured_payload["objective"] == "找到官方定价页"
+    assert captured_payload["userIdentifier"] == "dih-test"
+    assert captured_payload["userLocation"] == "US"
+    assert captured_payload["contents"]["snapshotAsOf"] == "2026-10-01T00:00:00Z"
+
+
+def test_exa_search_num_results_cap_is_100() -> None:
+    """上限从 10/25 提到官方公开上限 100；101 必须被拒绝。"""
+    from data_intelligence_hub.services.exceptions import CollectorConfigError
+
+    validated = validate_collector_config("exa_search", {"query": "q", "num_results": 100})
+    assert validated["num_results"] == 100
+
+    with pytest.raises(CollectorConfigError):
+        validate_collector_config("exa_search", {"query": "q", "num_results": 101})
+
+
+def test_exa_search_validator_carries_new_fields() -> None:
+    """端点级校验器必须放行 3.0 新字段，否则它们在 quick-collect 被剥掉。"""
+    validated = validate_collector_config(
+        "exa_search",
+        {
+            "query": "q",
+            "search_type": "lite",
+            "objective": "objective-text",
+            "snapshot_as_of": "2026-09-01T00:00:00Z",
+            "user_identifier": "caller-1",
+            "user_location": "CN",
+        },
+    )
+
+    assert validated["search_type"] == "lite"
+    assert validated["objective"] == "objective-text"
+    assert validated["snapshot_as_of"] == "2026-09-01T00:00:00Z"
+    assert validated["user_identifier"] == "caller-1"
+    assert validated["user_location"] == "CN"
+
+
+def test_exa_preset_endpoints_apply_their_defaults() -> None:
+    """预设端点必须真的预设：lite 传 lite，news 传 category=news。"""
+    from data_intelligence_hub.services.quick_collect_service import (
+        build_collector_config,
+    )
+
+    lite = build_collector_config("exa_search_lite", "exa_search", {"query": "q"})
+    assert lite["search_type"] == "lite"
+
+    news = build_collector_config("exa_search_news", "exa_search", {"query": "q"})
+    assert news["category"] == "news"
+
+    reasoning = build_collector_config(
+        "exa_deep_reasoning", "exa_search", {"query": "q"}
+    )
+    assert reasoning["search_type"] == "deep-reasoning"
+
+
+def test_exa_preset_defaults_yield_to_caller_params() -> None:
+    from data_intelligence_hub.services.quick_collect_service import (
+        build_collector_config,
+    )
+
+    overridden = build_collector_config(
+        "exa_search_lite", "exa_search", {"query": "q", "search_type": "auto"}
+    )
+    assert overridden["search_type"] == "auto"

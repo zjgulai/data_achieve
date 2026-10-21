@@ -4280,6 +4280,7 @@ async def get_collector_catalog(
             optional_params=[
                 "num_results", "contents_mode", "include_domains", "exclude_domains",
                 "start_published_date", "end_published_date", "max_age_hours",
+                "snapshot_as_of", "objective", "user_identifier", "user_location",
             ],
             cost_hint="$0.007/query",
             provider="Exa API",
@@ -4523,16 +4524,16 @@ async def get_collector_catalog(
         ),
         CollectorEndpointMetadata(
             endpoint_type="exa_search_instant",
-            label="Exa 极速搜索（250ms）",
+            label="Exa 极速搜索（instant）",
             platform="web",
             description=(
-                "Exa instant 模式（~250ms）。极速语义搜索，适合实时补全、"
-                "对话类场景。最多 10 条结果。"
+                "Exa instant 模式（官方 p50 低于 150ms）。极速语义搜索，"
+                "适合实时补全、对话类场景。"
             ),
             status="verified",
             required_params=["query"],
             optional_params=["num_results", "contents_mode", "include_domains"],
-            cost_hint="$0.005/query",
+            cost_hint="$0.004/query",
             provider="Exa API",
             content_type="search_result",
             method="exa",
@@ -4556,13 +4557,38 @@ async def get_collector_catalog(
                 "num_results", "contents_mode", "include_domains",
                 "start_published_date", "end_published_date",
             ],
-            cost_hint="$0.005/query",
+            cost_hint="$0.007/query",
             provider="Exa API",
             content_type="search_result",
             method="exa",
             param_fields={
                 "search_type": "fast",
                 "contents_mode": "highlights",
+            },
+        ),
+        CollectorEndpointMetadata(
+            endpoint_type="exa_search_lite",
+            label="Exa 缓存搜索（lite，$4/1k）",
+            platform="web",
+            description=(
+                "Exa lite 模式（约 450ms）。只读缓存，单价 $4/1k，"
+                "是全部搜索类型里最便宜的一档。适合高频、低延迟任务。"
+                "缓存未命中时返回的结果可能很少。"
+            ),
+            status="verified",
+            required_params=["query"],
+            optional_params=[
+                "num_results", "contents_mode", "include_domains",
+                "exclude_domains", "max_age_hours",
+            ],
+            cost_hint="$0.004/query",
+            provider="Exa API",
+            content_type="search_result",
+            method="exa",
+            param_fields={
+                "search_type": "lite",
+                "contents_mode": "highlights",
+                "num_results": "10",
             },
         ),
         CollectorEndpointMetadata(

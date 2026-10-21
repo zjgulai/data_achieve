@@ -125,6 +125,7 @@ class CollectionCallResult:
     # 采集器类型与端点类型。run_steps 的两列非空，由调用方直接取用。
     collector_type: str | None = None
     endpoint_type: str | None = None
+    provider: str | None = None
     unit: str | None = None
     quantity: Decimal | None = None
     unit_price: Decimal | None = None
@@ -237,6 +238,8 @@ async def execute_collection_task(
     run.entities_count = entities_count
     run.error_message = error_message
     run.error_traceback = error_traceback
+    run.provider = _provider_name(task.collector_type)
+    run.endpoint_type = _endpoint_type(task.config)
     task.last_run_at = finished_at
     if status == FAILED:
         task.failure_count += 1
@@ -394,6 +397,7 @@ async def execute_collector_call(
         task_run_id=task_run.id,
         collector_type=task.collector_type,
         endpoint_type=_endpoint_type(collector.config),
+        provider=_provider_name(task.collector_type),
     )
 
 
@@ -639,9 +643,17 @@ def _run_status(
     )
 
 
-def _endpoint_type(config: dict[str, Any]) -> str | None:
-    value = config.get("endpoint_type")
+def _endpoint_type(config: dict[str, Any] | None) -> str | None:
+    value = (config or {}).get("endpoint_type")
     return value if isinstance(value, str) else None
+
+
+def _provider_name(collector_type: str) -> str:
+    """把采集器类型映射为供应商名。未知类型原样返回。"""
+    return {
+        "apify_actor": "apify",
+        "tikhub_social": "tikhub",
+    }.get(collector_type, collector_type)
 
 
 def _resolve_run_status(

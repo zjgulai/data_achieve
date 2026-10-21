@@ -823,16 +823,16 @@
     "exa_search_fast": {
       "confidence": "medium",
       "quantity_basis": "per_query",
-      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005/query)",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.007/query)",
       "unit": "query",
-      "unit_price": 0.005
+      "unit_price": 0.007
     },
     "exa_search_instant": {
       "confidence": "medium",
       "quantity_basis": "per_query",
-      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.005/query)",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.004/query)",
       "unit": "query",
-      "unit_price": 0.005
+      "unit_price": 0.004
     },
     "exa_search_news": {
       "confidence": "medium",
@@ -1575,6 +1575,13 @@
       "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint(~$0.001/条); docs/playbook-full-2026-09.html",
       "unit": "record",
       "unit_price": 0.001
+    },
+    "exa_search_lite": {
+      "confidence": "medium",
+      "quantity_basis": "per_query",
+      "source": "apps/api/src/data_intelligence_hub/api/routes/collectors.py#cost_hint($0.004/query)",
+      "unit": "query",
+      "unit_price": 0.004
     }
   },
   "schema_version": "price_book.v1",

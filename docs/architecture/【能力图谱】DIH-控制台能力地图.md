@@ -295,3 +295,15 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 1. 更新本图谱的**实测列**：跑 `scripts/verify_platform_live.py`（见测试计划），把 `reports/live-sweep/latest.json` 的 `summary` 粘贴到 §4。
 2. 页面清单变化时同步 §2；新增/删除端点由 catalog 自动反映，无需手改 §3。
 3. 坑点在 `apps/api/src/data_intelligence_hub/platform_packages/notes/*.json` 维护，会自动渲染进 Skill/Playbook 与控制台详情页。
+
+## 8. Exa 差集台账（2026-10-21）
+
+对照 Exa 全产品面的差集与决策见 `docs/architecture/【方案】Exa能力对齐与补充-2026-10-21.md`。当前进度：
+
+| 项 | 状态 |
+|---|---|
+| P0-A Exa 3.0 刷新（lite、100 条上限、快照与 objective 参数、价格簿修正、preset 生效修复） | **已上线验收**（2026-10-21，main=8ecf3b5） |
+| P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research / monitor） | 未开始 |
+| P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | 未开始 |
+| P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | 未开始 |
+| 工具目录计数 | 283 条（新增 exa_search_lite） |

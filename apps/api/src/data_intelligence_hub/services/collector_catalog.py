@@ -1359,9 +1359,9 @@ def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
     from data_intelligence_hub.services.exceptions import CollectorConfigError
 
     _VALID_SEARCH_TYPES = {
+        "lite",
         "instant", "fast", "auto", "deep-lite", "deep", "deep-reasoning",
     }
-    _DEEP_TYPES = {"deep-lite", "deep", "deep-reasoning"}
     _VALID_CATEGORIES = {
         "company", "people", "publication", "news",
         "personal site", "financial report",
@@ -1373,8 +1373,8 @@ def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
     if search_type not in _VALID_SEARCH_TYPES:
         raise CollectorConfigError
 
-    is_deep = search_type in _DEEP_TYPES
-    max_n = 25 if is_deep else 10
+    # 官方公开上限 100 条；旧的 10/25 上限会截断长尾研究。
+    max_n = 100
     num_results = config.get("num_results", 10)
     if not isinstance(num_results, int) or not (1 <= num_results <= max_n):
         raise CollectorConfigError
@@ -1412,6 +1412,10 @@ def _validate_exa_search_config(config: dict[str, Any]) -> dict[str, Any]:
         "start_published_date": config.get("start_published_date"),
         "end_published_date": config.get("end_published_date"),
         "max_age_hours": config.get("max_age_hours"),
+        "snapshot_as_of": config.get("snapshot_as_of"),
+        "objective": config.get("objective"),
+        "user_identifier": config.get("user_identifier"),
+        "user_location": config.get("user_location"),
         "summary_query": config.get("summary_query"),
         "text_max_characters": config.get("text_max_characters"),
     }

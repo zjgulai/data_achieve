@@ -244,6 +244,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "exa_deep_reasoning": "exa_search",
     "exa_search_instant": "exa_search",
     "exa_search_fast": "exa_search",
+    # lite 只读缓存，$4/1k，约 450ms。适合高频、低延迟的场景。
+    "exa_search_lite": "exa_search",
     "exa_personal_site": "exa_search",
     "exa_domain_search": "exa_search",
     "exa_deep_lite": "exa_search",
@@ -437,6 +439,24 @@ def _build_1688_search_input(params: dict[str, Any]) -> dict[str, Any]:
 # 需要自定义入参形状的端点。键与 _APIFY_ENDPOINT_DEFAULTS 对应。
 _APIFY_INPUT_BUILDERS: dict[str, Any] = {
     "apify_1688_product_search": _build_1688_search_input,
+}
+
+
+# Exa 预设端点的缺省参数。调用方传入的同名参数优先。
+# 没有这张表，预设只是标签：search_type 会退回 auto，category 会丢失。
+_EXA_ENDPOINT_DEFAULTS: dict[str, dict[str, Any]] = {
+    "exa_search_lite": {"search_type": "lite"},
+    "exa_search_instant": {"search_type": "instant"},
+    "exa_search_fast": {"search_type": "fast"},
+    "exa_search_news": {"category": "news"},
+    "exa_company_search": {"category": "company"},
+    "exa_people_search": {"category": "people"},
+    "exa_research_paper": {"category": "publication"},
+    "exa_financial_report": {"category": "financial report"},
+    "exa_personal_site": {"category": "personal site"},
+    "exa_deep_lite": {"search_type": "deep-lite"},
+    "exa_deep_research": {"search_type": "deep"},
+    "exa_deep_reasoning": {"search_type": "deep-reasoning"},
 }
 
 

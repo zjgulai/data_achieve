@@ -22,6 +22,13 @@ async def test_mcp_lists_platforms_and_describes_capability() -> None:
 
 
 @pytest.mark.anyio
+async def test_mcp_registers_run_query_tools() -> None:
+    tools = await mcp_server.list_tools()
+    names = {tool.name for tool in tools}
+    assert {"get_run", "list_records"} <= names
+
+
+@pytest.mark.anyio
 async def test_mcp_rejects_unknown_capability() -> None:
     async with Client(mcp_server, raise_exceptions=False) as client:
         result = await client.call_tool(

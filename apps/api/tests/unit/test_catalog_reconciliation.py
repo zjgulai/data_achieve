@@ -99,6 +99,7 @@ def test_endpoint_mapping_count_is_stable() -> None:
 
     2026-10-21：删除 8 个幽灵端点映射，290 → 282。
     幽灵端点与目录元数据现已对齐，差集为 0。
+    2026-10-21（Exa 3.0 刷新）：新增 exa_search_lite，282 → 283。
     """
     summary = _reconcile()["summary"]
-    assert summary["endpoint_mappings"] == 282
+    assert summary["endpoint_mappings"] == 283
