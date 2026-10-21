@@ -3,9 +3,9 @@
 set -euo pipefail
 
 MARKER="# SP-43 scrapy-health-check"
-COMMAND="cd /opt/data-achieve-scrapy/app && docker exec data_achieve_scrapy_api python -m data_intelligence_hub.maintenance.prod_health_check >> /var/log/scrapy-health.log 2>&1"
+LOG_FILE="/opt/data-achieve-scrapy/scrapy-health.log"
+COMMAND="cd /opt/data-achieve-scrapy/app && docker exec data_achieve_scrapy_api python -m data_intelligence_hub.maintenance.prod_health_check >> ${LOG_FILE} 2>&1"
 CRON_LINE="*/10 * * * * ${COMMAND}"
-LOG_FILE="/var/log/scrapy-health.log"
 
 if ! command -v crontab >/dev/null 2>&1; then
   echo "未找到 crontab 命令，无法安装定时任务。" >&2
