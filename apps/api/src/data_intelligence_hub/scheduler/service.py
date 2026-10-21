@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -54,12 +55,16 @@ class CollectionScheduler:
         session_factory: async_sessionmaker[AsyncSession],
         poll_interval_seconds: float,
         clock: Callable[[], datetime] | None = None,
+        lease_renew_interval_seconds: float = 60.0,
     ) -> None:
+        if lease_renew_interval_seconds <= 0:
+            raise ValueError("lease_renew_interval_seconds 必须大于 0")
         self._session_factory = session_factory
         self._poll_interval_seconds = poll_interval_seconds
         self._clock = clock or (lambda: datetime.now(UTC))
         self._owner_id = str(uuid.uuid4())
         self._lease_ttl_seconds = max(int(poll_interval_seconds * 3), 300)
+        self._lease_renew_interval_seconds = lease_renew_interval_seconds
         self._loop_task: asyncio.Task[None] | None = None
         self._running_task_ids: set[uuid.UUID] = set()
         self._running_report_subscription_ids: set[uuid.UUID] = set()
@@ -124,81 +129,105 @@ class CollectionScheduler:
                 await _record_scheduler_tick(session, self._owner_id, result)
                 return result
 
-            candidates = await _list_scheduled_tasks(session)
-            scanned = len(candidates)
-            for task, workspace, latest_run in candidates:
-                if (task.config or {}).get("execution_origin") == "quick_collect":
-                    continue
-                if latest_run is not None and is_policy_failure(latest_run.error_message):
-                    continue
-                if task.id in self._running_task_ids:
-                    skipped_running += 1
-                    continue
-
-                try:
-                    if task.schedule_cron:
-                        task_is_due = is_schedule_due(
-                            task.schedule_cron,
-                            task.last_run_at,
-                            current_time,
-                        )
-                    else:
-                        task_is_due = is_task_due(task, latest_run, current_time)
-                except UnsupportedCronExpression as exc:
-                    skipped_invalid_schedule += 1
-                    logger.warning(
-                        "collection_scheduler_invalid_schedule",
-                        task_id=str(task.id),
-                        schedule_cron=task.schedule_cron,
-                        error=str(exc),
-                    )
-                    continue
-
-                if not task_is_due:
-                    continue
-
-                due += 1
-                self._running_task_ids.add(task.id)
-                try:
-                    await execute_collection_task(session, workspace, task, trigger="scheduler")
-                    started += 1
-                except TaskAlreadyRunningError:
-                    skipped_running += 1
-                except Exception:
-                    task_errors += 1
-                    logger.exception("collection_scheduler_task_failed", task_id=str(task.id))
-                finally:
-                    self._running_task_ids.discard(task.id)
-
-            report_subscription_candidates = await list_due_report_subscriptions(
-                session,
-                current_time,
+            heartbeat = _SchedulerLeaseHeartbeat(
+                session_factory=self._session_factory,
+                lease_name=SCHEDULER_LEASE_NAME,
+                owner_id=self._owner_id,
+                ttl_seconds=self._lease_ttl_seconds,
+                interval_seconds=self._lease_renew_interval_seconds,
+                clock=self._clock,
             )
-            report_subscriptions_scanned = len(report_subscription_candidates)
-            for subscription, workspace, user in report_subscription_candidates:
-                if subscription.id in self._running_report_subscription_ids:
-                    report_subscriptions_skipped_running += 1
-                    continue
+            await heartbeat.start()
+            try:
+                candidates = await _list_scheduled_tasks(session)
+                scanned = len(candidates)
+                for task, workspace, latest_run in candidates:
+                    if heartbeat.lost:
+                        logger.warning(
+                            "collection_scheduler_stops_claiming_after_lease_loss",
+                            lease_name=SCHEDULER_LEASE_NAME,
+                            owner_id=self._owner_id,
+                        )
+                        break
+                    if (task.config or {}).get("execution_origin") == "quick_collect":
+                        continue
+                    if latest_run is not None and is_policy_failure(latest_run.error_message):
+                        continue
+                    if task.id in self._running_task_ids:
+                        skipped_running += 1
+                        continue
 
-                report_subscriptions_due += 1
-                self._running_report_subscription_ids.add(subscription.id)
-                try:
-                    await execute_report_subscription(
-                        session=session,
-                        subscription=subscription,
-                        workspace=workspace,
-                        user=user,
-                        now=current_time,
+                    try:
+                        if task.schedule_cron:
+                            task_is_due = is_schedule_due(
+                                task.schedule_cron,
+                                task.last_run_at,
+                                current_time,
+                            )
+                        else:
+                            task_is_due = is_task_due(task, latest_run, current_time)
+                    except UnsupportedCronExpression as exc:
+                        skipped_invalid_schedule += 1
+                        logger.warning(
+                            "collection_scheduler_invalid_schedule",
+                            task_id=str(task.id),
+                            schedule_cron=task.schedule_cron,
+                            error=str(exc),
+                        )
+                        continue
+
+                    if not task_is_due:
+                        continue
+
+                    due += 1
+                    self._running_task_ids.add(task.id)
+                    try:
+                        await execute_collection_task(
+                            session, workspace, task, trigger="scheduler"
+                        )
+                        started += 1
+                    except TaskAlreadyRunningError:
+                        skipped_running += 1
+                    except Exception:
+                        task_errors += 1
+                        logger.exception(
+                            "collection_scheduler_task_failed", task_id=str(task.id)
+                        )
+                    finally:
+                        self._running_task_ids.discard(task.id)
+
+                if not heartbeat.lost:
+                    report_subscription_candidates = await list_due_report_subscriptions(
+                        session,
+                        current_time,
                     )
-                    report_subscriptions_started += 1
-                except Exception:
-                    report_subscription_errors += 1
-                    logger.exception(
-                        "report_subscription_scheduler_failed",
-                        subscription_id=str(subscription.id),
-                    )
-                finally:
-                    self._running_report_subscription_ids.discard(subscription.id)
+                    report_subscriptions_scanned = len(report_subscription_candidates)
+                    for subscription, workspace, user in report_subscription_candidates:
+                        if subscription.id in self._running_report_subscription_ids:
+                            report_subscriptions_skipped_running += 1
+                            continue
+
+                        report_subscriptions_due += 1
+                        self._running_report_subscription_ids.add(subscription.id)
+                        try:
+                            await execute_report_subscription(
+                                session=session,
+                                subscription=subscription,
+                                workspace=workspace,
+                                user=user,
+                                now=current_time,
+                            )
+                            report_subscriptions_started += 1
+                        except Exception:
+                            report_subscription_errors += 1
+                            logger.exception(
+                                "report_subscription_scheduler_failed",
+                                subscription_id=str(subscription.id),
+                            )
+                        finally:
+                            self._running_report_subscription_ids.discard(subscription.id)
+            finally:
+                await heartbeat.stop()
 
         result = SchedulerTickResult(
             lock_acquired=True,
@@ -349,6 +378,104 @@ async def _acquire_scheduler_lease(
         await session.rollback()
         return False
     return True
+
+
+async def _renew_scheduler_lease(
+    session_factory: async_sessionmaker[AsyncSession],
+    lease_name: str,
+    owner_id: str,
+    now: datetime,
+    ttl_seconds: int,
+) -> bool:
+    """续期调度器租约。
+
+    只续自己持有的租约。租约已被别人拿走时返回 False。
+    每个心跳使用独立会话与独立事务。
+    """
+    expires_at = now + timedelta(seconds=ttl_seconds)
+    async with session_factory() as session:
+        statement = (
+            update(SchedulerLease)
+            .where(
+                SchedulerLease.name == lease_name,
+                SchedulerLease.owner_id == owner_id,
+            )
+            .values(expires_at=expires_at, updated_at=now)
+        )
+        result = await session.execute(statement)
+        await session.commit()
+        return int(getattr(result, "rowcount", 0)) == 1
+
+
+class _SchedulerLeaseHeartbeat:
+    """调度器租约的后台续期器。
+
+    tick 开始后按固定间隔续期。tick 结束或取消时停止。
+    续期失败时置 ``lost=True``。tick 看到该标记后停止认领新任务。
+    """
+
+    def __init__(
+        self,
+        *,
+        session_factory: async_sessionmaker[AsyncSession],
+        lease_name: str,
+        owner_id: str,
+        ttl_seconds: int,
+        interval_seconds: float,
+        clock: Callable[[], datetime],
+    ) -> None:
+        self._session_factory = session_factory
+        self._lease_name = lease_name
+        self._owner_id = owner_id
+        self._ttl_seconds = ttl_seconds
+        self._interval_seconds = interval_seconds
+        self._clock = clock
+        self._task: asyncio.Task[None] | None = None
+        self.lost = False
+        self.renewal_count = 0
+
+    async def start(self) -> None:
+        if self._task is not None:
+            return
+        self._task = asyncio.create_task(self._run())
+
+    async def stop(self) -> None:
+        if self._task is None:
+            return
+        self._task.cancel()
+        with suppress(asyncio.CancelledError):
+            await self._task
+        self._task = None
+
+    async def _run(self) -> None:
+        while True:
+            await asyncio.sleep(self._interval_seconds)
+            try:
+                renewed = await _renew_scheduler_lease(
+                    self._session_factory,
+                    self._lease_name,
+                    self._owner_id,
+                    self._clock(),
+                    self._ttl_seconds,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception(
+                    "collection_scheduler_lease_renewal_failed",
+                    lease_name=self._lease_name,
+                    owner_id=self._owner_id,
+                )
+                renewed = False
+            if not renewed:
+                self.lost = True
+                logger.warning(
+                    "collection_scheduler_lease_renewal_lost",
+                    lease_name=self._lease_name,
+                    owner_id=self._owner_id,
+                )
+                return
+            self.renewal_count += 1
 
 
 def _empty_tick_result(

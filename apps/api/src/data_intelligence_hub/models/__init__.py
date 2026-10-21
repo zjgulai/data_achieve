@@ -1,4 +1,5 @@
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
+from data_intelligence_hub.models.authorization import Authorization
 from data_intelligence_hub.models.automation_plan import (
     BrowserDiagnosticJob,
     BrowserDiagnosticJobRun,
@@ -56,6 +57,15 @@ from data_intelligence_hub.models.report import (
     ReportSubscription,
     ReportSubscriptionRun,
 )
+from data_intelligence_hub.models.run import (
+    Run,
+    RunOutcome,
+    RunStatus,
+    RunStep,
+    RunStepStatus,
+)
+from data_intelligence_hub.models.run_evidence_grade import RunEvidenceGradeRecord
+from data_intelligence_hub.models.run_ledger import RunLedgerEntry
 from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.source import Source
@@ -138,6 +148,7 @@ __all__ = [
     "AdCreative",
     "AlertEvent",
     "AlertRule",
+    "Authorization",
     "Base",
     "BrowserDiagnosticJob",
     "BrowserDiagnosticJobRun",
@@ -203,6 +214,13 @@ __all__ = [
     "ReportAuditEvent",
     "ReportSubscription",
     "ReportSubscriptionRun",
+    "Run",
+    "RunEvidenceGradeRecord",
+    "RunLedgerEntry",
+    "RunOutcome",
+    "RunStatus",
+    "RunStep",
+    "RunStepStatus",
     "SchedulerLease",
     "SchedulerTick",
     "Shop",

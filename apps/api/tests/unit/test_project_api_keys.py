@@ -337,16 +337,34 @@ def _load_migration() -> ModuleType:
 
 
 def test_migration_is_single_head_and_follows_latest_revision() -> None:
-    """迁移必须接在 202610200047 之后，且全仓只有一个 head。"""
+    """本迁移必须接在 202610200047 之后，且全仓只有一个 head。
+
+    不断言 head 等于本迁移号：后续批次会继续推进 head，
+    那种断言每加一个迁移就要改一次，且改的人不一定知道为什么。
+    改为断言「单 head」加「本迁移在 head 的祖先链上」。
+    """
     config = Config(str(API_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(API_ROOT / "alembic"))
-    heads = ScriptDirectory.from_config(config).get_heads()
+    script = ScriptDirectory.from_config(config)
+    heads = script.get_heads()
 
-    assert len(heads) == 1
-    assert heads[0] == "202610200048"
+    assert len(heads) == 1, f"迁移必须只有一个 head，实际 {heads}"
+
     module = _load_migration()
     assert module.revision == "202610200048"
     assert module.down_revision == "202610200047"
+
+    # 本迁移必须仍在 head 的祖先链上，没有被后续迁移遗弃。
+    # 沿 down_revision 逐级回溯，直到 base。
+    ancestors: set[str] = set()
+    current: str | None = heads[0]
+    while current is not None:
+        ancestors.add(current)
+        revision_obj = script.get_revision(current)
+        down = getattr(revision_obj, "down_revision", None)
+        current = down if isinstance(down, str) else None
+    assert module.revision in ancestors, f"{module.revision} 不在 {heads[0]} 的祖先链上"
+
     assert "This revision is source-only." in MIGRATION_PATH.read_text(encoding="utf-8")
 
 

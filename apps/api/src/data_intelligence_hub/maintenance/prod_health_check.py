@@ -170,8 +170,12 @@ def evaluate_health_payload(
     if database != "connected":
         return False, f"database={database!r}"
     revision = payload.get("schema_revision")
-    if revision != expected_schema:
-        return False, f"schema_revision={revision!r}, expected {expected_schema}"
+    # 以镜像自带的 head 为准。硬编码版本号会让每次新迁移都误报。
+    # /api/health 同时返回 schema_head；旧版没有该字段时回落到配置值。
+    head = payload.get("schema_head")
+    target = head if isinstance(head, str) and head else expected_schema
+    if revision != target:
+        return False, f"schema_revision={revision!r}, expected {target}"
     schema_status = payload.get("schema", "current")
     if schema_status != "current":
         return False, f"schema={schema_status!r}"

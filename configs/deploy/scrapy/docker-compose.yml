@@ -73,6 +73,8 @@ services:
       LOG_LEVEL: INFO
       SCHEDULER_ENABLED: ${SCRAPY_SCHEDULER_ENABLED:-false}
       SCHEDULER_POLL_INTERVAL_SECONDS: ${SCRAPY_SCHEDULER_POLL_INTERVAL_SECONDS:-60}
+      # 持久运行队列 worker。生产默认开启，进程会领取 runs 表的 queued 行。
+      RUN_WORKER_ENABLED: ${SCRAPY_RUN_WORKER_ENABLED:-true}
       # 外访策略。见 docs/standards/collection-outbound-safety.md。
       # 默认值必须写 :-[]。未设置或空串会让 pydantic-settings 解析失败。
       # 这两个键必须在本列表里声明；只写 .env.production 不会进容器。

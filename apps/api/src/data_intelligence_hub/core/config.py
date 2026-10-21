@@ -76,6 +76,9 @@ class Settings(BaseSettings):
 
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
+    # run_worker_enabled: 是否启动持久运行队列 worker。
+    # 默认关闭。测试与本地开发不被后台循环干扰。
+    run_worker_enabled: bool = False
     # demo_mode: 允许无 token 请求回退到 demo workspace。
     # None 表示未显式设置，此时按 app_env 推导：生产关闭，其他环境开启。
     # 显式设置 DEMO_MODE=true / false 可覆盖推导结果。
