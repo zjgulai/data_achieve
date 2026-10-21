@@ -151,7 +151,7 @@
     "due": "2026-10-31",
     "actual": "2026-10-21",
     "priority": "P1",
-    "evidence": "生产 A 已部署 a8602ed。25 个 MCP 工具全部有 description 与 annotations。describe_capability 返回 PublicTool 投影、input_schema 与 output_schema；不含 policy_block_reason 与 authorization。新增 stop 与 balance。balance 返回 spent_usd、authorized_budget_usd、remaining_usd；stop 对终态运行返回 cancelled=false。list_capabilities 已去除策略拒绝原文。"
+    "evidence": "生产 A 已部署 07ae582。25 个 MCP 工具全部有 description 与 annotations。describe_capability 返回 PublicTool 投影、input_schema 与合法 JSON Schema 输出信封；不含 policy_block_reason 与 authorization。新增 stop 与 balance。balance 按 entry_kind 分项返回，spent_usd 只取 settle/release，无结算时为 null；当前生产为 accrued_only。stop 对终态运行返回 cancelled=false。剩余：MCP 全局 token 仍是管理员级，项目密钥作用域尚未接入查询工具。"
   },
   {
     "ticket_id": "SP-12",
