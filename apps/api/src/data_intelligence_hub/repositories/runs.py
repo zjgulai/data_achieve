@@ -104,6 +104,26 @@ def _coerce_outcome(value: RunOutcome | str) -> RunOutcome:
         raise ValueError(f"非法的运行结果: {value!r}") from exc
 
 
+async def find_by_idempotency_key(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    idempotency_key_hash: str,
+) -> Run | None:
+    """按工作区与幂等键摘要查一行。未命中时返回 None。
+
+    这是幂等重放的唯一查询入口。路由在全部前置校验之前调用它，
+    这样重放返回的是首次创建的那一行，不会被当下的配置变化挡住。
+    ``create_run`` 内部也调用它，避免两处各写一份查询。
+    """
+    return await session.scalar(
+        select(Run).where(
+            Run.workspace_id == workspace_id,
+            Run.idempotency_key_hash == idempotency_key_hash,
+        )
+    )
+
+
 async def create_run(
     session: AsyncSession,
     *,
