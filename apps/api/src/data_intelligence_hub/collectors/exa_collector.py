@@ -22,6 +22,8 @@ EXA_BASE_URL = "https://api.exa.ai"
 EXA_TIMEOUT = 60.0
 
 _VALID_SEARCH_TYPES = frozenset({
+    # lite 只读缓存，$4/1k，约 450ms；无缓存命中时可能返回空结果。
+    "lite",
     "instant", "fast", "auto", "deep-lite", "deep", "deep-reasoning",
 })
 _DEEP_TYPES = frozenset({"deep-lite", "deep", "deep-reasoning"})
@@ -91,6 +93,19 @@ def _build_search_payload(config: dict[str, Any]) -> dict[str, Any]:
         payload.setdefault("contents", {})
         payload["contents"]["maxAgeHours"] = config["max_age_hours"]
 
+    # 按时间快照复现检索结果。用于审计与回归对比。
+    if config.get("snapshot_as_of"):
+        payload.setdefault("contents", {})
+        payload["contents"]["snapshotAsOf"] = config["snapshot_as_of"]
+
+    # 官方 3.0 新增字段：研究目标、调用方标识、用户位置。
+    if config.get("objective"):
+        payload["objective"] = config["objective"]
+    if config.get("user_identifier"):
+        payload["userIdentifier"] = config["user_identifier"]
+    if config.get("user_location"):
+        payload["userLocation"] = config["user_location"]
+
     if config.get("output_schema"):
         payload["outputSchema"] = config["output_schema"]
     if config.get("system_prompt"):
@@ -153,8 +168,8 @@ class ExaSearchCollector(BaseCollector):
                 f"search_type must be one of {sorted(_VALID_SEARCH_TYPES)}"
             )
 
-        is_deep = search_type in _DEEP_TYPES
-        max_n = 25 if is_deep else 10
+        # 官方公开上限 100 条（Enterprise 1000）。旧的 10/25 上限会截断长尾研究。
+        max_n = 100
         num_results = self.config.get("num_results", 10)
         if not isinstance(num_results, int) or not (1 <= num_results <= max_n):
             raise CollectorError(
@@ -198,6 +213,10 @@ class ExaSearchCollector(BaseCollector):
             "start_published_date": self.config.get("start_published_date"),
             "end_published_date": self.config.get("end_published_date"),
             "max_age_hours": self.config.get("max_age_hours"),
+            "snapshot_as_of": self.config.get("snapshot_as_of"),
+            "objective": self.config.get("objective"),
+            "user_identifier": self.config.get("user_identifier"),
+            "user_location": self.config.get("user_location"),
             "summary_query": self.config.get("summary_query"),
             "text_max_characters": self.config.get("text_max_characters"),
         }

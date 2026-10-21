@@ -342,7 +342,8 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=False,
         source="collector_validation",
         default="auto",
-        allowed_values=(            "instant",
+        allowed_values=(            "lite",
+            "instant",
             "fast",
             "auto",
             "deep-lite",
@@ -350,8 +351,9 @@ CONTRACTS: dict[str, ToolParameterContract] = {
             "deep-reasoning",
             ),
         description=(
-            "搜索类型，可选。可选值：instant、fast、auto、deep-lite、"
-            "deep、deep-reasoning；默认 auto。后三项为深度搜索。"
+            "搜索类型，可选。可选值：lite、instant、fast、auto、deep-lite、"
+            "deep、deep-reasoning；默认 auto。lite 只读缓存，单价最低。"
+            "后三项为深度搜索。"
         ),
     ),
     ParameterSpec(
@@ -362,7 +364,7 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         default=10,
         minimum=1,
         description=(
-            "返回结果数，可选。整数，最小 1，默认 10。深度搜索最多 25 条，其他类型最多 10 条。"
+            "返回结果数，可选。整数，最小 1，最大 100，默认 10。"
             ),
     ),
     ParameterSpec(
@@ -413,6 +415,40 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         description=(
             "排除这些域名，可选。填域名列表；默认空。"
             ),
+    ),
+    ParameterSpec(
+        name="objective",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description=(
+            "研究目标，可选。用一句话说明这次搜索要回答什么问题，"
+            "上游会用它优化结果排序。"
+        ),
+    ),
+    ParameterSpec(
+        name="snapshot_as_of",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description=(
+            "时间快照，可选。ISO-8601 时间字符串；填后按该时刻的缓存复现"
+            "检索结果，用于审计与回归对比。"
+        ),
+    ),
+    ParameterSpec(
+        name="user_identifier",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description="调用方标识，可选。填一个稳定的调用方名字，便于上游计费与审计。",
+    ),
+    ParameterSpec(
+        name="user_location",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description="用户位置，可选。填 ISO 国家码（如 US、CN），用于本地化结果。",
     ),
         ),
     ),

@@ -244,6 +244,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "exa_deep_reasoning": "exa_search",
     "exa_search_instant": "exa_search",
     "exa_search_fast": "exa_search",
+    # lite 只读缓存，$4/1k，约 450ms。适合高频、低延迟的场景。
+    "exa_search_lite": "exa_search",
     "exa_personal_site": "exa_search",
     "exa_domain_search": "exa_search",
     "exa_deep_lite": "exa_search",
