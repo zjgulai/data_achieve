@@ -1701,7 +1701,11 @@ def _extract_commerce_items(
         return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
 
     if mode == "shop_hot":
-        rows = inner.get("productList")
+        # 上游把商品放在 data.data.productList（两层 data）。
+        payload = inner.get("data")
+        rows = payload.get("productList") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            rows = inner.get("productList")
         return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
 
     if mode == "shop_search":

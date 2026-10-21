@@ -132,7 +132,12 @@ def test_reviews_extract_and_normalize() -> None:
 
 
 def test_hot_products_extract_product_list() -> None:
-    data = {"data": {"productList": [{"product_id": "p2", "title": "Hot"}]}}
+    data = {
+        "data": {
+            "code": 0,
+            "data": {"productList": [{"product_id": "p2", "title": "Hot"}]},
+        }
+    }
     items = _extract_commerce_items(data, "shop_hot")
     assert len(items) == 1
     record = _normalize_commerce_item(
@@ -140,6 +145,11 @@ def test_hot_products_extract_product_list() -> None:
     )
     assert record is not None
     assert record.content["region"] == "MY"
+
+
+def test_hot_products_extract_single_level_fallback() -> None:
+    data = {"data": {"productList": [{"product_id": "p3", "title": "Flat"}]}}
+    assert len(_extract_commerce_items(data, "shop_hot")) == 1
 
 
 def test_build_params_for_commerce_endpoints() -> None:
