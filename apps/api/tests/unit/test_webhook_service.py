@@ -38,8 +38,8 @@ def webhook_vault(monkeypatch: pytest.MonkeyPatch):
     )
     get_settings.cache_clear()
 
-    async def safe_url(_url: str) -> None:
-        return None
+    async def safe_url(_url: str) -> str:
+        return "203.0.113.10"
 
     monkeypatch.setattr(webhook_service, "_assert_safe_url", safe_url)
     yield
@@ -107,6 +107,8 @@ async def test_dispatch_signs_and_delivers(
     def handler(request: httpx.Request) -> httpx.Response:
         captured["headers"] = dict(request.headers)
         captured["body"] = request.content.decode()
+        captured["url"] = str(request.url)
+        captured["sni"] = request.extensions.get("sni_hostname")
         return httpx.Response(200)
 
     monkeypatch.setattr(
@@ -147,6 +149,9 @@ async def test_dispatch_signs_and_delivers(
     timestamp = headers["x-dih-timestamp"]
     body = captured["body"]
     assert headers["x-dih-signature"] == sign_payload(plaintext, timestamp, body)
+    assert headers["host"] == "hooks.example.com"
+    assert str(captured["url"]).startswith("https://203.0.113.10/")
+    assert captured["sni"] == "hooks.example.com"
 
 
 @pytest.mark.asyncio
@@ -204,7 +209,7 @@ async def test_http_and_userinfo_urls_are_rejected(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_factory() as session:
-        for url in ("http://example.com/hook", "https://user:pass@example.com/hook"):
+        for url in ("http://example.com/hook", "https://user@example.com/hook"):
             with pytest.raises(WebhookError, match="public_https"):
                 await create_endpoint(
                     session,
@@ -238,11 +243,12 @@ async def test_private_https_target_is_rejected(
 
     monkeypatch.setattr(webhook_service, "_assert_public_http_url", private)
     # 自动 fixture 把 _assert_safe_url 替换成 no-op；本用例恢复真实封装函数。
-    async def real_safe(url: str) -> None:
+    async def real_safe(url: str) -> str:
         try:
             await webhook_service._assert_public_http_url(url)
         except Exception as exc:
             raise WebhookError("webhook_url_not_public") from exc
+        raise AssertionError("expected public URL guard to reject")
 
     monkeypatch.setattr(webhook_service, "_assert_safe_url", real_safe)
     with pytest.raises(WebhookError, match="not_public"):

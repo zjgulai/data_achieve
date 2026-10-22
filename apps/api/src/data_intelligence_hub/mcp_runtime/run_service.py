@@ -50,6 +50,7 @@ async def get_run_detail(
                 "total_cost_usd": payload["total_cost_usd"],
             },
             "error_message": payload["error_message"],
+            "provider_run_id": payload["provider_run_id"],
             "started_at": payload["started_at"],
             "finished_at": payload["finished_at"],
             "steps": [

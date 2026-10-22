@@ -22,7 +22,11 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from data_intelligence_hub.collectors.generic_web import _assert_public_http_url
+from data_intelligence_hub.collectors.generic_web import (
+    _assert_public_http_url,
+    _parse_ip_literal,
+    _resolve_host_ips,
+)
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.webhook import WebhookDelivery, WebhookEndpoint
 from data_intelligence_hub.services.platform_credentials import PlatformCredentialCipher
@@ -80,9 +84,18 @@ def _normalize_url(url: str) -> str:
     return normalized
 
 
-async def _assert_safe_url(url: str) -> None:
+async def _assert_safe_url(url: str) -> str:
     try:
         await _assert_public_http_url(url)
+        hostname = urlparse(url).hostname
+        if hostname is None:
+            raise WebhookError("webhook_url_not_public")
+        addresses = _parse_ip_literal(hostname)
+        if addresses is None:
+            addresses = await _resolve_host_ips(hostname)
+        return str(addresses[0])
+    except WebhookError:
+        raise
     except Exception as exc:  # noqa: BLE001 - 统一翻译成业务错误码
         raise WebhookError("webhook_url_not_public") from exc
 
@@ -202,12 +215,17 @@ async def _deliver(
             response: httpx.Response | None = None
             async with _http_client() as client:
                 for _redirect in range(_MAX_REDIRECTS + 1):
-                    await _assert_safe_url(current_url)
+                    public_ip = await _assert_safe_url(current_url)
+                    parsed = httpx.URL(current_url)
+                    original_host = str(parsed.host)
+                    pinned_url = str(parsed.copy_with(host=public_ip))
+                    request_headers = {**headers, "Host": original_host}
                     response = await client.post(
-                        current_url,
+                        pinned_url,
                         content=body,
-                        headers=headers,
+                        headers=request_headers,
                         follow_redirects=False,
+                        extensions={"sni_hostname": original_host},
                     )
                     if response.status_code not in {301, 302, 303, 307, 308}:
                         break

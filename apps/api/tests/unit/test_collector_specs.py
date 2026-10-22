@@ -247,3 +247,25 @@ def test_enum_values_are_the_implementation_set() -> None:
     assert endpoint_enum is not None
     assert len(endpoint_enum.allowed_values) == 62
     assert all(v.startswith("tikhub_") for v in endpoint_enum.allowed_values)
+
+def test_object_parameter_type_accepts_dict_and_rejects_string() -> None:
+    from data_intelligence_hub.tool_catalog.parameters import validate_parameters
+
+    contract = CONTRACTS["exa_agent"]
+    required = ("query",)
+    optional = ("output_schema",)
+    valid = validate_parameters(
+        contract,
+        {"query": "q", "output_schema": {"type": "object"}},
+        required_names=required,
+        optional_names=optional,
+    )
+    assert valid.ok is True
+    invalid = validate_parameters(
+        contract,
+        {"query": "q", "output_schema": '{"type":"object"}'},
+        required_names=required,
+        optional_names=optional,
+    )
+    assert invalid.ok is False
+    assert invalid.violations[0].code == "wrong_type"

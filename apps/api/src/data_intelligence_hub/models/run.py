@@ -138,6 +138,8 @@ class Run(UUIDPrimaryKeyMixin, Base):
     # 持有租约的 worker 标识。终态写入用它做围栏：
     # 租约被接管后，旧 worker 的 UPDATE 不再命中。
     worker_id: Mapped[str | None] = mapped_column(String(120))
+    # 外部 provider 的运行 ID。用于租约接管后恢复轮询，避免重复付费提交。
+    provider_run_id: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

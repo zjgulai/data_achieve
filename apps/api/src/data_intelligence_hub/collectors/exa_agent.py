@@ -29,6 +29,7 @@ from data_intelligence_hub.collectors.base import (
 from data_intelligence_hub.collectors.exa_collector import _exa_client, _get_api_key
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.task import TaskRun
 
 _VALID_EFFORTS = frozenset(
@@ -58,6 +59,11 @@ async def _load_provider_run_id(
             if value:
                 return value
         if run_id is not None:
+            value = await session.scalar(
+                select(Run.provider_run_id).where(Run.id == run_id)
+            )
+            if value:
+                return value
             return await session.scalar(
                 select(TaskRun.provider_run_id)
                 .where(
@@ -70,19 +76,29 @@ async def _load_provider_run_id(
     return None
 
 
-async def _save_provider_run_id(local_task_run_id: str | None, provider_run_id: str) -> None:
-    if not local_task_run_id:
-        return
+async def _save_provider_run_id(
+    local_task_run_id: str | None,
+    local_run_id: str | None,
+    provider_run_id: str,
+) -> None:
+    task_run_id: uuid.UUID | None = None
+    run_id: uuid.UUID | None = None
     try:
-        task_run_id = uuid.UUID(local_task_run_id)
+        task_run_id = uuid.UUID(local_task_run_id) if local_task_run_id else None
+        run_id = uuid.UUID(local_run_id) if local_run_id else None
     except ValueError:
         return
     async with async_session_factory() as session:
-        await session.execute(
-            update(TaskRun)
-            .where(TaskRun.id == task_run_id)
-            .values(provider_run_id=provider_run_id)
-        )
+        if run_id is not None:
+            await session.execute(
+                update(Run).where(Run.id == run_id).values(provider_run_id=provider_run_id)
+            )
+        if task_run_id is not None:
+            await session.execute(
+                update(TaskRun)
+                .where(TaskRun.id == task_run_id)
+                .values(provider_run_id=provider_run_id)
+            )
         await session.commit()
 
 
@@ -210,7 +226,11 @@ class ExaAgentCollector(BaseCollector):
                         return CollectionResult(raw_records=[], logs=logs, errors=errors)
                     # 独立事务立即持久化。租约丢失/进程重启后只继续轮询，
                     # 不会再次 POST 产生第二笔付费运行。
-                    await _save_provider_run_id(config.get("local_task_run_id"), run_id)
+                    await _save_provider_run_id(
+                        config.get("local_task_run_id"),
+                        config.get("local_run_id"),
+                        run_id,
+                    )
                     logs.append(collector_log("exa_agent_submitted", f"run_id={run_id}"))
                 else:
                     logs.append(collector_log("exa_agent_resumed", f"run_id={run_id}"))

@@ -107,3 +107,29 @@ async def test_project_key_quota_is_consumed_per_row(
     assert [row.status for row in rows] == ["completed", "failed"]
     assert rows[1].error and "quota_exceeded" in rows[1].error
     assert stored_key is not None and stored_key.quota_used == 1
+
+@pytest.mark.asyncio
+async def test_worker_recovers_running_job_after_restart(
+    factory: async_sessionmaker[AsyncSession],
+) -> None:
+    ids = factory.ids  # type: ignore[attr-defined]
+    async with factory() as session:
+        job = EnrichmentJob(
+            workspace_id=ids["workspace"],
+            project_id=ids["project"],
+            name="interrupted",
+            query_template="查询 {domain}",
+            output_schema={"type": "object"},
+            status="running",
+            total=1,
+        )
+        session.add(job)
+        await session.commit()
+        job_id = job.id
+
+    worker = EnrichmentWorkerRuntime(factory)
+    assert await worker.recover_interrupted() == 1
+    async with factory() as session:
+        recovered = await session.get(EnrichmentJob, job_id)
+    assert recovered is not None
+    assert recovered.status == "queued"

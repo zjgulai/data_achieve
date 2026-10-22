@@ -63,6 +63,7 @@ class RunResponse(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     lease_expires_at: datetime | None
+    provider_run_id: str | None
     created_at: datetime
 
 

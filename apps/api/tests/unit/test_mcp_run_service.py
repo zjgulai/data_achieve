@@ -225,6 +225,7 @@ def test_stop_run_cancels_once(
     first = asyncio.run(run_service.stop_run(run_id))
     assert first["cancelled"] is True
     assert first["status"] == "cancelled"
+    assert first["provider_cancelled"] is None
 
     second = asyncio.run(run_service.stop_run(run_id))
     assert second["cancelled"] is False
