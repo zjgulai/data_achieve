@@ -14,17 +14,15 @@ from __future__ import annotations
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
-from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.collectors.anycrawl_collector import (
     BaiduSearchCollector,
     BingSearchCollector,
     DuckDuckGoSearchCollector,
     _normalize_result,
 )
-
+from data_intelligence_hub.collectors.base import CollectorError
 
 # ---------------------------------------------------------------------------
 # Helpers

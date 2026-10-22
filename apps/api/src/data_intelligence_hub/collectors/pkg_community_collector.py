@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
 from .base import (
     BaseCollector,
     CollectionResult,
@@ -15,7 +17,6 @@ from .base import (
     collector_log,
     require_text,
 )
-from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 class _NoRedirectClient:
