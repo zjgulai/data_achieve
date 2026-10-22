@@ -57,3 +57,17 @@
 | 合并后 B5 祖先 | 是（`b5_ancestor=0`） |
 | 合并后 B4 祖先 | 是（`b4_ancestor=0`；B4 是 B5 的祖先） |
 | 合并后 spec blob | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |
+
+## 4. 056/057 迁移验证
+
+| 项目 | 值 |
+|---|---|
+| 一次性数据库 | Docker `postgres:15`，`127.0.0.1:55432`，库 `c0_migrations` |
+| 055 前 claims | `null` |
+| upgrade 055 | 通过 |
+| upgrade 057 | 通过：055 → 056 → 057 |
+| 三张表 | `claims`、`claim_evidence`、`report_artifacts` |
+| alembic_version | `202610210057` |
+| downgrade 055 | 通过；三张表为 `null` |
+| 再次 upgrade 057 | 通过 |
+| SCHEMA_HEAD | `202610210057` |
