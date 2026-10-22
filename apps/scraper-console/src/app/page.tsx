@@ -11,6 +11,7 @@ import {
   Code2,
   Copy,
 } from "lucide-react";
+import { API_BASE_URL } from "@/lib/api/client";
 import { Reveal } from "@/components/landing/Reveal";
 import { HeroTexture } from "@/components/landing/HeroTexture";
 import { AgentSprite } from "@/components/landing/AgentSprite";
@@ -21,10 +22,10 @@ import { TerminalDemo } from "@/components/landing/TerminalDemo";
 import { GiantMark } from "@/components/landing/GiantMark";
 
 /** 首屏命令。目录接口公开可读。 */
-const CATALOG_COMMAND = "curl -s https://scrapy.luteos.com/api/collectors/catalog";
+const CATALOG_COMMAND = `curl -s ${API_BASE_URL}/api/collectors/catalog`;
 
 /** 行动区命令。读取实测计数。 */
-const DOCS_COMMAND = "curl -s https://scrapy.luteos.com/api/collectors/docs";
+const DOCS_COMMAND = `curl -s ${API_BASE_URL}/api/collectors/docs`;
 
 const STEPS = [
   { title: "找能力", body: "按平台或分类筛选全部能力视图。" },

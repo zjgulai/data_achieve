@@ -618,11 +618,18 @@ verify_public() {
     *) host_other="" ;;
   esac
   if [[ -n "$host_other" ]]; then
-    baked="$(curl -sL --max-time 30 "$url/platforms" \
-      | grep -oE '/_next/static/chunks/[^" ]+\.js' | sort -u | head -12 \
-      | while read -r chunk; do
-          curl -s --max-time 15 "$url$chunk" | grep -oE 'https://scrapy\.[a-z0-9.-]+'
-        done | sort -u)"
+    baked="$(
+      chunks="$(curl -sL --max-time 30 "$url/platforms" \
+        | grep -oE '/_next/static/chunks/[^" ]+\.js' | sort -u | sed -n '1,12p' \
+        || true)"
+      while read -r chunk; do
+        [[ -n "$chunk" ]] || continue
+        curl -s --max-time 15 "$url$chunk" \
+          | grep -oE 'https://scrapy\.[a-z0-9.-]+' \
+          || true
+      done <<< "$chunks"
+    )"
+    baked="$(printf '%s\n' "$baked" | sed '/^$/d' | sort -u)"
     if printf '%s\n' "$baked" | grep -qx "https://$host_other"; then
       echo "  产物烧录了另一台生产的域名 https://$host_other，串台" >&2
       fail=1

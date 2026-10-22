@@ -110,6 +110,8 @@ MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
     allowed_hosts=[
         "scrapy.luteos.com",
         "scrapy.luteos.com:*",
+        "scrapy.lute-tlz-dddd.top",
+        "scrapy.lute-tlz-dddd.top:*",
         "127.0.0.1",
         "127.0.0.1:*",
         "localhost",
@@ -119,6 +121,7 @@ MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
     ],
     allowed_origins=[
         "https://scrapy.luteos.com",
+        "https://scrapy.lute-tlz-dddd.top",
         "http://127.0.0.1:8000",
         "http://localhost:8000",
         "http://test",
