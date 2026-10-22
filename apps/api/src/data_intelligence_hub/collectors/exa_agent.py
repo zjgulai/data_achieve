@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import httpx
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from data_intelligence_hub.collectors.base import (
     BaseCollector,
@@ -52,6 +52,12 @@ async def _load_provider_run_id(
     except ValueError:
         return None
     async with async_session_factory() as session:
+        if run_id is not None:
+            value = await session.scalar(
+                select(Run.provider_run_id).where(Run.id == run_id)
+            )
+            if value:
+                return value
         if task_run_id is not None:
             value = await session.scalar(
                 select(TaskRun.provider_run_id).where(TaskRun.id == task_run_id)
@@ -59,11 +65,6 @@ async def _load_provider_run_id(
             if value:
                 return value
         if run_id is not None:
-            value = await session.scalar(
-                select(Run.provider_run_id).where(Run.id == run_id)
-            )
-            if value:
-                return value
             return await session.scalar(
                 select(TaskRun.provider_run_id)
                 .where(
@@ -76,30 +77,28 @@ async def _load_provider_run_id(
     return None
 
 
-async def _save_provider_run_id(
-    local_task_run_id: str | None,
+async def _recover_provider_run_id(
+    client: httpx.AsyncClient,
     local_run_id: str | None,
-    provider_run_id: str,
-) -> None:
-    task_run_id: uuid.UUID | None = None
-    run_id: uuid.UUID | None = None
-    try:
-        task_run_id = uuid.UUID(local_task_run_id) if local_task_run_id else None
-        run_id = uuid.UUID(local_run_id) if local_run_id else None
-    except ValueError:
-        return
-    async with async_session_factory() as session:
-        if run_id is not None:
-            await session.execute(
-                update(Run).where(Run.id == run_id).values(provider_run_id=provider_run_id)
-            )
-        if task_run_id is not None:
-            await session.execute(
-                update(TaskRun)
-                .where(TaskRun.id == task_run_id)
-                .values(provider_run_id=provider_run_id)
-            )
-        await session.commit()
+) -> str | None:
+    """从 Exa 最近运行的 request.metadata 恢复硬崩前已创建的远端 run。"""
+    if not local_run_id:
+        return None
+    response = await client.get("/agent/runs", params={"limit": 100})
+    if response.status_code != 200:
+        return None
+    data = response.json().get("data")
+    if not isinstance(data, list):
+        return None
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        request = item.get("request")
+        metadata = request.get("metadata") if isinstance(request, dict) else None
+        if isinstance(metadata, dict) and metadata.get("localRunId") == local_run_id:
+            value = item.get("id")
+            return str(value) if value else None
+    return None
 
 
 async def cancel_agent_run(provider_run_id: str) -> bool:
@@ -199,6 +198,8 @@ class ExaAgentCollector(BaseCollector):
         # 给它们发送 budget 会返回 400。
         if config["effort"] in {"auto", "ultra"}:
             payload["budget"] = {"maxCostDollars": config["max_cost_dollars"]}
+        if config.get("local_run_id"):
+            payload["metadata"] = {"localRunId": config["local_run_id"]}
         if config.get("system_prompt"):
             payload["systemPrompt"] = config["system_prompt"]
         if config.get("output_schema"):
@@ -210,6 +211,10 @@ class ExaAgentCollector(BaseCollector):
                 run_id = await _load_provider_run_id(
                     config.get("local_task_run_id"), config.get("local_run_id")
                 )
+                if not run_id:
+                    run_id = await _recover_provider_run_id(
+                        client, config.get("local_run_id")
+                    )
                 if not run_id:
                     created = await client.post("/agent/runs", json=payload)
                     if created.status_code not in {200, 201}:
@@ -224,16 +229,13 @@ class ExaAgentCollector(BaseCollector):
                     if not run_id:
                         errors.append("Exa /agent/runs returned no id")
                         return CollectionResult(raw_records=[], logs=logs, errors=errors)
-                    # 独立事务立即持久化。租约丢失/进程重启后只继续轮询，
-                    # 不会再次 POST 产生第二笔付费运行。
-                    await _save_provider_run_id(
-                        config.get("local_task_run_id"),
-                        config.get("local_run_id"),
-                        run_id,
-                    )
-                    logs.append(collector_log("exa_agent_submitted", f"run_id={run_id}"))
+                    log = collector_log("exa_agent_submitted", f"run_id={run_id}")
+                    log["provider_run_id"] = run_id
+                    logs.append(log)
                 else:
-                    logs.append(collector_log("exa_agent_resumed", f"run_id={run_id}"))
+                    log = collector_log("exa_agent_resumed", f"run_id={run_id}")
+                    log["provider_run_id"] = run_id
+                    logs.append(log)
 
                 deadline = asyncio.get_event_loop().time() + config["timeout_seconds"]
                 status = "running"

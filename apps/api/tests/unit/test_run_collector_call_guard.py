@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -17,10 +19,12 @@ from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.source import Source
-from data_intelligence_hub.models.task import CollectionTask
+from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
+from data_intelligence_hub.services.collector_service import CollectionCallResult
 from data_intelligence_hub.services.exceptions import (
     TaskAlreadyRunningError,
     TaskNotRunnableError,
@@ -99,3 +103,56 @@ async def test_running_task_is_rejected(session: AsyncSession) -> None:
     run = SimpleNamespace(id=uuid.uuid4(), workspace_id=workspace_id, task_id=task_id)
     with pytest.raises(TaskAlreadyRunningError):
         await RunCollectorCall(session)(run)
+
+@pytest.mark.asyncio
+async def test_mark_finished_mirrors_provider_run_id_in_current_transaction(
+    session: AsyncSession,
+) -> None:
+    workspace_id, task_id = await _seed_task(session, "enabled")
+    task = await session.get(CollectionTask, task_id)
+    assert task is not None
+    run = Run(
+        workspace_id=workspace_id,
+        project_id=task.project_id,
+        task_id=task.id,
+        status="running",
+        execution_mode="live",
+        trigger="mcp",
+        records_count=0,
+    )
+    session.add(run)
+    await session.flush()
+    task_run = TaskRun(
+        task_id=task.id,
+        workspace_id=workspace_id,
+        status="running",
+        records_count=0,
+        entities_count=0,
+        logs=[],
+        created_at=datetime.now(UTC),
+        run_id=run.id,
+    )
+    session.add(task_run)
+    await session.flush()
+    call = RunCollectorCall(session)
+    call._previous_task_status[task.id] = "enabled"
+    await call._mark_finished(
+        task_run,
+        task,
+        CollectionCallResult(
+            status="success",
+            records_count=1,
+            entities_count=0,
+            collector_type="exa_agent",
+            endpoint_type="exa_agent_research",
+            unit="run",
+            quantity=Decimal("1"),
+            unit_price=Decimal("0.1"),
+            total_cost_usd=Decimal("0.1"),
+        ),
+        [{"provider_run_id": "agent_run_123"}],
+    )
+    await session.flush()
+    await session.refresh(run)
+    assert task_run.provider_run_id == "agent_run_123"
+    assert run.provider_run_id == "agent_run_123"

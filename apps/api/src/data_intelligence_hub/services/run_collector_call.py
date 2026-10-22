@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
 from data_intelligence_hub.collectors.base import collector_log
-from data_intelligence_hub.models.run import RunStep
+from data_intelligence_hub.models.run import Run, RunStep
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services.collector_service import (
@@ -187,6 +187,21 @@ class RunCollectorCall:
         task_run.quantity = _as_decimal_or_none(result.quantity)
         task_run.unit_price = _as_decimal_or_none(result.unit_price)
         task_run.total_cost_usd = _as_decimal_or_none(result.total_cost_usd)
+        provider_run_id = next(
+            (
+                str(log.get("provider_run_id"))
+                for log in reversed(logs)
+                if log.get("provider_run_id")
+            ),
+            None,
+        )
+        if provider_run_id:
+            task_run.provider_run_id = provider_run_id
+            await self._session.execute(
+                update(Run)
+                .where(Run.id == task_run.run_id)
+                .values(provider_run_id=provider_run_id)
+            )
         task_run.logs = [dict(log) for log in logs]
         flag_modified(task_run, "logs")
         self._restore_task(task, status=result.status)

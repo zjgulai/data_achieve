@@ -17,7 +17,7 @@ from data_intelligence_hub.collectors.exa_agent import ExaAgentCollector
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.run import Run, RunStatus
-from data_intelligence_hub.models.task import CollectionTask, TaskRun
+from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services.collector_service import _agent_cost_fields
@@ -345,45 +345,51 @@ def test_agent_cost_fields_parse_total() -> None:
     assert _agent_cost_fields("exa_search", [record]) == (None, None, None, None)
 
 @pytest.mark.asyncio
-async def test_provider_run_id_persists_on_run_and_is_reused(
-    session_factory: async_sessionmaker[AsyncSession],
+async def test_agent_recovers_provider_run_from_metadata_without_second_post(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    ids = session_factory.ids  # type: ignore[attr-defined]
-    async with session_factory() as session:
-        workspace = await session.get(Workspace, ids["workspace"])
-        assert workspace is not None
-        local_run_id = await start_research(
-            session,
-            workspace=workspace,
-            project_id=ids["project"],
-            query="persist",
-        )
-        run = await session.get(Run, local_run_id)
-        assert run is not None
-        task_run = TaskRun(
-            task_id=run.task_id,
-            workspace_id=run.workspace_id,
-            status="running",
-            records_count=0,
-            entities_count=0,
-            logs=[],
-            created_at=datetime.now(UTC),
-            run_id=run.id,
-        )
-        session.add(task_run)
-        await session.commit()
-        local_task_run_id = task_run.id
+    calls: list[str] = []
+    local_run_id = str(uuid.uuid4())
 
-    monkeypatch.setattr(agent_module, "async_session_factory", session_factory)
-    await agent_module._save_provider_run_id(
-        str(local_task_run_id), str(local_run_id), "provider-123"
-    )
-    assert await agent_module._load_provider_run_id(
-        str(uuid.uuid4()), str(local_run_id)
-    ) == "provider-123"
-    async with session_factory() as session:
-        stored_run = await session.get(Run, local_run_id)
-        stored_task_run = await session.get(TaskRun, local_task_run_id)
-    assert stored_run is not None and stored_run.provider_run_id == "provider-123"
-    assert stored_task_run is not None and stored_task_run.provider_run_id == "provider-123"
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(f"{request.method} {request.url.path}")
+        if request.url.path == "/agent/runs":
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "id": "provider-123",
+                            "request": {"metadata": {"localRunId": local_run_id}},
+                        }
+                    ]
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "id": "provider-123",
+                "status": "completed",
+                "output": {"text": "recovered"},
+            },
+        )
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    async def no_local_id(_task_id: str | None, _run_id: str | None) -> None:
+        return None
+
+    monkeypatch.setenv("EXA_API_KEY", "test-key")
+    monkeypatch.setattr(agent_module, "_exa_client", _client_factory(httpx.MockTransport(handler)))
+    monkeypatch.setattr(agent_module.asyncio, "sleep", no_sleep)
+    monkeypatch.setattr(agent_module, "_load_provider_run_id", no_local_id)
+
+    result = await ExaAgentCollector(
+        {"query": "q", "local_run_id": local_run_id, "poll_interval_seconds": 1}
+    ).collect()
+
+    assert result.raw_records[0].content["agent_run_id"] == "provider-123"
+    assert "GET /agent/runs" in calls
+    assert "GET /agent/runs/provider-123" in calls
+    assert "POST /agent/runs" not in calls
