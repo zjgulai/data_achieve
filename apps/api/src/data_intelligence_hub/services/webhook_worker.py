@@ -66,8 +66,13 @@ class WebhookWorkerRuntime:
             try:
                 await _deliver(session, delivery, endpoint)
                 await session.commit()
-            except Exception:
+            except Exception as exc:
                 await session.rollback()
+                delivery = await session.get(WebhookDelivery, delivery_id)
+                if delivery is not None:
+                    delivery.status = "failed"
+                    delivery.last_error = type(exc).__name__
+                    await session.commit()
                 logger.exception("webhook_worker_delivery_failed", delivery_id=str(delivery_id))
         return True
 

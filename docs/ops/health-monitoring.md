@@ -79,7 +79,7 @@ tail -f /var/log/scrapy-health.log
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `SCRAPY_HEALTH_BASE_URL` | `http://127.0.0.1:8000` | 被检查的 API 根地址 |
-| `SCRAPY_HEALTH_EXPECTED_SCHEMA` | `202610210053` | 旧版 `/api/health` 没有 `schema_head` 时的回退值 |
+| `SCRAPY_HEALTH_EXPECTED_SCHEMA` | `202610220056` | 旧版 `/api/health` 没有 `schema_head` 时的回退值 |
 | `SCRAPY_HEALTH_STATE_FILE` | `/tmp/scrapy_health_state.json` | 告警去重状态文件 |
 | `HEALTH_ALERT_OPEN_IDS` | `ou_b49d21f41d8b2f119e466d29782d29ff` | 告警接收人 open_id，逗号分隔 |
 | `HEALTH_ALERTS_DISABLED` | 未设置 | 设为 `1` 时只检查、不发送飞书消息 |

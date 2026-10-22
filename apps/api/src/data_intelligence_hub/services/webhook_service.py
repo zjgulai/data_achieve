@@ -205,8 +205,10 @@ async def _deliver(
 
     last_error: str | None = None
     last_status: int | None = None
-    for attempt in range(1, _MAX_ATTEMPTS + 1):
-        delay = _RETRY_DELAYS[min(attempt - 1, len(_RETRY_DELAYS) - 1)]
+    first_attempt = int(delivery.attempts or 0) + 1
+    for offset in range(_MAX_ATTEMPTS):
+        attempt = first_attempt + offset
+        delay = _RETRY_DELAYS[min(offset, len(_RETRY_DELAYS) - 1)]
         if delay:
             await asyncio.sleep(delay)
         delivery.attempts = attempt

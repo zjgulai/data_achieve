@@ -283,3 +283,46 @@ async def test_delete_disables_endpoint_with_delivery_history(
         assert stored is not None
         assert stored.enabled is False
         assert stored.secret != "z" * 32
+
+@pytest.mark.asyncio
+async def test_failed_delivery_attempts_accumulate_across_worker_replays(
+    session_factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500)
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(
+        webhook_service,
+        "_http_client",
+        lambda: httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), follow_redirects=False
+        ),
+    )
+    monkeypatch.setattr(webhook_service.asyncio, "sleep", no_sleep)
+    async with session_factory() as session:
+        await create_endpoint(
+            session,
+            workspace_id=_workspace_id(session_factory),
+            url="https://hooks.example.com/hook",
+        )
+        delivery_id = (
+            await dispatch_event(
+                session,
+                workspace_id=_workspace_id(session_factory),
+                event_type="test",
+                payload={},
+            )
+        )[0].id
+    worker = WebhookWorkerRuntime(session_factory)
+    assert await worker.run_once() is True
+    assert await worker.run_once() is True
+    assert await worker.run_once() is False  # attempts 已到 6，不再领取
+    async with session_factory() as session:
+        delivery = await session.get(WebhookDelivery, delivery_id)
+    assert delivery is not None
+    assert delivery.attempts == 6
+    assert delivery.status == "failed"
