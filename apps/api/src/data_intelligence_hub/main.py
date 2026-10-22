@@ -81,7 +81,9 @@ from data_intelligence_hub.mcp_runtime import (
     mcp_server,
 )
 from data_intelligence_hub.scheduler import CollectionScheduler
+from data_intelligence_hub.services.enrichment_worker import EnrichmentWorkerRuntime
 from data_intelligence_hub.services.run_worker_runtime import RunWorkerRuntime
+from data_intelligence_hub.services.webhook_worker import WebhookWorkerRuntime
 
 logger = structlog.get_logger(__name__)
 
@@ -107,7 +109,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     scheduler: CollectionScheduler | None = None
     run_worker: RunWorkerRuntime | None = None
+    enrichment_worker = EnrichmentWorkerRuntime(session_factory=async_session_factory)
+    webhook_worker = WebhookWorkerRuntime(session_factory=async_session_factory)
     async with mcp_server.session_manager.run():
+        # 富集与 Webhook 投递都使用持久表。启动后由 worker 扫描待处理行。
+        recovered = await enrichment_worker.recover_interrupted()
+        app.state.enrichment_worker = enrichment_worker
+        app.state.webhook_worker = webhook_worker
+        enrichment_worker.start()
+        webhook_worker.start()
+        if recovered:
+            logger.info("enrichment_jobs_recovered", count=recovered)
         if settings.scheduler_enabled:
             scheduler = CollectionScheduler(
                 session_factory=async_session_factory,
@@ -123,6 +135,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             yield
         finally:
+            await webhook_worker.stop()
+            await enrichment_worker.stop()
             if run_worker is not None:
                 await run_worker.stop()
             if scheduler is not None:

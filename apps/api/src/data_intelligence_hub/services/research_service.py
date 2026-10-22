@@ -36,17 +36,22 @@ async def start_research(
     max_cost_dollars: float = 5,
     timeout_seconds: int = 600,
     label: str | None = None,
+    trigger: str = "api",
 ) -> uuid.UUID:
     endpoint_type = "exa_agent_research"
     collector_type = _ENDPOINT_TO_COLLECTOR.get(endpoint_type)
     if collector_type is None:
         raise ResearchError("research_endpoint_unavailable")
+    # 执行层的外层预算读 run_timeout_seconds；它必须大于采集器自身等待预算，
+    # 否则 Agent 在完成前会被 asyncio.wait_for 取消。最多再留 30 秒收尾。
+    outer_timeout = min(timeout_seconds + 30, 1800)
     config: dict[str, Any] = {
         "endpoint_type": endpoint_type,
         "query": query,
         "effort": effort,
         "max_cost_dollars": max_cost_dollars,
         "timeout_seconds": timeout_seconds,
+        "run_timeout_seconds": outer_timeout,
     }
     if output_schema is not None:
         config["output_schema"] = output_schema
@@ -87,7 +92,7 @@ async def start_research(
         project_id=project_id,
         task_id=task.id,
         status=RunStatus.QUEUED,
-        trigger="mcp",
+        trigger=trigger,
     )
     await session.commit()
     return run.id

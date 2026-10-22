@@ -40,7 +40,7 @@ async def create_webhook_endpoint(
             detail="webhook_owner_required",
         )
     try:
-        endpoint = await create_endpoint(
+        endpoint, plaintext = await create_endpoint(
             session,
             workspace_id=context.workspace.id,
             url=payload.url,
@@ -52,7 +52,7 @@ async def create_webhook_endpoint(
         ) from exc
     return CreatedWebhookResponse(
         **WebhookEndpointResponse.model_validate(endpoint).model_dump(),
-        secret=endpoint.secret,
+        secret=plaintext,
     )
 
 

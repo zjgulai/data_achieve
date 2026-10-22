@@ -745,6 +745,21 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="输入自然语言问题，返回综合答案 + 信源引用（标题/URL/日期/作者）。",
         config_schema={"required": ["query"], "properties": {"query": "string", "output_schema": "object", "text": "boolean"}},
     ),
+    CollectorDefinition(
+        type="exa_agent",
+        name="Exa Agent 深度研究",
+        description="Exa 异步 Agent：多步研究、列表构建与结构化输出。",
+        config_schema={
+            "required": ["query"],
+            "properties": {
+                "query": "string",
+                "effort": "string",
+                "output_schema": "object",
+                "max_cost_dollars": "number",
+                "timeout_seconds": "integer",
+            },
+        },
+    ),
     # 以下 4 个 collector 早已在 registry 注册并有校验函数，但此前遗漏在播种清单里，
     # 导致生产 quick-collect 一律返回 400 "Collector ... is not available"。
     CollectorDefinition(

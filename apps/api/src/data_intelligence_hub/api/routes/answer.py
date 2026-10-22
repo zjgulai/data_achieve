@@ -18,7 +18,6 @@ class AnswerRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     project_id: uuid.UUID | None = None
     limit: int = Field(default=5, ge=1, le=20)
-    allow_external: bool = True
 
 
 @router.post("")
@@ -39,5 +38,4 @@ async def answer_question(
         project_id=payload.project_id,
         query=payload.query,
         limit=payload.limit,
-        allow_external=payload.allow_external,
     )

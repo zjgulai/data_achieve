@@ -149,6 +149,14 @@ class OrmRunRecord:
         self._row.records_count = value
 
     @property
+    def total_cost_usd(self) -> Decimal | None:
+        return self._row.total_cost_usd
+
+    @total_cost_usd.setter
+    def total_cost_usd(self, value: Decimal | None) -> None:
+        self._row.total_cost_usd = value
+
+    @property
     def started_at(self) -> datetime | None:
         return self._row.started_at
 

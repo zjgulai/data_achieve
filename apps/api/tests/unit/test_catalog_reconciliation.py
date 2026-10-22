@@ -71,7 +71,7 @@ def test_apify_mapping_matches_actor_defaults() -> None:
 def test_collector_declarations_match_registry() -> None:
     """只声明未实现的类型数量固定。"""
     summary = _reconcile()["summary"]
-    assert summary["collector_definitions"] == 99
+    assert summary["collector_definitions"] == 100
     # 2026-10-21：新增 exa_agent 采集器，注册数 86 → 87。
     assert summary["collector_registered"] == 87
     assert len(summary["collector_declared_without_impl"]) == 13

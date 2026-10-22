@@ -11,6 +11,7 @@ from typing import Any
 
 from sqlalchemy import func, select
 
+from data_intelligence_hub.collectors.exa_agent import cancel_agent_run
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.models.authorization import Authorization
 from data_intelligence_hub.models.raw_record import RawRecord
@@ -25,11 +26,17 @@ RECORDS_PREVIEW_LIMIT = 20
 RECORDS_MAX_LIMIT = 100
 
 
-async def get_run_detail(run_id: uuid.UUID) -> dict[str, Any]:
-    """返回一次运行的平铺摘要与步骤。未找到时抛 ``run_not_found``。"""
+async def get_run_detail(
+    run_id: uuid.UUID,
+    *,
+    workspace_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """返回一次运行的平铺摘要与步骤。项目密钥路径按 workspace 隔离。"""
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (
+            workspace_id is not None and run.workspace_id != workspace_id
+        ):
             raise ValueError("run_not_found")
         steps = await runs_repository.list_steps(session, run_id=run_id)
         payload = RunResponse.model_validate(run).model_dump(mode="json")
@@ -57,6 +64,7 @@ async def list_run_records(
     *,
     limit: int = RECORDS_PREVIEW_LIMIT,
     cursor: str | None = None,
+    workspace_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """按运行分页返回原始记录。
 
@@ -78,7 +86,9 @@ async def list_run_records(
 
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (
+            workspace_id is not None and run.workspace_id != workspace_id
+        ):
             raise ValueError("run_not_found")
         task_run_ids = list(
             (
@@ -118,26 +128,45 @@ async def list_run_records(
         }
 
 
-async def stop_run(run_id: uuid.UUID) -> dict[str, Any]:
-    """取消一次运行。已进入终态时返回 ``cancelled=False``。"""
+async def stop_run(
+    run_id: uuid.UUID,
+    *,
+    workspace_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """取消一次运行。项目密钥路径必须传 workspace_id 做租户隔离。"""
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (
+            workspace_id is not None and run.workspace_id != workspace_id
+        ):
             raise ValueError("run_not_found")
-        workspace_id = run.workspace_id
+        resolved_workspace_id = run.workspace_id
         previous_status = run.status
+        provider_run_id = await session.scalar(
+            select(TaskRun.provider_run_id)
+            .where(
+                TaskRun.run_id == run_id,
+                TaskRun.provider_run_id.is_not(None),
+            )
+            .order_by(TaskRun.created_at.desc())
+            .limit(1)
+        )
         updated = await runs_repository.cancel_run(
             session,
-            workspace_id=workspace_id,
+            workspace_id=resolved_workspace_id,
             run_id=run_id,
         )
         await session.commit()
+        remote_cancelled = (
+            await cancel_agent_run(provider_run_id) if provider_run_id else None
+        )
         if updated is not None:
             return {
                 "run_id": str(run_id),
                 "previous_status": previous_status,
                 "status": updated.status,
                 "cancelled": True,
+                "provider_cancelled": remote_cancelled,
             }
         current = await session.get(Run, run_id)
         return {

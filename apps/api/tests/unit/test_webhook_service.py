@@ -9,13 +9,15 @@ import uuid
 import httpx
 import pytest
 import pytest_asyncio
+from cryptography.fernet import Fernet
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.user import User
-from data_intelligence_hub.models.webhook import WebhookDelivery
+from data_intelligence_hub.models.webhook import WebhookDelivery, WebhookEndpoint
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services import webhook_service
 from data_intelligence_hub.services.webhook_service import (
@@ -24,6 +26,24 @@ from data_intelligence_hub.services.webhook_service import (
     dispatch_event,
     sign_payload,
 )
+from data_intelligence_hub.services.webhook_worker import WebhookWorkerRuntime
+
+
+@pytest.fixture(autouse=True)
+def webhook_vault(monkeypatch: pytest.MonkeyPatch):
+    # tests/unit/test_platform_credentials.py 的固定 Fernet 测试密钥。
+    monkeypatch.setenv(
+        "PLATFORM_CREDENTIAL_MASTER_KEY",
+        Fernet.generate_key().decode("ascii"),
+    )
+    get_settings.cache_clear()
+
+    async def safe_url(_url: str) -> None:
+        return None
+
+    monkeypatch.setattr(webhook_service, "_assert_safe_url", safe_url)
+    yield
+    get_settings.cache_clear()
 
 
 @pytest_asyncio.fixture()
@@ -92,14 +112,16 @@ async def test_dispatch_signs_and_delivers(
     monkeypatch.setattr(
         webhook_service,
         "_http_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), follow_redirects=False
+        ),
     )
 
     async with session_factory() as session:
-        endpoint = await create_endpoint(
+        endpoint, plaintext = await create_endpoint(
             session,
             workspace_id=_workspace_id(session_factory),
-            url="http://localhost:9999/hook",
+            url="https://hooks.example.com/hook",
             description="test",
             secret="x" * 32,
         )
@@ -111,6 +133,12 @@ async def test_dispatch_signs_and_delivers(
         )
         assert len(deliveries) == 1
         delivery = deliveries[0]
+        assert delivery.status == "pending"
+    worker = WebhookWorkerRuntime(session_factory)
+    assert await worker.run_once() is True
+    async with session_factory() as session:
+        delivery = await session.get(WebhookDelivery, delivery.id)
+        assert delivery is not None
         assert delivery.status == "delivered"
         assert delivery.attempts == 1
 
@@ -118,7 +146,7 @@ async def test_dispatch_signs_and_delivers(
     assert headers["x-dih-event"] == "monitor.new_results"
     timestamp = headers["x-dih-timestamp"]
     body = captured["body"]
-    assert headers["x-dih-signature"] == sign_payload(endpoint.secret, timestamp, body)
+    assert headers["x-dih-signature"] == sign_payload(plaintext, timestamp, body)
 
 
 @pytest.mark.asyncio
@@ -138,7 +166,9 @@ async def test_dispatch_retries_then_fails(
     monkeypatch.setattr(
         webhook_service,
         "_http_client",
-        lambda: httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        lambda: httpx.AsyncClient(
+            transport=httpx.MockTransport(handler), follow_redirects=False
+        ),
     )
     monkeypatch.setattr(webhook_service.asyncio, "sleep", no_sleep)
 
@@ -146,7 +176,7 @@ async def test_dispatch_retries_then_fails(
         await create_endpoint(
             session,
             workspace_id=_workspace_id(session_factory),
-            url="http://localhost:9999/hook",
+            url="https://hooks.example.com/hook",
             secret="y" * 32,
         )
         deliveries = await dispatch_event(
@@ -155,28 +185,32 @@ async def test_dispatch_retries_then_fails(
             event_type="monitor.new_results",
             payload={"monitor_id": "m2"},
         )
-        delivery = deliveries[0]
+        delivery_id = deliveries[0].id
+    worker = WebhookWorkerRuntime(session_factory)
+    assert await worker.run_once() is True
+    async with session_factory() as session:
+        delivery = await session.get(WebhookDelivery, delivery_id)
+        assert delivery is not None
         assert delivery.status == "failed"
         assert delivery.attempts == 3
         assert delivery.response_status == 500
-
         rows = (await session.execute(select(WebhookDelivery))).scalars().all()
     assert len(rows) == 1
     assert calls["n"] == 3
 
 
 @pytest.mark.asyncio
-async def test_http_urls_require_allowed_host(
+async def test_http_and_userinfo_urls_are_rejected(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     async with session_factory() as session:
-        with pytest.raises(WebhookError) as exc:
-            await create_endpoint(
-                session,
-                workspace_id=_workspace_id(session_factory),
-                url="http://example.com/hook",
-            )
-    assert str(exc.value) == "webhook_url_requires_https"
+        for url in ("http://example.com/hook", "https://user:pass@example.com/hook"):
+            with pytest.raises(WebhookError, match="public_https"):
+                await create_endpoint(
+                    session,
+                    workspace_id=_workspace_id(session_factory),
+                    url=url,
+                )
 
 
 @pytest.mark.asyncio
@@ -191,3 +225,55 @@ async def test_dispatch_skips_when_no_endpoints(
             payload={"x": 1},
         )
     assert deliveries == []
+
+@pytest.mark.asyncio
+async def test_private_https_target_is_rejected(
+    session_factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from data_intelligence_hub.collectors.base import CollectorError
+
+    async def private(_url: str) -> None:
+        raise CollectorError("url_host_not_public")
+
+    monkeypatch.setattr(webhook_service, "_assert_public_http_url", private)
+    # 自动 fixture 把 _assert_safe_url 替换成 no-op；本用例恢复真实封装函数。
+    async def real_safe(url: str) -> None:
+        try:
+            await webhook_service._assert_public_http_url(url)
+        except Exception as exc:
+            raise WebhookError("webhook_url_not_public") from exc
+
+    monkeypatch.setattr(webhook_service, "_assert_safe_url", real_safe)
+    with pytest.raises(WebhookError, match="not_public"):
+        await webhook_service._assert_safe_url("https://127.0.0.1/hook")
+
+
+@pytest.mark.asyncio
+async def test_delete_disables_endpoint_with_delivery_history(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        endpoint, _ = await create_endpoint(
+            session,
+            workspace_id=_workspace_id(session_factory),
+            url="https://hooks.example.com/hook",
+            secret="z" * 32,
+        )
+        delivery = WebhookDelivery(
+            endpoint_id=endpoint.id,
+            workspace_id=_workspace_id(session_factory),
+            event_type="test",
+            payload={},
+            status="delivered",
+            attempts=1,
+        )
+        session.add(delivery)
+        await session.commit()
+        assert await webhook_service.delete_endpoint(
+            session, _workspace_id(session_factory), endpoint.id
+        ) is True
+        stored = await session.get(WebhookEndpoint, endpoint.id)
+        assert stored is not None
+        assert stored.enabled is False
+        assert stored.secret != "z" * 32

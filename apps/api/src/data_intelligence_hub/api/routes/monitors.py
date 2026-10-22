@@ -35,6 +35,14 @@ async def create_monitor_item(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="project_not_found"
         )
+    if (
+        context.workspace.owner_id != context.user.id
+        and project.owner_id != context.user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="monitor_management_forbidden",
+        )
     try:
         monitor = await create_monitor(
             session,

@@ -221,3 +221,13 @@ async def test_usage_summary_respects_day_window(
         )
     # 只有 2 小时前的运行落在 1 天窗口内。
     assert summary["totals"]["runs"] == 1
+
+def test_exa_agent_fallback_uses_effort_price() -> None:
+    from data_intelligence_hub.services.usage_service import _estimate_cost
+
+    assert _estimate_cost(
+        "exa_agent_research", 1, None, {}, {"effort": "high"}
+    ) == Decimal("0.50")
+    assert _estimate_cost(
+        "exa_agent_research", 1, None, {}, {"effort": "auto"}
+    ) == Decimal("0")

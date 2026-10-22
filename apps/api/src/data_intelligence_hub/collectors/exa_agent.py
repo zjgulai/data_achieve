@@ -9,10 +9,12 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 import httpx
+from sqlalchemy import select, update
 
 from data_intelligence_hub.collectors.base import (
     BaseCollector,
@@ -26,6 +28,8 @@ from data_intelligence_hub.collectors.base import (
 )
 from data_intelligence_hub.collectors.exa_collector import _exa_client, _get_api_key
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.models.task import TaskRun
 
 _VALID_EFFORTS = frozenset(
     {"minimal", "low", "medium", "high", "xhigh", "auto", "ultra"}
@@ -33,6 +37,63 @@ _VALID_EFFORTS = frozenset(
 _TERMINAL_STATUSES = frozenset(
     {"completed", "succeeded", "failed", "canceled", "cancelled", "error"}
 )
+
+
+async def _load_provider_run_id(
+    local_task_run_id: str | None,
+    local_run_id: str | None,
+) -> str | None:
+    task_run_id: uuid.UUID | None = None
+    run_id: uuid.UUID | None = None
+    try:
+        task_run_id = uuid.UUID(local_task_run_id) if local_task_run_id else None
+        run_id = uuid.UUID(local_run_id) if local_run_id else None
+    except ValueError:
+        return None
+    async with async_session_factory() as session:
+        if task_run_id is not None:
+            value = await session.scalar(
+                select(TaskRun.provider_run_id).where(TaskRun.id == task_run_id)
+            )
+            if value:
+                return value
+        if run_id is not None:
+            return await session.scalar(
+                select(TaskRun.provider_run_id)
+                .where(
+                    TaskRun.run_id == run_id,
+                    TaskRun.provider_run_id.is_not(None),
+                )
+                .order_by(TaskRun.created_at.desc())
+                .limit(1)
+            )
+    return None
+
+
+async def _save_provider_run_id(local_task_run_id: str | None, provider_run_id: str) -> None:
+    if not local_task_run_id:
+        return
+    try:
+        task_run_id = uuid.UUID(local_task_run_id)
+    except ValueError:
+        return
+    async with async_session_factory() as session:
+        await session.execute(
+            update(TaskRun)
+            .where(TaskRun.id == task_run_id)
+            .values(provider_run_id=provider_run_id)
+        )
+        await session.commit()
+
+
+async def cancel_agent_run(provider_run_id: str) -> bool:
+    """Best-effort cancel of one remote Exa Agent run."""
+    try:
+        async with _exa_client(_get_api_key()) as client:
+            response = await client.post(f"/agent/runs/{provider_run_id}/cancel")
+        return response.status_code in {200, 202, 204, 409}
+    except (CollectorError, httpx.HTTPError):
+        return False
 
 
 class ExaAgentCollector(BaseCollector):
@@ -65,6 +126,8 @@ class ExaAgentCollector(BaseCollector):
             "max_cost_dollars": max_cost,
             "timeout_seconds": timeout_seconds,
             "poll_interval_seconds": poll_interval,
+            "local_task_run_id": self.config.get("local_task_run_id"),
+            "local_run_id": self.config.get("local_run_id"),
         }
 
     async def test(self) -> CollectorTestResult:
@@ -115,8 +178,11 @@ class ExaAgentCollector(BaseCollector):
         payload: dict[str, Any] = {
             "query": config["query"],
             "effort": config["effort"],
-            "budget": {"maxCostDollars": config["max_cost_dollars"]},
         }
+        # Exa 只允许 auto / ultra 设置 budget。固定 effort 按次计费；
+        # 给它们发送 budget 会返回 400。
+        if config["effort"] in {"auto", "ultra"}:
+            payload["budget"] = {"maxCostDollars": config["max_cost_dollars"]}
         if config.get("system_prompt"):
             payload["systemPrompt"] = config["system_prompt"]
         if config.get("output_schema"):
@@ -125,16 +191,29 @@ class ExaAgentCollector(BaseCollector):
         collected_at = datetime.now(UTC)
         try:
             async with _exa_client(api_key) as client:
-                created = await client.post("/agent/runs", json=payload)
-                if created.status_code not in {200, 201}:
-                    msg = f"Exa /agent/runs HTTP {created.status_code}: {created.text[:300]}"
-                    errors.append(msg)
-                    logs.append(collector_log("exa_agent_error", msg, level="error"))
-                    return CollectionResult(raw_records=[], logs=logs, errors=errors)
-                run_id = str(created.json().get("id") or "")
+                run_id = await _load_provider_run_id(
+                    config.get("local_task_run_id"), config.get("local_run_id")
+                )
                 if not run_id:
-                    errors.append("Exa /agent/runs returned no id")
-                    return CollectionResult(raw_records=[], logs=logs, errors=errors)
+                    created = await client.post("/agent/runs", json=payload)
+                    if created.status_code not in {200, 201}:
+                        msg = (
+                            f"Exa /agent/runs HTTP {created.status_code}: "
+                            f"{created.text[:300]}"
+                        )
+                        errors.append(msg)
+                        logs.append(collector_log("exa_agent_error", msg, level="error"))
+                        return CollectionResult(raw_records=[], logs=logs, errors=errors)
+                    run_id = str(created.json().get("id") or "")
+                    if not run_id:
+                        errors.append("Exa /agent/runs returned no id")
+                        return CollectionResult(raw_records=[], logs=logs, errors=errors)
+                    # 独立事务立即持久化。租约丢失/进程重启后只继续轮询，
+                    # 不会再次 POST 产生第二笔付费运行。
+                    await _save_provider_run_id(config.get("local_task_run_id"), run_id)
+                    logs.append(collector_log("exa_agent_submitted", f"run_id={run_id}"))
+                else:
+                    logs.append(collector_log("exa_agent_resumed", f"run_id={run_id}"))
 
                 deadline = asyncio.get_event_loop().time() + config["timeout_seconds"]
                 status = "running"
@@ -142,17 +221,49 @@ class ExaAgentCollector(BaseCollector):
                 while asyncio.get_event_loop().time() < deadline:
                     await asyncio.sleep(config["poll_interval_seconds"])
                     polled = await client.get(f"/agent/runs/{run_id}")
-                    if polled.status_code != 200:
+                    if polled.status_code == 429 or polled.status_code >= 500:
+                        retry_after = polled.headers.get("retry-after")
+                        if retry_after and retry_after.isdigit():
+                            await asyncio.sleep(min(int(retry_after), 30))
                         continue
+                    if polled.status_code != 200:
+                        msg = (
+                            f"Exa /agent/runs/{run_id} HTTP {polled.status_code}: "
+                            f"{polled.text[:300]}"
+                        )
+                        errors.append(msg)
+                        logs.append(collector_log("exa_agent_error", msg, level="error"))
+                        return CollectionResult(raw_records=[], logs=logs, errors=errors)
                     data = polled.json()
                     status = str(data.get("status") or "")
                     if status in _TERMINAL_STATUSES:
                         break
                 else:
+                    # 本地预算到期时必须通知 Exa 取消，避免远端继续消耗额度。
+                    try:
+                        await client.post(f"/agent/runs/{run_id}/cancel")
+                    except httpx.HTTPError:
+                        logs.append(
+                            collector_log(
+                                "exa_agent_cancel_failed",
+                                f"run_id={run_id}",
+                                level="warning",
+                            )
+                        )
                     msg = f"agent run {run_id} timed out after {config['timeout_seconds']}s"
                     errors.append(msg)
                     logs.append(collector_log("exa_agent_timeout", msg, level="error"))
                     return CollectionResult(raw_records=[], logs=logs, errors=errors)
+        except asyncio.CancelledError:
+            # 外层执行预算或 worker 关停会取消本协程。尽力撤销 Exa run，
+            # 再原样抛出，让执行层保持正确的取消语义。
+            if "run_id" in locals() and run_id:
+                try:
+                    async with _exa_client(api_key) as cancel_client:
+                        await cancel_client.post(f"/agent/runs/{run_id}/cancel")
+                except httpx.HTTPError:
+                    pass
+            raise
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)
@@ -160,10 +271,12 @@ class ExaAgentCollector(BaseCollector):
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
         output = data.get("output") if isinstance(data.get("output"), dict) else {}
+        stop_reason = data.get("stopReason") or data.get("stop_reason")
         content = {
             "query": config["query"],
             "agent_run_id": run_id,
             "status": status,
+            "stop_reason": stop_reason,
             "text": output.get("text"),
             "structured": output.get("structured"),
             "grounding": output.get("grounding"),
@@ -171,6 +284,7 @@ class ExaAgentCollector(BaseCollector):
             "cost": data.get("costDollars"),
         }
         records: list[CollectorRawRecord] = []
+        truncated = stop_reason not in (None, "completed", "success")
         if status in {"completed", "succeeded"}:
             records.append(
                 CollectorRawRecord(
@@ -180,6 +294,8 @@ class ExaAgentCollector(BaseCollector):
                     collected_at=collected_at,
                 )
             )
+            if truncated:
+                errors.append(f"agent run stopped early: {stop_reason}")
         else:
             errors.append(f"agent run ended with status={status}")
         logs.append(

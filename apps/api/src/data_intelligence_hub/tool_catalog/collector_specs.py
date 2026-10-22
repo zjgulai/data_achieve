@@ -603,13 +603,10 @@ CONTRACTS: dict[str, ToolParameterContract] = {
     ),
     ParameterSpec(
         name="output_schema",
-        value_type="string",
+        value_type="object",
         required=False,
         source="collector_validation",
-        description=(
-            "输出 JSON Schema，可选。填 JSON 对象字符串；"
-            "填后返回结构化结果与字段级引用。"
-        ),
+        description="输出 JSON Schema，可选。填后返回结构化结果与字段级引用。",
     ),
     ParameterSpec(
         name="system_prompt",

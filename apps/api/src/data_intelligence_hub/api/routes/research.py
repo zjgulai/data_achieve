@@ -44,6 +44,14 @@ async def start_research_run(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="project_not_found"
         )
+    if (
+        context.workspace.owner_id != context.user.id
+        and project.owner_id != context.user.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="research_management_forbidden",
+        )
     try:
         run_id = await start_research(
             session,
@@ -74,6 +82,10 @@ async def get_research_run(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="run_not_found"
         )
-    detail = await get_run_detail(run_id)
-    records = await list_run_records(run_id, limit=20)
+    detail = await get_run_detail(run_id, workspace_id=context.workspace.id)
+    records = await list_run_records(
+        run_id,
+        limit=100,
+        workspace_id=context.workspace.id,
+    )
     return {"run": detail, "records": records}

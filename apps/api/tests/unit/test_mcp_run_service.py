@@ -218,6 +218,10 @@ def test_stop_run_cancels_once(
     run_id = asyncio.run(_seed_running(factory))
     monkeypatch.setattr(run_service, "async_session_factory", factory)
 
+    async def fake_cancel(_provider_run_id: str) -> bool:
+        return True
+
+    monkeypatch.setattr(run_service, "cancel_agent_run", fake_cancel)
     first = asyncio.run(run_service.stop_run(run_id))
     assert first["cancelled"] is True
     assert first["status"] == "cancelled"
@@ -252,3 +256,22 @@ def test_list_records_rejects_invalid_limit(
     monkeypatch.setattr(run_service, "async_session_factory", factory)
     with pytest.raises(ValueError, match="limit_invalid"):
         asyncio.run(run_service.list_run_records(run_id, limit=0))
+
+def test_project_key_run_queries_are_workspace_scoped(
+    factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(run_service, "async_session_factory", factory)
+    run_id = asyncio.run(_seed(factory))
+    wrong_workspace = uuid.uuid4()
+
+    with pytest.raises(ValueError, match="run_not_found"):
+        asyncio.run(run_service.get_run_detail(run_id, workspace_id=wrong_workspace))
+    with pytest.raises(ValueError, match="run_not_found"):
+        asyncio.run(
+            run_service.list_run_records(
+                run_id, limit=1, workspace_id=wrong_workspace
+            )
+        )
+    with pytest.raises(ValueError, match="run_not_found"):
+        asyncio.run(run_service.stop_run(run_id, workspace_id=wrong_workspace))

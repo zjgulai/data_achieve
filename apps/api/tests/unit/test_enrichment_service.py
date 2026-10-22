@@ -1,8 +1,7 @@
-"""列表富集：后台逐行执行与状态。"""
+"""列表富集：持久队列、逐行执行与恢复。"""
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 
 import pytest
@@ -15,6 +14,7 @@ from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.services import enrichment_service
+from data_intelligence_hub.services.enrichment_worker import EnrichmentWorkerRuntime
 
 
 @pytest_asyncio.fixture()
@@ -63,7 +63,7 @@ async def session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @pytest.mark.asyncio
-async def test_enrichment_processes_rows_in_background(
+async def test_enrichment_worker_processes_queued_rows(
     session_factory: async_sessionmaker[AsyncSession],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -71,11 +71,9 @@ async def test_enrichment_processes_rows_in_background(
 
     async def fake_run_row(query: str, schema: dict):
         calls.append(query)
-        return {"summary": f"result for {query}"}, ["https://exa.ai"]
+        return {"summary": f"result for {query}"}, [{"url": "https://exa.ai"}]
 
     monkeypatch.setattr(enrichment_service, "_run_row", fake_run_row)
-    monkeypatch.setattr(enrichment_service, "_session_factory", session_factory)
-
     ids = session_factory.ids  # type: ignore[attr-defined]
     async with session_factory() as session:
         workspace = await session.get(Workspace, ids["workspace"])
@@ -87,43 +85,79 @@ async def test_enrichment_processes_rows_in_background(
             name="公司富集",
             query_template="查询 {domain} 的公司简介",
             items=[{"domain": "exa.ai"}, {"domain": "openai.com"}],
-            output_schema={"type": "object"},
+            output_schema={"type": "object", "properties": {"summary": {"type": "string"}}},
         )
+        assert job.status == "queued"
 
-    for _ in range(50):
-        async with session_factory() as session:
-            current = await enrichment_service.get_job(session, ids["workspace"], job.id)
-            if current is not None and current.status in {"completed", "partial"}:
-                rows = await enrichment_service.get_rows(session, job.id)
-                break
-        await asyncio.sleep(0.02)
-    else:  # pragma: no cover - 超时守卫
-        raise AssertionError("enrichment job did not finish")
+    worker = EnrichmentWorkerRuntime(session_factory, poll_interval_seconds=0.01)
+    assert await worker.run_once() is True
 
+    async with session_factory() as session:
+        current = await enrichment_service.get_job(session, ids["workspace"], job.id)
+        rows = await enrichment_service.get_rows(session, job.id)
+    assert current is not None
     assert current.status == "completed"
     assert current.processed == 2
     assert current.failed == 0
     assert [row.status for row in rows] == ["completed", "completed"]
     assert rows[0].output == {"summary": "result for 查询 exa.ai 的公司简介"}
-    assert rows[0].citations == ["https://exa.ai"]
+    assert rows[0].citations == [{"url": "https://exa.ai"}]
     assert len(calls) == 2
 
 
 @pytest.mark.asyncio
-async def test_enrichment_rejects_empty_items(
+async def test_worker_recovers_interrupted_jobs(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     ids = session_factory.ids  # type: ignore[attr-defined]
     async with session_factory() as session:
         workspace = await session.get(Workspace, ids["workspace"])
         assert workspace is not None
-        with pytest.raises(enrichment_service.EnrichmentError):
+        job = await enrichment_service.start_enrichment(
+            session,
+            workspace=workspace,
+            project_id=ids["project"],
+            name="恢复测试",
+            query_template="查询 {domain}",
+            items=[{"domain": "exa.ai"}],
+            output_schema={"type": "object"},
+        )
+        job.status = "running"
+        await session.commit()
+
+    worker = EnrichmentWorkerRuntime(session_factory)
+    assert await worker.recover_interrupted() == 1
+    async with session_factory() as session:
+        recovered = await enrichment_service.get_job(session, ids["workspace"], job.id)
+    assert recovered is not None
+    assert recovered.status == "queued"
+
+
+@pytest.mark.asyncio
+async def test_enrichment_rejects_pii_schema_and_bad_template(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    ids = session_factory.ids  # type: ignore[attr-defined]
+    async with session_factory() as session:
+        workspace = await session.get(Workspace, ids["workspace"])
+        assert workspace is not None
+        with pytest.raises(enrichment_service.EnrichmentError, match="pii"):
             await enrichment_service.start_enrichment(
                 session,
                 workspace=workspace,
                 project_id=ids["project"],
-                name="空",
-                query_template="查询 {x}",
-                items=[],
+                name="PII",
+                query_template="查询 {domain}",
+                items=[{"domain": "exa.ai"}],
+                output_schema={"type": "object", "properties": {"email": {"type": "string"}}},
+            )
+        with pytest.raises(enrichment_service.EnrichmentError, match="placeholder"):
+            await enrichment_service.start_enrichment(
+                session,
+                workspace=workspace,
+                project_id=ids["project"],
+                name="坏模板",
+                query_template="查询 {{domain}}",
+                items=[{"domain": "exa.ai"}],
                 output_schema={"type": "object"},
             )

@@ -21,7 +21,16 @@ from pydantic import BaseModel, ConfigDict
 
 PARAMETER_CONTRACT_VERSION = "tool-params.v1"
 
-ValueType = Literal["string", "integer", "number", "boolean", "enum", "string_list", "list"]
+ValueType = Literal[
+    "string",
+    "integer",
+    "number",
+    "boolean",
+    "enum",
+    "string_list",
+    "list",
+    "object",
+]
 SpecSource = Literal[
     "upstream_schema",
     "collector_validation",
@@ -171,10 +180,11 @@ def _check_type(spec: ParameterSpec, value: object) -> ParameterViolation | None
             return _violation(spec.name, "wrong_type", "期望字符串列表")
     elif kind == "list":
         # 只校验容器类型，不校验元素。
-        # 用于实现仅做 isinstance(x, list) 的参数：
-        # 按 string_list 登记会拒绝运行时实际放行的 [1, 2]。
         if not isinstance(value, list):
             return _violation(spec.name, "wrong_type", "期望列表")
+    elif kind == "object":
+        if not isinstance(value, dict):
+            return _violation(spec.name, "wrong_type", "期望 JSON 对象")
     return None
 
 

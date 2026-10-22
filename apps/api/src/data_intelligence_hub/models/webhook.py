@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from data_intelligence_hub.models.base import Base, UUIDPrimaryKeyMixin
@@ -18,10 +18,14 @@ from data_intelligence_hub.models.base import Base, UUIDPrimaryKeyMixin
 
 class WebhookEndpoint(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "webhook_endpoints"
+    __table_args__ = (
+        Index("ix_webhook_endpoints_workspace", "workspace_id"),
+    )
 
     workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     url: Mapped[str] = mapped_column(Text, nullable=False)
-    secret: Mapped[str] = mapped_column(String(80), nullable=False)
+    # Fernet 密文。明文只在创建响应中出现一次。
+    secret: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(String(200))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -31,6 +35,9 @@ class WebhookEndpoint(UUIDPrimaryKeyMixin, Base):
 
 class WebhookDelivery(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "webhook_deliveries"
+    __table_args__ = (
+        Index("ix_webhook_deliveries_endpoint", "endpoint_id"),
+    )
 
     endpoint_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("webhook_endpoints.id"), nullable=False

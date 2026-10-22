@@ -203,3 +203,21 @@ async def test_enforce_tool_policy_skips_global_token(
     monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: None)
     # 全局 token：不设限，也不查库。
     await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]
+
+def test_project_key_cannot_switch_project() -> None:
+    from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
+    from data_intelligence_hub.mcp_runtime.server import _assert_bound_project
+
+    bound_project = uuid.uuid4()
+    identity = ProjectApiKeyContext(
+        key_id=uuid.uuid4(),
+        workspace_id=uuid.uuid4(),
+        project_id=bound_project,
+        key_prefix="dih_test",
+        label="test",
+    )
+    assert _assert_bound_project(identity, bound_project) == bound_project
+    with pytest.raises(ValueError, match="project_not_found"):
+        _assert_bound_project(identity, uuid.uuid4())
+    other = uuid.uuid4()
+    assert _assert_bound_project(None, other) == other

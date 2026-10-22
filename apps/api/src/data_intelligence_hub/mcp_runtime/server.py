@@ -9,7 +9,10 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import ToolAnnotations
 
 from data_intelligence_hub.core.database import async_session_factory
-from data_intelligence_hub.mcp_runtime.auth import project_api_key_context
+from data_intelligence_hub.mcp_runtime.auth import (
+    ProjectApiKeyContext,
+    project_api_key_context,
+)
 from data_intelligence_hub.mcp_runtime.capability_service import (
     describe_capability_public,
 )
@@ -25,7 +28,6 @@ from data_intelligence_hub.mcp_runtime.tool_policy import (
     enforce_quota,
     enforce_tool_policy,
 )
-from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -52,6 +54,20 @@ def _parse_project_id(value: str) -> uuid.UUID:
         return uuid.UUID(value)
     except ValueError as exc:
         raise ValueError("project_id_invalid") from exc
+
+
+def _assert_bound_project(
+    identity: ProjectApiKeyContext | None,
+    project_id: uuid.UUID,
+) -> uuid.UUID:
+    if identity is not None and project_id != identity.project_id:
+        raise ValueError("project_not_found")
+    return project_id
+
+
+def _bound_project_id(context: Context, value: str) -> uuid.UUID:
+    """项目密钥只能操作它绑定的 project_id；全局 token 不受此限制。"""
+    return _assert_bound_project(project_api_key_context(context), _parse_project_id(value))
 
 
 mcp_server = MCPServer(
@@ -278,7 +294,7 @@ async def _run_tool(
     await enforce_quota(context)
     result = await collect_capability(
         endpoint_type,
-        _parse_project_id(project_id),
+        _bound_project_id(context, project_id),
         params,
         workspace_id=_workspace_binding(context),
         tool_call=_tool_call_metadata(context, tool_name),
@@ -474,7 +490,7 @@ async def create_monitor(
     async with governed_tool(context, "create_monitor", is_collect=True):
         await enforce_tool_policy(context, "create_monitor")
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _parse_project_id(project_id)
+        parsed_project_id = _bound_project_id(context, project_id)
         async with async_session_factory() as session:
             project = await get_project(session, workspace.id, parsed_project_id)
             if project is None:
@@ -541,9 +557,8 @@ async def workspace_answer(
     query: str,
     project_id: str | None = None,
     limit: int = 5,
-    allow_external: bool = True,
 ) -> dict[str, object]:
-    """Answer from workspace records first; optionally supplement with Exa."""
+    """Answer strictly from workspace records. Use answer for external web evidence."""
     async with governed_tool(context, "workspace_answer"):
         workspace = await _monitor_workspace(context)
         parsed = _parse_project_id(project_id) if project_id else None
@@ -558,7 +573,6 @@ async def workspace_answer(
                 project_id=parsed,
                 query=query,
                 limit=limit,
-                allow_external=allow_external,
             )
 
 
@@ -583,7 +597,7 @@ async def deep_research_start(
         await enforce_tool_policy(context, "deep_research_start")
         await enforce_quota(context)
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _parse_project_id(project_id)
+        parsed_project_id = _bound_project_id(context, project_id)
         async with async_session_factory() as session:
             project = await get_project(session, workspace.id, parsed_project_id)
             if project is None:
@@ -597,6 +611,7 @@ async def deep_research_start(
                 output_schema=output_schema,
                 max_cost_dollars=max_cost_dollars,
                 timeout_seconds=timeout_seconds,
+                trigger="mcp",
             )
         return {"run_id": str(run_id), "status": "queued"}
 
@@ -616,13 +631,16 @@ async def deep_research_check(
     async with governed_tool(context, "deep_research_check"):
         parsed = uuid.UUID(run_id)
         identity = project_api_key_context(context)
-        if identity is not None:
-            async with async_session_factory() as session:
-                run = await session.get(Run, parsed)
-            if run is None or run.workspace_id != identity.workspace_id:
-                raise ValueError("run_not_found")
-        detail = await get_run_detail(parsed)
-        records = await list_run_records(parsed, limit=20)
+        workspace_id = identity.workspace_id if identity is not None else None
+        detail = await get_run_detail(parsed, workspace_id=workspace_id)
+        records = await list_run_records(
+            parsed,
+            limit=20,
+            workspace_id=workspace_id,
+        )
+        for item in records.get("items", []):
+            if isinstance(item, dict) and item.get("id"):
+                item["record_url"] = f"/api/raw-records/{item['id']}"
         return {"run": detail, "records": records}
 
 
@@ -645,11 +663,12 @@ async def enrich_list(
     async with governed_tool(context, "enrich_list", is_collect=True):
         await enforce_tool_policy(context, "enrich_list")
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _parse_project_id(project_id)
+        parsed_project_id = _bound_project_id(context, project_id)
         async with async_session_factory() as session:
             project = await get_project(session, workspace.id, parsed_project_id)
             if project is None:
                 raise ValueError("project_not_found")
+            identity = project_api_key_context(context)
             job = await enrichment_service.start_enrichment(
                 session,
                 workspace=workspace,
@@ -658,6 +677,7 @@ async def enrich_list(
                 query_template=query_template,
                 items=items,
                 output_schema=output_schema,
+                project_key_id=(identity.key_id if identity is not None else None),
             )
         return {
             "job_id": str(job.id),
@@ -718,7 +738,9 @@ async def get_run(context: Context, run_id: str) -> dict[str, object]:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
             raise ValueError("run_id_invalid") from exc
-        return await get_run_detail(parsed)
+        identity = project_api_key_context(context)
+        workspace_id = identity.workspace_id if identity is not None else None
+        return await get_run_detail(parsed, workspace_id=workspace_id)
 
 
 @_tool(
@@ -740,7 +762,14 @@ async def list_records(
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
             raise ValueError("run_id_invalid") from exc
-        return await list_run_records(parsed, limit=limit, cursor=cursor)
+        identity = project_api_key_context(context)
+        workspace_id = identity.workspace_id if identity is not None else None
+        return await list_run_records(
+            parsed,
+            limit=limit,
+            cursor=cursor,
+            workspace_id=workspace_id,
+        )
 
 
 @_tool(
@@ -757,7 +786,9 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
             raise ValueError("run_id_invalid") from exc
-        return await stop_run(parsed)
+        identity = project_api_key_context(context)
+        workspace_id = identity.workspace_id if identity is not None else None
+        return await stop_run(parsed, workspace_id=workspace_id)
 
 
 @_tool(
@@ -770,10 +801,7 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
 async def balance(context: Context, project_id: str) -> dict[str, object]:
     """Report project spend and remaining authorized budget."""
     async with governed_tool(context, "balance"):
-        try:
-            parsed = uuid.UUID(project_id)
-        except ValueError as exc:
-            raise ValueError("project_id_invalid") from exc
+        parsed = _bound_project_id(context, project_id)
         return await get_project_balance(parsed)
 
 

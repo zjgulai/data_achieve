@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 
 import pytest
 
@@ -38,6 +39,7 @@ class FakeRun:
     evidence_grade: str | None = None
     error_message: str | None = None
     records_count: int = 0
+    total_cost_usd: Decimal | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     template_id: str | None = "t1_voc"
@@ -233,6 +235,27 @@ def _success_result(**overrides: object) -> CollectionCallResult:
     }
     values.update(overrides)
     return CollectionCallResult(**values)  # type: ignore[arg-type]
+
+
+async def test_success_run_mirrors_total_cost_to_run() -> None:
+    run = FakeRun(status="queued")
+    executor, _, steps, ledger, _ = _build(
+        run,
+        call=FakeCollectorCall(
+            _success_result(
+                unit="run",
+                quantity=Decimal("1"),
+                unit_price=Decimal("0.1"),
+                total_cost_usd=Decimal("0.1"),
+            )
+        ),
+    )
+
+    result = await executor.execute(run.id)
+
+    assert result.total_cost_usd == Decimal("0.1")
+    assert steps.steps[0].total_cost_usd == Decimal("0.1")
+    assert ledger.entries[0].amount_usd == Decimal("0.1")
 
 
 async def test_success_run_transitions_queued_running_completed() -> None:

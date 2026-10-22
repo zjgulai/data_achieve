@@ -168,6 +168,7 @@ class RunRecord(Protocol):
     evidence_grade: str | None
     error_message: str | None
     records_count: int
+    total_cost_usd: Decimal | None
     started_at: datetime | None
     finished_at: datetime | None
     template_id: str | None
@@ -434,6 +435,7 @@ class RunExecutor:
         run.outcome = outcome
         run.error_message = call.error_message if outcome == OUTCOME_FAILED else None
         run.records_count = call.records_count
+        run.total_cost_usd = call.total_cost_usd
         run.finished_at = datetime.now(UTC)
         await self._runs.save(run)
         await self._unit_of_work.flush()
@@ -472,6 +474,7 @@ class RunExecutor:
         run.error_message = error_message
         run.evidence_grade = None
         run.records_count = 0
+        run.total_cost_usd = None
         run.finished_at = finished_at
         await self._runs.save(run)
         await self._unit_of_work.flush()

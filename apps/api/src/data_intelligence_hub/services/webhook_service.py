@@ -1,8 +1,8 @@
 """出站 Webhook 的登记、签名与投递。
 
 签名格式：``sha256=HMAC_SHA256(secret, f"{timestamp}.{body}")``。
-请求头：``X-DIH-Timestamp``、``X-DIH-Signature``、``X-DIH-Event``。
-每个事件创建投递行；失败按 0/1/3 秒退避重试三次。
+密钥用平台凭证主密钥加密存储；发送前与重定向后都校验公网地址。
+失败按 0/1/3 秒退避重试三次，投递结果保存在数据库。
 """
 
 from __future__ import annotations
@@ -16,17 +16,21 @@ import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from data_intelligence_hub.collectors.generic_web import _assert_public_http_url
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.webhook import WebhookDelivery, WebhookEndpoint
+from data_intelligence_hub.services.platform_credentials import PlatformCredentialCipher
 
 _MAX_ATTEMPTS = 3
 _RETRY_DELAYS = (0.0, 1.0, 3.0)
 _TIMEOUT_SECONDS = 10.0
+_MAX_REDIRECTS = 3
 
 
 class WebhookError(ValueError):
@@ -43,19 +47,49 @@ def sign_payload(secret: str, timestamp: str, body: str) -> str:
     return f"sha256={digest}"
 
 
-def _validate_url(url: str) -> str:
+def _cipher() -> PlatformCredentialCipher:
+    master_key = get_settings().platform_credential_master_key
+    if master_key is None:
+        raise WebhookError("webhook_vault_unavailable")
+    return PlatformCredentialCipher.from_secret(master_key)
+
+
+def _encrypt_secret(secret: str) -> str:
+    return _cipher().encrypt({"secret": secret})
+
+
+def _decrypt_secret(encrypted: str) -> str:
+    payload = _cipher().decrypt(encrypted)
+    secret = payload.get("secret")
+    if not secret:
+        raise WebhookError("webhook_secret_invalid")
+    return secret
+
+
+def _normalize_url(url: str) -> str:
     normalized = url.strip()
     parsed = urlparse(normalized)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise WebhookError("webhook_url_invalid")
-    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "test"}:
-        raise WebhookError("webhook_url_requires_https")
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port not in (None, 443)
+    ):
+        raise WebhookError("webhook_url_requires_public_https")
     return normalized
+
+
+async def _assert_safe_url(url: str) -> None:
+    try:
+        await _assert_public_http_url(url)
+    except Exception as exc:  # noqa: BLE001 - 统一翻译成业务错误码
+        raise WebhookError("webhook_url_not_public") from exc
 
 
 def _http_client() -> httpx.AsyncClient:
     """测试可以替换本函数返回带 MockTransport 的客户端。"""
-    return httpx.AsyncClient(timeout=_TIMEOUT_SECONDS)
+    return httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, follow_redirects=False)
 
 
 async def create_endpoint(
@@ -65,18 +99,21 @@ async def create_endpoint(
     url: str,
     description: str | None = None,
     secret: str | None = None,
-) -> WebhookEndpoint:
+) -> tuple[WebhookEndpoint, str]:
+    normalized_url = _normalize_url(url)
+    await _assert_safe_url(normalized_url)
+    plaintext = secret or generate_secret()
     endpoint = WebhookEndpoint(
         workspace_id=workspace_id,
-        url=_validate_url(url),
+        url=normalized_url,
         description=description,
-        secret=secret or generate_secret(),
+        secret=_encrypt_secret(plaintext),
         enabled=True,
     )
     session.add(endpoint)
     await session.commit()
     await session.refresh(endpoint)
-    return endpoint
+    return endpoint, plaintext
 
 
 async def list_endpoints(
@@ -93,10 +130,12 @@ async def list_endpoints(
 async def delete_endpoint(
     session: AsyncSession, workspace_id: uuid.UUID, endpoint_id: uuid.UUID
 ) -> bool:
+    """禁用端点并覆写密钥。保留投递历史，避免外键阻断删除。"""
     endpoint = await session.get(WebhookEndpoint, endpoint_id)
     if endpoint is None or endpoint.workspace_id != workspace_id:
         return False
-    await session.delete(endpoint)
+    endpoint.enabled = False
+    endpoint.secret = _encrypt_secret(generate_secret())
     await session.commit()
     return True
 
@@ -108,7 +147,7 @@ async def dispatch_event(
     event_type: str,
     payload: dict[str, Any],
 ) -> list[WebhookDelivery]:
-    """给工作区内所有启用的端点投递一次事件。"""
+    """把事件写入持久 outbox。网络投递由 WebhookWorkerRuntime 处理。"""
     endpoints = [
         endpoint
         for endpoint in await list_endpoints(session, workspace_id)
@@ -129,10 +168,7 @@ async def dispatch_event(
         )
         session.add(delivery)
         deliveries.append(delivery)
-    await session.flush()
-
-    for delivery, endpoint in zip(deliveries, endpoints, strict=True):
-        await _deliver(session, delivery, endpoint)
+    # 先提交 outbox，再由后台 worker 发网络请求。调用方不持有连接等待外部服务。
     await session.commit()
     return deliveries
 
@@ -144,10 +180,12 @@ async def _deliver(
 ) -> None:
     body = json.dumps(delivery.payload, ensure_ascii=False, sort_keys=True)
     timestamp = str(int(time.time()))
-    signature = sign_payload(endpoint.secret, timestamp, body)
+    secret = _decrypt_secret(endpoint.secret)
+    signature = sign_payload(secret, timestamp, body)
     headers = {
         "Content-Type": "application/json",
         "X-DIH-Event": delivery.event_type,
+        "X-DIH-Delivery": str(delivery.id),
         "X-DIH-Timestamp": timestamp,
         "X-DIH-Signature": signature,
     }
@@ -160,8 +198,25 @@ async def _deliver(
             await asyncio.sleep(delay)
         delivery.attempts = attempt
         try:
+            current_url = endpoint.url
+            response: httpx.Response | None = None
             async with _http_client() as client:
-                response = await client.post(endpoint.url, content=body, headers=headers)
+                for _redirect in range(_MAX_REDIRECTS + 1):
+                    await _assert_safe_url(current_url)
+                    response = await client.post(
+                        current_url,
+                        content=body,
+                        headers=headers,
+                        follow_redirects=False,
+                    )
+                    if response.status_code not in {301, 302, 303, 307, 308}:
+                        break
+                    location = response.headers.get("location", "").strip()
+                    if not location:
+                        raise WebhookError("webhook_redirect_invalid")
+                    current_url = urljoin(str(response.url), location)
+                if response is None:
+                    raise WebhookError("webhook_response_missing")
             last_status = response.status_code
             if 200 <= response.status_code < 300:
                 delivery.status = "delivered"
@@ -170,8 +225,11 @@ async def _deliver(
                 delivery.delivered_at = datetime.now(UTC)
                 await session.flush()
                 return
+            # 永久 4xx 不重试；429 是限流，可重试。
             last_error = f"http_{response.status_code}"
-        except httpx.HTTPError as exc:
+            if 400 <= response.status_code < 500 and response.status_code != 429:
+                break
+        except (httpx.HTTPError, WebhookError) as exc:
             last_error = type(exc).__name__
         await session.flush()
 

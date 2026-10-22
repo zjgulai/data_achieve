@@ -23,6 +23,13 @@ from data_intelligence_hub.tool_catalog.fixtures import load_price_book
 
 # 这些计价基准按记录数乘单价；其余按每次运行乘单价。
 _RECORD_BASES = frozenset({"per_record", "per_review", "per_page"})
+_EXA_AGENT_FIXED_PRICES = {
+    "minimal": Decimal("0.012"),
+    "low": Decimal("0.025"),
+    "medium": Decimal("0.10"),
+    "high": Decimal("0.50"),
+    "xhigh": Decimal("1.00"),
+}
 
 
 def _price_entries() -> dict[str, dict[str, Any]]:
@@ -36,10 +43,17 @@ def _estimate_cost(
     records_count: int,
     actual_cost: Decimal | None,
     entries: dict[str, dict[str, Any]],
+    task_config: dict[str, Any] | None = None,
 ) -> Decimal:
     if actual_cost is not None:
         return actual_cost
     if not endpoint_type:
+        return Decimal("0")
+    if endpoint_type == "exa_agent_research":
+        effort = str((task_config or {}).get("effort") or "medium")
+        if effort in _EXA_AGENT_FIXED_PRICES:
+            return _EXA_AGENT_FIXED_PRICES[effort]
+        # auto/ultra are metered; without provider cost the amount is unknown.
         return Decimal("0")
     entry = entries.get(endpoint_type)
     if not isinstance(entry, dict):
@@ -72,6 +86,7 @@ async def get_usage_summary(
             TaskRun.records_count,
             TaskRun.total_cost_usd,
             TaskRun.created_at,
+            CollectionTask.config,
         )
         .join(CollectionTask, CollectionTask.id == TaskRun.task_id)
         .where(
@@ -95,9 +110,13 @@ async def get_usage_summary(
         lambda: {"runs": 0, "records": 0, "cost_usd": Decimal("0")}
     )
 
-    for endpoint_type, provider, records_count, actual_cost, created_at in rows:
+    for endpoint_type, provider, records_count, actual_cost, created_at, task_config in rows:
         cost = _estimate_cost(
-            endpoint_type, int(records_count or 0), actual_cost, entries
+            endpoint_type,
+            int(records_count or 0),
+            actual_cost,
+            entries,
+            task_config,
         )
         provider_key = provider or "unknown"
         endpoint_key = endpoint_type or "unknown"

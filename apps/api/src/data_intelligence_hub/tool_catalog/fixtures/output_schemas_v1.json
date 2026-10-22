@@ -1908,6 +1908,7 @@
         "query",
         "agent_run_id",
         "status",
+        "stop_reason",
         "text",
         "structured",
         "grounding",

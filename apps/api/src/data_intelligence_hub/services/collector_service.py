@@ -280,7 +280,14 @@ async def execute_collection_task(
     # 局部导入避免与 quick_collect_service 形成模块循环。
     from data_intelligence_hub.services.monitor_service import process_monitor_run
 
-    await process_monitor_run(session, task, run)
+    try:
+        await process_monitor_run(session, task, run)
+    except Exception:  # noqa: BLE001 - 后处理失败不得覆盖已提交的采集结果
+        logger.exception(
+            "monitor_postprocess_failed",
+            extra={"task_id": str(task.id), "run_id": str(run.id)},
+        )
+        await session.rollback()
     return run
 
 
@@ -303,7 +310,13 @@ async def execute_collector_call(
     """
     source = await _get_task_source_or_raise(session, workspace, task)
     assert_collector_allowed(task.collector_type)
-    collector = build_collector(task.collector_type, _collector_config(source, task))
+    collector_config = _collector_config(source, task)
+    # Exa Agent 需要用本地 task_run 关联远端 run_id，才能在租约接管后
+    # 只继续轮询而不再次付费提交。其他采集器配置保持原样。
+    if task.collector_type == "exa_agent":
+        collector_config["local_task_run_id"] = str(task_run.id)
+        collector_config["local_run_id"] = str(task_run.run_id) if task_run.run_id else None
+    collector = build_collector(task.collector_type, collector_config)
     collector.validate_config()
     logs.append(collector_log("collector_config_valid", "Collector config validated."))
     try:
@@ -392,6 +405,7 @@ async def execute_collector_call(
     error_message = None
     if status in (FAILED, PARTIAL_SUCCESS) and result_errors:
         error_message = "; ".join(result_errors[:3])
+    cost_fields = _agent_cost_fields(task.collector_type, result.raw_records)
     return CollectionCallResult(
         status=status,
         records_count=records_count,
@@ -403,7 +417,33 @@ async def execute_collector_call(
         collector_type=task.collector_type,
         endpoint_type=_endpoint_type(collector.config),
         provider=_provider_name(task.collector_type),
+        unit=cost_fields[0],
+        quantity=cost_fields[1],
+        unit_price=cost_fields[2],
+        total_cost_usd=cost_fields[3],
     )
+
+
+def _agent_cost_fields(
+    collector_type: str,
+    raw_records: list[CollectorRawRecord],
+) -> tuple[str | None, Decimal | None, Decimal | None, Decimal | None]:
+    """只解析 Exa Agent 的成本。其他采集器保持原来的 None。"""
+    if collector_type != "exa_agent" or not raw_records:
+        return None, None, None, None
+    content = raw_records[0].content
+    if not isinstance(content, dict):
+        return None, None, None, None
+    raw_cost = content.get("cost")
+    if isinstance(raw_cost, dict):
+        raw_cost = raw_cost.get("total") or raw_cost.get("totalCostDollars")
+    try:
+        total = Decimal(str(raw_cost)) if raw_cost is not None else None
+    except (ArithmeticError, ValueError):
+        total = None
+    if total is None:
+        return None, None, None, None
+    return "run", Decimal("1"), total, total
 
 
 def _configured_period_days(config: dict[str, Any] | None) -> int:

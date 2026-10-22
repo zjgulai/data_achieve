@@ -94,7 +94,16 @@ def test_every_spec_is_sourced_from_implementation() -> None:
 
 
 def test_no_contract_registers_untyped_or_unknown_value_types() -> None:
-    allowed = {"string", "integer", "number", "boolean", "enum", "string_list", "list"}
+    allowed = {
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "enum",
+        "string_list",
+        "list",
+        "object",
+    }
     for tool_id, contract in CONTRACTS.items():
         for spec in contract.specs:
             assert spec.value_type in allowed, f"{tool_id}.{spec.name}={spec.value_type}"

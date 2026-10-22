@@ -468,6 +468,23 @@ async def test_lifespan_does_not_start_worker_when_disabled(
     async def fake_run():
         yield
 
+    background_events: list[str] = []
+
+    class FakeBackgroundRuntime:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        async def recover_interrupted(self) -> int:
+            return 0
+
+        def start(self) -> None:
+            background_events.append("start")
+
+        async def stop(self) -> None:
+            background_events.append("stop")
+
+    monkeypatch.setattr(main_module, "EnrichmentWorkerRuntime", FakeBackgroundRuntime)
+    monkeypatch.setattr(main_module, "WebhookWorkerRuntime", FakeBackgroundRuntime)
     monkeypatch.setattr(
         main_module,
         "get_settings",
@@ -486,6 +503,7 @@ async def test_lifespan_does_not_start_worker_when_disabled(
 
     assert created == []
     assert started == []
+    assert background_events == ["start", "start", "stop", "stop"]
     assert not hasattr(app.state, "run_worker")
 
 
@@ -511,6 +529,23 @@ async def test_lifespan_starts_and_stops_worker_when_enabled(
     async def fake_run():
         yield
 
+    background_events: list[str] = []
+
+    class FakeBackgroundRuntime:
+        def __init__(self, **kwargs: object) -> None:
+            pass
+
+        async def recover_interrupted(self) -> int:
+            return 0
+
+        def start(self) -> None:
+            background_events.append("start")
+
+        async def stop(self) -> None:
+            background_events.append("stop")
+
+    monkeypatch.setattr(main_module, "EnrichmentWorkerRuntime", FakeBackgroundRuntime)
+    monkeypatch.setattr(main_module, "WebhookWorkerRuntime", FakeBackgroundRuntime)
     monkeypatch.setattr(
         main_module,
         "get_settings",
@@ -530,3 +565,4 @@ async def test_lifespan_starts_and_stops_worker_when_enabled(
 
     assert len(created) == 1
     assert started == [True, False]
+    assert background_events == ["start", "start", "stop", "stop"]

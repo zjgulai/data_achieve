@@ -1,4 +1,4 @@
-"""工作区问答：本地检索、引用与外部补充。"""
+"""工作区问答：本地检索与引用。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -158,10 +159,8 @@ async def test_workspace_answer_returns_local_citations(
             workspace_id=_ids(session_factory)["workspace"],
             project_id=_ids(session_factory)["project"],
             query="exa pricing lite",
-            allow_external=False,
         )
     assert result["source"] == "workspace"
-    assert result["external"] is None
     assert len(result["citations"]) == 1
     assert "[1]" in result["answer"]
     assert "four dollars" in result["citations"][0]["snippet"]
@@ -177,29 +176,33 @@ async def test_workspace_answer_respects_project_filter(
             workspace_id=_ids(session_factory)["workspace"],
             project_id=_ids(session_factory)["other_project"],
             query="exa pricing",
-            allow_external=False,
         )
     assert result["citations"] == []
     assert result["source"] == "none"
 
 
 @pytest.mark.asyncio
-async def test_workspace_answer_uses_external_when_local_is_thin(
+async def test_workspace_answer_matches_chinese_bigrams(
     session_factory: async_sessionmaker[AsyncSession],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fake_exa(query: str) -> dict[str, object]:
-        return {"answer": f"external: {query}", "citations": ["https://exa.ai"]}
-
-    monkeypatch.setattr(answer_service, "_exa_answer", fake_exa)
-
     async with session_factory() as session:
+        # 写一条中文证据，证明连续中文不会被当作一个不可匹配的大词。
+        record = (
+            await session.execute(
+                select(RawRecord).where(
+                    RawRecord.project_id == _ids(session_factory)["project"]
+                )
+            )
+        ).scalars().first()
+        assert record is not None
+        record.content = {"title": "价格", "text": "轻量搜索每千次四美元"}
+        await session.commit()
         result = await answer_service.workspace_answer(
             session,
             workspace_id=_ids(session_factory)["workspace"],
-            project_id=_ids(session_factory)["other_project"],
-            query="quantum computing",
-            allow_external=True,
+            project_id=_ids(session_factory)["project"],
+            query="轻量搜索价格",
         )
-    assert result["source"] == "exa"
-    assert result["external"]["answer"] == "external: quantum computing"
+    assert result["source"] == "workspace"
+    assert len(result["citations"]) == 1
+    assert "轻量搜索" in result["citations"][0]["snippet"]

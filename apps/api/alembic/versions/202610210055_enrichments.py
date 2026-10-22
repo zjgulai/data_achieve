@@ -33,6 +33,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("query_template", sa.Text(), nullable=False),
         sa.Column("output_schema", sa.JSON(), nullable=False),
+        sa.Column("project_key_id", sa.Uuid(), nullable=True),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("total", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("processed", sa.Integer(), nullable=False, server_default=sa.text("0")),
@@ -43,6 +44,7 @@ def upgrade() -> None:
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"]),
         sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
+        sa.ForeignKeyConstraint(["project_key_id"], ["project_api_keys.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
