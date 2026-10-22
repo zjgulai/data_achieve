@@ -51,7 +51,8 @@
 
 | ID | 切片 | 计划 | 迁移 | 主要依赖 | 波次 | 状态 |
 |---|---|---|---|---|---|---|
-| C0 | 基线集成：合入 B5、验证 056/057、冻结事实 | [C0](2026-10-22-governed-task-platform-c0-baseline-integration.md) | 无；head `202610210057` | 无 | W0 | 未开始 |
+| C0 | 基线集成：合入 B5、验证 056/057、冻结事实 | [C0](2026-10-22-governed-task-platform-c0-baseline-integration.md) | 无；head `202610210057` | 无；Task 5 前插入 R0 | W0 | 进行中：Task 5 Ruff 阻塞 |
+| R0 | 继承 Ruff 基线清理 | [R0](2026-10-22-governed-task-platform-r0-ruff-cleanup.md) | 无 | C0 Task 4 / `8a68069` | W0.5 | 未开始 |
 | C1 | 契约 v1.1、机器 registry 与 checker | [C1](2026-10-22-governed-task-platform-c1-contract-v1-1.md) | 无 | C0 | W1 | 未开始 |
 | C2 | 身份、项目 ACL 与统一审计 | [C2](2026-10-22-governed-task-platform-c2-identity-project-acl-audit.md) | `202610220058` | C0、C1 | W2 | 未开始 |
 | C3 | 项目密钥与项目级凭据 | [C3](2026-10-22-governed-task-platform-c3-project-keys-credentials.md) | `202610220059` | C2 | W3 | 未开始 |
@@ -78,20 +79,23 @@
 5. C1 registry 中属于早期 C11–C14 的对象（`refresh_schedules`、`comparability_assessments`、`reconciliation_runs`、`kill_switch_events`、`release_gate_records`、`contract_publications`）不属于最终 C11–C14 计划。执行 C1 前必须从 registry 删除或标 `deferred`。
 6. `tool_prices` 是 C5 的正式价格事实源。C1 registry 登记其列、约束和索引；C5 迁移 `202610220061` 创建 `tool_prices`、`quota_accounts` 与 `tool_calls`。`price_book_v1.json` 只作为受评审的种子，不作为运行时回退源。
 7. C5 的迁移 `202610220061` 同时创建 C1 已登记的 `workbench_approval_actions`。该表只承载预算超额、加购和项目密钥变更的内联批准；不建独立审批收件箱。C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者和写入者。迁移 `202610220064` 创建这两张表；C5 的 `202610220061` 不创建质量表。C8 不再因迁移归属阻塞。
-8. `report_shares`、公开分享端点和公开访问路径首期延期。C12 不创建分享撤销端口或分享服务；删除执行只追加 `deletion_share_revocation_deferred` no-op 审计事件，并在删除证明记录 `report_shares: 0`。C12 不建 `report_shares` 表，也不再因分享撤销阻塞。
-9. `feat/p1-identity` 已是 C0 起点 `f0560ca` 的祖先；C0 不重复合并 P1。C0 只合并 `feat/b5-workbench`，并保留已批准设计 spec。
-10. `feat/b4-report-contract` 已是 `feat/b5-workbench` 的祖先；B4 经 B5 传递，不单独合并。B5 已把 B4 的 `202610210052`/`202610210053` 重编号为 `202610210056`/`202610210057`。
-11. 生产 B 的权威 compose 是 `configs/deploy/scrapy/docker-compose.yml`，不是 `configs/deploy/scrapy-new/docker-compose.yml`。分支、主机与迁移授权门禁见 §8.4。
-12. MFA 不在 PG0 范围。C2 不实现 MFA；C12 的删除批准使用 owner/admin 会话与二次确认，不引入 `require_recent_mfa`。MFA 未实现前不得对外宣称。
-13. `mcp_customer_request_leases` 不建表。C1 registry 标记 `deferred`；C13 的速率与并发计数使用已登记的 `audit_events`，不新建租约表。
-14. 子计划不得直接修改本索引。状态、阻塞项和依赖变更以“总索引变更请求”提交，由本索引所有者合入；子计划只读引用本文件。
-15. 每个切片的回滚点是 §8.2 表中的 worktree 起点分支或标签；迁移回滚点是 §5 的 `down_revision` 与 `alembic downgrade -1` 验证。生产回滚用发布前备份恢复。
+8. R0 是 C0 Task 5 前的无迁移清理切片。它只修复 C0 合入 B5 后冻结的 140 个 Ruff 错误，不改变产品行为、合同、迁移或依赖。R0 全量审查通过并合回 `feat/pg0-baseline-c0` 后，C0 从 Task 5 Step 3 恢复。
+9. `report_shares`、公开分享端点和公开访问路径首期延期。C12 不创建分享撤销端口或分享服务；删除执行只追加 `deletion_share_revocation_deferred` no-op 审计事件，并在删除证明记录 `report_shares: 0`。C12 不建 `report_shares` 表，也不再因分享撤销阻塞。
+10. `feat/p1-identity` 已是 C0 起点 `f0560ca` 的祖先；C0 不重复合并 P1。C0 只合并 `feat/b5-workbench`，并保留已批准设计 spec。
+11. `feat/b4-report-contract` 已是 `feat/b5-workbench` 的祖先；B4 经 B5 传递，不单独合并。B5 已把 B4 的 `202610210052`/`202610210053` 重编号为 `202610210056`/`202610210057`。
+12. 生产 B 的权威 compose 是 `configs/deploy/scrapy/docker-compose.yml`，不是 `configs/deploy/scrapy-new/docker-compose.yml`。分支、主机与迁移授权门禁见 §8.4。
+13. MFA 不在 PG0 范围。C2 不实现 MFA；C12 的删除批准使用 owner/admin 会话与二次确认，不引入 `require_recent_mfa`。MFA 未实现前不得对外宣称。
+14. `mcp_customer_request_leases` 不建表。C1 registry 标记 `deferred`；C13 的速率与并发计数使用已登记的 `audit_events`，不新建租约表。
+15. 子计划不得直接修改本索引。状态、阻塞项和依赖变更以“总索引变更请求”提交，由本索引所有者合入；子计划只读引用本文件。
+16. 每个切片的回滚点是 §8.2 表中的 worktree 起点分支或标签；迁移回滚点是 §5 的 `down_revision` 与 `alembic downgrade -1` 验证。生产回滚用发布前备份恢复。
 
 ## 2. 依赖图
 
 ```mermaid
 graph TD
-  C0[C0 基线集成] --> C1[C1 契约 v1.1]
+  C0[C0 基线集成] --> R0[R0 Ruff 清理]
+  R0 --> C0R[C0 Task 5 恢复]
+  C0R --> C1[C1 契约 v1.1]
   C1 --> C2[C2 身份与 ACL 审计]
   C2 --> C3[C3 项目密钥与凭据]
   C2 --> C4[C4 任务提交幂等]
@@ -147,7 +151,9 @@ C13 还调用 C2 的 `services.audit_log.append_audit_event`。C2 是 C3 的前�
 
 | 波次 | 切片 | 并行规则 | 退出条件 |
 |---|---|---|---|
-| W0 | C0 | 单独执行；只操作主工作树 | B5 合入、056/057 验证、事实冻结、`pg0-baseline-v1` 标签建立 |
+| W0 | C0 Task 1–4 | 单独执行；隔离 C0 worktree | B5 合入、spec 保留、056/057 验证通过 |
+| W0.5 | R0 | 从 C0 `8a68069` 创建独立 Ruff worktree | 140 个 Ruff 错误归零；全量后端门禁通过；合回 C0 |
+| W0.6 | C0 Task 5–8 | 恢复 C0 worktree | 后端/前端/镜像/GitNexus/事实冻结、`pg0-baseline-v1` 标签建立 |
 | W1 | C1 | 单独执行；只改契约与 registry | 契约 v1.1、registry、checker、报告/交付/MCP schema 通过 |
 | W2 | C2 | 单独执行；迁移 058 | 角色、项目 ACL、审计哈希链通过 |
 | W3 | C3 | 单独执行；迁移 059 | 密钥轮换、凭据作用域、`/connectors` 验收通过 |
@@ -351,6 +357,7 @@ C1–C14 每个切片一个 worktree。起点按依赖链，不全部从 `pg0-ba
 
 | 切片 | worktree 起点 |
 |---|---|
+| R0 | `feat/pg0-baseline-c0` @ `8a68069`；完成后合回 C0 |
 | C1 | `pg0-baseline-v1` |
 | C2 | `feat/gov-c1` |
 | C3 | `feat/gov-c2` |
@@ -533,6 +540,7 @@ scripts/deploy-p0.sh --host b
 |---|---|
 | 总索引 | `docs/superpowers/plans/2026-10-22-governed-task-platform-master-plan.md` |
 | C0 | `docs/superpowers/plans/2026-10-22-governed-task-platform-c0-baseline-integration.md` |
+| R0 | `docs/superpowers/plans/2026-10-22-governed-task-platform-r0-ruff-cleanup.md` |
 | C1 | `docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md` |
 | C2 | `docs/superpowers/plans/2026-10-22-governed-task-platform-c2-identity-project-acl-audit.md` |
 | C3 | `docs/superpowers/plans/2026-10-22-governed-task-platform-c3-project-keys-credentials.md` |

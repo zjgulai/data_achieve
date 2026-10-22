@@ -25,6 +25,7 @@
 - `run_ledger_entries` 只追加。`settle` 为正数实际成本，`release` 为负数修正。本计划不修改账本代码或数据。
 - 本计划不手工修改业务代码、测试代码、迁移代码、前端代码。代码变更只来自 B5 合并。
 - 后端 unit 基线是 `2492 passed, 2 skipped`。后端 integration 基线是带 `DATABASE_URL` 时 `386 passed`。前端基线是 `220 passed`。
+- **R0 Ruff 清理前置。** C0 Task 5 Step 2 在 B5 合入后实测 `ruff check .` 有 140 个继承错误。用户已决定先执行独立 R0 清理切片 `docs/superpowers/plans/2026-10-22-governed-task-platform-r0-ruff-cleanup.md`。R0 从 C0 `8a68069` 创建，清理完成、双阶段审查并合回 C0 后，Task 5 从 Step 2 重新运行 Ruff；通过后从 Step 3 继续。R0 不新增迁移、不改变产品行为。
 - 有效测试命令中的任何 `failed` 或 `error` 都是门禁失败。没有 `DATABASE_URL` 时只运行 `tests/unit`；不得运行 `tests/integration` 或全量 `pytest`，避免 PostgreSQL 连接错误伪装成代码失败。
 - 目录基线是 `catalog_digest=35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c`、`tool_count=284`、`canonical_tool_count=284`、`executable_count=226`。
 - 平台包基线是 `platform_count=70`、`capability_count=312`、`unique_endpoint_count=284`。
@@ -536,7 +537,8 @@ Run:
 
 ```bash
 cd /Users/lute/Project/data_scrapy-c0
-git diff --diff-filter=D --name-only HEAD..feat/b5-workbench
+git diff --diff-filter=D --name-only HEAD..feat/b5-workbench -- \
+  docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md
 git cat-file -e feat/b5-workbench:docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md; echo "b5_has_spec=$?"
 git log --oneline HEAD..feat/b5-workbench -- docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md | wc -l
 ```
