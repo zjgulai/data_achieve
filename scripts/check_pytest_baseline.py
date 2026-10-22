@@ -11,6 +11,10 @@
 #   - 任何 FAILED 行都是回归，退出码 1。
 #   - pytest 没有产出汇总行（收集失败）也是回归。
 #   - 全部通过时退出码 0。
+#
+# 本脚本可单独运行，且会启动 pytest，所以先跑目录生成前置。
+# generated/ 不在版本控制里；没有它，目录测试在干净 checkout 上失败。
+# 生成命令与 scripts/verify-mvp.sh、CI 完全相同。
 
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_API = ROOT / "apps" / "api"
+GENERATE_SCRIPT = ROOT / "scripts" / "generate_platform_packages.py"
 
 FAILED_RE = re.compile(r"^(FAILED|ERROR)\s+(\S+)", re.MULTILINE)
 SUMMARY_RE = re.compile(r"^\s*(\d+)\s+(passed|failed|error)", re.MULTILINE)
@@ -51,6 +56,29 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def ensure_generated(api_dir: Path, python: str | None) -> str | None:
+    """运行目录生成前置。成功返回 None，失败返回错误说明。
+
+    目录测试读取 generated/。本脚本会启动 pytest，所以必须先保证它存在。
+    """
+    print("==> Generate platform packages (pytest prerequisite)", flush=True)
+    cmd = [python or sys.executable, str(GENERATE_SCRIPT)]
+    print(f"    {' '.join(cmd)}", flush=True)
+    try:
+        proc = subprocess.run(cmd, cwd=api_dir, capture_output=True, text=True)
+    except OSError as exc:
+        return f"REGRESSION: 目录生成前置无法启动：{exc}。pytest 未启动。"
+    if proc.returncode != 0:
+        print(proc.stdout, end="")
+        print(proc.stderr, end="", file=sys.stderr)
+        return (
+            f"REGRESSION: 目录生成前置失败（退出码 {proc.returncode}）。"
+            "pytest 未启动。"
+        )
+    print(proc.stdout.rstrip())
+    return None
+
+
 def run(paths: list[str], api_dir: Path, python: str | None) -> tuple[int, str]:
     cmd = [python or sys.executable, "-m", "pytest", "-q", "--no-header", *paths]
     proc = subprocess.run(cmd, cwd=api_dir, capture_output=True, text=True)
@@ -60,6 +88,11 @@ def run(paths: list[str], api_dir: Path, python: str | None) -> tuple[int, str]:
 def main() -> int:
     args = parse_args()
     paths = args.path or ["tests/unit", "tests/integration"]
+
+    generation_error = ensure_generated(args.api_dir, args.python)
+    if generation_error is not None:
+        print(generation_error)
+        return 1
 
     code, output = run(paths, args.api_dir, args.python)
     failures = FAILED_RE.findall(output)

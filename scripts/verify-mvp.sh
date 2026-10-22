@@ -61,6 +61,10 @@ fi
 cd "$ROOT_DIR/apps/api"
 run_step "API ruff" uv run ruff check .
 run_step "API mypy" uv run mypy src tests
+# 目录测试读取 generated/。它不在版本控制里，先跑最小生成命令。
+# 失败即退出；set -e 保证 pytest 不启动。
+run_step "Generate platform packages (pytest prerequisite)" \
+  uv run python ../../scripts/generate_platform_packages.py
 run_step "API pytest" uv run pytest
 run_step "API Alembic heads" uv run alembic heads
 
