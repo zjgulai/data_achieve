@@ -258,7 +258,7 @@ C13 还调用 C2 的 `services.audit_log.append_audit_event`。C2 是 C3 的前�
 1. 所有新增布尔开关默认 `false`。
 2. 开关只控制入口与后台任务，不控制审计。审计写入不得因开关关闭而跳过。
 3. 关闭时对应路由返回 404。C4 的 workbench 路由与 `POST /api/runs` 的 workbench 模式返回 503 `workbench_disabled`，旧 `POST /api/runs` 行为不变。客户 MCP 返回 `404` 或 `tool_not_allowed`，不得返回内部工具。
-4. 开关变更写 `config.security_changed` 审计。
+4. 开关变更写 `config.switch.changed` 审计。
 5. 开关必须由所属切片在 `core/config.py` 与 `.env.example` 登记。C14 只在 CI、Playwright 与只读发布验收中读取，不新增后端开关。
 6. `GOVERNED_TASK_PLATFORM_ENABLED` 是部署与验收门禁记录，不是后端运行开关；由 PG0 发布批次设置，C14 与 O1 只读校验。C5 的 `BUDGET_ENFORCEMENT_ENABLED`、`STRICT_PRICE_ENABLED`，C6 的 `RUN_EXECUTION_CONVERGENCE_ENABLED` 与 C11 的 `RETENTION_CLEANUP_ENABLED` 都默认 `false`，由 PG0 发布批次在迁移、种子、权限、只读验收与门禁通过后显式打开并验证；C14 只读。C7、C8、C9、C10 没有独立布尔开关时，受所属切片发布顺序与该门禁控制。
 7. C13 不建租约表，因此不设置租约过期开关；速率与并发使用已登记的 `audit_events` 计数。
