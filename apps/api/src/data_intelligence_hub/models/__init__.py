@@ -23,6 +23,12 @@ from data_intelligence_hub.models.capability_governance import (
     CapabilityVerificationTask,
     GovernanceCapabilityEvidence,
 )
+from data_intelligence_hub.models.claim import (
+    Claim,
+    ClaimEvidence,
+    ClaimState,
+    EvidenceRole,
+)
 from data_intelligence_hub.models.collector import Collector
 from data_intelligence_hub.models.dataset import (
     CleaningPlan,
@@ -59,6 +65,7 @@ from data_intelligence_hub.models.report import (
     ReportSubscription,
     ReportSubscriptionRun,
 )
+from data_intelligence_hub.models.report_artifact import ReportArtifact
 from data_intelligence_hub.models.run import (
     Run,
     RunOutcome,
@@ -171,6 +178,9 @@ __all__ = [
     "CapabilitySourceSnapshot",
     "CapabilityVerificationDecision",
     "CapabilityVerificationTask",
+    "Claim",
+    "ClaimEvidence",
+    "ClaimState",
     "CleaningPlan",
     "CollectionTask",
     "Collector",
@@ -198,6 +208,7 @@ __all__ = [
     "ExtractionPlan",
     "GovernanceCapabilityEvidence",
     "Evidence",
+    "EvidenceRole",
     "EmailChannelTestRun",
     "EmailProviderLiveGateRun",
     "EmailProviderLiveSendRun",
@@ -217,6 +228,7 @@ __all__ = [
     "QueryTerm",
     "RawRecord",
     "Report",
+    "ReportArtifact",
     "ReportAuditEvent",
     "ReportSubscription",
     "ReportSubscriptionRun",

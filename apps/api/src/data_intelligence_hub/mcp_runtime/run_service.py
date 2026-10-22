@@ -1,7 +1,7 @@
 """MCP 的运行查询服务。
 
 只读。复用 ``runs``、``run_steps`` 与 ``raw_records``，不新建状态。
-MCP 使用全局 token，没有工作区绑定；调用方必须自行提供 run_id。
+有项目身份时按项目过滤。全局 token 没有项目身份，行为不变。
 """
 
 from __future__ import annotations
@@ -25,11 +25,18 @@ RECORDS_PREVIEW_LIMIT = 20
 RECORDS_MAX_LIMIT = 100
 
 
-async def get_run_detail(run_id: uuid.UUID) -> dict[str, Any]:
-    """返回一次运行的平铺摘要与步骤。未找到时抛 ``run_not_found``。"""
+async def get_run_detail(
+    run_id: uuid.UUID,
+    *,
+    project_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """返回一次运行的平铺摘要与步骤。未找到时抛 ``run_not_found``。
+
+    ``project_id`` 非空时只返回该项目的运行。跨项目按未找到处理。
+    """
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (project_id is not None and run.project_id != project_id):
             raise ValueError("run_not_found")
         steps = await runs_repository.list_steps(session, run_id=run_id)
         payload = RunResponse.model_validate(run).model_dump(mode="json")
@@ -57,11 +64,13 @@ async def list_run_records(
     *,
     limit: int = RECORDS_PREVIEW_LIMIT,
     cursor: str | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """按运行分页返回原始记录。
 
     ``limit`` 限制在 1..100。``cursor`` 是上一页返回的偏移量字符串。
     先按 run_id 找到 task_runs，再按 task_run_id 查 raw_records。
+    ``project_id`` 非空时只返回该项目的运行。跨项目按未找到处理。
     """
     if limit < 1:
         raise ValueError("limit_invalid")
@@ -78,7 +87,7 @@ async def list_run_records(
 
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (project_id is not None and run.project_id != project_id):
             raise ValueError("run_not_found")
         task_run_ids = list(
             (

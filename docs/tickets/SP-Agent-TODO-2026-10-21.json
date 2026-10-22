@@ -104,12 +104,12 @@
     "module": "平台能力中心",
     "task_attribute": "bug",
     "solution": "把 /platforms→/tools、/skills→/tools、/collector-docs→/docs、/datasets→/assets、/raw-records→/assets/records、/collect→/runs/[runId] 写入文档。删除 /settings/account 桩描述。MCP 工具数改为 21。项目详情假空态标记为已修。生成物 286/258 标注 2026-10-15。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-21",
     "due": "2026-10-31",
-    "actual": "",
+    "actual": "2026-10-21",
     "priority": "P1",
-    "evidence": "能力图谱 §2/§3.3/§6；README『产品界面』；交接文档 §3.1/§5.1；主分支提交 e487b66；apps/scraper-console/src/lib/routes.ts:40-79。"
+    "evidence": "README、能力图谱、能力总账、交接文档已同步：路由改为 /tools、/tools/[toolId]、/runs/[runId]、/assets、/assets/records、/docs；旧路径重定向写入文档；/settings/account 已删除；MCP 工具数改为 25；生产快照 311 能力视图 / 283 唯一端点，状态 200/57/12/10/3/1，schema 202610210053；项目详情假空态标记为已修；2026-10-15 的 286/258 历史数字保留并标注为快照。"
   },
   {
     "ticket_id": "SP-09",

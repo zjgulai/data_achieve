@@ -318,3 +318,11 @@ class QuickCollectExecutionError(ServiceError):
         instance = cls(str(exc))
         instance.is_config_error = True
         return instance
+
+
+class ClaimCounterEvidenceRequiredError(ServiceError):
+    message = "claim_counter_evidence_required"
+
+
+class ClaimGapOnlyStateInvalidError(ServiceError):
+    message = "claim_gap_only_state_invalid"
