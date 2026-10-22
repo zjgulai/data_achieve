@@ -40,3 +40,20 @@
 | spec 删除差异 | 仅对 spec 路径检查时 `HEAD..B5` 显示 D；B5 无该路径（`cat-file` 128）；B5 历史没有修改该路径；后续只用标准三方合并，保留 HEAD 的已批准 spec blob，合并后验证 blob；禁止整树 checkout、`-X theirs` 与 squash |
 | `git diff --check` | 通过 |
 | MERGE_READY | yes |
+
+## 3. B5 合并与 spec 保留
+
+| 项目 | 值 |
+|---|---|
+| 集成分支 | `feat/pg0-baseline-c0` |
+| 合并方式 | `git merge --no-commit --no-ff feat/b5-workbench` |
+| 冲突文件 | 无 |
+| index spec blob | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |
+| staged spec 删除 | 无 |
+| B4 关系 | 已是 B5 祖先；未单独合并 B4 分支 |
+| MERGE_HEAD | `94d95b24064a4ce2addafb8c50537f0f29aa755c` |
+| GitNexus staged 分析 | 57 文件、1637 符号、90 流程、critical；计数与风险覆盖全部符号；CLI 仍显示符号列表截断提示 |
+| 合并提交 | `4616c8b` |
+| 合并后 B5 祖先 | 是（`b5_ancestor=0`） |
+| 合并后 B4 祖先 | 是（`b4_ancestor=0`；B4 是 B5 的祖先） |
+| 合并后 spec blob | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |
