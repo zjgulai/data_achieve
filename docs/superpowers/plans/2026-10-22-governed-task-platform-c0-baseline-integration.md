@@ -536,7 +536,8 @@ Run:
 
 ```bash
 cd /Users/lute/Project/data_scrapy-c0
-git diff --diff-filter=D --name-only HEAD..feat/b5-workbench
+git diff --diff-filter=D --name-only HEAD..feat/b5-workbench -- \
+  docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md
 git cat-file -e feat/b5-workbench:docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md; echo "b5_has_spec=$?"
 git log --oneline HEAD..feat/b5-workbench -- docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md | wc -l
 ```
