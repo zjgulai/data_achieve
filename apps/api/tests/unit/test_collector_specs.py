@@ -25,7 +25,8 @@ from data_intelligence_hub.tool_catalog.package_registry_specs import (
 )
 
 # 2026-10-15 审计结论：86 个类型中 44 个声明与实现不一致。
-_AUDITED_MISMATCH_COUNT = 44
+# 2026-10-21：新增 exa_agent 契约，44 → 45。
+_AUDITED_MISMATCH_COUNT = 45
 # 16 个包注册类类型判定一致，作为首批可采信来源。
 _PACKAGE_REGISTRY_COUNT = 16
 # 其余 26 个（审计判定一致或未被逐条核验），2026-10-16 补登记。
@@ -36,7 +37,7 @@ def _registry_types() -> set[str]:
     return set(COLLECTOR_REGISTRY)
 
 
-def test_covers_exactly_the_forty_four_mismatched_types() -> None:
+def test_covers_exactly_the_audited_mismatched_types() -> None:
     assert len(CONTRACTS) == _AUDITED_MISMATCH_COUNT
 
 

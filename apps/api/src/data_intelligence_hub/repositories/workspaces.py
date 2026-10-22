@@ -16,6 +16,14 @@ async def get_workspace_by_slug(session: AsyncSession, slug: str) -> Workspace |
     return result.scalar_one_or_none()
 
 
+async def get_workspace_by_id(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+) -> Workspace | None:
+    result = await session.execute(select(Workspace).where(Workspace.id == workspace_id))
+    return result.scalar_one_or_none()
+
+
 async def get_default_workspace_for_user(
     session: AsyncSession,
     user_id: uuid.UUID,

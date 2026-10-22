@@ -1,7 +1,7 @@
 """Create claims and claim_evidence.
 
-Revision ID: 202610210052
-Revises: 202610210051
+Revision ID: 202610210056
+Revises: 202610210055
 Create Date: 2026-10-21
 
 This revision is source-only. It must not be applied to a real database without
@@ -32,8 +32,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610210052"
-down_revision: str | None = "202610210051"
+revision: str = "202610210056"
+down_revision: str | None = "202610210055"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -17,10 +17,11 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -73,5 +74,13 @@ class ProjectApiKey(UUIDPrimaryKeyMixin, Base):
     tool_allowlist: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     # 每日采集额度。超额返回明确错误码。必须为正整数。
     daily_collect_quota: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 日额度计数：quota_date 为 UTC 自然日，跨日归零。
+    quota_date: Mapped[date | None] = mapped_column(Date())
+    quota_used: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -1,7 +1,7 @@
 """Create the report_artifacts table.
 
-Revision ID: 202610210053
-Revises: 202610210052
+Revision ID: 202610210057
+Revises: 202610210056
 Create Date: 2026-10-21
 
 This revision is source-only. It must not be applied to a real database without
@@ -19,7 +19,7 @@ an exact-target authorization and an explicit backup/rollback plan.
 - ``version`` 默认 ``1.0.0``。
 - ``report_id`` 为 B5 的报告表预留。本批不建外键。
 - ``run_id`` 可空。手工报告可以没有 run。
-- ``down_revision`` 指向 B4-01 的 052。052 由另一条线落地。
+- ``down_revision`` 指向 claims 的 056。056 接在 055 之后。
 - downgrade 先删索引，再删表。
 """
 
@@ -31,8 +31,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610210053"
-down_revision: str | None = "202610210052"
+revision: str = "202610210057"
+down_revision: str | None = "202610210056"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

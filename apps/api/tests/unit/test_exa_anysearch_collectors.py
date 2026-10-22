@@ -302,3 +302,60 @@ def test_exa_preset_defaults_yield_to_caller_params() -> None:
         "exa_search_lite", "exa_search", {"query": "q", "search_type": "auto"}
     )
     assert overridden["search_type"] == "auto"
+
+@pytest.mark.asyncio
+async def test_exa_contents_2_sends_object_summary_and_new_options(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """summary 必须是对象；extras/超时/区块与逐 URL 错误都要落到请求与记录。"""
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "requestId": "req-contents",
+                "results": [
+                    {
+                        "url": "https://example.com/a",
+                        "title": "A",
+                        "summary": "摘要 A",
+                        "status": "success",
+                    },
+                    {
+                        "url": "https://example.com/b",
+                        "status": "error",
+                        "error": "CRAWL_HTTP_404",
+                    },
+                ],
+            },
+        )
+
+    monkeypatch.setenv("EXA_API_KEY", "test-key")
+    monkeypatch.setattr(
+        exa_module, "_exa_client", _client_factory(httpx.MockTransport(handler))
+    )
+
+    collector = ExaContentsCollector(
+        {
+            "urls": ["https://example.com/a", "https://example.com/b"],
+            "contents_mode": "summary",
+            "summary_query": "定价",
+            "extras_image_links": 3,
+            "livecrawl_timeout": 12000,
+            "include_sections": ["main"],
+            "exclude_sections": ["footer"],
+        }
+    )
+
+    result = await collector.collect()
+
+    assert captured["summary"] == {"query": "定价"}
+    assert captured["extras"] == {"imageLinks": 3}
+    assert captured["livecrawlTimeout"] == 12000
+    assert captured["includeSections"] == ["main"]
+    assert captured["excludeSections"] == ["footer"]
+    assert result.raw_records[0].content["status"] == "success"
+    assert result.raw_records[1].content["error"] == "CRAWL_HTTP_404"
+    assert any(log.get("step") == "exa_contents_failed_urls" for log in result.logs)

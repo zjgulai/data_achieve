@@ -15,12 +15,13 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 | 指标 | 值 |
 |---|---|
 | 生产域名 | `https://scrapy.luteos.com`（控制台）· `/api/*`（FastAPI）· `/mcp/`（共享 MCP） |
-| 部署分支 | `deploy/scrapy-luteos-rebuild` |
-| catalog 条目 | 286（209 verified + 21 config-gated + 17 degraded + 10 empty + 1 disabled） |
-| 唯一端点 | 258（按 endpoint_type 去重） |
+| 部署分支 | `main`（只部署生产 A；B 暂缓） |
+| catalog 条目 | 311（2026-10-21 生产实测） |
+| 唯一端点 | 283（按 endpoint_type 去重） |
 | 平台（Skill 包） | 70 |
 | collector group | 36 |
-| **生产实测状态（2026-10-15）** | `GET /api/collectors/docs` → `tested_endpoints=285/286`、`success_endpoints=248`；状态分布见 [能力总账 §1](./【能力总账】DIH-平台能力现状与维护手册.md) |
+| MCP 工具 | 25（含 `get_run`、`list_records`、`stop`、`balance`） |
+| **生产实测状态（2026-10-21）** | 283 个唯一端点：200 verified / 57 config-gated / 12 degraded / 10 empty / 3 untested / 1 disabled；分布见 [能力总账 §1](./【能力总账】DIH-平台能力现状与维护手册.md) |
 
 > ⚠️ **既有能力声明 ≠ 实测可用**。测绘当日 catalog 里 266 个端点标 `verified`，但平台从未记录过任何一条真实测试结果；本轮全量实测（249 唯一端点）显示仅 **101 个真正返回数据**。`/collector-docs` 与 `/skills` 详情页的"验证比例/最近测试"在此之前一直是空的。
 
@@ -28,38 +29,44 @@ description: Data Intelligence Hub 采集控制台能力图谱，逐页映射页
 
 | 页面 | route | 关键组件 | 后端 API | 数据来源 | 状态 |
 |---|---|---|---|---|---|
-| 平台能力中心 | `/platforms` | `app/platforms/page.tsx`、`components/platforms/quick-collect-drawer.tsx` | `GET /api/collectors/catalog`、`POST /api/quick-collect`、`GET /api/projects` | 静态 catalog + 运行任务 | live |
-| Skill 与 MCP 目录 | `/skills` | `components/skills/skills-directory.tsx` | `GET /api/platform-packages`、`/providers/status` | 生成器产物 | live |
-| Skill 详情 | `/skills/[platformId]` | `components/skills/skill-detail.tsx` | `GET /api/platform-packages/{id}`、`/{id}/playbook`、`/{id}/release`、`/{id}/download` | 生成器产物 + 策展坑点 | live |
+| 能力目录 | `/tools` | `app/tools/page.tsx`、`components/platforms/quick-collect-drawer.tsx` | `GET /api/collectors/catalog`、`POST /api/quick-collect`、`GET /api/projects` | 静态 catalog + 运行任务 | live |
+| 平台详情 | `/tools/[toolId]` | `app/tools/[toolId]/page.tsx`、`components/skills/skill-detail.tsx` | `GET /api/platform-packages/{id}`、`/{id}/playbook`、`/{id}/release`、`/{id}/download` | 生成器产物 + 策展坑点 | live |
+| TikTok 工具台 | `/tools/tiktok` | `app/tools/tiktok/page.tsx` | `GET /api/tiktok/tools`、`POST /api/tiktok/tools/{tool}` | DB + 工作区凭证 | live |
 | 我的项目 | `/projects` | `app/projects/page.tsx` | `GET/POST /api/projects` | DB | live |
-| 项目详情 | `/projects/[id]` | `app/projects/[id]/page.tsx` | `GET /api/projects/{id}` | DB | 部分占位（"采集任务/最近运行/数据集"为静态占位；链接到不存在的 `/tasks/new`） |
+| 项目详情 | `/projects/[id]` | `app/projects/[id]/page.tsx` | `GET /api/projects/{id}`、`/api/tasks`、`/api/runs`、`/api/datasets` | DB | live（采集任务、最近运行、数据集已接真实数据） |
 | 运行记录 | `/runs` | `app/runs/page.tsx` | `GET /api/tasks/runs`、`GET /api/raw-records?task_run_id=` | DB | live |
-| 采集结果 | `/collect/[run_id]` | `app/collect/[run_id]/page.tsx` | `GET /api/raw-records?task_run_id=` | DB | live（2026-10-09 起可从 `/runs` 进入；此前读错字段 `data`，实际是 `content`，页面恒为空） |
-| 数据集 | `/datasets` | `app/datasets/page.tsx` | `GET /api/automation/product-datasets`、`POST/GET /api/automation/product-dataset-exports` | DB + 异步导出 | live |
-| 采集文档 | `/collector-docs` | `app/collector-docs/page.tsx` | `GET /api/collectors/docs` | catalog + 最近 `[test]` TaskRun | live（实测前"最近测试"全空） |
+| 运行详情 | `/runs/[runId]` | `app/runs/[runId]/page.tsx` | `GET /api/runs/{id}`、`/steps`、`/outcome` | DB | live（旧 `/collect/[runId]` 永久重定向到此） |
+| 资产 | `/assets` | `app/assets/page.tsx` | `GET /api/automation/product-datasets`、`POST/GET /api/automation/product-dataset-exports` | DB + 异步导出 | live（旧 `/datasets` 重定向） |
+| 原始记录 | `/assets/records` | `app/assets/records/page.tsx` | `GET /api/raw-records` | DB | live（旧 `/raw-records` 重定向） |
+| 采集文档 | `/docs` | `app/docs/page.tsx` | `GET /api/collectors/docs` | catalog + 最近 `[test]` TaskRun | live（旧 `/collector-docs` 重定向） |
 | 凭证配置 | `/settings/credentials` | `app/settings/credentials/page.tsx` | `GET/PUT/DELETE /api/settings/platform-credentials` | DB（需 `PLATFORM_CREDENTIAL_MASTER_KEY`） | live |
-| 采集任务 | `/tasks` | `app/tasks/page.tsx` | `GET /api/tasks`、`POST /api/tasks/{id}/run` | DB | live（已入导航） |
-| 工作台 | `/dashboard` | `app/dashboard/page.tsx` | `GET /api/dashboard/overview` | DB | live（2026-10-09 接真实数据） |
-| 原始数据 | `/raw-records` | `app/raw-records/page.tsx` | `GET /api/raw-records` | DB | live（2026-10-09 实现） |
-| 账户设置 | `/settings/account` | `app/settings/account/page.tsx` | — | — | stub 占位（生产为 demo 模式，无用户上下文） |
-| 共享 MCP | `/mcp/` | — | `mcp_runtime/server.py`（5 工具） | 复用 catalog | live（Bearer `SCRAPY_MCP_TOKEN`） |
+| 采集任务 | `/tasks` | `app/tasks/page.tsx` | `GET /api/tasks`、`POST /api/tasks/{id}/run` | DB | live |
+| 工作台 | `/dashboard` | `app/dashboard/page.tsx` | `GET /api/dashboard/overview` | DB | live |
+| 监控 | `/monitors` | `app/monitors/page.tsx` | `GET/POST /api/monitors` | DB | live |
+| 用量 | `/usage` | `app/usage/page.tsx` | `GET /api/usage` | DB | live |
+| 连接 | `/connect` | `app/connect/page.tsx` | 平台凭证与登录状态 | DB | live |
+| 供应商 | `/settings/providers` | `app/settings/providers/page.tsx` | `GET /api/platform-packages/providers/status` | 实测证据 | live |
+| 成员 | `/settings/members` | `app/settings/members/page.tsx` | `GET/POST /api/workspaces/members` | DB | live |
+| 共享 MCP | `/mcp/` | `mcp_runtime/server.py` | 25 个工具 | 复用 catalog | live（Bearer `SCRAPY_MCP_TOKEN`） |
+
+旧路由已永久重定向：`/platforms`、`/skills` → `/tools`；`/skills/[platformId]` → `/tools/[platformId]`；`/collector-docs` → `/docs`；`/datasets` → `/assets`；`/raw-records` → `/assets/records`；`/collect/[runId]` → `/runs/[runId]`。`/settings/account` 已删除。
 
 ## 3. 平台能力矩阵
 
-### 3.1 `/platforms` 平台能力中心
+### 3.1 `/tools` 能力目录（旧 `/platforms`）
 
 | 能力 | 用户动作 | backing endpoint(s) | collector_type | 实测 |
 |---|---|---|---|---|
-| 浏览全部采集能力 | 分类标签 + 搜索 | `GET /api/collectors/catalog` | 全部 36 组 | 静态声明 258 verified / 12 disabled |
+| 浏览全部采集能力 | 分类标签 + 搜索 | `GET /api/collectors/catalog` | 全部 36 组 | 311 个能力视图；200 verified / 1 disabled（2026-10-21） |
 | 单端点采集 | Quick Collect 抽屉提交 | `POST /api/quick-collect` | `_ENDPOINT_TO_COLLECTOR` 映射 | 见 §4 |
 | 批量采集 | 逐端点串行触发 | `POST /api/quick-collect` ×N | 同上 | 消耗额度 |
 | 选择归属项目 | 抽屉内项目下拉 | `GET /api/projects` | — | live |
 
-### 3.2 `/skills` 与 `/skills/[platformId]`
+### 3.2 `/tools/[toolId]` 平台详情（旧 `/skills`）
 
 | 能力 | backing | 说明 |
 |---|---|---|
-| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 286 能力视图 / 258 唯一端点 |
+| 平台工具包目录 | `GET /api/platform-packages` | 70 平台 / 311 能力视图 / 283 唯一端点 |
 | 实时可用性 | `GET /api/platform-packages/providers/status` | 依赖 `task_runs` 证据；实测前全为 `verified`（**误导**） |
 | 平台详情 | `GET /api/platform-packages/{id}` | 含能力表、参数、**策展坑点 `platform_notes` / `notes`** |
 | Playbook | `GET /api/platform-packages/{id}/playbook` | 请求时实时渲染（含「坑点与规避」） |
@@ -177,8 +184,8 @@ Apify 端点在扫描里出现的 4 类症状，根因完全不同，处置手�
 `GET /api/collectors/catalog` 只暴露 **87** 个 Apify 端点，且后者是前者的**真子集**：
 
 - **31 个"幽灵端点"**（如 `apify_x_scraper`、`apify_trustpilot_scraper`、
-  `apify_indeed_scraper`）只能直接打 quick-collect，不出现在 `/platforms`、
-  `/skills`、`/collector-docs` 与 MCP 目录里 —— 没人能发现它们，但它们**真的会消耗额度**。
+  `apify_indeed_scraper`）只能直接打 quick-collect，不出现在 `/tools`、
+  `/tools/[toolId]`、`/docs` 与 MCP 目录里 —— 没人能发现它们，但它们**真的会消耗额度**。
 - 反向集合为空：没有"目录里有、quick-collect 跑不了"的端点。
 - 同类问题此前已发现一次：`tikhub_youtube_video_search` 在 TikHub 映射表里但不在目录里。
 
@@ -272,10 +279,10 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 
 
 
-- **有 catalog 定义但无 UI 入口**：`/settings/account`（stub，生产 demo 模式无用户上下文）。`/tasks` 与 `/collect/[run_id]` 已于 2026-10-09 接上入口。
+- `/settings/account` 已删除，账户相关能力拆到 `/settings/credentials`、`/settings/providers`、`/settings/members`。`/tasks` 与 `/runs/[runId]` 均有导航入口。
 - **有 UI 但无真实后端**：`/projects/[id]` 的"最近运行"段（接口按 task 维度，无 project 聚合）；"采集任务"段已于 2026-10-09 接真实数据。
 - **死链**：无（`/insight/dashboard` 与 `/tasks/new` 已于 2026-10-09 清除）。
-- **端点 → 页面**：全部 286 条都经 `/platforms`（catalog）与 `/skills/[platform]`（平台包）双路径暴露；`/collector-docs` 暴露文档 + 最近测试。
+- **端点 → 页面**：全部能力都经 `/tools`（catalog）与 `/tools/[toolId]`（平台包）双路径暴露；`/docs` 暴露文档 + 最近测试。
 
 ## 6. 死链与桩面清单
 
@@ -286,9 +293,9 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 | ~~`/dashboard`~~ | ~~硬编码 0~~ | **已修**（2026-10-09）：接 `GET /api/dashboard/overview`（该接口原只被下线的 `apps/web` 调用） |
 | ~~`/raw-records`~~ | ~~"建设中"~~ | **已修**（2026-10-09）：实现列表 + 分页 |
 | ~~TopBar 命令搜索 ⌘K~~ | ~~按钮无 onClick~~ | **已移除**（2026-10-09）。真做需要单独的 command palette |
-| `/settings/account` | "建设中"占位 | 保留：生产为 demo 模式（`/api/auth/me` 返 401），无用户上下文可展示 |
-| ~~`/collect/[run_id]` 恒空~~ | ~~读 `rec.data`，接口返回 `content`~~ | **已修**（2026-10-09）：`RawRecord` 类型与 `/collect`、`/runs` 两处渲染一并改正 |
-| `/skills` 详情"验证比例" | 实测前恒为空/误导 | 修复 `providers/status` 语义 + 跑实测后可读 |
+| ~~`/settings/account`~~ | ~~"建设中"占位~~ | **已删除**：账户能力并入 `/settings/credentials`、`/settings/providers`、`/settings/members` |
+| ~~`/collect/[run_id]` 恒空~~ | ~~读 `rec.data`，接口返回 `content`~~ | **已修**（2026-10-09）：`RawRecord` 类型与 `/runs/[runId]` 渲染一并改正 |
+| `/tools/[toolId]` 详情"验证比例" | 实测前恒为空/误导 | 修复 `providers/status` 语义 + 跑实测后可读 |
 
 ## 7. 维护方式
 
@@ -303,7 +310,8 @@ prefill URL 裸传也被拒）。修完后重跑，**0 个端点不合格**。
 | 项 | 状态 |
 |---|---|
 | P0-A Exa 3.0 刷新（lite、100 条上限、快照与 objective 参数、价格簿修正、preset 生效修复） | **已上线验收**（2026-10-21，main=8ecf3b5） |
-| P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research / monitor） | 未开始 |
-| P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | 未开始 |
-| P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | 未开始 |
-| 工具目录计数 | 283 条（新增 exa_search_lite） |
+| P0-B Exa MCP Pack（web_search / web_fetch / answer / deep_research） | **已上线验收**（2026-10-21）：四工具实跑成功（3/1/1/3 条）；monitor 随 P1 |
+| P0-C 项目 API Keys 暴露（REST + MCP 接线 + Console 最小页） | **已上线验收**（2026-10-21，b043c95）：签发→调用成功→超额度拒绝→撤销后 401 |
+| P1 首批（Search Monitor、Usage & Cost、Contents 2.0） | **已上线验收**（2026-10-21）：监控首轮新 3 条、二轮去重 0 条；信号 1、通知 1；用量页有数据；Contents summary 运行成功 |
+| P1 后续（Exa Agent、Workspace Answer、Enrichment、出站 Webhook） | 已实现，待发布验收（2026-10-21） |
+| 工具目录计数 | 284 条（新增 exa_agent_research） |

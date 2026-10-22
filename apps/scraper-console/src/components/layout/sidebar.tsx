@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   BookOpen,
   Cable,
   Clock,
@@ -14,6 +15,7 @@ import {
   Key,
   LayoutDashboard,
   ListChecks,
+  Radar,
   TrendingUp,
   Users,
   Wrench,
@@ -35,6 +37,8 @@ const NAV_ICONS: Record<string, typeof Grid3x3> = {
   "/capabilities": Grid3x3,
   "/reports": FileText,
   "/runs": Clock,
+  "/monitors": Radar,
+  "/usage": BarChart3,
   "/tools": Wrench,
   "/tools/tiktok": TrendingUp,
   "/projects": FolderKanban,

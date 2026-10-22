@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
+import { ProjectApiKeys } from "@/components/project-api-keys";
 import { fetchProject, DOMAIN_LABELS, DOMAIN_COLORS } from "@/lib/api/projects";
 import { fetchTasks } from "@/lib/api/tasks";
 import { fetchAllRuns } from "@/lib/api/runs";
@@ -262,6 +263,10 @@ export default function ProjectDetailPage({ params }: Props) {
             </ul>
           )}
         </div>
+      </div>
+
+      <div className="mt-6">
+        <ProjectApiKeys projectId={id} />
       </div>
     </AppShell>
   );

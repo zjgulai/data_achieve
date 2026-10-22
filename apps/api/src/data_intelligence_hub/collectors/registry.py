@@ -4,11 +4,14 @@ from typing import Any
 
 import httpx
 
-from data_intelligence_hub.collectors.exa_collector import (
-    ExaAnswerCollector,
-    ExaContentsCollector,
-    ExaFindSimilarCollector,
-    ExaSearchCollector,
+from data_intelligence_hub.collectors.aliens_eye_collector import (
+    AliensEyeAdvancedCollector,
+    AliensEyeBasicCollector,
+    AliensEyeBatchCollector,
+    AliensEyeCorrelateCollector,
+    AliensEyeDomainCollector,
+    AliensEyeRecurseCollector,
+    AliensEyeSelfcheckCollector,
 )
 from data_intelligence_hub.collectors.anycrawl_collector import (
     BaiduSearchCollector,
@@ -27,25 +30,18 @@ from data_intelligence_hub.collectors.blackbird_collector import (
     BlackbirdEmailCollector,
     BlackbirdUsernameCollector,
 )
+from data_intelligence_hub.collectors.browser_use_collector import BrowserUseCollector
 from data_intelligence_hub.collectors.ecommerce_product_discovery import (
     EcommerceProductDiscoveryCollector,
 )
-from data_intelligence_hub.collectors.aliens_eye_collector import (
-    AliensEyeAdvancedCollector,
-    AliensEyeBatchCollector,
-    AliensEyeBasicCollector,
-    AliensEyeCorrelateCollector,
-    AliensEyeDomainCollector,
-    AliensEyeRecurseCollector,
-    AliensEyeSelfcheckCollector,
-)
-from data_intelligence_hub.collectors.browser_use_collector import BrowserUseCollector
-from data_intelligence_hub.collectors.robin_collector import (
-    RobinEmailCollector,
-    RobinKeywordCollector,
-    RobinUsernameCollector,
-)
 from data_intelligence_hub.collectors.ecommerce_product_page import EcommerceProductPageCollector
+from data_intelligence_hub.collectors.exa_agent import ExaAgentCollector
+from data_intelligence_hub.collectors.exa_collector import (
+    ExaAnswerCollector,
+    ExaContentsCollector,
+    ExaFindSimilarCollector,
+    ExaSearchCollector,
+)
 from data_intelligence_hub.collectors.firecrawl_collector import (
     FirecrawlBatchScrapeCollector,
     FirecrawlCrawlCollector,
@@ -54,6 +50,11 @@ from data_intelligence_hub.collectors.firecrawl_collector import (
 from data_intelligence_hub.collectors.generic_web import GenericWebCollector
 from data_intelligence_hub.collectors.github_repo import GitHubRepoCollector
 from data_intelligence_hub.collectors.github_topic import GitHubTopicCollector
+from data_intelligence_hub.collectors.hackernews_collector import (
+    HackerNewsFrontPageCollector,
+    HackerNewsSearchCollector,
+    HackerNewsUserCollector,
+)
 from data_intelligence_hub.collectors.jina_reader import JinaReaderCollector
 from data_intelligence_hub.collectors.manual_json import ManualJsonCollector
 from data_intelligence_hub.collectors.mediacrawler_collector import (
@@ -70,8 +71,35 @@ from data_intelligence_hub.collectors.mediacrawler_collector import (
     ZhihuQuestionAnswersCollector,
 )
 from data_intelligence_hub.collectors.osint_collector import MaigretCollector, SherlockCollector
+from data_intelligence_hub.collectors.package_registry_collector import (
+    NpmPackageCollector,
+    NpmSearchCollector,
+    PyPIPackageCollector,
+    PyPISearchCollector,
+)
+from data_intelligence_hub.collectors.pkg_community_collector import (
+    CratesIoPackageCollector,
+    CratesIoSearchCollector,
+    GoPackageCollector,
+    GoSearchCollector,
+    RubyGemsPackageCollector,
+    RubyGemsSearchCollector,
+)
+from data_intelligence_hub.collectors.pkg_registry2_collector import (
+    NuGetPackageCollector,
+    NuGetSearchCollector,
+    PackagistPackageCollector,
+    PackagistSearchCollector,
+    PubDevPackageCollector,
+    PubDevSearchCollector,
+)
 from data_intelligence_hub.collectors.playwright_browser import PlaywrightBrowserCollector
 from data_intelligence_hub.collectors.public_feed import PublicFeedCollector
+from data_intelligence_hub.collectors.robin_collector import (
+    RobinEmailCollector,
+    RobinKeywordCollector,
+    RobinUsernameCollector,
+)
 from data_intelligence_hub.collectors.spiderfoot_collector import (
     SpiderFootDomainCollector,
     SpiderFootEmailCollector,
@@ -97,33 +125,6 @@ from data_intelligence_hub.collectors.twscrape_collector import (
     TwscrapeUserTweetsCollector,
 )
 from data_intelligence_hub.collectors.wappalyzer_collector import TechStackDetectCollector
-from data_intelligence_hub.collectors.hackernews_collector import (
-    HackerNewsFrontPageCollector,
-    HackerNewsSearchCollector,
-    HackerNewsUserCollector,
-)
-from data_intelligence_hub.collectors.package_registry_collector import (
-    NpmPackageCollector,
-    NpmSearchCollector,
-    PyPIPackageCollector,
-    PyPISearchCollector,
-)
-from data_intelligence_hub.collectors.pkg_community_collector import (
-    CratesIoPackageCollector,
-    CratesIoSearchCollector,
-    RubyGemsPackageCollector,
-    RubyGemsSearchCollector,
-    GoPackageCollector,
-    GoSearchCollector,
-)
-from data_intelligence_hub.collectors.pkg_registry2_collector import (
-    PackagistPackageCollector,
-    PackagistSearchCollector,
-    NuGetPackageCollector,
-    NuGetSearchCollector,
-    PubDevPackageCollector,
-    PubDevSearchCollector,
-)
 
 CollectorClass = type[BaseCollector]
 
@@ -211,6 +212,7 @@ COLLECTOR_REGISTRY: dict[str, CollectorClass] = {
     PubDevPackageCollector.collector_type: PubDevPackageCollector,
     PubDevSearchCollector.collector_type: PubDevSearchCollector,
     ExaSearchCollector.collector_type: ExaSearchCollector,
+    ExaAgentCollector.collector_type: ExaAgentCollector,
     ExaFindSimilarCollector.collector_type: ExaFindSimilarCollector,
     ExaContentsCollector.collector_type: ExaContentsCollector,
     ExaAnswerCollector.collector_type: ExaAnswerCollector,

@@ -29,7 +29,7 @@ def _names(value: str) -> frozenset[str]:
 
 
 STRICT_SIMPLE = _names(
-    """anysearch exa_search exa_find_similar baidu_search bing_search
+    """anysearch exa_search exa_find_similar exa_agent baidu_search bing_search
     duckduckgo_search hackernews_search twscrape_search weibo_keyword_search
     zhihu_keyword_search bilibili_video_search kuaishou_video_search
     npm_search pypi_search crates_search rubygems_search go_search

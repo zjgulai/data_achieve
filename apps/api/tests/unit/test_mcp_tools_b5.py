@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import data_intelligence_hub.mcp_runtime.server as server_module
-from data_intelligence_hub.mcp_runtime import run_service, runtime
+from data_intelligence_hub.mcp_runtime import capability_service, run_service, runtime
 from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
 from data_intelligence_hub.mcp_runtime.server import mcp_server
 from data_intelligence_hub.mcp_runtime.tools import discovery as discovery_tools
@@ -39,16 +39,26 @@ from data_intelligence_hub.models.task import TaskRun
 TEMPLATE_ID = "t1_voc"
 
 EXPECTED_TOOLS = (
+    "answer",
+    "balance",
     "collect",
+    "create_monitor",
     "create_report",
+    "deep_research",
+    "deep_research_check",
+    "deep_research_start",
     "describe_capability",
     "discover",
+    "enrich_list",
+    "enrichment_check",
     "get_playbook",
     "get_run",
     "inspect",
     "list_capabilities",
+    "list_monitors",
     "list_platforms",
     "list_records",
+    "stop",
     "tiktok_ads_detail",
     "tiktok_ads_top",
     "tiktok_creator_commerce",
@@ -65,6 +75,9 @@ EXPECTED_TOOLS = (
     "tiktok_video_detail",
     "tiktok_video_products",
     "tiktok_video_search",
+    "web_fetch",
+    "web_search",
+    "workspace_answer",
 )
 
 
@@ -265,12 +278,13 @@ async def test_tool_count_snapshot() -> None:
 
     PRD 5.7 的「18 个」写于 TikTok R1 之前。
     R1 增加了 8 个 TikTok 工具，B3 增加了 get_run 与 list_records。
-    本批新增 discover、inspect、create_report。实际总数是 26。
+    B5 新增 discover、inspect、create_report。main 合入 13 个 Exa 与
+    监控、研究、富集工具。实际总数是 39。
     """
     tools = await mcp_server.list_tools()
     names = tuple(sorted(tool.name for tool in tools))
     assert names == EXPECTED_TOOLS
-    assert len(names) == 26
+    assert len(names) == 39
 
 
 @pytest.mark.anyio
@@ -339,14 +353,29 @@ async def test_refactored_catalog_tools_return_structured_contract(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """list_capabilities、describe_capability 与 get_playbook 返回结构化数据。"""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    monkeypatch.setattr(
+        capability_service,
+        "async_session_factory",
+        async_sessionmaker(engine, expire_on_commit=False),
+    )
     monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
-    async with Client(mcp_server) as client:
-        listing = await client.call_tool("list_capabilities", {"platform_id": "tiktok"})
-        described = await client.call_tool(
-            "describe_capability",
-            {"endpoint_type": "tikhub_tiktok_video_search"},
-        )
-        playbook = await client.call_tool("get_playbook", {"platform_id": "tiktok"})
+    try:
+        async with Client(mcp_server) as client:
+            listing = await client.call_tool("list_capabilities", {"platform_id": "tiktok"})
+            described = await client.call_tool(
+                "describe_capability",
+                {"endpoint_type": "tikhub_tiktok_video_search"},
+            )
+            playbook = await client.call_tool("get_playbook", {"platform_id": "tiktok"})
+    finally:
+        await engine.dispose()
 
     assert listing.structured_content is not None
     capabilities = listing.structured_content["capabilities"]

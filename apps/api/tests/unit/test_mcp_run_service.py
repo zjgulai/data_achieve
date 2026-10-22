@@ -95,6 +95,75 @@ async def _seed(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
     return run_id
 
 
+async def _seed_running(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
+    now = datetime.now(UTC)
+    run_id = uuid.uuid4()
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=uuid.uuid4(),
+                project_id=uuid.uuid4(),
+                status="running",
+                execution_mode="live",
+                trigger="api",
+                records_count=0,
+                created_at=now,
+            )
+        )
+        await session.commit()
+    return run_id
+
+
+async def _seed_balance(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
+    from decimal import Decimal
+
+    from data_intelligence_hub.models.authorization import Authorization
+    from data_intelligence_hub.models.run_ledger import RunLedgerEntry
+
+    now = datetime.now(UTC)
+    project_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                status="completed",
+                execution_mode="live",
+                trigger="api",
+                records_count=1,
+                created_at=now,
+            )
+        )
+        session.add(
+            Authorization(
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                gate_id="G-Plan",
+                gate_status="pass",
+                scope={},
+                max_cost_usd=Decimal("10"),
+                approver=uuid.uuid4(),
+                granted_at=now,
+                expires_at=now.replace(year=now.year + 1),
+            )
+        )
+        session.add(
+            RunLedgerEntry(
+                run_id=run_id,
+                entry_kind="accrued",
+                amount_usd=Decimal("1.25"),
+                balance_after_usd=Decimal("8.75"),
+                idempotency_key="balance-test",
+                created_at=now,
+            )
+        )
+        await session.commit()
+    return project_id
+
+
 def test_get_run_detail_and_list_records(
     factory: async_sessionmaker[AsyncSession],
     monkeypatch: pytest.MonkeyPatch,
@@ -140,6 +209,39 @@ def test_record_preview_truncates_long_content() -> None:
     preview = build_record_preview(record)
     assert preview["content_truncated"] is True
     assert preview["content"].endswith("[truncated]")
+
+
+def test_stop_run_cancels_once(
+    factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run_id = asyncio.run(_seed_running(factory))
+    monkeypatch.setattr(run_service, "async_session_factory", factory)
+
+    first = asyncio.run(run_service.stop_run(run_id))
+    assert first["cancelled"] is True
+    assert first["status"] == "cancelled"
+
+    second = asyncio.run(run_service.stop_run(run_id))
+    assert second["cancelled"] is False
+    assert second["status"] == "cancelled"
+
+
+def test_project_balance_sums_ledger_and_budget(
+    factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_id = asyncio.run(_seed_balance(factory))
+    monkeypatch.setattr(run_service, "async_session_factory", factory)
+
+    result = asyncio.run(run_service.get_project_balance(project_id))
+    assert result["metering_status"] == "accrued_only"
+    assert result["spent_usd"] is None
+    assert result["accrued_usd"] == "1.250000"
+    assert result["authorized_ceiling_usd"] == "10.000000"
+    assert result["remaining_against_ceiling_usd"] is None
+    assert result["ledger_entries"] == 1
+    assert result["authorization_count"] == 1
 
 
 def test_list_records_rejects_invalid_limit(

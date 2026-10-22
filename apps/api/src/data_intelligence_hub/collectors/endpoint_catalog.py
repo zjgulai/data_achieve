@@ -252,6 +252,8 @@ _ENDPOINT_TO_COLLECTOR: dict[str, str] = {
     "exa_find_similar": "exa_find_similar",
     "exa_contents": "exa_contents",
     "exa_answer": "exa_answer",
+    # Exa Agent：异步研究任务，采集器内部轮询到完成。
+    "exa_agent_research": "exa_agent",
     # Jina Reader (3 endpoints)
     "jina_page_content": "jina_reader",
     "jina_dtc_review": "jina_reader",

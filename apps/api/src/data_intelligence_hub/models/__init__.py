@@ -37,12 +37,14 @@ from data_intelligence_hub.models.dataset import (
     DatasetExportJob,
     DatasetVersion,
 )
+from data_intelligence_hub.models.enrichment import EnrichmentJob, EnrichmentRow
 from data_intelligence_hub.models.entity import Entity, EntitySnapshot
 from data_intelligence_hub.models.intelligence import (
     Evidence,
     IntelligenceFeedback,
     IntelligenceItem,
 )
+from data_intelligence_hub.models.monitor import Monitor
 from data_intelligence_hub.models.notification import (
     EmailChannelTestRun,
     EmailProviderLiveGateRun,
@@ -104,6 +106,10 @@ from data_intelligence_hub.models.tiktok_content import (
 )
 from data_intelligence_hub.models.tool_catalog import ToolCatalogEntry
 from data_intelligence_hub.models.user import User
+from data_intelligence_hub.models.webhook import (
+    WebhookDelivery,
+    WebhookEndpoint,
+)
 from data_intelligence_hub.models.workflow_action import (
     WorkflowRunActionApprovalConsumption,
     WorkflowRunActionApprovalReceiptRecord,
@@ -272,6 +278,11 @@ __all__ = [
     "WorkflowStepCheckpoint",
     "WorkflowVersion",
     "WorkflowVersionScope",
+    "Monitor",
+    "EnrichmentJob",
+    "EnrichmentRow",
+    "WebhookDelivery",
+    "WebhookEndpoint",
     "WorkflowTemplate",
     "WorkflowTemplateMutationRequest",
     "WorkflowTemplateRevision",

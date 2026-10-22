@@ -57,7 +57,7 @@ from data_intelligence_hub.services.report_artifacts import (
 
 API_ROOT = Path(__file__).resolve().parents[2]
 REPOSITORIES = API_ROOT / "src/data_intelligence_hub/repositories"
-MIGRATION = API_ROOT / "alembic/versions/202610210053_report_artifacts.py"
+MIGRATION = API_ROOT / "alembic/versions/202610210057_report_artifacts.py"
 
 Scenario = Callable[[AsyncSession], Awaitable[None]]
 
@@ -496,11 +496,11 @@ def test_migration_declares_new_columns_and_drops_paths() -> None:
 
 
 def test_migration_revision_chain_points_to_b4_01() -> None:
-    """迁移修订号是 053，前驱是 B4-01 的 052。"""
+    """迁移修订号是 057，前驱是 claims 的 056。"""
     module = runpy.run_path(str(MIGRATION))
 
-    assert module["revision"] == "202610210053"
-    assert module["down_revision"] == "202610210052"
+    assert module["revision"] == "202610210057"
+    assert module["down_revision"] == "202610210056"
 
 
 @pytest.mark.anyio

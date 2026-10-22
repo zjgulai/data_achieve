@@ -12,8 +12,10 @@ from typing import Any
 from sqlalchemy import func, select
 
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.models.authorization import Authorization
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.run import Run
+from data_intelligence_hub.models.run_ledger import RunLedgerEntry
 from data_intelligence_hub.models.task import TaskRun
 from data_intelligence_hub.repositories import runs as runs_repository
 from data_intelligence_hub.schemas.run import RunResponse, RunStepResponse
@@ -123,3 +125,104 @@ async def list_run_records(
             "next_cursor": str(next_offset) if next_offset < total_count else None,
             "records_total": total_count,
         }
+
+
+async def stop_run(run_id: uuid.UUID) -> dict[str, Any]:
+    """取消一次运行。已进入终态时返回 ``cancelled=False``。"""
+    async with async_session_factory() as session:
+        run = await session.get(Run, run_id)
+        if run is None:
+            raise ValueError("run_not_found")
+        workspace_id = run.workspace_id
+        previous_status = run.status
+        updated = await runs_repository.cancel_run(
+            session,
+            workspace_id=workspace_id,
+            run_id=run_id,
+        )
+        await session.commit()
+        if updated is not None:
+            return {
+                "run_id": str(run_id),
+                "previous_status": previous_status,
+                "status": updated.status,
+                "cancelled": True,
+            }
+        current = await session.get(Run, run_id)
+        return {
+            "run_id": str(run_id),
+            "previous_status": previous_status,
+            "status": current.status if current is not None else "unknown",
+            "cancelled": False,
+        }
+
+
+async def get_project_balance(project_id: uuid.UUID) -> dict[str, Any]:
+    """返回项目账本分项与有效授权上限。
+
+    账本按 ``entry_kind`` 分开返回，不把预估值、预留额或权责发生额
+    混成「已花费」。``spent_usd`` 只取 settle 与 release；
+    没有任何结算行时为 ``None``，不把 0 当成已知花费。
+    """
+    async with async_session_factory() as session:
+        rows = (
+            await session.execute(
+                select(
+                    RunLedgerEntry.entry_kind,
+                    func.coalesce(func.sum(RunLedgerEntry.amount_usd), 0),
+                    func.count(),
+                )
+                .join(Run, Run.id == RunLedgerEntry.run_id)
+                .where(Run.project_id == project_id)
+                .group_by(RunLedgerEntry.entry_kind)
+            )
+        ).all()
+        budget = await session.scalar(
+            select(func.sum(Authorization.max_cost_usd)).where(
+                Authorization.project_id == project_id,
+                Authorization.gate_status == "pass",
+                Authorization.revoked_at.is_(None),
+                Authorization.expires_at > func.now(),
+            )
+        )
+        auth_count = await session.scalar(
+            select(func.count())
+            .select_from(Authorization)
+            .where(
+                Authorization.project_id == project_id,
+                Authorization.gate_status == "pass",
+                Authorization.revoked_at.is_(None),
+                Authorization.expires_at > func.now(),
+            )
+        )
+
+    amounts = {kind: amount for kind, amount, _count in rows}
+    counts = {kind: int(count) for kind, _amount, count in rows}
+    settled = [amounts[kind] for kind in ("settle", "release") if kind in amounts]
+    spent = sum(settled) if settled else None
+    budget_text = None if budget is None else str(budget)
+    remaining = (
+        str(budget - spent)
+        if budget is not None and spent is not None and (auth_count or 0) == 1
+        else None
+    )
+    if spent is not None:
+        metering_status = "metered"
+    elif amounts.get("accrued") is not None:
+        metering_status = "accrued_only"
+    else:
+        metering_status = "unavailable"
+    return {
+        "project_id": str(project_id),
+        "currency": "USD",
+        "metering_status": metering_status,
+        "spent_usd": None if spent is None else str(spent),
+        "accrued_usd": str(amounts.get("accrued", 0)),
+        "estimated_usd": str(amounts.get("estimate", 0)),
+        "reserved_usd": str(amounts.get("reserve", 0)),
+        "blocked_usd": str(amounts.get("block", 0)),
+        "authorized_ceiling_usd": budget_text,
+        "remaining_against_ceiling_usd": remaining,
+        "ledger_entries": sum(counts.values()),
+        "authorization_count": int(auth_count or 0),
+    }

@@ -177,6 +177,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   { name: "能力目录", href: "/capabilities" },
   { name: "报告", href: "/reports" },
   { name: "运行记录", href: "/runs" },
+  { name: "监控", href: "/monitors" },
   { name: "工具", href: "/tools" },
   { name: "TikTok 工作台", href: "/tools/tiktok" },
   { name: "项目", href: "/projects" },
@@ -193,6 +194,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
  * 它不再是「工作台」，也不再是一级入口。
  */
 export const SECONDARY_NAVIGATION: readonly NavigationItem[] = [
+  { name: "用量与成本", href: "/usage" },
   { name: "旧版概览", href: "/dashboard" },
   { name: "凭证设置", href: "/settings/credentials" },
   { name: "提供方状态", href: "/settings/providers" },

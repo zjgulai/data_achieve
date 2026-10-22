@@ -17,6 +17,7 @@ from data_intelligence_hub.api.routes.alerts import (
     alert_events_router,
     alert_rules_router,
 )
+from data_intelligence_hub.api.routes.answer import router as answer_router
 from data_intelligence_hub.api.routes.auth import router as auth_router
 from data_intelligence_hub.api.routes.automation import router as automation_router
 from data_intelligence_hub.api.routes.capabilities import router as capabilities_router
@@ -28,9 +29,11 @@ from data_intelligence_hub.api.routes.capability_governance import (
 )
 from data_intelligence_hub.api.routes.collectors import router as collectors_router
 from data_intelligence_hub.api.routes.dashboard import router as dashboard_router
+from data_intelligence_hub.api.routes.enrichment import router as enrichment_router
 from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
+from data_intelligence_hub.api.routes.monitors import router as monitors_router
 from data_intelligence_hub.api.routes.notifications import router as notifications_router
 from data_intelligence_hub.api.routes.platform_credentials import (
     router as platform_credentials_router,
@@ -38,10 +41,14 @@ from data_intelligence_hub.api.routes.platform_credentials import (
 from data_intelligence_hub.api.routes.platform_packages import (
     router as platform_packages_router,
 )
+from data_intelligence_hub.api.routes.project_api_keys import (
+    router as project_api_keys_router,
+)
 from data_intelligence_hub.api.routes.projects import router as projects_router
 from data_intelligence_hub.api.routes.quick_collect import router as quick_collect_router
 from data_intelligence_hub.api.routes.raw_records import router as raw_records_router
 from data_intelligence_hub.api.routes.reports import router as reports_router
+from data_intelligence_hub.api.routes.research import router as research_router
 from data_intelligence_hub.api.routes.runs import router as runs_router
 from data_intelligence_hub.api.routes.signals import router as signals_router
 from data_intelligence_hub.api.routes.social_provider import router as social_provider_router
@@ -53,6 +60,8 @@ from data_intelligence_hub.api.routes.tiktok_tools import (
 from data_intelligence_hub.api.routes.tool_catalog import router as tool_catalog_router
 from data_intelligence_hub.api.routes.toolkit import router as toolkit_router
 from data_intelligence_hub.api.routes.tools import router as tools_router
+from data_intelligence_hub.api.routes.usage import router as usage_router
+from data_intelligence_hub.api.routes.webhooks import router as webhooks_router
 from data_intelligence_hub.api.routes.workflow_plans import (
     router as workflow_plans_router,
 )
@@ -176,6 +185,7 @@ def create_app() -> FastAPI:
     app.include_router(collectors_router, prefix="/api/collectors")
     app.include_router(quick_collect_router, prefix="/api/quick-collect")
     app.include_router(projects_router, prefix="/api/projects")
+    app.include_router(project_api_keys_router, prefix="/api/projects")
     app.include_router(workflow_plans_router, prefix="/api/projects")
     # 这三个模块早已实现并有集成测试覆盖，但从未挂载，
     # 于是它们的端点一律返回 404——测试断言 404 != 201 的根因。
@@ -202,7 +212,13 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router, prefix="/api/notifications")
     app.include_router(platform_credentials_router, prefix="/api/settings")
     app.include_router(platform_packages_router, prefix="/api/platform-packages")
+    app.include_router(monitors_router, prefix="/api/monitors")
+    app.include_router(webhooks_router, prefix="/api/webhooks")
+    app.include_router(answer_router, prefix="/api/answer")
+    app.include_router(research_router, prefix="/api/research")
+    app.include_router(enrichment_router, prefix="/api/enrichments")
     app.include_router(tools_router, prefix="/api/tools")
+    app.include_router(usage_router, prefix="/api/usage")
     app.include_router(tool_catalog_router, prefix="/api/tool-catalog")
     app.include_router(shusuo_router, prefix="/api/agents/shusuo")
     app.include_router(tiktok_cdo_router, prefix="/api/agents/tiktok-cdo")

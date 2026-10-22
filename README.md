@@ -13,13 +13,13 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 |---|---|
 | 生产地址 | <https://scrapy.luteos.com>（A 主站）· <https://scrapy.lute-tlz-dddd.top>（B） |
 | 平台目录 | 70 个平台（生产 catalog、仓库生成物与工作树三处一致，2026-10-20 核对） |
-| 能力视图 | 生产 catalog 309 个（2026-10-20 采集，`catalog_digest=dad20448…`）；仓库生成物 286 个（2026-10-15 生成）。两套口径不得混用。 |
-| 唯一 endpoint | 生产 catalog 281 个（2026-10-20 采集）；仓库生成物 258 个（2026-10-15 生成）；工作树端点映射 290 条（2026-10-20 对账）。 |
-| 实测状态 | 2026-10-15 生产 `providers/status`，当时 258 个唯一端点口径：209 个 verified / 21 个 config-gated / 17 个 degraded / 10 个 empty / 1 个 disabled |
-| Skill 目录 | <https://scrapy.luteos.com/skills> |
-| MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token |
-| 数据库 schema | A=`202610190045` / B=`202607280044`（2026-10-20 `/api/health` 实测） |
-| 部署分支 | A=`main` / B=`deploy/tiktok-cdo-codex`（双机 @ `fc1e60b`） |
+| 能力视图 | 生产 catalog 311 个（2026-10-21 实测，`catalog_digest=e5169ab2…`）。 |
+| 唯一 endpoint | 生产 catalog 283 个（按 `endpoint_type` 去重，2026-10-21 实测）。 |
+| 实测状态 | 2026-10-21 生产 `providers/status`，283 个唯一端点：200 个 verified / 57 个 config-gated / 12 个 degraded / 10 个 empty / 3 个 untested / 1 个 disabled |
+| 工具目录 | 283 个工具，225 个当前可执行（`GET /api/tool-catalog`，2026-10-21）。 |
+| MCP | `https://scrapy.luteos.com/mcp/`，要求 Bearer Token；25 个工具。 |
+| 数据库 schema | A=`202610210053`（2026-10-21 `/api/health` 实测）。B 暂缓，未纳入本轮。 |
+| 部署分支 | A=`main`。B 按 2026-10-21 指示暂缓。 |
 
 服务器、容器、网络和数据卷的当前事实统一维护在 [生产环境基线](docs/【运维手册】生产环境基线.md)，不要在其他文档复制易变的 revision 或容器状态。
 
@@ -27,13 +27,21 @@ Data Intelligence Hub 是多平台数据采集工作台。系统通过统一 API
 
 | 页面 | 路径 | 用途 |
 |---|---|---|
-| 采集平台 | `/platforms` | 按平台、数据类型和 Provider 选择采集能力 |
-| Skill 与 MCP | `/skills` | 查看平台 Skill、Playbook、安装包和 MCP 能力 |
+| 能力目录 | `/tools` | 按平台、数据类型和 Provider 选择采集能力 |
+| 平台详情 | `/tools/[toolId]` | 查看平台 Skill、Playbook、安装包与 MCP 能力 |
+| TikTok 工具台 | `/tools/tiktok` | 16 个 TikTok 工具与创作者 Cookie 配置入口 |
 | 项目 | `/projects` | 管理采集项目 |
 | 任务 | `/tasks` | 管理采集任务和手动运行 |
 | 运行记录 | `/runs` | 查看运行状态、记录数和原始结果 |
-| 数据集 | `/datasets` | 管理数据集、版本和导出 |
-| 采集文档 | `/collector-docs` | 查看采集器验证状态和参数说明 |
+| 运行详情 | `/runs/[runId]` | 查看步骤、成本、证据等级与原始记录 |
+| 资产 | `/assets` | 管理数据集、版本和导出 |
+| 原始记录 | `/assets/records` | 浏览原始记录 |
+| 文档 | `/docs` | 查看采集器验证状态和参数说明 |
+| 监控 | `/monitors` | 查看搜索监控 |
+| 用量 | `/usage` | 查看用量与成本 |
+| 连接 | `/connect` | 配置平台凭证与登录状态 |
+
+旧路径由 Next.js 永久重定向：`/platforms` 与 `/skills` → `/tools`，`/collector-docs` → `/docs`，`/datasets` → `/assets`，`/raw-records` → `/assets/records`，`/collect/[runId]` → `/runs/[runId]`，`/skills/[platformId]` → `/tools/[platformId]`。
 
 公开目录页面可直接访问。项目数据和管理接口使用 demo workspace 与演示账号机制；生产账号和密码只存在于生产环境变量，不写入仓库。
 

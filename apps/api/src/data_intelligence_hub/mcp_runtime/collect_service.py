@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 from data_intelligence_hub.core.database import async_session_factory
-from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.workspaces import get_workspace_by_id
 from data_intelligence_hub.services.quick_collect_service import (
     QuickCollectRequest,
     QuickCollectResponse,
@@ -33,6 +33,7 @@ async def collect_capability(
 
     传入 ``workspace_id`` 时使用该工作区。它属于项目密钥身份。
     不传时回退 demo workspace，保持全局 token 的既有行为。
+    传入但查不到时返回 ``workspace_not_found``，不静默回退。
     """
     body = QuickCollectRequest(
         project_id=project_id,
@@ -41,9 +42,9 @@ async def collect_capability(
         tool_call=tool_call,
     )
     async with async_session_factory() as session:
-        workspace: Workspace | None = None
+        workspace = None
         if workspace_id is not None:
-            workspace = await session.get(Workspace, workspace_id)
+            workspace = await get_workspace_by_id(session, workspace_id)
             if workspace is None:
                 raise ValueError("workspace_not_found")
         outcome = await run_quick_collect(session, body, workspace=workspace)

@@ -495,6 +495,16 @@ class ExaContentsCollector(BaseCollector):
         if not isinstance(subpages, int) or not (0 <= subpages <= 100):
             raise CollectorError("subpages must be 0-100")
 
+        extras_image_links = self.config.get("extras_image_links", 0)
+        if not isinstance(extras_image_links, int) or not (0 <= extras_image_links <= 10):
+            raise CollectorError("extras_image_links must be 0-10")
+
+        livecrawl_timeout = self.config.get("livecrawl_timeout")
+        if livecrawl_timeout is not None and (
+            not isinstance(livecrawl_timeout, int) or not (1000 <= livecrawl_timeout <= 60000)
+        ):
+            raise CollectorError("livecrawl_timeout must be 1000-60000 milliseconds")
+
         return {
             "urls": [u.strip() for u in urls],
             "contents_mode": contents_mode,
@@ -503,6 +513,10 @@ class ExaContentsCollector(BaseCollector):
             "subpage_target": self.config.get("subpage_target", []),
             "summary_query": self.config.get("summary_query"),
             "text_max_characters": self.config.get("text_max_characters"),
+            "extras_image_links": extras_image_links,
+            "livecrawl_timeout": livecrawl_timeout,
+            "include_sections": self.config.get("include_sections", []),
+            "exclude_sections": self.config.get("exclude_sections", []),
         }
 
     async def test(self) -> CollectorTestResult:
@@ -567,11 +581,19 @@ class ExaContentsCollector(BaseCollector):
             max_chars = config.get("text_max_characters")
             payload["text"] = {"maxCharacters": max_chars} if max_chars else True
         elif mode == "summary":
-            sq = config.get("summary_query") or ""
-            payload["summary"] = {"query": sq} if sq else True
+            # 官方 schema 只接受对象；传布尔会 400。
+            payload["summary"] = {"query": config.get("summary_query") or ""}
 
         if config.get("max_age_hours") is not None:
             payload["maxAgeHours"] = config["max_age_hours"]
+        if config.get("extras_image_links", 0) > 0:
+            payload["extras"] = {"imageLinks": config["extras_image_links"]}
+        if config.get("livecrawl_timeout") is not None:
+            payload["livecrawlTimeout"] = config["livecrawl_timeout"]
+        if config.get("include_sections"):
+            payload["includeSections"] = config["include_sections"]
+        if config.get("exclude_sections"):
+            payload["excludeSections"] = config["exclude_sections"]
         if config.get("subpages", 0) > 0:
             payload["subpages"] = config["subpages"]
             if config.get("subpage_target"):
@@ -609,6 +631,9 @@ class ExaContentsCollector(BaseCollector):
                     "highlight_scores": item.get("highlightScores"),
                     "text": item.get("text"),
                     "summary": item.get("summary"),
+                    "image_links": item.get("imageLinks"),
+                    "status": item.get("status"),
+                    "error": item.get("error"),
                     "request_id": data.get("requestId"),
                 },
                 collected_at=collected_at,
@@ -616,12 +641,25 @@ class ExaContentsCollector(BaseCollector):
             for item in results
         ]
 
+        failed = [
+            item.get("url")
+            for item in results
+            if item.get("status") in {"error", "failed"} or item.get("error")
+        ]
         logs.append(
             collector_log(
                 "exa_contents_collected",
-                f"urls={len(config['urls'])} records={len(records)}",
+                f"urls={len(config['urls'])} records={len(records)} failed={len(failed)}",
             )
         )
+        if failed:
+            logs.append(
+                collector_log(
+                    "exa_contents_failed_urls",
+                    ", ".join(str(url) for url in failed[:20]),
+                    level="warning",
+                )
+            )
         return CollectionResult(raw_records=records, logs=logs, errors=errors)
 
 

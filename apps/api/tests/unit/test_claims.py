@@ -58,7 +58,7 @@ from data_intelligence_hub.services.claims import (
 )
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = API_ROOT / "alembic/versions/202610210052_claims.py"
+MIGRATION_PATH = API_ROOT / "alembic/versions/202610210056_claims.py"
 
 # 报告合同需要的 claim 列。PRD 5.4.1。全部可空。
 REPORT_COLUMNS = (
@@ -641,11 +641,11 @@ def _load_migration() -> ModuleType:
     return module
 
 
-def test_migration_follows_runs_worker_revision() -> None:
-    """迁移必须接在 051 之后。"""
+def test_migration_follows_enrichments_revision() -> None:
+    """迁移必须接在 055 之后。"""
     module = _load_migration()
-    assert module.revision == "202610210052"
-    assert module.down_revision == "202610210051"
+    assert module.revision == "202610210056"
+    assert module.down_revision == "202610210055"
     assert "This revision is source-only." in (module.__doc__ or "")
 
 

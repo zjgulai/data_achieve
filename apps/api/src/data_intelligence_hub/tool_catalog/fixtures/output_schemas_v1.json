@@ -1901,6 +1901,19 @@
         "author",
         "raw"
       ]
+    },
+    "exa_agent_research": {
+      "description": "Exa Agent 研究端点。",
+      "fields": [
+        "query",
+        "agent_run_id",
+        "status",
+        "text",
+        "structured",
+        "grounding",
+        "usage",
+        "cost"
+      ]
     }
   },
   "schema_version": "output_schemas.v1"

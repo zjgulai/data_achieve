@@ -10,7 +10,8 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 
-DEFAULT_PROJECT_ID = "7fd6ed55-7b0c-5482-92f3-d03130168b70"
+# 数说专用项目。与 demo seed 中的 project-shusuo 一致。
+DEFAULT_PROJECT_ID = "08872350-5ac8-4487-832a-775825072108"
 DEFAULT_CONSOLE_BASE_URL = "https://scrapy.luteos.com"
 
 

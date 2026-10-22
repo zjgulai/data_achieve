@@ -521,6 +521,48 @@ CONTRACTS: dict[str, ToolParameterContract] = {
             "每个网页额外读取的子页数，可选。整数 0 到 100，默认 0。"
             ),
     ),
+    ParameterSpec(
+        name="summary_query",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description="摘要检索词，可选。contents_mode=summary 时用于生成页面摘要。",
+    ),
+    ParameterSpec(
+        name="extras_image_links",
+        value_type="integer",
+        required=False,
+        source="collector_validation",
+        default=0,
+        minimum=0,
+        maximum=10,
+        description="返回图片链接数量，可选。整数 0 到 10，默认 0。",
+    ),
+    ParameterSpec(
+        name="livecrawl_timeout",
+        value_type="integer",
+        required=False,
+        source="collector_validation",
+        minimum=1000,
+        maximum=60000,
+        description="实时抓取超时，可选。毫秒，1000 到 60000。",
+    ),
+    ParameterSpec(
+        name="include_sections",
+        value_type="list",
+        required=False,
+        source="collector_validation",
+        default=[],
+        description="只保留这些页面区块，可选。填区块名列表；默认空。",
+    ),
+    ParameterSpec(
+        name="exclude_sections",
+        value_type="list",
+        required=False,
+        source="collector_validation",
+        default=[],
+        description="排除这些页面区块，可选。填区块名列表；默认空。",
+    ),
         ),
     ),
     "exa_answer": ToolParameterContract(
@@ -532,6 +574,69 @@ CONTRACTS: dict[str, ToolParameterContract] = {
         required=True,
         source="collector_validation",
         description="必填。要回答的问题，不能为空；首尾空白自动去掉。",
+    ),
+        ),
+    ),
+    "exa_agent": ToolParameterContract(
+        tool_id="exa_agent",
+        specs=(
+    ParameterSpec(
+        name="query",
+        value_type="string",
+        required=True,
+        source="collector_validation",
+        description="必填。研究问题，不能为空。",
+    ),
+    ParameterSpec(
+        name="effort",
+        value_type="enum",
+        required=False,
+        source="collector_validation",
+        default="medium",
+        allowed_values=(
+            "minimal", "low", "medium", "high", "xhigh", "auto", "ultra",
+        ),
+        description=(
+            "研究投入档位，可选。默认 medium；auto 与 ultra 按用量计费，"
+            "固定档位按次计费。"
+        ),
+    ),
+    ParameterSpec(
+        name="output_schema",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description=(
+            "输出 JSON Schema，可选。填 JSON 对象字符串；"
+            "填后返回结构化结果与字段级引用。"
+        ),
+    ),
+    ParameterSpec(
+        name="system_prompt",
+        value_type="string",
+        required=False,
+        source="collector_validation",
+        description="系统提示词，可选。用于约束研究风格与输出语言。",
+    ),
+    ParameterSpec(
+        name="max_cost_dollars",
+        value_type="number",
+        required=False,
+        source="collector_validation",
+        default=5,
+        minimum=1,
+        maximum=100,
+        description="单次研究成本上限，可选。美元，1 到 100，默认 5。",
+    ),
+    ParameterSpec(
+        name="timeout_seconds",
+        value_type="integer",
+        required=False,
+        source="collector_validation",
+        default=600,
+        minimum=30,
+        maximum=1800,
+        description="等待研究完成的秒数，可选。30 到 1800，默认 600。",
     ),
         ),
     ),
