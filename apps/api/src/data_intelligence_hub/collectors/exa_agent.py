@@ -306,7 +306,12 @@ class ExaAgentCollector(BaseCollector):
             "cost": data.get("costDollars"),
         }
         records: list[CollectorRawRecord] = []
-        truncated = stop_reason not in (None, "completed", "success")
+        truncated = stop_reason not in (
+            None,
+            "completed",
+            "success",
+            "schema_satisfied",
+        )
         if status in {"completed", "succeeded"}:
             records.append(
                 CollectorRawRecord(

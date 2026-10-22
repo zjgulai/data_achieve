@@ -393,3 +393,32 @@ async def test_agent_recovers_provider_run_from_metadata_without_second_post(
     assert "GET /agent/runs" in calls
     assert "GET /agent/runs/provider-123" in calls
     assert "POST /agent/runs" not in calls
+
+@pytest.mark.asyncio
+async def test_schema_satisfied_is_normal_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(201, json={"id": "run-schema"})
+        return httpx.Response(
+            200,
+            json={
+                "id": "run-schema",
+                "status": "completed",
+                "stopReason": "schema_satisfied",
+                "output": {"text": "complete"},
+            },
+        )
+
+    async def no_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setenv("EXA_API_KEY", "test-key")
+    monkeypatch.setattr(agent_module, "_exa_client", _client_factory(httpx.MockTransport(handler)))
+    monkeypatch.setattr(agent_module.asyncio, "sleep", no_sleep)
+    result = await ExaAgentCollector({"query": "q", "poll_interval_seconds": 1}).collect()
+
+    assert len(result.raw_records) == 1
+    assert result.errors == []
+    assert result.raw_records[0].content["stop_reason"] == "schema_satisfied"

@@ -88,4 +88,7 @@ async def get_research_run(
         limit=100,
         workspace_id=context.workspace.id,
     )
+    for item in records.get("items", []):
+        if isinstance(item, dict) and item.get("id"):
+            item["record_url"] = f"/api/raw-records/{item['id']}"
     return {"run": detail, "records": records}
