@@ -31,7 +31,7 @@
 - GitNexus 合并前分析必须覆盖 staged 合并树。`partial: true` 或 `truncated: true` 不算通过。最终索引必须指向标签提交。
 - 每次提交前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。文档提交应输出“未检测到变更。”。合并提交必须输出非空映射。
 - 每个 Run 块默认在 `/Users/lute/Project/data_scrapy-c0` 执行。块内未写 `cd` 时，执行者先进入该 worktree；只有明确写 `cd /Users/lute/Project/data_scrapy` 的步骤才在主工作树执行。
-- 只操作隔离 C0 worktree `/Users/lute/Project/data_scrapy-c0`。主工作树只做只读预检。只清理 4 条 prunable 元数据。不得删除或重建其他 12 个 linked worktree。
+- 只操作隔离 C0 worktree `/Users/lute/Project/data_scrapy-c0`。主工作树只做只读预检。只清理 4 条 prunable 元数据。不得删除或重建其他 13 个有效 worktree；必须保留干净的 detached worktree `/private/tmp/b5wt`。
 - 主工作树可能有其他 workflow 生成或暂存的计划文件。C0 不得暂存、删除或提交这些文件。C0 worktree 只暂存本计划与证据文件。
 - 只创建本地 annotated tag `pg0-baseline-v1`。不执行 `git push`。推送标签需要人工批准。
 - 回滚点：`pg0-baseline-v1` 是只读基线锚点；C0 不创建迁移、不改业务开关。合并失败时 `git merge --abort`；标签创建后不得移动或覆盖。
@@ -68,7 +68,7 @@
 
 **Interfaces:**
 - Consumes: `f0560ca`；本计划文件；`feat/p1-identity`、`feat/b5-workbench`、`feat/b4-report-contract`；主工作树当前分支 `feat/tool-catalog-catalog`。
-- Produces: 隔离 C0 worktree；证据文档第 1 节；`START_SHA=f0560ca`；`SPEC_BLOB=052c602942ad8dd42fc80cd38d17c95ac20d2bd2`；`B5_TIP=94d95b24064a4ce2addafb8c50537f0f29aa755c`；`B4_TIP=ad968f66570a6738ad122dfef02b1ce4503229d0`；worktree 14 条记录、0 条 prunable。
+- Produces: 隔离 C0 worktree；证据文档第 1 节；`START_SHA=f0560ca`；`SPEC_BLOB=052c602942ad8dd42fc80cd38d17c95ac20d2bd2`；`B5_TIP=94d95b24064a4ce2addafb8c50537f0f29aa755c`；`B4_TIP=ad968f66570a6738ad122dfef02b1ce4503229d0`；worktree 15 条记录、0 条 prunable。
 
 - [ ] **Step 1: 在主工作树做只读预检，不切换分支**
 
@@ -230,11 +230,11 @@ git worktree list --porcelain | grep -c '^prunable '
 Expected:
 
 ```text
-18
+19
 4
 ```
 
-18 = 原有 17 条记录加新建的 C0 worktree。4 条 prunable 是 `/private/tmp` 下已消失的旧 worktree 元数据。
+19 = 原有 18 条记录加新建的 C0 worktree。4 条 prunable 是 `/private/tmp` 下已消失的旧 worktree 元数据；`/private/tmp/b5wt` 是有效、干净、detached 的 B5 worktree，必须保留。
 
 - [ ] **Step 10: 写入失败的清理断言**
 
@@ -281,7 +281,7 @@ Run:
 
 ```bash
 test "$(git worktree list --porcelain | grep -c '^prunable ')" -eq 0 && echo "PRUNED"
-test "$(git worktree list --porcelain | grep -c '^worktree ')" -eq 14 && echo "WORKTREE_COUNT_OK"
+test "$(git worktree list --porcelain | grep -c '^worktree ')" -eq 15 && echo "WORKTREE_COUNT_OK"
 ```
 
 Expected:
@@ -299,9 +299,10 @@ Run:
 git worktree list --porcelain | grep '^worktree ' | sort
 ```
 
-Expected: 以下 14 条路径，不增不减。
+Expected: 以下 15 条路径，不增不减。
 
 ```text
+/private/tmp/b5wt
 /Users/lute/Project/data_scrapy
 /Users/lute/Project/data_scrapy-b4
 /Users/lute/Project/data_scrapy-b5
@@ -343,7 +344,7 @@ cd /Users/lute/Project/data_scrapy-c0
   printf '%s\n' '| 已批准设计 blob | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |'
   printf '%s\n' '| 已批准设计 SHA-256 | `a648533c80bce42dca385e38347b33b3f666869323f6d34b2e47392a3af1d96f` |'
   printf '%s\n' '| Alembic head | `202610210055` |'
-  printf '%s\n' '| worktree | 18 条记录；4 条 prunable；清理后 14 条记录、0 条 prunable；新增 C0 worktree |'
+  printf '%s\n' '| worktree | 19 条记录；4 条 prunable；清理后 15 条记录、0 条 prunable；保留 `/private/tmp/b5wt`；新增 C0 worktree |'
   printf '%s\n' '| 预检结论 | 通过 |'
 } > docs/ops/pg0-baseline-c0-2026-10-22.md
 ```
@@ -628,7 +629,7 @@ Expected: 提交成功，`git status --porcelain -uno` 空输出。
 
 **Interfaces:**
 - Consumes: `MERGE_READY=yes`；`B5_TIP=94d95b2`；`SPEC_BLOB=052c602`。
-- Produces: 分支 `feat/pg0-baseline-c0`；`MERGE_SHA`；B5 是 HEAD 祖先；B4 不是 HEAD 祖先；spec blob 保持不变。
+- Produces: 分支 `feat/pg0-baseline-c0`；`MERGE_SHA`；B5 与 B4 都是 HEAD 祖先（B4 通过 B5 历史进入，未单独合并）；spec blob 保持不变。
 
 - [ ] **Step 1: 确认在集成分支**
 
