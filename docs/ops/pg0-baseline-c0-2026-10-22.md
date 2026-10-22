@@ -37,6 +37,6 @@
 | Claim 五态 | `confirmed · directional · hypothesis · evidence_gap · blocked` 已登记 |
 | 新增 REST 路径 | 无（相对 `b02a3a5`） |
 | 新 MCP 工具 | `get_run`、`list_records`、`create_report`、`stop`、`balance`；仅内部工具 |
-| spec 删除差异 | 仅对 spec 路径检查时 `HEAD..B5` 显示 D；B5 无该路径（`cat-file` 128）；B5 历史没有修改该路径 |
+| spec 删除差异 | 仅对 spec 路径检查时 `HEAD..B5` 显示 D；B5 无该路径（`cat-file` 128）；B5 历史没有修改该路径；后续只用标准三方合并，保留 HEAD 的已批准 spec blob，合并后验证 blob；禁止整树 checkout、`-X theirs` 与 squash |
 | `git diff --check` | 通过 |
 | MERGE_READY | yes |
