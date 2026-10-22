@@ -4,33 +4,41 @@
 
 **Goal:** 让 `runs` 成为唯一执行真相：一个 run 可执行多个 step，每个 attempt 可审计，瞬态失败可重试，取消与租约可收敛，旧 quick / scheduler / task run-now 入口在受治理开关打开后改为创建受治理 run；MCP 行为不变，旧 MCP 到 C13。
 
-**Architecture:** `RunExecutor` 读取 C4 固化的不可变执行步骤，按 `step_index` 顺序执行。每个逻辑 step 只有一行最终 `run_steps`，并只指向最终 attempt 的 `task_runs`；每次 attempt 另写一行 `run_step_attempts`，拥有自己的 `task_runs`。`run_steps` 只在 step 进入终态后写入，运行中的 attempt 由 attempt 表承载。重试只发生在瞬态错误。取消与租约围栏在每次 step 与每次 attempt 前检查。执行器只通过 C5 的 `RunBudget` 适配器预留/结算，不直接写账本。旧入口只在 `RUN_EXECUTION_CONVERGENCE_ENABLED=true` 时收敛；MCP 的 `run_quick_collect` 保持旧路径到 C13。
+**Architecture:** `RunExecutor` 读取 C4 固化的不可变执行步骤，按 `step_index` 顺序执行。每个逻辑 step 只有一行最终 `run_steps`，并只指向最终 attempt 的 `task_runs`；每次 attempt 另写一行 `run_step_attempts`，拥有自己的 `task_runs`。`run_steps` 只在 step 进入终态后写入，运行中的 attempt 由 attempt 表承载。重试只发生在瞬态错误。取消与租约围栏在每次 step 与每次 attempt 前检查。执行器只通过 C5 的 `RunBudget` 适配器预留/结算，不直接写账本。run 生命周期通过 C2 的 `audit_events` 统一审计：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。所有 step 进入终态且 `runs.status='completed'` 后，执行器只追加一条 `run.completed` 审计事件；它不调用 C8、不计算数据集质量、不写质量表。C8 消费该事件。C8 依赖 C6；C6 不依赖 C8。取消是 C6 拥有的幂等操作：`cancel_run` 接收 `idempotency_key` 与 `reason_code`，同键同参重放，同键不同参返回 `idempotency_conflict`。旧入口只在 `RUN_EXECUTION_CONVERGENCE_ENABLED=true` 时收敛；MCP 的 `run_quick_collect` 保持旧路径到 C13。
 
 **Tech Stack:** Python 3.12、FastAPI、SQLAlchemy 2 async、Alembic、PostgreSQL 16、SQLite 单元测试、pytest-asyncio。
 
 ## Global Constraints
 
 - **契约优先。** `docs/design/【契约冻结】v1-表名-枚举-接口.md` 是机器契约。本文与契约冲突时，以契约冻结为准。
-- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call` 与预算服务。C6 开始时 Alembic head 必须是 `202610220061`。任一前置缺失时停止，不得另造并行结构。
-- **基线。** 本文编写时 HEAD 是 `f0560ca`，Alembic head 是 `202610210055`。C0/C1/C2 合入后，C6 开始时 Alembic head 必须是 `202610220061`。C6 只新增一个迁移 `202610220062`。
+- **隔离 worktree。** 执行分支是 `feat/gov-c6`，从 `feat/gov-c5` 创建，只在 `/Users/lute/Project/data_scrapy-gov-c6` 中创建和执行。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 Step 0 的 `git worktree prune`、前驱断言与 `cp` 只读源；不得在主工作树切换分支、暂存、提交或运行测试。Task 0 Step 0 给出完整命令；后续所有 Run/Commit 命令的根目录是 `/Users/lute/Project/data_scrapy-gov-c6`，包括 `apps/api` 子路径。
+- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C1 还必须登记本片段的取消幂等列与统一审计动作（见下两条）。C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call`、预算服务与 `services/run_limits.py`。C6 开始时 Alembic head 必须是 `202610220061`。任一前置缺失时停止，不得另造并行结构。
+- **基线。** 本文编写时 HEAD 是 `f0560ca`，Alembic head 是 `202610210055`。C0/C1/C2 合入后，C6 开始时 Alembic head 必须是 `202610220061`。C6 只新增一个迁移 `202610220062`；C6 结束时 head 是 `202610220062`，但这不是平台最终 head。master plan 的后续切片继续追加 `202610220063`–`202610220068`，平台最终 head 是 `202610220068`。生产 preflight 的期望 schema 由 `SCRAPY_EXPECTED_SCHEMA` 提供，PG0 发布批次按 master plan 的最终迁移 `202610220068` 设置；C6 与 C14 都不得把 `202610220062` 写死为生产期望值。
+- **C1 取消幂等登记前置。** 本文件不修改 C1。C6 Task 1 开始前，C1 必须在 `runs` 注册表中登记 `cancel_idempotency_key_hash`（`string(64)`，可空，`status: extend`，`phase: C6`）、`cancel_reason_code`（`string(80)`，可空，`status: extend`，`phase: C6`）与部分唯一索引 `uq_runs_workspace_cancel_idempotency (workspace_id, cancel_idempotency_key_hash) WHERE cancel_idempotency_key_hash IS NOT NULL`；并在路径注册表登记 `runs.cancel`（`POST /api/runs/{run_id}/cancel`，`idempotent: true`，请求字段 `idempotency_key`、`reason_code`，错误码 `idempotency_conflict`）。C1 已登记的 `runs.idempotency_key_hash` 与 `uq_runs_workspace_idempotency` 是创建幂等，不得复用为取消幂等。缺失时停止；不得把取消幂等落到内存缓存、流程变量或第二张表。这两列与索引由 `202610220062` 落库，不新增第二个迁移。
+- **C1 审计动作登记前置。** C1 现有 `audit_actions` 只登记了 `run.cancelled` 与 `run.completed`（owner 都是 C6）。C6 Task 1 开始前，C1 必须在 `audit_actions.actions` 登记 `run.created`、`run.cancel_requested`、`run.retry_scheduled`、`run.retry_exhausted`、`run.failed` 五个动作，owner 都是 C6；C2 的 `services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。缺失时停止，不得用 `task.retried` 代替，也不得自造未登记动作名。
 - **执行真相。** `runs` 是运行状态唯一事实源。`run_steps` 是步骤执行唯一事实源。`task_runs` 是单次 collector 调用唯一事实源。其他表只能保存投影。
 - **1─1 约束。** 一个逻辑 step 只有一行 `run_steps`，并只关联一条最终 `task_runs`。每次 attempt 新建一行 `run_step_attempts` 和一行独立 `task_runs`。`run_steps.attempt_no` 记录最终 attempt 号。绝不按 attempt 写 `run_steps`。
 - **状态枚举。** `runs.status` 只用 `queued · running · completed · failed · cancelled`。`run_steps.status` 只用 `pending · running · success · empty · config_gated · failed · skipped`。两处 `outcome` 只用 `success · empty · config_gated · failed`。不得出现 `degraded`、`held`、`partial`。
 - **账本。** `run_ledger_entries` 只有八列：`id`、`run_id`、`step_id`、`entry_kind`、`amount_usd`、`balance_after_usd`、`idempotency_key`、`created_at`。`entry_kind` 只有六个值：`estimate · reserve · accrued · settle · release · block`。`settle` 必须为正数，`release` 必须为负数。**C6 不直接调用 `record_entry`，不写 `accrued` / `settle` / `release`；唯一写入者是 C5 的 `budget_service`。** 生产路径必须注入 `OrmRunBudget`；无 budget 只允许测试替身，测试替身不得写数据库。
-- **取消。** 取消只写 `runs.status=cancelled`、`finished_at`，并清空 `lease_expires_at`。取消不删除 step、attempt、task_run 或账本。执行器不得把终态写回已取消的 run。
+- **RunBudget 唯一权威。** `RunBudget` 只定义在 C5 的 `services/run_budget.py`。C6 不定义、不复制、不改名，只从该模块导入或原样 re-export；`run_execution_contracts.py`、`run_executor.py`、`run_step_runner.py` 与 `__all__` 都不得出现第二份 `RunBudget` Protocol。C6 只调用 `reserve` / `settle` / `mark_unknown` / `cancel`。
+- **统一审计。** 唯一审计表是 C2 的 `audit_events`，唯一写入口是 `services.audit_log.append_audit_event`。C6 在 run 生命周期写七类动作：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。全部在同一业务事务内追加；`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`。`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.completed` 的 `result='success'`；`run.retry_exhausted` 与 `run.failed` 的 `result='failed'`。`details` 只放标识、状态、计数与原因码，不放密钥、原始幂等键或请求正文。不得新建第二张审计表，不得自造动作名。`run.created` 只在插入新 run 时发；幂等重放不发。
+- **取消幂等（C6 拥有）。** 存储接缝是 `runs` 的取消幂等列：`cancel_idempotency_key_hash` 与 `cancel_reason_code`，加工作区级部分唯一索引 `uq_runs_workspace_cancel_idempotency`。`cancel_run` 同时接收 `idempotency_key` 与 `reason_code`；`cancel_idempotency_key_hash = sha256("run-cancel.v1:{key}")`。同一工作区、同一 run、同一键、同一 `reason_code` 重放第一次取消的结果（同一 `RunResponse`，响应头 `Idempotent-Replay: true`）；同一键不同 `reason_code` 返回 409 `idempotency_conflict`；同一 run 已被另一个键取消时按幂等取消返回原结果。并发取消只允许一个事务把 run 从 `queued · running` 原子改为 `cancelled`；只有胜出事务调用 C5 的 `OrmRunBudget.cancel`，因此预算预留只释放一次。落败事务读取已提交行，按同键重放或冲突返回，不写第二次审计。
+- **质量链解耦。** C6 不 import `services.dataset_quality`、`services.market_quality` 或任何 C8 模块，不调用 `evaluate_and_persist_market_quality` / `ensure_market_quality`，不写 `market_assessments` / `data_gaps`。run 的全部 step 进入终态且 `runs.status='completed'` 后，C6 通过 C2 的 `services.audit_log.append_audit_event` 在同一事务追加一条 `action='run.completed'` 审计事件：`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`、`result='success'`。`details` 只含 `run_id`、`collection_task_id`、`workflow_version_id`、`market_code`、`run_status`、`outcome`、`records_count`、`finished_at`、`step_indexes`。`failed` 与 `cancelled` 不发 `run.completed`，分别发 `run.failed` 与 `run.cancelled`。质量评估接口 `evaluate_and_persist_market_quality(session, run_id, task_id, market_code, package_type)` 由 C8 计划定义；C8 的消费者从 `run.completed` 解析 `run_id` 并调用它。重复事件由 C8 的 `uq_market_assessments_task_market` 与 scorecard hash 幂等吸收；C6 不做质量幂等。
+- **取消。** 取消只写 `runs.status=cancelled`、`finished_at`、`cancel_idempotency_key_hash`、`cancel_reason_code`，并清空 `lease_expires_at`。取消不删除 step、attempt、task_run 或账本。执行器不得把终态写回已取消的 run。取消幂等按上面“取消幂等”条目执行；重复取消不再调用 C5 的预算释放。
 - **租约。** 领取、续期、释放都按 `worker_id` 围栏。执行器在每次 step 与每次 attempt 前检查租约。租约丢失时抛 `RunLeaseLostError`，worker 回滚未提交写入。
-- **迁移单 head。** 每个迁移任务后运行 `uv run alembic heads`，输出必须只有一行。C6 结束时唯一 head 是 `202610220062`。
+- **迁移单 head。** 每个迁移任务后运行 `uv run alembic heads`，输出必须只有一行。C6 的本地退出 head 是 `202610220062`。后续切片再追加 `202610220063`–`202610220068`；平台最终 head 是 master plan 的 `202610220068`，PG0 发布批次用它作为生产验收目标。C6 的 `uv run alembic heads` 断言只证明本切片没有被分叉，不证明生产最终 schema。
 - **GitNexus 强制。** 编辑任何函数、类或方法前，先运行 `node .gitnexus/run.cjs impact "<symbol>" --direction upstream --repo .`。报告调用方、流程和 `risk`。`risk` 为 HIGH 或 CRITICAL 时先告警并停下。`risk` 为 UNKNOWN 时不得当作安全，必须用文本搜索确认调用方。
 - **提交前图分析。** 每个 commit 前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。输出含 `partial: true` 或 `truncated: true` 时不算通过，必须重跑。最终交接再运行 `detect-changes --scope compare --base-ref main --repo .`。
 - **TDD。** 每个代码任务先写失败测试，运行并确认失败，再写最小实现，运行并确认通过，最后提交。
 - **旧入口保留响应。** `POST /api/quick-collect` 仍返回 201 与 `QuickCollectResponse`。`POST /api/quick-collect/async` 仍返回 202 与 `queued`。`POST /api/tasks/{task_id}/run` 仍返回 201 与 `TaskRunResponse`。只改内部执行路径。
 - **MCP 行为不变。** C6 不修改 `mcp_runtime/**`，也不改变 `run_quick_collect` 对 MCP 的响应、错误与预算语义。API quick 路由只在 `RUN_EXECUTION_CONVERGENCE_ENABLED=true` 时走受治理 run；MCP 继续走旧路径，C13 再迁移。`run_quick_collect` 的 GitNexus 风险是 HIGH（30 impacted，3 processes）；编辑前必须报告并加 MCP 回归测试。
-- **Attempt 契约。** `run_step_attempts` 只用 C1 的列名：`id`、`run_id`、`step_index`、`attempt_number`、`status`、`task_run_id`、`error_reason_code String(80)`、`error_message`、`started_at`、`finished_at`、`created_at`。约束名：`uq_run_step_attempts_run_step_attempt`、`uq_run_step_attempts_task_run_id`、`ck_run_step_attempts_attempt_number_positive`；索引 `ix_run_step_attempts_run_step (run_id, step_index)`。不得使用 `step_id`、`attempt_number`、`String(60)` 或 `ix_run_step_attempts_step_id`。
+- **Attempt 契约。** `run_step_attempts` 只用 C1 的列名：`id`、`run_id`、`step_index`、`attempt_number`、`status`、`task_run_id`、`error_reason_code String(80)`、`error_message`、`started_at`、`finished_at`、`created_at`。约束名：`uq_run_step_attempts_run_step_attempt`、`uq_run_step_attempts_task_run_id`、`ck_run_step_attempts_attempt_number_positive`；索引 `ix_run_step_attempts_run_step (run_id, step_index)`。不得使用 `step_id`、`attempt_no`、`String(60)` 或 `ix_run_step_attempts_step_id`。
 - **1─1 数据库约束。** `run_steps.task_run_id` 非空时必须唯一（部分唯一索引 `uq_run_steps_task_run_id`）；`run_step_attempts.task_run_id` 也唯一。两者共同保证一个 `task_runs` 只被一个逻辑 step 或一个 attempt 引用。
 - **失败 attempt 成本。** 每个 attempt 都有自己的 `task_runs`。`RunBudget.settle` 必须汇总该 run 全部 attempt 的 `task_runs.total_cost_usd`，`run_steps` 只保存最终投影。不得只结算最终 step。
+- **C5 run limits 消费。** C6 在每次 attempt 前调用 C5 `services.run_limits.resolve_run_limits(session, run_id=run.id)`，把 `RunLimits.max_pages` / `max_records` 原样传给 collector；`None` 表示不限制，`0` 表示零容忍。每次翻页前检查页数，每页入库后检查记录数，超限立即抛 C5 `RunLimitExceededError`（`max_pages_exceeded` / `max_records_exceeded`），停止请求下一页且不写剩余记录。C6 不复制限额解析逻辑、不新建限额表、不修改 `services/run_limits.py`；该消费不新增迁移，仍在 062 内完成。
 - **Blocked gate。** 执行前检查 `authorizations` 是否存在 `gate_status='blocked'` 的 `G-Plan`；存在时 run 保持 `queued`，不领取、不执行、不写 `failed`。
-- **开关与回滚点。** `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false`。C14 验收后才允许在 `.env.production` 显式打开。回滚先关两个开关，再回退镜像；`202610220062` downgrade 只在 `run_step_attempts` 为空时执行。
-- **生产 A/B 门禁。** 本切片不直接部署：C6 不改生产、不应用迁移、不重启容器。生产迁移、A/B 发布、Postgres 并发验证、空库迁移循环、浏览器 `/runs` 验收全部交给 C14。C14 必须先备份，再按 A、B 顺序应用迁移，并保持 A 的 edge 固定 IP 不被重建。生产 B 使用 `configs/deploy/scrapy/docker-compose.yml`，与 A 共用；不修改 `configs/deploy/scrapy-new/**`。
+- **开关与回滚点。** `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false`。C6 本切片不打开开关；PG0 发布批次在 C6 通过后打开 `RUN_WORKER_ENABLED`，在 C14 只读验收后打开 `RUN_EXECUTION_CONVERGENCE_ENABLED`，并由 PG0 重启 api。C14 只读验证 `/api/health`，不改 `.env.production`、不重启容器。回滚由 PG0 发布批次执行：先关两个开关并重启 api，再回退镜像；`202610220062` downgrade 只在 `run_step_attempts` 为空时执行。
+- **生产 A/B 门禁。** 本切片不直接部署：C6 不改生产、不应用迁移、不重启容器、不切换开关。生产备份、迁移应用、A/B 发布、容器重启与开关切换只由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读健康检查、canary、preflight 与浏览器验收。PG0 发布批次必须先备份，再按 A、B 顺序应用迁移，并保持 A 的 edge 固定 IP 不被重建。生产 B 使用 `configs/deploy/scrapy/docker-compose.yml`，与 A 共用；不修改 `configs/deploy/scrapy-new/**`。全量完成后生产期望 head 是 `202610220068`，`scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取该值；C6 的本地产物仍是 062。
 - **不做。** 不做客户 MCP 八个工具。不做报告合同、报告渲染、交付包。不做 UI。不做价格簿、预算 reserve、退款。不做新 attempt HTTP 路由。
 - **提交粒度。** 每个任务至少一个 commit。提交消息使用 `feat(run):`、`fix(run):`、`test(run):`、`docs(run):` 前缀。
 
@@ -38,12 +46,12 @@
 
 | 项 | C6 |
 |---|---|
-| 切片 | 多步骤 run、attempt、瞬态重试、取消、租约、旧 quick/scheduler/run-now 收敛 |
-| 迁移 | 只新增 `202610220062_run_step_attempts.py`，`down_revision=202610220061`；建 `run_step_attempts`、扩 `run_steps` 列、加 `run_steps.task_run_id` 部分唯一索引 |
+| 切片 | 多步骤 run、attempt、瞬态重试、取消幂等、租约、统一审计、旧 quick/scheduler/run-now 收敛 |
+| 迁移 | 只新增 `202610220062_run_step_attempts.py`，`down_revision=202610220061`；建 `run_step_attempts`、扩 `run_steps` 列、加 `run_steps.task_run_id` 部分唯一索引、加 `runs` 取消幂等列与 `uq_runs_workspace_cancel_idempotency` |
 | 开关 | `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false` |
-| 回滚点 | 两个开关置 false → 回退代码 → 062 downgrade（attempt 表为空时）→ 恢复备份 |
-| 部署 | 本切片不直接部署；迁移应用、A/B 发布与浏览器验收交 C14 |
-| 外部依赖 | C1 attempt 契约、C4 `execution_steps`、C5 `RunBudget`、C14 发布与浏览器验收 |
+| 回滚点 | 两个开关置 false → 回退代码 → 062 downgrade（attempt 表为空时）→ 恢复备份。取消幂等列随 062 回退；回退后旧代码不读这些列 |
+| 部署 | 本切片不直接部署；迁移应用、A/B 发布与开关切换由 PG0 发布批次执行；C14 只做只读健康、canary、preflight 与浏览器验收。生产期望 schema 由 master/final `202610220068` 与 `SCRAPY_EXPECTED_SCHEMA` 决定，不是 C6 的 062 |
+| 外部依赖 | C1 attempt 契约、C1 取消幂等列与审计动作登记、C4 `execution_steps`、C5 `RunBudget` / `run_limits`、PG0 发布批次与 C14 只读验收；下游 C8 消费 `run.completed`，C6 不回依赖 C8 |
 
 ## Non-Goals
 
@@ -51,58 +59,77 @@
 - 不实现 `report_contract`、`report_artifacts`、`delivery_manifest.json`。
 - 不修改 `run_ledger_entries` 的列数或枚举。
 - 不新增 attempt 查询路由。C14 若需要浏览器逐 attempt 视图，先升级冻结契约并新增路径。
-- 不验证 Postgres 并发。C14 负责。
+- 不验证 Postgres 并发。C6 在隔离 PostgreSQL 上执行；C14 只读复核结果。
+- 不修改 C5 的 `services/run_budget.py` 或 `services/run_limits.py`；C6 只导入并消费，不复制 `RunBudget` 或限额解析。
+- 不新增 `202610220062` 之外的迁移；取消幂等列与索引属于该迁移。
+- 不把 C6 本地 head `202610220062` 当作生产最终 schema；最终 head 是 `202610220068`。
 - 不把 fixture 的 `workflow_runs` 接入生产执行。
+- 不计算市场质量、不写 `market_assessments` / `data_gaps`、不提供质量 backfill；这些属于 C8。
+- 不新建第二张审计表，不自造未登记审计动作名。
+- 不把取消幂等放进进程内缓存、流程变量或 `runs.idempotency_key_hash`（创建幂等列）。
 
 ## File Structure
 
 | 文件 | 动作 | 责任 |
 |---|---|---|
-| `apps/api/alembic/versions/202610220062_run_step_attempts.py` | Create | 唯一迁移。创建 `run_step_attempts`。 |
-| `apps/api/src/data_intelligence_hub/models/run.py` | Modify | 扩展 `RunStep` 的 attempt、依赖与工具列。 |
+| `apps/api/alembic/versions/202610220062_run_step_attempts.py` | Create | 唯一迁移。创建 `run_step_attempts`，扩展 `run_steps` 与 `runs` 的取消幂等列。 |
+| `apps/api/src/data_intelligence_hub/models/run.py` | Modify | 扩展 `RunStep` 的 attempt、依赖与工具列；扩展 `Run` 的取消幂等列。 |
 | `apps/api/src/data_intelligence_hub/models/run_attempt.py` | Create | `RunStepAttempt` 与状态枚举。 |
 | `apps/api/src/data_intelligence_hub/models/__init__.py` | Modify | 导出新模型。 |
-| `apps/api/src/data_intelligence_hub/services/run_execution_contracts.py` | Create | 执行器协议、数据类、异常、纯函数；不定义 `RunBudget`（唯一权威定义在 C5 `services/run_budget.py`）。 |
+| `apps/api/src/data_intelligence_hub/services/run_execution_contracts.py` | Create | 执行器协议、数据类、异常、纯函数；含 `RunCompletedEventSink` 与 `RunAuditSink`；不定义 `RunBudget`（唯一权威定义在 C5 `services/run_budget.py`）。 |
+| `apps/api/src/data_intelligence_hub/services/run_audit.py` | Create | run 生命周期七类审计动作的唯一写入口；只调用 C2 `append_audit_event`。 |
+| `apps/api/src/data_intelligence_hub/services/run_cancel_service.py` | Create | 取消幂等：键哈希、原子领取、重放、冲突、只释放一次预算、两条取消审计。 |
 | `apps/api/src/data_intelligence_hub/services/run_retry.py` | Create | 瞬态错误分类、重试次数与退避。 |
 | `apps/api/src/data_intelligence_hub/services/run_step_plan.py` | Create | `RunStepSpec`、计划解析、ORM 步骤来源。 |
-| `apps/api/src/data_intelligence_hub/services/run_step_runner.py` | Create | 单个 step 的 attempt 循环、重试、账本。 |
-| `apps/api/src/data_intelligence_hub/services/run_executor.py` | Modify | 多步骤编排、依赖、取消、聚合、等级。 |
-| `apps/api/src/data_intelligence_hub/services/run_executor_adapters.py` | Modify | 真实 ORM 仓储：run、step、attempt、ledger。 |
-| `apps/api/src/data_intelligence_hub/services/run_collector_call.py` | Modify | 按 `RunStepSpec` 与 attempt 创建 `task_runs`，返回回执。 |
-| `apps/api/src/data_intelligence_hub/services/run_service.py` | Create | 创建 run、同步执行、scheduler 入队。 |
+| `apps/api/src/data_intelligence_hub/services/run_step_runner.py` | Create | 单个 step 的 attempt 循环、重试、重试审计、账本。 |
+| `apps/api/src/data_intelligence_hub/services/run_executor.py` | Modify | 多步骤编排、依赖、取消、聚合、等级、生命周期审计。 |
+| `apps/api/src/data_intelligence_hub/services/run_executor_adapters.py` | Modify | 真实 ORM 仓储：run、step、attempt、ledger；`OrmRunAuditSink` 写 `audit_events`；`OrmRunLimitsResolver` 调用 C5 `resolve_run_limits`。 |
+| `apps/api/src/data_intelligence_hub/services/run_collector_call.py` | Modify | 按 `RunStepSpec` 与 attempt 创建 `task_runs`，返回回执；透传 C5 `RunLimits` 并让 `RunLimitExceededError` 立即停止。 |
+| `apps/api/src/data_intelligence_hub/services/run_service.py` | Create | 创建 run（写 `run.created`）、同步执行、scheduler 入队；re-export `cancel_task_runs`、`RunCancellationResult`、`CancellationError` 供 C13。 |
 | `apps/api/src/data_intelligence_hub/services/quick_collect_service.py` | Modify | 同步 quick 走 run。 |
 | `apps/api/src/data_intelligence_hub/services/task_service.py` | Modify | task run-now 走 run。 |
 | `apps/api/src/data_intelligence_hub/scheduler/service.py` | Modify | 到期任务只入队。 |
 | `apps/api/src/data_intelligence_hub/services/run_queue_worker.py` | Modify | handler 接收租约回调。 |
-| `apps/api/src/data_intelligence_hub/services/run_worker_runtime.py` | Modify | 传入 checkpoint 与租约回调。 |
-| `apps/api/src/data_intelligence_hub/repositories/runs.py` | Modify | 取消清租约，读取最终 `task_runs`。 |
+| `apps/api/src/data_intelligence_hub/services/run_worker_runtime.py` | Modify | 传入 checkpoint、租约回调与审计 sink。 |
+| `apps/api/src/data_intelligence_hub/repositories/runs.py` | Modify | 取消原子领取、读取最终 `task_runs`。 |
+| `apps/api/src/data_intelligence_hub/schemas/run.py` | Modify | `RunCancelRequest`：必填 `idempotency_key` 与 `reason_code`。 |
+| `apps/api/src/data_intelligence_hub/api/routes/runs.py` | Modify | 取消请求体、重放响应头、冲突与不可取消映射；创建新 run 时写 `run.created`。 |
 | `apps/api/src/data_intelligence_hub/core/config.py` | Modify | worker 与重试配置。 |
 | `apps/api/src/data_intelligence_hub/main.py` | Modify | 传递 worker 配置。 |
-| `apps/api/src/data_intelligence_hub/schemas/health.py` | Modify | 暴露 `run_worker_enabled`。 |
-| `apps/api/src/data_intelligence_hub/api/routes/health.py` | Modify | 写入 `run_worker_enabled`。 |
+| `apps/api/src/data_intelligence_hub/schemas/health.py` | Modify | 暴露 `run_worker_enabled` 与 `run_execution_convergence_enabled`。 |
+| `apps/api/src/data_intelligence_hub/api/routes/health.py` | Modify | 写入 `run_worker_enabled` 与 `run_execution_convergence_enabled`。 |
 | `configs/deploy/scrapy/docker-compose.yml` | Modify | 生产 A/B 共用的 worker、收敛与重试开关；默认 false。 |
 | `apps/api/.env.example` | Modify | 本地配置示例。 |
-| `apps/api/tests/unit/run_executor_fakes.py` | Create | 执行器测试替身。 |
-| `apps/api/tests/unit/test_run_step_attempt_migration.py` | Create | 迁移与模型测试。 |
+| `apps/api/tests/unit/run_executor_fakes.py` | Create | 执行器测试替身，含 `FakeAuditSink`。 |
+| `apps/api/tests/unit/test_run_step_attempt_migration.py` | Create | 迁移与模型测试（含取消幂等列）。 |
 | `apps/api/tests/unit/test_run_retry.py` | Create | 重试策略测试。 |
 | `apps/api/tests/unit/test_run_step_plan.py` | Create | 步骤计划测试。 |
 | `apps/api/tests/unit/test_run_executor_multi_step.py` | Create | 多步骤编排测试。 |
-| `apps/api/tests/unit/test_run_step_runner.py` | Create | attempt 与重试测试。 |
+| `apps/api/tests/unit/test_run_step_runner.py` | Create | attempt 与重试测试（含重试审计）。 |
 | `apps/api/tests/unit/test_run_executor_orm.py` | Create | ORM 装配测试。 |
+| `apps/api/tests/unit/test_run_cancel_idempotency.py` | Create | 取消同键重放、同键不同参数冲突、并发只释放一次预算。 |
+| `apps/api/tests/unit/test_run_audit_events.py` | Create | 七类 run 生命周期审计动作、载荷、失败/取消不发 `run.completed`。 |
+| `apps/api/tests/unit/test_run_limit_enforcement.py` | Create | `max_pages` / `max_records` 的 `None`、`0`、超限停止与不写剩余记录。 |
 | `apps/api/tests/unit/test_legacy_run_entrypoints.py` | Create | 旧入口扫描守卫。 |
 | `apps/api/tests/unit/test_run_worker_settings.py` | Create | 开关、配置、健康测试。 |
+| `apps/api/tests/unit/test_run_completed_event.py` | Create | `run.completed` 事件载荷、一次性、失败/取消不发、无 C8 import。 |
 | `apps/api/tests/unit/test_deploy_worker_facts.py` | Create | A/B compose 事实测试。 |
 
 ## 追溯矩阵
 
 | 范围 | 任务 |
 |---|---|
+| 隔离 worktree 与本地命令根 | Task 0 |
 | 多步骤 run | Task 3、Task 5、Task 5 测试 |
 | 每 attempt 处理，保持 `run_steps` 1─1 `task_runs` | Task 1、Task 5、Task 6、Task 7 |
 | 瞬态重试 | Task 2、Task 7 |
 | 取消 | Task 8、Task 9 |
+| 取消幂等（同键重放、同键不同参数冲突、并发只释放一次预算） | Task 1、Task 9、Task 16 |
+| run 生命周期统一审计（created / cancel requested / cancelled / retry scheduled / retry exhausted / completed / failed） | Task 1、Task 5、Task 6、Task 7、Task 9、Task 10、Task 16 |
+| 消费 C5 run limits 与 `max_pages` / `max_records` | Task 5、Task 6、Task 16 |
 | 租约 | Task 8 |
 | 旧 quick / scheduler / task run-now 收敛 | Task 10、Task 11、Task 12、Task 13 |
+| `run.completed` 质量链交接 | Task 5、Task 6、Task 16 |
 | worker 开关 | Task 14 |
 | A/B compose 正确事实 | Task 15 |
 | 迁移 062 | Task 1 |
@@ -110,23 +137,84 @@
 
 ---
 
-### Task 1: 迁移 062 与 `run_step_attempts` 模型
+### Task 0: 隔离 worktree 与本地命令根
+
+**Files:**
+- 不改代码。只创建执行工作树，复制本计划，并同步依赖。
+
+**Interfaces:**
+- Consumes: 前置分支 `feat/gov-c5`；主工作树中的本计划文件。
+- Produces: 分支 `feat/gov-c6` 与 worktree `/Users/lute/Project/data_scrapy-gov-c6`；后续所有 Run/Commit 命令只在 worktree 执行。不通过就停止。
+
+- [ ] **Step 0: 从 C5 分支创建独立 worktree**
+
+Run（只在主工作树执行 `git worktree prune`、前驱断言与 `cp` 源；后续所有 Run/Commit 都在新工作树）:
+
+```bash
+cd /Users/lute/Project/data_scrapy
+git worktree prune
+git rev-parse --verify feat/gov-c5^{commit}
+test ! -e /Users/lute/Project/data_scrapy-gov-c6 && echo "worktree_path_free"
+git branch --list feat/gov-c6
+git worktree add /Users/lute/Project/data_scrapy-gov-c6 -b feat/gov-c6 feat/gov-c5
+cd /Users/lute/Project/data_scrapy-gov-c6
+test "$(git branch --show-current)" = feat/gov-c6 && echo "branch=feat/gov-c6"
+git merge-base --is-ancestor feat/gov-c5 HEAD; echo "c5_ancestor=$?"
+mkdir -p docs/superpowers/plans
+test -f docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md || cp /Users/lute/Project/data_scrapy/docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md docs/superpowers/plans/
+cd apps/api && uv sync
+cd /Users/lute/Project/data_scrapy-gov-c6
+git status --porcelain
+```
+
+Expected:
+
+```text
+worktree_path_free
+branch=feat/gov-c6
+c5_ancestor=0
+```
+
+`git rev-parse --verify feat/gov-c5^{commit}` 必须输出 C5 提交 SHA。`feat/gov-c5` 不存在、`/Users/lute/Project/data_scrapy-gov-c6` 已存在、`feat/gov-c6` 已存在、分支名不是 `feat/gov-c6` 或 `c5_ancestor` 非 0 时停止。`uv sync` 在 `apps/api` 建立 `.venv`。`git status --porcelain` 只允许为空或一行 `?? docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md`；为空时说明前置分支已包含本计划，跳过下面的 `git add` / `git commit`。需要提交计划时运行：
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c6
+git add docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md
+git commit -m "docs(plan): add c6 run execution convergence plan"
+```
+
+主工作树 `/Users/lute/Project/data_scrapy` 只用于本 Step 的 `git worktree prune`、前驱断言与 `cp` 源；不得在主工作树执行 `git add`、`git commit`、切换分支或运行测试。
+
+- [ ] **Step 1: 确认本地命令根**
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c6
+test "$(git rev-parse --show-toplevel)" = /Users/lute/Project/data_scrapy-gov-c6 && echo "root=ok"
+test -f .gitnexus/run.cjs || bunx gitnexus@latest analyze
+sed -n '/### Task 1/,$p' docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md | rg -n "cd /Users/lute/Project/data_scrapy($|/apps)" || echo "main_tree_commands_after_task0=none"
+```
+
+Expected: `root=ok`；`main_tree_commands_after_task0=none`。后续所有命令都从 `/Users/lute/Project/data_scrapy-gov-c6` 或其 `apps/api` 子目录执行，不得回到主工作树。
+
+---
+
+### Task 1: 迁移 062、`run_step_attempts` 模型与取消幂等列
 
 **Files:**
 - Create: `apps/api/alembic/versions/202610220062_run_step_attempts.py`
 - Create: `apps/api/src/data_intelligence_hub/models/run_attempt.py`
-- Modify: `apps/api/src/data_intelligence_hub/models/run.py`（`RunStep` 扩展列）
+- Modify: `apps/api/src/data_intelligence_hub/models/run.py`（`RunStep` 扩展列、`Run` 取消幂等列）
 - Modify: `apps/api/src/data_intelligence_hub/models/__init__.py`
 - Test: `apps/api/tests/unit/test_run_step_attempt_migration.py`
 
 **Interfaces:**
-- Consumes: C1 已登记 `run_steps.attempt_no`、`depends_on`、`tool_id`、`provider_run_id`、`idempotency_key_hash`、`evidence_grade`、`stage`。master plan 把 `run_step_attempts` 归 C6；attempt 状态复用 `run_steps.status` 的五值子集 `running · success · empty · config_gated · failed`。`run_steps.gap_id` 属于 C8 的 gap 表，C6 不添加。
-- Produces: `RunStepAttempt`、`RunStepAttemptStatus`。表列：`id`、`run_id`、`step_index`、`attempt_number`、`status`、`task_run_id`、`error_reason_code String(80)`、`error_message`、`started_at`、`finished_at`、`created_at`。
+- Consumes: C1 已登记 `run_steps.attempt_no`、`depends_on`、`tool_id`、`provider_run_id`、`idempotency_key_hash`、`evidence_grade`、`stage`；C1 新增登记 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`。master plan 把 `run_step_attempts` 与 062 归 C6；attempt 状态复用 `run_steps.status` 的五值子集 `running · success · empty · config_gated · failed`。`run_steps.gap_id` 属于 C8 的 gap 表，C6 不添加。
+- Produces: `RunStepAttempt`、`RunStepAttemptStatus`、`Run.cancel_idempotency_key_hash`、`Run.cancel_reason_code`。表列：`id`、`run_id`、`step_index`、`attempt_number`、`status`、`task_run_id`、`error_reason_code String(80)`、`error_message`、`started_at`、`finished_at`、`created_at`。`runs` 新增两列与部分唯一索引 `uq_runs_workspace_cancel_idempotency`。
 
 - [ ] **Step 1: 运行前置门禁与影响分析**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 git log -1 --oneline
 cd apps/api
 uv run alembic heads
@@ -134,7 +222,11 @@ rg -n "run_steps.attempt_no|\"attempt_no\"" ../.. --glob '!**/.git/**' --glob '!
 rg -n "run_step_attempts" ../.. --glob '!**/.git/**' --glob '!**/.gitnexus/**'
 rg -n "execution_steps" ../.. --glob '!**/.git/**' --glob '!**/.gitnexus/**'
 rg -n "uq_run_steps_task_run_id" ../.. --glob '!**/.git/**' --glob '!**/.gitnexus/**'
-node /Users/lute/Project/data_scrapy/.gitnexus/run.cjs impact "RunStep" --direction upstream --repo /Users/lute/Project/data_scrapy
+rg -n "cancel_idempotency_key_hash|uq_runs_workspace_cancel_idempotency" ../.. --glob '!**/.git/**' --glob '!**/.gitnexus/**'
+rg -n '"run\.(created|cancel_requested|cancelled|retry_scheduled|retry_exhausted|completed|failed)"' ../.. --glob '!**/.git/**' --glob '!**/.gitnexus/**'
+cd /Users/lute/Project/data_scrapy-gov-c6
+test -f .gitnexus/run.cjs || bunx gitnexus@latest analyze
+node .gitnexus/run.cjs impact "RunStep" --direction upstream --repo .
 ```
 
 Expected:
@@ -144,6 +236,8 @@ Expected:
 - 第二条 `rg` 在 master plan 的迁移表找到 `202610220062` 的 `run_step_attempts`。找不到时停止。
 - 第三条 `rg` 在 C4 计划找到 `execution_steps` 的写入约定。找不到时停止，先回 C4 补计划执行步骤。
 - 第四条 `rg` 在 C1 registry 找到 `uq_run_steps_task_run_id`。找不到时停止，先回 C1 登记。
+- 第五条 `rg` 在 C1 registry 找到 `cancel_idempotency_key_hash`、`cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`。找不到时停止，先回 C1 按“C1 取消幂等登记前置”登记。
+- 第六条 `rg` 在 C1 契约与 C2 计划找到七个审计动作名。`run.cancelled` 与 `run.completed` 必须已登记；另五个缺失时停止，先回 C1 按“C1 审计动作登记前置”登记。
 - `impact` 输出调用方、流程与 `risk`。`risk` 为 HIGH/CRITICAL 时停止并报告。
 
 - [ ] **Step 2: 写失败测试**
@@ -205,6 +299,33 @@ def test_migration_extends_run_steps() -> None:
         assert f'"{column}"' in text
 
 
+def test_migration_adds_run_cancel_idempotency() -> None:
+    text = MIGRATION.read_text(encoding="utf-8")
+    for column in ("cancel_idempotency_key_hash", "cancel_reason_code"):
+        assert f'"{column}"' in text
+    assert "uq_runs_workspace_cancel_idempotency" in text
+    assert "sa.String(length=64)" in text
+    assert "sa.String(length=80)" in text
+
+
+def test_run_model_has_cancel_idempotency_columns() -> None:
+    from data_intelligence_hub.models import Run
+
+    table = Run.__table__
+    assert table.columns["cancel_idempotency_key_hash"].type.length == 64
+    assert table.columns["cancel_reason_code"].type.length == 80
+    index = next(
+        item
+        for item in table.indexes
+        if item.name == "uq_runs_workspace_cancel_idempotency"
+    )
+    assert [column.name for column in index.columns] == [
+        "workspace_id",
+        "cancel_idempotency_key_hash",
+    ]
+    assert index.unique is True
+
+
 def test_model_columns_and_constraints() -> None:
     from data_intelligence_hub.models import RunStep, RunStepAttempt
 
@@ -250,7 +371,7 @@ def test_alembic_has_single_head_062() -> None:
 - [ ] **Step 3: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_attempt_migration.py -q
 ```
 
@@ -385,6 +506,29 @@ __all__ = ["RunStepAttempt", "RunStepAttemptStatus"]
 
 并在 `models/run.py` 导入 `Index` 与 `text`。该索引保证一个 `task_runs` 只被一个逻辑 step 引用。
 
+在同一个文件给 `Run` 类加入 C1 登记的取消幂等列：
+
+```python
+    # 取消幂等。创建幂等用上面的 idempotency_key_hash，两者不得混用。
+    cancel_idempotency_key_hash: Mapped[str | None] = mapped_column(String(64))
+    cancel_reason_code: Mapped[str | None] = mapped_column(String(80))
+```
+
+在 `Run.__table_args__` 加：
+
+```python
+        # 同一工作区下，同一个取消幂等键只能落到一行 run。
+        # 不同键对同一 run 的重复取消是幂等重放，不再命中唯一性。
+        Index(
+            "uq_runs_workspace_cancel_idempotency",
+            "workspace_id",
+            "cancel_idempotency_key_hash",
+            unique=True,
+            postgresql_where=text("cancel_idempotency_key_hash IS NOT NULL"),
+            sqlite_where=text("cancel_idempotency_key_hash IS NOT NULL"),
+        ),
+```
+
 在 `apps/api/src/data_intelligence_hub/models/__init__.py` 的 `models.run_attempt` 导入与 `__all__` 中加入 `RunStepAttempt`、`RunStepAttemptStatus`。不要把它们放进 `models/run.py`。
 
 - [ ] **Step 5: 写迁移**
@@ -401,6 +545,8 @@ Create Date: 2026-10-22
 - C1 v1.1 已登记本表与五值状态。
 - 每次 attempt 一行，拥有自己的 task_runs。
 - run_steps 只关联最终 attempt 的 task_runs，保持 1-1。
+- C6 在 runs 上加取消幂等列与工作区级部分唯一索引；
+  创建幂等列 idempotency_key_hash 不承载取消幂等。
 """
 
 from __future__ import annotations
@@ -442,6 +588,24 @@ def upgrade() -> None:
         sa.Column("evidence_grade", sa.String(length=30), nullable=True),
     )
     op.add_column("run_steps", sa.Column("stage", sa.String(length=10), nullable=True))
+
+    # C6 取消幂等接缝。创建幂等列 idempotency_key_hash 已存在，不得复用。
+    op.add_column(
+        "runs",
+        sa.Column("cancel_idempotency_key_hash", sa.String(length=64), nullable=True),
+    )
+    op.add_column(
+        "runs",
+        sa.Column("cancel_reason_code", sa.String(length=80), nullable=True),
+    )
+    op.create_index(
+        "uq_runs_workspace_cancel_idempotency",
+        "runs",
+        ["workspace_id", "cancel_idempotency_key_hash"],
+        unique=True,
+        postgresql_where=sa.text("cancel_idempotency_key_hash IS NOT NULL"),
+        sqlite_where=sa.text("cancel_idempotency_key_hash IS NOT NULL"),
+    )
 
     op.create_table(
         "run_step_attempts",
@@ -507,6 +671,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index(
+        "uq_runs_workspace_cancel_idempotency",
+        table_name="runs",
+    )
+    op.drop_column("runs", "cancel_reason_code")
+    op.drop_column("runs", "cancel_idempotency_key_hash")
     op.drop_index("uq_run_steps_task_run_id", table_name="run_steps")
     op.drop_index("ix_run_step_attempts_run_step", table_name="run_step_attempts")
     op.drop_table("run_step_attempts")
@@ -522,17 +692,17 @@ def downgrade() -> None:
 - [ ] **Step 6: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_attempt_migration.py -q
 uv run alembic heads
 ```
 
-Expected: 4 passed。`alembic heads` 只有一行 `202610220062 (head)`。
+Expected: 7 passed。`alembic heads` 只有一行 `202610220062 (head)`。
 
-- [ ] **Step 8: 图分析与提交**
+- [ ] **Step 7: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/alembic/versions/202610220062_run_step_attempts.py \
   apps/api/src/data_intelligence_hub/models/run.py \
@@ -553,6 +723,7 @@ Expected: `detect-changes` 不含 `partial: true` 或 `truncated: true`。
 
 **Interfaces:**
 - Produces: `RetryPolicy`、`StepRunRetry` 分类函数。`RetryPolicy.max_attempts`、`delay_for(failed_attempt_number)`、`is_transient_error(exc)`、`is_transient_result(result)`。
+- C5 `RunLimitExceededError` 必须分类为非瞬态（不重试）；`is_transient_error` 显式返回 `False`，不得落入通用 `Exception` 瞬态分支。
 - 后续任务：`RunStepRunner`（Task 7）消费。
 
 - [ ] **Step 1: 写失败测试**
@@ -627,7 +798,7 @@ def test_policy_rejects_invalid_values() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_retry.py -q
 ```
 
@@ -778,7 +949,7 @@ __all__ = ["RetryPolicy"]
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_retry.py -q
 ```
 
@@ -787,7 +958,7 @@ Expected: 6 passed。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_retry.py \
   apps/api/tests/unit/test_run_retry.py
@@ -907,7 +1078,7 @@ async def test_default_source_returns_single_step() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_plan.py -q
 ```
 
@@ -1138,7 +1309,7 @@ __all__ = [
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_plan.py -q
 ```
 
@@ -1147,7 +1318,7 @@ Expected: 8 passed。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_step_plan.py \
   apps/api/tests/unit/test_run_step_plan.py
@@ -1173,7 +1344,7 @@ git commit -m "feat(run): resolve execution step plans"
 - [ ] **Step 1: 运行基线测试**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_executor.py tests/unit/test_run_lease_fence.py tests/unit/test_run_worker_runtime.py -q
 ```
 
@@ -1289,6 +1460,7 @@ class RunRecord(Protocol):
     project_id: uuid.UUID
     task_id: uuid.UUID | None
     workflow_version_id: uuid.UUID | None
+    market_code: str | None
     status: str
     outcome: str | None
     evidence_grade: str | None
@@ -1374,6 +1546,37 @@ class RunRepository(Protocol):
     async def status(self, run_id: uuid.UUID) -> str | None: ...
 
 
+class RunCompletedEventSink(Protocol):
+    """run 终态后的唯一跨切片出口。
+
+    只允许写 `run.completed` 审计事件；不得 import 或调用 C8 质量模块。
+    """
+
+    async def __call__(
+        self,
+        run: RunRecord,
+        steps: tuple[RunStepWrite, ...],
+    ) -> None: ...
+
+
+class RunAuditSink(Protocol):
+    """run 生命周期审计的唯一出口。
+
+    只写 C2 的 `audit_events`。动作名必须在 C1 `audit-actions.v1` 登记。
+    生产只注入一个实现；`run.completed` 可由 `record` 或 `__call__` 写。
+    """
+
+    async def record(
+        self,
+        action: str,
+        run: RunRecord,
+        *,
+        steps: tuple[RunStepWrite, ...] = (),
+        details: dict[str, object] | None = None,
+        result: str = "success",
+    ) -> None: ...
+
+
 class RunStepRepository(Protocol):
     async def list(self, run_id: uuid.UUID) -> list[RunStepWrite]: ...
 
@@ -1454,9 +1657,12 @@ __all__ = [
     "RUN_STATUS_FAILED",
     "RUN_STATUS_QUEUED",
     "RUN_STATUS_RUNNING",
+    "RunAuditSink",
+    "RunCompletedEventSink",
     "RunLeaseLostError",
     "RunLedgerRepository",
     "RunLedgerWrite",
+    "RunLimitsResolver",
     "RunNotFoundError",
     "RunRecord",
     "RunRepository",
@@ -1465,6 +1671,7 @@ __all__ = [
     "STEP_STATUS_BY_OUTCOME",
     "UnitOfWork",
     "resolve_outcome",
+    "unlimited_run_limits",
 ]
 ```
 
@@ -1531,7 +1738,7 @@ from data_intelligence_hub.tool_catalog.evidence_thresholds import (
 - [ ] **Step 5: 运行基线测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_executor.py tests/unit/test_run_lease_fence.py tests/unit/test_run_worker_runtime.py -q
 uv run ruff check src/data_intelligence_hub/services
 ```
@@ -1541,7 +1748,7 @@ Expected: 通过数与 Step 1 相同。ruff 无错误。
 - [ ] **Step 6: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_execution_contracts.py \
   apps/api/src/data_intelligence_hub/services/run_executor.py \
@@ -1564,16 +1771,20 @@ git commit -m "refactor(run): extract execution contracts"
 - Test: `apps/api/tests/unit/test_run_executor.py`
 - Test: `apps/api/tests/unit/test_run_executor_multi_step.py`
 - Test: `apps/api/tests/unit/test_run_collector_call_guard.py`
+- Test: `apps/api/tests/unit/test_run_limit_enforcement.py`
 
 **Interfaces:**
-- Consumes: `RunStepSpec`、`RunStepSource`（Task 3）。
+- Consumes: `RunStepSpec`、`RunStepSource`（Task 3）；C5 `services.run_limits.resolve_run_limits`、`RunLimits`、`RunLimitExceededError`。
 - Produces:
   - `CollectorCallReceipt(result, task_run_id, error)`
   - `RunStepAttemptWrite`
   - `RunStepAttemptStatus`
   - `RunStepResult(step, cancelled)`
-  - `RunStepRunner.run(run, spec, *, is_cancelled=None) -> StepRunResult`
+  - `RunLimitsResolver` / `unlimited_run_limits`：生产解析 C5 run limits，测试默认不限制
+  - `RunStepRunner.run(run, spec, *, limits=None, is_cancelled=None) -> StepRunResult`
   - `RunExecutionResult(run, steps, last_task_run_id)`
+  - `RunCompletedEventSink(run, steps)`：只发 `run.completed` 审计事件，不调用 C8
+  - `RunAuditSink.record(action, run, *, steps=(), details=None, result=...)`：写七类 run 生命周期审计事件
   - `RunExecutor.execute_detailed(run_id, *, lease_valid=None, checkpoint=None) -> RunExecutionResult`
 
 - [ ] **Step 1: 写失败测试**
@@ -1609,6 +1820,7 @@ class FakeRun:
     project_id: uuid.UUID = field(default_factory=uuid.uuid4)
     task_id: uuid.UUID | None = field(default_factory=uuid.uuid4)
     workflow_version_id: uuid.UUID | None = None
+    market_code: str | None = "US"
     status: str = "queued"
     outcome: str | None = None
     evidence_grade: str | None = None
@@ -1737,6 +1949,7 @@ class FakeCollectorCall:
         step: object,
         attempt_number: int,
         step_id: uuid.UUID | None = None,
+        limits: object | None = None,
     ) -> CollectorCallReceipt:
         self.calls.append((run.id, getattr(step, "step_index"), attempt_number))
         result = self._results.pop(0)
@@ -1960,13 +2173,15 @@ async def test_existing_terminal_step_is_not_re_executed_on_resume() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_executor_multi_step.py -q
 ```
 
 Expected: FAIL。`RunExecutor` 没有 `execute_detailed`，没有 `step_source`/`attempts` 参数。
 
 - [ ] **Step 3: 扩展共享契约**
+
+Task 4 已定义 `RunCompletedEventSink` 与 `RunAuditSink`；本任务不重复定义这两个 Protocol，只新增 `RunStepSpec`、`RunStepAttemptStatus`、`RunStepAttemptWrite`、`CollectorCallReceipt`、`RunExecutionResult` 与 `RunStepAttemptRepository`。
 
 在 `run_execution_contracts.py` 加入（同时在文件头加入 `from enum import StrEnum`）：
 
@@ -2028,6 +2243,15 @@ class RunExecutionResult:
         return None
 
 
+class RunLimitsResolver(Protocol):
+    async def __call__(self, run: RunRecord) -> RunLimits: ...
+
+
+async def unlimited_run_limits(run: RunRecord) -> RunLimits:
+    """测试与旧入口默认值；生产必须注入 C5 的 resolve_run_limits。"""
+    return RunLimits(max_pages=None, max_records=None)
+
+
 class CollectorCall(Protocol):
     async def __call__(
         self,
@@ -2035,6 +2259,7 @@ class CollectorCall(Protocol):
         step: RunStepSpec,
         attempt_number: int,
         step_id: uuid.UUID,
+        limits: RunLimits,
     ) -> CollectorCallReceipt: ...
 
 
@@ -2053,7 +2278,7 @@ class RunStepAttemptRepository(Protocol):
     ) -> None: ...
 ```
 
-`RunStepSpec` 与 `RunStepSource` 从 `run_step_plan` 导入会形成循环。把这两个类移到本模块，`run_step_plan` 改为从本模块导入并重新导出 `RunStepSpec` 与 `RunStepSource`。同步更新两处 `__all__`。`RunBudget` 的唯一权威定义是 C5 的 `services/run_budget.py`；本模块不定义也不复制它，需要该类型的模块直接从 `services.run_budget` 导入或原样 re-export。`StrEnum` 已从 `enum` 导入。
+`RunStepSpec` 与 `RunStepSource` 从 `run_step_plan` 导入会形成循环。把这两个类移到本模块，`run_step_plan` 改为从本模块导入并重新导出 `RunStepSpec` 与 `RunStepSource`。同步更新两处 `__all__`。`RunBudget` 的唯一权威定义是 C5 的 `services/run_budget.py`；本模块不定义也不复制它，需要该类型的模块直接从 `services.run_budget` 导入或原样 re-export。`RunLimits` 从 C5 的 `services.run_limits` 导入；`StrEnum` 已从 `enum` 导入。
 
 - [ ] **Step 4: 写 `run_step_runner.py`（单次 attempt）**
 
@@ -2081,6 +2306,7 @@ from data_intelligence_hub.services.run_execution_contracts import (
     CollectorCallReceipt,
     RunLedgerRepository,
     RunLedgerWrite,
+    RunAuditSink,
     RunLeaseLostError,
     RunRecord,
     RunStepAttemptRepository,
@@ -2090,6 +2316,7 @@ from data_intelligence_hub.services.run_execution_contracts import (
     RunStepWrite,
     resolve_outcome,
 )
+from data_intelligence_hub.services.run_limits import RunLimits
 from data_intelligence_hub.services.run_retry import RetryPolicy
 
 Clock = Callable[[], datetime]
@@ -2121,12 +2348,14 @@ class RunStepRunner:
         policy: RetryPolicy | None = None,
         sleep: Sleep | None = None,
         clock: Clock | None = None,
+        audit: RunAuditSink | None = None,
     ) -> None:
         self._attempts = attempts
         self._collector_call = collector_call
         self._policy = policy or RetryPolicy()
         self._sleep = sleep or asyncio.sleep
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._audit = audit
 
     async def run(
         self,
@@ -2134,11 +2363,13 @@ class RunStepRunner:
         spec: RunStepSpec,
         *,
         step_id: uuid.UUID,
+        limits: RunLimits | None = None,
         lease_valid: Callable[[], bool] | None = None,
         is_cancelled: CancellationCheck | None = None,
     ) -> RunStepResult:
         lease_valid = lease_valid or _always_valid
         is_cancelled = is_cancelled or _never_cancelled
+        limits = limits or RunLimits(max_pages=None, max_records=None)
         if await is_cancelled():
             return RunStepResult(step=None, cancelled=True)
         if not lease_valid():
@@ -2161,7 +2392,7 @@ class RunStepRunner:
                 created_at=started_at,
             )
         )
-        receipt = await self._collect(run, spec, 1, step_id=step_id)
+        receipt = await self._collect(run, spec, 1, step_id=step_id, limits=limits)
         finished_at = self._clock()
         result = receipt.result
         if result is not None:
@@ -2221,9 +2452,16 @@ class RunStepRunner:
         attempt_number: int,
         *,
         step_id: uuid.UUID,
+        limits: RunLimits,
     ) -> CollectorCallReceipt:
         try:
-            return await self._collector_call(run, spec, attempt_number, step_id)
+            return await self._collector_call(
+                run,
+                spec,
+                attempt_number,
+                step_id,
+                limits,
+            )
         except Exception as exc:
             return CollectorCallReceipt(result=None, task_run_id=None, error=exc)
 
@@ -2255,10 +2493,13 @@ from types import SimpleNamespace
 
 from data_intelligence_hub.services.run_budget import RunBudget
 from data_intelligence_hub.services.run_execution_contracts import (
+    RunAuditSink,
     RunExecutionResult,
+    RunLimitsResolver,
     RunStepAttemptRepository,
     RunStepSpec,
     RunStepWrite,
+    unlimited_run_limits,
 )
 from data_intelligence_hub.services.run_retry import RetryPolicy
 from data_intelligence_hub.services.run_step_plan import (
@@ -2285,8 +2526,11 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
         attempts: RunStepAttemptRepository | None = None,
         step_source: RunStepSource | None = None,
         budget: RunBudget | None = None,
+        limits: RunLimitsResolver | None = None,
         retry_policy: RetryPolicy | None = None,
         sleep: Callable[[float], Awaitable[None]] | None = None,
+        audit: RunAuditSink | None = None,
+        completed_events: RunCompletedEventSink | None = None,
     ) -> None:
         self._runs = runs
         self._steps = steps
@@ -2297,9 +2541,14 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
         self._attempts = attempts
         self._step_source = step_source or DefaultRunStepSource()
         self._budget = budget
+        self._limits = limits or unlimited_run_limits
         self._retry_policy = retry_policy or RetryPolicy()
         self._sleep = sleep or asyncio.sleep
+        self._audit = audit
+        self._completed_events = completed_events
 ```
+
+`RunRecord` 同时增加 `market_code: str | None`；`RunExecutor.__init__` 增加 `audit: RunAuditSink | None = None` 与 `completed_events: RunCompletedEventSink | None = None`。生产 bundle 只注入 `audit`；`completed_events` 保留为旧测试与旧调用方的兼容口。
 
 把 `execute` 替换为下面的方法。删除旧 `_finish_failed` 与 `_build_ledger_entry`；C6 不写账本，结算由 C5 的 `RunBudget` 适配器完成。把旧单步 `_compute_grade(run, call)` 替换为下面的聚合版本。
 
@@ -2368,8 +2617,10 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
             collector_call=self._collector_call,
             policy=self._retry_policy,
             sleep=self._sleep,
+            audit=self._audit,
         )
         steps_by_index = dict(existing)
+        limits = await self._limits(run)
         cancelled = False
         for spec in specs:
             if spec.step_index in steps_by_index:
@@ -2398,6 +2649,7 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
                 run,
                 spec,
                 step_id=step_id,
+                limits=limits,
                 lease_valid=lease_valid,
                 is_cancelled=lambda: self._is_cancelled(run.id),
             )
@@ -2444,6 +2696,30 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
         run.finished_at = datetime.now(UTC)
         await self._runs.save(run)
         await self._unit_of_work.flush()
+        await self._emit_audit(
+            "run.failed",
+            run,
+            details={"error_message": message},
+            result="failed",
+        )
+
+    async def _emit_audit(
+        self,
+        action: str,
+        run: RunRecord,
+        *,
+        steps: tuple[RunStepWrite, ...] = (),
+        details: dict[str, object] | None = None,
+        result: str = "success",
+    ) -> None:
+        if self._audit is not None:
+            await self._audit.record(
+                action,
+                run,
+                steps=steps,
+                details=details,
+                result=result,
+            )
 
     async def _finalize(
         self,
@@ -2471,6 +2747,25 @@ from data_intelligence_hub.services.run_step_runner import RunStepRunner
             run.evidence_grade = grade.grade.value
         await self._runs.save(run)
         await self._unit_of_work.flush()
+        if run.status == RUN_STATUS_COMPLETED:
+            if self._audit is not None:
+                # 统一审计：run.completed 也走 audit_events，只能一条。
+                await self._audit.record(
+                    "run.completed",
+                    run,
+                    steps=tuple(steps),
+                )
+            elif self._completed_events is not None:
+                # 兼容旧测试与旧调用方；生产 bundle 不再注入该口。
+                await self._completed_events(run, tuple(steps))
+        else:
+            await self._emit_audit(
+                "run.failed",
+                run,
+                steps=tuple(steps),
+                details={"error_message": run.error_message},
+                result="failed",
+            )
 
     async def _settle_budget(
         self,
@@ -2617,9 +2912,261 @@ async def _noop_checkpoint() -> None:
     return None
 ```
 
-- [ ] **Step 6: 改 `RunCollectorCall` 为回执式**
+- [ ] **Step 6: 发 `run.completed` 审计事件**
+
+在 `tests/unit/test_run_completed_event.py` 写失败测试：
+
+```python
+"""C6 只发 run.completed 事件，不依赖 C8。"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from data_intelligence_hub.services.run_executor import RunExecutor
+from data_intelligence_hub.services.run_step_plan import RunStepSpec
+from tests.unit.run_executor_fakes import (
+    FakeAttemptRepository,
+    FakeCollectorCall,
+    FakeGradeRepository,
+    FakeRun,
+    FakeRunRepository,
+    FakeStepRepository,
+    FakeStepSource,
+    FakeUnitOfWork,
+    success_result,
+)
+
+
+def test_executor_does_not_import_c8_quality_modules() -> None:
+    source = Path("src/data_intelligence_hub/services/run_executor.py").read_text(
+        encoding="utf-8"
+    )
+    for forbidden in (
+        "dataset_quality",
+        "market_quality",
+        "evaluate_and_persist_market_quality",
+        "ensure_market_quality",
+    ):
+        assert forbidden not in source
+
+
+def _executor(
+    run: FakeRun,
+    *,
+    results: list,
+    completed_events,
+) -> RunExecutor:
+    return RunExecutor(
+        runs=FakeRunRepository(run),
+        steps=FakeStepRepository(),
+        unit_of_work=FakeUnitOfWork(),
+        collector_call=FakeCollectorCall(results),
+        attempts=FakeAttemptRepository(),
+        step_source=FakeStepSource(
+            [
+                RunStepSpec(
+                    step_index=0,
+                    endpoint_type="generic_web",
+                    collector_type="generic_web",
+                    task_id=run.task_id,
+                )
+            ]
+        ),
+        grades=FakeGradeRepository(),
+        completed_events=completed_events,
+    )
+
+
+@pytest.mark.anyio
+async def test_completed_run_emits_one_event() -> None:
+    run = FakeRun(market_code="US")
+    events: list[tuple[object, tuple[int, ...]]] = []
+
+    async def sink(record, steps) -> None:
+        events.append((record.id, tuple(step.step_index for step in steps)))
+
+    executor = _executor(
+        run,
+        results=[success_result(records_count=3)],
+        completed_events=sink,
+    )
+
+    result = await executor.execute_detailed(run.id)
+
+    assert result.run.status == "completed"
+    assert events == [(run.id, (0,))]
+
+
+@pytest.mark.anyio
+async def test_failed_run_emits_no_completed_event() -> None:
+    run = FakeRun(market_code="US")
+    events: list[object] = []
+
+    async def sink(record, steps) -> None:
+        events.append(record.id)
+
+    executor = _executor(
+        run,
+        results=[success_result(status="failed", outcome="failed", error_message="bad")],
+        completed_events=sink,
+    )
+
+    result = await executor.execute_detailed(run.id)
+
+    assert result.run.status == "failed"
+    assert events == []
+
+
+@pytest.mark.anyio
+async def test_cancelled_run_emits_no_completed_event() -> None:
+    run = FakeRun(market_code="US", status="cancelled")
+    events: list[object] = []
+
+    async def sink(record, steps) -> None:
+        events.append(record.id)
+
+    executor = _executor(
+        run,
+        results=[],
+        completed_events=sink,
+    )
+
+    result = await executor.execute_detailed(run.id)
+
+    assert result.run.status == "cancelled"
+    assert events == []
+```
+Expected: 新测试 FAIL（执行器还没有 sink）。实现后，`RunCompletedEventSink` 在 `execute_detailed` 的 `_finalize` 内、`runs.save` 与 `flush` 之后调用一次；只有 `run.status == "completed"` 才调用。`failed` 与 `cancelled` 路径不调用。载荷只来自 `RunRecord` 与 `RunStepWrite`，不得查询 C8 表。
+
+Run:
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_completed_event.py -q
+```
+Expected: 通过；`events` 恰好一条；失败与取消用例为零条。生产 bundle 注入 `audit=OrmRunAuditSink(session)`，不再注入 `completed_events`；后者只保留给本测试的兼容路径。
+
+- [ ] **Step 6A: 统一生命周期审计测试**
+
+新建 `tests/unit/test_run_audit_events.py`：
+
+```python
+"""run 生命周期统一审计测试。
+
+七类动作分别由创建服务、step runner、取消服务与执行器发出。
+本文件验证执行器终态动作与一次性；其余动作在各自任务的测试中覆盖。
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from data_intelligence_hub.services.run_executor import RunExecutor
+from data_intelligence_hub.services.run_step_plan import RunStepSpec
+from tests.unit.run_executor_fakes import (
+    FakeAttemptRepository,
+    FakeCollectorCall,
+    FakeGradeRepository,
+    FakeRun,
+    FakeRunRepository,
+    FakeStepRepository,
+    FakeStepSource,
+    FakeUnitOfWork,
+    success_result,
+)
+
+
+class FakeAuditSink:
+    def __init__(self) -> None:
+        self.events: list[dict[str, object]] = []
+
+    async def record(self, action, run, *, steps=(), details=None, result="success"):
+        self.events.append(
+            {
+                "action": action,
+                "result": result,
+                "details": dict(details or {}),
+                "step_indexes": [step.step_index for step in steps],
+            }
+        )
+
+
+def _executor(run: FakeRun, *, results: list, audit: FakeAuditSink) -> RunExecutor:
+    return RunExecutor(
+        runs=FakeRunRepository(run),
+        steps=FakeStepRepository(),
+        unit_of_work=FakeUnitOfWork(),
+        collector_call=FakeCollectorCall(results),
+        attempts=FakeAttemptRepository(),
+        step_source=FakeStepSource(
+            [
+                RunStepSpec(
+                    step_index=0,
+                    endpoint_type="generic_web",
+                    collector_type="generic_web",
+                    task_id=run.task_id,
+                )
+            ]
+        ),
+        grades=FakeGradeRepository(),
+        audit=audit,
+    )
+
+
+@pytest.mark.anyio
+async def test_completed_run_emits_exactly_one_run_completed() -> None:
+    run = FakeRun(market_code="US")
+    audit = FakeAuditSink()
+
+    result = await _executor(
+        run,
+        results=[success_result(records_count=3)],
+        audit=audit,
+    ).execute_detailed(run.id)
+
+    assert result.run.status == "completed"
+    assert [event["action"] for event in audit.events] == ["run.completed"]
+    assert audit.events[0]["step_indexes"] == [0]
+    assert audit.events[0]["result"] == "success"
+
+
+@pytest.mark.anyio
+async def test_failed_run_emits_run_failed_not_completed() -> None:
+    run = FakeRun(market_code="US")
+    audit = FakeAuditSink()
+
+    result = await _executor(
+        run,
+        results=[success_result(status="failed", outcome="failed", error_message="bad")],
+        audit=audit,
+    ).execute_detailed(run.id)
+
+    assert result.run.status == "failed"
+    assert [(event["action"], event["result"]) for event in audit.events] == [
+        ("run.failed", "failed"),
+    ]
+
+
+@pytest.mark.anyio
+async def test_cancelled_run_emits_no_terminal_audit() -> None:
+    run = FakeRun(market_code="US", status="cancelled")
+    audit = FakeAuditSink()
+
+    result = await _executor(run, results=[], audit=audit).execute_detailed(run.id)
+
+    assert result.run.status == "cancelled"
+    assert audit.events == []
+```
+
+Expected: 三个用例通过。`run.created` 由 Task 10 验证，`run.retry_scheduled` / `run.retry_exhausted` 由 Task 7 验证，`run.cancel_requested` / `run.cancelled` 由 Task 9 验证。
+
+- [ ] **Step 7: 改 `RunCollectorCall` 为回执式**
 
 C5 已在 `RunCollectorCall` 中写入 `tool_calls`。保留 `start_tool_call` 与 `complete_tool_call`，把幂等键改为 `run:{run.id}:step:{step.step_index}:attempt:{attempt_number}:collector-call`；`tool_calls.step_id` 写逻辑 step 的 `run_steps.id`，不再写 `None`。
+
+C5 run limits 消费：`RunExecutor` 在每次 attempt 前通过 `RunLimitsResolver` 调用 C5 `resolve_run_limits(session, run_id=run.id)`，把 `RunLimits` 作为 `limits` 参数传入 `CollectorCall`。`RunCollectorCall.__call__` 与 `execute_collector_call` 接收 `max_pages` / `max_records`：每次翻页前调用 `limits.check_pages(pages_done)`，每页入库后调用 `limits.check_records(records_done)`；`None` 原样透传，`0` 表示零容忍。`RunLimitExceededError` 不重试、不吞掉，记录为 attempt 失败并立即停止；不得继续请求下一页或写剩余记录。
 
 把导入改为：
 
@@ -2629,6 +3176,7 @@ from data_intelligence_hub.services.run_execution_contracts import (
     RunRecord,
     RunStepSpec,
 )
+from data_intelligence_hub.services.run_limits import RunLimits
 from data_intelligence_hub.services.tool_call_service import (
     complete_tool_call,
     start_tool_call,
@@ -2644,6 +3192,7 @@ from data_intelligence_hub.services.tool_call_service import (
         step: RunStepSpec,
         attempt_number: int,
         step_id: uuid.UUID,
+        limits: RunLimits,
     ) -> CollectorCallReceipt:
         workspace_id = _required_uuid(run, "workspace_id")
         task_id = step.task_id or _required_uuid(run, "task_id")
@@ -2740,6 +3289,8 @@ from data_intelligence_hub.services.tool_call_service import (
                     task_run=task_run,
                     trigger=self._trigger,
                     timeout_seconds=timeout_seconds,
+                    max_pages=limits.max_pages,
+                    max_records=limits.max_records,
                     logs=logs,
                 )
         except Exception as exc:
@@ -2788,12 +3339,13 @@ def _tool_call_outcome(status: str) -> str:
 
 在 `_mark_failed` 末尾删除 `raise`。把 `_task_run_ids` 类型改为 `dict[tuple[uuid.UUID, int, int], uuid.UUID]`。`mirror_evidence_grade` 保留现有回退查询。
 
-- [ ] **Step 7: 更新旧测试替身与断言**
+- [ ] **Step 8: 更新旧测试替身与断言**
 
 - `test_run_executor.py` 改为从 `tests.unit.run_executor_fakes` 导入替身。`FakeCollectorCall` 改为按顺序返回 `CollectionCallReceipt`。
 - `test_run_collector_call_guard.py` 改为：
 
 ```python
+from data_intelligence_hub.services.run_limits import RunLimits
 from data_intelligence_hub.services.run_step_plan import RunStepSpec
 
 step = RunStepSpec(
@@ -2802,25 +3354,31 @@ step = RunStepSpec(
     collector_type="tikhub_social",
     task_id=task_id,
 )
-receipt = await RunCollectorCall(session)(run, step, 1, uuid.uuid4())
+receipt = await RunCollectorCall(session)(
+    run,
+    step,
+    1,
+    uuid.uuid4(),
+    RunLimits(max_pages=None, max_records=None),
+)
 assert isinstance(receipt.error, TaskNotRunnableError)
 ```
 
 - `test_run_worker_runtime.py` 的 `FakeCollectorCall.__call__` 改为 `(run, step, attempt_number)`，返回 `CollectorCallReceipt`。
 
-- [ ] **Step 8: 运行测试并确认通过**
+- [ ] **Step 9: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_executor.py tests/unit/test_run_executor_multi_step.py tests/unit/test_run_collector_call_guard.py tests/unit/test_run_worker_runtime.py -q
 ```
 
 Expected: 全部通过。
 
-- [ ] **Step 9: 图分析与提交**
+- [ ] **Step 10: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs impact "RunExecutor" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_execution_contracts.py \
@@ -2841,14 +3399,17 @@ git commit -m "feat(run): execute multi-step runs with per-attempt records"
 
 **Files:**
 - Modify: `apps/api/src/data_intelligence_hub/services/run_execution_contracts.py`
+- Create: `apps/api/src/data_intelligence_hub/services/run_audit.py`
 - Modify: `apps/api/src/data_intelligence_hub/services/run_executor_adapters.py`
 - Modify: `apps/api/src/data_intelligence_hub/services/run_worker_runtime.py`
 - Test: `apps/api/tests/unit/test_run_executor_orm.py`
 - Test: `apps/api/tests/unit/test_run_worker_runtime.py`
+- Test: `apps/api/tests/unit/test_run_audit_events.py`
 
 **Interfaces:**
-- Produces: `OrmRunStepAttemptRepository`、`OrmRunStepRepository.list`、`OrmRunRepository.status`、`OrmRunRecord.execution_mode`、`OrmRunRecord.total_cost_usd`。
-- `build_run_executor_bundle` 必须注入 `OrmRunStepSource` 与 `OrmRunStepAttemptRepository`。
+- Produces: `OrmRunStepAttemptRepository`、`OrmRunStepRepository.list`、`OrmRunRepository.status`、`OrmRunRecord.execution_mode`、`OrmRunRecord.total_cost_usd`、`OrmRunRecord.market_code`、`OrmRunAuditSink`（`OrmRunCompletedEventSink` 为兼容别名）、`OrmRunLimitsResolver`、`services.run_audit.audit_run_event`。
+- `OrmRunLimitsResolver` 调用 C5 `resolve_run_limits(self._session, run_id=run.id)`，把 `RunLimits` 原样交给执行器；不得在 C6 重新解析 `workbench_tasks.max_pages` / `max_records`。
+- `build_run_executor_bundle` 必须注入 `OrmRunStepSource`、`OrmRunStepAttemptRepository`、`OrmRunAuditSink` 与 `OrmRunLimitsResolver`。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -2949,7 +3510,7 @@ async def test_bundle_writes_step_attempt_and_ledger(
     _, _, run_id = await _seed(factory)
 
     class FakeCall:
-        async def __call__(self, run, step, attempt_number, step_id=None):
+        async def __call__(self, run, step, attempt_number, step_id=None, limits=None):
             return CollectorCallReceipt(
                 result=CollectionCallResult(
                     status="success",
@@ -3001,7 +3562,7 @@ async def test_bundle_uses_injected_budget_instead_of_local_ledger(
             raise AssertionError("cancel")
 
     class FakeCall:
-        async def __call__(self, run, step, attempt_number, step_id=None):
+        async def __call__(self, run, step, attempt_number, step_id=None, limits=None):
             return CollectorCallReceipt(
                 result=CollectionCallResult(
                     status="success",
@@ -3036,7 +3597,7 @@ async def test_bundle_uses_injected_budget_instead_of_local_ledger(
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_executor_orm.py -q
 ```
 
@@ -3079,7 +3640,7 @@ class OrmRunStepRepository:
                 error_message=step.error_message,
                 started_at=step.started_at,
                 finished_at=step.finished_at,
-                attempt_number=step.attempt_number,
+                attempt_no=step.attempt_no,
                 depends_on=list(step.depends_on),
                 tool_id=step.tool_id,
                 provider_run_id=step.provider_run_id,
@@ -3109,7 +3670,7 @@ class OrmRunStepRepository:
             error_message=step.error_message,
             started_at=step.started_at,
             finished_at=step.finished_at,
-            attempt_number=step.attempt_number,
+            attempt_no=step.attempt_no,
             depends_on=list(step.depends_on),
             tool_id=step.tool_id,
             provider_run_id=step.provider_run_id,
@@ -3137,7 +3698,7 @@ class OrmRunStepRepository:
             error_message=row.error_message,
             started_at=row.started_at or datetime.now(UTC),
             finished_at=row.finished_at or datetime.now(UTC),
-            attempt_number=row.attempt_number or 1,
+            attempt_no=row.attempt_no or 1,
             depends_on=tuple(row.depends_on or ()),
             tool_id=row.tool_id,
             provider_run_id=row.provider_run_id,
@@ -3219,6 +3780,10 @@ class OrmRunStepAttemptRepository:
     @total_cost_usd.setter
     def total_cost_usd(self, value: Decimal | None) -> None:
         self._row.total_cost_usd = value
+
+    @property
+    def market_code(self) -> str | None:
+        return self._row.market_code
 ```
 
 `save` 在写入前同步总价，并在 `values` 中包含它。终态仍按 `run_steps` 汇总，避免执行器漏写：
@@ -3239,6 +3804,149 @@ class OrmRunStepAttemptRepository:
 
 账本符号校验与 `record_entry` 归 C5；C6 不修改 `services/run_ledger.py`、`repositories/run_ledger.py` 或 `tests/unit/test_run_ledger.py`。C6 的测试只断言：注入 `FakeBudget` 后不写 `run_ledger_entries`，生产 bundle 注入 `OrmRunBudget`。
 
+先在 `services/run_audit.py` 实现唯一写入口：
+
+```python
+"""run 生命周期统一审计。
+
+唯一审计表是 C2 的 ``audit_events``；唯一写入口是 ``append_audit_event``。
+本模块不 import C8 质量模块，也不写第二张审计表。
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from data_intelligence_hub.services.audit_log import append_audit_event
+
+RUN_AUDIT_ACTIONS: frozenset[str] = frozenset(
+    {
+        "run.created",
+        "run.cancel_requested",
+        "run.cancelled",
+        "run.retry_scheduled",
+        "run.retry_exhausted",
+        "run.completed",
+        "run.failed",
+    }
+)
+
+
+async def audit_run_event(
+    session: AsyncSession,
+    *,
+    action: str,
+    run: Any,
+    steps: tuple[Any, ...] = (),
+    details: dict[str, object] | None = None,
+    result: str = "success",
+) -> None:
+    """追加一条 run 审计事件。动作名必须已在 C1 registry 登记。"""
+    if action not in RUN_AUDIT_ACTIONS:
+        raise ValueError(f"unregistered run audit action: {action}")
+    payload: dict[str, object] = {
+        "run_id": str(run.id),
+        "collection_task_id": str(run.task_id) if run.task_id else None,
+        "workflow_version_id": (
+            str(run.workflow_version_id)
+            if run.workflow_version_id is not None
+            else None
+        ),
+        "run_status": run.status,
+        "outcome": run.outcome,
+    }
+    if action == "run.completed":
+        payload.update(
+            {
+                "market_code": run.market_code,
+                "records_count": run.records_count,
+                "finished_at": (
+                    run.finished_at.isoformat()
+                    if run.finished_at is not None
+                    else None
+                ),
+                "step_indexes": [step.step_index for step in steps],
+            }
+        )
+    payload.update(details or {})
+    await append_audit_event(
+        session,
+        workspace_id=run.workspace_id,
+        project_id=run.project_id,
+        actor_type="system",
+        action=action,
+        resource_type="run",
+        resource_id=str(run.id),
+        result=result,
+        details=payload,
+    )
+
+
+__all__ = ["RUN_AUDIT_ACTIONS", "audit_run_event"]
+```
+
+在 `run_executor_adapters.py` 实现 sink：
+
+```python
+class OrmRunAuditSink:
+    """把 run 生命周期写成 C2 的统一审计事件。
+
+    生产只注入本类。``__call__`` 保留 `run.completed` 兼容口；
+    ``record`` 承载七类动作。不计算质量，不 import C8。
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def __call__(
+        self,
+        run: RunRecord,
+        steps: tuple[RunStepWrite, ...],
+    ) -> None:
+        await self.record("run.completed", run, steps=steps)
+
+    async def record(
+        self,
+        action: str,
+        run: RunRecord,
+        *,
+        steps: tuple[RunStepWrite, ...] = (),
+        details: dict[str, object] | None = None,
+        result: str = "success",
+    ) -> None:
+        await audit_run_event(
+            self._session,
+            action=action,
+            run=run,
+            steps=steps,
+            details=details,
+            result=result,
+        )
+
+
+# 兼容旧计划与旧测试中的名字。
+OrmRunCompletedEventSink = OrmRunAuditSink
+
+
+class OrmRunLimitsResolver:
+    """只调用 C5 的 resolve_run_limits，不在 C6 重新解析 workbench_tasks。"""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def __call__(self, run: RunRecord) -> RunLimits:
+        return await resolve_run_limits(self._session, run_id=run.id)
+```
+
+在 `run_executor_adapters.py` 导入：
+
+```python
+from data_intelligence_hub.services.run_audit import audit_run_event
+from data_intelligence_hub.services.run_limits import RunLimits, resolve_run_limits
+```
+
 - [ ] **Step 4: 装配生产执行器**
 
 在 `run_worker_runtime.py` 的 `build_run_executor_bundle` 中：
@@ -3247,6 +3955,8 @@ class OrmRunStepAttemptRepository:
 from data_intelligence_hub.services.run_budget import OrmRunBudget, RunBudget
 from data_intelligence_hub.services.run_executor_adapters import (
     OrmGradeRepository,
+    OrmRunAuditSink,
+    OrmRunLimitsResolver,
     OrmRunRepository,
     OrmRunStepAttemptRepository,
     OrmRunStepRepository,
@@ -3271,6 +3981,8 @@ def build_run_executor_bundle(
         attempts=OrmRunStepAttemptRepository(session),
         step_source=OrmRunStepSource(session),
         budget=budget,
+        limits=OrmRunLimitsResolver(session),
+        audit=OrmRunAuditSink(session),
         **grade_options,
     )
 ```
@@ -3291,8 +4003,8 @@ def build_run_executor_bundle(
 - [ ] **Step 5: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
-uv run pytest tests/unit/test_run_executor_orm.py tests/unit/test_run_executor.py tests/unit/test_run_worker_runtime.py tests/unit/test_run_lease_fence.py -q
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_executor_orm.py tests/unit/test_run_executor.py tests/unit/test_run_worker_runtime.py tests/unit/test_run_lease_fence.py tests/unit/test_run_audit_events.py -q
 ```
 
 Expected: 全部通过。worker 成功路径现在同时写 `run_steps` 与 `run_step_attempts`。
@@ -3300,13 +4012,15 @@ Expected: 全部通过。worker 成功路径现在同时写 `run_steps` 与 `run
 - [ ] **Step 6: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_execution_contracts.py \
+  apps/api/src/data_intelligence_hub/services/run_audit.py \
   apps/api/src/data_intelligence_hub/services/run_executor_adapters.py \
   apps/api/src/data_intelligence_hub/services/run_worker_runtime.py \
   apps/api/tests/unit/test_run_executor_orm.py \
-  apps/api/tests/unit/test_run_worker_runtime.py
+  apps/api/tests/unit/test_run_worker_runtime.py \
+  apps/api/tests/unit/test_run_audit_events.py
 git commit -m "feat(run): wire ORM step and attempt repositories"
 ```
 
@@ -3319,10 +4033,11 @@ git commit -m "feat(run): wire ORM step and attempt repositories"
 - Modify: `apps/api/src/data_intelligence_hub/services/run_executor.py`
 - Test: `apps/api/tests/unit/test_run_step_runner.py`
 - Test: `apps/api/tests/unit/test_run_executor_multi_step.py`
+- Test: `apps/api/tests/unit/test_run_audit_events.py`
 
 **Interfaces:**
-- Consumes: `RetryPolicy`（Task 2）。
-- Produces: `RunStepRunner.run(..., lease_valid=None, is_cancelled=None)`。每次 attempt 一行 attempt。最终 step 的成本是各 attempt 成本之和，记录数取最终 attempt。
+- Consumes: `RetryPolicy`（Task 2）、`RunAuditSink`（Task 4）。
+- Produces: `RunStepRunner.run(..., lease_valid=None, is_cancelled=None)`。每次 attempt 一行 attempt。最终 step 的成本是各 attempt 成本之和，记录数取最终 attempt。瞬态失败且还会重试时写 `run.retry_scheduled`；最后一次瞬态失败写 `run.retry_exhausted`；非瞬态失败不写重试事件。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -3357,7 +4072,7 @@ class SequencedCall:
         self._steps = list(steps)
         self.calls: list[int] = []
 
-    async def __call__(self, run, step, attempt_number, step_id=None):
+    async def __call__(self, run, step, attempt_number, step_id=None, limits=None):
         self.calls.append(attempt_number)
         item = self._steps.pop(0)
         if isinstance(item, BaseException):
@@ -3371,6 +4086,14 @@ class FakeSleep:
 
     async def __call__(self, delay: float) -> None:
         self.delays.append(delay)
+
+
+class FakeAuditSink:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict[str, object], str]] = []
+
+    async def record(self, action, run, *, steps=(), details=None, result="success"):
+        self.events.append((action, dict(details or {}), result))
 
 
 def _success(records: int = 5, cost: str = "0.5", task_run_id=None) -> CollectorCallReceipt:
@@ -3468,6 +4191,52 @@ async def test_retry_budget_exhaustion_marks_step_failed() -> None:
     assert len(attempts.attempts) == 3
 
 
+async def test_transient_retry_emits_scheduled_then_exhausted() -> None:
+    audit = FakeAuditSink()
+    attempts = FakeAttemptRepository()
+    runner = RunStepRunner(
+        attempts=attempts,
+        collector_call=SequencedCall([
+            TimeoutError("timeout-1"),
+            TimeoutError("timeout-2"),
+        ]),
+        policy=RetryPolicy(max_attempts=2, base_delay_seconds=1.0),
+        sleep=FakeSleep(),
+        audit=audit,
+    )
+
+    result = await runner.run(FakeRun(), _spec(), step_id=uuid.uuid4())
+
+    assert result.step is not None
+    assert result.step.status == "failed"
+    assert [event[0] for event in audit.events] == [
+        "run.retry_scheduled",
+        "run.retry_exhausted",
+    ]
+    scheduled = audit.events[0][1]
+    assert scheduled["attempt_number"] == 1
+    assert scheduled["next_attempt_number"] == 2
+    assert scheduled["reason_code"] == "timeout"
+    assert audit.events[1][2] == "failed"
+
+
+async def test_non_transient_failure_emits_no_retry_audit() -> None:
+    audit = FakeAuditSink()
+    runner = RunStepRunner(
+        attempts=FakeAttemptRepository(),
+        collector_call=SequencedCall([CollectionPolicyDenied("blocked", code="robots")]),
+        policy=RetryPolicy(max_attempts=3),
+        sleep=FakeSleep(),
+        audit=audit,
+    )
+
+    result = await runner.run(FakeRun(), _spec(), step_id=uuid.uuid4())
+
+    assert result.step is not None
+    assert result.step.status == "failed"
+    assert audit.events == []
+
+
 async def test_cancellation_between_attempts_stops_retry() -> None:
     state = {"cancelled": False}
 
@@ -3505,7 +4274,7 @@ async def test_lease_loss_raises_before_next_attempt() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_runner.py -q
 ```
 
@@ -3524,12 +4293,14 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
         policy: RetryPolicy | None = None,
         sleep: Sleep | None = None,
         clock: Clock | None = None,
+        audit: RunAuditSink | None = None,
     ) -> None:
         self._attempts = attempts
         self._collector_call = collector_call
         self._policy = policy or RetryPolicy()
         self._sleep = sleep or asyncio.sleep
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._audit = audit
 ```
 
 把 `run` 替换为：
@@ -3541,11 +4312,13 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
         spec: RunStepSpec,
         *,
         step_id: uuid.UUID,
+        limits: RunLimits | None = None,
         lease_valid: Callable[[], bool] | None = None,
         is_cancelled: CancellationCheck | None = None,
     ) -> RunStepResult:
         lease_valid = lease_valid or _always_valid
         is_cancelled = is_cancelled or _never_cancelled
+        limits = limits or RunLimits(max_pages=None, max_records=None)
 
         max_attempts = spec.max_attempts or self._policy.max_attempts
         first_started_at: datetime | None = None
@@ -3593,6 +4366,7 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
                 spec,
                 attempt_number,
                 step_id=step_id,
+                limits=limits,
             )
             finished_at = self._clock()
             result = receipt.result
@@ -3657,6 +4431,15 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
                         cancelled=True,
                     )
                 delay = self._policy.delay_for(attempt_number)
+                await self._emit_retry_audit(
+                    "run.retry_scheduled",
+                    run,
+                    spec,
+                    attempt_number,
+                    next_attempt_number=attempt_number + 1,
+                    delay_seconds=delay,
+                    reason_code=reason,
+                )
                 if not await self._sleep_interruptibly(delay, is_cancelled):
                     return RunStepResult(
                         step=self._failed(
@@ -3679,6 +4462,15 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
                     )
                 attempt_number += 1
                 continue
+
+            if transient:
+                await self._emit_retry_audit(
+                    "run.retry_exhausted",
+                    run,
+                    spec,
+                    attempt_number,
+                    reason_code=reason,
+                )
 
             return RunStepResult(
                 step=self._failed_or_success(
@@ -3718,6 +4510,36 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
             remaining -= chunk
         return True
 
+    async def _emit_retry_audit(
+        self,
+        action: str,
+        run: RunRecord,
+        spec: RunStepSpec,
+        attempt_number: int,
+        *,
+        next_attempt_number: int | None = None,
+        delay_seconds: float | None = None,
+        reason_code: str | None = None,
+    ) -> None:
+        if self._audit is None:
+            return
+        details: dict[str, object] = {
+            "step_index": spec.step_index,
+            "attempt_number": attempt_number,
+        }
+        if next_attempt_number is not None:
+            details["next_attempt_number"] = next_attempt_number
+        if delay_seconds is not None:
+            details["delay_seconds"] = delay_seconds
+        if reason_code is not None:
+            details["reason_code"] = reason_code
+        await self._audit.record(
+            action,
+            run,
+            details=details,
+            result="failed" if action == "run.retry_exhausted" else "success",
+        )
+
     def _failed_or_success(self, run, spec, step_id, attempt_number, outcome,
                            records_count, step_cost, task_run_id, error_message,
                            unit, quantity, unit_price, started_at,
@@ -3739,7 +4561,7 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
             error_message=error_message if outcome == OUTCOME_FAILED else None,
             started_at=started_at,
             finished_at=finished_at,
-            attempt_number=attempt_number,
+            attempt_no=attempt_number,
             depends_on=spec.depends_on,
             tool_id=spec.endpoint_type or None,
         )
@@ -3772,7 +4594,7 @@ Expected: FAIL。`RunStepRunner` 不接受 `policy`、`sleep`、`lease_valid`。
             error_message=reason,
             started_at=started_at or now,
             finished_at=now,
-            attempt_number=attempt_number,
+            attempt_no=attempt_number,
             depends_on=spec.depends_on,
             tool_id=spec.endpoint_type or None,
         )
@@ -3795,6 +4617,8 @@ def _always_valid() -> bool:
             result = await runner.run(
                 run,
                 spec,
+                step_id=step_id,
+                limits=limits,
                 lease_valid=lease_valid,
                 is_cancelled=lambda: self._is_cancelled(run.id),
             )
@@ -3803,7 +4627,7 @@ def _always_valid() -> bool:
 - [ ] **Step 5: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_step_runner.py tests/unit/test_run_executor_multi_step.py -q
 ```
 
@@ -3812,13 +4636,14 @@ Expected: 全部通过。
 - [ ] **Step 6: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs impact "RunStepRunner" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_step_runner.py \
   apps/api/src/data_intelligence_hub/services/run_executor.py \
   apps/api/tests/unit/test_run_step_runner.py \
-  apps/api/tests/unit/test_run_executor_multi_step.py
+  apps/api/tests/unit/test_run_executor_multi_step.py \
+  apps/api/tests/unit/test_run_audit_events.py
 git commit -m "feat(run): retry transient step failures per attempt"
 ```
 
@@ -3873,7 +4698,7 @@ async def test_lease_loss_before_second_step_raises() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_queue.py tests/unit/test_run_executor_multi_step.py -q
 ```
 
@@ -3939,7 +4764,7 @@ RunHandler = Callable[[ClaimedRun, Callable[[], bool]], Awaitable[None]]
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_queue.py tests/unit/test_run_worker_runtime.py tests/unit/test_run_executor_multi_step.py tests/unit/test_run_lease_fence.py -q
 ```
 
@@ -3948,7 +4773,7 @@ Expected: 全部通过。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_queue_worker.py \
   apps/api/src/data_intelligence_hub/services/run_worker_runtime.py \
@@ -3960,23 +4785,219 @@ git commit -m "feat(run): fence worker execution by lease"
 
 ---
 
-### Task 9: 取消语义与路由
+### Task 9: 取消语义、取消幂等与路由
 
 **Files:**
+- Create: `apps/api/src/data_intelligence_hub/services/run_cancel_service.py`
+- Modify: `apps/api/src/data_intelligence_hub/services/run_service.py`（re-export `cancel_task_runs`、`RunCancellationResult`、`CancellationError`）
 - Modify: `apps/api/src/data_intelligence_hub/repositories/runs.py`
+- Modify: `apps/api/src/data_intelligence_hub/schemas/run.py`
+- Modify: `apps/api/src/data_intelligence_hub/api/routes/runs.py`
 - Test: `apps/api/tests/unit/test_run_routes.py`
+- Test: `apps/api/tests/unit/test_run_cancel_idempotency.py`
 - Test: `apps/api/tests/unit/test_run_executor_multi_step.py`
+- Test: `apps/api/tests/unit/test_run_audit_events.py`
 
 **Interfaces:**
-- `cancel_run` 写入 `status=cancelled`、`finished_at`、`lease_expires_at=NULL`。保留 `worker_id` 供围栏与审计。
-- 取消后调用 C5 的 `OrmRunBudget.cancel(run)` 释放 quota 预留；没有 reserve 时幂等返回。
+- Consumes: C1 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code`、`uq_runs_workspace_cancel_idempotency`；C5 `OrmRunBudget.cancel`；C2 `append_audit_event`。
+- Produces:
+  - `hash_cancel_idempotency_key(key: str) -> str` = `sha256("run-cancel.v1:{key}")`。
+  - `CancelClaim(run, claimed)`（`repositories/runs.py`）。
+  - `RunCancelResult(run, replayed)`、`cancel_run(session, *, workspace_id, run_id, idempotency_key, reason_code) -> RunCancelResult`。
+  - `RunCancelConflictError`（409 `idempotency_conflict`）、`RunNotCancellableError`（409 `run_not_cancellable`）。
+- 语义：同键同参重放原结果；同键不同参 `idempotency_conflict`；不同键对已取消 run 幂等重放；只有胜出事务调用 `OrmRunBudget.cancel`，预算预留只释放一次。
+- `services.run_service.cancel_task_runs(session, *, workspace_id, project_id, task_id, idempotency_key, reason_code) -> RunCancellationResult`：C13 的任务级唯一入口。查询该任务全部 `queued · running` run，逐个复用 `run_cancel_service.cancel_run` 的原子接缝；汇总 `cancelled_run_ids`、`preserved_artifact_ids=()`、`cancelled_at`、`replayed`。`RunCancellationResult` 是 C13 兼容名，字段与 `RunCancelResult` 对齐并增加聚合字段。
+- `CancellationError` 是 `RunCancelConflictError` 与 `RunNotCancellableError` 的基类；`CancellationError.code` 只用 `idempotency_conflict` 与 `state_conflict`。路由继续返回现有 detail `run_not_cancellable`，C13 适配器映射到 `state_conflict`。
+- `cancel_run` 写入 `status=cancelled`、`finished_at`、`cancel_idempotency_key_hash`、`cancel_reason_code`，并清空 `lease_expires_at`。保留 `worker_id` 供围栏与审计。取消不删除 step、attempt、task_run 或账本。
 - 执行器在取消后不再写 run 终态。已开始 step 保留实际结果。未开始 step 写 `skipped`。
 
 - [ ] **Step 1: 写失败测试**
 
-在 `test_run_routes.py` 的取消用例中加入：
+新建 `tests/unit/test_run_cancel_idempotency.py`：
 
 ```python
+"""取消幂等测试。同键重放、同键不同参冲突、并发只释放一次预算。"""
+
+from __future__ import annotations
+
+import asyncio
+import uuid
+from dataclasses import dataclass
+
+import pytest
+
+from data_intelligence_hub.services import run_cancel_service
+from data_intelligence_hub.services.run_cancel_service import (
+    RunCancelConflictError,
+    RunNotCancellableError,
+    cancel_run,
+    hash_cancel_idempotency_key,
+)
+
+
+@dataclass
+class FakeRun:
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    project_id: uuid.UUID
+    task_id: uuid.UUID | None = None
+    workflow_version_id: uuid.UUID | None = None
+    status: str = "queued"
+    outcome: str | None = None
+    finished_at: object | None = None
+    cancel_idempotency_key_hash: str | None = None
+    cancel_reason_code: str | None = None
+
+
+def _run() -> FakeRun:
+    return FakeRun(id=uuid.uuid4(), workspace_id=uuid.uuid4(), project_id=uuid.uuid4())
+
+
+@pytest.mark.anyio
+async def test_same_key_same_reason_replays_and_releases_once(monkeypatch) -> None:
+    run = _run()
+    key_hash = hash_cancel_idempotency_key("cancel-1")
+    calls: list[str] = []
+
+    async def claim_cancel(session, **kwargs):
+        calls.append("claim")
+        if len(calls) == 1:
+            run.status = "cancelled"
+            run.finished_at = "2026-10-22T00:00:00+00:00"
+            run.cancel_idempotency_key_hash = key_hash
+            run.cancel_reason_code = "user_request"
+            return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=True)
+        return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=False)
+
+    async def fake_audit(session, **kwargs):
+        calls.append(str(kwargs["action"]))
+
+    class FakeBudget:
+        def __init__(self, session) -> None:
+            pass
+
+        async def cancel(self, run) -> None:
+            calls.append("budget_cancel")
+
+    monkeypatch.setattr(run_cancel_service.runs_repository, "claim_cancel", claim_cancel)
+    monkeypatch.setattr(run_cancel_service, "audit_run_event", fake_audit)
+    monkeypatch.setattr(run_cancel_service, "OrmRunBudget", FakeBudget)
+
+    first = await cancel_run(
+        None,
+        workspace_id=run.workspace_id,
+        run_id=run.id,
+        idempotency_key="cancel-1",
+        reason_code="user_request",
+    )
+    second = await cancel_run(
+        None,
+        workspace_id=run.workspace_id,
+        run_id=run.id,
+        idempotency_key="cancel-1",
+        reason_code="user_request",
+    )
+
+    assert first.replayed is False
+    assert second.replayed is True
+    assert second.run.finished_at == first.run.finished_at
+    assert calls.count("budget_cancel") == 1
+    assert calls.count("run.cancel_requested") == 1
+    assert calls.count("run.cancelled") == 1
+
+
+@pytest.mark.anyio
+async def test_same_key_different_reason_conflicts(monkeypatch) -> None:
+    run = _run()
+    run.status = "cancelled"
+    run.cancel_idempotency_key_hash = hash_cancel_idempotency_key("cancel-1")
+    run.cancel_reason_code = "user_request"
+
+    async def claim_cancel(session, **kwargs):
+        return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=False)
+
+    monkeypatch.setattr(run_cancel_service.runs_repository, "claim_cancel", claim_cancel)
+
+    with pytest.raises(RunCancelConflictError):
+        await cancel_run(
+            None,
+            workspace_id=run.workspace_id,
+            run_id=run.id,
+            idempotency_key="cancel-1",
+            reason_code="operator",
+        )
+
+
+@pytest.mark.anyio
+async def test_concurrent_claims_release_budget_once(monkeypatch) -> None:
+    run = _run()
+    key_hash = hash_cancel_idempotency_key("cancel-1")
+    claims = {"count": 0}
+    calls: list[str] = []
+
+    async def claim_cancel(session, **kwargs):
+        claims["count"] += 1
+        if claims["count"] == 1:
+            await asyncio.sleep(0)
+            run.status = "cancelled"
+            run.cancel_idempotency_key_hash = key_hash
+            run.cancel_reason_code = "user_request"
+            return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=True)
+        return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=False)
+
+    async def fake_audit(session, **kwargs):
+        calls.append(str(kwargs["action"]))
+
+    class FakeBudget:
+        def __init__(self, session) -> None:
+            pass
+
+        async def cancel(self, run) -> None:
+            calls.append("budget_cancel")
+
+    monkeypatch.setattr(run_cancel_service.runs_repository, "claim_cancel", claim_cancel)
+    monkeypatch.setattr(run_cancel_service, "audit_run_event", fake_audit)
+    monkeypatch.setattr(run_cancel_service, "OrmRunBudget", FakeBudget)
+
+    results = await asyncio.gather(
+        cancel_run(None, workspace_id=run.workspace_id, run_id=run.id,
+                   idempotency_key="cancel-1", reason_code="user_request"),
+        cancel_run(None, workspace_id=run.workspace_id, run_id=run.id,
+                   idempotency_key="cancel-1", reason_code="user_request"),
+    )
+
+    assert sorted(result.replayed for result in results) == [False, True]
+    assert calls.count("budget_cancel") == 1
+
+
+@pytest.mark.anyio
+async def test_terminal_non_cancelled_run_is_not_cancellable(monkeypatch) -> None:
+    run = _run()
+    run.status = "completed"
+
+    async def claim_cancel(session, **kwargs):
+        return run_cancel_service.runs_repository.CancelClaim(run=run, claimed=False)
+
+    monkeypatch.setattr(run_cancel_service.runs_repository, "claim_cancel", claim_cancel)
+
+    with pytest.raises(RunNotCancellableError):
+        await cancel_run(
+            None,
+            workspace_id=run.workspace_id,
+            run_id=run.id,
+            idempotency_key="cancel-1",
+            reason_code="user_request",
+        )
+```
+
+现有 `test_run_routes.py` 的所有取消用例（含 `run_not_cancellable`）都必须带 JSON 请求体；`idempotency_key` 每次唯一，`reason_code` 用固定测试值。在新用例中加入：
+
+```python
+    response = await client.post(
+        f"/api/runs/{run_id}/cancel",
+        json={"idempotency_key": "cancel-1", "reason_code": "user_request"},
+    )
+    assert response.status_code == 200
     session_factory = client.session_factory  # type: ignore[attr-defined]
     async with session_factory() as session:
         stored = await session.get(Run, run_id)
@@ -3984,6 +5005,22 @@ git commit -m "feat(run): fence worker execution by lease"
         assert stored.status == "cancelled"
         assert stored.lease_expires_at is None
         assert stored.finished_at is not None
+        assert stored.cancel_idempotency_key_hash is not None
+        assert stored.cancel_reason_code == "user_request"
+
+    replay = await client.post(
+        f"/api/runs/{run_id}/cancel",
+        json={"idempotency_key": "cancel-1", "reason_code": "user_request"},
+    )
+    assert replay.status_code == 200
+    assert replay.headers["Idempotent-Replay"] == "true"
+
+    conflict = await client.post(
+        f"/api/runs/{run_id}/cancel",
+        json={"idempotency_key": "cancel-1", "reason_code": "operator"},
+    )
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"] == "idempotency_conflict"
 ```
 
 在 `test_run_executor_multi_step.py` 加入：
@@ -4016,40 +5053,355 @@ async def test_cancelled_run_skips_remaining_steps_without_overwriting_status() 
     assert "completed" not in runs.status_history
 ```
 
+在 `test_run_audit_events.py` 加入取消审计用例：第一次取消恰好一条 `run.cancel_requested` 与一条 `run.cancelled`；重放与冲突不新增审计。
+
+在 `test_run_cancel_idempotency.py` 加入 `cancel_task_runs` 用例：任务下两条可取消 run 一次取消；同键同参重放 `replayed=True` 且不再释放预算；同键不同 reason 抛 `idempotency_conflict`；无活动 run 抛 `state_conflict`。
+
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
-uv run pytest tests/unit/test_run_routes.py -q
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_cancel_idempotency.py tests/unit/test_run_routes.py -q
 ```
 
-Expected: FAIL。取消后 `lease_expires_at` 仍非空。
+Expected: FAIL。`run_cancel_service` 不存在；取消后 `lease_expires_at` 仍非空；同键重放没有 `Idempotent-Replay`。
 
-- [ ] **Step 3: 修改取消写入**
+- [ ] **Step 3: 实现取消原子领取**
 
-在 `repositories/runs.py` 的 `cancel_run` 中加入：
+在 `repositories/runs.py` 确认/加入以下导入与代码（已存在的导入不重复添加）：
 
 ```python
-        .values(
-            status=RunStatus.CANCELLED.value,
-            finished_at=func.now(),
-            lease_expires_at=None,
+from dataclasses import dataclass
+
+from sqlalchemy import func, update
+from sqlalchemy.exc import IntegrityError
+
+
+@dataclass(frozen=True, slots=True)
+class CancelClaim:
+    run: Run | None
+    claimed: bool
+    conflict: bool = False
+
+
+async def claim_cancel(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    run_id: uuid.UUID,
+    idempotency_key_hash: str,
+    reason_code: str,
+) -> CancelClaim:
+    """原子领取一次取消。
+
+    只有把 run 从 queued/running 改为 cancelled、且取消键列为空的事务
+    返回 claimed=True。落败事务返回当前行，由服务层判断重放或冲突。
+    工作区级唯一索引拒绝跨 run 复用同一取消键时返回 conflict=True。
+    """
+    try:
+        result = await session.execute(
+            update(Run)
+            .where(
+                Run.id == run_id,
+                Run.workspace_id == workspace_id,
+                Run.status.in_(("queued", "running")),
+                Run.cancel_idempotency_key_hash.is_(None),
+            )
+            .values(
+                status=RunStatus.CANCELLED.value,
+                finished_at=func.now(),
+                lease_expires_at=None,
+                cancel_idempotency_key_hash=idempotency_key_hash,
+                cancel_reason_code=reason_code,
+            )
         )
+    except IntegrityError:
+        # 同一工作区把同一取消键复用到另一 run：按参数冲突处理。
+        await session.rollback()
+        return CancelClaim(run=None, claimed=False, conflict=True)
+    run = await session.get(Run, run_id, populate_existing=True)
+    return CancelClaim(
+        run=run,
+        claimed=int(getattr(result, "rowcount", 0)) == 1,
+    )
 ```
 
-不要清空 `worker_id`。
+保留现有 `cancel_run` 仅供未迁移调用方；新路由与服务只调用 `claim_cancel`。不得清空 `worker_id`。
 
-在取消路由写 `cancelled` 之后、提交之前调用：
+- [ ] **Step 4: 写取消幂等服务**
+
+新建 `services/run_cancel_service.py`：
 
 ```python
-from data_intelligence_hub.services.run_budget import OrmRunBudget
+"""取消幂等：原子领取、重放、冲突与预算释放。"""
 
-await OrmRunBudget(session).cancel(run)
+from __future__ import annotations
+
+import hashlib
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from data_intelligence_hub.models.run import Run, RunStatus
+from data_intelligence_hub.repositories import runs as runs_repository
+from data_intelligence_hub.services.exceptions import ServiceError
+from data_intelligence_hub.services.run_audit import audit_run_event
+from data_intelligence_hub.services.run_budget import OrmRunBudget
+from data_intelligence_hub.services.run_execution_contracts import RunNotFoundError
+
+
+class RunCancelConflictError(ServiceError):
+    message = "idempotency_conflict"
+
+    def __init__(self, run_id: uuid.UUID) -> None:
+        super().__init__(self.message)
+        self.run_id = run_id
+
+
+class RunNotCancellableError(ServiceError):
+    message = "run_not_cancellable"
+
+    def __init__(self, run_id: uuid.UUID, status: str) -> None:
+        super().__init__(f"{self.message}: {status}")
+        self.run_id = run_id
+        self.status = status
+
+
+@dataclass(frozen=True, slots=True)
+class RunCancelResult:
+    run: Run
+    replayed: bool
+
+
+def hash_cancel_idempotency_key(key: str) -> str:
+    return hashlib.sha256(f"run-cancel.v1:{key}".encode("utf-8")).hexdigest()
+
+
+async def cancel_run(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    run_id: uuid.UUID,
+    idempotency_key: str,
+    reason_code: str,
+) -> RunCancelResult:
+    key = idempotency_key.strip()
+    reason = reason_code.strip()
+    if not key or len(key) > 200:
+        raise ValueError("idempotency_key_required")
+    if not reason or len(reason) > 80:
+        raise ValueError("reason_code_invalid")
+
+    key_hash = hash_cancel_idempotency_key(key)
+    claim = await runs_repository.claim_cancel(
+        session,
+        workspace_id=workspace_id,
+        run_id=run_id,
+        idempotency_key_hash=key_hash,
+        reason_code=reason,
+    )
+    if claim.conflict:
+        raise RunCancelConflictError(run_id)
+    if claim.run is None:
+        raise RunNotFoundError(run_id)
+
+    if claim.claimed:
+        # 只有胜出事务释放预算；C5 的 cancel_reservation 自身也幂等。
+        await OrmRunBudget(session).cancel(claim.run)
+        details = {
+            "cancel_idempotency_key_hash": key_hash,
+            "reason_code": reason,
+        }
+        await audit_run_event(
+            session,
+            action="run.cancel_requested",
+            run=claim.run,
+            details=details,
+        )
+        await audit_run_event(
+            session,
+            action="run.cancelled",
+            run=claim.run,
+            details=details,
+        )
+        return RunCancelResult(run=claim.run, replayed=False)
+
+    if claim.run.status != RunStatus.CANCELLED.value:
+        raise RunNotCancellableError(run_id, claim.run.status)
+
+    if (
+        claim.run.cancel_idempotency_key_hash == key_hash
+        and claim.run.cancel_reason_code != reason
+    ):
+        raise RunCancelConflictError(run_id)
+
+    # 同一 run 已被另一个键取消：幂等重放第一次结果，不再释放预算。
+    return RunCancelResult(run=claim.run, replayed=True)
+
+
+__all__ = [
+    "CancellationError",
+    "RunCancelConflictError",
+    "RunCancelResult",
+    "RunCancellationResult",
+    "RunNotCancellableError",
+    "cancel_run",
+    "cancel_task_runs",
+    "hash_cancel_idempotency_key",
+]
 ```
 
-`OrmRunBudget.cancel` 调用 C5 的 `cancel_reservation`：释放 `quota_accounts.reserved_usd`，写 `block` 标记，不删除 step/attempt/账本。测试断言 `quota_accounts.reserved_usd == 0`。
+`RunNotFoundError` 从 `services.run_execution_contracts` 导入；不得从 `repositories` 暴露 HTTP 异常。
 
-同时给 `OrmRunRepository.save` 的非终态写入加状态围栏，防止“读取后、写 running 前”被取消：
+为 C13 增加兼容出口。把 `RunCancelConflictError` 与 `RunNotCancellableError` 的基类从 `ServiceError` 改为 `CancellationError`，并给每个类加 `code`：
+
+```python
+class CancellationError(ServiceError):
+    code: str
+
+
+class RunCancelConflictError(CancellationError):
+    code = "idempotency_conflict"
+    ...
+
+
+class RunNotCancellableError(CancellationError):
+    code = "state_conflict"
+    ...
+```
+
+再增加聚合结果：
+
+```python
+@dataclass(frozen=True, slots=True)
+class RunCancellationResult:
+    cancelled_run_ids: tuple[uuid.UUID, ...]
+    preserved_artifact_ids: tuple[str, ...]
+    cancelled_at: datetime
+    replayed: bool
+
+
+async def cancel_task_runs(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+    idempotency_key: str,
+    reason_code: str,
+) -> RunCancellationResult:
+    runs = await runs_repository.list_cancellable_by_task(
+        session,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        task_id=task_id,
+    )
+    if not runs:
+        raise RunNotCancellableError(task_id, "no_active_runs")
+    results = [
+        await cancel_run(
+            session,
+            workspace_id=workspace_id,
+            run_id=run.id,
+            idempotency_key=idempotency_key,
+            reason_code=reason_code,
+        )
+        for run in runs
+    ]
+    return RunCancellationResult(
+        cancelled_run_ids=tuple(item.run.id for item in results),
+        preserved_artifact_ids=(),
+        cancelled_at=max(
+            item.run.finished_at or datetime.now(UTC) for item in results
+        ),
+        replayed=all(item.replayed for item in results),
+    )
+```
+
+`services/run_service.py` 从 `run_cancel_service` re-export `cancel_task_runs`、`RunCancellationResult`、`CancellationError`；C13 只导入这三个名字。`repositories/runs.py` 增加 `list_cancellable_by_task`，只读 `queued · running` run，不跨工作区或项目。
+
+- [ ] **Step 5: 改请求 schema 与路由**
+
+在 `schemas/run.py` 加入：
+
+```python
+from pydantic import BaseModel, Field, field_validator
+
+
+class RunCancelRequest(BaseModel):
+    idempotency_key: str = Field(min_length=1, max_length=200)
+    reason_code: str = Field(min_length=1, max_length=80)
+
+    @field_validator("idempotency_key", "reason_code")
+    @classmethod
+    def _not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("invalid_request")
+        return value
+```
+
+把 `api/routes/runs.py` 的 `cancel_run` 改为：
+
+```python
+from fastapi import Response
+
+from data_intelligence_hub.schemas.run import RunCancelRequest
+from data_intelligence_hub.services.run_cancel_service import (
+    RunCancelConflictError,
+    RunNotCancellableError,
+    cancel_run as cancel_run_idempotent,
+)
+
+
+@router.post("/{run_id}/cancel", response_model=RunResponse)
+async def cancel_run(
+    run_id: uuid.UUID,
+    body: RunCancelRequest,
+    response: Response,
+    session: SessionDep,
+    context: Annotated[AuthContext, Depends(get_authenticated_context)],
+) -> RunResponse:
+    """取消一次运行。
+
+    请求必须带 ``idempotency_key`` 与 ``reason_code``。
+    同键同参返回第一次取消结果，响应头 ``Idempotent-Replay: true``。
+    同键不同参返回 409 ``idempotency_conflict``。
+    已完成的运行返回 409 ``run_not_cancellable``。
+    """
+    await _get_run_or_404(session, context, run_id)
+    try:
+        result = await cancel_run_idempotent(
+            session,
+            workspace_id=context.workspace.id,
+            run_id=run_id,
+            idempotency_key=body.idempotency_key,
+            reason_code=body.reason_code,
+        )
+    except RunNotCancellableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="run_not_cancellable",
+        ) from exc
+    except RunCancelConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="idempotency_conflict",
+        ) from exc
+
+    await session.commit()
+    if result.replayed:
+        response.headers["Idempotent-Replay"] = "true"
+    return RunResponse.model_validate(result.run)
+```
+
+`RunCancelRequest` 的空白值由 Pydantic 返回 422。新增的注册错误码只有 `idempotency_conflict`（C1 已登记）；`run_not_cancellable` 是现有路由 detail，不是新增错误码。
+
+- [ ] **Step 6: 加执行器状态围栏**
+
+给 `OrmRunRepository.save` 的非终态写入加状态围栏，防止“读取后、写 running 前”被取消：
 
 ```python
         if row.status == "running":
@@ -4058,24 +5410,25 @@ await OrmRunBudget(session).cancel(run)
             conditions.append(Run.status == "running")
 ```
 
-- [ ] **Step 4: 运行测试并确认通过**
+取消路由写 `cancelled` 之后、提交之前调用 C5 的 `OrmRunBudget.cancel(run)`（已在服务内完成）；不写账本，不删除 step/attempt/task_run。
+
+- [ ] **Step 7: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
-uv run pytest tests/unit/test_run_routes.py tests/unit/test_run_executor_multi_step.py -q
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_routes.py tests/unit/test_run_cancel_idempotency.py tests/unit/test_run_executor_multi_step.py tests/unit/test_run_audit_events.py -q
 ```
 
-Expected: 全部通过。
+Expected: 全部通过。同键重放不新增审计；并发取消只调用一次预算释放；`cancel_task_runs` 聚合同一任务的多条 run，并保持 C13 的 `idempotency_conflict` / `state_conflict` 语义。
 
-- [ ] **Step 5: 图分析与提交**
+- [ ] **Step 8: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
+node .gitnexus/run.cjs impact "RunExecutor" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/src/data_intelligence_hub/repositories/runs.py \
-  apps/api/tests/unit/test_run_routes.py \
-  apps/api/tests/unit/test_run_executor_multi_step.py
-git commit -m "fix(run): clear lease on cancellation"
+git add apps/api/src/data_intelligence_hub/services/run_cancel_service.py   apps/api/src/data_intelligence_hub/repositories/runs.py   apps/api/src/data_intelligence_hub/schemas/run.py   apps/api/src/data_intelligence_hub/api/routes/runs.py   apps/api/tests/unit/test_run_routes.py   apps/api/tests/unit/test_run_cancel_idempotency.py   apps/api/tests/unit/test_run_executor_multi_step.py   apps/api/tests/unit/test_run_audit_events.py
+git commit -m "fix(run): make cancellation idempotent and audited"
 ```
 
 ---
@@ -4088,22 +5441,24 @@ git commit -m "fix(run): clear lease on cancellation"
 - Create: `apps/api/src/data_intelligence_hub/services/run_service.py`
 - Modify: `apps/api/src/data_intelligence_hub/services/quick_collect_service.py`
 - Modify: `apps/api/src/data_intelligence_hub/repositories/runs.py`
+- Modify: `apps/api/src/data_intelligence_hub/api/routes/runs.py`
 - Test: `apps/api/tests/integration/test_quick_collect_routes.py`
 - Test: `apps/api/tests/integration/test_quick_collect_async.py`
+- Test: `apps/api/tests/unit/test_run_audit_events.py`
 
 **Interfaces:**
 - Produces:
-  - `create_run_for_task(session, *, workspace_id, project_id, task_id, trigger, idempotency_key_hash=None) -> Run`
+  - `create_run_for_task(session, *, workspace_id, project_id, task_id, trigger, idempotency_key_hash=None) -> Run`；插入新行时写 `run.created` 审计。
   - `execute_run_inline(session, run_id) -> RunExecutionResult`
   - `get_last_task_run(session, run_id) -> TaskRun | None`
-- 保持：quick 同步响应与异步响应不变。
+- 保持：quick 同步响应与异步响应不变。`run.created` 只在插入新 run 时写；幂等重放不写。
 
 - [ ] **Step 1: 写失败测试**
 
 在 `test_quick_collect_routes.py` 的成功用例末尾加入：
 
 ```python
-    from data_intelligence_hub.models import Run, RunStep, RunStepAttempt
+    from data_intelligence_hub.models import AuditEvent, Run, RunStep, RunStepAttempt
 
     async with session_factory() as session:
         run = await session.scalar(
@@ -4130,6 +5485,16 @@ git commit -m "fix(run): clear lease on cancellation"
         assert attempts[0].status == "success"
         assert attempts[0].run_id == run.id
         assert attempts[0].step_index == 0
+        audit_actions = list(
+            (
+                await session.execute(
+                    select(AuditEvent.action).where(
+                        AuditEvent.resource_id == str(run.id)
+                    )
+                )
+            ).scalars()
+        )
+        assert audit_actions == ["run.created", "run.completed"]
 ```
 
 测试夹具必须设置 `RUN_EXECUTION_CONVERGENCE_ENABLED=true`；另加一个开关为 `false` 的用例，断言旧的 `run_quick_collect` 路径不创建 `runs` 行。
@@ -4139,7 +5504,7 @@ git commit -m "fix(run): clear lease on cancellation"
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/integration/test_quick_collect_routes.py::test_quick_collect_keeps_endpoint_type_in_task_config -q
 ```
 
@@ -4167,6 +5532,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.repositories import runs as runs_repository
+from data_intelligence_hub.services.run_audit import audit_run_event
 from data_intelligence_hub.services.run_execution_contracts import RunExecutionResult
 from data_intelligence_hub.services.run_budget import OrmRunBudget
 from data_intelligence_hub.services.run_worker_runtime import build_run_executor_bundle
@@ -4199,9 +5565,8 @@ async def create_run_for_task(
             trigger=trigger,
             idempotency_key_hash=idempotency_key_hash,
         )
-        await session.commit()
-        return run
     except IntegrityError:
+        # 只处理插入幂等冲突；审计写入失败必须直接抛出。
         await session.rollback()
         if idempotency_key_hash is None:
             raise
@@ -4213,6 +5578,19 @@ async def create_run_for_task(
         if existing is None:
             raise
         return existing
+
+    await audit_run_event(
+        session,
+        action="run.created",
+        run=run,
+        details={
+            "trigger": trigger,
+            "market_code": run.market_code,
+            "status": run.status,
+        },
+    )
+    await session.commit()
+    return run
 
 
 async def execute_run_inline(
@@ -4271,6 +5649,16 @@ async def enqueue_scheduled_run(
             status="queued",
             trigger="schedule",
             idempotency_key_hash=key_hash,
+        )
+        await audit_run_event(
+            session,
+            action="run.created",
+            run=run,
+            details={
+                "trigger": "schedule",
+                "market_code": run.market_code,
+                "status": run.status,
+            },
         )
         await session.commit()
     except IntegrityError:
@@ -4403,7 +5791,24 @@ async def run_quick_collect_governed(
     outcome = await runner(session, body, workspace=workspace)
 ```
 
-`mcp_runtime/collect_service.py` 不改，继续 import `run_quick_collect`。新增回归测试：
+`api/routes/runs.py` 的 `create_run` 在插入新行后、提交前写 `run.created`：
+
+```python
+        run = await _insert()
+        await audit_run_event(
+            session,
+            action="run.created",
+            run=run,
+            details={
+                "trigger": run.trigger,
+                "market_code": run.market_code,
+                "status": run.status,
+            },
+        )
+        await session.commit()
+```
+
+只在 `_insert()` 成功后写；幂等重放路径与 `IntegrityError` 回滚路径不写。`try/except IntegrityError` 只包住 `_insert()`；把 `audit_run_event` 与 `session.commit()` 放在 `try` 之后，审计写入失败必须直接抛出，不得被当作重复创建吞掉。`mcp_runtime/collect_service.py` 不改，继续 import `run_quick_collect`。新增回归测试：
 
 ```python
 # MCP 必须绑定旧入口；收敛开关不得改变 MCP 行为。
@@ -4426,8 +5831,8 @@ def test_mcp_does_not_import_governed_runner() -> None:
 - [ ] **Step 7: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
-uv run pytest tests/integration/test_quick_collect_routes.py tests/integration/test_quick_collect_async.py tests/unit/test_mcp_quick_collect_compat.py -q
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/integration/test_quick_collect_routes.py tests/integration/test_quick_collect_async.py tests/unit/test_mcp_quick_collect_compat.py tests/unit/test_run_audit_events.py -q
 ```
 
 Expected: 全部通过。同步响应的 `status`、`records`、`usage`、`timing` 字段不变；MCP 路径不创建 `runs` 行。
@@ -4435,15 +5840,17 @@ Expected: 全部通过。同步响应的 `status`、`records`、`usage`、`timin
 - [ ] **Step 8: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs impact "run_quick_collect" --direction upstream --repo .
 node .gitnexus/run.cjs impact "run_quick_collect_governed" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/run_service.py \
   apps/api/src/data_intelligence_hub/services/quick_collect_service.py \
   apps/api/src/data_intelligence_hub/repositories/runs.py \
+  apps/api/src/data_intelligence_hub/api/routes/runs.py \
   apps/api/tests/integration/test_quick_collect_routes.py \
-  apps/api/tests/integration/test_quick_collect_async.py
+  apps/api/tests/integration/test_quick_collect_async.py \
+  apps/api/tests/unit/test_run_audit_events.py
 git commit -m "refactor(quick): execute quick collect through governed runs"
 ```
 
@@ -4485,6 +5892,37 @@ git commit -m "refactor(quick): execute quick collect through governed runs"
         )
         assert len(steps) == 1
         assert steps[0].task_run_id == uuid.UUID(response.json()["id"])
+        from data_intelligence_hub.models import AuditEvent
+
+        audit_actions = list(
+            (
+                await session.execute(
+                    select(AuditEvent.action).where(
+                        AuditEvent.resource_id == str(runs[0].id)
+                    )
+                )
+            ).scalars()
+        )
+        assert audit_actions.count("run.created") == 1
+        assert audit_actions.count("run.completed") == 1
+
+        # 同一幂等键重放不新增 run.created。
+        replay = await client.post(
+            f"/api/tasks/{task_id}/run",
+            headers={"Idempotency-Key": "run-now-1"},
+        )
+        assert replay.status_code == 201
+        async with session_factory() as session:
+            replayed_actions = list(
+                (
+                    await session.execute(
+                        select(AuditEvent.action).where(
+                            AuditEvent.resource_id == str(runs[0].id)
+                        )
+                    )
+                ).scalars()
+            )
+        assert replayed_actions.count("run.created") == 1
 ```
 
 测试夹具必须设置 `RUN_EXECUTION_CONVERGENCE_ENABLED=true`。另加两条回归：开关为 `false` 时旧路径响应不变；`services/automation_service.py` 与 `agents/tiktok_cdo/data_sources.py` 的调用仍返回同一 `TaskRunResult` 形状。GitNexus 已确认 `run_task_now` 的 direct caller 包含 `services/automation_service.py:2424`。
@@ -4492,7 +5930,7 @@ git commit -m "refactor(quick): execute quick collect through governed runs"
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/integration/test_sources_tasks.py -q
 ```
 
@@ -4609,7 +6047,7 @@ class TaskRunExecutionError(ServiceError):
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/integration/test_sources_tasks.py tests/unit/test_task_runs_route.py tests/unit/test_task_run_idempotency.py -q
 ```
 
@@ -4618,7 +6056,7 @@ Expected: 全部通过。历史 `task_runs.logs` 回退用例仍通过。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs impact "run_task_now" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/services/task_service.py \
@@ -4701,7 +6139,7 @@ async def test_scheduler_tick_does_not_duplicate_same_slot() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_scheduler.py tests/unit/test_scheduler_lease_renewal.py -q
 ```
 
@@ -4748,7 +6186,7 @@ from data_intelligence_hub.services.run_service import enqueue_scheduled_run
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_scheduler.py tests/unit/test_scheduler_lease_renewal.py -q
 ```
 
@@ -4757,7 +6195,7 @@ Expected: 全部通过。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs impact "CollectionScheduler" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/scheduler/service.py \
@@ -4826,7 +6264,7 @@ def test_quick_and_task_services_use_governed_run_service() -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_legacy_run_entrypoints.py -q
 ```
 
@@ -4845,7 +6283,7 @@ Expected after fix: 只有 `services/collector_service.py` 的定义与内部调
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_legacy_run_entrypoints.py -q
 uv run ruff check src/data_intelligence_hub
 ```
@@ -4855,7 +6293,7 @@ Expected: 3 passed。ruff 无错误。
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/tests/unit/test_legacy_run_entrypoints.py \
   apps/api/src/data_intelligence_hub
@@ -4953,7 +6391,7 @@ async def test_health_route_reports_worker_switch(monkeypatch) -> None:
 - [ ] **Step 2: 运行测试并确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_worker_settings.py -q
 ```
 
@@ -4964,7 +6402,7 @@ Expected: FAIL。配置与健康字段不存在。
 在 `core/config.py` 的 worker 配置段加入：
 
 ```python
-    # C6：默认关闭。C14 验收后由 .env.production 显式打开。
+    # C6：默认关闭。C14 只读验收后由 PG0 发布批次显式打开。
     run_worker_enabled: bool = False
     run_execution_convergence_enabled: bool = False
     run_worker_poll_interval_seconds: float = Field(default=5.0, gt=0)
@@ -5003,7 +6441,7 @@ Expected: FAIL。配置与健康字段不存在。
 - [ ] **Step 4: 运行测试并确认通过**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_run_worker_settings.py tests/unit/test_run_worker_runtime.py -q
 ```
 
@@ -5012,7 +6450,7 @@ Expected: 全部通过。lifespan 测试仍通过，`FakeRuntime` 接收新 kwar
 - [ ] **Step 5: 图分析与提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/core/config.py \
   apps/api/src/data_intelligence_hub/main.py \
@@ -5038,7 +6476,7 @@ git commit -m "feat(run): expose worker switches and retry settings"
 - `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`。
 - `SCHEDULER_ENABLED` 默认 `false`。
 - compose 声明 worker 轮询、租约与重试配置。
-- 不改 edge、网络、volume、端口。本任务不部署；发布由 C14 执行。
+- 不改 edge、网络、volume、端口。本任务不部署；发布由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读验收。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -5097,7 +6535,7 @@ def test_env_example_has_switches() -> None:
 - [ ] **Step 2: 运行测试确认失败**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest tests/unit/test_deploy_worker_facts.py -q
 ```
 
@@ -5108,7 +6546,7 @@ Expected: FAIL。共享 compose 仍是旧默认值，且没有收敛开关。
 把现有 `RUN_WORKER_ENABLED` 一行替换为：
 
 ```yaml
-      # C6：默认关闭。C14 验收后由 .env.production 显式打开。
+      # C6：默认关闭。C14 只读验收后由 PG0 发布批次显式打开。
       RUN_WORKER_ENABLED: ${SCRAPY_RUN_WORKER_ENABLED:-false}
       RUN_EXECUTION_CONVERGENCE_ENABLED: ${SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED:-false}
       RUN_WORKER_POLL_INTERVAL_SECONDS: ${SCRAPY_RUN_WORKER_POLL_INTERVAL_SECONDS:-5}
@@ -5135,7 +6573,7 @@ RUN_RETRY_MAX_DELAY_SECONDS=30
 - [ ] **Step 5: 校验 compose 与测试**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 docker compose -f configs/deploy/scrapy/docker-compose.yml config --quiet
 cd apps/api
 uv run pytest tests/unit/test_deploy_worker_facts.py -q
@@ -5146,7 +6584,7 @@ Expected: `docker compose config` 退出码 0；4 passed。若本机缺少生产
 - [ ] **Step 6: 提交**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add configs/deploy/scrapy/docker-compose.yml \
   apps/api/.env.example \
@@ -5158,15 +6596,21 @@ Expected: `detect-changes` 不含 `partial: true` / `truncated: true`；没有 `
 
 ---
 
-### Task 16: 全量验收与 C14 交接
+### Task 16: 全量验收与 PG0/C14 交接
 
 **Files:**
-- 不改代码。只运行验收命令，记录结果，交给 C14。
+- 不改代码。只运行验收命令，记录结果，交给 PG0 发布批次与 C14。
+- 本任务不创建 commit。
+
+**Interfaces:**
+- Consumes: C6 Task 1–15 的提交；C5 `RunBudget`；C4 `execution_steps`；Task 14 的开关配置；Task 15 的共享 compose 事实。
+- Produces: C6 本地验收结果；PG0 发布批次交接清单（迁移、备份、应用、开关切换、回滚）；C14 只读验收清单（健康、canary、preflight、浏览器 `/runs`）。
+- 本任务只读：不修改代码、不写生产文件、不执行迁移、不改 `.env.production`、不重启容器、不切换开关。结束时 `git status --porcelain -uno` 必须为空。
 
 - [ ] **Step 1: 运行 C6 相关测试**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest \
   tests/unit/test_run_step_attempt_migration.py \
   tests/unit/test_run_retry.py \
@@ -5179,8 +6623,12 @@ uv run pytest \
   tests/unit/test_run_queue.py \
   tests/unit/test_run_lease_fence.py \
   tests/unit/test_run_routes.py \
+  tests/unit/test_run_cancel_idempotency.py \
+  tests/unit/test_run_audit_events.py \
+  tests/unit/test_run_limit_enforcement.py \
   tests/unit/test_legacy_run_entrypoints.py \
   tests/unit/test_run_worker_settings.py \
+  tests/unit/test_run_completed_event.py \
   tests/unit/test_deploy_worker_facts.py \
   tests/integration/test_quick_collect_routes.py \
   tests/integration/test_quick_collect_async.py \
@@ -5195,7 +6643,7 @@ Expected: 0 failed。
 - [ ] **Step 2: 运行全量后端测试与静态检查**
 
 ```bash
-cd /Users/lute/Project/data_scrapy/apps/api
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
 uv run pytest -q
 uv run ruff check src tests
 uv run mypy src
@@ -5206,12 +6654,12 @@ Expected:
 - pytest 0 failed。
 - ruff 无错误。
 - mypy 无错误。
-- `alembic heads` 只有一行 `202610220062 (head)`。
+- `alembic heads` 只有一行 `202610220062 (head)`。这是 C6 的本地退出 head；平台最终 head 由 master plan 的后续切片推进到 `202610220068`，生产验收不以此处的 062 为准。
 
 - [ ] **Step 3: 运行 GitNexus 全量比对**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 node .gitnexus/run.cjs detect-changes --scope compare --base-ref main --repo .
 ```
@@ -5221,7 +6669,7 @@ Expected: 两次输出都不含 `partial: true` 或 `truncated: true`。若出�
 - [ ] **Step 4: 确认旧入口扫描**
 
 ```bash
-cd /Users/lute/Project/data_scrapy
+cd /Users/lute/Project/data_scrapy-gov-c6
 rg -n "execute_collection_task\s*\(" apps/api/src/data_intelligence_hub
 rg -n "run_quick_collect\s*\(|run_task_now\s*\(" apps/api/src/data_intelligence_hub
 ```
@@ -5230,9 +6678,51 @@ Expected:
 - 第一条只命中 `services/collector_service.py` 的函数定义。
 - 第二条只命中服务定义、`mcp_runtime/collect_service.py`、`agents/tiktok_cdo/data_sources.py`。不得命中 scheduler、quick route、task route。
 
-- [ ] **Step 5: 交接 C14**
+- [ ] **Step 4A: 审计与取消幂等验收**
 
-把以下事实交给 C14。C14 必须逐项执行并记录证据。
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_audit_events.py tests/unit/test_run_cancel_idempotency.py -q
+rg -n "dataset_quality|market_quality|evaluate_and_persist_market_quality|ensure_market_quality" \
+  src/data_intelligence_hub/services/run_executor.py \
+  src/data_intelligence_hub/services/run_executor_adapters.py
+rg -n "append_audit_event|audit_run_event" src/data_intelligence_hub/services/run_audit.py \
+  src/data_intelligence_hub/services/run_executor.py \
+  src/data_intelligence_hub/services/run_step_runner.py \
+  src/data_intelligence_hub/services/run_cancel_service.py
+rg -n "runs_repository\.create_run\(" src/data_intelligence_hub
+```
+
+`runs_repository.create_run` 的调用方只允许 `services/run_service.py` 与 `api/routes/runs.py`；两者都写 `run.created`。新增调用方必须同时写 `run.created`，否则本验收失败。
+
+Expected:
+- 测试通过：每个 completed run 恰好一条 `run.completed`；failed/cancelled 分别发 `run.failed` / `run.cancelled`；重试发 `run.retry_scheduled` 与 `run.retry_exhausted`；创建发 `run.created`；取消发 `run.cancel_requested` 与 `run.cancelled`。
+- 同键同参取消重放原结果；同键不同参返回 `idempotency_conflict`；并发取消只释放一次预算；重放与冲突不新增审计行。
+- `services.run_service` 可导入 `cancel_task_runs`、`RunCancellationResult`、`CancellationError`，供 C13 直接使用。
+- `rg` 只命中注释或错误提示文本，不命中 import 或函数调用。C6 不依赖 C8。
+- C8 的 `consume_completed_runs` 能用本切片测试库中的 `run.completed` 生成一条 `market_assessments`；重复消费为零新增。该验证由 C8 执行并在 C14 交接中引用。
+
+- [ ] **Step 4B: C5 run limits 验收**
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c6/apps/api
+uv run pytest tests/unit/test_run_limit_enforcement.py -q
+rg -n "max_pages|max_records" \
+  src/data_intelligence_hub/services/run_executor.py \
+  src/data_intelligence_hub/services/run_step_runner.py \
+  src/data_intelligence_hub/services/run_collector_call.py
+rg -n "resolve_run_limits|RunLimitsResolver" src/data_intelligence_hub
+rg -n "class RunLimits|class RunBudget|RunBudget\(Protocol\)" src/data_intelligence_hub
+```
+
+Expected:
+- 测试通过：`None` 不限制，`0` 零容忍；`max_pages_exceeded` 在下一页前停止，`max_records_exceeded` 在超限记录后停止；超限后不再调用 collector，不写剩余记录。
+- C6 只在 `run_executor_adapters.py` 调用 C5 `resolve_run_limits`；`max_pages` / `max_records` 只作为 `RunLimits` 字段传递，没有第二份解析逻辑。
+- `class RunLimits` 只在 C5 `services/run_limits.py` 命中；`class RunBudget` / `RunBudget(Protocol)` 只在 C5 `services/run_budget.py` 命中。C6 只导入或原样 re-export。
+
+- [ ] **Step 5: 交接 PG0 发布批次与 C14**
+
+把以下事实交给 PG0 发布批次与 C14。PG0 发布批次执行备份、迁移、应用、开关切换与回滚；C14 只做只读健康、canary、preflight 与浏览器验收，并记录证据。C14 不写数据库、不改 compose/env、不重启容器、不切换开关。
 
 **1. 旧入口代码扫描**
 
@@ -5246,17 +6736,19 @@ rg -n "run_quick_collect\s*\(|run_task_now\s*\(" apps/api/src/data_intelligence_
 
 **2. Postgres 并发验证**
 
-SQLite 测试不证明 `FOR UPDATE SKIP LOCKED`、部分唯一索引和并发 attempt 编号。C14 必须在 PostgreSQL 16 上执行：
+SQLite 测试不证明 `FOR UPDATE SKIP LOCKED`、部分唯一索引和并发 attempt 编号。C6 在隔离的 PostgreSQL 16 上执行并发验证并提交报告；PG0 与 C14 只读复核：
 
 - 两个 worker 同时 `claim_next_run`，只有一个领取成功。
 - 两个 worker 同时写同一 `(run_id, step_index, attempt_number)`，唯一约束只允许一行。
 - 两个 worker 同时写同一账本 `idempotency_key`，只落一行。
-- `cancel_run` 与 worker 终态写入并发，最终状态是 `cancelled`。
+- `cancel_run` 与 worker 终态写入并发，最终状态是 `cancelled`，预算只释放一次。
+- 两个并发取消请求使用同一 `idempotency_key`，只有一个事务领取成功，另一个重放；`quota_accounts.reserved_usd` 只减少一次。
+- 两个并发取消请求使用同一键但不同 `reason_code`，恰好一个返回 409 `idempotency_conflict`，另一个成功。
 - 租约过期后第二个 worker 接管，旧 worker 的续期与终态写入失败。
 
-验收：并发测试 0 failed。不得用 SQLite 结果替代。
+验收：并发测试 0 failed。不得用 SQLite 结果替代。C14 只读复核测试报告与结果，不执行写库并发测试。
 
-**3. 生产 A/B 迁移**
+**3. 生产 A/B 迁移（PG0 发布批次执行）**
 
 生产 A：
 - 主机 `ubuntu@43.163.92.244`。
@@ -5273,47 +6765,48 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" restart edge
 ```
 
 - 不得重建 edge。不得运行不带服务名的 `docker compose up -d`。
-- 验证 `/api/health` 的 `schema_revision` 与 `schema_head` 都是 `202610220062`。
-- `scripts/preflight-production.sh` 当前期望 schema `202610210053`，C14 必须把它更新为读取真实 head 或 `202610220062`。
+- 验证 `/api/health` 的 `schema_revision` 与 `schema_head` 都是 master plan 的最终迁移 `202610220068`。C6 只保证自己的 062 迁移在链上；生产最终值取 master/final 链，不得写死 C6 的 062。
+- `scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取期望 schema。PG0 发布批次必须在发布前把该环境变量设为 master/final 的 `202610220068`，再只读运行脚本；C6 与 C14 都不修改脚本默认值，也不把 `202610220062` 写入 preflight。
 
 生产 B：
 - 主机 `ubuntu@101.34.52.232`。
 - 域名 `https://scrapy.lute-tlz-dddd.top`。
 - Compose `configs/deploy/scrapy/docker-compose.yml`（与 A 共用；不修改 `configs/deploy/scrapy-new/**`）。
 - 先取得 B 的目标授权与备份，再应用同一迁移，再替换 `api console`。
-- 验证 `/api/health` 的 schema 是 `202610220062`；`run_worker_enabled` 在 C14 显式打开前必须是 `false`。
+- 验证 `/api/health` 的 schema 是 master/final 的 `202610220068`；`run_worker_enabled` 在 PG0 发布批次显式打开前必须是 `false`。
 
-顺序：A 备份 → A 迁移 → A 代码 → B 备份 → B 迁移 → B 代码。任一环境迁移失败时停止，不回滚另一套。
+顺序：A 备份 → A 迁移 → A 代码 → B 备份 → B 迁移 → B 代码。任一环境迁移失败时停止，不回滚另一套。以上命令只由 PG0 发布批次执行；C14 在发布后只读检查 `/api/health`、canary 与公网响应。
 
 **4. 共用 compose 事实**
 
 - A/B 共用 `configs/deploy/scrapy/docker-compose.yml`。
 - `RUN_WORKER_ENABLED` 默认 false；`RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 false；`SCHEDULER_ENABLED` 默认 false。
 - 两套都声明 worker 轮询、租约与三个重试配置。
-- C14 先以默认关闭状态发布并完成迁移/健康检查，再在 `.env.production` 显式打开 `SCRAPY_RUN_WORKER_ENABLED=true` 与 `SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED=true`，重启 api 后检查 `/api/health` 的 `run_worker_enabled=true` 与 `run_execution_convergence_enabled=true`。
-- 不得在 C14 验收前打开开关；不得修改 `configs/deploy/scrapy-new/**`。
+- 总索引 §8.4 的 PG0 发布批次先以默认关闭状态发布并完成迁移；C14 完成只读健康检查后，由 PG0 发布批次在 `.env.production` 显式打开 `SCRAPY_RUN_WORKER_ENABLED=true` 与 `SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED=true`，重启 api；C14 再只读复核 `/api/health` 的 `run_worker_enabled=true` 与 `run_execution_convergence_enabled=true`。
+- 不得在 C14 只读验收前打开开关；不得修改 `configs/deploy/scrapy-new/**`。
 
 **4A. 空库迁移循环**
 
-- PostgreSQL 15 空库执行 `alembic upgrade 202610220062` → `alembic downgrade 202610220061` → `alembic upgrade 202610220062`；三次退出码 0。
+- 这是 C6 切片级迁移循环，不是平台最终 head 验收：PostgreSQL 15 空库执行 `alembic upgrade 202610220062` → `alembic downgrade 202610220061` → `alembic upgrade 202610220062`；三次退出码 0。
 - 循环后 `alembic heads` 只有一行 `202610220062`。
-- 空库验证证明 `run_step_attempts`、`run_steps` 扩展列与 `uq_run_steps_task_run_id` 可重复升降。
+- 空库验证证明 `run_step_attempts`、`run_steps` 扩展列、`runs` 取消幂等列与 `uq_run_steps_task_run_id` / `uq_runs_workspace_cancel_idempotency` 可重复升降。
+- PG0 发布批次在完整链（含 `202610220063`–`202610220068`）上再执行一次空库升级到 `202610220068`，作为生产目标版本的证据。
 
-**5. 浏览器 `/runs` 查看**
+**5. 浏览器 `/runs` 查看（C14 只读）**
 
-- 打开 A 与 B 的 `/runs`。
-- 创建或观察一条多步骤 run。确认步骤数、`step_index`、状态、`records_count`、`total_cost_usd` 与 `/api/runs/{run_id}/steps` 一致。
+- 打开 A 与 B 的 `/runs`。C14 只观察 PG0 发布批次已准备的 run，不创建、不取消、不重试 run。
+- 观察一条多步骤 run。确认步骤数、`step_index`、状态、`records_count`、`total_cost_usd` 与 `/api/runs/{run_id}/steps` 一致。
 - 确认 `outcome` 只出现四值，`runs.status` 不出现 `degraded` 或 `held`。
-- 取消一条 `queued` 与一条 `running` run。确认状态变 `cancelled`，租约清空，未开始步骤显示 `skipped`。
+- 取消 `queued` 与 `running` run 的行为由 PG0 发布批次在发布验收中执行；C14 只读复核取消后的状态、租约清空、`cancel_idempotency_key_hash` / `cancel_reason_code` 与未开始步骤的 `skipped`。
 - attempt 逐条视图当前没有合同路由。C14 若要展示 attempts，先升级冻结契约并新增路径；不得用 `/steps` 冒充 attempts。
 
-**6. 回滚**
+**6. 回滚（PG0 发布批次执行）**
 
-- 先设 `SCRAPY_RUN_WORKER_ENABLED=false` 与 `SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED=false`，重启 api，停止新领取并恢复旧 quick/run-now 路径。
+- 由 PG0 发布批次先设 `SCRAPY_RUN_WORKER_ENABLED=false` 与 `SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED=false`，重启 api，停止新领取并恢复旧 quick/run-now 路径。
 - 代码回滚到上一镜像。
-- `202610220062` 的 downgrade 只在 `run_step_attempts` 为空时执行。有 attempt 数据时保留表；旧代码不读该表。
-- 不修改已发布报告、账本或已终态 run。
+- `202610220062` 的 downgrade 只在 `run_step_attempts` 为空时执行。有 attempt 数据时保留表；旧代码不读该表，也不读 `runs` 取消幂等列。
+- 不修改已发布报告、账本或已终态 run。C14 只读复核回滚后的健康与公网响应。
 
 - [ ] **Step 6: 记录结果**
 
-在 C14 的验收记录中写明：commit、两套 schema、worker/convergence/scheduler 开关、Postgres 并发结果、空库迁移循环、浏览器结果、旧入口扫描结果、回滚命令。C6 不写生产报告文件。
+PG0 发布批次记录发布事实：commit、两套 schema（`202610220068`）、worker/convergence/scheduler 开关、迁移与备份路径、`SCRAPY_EXPECTED_SCHEMA` 值、回滚命令。C14 在只读验收记录中写明：健康与 canary 结果、Postgres 并发报告复核（含取消幂等）、空库迁移循环证据复核、浏览器 `/runs` 结果、旧入口扫描结果。C6 不写生产报告文件。
