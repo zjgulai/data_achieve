@@ -23,7 +23,7 @@
 - **内部审核人不是客户工作区角色。** C1 登记 `report_reviewer_assignments` 表与内部审核路径。审核主体只有 `assignment_scope IN ('report_read','report_review')` 的受限读范围；审核事件 `reviewer_role` 固定写 `internal_reviewer`。客户 `owner`、`admin` 不得自审，`member` 不获得审核角色；不得新增客户侧 `reviewer` 角色。C9 的 `record_review` 与 C10 的 `validate_review_signoff` 都只认 active assignment。指派必须有非空 `expires_at`；读与审核路径在 `expires_at <= now` 时返回 403 `reviewer_assignment_expired`。
 - **owner/admin 批准动作内联在任务工作台。** 预算超支、加购与项目密钥变更使用 `workbench_approval_actions` 表，绑定 `task_id`，由 owner/admin 在任务工作台内联批准或拒绝。请求人不得自批（数据库 CHECK 与服务层双重校验）。不建独立收件箱页面或独立 inbox 路径；C14 只消费这些内联动作。
 - **C9/C10/C11 公开错误码先登记。** 至少登记 `report_quality_not_ready`、`delivery_not_publishable`、`delivery_input_invalid`、`publish_forbidden`、`idempotency_key_required`、`dataset_export_internal_isolated_source`，以及 C9 路由实际返回的 `report_contract_not_published`、`report_contract_hash_mismatch`、`report_contract_invalid`、`report_artifact_not_draft`、`report_artifact_incomplete`、`report_artifact_integrity_failed`、`report_review_required`、`report_publish_gate_blocked`、`report_revision_target_invalid`、`reviewer_assignment_required`、`reviewer_self_review_forbidden`、`reviewer_assignment_invalid`、`reviewer_assignment_expired`、`report_forbidden_language`。C9/C10/C11 不得返回未登记的错误码。
-- **审计动作注册表只有一个。** 契约正文 `### 2.10 审计动作注册表` 与附录 A 的 `audit_actions` 对象是唯一权威，版本 `audit-actions.v1`。每个动作只有一个写入 owner；`services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。未登记动作抛 `audit_action_unregistered`（500），形状非法抛 `audit_action_invalid`。下游切片只调用 `append_audit_event`，不得自造动作名，不得建第二张审计表。`audit_events` 仍是唯一审计表；内部审阅者不是客户角色。
+- **审计动作注册表只有一个。** 契约正文 `### 2.10 审计动作注册表` 与附录 A 的 `audit_actions` 对象是唯一权威，版本 `audit-actions.v1`。每个动作只有一个写入 owner；`services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。未登记动作抛 `audit_action_unregistered`（500），形状非法抛 `audit_action_invalid`。下游切片只调用 `append_audit_event`，不得自造动作名，不得建第二张审计表；`run.created` 只能经 C4 `services/run_creation.create_run_with_audit` 接缝写入，C6 旧入口收敛调用该接缝。`audit_events` 仍是唯一审计表；内部审阅者不是客户角色。
 - **C6/C8/C9/C10 修复前置先登记。** C6 取消幂等只使用 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`，全部落在迁移 `202610220062`；C8 模板能力白名单只存在代码注册表 `TaskTemplate.capability_allowlist`，不建表；C9 Quick 2 小时方向稿复用报告合同 1.1 与 `report_artifacts` 生命周期，不新增客户工具、不重复计费、证据上限 L3、不出现 `confirmed`、不启动验收；C10 验收只追加 `report_audit_events`，幂等键哈希与 payload 摘要只写 `metadata_json`，manifest 与交付文件不可变，相关列只落在迁移 `202610220066`；C9/C10 PII 发布失败只复用 C11 的 `export_policy.v1` 与 `scan_export_policy()`/`scan_export_value()`。C1 不新增迁移，不新增取消表、验收表、模板能力表或第二套 PII 规则。
 - **唯一禁用语言画像。** C1 只登记一个 `forbidden_language_profile`：`profile_id` 固定 `dih-descriptive-language-v1`，`profile_version` 固定 `1.0.0`，`source` 只写已批准设计 §5.7。画像只禁止因果表述（导致、驱动、提升、降低、造成、证明及精确英文对应词）与销量、市场份额、转化率、营收预测；允许描述性相关、共同出现和描述性差异。C9 发布前必须消费该画像；C10 可以复用同一画像，但 C1、C9、C10 都不得定义第二份术语表或第二个画像。命中时 C9 返回 `report_forbidden_language`；C10 返回 `delivery_input_invalid` 并附同一 `profile_id`。不得为画像增加任何阈值、计数或评分规则。
 - **页面路由只有一份事实源。** 契约 §5 的 11 条页面路由（10 条启用、1 条禁用）与 4 条一级导航是唯一事实源。附录 A 的 `page_routes` 与 `primary_nav` 是 §5 的机器投影；C14 的 `contract-routes.test.ts` 必须解析 §5 的两个 `text` 代码块并与 `CONTRACT_ROUTES` 逐条比较，`PRIMARY_NAVIGATION` 测试必须解析 §5 的一级导航表并与 4 条导航逐条比较。C14 不得在代码或测试里维护第二份路由或导航清单。页面路由不是 API 路径：不得写入 `paths`，不得以 `/api/` 开头。动态段名固定为 `/capabilities/[toolId]`、`/reports/[artifactId]`、`/workbench/[taskId]`，公开分享固定为 `/reports/public/[id]` 且禁用；不得用 `[id]` 代替前三个段名。
@@ -1721,7 +1721,7 @@ Modify `docs/design/【契约冻结】v1-表名-枚举-接口.md`:
       {"name": "budget.blocked", "owner": "C5", "status": "new", "phase": "C5"},
       {"name": "budget.released", "owner": "C5", "status": "new", "phase": "C5"},
       {"name": "task.retried", "owner": "C6", "status": "new", "phase": "C6"},
-      {"name": "run.created", "owner": "C6", "status": "new", "phase": "C6"},
+      {"name": "run.created", "owner": "C4", "status": "new", "phase": "C4"},
       {"name": "run.cancel_requested", "owner": "C6", "status": "new", "phase": "C6"},
       {"name": "run.cancelled", "owner": "C6", "status": "new", "phase": "C6"},
       {"name": "run.retry_scheduled", "owner": "C6", "status": "new", "phase": "C6"},
@@ -6216,7 +6216,7 @@ uq_platform_credential_bundles_project_provider
 
 规则：
 
-1. 每个动作只有一个写入 owner；owner 切片负责在实现中调用 `append_audit_event`。
+1. 每个动作只有一个写入 owner；owner 切片负责在实现中调用 `append_audit_event`。`run.created` 的 owner 是 C4，唯一写入入口是 C4 `services/run_creation.create_run_with_audit`；C6 旧入口收敛只调用该接缝，不直接写 `run.created`。
 2. 下游切片不得自造动作名。未登记动作抛 `audit_action_unregistered`（HTTP 500）；动作名形状非法抛 `audit_action_invalid`。
 3. 动作名只允许小写字母、数字、下划线与点，至少两段，最长 80 字符。
 4. 已登记的名称不得改名。新增动作必须先改本节与附录 A，再升级注册表版本；不得只改代码。
@@ -6253,7 +6253,7 @@ uq_platform_credential_bundles_project_provider
 | `budget.blocked` | C5 | 预算阻断 |
 | `budget.released` | C5 | 预算释放 |
 | `task.retried` | C6 | 任务重试 |
-| `run.created` | C6 | 运行创建；只在插入新 run 时写，幂等重放不写 |
+| `run.created` | C4 | 运行创建；由 C4 `services/run_creation.create_run_with_audit` 接缝写，只在插入新 run 时写，幂等重放不写；C6 旧入口收敛调用该接缝，不直接写 |
 | `run.cancel_requested` | C6 | 运行取消请求 |
 | `run.cancelled` | C6 | 运行取消 |
 | `run.retry_scheduled` | C6 | 运行重试已排期 |
@@ -7675,7 +7675,6 @@ def test_runs_cancel_idempotency_is_registered() -> None:
 def test_run_lifecycle_audit_actions_are_registered() -> None:
     actions = {item["name"]: item for item in load_registry()["audit_actions"]["actions"]}
     for name in (
-        "run.created",
         "run.cancel_requested",
         "run.retry_scheduled",
         "run.retry_exhausted",
@@ -7683,6 +7682,8 @@ def test_run_lifecycle_audit_actions_are_registered() -> None:
     ):
         assert name in actions
         assert actions[name]["owner"] == "C6"
+    assert "run.created" in actions
+    assert actions["run.created"]["owner"] == "C4"
     assert "run.cancelled" in actions
     assert "run.completed" in actions
 
@@ -8019,7 +8020,7 @@ Create `configs/contracts/v1.1.0/template_capability_profile.schema.json`:
 - 已终态且无同键记录：409 `state_conflict`。
 - 不得 `del` 参数，不得在 C13 循环 `cancel_run`，不得写第二张取消表。
 
-run 生命周期审计动作只允许：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。owner 都是 C6。`run.created` 只在插入新 run 时写；幂等重放不写。
+run 生命周期审计动作只允许：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。`run.created` 的 owner 是 C4，只能由 C4 `services/run_creation.create_run_with_audit` 接缝写；其余六个动作的 owner 是 C6。C6 旧入口收敛调用 C4 接缝，不直接写 `run.created`。`run.created` 只在插入新 run 时写；幂等重放不写。
 
 ### 2.14 模板能力画像
 
@@ -8223,7 +8224,7 @@ delivery_class = 'quick_draft' AND delivery_status = 'delivered'
 
 ```json
 [
-  {"name": "run.created", "owner": "C6", "status": "new", "phase": "C6"},
+  {"name": "run.created", "owner": "C4", "status": "new", "phase": "C4"},
   {"name": "run.cancel_requested", "owner": "C6", "status": "new", "phase": "C6"},
   {"name": "run.retry_scheduled", "owner": "C6", "status": "new", "phase": "C6"},
   {"name": "run.retry_exhausted", "owner": "C6", "status": "new", "phase": "C6"},
@@ -9066,7 +9067,7 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 | C4 创建幂等与初始版本接缝未登记 | P0 | 登记 `workbench.tasks.create` 的 `Idempotency-Key` 必填、`Idempotent-Replay`、409 `idempotency_conflict` 与 `idempotency_key_hash` 部分唯一索引；登记 `workflow_versions.workbench_task_id` 复合外键、`plan_payload.execution_steps` 不可变快照与 `create_initial_workflow_version_for_task` 接缝；全部对象归入迁移 `202610220060`，C1 不新增迁移。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
 | C4 种子商品/价格带/验收联系人规则缺失 | P0 | `seed_products` 3–10 项、`target_price_band` 原币边界规则、`acceptance_contact_id` owner/admin 与空值回落 owner 写入 registry notes、正文、`CreateTaskInput` 与 PRD；`acceptance_contact_not_member` 含义改为非 owner/admin。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
 | 发布与浏览器边界未声明 | P0 | Global Constraints 写明本切片不直接部署、A/B 发布由 PG0 发布批次执行、C14 只做只读验收、浏览器交接无。 | Global Constraints |
-| C2 消费者契约缺口 | P0 | 登记 `report_reviewer_assignments.expires_at`（非空）、`reviewer_assignment_expired`（403）、审阅者读/审核路径错误码、版本化审计动作注册表 `audit-actions.v1`（63 动作）与 `audit_action_unregistered`（500）；不新增第二张审计表，不新增客户 `reviewer` 角色。 | Global、Task 1、Task 5、Task 8、Task 11、Task 14 |
+| C2 消费者契约缺口 | P0 | 登记 `report_reviewer_assignments.expires_at`（非空）、`reviewer_assignment_expired`（403）、审阅者读/审核路径错误码、版本化审计动作注册表 `audit-actions.v1`（68 动作）与 `audit_action_unregistered`（500）；不新增第二张审计表，不新增客户 `reviewer` 角色。 | Global、Task 1、Task 5、Task 8、Task 11、Task 14 |
 | C6/C8/C9/C10 修复前置未登记 | P0 | 登记 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`（迁移 062）；登记 `runs.cancel`、`RunCancellationResult` 接缝与 `invalid_request`/`idempotency_conflict`/`state_conflict`；登记 `TaskTemplate.capability_allowlist`、`template_capability_ids()` 与 `template_registry_digest()` 代码画像；登记 `report_artifacts.delivery_class`、`acceptance_deadline`、`quick_draft_of_artifact_id`（迁移 066）；登记验收三种事件、四条路径与 `metadata_json` 幂等语义；登记唯一 `export_policy.v1` 扫描画像与 `delivery_pii_detected`；C1 不新增迁移。 | Global、Task 1、Task 2、Task 5、Task 8、Task 14A |
 
 验证命令（在 `/Users/lute/Project/data_scrapy-gov-c1` 执行，确认字段已登记）：

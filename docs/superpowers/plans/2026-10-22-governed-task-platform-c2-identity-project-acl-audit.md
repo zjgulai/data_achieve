@@ -72,7 +72,7 @@ audit_events 表、追加服务、哈希链、查询与校验接口
 WORKSPACE_RBAC_ENFORCED 功能开关
 登录、失败登录与登出审计
 C4-C12 项目 ACL 与审计动作消费者契约（只交付文档与判据，不改它们的文件）
-C14 成员页所需 API 与交接判据（C2 不改控制台）
+C14 设置页内联成员面板所需 API 与交接判据（C2 不改控制台，不新增 /settings/members 路由）
 ```
 
 本计划为审计服务建立接缝，并覆盖工作区成员、项目、项目成员、登录会话、内部审阅者访问与 ACL 拒绝事件。项目密钥生命周期、任务单、预算、运行、Claim 审核、报告、交付、保留与删除事件的审计由各自工作包调用同一 `append_audit_event` 与同一 `AUDIT_ACTIONS` 注册表，不在 C2 重复实现。
@@ -351,7 +351,7 @@ C1 必须新增的登记（缺失时 Task 1 停止并输出 `C2_CONTRACT_GAP`）
 | `apps/api/tests/unit/test_task_runs_route.py` | Modify | 项目 ACL 接缝的既有路由回归。 |
 | `apps/api/tests/integration/test_social_provider_routes.py` | Modify | 项目 ACL 接缝的集成回归。 |
 | `docs/superpowers/plans/2026-10-22-governed-task-platform-c2-identity-project-acl-audit.md` | Commit | 本计划文件，随 Task 1 提交。 |
-| `docs/ops/c2-c14-members-handoff.md` | Create | C14 成员页交接判据与风险。 |
+| `docs/ops/c2-c14-members-handoff.md` | Create | C14 `/settings` 内联成员面板的交接判据、选择器与风险；不新增 `/settings/members` 路由。 |
 | `docs/ops/c2-c12-downstream-handoff.md` | Create | C4-C12 项目 ACL 消费者契约、逐切片 403/404 测试模板、统一审计动作与 owner 交接。 |
 
 **授权接缝方向：**
@@ -7028,7 +7028,7 @@ git commit -m "feat(audit): record identity session and ACL changes"
 
 ### Task 9: 下游交接（C4-C12 契约与 C14 控制台）
 
-C2 不改 `apps/scraper-console/**`，也不改 C4-C12 的文件。本任务交付两份交接文档：C4-C12 的项目 ACL/审计动作契约，以及 C14 的成员页行为与浏览器判据。
+C2 不改 `apps/scraper-console/**`，也不改 C4-C12 的文件。本任务交付两份交接文档：C4-C12 的项目 ACL/审计动作契约，以及 C14 `/settings` 内联成员面板的行为、选择器与浏览器判据。
 
 **Files:**
 - Create: `docs/ops/c2-c12-downstream-handoff.md`
@@ -7187,34 +7187,57 @@ mkdir -p docs/ops
 Create `docs/ops/c2-c14-members-handoff.md`:
 
 ```markdown
-# C2 → C14 成员页交接
+# C2 → C14 设置页内联成员面板交接
+
+C2 不修改控制台，也不新增页面路由。成员管理作为 `/settings` 页面的内联面板交付；不得新增 `/settings/members` 页面或第 12 条合同路由，11 条合同路由保持不变。
 
 ## 数据源
 
 - 会话角色来自 `GET /api/auth/me` 的 `role`，取值 `owner`、`admin`、`member`。
-- 成员列表来自 `GET /api/workspaces/current/members`。
+- 成员列表来自 `GET /api/workspaces/current/members`；每行包含 `user.id`、`user.email`、`user.name` 与 `role`。
+- 邀请成员调用 `POST /api/workspaces/current/members`，请求体 `{"email": "...", "role": "member"}`。
 - 改角色调用 `PATCH /api/workspaces/current/members/{user_id}`，请求体 `{"role": "admin"}` 或 `{"role": "member"}`。
-- 邀请成员调用 `POST /api/workspaces/current/members`，请求体包含 `email` 与 `role`。
+- 移除成员调用 `DELETE /api/workspaces/current/members/{user_id}`。
+- 项目分配读取 `GET /api/projects` 与 `GET /api/projects/{project_id}/members`；授予调用 `POST /api/projects/{project_id}/members`，请求体 `{"user_id": "..."}`；撤销调用 `DELETE /api/projects/{project_id}/members/{user_id}`。
+- 项目分配只接受当前工作区成员；目标不是工作区成员时返回 404 `workspace_member_not_found`；重复授予返回 409 `project_member_exists`。
 
 ## 页面行为
 
-1. owner 看到邀请表单、邀请角色下拉、非 owner 成员的角色下拉与移除按钮。
-2. admin 与 member 只看到成员列表，不显示邀请表单、角色下拉或移除按钮。
-3. 非 owner 提示固定为：“只有工作区所有者可以添加、移除成员或修改角色。管理员可以查看成员列表。”
-4. 角色文案：`owner` → 所有者，`admin` → 管理员，`member` → 成员。
-5. 页面不得用 `workspace.owner_id` 判断管理权限；只使用会话 `role`。
+面板挂载在 `/settings` 现有“成员”区块，根节点 `data-testid="settings-members"`。页面不新增路由。
+
+| 控件 | owner | admin | member |
+|---|---|---|---|
+| 成员行 `member-row-<email>` | 显示 | 显示 | 显示 |
+| 邀请表单 `member-invite-form` | 显示 | 隐藏 | 隐藏 |
+| 角色下拉 `member-role-<email>` | 显示 | 隐藏 | 隐藏 |
+| 非本人移除按钮 `member-remove-<email>` | 显示 | 隐藏 | 隐藏 |
+| 项目分配面板 `project-member-panel` | 显示 | 显示 | 隐藏 |
+| 非 owner 提示 `members-non-owner-hint` | 隐藏 | 显示 | 显示 |
+
+1. owner 的本人行显示 `member-role-<own-email>`，不显示本人移除按钮；把最后一名 owner 降级时，服务端返回 409 `workspace_last_owner_required`，页面在 `member-error` 中原样显示该错误码，成员行与角色不改变。
+2. owner 对非本人行显示角色下拉与移除按钮；移除 `workspaces.owner_id` 对应用户时，服务端返回 403 `workspace_owner_immovable`，页面显示该错误码。
+3. admin 与 member 不显示邀请表单、角色下拉或移除按钮；admin 仍显示项目分配面板，member 不显示。
+4. 非 owner 提示固定为：“只有工作区所有者可以添加、移除成员或修改角色。管理员可以查看成员列表。”
+5. 角色文案：`owner` → 所有者，`admin` → 管理员，`member` → 成员。
+6. 工作区成员管理只使用会话 `role === "owner"`；项目分配使用 `role === "owner" || role === "admin"`；不得用 `workspace.owner_id` 判断管理权限。
+7. mutation 成功后重新读取对应列表；失败时保留当前选择，并在 `member-error` 显示 `error.code`。
 
 ## Playwright 判据
 
-- `/settings/members` 返回 200，存在 `<main>`。
-- owner：邀请角色下拉可见；`Admin 的角色` 与 `Member 的角色` 下拉可见；移除按钮 2 个。
-- admin：`combobox` 数量为 0；移除按钮为 0；成员邮箱输入框为 0。
-- member：同 admin。
-- 三个视角都没有 5xx、没有 `console.error`。
+预置：真实 owner storage state；admin 与 member 只读视角可用 `/api/auth/me` 的 route fixture 切换 `role`。mutation 判据必须使用真实 owner 会话与真实 API，不得用 mock 代替。邀请目标使用种子已存在、尚未加入当前工作区的用户邮箱。
+
+1. `/settings` 返回 200，存在 `<main>` 与 `[data-testid="settings-members"]`；`page.url()` 以 `/settings` 结尾；页面没有指向 `/settings/members` 的链接。
+2. owner 面板：`[data-testid="member-invite-form"]`、`[data-testid="member-invite-email"]`、`[data-testid="member-invite-role"]`、`[data-testid="member-invite-submit"]`、`[data-testid="member-role-<own-email>"]` 与 `[data-testid="project-member-panel"]` 可见；本人行没有 `[data-testid="member-remove-<own-email>"]`。
+3. 邀请：填 `[data-testid="member-invite-email"]`，选 `[data-testid="member-invite-role"]`，点 `[data-testid="member-invite-submit"]`；`[data-testid="member-row-<invited-email>"]` 出现，`[data-testid="member-error"]` 不存在。
+4. 改角色：把 `[data-testid="member-role-<invited-email>"]` 从 `member` 改为 `admin`，刷新后该行显示“管理员”；再改回 `member`，刷新后显示“成员”。
+5. 最后 owner 错误：把 `[data-testid="member-role-<own-email>"]` 改为 `member`；`[data-testid="member-error"]` 包含 `workspace_last_owner_required`；本人行仍显示“所有者”。
+6. 项目分配：在 `[data-testid="project-member-panel"]` 选择 `[data-testid="project-member-project"]` 与 `[data-testid="project-member-user"]`，点 `[data-testid="project-member-grant"]`；`[data-testid="project-member-row-<project-id>-<invited-email>"]` 出现；点 `[data-testid="project-member-revoke-<project-id>-<invited-email>"]` 后消失。
+7. 可见性：owner 看到邀请表单、`[data-testid="member-role-<invited-email>"]`、`[data-testid="member-remove-<invited-email>"]` 与项目分配面板；admin 看到成员行与项目分配面板，看不到邀请表单、角色下拉、移除按钮；member 只看到成员行，看不到邀请表单、角色下拉、移除按钮与项目分配面板；admin 与 member 都看到 `[data-testid="members-non-owner-hint"]`，文案与页面行为第 4 条一致。
+8. 三个视角都没有 5xx、没有 `console.error`。
 
 ## 风险
 
-C14 未完成前，C2 只有 API 与单元测试证据，没有真实浏览器证据。该风险由 C14 的成员页用例与 PG0 验收关闭。
+C14 未完成前，C2 只有 API 与单元测试证据，没有真实浏览器证据。该风险由 C14 的 `members.spec.ts` 与 PG0 验收关闭。若可见性用例使用 mock 会话，邀请、改角色、最后 owner 错误与项目分配必须另有真实 API 用例；只有 mock 的成员面板不算关闭该风险。
 ```
 
 - [ ] **Step 3: 确认没有控制台改动**
@@ -7377,7 +7400,7 @@ Expected: 退出码 0。
 
 C2 不修改控制台。前端单元测试、`tsc`、`next build` 与 Playwright 由 C14 在 `feat/gov-c14` 执行。C2 的合并门禁只要求：
 
-- [ ] `docs/ops/c2-c14-members-handoff.md` 存在且包含四个浏览器判据。
+- [ ] `docs/ops/c2-c14-members-handoff.md` 存在，且包含 `/settings` 内联成员面板的选择器、邀请、改角色、最后 owner 错误、项目分配与 owner/admin/member 三视角浏览器判据。
 - [ ] `docs/ops/c2-c12-downstream-handoff.md` 存在且包含 C4-C12 接入表、403/404 模板与审计动作 owner 表。
 - [ ] `git status --porcelain -- apps/scraper-console` 为空。
 

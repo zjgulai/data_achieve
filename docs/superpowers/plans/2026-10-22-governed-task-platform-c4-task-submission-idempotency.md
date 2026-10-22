@@ -4,7 +4,7 @@
 
 **Goal:** 让 `workbench_tasks` 七槽位任务单以 `Idempotency-Key` 幂等地创建，可以关联不可变 `workflow_versions`，在版本创建时固化逐步骤执行计划并校验 `collection_tasks`，并按市场幂等地提交为 `runs` 行；blocked 市场保留 run 与 gate/gap，但绝不把 `blocked` 写进 `runs.status`。
 
-**Architecture:** C4 只做提交、幂等与计划步骤固化，不执行、不预算。`workbench_tasks` 保存七槽位、种子商品、目标价格带、任务单状态与 `idempotency_key_hash`；工作区级部分唯一索引保证同一幂等键只建一单，相同请求摘要重放返回已有任务，不同摘要返回 `idempotency_conflict`。`workflow_versions.workbench_task_id` 建立任务到计划版本的租户安全关联；版本创建时把 `execution_steps` 写入不可变 `plan_payload`，并为每个步骤创建或校验 `collection_tasks`。C4 提供 `create_initial_workflow_version_for_task` 接缝，复用既有 workflow planner 为任务单创建并批准首个版本，客户 `create_task` 与 `collect` 都调用该接缝，不建第二套计划事实。`POST /api/runs` 在 workbench 模式下按市场创建一行 `status=queued` 的 run，用 `uq_runs_workspace_idempotency` 做幂等重放，用 `(workflow_version_id, market_code)` 部分唯一索引兜住不同幂等键的并发提交。blocked 市场的门禁写入 `authorizations.gate_status='blocked'`，结构化 gap 写入该行 `scope.gap`；run 本身仍为 `queued`。C5 在迁移 061 把 blocked G-Plan 绑定到 run；C6 执行前必须检查该门禁。
+**Architecture:** C4 只做提交、幂等与计划步骤固化，不执行、不预算。`workbench_tasks` 保存七槽位、种子商品、目标价格带、任务单状态与 `idempotency_key_hash`；工作区级部分唯一索引保证同一幂等键只建一单，相同请求摘要重放返回已有任务，不同摘要返回 `idempotency_conflict`。`workflow_versions.workbench_task_id` 建立任务到计划版本的租户安全关联；版本创建时把 `execution_steps` 写入不可变 `plan_payload`，并为每个步骤创建或校验 `collection_tasks`。C4 提供 `create_initial_workflow_version_for_task` 接缝，复用既有 workflow planner 为任务单创建并批准首个版本，客户 `create_task` 与 `collect` 都调用该接缝，不建第二套计划事实。C4 提供 `services/run_creation.create_run_with_audit` 审计化 run 创建接缝：同一事务插入 run 并写 C2 `run.created`；C4 提交服务只调用该接缝，后续 C6 旧入口收敛复用同一接缝。`POST /api/runs` 在 workbench 模式下按市场创建一行 `status=queued` 的 run，用 `uq_runs_workspace_idempotency` 做幂等重放，用 `(workflow_version_id, market_code)` 部分唯一索引兜住不同幂等键的并发提交。blocked 市场的门禁写入 `authorizations.gate_status='blocked'`，结构化 gap 写入该行 `scope.gap`；run 本身仍为 `queued`。C5 在迁移 061 把 blocked G-Plan 绑定到 run；C6 执行前必须检查该门禁。
 
 **Tech Stack:** Python 3.12、FastAPI、Pydantic v2、SQLAlchemy 2 async、Alembic、PostgreSQL 生产 / SQLite 内存测试、pytest、ruff、mypy strict、GitNexus CLI。
 
@@ -28,6 +28,7 @@
 - 幂等键必填。同一工作区、同一幂等键、同一参数返回第一次提交的 run 集合；同一键不同参数返回 409 `idempotency_conflict`。
 - **任务单创建幂等键必填。** `POST /api/workbench/tasks` 必须带 `Idempotency-Key` 头；缺失或空值返回 422 `invalid_request`。`workbench_tasks.idempotency_key_hash` 保存 `sha256("workbench-task-create.v1:{key}")`；`uq_workbench_tasks_workspace_idempotency (workspace_id, idempotency_key_hash) WHERE idempotency_key_hash IS NOT NULL` 是唯一防线。同一工作区、同一键、同一请求摘要返回已有任务（200，`Idempotent-Replay: true`）；同一键不同摘要返回 409 `idempotency_conflict`。请求摘要由服务层对规范化请求字段计算 SHA-256，并从已持久化任务行重建同摘要；不新增第二个摘要列。
 - **初始计划版本接缝。** C4 提供 `create_initial_workflow_version_for_task(session, *, workspace_id, project_id, created_by_user_id, workbench_task_id, idempotency_key)`，只调用既有 workflow planner（`build_workflow_plan_result`、`create_workflow_plan`、`transition_workflow_plan_status`）为任务单创建并批准首个版本；已有版本时复用，不再建第二个。客户 `create_task` 与 `collect` 都调用该接缝，C13 不生成计划。版本创建时写入 `workbench_task_id` 与 `execution_steps`；计划状态必须是 `approved` 且 `current_version_id` 指向该版本，`submit_workbench_task` 才接受。
+- **审计化 run 创建接缝。** C4 新建 `apps/api/src/data_intelligence_hub/services/run_creation.py`，提供 `create_run_with_audit(...)`：在同一业务事务内调用 `repositories.runs.create_run` 并调用 C2 `services.audit_log.append_audit_event(action='run.created', resource_type='run', resource_id=str(run.id), actor_type='system', result='success')`。C4 提交服务只调用该接缝；后续 C6 旧入口收敛也复用该接缝。C4/C6 新增的 run 创建路径不得直接调用 `runs_repository.create_run`；旧 `POST /api/runs` 非 workbench 路径的既有直连由 C6 Task 10 用同一接缝收敛。`run.created` 只在新行插入时写，幂等重放不写。C4 不 import C6 `run_service`、`run_audit` 或任何 C6 模块，因此不依赖未来切片。
 - 复用现有部分唯一索引 `uq_runs_workspace_idempotency`，不新建幂等记录表。旧索引 `uq_task_runs_task_idempotency` 与 `uq_runs_workspace_idempotency` 都必须保留。新增部分唯一索引 `uq_runs_workflow_version_market`：`(workflow_version_id, market_code) WHERE workflow_version_id IS NOT NULL AND market_code IS NOT NULL`。
 - **执行步骤只在版本创建时生成。** `workflow_versions.plan_payload["execution_steps"]` 是不可变快照；批准、提交、重试都不改写。每项必须含 `step_index`、`task_id`、`endpoint_type`、`collector_type`、`depends_on`；`task_id` 必须指向同工作区同项目的 `collection_tasks` 行。C4 在版本创建事务内创建或校验这些行。
 - 迁移只能有一个 head。C4 增加且只增加一个迁移：`202610220060`，`down_revision = "202610220059"`。
@@ -65,6 +66,7 @@ C1 已冻结以下 C4 消费的机器契约。Task 0 必须逐项核对；缺一
 | 提交端点 | 扩展现有 `POST /api/runs`；请求带 `workbench_task_id`、`workflow_version_id` 与 `Idempotency-Key` 头；响应 `run_ids[]`、`runs[]`、`gaps[]`、`idempotent_replay` |
 | 任务单端点 | `POST /api/workbench/tasks`（`Idempotency-Key` 必填；201 新建、200 重放、409 `idempotency_conflict`、422 `invalid_request`）、`GET /api/workbench/tasks`、`GET /api/workbench/tasks/{task_id}`、`PATCH /api/workbench/tasks/{task_id}`、`GET /api/workbench/tasks/{task_id}/gates`；C1 registry id 分别为 `workbench.tasks.create`、`workbench.tasks.list`、`workbench.tasks.detail`、`workbench.tasks.update`、`workbench.tasks.gates` |
 | 初始版本接缝 | `create_initial_workflow_version_for_task(session, *, workspace_id, project_id, created_by_user_id, workbench_task_id, idempotency_key) -> uuid.UUID`；只调用既有 planner 的 `build_workflow_plan_result`、`create_workflow_plan`、`transition_workflow_plan_status`。已有版本时复用；计划必须 `approved` 且 `current_version_id` 指向该版本。C13 `create_task` 与 `collect` 只调用此接缝。 |
+| run 创建接缝 | C4 提供 `create_run_with_audit`：同一事务调用 `repositories.runs.create_run` 与 C2 `append_audit_event(action='run.created')`。C1 登记 `run.created` 的 owner 为 C4；C6 旧入口收敛只调用该接缝，不直接写 `run.created`。 |
 | 幂等 | 复用 `uq_runs_workspace_idempotency`；每市场派生 `sha256("workbench-submit.v1:{key}:{market}")`。该前缀是 C4 内部派生常量，不要求成为 C1 路径。 |
 | 市场门禁 | `authorizations` 行：`gate_id='G-Plan'`、`gate_status='blocked'`、`plan_version_id=workflow_version_id`、`scope.market_code`、`scope.gap` 保存结构化 gap。C4 不写 `run_id`（该列由 C5 迁移 061 增加）；C5 必须把该 blocked 行绑定到对应 run，且不得再建 G-Cost pass。 |
 | gap 结构 | `market_code`、`domain='market'`、`reason_code='market_unsupported'`、`impact`、`customer_message`、`remediation`、`severity` |
@@ -92,6 +94,7 @@ C1 已冻结以下 C4 消费的机器契约。Task 0 必须逐项核对；缺一
 | `apps/api/src/data_intelligence_hub/services/workbench/tasks.py` | 创建、更新、读取任务单；七槽位、包型/主对比市场、种子商品、价格带、预算、验收联系人 owner/admin 校验；创建幂等重放/冲突；任务锁定 |
 | `apps/api/src/data_intelligence_hub/services/workbench/initial_version.py` | `create_initial_workflow_version_for_task`：复用既有 planner 创建/批准首个版本；已有版本时只校验并复用 |
 | `apps/api/src/data_intelligence_hub/services/workbench/submission.py` | 逐市场幂等提交；按 `primary_market`/`comparison_markets` 建 run；blocked gate/gap；事务 |
+| `apps/api/src/data_intelligence_hub/services/run_creation.py` | 新建。C4 拥有的审计化 run 创建接缝：同事务调用仓储 `create_run` 与 C2 `append_audit_event('run.created')`；C4 提交与 C6 旧入口收敛的唯一 run 创建入口；不依赖 C6 |
 | `apps/api/src/data_intelligence_hub/repositories/workbench_tasks.py` | 任务单、按幂等摘要查询、版本关联、任务 run 查询 |
 | `apps/api/src/data_intelligence_hub/repositories/runs.py` | `market_code` 写入、按幂等摘要批量查询、按版本列 run |
 | `apps/api/src/data_intelligence_hub/repositories/authorizations.py` | 按计划版本列门禁行 |
@@ -112,7 +115,8 @@ C1 已冻结以下 C4 消费的机器契约。Task 0 必须逐项核对；缺一
 | `apps/api/tests/unit/test_workbench_schemas.py` | 七槽位与市场/语言/时间窗/种子商品/价格带校验；taxonomy 路径按仓库根解析且绝对覆盖优先 |
 | `apps/api/tests/unit/test_workbench_task_repository.py` | 任务单仓储、幂等摘要查询、版本关联、任务 run 查询 |
 | `apps/api/tests/unit/test_workbench_initial_version.py` | 初始计划版本接缝：复用、批准、单版本、错误码 |
-| `apps/api/tests/unit/test_workbench_submission_service.py` | 幂等、冲突、blocked gate/gap、无账本/无步骤 |
+| `apps/api/tests/unit/test_workbench_submission_service.py` | 幂等、冲突、blocked gate/gap、无账本/无步骤、`run.created` 审计 |
+| `apps/api/tests/unit/test_run_creation.py` | 审计化 run 创建接缝：新 run 恰好一条 `run.created`；幂等重放零新增 |
 | `apps/api/tests/integration/test_workbench_task_routes.py` | 任务单 API 全链路、创建幂等、验收联系人 owner/admin |
 | `apps/api/tests/integration/test_workbench_submission_routes.py` | `POST /api/runs` 提交、重放、冲突、blocked 市场、租户隔离 |
 
@@ -234,9 +238,12 @@ rg -n "workbench.tasks.create|workbench.tasks.update|workbench.tasks.gates|uq_ru
   configs/contracts/v1.1.0/registry.json
 rg -n "idempotency_conflict|taxonomy_unavailable|workflow_version_already_submitted|plan_not_approved|task_locked|workbench_disabled" \
   configs/contracts/v1.1.0/registry.json
+rg -n "run\.created" \
+  configs/contracts/v1.1.0/registry.json \
+  apps/api/src/data_intelligence_hub/services/audit_log.py
 ```
 
-Expected: 每条都有命中。C1 必须已登记 `workbench_tasks`（含 `package_type`、`primary_market`、`comparison_markets`、`acceptance_contact_id`、`max_cost_usd/max_pages/max_records`、`seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`）、`workflow_versions.workbench_task_id` 复合外键、`runs.market_code`、`runs` 的部分唯一索引、`workflow_versions.plan_payload.execution_steps`、五个任务单/提交路径、`workbench.tasks.create` 的 `idempotent: true` 与 `Idempotency-Key` 语义、`idempotency_conflict` 绑定到该路径、全部错误码。`runs` 不得登记 `market_role` 或 `package_type`。缺一项时停止，把缺口交回 C1；C4 不改契约或 registry。`workbench-task-create.v1` 是 C4 内部派生常量，不要求出现在 registry。若 C1 已登记同义列名（例如 `workflow_versions.task_id`、`runs.market` 或 `workbench_tasks.request_hash`），以 C1 为准，停止并把本计划的代码名统一替换为 C1 名称；不得两套列名并存。若 C1 要求单独保存请求摘要列，C4 必须消费该列并停止使用行重建摘要；不得同时保留两套摘要。taxonomy 文件是 C4 的产物：只要求 registry 登记 `taxonomy_unavailable` 错误码，不要求已批准设计或 registry 出现 `configs/taxonomy/maternal_v1.json` 字面路径；不要用 rg 断言设计文档包含该路径。
+Expected: 每条都有命中。C1 必须已登记 `workbench_tasks`（含 `package_type`、`primary_market`、`comparison_markets`、`acceptance_contact_id`、`max_cost_usd/max_pages/max_records`、`seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`）、`workflow_versions.workbench_task_id` 复合外键、`runs.market_code`、`runs` 的部分唯一索引、`workflow_versions.plan_payload.execution_steps`、五个任务单/提交路径、`workbench.tasks.create` 的 `idempotent: true` 与 `Idempotency-Key` 语义、`idempotency_conflict` 绑定到该路径、全部错误码。`runs` 不得登记 `market_role` 或 `package_type`。缺一项时停止，把缺口交回 C1；C4 不改契约或 registry。`workbench-task-create.v1` 是 C4 内部派生常量，不要求出现在 registry。若 C1 已登记同义列名（例如 `workflow_versions.task_id`、`runs.market` 或 `workbench_tasks.request_hash`），以 C1 为准，停止并把本计划的代码名统一替换为 C1 名称；不得两套列名并存。若 C1 要求单独保存请求摘要列，C4 必须消费该列并停止使用行重建摘要；不得同时保留两套摘要。taxonomy 文件是 C4 的产物：只要求 registry 登记 `taxonomy_unavailable` 错误码，不要求已批准设计或 registry 出现 `configs/taxonomy/maternal_v1.json` 字面路径；不要用 rg 断言设计文档包含该路径。`run.created` 的 registry owner 必须是 C4；C2 `services.audit_log.AUDIT_ACTIONS` 必须包含 `run.created`，否则 C4 接缝写入会被 `audit_action_unregistered` 拒绝；缺失时停止并把缺口交回 C1/C2。
 
 - [ ] **Step 4: 确认 production taxonomy 尚未被其他切片创建**
 
@@ -3190,6 +3197,8 @@ async def list_runs_for_workflow_version(
 
 Add both names to `__all__`.
 
+本计划新增的 C4 生产代码只允许 `services/run_creation.py` 直接调用 `create_run`；C4 提交服务与 C6 旧入口收敛都调用 Task 3C 的 `create_run_with_audit`。旧入口既有直连由 C6 Task 10 收敛。测试可以直接调用仓储，以验证唯一索引与查询行为。
+
 - [ ] **Step 5: 扩展 workflow_plans 与 authorizations 仓储**
 
 In `apps/api/src/data_intelligence_hub/repositories/workflow_plans.py`, add:
@@ -4416,17 +4425,287 @@ git commit -m "feat(workbench): add initial workflow version seam (C4)"
 
 ---
 
+### Task 3C: 审计化 run 创建接缝（C4 拥有）
+
+**Files:**
+- Create: `apps/api/src/data_intelligence_hub/services/run_creation.py`
+- Test: `apps/api/tests/unit/test_run_creation.py`
+
+**Interfaces:**
+- Consumes: `repositories.runs.create_run`、`repositories.runs.find_by_idempotency_key`、C2 `services.audit_log.append_audit_event`。
+- Produces: `create_run_with_audit(session, *, workspace_id, project_id, trigger, task_id=None, workflow_version_id=None, status="queued", idempotency_key_hash=None, market_code=None) -> Run`。
+
+- [ ] **Step 0: 逐符号 impact**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4
+node .gitnexus/run.cjs impact "create_run" --direction upstream --repo .
+node .gitnexus/run.cjs detect-changes --scope all --repo .
+```
+
+Expected: `create_run` 仍为 LOW/5 impacted、2 direct；新增接缝不改变仓储签名与现有调用方。
+
+- [ ] **Step 1: 写失败测试**
+
+Create `apps/api/tests/unit/test_run_creation.py`:
+
+```python
+"""审计化 run 创建接缝的单元测试。"""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+
+import pytest
+import pytest_asyncio
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.audit_event import AuditEvent
+from data_intelligence_hub.services.run_creation import create_run_with_audit
+from tests.unit.workbench_support import seed_workbench_scope
+
+
+@pytest_asyncio.fixture()
+async def session() -> AsyncIterator[AsyncSession]:
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as value:
+        yield value
+    await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_new_run_writes_exactly_one_run_created(
+    session: AsyncSession,
+) -> None:
+    seed = await seed_workbench_scope(session, suffix="run-creation")
+    run = await create_run_with_audit(
+        session,
+        workspace_id=seed.workspace_id,
+        project_id=seed.project_id,
+        workflow_version_id=seed.version_id,
+        trigger="api",
+        idempotency_key_hash="c" * 64,
+        market_code="US",
+    )
+    await session.commit()
+
+    assert run.status == "queued"
+    assert run.market_code == "US"
+    audit_actions = list(
+        (
+            await session.execute(
+                select(AuditEvent.action).where(
+                    AuditEvent.resource_id == str(run.id)
+                )
+            )
+        ).scalars()
+    )
+    assert audit_actions == ["run.created"]
+    event = await session.scalar(
+        select(AuditEvent).where(AuditEvent.resource_id == str(run.id))
+    )
+    assert event is not None
+    assert event.resource_type == "run"
+    assert event.actor_type == "system"
+    assert event.result == "success"
+    assert event.details["market_code"] == "US"
+    assert event.details["trigger"] == "api"
+
+
+@pytest.mark.asyncio
+async def test_idempotent_replay_does_not_add_run_created(
+    session: AsyncSession,
+) -> None:
+    seed = await seed_workbench_scope(session, suffix="run-replay")
+    first = await create_run_with_audit(
+        session,
+        workspace_id=seed.workspace_id,
+        project_id=seed.project_id,
+        workflow_version_id=seed.version_id,
+        trigger="api",
+        idempotency_key_hash="d" * 64,
+        market_code="US",
+    )
+    await session.commit()
+    second = await create_run_with_audit(
+        session,
+        workspace_id=seed.workspace_id,
+        project_id=seed.project_id,
+        workflow_version_id=seed.version_id,
+        trigger="api",
+        idempotency_key_hash="d" * 64,
+        market_code="US",
+    )
+    await session.commit()
+
+    assert second.id == first.id
+    count = await session.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(
+            AuditEvent.action == "run.created",
+            AuditEvent.resource_id == str(first.id),
+        )
+    )
+    assert count == 1
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
+.venv/bin/python -m pytest tests/unit/test_run_creation.py -v
+```
+
+Expected: FAIL，`ModuleNotFoundError` 指向 `services.run_creation`。
+
+- [ ] **Step 3: 写审计化 run 创建接缝**
+
+Create `apps/api/src/data_intelligence_hub/services/run_creation.py`:
+
+```python
+"""C4 拥有的审计化 run 创建接缝。
+
+``create_run_with_audit`` 是创建 run 的唯一生产入口：同一事务内插入
+``runs`` 行并追加 C2 的 ``run.created`` 审计事件。C4 提交服务与 C6 旧入口
+收敛都调用本函数；C4 不依赖 C6 模块。
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from data_intelligence_hub.models.run import Run, RunStatus
+from data_intelligence_hub.repositories import runs as runs_repository
+from data_intelligence_hub.services.audit_log import append_audit_event
+
+
+async def create_run_with_audit(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    trigger: str,
+    task_id: uuid.UUID | None = None,
+    workflow_version_id: uuid.UUID | None = None,
+    status: RunStatus | str = RunStatus.QUEUED,
+    idempotency_key_hash: str | None = None,
+    market_code: str | None = None,
+) -> Run:
+    """插入新 run 并写 ``run.created``；幂等重放不写审计。
+
+    带幂等键时先查后插。已存在时返回原行且不追加审计；并发插入由
+    ``create_run`` 的唯一索引与调用方的 IntegrityError 分支处理。
+    本函数不提交事务，提交边界由调用方决定。
+    """
+    if idempotency_key_hash is not None:
+        existing = await runs_repository.find_by_idempotency_key(
+            session,
+            workspace_id=workspace_id,
+            idempotency_key_hash=idempotency_key_hash,
+        )
+        if existing is not None:
+            return existing
+
+    run = await runs_repository.create_run(
+        session,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        task_id=task_id,
+        workflow_version_id=workflow_version_id,
+        status=status,
+        trigger=trigger,
+        idempotency_key_hash=idempotency_key_hash,
+        market_code=market_code,
+    )
+    await append_audit_event(
+        session,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        actor_type="system",
+        action="run.created",
+        resource_type="run",
+        resource_id=str(run.id),
+        result="success",
+        details={
+            "run_id": str(run.id),
+            "trigger": trigger,
+            "market_code": market_code,
+            "status": run.status,
+        },
+    )
+    return run
+
+
+__all__ = ["create_run_with_audit"]
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
+.venv/bin/python -m pytest tests/unit/test_run_creation.py -v
+```
+
+Expected: 2 passed。
+
+- [ ] **Step 5: 静态检查并提交**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
+.venv/bin/ruff check src/data_intelligence_hub/services/run_creation.py tests/unit/test_run_creation.py
+.venv/bin/mypy src/data_intelligence_hub/services/run_creation.py
+cd /Users/lute/Project/data_scrapy-gov-c4
+node .gitnexus/run.cjs detect-changes --scope all --repo .
+```
+
+Expected: `All checks passed!`、`Success: no issues found`、detect-changes 覆盖本任务文件且不含 `partial: true` / `truncated: true`。
+
+Commit:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4
+git add apps/api/src/data_intelligence_hub/services/run_creation.py \
+  apps/api/tests/unit/test_run_creation.py
+git commit -m "feat(workbench): add audited run creation seam (C4)"
+```
+
+**边界：** 本接缝是 C4 与后续 C6 旧入口收敛共用的唯一 run 创建入口。C4 的 `submit_workbench_task` 只调用 `create_run_with_audit`；C6 在 Task 10 收敛旧入口时复用同一函数。C4 不 import C6 的 `run_service`、`run_audit` 或任何 C6 模块，因此不依赖未来切片。
+
+---
+
 ### Task 4: 逐市场幂等提交服务与 blocked gate/gap
 
 **Files:**
 - Create: `apps/api/src/data_intelligence_hub/services/workbench/submission.py`
-- Modify: `apps/api/src/data_intelligence_hub/repositories/runs.py`（`create_run` 已在本任务前置完成）
+- Modify: `apps/api/src/data_intelligence_hub/repositories/runs.py`（`create_run` 已在 Task 3 完成）
 - Test: `apps/api/tests/unit/test_workbench_submission_service.py`
 
 **Interfaces:**
 - Consumes:
   - `WorkbenchTask` / `WorkflowVersion` / `Run`
-  - `find_by_idempotency_hashes`、`list_runs_for_workflow_version`、`create_run`
+  - `find_by_idempotency_hashes`、`list_runs_for_workflow_version`
+  - `services.run_creation.create_run_with_audit`（C4 接缝；不直接调用仓储 `create_run`）
   - `get_workflow_version_with_plan`
   - `create_authorization`、`list_authorizations_for_versions`
 - Produces:
@@ -4468,6 +4747,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.audit_event import AuditEvent
 from data_intelligence_hub.models.authorization import Authorization
 from data_intelligence_hub.models.run import Run, RunStep
 from data_intelligence_hub.models.run_ledger import RunLedgerEntry
@@ -4560,6 +4840,12 @@ async def test_submission_creates_one_queued_run_per_market(
 
     task = await session.get(WorkbenchTask, seed.task_id)
     assert task is not None and task.status == "submitted"
+    run_created_count = await session.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "run.created")
+    )
+    assert run_created_count == 2
 
 
 @pytest.mark.asyncio
@@ -4587,6 +4873,12 @@ async def test_replay_returns_the_same_run_ids(session: AsyncSession) -> None:
     assert second.idempotent_replay is True
     assert [run.id for run in second.runs] == [run.id for run in first.runs]
     assert second.gaps == first.gaps
+    replayed_created = await session.scalar(
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "run.created")
+    )
+    assert replayed_created == 2
 
 
 @pytest.mark.asyncio
@@ -4663,6 +4955,7 @@ async def test_database_rejects_two_runs_for_same_version_and_market(
     )
 
     with pytest.raises(IntegrityError):
+        # 仓储级测试直接调用；生产代码只允许 services/run_creation.py 调用。
         await runs_repository.create_run(
             session,
             workspace_id=seed.workspace_id,
@@ -4844,6 +5137,7 @@ from data_intelligence_hub.repositories import runs as runs_repository
 from data_intelligence_hub.repositories import workbench_tasks as task_repository
 from data_intelligence_hub.repositories import workflow_plans as plan_repository
 from data_intelligence_hub.schemas.workbench import WorkbenchGapResponse
+from data_intelligence_hub.services.run_creation import create_run_with_audit
 from data_intelligence_hub.services.workbench.errors import (
     IdempotencyKeyConflictError,
     IdempotencyStateInconsistentError,
@@ -5111,7 +5405,7 @@ async def submit_workbench_task(
     try:
         created: list[Run] = []
         for decision in decisions:
-            run = await runs_repository.create_run(
+            run = await create_run_with_audit(
                 session,
                 workspace_id=workspace_id,
                 project_id=project_id,
@@ -7283,6 +7577,8 @@ For the legacy path, after the branch add:
 
 Replace all `body.task_id` references below with `task_id`. The remaining legacy code is unchanged.
 
+workbench 模式只调用 `submit_workbench_task`，因此 run 创建经 C4 `create_run_with_audit` 接缝并写 `run.created`。非 workbench 旧模式的代码保持原样；C6 Task 10 会用同一接缝收敛旧模式并补 `run.created`。C4 不在旧模式新增直接 `runs_repository.create_run` 调用。
+
 - [ ] **Step 5: 跑测试确认通过**
 
 Run:
@@ -7513,7 +7809,7 @@ git commit -m "test(workbench): freeze C14 handoff contract (C4)"
 - 无新增文件。
 
 **Interfaces:**
-- Consumes: 全部任务（含 Task 3A）的代码与测试。
+- Consumes: 全部任务（含 Task 3A、Task 3C）的代码与测试。
 - Produces: 可复核的测试、迁移、GitNexus 与发布门禁证据。
 
 - [ ] **Step 1: 跑 C4 定向测试**
@@ -7528,6 +7824,7 @@ cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
   tests/unit/test_workbench_task_repository.py \
   tests/unit/test_workbench_idempotency.py \
   tests/unit/test_workbench_initial_version.py \
+  tests/unit/test_run_creation.py \
   tests/unit/test_workbench_submission_service.py \
   tests/integration/test_workbench_task_routes.py \
   tests/integration/test_workbench_submission_routes.py \
@@ -7562,12 +7859,14 @@ cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
   tests/unit/test_workbench_task_repository.py \
   tests/unit/test_workbench_idempotency.py \
   tests/unit/test_workbench_initial_version.py \
+  tests/unit/test_run_creation.py \
   tests/unit/test_workbench_submission_service.py \
   tests/integration/test_workbench_task_routes.py \
   tests/integration/test_workbench_submission_routes.py \
   tests/integration/test_workbench_c14_handoff.py
 .venv/bin/mypy src/data_intelligence_hub/models/workbench.py \
   src/data_intelligence_hub/schemas/workbench.py \
+  src/data_intelligence_hub/services/run_creation.py \
   src/data_intelligence_hub/services/workbench \
   src/data_intelligence_hub/repositories/workbench_tasks.py \
   src/data_intelligence_hub/api/routes/workbench.py
@@ -7633,6 +7932,18 @@ apps/api/src/data_intelligence_hub/collectors/**
 ```
 
 若出现以上路径，停止并回退该改动。C4 不碰预算账本、多步骤执行、collector 与前端。
+
+再扫描 run 创建与审计落点：
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c4
+rg -n "runs_repository\.create_run\(" apps/api/src/data_intelligence_hub/services/workbench
+rg -n 'action="run.created"' apps/api/src/data_intelligence_hub/services/workbench
+rg -n "runs_repository\.create_run\(|append_audit_event\(" \
+  apps/api/src/data_intelligence_hub/services/run_creation.py
+```
+
+Expected: 前两条零命中；第三条同时命中仓储调用与 `append_audit_event`。run 创建只在 C4 接缝；C4 提交服务不直接调用仓储，也不直接写 `run.created`。旧 `POST /api/runs` 非 workbench 路径仍保留既有直连，由 C6 Task 10 用同一接缝收敛。
 
 - [ ] **Step 7: 生产 A/B 门禁（PG0 发布批次执行；C4/C14 不执行写操作）**
 
@@ -7736,6 +8047,7 @@ C4 verification
 - initial version seam: exactly one approved version per task; reused by customer create_task and collect
 - runs: market_code only; market_role derived; no runs.market_role/package_type
 - No run_steps / task_runs / run_ledger_entries written by C4
+- run creation seam: submit_workbench_task only calls create_run_with_audit; one run.created per new run; idempotent replay adds zero
 - taxonomy path: application-root resolution; container default /app/configs/taxonomy/maternal_v1.json; no cwd dependency
 - C14 env: WORKBENCH_TASKS_ENABLED=true; WORKBENCH_TAXONOMY_PATH absolute or unset; read-only mount verified
 - C14 handoff: /workbench acceptance checklist delivered; C14 read-only
@@ -7763,6 +8075,7 @@ C4 verification
 | `workflow_versions` 关联 | Task 3（列、复合外键、创建时写入、仓储联查） |
 | `execution_steps` 固化 | Task 3A（`ExecutionStepPreview`、`build_execution_steps`、`collection_tasks` 创建/校验、不可变快照） |
 | 每个市场一个 run | Task 4（逐市场创建）、Task 6（API 响应 `run_ids[]`） |
+| 审计化 run 创建接缝 | Task 3C（`create_run_with_audit`）、Task 4（提交服务只调用接缝并断言 `run.created`）、Task 8（直接仓储调用扫描） |
 | 幂等 records 或复用现有索引 | 复用 `uq_runs_workspace_idempotency`；Task 4 派生 per-market 摘要；Task 1 测试旧索引保留；任务创建另用 `uq_workbench_tasks_workspace_idempotency` |
 | 并发唯一保护 | Task 1 `uq_runs_workflow_version_market` 与 `uq_workbench_tasks_workspace_idempotency`；Task 4 IntegrityError 分支；Task 5 创建竞态分支；Task 8 PG0 PostgreSQL 双 key 证据 |
 | 开关与回滚 | Global Constraints；Task 5 路由开关；Task 8 PG0 交接 |
@@ -7799,6 +8112,7 @@ C4 verification
 - `idempotency_key_hash` 是 64 位十六进制，匹配 `String(64)`；`hash_create_idempotency_key()` 与 `uq_workbench_tasks_workspace_idempotency` 使用同一值。
 - `create_workbench_task()` 返回 `tuple[WorkbenchTask, bool]`；路由把第二项映射为 200/201 与 `Idempotent-Replay` 头。
 - `create_initial_workflow_version_for_task()` 返回 `uuid.UUID`（版本 ID）；C13 `WorkbenchTaskAdapter` 与 `WorkbenchCollectAdapter` 只消费该 ID，不读计划内部结构。
+- `create_run_with_audit()` 返回 `Run`，不提交事务；`run.created` 的 `resource_id` 是 `str(run.id)`，`actor_type='system'`，`result='success'`。C4 提交服务与 C6 旧入口收敛都从 `services.run_creation` 导入该函数，不直接调用仓储 `create_run`。
 - `resolve_workbench_taxonomy_path()` 返回绝对 `Path`：绝对环境变量或显式参数优先，相对值按应用根（容器 `/app`、仓库根）解析；`load_maternal_category_ids()` 收到显式 `Path` 时直接使用，不再读 cwd。
 - 错误码在 `services/workbench/errors.py` 定义，路由只读 `exc.code` 与 `exc.status_code`；`idempotency_conflict` 与 C1 registry 同名。缺失 `Idempotency-Key` 复用已登记的 `invalid_request`，不新增错误码。
 
@@ -7807,6 +8121,6 @@ C4 verification
 Plan complete and saved to `docs/superpowers/plans/2026-10-22-governed-task-platform-c4-task-submission-idempotency.md`. Two execution options:
 
 1. **Subagent-Driven（推荐）**：每个 Task 派一个 fresh subagent，任务之间做两阶段 review；适合 C4 这种跨迁移、模型、服务、路由的改动。
-2. **Inline Execution**：在当前会话用 executing-plans 批量执行，在 Task 1、Task 3B、Task 4、Task 6、Task 8 设检查点。
+2. **Inline Execution**：在当前会话用 executing-plans 批量执行，在 Task 1、Task 3B、Task 3C、Task 4、Task 6、Task 8 设检查点。
 
 执行前必须确认 C0/C1/C2 已落地、Alembic head 是 `202610220059`、C1 契约包含本计划 Contract Addendum 的全部条目。

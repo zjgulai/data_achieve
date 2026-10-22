@@ -416,7 +416,42 @@ DATABASE_URL="$TEST_DATABASE_URL" uv run alembic heads
 
 生产 B 的权威 compose 是 `configs/deploy/scrapy/docker-compose.yml`。`configs/deploy/scrapy-new/docker-compose.yml` 不是生产 B 的发布文件，不得用于 A 或 B 的迁移、构建或验收。
 
-发布顺序：
+#### 8.4.1 分支提升门禁
+
+分支提升是生产发布的独立前置门禁。它只执行 Git 分支操作和只读校验，不备份、不迁移、不改 compose/env、不重启容器、不切换开关。C0–C14 子计划不执行本节。
+
+**A 分支提升**
+
+1. 准入：C0–C14 全部完成。C14 在包含 C0–C14 的集成分支上通过契约检查、ruff、mypy、pytest、前端构建、Playwright 与 GitNexus 变更检查。记录集成分支 tip 的完整 SHA。
+2. 用户批准：向用户提交 PR，请求把集成分支 tip 合入 `main`。PR 必须写明测试数字、迁移唯一头 `202610220068` 与 GitNexus 结论。未取得用户明确批准时，不合并、不推送。
+3. 合并并推送：用户批准后，把集成分支 tip 合入 `main`。使用 merge commit 或快进合并，不使用 squash 或 rebase。确认 `git merge-base --is-ancestor <integration-tip> main` 成功，再执行 `git push origin main`。
+4. 部署准入：`git ls-remote --heads origin main` 必须等于本地发布 HEAD。只有满足此条件，才可执行 `scripts/deploy-p0.sh --host a`。
+
+**B 分支提升**
+
+B 分支提升把 `main` 合并到长期分支 `deploy/tiktok-cdo-codex`，只保留已批准的 TikTok CDO 差异。
+
+1. 前置授权：只有用户对生产 B 明确给出目标授权（目标 schema `202610220068`、备份与回滚计划）后，才可开始 B 分支提升。未取得授权时，不创建 worktree、不合并、不推送、不部署 B。B 保持当前批准 schema（当前记录为 `202607280044`），且不阻塞 A。该授权与发布顺序中的 B 迁移授权门禁是同一门禁；分支提升不替代备份与迁移门禁。
+2. 隔离 worktree：先完成 A 的 `main` 提升并推送。执行 `git fetch origin`。比较本地 `deploy/tiktok-cdo-codex` 与 `origin/deploy/tiktok-cdo-codex`；本地存在未推送的独有提交时停止并核对，不得丢弃或强推。在独立 worktree 中从 `origin/deploy/tiktok-cdo-codex` 创建临时提升分支。不得在主工作树执行合并。
+3. 合并：把 `main`（已推送的 `origin/main`）合入基于 `deploy/tiktok-cdo-codex` 的临时提升分支。使用 `git merge origin/main`。不做 rebase。
+4. 冲突：只按已记录的冲突面解决 `agents/tiktok_cdo/config.py` 与 `agents/tiktok_cdo/router.py`。冲突面记录在 `docs/【运维手册】生产环境基线.md`。出现其他冲突时停止并上报，不得手工解决业务代码冲突。
+5. 最终 tip 校验：以下检查必须全部通过。
+   - `git merge-base --is-ancestor pg0-baseline-v1^{commit} HEAD` 成功。`pg0-baseline-v1` 保持本地标签，不推送。
+   - `git merge-base --is-ancestor <integration-tip> HEAD` 成功。
+   - `apps/api/alembic/versions/` 的迁移链连续到 `202610220068`，包含 `202610210056`、`202610210057` 与 `202610220058`–`202610220068`；在 `apps/api` 执行 `uv run alembic heads`，唯一头是 `202610220068`。
+   - B 的专属差异仍只有 TikTok CDO 的已批准实现，不包含 A/B 共用代码的分叉。
+6. 推送：把临时提升分支推送到 `deploy/tiktok-cdo-codex`。执行 `git push origin HEAD:deploy/tiktok-cdo-codex`。`git ls-remote --heads origin deploy/tiktok-cdo-codex` 必须等于最终 tip。
+7. 清理：删除临时提升 worktree。保留 `deploy/tiktok-cdo-codex` 分支一个发布周期。
+
+**共同规则**
+
+1. 分支提升完成后，`scripts/deploy-p0.sh` 才可执行远端 `git fetch` 与 `git merge --ff-only FETCH_HEAD`。发布命令必须从最终提升 tip 的干净 worktree 运行。脚本的 `check_remote_branches` 要求 `origin/<branch>` 等于本地 HEAD；跳过分支提升时脚本直接失败。
+2. 生产 A 只从 `origin/main` 发布，生产 B 只从 `origin/deploy/tiktok-cdo-codex` 发布。不得从集成分支、标签或本地分支直接发布。
+3. 分支提升不改变本节的发布顺序、B 备份门禁、B 迁移授权门禁与 edge 红线（不重建 `edge`）。
+
+#### 8.4.2 发布顺序
+
+以下步骤只在 §8.4.1 的分支提升完成后执行。
 
 1. 本地全绿：ruff、mypy、pytest、前端构建、GitNexus 变更检查。
 2. 生产 A 备份：
@@ -433,7 +468,7 @@ scripts/deploy-p0.sh --host a
 ```
 
 4. 验证 A：`/api/health` 返回 200 且 `schema_revision` 为目标修订；每个 PG0 发布批次按当批切片目标核对，全量完成后最终值必须是 `202610220068`；`/api/tools` 与 `/api/tool-catalog` 返回 200；MCP 匿名 401；登录链路 200。
-5. 生产 B 先前推 `deploy/tiktok-cdo-codex`，再备份，再发布。服务器本地分支没有 upstream，`git pull` 会静默不拉取；必须显式 fetch 后快进：
+5. 生产 B 在 §8.4.1 的 B 分支提升已推送后，先备份，再发布。服务器本地分支没有 upstream，`git pull` 会静默不拉取；必须显式 fetch 后快进：
 
 ```bash
 git fetch origin deploy/tiktok-cdo-codex

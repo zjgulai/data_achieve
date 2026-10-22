@@ -4,7 +4,7 @@
 
 **Goal:** 让 `runs` 成为唯一执行真相：一个 run 可执行多个 step，每个 attempt 可审计，瞬态失败可重试，取消与租约可收敛，旧 quick / scheduler / task run-now 入口在受治理开关打开后改为创建受治理 run；MCP 行为不变，旧 MCP 到 C13。
 
-**Architecture:** `RunExecutor` 读取 C4 固化的不可变执行步骤，按 `step_index` 顺序执行。每个逻辑 step 只有一行最终 `run_steps`，并只指向最终 attempt 的 `task_runs`；每次 attempt 另写一行 `run_step_attempts`，拥有自己的 `task_runs`。`run_steps` 只在 step 进入终态后写入，运行中的 attempt 由 attempt 表承载。重试只发生在瞬态错误。取消与租约围栏在每次 step 与每次 attempt 前检查。执行器只通过 C5 的 `RunBudget` 适配器预留/结算，不直接写账本。run 生命周期通过 C2 的 `audit_events` 统一审计：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。所有 step 进入终态且 `runs.status='completed'` 后，执行器只追加一条 `run.completed` 审计事件；它不调用 C8、不计算数据集质量、不写质量表。C8 消费该事件。C8 依赖 C6；C6 不依赖 C8。取消是 C6 拥有的幂等操作：`cancel_run` 接收 `idempotency_key` 与 `reason_code`，同键同参重放，同键不同参返回 `idempotency_conflict`。旧入口只在 `RUN_EXECUTION_CONVERGENCE_ENABLED=true` 时收敛；MCP 的 `run_quick_collect` 保持旧路径到 C13。
+**Architecture:** `RunExecutor` 读取 C4 固化的不可变执行步骤，按 `step_index` 顺序执行。每个逻辑 step 只有一行最终 `run_steps`，并只指向最终 attempt 的 `task_runs`；每次 attempt 另写一行 `run_step_attempts`，拥有自己的 `task_runs`。`run_steps` 只在 step 进入终态后写入，运行中的 attempt 由 attempt 表承载。重试只发生在瞬态错误。取消与租约围栏在每次 step 与每次 attempt 前检查。执行器只通过 C5 的 `RunBudget` 适配器预留/结算，不直接写账本。run 生命周期通过 C2 的 `audit_events` 统一审计：`run.created` 由 C4 `services/run_creation.create_run_with_audit` 接缝写；C6 写其余六类 `run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。所有 step 进入终态且 `runs.status='completed'` 后，执行器只追加一条 `run.completed` 审计事件；它不调用 C8、不计算数据集质量、不写质量表。C8 消费该事件。C8 依赖 C6；C6 不依赖 C8。取消是 C6 拥有的幂等操作：`cancel_run` 接收 `idempotency_key` 与 `reason_code`，同键同参重放，同键不同参返回 `idempotency_conflict`。旧入口只在 `RUN_EXECUTION_CONVERGENCE_ENABLED=true` 时收敛；MCP 的 `run_quick_collect` 保持旧路径到 C13。
 
 **Tech Stack:** Python 3.12、FastAPI、SQLAlchemy 2 async、Alembic、PostgreSQL 16、SQLite 单元测试、pytest-asyncio。
 
@@ -12,16 +12,16 @@
 
 - **契约优先。** `docs/design/【契约冻结】v1-表名-枚举-接口.md` 是机器契约。本文与契约冲突时，以契约冻结为准。
 - **隔离 worktree。** 执行分支是 `feat/gov-c6`，从 `feat/gov-c5` 创建，只在 `/Users/lute/Project/data_scrapy-gov-c6` 中创建和执行。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 Step 0 的 `git worktree prune`、前驱断言与 `cp` 只读源；不得在主工作树切换分支、暂存、提交或运行测试。Task 0 Step 0 给出完整命令；后续所有 Run/Commit 命令的根目录是 `/Users/lute/Project/data_scrapy-gov-c6`，包括 `apps/api` 子路径。
-- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C1 还必须登记本片段的取消幂等列与统一审计动作（见下两条）。C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call`、预算服务与 `services/run_limits.py`。C6 开始时 Alembic head 必须是 `202610220061`。任一前置缺失时停止，不得另造并行结构。
+- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C1 还必须登记本片段的取消幂等列与统一审计动作（见下两条）。C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C4 还必须提供 `services/run_creation.create_run_with_audit` 作为 `run.created` 的唯一写入口；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call`、预算服务与 `services/run_limits.py`。C6 开始时 Alembic head 必须是 `202610220061`。任一前置缺失时停止，不得另造并行结构。
 - **基线。** 本文编写时 HEAD 是 `f0560ca`，Alembic head 是 `202610210055`。C0/C1/C2 合入后，C6 开始时 Alembic head 必须是 `202610220061`。C6 只新增一个迁移 `202610220062`；C6 结束时 head 是 `202610220062`，但这不是平台最终 head。master plan 的后续切片继续追加 `202610220063`–`202610220068`，平台最终 head 是 `202610220068`。生产 preflight 的期望 schema 由 `SCRAPY_EXPECTED_SCHEMA` 提供，PG0 发布批次按 master plan 的最终迁移 `202610220068` 设置；C6 与 C14 都不得把 `202610220062` 写死为生产期望值。
 - **C1 取消幂等登记前置。** 本文件不修改 C1。C6 Task 1 开始前，C1 必须在 `runs` 注册表中登记 `cancel_idempotency_key_hash`（`string(64)`，可空，`status: extend`，`phase: C6`）、`cancel_reason_code`（`string(80)`，可空，`status: extend`，`phase: C6`）与部分唯一索引 `uq_runs_workspace_cancel_idempotency (workspace_id, cancel_idempotency_key_hash) WHERE cancel_idempotency_key_hash IS NOT NULL`；并在路径注册表登记 `runs.cancel`（`POST /api/runs/{run_id}/cancel`，`idempotent: true`，请求字段 `idempotency_key`、`reason_code`，错误码 `idempotency_conflict`）。C1 已登记的 `runs.idempotency_key_hash` 与 `uq_runs_workspace_idempotency` 是创建幂等，不得复用为取消幂等。缺失时停止；不得把取消幂等落到内存缓存、流程变量或第二张表。这两列与索引由 `202610220062` 落库，不新增第二个迁移。
-- **C1 审计动作登记前置。** C1 现有 `audit_actions` 只登记了 `run.cancelled` 与 `run.completed`（owner 都是 C6）。C6 Task 1 开始前，C1 必须在 `audit_actions.actions` 登记 `run.created`、`run.cancel_requested`、`run.retry_scheduled`、`run.retry_exhausted`、`run.failed` 五个动作，owner 都是 C6；C2 的 `services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。缺失时停止，不得用 `task.retried` 代替，也不得自造未登记动作名。
+- **C1 审计动作登记前置。** C1 现有 `audit_actions` 只登记了 `run.cancelled` 与 `run.completed`（owner 都是 C6）。C6 Task 1 开始前，C1 必须在 `audit_actions.actions` 登记 `run.created`（owner C4）与 `run.cancel_requested`、`run.retry_scheduled`、`run.retry_exhausted`、`run.failed`（owner 都是 C6）五个动作；`run.created` 只由 C4 接缝写，C6 不直接写；C2 的 `services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。缺失时停止，不得用 `task.retried` 代替，也不得自造未登记动作名。
 - **执行真相。** `runs` 是运行状态唯一事实源。`run_steps` 是步骤执行唯一事实源。`task_runs` 是单次 collector 调用唯一事实源。其他表只能保存投影。
 - **1─1 约束。** 一个逻辑 step 只有一行 `run_steps`，并只关联一条最终 `task_runs`。每次 attempt 新建一行 `run_step_attempts` 和一行独立 `task_runs`。`run_steps.attempt_no` 记录最终 attempt 号。绝不按 attempt 写 `run_steps`。
 - **状态枚举。** `runs.status` 只用 `queued · running · completed · failed · cancelled`。`run_steps.status` 只用 `pending · running · success · empty · config_gated · failed · skipped`。两处 `outcome` 只用 `success · empty · config_gated · failed`。不得出现 `degraded`、`held`、`partial`。
 - **账本。** `run_ledger_entries` 只有八列：`id`、`run_id`、`step_id`、`entry_kind`、`amount_usd`、`balance_after_usd`、`idempotency_key`、`created_at`。`entry_kind` 只有六个值：`estimate · reserve · accrued · settle · release · block`。`settle` 必须为正数，`release` 必须为负数。**C6 不直接调用 `record_entry`，不写 `accrued` / `settle` / `release`；唯一写入者是 C5 的 `budget_service`。** 生产路径必须注入 `OrmRunBudget`；无 budget 只允许测试替身，测试替身不得写数据库。
 - **RunBudget 唯一权威。** `RunBudget` 只定义在 C5 的 `services/run_budget.py`。C6 不定义、不复制、不改名，只从该模块导入或原样 re-export；`run_execution_contracts.py`、`run_executor.py`、`run_step_runner.py` 与 `__all__` 都不得出现第二份 `RunBudget` Protocol。C6 只调用 `reserve` / `settle` / `mark_unknown` / `cancel`。
-- **统一审计。** 唯一审计表是 C2 的 `audit_events`，唯一写入口是 `services.audit_log.append_audit_event`。C6 在 run 生命周期写七类动作：`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。全部在同一业务事务内追加；`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`。`run.created`、`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.completed` 的 `result='success'`；`run.retry_exhausted` 与 `run.failed` 的 `result='failed'`。`details` 只放标识、状态、计数与原因码，不放密钥、原始幂等键或请求正文。不得新建第二张审计表，不得自造动作名。`run.created` 只在插入新 run 时发；幂等重放不发。
+- **统一审计。** 唯一审计表是 C2 的 `audit_events`，唯一写入口是 `services.audit_log.append_audit_event`。C6 在 run 生命周期写六类动作：`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.retry_exhausted`、`run.completed`、`run.failed`。`run.created` 的 owner 是 C4；C6 只调用 C4 `services/run_creation.create_run_with_audit` 接缝，不直接写该动作。全部在同一业务事务内追加；`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`。`run.cancel_requested`、`run.cancelled`、`run.retry_scheduled`、`run.completed` 的 `result='success'`；`run.retry_exhausted` 与 `run.failed` 的 `result='failed'`。`details` 只放标识、状态、计数与原因码，不放密钥、原始幂等键或请求正文。不得新建第二张审计表，不得自造动作名。`run.created` 只在插入新 run 时由 C4 接缝发；幂等重放不发。
 - **取消幂等（C6 拥有）。** 存储接缝是 `runs` 的取消幂等列：`cancel_idempotency_key_hash` 与 `cancel_reason_code`，加工作区级部分唯一索引 `uq_runs_workspace_cancel_idempotency`。`cancel_run` 同时接收 `idempotency_key` 与 `reason_code`；`cancel_idempotency_key_hash = sha256("run-cancel.v1:{key}")`。同一工作区、同一 run、同一键、同一 `reason_code` 重放第一次取消的结果（同一 `RunResponse`，响应头 `Idempotent-Replay: true`）；同一键不同 `reason_code` 返回 409 `idempotency_conflict`；同一 run 已被另一个键取消时按幂等取消返回原结果。并发取消只允许一个事务把 run 从 `queued · running` 原子改为 `cancelled`；只有胜出事务调用 C5 的 `OrmRunBudget.cancel`，因此预算预留只释放一次。落败事务读取已提交行，按同键重放或冲突返回，不写第二次审计。
 - **质量链解耦。** C6 不 import `services.dataset_quality`、`services.market_quality` 或任何 C8 模块，不调用 `evaluate_and_persist_market_quality` / `ensure_market_quality`，不写 `market_assessments` / `data_gaps`。run 的全部 step 进入终态且 `runs.status='completed'` 后，C6 通过 C2 的 `services.audit_log.append_audit_event` 在同一事务追加一条 `action='run.completed'` 审计事件：`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`、`result='success'`。`details` 只含 `run_id`、`collection_task_id`、`workflow_version_id`、`market_code`、`run_status`、`outcome`、`records_count`、`finished_at`、`step_indexes`。`failed` 与 `cancelled` 不发 `run.completed`，分别发 `run.failed` 与 `run.cancelled`。质量评估接口 `evaluate_and_persist_market_quality(session, run_id, task_id, market_code, package_type)` 由 C8 计划定义；C8 的消费者从 `run.completed` 解析 `run_id` 并调用它。重复事件由 C8 的 `uq_market_assessments_task_market` 与 scorecard hash 幂等吸收；C6 不做质量幂等。
 - **取消。** 取消只写 `runs.status=cancelled`、`finished_at`、`cancel_idempotency_key_hash`、`cancel_reason_code`，并清空 `lease_expires_at`。取消不删除 step、attempt、task_run 或账本。执行器不得把终态写回已取消的 run。取消幂等按上面“取消幂等”条目执行；重复取消不再调用 C5 的预算释放。
@@ -51,7 +51,7 @@
 | 开关 | `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false` |
 | 回滚点 | 两个开关置 false → 回退代码 → 062 downgrade（attempt 表为空时）→ 恢复备份。取消幂等列随 062 回退；回退后旧代码不读这些列 |
 | 部署 | 本切片不直接部署；迁移应用、A/B 发布与开关切换由 PG0 发布批次执行；C14 只做只读健康、canary、preflight 与浏览器验收。生产期望 schema 由 master/final `202610220068` 与 `SCRAPY_EXPECTED_SCHEMA` 决定，不是 C6 的 062 |
-| 外部依赖 | C1 attempt 契约、C1 取消幂等列与审计动作登记、C4 `execution_steps`、C5 `RunBudget` / `run_limits`、PG0 发布批次与 C14 只读验收；下游 C8 消费 `run.completed`，C6 不回依赖 C8 |
+| 外部依赖 | C1 attempt 契约、C1 取消幂等列与审计动作登记、C4 `execution_steps` 与 `services/run_creation.create_run_with_audit`、C5 `RunBudget` / `run_limits`、PG0 发布批次与 C14 只读验收；下游 C8 消费 `run.completed`，C6 不回依赖 C8 |
 
 ## Non-Goals
 
@@ -77,7 +77,7 @@
 | `apps/api/src/data_intelligence_hub/models/run_attempt.py` | Create | `RunStepAttempt` 与状态枚举。 |
 | `apps/api/src/data_intelligence_hub/models/__init__.py` | Modify | 导出新模型。 |
 | `apps/api/src/data_intelligence_hub/services/run_execution_contracts.py` | Create | 执行器协议、数据类、异常、纯函数；含 `RunCompletedEventSink` 与 `RunAuditSink`；不定义 `RunBudget`（唯一权威定义在 C5 `services/run_budget.py`）。 |
-| `apps/api/src/data_intelligence_hub/services/run_audit.py` | Create | run 生命周期七类审计动作的唯一写入口；只调用 C2 `append_audit_event`。 |
+| `apps/api/src/data_intelligence_hub/services/run_audit.py` | Create | run 生命周期六类 C6 审计动作的唯一写入口；`run.created` 由 C4 接缝写；只调用 C2 `append_audit_event`。 |
 | `apps/api/src/data_intelligence_hub/services/run_cancel_service.py` | Create | 取消幂等：键哈希、原子领取、重放、冲突、只释放一次预算、两条取消审计。 |
 | `apps/api/src/data_intelligence_hub/services/run_retry.py` | Create | 瞬态错误分类、重试次数与退避。 |
 | `apps/api/src/data_intelligence_hub/services/run_step_plan.py` | Create | `RunStepSpec`、计划解析、ORM 步骤来源。 |
@@ -85,7 +85,7 @@
 | `apps/api/src/data_intelligence_hub/services/run_executor.py` | Modify | 多步骤编排、依赖、取消、聚合、等级、生命周期审计。 |
 | `apps/api/src/data_intelligence_hub/services/run_executor_adapters.py` | Modify | 真实 ORM 仓储：run、step、attempt、ledger；`OrmRunAuditSink` 写 `audit_events`；`OrmRunLimitsResolver` 调用 C5 `resolve_run_limits`。 |
 | `apps/api/src/data_intelligence_hub/services/run_collector_call.py` | Modify | 按 `RunStepSpec` 与 attempt 创建 `task_runs`，返回回执；透传 C5 `RunLimits` 并让 `RunLimitExceededError` 立即停止。 |
-| `apps/api/src/data_intelligence_hub/services/run_service.py` | Create | 创建 run（写 `run.created`）、同步执行、scheduler 入队；re-export `cancel_task_runs`、`RunCancellationResult`、`CancellationError` 供 C13。 |
+| `apps/api/src/data_intelligence_hub/services/run_service.py` | Create | 创建 run（调用 C4 `create_run_with_audit`；不直接写 `run.created`）、同步执行、scheduler 入队；re-export `cancel_task_runs`、`RunCancellationResult`、`CancellationError` 供 C13。 |
 | `apps/api/src/data_intelligence_hub/services/quick_collect_service.py` | Modify | 同步 quick 走 run。 |
 | `apps/api/src/data_intelligence_hub/services/task_service.py` | Modify | task run-now 走 run。 |
 | `apps/api/src/data_intelligence_hub/scheduler/service.py` | Modify | 到期任务只入队。 |
@@ -93,7 +93,7 @@
 | `apps/api/src/data_intelligence_hub/services/run_worker_runtime.py` | Modify | 传入 checkpoint、租约回调与审计 sink。 |
 | `apps/api/src/data_intelligence_hub/repositories/runs.py` | Modify | 取消原子领取、读取最终 `task_runs`。 |
 | `apps/api/src/data_intelligence_hub/schemas/run.py` | Modify | `RunCancelRequest`：必填 `idempotency_key` 与 `reason_code`。 |
-| `apps/api/src/data_intelligence_hub/api/routes/runs.py` | Modify | 取消请求体、重放响应头、冲突与不可取消映射；创建新 run 时写 `run.created`。 |
+| `apps/api/src/data_intelligence_hub/api/routes/runs.py` | Modify | 取消请求体、重放响应头、冲突与不可取消映射；创建新 run 时调用 C4 `create_run_with_audit`，不直接写 `run.created`。 |
 | `apps/api/src/data_intelligence_hub/core/config.py` | Modify | worker 与重试配置。 |
 | `apps/api/src/data_intelligence_hub/main.py` | Modify | 传递 worker 配置。 |
 | `apps/api/src/data_intelligence_hub/schemas/health.py` | Modify | 暴露 `run_worker_enabled` 与 `run_execution_convergence_enabled`。 |
@@ -108,7 +108,7 @@
 | `apps/api/tests/unit/test_run_step_runner.py` | Create | attempt 与重试测试（含重试审计）。 |
 | `apps/api/tests/unit/test_run_executor_orm.py` | Create | ORM 装配测试。 |
 | `apps/api/tests/unit/test_run_cancel_idempotency.py` | Create | 取消同键重放、同键不同参数冲突、并发只释放一次预算。 |
-| `apps/api/tests/unit/test_run_audit_events.py` | Create | 七类 run 生命周期审计动作、载荷、失败/取消不发 `run.completed`。 |
+| `apps/api/tests/unit/test_run_audit_events.py` | Create | 六类 C6 run 生命周期审计动作、载荷、失败/取消不发 `run.completed`；`run.created` 由 C4 接缝测试覆盖。 |
 | `apps/api/tests/unit/test_run_limit_enforcement.py` | Create | `max_pages` / `max_records` 的 `None`、`0`、超限停止与不写剩余记录。 |
 | `apps/api/tests/unit/test_legacy_run_entrypoints.py` | Create | 旧入口扫描守卫。 |
 | `apps/api/tests/unit/test_run_worker_settings.py` | Create | 开关、配置、健康测试。 |
@@ -125,7 +125,7 @@
 | 瞬态重试 | Task 2、Task 7 |
 | 取消 | Task 8、Task 9 |
 | 取消幂等（同键重放、同键不同参数冲突、并发只释放一次预算） | Task 1、Task 9、Task 16 |
-| run 生命周期统一审计（created / cancel requested / cancelled / retry scheduled / retry exhausted / completed / failed） | Task 1、Task 5、Task 6、Task 7、Task 9、Task 10、Task 16 |
+| run 生命周期统一审计（C4 接缝写 created；C6 写 cancel requested / cancelled / retry scheduled / retry exhausted / completed / failed） | Task 1、Task 5、Task 6、Task 7、Task 9、Task 10、Task 16 |
 | 消费 C5 run limits 与 `max_pages` / `max_records` | Task 5、Task 6、Task 16 |
 | 租约 | Task 8 |
 | 旧 quick / scheduler / task run-now 收敛 | Task 10、Task 11、Task 12、Task 13 |
@@ -190,11 +190,12 @@ git commit -m "docs(plan): add c6 run execution convergence plan"
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c6
 test "$(git rev-parse --show-toplevel)" = /Users/lute/Project/data_scrapy-gov-c6 && echo "root=ok"
+test -f apps/api/src/data_intelligence_hub/services/run_creation.py && echo "c4_run_creation_seam=present"
 test -f .gitnexus/run.cjs || bunx gitnexus@latest analyze
 sed -n '/### Task 1/,$p' docs/superpowers/plans/2026-10-22-governed-task-platform-c6-run-execution-convergence.md | rg -n "cd /Users/lute/Project/data_scrapy($|/apps)" || echo "main_tree_commands_after_task0=none"
 ```
 
-Expected: `root=ok`；`main_tree_commands_after_task0=none`。后续所有命令都从 `/Users/lute/Project/data_scrapy-gov-c6` 或其 `apps/api` 子目录执行，不得回到主工作树。
+Expected: `root=ok`；`c4_run_creation_seam=present`；`main_tree_commands_after_task0=none`。缺少 C4 接缝时停止，不得在 C6 复制一份 run 创建实现。后续所有命令都从 `/Users/lute/Project/data_scrapy-gov-c6` 或其 `apps/api` 子目录执行，不得回到主工作树。
 
 ---
 
@@ -1784,7 +1785,7 @@ git commit -m "refactor(run): extract execution contracts"
   - `RunStepRunner.run(run, spec, *, limits=None, is_cancelled=None) -> StepRunResult`
   - `RunExecutionResult(run, steps, last_task_run_id)`
   - `RunCompletedEventSink(run, steps)`：只发 `run.completed` 审计事件，不调用 C8
-  - `RunAuditSink.record(action, run, *, steps=(), details=None, result=...)`：写七类 run 生命周期审计事件
+  - `RunAuditSink.record(action, run, *, steps=(), details=None, result=...)`：写六类 C6 run 生命周期审计事件；`run.created` 由 C4 接缝写
   - `RunExecutor.execute_detailed(run_id, *, lease_valid=None, checkpoint=None) -> RunExecutionResult`
 
 - [ ] **Step 1: 写失败测试**
@@ -3055,7 +3056,8 @@ Expected: 通过；`events` 恰好一条；失败与取消用例为零条。生�
 ```python
 """run 生命周期统一审计测试。
 
-七类动作分别由创建服务、step runner、取消服务与执行器发出。
+`run.created` 由 C4 `services/run_creation.create_run_with_audit` 接缝发出。
+C6 的六类动作分别由 step runner、取消服务与执行器发出。
 本文件验证执行器终态动作与一次性；其余动作在各自任务的测试中覆盖。
 """
 
@@ -3160,7 +3162,7 @@ async def test_cancelled_run_emits_no_terminal_audit() -> None:
     assert audit.events == []
 ```
 
-Expected: 三个用例通过。`run.created` 由 Task 10 验证，`run.retry_scheduled` / `run.retry_exhausted` 由 Task 7 验证，`run.cancel_requested` / `run.cancelled` 由 Task 9 验证。
+Expected: 三个用例通过。`run.created` 由 C4 接缝与 Task 10 验证，`run.retry_scheduled` / `run.retry_exhausted` 由 Task 7 验证，`run.cancel_requested` / `run.cancelled` 由 Task 9 验证。
 
 - [ ] **Step 7: 改 `RunCollectorCall` 为回执式**
 
@@ -3821,9 +3823,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.services.audit_log import append_audit_event
 
+# C6 只写六类动作；run.created 的 owner 是 C4，
+# 由 C4 services.run_creation.create_run_with_audit 接缝写入。
 RUN_AUDIT_ACTIONS: frozenset[str] = frozenset(
     {
-        "run.created",
         "run.cancel_requested",
         "run.cancelled",
         "run.retry_scheduled",
@@ -3894,7 +3897,7 @@ class OrmRunAuditSink:
     """把 run 生命周期写成 C2 的统一审计事件。
 
     生产只注入本类。``__call__`` 保留 `run.completed` 兼容口；
-    ``record`` 承载七类动作。不计算质量，不 import C8。
+    ``record`` 承载六类 C6 动作；`run.created` 由 C4 接缝写。不计算质量，不 import C8。
     """
 
     def __init__(self, session: AsyncSession) -> None:
@@ -5442,16 +5445,17 @@ git commit -m "fix(run): make cancellation idempotent and audited"
 - Modify: `apps/api/src/data_intelligence_hub/services/quick_collect_service.py`
 - Modify: `apps/api/src/data_intelligence_hub/repositories/runs.py`
 - Modify: `apps/api/src/data_intelligence_hub/api/routes/runs.py`
+- Reuse（不修改）: C4 `apps/api/src/data_intelligence_hub/services/run_creation.py`
 - Test: `apps/api/tests/integration/test_quick_collect_routes.py`
 - Test: `apps/api/tests/integration/test_quick_collect_async.py`
 - Test: `apps/api/tests/unit/test_run_audit_events.py`
 
 **Interfaces:**
 - Produces:
-  - `create_run_for_task(session, *, workspace_id, project_id, task_id, trigger, idempotency_key_hash=None) -> Run`；插入新行时写 `run.created` 审计。
+  - `create_run_for_task(session, *, workspace_id, project_id, task_id, trigger, idempotency_key_hash=None) -> Run`；只调用 C4 `create_run_with_audit`，不直接写 `run.created`。
   - `execute_run_inline(session, run_id) -> RunExecutionResult`
   - `get_last_task_run(session, run_id) -> TaskRun | None`
-- 保持：quick 同步响应与异步响应不变。`run.created` 只在插入新 run 时写；幂等重放不写。
+- 保持：quick 同步响应与异步响应不变。`run.created` 由 C4 接缝只在插入新 run 时写；幂等重放不写。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -5532,7 +5536,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.task import CollectionTask
 from data_intelligence_hub.repositories import runs as runs_repository
-from data_intelligence_hub.services.run_audit import audit_run_event
+from data_intelligence_hub.services.run_creation import create_run_with_audit
 from data_intelligence_hub.services.run_execution_contracts import RunExecutionResult
 from data_intelligence_hub.services.run_budget import OrmRunBudget
 from data_intelligence_hub.services.run_worker_runtime import build_run_executor_bundle
@@ -5556,7 +5560,7 @@ async def create_run_for_task(
     并发重复提交同一幂等键时，唯一索引拒绝插入。回滚后重查并返回原行。
     """
     try:
-        run = await runs_repository.create_run(
+        run = await create_run_with_audit(
             session,
             workspace_id=workspace_id,
             project_id=project_id,
@@ -5566,7 +5570,7 @@ async def create_run_for_task(
             idempotency_key_hash=idempotency_key_hash,
         )
     except IntegrityError:
-        # 只处理插入幂等冲突；审计写入失败必须直接抛出。
+        # 只处理插入幂等冲突；C4 接缝的审计写入失败必须直接抛出。
         await session.rollback()
         if idempotency_key_hash is None:
             raise
@@ -5579,16 +5583,6 @@ async def create_run_for_task(
             raise
         return existing
 
-    await audit_run_event(
-        session,
-        action="run.created",
-        run=run,
-        details={
-            "trigger": trigger,
-            "market_code": run.market_code,
-            "status": run.status,
-        },
-    )
     await session.commit()
     return run
 
@@ -5641,7 +5635,7 @@ async def enqueue_scheduled_run(
     if existing is not None:
         return None
     try:
-        run = await runs_repository.create_run(
+        run = await create_run_with_audit(
             session,
             workspace_id=task.workspace_id,
             project_id=task.project_id,
@@ -5649,16 +5643,6 @@ async def enqueue_scheduled_run(
             status="queued",
             trigger="schedule",
             idempotency_key_hash=key_hash,
-        )
-        await audit_run_event(
-            session,
-            action="run.created",
-            run=run,
-            details={
-                "trigger": "schedule",
-                "market_code": run.market_code,
-                "status": run.status,
-            },
         )
         await session.commit()
     except IntegrityError:
@@ -5791,24 +5775,28 @@ async def run_quick_collect_governed(
     outcome = await runner(session, body, workspace=workspace)
 ```
 
-`api/routes/runs.py` 的 `create_run` 在插入新行后、提交前写 `run.created`：
+`api/routes/runs.py` 的 `create_run` 不得直接调用 `runs_repository.create_run`，也不得直接写 `run.created`。导入 C4 接缝：
 
 ```python
-        run = await _insert()
-        await audit_run_event(
+from data_intelligence_hub.services.run_creation import create_run_with_audit
+```
+
+把 `_insert()` 内的仓储调用替换为 C4 接缝：
+
+```python
+        run = await create_run_with_audit(
             session,
-            action="run.created",
-            run=run,
-            details={
-                "trigger": run.trigger,
-                "market_code": run.market_code,
-                "status": run.status,
-            },
+            workspace_id=workspace_id,
+            project_id=body.project_id,
+            task_id=body.task_id,
+            status="queued",
+            trigger=body.trigger,
+            idempotency_key_hash=idempotency_key_hash,
         )
         await session.commit()
 ```
 
-只在 `_insert()` 成功后写；幂等重放路径与 `IntegrityError` 回滚路径不写。`try/except IntegrityError` 只包住 `_insert()`；把 `audit_run_event` 与 `session.commit()` 放在 `try` 之后，审计写入失败必须直接抛出，不得被当作重复创建吞掉。`mcp_runtime/collect_service.py` 不改，继续 import `run_quick_collect`。新增回归测试：
+`_insert()` 只保留幂等预查与 `IntegrityError` 捕获；幂等重放路径与 `IntegrityError` 回滚路径不写审计。`try/except IntegrityError` 只包住接缝调用；`session.commit()` 放在 `try` 之后，审计写入失败必须直接抛出，不得被当作重复创建吞掉。删除不再使用的 `audit_run_event` 导入。变量名按 `api/routes/runs.py` 现有作用域调整，不得新增第二套幂等键派生。`mcp_runtime/collect_service.py` 不改，继续 import `run_quick_collect`。新增回归测试：
 
 ```python
 # MCP 必须绑定旧入口；收敛开关不得改变 MCP 行为。
@@ -6603,7 +6591,7 @@ Expected: `detect-changes` 不含 `partial: true` / `truncated: true`；没有 `
 - 本任务不创建 commit。
 
 **Interfaces:**
-- Consumes: C6 Task 1–15 的提交；C5 `RunBudget`；C4 `execution_steps`；Task 14 的开关配置；Task 15 的共享 compose 事实。
+- Consumes: C6 Task 1–15 的提交；C5 `RunBudget`；C4 `execution_steps` 与 `services.run_creation.create_run_with_audit`（run.created 唯一写入口）；Task 14 的开关配置；Task 15 的共享 compose 事实。
 - Produces: C6 本地验收结果；PG0 发布批次交接清单（迁移、备份、应用、开关切换、回滚）；C14 只读验收清单（健康、canary、preflight、浏览器 `/runs`）。
 - 本任务只读：不修改代码、不写生产文件、不执行迁移、不改 `.env.production`、不重启容器、不切换开关。结束时 `git status --porcelain -uno` 必须为空。
 
@@ -6690,15 +6678,18 @@ rg -n "append_audit_event|audit_run_event" src/data_intelligence_hub/services/ru
   src/data_intelligence_hub/services/run_executor.py \
   src/data_intelligence_hub/services/run_step_runner.py \
   src/data_intelligence_hub/services/run_cancel_service.py
+rg -n 'action="run.created"' src/data_intelligence_hub
 rg -n "runs_repository\.create_run\(" src/data_intelligence_hub
+rg -n "from data_intelligence_hub.repositories.runs import create_run" src/data_intelligence_hub
 ```
 
-`runs_repository.create_run` 的调用方只允许 `services/run_service.py` 与 `api/routes/runs.py`；两者都写 `run.created`。新增调用方必须同时写 `run.created`，否则本验收失败。
+`runs_repository.create_run` 的唯一允许调用方是 C4 接缝 `services/run_creation.py`。C6 的 `services/run_service.py` 与 `api/routes/runs.py` 必须调用 C4 `create_run_with_audit`；直接调用仓储或直接 import `create_run` 都使验收失败。`action="run.created"` 只允许出现在 C4 接缝 `services/run_creation.py`；C6 不写该动作，只消费 C4 接缝。
 
 Expected:
-- 测试通过：每个 completed run 恰好一条 `run.completed`；failed/cancelled 分别发 `run.failed` / `run.cancelled`；重试发 `run.retry_scheduled` 与 `run.retry_exhausted`；创建发 `run.created`；取消发 `run.cancel_requested` 与 `run.cancelled`。
+- 测试通过：每个 completed run 恰好一条 `run.completed`；failed/cancelled 分别发 `run.failed` / `run.cancelled`；重试发 `run.retry_scheduled` 与 `run.retry_exhausted`；创建经 C4 接缝发 `run.created`；取消发 `run.cancel_requested` 与 `run.cancelled`。
 - 同键同参取消重放原结果；同键不同参返回 `idempotency_conflict`；并发取消只释放一次预算；重放与冲突不新增审计行。
 - `services.run_service` 可导入 `cancel_task_runs`、`RunCancellationResult`、`CancellationError`，供 C13 直接使用。
+- `runs_repository.create_run` 与 `action="run.created"` 都只命中 C4 `services/run_creation.py`；C6 直接调用仓储或直接 import `create_run` 为零命中。
 - `rg` 只命中注释或错误提示文本，不命中 import 或函数调用。C6 不依赖 C8。
 - C8 的 `consume_completed_runs` 能用本切片测试库中的 `run.completed` 生成一条 `market_assessments`；重复消费为零新增。该验证由 C8 执行并在 C14 交接中引用。
 

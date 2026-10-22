@@ -3512,23 +3512,23 @@ PY
 
 - [ ] **Step 3: 建立统一审计覆盖矩阵**
 
-矩阵覆盖登录、登出、失败登录、任务创建、取消、重试、预算、价格、阻断、Claim 审核、配置开关、交付和隐私。每一行的 `registered_action` 与 `c1_registration_ref` 必须来自 C1 当前版本。`expected_result` 只用 C2 的 `success`、`denied`、`failed`；拒绝类动作按 C1 登记的实际结果填写，不得统一写成 `failed`。动作名未登记，或只有名称但没有 C1 章节引用时，对应列写 `not_registered_by_c1`，该行计为缺失。
+矩阵覆盖登录、登出、失败登录、任务创建、取消、重试、预算、价格、阻断、Claim 审核、配置开关、交付和隐私。每一行的 `registered_action` 与 `c1_registration_ref` 必须来自 C1 当前版本的 `audit-actions.v1`；`source_table=audit_events` 的行必须使用 C1 §2.10 已登记的动作名。`expected_result` 只用 C2 的 `success`、`denied`、`failed`，并按实际写入 `audit_events.result` 的值填写；`budget.blocked` 的审计结果是 `success`，不是 `failed`。`run_ledger_entries` 的 `reserve`、`settle` 是账本 `entry_kind`，不是审计动作，不进入本矩阵，由 Task 8 的 `reconciliation.csv` 与 `finance-definitions.md` 覆盖；严格价格拒绝返回 `422 tool_not_priced`，不写审计事件，由 `STRICT_PRICE_ENABLED` 开关状态与验收记录覆盖。动作名未登记，或只有名称但没有 C1 §2.10 引用时，对应列写 `not_registered_by_c1`，该行计为缺失。
 
 ```bash
 cat > docs/evidence/o0-pg0/pg0-review/audit-coverage.csv <<'CSV'
 coverage_id,operation_group,operation,source_table,registered_action,c1_registration_ref,actor_type,expected_result,min_events,observed_events,missing,evidence_query,status,notes
-AUD-COV-01,login,login succeeded,audit_events,not_registered_by_c1,not_registered_by_c1,user,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-02,login,logout,audit_events,not_registered_by_c1,not_registered_by_c1,user,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-03,login,failed login,audit_events,not_registered_by_c1,not_registered_by_c1,user,failed,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-04,task,task create,audit_events,not_registered_by_c1,not_registered_by_c1,user,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-05,task,task cancel,audit_events,not_registered_by_c1,not_registered_by_c1,user,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-06,task,task retry,audit_events,not_registered_by_c1,not_registered_by_c1,system,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-07,budget,budget reserve,audit_events,not_registered_by_c1,not_registered_by_c1,system,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-08,budget,budget settle or release,audit_events,not_registered_by_c1,not_registered_by_c1,system,success,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-09,price,strict price rejection,audit_events,not_registered_by_c1,not_registered_by_c1,system,failed,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-10,budget,budget block or quota exceeded,audit_events,not_registered_by_c1,not_registered_by_c1,system,failed,1,0,1,not_run,not_run,动作名必须由 C1 登记
-AUD-COV-11,claim,claim review approved or rejected,report_audit_events,report_review_approved;report_review_rejected,C1 §2.7.3,reviewer,success,1,0,1,not_run,not_run,正式审核事件含 reviewed_claim_digest；claims.review_history 为补充
-AUD-COV-12,config,config switch change,audit_events,config.security_changed,not_registered_by_c1,system,success,1,0,1,not_run,not_run,master-plan §6 规则 4 命名；C1 必须登记动作名
+AUD-COV-01,login,login succeeded,audit_events,auth.login.succeeded,C1 §2.10,user,success,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-02,login,logout,audit_events,auth.logout.succeeded,C1 §2.10,user,success,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-03,login,failed login,audit_events,auth.login.failed,C1 §2.10,user,failed,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-04,task,task create,audit_events,task.created,C1 §2.10,user,success,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-05,task,task cancel,audit_events,task.cancelled,C1 §2.10,user,success,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-06,task,task retry,audit_events,task.retried,C1 §2.10,system,success,1,0,1,not_run,not_run,动作名来自 audit-actions.v1
+AUD-COV-07,budget,budget price changed,audit_events,budget.price.changed,C1 §2.10,system,success,1,0,1,not_run,not_run,价格变更写 audit_events；空表首次种子不写
+AUD-COV-08,budget,budget limit changed,audit_events,budget.limit.changed,C1 §2.10,system,success,1,0,1,not_run,not_run,额度或订单上限变更；拒绝写 result=denied
+AUD-COV-09,budget,budget blocked,audit_events,budget.blocked,C1 §2.10,system,success,1,0,1,not_run,not_run,阻断事实写 audit_events；审计 result=success
+AUD-COV-10,budget,budget released,audit_events,budget.released,C1 §2.10,system,success,1,0,1,not_run,not_run,结算释放或取消预留写 audit_events
+AUD-COV-11,claim,claim review approved or rejected,audit_events,claim.review.approved;claim.review.rejected,C1 §2.10,user,success,1,0,1,not_run,not_run,统一 audit_events；claims.review_history 为补充
+AUD-COV-12,config,config switch change,audit_events,config.switch.changed,C1 §2.10,system,success,1,0,1,not_run,not_run,仅 PG0 发布批次写；C2 无运行时写路径
 AUD-COV-13,delivery,delivery published,report_audit_events,delivery_published,C1 §2.10,system,success,1,0,1,not_run,not_run,
 AUD-COV-14,delivery,delivery downloaded or tamper detected,report_audit_events,delivery_downloaded;delivery_tamper_detected,C1 §2.10,user,success,1,0,1,not_run,not_run,
 AUD-COV-15,privacy,deletion request or execute,privacy_audit_events,deletion_request;deletion_replay,C1 §2.9,user,success,1,0,1,not_run,not_run,
@@ -3558,6 +3558,7 @@ cd "$(git rev-parse --show-toplevel)"
 : "${DIH_PG0_AUDIT_OUT:?}"
 python3 - <<'PY'
 import csv
+import json
 import os
 from pathlib import Path
 
@@ -3574,14 +3575,22 @@ audit_counts = load('audit-events.csv', 'action', 'result')
 report_counts = load('report-audit-events.csv', 'event_type')
 privacy_counts = load('privacy-audit-events.csv', 'stream_type')
 
+registry_path = Path('configs/contracts/v1.1.0/registry.json')
+assert registry_path.exists(), 'C1 registry missing: run C1 before O0 Task 15'
+registry = json.loads(registry_path.read_text(encoding='utf-8'))
+assert registry['audit_actions']['version'] == 'audit-actions.v1'
+registered = {item['name'] for item in registry['audit_actions']['actions']}
+
 matrix = Path('docs/evidence/o0-pg0/pg0-review/audit-coverage.csv')
 rows = list(csv.DictReader(matrix.open(encoding='utf-8')))
-assert len(rows) >= 16, len(rows)
+assert len(rows) == 16, len(rows)
 for row in rows:
     actions = row['registered_action'].split(';')
-    if 'not_registered_by_c1' in row['registered_action'] or 'not_registered_by_c1' in row['c1_registration_ref']:
-        total = 0
-    elif row['source_table'] == 'audit_events':
+    assert 'not_registered_by_c1' not in row['registered_action'], row['coverage_id']
+    assert 'not_registered_by_c1' not in row['c1_registration_ref'], row['coverage_id']
+    if row['source_table'] == 'audit_events':
+        unknown = [action for action in actions if action not in registered]
+        assert not unknown, (row['coverage_id'], unknown)
         total = sum(audit_counts.get((action, row['expected_result']), 0) for action in actions)
     elif row['source_table'] == 'report_audit_events':
         total = sum(report_counts.get((action, None), 0) for action in actions)
@@ -3599,11 +3608,12 @@ with matrix.open('w', newline='', encoding='utf-8') as handle:
 
 missing = [row['coverage_id'] for row in rows if int(row['missing']) != 0]
 assert not missing, f'missing audit events: {missing}'
-print(f'audit_coverage rows={len(rows)} missing=0')
+audit_rows = sum(1 for row in rows if row['source_table'] == 'audit_events')
+print(f'audit_coverage rows={len(rows)} audit_events={audit_rows} missing=0')
 PY
 ```
 
-预期：`audit_coverage rows=16 missing=0`。任何 `not_registered_by_c1`、`observed_events` 小于 `min_events` 或 `status=fail` 的行都计入缺失。缺失数不为 0 时，PG0-07 不得 `pass`，`decision.md` 写 `fail` 并列出缺口。
+预期：`audit_coverage rows=16 audit_events=12 missing=0`。脚本必须先从 `configs/contracts/v1.1.0/registry.json` 读取 `audit-actions.v1` 并校验所有 `source_table=audit_events` 行；任何 `not_registered_by_c1`、未登记动作、`observed_events` 小于 `min_events` 或 `status=fail` 的行都计入缺失。缺失数不为 0 时，PG0-07 不得 `pass`，`decision.md` 写 `fail` 并列出缺口。
 
 - [ ] **Step 4: 写 `signoff.csv`**
 
@@ -3801,7 +3811,15 @@ assert all(r['observed_value'] == 'true' and r['status'] == 'pass' for r in swit
 ]
 
 audit = list(csv.DictReader(Path('docs/evidence/o0-pg0/pg0-review/audit-coverage.csv').open(encoding='utf-8')))
-assert len(audit) >= 16, len(audit)
+assert len(audit) == 16, len(audit)
+audit_event_rows = [r for r in audit if r['source_table'] == 'audit_events']
+assert len(audit_event_rows) == 12, len(audit_event_rows)
+assert all('not_registered_by_c1' not in r['registered_action'] for r in audit), [
+    r['coverage_id'] for r in audit if 'not_registered_by_c1' in r['registered_action']
+]
+assert all('not_registered_by_c1' not in r['c1_registration_ref'] for r in audit), [
+    r['coverage_id'] for r in audit if 'not_registered_by_c1' in r['c1_registration_ref']
+]
 audit_missing = [r['coverage_id'] for r in audit if r['status'] != 'pass' or int(r['missing']) != 0]
 assert not audit_missing, f'missing audit events: {audit_missing}'
 

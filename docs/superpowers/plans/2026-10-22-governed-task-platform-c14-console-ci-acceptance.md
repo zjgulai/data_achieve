@@ -13,6 +13,7 @@
 - 权威顺序：`docs/design/【契约冻结】v1-表名-枚举-接口.md` > 已批准设计 `docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md` > 当前迁移与代码事实 > 其他文档。C0 未完成时先停止，不在 C14 里补契约。
 - C14 独占 `apps/scraper-console/src/**`、`apps/scraper-console/e2e/**` 与 Playwright。C11/C12/C13 只提供浏览器交接单，不得修改这些目录。
 - 11 条合同路由是唯一合同面：10 条启用、1 条禁用（`/reports/public/[id]`）。一级导航只有 4 条：工作台 `/workbench`、报告 `/reports`、连接器 `/connectors`、设置 `/settings`。`/runs`、`/assets`、`/projects`、`/tasks`、`/dashboard` 不得进入一级导航；legacy 页面按重定向或保留清单处理。
+- 成员管理是 `/settings` 页面的内联面板，不新增 `/settings/members` 路由或第 12 条合同路由。成员面板的选择器、邀请、改角色、最后 owner 错误、项目分配与 owner/admin/member 可见性以 `docs/ops/c2-c14-members-handoff.md` 为准。
 - 动态段名以冻结契约 §5 为唯一来源（C1 v1.1 登记 `/capabilities/[toolId]`、`/reports/[artifactId]`、`/workbench/[taskId]`；公开分享保持 `/reports/public/[id]`）。B5 已落地的 `[toolId]`、`[artifactId]`、`[runId]` 页面只用于实现核对。不得另起 `[id]` 页面，也不得在测试或代码里维护第二份路由清单。
 - 功能开关只有一个：`PUBLIC_REPORT_SHARE_ENABLED`，固定 `false`。回滚点是回退控制台提交；C14 无迁移、无 API 路由，不需要数据库回滚。
 - 不启用公开分享：`PUBLIC_REPORT_SHARE_ENABLED = false`。不创建 `/reports/public/[id]` 页面，不提供分享按钮，任何 `/reports/public/*` 请求返回 404。
@@ -224,6 +225,7 @@ Expected: 列出 setup/public/authenticated 三个项目和现有用例，不执
 | `apps/scraper-console/e2e/auth.setup.ts` | 登录并保存 storage state |
 | `apps/scraper-console/e2e/auth-limited.setup.ts` | 以同工作区受限项目成员登录并保存第二个 storage state |
 | `apps/scraper-console/e2e/limited-member.spec.ts` | 同工作区跨项目负路径：任务、Claim、报告、交付与资产 |
+| `apps/scraper-console/e2e/members.spec.ts` | `/settings` 内联成员面板：邀请、改角色、最后 owner 错误、项目分配与三视角可见性 |
 | `apps/scraper-console/e2e/support/page-problems.ts` | 共享 console/pageerror/5xx 监听 |
 | `apps/scraper-console/e2e/support/seed-manifest.ts` | 读取 `tmp/console-e2e.json` |
 | `apps/scraper-console/e2e/golden-path.spec.ts` | 正黄金路径 |
@@ -2636,7 +2638,7 @@ git commit -m "feat(console): move credentials into connectors page"
 
 ---
 
-### Task 8: 设置页接会话、成员、用量与交接面板
+### Task 8: 设置页接会话、内联成员、用量与交接面板
 
 **Files:**
 - Create: `apps/scraper-console/src/lib/api/settings.ts`
@@ -2646,9 +2648,20 @@ git commit -m "feat(console): move credentials into connectors page"
 - Create: `apps/scraper-console/src/app/settings/page.tsx`
 
 **Interfaces:**
-- Consumes: `fetchAuthSession`、`fetchWorkspaces`、`fetchWorkspaceMembers`、`GET /api/usage/summary`、`GET /api/audit-events`、`GET /api/projects/{project_id}/keys`、`GET /api/privacy/legal-holds`、`GET /api/privacy/deletion-requests`、`GET /api/privacy/dsr-cases`。
-- Produces: `fetchUsageSummary(days)`、`fetchAuditEvents()`、`fetchProjectKeys(projectId)`、`fetchLegalHolds()`、`fetchDeletionRequests()`、`fetchDsrCases()`、`CUSTOMER_MCP_TOOLS`、`formatUsd(value)`。C14 不新增 API 路由；所有数据来自 C2/C3/C11/C12/C13 已登记接口。
-- 交接 UI：C2 审计列表、C3 项目密钥列表/创建/轮换/撤销、C11 保留策略与法律保留只读、C12 删除/DSR 列表与链接、C13 客户 MCP 地址/八工具/密钥前缀与撤销。密钥明文只在创建响应显示一次；刷新后只显示前缀。不得显示 provider、端点、Cookie 或内部单价。
+- Consumes: `docs/ops/c2-c14-members-handoff.md`（C2 交接的 `/settings` 内联成员面板选择器、邀请、改角色、最后 owner 错误、项目分配与 owner/admin/member 可见性判据）、`fetchAuthSession`、`fetchWorkspaces`、`fetchWorkspaceMembers`、`GET /api/usage/summary`、`GET /api/audit-events`、`GET /api/projects/{project_id}/keys`、`GET /api/privacy/legal-holds`、`GET /api/privacy/deletion-requests`、`GET /api/privacy/dsr-cases`。
+- Produces: `fetchUsageSummary(days)`、`fetchAuditEvents()`、`fetchProjectKeys(projectId)`、`fetchLegalHolds()`、`fetchDeletionRequests()`、`fetchDsrCases()`、`CUSTOMER_MCP_TOOLS`、`formatUsd(value)`、`roleLabel(role)`。C14 不新增 API 路由；所有数据来自 C2/C3/C11/C12/C13 已登记接口。
+- 交接 UI：C2 审计列表与 `/settings` 内联成员面板、C3 项目密钥列表/创建/轮换/撤销、C11 保留策略与法律保留只读、C12 删除/DSR 列表与链接、C13 客户 MCP 地址/八工具/密钥前缀与撤销。密钥明文只在创建响应显示一次；刷新后只显示前缀。不得显示 provider、端点、Cookie 或内部单价。
+
+- [ ] **Step 0: 读取 C2 设置页内联成员面板交接**
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c14
+test -f docs/ops/c2-c14-members-handoff.md
+rg -n 'settings-members|member-invite-form|member-role-|member-remove-|project-member-panel|members-non-owner-hint|workspace_last_owner_required' \
+  docs/ops/c2-c14-members-handoff.md
+```
+
+Expected: 文件存在，选择器与错误码全部命中。缺文件或缺少选择器时停止，先修 C2 交接，不凭记忆实现。成员面板是 `/settings` 的内联区块，不新增 `/settings/members` 路由。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -2657,11 +2670,17 @@ git commit -m "feat(console): move credentials into connectors page"
 ```typescript
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatUsd, usageSummaryPath } from "./settings.ts";
+import { formatUsd, roleLabel, usageSummaryPath } from "./settings.ts";
 
 test("用量路径带天数", () => {
   assert.equal(usageSummaryPath(30), "/api/usage/summary?days=30");
   assert.equal(usageSummaryPath(7), "/api/usage/summary?days=7");
+});
+
+test("角色文案与 C2 交接一致", () => {
+  assert.equal(roleLabel("owner"), "所有者");
+  assert.equal(roleLabel("admin"), "管理员");
+  assert.equal(roleLabel("member"), "成员");
 });
 
 test("金额按六位小数显示，不做浮点运算", () => {
@@ -2769,6 +2788,12 @@ export function formatUsd(value: string | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
   const [whole, fraction = ""] = value.split(".");
   return `USD ${whole}.${(fraction + "000000").slice(0, 6)}`;
+}
+
+export function roleLabel(role: string): string {
+  if (role === "owner") return "所有者";
+  if (role === "admin") return "管理员";
+  return "成员";
 }
 
 export type AuditEvent = {
@@ -2889,6 +2914,7 @@ import {
   fetchAuditEvents,
   fetchUsageSummary,
   formatUsd,
+  roleLabel,
 } from "@/lib/api/settings";
 import {
   CUSTOMER_MCP_TOOLS,
@@ -2958,14 +2984,18 @@ export default function SettingsPage() {
           <p className="mt-1 text-xs text-[var(--text-tertiary)]">可切换工作区 {workspaces.data?.length ?? 0} 个</p>
         </section>
 
-        <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
+        <section data-testid="settings-members" className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
           <h2 className="text-sm font-semibold">成员</h2>
           <ErrorLine label="成员" error={members.error as Error | null} />
           <ul className="mt-3 grid gap-2 text-sm">
             {(members.data ?? []).map(member => (
-              <li key={member.user.id} className="flex justify-between">
+              <li
+                key={member.user.id}
+                data-testid={`member-row-${member.user.email}`}
+                className="flex justify-between"
+              >
                 <span>{member.user.name}</span>
-                <span className="text-xs text-[var(--text-tertiary)]">{member.role}</span>
+                <span className="text-xs text-[var(--text-tertiary)]">{roleLabel(member.role)}</span>
               </li>
             ))}
           </ul>
@@ -3074,7 +3104,7 @@ export default function SettingsPage() {
   "/settings",
 ```
 
-把 `routes.test.ts` 的数量断言改为 `NEW_ROUTES.length === 11`，总数改为 `25`。
+把 `routes.test.ts` 的数量断言改为 `NEW_ROUTES.length === 11`，总数改为 `25`。`NEW_ROUTES` 只追加 `/settings`，不追加 `/settings/members`；在 `contract-routes.test.ts` 中断言 `CONTRACT_ROUTES.some(route => route.path === "/settings/members") === false`，成员面板只存在于 `/settings`。若 legacy `/settings/members` 页面仍保留，它不得成为合同路由，也不得从 `/settings` 链接进入。
 
 Run:
 ```bash
@@ -3113,6 +3143,7 @@ git commit -m "feat(console): wire settings and handoff panels"
 - Create: `apps/scraper-console/src/components/reports/review-delivery-actions.tsx`
 - Create: `apps/scraper-console/src/components/settings/privacy-actions.tsx`
 - Create: `apps/scraper-console/e2e/governance-actions.spec.ts`
+- Create: `apps/scraper-console/e2e/members.spec.ts`
 - Modify: `apps/scraper-console/src/lib/api/reports.ts`（追加 C7 `ClaimView` 与交付/验收类型）
 - Modify: `apps/scraper-console/src/components/workbench/task-detail.tsx`（挂载工作台内联动作）
 - Modify: `apps/scraper-console/src/app/reports/[artifactId]/page.tsx`（挂载审核、发布、交付、验收与 Claim 只读）
@@ -3120,11 +3151,22 @@ git commit -m "feat(console): wire settings and handoff panels"
 - Modify: `apps/scraper-console/e2e/support/seed-manifest.ts`（追加治理动作可选字段；缺字段时测试用固定 UUID 与 route mock）
 
 **Interfaces:**
-- Consumes: `POST /api/runs`、`POST /api/runs/{run_id}/cancel`、`POST /api/workbench/tasks/{task_id}/approvals`、`POST /api/workbench/tasks/{task_id}/approvals/{approval_id}`、`POST/PATCH /api/workspaces/current/members*`、`POST/DELETE /api/projects/{project_id}/members*`、`GET/POST/DELETE /api/projects/{project_id}/keys*`、`GET /api/quota`、`GET /api/quota/projects/{project_id}`、`GET /api/usage/summary`、`POST /api/reports/{report_id}/reviewers`、`DELETE /api/reports/{report_id}/reviewers/{user_id}`、`POST /api/reports/{report_id}/reviews`、`POST /api/reports/{report_id}/publish`、`GET /api/reports/{report_id}/revisions`、`POST /api/reports/drafts`、`POST /api/reports/{artifact_id}/delivery/publish`、`GET /api/reports/{artifact_id}/delivery`、`GET /api/reports/{artifact_id}/delivery/manifest`、`POST /api/reports/{artifact_id}/delivery/quick-draft`、`GET /api/reports/{artifact_id}/delivery/quick-draft`、`GET /api/tasks/{task_id}/delivery/quick-draft`、`GET/POST /api/reports/{artifact_id}/delivery/acceptance*`、`POST/GET /api/privacy/deletion-requests*`、`GET /api/privacy/dsr-cases`、`GET /api/privacy/legal-holds`。
+- Consumes: `docs/ops/c2-c14-members-handoff.md`（`/settings` 内联成员面板：`settings-members`、邀请、改角色、最后 owner 错误、项目分配与 owner/admin/member 可见性）、`POST /api/runs`、`POST /api/runs/{run_id}/cancel`、`POST /api/workbench/tasks/{task_id}/approvals`、`POST /api/workbench/tasks/{task_id}/approvals/{approval_id}`、`POST/PATCH /api/workspaces/current/members*`、`POST/DELETE /api/projects/{project_id}/members*`、`GET/POST/DELETE /api/projects/{project_id}/keys*`、`GET /api/quota`、`GET /api/quota/projects/{project_id}`、`GET /api/usage/summary`、`POST /api/reports/{report_id}/reviewers`、`DELETE /api/reports/{report_id}/reviewers/{user_id}`、`POST /api/reports/{report_id}/reviews`、`POST /api/reports/{report_id}/publish`、`GET /api/reports/{report_id}/revisions`、`POST /api/reports/drafts`、`POST /api/reports/{artifact_id}/delivery/publish`、`GET /api/reports/{artifact_id}/delivery`、`GET /api/reports/{artifact_id}/delivery/manifest`、`POST /api/reports/{artifact_id}/delivery/quick-draft`、`GET /api/reports/{artifact_id}/delivery/quick-draft`、`GET /api/tasks/{task_id}/delivery/quick-draft`、`GET/POST /api/reports/{artifact_id}/delivery/acceptance*`、`POST/GET /api/privacy/deletion-requests*`、`GET /api/privacy/dsr-cases`、`GET /api/privacy/legal-holds`。
 - Produces: `governancePaths`、`IntentKeyStore`、`submitRun`、`retryRunSubmission`、`cancelRun`、`createApproval`、`decideApproval`、`requestQuotaOverage`、`inviteWorkspaceMember`、`updateWorkspaceMemberRole`、`grantProjectMember`、`revokeProjectMember`、`createProjectKey`、`rotateProjectKey`、`revokeProjectKey`、`fetchProjectKeys`、`customerMcpConfig`、`assignReviewer`、`revokeReviewer`、`createReview`、`publishReport`、`fetchReportRevisions`、`createReportDraft`、`publishDelivery`、`fetchDeliveryManifest`、`downloadDeliveryZip`、`publishQuickDraft`、`downloadQuickDraftZip`、`fetchTaskQuickDraft`、`fetchAcceptance`、`acceptDelivery`、`disputeDelivery`、`deemAccepted`、`createDeletionRequest`、`approveDeletionRequest`、`confirmDeletionRequest`、`executeDeletionRequest`、`fetchDeletionProof`、`fetchDeletionRequests`、`fetchDsrCases`、`fetchLegalHolds`、`canDecideApproval`、`acceptanceActionsFor`、`legalHoldBlocks`、`isToolNotPriced`、`isIdempotencyConflict`、`CLAIM_VIEW_FIELD_MAP`。
 - 运行重试没有登记路由。C14 的“重试”只重放同一 `POST /api/runs` 请求与同一幂等键。取消只调用 `POST /api/runs/{run_id}/cancel`。不得调用未登记的重试端点。
 - 额度上限没有登记写端点。额度卡片只读取 `GET /api/quota` 与 `GET /api/quota/projects/{project_id}`。“写”只走已登记的内联批准 `POST /api/workbench/tasks/{task_id}/approvals`（`budget_overage`）。C14 不新增 `PUT /api/quota`。
 - 所有 mutation 都发送 `Idempotency-Key`。同一意图的重试复用同一个键。幂等冲突 `idempotency_conflict` 不自动换键重试。
+
+- [ ] **Step 0: 读取 C2 设置页内联成员面板交接并锁定选择器**
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c14
+test -f docs/ops/c2-c14-members-handoff.md
+rg -n 'settings-members|member-row-|member-invite-form|member-invite-email|member-invite-role|member-invite-submit|member-role-|member-remove-|member-error|project-member-panel|project-member-project|project-member-user|project-member-grant|project-member-row-|project-member-revoke-|members-non-owner-hint|workspace_last_owner_required' \
+  docs/ops/c2-c14-members-handoff.md
+```
+
+Expected: 全部命中；实现选择器必须逐字复用，不改名。成员面板只存在于 `/settings`，不新增 `/settings/members` 路由。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -3142,10 +3184,14 @@ import {
   canDecideApproval,
   customerMcpConfig,
   governancePaths,
+  grantProjectMember,
+  inviteWorkspaceMember,
   isIdempotencyConflict,
   isToolNotPriced,
   legalHoldBlocks,
+  revokeProjectMember,
   retryRunSubmission,
+  updateWorkspaceMemberRole,
 } from "./governance-actions.ts";
 
 const RUN_INPUT = {
@@ -3244,6 +3290,49 @@ test("动作路径全部来自 C1 v1.1 登记", () => {
       "/api/privacy/legal-holds",
     ],
   );
+});
+
+test("成员动作使用登记路径与请求体", async () => {
+  const calls: Array<{ path: string; method: string; body: string | null }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url, init) => {
+    calls.push({
+      path: new URL(String(url), "http://localhost").pathname,
+      method: init?.method ?? "GET",
+      body: typeof init?.body === "string" ? init.body : null,
+    });
+    return new Response(JSON.stringify({}), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  try {
+    const store = new IntentKeyStore();
+    await inviteWorkspaceMember("member@example.com", "member", store);
+    await updateWorkspaceMemberRole("u1", "admin", store);
+    await grantProjectMember("p1", "u1", store);
+    await revokeProjectMember("p1", "u1", store);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.deepEqual(calls, [
+    [
+      "/api/workspaces/current/members",
+      "POST",
+      JSON.stringify({ email: "member@example.com", role: "member" }),
+    ],
+    [
+      "/api/workspaces/current/members/u1",
+      "PATCH",
+      JSON.stringify({ role: "admin" }),
+    ],
+    [
+      "/api/projects/p1/members",
+      "POST",
+      JSON.stringify({ user_id: "u1" }),
+    ],
+    ["/api/projects/p1/members/u1", "DELETE", null],
+  ]);
 });
 
 test("同一意图复用幂等键，重试不换键", () => {
@@ -3409,17 +3498,27 @@ Create `governance-actions.ts` with every path and export asserted in Step 1. Ev
 
 The implementation must export the clients listed in **Interfaces** and reject `idempotency_conflict` without silently generating a new key. `ProjectKeyCreateResponse.plaintext_key` is optional and is never persisted in cache or local storage.
 
+成员动作按 C2 交接实现：`inviteWorkspaceMember(email, role, store)` 调用 `POST /api/workspaces/current/members`，body `{"email": email, "role": role}`；`updateWorkspaceMemberRole(userId, role, store)` 调用 `PATCH /api/workspaces/current/members/{user_id}`，body `{"role": role}`；`grantProjectMember(projectId, userId, store)` 调用 `POST /api/projects/{project_id}/members`，body `{"user_id": userId}`；`revokeProjectMember(projectId, userId, store)` 调用 `DELETE /api/projects/{project_id}/members/{user_id}`。邀请与改角色成功后刷新 `fetchWorkspaceMembers()`；项目分配成功后刷新 `GET /api/projects/{project_id}/members`。最后 owner 冲突返回 `workspace_last_owner_required` 时不得改本地角色。
+
 - [ ] **Step 4: 写内联动作组件并挂载页面**
 
 Create the five component files listed above.
 
 - `governance-actions.tsx`: submit/replay run, cancel, inline approval create/decide. Use `canDecideApproval`; requester cannot self-approve.
-- `members-and-keys.tsx`: invite/change role/project assignment; key create/rotate/revoke; show `plaintext_key` once in `<code data-testid="project-key-plaintext">`, then clear it after refetch/navigation; render customer MCP config without provider/Cookie/unit price.
+- `members-and-keys.tsx`:
+  - 成员区块根节点 `data-testid="settings-members"`；密钥区块根节点 `data-testid="settings-project-keys"`。两者同属该组件，但选择器不互相嵌套。角色文案统一使用 `roleLabel`。
+  - owner 渲染邀请表单：`member-invite-form`、`member-invite-email`、`member-invite-role`（选项 owner/admin/member）、`member-invite-submit`。admin 与 member 不渲染。
+  - 每个成员行使用 `member-row-<email>`；owner 对每行渲染 `member-role-<email>`，对非本人行渲染 `member-remove-<email>`；admin 与 member 不渲染角色下拉与移除按钮。
+  - owner 与 admin 渲染 `project-member-panel`，内含 `project-member-project`（option value 为 `project.id`）、`project-member-user`（option value 为 `user.id`）、`project-member-grant`、`project-member-row-<project>-<email>` 与 `project-member-revoke-<project>-<email>`；member 不渲染。
+  - admin 与 member 渲染 `members-non-owner-hint`，文案固定为“只有工作区所有者可以添加、移除成员或修改角色。管理员可以查看成员列表。”
+  - 错误行 `member-error` 原样显示 `error.code`；至少区分 `workspace_last_owner_required`、`workspace_owner_immovable`、`workspace_owner_required`、`workspace_member_exists`、`workspace_member_not_found`、`project_member_exists`。不得合并成泛化文案。
+  - 邀请成功后清空邮箱输入并重新读取成员列表；改角色、移除与项目分配成功后重新读取对应列表；失败时保留当前选择。
+  - 密钥区：key create/rotate/revoke；`plaintext_key` 只在创建后显示一次于 `<code data-testid="project-key-plaintext">`，刷新或导航后清除；客户 MCP 配置不得显示 provider、Cookie 或内部单价。
 - `quota-cards.tsx`: render `daily_limit_usd`, `reserved_usd`, `used_usd`, `remaining_usd`; show separate `tool_not_priced`, `approval_required`, `quota_exceeded` states. Quota increases only create the registered `budget_overage` approval action.
 - `review-delivery-actions.tsx`: reviewer assign/revoke, review approve/reject, owner/admin publish, revisions, Quick draft, formal delivery publish/download, acceptance accept/dispute/deemed. Hide acceptance actions for `quick_draft` and display `方向稿不启动验收`.
 - `privacy-actions.tsx`: deletion create/approve/confirm/execute/proof and DSR list. Disable execute when `legalHoldBlocks(...)` is true; display `legal_hold_active`. Mount write actions only when `workspace.slug` starts with `e2e-` in local/CI.
 
-Mount them in task detail, settings and report pages. All errors render `error.code` so `idempotency_conflict`, `workspace_last_owner_required`, `project_access_forbidden`, `report_forbidden_language`, `delivery_pii_detected` and `legal_hold_active` remain distinct.
+Mount them in task detail, settings and report pages. 在 `/settings` 用 `<MembersAndKeys />` 替换 Task 8 的成员区块，保留 `data-testid="settings-members"` 根节点；不新增 `/settings/members` 页面或链接。All errors render `error.code` so `idempotency_conflict`, `workspace_last_owner_required`, `workspace_owner_immovable`, `project_access_forbidden`, `report_forbidden_language`, `delivery_pii_detected` and `legal_hold_active` remain distinct.
 
 - [ ] **Step 5: 运行客户端测试确认通过**
 
@@ -3447,15 +3546,30 @@ Create `apps/scraper-console/e2e/governance-actions.spec.ts` with seven named te
 
 Use only the dedicated synthetic workspace and the Task 9 seed manifest. Do not point these mutation tests at production A or B.
 
+- [ ] **Step 6b: 写成员面板 Playwright**
+
+Create `apps/scraper-console/e2e/members.spec.ts`，使用 `test.describe.configure({ mode: "serial" })`，读取 Task 9 生成的 `tmp/console-e2e.json` 中的 `main_email`、`other_email` 与 `project_id`。只读 admin/member 视角用 `page.route("**/api/auth/me", ...)` 取真实响应后把 `role` 改为 `admin` 或 `member`；邀请、改角色、最后 owner 错误与项目分配使用真实 owner storage state 与真实 API。每个用例监听 `console` 的 `error`、`pageerror` 与 `/api/` 5xx，结束断言三者均为空；Task 10 的 `watchPage` 可复用，但不作为本任务的前置依赖。
+
+1. `members panel is inline on settings`: 打开 `/settings`；`page.url()` 以 `/settings` 结尾；`settings-members`、`member-invite-form`、`member-invite-email`、`member-invite-role`、`member-invite-submit`、`member-row-<main_email>`、`member-role-<main_email>` 与 `project-member-panel` 可见；`member-remove-<main_email>` 数量为 0；`a[href="/settings/members"]` 数量为 0。
+2. `owner invites member`: 在 `member-invite-email` 填 `other_email`，`member-invite-role` 选 `member`，点 `member-invite-submit`；`member-row-<other_email>` 可见；`member-error` 数量为 0。
+3. `owner changes member role`: `member-role-<other_email>` 选 `admin`；刷新后该行包含“管理员”；再选 `member`，刷新后包含“成员”。
+4. `last owner error is visible`: `member-role-<main_email>` 选 `member`；`member-error` 包含 `workspace_last_owner_required`；`member-row-<main_email>` 仍包含“所有者”。
+5. `owner grants and revokes project assignment`: `project-member-project` 选 `project_id`；`project-member-user` 选 label `other_email`；点 `project-member-grant`；`project-member-row-<project_id>-<other_email>` 可见；点 `project-member-revoke-<project_id>-<other_email>` 后该 test id 数量为 0。
+6. `admin sees project assignment but no workspace mutations`: route `/api/auth/me` 的 `role` 为 `admin`；成员行可见；`project-member-panel` 与 `members-non-owner-hint` 可见；`member-invite-form`、`member-role-<other_email>`、`member-remove-<other_email>` 数量均为 0。
+7. `member sees read-only list`: route `role` 为 `member`；成员行与 `members-non-owner-hint` 可见；`member-invite-form`、`member-role-<other_email>`、`member-remove-<other_email>` 与 `project-member-panel` 数量均为 0。
+8. `owner removes invited member`: 点击 `member-remove-<other_email>`；`member-row-<other_email>` 数量为 0；成员列表不再包含该邮箱。
+
+`project-member-project` 的 option 使用 `value=project.id`、label 为 `project.name`；`project-member-user` 的 option 使用 `value=user.id`、label 为 `user.email`；邀请目标必须是种子中已存在、尚未加入当前工作区的用户。不得访问生产。
+
 - [ ] **Step 7: 运行治理动作浏览器测试**
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c14
 pnpm -C apps/scraper-console exec playwright test \
-  e2e/governance-actions.spec.ts --project=authenticated
+  e2e/governance-actions.spec.ts e2e/members.spec.ts --project=authenticated
 ```
 
-Expected: 7 passed; no console/pageerror/5xx; the test database is the local/CI E2E database.
+Expected: `15 passed`（治理动作 7 + 成员面板 8）；no console/pageerror/5xx；the test database is the local/CI E2E database.
 
 - [ ] **Step 8: GitNexus 检查并提交**
 
@@ -3472,7 +3586,8 @@ git add apps/scraper-console/src/lib/api/governance-actions.ts \
   apps/scraper-console/src/components/workbench/task-detail.tsx \
   apps/scraper-console/src/app/settings/page.tsx \
   'apps/scraper-console/src/app/reports/[artifactId]/page.tsx' \
-  apps/scraper-console/e2e/governance-actions.spec.ts
+  apps/scraper-console/e2e/governance-actions.spec.ts \
+  apps/scraper-console/e2e/members.spec.ts
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git commit -m "feat(console): wire registered governance actions"
 ```
@@ -6057,7 +6172,7 @@ git commit -m "docs(console): record c14 acceptance runbook and evidence"
 | 资产质量列与质量页签 | Task 6、Task 9 | `assets-quality.spec.ts`；质量列、质量页签、缺失值显示“缺失” |
 | 质量链只读 C8 | Task 6 | 控制台只显示 `quality_status`/`quality_assessment`/`data_gaps`，不重算；C8 依赖 C6 `run.completed` |
 | 连接器接真实 API | Task 7 | 凭据、平台包、提供方状态合并 |
-| 设置接真实 API | Task 8 | 会话、成员、用量、C2/C3/C11/C12/C13 交接面板 |
+| 设置接真实 API | Task 8、Task 8A | 会话、`/settings` 内联成员、用量、C2/C3/C11/C12/C13 交接面板；`members.spec.ts` 覆盖邀请、改角色、最后 owner 错误、项目分配与三视角可见性 |
 | Middleware 公开 allowlist | Task 2 | `middleware-policy.test.ts` |
 | CI unit/tsc/lint/build | Task 12 | `console-quality` 作业 |
 | CI Playwright 阻塞 | Task 12 | `console-acceptance` 无 `continue-on-error` |
@@ -6076,11 +6191,12 @@ git commit -m "docs(console): record c14 acceptance runbook and evidence"
 | `creator_cookie` 内部隔离 | Task 7 | 连接器页过滤 `creator_cookie` 与 `creator_cookie_metadata`，序列化响应不含 `cookie` |
 | 八客户 MCP 工具 | 全部 | 不改 `mcp_runtime/`；边界检查 |
 | 保留期冻结 | 全部 | 不改保留策略 |
-| 已登记治理动作 UI | Task 8A | 任务提交/取消、内联批准、成员与密钥 CRUD、quota、Claim、审核发布、交付验收、隐私删除；`governance-actions.spec.ts` 七条正负路径 |
+| 已登记治理动作 UI | Task 8A | 任务提交/取消、内联批准、成员与密钥 CRUD、quota、Claim、审核发布、交付验收、隐私删除；`governance-actions.spec.ts` 七条正负路径；`members.spec.ts` 八条成员面板路径 |
 
 ## Self-Review
 
-- [ ] Task 8A 的治理动作客户端、页面控件和七条 Playwright 用例全部通过；只使用 C1 已登记路径。
+- [ ] Task 8A 的治理动作客户端、页面控件、七条治理动作 Playwright 用例与八条 `members.spec.ts` 用例全部通过；只使用 C1 已登记路径。
+- [ ] 成员管理是 `/settings` 的内联面板，`docs/ops/c2-c14-members-handoff.md` 已消费；没有 `/settings/members` 路由或链接，11 条合同路由不变。
 
 - [ ] 11 条合同路由逐条有任务或明确禁用状态。
 - [ ] 4 条一级导航逐条有断言。

@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- **隔离 worktree。** 执行分支是 `feat/gov-c13`，worktree 是 `/Users/lute/Project/data_scrapy-gov-c13`。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 的 `git worktree add`、只读预检与复制本计划。Task 0 之后所有 Run/Commit 命令都在 worktree 执行。
+- **隔离 worktree。** 执行分支是 `feat/gov-c13`，worktree 是 `/Users/lute/Project/data_scrapy-gov-c13`。起点分支与主计划 W11 一致：从 `feat/gov-c10` 创建；C13 与 C11 并行，不等待 C11，也不依赖 C12。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 的 `git worktree add`、只读预检与复制本计划。Task 0 之后所有 Run/Commit 命令都在 worktree 执行。
 - 契约优先级：`docs/design/【契约冻结】v1-表名-枚举-接口.md` > 已批准设计 `docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md` > 迁移与代码事实。冲突时以契约为准。
 - C13 不修改 `apps/scraper-console/**` 或 `apps/web/**`；浏览器页面归 C14，C13 只提供交接单。
 - 功能开关只有一个：`SCRAPY_MCP_CUSTOMER_ENABLED`，默认 `false`。关闭时 `/mcp/customer` 返回 404，内部 `/mcp` 不受影响。回滚点是关闭该开关并回退应用版本；C13 无迁移，不需要 downgrade。**C13 在任何环境都不翻转生产开关；PG0 发布批次负责翻转。** C13 只在共享 compose 的 `api.environment` 增加 `SCRAPY_MCP_CUSTOMER_ENABLED`（默认 `false`）、`SCRAPY_MCP_CUSTOMER_RATE_PER_MINUTE`（默认 `60`）与 `SCRAPY_MCP_CUSTOMER_CONCURRENT_CALLS`（默认 `4`）三个映射，并新增 compose 事实测试；C13 不写 `.env.production`、不设置生产值、不部署。
@@ -20,7 +20,7 @@
 - 错误码只用 C1 登记值：`authentication_required`、`project_key_invalid`、`project_key_revoked`、`tool_not_allowed`、`capability_not_allowed`、`cookie_not_accepted`、`quota_exceeded`、`rate_limited`、`approval_required`、`tool_not_executable`、`tool_not_priced`、`market_unsupported`、`task_not_found`、`manifest_not_found`、`claim_not_found`、`evidence_not_found`、`idempotency_conflict`、`state_conflict`、`package_type_invalid`、`comparison_markets_exceeded`、`acceptance_contact_not_member`、`budget_invalid`。白名单失败返回 403；日额度、速率或并发失败返回 429；预算不足返回 `approval_required` 并进入待批准状态。
 - 客户请求不能携带 `workspace_id`、`project_id`、`provider`、`endpoint_type`、分页、重试、降级链、Cookie 或 Seller Center 登录态。工作区与项目只从项目密钥解析。`create_task` 的 `acceptance_contact_id` 只能是当前工作区 owner 或 admin；普通 member 返回 `acceptance_contact_not_member`，由 C4 校验，C13 不复制角色规则。
 - `create_task` 必须把 `idempotency_key`、`package_type`、`primary_market`、`compare_markets`、`seed_products`、`target_price_band`、`budget`、`acceptance_contact_id` 映射到 C4：`idempotency_key` 传给 `create_workbench_task(..., idempotency_key=...)`；`compare_markets` 映射为 `comparison_markets`；`seed_products` 与 `target_price_band` 原样传递，不得静默丢弃；`budget` 展开为 `max_cost_usd/max_pages/max_records`。C4 负责持久化、幂等摘要、Quick 最多 1 个/Standard 最多 3 个对比市场、种子商品 3–10 项与价格带校验。C13 不复制市场档位或产品阈值，不写 `workbench_tasks` 或 `runs`。
-- **模板能力白名单 fail-closed。** C8 `TaskTemplate.capability_allowlist` 是模板侧唯一能力白名单。`discover_capabilities` 只返回 `project_api_keys.capability_allowlist ∩ template_capability_ids`；`collect` 的 `capability_id` 必须同时在密钥白名单与模板白名单内，否则返回 `capability_not_allowed`。模板白名单缺失、为空或 C8 未提供该字段时一律 fail-closed：`collect` 返回 `capability_not_allowed`，`discover_capabilities` 返回空清单。不得回退为“全部非 Cookie 工具”，不得用 `core_domains`、工具目录 `category` 或 provider 自行推导模板白名单。C8 尚未提供 `TaskTemplate.capability_allowlist` 时，C13 记为 `BLOCKED: c8_template_capability_ids_missing`，由 C8 所有者补字段；C13 不自行新增字段或契约对象。
+- **模板能力白名单 fail-closed。** C8 的模板侧唯一能力白名单由模块函数 `template_capability_ids(template_id)` 读取；`TaskTemplate.capability_allowlist` 只是该函数背后的 dataclass 字段，C13 不直接依赖模板属性。`discover_capabilities` 只返回 `project_api_keys.capability_allowlist ∩ template_capability_ids(template_id)`；`collect` 的 `capability_id` 必须同时在密钥白名单与模板白名单内，否则返回 `capability_not_allowed`。模板白名单缺失、为空或 C8 未提供该函数时一律 fail-closed：`collect` 返回 `capability_not_allowed`，`discover_capabilities` 返回空清单。不得回退为“全部非 Cookie 工具”，不得用 `core_domains`、工具目录 `category` 或 provider 自行推导模板白名单。C8 尚未提供 `template_capability_ids(template_id)` 或其返回为空时，C13 记为 `BLOCKED: c8_template_capability_ids_missing`，由 C8 所有者补函数；C13 不自行新增函数、字段或契约对象。
 - **取消幂等。** `cancel_task` 的 `idempotency_key` 与 `reason_code` 必须原样传给 C6 取消服务，不得 `del`、不得本地改写。同键同 `reason_code` 为幂等重放；同键不同 `reason_code`（或不同任务）返回 `idempotency_conflict`；并发同键只有一个执行者，其余重放或返回 `idempotency_conflict`，不得重复写取消副作用。任务或运行已进入终态且没有同键重放记录时返回 `state_conflict`。C6 取消服务是唯一写 `run.cancelled`、释放预算预留的地方；C13 不删除 step、attempt、`task_runs` 或账本，不直接循环 `cancel_run` 复制幂等语义。
 - **证据可发布门禁。** `get_evidence` 只返回通过 C7 可发布门禁的 Claim：`review_status=approved`、`reviewed_content_version=content_version`，且该 Claim 的合同行通过 `validate_claim_bundle`。`draft`、`pending`、`rejected`、`stale` Claim 一律返回 `claim_not_found`，不返回草稿内容；证据缺字段、证据行不完整或证据等级不一致返回 `evidence_not_found`。C13 不自行判定 Claim 是否可发布，也不把 pending/stale 当作可读草稿返回。
 - 客户链出现 `creator_cookie` 的次数必须为 0。内部 `collect(endpoint_type, project_id, params)` 与 `tiktok.creator_cookie` 工具保留，但只能留在内部 `/mcp` 和内部控制台，保留至少一个迁移周期。
@@ -50,7 +50,7 @@ C13 只依赖下表的符号。任何名称或参数不一致，必须先改对�
 | C5 额度 | `repositories.quota_accounts.get_or_create_quota_account(session, *, workspace_id, project_id, period_start)`；`QuotaAccount.remaining_usd`；`core.config.Settings.budget_enforcement_enabled` |
 | C6 执行取消 | `services.run_service.cancel_task_runs(session, *, workspace_id, project_id, task_id, idempotency_key, reason_code) -> RunCancellationResult` 是 `cancel_task` 唯一入口；`RunCancellationResult` 至少含 `cancelled_run_ids: tuple[uuid.UUID, ...]`、`preserved_artifact_ids: tuple[str, ...]`、`cancelled_at: datetime`、`replayed: bool`；`services.run_service.CancellationError.code` 只使用 `idempotency_conflict`、`state_conflict`；C6 内部对每个可取消 run 调用 `repositories.runs.cancel_run(session, *, workspace_id, run_id)` 并调用 C5 `OrmRunBudget.cancel(run)`；`services.run_queue.enqueue_run(...)` 只在 `collect` 需要直接入队时使用 |
 | C7 Claim 与证据 | `repositories.claims.get_claim(session, *, workspace_id, claim_id)`、`list_evidence(session, *, claim_id)`、`load_evidence_rows(session, *, workspace_id, project_id, evidence_ids)`；`services.claims.load_publishable_claim_rows(session, *, workspace_id, project_id) -> ClaimContractBundle`、`validate_claim_bundle(bundle) -> list[str]`、`ClaimContractBundle.claims/evidences`、`ClaimContractRow.claim_id/claim_status/evidence_grade/review_status/evidence_ids` |
-| C8 模板与质量 | `services.workbench_templates.get_task_template(template_id)`、`list_task_templates()`；`TaskTemplate.capability_allowlist: tuple[str, ...]`；`tool_catalog.evidence_thresholds.package_threshold_for(tier)`、`PACKAGE_TIER_THRESHOLDS`；`repositories.dataset_quality.get_market_assessment(session, *, task_id, market)`、`list_data_gaps(session, *, task_id, market)` |
+| C8 模板与质量 | `services.workbench_templates.get_task_template(template_id)`、`list_task_templates()`、`template_capability_ids(template_id)`；`TaskTemplate.capability_allowlist: tuple[str, ...]`（字段，C13 只经函数读取）；`tool_catalog.evidence_thresholds.package_threshold_for(tier)`、`PACKAGE_TIER_THRESHOLDS`；`repositories.dataset_quality.get_market_assessment(session, *, task_id, market)`、`list_data_gaps(session, *, task_id, market)` |
 | C9 报告查询 | `repositories.report_artifacts.get_latest_artifact(session, *, workspace_id, report_id)`；`services.report_publication.get_current_contract(session, *, workspace, report_id)`；`report_artifacts.run_id`、`status`、`delivery_status`、`manifest_sha256`、`delivered_at` 只读字段 |
 | C10 交付 | `services.delivery.store.DeliveryStore(root)`；`services.delivery.service.load_delivery_manifest(session, *, workspace_id, artifact_id, store)`、`open_delivery_zip(...)` |
 | 能力目录 | `tool_catalog.service.get_tool_catalog(session)`、`find_tool(catalog, tool_id)`；`tool_catalog.markets.FORMAL_MARKETS`（C7） |
@@ -61,7 +61,7 @@ C13 只依赖下表的符号。任何名称或参数不一致，必须先改对�
 
 **C7 可发布门禁前置：** `services/claims.py` 必须提供上表的 `load_publishable_claim_rows` 与 `validate_claim_bundle`。C13 只用这两个函数判定 Claim 是否可发布，不复制 `review_status`、`reviewed_content_version` 或证据完整性规则。若缺失，C13 Task 7 记为 `BLOCKED: c7_publishable_gate_missing`。
 
-**C8 模板能力字段前置（必须由 C8 所有者先落地，C13 不自行新增字段）：** `apps/api/src/data_intelligence_hub/services/workbench_templates.py` 的 `TaskTemplate` 必须提供 `template_capability_ids: tuple[str, ...]`，且 `list_task_templates()` / `get_task_template()` 返回该字段。C8 计划当前只登记 `evidence_template_ids`；若执行 C13 时该字段不存在或为空，C13 记为 `BLOCKED: c8_template_capability_ids_missing`，由 C8 所有者补齐。该字段是代码注册表字段，不是表列，不需要 C1 新登记列；C13 不新增任何列、路径或错误码。若 C1 决定把模板能力白名单冻结为契约对象，C1 必须先登记 `template_capability_ids`，C13 只读消费，不自行改契约。
+**C8 模板能力函数前置（必须由 C8 所有者先落地，C13 不自行新增函数或字段）：** `apps/api/src/data_intelligence_hub/services/workbench_templates.py` 必须导出 `template_capability_ids(template_id: str) -> tuple[str, ...]`，由它读取 `TaskTemplate.capability_allowlist` 字段；C13 只导入并调用该函数，不读取 `TaskTemplate` 上不存在的同名属性。若执行 C13 时该函数不存在或返回空元组，C13 记为 `BLOCKED: c8_template_capability_ids_missing`，由 C8 所有者补齐。该函数是代码注册表接口，不是表列，不需要 C1 新登记列；C13 不新增任何列、路径或错误码。若 C1 决定把模板能力白名单冻结为契约对象，C1 必须先登记 `template_capability_ids`，C13 只读消费，不自行改契约。
 
 ---
 
@@ -125,7 +125,7 @@ C13 只依赖下表的符号。任何名称或参数不一致，必须先改对�
 - Create: `/Users/lute/Project/data_scrapy-gov-c13`（worktree 根）
 
 **Interfaces:**
-- Consumes: 前置分支 `feat/gov-c12`；主工作树的计划文件。
+- Consumes: 前置分支 `feat/gov-c10`（主计划 W11：C13 与 C11 并行，不等待 C11，也不依赖 C12）；主工作树的计划文件。
 - Produces: 分支 `feat/gov-c13` 与 worktree `/Users/lute/Project/data_scrapy-gov-c13`；Task 0 之后所有 Run/Commit 都在该 worktree 执行。
 
 - [ ] **Step 0: 主工作树只读预检**
@@ -135,12 +135,12 @@ Run:
 ```bash
 cd /Users/lute/Project/data_scrapy
 git worktree prune
-git rev-parse --verify feat/gov-c12^{commit}
+git rev-parse --verify feat/gov-c10^{commit}
 git rev-parse --verify --quiet refs/heads/feat/gov-c13 || echo "C13_BRANCH_ABSENT"
 test ! -e /Users/lute/Project/data_scrapy-gov-c13 && echo "worktree_path_free"
 ```
 
-Expected: `git worktree prune` 退出码 0；`git rev-parse` 输出 C12 提交 SHA；输出 `C13_BRANCH_ABSENT` 与 `worktree_path_free`。`feat/gov-c12` 不存在或 worktree 路径已存在时停止，先审查旧分支与旧 worktree，不得复用或删除。
+Expected: `git worktree prune` 退出码 0；`git rev-parse` 输出 C10 提交 SHA；输出 `C13_BRANCH_ABSENT` 与 `worktree_path_free`。`feat/gov-c10` 不存在或 worktree 路径已存在时停止，先审查旧分支与旧 worktree，不得复用或删除。
 
 - [ ] **Step 1: 创建 worktree 并同步依赖**
 
@@ -148,16 +148,16 @@ Run:
 
 ```bash
 cd /Users/lute/Project/data_scrapy
-git worktree add /Users/lute/Project/data_scrapy-gov-c13 -b feat/gov-c13 feat/gov-c12
+git worktree add /Users/lute/Project/data_scrapy-gov-c13 -b feat/gov-c13 feat/gov-c10
 cd /Users/lute/Project/data_scrapy-gov-c13
 test "$(git branch --show-current)" = feat/gov-c13 && echo "branch=feat/gov-c13"
-git merge-base --is-ancestor feat/gov-c12 HEAD; echo "c12_ancestor=$?"
+git merge-base --is-ancestor feat/gov-c10 HEAD; echo "c10_ancestor=$?"
 mkdir -p docs/superpowers/plans
 cp /Users/lute/Project/data_scrapy/docs/superpowers/plans/2026-10-22-governed-task-platform-c13-customer-mcp.md docs/superpowers/plans/
 cd apps/api && uv sync
 ```
 
-Expected: `branch=feat/gov-c13`；`c12_ancestor=0`；`uv sync` 退出码 0。本计划的 Markdown 不在 `feat/gov-c12` 内，必须先从主工作树复制到 worktree。主工作树只用于本 Step 的 `git worktree add`、只读预检与 `cp` 源。
+Expected: `branch=feat/gov-c13`；`c10_ancestor=0`；`uv sync` 退出码 0。本计划的 Markdown 不在 `feat/gov-c10` 内，必须先从主工作树复制到 worktree。主工作树只用于本 Step 的 `git worktree add`、只读预检与 `cp` 源。不得从 C12 分支创建或断言其祖先关系；C12 依赖 C11，与 C13 是并行分支。
 
 - [ ] **Step 2: 固定执行路径**
 
@@ -1962,7 +1962,10 @@ class QuotaPort(Protocol):
 @runtime_checkable
 class CapabilityPort(Protocol):
     async def template_capability_ids(self) -> tuple[str, ...]:
-        """只读投影 C8 `TaskTemplate.capability_allowlist`；空集合 fail-closed。"""
+        """只读投影 C8 `template_capability_ids(template_id)`；空集合 fail-closed。
+
+        `TaskTemplate.capability_allowlist` 是 C8 dataclass 字段，C13 不直接读属性。
+        """
         ...
 
     async def list_capabilities(
@@ -2222,7 +2225,8 @@ async def _authorize_before_rate(
     capability_ids = requested_capability_ids(tool_name, arguments)
     template_capability_ids: tuple[str, ...] = ()
     if tool_name in ("collect", "discover_capabilities"):
-        # C8 `TaskTemplate.capability_allowlist` 是模板侧唯一白名单。
+        # C8 `template_capability_ids(template_id)` 是模板侧唯一白名单读取入口；
+        # `TaskTemplate.capability_allowlist` 只是其 dataclass 字段。
         # 空集合为 fail-closed：collect 在下一步返回 capability_not_allowed，
         # discover 只返回空清单；不得回退到工具目录。
         template_capability_ids = tuple(
@@ -4501,7 +4505,7 @@ git commit -m "feat(customer-mcp): whitelist customer output fields"
   - C5：`services.pricing.quote`、`price_book_fingerprint`、`services.budget_service.estimate_run_budget`、`repositories.quota_accounts.get_or_create_quota_account`。
   - C6：`services.run_service.cancel_task_runs`、`CancellationError`、`RunCancellationResult`。C13 不直接调用 `repositories.runs.cancel_run` 或 `OrmRunBudget.cancel`；二者只属于 C6 取消服务内部。
   - C7：`repositories.claims.get_claim`、`list_evidence`、`load_evidence_rows`；`services.claims.load_publishable_claim_rows`、`validate_claim_bundle`、`ClaimContractBundle`。
-  - C8：`services.workbench_templates.get_task_template`、`list_task_templates`、`TaskTemplate.capability_allowlist`、`tool_catalog.evidence_thresholds.package_threshold_for`、`repositories.dataset_quality.get_market_assessment`、`list_data_gaps`。
+  - C8：`services.workbench_templates.get_task_template`、`list_task_templates`、`template_capability_ids(template_id)`、`TaskTemplate.capability_allowlist`、`tool_catalog.evidence_thresholds.package_threshold_for`、`repositories.dataset_quality.get_market_assessment`、`list_data_gaps`。
   - C9/C10：`report_artifacts` 只读字段、`services.delivery.store.DeliveryStore`、`services.delivery.service.load_delivery_manifest`。
 - Produces: `get_ports() -> CustomerPorts`；`SqlAlchemyKeyStatus`、`SqlAlchemyQuota`、`ToolCatalogCapabilityAdapter`、`QuotaBudgetAdapter`、`WorkbenchTaskAdapter`、`WorkbenchCollectAdapter`、`SqlAlchemyAuditSink`。
 
@@ -4521,7 +4525,7 @@ git commit -m "feat(customer-mcp): whitelist customer output fields"
 | `apps/api/src/data_intelligence_hub/services/run_service.py` | C6 | `cancel_task_runs`、`CancellationError`、`RunCancellationResult` |
 | `apps/api/src/data_intelligence_hub/repositories/claims.py` | C7 | `get_claim`、`list_evidence`、`load_evidence_rows` |
 | `apps/api/src/data_intelligence_hub/services/claims.py` | C7 | `load_publishable_claim_rows`、`validate_claim_bundle`、`ClaimContractBundle` |
-| `apps/api/src/data_intelligence_hub/services/workbench_templates.py` | C8 | `get_task_template`、`list_task_templates`、`TaskTemplate.capability_allowlist` |
+| `apps/api/src/data_intelligence_hub/services/workbench_templates.py` | C8 | `get_task_template`、`list_task_templates`、`template_capability_ids`、`TaskTemplate.capability_allowlist`（字段） |
 | `apps/api/src/data_intelligence_hub/tool_catalog/evidence_thresholds.py` | C8 | `package_threshold_for`、`PACKAGE_TIER_THRESHOLDS` |
 | `apps/api/src/data_intelligence_hub/repositories/dataset_quality.py` | C8 | `get_market_assessment`、`list_data_gaps` |
 | `apps/api/src/data_intelligence_hub/repositories/report_artifacts.py` | C9 | `report_artifacts` 只读查询 |
@@ -4612,18 +4616,19 @@ from data_intelligence_hub.services.workbench.tasks import (
 from data_intelligence_hub.services.workbench_templates import (
     get_task_template,
     list_task_templates,
+    template_capability_ids,
 )
 from data_intelligence_hub.tool_catalog.evidence_thresholds import package_threshold_for
 from data_intelligence_hub.tool_catalog.markets import FORMAL_MARKETS
 from data_intelligence_hub.tool_catalog.service import find_tool, get_tool_catalog
 
 for template in list_task_templates():
-    assert getattr(template, "template_capability_ids", None), template.template_id
+    assert template_capability_ids(template.template_id), template.template_id
 print("customer_upstream_services_ok")
 PY
 ```
 
-Expected: `customer_upstream_services_ok`。任一 `ImportError` 或 `AssertionError` 时停止，C13 状态记为 `BLOCKED`；先由 C4/C5/C6/C7/C8/C9/C10 所有者落地文件与函数，不得用 mock 单测代替预检。C6 缺 `cancel_task_runs` 记为 `BLOCKED: c6_cancel_task_service_missing`；C7 缺 `load_publishable_claim_rows` / `validate_claim_bundle` 记为 `BLOCKED: c7_publishable_gate_missing`；C8 `TaskTemplate` 缺 `template_capability_ids` 或为空记为 `BLOCKED: c8_template_capability_ids_missing`。
+Expected: `customer_upstream_services_ok`。任一 `ImportError` 或 `AssertionError` 时停止，C13 状态记为 `BLOCKED`；先由 C4/C5/C6/C7/C8/C9/C10 所有者落地文件与函数，不得用 mock 单测代替预检。C6 缺 `cancel_task_runs` 记为 `BLOCKED: c6_cancel_task_service_missing`；C7 缺 `load_publishable_claim_rows` / `validate_claim_bundle` 记为 `BLOCKED: c7_publishable_gate_missing`；C8 缺 `template_capability_ids(template_id)` 或返回空元组记为 `BLOCKED: c8_template_capability_ids_missing`。
 
 - [ ] **Step 1: Write the failing test**
 
@@ -4730,7 +4735,8 @@ async def test_capability_adapter_projects_tool_catalog(
     )
     catalog = SimpleNamespace(catalog_digest="digest-1", tools=(tool,))
     template = SimpleNamespace(
-        template_capability_ids=("cap-1",),
+        template_id="tiktok_shop_maternal_newborn",
+        capability_allowlist=("cap-1",),
         core_domains=("product",),
         markets=("US",),
         package_tiers=("quick", "standard"),
@@ -4742,6 +4748,11 @@ async def test_capability_adapter_projects_tool_catalog(
 
     monkeypatch.setattr(ports_module, "get_tool_catalog", fake_catalog)
     monkeypatch.setattr(ports_module, "list_task_templates", lambda: (template,))
+    monkeypatch.setattr(
+        ports_module,
+        "template_capability_ids",
+        lambda template_id: ("cap-1",),
+    )
     monkeypatch.setattr(
         ports_module,
         "quote",
@@ -4770,7 +4781,7 @@ async def test_capability_adapter_projects_tool_catalog(
 async def test_capability_adapter_uses_c8_template_capability_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """模板白名单只读 C8 字段，不用工具目录或 core_domains 推导。"""
+    """模板白名单只经 C8 `template_capability_ids(template_id)` 读取。"""
 
     def _tool(tool_id: str) -> SimpleNamespace:
         return SimpleNamespace(
@@ -4788,11 +4799,17 @@ async def test_capability_adapter_uses_c8_template_capability_ids(
         tools=(_tool("cap-1"), _tool("cap-2")),
     )
     template = SimpleNamespace(
-        template_capability_ids=("cap-1",),
+        template_id="tiktok_shop_maternal_newborn",
+        capability_allowlist=("cap-1",),
         core_domains=("product",),
         markets=("US",),
         package_tiers=("quick", "standard"),
     )
+    seen_template_ids: list[str] = []
+
+    def fake_template_capability_ids(template_id: str) -> tuple[str, ...]:
+        seen_template_ids.append(template_id)
+        return ("cap-1",)
 
     async def fake_catalog(session: object) -> object:
         del session
@@ -4800,6 +4817,11 @@ async def test_capability_adapter_uses_c8_template_capability_ids(
 
     monkeypatch.setattr(ports_module, "get_tool_catalog", fake_catalog)
     monkeypatch.setattr(ports_module, "list_task_templates", lambda: (template,))
+    monkeypatch.setattr(
+        ports_module,
+        "template_capability_ids",
+        fake_template_capability_ids,
+    )
     monkeypatch.setattr(
         ports_module,
         "quote",
@@ -4810,6 +4832,7 @@ async def test_capability_adapter_uses_c8_template_capability_ids(
 
     adapter = ToolCatalogCapabilityAdapter(session_factory=_null_session)
     assert await adapter.template_capability_ids() == ("cap-1",)
+    assert seen_template_ids == ["tiktok_shop_maternal_newborn"]
     view = await adapter.list_capabilities(
         workspace_id=IDENTITY.workspace_id,
         project_id=IDENTITY.project_id,
@@ -4838,7 +4861,8 @@ async def test_capability_adapter_empty_template_is_fail_closed(
     )
     catalog = SimpleNamespace(catalog_digest="digest-1", tools=(tool,))
     template = SimpleNamespace(
-        template_capability_ids=(),
+        template_id="tiktok_shop_maternal_newborn",
+        capability_allowlist=(),
         markets=("US",),
         package_tiers=("quick", "standard"),
     )
@@ -4849,6 +4873,11 @@ async def test_capability_adapter_empty_template_is_fail_closed(
 
     monkeypatch.setattr(ports_module, "get_tool_catalog", fake_catalog)
     monkeypatch.setattr(ports_module, "list_task_templates", lambda: (template,))
+    monkeypatch.setattr(
+        ports_module,
+        "template_capability_ids",
+        lambda template_id: (),
+    )
 
     adapter = ToolCatalogCapabilityAdapter(session_factory=_null_session)
     assert await adapter.template_capability_ids() == ()
@@ -5611,6 +5640,7 @@ from data_intelligence_hub.services.workbench.tasks import create_workbench_task
 from data_intelligence_hub.services.workbench_templates import (
     get_task_template,
     list_task_templates,
+    template_capability_ids,
 )
 from data_intelligence_hub.tool_catalog.evidence_thresholds import package_threshold_for
 from data_intelligence_hub.tool_catalog.markets import FORMAL_MARKETS
@@ -5751,15 +5781,16 @@ class ToolCatalogCapabilityAdapter:
         async with self._session_factory() as session:
             catalog = await get_tool_catalog(session)
         templates = tuple(list_task_templates())
-        # C8 `TaskTemplate.capability_allowlist` 是模板侧唯一白名单。
-        # 字段缺失或为空时保持空集合，调用方 fail-closed；不得用 core_domains
+        # C8 `template_capability_ids(template_id)` 是模板侧唯一白名单读取入口；
+        # `TaskTemplate.capability_allowlist` 只是它的 dataclass 字段。
+        # 函数返回空时保持空集合，调用方 fail-closed；不得用 core_domains
         # 或工具目录 category 推导第二套模板白名单。
-        template_capability_ids = tuple(
+        template_ids = tuple(
             dict.fromkeys(
                 str(capability_id)
                 for template in templates
-                for capability_id in (
-                    _attr(template, "template_capability_ids", ()) or ()
+                for capability_id in template_capability_ids(
+                    str(_attr(template, "template_id", ""))
                 )
             )
         )
@@ -5770,11 +5801,11 @@ class ToolCatalogCapabilityAdapter:
                 for market in (_attr(template, "markets", ()) or ())
             )
         )
-        return catalog, template_capability_ids, markets or tuple(FORMAL_MARKETS)
+        return catalog, template_ids, markets or tuple(FORMAL_MARKETS)
 
     async def template_capability_ids(self) -> tuple[str, ...]:
-        _catalog, template_capability_ids, _markets = await self._catalog()
-        return template_capability_ids
+        _catalog, template_ids, _markets = await self._catalog()
+        return template_ids
 
     async def list_capabilities(
         self,
@@ -5788,7 +5819,7 @@ class ToolCatalogCapabilityAdapter:
         limit: int,
     ) -> CapabilityCatalogView:
         del workspace_id, project_id
-        catalog, template_capability_ids, catalog_markets = await self._catalog()
+        catalog, template_ids, catalog_markets = await self._catalog()
         requested_markets = tuple(str(market) for market in markets)
         if requested_markets and not set(requested_markets).issubset(
             set(catalog_markets)
@@ -5798,9 +5829,7 @@ class ToolCatalogCapabilityAdapter:
                 capabilities=(),
             )
         view_markets = requested_markets or catalog_markets
-        allowed = {str(item) for item in capability_ids} & set(
-            template_capability_ids
-        )
+        allowed = {str(item) for item in capability_ids} & set(template_ids)
         if not allowed:
             # 空交集是 fail-closed：不返回工具目录中的任何能力。
             return CapabilityCatalogView(
@@ -5844,8 +5873,8 @@ class ToolCatalogCapabilityAdapter:
         capability_id: str,
     ) -> CapabilityView | None:
         del workspace_id, project_id
-        catalog, template_capability_ids, catalog_markets = await self._catalog()
-        if capability_id not in template_capability_ids:
+        catalog, template_ids, catalog_markets = await self._catalog()
+        if capability_id not in template_ids:
             return None
         try:
             tool = find_tool(catalog, capability_id)
@@ -7737,7 +7766,7 @@ Do not create a new commit for this task. Paste the exact last line of every com
 - **契约覆盖**：`/mcp/customer` 路径、八个工具、`capability_allowlist`、`customer_mcp.schema.json` 全部由 Task 1 守卫；C13 不修改契约、不新增迁移、不新增表。
 - **包型、市场与输入字段**：Task 3 固定 `CreateTaskInput` 字段；Task 7 把 `idempotency_key`、`package_type`、`primary_market`、`compare_markets`、`seed_products`、`target_price_band`、预算与 `acceptance_contact_id` 映射到 C4，`compare_markets` 改名为 `comparison_markets`。C13 不丢弃种子商品或目标价格带；Quick 1 / Standard 3、种子商品 3–10、价格带与 `market_role` 派生都归 C4。
 - **创建幂等与可执行性**：Task 7 把 `idempotency_key` 传给 C4 `create_workbench_task`，同摘要重放已有任务、异摘要返回 `idempotency_conflict`；`create_task` 与 `collect` 都调用 C4 `create_initial_workflow_version_for_task`，共享同一已批准版本。Task 7 的 `test_create_task_then_collect_reuses_same_initial_version` 断言同一 task 与同一版本。
-- **模板能力交集**：Task 4/6/7 只读 C8 `TaskTemplate.capability_allowlist`；`discover_capabilities` 与 `collect` 都使用模板白名单 ∩ 密钥 `capability_allowlist`。模板缺失或为空时 `collect` 返回 `capability_not_allowed`、`discover_capabilities` 返回空清单；`ToolCatalogCapabilityAdapter` 已删除“全部非 Cookie 工具”回退，并由 Task 7 的空模板与目录不回落用例守卫。
+- **模板能力交集**：Task 4/6/7 只经 C8 `template_capability_ids(template_id)` 读取模板白名单（`TaskTemplate.capability_allowlist` 是字段，不直接读属性）；`discover_capabilities` 与 `collect` 都使用模板白名单 ∩ 密钥 `capability_allowlist`。模板缺失或为空时 `collect` 返回 `capability_not_allowed`、`discover_capabilities` 返回空清单；`ToolCatalogCapabilityAdapter` 已删除“全部非 Cookie 工具”回退，并由 Task 7 的空模板与目录不回落用例守卫。
 - **取消幂等**：Task 6 工具把 `idempotency_key`、`reason_code` 原样传给端口；Task 7 适配器委托 C6 `cancel_task_runs`，不再 `del` 参数、不直接循环 `cancel_run`。Task 7 覆盖同键同 reason 重放、同键异 reason `idempotency_conflict`、并发同键只取消一次。
 - **证据可发布门禁**：Task 7 `get_evidence` 先调用 C7 `load_publishable_claim_rows` 与 `validate_claim_bundle`；pending/stale 返回 `claim_not_found`，证据不完整返回 `evidence_not_found`；测试覆盖两类拒绝与一个通过用例。
 - **验收联系人**：Global Constraints 与 Task 7 映射要求 owner/admin；C4 负责角色校验，普通 member 返回 `acceptance_contact_not_member`。

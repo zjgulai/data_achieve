@@ -113,7 +113,7 @@ C7 不新建表。所有新列都挂在 B5 已冻结的三张表上：
 | 4 | 模型、迁移 063、schema 守卫 | 契约 v1.1 | 新列、CHECK、索引、可空 `intelligence_id` |
 | 5 | `services/claims.py`、`repositories/claims.py` | Task 2/3/4 | `create_claim_with_evidence()` 治理版；blocked 创建审计 |
 | 6 | `services/claims.py`、`claim_signing.py`、`repositories/claims.py` | Task 5；C2 `reviewer_assignments`、`audit_log` | `submit_claim_for_review()`、`review_claim()`、`override_claim_review()`、`block_claim()`、`unblock_claim()`、`revise_claim()`；统一审计 |
-| 7 | `services/claims.py` | Task 5/6 | `load_publishable_claim_rows()`、`validate_claim_bundle()` |
+| 7 | `services/claims.py` | Task 5/6 | `load_publishable_claim_rows(session, *, workspace_id, project_id, task_id: uuid.UUID \| None = None) -> ClaimContractBundle`、`validate_claim_bundle()` |
 | 7B | `claim_semantics.py`、`test_claim_semantics.py` | Task 7 的 `ClaimContractBundle`；C8/合同 `markets[]`；C4 `PACKAGE_TYPES` | `validate_claim_semantics()`、`assert_claim_semantics()`、`market_independent_cluster_count()` |
 | 8 | `api/routes/claims.py`、`schemas/claim.py`、`main.py` | Task 7；C2 `require_project_access` | `GET /api/claims`、`GET /api/claims/{claim_id}`，项目 ACL |
 | 9 | `test_claim_contract_rows.py`、集成测试、C14 交接清单 | Task 7/7B/8 | C14 浏览器验收输入；C9 语义消费接口 |
@@ -4906,13 +4906,15 @@ git commit -m "feat(claims): 内部审核指派、覆盖阻断与统一审计"
 - Test: `apps/api/tests/unit/test_claim_contract_rows.py`
 
 **Interfaces:**
-- Consumes: Task 5/6 的 claim、link、evidence 行；C1 的 `Claim` 合同字段。
+- Consumes: Task 5/6 的 claim、link、evidence 行；C1 的 `Claim` 合同字段；C4 的 `workflow_versions.workbench_task_id` 与 C6 的 `runs.workflow_version_id`（`task_id` 过滤链）。
 - Produces:
   - `ClaimScopeRow`
   - `ClaimContractRow`
   - `EvidenceContractRow`
   - `ClaimContractBundle`
-  - `load_publishable_claim_rows()`
+  - `load_publishable_claim_rows(session, *, workspace_id: uuid.UUID, project_id: uuid.UUID, task_id: uuid.UUID | None = None) -> ClaimContractBundle`
+    - `task_id=None` 只按工作区与项目过滤，保持 C10/C13 既有调用行为。
+    - `task_id` 非空时沿 `Claim.run_id -> Run.workflow_version_id -> WorkflowVersion.workbench_task_id` 过滤到该任务单；C9 装配必须传 `task_id`，未关联 run 的旧 Claim 不返回。
   - `validate_claim_bundle()`
   - `assert_claim_bundle_publishable()`
 
@@ -4933,8 +4935,11 @@ from sqlalchemy.pool import StaticPool
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
 from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.user import User
-from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.models.workbench import WorkbenchTask
+from data_intelligence_hub.models.workflow_plan import WorkflowPlan, WorkflowVersion
+from data_intelligence_hub.models.workspace import Workspace, WorkspaceMember
 from data_intelligence_hub.services.claims import (
     assert_claim_bundle_publishable,
     create_claim_with_evidence,
@@ -4969,6 +4974,14 @@ class Seed:
             owner_id=self.owner.id,
         )
         self.session.add(self.workspace)
+        await self.session.flush()
+        self.session.add(
+            WorkspaceMember(
+                workspace_id=self.workspace.id,
+                user_id=self.owner.id,
+                role="owner",
+            )
+        )
         await self.session.flush()
         self.project = Project(
             workspace_id=self.workspace.id,
@@ -5018,6 +5031,72 @@ class Seed:
         self.session.add(evidence)
         await self.session.flush()
         return evidence
+
+    async def task_run(self, name: str) -> tuple[WorkbenchTask, Run]:
+        """在同一项目内创建任务单、计划版本与 run。"""
+        task = WorkbenchTask(
+            workspace_id=self.workspace.id,
+            project_id=self.project.id,
+            created_by_user_id=self.owner.id,
+            owner_id=self.owner.id,
+            brand=name,
+            category="mother_baby",
+            competitors=[],
+            package_type="standard",
+            primary_market="US",
+            comparison_markets=[],
+            seed_products=[],
+            markets=["US"],
+            locale_by_market={"US": "en-US"},
+            window_start=date(2026, 1, 1),
+            window_end=date(2026, 3, 1),
+            decision_question="美国市场是否需要该品类？",
+            does_not_answer=["不推断销量与市场份额"],
+            status="submitted",
+        )
+        self.session.add(task)
+        await self.session.flush()
+        plan = WorkflowPlan(
+            workspace_id=self.workspace.id,
+            project_id=self.project.id,
+            created_by_user_id=self.owner.id,
+            name=f"{name} plan",
+            flow_mode="batch_research",
+            status="approved",
+        )
+        self.session.add(plan)
+        await self.session.flush()
+        version = WorkflowVersion(
+            workspace_id=self.workspace.id,
+            project_id=self.project.id,
+            workflow_plan_id=plan.id,
+            workbench_task_id=task.id,
+            created_by_user_id=self.owner.id,
+            version_number=1,
+            planning_status="resolved",
+            planner_contract_version="workflow_planner.v1",
+            catalog_snapshot_id="catalog-v1",
+            policy_version="policy.v1",
+            mode_template_version="template.v1",
+            query_versions={},
+            fingerprint_payload={},
+            normalized_input={},
+            plan_payload={"execution_steps": []},
+            preview_fingerprint="sha256:" + "a" * 64,
+        )
+        self.session.add(version)
+        await self.session.flush()
+        run = Run(
+            workspace_id=self.workspace.id,
+            project_id=self.project.id,
+            workflow_version_id=version.id,
+            status="completed",
+            outcome="success",
+            market_code="US",
+        )
+        self.session.add(run)
+        await self.session.flush()
+        return task, run
 
     async def claim(self, **overrides: object):
         values: dict[str, object] = {
@@ -5152,6 +5231,42 @@ async def test_cross_workspace_claim_is_excluded() -> None:
         assert bundle.evidences == ()
 
     await _with_session(scenario)
+
+
+@pytest.mark.anyio
+async def test_task_filter_returns_only_that_tasks_claims() -> None:
+    async def scenario(seed: Seed) -> None:
+        task_a, run_a = await seed.task_run("Task A")
+        task_b, run_b = await seed.task_run("Task B")
+        claim_a = await seed.approve(await seed.claim(run_id=run_a.id))
+        claim_b = await seed.approve(await seed.claim(run_id=run_b.id))
+
+        scoped_a = await load_publishable_claim_rows(
+            seed.session,
+            workspace_id=seed.workspace.id,
+            project_id=seed.project.id,
+            task_id=task_a.id,
+        )
+        scoped_b = await load_publishable_claim_rows(
+            seed.session,
+            workspace_id=seed.workspace.id,
+            project_id=seed.project.id,
+            task_id=task_b.id,
+        )
+        unscoped = await load_publishable_claim_rows(
+            seed.session,
+            workspace_id=seed.workspace.id,
+            project_id=seed.project.id,
+        )
+
+        assert [row.claim_id for row in scoped_a.claims] == [str(claim_a.id)]
+        assert [row.claim_id for row in scoped_b.claims] == [str(claim_b.id)]
+        assert {row.claim_id for row in unscoped.claims} == {
+            str(claim_a.id),
+            str(claim_b.id),
+        }
+
+    await _with_session(scenario)
 ```
 
 - [ ] **Step 2: 运行测试，确认失败**
@@ -5162,11 +5277,22 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv run pytest tests/unit/test_claim_contract_rows.py -q
 ```
 
-Expected: FAIL，`ImportError: cannot import name 'load_publishable_claim_rows'`。
+Expected: FAIL。函数不存在时为 `ImportError: cannot import name 'load_publishable_claim_rows'`；函数已存在但缺少 `task_id` 时，`test_task_filter_returns_only_that_tasks_claims` 报 `TypeError: load_publishable_claim_rows() got an unexpected keyword argument 'task_id'`。
 
 - [ ] **Step 3: 实现合同行与门禁**
 
-在 `services/claims.py` 顶部加入 `from dataclasses import dataclass`。`is_formal_market`、`date`、`uuid`、`datetime` 已在 Task 3/6 导入。然后追加：
+在 `services/claims.py` 顶部加入以下导入（`Claim`、`is_formal_market`、`date`、`uuid`、`datetime` 已在 Task 3/6 导入）：
+
+```python
+from dataclasses import dataclass
+
+from sqlalchemy import select
+
+from data_intelligence_hub.models.run import Run
+from data_intelligence_hub.models.workflow_plan import WorkflowVersion
+```
+
+然后追加：
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -5226,17 +5352,61 @@ def _require_text(value: str | None, field: str, claim_id: uuid.UUID) -> str:
     return text
 
 
+async def _load_task_claim_ids(
+    session: AsyncSession,
+    *,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+) -> set[uuid.UUID]:
+    """沿 claims.run_id -> runs.workflow_version_id ->
+    workflow_versions.workbench_task_id 返回属于该任务单的 Claim ID。
+
+    三张表都同时应用工作区与项目过滤；未关联 run、run 未关联计划版本，
+    或计划版本属于其他任务单的 Claim 不在结果中。
+    """
+    statement = (
+        select(Claim.id)
+        .join(Run, Run.id == Claim.run_id)
+        .join(WorkflowVersion, WorkflowVersion.id == Run.workflow_version_id)
+        .where(
+            Claim.workspace_id == workspace_id,
+            Claim.project_id == project_id,
+            Run.workspace_id == workspace_id,
+            Run.project_id == project_id,
+            WorkflowVersion.workspace_id == workspace_id,
+            WorkflowVersion.project_id == project_id,
+            WorkflowVersion.workbench_task_id == task_id,
+        )
+    )
+    return set((await session.execute(statement)).scalars().all())
+
+
 async def load_publishable_claim_rows(
     session: AsyncSession,
     *,
     workspace_id: uuid.UUID,
     project_id: uuid.UUID,
+    task_id: uuid.UUID | None = None,
 ) -> ClaimContractBundle:
     """加载已审核且内容版本一致的 Claim，组装合同行。
 
     本函数只返回 approved 且 reviewed_content_version == content_version 的行。
     缺字段不在本函数抛错；由 ``validate_claim_bundle`` 汇总问题。
+
+    工作区与项目过滤始终生效。``task_id`` 为空时保持 C10/C13 的既有行为；
+    ``task_id`` 非空时沿
+    ``claims.run_id -> runs.workflow_version_id -> workflow_versions.workbench_task_id``
+    过滤到该任务单，C9 装配必须传 ``task_id``。
     """
+    task_claim_ids: set[uuid.UUID] | None = None
+    if task_id is not None:
+        task_claim_ids = await _load_task_claim_ids(
+            session,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            task_id=task_id,
+        )
     claims = await list_claims(
         session,
         workspace_id=workspace_id,
@@ -5245,6 +5415,8 @@ async def load_publishable_claim_rows(
     rows: list[ClaimContractRow] = []
     evidence_rows: list[EvidenceContractRow] = []
     for claim in claims:
+        if task_claim_ids is not None and claim.id not in task_claim_ids:
+            continue
         if ClaimReviewStatus(claim.review_status) is not ClaimReviewStatus.APPROVED:
             continue
         if claim.reviewed_content_version != claim.content_version:
@@ -5434,7 +5606,7 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv run pytest tests/unit/test_claim_contract_rows.py -q
 ```
 
-Expected: `4 passed`。
+Expected: `5 passed`。其中 `test_task_filter_returns_only_that_tasks_claims` 证明同一项目内两个任务单只返回各自 run 关联的 Claim，省略 `task_id` 时仍返回两条。
 
 - [ ] **Step 5: GitNexus 检查并提交**
 
@@ -6826,7 +6998,7 @@ C14 不得把 `reviewed_payload_sha256`、`reviewed_profile`、`source_cluster_k
 
 C7 提供 `services/claim_semantics.py`，C9 必须在报告装配与发布前消费，不得把语义检查留到客户页面或 C14：
 
-- 在 `create_draft_artifact` 写入 `report_artifacts` 前，C9 用 C7 的 `ClaimContractBundle`（来自 `load_publishable_claim_rows()`，含内部 `source_cluster_key`/`independent`）调用：
+- 在 `create_draft_artifact` 写入 `report_artifacts` 前，C9 用 C7 的 `ClaimContractBundle`（来自 `load_publishable_claim_rows(session, workspace_id=..., project_id=task.project_id, task_id=contract["task_id"])`，含内部 `source_cluster_key`/`independent`）调用：
 
 ```python
 issues = validate_claim_semantics(
@@ -6857,7 +7029,7 @@ issues = validate_claim_semantics(
 - [ ] Claim 审核只接受 active `report_reviewer_assignments` 且范围 `report_review`；客户 `owner/admin/member` 一律拒绝；`report_read` 只能读不能审；审核人不得是 Claim owner、任务 owner 或请求人；第二审核人同样 active 且不重复。
 - [ ] `submit`/`approve`/`reject`/`override`/`block`/`unblock`/`revise` 都在同一事务追加 C2 `audit_events`，动作名固定；审计失败整单回滚。
 - [ ] 审核后修订置 `stale`，清空第一/第二签字与签名哈希，`content_version` 递增。
-- [ ] `load_publishable_claim_rows()` 只返回 approved 且内容版本一致的 claim；缺 `text_en`、owner、scope、反证文本、证据 URL/market/locale/source_tool_id/grade 时 `validate_claim_bundle()` 报问题。
+- [ ] `load_publishable_claim_rows()` 只返回 approved 且内容版本一致的 claim；`task_id` 为空时保持工作区/项目过滤，非空时沿 `Claim.run_id -> Run.workflow_version_id -> WorkflowVersion.workbench_task_id` 过滤，C10/C13 省略 `task_id` 的调用不受影响；缺 `text_en`、owner、scope、反证文本、证据 URL/market/locale/source_tool_id/grade 时 `validate_claim_bundle()` 报问题。
 - [ ] `validate_claim_semantics()` 对 `do_not_enter` 要求 qualified 且 ≥ 2 个独立原始记录簇；`confirmed` 要求 L4、approved、独立来源 ≥ 2 且独立簇 ≥ 2；Quick 不得 `confirmed`、不得输出 Standard 四态；C9 消费该 helper。
 - [ ] `GET /api/claims` 的 `project_id` 必填，且与 `GET /api/claims/{claim_id}`（含 `evidences` 段）都调用 `require_project_access`；同工作区跨项目 403 `project_access_forbidden`，跨工作区 404，403 响应不含证据。
 - [ ] 没有 `modules/evidence/`、第二套 evidence 服务或第二张等级上限表。
@@ -6893,7 +7065,7 @@ issues = validate_claim_semantics(
 - `SourceCluster`、`LinkCluster`、`ClusterBasis` 在 Task 2 定义，Task 5 使用。
 - `ClaimTaskPrincipals`、`get_claim_task_principals()` 在 Task 5 的仓储代码定义，Task 6 使用。
 - `ReviewerAssignment`、`REVIEWER_SCOPE_READ`、`REVIEWER_SCOPE_REVIEW`、`get_active_reviewer_assignment()`、`grant_reviewer_assignment()` 由 C2 提供，Task 0 检查，Task 6/8 测试使用；C7 不定义副本。
-- `ClaimContractRow`、`EvidenceContractRow`、`ClaimContractBundle` 在 Task 7 定义，Task 7B/9 测试使用。
+- `ClaimContractRow`、`EvidenceContractRow`、`ClaimContractBundle`、`load_publishable_claim_rows(session, *, workspace_id, project_id, task_id=None)` 在 Task 7 定义，Task 7B/9 测试使用；C9 传 `task_id`，C10/C13 省略。
 - `MarketConclusionRow`、`validate_claim_semantics()`、`assert_claim_semantics()`、`market_independent_cluster_count()` 在 Task 7B 定义，C9 消费。
 - `ClaimResponse`、`ClaimEvidenceResponse`、`ClaimEvidenceRowResponse`、`ClaimDetailResponse` 在 Task 8 定义，集成测试使用。
 - 迁移 CHECK 名与模型 `conv()` 名逐字一致；Task 4 的测试同时断言两侧。

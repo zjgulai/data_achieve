@@ -32,12 +32,9 @@
 
 ## 依赖门禁
 
-C12 开工前执行以下命令。任何一条不符合，停止并先完成依赖切片。
+Task 0 创建并进入 `/Users/lute/Project/data_scrapy-gov-c12` 后，执行以下命令。任何一条不符合，停止并先完成依赖切片。
 
 ```bash
-cd /Users/lute/Project/data_scrapy
-git worktree prune
-git worktree add /Users/lute/Project/data_scrapy-gov-c12 -b feat/gov-c12 feat/gov-c11
 cd /Users/lute/Project/data_scrapy-gov-c12
 git merge-base --is-ancestor feat/gov-c11 HEAD
 node .gitnexus/run.cjs status --repo .
@@ -48,7 +45,7 @@ uv run alembic heads
 预期：
 
 ```text
-worktree 创建成功，git merge-base 退出码 0。
+git merge-base 退出码 0。
 GitNexus status 不是 behind；如 behind，先 analyze。
 alembic heads 只输出 202610220067 (head)。
 ```
@@ -207,6 +204,63 @@ async def build_deletion_manifest(session, *, workspace_id) -> dict[str, Any]
 async def write_deletion_manifest(session, *, workspace_id, output_path) -> dict[str, Any]
 async def apply_deletion_manifest(session, *, manifest, source_backup_ref, operator_label, delivery_store) -> DeletionReplayRun
 ```
+
+---
+
+### Task 0: 隔离 worktree 初始化
+
+**Files:**
+- 只读：`/Users/lute/Project/data_scrapy/docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md`（主工作树的计划文件，复制源）
+- Create: `/Users/lute/Project/data_scrapy-gov-c12`（worktree 根）
+
+**Interfaces:**
+- Consumes: 前置分支 `feat/gov-c11`；主工作树的计划文件。
+- Produces: 分支 `feat/gov-c12` 与 worktree `/Users/lute/Project/data_scrapy-gov-c12`；Task 0 之后所有 Run/Commit 都在该 worktree 执行。
+
+- [ ] **Step 0: 主工作树只读预检**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy
+git worktree prune
+git rev-parse --verify feat/gov-c11^{commit}
+git rev-parse --verify --quiet refs/heads/feat/gov-c12 || echo "C12_BRANCH_ABSENT"
+test ! -e /Users/lute/Project/data_scrapy-gov-c12 && echo "worktree_path_free"
+```
+
+Expected: `git worktree prune` 退出码 0；`git rev-parse` 输出 `feat/gov-c11` 提交 SHA；输出 `C12_BRANCH_ABSENT` 与 `worktree_path_free`。`feat/gov-c11` 不存在、分支 `feat/gov-c12` 已存在或 worktree 路径已存在时停止，先审查旧分支与旧 worktree，不得复用或删除。
+
+- [ ] **Step 1: 创建 worktree、复制本计划并同步依赖**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy
+git worktree add /Users/lute/Project/data_scrapy-gov-c12 -b feat/gov-c12 feat/gov-c11
+cd /Users/lute/Project/data_scrapy-gov-c12
+test "$(git branch --show-current)" = feat/gov-c12 && echo "branch=feat/gov-c12"
+git merge-base --is-ancestor feat/gov-c11 HEAD; echo "c11_ancestor=$?"
+mkdir -p docs/superpowers/plans
+cp /Users/lute/Project/data_scrapy/docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md docs/superpowers/plans/
+test -s docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md && echo "plan_copied"
+cd apps/api && uv sync
+```
+
+Expected: `branch=feat/gov-c12`；`c11_ancestor=0`；`plan_copied`；`uv sync` 退出码 0。本计划的 Markdown 不在 `feat/gov-c11` 内，必须先从主工作树复制到 worktree。主工作树只用于本 Step 的 `git worktree add`、只读预检与 `cp` 源。
+
+- [ ] **Step 2: 固定执行路径与迁移基线**
+
+Run:
+
+```bash
+cd /Users/lute/Project/data_scrapy-gov-c12
+git rev-parse --show-toplevel
+git status --short
+cd apps/api && uv run alembic heads
+```
+
+Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c12`；工作区干净或只有未跟踪的本计划文件；Alembic 只有一行 `202610220067 (head)`。不是单 head 时停止，C1–C11 尚未落地；不得把本迁移改号或接到 `202610210055`。后续 Run/Commit 块必须在该 worktree 内执行。
 
 ---
 
@@ -7692,7 +7746,7 @@ Expected: detect-changes 的 `partial` 与 `truncated` 均为 `false`。
 ### Task 9: 全量验证、浏览器交接与发布交接
 
 **Files:**
-- Modify: `docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md`（只更新本计划状态）
+- Add/Modify: `docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md`（Task 0 从主工作树复制，尚未跟踪；本任务更新状态并首次提交）
 - Test: 全量后端测试与边界检查
 
 **Interfaces:**
@@ -7782,6 +7836,7 @@ Expected: 至少 3 行命中，包含 068 的两个触发器函数和执行器�
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c12
+test -f docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md && echo "plan_present"
 python3 - <<'PY'
 from pathlib import Path
 
@@ -7794,7 +7849,7 @@ print("utf8_ok", len(data))
 PY
 ```
 
-Expected: `utf8_ok <字节数>`。
+Expected: `plan_present`，随后 `utf8_ok <字节数>`。
 
 - [ ] **Step 5: GitNexus 变更检查**
 
@@ -7845,10 +7900,12 @@ C12 不部署：不执行 SSH、备份、迁移、种子、生产 compose/env �
 cd /Users/lute/Project/data_scrapy-gov-c12
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md
+git ls-files --error-unmatch docs/superpowers/plans/2026-10-22-governed-task-platform-c12-deletion-dsr.md >/dev/null && echo "plan_tracked"
 git commit -m "docs(plan): 完成 C12 删除与 DSR 交接"
+git status --short
 ```
 
-Expected: detect-changes 的 `partial` 与 `truncated` 均为 `false`。
+Expected: detect-changes 的 `partial` 与 `truncated` 均为 `false`；`plan_tracked`；提交后 `git status --short` 不含本计划文件。
 
 ---
 
@@ -7857,7 +7914,8 @@ Expected: detect-changes 的 `partial` 与 `truncated` 均为 `false`。
 **Spec coverage**
 
 - C1 独占契约：Global Constraints、Task 1 Step 1–2、每次提交的契约差异检查。
-- 依赖 C3/C4/C8/C10/C11：依赖门禁、Task 1 迁移、Task 5 执行器、Task 7 只读法律保留。
+- 隔离 worktree 与本计划复制：Task 0、Task 9 Step 4 与 Step 8。
+- 依赖 C3/C4/C8/C10/C11：Task 0 依赖门禁、Task 1 迁移、Task 5 执行器、Task 7 只读法律保留。
 - 分享延期与 no-op 审计：Global Constraints、Task 5 `deletion_share_revocation_deferred`、证明 `report_shares: 0`。该事件使用既有 `privacy_audit_events.event_type` 字符串，不是新契约枚举。
 - 移除额外认证依赖：Global Constraints、Task 7 路由无全局依赖测试、Task 9 边界检查。
 - 法律保留写入归 C11：Global Constraints、Task 3 只读 `active_hold_count`、Task 8 运行手册、Task 9 边界检查。

@@ -135,6 +135,9 @@ access_scope、retention_class。files[] 只有 path、sha256、size_bytes、med
 由 C9 的迁移 065 提供 `artifact_id`、`report_id` 可空与目标 CHECK。
 C10 只读该结构并追加交付/验收事件，不扩展列、不重复迁移。
 验收幂等键哈希与 payload 摘要写入事件 `metadata_json`，不新增列、不新增表。
+派生固定为 `metadata_json.idempotency_key_hash = sha256("delivery-acceptance.v1:{idempotency_key}")`；
+`payload_sha256 = sha256(canonical_json_bytes(payload))`，canonical profile 为 `dih-canonical-json-v1`；
+payload 只含 `event_type`、`artifact_id`、`references` 与可选 `note`（`note` 为空时省略），不得写入原始 `Idempotency-Key`。
 
 ### 4.6 交付错误码
 publish_forbidden 403 · reviewer_assignment_required 403 ·
@@ -320,7 +323,7 @@ C10 不实现第二套授权，也不实现第二张审计表。
 1. **三种终态事件。** `acceptance_accepted`、`acceptance_disputed`、`acceptance_deemed_accepted` 只追加，不更新、不删除。派生状态使用 C1 `$defs/acceptance.status`：`accepted`、`objection`、`auto_accepted`。
 2. **争议必须逐项引用。** `acceptance_disputed` 的 `references` 至少 1 项，每项含 `path`（必须命中 manifest 文件）、可选 `claim_id` / `evidence_id` / `item_id`、必填 `description`。未知路径或未知条目返回 422 `acceptance_reference_invalid`。
 3. **视为验收只能逾期触发。** `POST /acceptance/deemed-accepted` 仅在 `now > acceptance_deadline` 且当前无终态事件时允许；否则 409 `acceptance_window_open` 或 `acceptance_already_closed`。`sweep_deemed_acceptances()` 使用稳定幂等键 `deemed:{artifact_id}`。
-4. **显式幂等键。** 三个验收 POST 都要求 `Idempotency-Key`。同一产物、同一 key、同一事件类型与同一 `payload_sha256` 返回 200 replay；同 key 不同 payload 或不同事件类型返回 409 `idempotency_conflict`。
+4. **显式幂等键。** 三个验收 POST 都要求 `Idempotency-Key`。`metadata_json.idempotency_key_hash = sha256("delivery-acceptance.v1:{idempotency_key}")`；`payload_sha256 = sha256(canonical_json_bytes(payload))`，payload 只含 `event_type`、`artifact_id`、`references` 与可选 `note`（`note` 为空时省略），canonical profile 为 `dih-canonical-json-v1`。同一产物、同一 key、同一事件类型与同一 `payload_sha256` 返回 200 replay；同 key 不同 payload 或不同事件类型返回 409 `idempotency_conflict`。
 5. **manifest 不可变。** 验收事件只写事件日志与 C2 统一审计投影；测试在验收前后重算 `manifest_sha256` 与 `store.verify_bundle()`，必须完全一致。
 
 ### 0.10 决策 D-C10-06：发布前复用 C11 PII 扫描
@@ -355,7 +358,7 @@ C10 不实现第二套授权，也不实现第二张审计表。
 - **合同 fixture 只有 1.1 29 键。** 所有 `ReportContract` 测试夹具必须来自 `apps/api/tests/fixtures/report_contract_v1_1.py` 的 `build_report_contract()`；顶层 29 个必填键一个不少，`schema_version="1.1.0"`，时间戳使用 `Z` 后缀，`additionalProperties=false` 的分组不得夹带 `answer_en`、`actor_id` 等未登记键。夹具必须通过 `ReportContract.model_validate()` 与 C1 `validate_contract()`。
 - **G-Claim 只消费 C7 publishable bundle。** `load_claim_snapshot()` 必须调用 C7 `load_publishable_claim_rows()`；`evaluate_g_claim()` 必须调用 `validate_claim_bundle()`。合同引用的 Claim 若在数据库中为 `pending`、`draft`、`rejected` 或 `stale`，返回 `claim_review_pending` / `claim_not_approved` / `claim_review_stale` 并阻断；不得用合同文本绕过审核状态。
 - **Quick 2 小时稿。** 只允许 `package_type='quick'`；不要求审核签字，不启动验收，`delivery_class='quick_draft'`，`acceptance_deadline IS NULL`，不写 `acceptance_snapshot_appended`。G-Claim 必须调用 C7 `validate_claim_semantics(..., package_type="quick")`，拒绝 Standard 四态与 `confirmed`。复用同一 `task_id` 的数据集与 `run_ledger`，不写 `runs`、`run_ledger_entries` 或新数据集版本。
-- **验收只追加。** accepted / disputed / deemed_accepted 写入 `report_audit_events`，不修改 manifest、bundle、`acceptance_snapshot_json`。三个 POST 都要求 `Idempotency-Key`；同 key 同 payload 返回 replay，同 key 不同 payload 返回 409 `idempotency_conflict`。争议必须有逐项引用。
+- **验收只追加。** accepted / disputed / deemed_accepted 写入 `report_audit_events`，不修改 manifest、bundle、`acceptance_snapshot_json`。三个 POST 都要求 `Idempotency-Key`；同 key 同 payload 返回 replay，同 key 不同 payload 返回 409 `idempotency_conflict`。争议必须有逐项引用。幂等键哈希固定为 `sha256("delivery-acceptance.v1:{idempotency_key}")`；payload 摘要只覆盖 `event_type`、`artifact_id`、`references` 与可选 `note`，不覆盖 deadline 或原始 key。
 - **PII 扫描。** 只调用 C11 `export_policy` 的 `scan_export_value()` 与 `scan_export_policy()`；正式与 Quick 发布都必须在写 bundle 前扫描 manifest、公开合同、Claim bundle、bundle 文本文件与 HTML。命中返回 409 `delivery_pii_detected`，写 `gate_evaluated` 与 C2 `delivery.published/denied`；审计只记录 `kind` 与 `field_path`，不记录原始值。C10 不定义 `PiiHit`，不复制规则。
 - 验收窗口：5 个工作日，周一至周五，不含法定节假日；截止时间为第 5 个工作日 23:59:59 UTC。
 - 幂等：publish 使用 `Idempotency-Key` 请求头；只存 SHA-256，不存明文，不写日志。
@@ -404,7 +407,7 @@ C10 不实现第二套授权，也不实现第二张审计表。
 | `apps/api/tests/unit/test_delivery_review.py` | 新建 | 指派有效性、过期、撤销、自审与成员冒充。 |
 | `apps/api/tests/unit/test_delivery_gates.py` | 新建 | G-Claim/G-Publish 通过与否决；C7 bundle 与 pending/stale 拒绝。 |
 | `apps/api/tests/unit/test_delivery_pii.py` | 新建 | C11 扫描接缝、manifest/bundle/HTML/Claim 覆盖、发布阻断与审计。 |
-| `apps/api/tests/unit/test_delivery_acceptance.py` | 新建 | accepted / disputed / deemed_accepted、逐项引用、幂等与 manifest 不可变。 |
+| `apps/api/tests/unit/test_delivery_acceptance.py` | 新建 | accepted / disputed / deemed_accepted、逐项引用、`delivery-acceptance.v1` 幂等键派生、payload 摘要、replay/conflict 与 manifest 不可变。 |
 | `apps/api/tests/unit/test_delivery_quick.py` | 新建 | Quick 2 小时稿、同任务、无验收、无四态/confirmed、无重复计费。 |
 | `apps/api/tests/unit/test_delivery_audit.py` | 新建 | 动作注册表、发布/读取/下载/篡改/取代投影。 |
 | `apps/api/tests/unit/test_delivery_store.py` | 新建 | 原子写、篡改、缺失、多余与符号链接。 |
@@ -5874,7 +5877,7 @@ class DeliveryNotPublishedError(DeliveryError):
 
 class DeliveryIntegrityError(DeliveryError):
     def __init__(self, mismatches: Sequence[Any]) -> None:
-        super().__init__("delivery_integrity_failed")
+        super().__init__("delivery_integrity_error")
         self.mismatches = tuple(mismatches)
 
 
@@ -6841,14 +6844,22 @@ async def load_acceptance(
     )
 
 
+def _acceptance_idempotency_key_hash(idempotency_key: str) -> str:
+    """C1 固定派生：sha256("delivery-acceptance.v1:{idempotency_key}")。"""
+    return sha256_hex(f"delivery-acceptance.v1:{idempotency_key}".encode("utf-8"))
+
+
 def _acceptance_payload_sha256(
     *,
-    action: str,
+    event_type: str,
+    artifact_id: uuid.UUID,
     references: Sequence[DisputeReference],
     note: str | None,
 ) -> str:
-    payload = {
-        "action": action,
+    # C1 §2.16：payload 只含 event_type、artifact_id、references 与可选 note。
+    payload: dict[str, Any] = {
+        "event_type": event_type,
+        "artifact_id": str(artifact_id),
         "references": [
             {
                 "path": reference.path,
@@ -6859,8 +6870,9 @@ def _acceptance_payload_sha256(
             }
             for reference in references
         ],
-        "note": note,
     }
+    if note is not None:
+        payload["note"] = note
     return sha256_hex(canonical_bytes(payload))
 
 
@@ -6917,9 +6929,12 @@ async def record_acceptance(
         raise DeliveryNotPublishedError("delivery_not_published")
     event_type = "acceptance_accepted" if action == "accept" else "acceptance_disputed"
     payload_sha256 = _acceptance_payload_sha256(
-        action=action, references=references, note=note
+        event_type=event_type,
+        artifact_id=artifact.id,
+        references=references,
+        note=note,
     )
-    key_hash = sha256_hex(idempotency_key.encode("utf-8"))
+    key_hash = _acceptance_idempotency_key_hash(idempotency_key)
     replay = await _replay_or_conflict(
         session,
         workspace_id=workspace_id,
@@ -7011,19 +7026,12 @@ async def record_deemed_acceptance(
     moment = (now or datetime.now(UTC)).astimezone(UTC).replace(microsecond=0)
     if not is_deemed_acceptance_due(artifact.acceptance_deadline, moment):
         raise AcceptanceWindowOpenError("acceptance_window_open")
-    key_hash = sha256_hex(idempotency_key.encode("utf-8"))
-    payload_sha256 = sha256_hex(
-        canonical_bytes(
-            {
-                "action": "deemed_accept",
-                "artifact_id": str(artifact.id),
-                "acceptance_deadline": (
-                    artifact.acceptance_deadline.isoformat()
-                    if artifact.acceptance_deadline
-                    else None
-                ),
-            }
-        )
+    key_hash = _acceptance_idempotency_key_hash(idempotency_key)
+    payload_sha256 = _acceptance_payload_sha256(
+        event_type="acceptance_deemed_accepted",
+        artifact_id=artifact.id,
+        references=(),
+        note=None,
     )
     replay = await _replay_or_conflict(
         session,
@@ -7420,6 +7428,10 @@ from datetime import timedelta
 
 import pytest
 
+from data_intelligence_hub.services.delivery.canonical import (
+    canonical_bytes,
+    sha256_hex,
+)
 from data_intelligence_hub.services.delivery.service import (
     AcceptanceClosedError,
     AcceptanceReferenceInvalidError,
@@ -7463,6 +7475,21 @@ async def test_accept_replay_and_conflict(session, delivery_seed, tmp_path) -> N
     )
     assert first.replay is False
     assert first.state.status == "accepted"
+    accepted_event = first.state.events[-1]
+    assert accepted_event.event_type == "acceptance_accepted"
+    assert accepted_event.metadata["idempotency_key_hash"] == sha256_hex(
+        b"delivery-acceptance.v1:accept-1"
+    )
+    assert accepted_event.metadata["payload_sha256"] == sha256_hex(
+        canonical_bytes(
+            {
+                "event_type": "acceptance_accepted",
+                "artifact_id": str(artifact_id),
+                "references": [],
+                "note": "ok",
+            }
+        )
+    )
     replay = await record_acceptance(
         session,
         workspace_id=delivery_seed.workspace_id,
@@ -7482,6 +7509,18 @@ async def test_accept_replay_and_conflict(session, delivery_seed, tmp_path) -> N
             action="accept",
             idempotency_key="accept-1",
             note="different",
+        )
+    with pytest.raises(IdempotencyConflictError):
+        await record_acceptance(
+            session,
+            workspace_id=delivery_seed.workspace_id,
+            artifact_id=artifact_id,
+            actor_id=delivery_seed.user_id,
+            action="dispute",
+            idempotency_key="accept-1",
+            references=(
+                DisputeReference(path="report.zh.html", description="同 key 不同事件类型"),
+            ),
         )
 
 
@@ -7520,7 +7559,29 @@ async def test_dispute_requires_itemized_references(session, delivery_seed, tmp_
         ),
     )
     assert disputed.state.status == "objection"
-    assert disputed.state.events[-1].metadata["references"][0]["path"] == "report.zh.html"
+    dispute_event = disputed.state.events[-1]
+    assert dispute_event.event_type == "acceptance_disputed"
+    assert dispute_event.metadata["references"][0]["path"] == "report.zh.html"
+    assert dispute_event.metadata["idempotency_key_hash"] == sha256_hex(
+        b"delivery-acceptance.v1:dispute-3"
+    )
+    assert dispute_event.metadata["payload_sha256"] == sha256_hex(
+        canonical_bytes(
+            {
+                "event_type": "acceptance_disputed",
+                "artifact_id": str(result.artifact.id),
+                "references": [
+                    {
+                        "path": "report.zh.html",
+                        "description": "第 2 页指标口径",
+                        "claim_id": None,
+                        "evidence_id": None,
+                        "item_id": None,
+                    }
+                ],
+            }
+        )
+    )
     with pytest.raises(AcceptanceClosedError):
         await record_acceptance(
             session,
@@ -7553,6 +7614,20 @@ async def test_deemed_acceptance_waits_for_deadline(session, delivery_seed, tmp_
         now=result.artifact.acceptance_deadline + timedelta(seconds=1),
     )
     assert deemed.state.status == "auto_accepted"
+    deemed_event = deemed.state.events[-1]
+    assert deemed_event.event_type == "acceptance_deemed_accepted"
+    assert deemed_event.metadata["idempotency_key_hash"] == sha256_hex(
+        b"delivery-acceptance.v1:deemed-1"
+    )
+    assert deemed_event.metadata["payload_sha256"] == sha256_hex(
+        canonical_bytes(
+            {
+                "event_type": "acceptance_deemed_accepted",
+                "artifact_id": str(result.artifact.id),
+                "references": [],
+            }
+        )
+    )
     state = await load_acceptance(
         session,
         workspace_id=delivery_seed.workspace_id,
@@ -7899,7 +7974,7 @@ async def test_tampered_download_is_409(
     target.write_bytes(target.read_bytes() + b"tamper")
     response = await client.get(f"/api/reports/{delivery_artifact_id}/delivery")
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "delivery_integrity_failed"
+    assert response.json()["detail"]["code"] == "delivery_integrity_error"
 
 
 async def test_acceptance_requires_idempotency_and_replays(
@@ -8247,7 +8322,7 @@ async def publish_report_delivery(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "delivery_integrity_failed",
+                "code": "delivery_integrity_error",
                 "mismatches": [
                     {"path": item.path, "reason": item.reason}
                     for item in exc.mismatches
@@ -8283,7 +8358,7 @@ async def get_report_delivery_manifest(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "delivery_integrity_failed",
+                "code": "delivery_integrity_error",
                 "mismatches": [
                     {"path": item.path, "reason": item.reason}
                     for item in exc.mismatches
@@ -8316,7 +8391,7 @@ async def download_report_delivery(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "delivery_integrity_failed",
+                "code": "delivery_integrity_error",
                 "mismatches": [
                     {"path": item.path, "reason": item.reason}
                     for item in exc.mismatches
@@ -8464,7 +8539,7 @@ async def publish_report_quick_draft(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                "code": "delivery_integrity_failed",
+                "code": "delivery_integrity_error",
                 "mismatches": [
                     {"path": item.path, "reason": item.reason}
                     for item in exc.mismatches
@@ -8981,6 +9056,7 @@ curl -sS -X POST "https://scrapy.luteos.com/api/reports/$ARTIFACT_ID/delivery/ac
 ```
 
 验收事件只追加，不修改 manifest、bundle 或 `acceptance_snapshot_json`。
+验收幂等键哈希固定为 `sha256("delivery-acceptance.v1:{idempotency_key}")`，事件 `metadata_json.idempotency_key_hash` 保存该值；payload 摘要固定覆盖 `event_type`、`artifact_id`、`references` 与可选 `note`（为空时省略）。原始 `Idempotency-Key` 不写入事件、日志或响应。
 Quick 稿调用验收端点返回 409 `acceptance_not_applicable`。
 
 ## 校验
@@ -9009,7 +9085,7 @@ PY
 
 ## 篡改
 
-`GET /delivery` 返回 409 `delivery_integrity_failed` 时：
+`GET /delivery` 返回 409 `delivery_integrity_error` 时：
 
 1. 不重试下载，不手工改文件。
 2. 从 `report_audit_events` 查 `delivery_tamper_detected`，记录 `mismatches`。
@@ -9153,7 +9229,7 @@ C10 不修改前端页面。C14 在以下事实成立后做浏览器/HTTP 验收
 - `POST /api/reports/{artifact_id}/delivery/quick-draft` 只接受 `package_type=quick`；Standard 返回 422 `quick_draft_not_allowed`。
 - `GET /api/reports/{artifact_id}/delivery` 返回 ZIP，包含 `delivery_manifest.json` 与 `report_contract.json`。
 - `GET /api/reports/{artifact_id}/delivery/manifest` 返回 manifest 哈希与文件列表。
-- 篡改任一交付文件后，`GET /delivery` 返回 409 `delivery_integrity_failed`。
+- 篡改任一交付文件后，`GET /delivery` 返回 409 `delivery_integrity_error`。
 - `GET /api/reports/{artifact_id}/delivery/acceptance` 返回追加式验收事件；accept/dispute/deemed 都要求 `Idempotency-Key`。
 - 含 PII 的交付返回 409 `delivery_pii_detected`，且 `report_audit_events` 有 `gate_evaluated` 阻断记录。
 
@@ -9164,7 +9240,7 @@ C10 不修改前端页面。C14 在以下事实成立后做浏览器/HTTP 验收
 3. 在浏览器网络面板调用 `POST /api/reports/<artifact_id>/delivery/publish`，带 `Idempotency-Key`，断言 201 与 `delivery_status = delivered`。
 4. 调用 `GET /api/reports/<artifact_id>/delivery/manifest`，断言 `manifest_sha256` 为 64 位十六进制。
 5. 下载 `GET /api/reports/<artifact_id>/delivery`，解压后确认 10 个交付文件与 sidecar。
-6. 在测试目录篡改 `report.zh.html`，再次下载，断言 409 与 `delivery_integrity_failed`。
+6. 在测试目录篡改 `report.zh.html`，再次下载，断言 409 与 `delivery_integrity_error`。
 7. 断言未发布的 C9 产物调用 delivery publish 返回 409，且不会写 `delivered_*` 字段。
 8. 用 Quick 任务调用 `POST /delivery/quick-draft`，断言 `delivery_class=quick_draft`、`acceptance_deadline=null`、ZIP 含 `quick_draft_notice.json` 且不含 `acceptance_snapshot.json`。
 9. 对正式交付调用 `accept`，再以同 key 同 payload 重放，断言 200 replay；以同 key 不同 note 重放，断言 409 `idempotency_conflict`。
