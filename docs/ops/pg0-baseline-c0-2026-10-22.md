@@ -146,17 +146,18 @@ C14 必须逐条覆盖以下四个判据：
 
 | 项目 | 值 |
 |---|---|
-| 事实提交 | `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` |
+| 镜像构建基座提交 | `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` |
+| 事实证据提交 | `5f639bb2d7c58ac604f881ed4fca073bccc593f1` |
 | API 镜像 | `data_achieve_scrapy_api:c0-29309f5`；context `apps/api`；默认 `INSTALL_PLAYWRIGHT=false`、`INSTALL_OSINT=false`，未传 build args |
 | API 镜像 ID | `sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8` |
 | API RepoDigests | data_achieve_scrapy_api@sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8（本地 build 自指，无 registry 推送来源） |
-| Console 镜像 | `data_achieve_scrapy_console:c0-29309f5`；context 仓库根 |
+| Console 镜像 | `data_achieve_scrapy_console:c0-29309f5`；context 仓库根；未传 `NEXT_PUBLIC_API_URL`，镜像内嵌 Dockerfile 默认的生产 B API `https://scrapy.lute-tlz-dddd.top`；生产 compose 默认以 `SCRAPY_PUBLIC_URL` 覆盖为生产 A `https://scrapy.luteos.com` |
 | Console 镜像 ID | `sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8` |
 | Console RepoDigests | data_achieve_scrapy_console@sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8（本地 build 自指，无 registry 推送来源） |
 | 镜像架构 | 两镜像均 `arm64` / `linux`；本地 Colima（aarch64）产物 |
 | 生产差异警示 | 本地镜像不可直接视为生产 amd64 产物；生产发布须另行构建 amd64（如 buildx `--platform linux/amd64`） |
 | 推送状态 | 未 push；两镜像仅存在于本地 Docker，未进入任何 registry |
-| compose 镜像引用 | 9 行，真实清单见下 |
+| compose 镜像引用 | 默认 profile 解析为 9 行，真实清单见下；不含 `proxy`、`obscura`、`browser_use` 三个 profile 门控服务 |
 | `catalog_digest` | `35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c` |
 | 工具计数 | 284 / 284 / 226（tool / canonical / executable） |
 | 平台包计数 | 70 / 312 / 284（platform / capability / unique endpoint） |
