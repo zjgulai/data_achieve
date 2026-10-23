@@ -290,7 +290,9 @@ async def test_explicit_collect_blocked_by_preflight(monkeypatch) -> None:
 
     async def fake_collect(endpoint_type, params):
         calls.append((endpoint_type, params))
-        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+        return shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type=endpoint_type
+        )
 
     async def fake_preflight(proposal, *, force_status: bool = False):
         assert force_status is True
@@ -309,7 +311,8 @@ async def test_explicit_collect_blocked_by_preflight(monkeypatch) -> None:
         commands.Command("collect", "tikhub_reddit_search", {"keyword": "AI", "max_items": 5})
     )
     assert calls == []
-    assert reply.text == "端点当前不可用，已取消采集。"
+    assert "端点当前不可用，已取消采集。" in reply.text
+    assert reply.text.startswith("无法执行采集：")
     assert reply.ack is None
 
 
@@ -320,7 +323,9 @@ async def test_explicit_collect_runs_preflight_with_force_status(monkeypatch) ->
 
     async def fake_collect(endpoint_type, params):
         calls.append((endpoint_type, params))
-        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+        return shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type=endpoint_type
+        )
 
     async def fake_preflight(proposal, *, force_status: bool = False):
         preflight_calls.append((proposal.endpoint_type, force_status))
@@ -337,7 +342,8 @@ async def test_explicit_collect_runs_preflight_with_force_status(monkeypatch) ->
     )
     assert preflight_calls == [("tikhub_reddit_search", True)]
     assert calls == [("tikhub_reddit_search", {"keyword": "AI", "max_items": 5})]
-    assert reply.text == "采集完成"
+    assert reply.text.startswith("采集完成")
+    assert "端点：tikhub_reddit_search" in reply.text
 
 
 async def test_explicit_collect_preflight_unknown_endpoint(monkeypatch) -> None:
@@ -346,7 +352,9 @@ async def test_explicit_collect_preflight_unknown_endpoint(monkeypatch) -> None:
 
     async def fake_collect(endpoint_type, params):
         calls.append((endpoint_type, params))
-        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+        return shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type=endpoint_type
+        )
 
     async def fake_preflight(proposal, *, force_status: bool = False):
         assert force_status is True
@@ -363,7 +371,8 @@ async def test_explicit_collect_preflight_unknown_endpoint(monkeypatch) -> None:
         commands.Command("collect", "no_such_endpoint", {"keyword": "AI"})
     )
     assert calls == []
-    assert reply.text == "没有找到端点：no_such_endpoint"
+    assert "没有找到端点：no_such_endpoint" in reply.text
+    assert reply.text.startswith("无法执行采集：")
 
 
 async def test_explicit_collect_preflight_join_multiple_errors(monkeypatch) -> None:
@@ -1063,12 +1072,15 @@ async def test_confirm_executes_pending_proposal(monkeypatch) -> None:
 
     async def fake_collect(endpoint_type, params):
         calls.append((endpoint_type, params))
-        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+        return shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type=endpoint_type
+        )
 
     monkeypatch.setattr(shusuo_capabilities, "collect", fake_collect)
     reply = await commands.execute(commands.Command("confirm"), context_key="chat-1")
     assert calls == [("tikhub_reddit_search", {"keyword": "AI", "max_items": 3})]
-    assert reply.text == "采集完成"
+    assert reply.text.startswith("采集完成")
+    assert "端点：tikhub_reddit_search" in reply.text
 
 
 async def test_confirm_without_pending_returns_hint() -> None:

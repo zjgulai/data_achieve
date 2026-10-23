@@ -71,8 +71,21 @@ _POLICY_BLOCK_TEXT = "当前受安全策略限制，无法执行该端点。"
 
 @dataclass(frozen=True)
 class CollectOutcome:
+    """一次采集的结构化结果。
+
+    text 是给用户的兜底文案；新代码应改用 replies.collect_success_text /
+    collect_failure_text 由结构化字段渲染回复。
+    """
+
     ok: bool
     text: str
+    endpoint_type: str = ""
+    task_run_id: str = ""
+    records_count: int = 0
+    duration_ms: int | None = None
+    total_cost_usd: str | None = None
+    records: tuple[dict[str, Any], ...] = ()
+    error_message: str | None = None
 
 
 @dataclass(frozen=True)
@@ -427,25 +440,42 @@ async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:
     try:
         endpoint = await get_capability(endpoint_type)
     except CapabilityNotFoundError:
-        return CollectOutcome(False, f"没有找到端点：{endpoint_type}")
+        return CollectOutcome(False, f"没有找到端点：{endpoint_type}", endpoint_type=endpoint_type)
 
     statuses = await live_status()
     blocked = _block_reason(endpoint_type, statuses.get(endpoint_type))
     if blocked:
-        return CollectOutcome(False, blocked)
+        return CollectOutcome(False, blocked, endpoint_type=endpoint_type)
     if endpoint.status == "disabled":
-        return CollectOutcome(False, f"{endpoint_type} 已下线，不能调用。")
+        return CollectOutcome(
+            False, f"{endpoint_type} 已下线，不能调用。", endpoint_type=endpoint_type
+        )
 
     try:
         project_id = uuid.UUID(config.default_project_id)
     except ValueError:
-        return CollectOutcome(False, "服务端默认 project_id 配置无效。")
+        return CollectOutcome(
+            False, "服务端默认 project_id 配置无效。", endpoint_type=endpoint_type
+        )
 
     try:
         result = await collect_capability(endpoint_type, project_id, params)
     except Exception as exc:  # noqa: BLE001 - 采集端错误要回给用户，不要吞掉
         logger.exception("shushuo_collect_failed endpoint_type=%s", endpoint_type)
-        return CollectOutcome(False, f"采集失败：{type(exc).__name__}: {exc}")
+        return CollectOutcome(
+            False,
+            f"采集失败：{type(exc).__name__}: {exc}",
+            endpoint_type=endpoint_type,
+            error_message=f"{type(exc).__name__}: {exc}",
+        )
+
+    timing = result.timing if isinstance(result.timing, dict) else {}
+    usage = result.usage if isinstance(result.usage, dict) else {}
+    duration_raw = timing.get("duration_ms")
+    duration_ms = duration_raw if isinstance(duration_raw, int) else None
+    cost_raw = usage.get("total_cost_usd")
+    total_cost_usd = str(cost_raw) if cost_raw is not None else None
+    records = tuple(item for item in result.records if isinstance(item, dict))
 
     if result.status == "success" and result.records_count > 0:
         text = (
@@ -453,15 +483,32 @@ async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:
             f"端点：{endpoint_type}\n"
             f"记录数：{result.records_count}\n"
             f"运行 ID：{result.task_run_id}\n"
-            f"查看：{config.console_base_url}/collect/{result.task_run_id}"
+            f"查看：{config.console_base_url}/runs/{result.task_run_id}"
         )
-        return CollectOutcome(True, text)
+        return CollectOutcome(
+            True,
+            text,
+            endpoint_type=endpoint_type,
+            task_run_id=str(result.task_run_id),
+            records_count=result.records_count,
+            duration_ms=duration_ms,
+            total_cost_usd=total_cost_usd,
+            records=records,
+            error_message=result.error_message,
+        )
 
     reason = result.error_message or "上游没有返回记录"
     return CollectOutcome(
         False,
         f"采集未返回数据\n端点：{endpoint_type}\n状态：{result.status}\n原因：{reason}\n"
         f"运行 ID：{result.task_run_id}",
+        endpoint_type=endpoint_type,
+        task_run_id=str(result.task_run_id),
+        records_count=result.records_count,
+        duration_ms=duration_ms,
+        total_cost_usd=total_cost_usd,
+        records=records,
+        error_message=result.error_message,
     )
 
 
@@ -520,5 +567,5 @@ async def run_records_text(run_id: str, limit: int = 5) -> str:
         lines.append(f"{index}. {title[:160]}")
         if url:
             lines.append(f"   {url}")
-    lines.append(f"控制台：{config.console_base_url}/collect/{run_id}")
+    lines.append(f"控制台：{config.console_base_url}/runs/{run_id}")
     return "\n".join(lines)

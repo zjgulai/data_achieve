@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import capabilities, intents, llm, proposal_store
+from . import capabilities, intents, llm, proposal_store, replies
 
 HELP_TEXT = """数说 · 全域外部数据助手
 
@@ -73,6 +73,15 @@ class Reply:
 
 def clean_text(text: str) -> str:
     return _MENTION_PATTERN.sub("", text).strip()
+
+
+def _collect_reply_text(outcome: capabilities.CollectOutcome) -> str:
+    """采集结果统一走回复模板；text 兜底时同样过 fit_text。"""
+    if outcome.ok:
+        text = replies.collect_success_text(outcome)
+    else:
+        text = replies.collect_failure_text(outcome)
+    return text or replies.fit_text(outcome.text)
 
 
 def _coerce(value: str) -> Any:
@@ -172,11 +181,11 @@ async def execute(command: Command, context_key: str = "") -> Reply:
         )
         preflight = await capabilities.preflight_proposal(proposal, force_status=True)
         if not preflight.allowed:
-            return Reply("\n".join(preflight.errors))
+            return Reply(replies.preflight_error_text(preflight))
         outcome = await capabilities.collect(
             proposal.endpoint_type, preflight.normalized_params
         )
-        return Reply(outcome.text, ack=f"正在采集 {command.argument}，请稍候…")
+        return Reply(_collect_reply_text(outcome), ack=f"正在采集 {command.argument}，请稍候…")
     if command.name == "intent":
         built = intents.build_proposal(command.argument)
         if isinstance(built, str):
@@ -184,12 +193,14 @@ async def execute(command: Command, context_key: str = "") -> Reply:
         proposal_store.replace_pending(context_key, "", built)
         return Reply(intents.proposal_reply(built))
     if command.name == "confirm":
-        _, pending = proposal_store.consume_pending(None, context_key, "")
+        status, pending = proposal_store.consume_pending(None, context_key, "")
         if pending is None:
-            return Reply("没有待确认的操作。请先发一个场景命令，例如「搜 reddit AI」。")
+            return Reply(replies.pending_status_text(status))
         proposal = pending.proposal
         outcome = await capabilities.collect(proposal.endpoint_type, proposal.params)
-        return Reply(outcome.text, ack=f"正在采集 {proposal.endpoint_type}，请稍候…")
+        return Reply(
+            _collect_reply_text(outcome), ack=f"正在采集 {proposal.endpoint_type}，请稍候…"
+        )
     if command.name == "cancel":
         proposal_store.cancel_pending(None, context_key, "")
         return Reply("已取消待确认的操作。")

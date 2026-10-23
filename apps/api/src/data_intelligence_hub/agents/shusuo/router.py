@@ -16,7 +16,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 from fastapi.responses import JSONResponse
 
-from . import commands, lark_client
+from . import commands, lark_client, replies
 from .config import get_shushuo_config
 from .crypto import FeishuCryptoError, decrypt_event, verify_signature
 from .gate import MessageGateDecision, decide_message_gate
@@ -29,7 +29,6 @@ _DEDUPE_LIMIT = 1024
 _DEDUPE_TTL_SECONDS = 600
 _seen_events: OrderedDict[str, float] = OrderedDict()
 
-_MAX_REPLY_CHARS = 6000
 _EVENT_ID_LOG_MAX_CHARS = 128
 _CHAT_TYPE_LOG_MAX_CHARS = 32
 
@@ -267,6 +266,5 @@ def _extract_text(message: dict[str, Any]) -> str:
 
 
 def _truncate(text: str) -> str:
-    if len(text) <= _MAX_REPLY_CHARS:
-        return text
-    return text[: _MAX_REPLY_CHARS - 20] + "\n…（内容过长，已截断）"
+    """统一出口：脱敏 + 6000 字符上限（薄包装 replies.fit_text）。"""
+    return replies.fit_text(text)
