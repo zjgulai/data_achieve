@@ -139,3 +139,45 @@ C14 必须逐条覆盖以下四个判据：
 4. `/workbench` 显示五步流程入口；`/reports` 显示报告列表或空态；`/capabilities` 显示能力目录。
 
 风险记录：C0 的合并门禁是后端单元/集成测试、前端单元测试、lint 与生产构建。浏览器验收延期到 C14。若 C14 未在 PG0 验收前执行，风险是 B5 页面在真实 API 下的空态、权限态或控制台错误未被发现。该风险由 C14 的 `e2e/routes.spec.ts` 与 PG0 验收门禁关闭。不得用本节替代 C14 的验收。
+
+## 7. catalog/image/schema 事实快照（2026-10-23）
+
+执行环境：Docker client 29.8.0、server 29.5.2；Docker context `colima`；server `linux/arm64`、主机 `arm64`（aarch64）。worktree `data_scrapy-c0`、分支 `feat/pg0-baseline-c0`。
+
+| 项目 | 值 |
+|---|---|
+| 事实提交 | `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` |
+| API 镜像 | `data_achieve_scrapy_api:c0-29309f5`；context `apps/api`；默认 `INSTALL_PLAYWRIGHT=false`、`INSTALL_OSINT=false`，未传 build args |
+| API 镜像 ID | `sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8` |
+| API RepoDigests | data_achieve_scrapy_api@sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8（本地 build 自指，无 registry 推送来源） |
+| Console 镜像 | `data_achieve_scrapy_console:c0-29309f5`；context 仓库根 |
+| Console 镜像 ID | `sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8` |
+| Console RepoDigests | data_achieve_scrapy_console@sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8（本地 build 自指，无 registry 推送来源） |
+| 镜像架构 | 两镜像均 `arm64` / `linux`；本地 Colima（aarch64）产物 |
+| 生产差异警示 | 本地镜像不可直接视为生产 amd64 产物；生产发布须另行构建 amd64（如 buildx `--platform linux/amd64`） |
+| 推送状态 | 未 push；两镜像仅存在于本地 Docker，未进入任何 registry |
+| compose 镜像引用 | 9 行，真实清单见下 |
+| `catalog_digest` | `35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c` |
+| 工具计数 | 284 / 284 / 226（tool / canonical / executable） |
+| 平台包计数 | 70 / 312 / 284（platform / capability / unique endpoint） |
+| `tool-catalog.lock.json` SHA-256 | `1e99add62f3d9bf5d43a6bf2fefba2a3596556d50234b63108e6fd64a173dc3e` |
+| `platform-packages.lock.json` SHA-256 | `59f5976d5761e2e03c5525b80e53202ffc0dbe56d51def0d21a650a77f1f031e` |
+| `SCHEMA_HEAD` | `202610210057`（`uv run alembic heads` 输出） |
+
+compose 镜像引用真实清单：dummy env（`SCRAPY_POSTGRES_USER=x`、`SCRAPY_POSTGRES_PASSWORD=x`、`SCRAPY_POSTGRES_DB=x`、`SCRAPY_JWT_SECRET=x`、`SCRAPY_AUTH_COOKIE_SECURE=true`）解析 `configs/deploy/scrapy/docker-compose.yml` 后 `config --images`，`LC_ALL=C sort -u` 恰好 9 行：
+
+```text
+crivellarodiego/spiderfoot:latest
+data_achieve_scrapy-tor
+data_achieve_scrapy_api:latest
+data_achieve_scrapy_console:latest
+data_achieve_scrapy_web:latest
+nginx:1.27-alpine
+postgres:16
+soxoj/maigret:latest
+spiderfoot_bridge:latest
+```
+
+构建警告记录（Task 6 移交风险）：Console build 再次出现 Next 16.3.0 弃用警告 `The "middleware" file convention is deprecated. Please use "proxy" instead.`（修复建议 `npx @next/codemod@canary middleware-to-proxy .`）。来源 `apps/scraper-console/src/middleware.ts`（commit `2c1ad41`，pre-existing，本次未改）。该警告不影响 image build：构建退出码 0，镜像正常产出；迁移决策由 Task 8 汇总。
+
+GitNexus 编辑前门禁：对本文件 upstream impact 返回 UNKNOWN（0 caller；file-node 无 process/module 轴）。文本搜索 `apps/`、`scripts/`、`configs/`、`package.json` 确认无代码引用本文件，属纯证据 markdown，追加安全。build 后 `git status --porcelain -uno` 空输出，锁文件与 tracked 文件无 diff；镜像属 runtime 产物，不提交。
