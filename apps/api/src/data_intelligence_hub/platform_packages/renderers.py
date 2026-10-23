@@ -49,7 +49,8 @@ def render_skill(package: PlatformPackage) -> str:
     skill_notes_block = ""
     if ordered_notes:
         bullets = "\n".join(
-            f"- [{note.severity}] `{note.target}`：{_escape(note.symptom)} → {_escape(note.workaround)}"
+            f"- [{note.severity}] `{note.target}`：{_escape(note.symptom)}"
+            f" → {_escape(note.workaround)}"
             for note in ordered_notes[:8]
         )
         skill_notes_block = (
