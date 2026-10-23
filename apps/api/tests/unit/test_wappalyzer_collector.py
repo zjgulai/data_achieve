@@ -1,6 +1,7 @@
 """Unit tests for TechStackDetectCollector and _detect fingerprinting."""
 from __future__ import annotations
 
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -40,11 +41,9 @@ def _patch_client(response):
     )
 
 
-def test_fake_response_does_not_share_default_headers() -> None:
-    first = _fake_response("a")
-    first.headers["x-test"] = "1"
-    second = _fake_response("b")
-    assert "x-test" not in second.headers
+def test_fake_response_default_headers_is_none() -> None:
+    parameter = inspect.signature(_fake_response).parameters["headers"]
+    assert parameter.default is None
 
 
 class TestDetect:
