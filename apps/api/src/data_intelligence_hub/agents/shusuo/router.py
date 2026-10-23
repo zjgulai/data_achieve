@@ -16,7 +16,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 from fastapi.responses import JSONResponse
 
-from . import commands, lark_client, replies
+from . import commands, lark_client, proposal_store, replies
 from .config import get_shushuo_config
 from .crypto import FeishuCryptoError, decrypt_event, verify_signature
 from .gate import MessageGateDecision, decide_message_gate
@@ -232,10 +232,32 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             return
 
         command = commands.parse_command(text)
-        reply = await commands.execute(command, context_key=chat_id or open_id)
+        reply = await commands.execute(
+            command,
+            chat_id=chat_id,
+            open_id=open_id,
+            message_id=message_id,
+        )
         if reply.ack:
             await lark_client.reply_text(message_id, reply.ack)
-        await lark_client.reply_text(message_id, _truncate(reply.text))
+        if reply.card is not None and reply.pending_token:
+            try:
+                card_message_id = await lark_client.reply_card(message_id, reply.card)
+            except Exception as exc:  # noqa: BLE001 - 卡片失败必须降级文本
+                logger.warning(
+                    "shusuo_card_send_failed",
+                    message_id=message_id,
+                    error_type=type(exc).__name__,
+                )
+                await lark_client.reply_text(message_id, replies.fit_text(reply.text))
+            else:
+                proposal_store.attach_message_ids(
+                    reply.pending_token,
+                    message_id=message_id,
+                    card_message_id=card_message_id,
+                )
+        else:
+            await lark_client.reply_text(message_id, replies.fit_text(reply.text))
         logger.info(
             "shusuo_command_handled",
             command=command.name,
@@ -263,8 +285,3 @@ def _extract_text(message: dict[str, Any]) -> str:
         return ""
     text = decoded.get("text", "")
     return commands.clean_text(str(text)) if isinstance(text, str) else ""
-
-
-def _truncate(text: str) -> str:
-    """统一出口：脱敏 + 6000 字符上限（薄包装 replies.fit_text）。"""
-    return replies.fit_text(text)
