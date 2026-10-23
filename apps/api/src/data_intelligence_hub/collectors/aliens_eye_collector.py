@@ -122,7 +122,11 @@ async def _run(cmd: list[str], timeout: float = _DEFAULT_PROC_TIMEOUT) -> tuple[
         raise CollectorError(
             f"aliens_eye_timeout: scan took longer than {timeout:.0f}s"
         ) from None
-    return proc.returncode or 0, stdout_b.decode("utf-8", errors="replace"), stderr_b.decode("utf-8", errors="replace")
+    return (
+        proc.returncode or 0,
+        stdout_b.decode("utf-8", errors="replace"),
+        stderr_b.decode("utf-8", errors="replace"),
+    )
 
 
 def _find_output_json(outdir: str, username: str) -> str | None:
@@ -160,7 +164,11 @@ def _parse_json_output(json_path: str) -> list[dict[str, Any]]:
                             "url": site_data.get("url", ""),
                             "status": status,
                             "confidence": site_data.get("confidence", 0),
-                            "ml_score": site_data.get("ai_analysis", {}).get("score") if isinstance(site_data.get("ai_analysis"), dict) else None,
+                            "ml_score": (
+                                site_data.get("ai_analysis", {}).get("score")
+                                if isinstance(site_data.get("ai_analysis"), dict)
+                                else None
+                            ),
                         })
             return hits
         results = data.get("results", data.get("hits", []))
@@ -206,7 +214,9 @@ class _AliensEyeCollector(BaseCollector):
             logs=[collector_log("aliens_eye_test_ok", "cli present")],
         )
 
-    def _base_records(self, hits: list[dict[str, Any]], username: str, collected_at: datetime) -> list[CollectorRawRecord]:
+    def _base_records(
+        self, hits: list[dict[str, Any]], username: str, collected_at: datetime
+    ) -> list[CollectorRawRecord]:
         records = []
         for hit in hits:
             if not isinstance(hit, dict):
@@ -407,7 +417,11 @@ class AliensEyeCorrelateCollector(_AliensEyeCollector):
                     content={
                         "username": username,
                         "total_hits": len(hits),
-                        "platforms": [h.get("site") or h.get("platform") for h in hits if isinstance(h, dict)],
+                        "platforms": [
+                            h.get("site") or h.get("platform")
+                            for h in hits
+                            if isinstance(h, dict)
+                        ],
                         "correlation_summary": stdout[:2000] if stdout else None,
                     },
                     collected_at=collected_at,
@@ -581,7 +595,9 @@ class AliensEyeBatchCollector(_AliensEyeCollector):
                 if found_file:
                     hits = _parse_json_output(found_file)
                     all_records.extend(self._base_records(hits, username, collected_at))
-                    logs.append(collector_log("aliens_eye_batch_user", f"{username}={len(hits)} hits"))
+                    logs.append(
+                        collector_log("aliens_eye_batch_user", f"{username}={len(hits)} hits")
+                    )
 
         if not all_records and rc not in (0, 1):
             errors.append(f"aliens_eye_batch_error: rc={rc} stderr={stderr[:200]}")

@@ -72,7 +72,9 @@ class PackagistPackageCollector(BaseCollector):
                 )
                 name = r.json().get("package", {}).get("name", "")
                 logs.append(collector_log("test", f"packagist reachable, package={name!r}"))
-                return CollectorTestResult(status="ok", message=f"Packagist reachable, fetched {name!r}", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message=f"Packagist reachable, fetched {name!r}", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -156,7 +158,9 @@ class PackagistSearchCollector(BaseCollector):
                 )
                 count = len(r.json().get("results", []))
                 logs.append(collector_log("test", f"Packagist search returned {count} results"))
-                return CollectorTestResult(status="ok", message="Packagist search reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="Packagist search reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -192,7 +196,9 @@ class PackagistSearchCollector(BaseCollector):
                             "favers": pkg.get("favers", 0),
                         },
                     ))
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)
@@ -275,7 +281,9 @@ class NuGetPackageCollector(BaseCollector):
             "versions_count": len(pkg.get("versions", [])),
         }
 
-        logs.append(collector_log("collect_done", f"package={package!r} version={content['version']!r}"))
+        logs.append(
+            collector_log("collect_done", f"package={package!r} version={content['version']!r}")
+        )
         return CollectionResult(
             raw_records=[CollectorRawRecord(
                 record_type="product",
@@ -310,7 +318,9 @@ class NuGetSearchCollector(BaseCollector):
                 )
                 count = len(r.json().get("data", []))
                 logs.append(collector_log("test", f"NuGet search returned {count} results"))
-                return CollectorTestResult(status="ok", message="NuGet search reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="NuGet search reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -348,7 +358,9 @@ class NuGetSearchCollector(BaseCollector):
                             "tags": pkg.get("tags", []),
                         },
                     ))
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)
@@ -379,7 +391,9 @@ class PubDevPackageCollector(BaseCollector):
                 )
                 name = r.json().get("name", "")
                 logs.append(collector_log("test", f"pub.dev reachable, package={name!r}"))
-                return CollectorTestResult(status="ok", message=f"pub.dev reachable, fetched {name!r}", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message=f"pub.dev reachable, fetched {name!r}", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -421,7 +435,9 @@ class PubDevPackageCollector(BaseCollector):
             "published_at": latest.get("published", ""),
         }
 
-        logs.append(collector_log("collect_done", f"package={package!r} version={content['version']!r}"))
+        logs.append(
+            collector_log("collect_done", f"package={package!r} version={content['version']!r}")
+        )
         return CollectionResult(
             raw_records=[CollectorRawRecord(
                 record_type="product",
@@ -455,7 +471,9 @@ class PubDevSearchCollector(BaseCollector):
                 )
                 count = len(r.json().get("packages", []))
                 logs.append(collector_log("test", f"pub.dev search returned {count} results"))
-                return CollectorTestResult(status="ok", message="pub.dev search reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="pub.dev search reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -499,7 +517,9 @@ class PubDevSearchCollector(BaseCollector):
                         break
                     page += 1
 
-                logs.append(collector_log("search", f"query={query!r} collected={len(raw_records)}"))
+                logs.append(
+                    collector_log("search", f"query={query!r} collected={len(raw_records)}")
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)

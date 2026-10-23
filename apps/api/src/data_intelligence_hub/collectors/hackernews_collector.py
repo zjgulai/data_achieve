@@ -104,7 +104,9 @@ class HackerNewsFrontPageCollector(BaseCollector):
 
         return CollectionResult(raw_records=raw_records, logs=logs, errors=errors)
 
-    async def _fetch_story(self, client: httpx.AsyncClient, story_id: int) -> CollectorRawRecord | None:
+    async def _fetch_story(
+        self, client: httpx.AsyncClient, story_id: int
+    ) -> CollectorRawRecord | None:
         try:
             response = await collector_get_with_retry(
                 _NoRedirectClient(client), f"{HN_API_BASE}/item/{story_id}.json"
@@ -217,8 +219,12 @@ class HackerNewsUserCollector(BaseCollector):
                     _NoRedirectClient(client), f"{HN_API_BASE}/user/pg.json"
                 )
                 data = response.json()
-                logs.append(collector_log("test", f"user has {len(data.get('submitted', []))} submissions"))
-                return CollectorTestResult(status="ok", message="Hacker News API reachable", logs=logs)
+                logs.append(
+                    collector_log("test", f"user has {len(data.get('submitted', []))} submissions")
+                )
+                return CollectorTestResult(
+                    status="ok", message="Hacker News API reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             logs.append(collector_log("test_failed", collector_http_error_message(exc), "error"))
             return CollectorTestResult(status="failed", message=str(exc), logs=logs)
@@ -261,7 +267,9 @@ class HackerNewsUserCollector(BaseCollector):
 
         return CollectionResult(raw_records=raw_records, logs=logs, errors=errors)
 
-    async def _fetch_item(self, client: httpx.AsyncClient, item_id: int) -> CollectorRawRecord | None:
+    async def _fetch_item(
+        self, client: httpx.AsyncClient, item_id: int
+    ) -> CollectorRawRecord | None:
         try:
             response = await collector_get_with_retry(
                 _NoRedirectClient(client), f"{HN_API_BASE}/item/{item_id}.json"

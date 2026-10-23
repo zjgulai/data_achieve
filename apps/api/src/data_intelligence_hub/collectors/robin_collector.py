@@ -224,7 +224,9 @@ class RobinUsernameCollector(_RobinBase):
             logs.append(collector_log("robin_error", msg, level="error"))
             return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
-        logs.append(collector_log("robin_username_done", f"username={username!r} hits={len(results)}"))
+        logs.append(
+            collector_log("robin_username_done", f"username={username!r} hits={len(results)}")
+        )
         return CollectionResult(
             raw_records=self._to_records(results, username, "username", collected_at),
             logs=logs, errors=errors,
