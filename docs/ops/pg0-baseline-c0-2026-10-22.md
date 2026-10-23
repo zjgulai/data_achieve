@@ -71,3 +71,22 @@
 | downgrade 055 | 通过；三张表为 `null` |
 | 再次 upgrade 057 | 通过 |
 | SCHEMA_HEAD | `202610210057` |
+
+
+## 4.1 R0 Ruff 清理合回（2026-10-23）
+
+| 项目 | 值 |
+|---|---|
+| R0 起点 | `8a68069790d9d7c905505892be2968d90f394629` |
+| R0 最终提交 | `449860156be5551b749b223dde76aacfa6087340` |
+| C0 合并提交 | `72c52648aead926625fc7d55dcb9771e00d06bb4`；`merge(r0): clean inherited Ruff baseline` |
+| 合并方式 | `git merge --no-ff feat/pg0-ruff-cleanup`；无冲突 |
+| Ruff | `apps/api` 全量真实扫描 748 个文件；exit 0；stderr 空；`All checks passed!` |
+| mypy | 命令仍返回 1200 个存量错误；与 C0 起点归一化后均为 498 个唯一诊断签名；新增 0，移除 0；基线非回归通过 |
+| 字节完整性 | 合并范围 20 个文件全部满足原生 stat = `os.stat` = read；UTF-8 有效；NUL=0 |
+| GitNexus compare | 20 个文件、84 个符号、147 条流程、risk CRITICAL；未使用 `riskSharedAxes` 豁免 |
+| CRITICAL 缓解 | 完整 R0 最终审查验证逐任务 AST 等价、目录与 renderer 输出等价、迁移头不变、合同摘要不变、完整测试通过；唯一行为语法变化 `zip(strict=True)` 的等长不变量已验证 |
+| 图索引 | 合并后完整 `analyze --force` 成功；45,238 nodes / 76,568 edges / 988 clusters / 901 flows；FTS 构建恢复 |
+| 数据库 | `c0-pg15` 保持运行，供 C0 Task 5 integration 使用；未重启或重建 |
+
+R0 不含 migration。C0 schema head 保持 `202610210057`。后续从 Task 5 Step 3 继续，mypy 使用已修订的基线非回归门禁，unit 基线使用 `2493 passed, 2 skipped`。
