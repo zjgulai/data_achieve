@@ -182,3 +182,110 @@ spiderfoot_bridge:latest
 构建警告记录（Task 6 移交风险）：Console build 再次出现 Next 16.3.0 弃用警告 `The "middleware" file convention is deprecated. Please use "proxy" instead.`（修复建议 `npx @next/codemod@canary middleware-to-proxy .`）。来源 `apps/scraper-console/src/middleware.ts`（commit `2c1ad41`，pre-existing，本次未改）。该警告不影响 image build：构建退出码 0，镜像正常产出；迁移决策由 Task 8 汇总。
 
 GitNexus 编辑前门禁：对本文件 upstream impact 返回 UNKNOWN（0 caller；file-node 无 process/module 轴）。文本搜索 `apps/`、`scripts/`、`configs/`、`package.json` 确认无代码引用本文件，属纯证据 markdown，追加安全。build 后 `git status --porcelain -uno` 空输出，锁文件与 tracked 文件无 diff；镜像属 runtime 产物，不提交。
+
+## 8. GitNexus 重建与 pg0-baseline-v1
+
+执行环境（2026-10-23）：worktree `/Users/lute/Project/data_scrapy-c0`；分支 `feat/pg0-baseline-c0`；起始 HEAD `e227070054914f9cbef8cb5d508e5f4aa73d8dcb`；工作树 clean；`pg0-baseline-v1` 创建前不存在（`git rev-parse -q --verify refs/tags/pg0-baseline-v1` 返回非零）。
+
+### 8.1 GitNexus 索引
+
+| 项目 | 值 |
+|---|---|
+| GitNexus analyze | 退出码 0（首次 `--index-only` 22.0s；`--force` 全量重建 45.8s，复用 1062 / 1063 个文件的解析缓存） |
+| GitNexus `index.commit` | `e227070054914f9cbef8cb5d508e5f4aa73d8dcb` |
+| `index.commit` 与 `git rev-parse HEAD` | 相等；同时也是 `current.commit` |
+| GitNexus status | `up-to-date`；`incompleteReasons=[]` |
+| `contentDrift` | `current`；覆盖 1288 个文件 |
+| `runnerIdentityStatus` | `current` |
+| 索引能力 | graph `available`（ladybugdb）；fts `available`（ladybugdb-fts）；vectorSearch `unavailable`（`exactScanLimit` 10000） |
+| 计数 | 45,243 nodes / 76,573 edges / 988 clusters / 901 flows；files 1290；embeddings 0 |
+
+状态词表说明：brief 期望的 `fresh` 在 GitNexus 1.6.12 中不是合法取值。`dist/cli/status.js:302` 写的是 `status: isUpToDate ? 'up-to-date' : 'stale'`，中文输出为「状态: ✅ 已是最新」。本节按工具真实输出记录 `up-to-date`，不伪写 `fresh`。
+
+分析器警告（`analyze --index-only --force` 全量日志，68 条 JSON 记录）：
+
+| 类别 | 条数 | 内容 |
+|---|---:|---|
+| `callable-value-flow` | 66 | `candidate set exceeded the cap; no partial CALLS emitted`（`candidateCount` 33，`cap` 32）；集中在 `agents/shusuo/capabilities.py`、`mcp_runtime/server.py`、`mcp_runtime/runtime.py`；未发出部分 CALLS，因此这些调用边在图中缺失 |
+| `scope-resolution` | 1 | 496 个属性读写点命中本工作区字段，但定义锚点在另一种语言，按语言推断拒绝连接；这些字段的查询结果为空，不等于「未使用」 |
+| `processes` 截断 | 1 | 报告 901 条 flow，但 `entryPointCandidatesDropped=3002`（3202 个候选入口点中 3002 个未排入），`walksCutByBudget=34`，`calleesDropped=1058`；`entryPointsUnexplored=0`、`processesDropped=0`、`tracesDepthCapped=0`；缺失的 flow 不等于代码路径不存在 |
+
+### 8.2 最终变更分析
+
+| 项目 | 值 |
+|---|---|
+| 干净树基数 `detect-changes` | `未检测到变更。`；退出码 0（追加第 8 节之前、索引重建之后） |
+| 提交前 `detect-changes`（带本文档 diff） | `变更：1 个文件，2 个符号`；`受影响流程：0`；`风险等级：low`；退出码 0 |
+| 提交前命中的符号 | 两个 markdown 章节节点：`Section PG0 C0 基线整合证据`、`Section 7. catalog/image/schema 事实快照（2026-10-23）`，均属 `docs/ops/pg0-baseline-c0-2026-10-22.md` |
+| `partial` / `truncated` | 未出现 / 未出现（两轮日志全文均无这两个标记，`grep -ci` 计数 0） |
+| 追加第 8 节前的编辑门禁 | `impact` 对 `File:docs/ops/pg0-baseline-c0-2026-10-22.md` upstream 返回 `impactedCount 0`、`risk UNKNOWN`（file-node 无 process/module 轴）；文本搜索全仓（排除 `.git`、`.gitnexus`、`node_modules`、`.venv`）只有 `docs/superpowers/plans/2026-10-22-governed-task-platform-c0-baseline-integration.md` 引用本文件，无任何代码、配置或脚本引用，UNKNOWN 已用文本搜索解除 |
+
+### 8.3 标签
+
+| 项目 | 值 |
+|---|---|
+| 标签 | `pg0-baseline-v1` → `e227070054914f9cbef8cb5d508e5f4aa73d8dcb` |
+| ref | `refs/tags/pg0-baseline-v1`；`git cat-file -t` = `tag`（annotated） |
+| tag 对象 SHA | `48aaccfa5a3689f23f7517cfb88b59c2533805ab` |
+| 标签消息 | `PG0 baseline v1: C0 integration at e227070; B5 94d95b2 merged; spec 052c602 preserved; schema 202610210057` |
+| 远端标签 | 未推送；等待人工批准（只检查本地 ref，未访问远端标签） |
+
+### 8.4 最终验收
+
+```text
+b5_ancestor=0
+b4_ancestor=0
+052c602942ad8dd42fc80cd38d17c95ac20d2bd2
+TAG_ON_CODE_BASELINE
+```
+
+| 断言 | 值 |
+|---|---|
+| `feat/b5-workbench` 是 HEAD 祖先 | 是（`b5_ancestor=0`） |
+| `feat/b4-report-contract` 是 HEAD 祖先 | 是（`b4_ancestor=0`） |
+| spec blob `HEAD:docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md` | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |
+| `pg0-baseline-v1^{commit}` == `HEAD^` | 是（`TAG_ON_CODE_BASELINE`） |
+| 提交后 `git status --porcelain -uno` | 空输出 |
+
+标签语义：标签目标 `e227070` 是代码与事实基线。Task 8 的证据提交在标签之后创建，只改文档；标签不指向该证据提交，也不应被移动到它。
+
+### 8.5 Task 5/6/7 门禁事实引用
+
+本节不重跑完整 unit / integration / build。门禁事实以 Task 5/6/7 报告与第 4–7 节为准：
+
+| 任务 | 引用事实 |
+|---|---|
+| Task 5 | Ruff 全量 748 文件 `All checks passed!`；mypy 唯一诊断签名 498/498 非回归（命令仍返回 1200 个存量错误，不称命令通过）；clean-checkout unit `2493 passed, 2 skipped`；integration `386 passed`；回归守卫 `OK: 0 failed。`；`alembic heads` = `202610210057`；工具目录 284/284/226；平台包 70/312/284 |
+| Task 6 | frontend `220 passed / 0 failed / 0 skipped`；eslint 无输出；`next build` 退出码 0，含 `Compiled successfully in 3.1s`，23/23 静态页；`C14_HANDOFF_REQUIRED` |
+| Task 7 | 两镜像本地构建退出码 0；compose 默认 profile 9 个镜像；`catalog_digest` `35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c`；`tool-catalog.lock.json` SHA-256 `1e99add62f3d9bf5d43a6bf2fefba2a3596556d50234b63108e6fd64a173dc3e`；`platform-packages.lock.json` SHA-256 `59f5976d5761e2e03c5525b80e53202ffc0dbe56d51def0d21a650a77f1f031e`；`SCHEMA_HEAD` `202610210057` |
+
+本轮 fresh 快速复核（仅必要项，未重跑全量 unit / integration / build）：
+
+| 复核项 | 结果 |
+|---|---|
+| `uv run ruff check .`（`apps/api`） | `All checks passed!`；退出码 0 |
+| `pnpm -C apps/scraper-console test` | 220 passed / 0 failed / 0 cancelled / 0 skipped；261.9ms |
+| `configs/tool-catalog.lock.json` SHA-256 | `1e99add62f3d9bf5d43a6bf2fefba2a3596556d50234b63108e6fd64a173dc3e`，与第 7 节一致 |
+| `configs/platform-packages.lock.json` SHA-256 | `59f5976d5761e2e03c5525b80e53202ffc0dbe56d51def0d21a650a77f1f031e`，与第 7 节一致 |
+| `pytest --collect-only -q`（清空 `DATABASE_URL`、`TEST_DATABASE_URL`） | `2992 tests collected` |
+| `pytest tests/integration -q`（清空 `DATABASE_URL`、`TEST_DATABASE_URL`、`ALLOW_DESTRUCTIVE_MIGRATION_TEST`） | `385 passed, 1 failed`；49.25s |
+
+integration 复核的 1 项失败是环境缺口，不是回归。`tests/integration/test_platform_package_routes.py::test_platform_package_routes_list_detail_and_playbook` 通过 ASGITransport 直接请求真实 app 路由，需要 `127.0.0.1:5432` 的 PostgreSQL；本机没有该服务，报 `OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5432), [Errno 61] Connect call failed ('::1', 5432, 0, 0)`。Task 5 的 `386 passed` 使用 `c0-pg15` 容器（`127.0.0.1:55432`），该容器已按计划删除。
+
+### 8.6 最终风险汇总
+
+| 编号 | 风险 | 状态 | 关闭条件 |
+|---|---|---|---|
+| R1 | `C14_HANDOFF_REQUIRED`：`/workbench`、`/reports`、`/capabilities` 的浏览器验收未执行；`apps/scraper-console/e2e/routes.spec.ts` 的 14 条 `PAGE_ROUTES` 不含这三个路由 | 未关闭 | C14 按第 6 节四个判据执行 |
+| R2 | CI `API Quality Gate` 存量红：该 job（`ubuntu-latest`，无 PostgreSQL 服务）仍运行默认全量 `uv run pytest` 与 `check_pytest_baseline.py`，而后者默认路径为 `tests/unit` + `tests/integration` | 未关闭 | 本轮各项均为本地绿；不得据此宣称 CI 全绿 |
+| R3 | integration `386 passed` 的一次性数据库 `c0-pg15` 已删除，当前只有 `--collect-only`（2992）与无库 integration（385 passed / 1 failed）旁证 | 未关闭 | 需要可重放载体时按 `127.0.0.1:55432` 重建 `c0-pg15` |
+| R4 | 回归守卫线程警告可能为 10 处（`test_demo_data` 3 + `test_tikhub_param_contract` 7），第 5 节只写了 3 处；另有 passlib `crypt` DeprecationWarning（unit / integration 各 1 处） | 未证实 | 本轮单独运行这两个文件（75 passed）未复现 `Event loop is closed`，10 处仍属「可能」；判据不受影响 |
+| R5 | Next 16.3 `middleware` → `proxy` 存量迁移风险；来源 `apps/scraper-console/src/middleware.ts`（`2c1ad41`，pre-existing，本次未改） | 未关闭 | 迁移决策待定；当前不影响 build（退出码 0） |
+| R6 | 本地镜像仅 `linux/arm64`（Colima aarch64），不是生产 amd64；Console 镜像内嵌生产 B API `https://scrapy.lute-tlz-dddd.top`，生产 compose 默认以 `SCRAPY_PUBLIC_URL` 覆盖为生产 A `https://scrapy.luteos.com`；两镜像均未 push | 未关闭 | 生产发布须另行 amd64 构建（buildx `--platform linux/amd64`）并走批准流程 |
+| R7 | API 镜像存量嵌套 `__pycache__` / `.pyc`：`apps/api/.dockerignore` 的裸 `__pycache__` 规则不覆盖嵌套目录；镜像内 `/app` 下实测 28 个 `__pycache__` 目录、467 个 `.pyc` 文件 | 未关闭 | 改为 `**/__pycache__`、`**/*.pyc` 后重建 |
+| R8 | `task-7-report.md` L49 把构建基座 `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` 裸称「事实提交」 | 已归类 | 语义应称「构建基座」；`29309f5` 是镜像构建所基于的提交，其后 `5f639bb`（冻结事实）与 `e227070`（补充构建边界）才是事实证据提交 |
+| R9 | `vectorSearch` 能力 `unavailable`（`exactScanLimit` 10000） | 记录 | 语义检索退回精确扫描；不影响图与全文检索门禁 |
+
+### 8.7 未执行项
+
+未 push 分支、未 push 标签、未创建 PR、未操作生产、未访问远端标签、未启动浏览器。Task 8 只创建本地 annotated tag，只提交本文件。
