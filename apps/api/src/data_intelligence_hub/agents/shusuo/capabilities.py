@@ -440,33 +440,36 @@ async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:
     try:
         endpoint = await get_capability(endpoint_type)
     except CapabilityNotFoundError:
-        return CollectOutcome(False, f"没有找到端点：{endpoint_type}", endpoint_type=endpoint_type)
+        reason = f"没有找到端点：{endpoint_type}"
+        return CollectOutcome(False, reason, endpoint_type=endpoint_type, error_message=reason)
 
     statuses = await live_status()
-    blocked = _block_reason(endpoint_type, statuses.get(endpoint_type))
+    live = statuses.get(endpoint_type)
+    blocked = _block_reason(endpoint_type, live)
     if blocked:
-        return CollectOutcome(False, blocked, endpoint_type=endpoint_type)
+        # policy_block_reason 原文绝不进 CollectOutcome；只回固定安全文案。
+        reason = _POLICY_BLOCK_TEXT if (live is not None and live.policy_block_reason) else blocked
+        return CollectOutcome(False, reason, endpoint_type=endpoint_type, error_message=reason)
     if endpoint.status == "disabled":
-        return CollectOutcome(
-            False, f"{endpoint_type} 已下线，不能调用。", endpoint_type=endpoint_type
-        )
+        reason = f"{endpoint_type} 已下线，不能调用。"
+        return CollectOutcome(False, reason, endpoint_type=endpoint_type, error_message=reason)
 
     try:
         project_id = uuid.UUID(config.default_project_id)
     except ValueError:
-        return CollectOutcome(
-            False, "服务端默认 project_id 配置无效。", endpoint_type=endpoint_type
-        )
+        reason = "服务端默认 project_id 配置无效。"
+        return CollectOutcome(False, reason, endpoint_type=endpoint_type, error_message=reason)
 
     try:
         result = await collect_capability(endpoint_type, project_id, params)
     except Exception as exc:  # noqa: BLE001 - 采集端错误要回给用户，不要吞掉
         logger.exception("shushuo_collect_failed endpoint_type=%s", endpoint_type)
+        # 异常类名只保留在日志里；用户可见字段只带 str(exc)，由 replies 脱敏。
         return CollectOutcome(
             False,
-            f"采集失败：{type(exc).__name__}: {exc}",
+            f"采集失败：{exc}",
             endpoint_type=endpoint_type,
-            error_message=f"{type(exc).__name__}: {exc}",
+            error_message=str(exc),
         )
 
     timing = result.timing if isinstance(result.timing, dict) else {}

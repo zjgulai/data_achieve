@@ -166,9 +166,17 @@ def collect_success_text(outcome: CollectOutcome) -> str:
 
 
 def collect_failure_text(outcome: CollectOutcome) -> str:
-    # error_message 可能带异常类名与密钥：去掉类名前缀，整条过脱敏。
+    # error_message 可能残留异常类名前缀（capabilities 已在源头去类名，
+    # 这里是纵深防御）。只剥"类名 + 冒号"形态，且类名必须像异常类
+    # （驼峰含 Error/Exception/Timeout 等，或至少带大写字母），避免把
+    # "demo_endpoint 已下线"这类正常句子误剥。
     reason = outcome.error_message or "上游没有返回记录"
-    reason = re.sub(r"^\s*[A-Za-z_][\w.]*Error\s*[:：]\s*", "", reason)
+    reason = re.sub(
+        r"^\s*[A-Za-z_][\w.]*(?:Error|Exception|Timeout|Denied|Failure|Abort)\w*"
+        r"(?:\s*[:：]\s*|\s+)",
+        "",
+        reason,
+    )
     reason = " ".join(reason.split())
     lines = [
         "采集未返回数据",
