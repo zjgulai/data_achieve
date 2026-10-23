@@ -231,11 +231,10 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         logger.info(
             "shusuo_command_handled",
             command=command.name,
-            argument=command.argument,
             chat_id=chat_id,
         )
     except Exception as exc:  # noqa: BLE001 - webhook 必须吞掉异常，避免飞书无限重试
-        logger.exception(
+        logger.error(
             "shusuo_event_failed",
             error_type=type(exc).__name__,
         )

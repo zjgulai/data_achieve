@@ -12,6 +12,7 @@ import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from fastapi.testclient import TestClient
+from structlog.testing import capture_logs
 
 from data_intelligence_hub.agents.shusuo import capabilities as shusuo_capabilities
 from data_intelligence_hub.agents.shusuo import commands
@@ -650,3 +651,71 @@ async def test_group_malformed_mention_open_id_is_ignored(monkeypatch) -> None:
     result = await _run_message_case(monkeypatch, envelope)
     assert result.replies == []
     assert result.executed == []
+
+
+async def test_command_handled_log_omits_message_text(monkeypatch) -> None:
+    """命令参数就是用户输入，shusuo_command_handled 不得携带它。"""
+    sentinel = "SECRET-SENTINEL-TEXT"
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        return "om_reply"
+
+    async def fake_bot_open_id() -> str:
+        return "ou_bot"
+
+    async def fake_execute(
+        command: commands.Command,
+        context_key: str = "",
+    ) -> commands.Reply:
+        return commands.Reply(text="ok")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.setattr(shusuo_router.commands, "execute", fake_execute)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+
+    with capture_logs() as logs:
+        await shusuo_router._handle_envelope(_p2p_envelope(f"采集 {sentinel}"))
+
+    entries = [entry for entry in logs if entry.get("event") == "shusuo_command_handled"]
+    assert entries, "缺少 shusuo_command_handled 日志"
+    assert entries[-1]["command"] == "collect"
+    assert "argument" not in entries[-1]
+    for entry in logs:
+        assert sentinel not in str(entry)
+        assert "exc_info" not in entry
+
+
+async def test_event_failed_log_omits_exception_text(monkeypatch) -> None:
+    """shusuo_event_failed 只带 error_type，不携带异常文本或回溯。"""
+    sentinel = "SECRET-SENTINEL-EXC"
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        return "om_reply"
+
+    async def fake_bot_open_id() -> str:
+        return "ou_bot"
+
+    async def fake_execute(
+        command: commands.Command,
+        context_key: str = "",
+    ) -> commands.Reply:
+        raise RuntimeError(f"token={sentinel}")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.setattr(shusuo_router.commands, "execute", fake_execute)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+
+    with capture_logs() as logs:
+        await shusuo_router._handle_envelope(_p2p_envelope("帮助"))
+
+    entries = [entry for entry in logs if entry.get("event") == "shusuo_event_failed"]
+    assert entries, "缺少 shusuo_event_failed 日志"
+    assert entries[-1]["log_level"] == "error"
+    assert entries[-1]["error_type"] == "RuntimeError"
+    for entry in logs:
+        assert sentinel not in str(entry)
+        assert "exc_info" not in entry
