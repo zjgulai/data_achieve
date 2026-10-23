@@ -626,6 +626,66 @@ async def test_unknown_chat_type_is_ignored(monkeypatch) -> None:
     assert result.bot_open_id_calls == 0
 
 
+async def test_unknown_chat_type_log_caps_external_fields_and_preserves_dedupe(
+    monkeypatch,
+) -> None:
+    event_id = "event-prefix-" + "e" * 300
+    chat_type = "unknown-prefix-" + "c" * 100
+    envelope = _group_envelope()
+    envelope["header"]["event_id"] = event_id
+    envelope["event"]["message"]["chat_type"] = chat_type
+
+    with capture_logs() as logs:
+        result = await _run_message_case(monkeypatch, envelope)
+
+    assert result.replies == []
+    assert result.executed == []
+    assert result.bot_open_id_calls == 0
+    event_entry = next(
+        entry for entry in logs if entry.get("event") == "shusuo_event_received"
+    )
+    ignored_entry = next(
+        entry for entry in logs if entry.get("event") == "shusuo_message_ignored"
+    )
+    assert event_entry["event_id"] == event_id[:128]
+    assert ignored_entry["chat_type"] == chat_type[:32]
+    assert event_id not in str(logs)
+    assert chat_type not in str(logs)
+    assert shusuo_router._is_duplicate(event_id) is False
+    assert shusuo_router._is_duplicate(event_id) is True
+    assert event_id in shusuo_router._seen_events
+    assert event_id[:128] not in shusuo_router._seen_events
+
+
+def test_webhook_dedupes_full_long_event_id(monkeypatch) -> None:
+    monkeypatch.delenv("LARK_SHUSUO_ENCRYPT_KEY", raising=False)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+    event_id = "event-prefix-" + "e" * 300
+    body = json.dumps(
+        _encrypted_group_payload(
+            event_id=event_id,
+            chat_type="p2p",
+            text="帮助",
+        )
+    )
+
+    client = TestClient(app)
+    for _ in range(2):
+        response = client.post(
+            WEBHOOK_PATH,
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"code": 0}
+
+    assert len(executed) == 1
+    assert len(replies) == 1
+    assert event_id in shusuo_router._seen_events
+    assert event_id[:128] not in shusuo_router._seen_events
+
+
 async def test_p2p_does_not_query_bot_identity(monkeypatch) -> None:
     envelope = _p2p_envelope("帮助")
     result = await _run_message_case(monkeypatch, envelope)

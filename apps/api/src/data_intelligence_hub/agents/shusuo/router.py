@@ -30,6 +30,12 @@ _DEDUPE_TTL_SECONDS = 600
 _seen_events: OrderedDict[str, float] = OrderedDict()
 
 _MAX_REPLY_CHARS = 6000
+_EVENT_ID_LOG_MAX_CHARS = 128
+_CHAT_TYPE_LOG_MAX_CHARS = 32
+
+
+def _safe_log_value(value: object, max_chars: int) -> str:
+    return str(value or "")[:max_chars]
 
 
 def _is_duplicate(event_id: str) -> bool:
@@ -147,7 +153,10 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         logger.info(
             "shusuo_event_received",
             event_type=event_type,
-            event_id=str(header.get("event_id", "")),
+            event_id=_safe_log_value(
+                header.get("event_id"),
+                _EVENT_ID_LOG_MAX_CHARS,
+            ),
         )
         if event_type != "im.message.receive_v1":
             return
@@ -197,7 +206,7 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             log_method(
                 "shusuo_message_ignored",
                 message_id=message_id,
-                chat_type=str(chat_type or ""),
+                chat_type=_safe_log_value(chat_type, _CHAT_TYPE_LOG_MAX_CHARS),
                 decision=decision.value,
             )
             return
