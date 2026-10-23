@@ -192,13 +192,14 @@ GitNexus 编辑前门禁：对本文件 upstream impact 返回 UNKNOWN（0 calle
 | 项目 | 值 |
 |---|---|
 | GitNexus analyze | 退出码 0（首次 `--index-only` 22.0s；`--force` 全量重建 45.8s，复用 1062 / 1063 个文件的解析缓存） |
-| GitNexus `index.commit` | `e227070054914f9cbef8cb5d508e5f4aa73d8dcb` |
-| `index.commit` 与 `git rev-parse HEAD` | 相等；同时也是 `current.commit` |
+| 标签创建时 GitNexus `index.commit` | `e227070054914f9cbef8cb5d508e5f4aa73d8dcb` |
+| 标签创建时 `index.commit` 与 `git rev-parse HEAD` | 相等；当时同时也是 `current.commit` |
 | GitNexus status | `up-to-date`；`incompleteReasons=[]` |
 | `contentDrift` | `current`；覆盖 1288 个文件 |
-| `runnerIdentityStatus` | `current` |
+| `runnerIdentityStatus` | 默认 pnpm runner 为 `current`；强制切换 bun runner 会仅因 runner identity 不同显示 `stale`，不表示内容索引漂移 |
 | 索引能力 | graph `available`（ladybugdb）；fts `available`（ladybugdb-fts）；vectorSearch `unavailable`（`exactScanLimit` 10000） |
-| 计数 | 45,243 nodes / 76,573 edges / 988 clusters / 901 flows；files 1290；embeddings 0 |
+| 标签创建时计数 | 45,243 nodes / 76,573 edges / 988 clusters / 901 flows；files 1290；embeddings 0 |
+| 初始证据提交后的交付态索引 | 提交 `88341b400a3faa823ac130774b57cd6700a56c4f` 后重建：`index.commit = current.commit = 88341b4`、`up-to-date`、`incompleteReasons=[]`、45,251 nodes / 76,581 edges / 988 clusters / 901 flows |
 
 状态词表说明：brief 期望的 `fresh` 在 GitNexus 1.6.12 中不是合法取值。`dist/cli/status.js:302` 写的是 `status: isUpToDate ? 'up-to-date' : 'stale'`，中文输出为「状态: ✅ 已是最新」。本节按工具真实输出记录 `up-to-date`，不伪写 `fresh`。
 
@@ -217,7 +218,7 @@ GitNexus 编辑前门禁：对本文件 upstream impact 返回 UNKNOWN（0 calle
 | 干净树基数 `detect-changes` | `未检测到变更。`；退出码 0（追加第 8 节之前、索引重建之后） |
 | 提交前 `detect-changes`（带本文档 diff） | `变更：1 个文件，2 个符号`；`受影响流程：0`；`风险等级：low`；退出码 0 |
 | 提交前命中的符号 | 两个 markdown 章节节点：`Section PG0 C0 基线整合证据`、`Section 7. catalog/image/schema 事实快照（2026-10-23）`，均属 `docs/ops/pg0-baseline-c0-2026-10-22.md` |
-| `partial` / `truncated` | 未出现 / 未出现（两轮日志全文均无这两个标记，`grep -ci` 计数 0） |
+| `partial` / `truncated` | 未出现 / 未出现；按中文 CLI 注记检查「结果不完整」与「列表已截断」，两轮均无匹配 |
 | 追加第 8 节前的编辑门禁 | `impact` 对 `File:docs/ops/pg0-baseline-c0-2026-10-22.md` upstream 返回 `impactedCount 0`、`risk UNKNOWN`（file-node 无 process/module 轴）；文本搜索全仓（排除 `.git`、`.gitnexus`、`node_modules`、`.venv`）只有 `docs/superpowers/plans/2026-10-22-governed-task-platform-c0-baseline-integration.md` 引用本文件，无任何代码、配置或脚本引用，UNKNOWN 已用文本搜索解除 |
 
 ### 8.3 标签
@@ -268,9 +269,7 @@ TAG_ON_CODE_BASELINE
 | `configs/tool-catalog.lock.json` SHA-256 | `1e99add62f3d9bf5d43a6bf2fefba2a3596556d50234b63108e6fd64a173dc3e`，与第 7 节一致 |
 | `configs/platform-packages.lock.json` SHA-256 | `59f5976d5761e2e03c5525b80e53202ffc0dbe56d51def0d21a650a77f1f031e`，与第 7 节一致 |
 | `pytest --collect-only -q`（清空 `DATABASE_URL`、`TEST_DATABASE_URL`） | `2992 tests collected` |
-| `pytest tests/integration -q`（清空 `DATABASE_URL`、`TEST_DATABASE_URL`、`ALLOW_DESTRUCTIVE_MIGRATION_TEST`） | `385 passed, 1 failed`；49.25s |
 
-integration 复核的 1 项失败是环境缺口，不是回归。`tests/integration/test_platform_package_routes.py::test_platform_package_routes_list_detail_and_playbook` 通过 ASGITransport 直接请求真实 app 路由，需要 `127.0.0.1:5432` 的 PostgreSQL；本机没有该服务，报 `OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5432), [Errno 61] Connect call failed ('::1', 5432, 0, 0)`。Task 5 的 `386 passed` 使用 `c0-pg15` 容器（`127.0.0.1:55432`），该容器已按计划删除。
 
 ### 8.6 最终风险汇总
 
@@ -278,10 +277,10 @@ integration 复核的 1 项失败是环境缺口，不是回归。`tests/integra
 |---|---|---|---|
 | R1 | `C14_HANDOFF_REQUIRED`：`/workbench`、`/reports`、`/capabilities` 的浏览器验收未执行；`apps/scraper-console/e2e/routes.spec.ts` 的 14 条 `PAGE_ROUTES` 不含这三个路由 | 未关闭 | C14 按第 6 节四个判据执行 |
 | R2 | CI `API Quality Gate` 存量红：该 job（`ubuntu-latest`，无 PostgreSQL 服务）仍运行默认全量 `uv run pytest` 与 `check_pytest_baseline.py`，而后者默认路径为 `tests/unit` + `tests/integration` | 未关闭 | 本轮各项均为本地绿；不得据此宣称 CI 全绿 |
-| R3 | integration `386 passed` 的一次性数据库 `c0-pg15` 已删除，当前只有 `--collect-only`（2992）与无库 integration（385 passed / 1 failed）旁证 | 未关闭 | 需要可重放载体时按 `127.0.0.1:55432` 重建 `c0-pg15` |
+| R3 | integration `386 passed` 的一次性数据库 `c0-pg15` 已删除，当前只有 `--collect-only`（2992）可重放。Task 8 曾在无数据库时运行 integration，得到 385 passed / 1 failed；该命令违反「无数据库时不得运行 integration」的计划口径，只作为环境诊断记录，不属于门禁或基线结果 | 未关闭 | 需要可重放载体时按 `127.0.0.1:55432` 重建 `c0-pg15` |
 | R4 | 回归守卫线程警告可能为 10 处（`test_demo_data` 3 + `test_tikhub_param_contract` 7），第 5 节只写了 3 处；另有 passlib `crypt` DeprecationWarning（unit / integration 各 1 处） | 未证实 | 本轮单独运行这两个文件（75 passed）未复现 `Event loop is closed`，10 处仍属「可能」；判据不受影响 |
 | R5 | Next 16.3 `middleware` → `proxy` 存量迁移风险；来源 `apps/scraper-console/src/middleware.ts`（`2c1ad41`，pre-existing，本次未改） | 未关闭 | 迁移决策待定；当前不影响 build（退出码 0） |
-| R6 | 本地镜像仅 `linux/arm64`（Colima aarch64），不是生产 amd64；Console 镜像内嵌生产 B API `https://scrapy.lute-tlz-dddd.top`，生产 compose 默认以 `SCRAPY_PUBLIC_URL` 覆盖为生产 A `https://scrapy.luteos.com`；两镜像均未 push | 未关闭 | 生产发布须另行 amd64 构建（buildx `--platform linux/amd64`）并走批准流程 |
+| R6 | 本地镜像仅 `linux/arm64`（Colima aarch64），不是生产 amd64；Console 镜像已在构建期内嵌生产 B API `https://scrapy.lute-tlz-dddd.top`。生产 compose 的 `SCRAPY_PUBLIC_URL` 只在重新构建时作为 build arg 生成生产 A `https://scrapy.luteos.com` 镜像，不能在运行时覆盖已有 B 镜像；两镜像均未 push | 未关闭 | 生产发布须另行 amd64 构建（buildx `--platform linux/amd64`），显式传入生产目标 API，并走批准流程 |
 | R7 | API 镜像存量嵌套 `__pycache__` / `.pyc`：`apps/api/.dockerignore` 的裸 `__pycache__` 规则不覆盖嵌套目录；镜像内 `/app` 下实测 28 个 `__pycache__` 目录、467 个 `.pyc` 文件 | 未关闭 | 改为 `**/__pycache__`、`**/*.pyc` 后重建 |
 | R8 | `task-7-report.md` L49 把构建基座 `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` 裸称「事实提交」 | 已归类 | 语义应称「构建基座」；`29309f5` 是镜像构建所基于的提交，其后 `5f639bb`（冻结事实）与 `e227070`（补充构建边界）才是事实证据提交 |
 | R9 | `vectorSearch` 能力 `unavailable`（`exactScanLimit` 10000） | 记录 | 语义检索退回精确扫描；不影响图与全文检索门禁 |
