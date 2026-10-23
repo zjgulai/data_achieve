@@ -245,7 +245,7 @@ TAG_ON_CODE_BASELINE
 | `feat/b5-workbench` 是 HEAD 祖先 | 是（`b5_ancestor=0`） |
 | `feat/b4-report-contract` 是 HEAD 祖先 | 是（`b4_ancestor=0`） |
 | spec blob `HEAD:docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md` | `052c602942ad8dd42fc80cd38d17c95ac20d2bd2` |
-| `pg0-baseline-v1^{commit}` == `HEAD^` | 是（`TAG_ON_CODE_BASELINE`） |
+| 在 evidence commit `88341b400a3faa823ac130774b57cd6700a56c4f` 上，`pg0-baseline-v1^{commit}` == `88341b4^` | 是（`TAG_ON_CODE_BASELINE`）；后续文档提交不移动标签 |
 | 提交后 `git status --porcelain -uno` | 空输出 |
 
 标签语义：标签目标 `e227070` 是代码与事实基线。Task 8 的证据提交在标签之后创建，只改文档；标签不指向该证据提交，也不应被移动到它。
