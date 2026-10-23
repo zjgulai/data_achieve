@@ -33,6 +33,11 @@ _EXPIRY_LINE = f"{PENDING_TTL_SECONDS // 60} 分钟内有效"
 _UNKNOWN_COST_TEXT = "费用未知，按上游实际计费"
 
 
+def _card_title(title: str) -> str:
+    """动态标题（可能含用户关键词）：先脱敏再截断，密钥片段绝不进卡。"""
+    return _fit(_redact(title), MAX_TITLE_CHARS)
+
+
 def _shell(
     title: str, template: str, elements: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -40,7 +45,7 @@ def _shell(
         "schema": SCHEMA_VERSION,
         "config": {"update_multi": True},
         "header": {
-            "title": {"tag": "plain_text", "content": _fit(title, MAX_TITLE_CHARS)},
+            "title": {"tag": "plain_text", "content": _card_title(title)},
             "template": template,
         },
         "body": {"direction": "vertical", "elements": elements},
@@ -114,7 +119,7 @@ def _proposal_summary(
     proposal = pending.proposal
     params = preflight.normalized_params or dict(proposal.params)
     lines = [
-        f"**意图：{_fit(proposal.title, MAX_TITLE_CHARS)}**",
+        f"**意图：{_card_title(proposal.title)}**",
         f"端点：{proposal.endpoint_type}",
         "参数：",
         _param_summary(params),
@@ -144,7 +149,7 @@ def proposal_card(
 def processing_card(pending: PendingProposal) -> dict[str, Any]:
     proposal = pending.proposal
     content = (
-        f"**正在采集：{_fit(proposal.title, MAX_TITLE_CHARS)}**\n\n"
+        f"**正在采集：{_card_title(proposal.title)}**\n\n"
         f"端点：{proposal.endpoint_type}\n\n请稍候，结果会更新在这张卡片上。"
     )
     return _shell("正在采集", "blue", [_markdown(content)])
@@ -180,7 +185,7 @@ def failure_card(pending: PendingProposal, message: str) -> dict[str, Any]:
 def cancelled_card(pending: PendingProposal) -> dict[str, Any]:
     proposal = pending.proposal
     content = (
-        f"已取消：{_fit(proposal.title, MAX_TITLE_CHARS)}\n\n"
+        f"已取消：{_card_title(proposal.title)}\n\n"
         "该提案已作废，token 不可再用。要继续采集请重新发场景命令。"
     )
     return _shell("提案已取消", "grey", [_markdown(content)])

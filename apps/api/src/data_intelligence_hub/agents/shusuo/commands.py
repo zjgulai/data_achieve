@@ -206,7 +206,7 @@ async def execute(
     message_id: str = "",
 ) -> Reply:
     if command.name == "help":
-        return Reply(HELP_TEXT)
+        return Reply(_fit(HELP_TEXT))
     if command.name == "status":
         return Reply(_fit(await capabilities.overview_text()))
     if command.name == "platforms":
@@ -271,4 +271,4 @@ async def execute(
                 + HELP_TEXT
             )
         )
-    return Reply(HELP_TEXT)
+    return Reply(_fit(HELP_TEXT))

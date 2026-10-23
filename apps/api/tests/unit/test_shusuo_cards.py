@@ -191,6 +191,31 @@ def test_processing_card_has_no_buttons_and_states_running() -> None:
     assert "Reddit 关键词搜索：AI" in text
 
 
+def test_card_titles_redact_secret_from_proposal_title() -> None:
+    """标题类卡片：proposal.title 里的密钥片段必须先脱敏再进卡（含 header.title）。"""
+    proposal = _proposal(title="搜 api_key=sk-live-999 的新品")
+    secret = "sk-live-999"
+    card = cards.proposal_card(_pending(proposal), _preflight())
+    serialized = json.dumps(card, ensure_ascii=False)
+    assert secret not in serialized
+    assert "[redacted]" in serialized
+    header_title = card["header"]["title"]["content"]
+    assert secret not in header_title
+    for card in (
+        cards.processing_card(_pending(proposal)),
+        cards.cancelled_card(_pending(proposal)),
+    ):
+        serialized = json.dumps(card, ensure_ascii=False)
+        assert secret not in serialized
+        assert "[redacted]" in serialized
+    # success/failure 卡不渲染 proposal.title，密钥同样不得出现
+    for card in (
+        cards.success_card(_pending(proposal), _outcome()),
+        cards.failure_card(_pending(proposal), "x"),
+    ):
+        assert secret not in json.dumps(card, ensure_ascii=False)
+
+
 def test_success_card_shows_records_and_run_link() -> None:
     pending = _pending(_proposal())
     outcome = _outcome(

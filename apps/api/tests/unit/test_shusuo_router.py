@@ -1495,6 +1495,75 @@ def _p2p_envelope(text: str) -> dict[str, object]:
     }
 
 
+def _intent_card_flow_stubs(monkeypatch) -> tuple[list[str], list[dict[str, object]]]:
+    """返回 (texts, cards)：reply_text/reply_card 的记录器；preflight 一律放行。"""
+    texts: list[str] = []
+    cards: list[dict[str, object]] = []
+
+    async def fake_reply_text(message_id: str, text: str) -> str:
+        texts.append(text)
+        return "om_reply"
+
+    async def fake_reply_card(message_id: str, card: dict[str, object]) -> str:
+        cards.append(card)
+        return "om_card_1"
+
+    async def fake_bot_open_id() -> str:
+        return "ou_bot"
+
+    async def ok_preflight(proposal, *, force_status: bool = False):
+        return shusuo_capabilities.PreflightResult(
+            allowed=True,
+            availability="verified",
+            normalized_params=dict(proposal.params),
+        )
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply_text)
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_card", fake_reply_card)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", ok_preflight)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    return texts, cards
+
+
+async def test_card_send_success_attaches_message_ids(monkeypatch) -> None:
+    """卡片发送成功：只发卡不发文本，pending 记录原消息与卡片消息 ID。"""
+    shusuo_proposal_store.clear_all()
+    texts, cards_sent = _intent_card_flow_stubs(monkeypatch)
+    await shusuo_router._handle_envelope(_p2p_envelope("搜 reddit AI"))
+    assert len(cards_sent) == 1
+    assert texts == []
+    pending_all = list(shusuo_proposal_store._PENDING_BY_TOKEN.values())
+    assert len(pending_all) == 1
+    pending = pending_all[0]
+    assert pending.message_id == "om_p2p_gate"
+    assert pending.card_message_id == "om_card_1"
+
+
+async def test_card_send_failure_falls_back_to_text_with_token(monkeypatch) -> None:
+    """卡片发送失败：结构化告警 + 文本兜底，文本必须携带 token 短码。"""
+    shusuo_proposal_store.clear_all()
+    texts, _cards = _intent_card_flow_stubs(monkeypatch)
+
+    async def failing_card(message_id: str, card: dict[str, object]) -> str:
+        raise RuntimeError("lark unavailable")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_card", failing_card)
+    with capture_logs() as logs:
+        await shusuo_router._handle_envelope(_p2p_envelope("搜 reddit AI"))
+    assert len(texts) == 1
+    pending_all = list(shusuo_proposal_store._PENDING_BY_TOKEN.values())
+    assert len(pending_all) == 1
+    assert pending_all[0].token in texts[0]
+    assert pending_all[0].card_message_id is None
+    warning = next(
+        entry for entry in logs if entry.get("event") == "shusuo_card_send_failed"
+    )
+    assert warning["error_type"] == "RuntimeError"
+    assert "lark unavailable" not in str(warning)
+
+
 def _group_envelope(*, mentions: list[dict[str, object]] | None = None) -> dict[str, object]:
     return {
         "header": {"event_type": "im.message.receive_v1", "event_id": "evt-group"},
