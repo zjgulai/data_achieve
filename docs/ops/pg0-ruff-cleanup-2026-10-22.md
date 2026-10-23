@@ -58,9 +58,9 @@ R0 任务 0 的 RED 基线证据。本文只记录事实，不做修复。
 
 ### GitNexus
 
-- 索引重建：`GITNEXUS_INVOCATION=bun node .gitnexus/run.cjs analyze --index-only`，成功，16.6s，45,229 nodes / 76,559 edges / 988 clusters / 901 flows，增量 changed=18。解决 ledger 记录的索引落后问题（Task 4 时 behind 5 commits）。
+- 索引重建：在 implementation HEAD `e9028e4` 运行 `GITNEXUS_INVOCATION=bun node .gitnexus/run.cjs analyze --index-only`，成功，16.6s，快照为 45,229 nodes / 76,559 edges / 988 clusters / 901 flows，增量 changed=18。解决 ledger 记录的索引落后问题（Task 4 时 behind 5 commits）。
 - 编辑前 impact：`File:docs/ops/pg0-ruff-cleanup-2026-10-22.md` upstream → impactedCount 0，risk UNKNOWN（riskNote：零边不等于未被引用）；文本搜索确认仅 `docs/superpowers/plans/2026-10-22-…md` 引用该文件名，无代码引用。
-- 提交前 detect-changes（clean 树）：`未检测到变更`，partial=false、truncated=false（输出无「结果不完整」「列表已截断」字符串）。
+- 提交前 detect-changes（clean 树）：`未检测到变更`，partial=false、truncated=false（输出无「结果不完整」「列表已截断」字符串）。`bb43838` 提交前先把索引增量更新到 `af0f107`（45,238 nodes / 76,568 edges / 988 clusters / 901 flows），再对计划与证据勘误运行 detect-changes：2 个文件、7 个符号、0 个受影响流程、risk low，输出同样无 partial/truncated 警告。
 
 ### 140 findings 分配（各任务修复数）
 
@@ -70,14 +70,14 @@ Task 1 = 13（8323a41、45a98f5）；Task 2 = 3（0599c75）；Task 3 = 64（3b4
 
 - 命令：`.venv/bin/ruff check . --no-cache`（apps/api 内）。exit 0，stderr 0 字节，stdout 恰为 `All checks passed!`（sha256 82b3e6a6…f18）。E501=0 的准确范围是 apps/api，不是仓库根所有 Python。
 - 实扫文件数：`.venv/bin/ruff check . --no-cache --show-files` 列出 748 个文件（>0）。
-- 负控：/tmp 副本植入 120 字符长行后 `ruff check --select E501` exit 1，报 `E501 Line too long (122 > 88)`。防假 GREEN 成立。
+- 负控：在 /tmp 副本追加超长注释行后，`ruff check --select E501` exit 1，并报告 `E501 Line too long (122 > 88)`。防假 GREEN 成立。
 - 执行口径修正：Task 3–5 brief 的 `wc -l` 会把 Ruff 汇总行（`Found N errors.`）计入而 +1；实际以 `grep -c E501` 为准（Task 3 = 64、Task 4 = 41、Task 5 = 19，均与 brief 计划数一致）。
 
 ### mypy
 
 - `uv run mypy src tests`（apps/api）：exit 1，`Found 1200 errors in 117 files (checked 689 source files)`。
-- 基线对照：在 C0 worktree（`/Users/lute/Project/data_scrapy-c0`，HEAD 8a68069）运行同一命令得 `Found 1199 errors in 117 files`。mypy 失败为存量基线，非 R0 引入。
-- +1 差值分析：全部落在 `tikhub_social.py` 的 union-attr 计数（C0 9 条 → R0 10 条）。基线 L1411 `anchor.get(...) if isinstance(anchor.get(...), dict)` 单行含两次 `.get`，mypy 报 1 次；Task 5 的 AST 等价换行把该表达式拆到 L1414/L1415，mypy 按行各报 1 次。两版本 `ast.dump(include_attributes=False)` 完全一致（本次验证重跑确认 `AST identical: True`）。属同一表达式的行计数假象，无新增类型错误类别。
+- 基线对照：在 C0 worktree（`/Users/lute/Project/data_scrapy-c0`，HEAD `8a68069`）运行同一命令得 `Found 1199 errors in 117 files (checked 689 source files)`。mypy 失败为存量基线，非 R0 引入。
+- +1 差值分析：`tikhub_social.py` 全文件的 `union-attr` 计数为 C0 14 条、R0 15 条；其中 `_normalize_tiktok_live` 区域为 9 条、10 条。基线 L1411 `anchor.get(...) if isinstance(anchor.get(...), dict)` 单行含两次 `.get`，mypy 报 1 次；Task 5 的 AST 等价换行把该表达式拆到 L1414/L1415，mypy 按行各报 1 次。两版本 `ast.dump(include_attributes=False)` 完全一致（本次验证重跑确认 `AST identical: True`）。属同一表达式的行计数差异，无新增类型错误类别。
 - R0 范围内未修改任何测试或代码以改变 mypy 结果。
 - 2026-10-23 用户裁决：R0 的 mypy 门禁采用 C0 起点基线非回归，不扩大为约 1200 项存量类型清理。去除 summary/note 并归一化行列号后，C0 与 R0 的唯一诊断签名均为 498，新增 0、移除 0；因此 1200 对 1199 的差值不构成新的类型错误语义，mypy 基线非回归门禁通过。
 
@@ -103,5 +103,5 @@ Task 1 = 13（8323a41、45a98f5）；Task 2 = 3（0599c75）；Task 3 = 64（3b4
 
 - 修复前：本文件 `/usr/bin/stat -f %z` = 6727，`os.stat().st_size` = 2631，`read_bytes()` = 2631，差值恰 4096；可读区 NUL=0、UTF-8 通过、git blob 2631 字节、git diff 干净。与 MEMORY 记录的 heredoc/Edit 写入尾洞损坏特征一致（此前 Task 0 写入所致，Ruff/pytest 均未受影响，因本文件非 Python）。
 - 修复方式：按规约用 /tmp Python 脚本以「当前可读字节 + 追加本节」写入同目录临时文件，flush+fsync 后 `os.replace` 替换 inode；git diff 相对提交保持「仅本节新增」（53 行新增），未触碰既有 52 行内容。
-- 修复后复核：`os.replace` 后内核真相（raw stat 的 st_size、read、git blob）均为正确值，但 `/usr/bin/stat -f %z` 仍报「新值 + 4096」的幻影尺寸（7881→11977、7952→12048、8276 之前的修订同理），同目录新建文件同样命中，为本机 stat 工具层的显示异常；每次修订后用 rm + cp 从 /tmp 副本重建 inode 清除幻影。最终值（含后续两次文本修订，见下）：`/usr/bin/stat -f %z` = `os.stat().st_size` = `read_bytes()`，NUL=0，UTF-8 通过。
+- 修复后复核：任务执行期间，该文档的部分新 inode 曾出现 `/usr/bin/stat -f %z` 比 `os.stat().st_size` 和 `read_bytes()` 多 4096 字节的现象；该现象未能稳定复现，因此不归因于 `stat` 工具或文件系统。每次出现后均用 /tmp 副本配合删除后复制重建 inode。最终值（含后续两次文本修订，见下）：`/usr/bin/stat -f %z` = `os.stat().st_size` = `read_bytes()`，NUL=0，UTF-8 通过。
 - 后续修订：本节两次勘误（补幻影尺寸记录、补执行口径修正行），每次均走同目录临时文件 + fsync + `os.replace` + rm/cp 重建 inode；提交前做最终三重尺寸验证，数值随修订行数变化，以提交时验证输出为准。
