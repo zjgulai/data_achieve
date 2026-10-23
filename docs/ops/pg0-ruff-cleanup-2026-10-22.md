@@ -85,7 +85,7 @@ Task 1 = 13（8323a41、45a98f5）；Task 2 = 3（0599c75）；Task 3 = 64（3b4
 
 - unit：`uv run pytest tests/unit -q` → exit 0，`2493 passed, 2 skipped, 1 warning`。
 - integration：`DATABASE_URL='postgresql+asyncpg://c0:c0@127.0.0.1:55432/c0_migrations' uv run pytest tests/integration -q` → exit 0，`386 passed, 1 warning`（容器 c0-pg15，只读使用，未重启）。
-- 计划漂移：计划 Expected `2492 passed, 2 skipped`，实际 2493。差值 = Task 1 新增的 `test_fake_response_default_headers_is_none`（commit 45a98f5，计划编写时该测试尚不存在）。0 failed。
+- 历史计划曾预期 `2492 passed, 2 skipped`；Task 1 新增 `test_fake_response_default_headers_is_none`（commit `45a98f5`）后，实际基线为 `2493 passed, 2 skipped`。R0 计划和 C0 计划已在最终审查 fix wave 中同步为 2493。0 failed。
 - warning：unit 与 integration 各 1 条，均为第三方 passlib `DeprecationWarning: 'crypt' is deprecated`（passlib/utils/__init__.py:854），与 R0 改动无关。
 
 ### 合同门禁

@@ -202,7 +202,7 @@ Expected: B905×2、E402×1。
 - [ ] **Step 3: 实现**
 
 - Read both zip producers. Add `strict=True` only if both input lists are constructed from the same source and tests require equal lengths; otherwise add `strict=False` to preserve truncation.
-- `pkg_registry2_collector.py` sets environment/module state before the late import. Keep the order and add the narrow `# noqa: E402` to that import with a preceding comment explaining the initialization dependency. Do not move unrelated imports.
+- `pkg_registry2_collector.py` 的 late import 不依赖环境或模块初始化。把 `.base` import block 移到 `_NoRedirectClient` 之前的正常 import 区，不使用 `# noqa: E402`，也不移动其他 import。
 
 - [ ] **Step 4: GREEN**
 
@@ -375,7 +375,7 @@ uv run pytest tests/unit -q
 DATABASE_URL='postgresql+asyncpg://c0:c0@127.0.0.1:55432/c0_migrations' uv run pytest tests/integration -q
 ```
 
-Expected: `2492 passed, 2 skipped`; `386 passed`.
+Expected: `2493 passed, 2 skipped`; `386 passed`.
 
 - [ ] **Step 3: contracts**
 
