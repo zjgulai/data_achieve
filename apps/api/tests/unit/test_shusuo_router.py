@@ -387,13 +387,51 @@ def test_intent_price_accepts_asin() -> None:
     proposal = shusuo_intents.build_proposal("价格 B000000001")
     assert not isinstance(proposal, str)
     assert proposal.endpoint_type == "apify_amazon_price_tracker"
-    assert proposal.params["products"] == ["https://www.amazon.com/dp/B000000001"]
+    assert proposal.params["products"] == [
+        {"url": "https://www.amazon.com/dp/B000000001"}
+    ]
 
 
 def test_intent_unknown_platform_returns_hint() -> None:
     result = shusuo_intents.build_proposal("账号 facebook nike")
     assert isinstance(result, str)
     assert "tiktok" in result
+
+
+def test_intent_rejects_limit_above_50() -> None:
+    result = shusuo_intents.build_proposal("搜 reddit AI max_items=51")
+    assert result == "数量必须在 1 到 50 之间。"
+
+
+def test_intent_rejects_fake_tiktok_domain() -> None:
+    result = shusuo_intents.build_proposal(
+        "评论 https://evil-tiktok.com/@user/video/123"
+    )
+    assert isinstance(result, str)
+    assert "只支持 TikTok、Reddit、YouTube" in result
+
+
+@pytest.mark.parametrize(
+    ("url", "video_id"),
+    [
+        ("https://youtu.be/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.youtube.com/shorts/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+        ("https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"),
+    ],
+)
+def test_intent_parses_youtube_variants(url: str, video_id: str) -> None:
+    proposal = shusuo_intents.build_proposal(f"评论 {url}")
+    assert not isinstance(proposal, str)
+    assert proposal.params["video_id"] == video_id
+
+
+def test_intent_price_uses_object_array() -> None:
+    proposal = shusuo_intents.build_proposal("价格 B000000001")
+    assert not isinstance(proposal, str)
+    assert proposal.params["products"] == [
+        {"url": "https://www.amazon.com/dp/B000000001"}
+    ]
 
 
 async def test_confirm_executes_pending_proposal(monkeypatch) -> None:

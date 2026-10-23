@@ -13,6 +13,12 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 DEFAULT_MAX_ITEMS = 10
+MAX_ITEMS_LIMIT = 50
+LIMIT_ERROR = "数量必须在 1 到 50 之间。"
+_COMMENT_PLATFORM_ERROR = (
+    "目前只支持 TikTok、Reddit、YouTube 的评论链接。\n"
+    "其他平台请先用「能力 评论」查端点，再用「采集 <端点> ...」。"
+)
 
 _PLATFORM_SEARCH: dict[str, tuple[str, str]] = {
     "tiktok": ("tikhub_tiktok_video_search", "TikTok"),
@@ -46,6 +52,7 @@ _TRENDING: dict[str, str] = {
     "reddit": "tikhub_reddit_trending",
 }
 
+
 @dataclass(frozen=True)
 class Proposal:
     endpoint_type: str
@@ -56,16 +63,43 @@ class Proposal:
     cost_notice: str = "费用未知，按上游实际计费"
 
 
-def _limit(tokens: list[str]) -> tuple[list[str], int]:
+def _limit(tokens: list[str]) -> tuple[list[str], int] | str:
+    """拆出数量参数；无数量默认 10，非法数量返回固定提示。"""
     kept: list[str] = []
     limit = DEFAULT_MAX_ITEMS
     for token in tokens:
         match = re.fullmatch(r"(?:max_items|maxItems|n|数量)[=:](\d+)", token)
         if match:
-            limit = max(1, min(int(match.group(1)), 100))
+            value = int(match.group(1))
+            if not 1 <= value <= MAX_ITEMS_LIMIT:
+                return LIMIT_ERROR
+            limit = value
         else:
             kept.append(token)
     return kept, limit
+
+
+def _host_matches(host: str, domain: str) -> bool:
+    """严格按域名后缀匹配；evil-tiktok.com 不会命中 tiktok.com。"""
+    normalized = host.partition(":")[0].rstrip(".").casefold()
+    return normalized == domain or normalized.endswith(f".{domain}")
+
+
+def _youtube_video_id(value: str) -> str:
+    """从短链、watch、shorts、embed 形态的 YouTube 链接里取 video_id。"""
+    url = value if "://" in value else f"https://{value}"
+    parsed = urlparse(url)
+    host = parsed.netloc.casefold()
+    if _host_matches(host, "youtu.be"):
+        return parsed.path.strip("/")
+    if _host_matches(host, "youtube.com"):
+        path = parsed.path.rstrip("/")
+        if path.startswith("/watch"):
+            return (parse_qs(parsed.query).get("v") or [""])[0]
+        for prefix in ("/shorts/", "/embed/", "/live/", "/v/"):
+            if path.startswith(prefix):
+                return path[len(prefix) :]
+    return ""
 
 
 def _proposal_text(proposal: Proposal) -> str:
@@ -109,7 +143,10 @@ def build_proposal(text: str) -> Proposal | str:
 
 
 def _search_proposal(tokens: list[str]) -> Proposal | str:
-    tokens, limit = _limit(tokens)
+    outcome = _limit(tokens)
+    if isinstance(outcome, str):
+        return outcome
+    tokens, limit = outcome
     if not tokens:
         return "用法：搜 [平台] <关键词> [max_items=10]。平台可省略，省略时走 Exa 语义搜索。"
     platform, keyword_tokens = None, tokens
@@ -125,28 +162,34 @@ def _search_proposal(tokens: list[str]) -> Proposal | str:
             params={"query": keyword, "num_results": limit},
             title=f"通用语义搜索：{keyword}",
             note="未指定平台，使用 Exa；要搜社媒请加平台名，例如「搜 reddit AI」。",
+            estimated_items=limit,
         )
     endpoint, label = _PLATFORM_SEARCH[platform]
     return Proposal(
         endpoint_type=endpoint,
         params={"keyword": keyword, "max_items": limit},
         title=f"{label} 关键词搜索：{keyword}",
+        estimated_items=limit,
     )
 
 
 def _comment_proposal(tokens: list[str]) -> Proposal | str:
-    tokens, limit = _limit(tokens)
+    outcome = _limit(tokens)
+    if isinstance(outcome, str):
+        return outcome
+    tokens, limit = outcome
     if not tokens:
         return "用法：评论 <URL> [max_items=10]。支持 TikTok、Reddit、YouTube 链接。"
     url = tokens[0]
     host = urlparse(url).netloc.casefold()
-    if "tiktok.com" in host:
+    if _host_matches(host, "tiktok.com"):
         return Proposal(
             endpoint_type="apify_tiktok_comments_scraper",
             params={"postURLs": [url], "commentsPerPost": limit},
             title="TikTok 视频评论",
+            estimated_items=limit,
         )
-    if "reddit.com" in host:
+    if _host_matches(host, "reddit.com"):
         match = re.search(r"/comments/([a-z0-9]+)", url, re.IGNORECASE)
         if match is None:
             return "无法从 Reddit 链接中识别 post_id。请贴完整的帖子 URL。"
@@ -154,29 +197,26 @@ def _comment_proposal(tokens: list[str]) -> Proposal | str:
             endpoint_type="tikhub_reddit_post_comments",
             params={"post_id": match.group(1), "max_items": limit},
             title="Reddit 帖子评论",
+            estimated_items=limit,
         )
-    if "youtube.com" in host or "youtu.be" in host:
-        video_id = ""
-        parsed = urlparse(url)
-        if "youtu.be" in host:
-            video_id = parsed.path.strip("/")
-        else:
-            video_id = (parse_qs(parsed.query).get("v") or [""])[0]
-        if not video_id:
-            return "无法从 YouTube 链接中识别 video_id。请贴带 v= 参数的视频 URL。"
+    video_id = _youtube_video_id(url)
+    if video_id:
         return Proposal(
             endpoint_type="tikhub_youtube_video_comments",
             params={"video_id": video_id, "max_items": limit},
             title="YouTube 视频评论",
+            estimated_items=limit,
         )
-    return (
-        "目前只支持 TikTok、Reddit、YouTube 的评论链接。\n"
-        "其他平台请先用「能力 评论」查端点，再用「采集 <端点> ...」。"
-    )
+    if _host_matches(host, "youtube.com") or _host_matches(host, "youtu.be"):
+        return "无法从 YouTube 链接中识别 video_id。请贴带 v= 参数的视频 URL。"
+    return _COMMENT_PLATFORM_ERROR
 
 
 def _account_proposal(tokens: list[str]) -> Proposal | str:
-    tokens, _limit_value = _limit(tokens)
+    outcome = _limit(tokens)
+    if isinstance(outcome, str):
+        return outcome
+    tokens, _limit_value = outcome
     if len(tokens) < 2:
         return "用法：账号 <平台> <handle>。支持 tiktok、instagram、x。"
     platform = tokens[0].casefold()
@@ -186,18 +226,21 @@ def _account_proposal(tokens: list[str]) -> Proposal | str:
             endpoint_type="apify_tiktok_media_profile_scraper",
             params={"profiles": [handle]},
             title=f"TikTok 账号资料：@{handle}",
+            estimated_items=1,
         )
     if platform in {"instagram", "ig"}:
         return Proposal(
             endpoint_type="apify_instagram_profile_scraper",
             params={"usernames": [handle]},
             title=f"Instagram 账号资料：@{handle}",
+            estimated_items=1,
         )
     if platform in {"x", "twitter", "推特"}:
         return Proposal(
             endpoint_type="apify_twitter_user_scraper",
             params={"twitterHandles": [handle]},
             title=f"X 账号资料：@{handle}",
+            estimated_items=1,
         )
     return "账号画像目前支持 tiktok、instagram、x。其他平台请用「能力 账号」查端点。"
 
@@ -208,17 +251,22 @@ def _trending_proposal(tokens: list[str]) -> Proposal | str:
     if endpoint is None:
         return "热点支持：抖音、X、YouTube、Reddit。例如：热点 x"
     params: dict[str, Any] = {}
+    estimated = DEFAULT_MAX_ITEMS
     if endpoint == "tikhub_reddit_trending":
         params["max_items"] = DEFAULT_MAX_ITEMS
     return Proposal(
         endpoint_type=endpoint,
         params=params,
         title=f"{platform} 热点/热搜",
+        estimated_items=estimated,
     )
 
 
 def _news_proposal(tokens: list[str]) -> Proposal | str:
-    tokens, limit = _limit(tokens)
+    outcome = _limit(tokens)
+    if isinstance(outcome, str):
+        return outcome
+    tokens, limit = outcome
     if not tokens:
         return "用法：新闻 <关键词> [max_items=10]"
     keyword = " ".join(tokens)
@@ -226,11 +274,15 @@ def _news_proposal(tokens: list[str]) -> Proposal | str:
         endpoint_type="exa_search_news",
         params={"query": keyword, "num_results": limit},
         title=f"新闻搜索：{keyword}",
+        estimated_items=limit,
     )
 
 
 def _sourcing_proposal(tokens: list[str]) -> Proposal | str:
-    tokens, limit = _limit(tokens)
+    outcome = _limit(tokens)
+    if isinstance(outcome, str):
+        return outcome
+    tokens, limit = outcome
     if not tokens:
         return "用法：选品 <关键词> [max_items=10]"
     keyword = " ".join(tokens)
@@ -239,6 +291,7 @@ def _sourcing_proposal(tokens: list[str]) -> Proposal | str:
         params={"queries": [keyword], "shipTo": "US", "maxPages": 1, "maxItems": limit},
         title=f"AliExpress 选品：{keyword}",
         note="默认收货国 US；1688 采购请用「详情 apify_1688_advanced」后走「采集」。",
+        estimated_items=limit,
     )
 
 
@@ -254,8 +307,9 @@ def _price_proposal(tokens: list[str]) -> Proposal | str:
         return "请提供 Amazon 商品 URL 或 10 位 ASIN。"
     return Proposal(
         endpoint_type="apify_amazon_price_tracker",
-        params={"products": [url]},
+        params={"products": [{"url": url}]},
         title="Amazon 价格追踪",
+        estimated_items=1,
     )
 
 
