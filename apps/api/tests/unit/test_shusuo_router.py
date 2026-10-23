@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from fastapi import Response
 from fastapi.testclient import TestClient
 from structlog.testing import capture_logs
 
@@ -26,9 +27,11 @@ HEALTH_PATH = "/api/agents/shusuo/health"
 
 
 @pytest.fixture(autouse=True)
-def _clear_config_cache():
+def _clear_state():
     get_shushuo_config.cache_clear()
+    shusuo_router._seen_events.clear()
     yield
+    shusuo_router._seen_events.clear()
     get_shushuo_config.cache_clear()
 
 
@@ -279,6 +282,21 @@ def test_parse_command_rejects_malformed_params() -> None:
 
 def test_clean_text_removes_mentions() -> None:
     assert commands.clean_text("@_user_1 帮助") == "帮助"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("@_user_1 帮助", "帮助"),
+        ("@_user_1 @_user_2 帮助", "帮助"),
+        ("@_all 帮助", "帮助"),
+        ("  @_user_1   帮助  ", "帮助"),
+    ],
+)
+def test_clean_text_removes_all_mentions(
+    raw: str, expected: str
+) -> None:
+    assert commands.clean_text(raw) == expected
 
 
 def _availability(**overrides):
@@ -719,3 +737,217 @@ async def test_event_failed_log_omits_exception_text(monkeypatch) -> None:
     for entry in logs:
         assert sentinel not in str(entry)
         assert "exc_info" not in entry
+
+
+def _post_encrypted_event(
+    client: TestClient,
+    envelope: dict[str, object],
+    encrypt_key: str,
+) -> Response:
+    encrypted = _encrypt(envelope, encrypt_key)
+    body = json.dumps({"encrypt": encrypted})
+    timestamp, nonce = "1700000001", "nonce-group"
+    return client.post(
+        WEBHOOK_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": _sign(timestamp, nonce, encrypt_key, body),
+            "X-Lark-Request-Timestamp": timestamp,
+            "X-Lark-Request-Nonce": nonce,
+        },
+    )
+
+
+def _encrypted_group_payload(
+    *,
+    event_id: str,
+    chat_type: str = "group",
+    mentions: list[dict[str, object]] | None = None,
+    text: str = "@_user_1 帮助",
+) -> dict[str, object]:
+    message: dict[str, object] = {
+        "message_id": "om_encrypted_group",
+        "chat_id": "oc_encrypted",
+        "message_type": "text",
+        "content": json.dumps({"text": text}),
+        "chat_type": chat_type,
+        "mentions": mentions,
+    }
+    return {
+        "header": {
+            "event_type": "im.message.receive_v1",
+            "event_id": event_id,
+            "token": "t",
+        },
+        "event": {
+            "sender": {"sender_type": "user", "sender_id": {"open_id": "ou_user"}},
+            "message": message,
+        },
+    }
+
+
+def _install_webhook_stubs(monkeypatch) -> tuple[list[str], list[commands.Command]]:
+    replies: list[str] = []
+    executed: list[commands.Command] = []
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        replies.append(text)
+        return "om_reply"
+
+    async def fake_bot_open_id() -> str:
+        return "ou_bot"
+
+    async def fake_execute(
+        command: commands.Command,
+        context_key: str = "",
+    ) -> commands.Reply:
+        executed.append(command)
+        return commands.Reply(text="ok")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.setattr(shusuo_router.commands, "execute", fake_execute)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    return replies, executed
+
+
+def test_encrypted_group_mention_executes_and_replies(monkeypatch) -> None:
+    encrypt_key = "test-encrypt-key"
+    monkeypatch.setenv("LARK_SHUSUO_ENCRYPT_KEY", encrypt_key)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    client = TestClient(app)
+    response = _post_encrypted_event(
+        client,
+        _encrypted_group_payload(
+            event_id="evt-enc-mention",
+            mentions=[{"id": {"open_id": "ou_bot"}}],
+        ),
+        encrypt_key,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"code": 0}
+    assert len(executed) == 1
+    assert executed[0].name == "help"
+    assert replies == ["ok"]
+
+
+def test_encrypted_group_without_mention_is_silent(monkeypatch) -> None:
+    encrypt_key = "test-encrypt-key"
+    monkeypatch.setenv("LARK_SHUSUO_ENCRYPT_KEY", encrypt_key)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    client = TestClient(app)
+    response = _post_encrypted_event(
+        client,
+        _encrypted_group_payload(event_id="evt-enc-no-mention", mentions=[]),
+        encrypt_key,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"code": 0}
+    assert executed == []
+    assert replies == []
+
+
+def test_encrypted_group_unknown_chat_type_is_silent(monkeypatch) -> None:
+    encrypt_key = "test-encrypt-key"
+    monkeypatch.setenv("LARK_SHUSUO_ENCRYPT_KEY", encrypt_key)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    client = TestClient(app)
+    response = _post_encrypted_event(
+        client,
+        _encrypted_group_payload(
+            event_id="evt-enc-unknown-chat",
+            chat_type="topic",
+            mentions=[{"id": {"open_id": "ou_bot"}}],
+        ),
+        encrypt_key,
+    )
+    assert response.status_code == 200
+    assert response.json() == {"code": 0}
+    assert executed == []
+    assert replies == []
+
+
+def test_encrypted_event_bad_signature_still_rejected(monkeypatch) -> None:
+    encrypt_key = "test-encrypt-key"
+    monkeypatch.setenv("LARK_SHUSUO_ENCRYPT_KEY", encrypt_key)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    encrypted = _encrypt(
+        _encrypted_group_payload(
+            event_id="evt-enc-bad-signature",
+            mentions=[{"id": {"open_id": "ou_bot"}}],
+        ),
+        encrypt_key,
+    )
+    body = json.dumps({"encrypt": encrypted})
+    client = TestClient(app)
+    response = client.post(
+        WEBHOOK_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": "bad",
+            "X-Lark-Request-Timestamp": "1",
+            "X-Lark-Request-Nonce": "n",
+        },
+    )
+    assert response.status_code == 403
+    assert executed == []
+    assert replies == []
+
+
+def test_duplicate_event_id_executes_once(monkeypatch) -> None:
+    monkeypatch.delenv("LARK_SHUSUO_ENCRYPT_KEY", raising=False)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    client = TestClient(app)
+    body = json.dumps(
+        _encrypted_group_payload(
+            event_id="evt-dup",
+            chat_type="p2p",
+            text="帮助",
+        )
+    )
+    for _ in range(2):
+        response = client.post(
+            WEBHOOK_PATH,
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"code": 0}
+
+    assert len(executed) == 1
+    assert len(replies) == 1
+
+
+def test_empty_event_id_is_processed_twice(monkeypatch) -> None:
+    monkeypatch.delenv("LARK_SHUSUO_ENCRYPT_KEY", raising=False)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    replies, executed = _install_webhook_stubs(monkeypatch)
+
+    client = TestClient(app)
+    body = json.dumps(
+        _encrypted_group_payload(event_id="", chat_type="p2p", text="帮助")
+    )
+    for _ in range(2):
+        response = client.post(
+            WEBHOOK_PATH,
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.json() == {"code": 0}
+
+    assert len(executed) == 2
+    assert len(replies) == 2
