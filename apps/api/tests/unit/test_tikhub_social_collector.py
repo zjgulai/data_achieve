@@ -486,7 +486,9 @@ YOUTUBE_SEARCH_RESPONSE: dict[str, Any] = {
                                             "videoRenderer": {
                                                 "videoId": "K5KVEU3aaeQ",
                                                 "title": {"runs": [{"text": "Python Full Course"}]},
-                                                "ownerText": {"runs": [{"text": "Programming with Mosh"}]},
+                                                "ownerText": {
+                                                    "runs": [{"text": "Programming with Mosh"}]
+                                                },
                                                 "viewCountText": {"simpleText": "7,823,573 views"},
                                             }
                                         },
@@ -550,13 +552,21 @@ REDDIT_SEARCH_RESPONSE: dict[str, Any] = {
                                             "post": {
                                                 "__typename": "Post",
                                                 "postTitle": "My Python magic is gone",
-                                                "permalink": "/r/Python/comments/1wwv97o/my_python_magic_is_gone/",
+                                                "permalink":
+                                                        "/r/Python/comments/1wwv97o/"
+                                                        "my_python_magic_is_gone/",
                                                 "score": 837,
                                                 "commentCount": 296,
                                                 "createdAt": "2026-10-03T19:08:43.382000+0000",
-                                                "authorInfo": {"__typename": "Redditor", "name": "RedYad2"},
-                                                "subreddit": {"__typename": "Subreddit", "name": "Python"},
-                                                "content": {"markdown": "I've been coding for a long time."},
+                                                "authorInfo": {
+                                                    "__typename": "Redditor", "name": "RedYad2"
+                                                },
+                                                "subreddit": {
+                                                    "__typename": "Subreddit", "name": "Python"
+                                                },
+                                                "content": {
+                                                    "markdown": "I've been coding for a long time."
+                                                },
                                             },
                                         }
                                     ]
@@ -975,8 +985,20 @@ TIKTOK_LIVE_SEARCH_RESPONSE: dict[str, Any] = {
     "data": {
         "status_code": 0,
         "data": [
-            {"type": 1, "lives": {"aweme_id": "7694578771533351710", "author": {"uid": "693", "nickname": "Kwood"}}},
-            {"type": 2, "anchor": {"owner_user_info": {"uid": "720", "nickname": "music"}, "live_info": {}}},
+            {
+                "type": 1,
+                "lives": {
+                    "aweme_id": "7694578771533351710",
+                    "author": {"uid": "693", "nickname": "Kwood"},
+                },
+            },
+            {
+                "type": 2,
+                "anchor": {
+                    "owner_user_info": {"uid": "720", "nickname": "music"},
+                    "live_info": {},
+                },
+            },
         ],
         "has_more": 1,
     },
@@ -1007,7 +1029,12 @@ TIKTOK_TOP_ADS_RESPONSE: dict[str, Any] = {
         "msg": "ok",
         "data": {
             "materials": [
-                {"id": "7182310470102122497", "highlight": "Showcase a comparison", "ctr": 0.21, "like": 33506}
+                {
+                    "id": "7182310470102122497",
+                    "highlight": "Showcase a comparison",
+                    "ctr": 0.21,
+                    "like": 33506,
+                }
             ]
         },
     },
@@ -1203,7 +1230,10 @@ NESTED_DOMESTIC_RESPONSES: dict[str, tuple[str, dict[str, Any]]] = {
 }
 
 
-@pytest.mark.parametrize("key,expected", [("bilibili", 1), ("douyin_hot", 1), ("weibo", 1), ("wechat", 1)])
+@pytest.mark.parametrize(
+    "key,expected",
+    [("bilibili", 1), ("douyin_hot", 1), ("weibo", 1), ("wechat", 1)],
+)
 def test_extract_items_nested_domestic_scopes(key: str, expected: int) -> None:
     platform, payload = NESTED_DOMESTIC_RESPONSES[key]
     items = _extract_items(payload, platform)

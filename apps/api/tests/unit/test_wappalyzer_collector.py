@@ -1,7 +1,7 @@
 """Unit tests for TechStackDetectCollector and _detect fingerprinting."""
 from __future__ import annotations
 
-from typing import Any
+import inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -14,7 +14,12 @@ from data_intelligence_hub.collectors.wappalyzer_collector import (
 )
 
 
-def _fake_response(html: str, headers: dict[str, str] = {}, status: int = 200):
+def _fake_response(
+    html: str,
+    headers: dict[str, str] | None = None,
+    status: int = 200,
+):
+    headers = {} if headers is None else headers
     r = MagicMock()
     r.text = html
     r.status_code = status
@@ -34,6 +39,11 @@ def _patch_client(response):
         "data_intelligence_hub.collectors.wappalyzer_collector._client",
         return_value=mock_client,
     )
+
+
+def test_fake_response_default_headers_is_none() -> None:
+    parameter = inspect.signature(_fake_response).parameters["headers"]
+    assert parameter.default is None
 
 
 class TestDetect:

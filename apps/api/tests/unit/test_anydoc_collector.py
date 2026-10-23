@@ -13,10 +13,8 @@ import pytest
 from data_intelligence_hub.collectors.anydoc_collector import (
     AnydocCollector,
     _ext_from_url,
-    _max_bytes,
 )
 from data_intelligence_hub.collectors.base import CollectorError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -124,24 +122,22 @@ class TestValidateConfig:
 
 @pytest.mark.asyncio
 async def test_test_fails_when_markitdown_missing():
-    with patch.dict("sys.modules", {"markitdown": None}):
-        with patch(
-            "data_intelligence_hub.collectors.anydoc_collector.AnydocCollector.test",
-        ) as mock_test:
-            mock_test.return_value = MagicMock(status="failed", message="markitdown not installed")
-            result = await _collector({"file_url": "https://example.com/doc.pdf"}).test()
+    with patch.dict("sys.modules", {"markitdown": None}), patch(
+        "data_intelligence_hub.collectors.anydoc_collector.AnydocCollector.test",
+    ) as mock_test:
+        mock_test.return_value = MagicMock(status="failed", message="markitdown not installed")
+        result = await _collector({"file_url": "https://example.com/doc.pdf"}).test()
     assert result.status == "failed"
 
 
 @pytest.mark.asyncio
 async def test_test_ok_when_markitdown_present():
     fake_md = MagicMock()
-    with patch.dict("sys.modules", {"markitdown": fake_md}):
-        with patch(
-            "data_intelligence_hub.collectors.anydoc_collector.AnydocCollector.test",
-        ) as mock_test:
-            mock_test.return_value = MagicMock(status="ok", message="markitdown ready")
-            result = await _collector({"file_url": "https://example.com/doc.pdf"}).test()
+    with patch.dict("sys.modules", {"markitdown": fake_md}), patch(
+        "data_intelligence_hub.collectors.anydoc_collector.AnydocCollector.test",
+    ) as mock_test:
+        mock_test.return_value = MagicMock(status="ok", message="markitdown ready")
+        result = await _collector({"file_url": "https://example.com/doc.pdf"}).test()
     assert result.status == "ok"
 
 

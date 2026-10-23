@@ -109,7 +109,9 @@ class NpmPackageCollector(BaseCollector):
             "peer_dependencies": list((latest_info.get("peerDependencies") or {}).keys()),
         }
 
-        logs.append(collector_log("collect_done", f"package={package!r} version={latest_version!r}"))
+        logs.append(
+            collector_log("collect_done", f"package={package!r} version={latest_version!r}")
+        )
         return CollectionResult(
             raw_records=[
                 CollectorRawRecord(
@@ -148,7 +150,9 @@ class NpmSearchCollector(BaseCollector):
                 )
                 count = len(response.json().get("objects", []))
                 logs.append(collector_log("test", f"npm search returned {count} results"))
-                return CollectorTestResult(status="ok", message="npm search API reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="npm search API reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -280,7 +284,9 @@ class PyPIPackageCollector(BaseCollector):
             "downloads": data.get("urls", [{}])[0].get("downloads", -1) if data.get("urls") else -1,
         }
 
-        logs.append(collector_log("collect_done", f"package={package!r} version={latest_version!r}"))
+        logs.append(
+            collector_log("collect_done", f"package={package!r} version={latest_version!r}")
+        )
         return CollectionResult(
             raw_records=[
                 CollectorRawRecord(
@@ -318,7 +324,11 @@ class PyPISearchCollector(BaseCollector):
                     params={"q": "requests", "o": "-created"},
                 )
                 ok = response.status_code == 200 and "package-snippet" in response.text
-                logs.append(collector_log("test", f"PyPI search status={response.status_code} snippets_present={ok}"))
+                logs.append(
+                    collector_log(
+                        "test", f"PyPI search status={response.status_code} snippets_present={ok}"
+                    )
+                )
                 return CollectorTestResult(
                     status="ok" if ok else "failed",
                     message="PyPI search HTML reachable" if ok else "no package snippets found",
@@ -370,7 +380,9 @@ class PyPISearchCollector(BaseCollector):
                             content={
                                 "name": pkg_name,
                                 "version": version,
-                                "description": (desc_el.get_text(strip=True) if desc_el else "").strip(),
+                                "description": (
+                                    (desc_el.get_text(strip=True) if desc_el else "").strip()
+                                ),
                                 "url": link,
                                 "released": date_el.get("datetime", "") if date_el else "",
                                 "query": query,
@@ -378,7 +390,9 @@ class PyPISearchCollector(BaseCollector):
                         )
                     )
 
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except ImportError:
             errors.append("beautifulsoup4 not installed")
             logs.append(collector_log("import_error", "beautifulsoup4 missing", "error"))

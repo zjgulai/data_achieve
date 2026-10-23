@@ -6,20 +6,18 @@ All tests mock twscrape internals — no real Twitter accounts required.
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from data_intelligence_hub.collectors.base import CollectorError
 from data_intelligence_hub.collectors.twscrape_collector import (
-    TwscrapeTrendsCollector,
     TwscrapeSearchCollector,
+    TwscrapeTrendsCollector,
     TwscrapeUserTweetsCollector,
     _load_accounts,
 )
-from data_intelligence_hub.collectors.base import CollectorError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -284,9 +282,9 @@ async def test_user_tweets_collect_user_not_found_returns_error(monkeypatch):
             new_callable=AsyncMock,
         ),
         patch.dict("sys.modules", {"twscrape": fake_twscrape}),
+        pytest.raises(CollectorError, match="User not found"),
     ):
-        with pytest.raises(CollectorError, match="User not found"):
-            await _user_tweets({"username": "ghost_user"}).collect()
+        await _user_tweets({"username": "ghost_user"}).collect()
 
 
 @pytest.mark.asyncio

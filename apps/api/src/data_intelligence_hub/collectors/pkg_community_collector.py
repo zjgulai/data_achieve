@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
+
 from .base import (
     BaseCollector,
     CollectionResult,
@@ -15,7 +17,6 @@ from .base import (
     collector_log,
     require_text,
 )
-from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
 
 class _NoRedirectClient:
@@ -31,7 +32,11 @@ _CRATES_UA = "data-intelligence-hub/1.0 (scrapy.lute-tlz-dddd.top)"
 _CRATES_HEADERS = {"User-Agent": _CRATES_UA, "Accept": "application/json"}
 
 
-async def _crates_get(client: httpx.AsyncClient, url: str, params: dict[str, str] | None = None) -> httpx.Response:
+async def _crates_get(
+    client: httpx.AsyncClient,
+    url: str,
+    params: dict[str, str] | None = None,
+) -> httpx.Response:
     r = await client.get(
         url, params=params, headers=_CRATES_HEADERS, timeout=15, follow_redirects=False
     )
@@ -55,7 +60,9 @@ class CratesIoPackageCollector(BaseCollector):
                 r = await _crates_get(client, "https://crates.io/api/v1/crates/serde")
                 name = r.json().get("crate", {}).get("name", "")
                 logs.append(collector_log("test", f"crates.io reachable, crate={name!r}"))
-                return CollectorTestResult(status="ok", message=f"crates.io reachable, fetched {name!r}", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message=f"crates.io reachable, fetched {name!r}", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -133,7 +140,9 @@ class CratesIoSearchCollector(BaseCollector):
                 )
                 count = len(r.json().get("crates", []))
                 logs.append(collector_log("test", f"crates.io search returned {count} results"))
-                return CollectorTestResult(status="ok", message="crates.io search reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="crates.io search reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -170,7 +179,9 @@ class CratesIoSearchCollector(BaseCollector):
                             "updated_at": c.get("updated_at", ""),
                         },
                     ))
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)
@@ -197,7 +208,9 @@ class RubyGemsPackageCollector(BaseCollector):
                 )
                 name = r.json().get("name", "")
                 logs.append(collector_log("test", f"RubyGems reachable, gem={name!r}"))
-                return CollectorTestResult(status="ok", message=f"RubyGems reachable, fetched {name!r}", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message=f"RubyGems reachable, fetched {name!r}", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -239,7 +252,9 @@ class RubyGemsPackageCollector(BaseCollector):
             "gem_uri": data.get("gem_uri", ""),
             "dependencies": {
                 "runtime": [d.get("name") for d in data.get("dependencies", {}).get("runtime", [])],
-                "development": [d.get("name") for d in data.get("dependencies", {}).get("development", [])],
+                "development": [
+                    d.get("name") for d in data.get("dependencies", {}).get("development", [])
+                ],
             },
         }
 
@@ -277,7 +292,9 @@ class RubyGemsSearchCollector(BaseCollector):
                 )
                 count = len(r.json()) if isinstance(r.json(), list) else 0
                 logs.append(collector_log("test", f"RubyGems search returned {count} results"))
-                return CollectorTestResult(status="ok", message="RubyGems search reachable", logs=logs)
+                return CollectorTestResult(
+                    status="ok", message="RubyGems search reachable", logs=logs
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             logs.append(collector_log("test_failed", msg, "error"))
@@ -304,7 +321,10 @@ class RubyGemsSearchCollector(BaseCollector):
                 for g in gems:
                     raw_records.append(CollectorRawRecord(
                         record_type="product",
-                        source_url=g.get("project_uri") or f"https://rubygems.org/gems/{g.get('name', '')}",
+                        source_url=(
+                            g.get("project_uri")
+                            or f"https://rubygems.org/gems/{g.get('name', '')}"
+                        ),
                         content={
                             "name": g.get("name", ""),
                             "version": g.get("version", ""),
@@ -314,7 +334,9 @@ class RubyGemsSearchCollector(BaseCollector):
                             "licenses": g.get("licenses", []),
                         },
                     ))
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except httpx.HTTPError as exc:
             msg = collector_http_error_message(exc)
             errors.append(msg)
@@ -380,10 +402,18 @@ class GoPackageCollector(BaseCollector):
                 return el.get_text(strip=True) if el else ""
 
             synopsis = _text(".Documentation-overview p") or _text('[data-kind="synopsis"]') or ""
-            module = _text(".UnitMeta-repo a") or _text('[data-test-id="UnitHeader-module"] a') or ""
-            version_el = soup.select_one(".UnitHeader-version") or soup.select_one('[data-test-id="UnitHeader-version"]')
+            module = (
+                _text(".UnitMeta-repo a") or _text('[data-test-id="UnitHeader-module"] a') or ""
+            )
+            version_el = (
+                soup.select_one(".UnitHeader-version")
+                or soup.select_one('[data-test-id="UnitHeader-version"]')
+            )
             version = version_el.get_text(strip=True) if version_el else ""
-            license_el = soup.select_one(".UnitMeta-license") or soup.select_one('[data-test-id="UnitHeader-licenses"]')
+            license_el = (
+                soup.select_one(".UnitMeta-license")
+                or soup.select_one('[data-test-id="UnitHeader-licenses"]')
+            )
             license_text = license_el.get_text(strip=True) if license_el else ""
 
             content: dict[str, Any] = {
@@ -467,21 +497,29 @@ class GoSearchCollector(BaseCollector):
                 logs.append(collector_log("scrape", f"found {len(results)} packages"))
 
                 for item in results:
-                    name_el = item.select_one(".SearchSnippet-header-inner a") or item.select_one("h2 a")
+                    name_el = (
+                        item.select_one(".SearchSnippet-header-inner a") or item.select_one("h2 a")
+                    )
                     synopsis_el = item.select_one(".SearchSnippet-synopsis") or item.select_one("p")
-                    import_path = name_el["href"].lstrip("/") if name_el and name_el.get("href") else ""
+                    import_path = (
+                        name_el["href"].lstrip("/") if name_el and name_el.get("href") else ""
+                    )
                     raw_records.append(CollectorRawRecord(
                         record_type="product",
                         source_url=f"https://pkg.go.dev/{import_path}" if import_path else None,
                         content={
                             "import_path": import_path,
                             "name": name_el.get_text(strip=True) if name_el else "",
-                            "synopsis": synopsis_el.get_text(strip=True)[:300] if synopsis_el else "",
+                            "synopsis": (
+                                synopsis_el.get_text(strip=True)[:300] if synopsis_el else ""
+                            ),
                             "query": query,
                         },
                     ))
 
-                logs.append(collector_log("collect_done", f"query={query!r} count={len(raw_records)}"))
+                logs.append(
+                    collector_log("collect_done", f"query={query!r} count={len(raw_records)}")
+                )
         except ImportError:
             errors.append("beautifulsoup4 not installed")
             logs.append(collector_log("import_error", "beautifulsoup4 missing", "error"))
