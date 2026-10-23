@@ -431,6 +431,14 @@ def test_intent_proposal_reply_requires_confirmation() -> None:
     assert "tikhub_x_trending" in text
 
 
+def test_intent_proposal_reply_says_five_minutes() -> None:
+    proposal = shusuo_intents.build_proposal("热点 x")
+    assert not isinstance(proposal, str)
+    text = shusuo_intents.proposal_reply(proposal)
+    assert "5 分钟内有效" in text
+    assert "10 分钟" not in text
+
+
 async def test_unknown_without_llm_key_returns_help(monkeypatch) -> None:
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     reply = await commands.execute(commands.Command("unknown", "飞书会被墙挡吗"))

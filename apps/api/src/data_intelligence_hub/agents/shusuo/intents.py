@@ -79,7 +79,7 @@ def _proposal_text(proposal: Proposal) -> str:
     ]
     if proposal.note:
         lines.append(f"说明：{proposal.note}")
-    lines.append("回复「确认」执行；回复「取消」放弃。10 分钟内有效。采集会消耗上游额度。")
+    lines.append("回复「确认」执行；回复「取消」放弃。5 分钟内有效。采集会消耗上游额度。")
     return "\n".join(lines)
 
 
