@@ -237,7 +237,7 @@ Impact `collector_specs`/catalog construction and collector route catalog symbol
 
 ```bash
 uv run ruff check src/data_intelligence_hub/services/collector_catalog.py src/data_intelligence_hub/api/routes/collectors.py --select E501 --output-format concise | tee /tmp/r0-task3-red.txt
-test "$(wc -l < /tmp/r0-task3-red.txt | tr -d ' ')" -eq 64
+test "$(grep -c E501 /tmp/r0-task3-red.txt)" -eq 64
 ```
 
 - [ ] **Step 2: 冻结输出**
@@ -285,7 +285,7 @@ git commit -m "style(catalog): wrap collector metadata"
 
 ```bash
 uv run ruff check src/data_intelligence_hub/collectors/pkg_community_collector.py src/data_intelligence_hub/collectors/pkg_registry2_collector.py src/data_intelligence_hub/collectors/package_registry_collector.py src/data_intelligence_hub/collectors/aliens_eye_collector.py src/data_intelligence_hub/collectors/hackernews_collector.py src/data_intelligence_hub/collectors/robin_collector.py --select E501 --output-format concise | tee /tmp/r0-task4-red.txt
-test "$(wc -l < /tmp/r0-task4-red.txt | tr -d ' ')" -eq 41
+test "$(grep -c E501 /tmp/r0-task4-red.txt)" -eq 41
 ```
 
 - [ ] **Step 2: 实现**
@@ -325,7 +325,7 @@ git commit -m "style(collectors): wrap package collector code"
 
 ```bash
 uv run ruff check src/data_intelligence_hub/collectors/tikhub_social.py tests/unit/test_tikhub_social_collector.py src/data_intelligence_hub/collectors/base.py src/data_intelligence_hub/platform_packages/renderers.py --select E501 --output-format concise | tee /tmp/r0-task5-red.txt
-test "$(wc -l < /tmp/r0-task5-red.txt | tr -d ' ')" -eq 19
+test "$(grep -c E501 /tmp/r0-task5-red.txt)" -eq 19
 ```
 
 - [ ] **Step 2: 实现**
@@ -422,7 +422,7 @@ Then append C0 evidence with R0 commit range and `All checks passed!`, run GitNe
 
 1. Keep `c0-pg15` running.
 2. Rerun C0 Task 5 Step 2 Ruff once in the merged C0 worktree.
-3. Resume at Task 5 Step 3 (`mypy src tests`) and continue unchanged.
+3. Resume at Task 5 Step 3 (`mypy src tests`) with the amended baseline non-regression gate; use the amended unit baseline `2493 passed, 2 skipped` for Steps 4 and 6.
 4. R0 adds no migration; C0 head remains `202610210057`.
 
 ## Self-Review

@@ -6,17 +6,7 @@ import httpx
 
 from data_intelligence_hub.collectors.outbound_policy import assert_collector_allowed
 
-
-class _NoRedirectClient:
-    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
-
-    def __init__(self, inner: httpx.AsyncClient) -> None:
-        self._inner = inner
-
-    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
-        return await self._inner.get(url, follow_redirects=False, **kwargs)
-
-from .base import (  # noqa: E402  # keep after _NoRedirectClient initialization
+from .base import (
     BaseCollector,
     CollectionResult,
     CollectorError,
@@ -27,6 +17,16 @@ from .base import (  # noqa: E402  # keep after _NoRedirectClient initialization
     collector_log,
     require_text,
 )
+
+
+class _NoRedirectClient:
+    """代理注入的 client，但逐请求强制 follow_redirects=False。"""
+
+    def __init__(self, inner: httpx.AsyncClient) -> None:
+        self._inner = inner
+
+    async def get(self, url: str, **kwargs: Any) -> httpx.Response:
+        return await self._inner.get(url, follow_redirects=False, **kwargs)
 
 _NO_BROTLI_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; data-scraper/1.0)",
