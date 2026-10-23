@@ -126,6 +126,8 @@ R0 不含 migration。C0 schema head 保持 `202610210057`。后续从 Task 5 St
 | 构建后 `git status --porcelain -uno` | 空输出；`.next` 与缓存均为忽略内容，`pnpm-lock.yaml` 无 diff |
 | GitNexus impact（编辑前门禁） | 对本文档 upstream impact 返回 UNKNOWN（0 caller，file-node 无 process/module 轴）；文本搜索确认 apps/、scripts/、package.json 无代码引用本文档，属纯证据 markdown |
 | 浏览器验收交接 | 延期 C14；grep 证据 `C14_HANDOFF_REQUIRED`；四个判据见下 |
+| 构建警告 | Next 16.3.0：`middleware` 文件约定已弃用，建议改用 `proxy`；来源 `apps/scraper-console/src/middleware.ts`（commit `2c1ad41`，pre-existing，Task 6 未改）；不影响本次 build 门禁；迁移风险交 Task 7/8 汇总 |
+| 提交前 GitNexus | 证据文档 diff 未命中索引符号；退出码 0；无 `partial`/`truncated`；干净树基线为 `未检测到变更。` |
 
 浏览器验收未在 C0 执行。交接检查结果：`grep -n 'workbench\|reports\|capabilities' apps/scraper-console/e2e/routes.spec.ts` 无匹配，退出码 1，输出 `C14_HANDOFF_REQUIRED`。该文件的 `PAGE_ROUTES` 常量列出的 14 条路由均不含 `/workbench`、`/reports`、`/capabilities`，三个 B5 页面均未覆盖。
 
