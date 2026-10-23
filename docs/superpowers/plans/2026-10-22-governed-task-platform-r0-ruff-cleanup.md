@@ -126,17 +126,28 @@ Expected: 13 findings: I001×5、F401×4、SIM117×3、B006×1。
 
 - [ ] **Step 2: 写 B006 回归测试**
 
-Append to `test_wappalyzer_collector.py`:
+Add `import inspect` and append to `test_wappalyzer_collector.py`:
 
 ```python
-def test_fake_response_does_not_share_default_headers() -> None:
-    first = _fake_response("a")
-    first.headers["x-test"] = "1"
-    second = _fake_response("b")
-    assert "x-test" not in second.headers
+def test_fake_response_default_headers_is_none() -> None:
+    parameter = inspect.signature(_fake_response).parameters["headers"]
+    assert parameter.default is None
 ```
 
-Run it. Expected: FAIL before changing `_fake_response`.
+Run the assertion against the parent implementation before editing:
+
+```bash
+git show HEAD:apps/api/tests/unit/test_wappalyzer_collector.py > /tmp/r0-wappalyzer-before.py
+PYTHONPATH=src uv run python - <<'PY'
+import inspect
+import runpy
+module = runpy.run_path("/tmp/r0-wappalyzer-before.py")
+parameter = inspect.signature(module["_fake_response"]).parameters["headers"]
+assert parameter.default is None
+PY
+```
+
+Expected: FAIL with `AssertionError` because the parent default is `{}`.
 
 - [ ] **Step 3: 实现**
 
