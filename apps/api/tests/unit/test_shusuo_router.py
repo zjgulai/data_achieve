@@ -6,6 +6,7 @@ import base64
 import hashlib
 import json
 import os
+from dataclasses import dataclass
 
 import pytest
 from cryptography.hazmat.primitives import padding
@@ -167,6 +168,7 @@ async def test_help_event_replies_with_help_text(monkeypatch) -> None:
             "message": {
                 "message_id": "om_1",
                 "chat_id": "oc_1",
+                "chat_type": "p2p",
                 "message_type": "text",
                 "content": json.dumps({"text": "帮助"}),
             },
@@ -219,6 +221,7 @@ async def test_non_text_message_gets_hint(monkeypatch) -> None:
             "message": {
                 "message_id": "om_3",
                 "chat_id": "oc_1",
+                "chat_type": "p2p",
                 "message_type": "image",
                 "content": "{}",
             },
@@ -245,6 +248,7 @@ async def test_allowlist_blocks_unknown_user(monkeypatch) -> None:
             "message": {
                 "message_id": "om_4",
                 "chat_id": "oc_1",
+                "chat_type": "p2p",
                 "message_type": "text",
                 "content": json.dumps({"text": "帮助"}),
             },
@@ -422,6 +426,22 @@ async def test_unknown_uses_llm_answer(monkeypatch) -> None:
     assert reply.text == "回答：飞书会被墙挡吗"
 
 
+def _p2p_envelope(text: str) -> dict[str, object]:
+    return {
+        "header": {"event_type": "im.message.receive_v1", "event_id": "evt-p2p-gate"},
+        "event": {
+            "sender": {"sender_type": "user", "sender_id": {"open_id": "ou_user"}},
+            "message": {
+                "message_id": "om_p2p_gate",
+                "chat_id": "oc_p2p",
+                "chat_type": "p2p",
+                "message_type": "text",
+                "content": json.dumps({"text": text}),
+            },
+        },
+    }
+
+
 def _group_envelope(*, mentions: list[dict[str, object]] | None = None) -> dict[str, object]:
     return {
         "header": {"event_type": "im.message.receive_v1", "event_id": "evt-group"},
@@ -455,6 +475,51 @@ async def _run_group_case(monkeypatch, envelope) -> list[str]:
     get_shushuo_config.cache_clear()
     await shusuo_router._handle_envelope(envelope)
     return replies
+
+
+@dataclass
+class GroupCaseResult:
+    replies: list[str]
+    executed: list[commands.Command]
+    bot_open_id_calls: int
+
+
+async def _run_message_case(
+    monkeypatch,
+    envelope: dict[str, object],
+    *,
+    bot_open_id: str = "ou_bot",
+    bot_open_id_error: Exception | None = None,
+) -> GroupCaseResult:
+    replies: list[str] = []
+    executed: list[commands.Command] = []
+    calls = 0
+
+    async def fake_reply(message_id: str, text: str) -> str:
+        replies.append(text)
+        return "om_reply"
+
+    async def fake_bot_open_id() -> str:
+        nonlocal calls
+        calls += 1
+        if bot_open_id_error is not None:
+            raise bot_open_id_error
+        return bot_open_id
+
+    async def fake_execute(
+        command: commands.Command,
+        context_key: str = "",
+    ) -> commands.Reply:
+        executed.append(command)
+        return commands.Reply(text="ok")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "reply_text", fake_reply)
+    monkeypatch.setattr(shusuo_router.lark_client, "get_bot_open_id", fake_bot_open_id)
+    monkeypatch.setattr(shusuo_router.commands, "execute", fake_execute)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    await shusuo_router._handle_envelope(envelope)
+    return GroupCaseResult(replies, executed, calls)
 
 
 async def test_group_message_without_mention_is_ignored(monkeypatch) -> None:
@@ -493,3 +558,95 @@ async def test_p2p_message_is_answered_without_mention(monkeypatch) -> None:
     }
     await shusuo_router._handle_envelope(envelope)
     assert replies and "数说" in replies[0]
+
+
+async def test_group_without_mention_does_not_execute(monkeypatch) -> None:
+    result = await _run_message_case(monkeypatch, _group_envelope())
+    assert result.replies == []
+    assert result.executed == []
+    assert result.bot_open_id_calls == 1
+
+
+async def test_group_mentioning_other_user_is_ignored(monkeypatch) -> None:
+    envelope = _group_envelope(
+        mentions=[{"id": {"open_id": "ou_other"}, "name": "其他人"}]
+    )
+    result = await _run_message_case(monkeypatch, envelope)
+    assert result.replies == []
+    assert result.executed == []
+
+
+async def test_group_with_multiple_mentions_including_bot_is_answered(monkeypatch) -> None:
+    envelope = _group_envelope(
+        mentions=[
+            {"id": {"open_id": "ou_other"}},
+            {"id": {"open_id": "ou_bot"}},
+        ]
+    )
+    result = await _run_message_case(monkeypatch, envelope)
+    assert len(result.executed) == 1
+    assert result.replies == ["ok"]
+
+
+async def test_missing_chat_type_is_ignored(monkeypatch) -> None:
+    envelope = _group_envelope()
+    message = envelope["event"]["message"]
+    message.pop("chat_type")
+    result = await _run_message_case(monkeypatch, envelope)
+    assert result.replies == []
+    assert result.executed == []
+    assert result.bot_open_id_calls == 0
+
+
+async def test_unknown_chat_type_is_ignored(monkeypatch) -> None:
+    envelope = _group_envelope()
+    envelope["event"]["message"]["chat_type"] = "topic"
+    result = await _run_message_case(monkeypatch, envelope)
+    assert result.replies == []
+    assert result.executed == []
+    assert result.bot_open_id_calls == 0
+
+
+async def test_p2p_does_not_query_bot_identity(monkeypatch) -> None:
+    envelope = _p2p_envelope("帮助")
+    result = await _run_message_case(monkeypatch, envelope)
+    assert len(result.executed) == 1
+    assert result.bot_open_id_calls == 0
+
+
+async def test_bot_message_does_not_query_bot_identity(monkeypatch) -> None:
+    envelope = _group_envelope(
+        mentions=[{"id": {"open_id": "ou_bot"}}]
+    )
+    envelope["event"]["sender"]["sender_type"] = "app"
+    result = await _run_message_case(monkeypatch, envelope)
+    assert result.replies == []
+    assert result.executed == []
+    assert result.bot_open_id_calls == 0
+
+
+async def test_group_bot_identity_failure_is_silent(monkeypatch) -> None:
+    envelope = _group_envelope(
+        mentions=[{"id": {"open_id": "ou_bot"}}]
+    )
+    result = await _run_message_case(
+        monkeypatch,
+        envelope,
+        bot_open_id_error=RuntimeError("bot info unavailable"),
+    )
+    assert result.replies == []
+    assert result.executed == []
+
+
+async def test_group_empty_bot_identity_is_ignored(monkeypatch) -> None:
+    envelope = _group_envelope(mentions=[{"id": {"open_id": "ou_bot"}}])
+    result = await _run_message_case(monkeypatch, envelope, bot_open_id="")
+    assert result.replies == []
+    assert result.executed == []
+
+
+async def test_group_malformed_mention_open_id_is_ignored(monkeypatch) -> None:
+    envelope = _group_envelope(mentions=[{"id": {"open_id": 12345}}])
+    result = await _run_message_case(monkeypatch, envelope)
+    assert result.replies == []
+    assert result.executed == []

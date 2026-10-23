@@ -8,19 +8,20 @@
 from __future__ import annotations
 
 import json
-import logging
 import time
 from collections import OrderedDict
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 from fastapi.responses import JSONResponse
 
 from . import commands, lark_client
 from .config import get_shushuo_config
 from .crypto import FeishuCryptoError, decrypt_event, verify_signature
+from .gate import MessageGateDecision, decide_message_gate
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["shusuo"])
 
@@ -87,8 +88,8 @@ async def shusuo_webhook(
     if "encrypt" in envelope:
         if not config.encrypt_enabled:
             logger.error(
-                "shusuo_webhook_encrypted_but_no_key encrypted_length=%d",
-                len(str(envelope.get("encrypt", ""))),
+                "shusuo_webhook_encrypted_but_no_key",
+                encrypted_length=len(str(envelope.get("encrypt", ""))),
             )
             return _json({"code": 400, "msg": "encrypt key is not configured"}, 400)
         if x_lark_signature and not verify_signature(
@@ -103,7 +104,10 @@ async def shusuo_webhook(
         try:
             envelope = decrypt_event(str(envelope["encrypt"]), config.encrypt_key)
         except FeishuCryptoError as exc:
-            logger.warning("shusuo_webhook_decrypt_failed: %s", exc)
+            logger.warning(
+                "shusuo_webhook_decrypt_failed",
+                error_type=type(exc).__name__,
+            )
             return _json({"code": 400, "msg": "decrypt failed"}, 400)
 
     if envelope.get("type") == "url_verification":
@@ -125,7 +129,7 @@ async def shusuo_webhook(
             return _json({"code": 403, "msg": "invalid verification token"}, 403)
 
     if config.app_id and header.get("app_id") and header.get("app_id") != config.app_id:
-        logger.warning("shusuo_webhook_other_app app_id=%s", header.get("app_id"))
+        logger.warning("shusuo_webhook_other_app")
         return _json({"code": 403, "msg": "unexpected app"}, 403)
 
     event_id = str(header.get("event_id", ""))
@@ -141,9 +145,9 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         header = envelope.get("header") or {}
         event_type = str(header.get("event_type", ""))
         logger.info(
-            "shusuo_event_received event_type=%s event_id=%s",
-            event_type,
-            header.get("event_id", ""),
+            "shusuo_event_received",
+            event_type=event_type,
+            event_id=str(header.get("event_id", "")),
         )
         if event_type != "im.message.receive_v1":
             return
@@ -158,18 +162,45 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
         chat_id = str(message.get("chat_id", ""))
         open_id = str((sender.get("sender_id") or {}).get("open_id", ""))
 
-        # 群聊只在被 @ 时回复；未 @ 的消息直接忽略，不插话。
-        if message.get("chat_type") == "group":
-            mentions = message.get("mentions") or []
-            bot_open_id = await lark_client.get_bot_open_id()
-            mentioned = bool(bot_open_id) and any(
-                str((mention.get("id") or {}).get("open_id", "")) == bot_open_id
-                for mention in mentions
-                if isinstance(mention, dict)
-            )
-            if not mentioned:
-                logger.debug("shusuo_group_message_ignored message_id=%s", message_id)
+        # 群聊只在被 @ 时回复；未 @ 的消息直接忽略，不插话。会话类型未知时 fail-closed。
+        chat_type = message.get("chat_type")
+        bot_open_id: str | None = None
+        if chat_type == "group":
+            try:
+                bot_open_id = await lark_client.get_bot_open_id()
+            except Exception as exc:  # noqa: BLE001 - 群聊必须 fail-closed
+                logger.warning(
+                    "shusuo_bot_identity_unavailable",
+                    message_id=message_id,
+                    error_type=type(exc).__name__,
+                )
                 return
+
+        decision = decide_message_gate(
+            chat_type=chat_type,
+            mentions=message.get("mentions"),
+            bot_open_id=bot_open_id,
+        )
+        if decision not in {
+            MessageGateDecision.ALLOW_P2P,
+            MessageGateDecision.ALLOW_GROUP_MENTION,
+        }:
+            log_method = (
+                logger.warning
+                if decision
+                in {
+                    MessageGateDecision.IGNORE_UNKNOWN_CHAT_TYPE,
+                    MessageGateDecision.IGNORE_BOT_ID_UNAVAILABLE,
+                }
+                else logger.debug
+            )
+            log_method(
+                "shusuo_message_ignored",
+                message_id=message_id,
+                chat_type=str(chat_type or ""),
+                decision=decision.value,
+            )
+            return
 
         config = get_shushuo_config()
         if config.allowed_open_ids and open_id not in config.allowed_open_ids:
@@ -180,10 +211,9 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             return
 
         logger.info(
-            "shusuo_message_received message_type=%s chat_id=%s open_id=%s",
-            message.get("message_type"),
-            chat_id,
-            open_id,
+            "shusuo_message_received",
+            message_type=str(message.get("message_type", "")),
+            chat_id=chat_id,
         )
         text = _extract_text(message)
         if not text:
@@ -199,14 +229,16 @@ async def _handle_envelope(envelope: dict[str, Any]) -> None:
             await lark_client.reply_text(message_id, reply.ack)
         await lark_client.reply_text(message_id, _truncate(reply.text))
         logger.info(
-            "shusuo_command_handled command=%s argument=%s chat_id=%s open_id=%s",
-            command.name,
-            command.argument,
-            chat_id,
-            open_id,
+            "shusuo_command_handled",
+            command=command.name,
+            argument=command.argument,
+            chat_id=chat_id,
         )
     except Exception as exc:  # noqa: BLE001 - webhook 必须吞掉异常，避免飞书无限重试
-        logger.exception("shusuo_event_failed: %s", exc)
+        logger.exception(
+            "shusuo_event_failed",
+            error_type=type(exc).__name__,
+        )
 
 
 def _extract_text(message: dict[str, Any]) -> str:
