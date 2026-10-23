@@ -79,6 +79,7 @@ Task 1 = 13（8323a41、45a98f5）；Task 2 = 3（0599c75）；Task 3 = 64（3b4
 - 基线对照：在 C0 worktree（`/Users/lute/Project/data_scrapy-c0`，HEAD 8a68069）运行同一命令得 `Found 1199 errors in 117 files`。mypy 失败为存量基线，非 R0 引入。
 - +1 差值分析：全部落在 `tikhub_social.py` 的 union-attr 计数（C0 9 条 → R0 10 条）。基线 L1411 `anchor.get(...) if isinstance(anchor.get(...), dict)` 单行含两次 `.get`，mypy 报 1 次；Task 5 的 AST 等价换行把该表达式拆到 L1414/L1415，mypy 按行各报 1 次。两版本 `ast.dump(include_attributes=False)` 完全一致（本次验证重跑确认 `AST identical: True`）。属同一表达式的行计数假象，无新增类型错误类别。
 - R0 范围内未修改任何测试或代码以改变 mypy 结果。
+- 2026-10-23 用户裁决：R0 的 mypy 门禁采用 C0 起点基线非回归，不扩大为约 1200 项存量类型清理。去除 summary/note 并归一化行列号后，C0 与 R0 的唯一诊断签名均为 498，新增 0、移除 0；因此 1200 对 1199 的差值不构成新的类型错误语义，mypy 基线非回归门禁通过。
 
 ### pytest
 

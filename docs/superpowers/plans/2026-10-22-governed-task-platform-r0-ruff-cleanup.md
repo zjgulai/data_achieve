@@ -21,7 +21,7 @@
 - 每个任务改既有符号前运行 GitNexus impact。`UNKNOWN` 用 `rg` 查调用方；HIGH/CRITICAL 写入报告。
 - 每次提交前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。`partial`/`truncated` 不得为 true。
 - 不删除、skip、xfail 或放宽任何测试。测试输出出现 warning 或 error 时记录。
-- 最终必须通过：`uv run ruff check .`、`uv run mypy src tests`、`pytest tests/unit -q`、带 `c0-pg15` 的 `pytest tests/integration -q`、工具目录与平台包契约测试。
+- 最终必须通过：`uv run ruff check .`、`pytest tests/unit -q`、带 `c0-pg15` 的 `pytest tests/integration -q`、工具目录与平台包契约测试。`uv run mypy src tests` 采用 C0 起点基线非回归门禁：不新增归一化后的唯一诊断签名；仅因 AST 等价换行造成的同一诊断跨行重复计数不阻塞。该口径由用户于 2026-10-23 裁决。
 - 不推送、不打标签。R0 不自行合并到 C0；合并由 C0 控制器在 R0 最终审查通过后执行。
 
 ## Frozen Ruff Baseline
@@ -365,6 +365,8 @@ cd /Users/lute/Project/data_scrapy-r0/apps/api
 uv run ruff check .
 uv run mypy src tests
 ```
+
+mypy 判定：与 C0 起点 `8a68069790d9d7c905505892be2968d90f394629` 运行同一命令；去除 `summary` 和 `note` 并归一化行列号后，唯一诊断签名集合必须相同。原始错误数可因 AST 等价换行把同一诊断拆到两行而变化，但必须记录并证明无新增诊断签名。
 
 - [ ] **Step 2: unit/integration**
 
