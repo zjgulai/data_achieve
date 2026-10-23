@@ -16,7 +16,7 @@ class _NoRedirectClient:
     async def get(self, url: str, **kwargs: Any) -> httpx.Response:
         return await self._inner.get(url, follow_redirects=False, **kwargs)
 
-from .base import (
+from .base import (  # noqa: E402  # keep after _NoRedirectClient initialization
     BaseCollector,
     CollectionResult,
     CollectorError,

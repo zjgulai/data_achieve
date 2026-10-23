@@ -90,7 +90,7 @@ class HackerNewsFrontPageCollector(BaseCollector):
                     tasks = [self._fetch_story(client, story_id) for story_id in batch]
                     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                    for story_id, result in zip(batch, results):
+                    for story_id, result in zip(batch, results, strict=True):
                         if isinstance(result, Exception):
                             errors.append(f"story {story_id}: {result}")
                         elif result:
@@ -247,7 +247,7 @@ class HackerNewsUserCollector(BaseCollector):
                     tasks = [self._fetch_item(client, item_id) for item_id in batch]
                     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                    for item_id, result in zip(batch, results):
+                    for item_id, result in zip(batch, results, strict=True):
                         if isinstance(result, Exception):
                             errors.append(f"item {item_id}: {result}")
                         elif result:
