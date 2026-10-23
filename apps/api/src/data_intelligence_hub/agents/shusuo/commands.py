@@ -165,14 +165,24 @@ async def execute(command: Command, context_key: str = "") -> Reply:
     if command.name == "collect_error":
         return Reply(f"命令格式有误：{command.argument}\n\n{HELP_TEXT}")
     if command.name == "collect":
-        outcome = await capabilities.collect(command.argument, command.params)
+        proposal = intents.Proposal(
+            endpoint_type=command.argument,
+            params=dict(command.params),
+            title=f"显式采集：{command.argument}",
+        )
+        preflight = await capabilities.preflight_proposal(proposal, force_status=True)
+        if not preflight.allowed:
+            return Reply("\n".join(preflight.errors))
+        outcome = await capabilities.collect(
+            proposal.endpoint_type, preflight.normalized_params
+        )
         return Reply(outcome.text, ack=f"正在采集 {command.argument}，请稍候…")
     if command.name == "intent":
-        proposal = intents.build_proposal(command.argument)
-        if isinstance(proposal, str):
-            return Reply(proposal)
-        proposal_store.replace_pending(context_key, "", proposal)
-        return Reply(intents.proposal_reply(proposal))
+        built = intents.build_proposal(command.argument)
+        if isinstance(built, str):
+            return Reply(built)
+        proposal_store.replace_pending(context_key, "", built)
+        return Reply(intents.proposal_reply(built))
     if command.name == "confirm":
         _, pending = proposal_store.consume_pending(None, context_key, "")
         if pending is None:

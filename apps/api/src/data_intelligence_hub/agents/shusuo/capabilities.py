@@ -30,6 +30,7 @@ from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.raw_record_service import get_raw_records
 
 from .config import get_shushuo_config
+from .intents import Proposal
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,24 @@ _status_cache: dict[str, Any] = {"at": 0.0, "items": {}}
 
 _MAX_LIST_LINES = 30
 
+# 数量语义的参数键（不同采集器叫法不同）。预检统一检查 1..50；
+# 不改名，键原样保留给采集器。
+_QUANTITY_PARAM_KEYS = frozenset({"max_items", "maxItems", "num_results", "commentsPerPost"})
+_QUANTITY_MIN = 1
+_QUANTITY_MAX = 50
+_QUANTITY_ERROR = "数量必须在 1 到 50 之间。"
+
+# 任何端点都允许传的键：数量通用键 + 执行元数据（quick-collect 采集开关）。
+# num_results / commentsPerPost 等其余数量键必须由端点 optional_params 声明。
+_UNIVERSAL_PARAM_KEYS = frozenset(
+    {"max_items", "maxItems", "max_total_charge_usd", "run_timeout_seconds"}
+)
+
+# cost_hint 只有这些泛化措辞时视为"费用未知"。
+_UNKNOWN_COST_PHRASES = ("按量", "按上游", "费用未知")
+_UNKNOWN_COST_WARNING = "费用未知，按上游实际计费。"
+_POLICY_BLOCK_TEXT = "当前受安全策略限制，无法执行该端点。"
+
 
 @dataclass(frozen=True)
 class CollectOutcome:
@@ -56,15 +75,30 @@ class CollectOutcome:
     text: str
 
 
+@dataclass(frozen=True)
+class PreflightResult:
+    """提案预检结果：allowed=False 时 errors 面向用户，不含内部原因。"""
+
+    allowed: bool
+    availability: str
+    normalized_params: dict[str, Any]
+    errors: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    cost_notice: str = ""
+
+
 def status_label(status: str) -> str:
     return _STATUS_LABELS.get(status, status)
 
 
-async def live_status() -> dict[str, EndpointAvailability]:
-    """实时可用性，60 秒缓存，避免每条消息都扫 task_runs。"""
+async def live_status(*, force: bool = False) -> dict[str, EndpointAvailability]:
+    """实时可用性，60 秒缓存，避免每条消息都扫 task_runs。
+
+    force=True 跳过缓存读，但成功后仍回写缓存。
+    """
     now = time.time()
     cached = _status_cache["items"]
-    if cached and now - float(_status_cache["at"]) < _STATUS_TTL_SECONDS:
+    if not force and cached and now - float(_status_cache["at"]) < _STATUS_TTL_SECONDS:
         return cached
     try:
         async with async_session_factory() as session:
@@ -286,6 +320,106 @@ def _block_reason(endpoint_type: str, live: EndpointAvailability | None) -> str 
         missing = "、".join(live.missing_configuration) or "未提供原因"
         return f"{endpoint_type} 当前不可执行，缺少配置：{missing}"
     return None
+
+
+def _resolve_availability(
+    endpoint: PackageEndpoint, live: EndpointAvailability | None
+) -> tuple[str, bool]:
+    """返回 (availability, is_policy_blocked)。
+
+    实时状态缺失时回退静态 endpoint.status；两者都不是 verified 就不放行。
+    policy_block_reason 只决定文案开关，原文绝不进入结果。
+    """
+    if live is not None:
+        if live.policy_block_reason:
+            return live.availability, True
+        return live.availability, False
+    if endpoint.policy_block_reason:
+        return endpoint.status, True
+    return endpoint.status, False
+
+
+def _cost_notice_and_warnings(cost_hint: str | None) -> tuple[str, tuple[str, ...]]:
+    """cost_hint 为空或只有泛化措辞时视为费用未知；具体金额则转成费用提示。"""
+    normalized = (cost_hint or "").strip()
+    if not normalized:
+        return "费用未知，按上游实际计费", (_UNKNOWN_COST_WARNING,)
+    if any(phrase in normalized for phrase in _UNKNOWN_COST_PHRASES):
+        return "费用未知，按上游实际计费", (_UNKNOWN_COST_WARNING,)
+    return f"费用约 {normalized}", ()
+
+
+def _validate_params(endpoint: PackageEndpoint, params: dict[str, Any]) -> tuple[
+    dict[str, Any], tuple[str, ...]
+]:
+    """校验参数并原样归一化；不改键名，保留采集器期望的键。"""
+    errors: list[str] = []
+    allowed = set(endpoint.required_params) | set(endpoint.optional_params) | _UNIVERSAL_PARAM_KEYS
+    normalized: dict[str, Any] = {}
+
+    for key, value in params.items():
+        if key not in allowed:
+            errors.append(f"未知参数：{key}")
+            continue
+        if key in _QUANTITY_PARAM_KEYS:
+            if isinstance(value, bool) or not isinstance(value, int):
+                errors.append(_QUANTITY_ERROR)
+                continue
+            if not _QUANTITY_MIN <= value <= _QUANTITY_MAX:
+                errors.append(_QUANTITY_ERROR)
+                continue
+        normalized[key] = value
+
+    for required in endpoint.required_params:
+        value = params.get(required)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            errors.append(f"缺少必填参数：{required}")
+            if required not in normalized:
+                normalized[required] = value
+
+    return normalized, tuple(errors)
+
+
+async def preflight_proposal(
+    proposal: Proposal,
+    *,
+    force_status: bool = False,
+) -> PreflightResult:
+    """结构化预检：只有实时 verified 的端点可执行；失败时不调用采集。"""
+    try:
+        endpoint = await get_capability(proposal.endpoint_type)
+    except CapabilityNotFoundError:
+        return PreflightResult(
+            allowed=False,
+            availability="unknown",
+            normalized_params=dict(proposal.params),
+            errors=(f"没有找到端点：{proposal.endpoint_type}",),
+        )
+
+    statuses = await live_status(force=force_status)
+    availability, policy_blocked = _resolve_availability(
+        endpoint, statuses.get(proposal.endpoint_type)
+    )
+
+    normalized_params, param_errors = _validate_params(endpoint, proposal.params)
+
+    errors: list[str] = []
+    if policy_blocked:
+        errors.append(_POLICY_BLOCK_TEXT)
+    elif availability != "verified":
+        label = status_label(availability)
+        errors.append(f"端点 {proposal.endpoint_type} 当前不可执行（{label}）。")
+    errors.extend(param_errors)
+
+    cost_notice, cost_warnings = _cost_notice_and_warnings(endpoint.cost_hint)
+    return PreflightResult(
+        allowed=not errors,
+        availability=availability,
+        normalized_params=normalized_params,
+        errors=tuple(errors),
+        warnings=cost_warnings,
+        cost_notice=cost_notice,
+    )
 
 
 async def collect(endpoint_type: str, params: dict[str, Any]) -> CollectOutcome:

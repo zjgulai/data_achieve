@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass
+from unittest.mock import AsyncMock
 
 import pytest
 from cryptography.hazmat.primitives import padding
@@ -22,6 +23,8 @@ from data_intelligence_hub.agents.shusuo import proposal_store as shusuo_proposa
 from data_intelligence_hub.agents.shusuo import router as shusuo_router
 from data_intelligence_hub.agents.shusuo.config import get_shushuo_config
 from data_intelligence_hub.main import app
+from data_intelligence_hub.platform_packages.models import PackageEndpoint
+from data_intelligence_hub.platform_packages.service import CapabilityNotFoundError
 
 WEBHOOK_PATH = "/api/agents/shusuo/webhook"
 HEALTH_PATH = "/api/agents/shusuo/health"
@@ -281,6 +284,106 @@ def test_parse_command_rejects_malformed_params() -> None:
     assert "key=value" in command.argument
 
 
+async def test_explicit_collect_blocked_by_preflight(monkeypatch) -> None:
+    """显式采集预检失败时返回统一错误文本，不进入 capabilities.collect。"""
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    async def fake_collect(endpoint_type, params):
+        calls.append((endpoint_type, params))
+        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        assert force_status is True
+        assert proposal.endpoint_type == "tikhub_reddit_search"
+        assert proposal.params == {"keyword": "AI", "max_items": 5}
+        return shusuo_capabilities.PreflightResult(
+            allowed=False,
+            availability="degraded",
+            normalized_params=dict(proposal.params),
+            errors=("端点当前不可用，已取消采集。",),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "collect", fake_collect)
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    reply = await commands.execute(
+        commands.Command("collect", "tikhub_reddit_search", {"keyword": "AI", "max_items": 5})
+    )
+    assert calls == []
+    assert reply.text == "端点当前不可用，已取消采集。"
+    assert reply.ack is None
+
+
+async def test_explicit_collect_runs_preflight_with_force_status(monkeypatch) -> None:
+    """显式采集必须以 force_status=True 预检，通过后才执行采集。"""
+    calls: list[tuple[str, dict[str, object]]] = []
+    preflight_calls: list[tuple[str, bool]] = []
+
+    async def fake_collect(endpoint_type, params):
+        calls.append((endpoint_type, params))
+        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        preflight_calls.append((proposal.endpoint_type, force_status))
+        return shusuo_capabilities.PreflightResult(
+            allowed=True,
+            availability="verified",
+            normalized_params=dict(proposal.params),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "collect", fake_collect)
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    reply = await commands.execute(
+        commands.Command("collect", "tikhub_reddit_search", {"keyword": "AI", "max_items": 5})
+    )
+    assert preflight_calls == [("tikhub_reddit_search", True)]
+    assert calls == [("tikhub_reddit_search", {"keyword": "AI", "max_items": 5})]
+    assert reply.text == "采集完成"
+
+
+async def test_explicit_collect_preflight_unknown_endpoint(monkeypatch) -> None:
+    """显式采集未知端点：预检拒绝，统一文案，不暴露内部异常。"""
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    async def fake_collect(endpoint_type, params):
+        calls.append((endpoint_type, params))
+        return shusuo_capabilities.CollectOutcome(True, "采集完成")
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        assert force_status is True
+        return shusuo_capabilities.PreflightResult(
+            allowed=False,
+            availability="unknown",
+            normalized_params=dict(proposal.params),
+            errors=("没有找到端点：no_such_endpoint",),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "collect", fake_collect)
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    reply = await commands.execute(
+        commands.Command("collect", "no_such_endpoint", {"keyword": "AI"})
+    )
+    assert calls == []
+    assert reply.text == "没有找到端点：no_such_endpoint"
+
+
+async def test_explicit_collect_preflight_join_multiple_errors(monkeypatch) -> None:
+    """多个预检错误全部返回，便于用户一次修正。"""
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        return shusuo_capabilities.PreflightResult(
+            allowed=False,
+            availability="verified",
+            normalized_params={},
+            errors=("缺少必填参数：query", "未知参数：unknown"),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    reply = await commands.execute(
+        commands.Command("collect", "demo_endpoint", {"unknown": 1})
+    )
+    assert "缺少必填参数：query" in reply.text
+    assert "未知参数：unknown" in reply.text
+
+
 def test_clean_text_removes_mentions() -> None:
     assert commands.clean_text("@_user_1 帮助") == "帮助"
 
@@ -325,6 +428,519 @@ def test_block_reason_blocks_policy_denied() -> None:
     reason = shusuo_capabilities._block_reason("demo", live)
     assert reason is not None
     assert "外访策略" in reason
+
+
+def _endpoint(
+    *,
+    endpoint_type: str = "demo",
+    status: str = "verified",
+    required_params: tuple[str, ...] = (),
+    optional_params: tuple[str, ...] = (),
+    cost_hint: str | None = None,
+    policy_block_reason: str | None = None,
+) -> PackageEndpoint:
+    return PackageEndpoint(
+        capability_id=endpoint_type,
+        canonical_capability_id=endpoint_type,
+        is_alias_view=False,
+        endpoint_type=endpoint_type,
+        label=endpoint_type,
+        platform="test",
+        description="test endpoint",
+        status=status,
+        required_params=required_params,
+        optional_params=optional_params,
+        cost_hint=cost_hint,
+        provider="test",
+        provider_group="test",
+        provider_label="test",
+        content_type="post",
+        method="GET",
+        param_fields={},
+        policy_block_reason=policy_block_reason,
+    )
+
+
+async def test_preflight_allows_verified_unknown_cost(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI", "max_items": 10},
+        title="Reddit 搜索",
+        estimated_items=10,
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search",
+        required_params=("query",),
+        optional_params=("max_items",),
+        cost_hint=None,
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.availability == "verified"
+    assert result.errors == ()
+    assert result.warnings == ("费用未知，按上游实际计费。",)
+    assert result.cost_notice == "费用未知，按上游实际计费"
+    assert result.normalized_params == {"query": "AI", "max_items": 10}
+
+
+@pytest.mark.parametrize(
+    "availability",
+    ["config-gated", "disabled", "degraded", "empty", "untested"],
+)
+async def test_preflight_rejects_non_verified(monkeypatch, availability: str) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(endpoint_type="tikhub_reddit_search", required_params=("query",))
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(
+                    endpoint_type=endpoint.endpoint_type, availability=availability
+                )
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.availability == availability
+    assert result.errors
+
+
+async def test_preflight_rejects_when_live_missing_and_static_not_verified(
+    monkeypatch,
+) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search", required_params=("query",), status="pending"
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(shusuo_capabilities, "live_status", AsyncMock(return_value={}))
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.availability == "pending"
+
+
+async def test_preflight_uses_live_status_over_static_when_missing_live_entry(
+    monkeypatch,
+) -> None:
+    """实时状态缺失时按规则回退静态 status：verified 放行。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search", required_params=("query",), status="verified"
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(shusuo_capabilities, "live_status", AsyncMock(return_value={}))
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.availability == "verified"
+
+
+async def test_preflight_live_status_beats_static_status(monkeypatch) -> None:
+    """实时状态存在且不是 verified 时，静态 verified 也不放行。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search", required_params=("query",), status="verified"
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(
+                    endpoint_type=endpoint.endpoint_type, availability="degraded"
+                )
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.availability == "degraded"
+
+
+async def test_preflight_rejects_unknown_endpoint(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="no_such_endpoint", params={}, title="未知端点"
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "get_capability",
+        AsyncMock(side_effect=CapabilityNotFoundError("no_such_endpoint")),
+    )
+    monkeypatch.setattr(shusuo_capabilities, "live_status", AsyncMock(return_value={}))
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.availability == "unknown"
+    assert result.errors == ("没有找到端点：no_such_endpoint",)
+
+
+async def test_preflight_rejects_missing_and_unknown_params(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"unknown": 1},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search",
+        required_params=("query",),
+        optional_params=("max_items",),
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert "缺少必填参数：query" in result.errors
+    assert "未知参数：unknown" in result.errors
+
+
+async def test_preflight_missing_required_param_fails_closed(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "  "},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(endpoint_type="tikhub_reddit_search", required_params=("query",))
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert "缺少必填参数：query" in result.errors
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("max_items", 0),
+        ("max_items", 51),
+        ("maxItems", 51),
+        ("num_results", 0),
+        ("commentsPerPost", 51),
+    ],
+)
+async def test_preflight_rejects_out_of_range_quantity(monkeypatch, key: str, value: int) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI", key: value},
+        title="数量越界",
+    )
+    endpoint = _endpoint(
+        endpoint_type="demo_endpoint",
+        required_params=("query",),
+        optional_params=(key,),
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert "数量必须在 1 到 50 之间" in result.errors[0]
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "optional"),
+    [
+        ("max_items", 50, ()),
+        ("maxItems", 1, ()),
+        ("num_results", 50, ("num_results",)),
+        ("commentsPerPost", 25, ("commentsPerPost",)),
+        ("max_total_charge_usd", 5.0, ()),
+        ("run_timeout_seconds", 600, ()),
+    ],
+)
+async def test_preflight_accepts_in_range_quantity_and_meta_keys(
+    monkeypatch, key: str, value: object, optional: tuple[str, ...]
+) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI", key: value},
+        title="数量合法",
+    )
+    endpoint = _endpoint(
+        endpoint_type="demo_endpoint",
+        required_params=("query",),
+        optional_params=optional,
+        cost_hint="~$0.001/条",
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.warnings == ()
+    assert result.normalized_params[key] == value
+
+
+async def test_preflight_rejects_universal_quantity_without_declaration_and_unknown_keys(
+    monkeypatch,
+) -> None:
+    """非通用数量键未被端点声明时拒绝；完全未知的键也拒绝。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI", "num_results": 10, "totally_unknown": 1},
+        title="未声明参数",
+    )
+    endpoint = _endpoint(endpoint_type="demo_endpoint", required_params=("query",))
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert "未知参数：num_results" in result.errors
+    assert "未知参数：totally_unknown" in result.errors
+
+
+async def test_preflight_policy_block_reason_not_leaked(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(endpoint_type="tikhub_reddit_search", required_params=("query",))
+    secret_reason = "collection_policy_denied: no controlled egress SECRET-REASON"
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(
+                    endpoint_type=endpoint.endpoint_type,
+                    availability="config-gated",
+                    policy_block_reason=secret_reason,
+                )
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.errors == ("当前受安全策略限制，无法执行该端点。",)
+    assert all("SECRET-REASON" not in error for error in result.errors)
+    assert all("collection_policy_denied" not in error for error in result.errors)
+
+
+async def test_preflight_static_policy_block_reason_not_leaked(monkeypatch) -> None:
+    """实时状态缺失时，静态目录的 policy_block_reason 也不得泄漏。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="tikhub_reddit_search",
+        params={"query": "AI"},
+        title="Reddit 搜索",
+    )
+    endpoint = _endpoint(
+        endpoint_type="tikhub_reddit_search",
+        required_params=("query",),
+        policy_block_reason="collection_policy_denied: STATIC-SECRET",
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(shusuo_capabilities, "live_status", AsyncMock(return_value={}))
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is False
+    assert result.errors == ("当前受安全策略限制，无法执行该端点。",)
+    assert all("STATIC-SECRET" not in error for error in result.errors)
+
+
+@pytest.mark.parametrize(
+    "cost_hint",
+    [None, "", "按量计费", "按上游实际计费", "按结果计费，费用未知"],
+)
+async def test_preflight_warns_on_unknown_cost(monkeypatch, cost_hint: str | None) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI"},
+        title="费用未知",
+    )
+    endpoint = _endpoint(
+        endpoint_type="demo_endpoint",
+        required_params=("query",),
+        cost_hint=cost_hint,
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.warnings == ("费用未知，按上游实际计费。",)
+    assert result.cost_notice == "费用未知，按上游实际计费"
+
+
+async def test_preflight_known_cost_has_no_warning(monkeypatch) -> None:
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI"},
+        title="费用已知",
+    )
+    endpoint = _endpoint(
+        endpoint_type="demo_endpoint",
+        required_params=("query",),
+        cost_hint="~$0.001/条",
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.warnings == ()
+    assert result.cost_notice == "费用约 ~$0.001/条"
+
+
+async def test_preflight_propagates_force_status(monkeypatch) -> None:
+    """显式采集要求 force_status=True 透传给 live_status。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="demo_endpoint",
+        params={"query": "AI"},
+        title="强制刷新",
+    )
+    endpoint = _endpoint(endpoint_type="demo_endpoint", required_params=("query",))
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    live_status_mock = AsyncMock(
+        return_value={
+            endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+        }
+    )
+    monkeypatch.setattr(shusuo_capabilities, "live_status", live_status_mock)
+    await shusuo_capabilities.preflight_proposal(proposal, force_status=True)
+    live_status_mock.assert_awaited_once_with(force=True)
+
+
+async def test_preflight_keeps_collector_param_keys(monkeypatch) -> None:
+    """不改名：commentsPerPost 等采集器键原样保留在 normalized_params。"""
+    proposal = shusuo_intents.Proposal(
+        endpoint_type="apify_tiktok_comments_scraper",
+        params={"postURLs": ["https://www.tiktok.com/@user/video/123"], "commentsPerPost": 10},
+        title="TikTok 评论",
+    )
+    endpoint = _endpoint(
+        endpoint_type="apify_tiktok_comments_scraper",
+        required_params=("postURLs",),
+        optional_params=("commentsPerPost",),
+        cost_hint="按事件计费",
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
+    )
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "live_status",
+        AsyncMock(
+            return_value={
+                endpoint.endpoint_type: _availability(endpoint_type=endpoint.endpoint_type)
+            }
+        ),
+    )
+    result = await shusuo_capabilities.preflight_proposal(proposal)
+    assert result.allowed is True
+    assert result.normalized_params == {
+        "postURLs": ["https://www.tiktok.com/@user/video/123"],
+        "commentsPerPost": 10,
+    }
 
 
 def test_block_reason_blocks_missing_configuration() -> None:
