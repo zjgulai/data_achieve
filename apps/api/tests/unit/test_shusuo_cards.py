@@ -312,3 +312,29 @@ def test_card_text_never_exceeds_feishu_card_budget() -> None:
         _preflight(normalized_params={"keyword": "词" * 300}),
     )
     assert len(json.dumps(card, ensure_ascii=False)) <= 6000
+
+
+def test_card_titles_and_notes_are_redacted_before_build() -> None:
+    """Task 5 遗留：标题/说明等动态文本进入卡片前必须脱敏。
+
+    意图层标题来自用户输入（例如「搜 token=leaky-key」），卡片构造函数
+    不能假设上游已脱敏——动态文本必须在卡片边界再过一次 redact。
+    """
+    secret = "token=leaky-key"
+    pending_with_secret = _pending(
+        _proposal(title=f"关键词搜索：{secret}", note=f"备注 {secret}")
+    )
+    outcome_secret = _outcome(
+        records=({"content": {"title": f"标题 {secret}"}},),
+    )
+    serialized = json.dumps(
+        [
+            cards.proposal_card(pending_with_secret, _preflight()),
+            cards.processing_card(pending_with_secret),
+            cards.cancelled_card(pending_with_secret),
+            cards.failure_card(pending_with_secret, f"原因：{secret}"),
+            cards.success_card(pending_with_secret, outcome_secret),
+        ],
+        ensure_ascii=False,
+    )
+    assert "leaky-key" not in serialized

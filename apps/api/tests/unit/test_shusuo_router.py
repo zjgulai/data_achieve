@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -29,6 +30,7 @@ from data_intelligence_hub.platform_packages.service import CapabilityNotFoundEr
 
 WEBHOOK_PATH = "/api/agents/shusuo/webhook"
 HEALTH_PATH = "/api/agents/shusuo/health"
+CARD_ACTION_PATH = "/api/agents/shusuo/card-action"
 
 
 @pytest.fixture(autouse=True)
@@ -58,6 +60,7 @@ def test_router_is_mounted_at_expected_prefix() -> None:
     paths = {route.path for route in app.routes}
     assert WEBHOOK_PATH in paths
     assert HEALTH_PATH in paths
+    assert CARD_ACTION_PATH in paths
 
 
 def test_health_reports_not_ready_without_credentials(monkeypatch) -> None:
@@ -2126,3 +2129,568 @@ def test_empty_event_id_is_processed_twice(monkeypatch) -> None:
 
     assert len(executed) == 2
     assert len(replies) == 2
+
+
+# ---------- 卡片回调 /card-action ----------
+
+
+def _signed_card_action(payload: dict[str, Any], encrypt_key: str) -> tuple[str, dict[str, str]]:
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    timestamp = "1700000000"
+    nonce = "nonce"
+    signature = hashlib.sha256(
+        f"{timestamp}{nonce}{encrypt_key}{body}".encode()
+    ).hexdigest()
+    return body, {
+        "X-Lark-Request-Timestamp": timestamp,
+        "X-Lark-Request-Nonce": nonce,
+        "X-Lark-Signature": signature,
+        "Content-Type": "application/json",
+    }
+
+
+def _card_action_payload(
+    *,
+    action: str = "confirm",
+    token: str = "TOKEN1234",
+    operator: str = "ou-1",
+    chat_id: str = "chat-1",
+    message_id: str = "om-card-1",
+    app_id: str | None = "app-x",
+    token_value: str | None = "vt-card",
+) -> dict[str, Any]:
+    action_value: dict[str, Any] = {"action": action, "token": token}
+    payload: dict[str, Any] = {
+        "type": "card.action.trigger",
+        "operator": {"open_id": operator},
+        "action": {"value": action_value},
+        "context": {"open_message_id": message_id, "open_chat_id": chat_id},
+    }
+    if app_id is not None:
+        payload["app_id"] = app_id
+    if token_value is not None:
+        payload["token"] = token_value
+    return payload
+
+
+def _card_action_config(
+    monkeypatch,
+    *,
+    encrypt_key: str = "card-key",
+    verification_token: str = "vt-card",
+    app_id: str = "app-x",
+    allowed: str = "ou-1",
+) -> str:
+    monkeypatch.setenv("LARK_SHUSUO_ENCRYPT_KEY", encrypt_key)
+    monkeypatch.setenv("LARK_SHUSUO_VERIFICATION_TOKEN", verification_token)
+    monkeypatch.setenv("LARK_SHUSUO_APP_ID", app_id)
+    monkeypatch.setenv("SHUSUO_ALLOWED_OPEN_IDS", allowed)
+    get_shushuo_config.cache_clear()
+    return encrypt_key
+
+
+async def _seed_pending_card(
+    monkeypatch,
+    *,
+    chat_id: str = "chat-1",
+    open_id: str = "ou-1",
+    text: str = "搜 reddit AI",
+) -> str:
+    """预置一个活跃提案并绑定卡片消息 ID；返回 token。"""
+    shusuo_proposal_store.clear_all()
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(return_value=_preflight(allowed=True)),
+    )
+    reply = await commands.execute(
+        commands.parse_command(text),
+        chat_id=chat_id,
+        open_id=open_id,
+        message_id="om-source",
+    )
+    assert reply.pending_token
+    shusuo_proposal_store.attach_message_ids(
+        reply.pending_token, card_message_id="om-card-1"
+    )
+    return reply.pending_token
+
+
+def test_card_action_rejects_bad_signature(monkeypatch) -> None:
+    _card_action_config(monkeypatch)
+    monkeypatch.delenv("SHUSUO_ALLOWED_OPEN_IDS", raising=False)
+    get_shushuo_config.cache_clear()
+    client = TestClient(app)
+    response = client.post(
+        CARD_ACTION_PATH,
+        json={"action": {"value": {"action": "confirm"}}},
+    )
+    assert response.status_code == 403
+
+
+def test_card_action_rejects_valid_signature_but_bad_token(monkeypatch) -> None:
+    """签名通过但 Verification Token 不匹配：403。"""
+    encrypt_key = _card_action_config(monkeypatch, verification_token="right")
+    client = TestClient(app)
+    payload = _card_action_payload(token_value="wrong-token")
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+
+
+def test_card_action_rejects_wrong_app_id(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch)
+    client = TestClient(app)
+    payload = _card_action_payload(app_id="app-other")
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+
+
+def test_card_action_rejects_missing_verification_token_config(monkeypatch) -> None:
+    """Verification Token 未配置时 fail-closed：拒绝回调而不是放行。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    monkeypatch.delenv("LARK_SHUSUO_VERIFICATION_TOKEN", raising=False)
+    get_shushuo_config.cache_clear()
+    client = TestClient(app)
+    payload = _card_action_payload()
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+
+
+def test_card_action_rejects_unknown_action(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch)
+    client = TestClient(app)
+    payload = _card_action_payload(action="delete_all")
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 400
+
+
+async def test_card_action_rejects_non_owner(monkeypatch) -> None:
+    """pending owner ou-1，操作人 ou-2：403，且 token 不被消费。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-2", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+    collect.assert_not_awaited()
+    status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
+    assert pending is not None
+
+
+async def test_card_action_rejects_empty_allowlist(monkeypatch) -> None:
+    """allowed_open_ids 为空时拒绝：回调必须显式配置白名单。"""
+    encrypt_key = _card_action_config(monkeypatch, allowed="")
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+    collect.assert_not_awaited()
+
+
+async def test_card_action_rejects_operator_not_in_allowlist(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-9")
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-outsider", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+    collect.assert_not_awaited()
+
+
+async def test_card_confirm_executes_once(monkeypatch) -> None:
+    """确认回调：200 toast，后台执行恰好一次采集；重复点击不重复采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type="e"
+        )
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    preflight_calls: list[bool] = []
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        preflight_calls.append(force_status)
+        return shusuo_capabilities.PreflightResult(
+            allowed=True,
+            availability="verified",
+            normalized_params=dict(proposal.params),
+        )
+
+    # 在 seed 之后安装：意图预检走 seed 的 AsyncMock，后台确认走本 fake
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    first = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    second = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert first.status_code == 200
+    assert second.status_code == 200
+    toast = first.json().get("toast") or {}
+    assert toast
+    assert collect.await_count == 1
+    # 确认回调的强制预检在后台执行，force_status=True
+    assert preflight_calls == [True]
+
+
+async def test_card_cancel_does_not_collect(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="cancel", token=token, operator="ou-1", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    assert response.json().get("toast")
+    collect.assert_not_awaited()
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.MISSING
+
+
+async def test_card_confirm_preflight_failure_does_not_consume(monkeypatch) -> None:
+    """回调确认的强制预检失败：不消费 token、不采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        assert force_status is True
+        return shusuo_capabilities.PreflightResult(
+            allowed=False,
+            availability="config-gated",
+            normalized_params=dict(proposal.params),
+            errors=("当前受安全策略限制，无法执行该端点。",),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    collect.assert_not_awaited()
+    status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
+    assert pending is not None
+
+
+def test_card_unknown_token_returns_status_toast(monkeypatch) -> None:
+    """token 已消费/过期/替换：200 toast 提示，不采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token="GHOST0000", operator="ou-1", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    assert response.json().get("toast")
+    collect.assert_not_awaited()
+
+
+def test_card_action_challenge_echo_only(monkeypatch) -> None:
+    """URL 校验只回显 challenge，不做 token 比对，也没有副作用。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    client = TestClient(app)
+    payload = {"type": "url_verification", "challenge": "card-challenge", "token": "old"}
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    assert response.json() == {"challenge": "card-challenge"}
+
+
+async def test_card_action_encrypted_payload_is_verified_and_decrypted(monkeypatch) -> None:
+    """加密回调：验签（encrypt-key 公式）→ 解密 → 后台执行一次。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(True, "采集完成", endpoint_type="e")
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI", "max_items": 5},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    inner = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1"
+    )
+    encrypted = _encrypt(inner, encrypt_key)
+    body = json.dumps({"encrypt": encrypted})
+    timestamp, nonce = "1700000001", "nonce-enc"
+    response = client.post(
+        CARD_ACTION_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": _sign(timestamp, nonce, encrypt_key, body),
+            "X-Lark-Request-Timestamp": timestamp,
+            "X-Lark-Request-Nonce": nonce,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json().get("toast")
+    assert collect.await_count == 1
+
+
+def test_card_action_encrypted_rejects_bad_signature(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    client = TestClient(app)
+    inner = _card_action_payload()
+    encrypted = _encrypt(inner, encrypt_key)
+    body = json.dumps({"encrypt": encrypted})
+    response = client.post(
+        CARD_ACTION_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": "bad",
+            "X-Lark-Request-Timestamp": "1",
+            "X-Lark-Request-Nonce": "n",
+        },
+    )
+    assert response.status_code == 403
+    collect.assert_not_awaited()
+
+
+async def _run_card_confirm_background(
+    monkeypatch,
+    token: str,
+) -> tuple[AsyncMock, list[tuple[str, dict[str, Any]]]]:
+    """直接驱动后台确认协程；返回 (collect, update_card 调用参数)。"""
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(
+            True,
+            "采集完成",
+            endpoint_type="e",
+            task_run_id="run-1",
+            records_count=3,
+        )
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    updates: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        updates.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    await shusuo_router._execute_card_confirm(
+        token=token,
+        chat_id="chat-1",
+        open_id="ou-1",
+        card_message_id="om-card-1",
+    )
+    return collect, updates
+
+
+async def test_card_confirm_background_updates_cards_in_order(monkeypatch) -> None:
+    """后台确认：处理中卡 → 成功卡；token 先消费；只采集一次。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI", "max_items": 5},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    collect, updates = await _run_card_confirm_background(monkeypatch, token)
+    assert collect.await_count == 1
+    assert len(updates) == 2
+    assert updates[0][0] == "om-card-1"
+    assert "正在采集" in json.dumps(updates[0][1], ensure_ascii=False)
+    assert "采集完成" in json.dumps(updates[1][1], ensure_ascii=False)
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.MISSING
+    assert encrypt_key  # 配置 fixture 已生效
+
+
+async def test_card_confirm_background_preflight_failure_updates_failure_card(
+    monkeypatch,
+) -> None:
+    """后台确认预检失败：更新失败卡，token 保留，不采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        assert force_status is True
+        return shusuo_capabilities.PreflightResult(
+            allowed=False,
+            availability="config-gated",
+            normalized_params=dict(proposal.params),
+            errors=("当前受安全策略限制，无法执行该端点。",),
+        )
+
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    updates: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        updates.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    await shusuo_router._execute_card_confirm(
+        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+    )
+    collect.assert_not_awaited()
+    # brief 顺序：先处理中卡，再失败卡（预检失败）
+    assert len(updates) == 2
+    assert "正在采集" in json.dumps(updates[0][1], ensure_ascii=False)
+    assert "无法执行采集" in json.dumps(updates[1][1], ensure_ascii=False)
+    status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
+    assert pending is not None
+    assert encrypt_key
+
+
+async def test_card_confirm_background_collect_failure_updates_failure_card(
+    monkeypatch,
+) -> None:
+    """采集失败：失败卡更新；token 已消费，不会恢复。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI"},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(
+            False, "采集未返回数据", endpoint_type="e", error_message="上游没有返回记录"
+        )
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    updates: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        updates.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    await shusuo_router._execute_card_confirm(
+        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+    )
+    assert collect.await_count == 1
+    assert len(updates) == 2
+    assert "采集未返回数据" in json.dumps(updates[1][1], ensure_ascii=False)
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.MISSING
+    assert encrypt_key
+
+
+async def test_card_update_failure_only_logs(monkeypatch, caplog) -> None:
+    """update_card 抛错：只记日志；不恢复 token、不重复采集、不重试。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI"},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(
+            True, "采集完成", endpoint_type="e", task_run_id="run-2", records_count=1
+        )
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    update_calls: list[int] = []
+
+    async def failing_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        update_calls.append(1)
+        raise RuntimeError("feishu update failed")
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", failing_update_card)
+    await shusuo_router._execute_card_confirm(
+        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+    )
+    assert collect.await_count == 1
+    assert len(update_calls) == 2  # 处理中卡 + 成功卡各试一次，失败只吞掉
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.MISSING
+    assert encrypt_key
+
+
+async def test_card_cancel_background_updates_cancelled_card(monkeypatch) -> None:
+    """后台取消：token 被取消，卡片更新为取消卡；不采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    updates: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        updates.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    await shusuo_router._execute_card_cancel(
+        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+    )
+    collect.assert_not_awaited()
+    assert len(updates) == 1
+    assert "已取消" in json.dumps(updates[0][1], ensure_ascii=False)
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.MISSING
+    assert encrypt_key

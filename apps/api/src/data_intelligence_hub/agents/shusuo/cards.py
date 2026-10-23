@@ -38,6 +38,15 @@ def _card_title(title: str) -> str:
     return _fit(_redact(title), MAX_TITLE_CHARS)
 
 
+def _card_text(value: str, limit: int) -> str:
+    """卡片边界脱敏：先脱敏再截断。
+
+    标题、说明等动态文本来自用户输入，上游（replies/fit_text）不保证
+    已经脱敏；卡片构造函数自己再过一次，密钥不落卡。
+    """
+    return _fit(_redact(value), limit)
+
+
 def _shell(
     title: str, template: str, elements: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -128,7 +137,7 @@ def _proposal_summary(
         _EXPIRY_LINE,
     ]
     if proposal.note:
-        lines.append(f"说明：{fit_text(proposal.note, limit=MAX_NOTE_CHARS)}")
+        lines.append(f"说明：{_card_text(proposal.note, MAX_NOTE_CHARS)}")
     return "\n".join(lines)
 
 
