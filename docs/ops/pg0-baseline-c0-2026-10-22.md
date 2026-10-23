@@ -90,3 +90,24 @@
 | 数据库 | `c0-pg15` 保持运行，供 C0 Task 5 integration 使用；未重启或重建 |
 
 R0 不含 migration。C0 schema head 保持 `202610210057`。后续从 Task 5 Step 3 继续，mypy 使用已修订的基线非回归门禁，unit 基线使用 `2493 passed, 2 skipped`。
+
+
+## 5. 后端测试与目录基线（2026-10-23，R0 合回后续接）
+
+| 项目 | 值 |
+|---|---|
+| 恢复说明 | resumed after R0；本节为 Task 5 正式证据，接续 4.1，不重复 4.1 |
+| 前序事实核对 | Step 1 `uv sync --locked --dev` 已在前序通过（Resolved 207 / Checked 183），锁文件未变；Step 2 Ruff 全量 748 文件 `All checks passed!`；merge evidence commit `38804e5`，工作树 clean |
+| Mypy 基线非回归 | 通过；唯一诊断签名 498/498；新增 0，移除 0；命令 exit 1 仍返回 1200 个存量错误（C0 起点 1199，差值 +1，归因：`collectors/tikhub_social.py` 同一 union-attr 签名因 R0 换行多复现 1 次，14→15），不称命令通过，仅基线门禁通过 |
+| unit（Step 4） | `2493 passed, 2 skipped`（1 warning：passlib `crypt` DeprecationWarning） |
+| integration（Step 5） | `386 passed`（1 warning 同上）；`DATABASE_URL='postgresql+asyncpg://c0:c0@127.0.0.1:55432/c0_migrations'`，使用现有 `c0-pg15` |
+| unit 无数据库探针（Step 6） | `2493 passed, 2 skipped`；未设置 `DATABASE_URL`，未运行 `tests/integration` |
+| 回归守卫（Step 7） | `OK: 0 failed。` |
+| `alembic heads`（Step 8） | `202610210057 (head)` |
+| 工具目录（Step 9） | passed；`tool.v1` / `tool-catalog.v1`；284/284/226；digest `35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c`；failures `[]` |
+| 平台包生成（Step 10） | 退出码 0；`git status --porcelain -uno` 空输出（生成无 diff） |
+| 平台包契约（Step 11） | passed；platform_count=70、capability_count=312、unique_endpoint_count=284 |
+| `c0-pg15` 清理（Step 12） | `docker rm -f c0-pg15` 返回 `c0-pg15`；删除后 `docker ps -a` 无该容器 |
+| 数量差异记录 | 单元测试总数 2495 = 2493+2：两个目录守卫测试（`test_catalog_digest_parity`、`test_catalog_reconciliation`）以 gitignore 的 `generated/platform-packages.json` 存在为条件 skip；本地存在该生成物时两测试转 passed（2495 passed），移开后按基线条件复现 `2493 passed, 2 skipped`；两轮均记录，未修改证据表 |
+| 警告汇总 | unit/integration：passlib `crypt` DeprecationWarning；回归守卫运行（含恢复生成物后的 2495 全量）：另见 `test_demo_data.py` 3 处 aiosqlite `Event loop is closed` 未处理线程异常警告；对判定无影响 |
+| 环境缺口 | CI api job 无 PostgreSQL 服务；无数据库时只运行 `tests/unit`，`tests/integration` 必须显式提供 `DATABASE_URL`；`generated/` 在 .gitignore 中，全新 checkout 两个目录守卫测试为 skip |
