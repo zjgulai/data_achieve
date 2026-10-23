@@ -18,6 +18,7 @@ from structlog.testing import capture_logs
 from data_intelligence_hub.agents.shusuo import capabilities as shusuo_capabilities
 from data_intelligence_hub.agents.shusuo import commands
 from data_intelligence_hub.agents.shusuo import intents as shusuo_intents
+from data_intelligence_hub.agents.shusuo import proposal_store as shusuo_proposal_store
 from data_intelligence_hub.agents.shusuo import router as shusuo_router
 from data_intelligence_hub.agents.shusuo.config import get_shushuo_config
 from data_intelligence_hub.main import app
@@ -396,13 +397,13 @@ def test_intent_unknown_platform_returns_hint() -> None:
 
 
 async def test_confirm_executes_pending_proposal(monkeypatch) -> None:
-    monkeypatch.setattr(shusuo_intents, "_PENDING", {})
+    shusuo_proposal_store.clear_all()
     proposal = shusuo_intents.Proposal(
         endpoint_type="tikhub_reddit_search",
         params={"keyword": "AI", "max_items": 3},
         title="Reddit 搜索",
     )
-    shusuo_intents.set_pending("chat-1", proposal)
+    shusuo_proposal_store.replace_pending("chat-1", "", proposal)
 
     calls: list[tuple[str, dict[str, object]]] = []
 
@@ -417,7 +418,7 @@ async def test_confirm_executes_pending_proposal(monkeypatch) -> None:
 
 
 async def test_confirm_without_pending_returns_hint() -> None:
-    shusuo_intents.clear_pending("chat-empty")
+    shusuo_proposal_store.clear_all()
     reply = await commands.execute(commands.Command("confirm"), context_key="chat-empty")
     assert "没有待确认" in reply.text
 

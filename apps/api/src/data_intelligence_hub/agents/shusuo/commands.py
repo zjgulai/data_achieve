@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import capabilities, intents, llm
+from . import capabilities, intents, llm, proposal_store
 
 HELP_TEXT = """数说 · 全域外部数据助手
 
@@ -171,16 +171,17 @@ async def execute(command: Command, context_key: str = "") -> Reply:
         proposal = intents.build_proposal(command.argument)
         if isinstance(proposal, str):
             return Reply(proposal)
-        intents.set_pending(context_key, proposal)
+        proposal_store.replace_pending(context_key, "", proposal)
         return Reply(intents.proposal_reply(proposal))
     if command.name == "confirm":
-        proposal = intents.take_pending(context_key)
-        if proposal is None:
+        _, pending = proposal_store.consume_pending(None, context_key, "")
+        if pending is None:
             return Reply("没有待确认的操作。请先发一个场景命令，例如「搜 reddit AI」。")
+        proposal = pending.proposal
         outcome = await capabilities.collect(proposal.endpoint_type, proposal.params)
         return Reply(outcome.text, ack=f"正在采集 {proposal.endpoint_type}，请稍候…")
     if command.name == "cancel":
-        intents.clear_pending(context_key)
+        proposal_store.cancel_pending(None, context_key, "")
         return Reply("已取消待确认的操作。")
     if command.name == "unknown":
         answer = await llm.answer_question(command.argument)

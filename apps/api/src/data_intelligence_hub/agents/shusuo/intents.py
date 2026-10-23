@@ -8,13 +8,11 @@
 from __future__ import annotations
 
 import re
-import time
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 DEFAULT_MAX_ITEMS = 10
-PENDING_TTL_SECONDS = 600
 
 _PLATFORM_SEARCH: dict[str, tuple[str, str]] = {
     "tiktok": ("tikhub_tiktok_video_search", "TikTok"),
@@ -48,15 +46,14 @@ _TRENDING: dict[str, str] = {
     "reddit": "tikhub_reddit_trending",
 }
 
-_PENDING: dict[str, tuple[float, Proposal]] = {}
-
-
 @dataclass(frozen=True)
 class Proposal:
     endpoint_type: str
     params: dict[str, Any]
     title: str
     note: str = ""
+    estimated_items: int = DEFAULT_MAX_ITEMS
+    cost_notice: str = "费用未知，按上游实际计费"
 
 
 def _limit(tokens: list[str]) -> tuple[list[str], int]:
@@ -84,24 +81,6 @@ def _proposal_text(proposal: Proposal) -> str:
         lines.append(f"说明：{proposal.note}")
     lines.append("回复「确认」执行；回复「取消」放弃。10 分钟内有效。采集会消耗上游额度。")
     return "\n".join(lines)
-
-
-def set_pending(key: str, proposal: Proposal) -> None:
-    _PENDING[key] = (time.time(), proposal)
-
-
-def take_pending(key: str) -> Proposal | None:
-    item = _PENDING.pop(key, None)
-    if item is None:
-        return None
-    created_at, proposal = item
-    if time.time() - created_at > PENDING_TTL_SECONDS:
-        return None
-    return proposal
-
-
-def clear_pending(key: str) -> None:
-    _PENDING.pop(key, None)
 
 
 def build_proposal(text: str) -> Proposal | str:
