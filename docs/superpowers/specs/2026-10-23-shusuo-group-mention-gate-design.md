@@ -345,7 +345,7 @@ Webhook envelope
 2. 运行生产 preflight。
 3. 构建 api 镜像。
 4. 使用 `docker compose up -d --no-deps api` 替换 api。
-5. 重启 edge，使共享网关重新解析 api 容器地址。
+5. 重启 edge，使 edge 的 nginx 重新解析 API 容器地址。共享网关缓存的 edge 固定 IP 保持不变。
 6. 不重建 edge。
 7. 验证 `/api/health` 与数说 `/health`。
 

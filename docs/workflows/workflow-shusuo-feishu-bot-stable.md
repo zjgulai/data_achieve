@@ -172,18 +172,31 @@ curl -s -X POST https://scrapy.luteos.com/api/agents/shusuo/webhook \
 | 日志 `invalid verification token`，响应 403 | 事件 token 与服务端不一致 | 对齐飞书「加密策略」与 env，然后重启 |
 | `code: 99991672` | 缺少 `application:application:patch` | 打开授权深链并开通 |
 | 群里发消息没反应 | 没有 @ 机器人 | 用 @数说 再发一次；单聊不需要 @ |
+| 群里 @ 了也没反应 | bot open_id 查询失败 | 看 `shusuo_bot_identity_unavailable` 日志；私聊不受影响 |
 | 回调 200 但没有回复 | 事件类型不是 `im.message.receive_v1`（例如 `task.task.update_tenant_v1`） | 在单聊或群里 @机器人 发文字 |
 | 采集被拒 `config-gated` | 缺 Provider 配置或外访策略限制 | 用「详情」看 `missing_configuration` / `policy_block_reason` |
 | 采集成功但 0 条 | 上游改版或种子参数不合适 | 先看原始响应；状态会显示「可用但最近为空」 |
 
-诊断日志（标准 logging，进 `docker logs`）：
+### 群聊门禁
+
+- 私聊：不要求 @。
+- 群聊：只有 mentions 中当前机器人的 open_id 命中时回答。
+- 缺失或未知 chat_type：静默忽略。
+- @all 或只 @ 其他成员：静默忽略。
+- bot open_id 查询失败：群聊静默，私聊不受影响。
+
+诊断日志（structlog，进 `docker logs`）：
 
 ```
 shusuo_event_received event_type=... event_id=...
-shusuo_message_received message_type=... chat_id=... open_id=...
-shusuo_command_handled command=... argument=...
-shusuo_collect_failed endpoint_type=...
+shusuo_message_received message_type=... chat_id=...
+shusuo_command_handled command=... chat_id=...
+shusuo_message_ignored message_id=... chat_type=... decision=...
+shusuo_bot_identity_unavailable message_id=... error_type=...
+shusuo_event_failed error_type=...
 ```
+
+日志不写入 token、open_id 或消息正文；异常只记 `error_type`。
 
 ## 7. 安全
 
