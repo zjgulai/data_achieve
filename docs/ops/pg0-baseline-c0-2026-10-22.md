@@ -111,3 +111,29 @@ R0 不含 migration。C0 schema head 保持 `202610210057`。后续从 Task 5 St
 | 数量差异记录 | 单元测试总数 2495 = 2493+2：两个目录守卫测试（`test_catalog_digest_parity`、`test_catalog_reconciliation`）以 gitignore 的 `generated/platform-packages.json` 存在为条件 skip；本地存在该生成物时两测试转 passed（2495 passed），移开后按基线条件复现 `2493 passed, 2 skipped`；两轮均记录，未修改证据表 |
 | 警告汇总 | unit/integration：passlib `crypt` DeprecationWarning；回归守卫运行（含恢复生成物后的 2495 全量）：另见 `test_demo_data.py` 3 处 aiosqlite `Event loop is closed` 未处理线程异常警告；对判定无影响 |
 | 环境缺口 | CI api job 无 PostgreSQL 服务；无数据库时只运行 `tests/unit`，`tests/integration` 必须显式提供 `DATABASE_URL`；`generated/` 在 .gitignore 中，全新 checkout 两个目录守卫测试为 skip |
+
+## 6. 前端测试与构建基线（2026-10-23）
+
+执行环境：Node v26.7.0、pnpm 9.15.4、worktree `data_scrapy-c0`、分支 `feat/pg0-baseline-c0`、起始 HEAD `ec1c300`。
+
+| 项目 | 值 |
+|---|---|
+| `pnpm install --frozen-lockfile` | 退出码 0；508 个包，全部复用缓存，无下载；锁文件无 diff |
+| `pnpm -C apps/scraper-console test` | 220 passed, 0 failed, 0 cancelled, 0 skipped；耗时 282.6ms |
+| `pnpm -C apps/scraper-console lint` | 退出码 0；eslint 无输出（无告警、无错误） |
+| `next build`（`NEXT_PUBLIC_API_URL=https://scrapy.luteos.com`） | 退出码 0；输出含字面 `Compiled successfully in 3.1s`；TypeScript 检查通过；23 个静态页全部生成 |
+| 构建路由表 | 包含 `/workbench`、`/reports`、`/capabilities`（另见 `/capabilities/[toolId]`、`/reports/[artifactId]` 动态路由） |
+| 构建后 `git status --porcelain -uno` | 空输出；`.next` 与缓存均为忽略内容，`pnpm-lock.yaml` 无 diff |
+| GitNexus impact（编辑前门禁） | 对本文档 upstream impact 返回 UNKNOWN（0 caller，file-node 无 process/module 轴）；文本搜索确认 apps/、scripts/、package.json 无代码引用本文档，属纯证据 markdown |
+| 浏览器验收交接 | 延期 C14；grep 证据 `C14_HANDOFF_REQUIRED`；四个判据见下 |
+
+浏览器验收未在 C0 执行。交接检查结果：`grep -n 'workbench\|reports\|capabilities' apps/scraper-console/e2e/routes.spec.ts` 无匹配，退出码 1，输出 `C14_HANDOFF_REQUIRED`。该文件的 `PAGE_ROUTES` 常量列出的 14 条路由均不含 `/workbench`、`/reports`、`/capabilities`，三个 B5 页面均未覆盖。
+
+C14 必须逐条覆盖以下四个判据：
+
+1. `/workbench`、`/reports`、`/capabilities` 返回 200，页面根节点存在 `<main>`。
+2. 三个页面都不出现 5xx 响应。
+3. 浏览器控制台没有 `console.error`。
+4. `/workbench` 显示五步流程入口；`/reports` 显示报告列表或空态；`/capabilities` 显示能力目录。
+
+风险记录：C0 的合并门禁是后端单元/集成测试、前端单元测试、lint 与生产构建。浏览器验收延期到 C14。若 C14 未在 PG0 验收前执行，风险是 B5 页面在真实 API 下的空态、权限态或控制台错误未被发现。该风险由 C14 的 `e2e/routes.spec.ts` 与 PG0 验收门禁关闭。不得用本节替代 C14 的验收。
