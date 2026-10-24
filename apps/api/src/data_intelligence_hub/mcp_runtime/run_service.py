@@ -127,11 +127,18 @@ async def list_run_records(
         }
 
 
-async def stop_run(run_id: uuid.UUID) -> dict[str, Any]:
-    """取消一次运行。已进入终态时返回 ``cancelled=False``。"""
+async def stop_run(
+    run_id: uuid.UUID,
+    *,
+    project_id: uuid.UUID | None = None,
+) -> dict[str, Any]:
+    """取消一次运行。已进入终态时返回 ``cancelled=False``。
+
+    ``project_id`` 非空时只取消该项目的运行。跨项目按未找到处理，不改变 run 状态。
+    """
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None:
+        if run is None or (project_id is not None and run.project_id != project_id):
             raise ValueError("run_not_found")
         workspace_id = run.workspace_id
         previous_status = run.status
