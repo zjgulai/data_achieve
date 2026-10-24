@@ -144,6 +144,20 @@ def test_clear_expired_removes_stale_active_and_replaced_tokens() -> None:
     assert status is proposal_store.ProposalLookup.MISSING
 
 
+def test_replace_pending_sweeps_stale_replaced_tokens() -> None:
+    """发新提案即清一轮过期：低流量下 replaced 记录也会被回收，不再依赖容量触发。"""
+    proposal_store.clear_all()
+    first = proposal_store.replace_pending("chat-1", "ou-1", _proposal(), now=100)
+    proposal_store.replace_pending("chat-1", "ou-1", _proposal(), now=101)
+    status, _ = proposal_store.peek_pending(first.token, "chat-1", "ou-1", now=102)
+    assert status is proposal_store.ProposalLookup.REPLACED
+
+    # 402 > 101 + 300：replaced 记录已过窗口；下一次 replace_pending 触发清扫。
+    proposal_store.replace_pending("chat-2", "ou-2", _proposal(), now=402)
+    status, _ = proposal_store.peek_pending(first.token, "chat-1", "ou-1", now=403)
+    assert status is proposal_store.ProposalLookup.MISSING
+
+
 def test_capacity_evicts_oldest_proposal() -> None:
     proposal_store.clear_all()
     first = proposal_store.replace_pending("chat-first", "ou-first", _proposal(), now=0)

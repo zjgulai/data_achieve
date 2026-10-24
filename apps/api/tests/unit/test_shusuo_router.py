@@ -37,8 +37,10 @@ CARD_ACTION_PATH = "/api/agents/shusuo/card-action"
 def _clear_state():
     get_shushuo_config.cache_clear()
     shusuo_router._seen_events.clear()
+    shusuo_proposal_store.clear_all()
     yield
     shusuo_router._seen_events.clear()
+    shusuo_proposal_store.clear_all()
     get_shushuo_config.cache_clear()
 
 

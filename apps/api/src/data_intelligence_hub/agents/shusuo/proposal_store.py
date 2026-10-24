@@ -121,6 +121,9 @@ def replace_pending(
     chat_id: str, open_id: str, proposal: Proposal, *, now: float | None = None
 ) -> PendingProposal:
     current = _now(now)
+    # 每次发新提案都先清一轮过期：否则低流量下 replaced 记录没有机会被
+    # _enforce_capacity（仅在存量达上限时触发）清理，会一直累积。
+    clear_expired(now=current)
     context = (chat_id, open_id)
     old_token = _ACTIVE_TOKEN_BY_CONTEXT.get(context)
     if old_token is not None:

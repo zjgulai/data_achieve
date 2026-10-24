@@ -48,6 +48,18 @@ _RANK = {"verified": 0, "empty": 1, "degraded": 2, "config-gated": 3, "untested"
 _STATUS_TTL_SECONDS = 60
 _status_cache: dict[str, Any] = {"at": 0.0, "items": {}}
 
+
+def _cached_status() -> dict[str, EndpointAvailability]:
+    """读缓存并收窄类型：dict[str, Any] 里的 items 只能是端点可用性映射。"""
+    items = _status_cache["items"]
+    if not isinstance(items, dict):
+        return {}
+    return {str(key): value for key, value in items.items()}
+
+
+def _store_status(items: dict[str, EndpointAvailability]) -> None:
+    _status_cache["items"] = items
+
 _MAX_LIST_LINES = 30
 
 # 数量语义的参数键（不同采集器叫法不同）。预检统一检查 1..50；
@@ -110,7 +122,7 @@ async def live_status(*, force: bool = False) -> dict[str, EndpointAvailability]
     force=True 跳过缓存读，但成功后仍回写缓存。
     """
     now = time.time()
-    cached = _status_cache["items"]
+    cached = _cached_status()
     if not force and cached and now - float(_status_cache["at"]) < _STATUS_TTL_SECONDS:
         return cached
     try:
@@ -121,7 +133,7 @@ async def live_status(*, force: bool = False) -> dict[str, EndpointAvailability]
         return {}
     items = {item.endpoint_type: item for item in response.endpoints}
     _status_cache["at"] = now
-    _status_cache["items"] = items
+    _store_status(items)
     return items
 
 
@@ -157,13 +169,17 @@ def _availability_suffix(
 async def overview_text() -> str:
     catalog = await get_platform_package_catalog()
     statuses = await live_status()
+    counts: Counter[str]
     if statuses:
         counts = Counter(item.availability for item in statuses.values())
         total = len(statuses)
         source = "实时可用性（最近一次实测）"
     else:
+        # 静态目录的 status 是 str，不是 Availability 字面量；Counter 统一按 str 计。
         counts = Counter(
-            endpoint.status for package in catalog.packages for endpoint in package.endpoints
+            str(endpoint.status)
+            for package in catalog.packages
+            for endpoint in package.endpoints
         )
         total = catalog.unique_endpoint_count
         source = "目录声明状态"
