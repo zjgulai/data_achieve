@@ -168,12 +168,13 @@ async def test_web_fetch_exa_passes_urls_and_options(recorder: _CollectRecorder)
 
 
 def test_tool_allowed_layers() -> None:
-    # 贵工具默认关：不在白名单一律拒绝，即使白名单为空。
+    # N1 显式白名单：空白名单拒绝全部工具（语义翻转，默认放行已废除）。
     assert tool_policy.tool_allowed("deep_research", []) is False
-    assert tool_policy.tool_allowed("deep_research", ["web_search"]) is False
+    assert tool_policy.tool_allowed("web_search", []) is False
+    assert tool_policy.tool_allowed("list_platforms", []) is False
+    # 白名单非空时按白名单收窄。
     assert tool_policy.tool_allowed("deep_research", ["deep_research"]) is True
-    # 便宜工具默认开；白名单非空时收窄。
-    assert tool_policy.tool_allowed("web_search", []) is True
+    assert tool_policy.tool_allowed("deep_research", ["web_search"]) is False
     assert tool_policy.tool_allowed("web_search", ["web_search"]) is True
     assert tool_policy.tool_allowed("web_search", ["answer"]) is False
 
@@ -203,6 +204,7 @@ async def test_enforce_tool_policy_skips_global_token(
     monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: None)
     # 全局 token：不设限，也不查库。
     await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]
+
 
 def test_project_key_cannot_switch_project() -> None:
     from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
