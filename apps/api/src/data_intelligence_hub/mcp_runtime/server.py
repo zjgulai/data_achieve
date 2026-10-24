@@ -872,7 +872,7 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
             raise ValueError("run_id_invalid") from exc
-        return await stop_run(parsed)
+        return await stop_run(parsed, project_id=project_filter(context))
 
 
 @_tool(
@@ -885,10 +885,7 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
 async def balance(context: Context, project_id: str) -> dict[str, object]:
     """Report project spend and remaining authorized budget."""
     async with governed_tool(context, "balance"):
-        try:
-            parsed = uuid.UUID(project_id)
-        except ValueError as exc:
-            raise ValueError("project_id_invalid") from exc
+        parsed = _parse_project_id(project_id, context)
         return await get_project_balance(parsed)
 
 

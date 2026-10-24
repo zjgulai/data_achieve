@@ -196,6 +196,30 @@ async def _seed_run(
     return task_run_id
 
 
+async def _seed_running(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    run_id: uuid.UUID,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+) -> None:
+    """写入一次可取消的 running 运行（无步骤与记录）。"""
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                status="running",
+                execution_mode="live",
+                trigger="api",
+                records_count=0,
+                created_at=datetime.now(UTC),
+            )
+        )
+        await session.commit()
+
+
 def _contract_payload(
     *,
     run_id: uuid.UUID,
@@ -270,6 +294,62 @@ def _error_text(result: object) -> str:
     """把工具错误结果拼成文本，便于断言错误码。"""
     content = getattr(result, "content", ())
     return " ".join(str(item) for item in content)
+
+
+async def _seed_balance(
+    factory: async_sessionmaker[AsyncSession],
+) -> uuid.UUID:
+    """写入一次运行、一条授权、一条账本行。返回 project_id。
+
+    形状与 test_mcp_run_service.py 的 ``_seed_balance`` 一致：
+    accrued 1.25，授权上限 10。
+    """
+    from decimal import Decimal
+
+    from data_intelligence_hub.models.authorization import Authorization
+    from data_intelligence_hub.models.run_ledger import RunLedgerEntry
+
+    now = datetime.now(UTC)
+    project_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                status="completed",
+                execution_mode="live",
+                trigger="api",
+                records_count=1,
+                created_at=now,
+            )
+        )
+        session.add(
+            Authorization(
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                gate_id="G-Plan",
+                gate_status="pass",
+                scope={},
+                max_cost_usd=Decimal("10"),
+                approver=uuid.uuid4(),
+                granted_at=now,
+                expires_at=now.replace(year=now.year + 1),
+            )
+        )
+        session.add(
+            RunLedgerEntry(
+                run_id=run_id,
+                entry_kind="accrued",
+                amount_usd=Decimal("1.25"),
+                balance_after_usd=Decimal("8.75"),
+                idempotency_key=f"b5-balance-{run_id.hex}",
+                created_at=now,
+            )
+        )
+        await session.commit()
+    return project_id
 
 
 @pytest.mark.anyio
@@ -780,3 +860,265 @@ async def test_create_report_rejects_cross_project_run(
 
     assert "run_not_found" in str(exc_info.value)
     assert count == 0
+
+
+@pytest.mark.anyio
+async def test_stop_is_scoped_to_calling_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥不能取消同工作区其他项目的运行。
+
+    跨项目 stop 必须抛 ``run_not_found``，且对方运行保持原状态。
+    错误文本不得包含对方 project_id。
+    """
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    foreign_run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    other_project_id = uuid.uuid4()
+    try:
+        await _seed_running(
+            factory,
+            run_id=foreign_run_id,
+            workspace_id=workspace_id,
+            project_id=other_project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=project_id,
+            workspace_id=workspace_id,
+            allowlist=("stop", "balance"),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+
+        # 服务层语义：跨项目按未找到处理。
+        with pytest.raises(ValueError, match="run_not_found"):
+            await run_service.stop_run(foreign_run_id, project_id=project_id)
+
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            stop_other = await client.call_tool(
+                "stop",
+                {"run_id": str(foreign_run_id)},
+            )
+        async with factory() as session:
+            foreign = await session.get(Run, foreign_run_id)
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert stop_other.is_error is True
+    assert str(other_project_id) not in _error_text(stop_other)
+    assert foreign is not None
+    assert foreign.status == "running"
+
+
+@pytest.mark.anyio
+async def test_stop_rejects_run_in_other_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """跨工作区的运行同样 fail-closed：按未找到处理。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    foreign_run_id = uuid.uuid4()
+    try:
+        await _seed_running(
+            factory,
+            run_id=foreign_run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(allowlist=("stop", "balance"))
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool("stop", {"run_id": str(foreign_run_id)})
+        async with factory() as session:
+            foreign = await session.get(Run, foreign_run_id)
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is True
+    assert foreign is not None
+    assert foreign.status == "running"
+
+
+@pytest.mark.anyio
+async def test_stop_allows_own_project_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥可以取消自己项目的运行。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    own_run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    try:
+        await _seed_running(
+            factory,
+            run_id=own_run_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=project_id,
+            workspace_id=workspace_id,
+            allowlist=("stop", "balance"),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool("stop", {"run_id": str(own_run_id)})
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert result.structured_content["cancelled"] is True
+
+
+@pytest.mark.anyio
+async def test_balance_is_scoped_to_calling_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥查询他人项目余额必须抛 ``project_mismatch``。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    other_project_id = uuid.uuid4()
+    try:
+        await _seed_balance(factory)
+        await _seed_run(
+            factory,
+            run_id=uuid.uuid4(),
+            workspace_id=uuid.uuid4(),
+            project_id=other_project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(allowlist=("stop", "balance"))
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        context = SimpleNamespace(headers={})
+        with pytest.raises(ValueError, match="project_mismatch"):
+            await server_module.balance(context, str(other_project_id))
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            other_balance = await client.call_tool(
+                "balance",
+                {"project_id": str(other_project_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert other_balance.is_error is True
+    assert str(other_project_id) not in _error_text(other_balance)
+
+
+@pytest.mark.anyio
+async def test_balance_allows_own_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥可以查询自己项目的余额与账本。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    try:
+        own_project_id = await _seed_balance(factory)
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=own_project_id,
+            workspace_id=uuid.uuid4(),
+            allowlist=("stop", "balance"),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        context = SimpleNamespace(headers={})
+        body = await server_module.balance(context, str(own_project_id))
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool(
+                "balance",
+                {"project_id": str(own_project_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert body["project_id"] == str(own_project_id)
+    assert body["metering_status"] == "accrued_only"
+    assert body["accrued_usd"] == "1.250000"
+    assert body["authorization_count"] == 1
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert result.structured_content["project_id"] == str(own_project_id)
+
+
+@pytest.mark.anyio
+async def test_balance_rejects_project_in_other_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """跨工作区的项目余额查询同样 fail-closed。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    foreign_project_id = uuid.uuid4()
+    try:
+        await _seed_balance(factory)
+        await _seed_run(
+            factory,
+            run_id=uuid.uuid4(),
+            workspace_id=uuid.uuid4(),
+            project_id=foreign_project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(allowlist=("stop", "balance"))
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        context = SimpleNamespace(headers={})
+        with pytest.raises(ValueError, match="project_mismatch"):
+            await server_module.balance(context, str(foreign_project_id))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+
+@pytest.mark.anyio
+async def test_global_token_keeps_stop_and_balance_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """全局 token（identity=None）不受项目过滤，行为不变。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    running_run_id = uuid.uuid4()
+    try:
+        own_project_id = await _seed_balance(factory)
+        await _seed_running(
+            factory,
+            run_id=running_run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            stop_result = await client.call_tool(
+                "stop",
+                {"run_id": str(running_run_id)},
+            )
+            balance_result = await client.call_tool(
+                "balance",
+                {"project_id": str(own_project_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert stop_result.is_error is False
+    assert stop_result.structured_content is not None
+    assert stop_result.structured_content["cancelled"] is True
+    assert balance_result.is_error is False
+    assert balance_result.structured_content is not None
+    assert balance_result.structured_content["project_id"] == str(own_project_id)
+
+
+@pytest.mark.anyio
+async def test_identity_seem_reads_project_context_via_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """接缝守卫：工具体读取身份必须经过 runtime.project_api_key_context。
+
+    打补丁后 project_filter 必须返回身份里的 project_id。
+    """
+    identity = _identity(allowlist=("stop", "balance"))
+    monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+    context = SimpleNamespace(headers={})
+    assert server_module.project_filter(context) == identity.project_id
+    assert server_module.project_identity(context) is identity
