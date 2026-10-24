@@ -94,12 +94,40 @@ if [[ "${CURL_MODE:-ok}" == "timeout" ]]; then
 fi
 case "$url" in
   */api/health)
-    printf '{"status":"%s","database":"%s","schema":"%s","schema_revision":"%s","schema_head":"%s"}\n' \
-      "${PUBLIC_STATUS:-ok}" \
-      "${PUBLIC_DATABASE:-connected}" \
-      "${PUBLIC_SCHEMA:-current}" \
-      "${PUBLIC_SCHEMA_REVISION:-202610220056}" \
-      "${PUBLIC_SCHEMA_HEAD:-202610220056}"
+    case "${PUBLIC_SCHEMA_FIELDS:-both}" in
+      both)
+        printf '{"status":"%s","database":"%s","schema":"%s","schema_revision":"%s","schema_head":"%s"}\n' \
+          "${PUBLIC_STATUS:-ok}" \
+          "${PUBLIC_DATABASE:-connected}" \
+          "${PUBLIC_SCHEMA:-current}" \
+          "${PUBLIC_SCHEMA_REVISION:-202610220056}" \
+          "${PUBLIC_SCHEMA_HEAD:-202610220056}"
+        ;;
+      revision_missing)
+        printf '{"status":"%s","database":"%s","schema":"%s","schema_head":"%s"}\n' \
+          "${PUBLIC_STATUS:-ok}" \
+          "${PUBLIC_DATABASE:-connected}" \
+          "${PUBLIC_SCHEMA:-current}" \
+          "${PUBLIC_SCHEMA_HEAD:-202610220056}"
+        ;;
+      head_missing)
+        printf '{"status":"%s","database":"%s","schema":"%s","schema_revision":"%s"}\n' \
+          "${PUBLIC_STATUS:-ok}" \
+          "${PUBLIC_DATABASE:-connected}" \
+          "${PUBLIC_SCHEMA:-current}" \
+          "${PUBLIC_SCHEMA_REVISION:-202610220056}"
+        ;;
+      both_missing)
+        printf '{"status":"%s","database":"%s","schema":"%s"}\n' \
+          "${PUBLIC_STATUS:-ok}" \
+          "${PUBLIC_DATABASE:-connected}" \
+          "${PUBLIC_SCHEMA:-current}"
+        ;;
+      *)
+        printf 'unexpected PUBLIC_SCHEMA_FIELDS: %s\n' "$PUBLIC_SCHEMA_FIELDS" >&2
+        exit 2
+        ;;
+    esac
     ;;
   */api/tiktok/tools)
     printf '401'
@@ -246,6 +274,15 @@ assert_rc 1 "$LAST_RC" "public database != connected fails"
 
 run_case public_schema_revision_differs PUBLIC_SCHEMA_HEAD=202610220055
 assert_rc 1 "$LAST_RC" "public schema_revision != schema_head fails"
+
+run_case public_schema_revision_missing PUBLIC_SCHEMA_FIELDS=revision_missing
+assert_rc 1 "$LAST_RC" "missing public schema_revision fails"
+
+run_case public_schema_head_missing PUBLIC_SCHEMA_FIELDS=head_missing
+assert_rc 1 "$LAST_RC" "missing public schema_head fails"
+
+run_case public_schema_both_missing PUBLIC_SCHEMA_FIELDS=both_missing
+assert_rc 1 "$LAST_RC" "missing both public schema fields fails"
 
 run_case public_schema_not_current PUBLIC_SCHEMA=stale
 assert_rc 1 "$LAST_RC" "public schema != current fails"

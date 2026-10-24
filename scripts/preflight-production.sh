@@ -31,7 +31,7 @@ remote_value() {
 }
 
 health_is_current() {
-  python3 -c 'import json, sys; data=json.load(sys.stdin); ok=data.get("status") == "ok" and data.get("database") == "connected" and data.get("schema") == "current" and data.get("schema_revision") == data.get("schema_head"); raise SystemExit(0 if ok else 1)'
+  python3 -c 'import json, sys; data=json.load(sys.stdin); revision=data.get("schema_revision"); head=data.get("schema_head"); schema_matches=isinstance(revision, str) and bool(revision) and isinstance(head, str) and bool(head) and revision == head; ok=data.get("status") == "ok" and data.get("database") == "connected" and data.get("schema") == "current" and schema_matches; raise SystemExit(0 if ok else 1)'
 }
 
 echo "== Local =="
