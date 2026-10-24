@@ -27,12 +27,18 @@ _TRUNCATION_SUFFIX = "\n…（内容过长，已截断）"
 REDACTED = "[redacted]"
 _REDACTED = REDACTED
 _BEARER_PATTERN = re.compile(r"(?i)bearer\s+\S+")
-# token=xxx / api_key: xxx / password=xxx / secret: xxx / cookie=xxx，
-# 以及 JSON 形态的 "token": "xxx"（键后带引号）。值取到空白、逗号、分号或右括号为止。
+# 文本形态的密钥键值对：先按「键 + 分隔符 + 值」粗匹配，再由 `_redact_kv`
+# 按 `_is_secret_key` 决定抹不抹值。粗匹配不做键名白名单，否则
+# `refresh_token=...` 这种复合键根本选不中（`\b` 在 `_t` 处没有边界）。
+# 裸值在 `{`/`}`/引号/`?`/`&` 处断开：
+# - `{"error": {"api_key": "..."}}` 不能在前一个非密钥键上把真密钥整段吞掉；
+# - `https://host/x?token=...` 要让 `?token=` 之后另起一轮匹配，否则
+#   `https` 作为键会把整个 URL 当值吞掉，URL 里的密钥就漏了。
+# `{{secret}}` 这类模板值单独一条分支。
 _SECRET_KV_PATTERN = re.compile(
-    r"(?i)\b(token|secret|password|passwd|api_key|apikey|access_key|access_token|"
-    r"private_key|credential|authorization|cookie)"
-    r"(\"?\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|[^\s,;}]+)"
+    r"(?i)(?P<quote>[\"']?)(?P<key>[A-Za-z0-9_.\-]+)(?P=quote)"
+    r"(?P<sep>\s*[=:]\s*)"
+    r"(?P<value>\"[^\"]*\"|'[^']*'|\{+[^{}\s,;]*\}+|[^\s,;{}\"'?&]+)"
 )
 
 # 结构脱敏用的键名集合：整键命中即把值换成 REDACTED（不保留原值形态）。
@@ -63,11 +69,71 @@ _SECRET_KEY_CANONICAL = frozenset(
     re.sub(r"[^a-z0-9]", "", key) for key in _SECRET_KEYS
 )
 
+# 复合键名（OAuth / 上游凭据字段）按「分隔边界 + 安全后缀」识别：
+# `client_secret`、`refresh_token`、`user_session`、`secret_key`、`refreshToken`。
+# 后缀必须真的带走一段前缀，且前缀与后缀之间要有分隔符（`_`、`-`、`.`）
+# 或驼峰转折——所以 `monkey`、`hockey`、`keyboard`、`keynote`、`obsession`
+# 都不会被误抹。
+_SECRET_KEY_SUFFIXES = (
+    "token",
+    "secret",
+    "password",
+    "passwd",
+    "cookie",
+    "credential",
+    "credentials",
+    "session",
+    "key",
+)
+# 本身就是完整键名的短词。
+_SECRET_KEY_WORDS = frozenset({"bearer", "jwt"})
+
+# 形似凭据、其实是功能参数的分页游标。整值抹掉会让复核者看不出请求分到了哪一页，
+# 而它们本身不含凭据（`page_token` 是上游返回的游标串）。
+_NON_SECRET_KEY_CANONICAL = frozenset(
+    {
+        "pagetoken",
+        "paginationtoken",
+        "nextpagetoken",
+        "nexttoken",
+        "cursortoken",
+        "continuationtoken",
+        "synctoken",
+    }
+)
+_KEY_BOUNDARY_CHARS = frozenset("_-.")
+
+
+def _has_secret_suffix(raw_key: str) -> bool:
+    """复合键判定：`client_secret` 命中，`monkey` 不命中。"""
+    lowered = raw_key.casefold()
+    for suffix in _SECRET_KEY_SUFFIXES:
+        if not lowered.endswith(suffix):
+            continue
+        suffix_start = len(raw_key) - len(suffix)
+        if suffix_start <= 0:
+            # 整键就是后缀（`token`/`key`），交给精确键集合判断。
+            continue
+        boundary = raw_key[suffix_start - 1]
+        if boundary in _KEY_BOUNDARY_CHARS:
+            return True
+        # 驼峰：`refreshToken` / `xApiKey`。
+        if raw_key[suffix_start].isupper() and boundary.islower():
+            return True
+    return False
+
+
+def _redact_kv(match: re.Match[str]) -> str:
+    key = match.group("key")
+    if not _is_secret_key(key):
+        return match.group(0)
+    quote = match.group("quote")
+    return f"{quote}{key}{quote}{match.group('sep')}{REDACTED}"
+
 
 def _redact(text: str) -> str:
     redacted = _BEARER_PATTERN.sub(f"Bearer {REDACTED}", text)
-    redacted = _SECRET_KV_PATTERN.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", redacted)
-    return redacted
+    return _SECRET_KV_PATTERN.sub(_redact_kv, redacted)
 
 
 def _canonical_key(key: Any) -> str:
@@ -75,7 +141,15 @@ def _canonical_key(key: Any) -> str:
 
 
 def _is_secret_key(key: Any) -> bool:
-    return _canonical_key(key) in _SECRET_KEY_CANONICAL
+    raw = str(key)
+    canonical = _canonical_key(raw)
+    if not canonical:
+        return False
+    if canonical in _NON_SECRET_KEY_CANONICAL:
+        return False
+    if canonical in _SECRET_KEY_CANONICAL or canonical in _SECRET_KEY_WORDS:
+        return True
+    return _has_secret_suffix(raw)
 
 
 def redact_structure(value: Any) -> Any:

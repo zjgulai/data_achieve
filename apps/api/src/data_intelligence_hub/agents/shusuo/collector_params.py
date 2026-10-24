@@ -136,3 +136,77 @@ def contract_for(
         (key,) for key in required_params if key in accepted and key not in covered
     )
     return ParamContract(accepted=frozenset(accepted), required_groups=tuple(groups))
+
+
+# ---------------------------------------------------------------------------
+# 用户可见的契约视图
+# ---------------------------------------------------------------------------
+
+_FREE_REQUIRED_TEXT = "无"
+
+
+@dataclass(frozen=True)
+class ContractView:
+    """「能力」「详情」渲染用的参数视图。
+
+    required_text：必填别名组，组内写 `bvid 或 video_id`，组间用 `；`。
+    optional_keys：预检真正接受、又没被任何必填组覆盖的键（排序后）。
+    """
+
+    required_text: str
+    optional_keys: tuple[str, ...]
+
+
+def contract_view(
+    endpoint_type: str, required_params: tuple[str, ...], optional_params: tuple[str, ...]
+) -> ContractView:
+    """帮助文案唯一的参数来源：与 `preflight_proposal` 共用同一份契约。
+
+    目录声明不能直接渲染：四个漂移端点会把采集器不读的键（`oid`、`unique_id`、
+    `keyword`）宣传成可用参数，用户照着填必然被预检拒绝。
+    """
+    contract = contract_for(endpoint_type, required_params, optional_params)
+    groups = contract.required_groups
+    required_text = (
+        "；".join(" 或 ".join(group) for group in groups) if groups else _FREE_REQUIRED_TEXT
+    )
+    covered = {key for group in groups for key in group}
+    return ContractView(
+        required_text=required_text,
+        optional_keys=tuple(sorted(contract.accepted - covered)),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Actor 侧的结果数量上限
+# ---------------------------------------------------------------------------
+
+# Actor 侧限制产出的数量键。其中 `maxItems` 与 Apify 采集开关同名，
+# 调用方传的值会被 `_APIFY_META_KEYS` 剥掉，到不了 Actor input。
+ACTOR_RESULT_LIMIT_KEYS: frozenset[str] = frozenset(
+    {"maxItems", "resultsPerPage", "resultsLimit"}
+)
+
+
+def actor_result_cap(endpoint_type: str) -> int | None:
+    """该端点 Actor 缺省 input 钉住的结果数量上限；没有就是 None。
+
+    直接读 `_APIFY_ENDPOINT_DEFAULTS`，不另抄数字：`apify_twitter_user_scraper`
+    的缺省 input 就是 `maxItems: 3`，调用方传 10 也只能拿到 3 条。
+    """
+    from data_intelligence_hub.collectors.endpoint_catalog import (
+        _APIFY_ENDPOINT_DEFAULTS,
+    )
+
+    defaults = _APIFY_ENDPOINT_DEFAULTS.get(endpoint_type)
+    if defaults is None:
+        return None
+    _, base_input = defaults
+    caps = [
+        value
+        for key, value in base_input.items()
+        if key in ACTOR_RESULT_LIMIT_KEYS
+        and isinstance(value, int)
+        and not isinstance(value, bool)
+    ]
+    return min(caps) if caps else None

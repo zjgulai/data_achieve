@@ -135,20 +135,21 @@ async def test_known_cost_notice_has_no_duplicated_wording(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
-    ("text", "expected_endpoint"),
+    ("text", "expected_endpoint", "expected"),
     [
-        ("账号 tiktok nike", "apify_tiktok_media_profile_scraper"),
-        ("账号 instagram nike", "apify_instagram_profile_scraper"),
-        ("账号 x naval", "apify_twitter_user_scraper"),
+        ("账号 tiktok nike", "apify_tiktok_media_profile_scraper", 10),
+        ("账号 instagram nike", "apify_instagram_profile_scraper", 10),
+        # X 账号的 `maxItems` 到不了 Actor，缺省上限 3 条；报 10 就是谎报。
+        ("账号 x naval", "apify_twitter_user_scraper", 3),
     ],
 )
 def test_account_profile_estimate_is_not_hardcoded_to_one(
-    text: str, expected_endpoint: str
+    text: str, expected_endpoint: str, expected: int
 ) -> None:
     proposal = shusuo_intents.build_proposal(text)
     assert not isinstance(proposal, str)
     assert proposal.endpoint_type == expected_endpoint
-    assert proposal.estimated_items == 10
+    assert proposal.estimated_items == expected
 
 
 @pytest.mark.parametrize(
@@ -156,7 +157,6 @@ def test_account_profile_estimate_is_not_hardcoded_to_one(
     [
         ("账号 tiktok nike", "apify_tiktok_media_profile_scraper"),
         ("账号 instagram nike", "apify_instagram_profile_scraper"),
-        ("账号 x naval", "apify_twitter_user_scraper"),
     ],
 )
 def test_account_profile_passes_result_limit_param(
@@ -175,6 +175,109 @@ def test_account_profile_passes_result_limit_param(
     assert passed, f"{expected_endpoint} 的预计数量没有传到采集参数：{proposal.params}"
     for key in passed:
         assert proposal.params[key] == proposal.estimated_items
+
+
+def test_x_account_uses_generic_fetch_cap_instead_of_actor_dropped_key() -> None:
+    """X 账号：`maxItems` 会被采集开关剥掉，改用通用抓取上限 `max_items`。"""
+    proposal = shusuo_intents.build_proposal("账号 x naval")
+    assert not isinstance(proposal, str)
+    assert "maxItems" not in proposal.params
+    assert proposal.params["max_items"] == 10
+    assert proposal.estimated_items == 3
+
+
+# ---------------------------------------------------------------------------
+# 预计数量必须等于 actor_input 的真实上限
+# ---------------------------------------------------------------------------
+
+# Actor 侧真正限制产出的键。`maxItems` 在 quick-collect 层是采集开关
+# （`_APIFY_META_KEYS` 会把同名的调用方参数剥掉），所以它进不进 actor_input
+# 取决于端点缺省 input，而不是调用方传了什么。
+RESULT_LIMIT_KEYS = frozenset({"maxItems", "resultsPerPage", "resultsLimit"})
+
+ACCOUNT_CASES = {
+    "apify_tiktok_media_profile_scraper": "账号 tiktok nike",
+    "apify_instagram_profile_scraper": "账号 instagram nike",
+    "apify_twitter_user_scraper": "账号 x naval",
+}
+
+
+def _actor_cap(proposal: shusuo_intents.Proposal) -> int:
+    """独立算一遍真实上限：actor_input 里的数量键与抓取上限取小。"""
+    from data_intelligence_hub.services.quick_collect_service import (
+        build_collector_config,
+    )
+
+    config = build_collector_config(proposal.endpoint_type, "apify_actor", proposal.params)
+    caps = [
+        value
+        for key, value in (config.get("actor_input") or {}).items()
+        if key in RESULT_LIMIT_KEYS and isinstance(value, int) and not isinstance(value, bool)
+    ]
+    fetch_cap = config.get("max_items")
+    if isinstance(fetch_cap, int) and not isinstance(fetch_cap, bool):
+        caps.append(fetch_cap)
+    assert caps, f"{proposal.endpoint_type} 没有数量上限可核对"
+    return min(caps)
+
+
+@pytest.mark.parametrize(
+    ("endpoint_type", "text"),
+    sorted(ACCOUNT_CASES.items()),
+)
+def test_account_estimate_equals_real_actor_cap(endpoint_type: str, text: str) -> None:
+    """卡片上的「预计记录数」必须等于 actor_input 的实际上限。"""
+    proposal = shusuo_intents.build_proposal(text)
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == endpoint_type
+    assert proposal.estimated_items == _actor_cap(proposal), (
+        f"{endpoint_type} 预计 {proposal.estimated_items} 条，实际上限 {_actor_cap(proposal)} 条，"
+        f"参数：{proposal.params}"
+    )
+
+
+def test_x_account_estimate_reflects_actor_default() -> None:
+    """X 账号：Actor 缺省 input 把 maxItems 钉在 3，卡片不能报 10。"""
+    proposal = shusuo_intents.build_proposal("账号 x naval")
+    assert not isinstance(proposal, str)
+    assert proposal.endpoint_type == "apify_twitter_user_scraper"
+    assert proposal.estimated_items == 3
+
+
+@pytest.mark.parametrize(
+    ("text", "limit_key"),
+    [
+        ("账号 tiktok nike", "resultsPerPage"),
+        ("账号 instagram nike", "resultsLimit"),
+    ],
+)
+def test_result_limit_key_reaches_actor_input(text: str, limit_key: str) -> None:
+    """TikTok / Instagram 的 10 条要真的进 actor_input，才配写 10。"""
+    from data_intelligence_hub.services.quick_collect_service import (
+        build_collector_config,
+    )
+
+    proposal = shusuo_intents.build_proposal(text)
+    assert not isinstance(proposal, str)
+    config = build_collector_config(proposal.endpoint_type, "apify_actor", proposal.params)
+    assert config["actor_input"][limit_key] == 10
+    assert proposal.estimated_items == 10
+
+
+def test_x_account_does_not_persist_actor_dropped_key() -> None:
+    """X 账号：`maxItems` 到不了 Actor，就不要写进提案参数。"""
+    proposal = shusuo_intents.build_proposal("账号 x naval")
+    assert not isinstance(proposal, str)
+    assert "maxItems" not in proposal.params
+    assert proposal.params.get("max_items") == 10
+
+
+def test_x_account_smaller_limit_still_honors_fetch_cap() -> None:
+    """用户要 2 条：抓取上限跟着降到 2，预计就是 2。"""
+    proposal = shusuo_intents.build_proposal("账号 x naval max_items=2")
+    assert not isinstance(proposal, str)
+    assert proposal.estimated_items == 2
+
 
 
 def test_price_endpoint_estimate_is_single_product() -> None:

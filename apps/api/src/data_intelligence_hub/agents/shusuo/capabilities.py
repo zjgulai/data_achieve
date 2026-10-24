@@ -30,7 +30,12 @@ from data_intelligence_hub.platform_packages.status import EndpointAvailability
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.raw_record_service import get_raw_records
 
-from .collector_params import ParamContract, contract_for
+from .collector_params import (
+    ContractView,
+    ParamContract,
+    contract_for,
+    contract_view,
+)
 from .config import get_shushuo_config
 from .intents import Proposal
 
@@ -246,12 +251,23 @@ async def platforms_text(query: str = "") -> str:
     return "\n".join(lines)
 
 
+def _contract_view(endpoint: PackageEndpoint) -> ContractView:
+    return contract_view(
+        endpoint.endpoint_type, endpoint.required_params, endpoint.optional_params
+    )
+
+
+def _endpoint_contract_text(endpoint: PackageEndpoint) -> str:
+    """「能力」列表里的必填列：与预检共用契约，不直接回显目录声明。"""
+    return _contract_view(endpoint).required_text
+
+
 def _endpoint_lines(
     endpoints: list[PackageEndpoint], statuses: dict[str, EndpointAvailability]
 ) -> list[str]:
     lines = []
     for endpoint in endpoints[:_MAX_LIST_LINES]:
-        params = ", ".join(endpoint.required_params) if endpoint.required_params else "无必填"
+        params = _endpoint_contract_text(endpoint)
         lines.append(
             f"- {endpoint.endpoint_type}｜{endpoint.label}｜"
             f"{_availability_suffix(endpoint, statuses)}｜必填：{params}"
@@ -312,8 +328,9 @@ async def describe_text(endpoint_type: str) -> str:
         return f"没有找到端点：{endpoint_type}"
     statuses = await live_status()
     live = statuses.get(endpoint_type)
-    required = ", ".join(endpoint.required_params) or "无"
-    optional = ", ".join(endpoint.optional_params) or "无"
+    view = _contract_view(endpoint)
+    required = view.required_text
+    optional = ", ".join(view.optional_keys) or "无"
     lines = [
         f"{endpoint.endpoint_type}",
         f"名称：{endpoint.label}",

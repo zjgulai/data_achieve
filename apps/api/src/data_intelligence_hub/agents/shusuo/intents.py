@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .collector_params import actor_result_cap
+
 DEFAULT_MAX_ITEMS = 10
 MAX_ITEMS_LIMIT = 50
 LIMIT_ERROR = "参数 max_items 必须在 1 到 50 之间。"
@@ -20,13 +22,21 @@ _COMMENT_PLATFORM_ERROR = (
     "其他平台请先用「能力 评论」查端点，再用「采集 <端点> ...」。"
 )
 
-# 账号画像端点的结果数量参数键（目录已声明，采集器也认）。
-# 不传就等于默认上限，卡片上写 10 条就成了谎报。
+# 账号画像端点的结果数量参数键。
+# 只列「调用方传的值真的会进 actor_input」的键：`maxItems` 与 Apify 采集开关
+# 同名，会被 `_APIFY_META_KEYS` 剥掉，传了也到不了 Actor（X 账号就是这种），
+# 所以 X 只用通用抓取上限 `max_items`，预计数量按 Actor 缺省上限算。
 _ACCOUNT_LIMIT_KEYS: dict[str, str] = {
     "apify_tiktok_media_profile_scraper": "resultsPerPage",
     "apify_instagram_profile_scraper": "resultsLimit",
-    "apify_twitter_user_scraper": "maxItems",
 }
+
+# 结果数量到不了 Actor 的端点：预计数量取 Actor 缺省 input 与抓取上限的较小值。
+def _actor_capped_estimate(endpoint_type: str, limit: int) -> int:
+    """Actor 缺省 input 钉住上限时，预计数量不能超过它（超了就是谎报）。"""
+    cap = actor_result_cap(endpoint_type)
+    return min(limit, cap) if cap is not None else limit
+
 
 _PLATFORM_SEARCH: dict[str, tuple[str, str]] = {
     "tiktok": ("tikhub_tiktok_video_search", "TikTok"),
@@ -250,14 +260,15 @@ def _account_proposal(tokens: list[str]) -> Proposal | str:
             estimated_items=limit,
         )
     if platform in {"x", "twitter", "推特"}:
+        # `maxItems` 会被采集开关逻辑剥掉，到不了 Actor；只用通用抓取上限，
+        # 预计数量按 Actor 缺省上限收敛（缺省 3 条，报 10 就是谎报）。
         return Proposal(
             endpoint_type="apify_twitter_user_scraper",
-            params={
-                "twitterHandles": [handle],
-                _ACCOUNT_LIMIT_KEYS["apify_twitter_user_scraper"]: limit,
-            },
+            params={"twitterHandles": [handle], "max_items": limit},
             title=f"X 账号资料：@{handle}",
-            estimated_items=limit,
+            estimated_items=_actor_capped_estimate(
+                "apify_twitter_user_scraper", limit
+            ),
         )
     return "账号画像目前支持 tiktok、instagram、x。其他平台请用「能力 账号」查端点。"
 
