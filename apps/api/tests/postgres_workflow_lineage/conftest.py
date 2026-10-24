@@ -142,10 +142,33 @@ def postgres_engine(postgres_database_url: str) -> Iterator[Engine]:
 
 
 @pytest.fixture()
-def seeded_lineage_graph(postgres_engine: Engine) -> LineageSeed:
+def postgres_database_at_034(guarded_database_url: str) -> str:
+    """A database parked at 202607170034 instead of the live head.
+
+    The two downgrade-refusal tests pin their own start revision. At the live
+    head the downgrade runs in a single transaction, so a refusal rolls all the
+    way back and the refused revision can never be observed. The historical
+    literals in those tests are the fixture's contract, not the live head.
+    """
+
+    reset_public_schema(guarded_database_url)
+    run_alembic(guarded_database_url, "upgrade", "202607170034")
+    return guarded_database_url
+
+
+@pytest.fixture()
+def postgres_engine_at_034(postgres_database_at_034: str) -> Iterator[Engine]:
+    engine = create_engine(sync_database_url(postgres_database_at_034))
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+
+
+def _seed_lineage_graph(engine: Engine) -> LineageSeed:
     seed = LineageSeed(*(uuid.uuid4() for _ in range(9)))
     fingerprint = "sha256:" + "a" * 64
-    with postgres_engine.begin() as connection:
+    with engine.begin() as connection:
         connection.execute(
             text(
                 "INSERT INTO users (id, email, password_hash, name, status) "
@@ -294,3 +317,13 @@ def seeded_lineage_graph(postgres_engine: Engine) -> LineageSeed:
             },
         )
     return seed
+
+
+@pytest.fixture()
+def seeded_lineage_graph(postgres_engine: Engine) -> LineageSeed:
+    return _seed_lineage_graph(postgres_engine)
+
+
+@pytest.fixture()
+def seeded_lineage_graph_at_034(postgres_engine_at_034: Engine) -> LineageSeed:
+    return _seed_lineage_graph(postgres_engine_at_034)

@@ -181,11 +181,31 @@ async def postgres_database(postgres_database_url: str) -> AsyncIterator[Postgre
 
 
 @pytest_asyncio.fixture()
-async def seeded_action_run(postgres_database: PostgresDatabase) -> SeededActionRun:
+async def postgres_database_at_043(postgres_database_url: str) -> AsyncIterator[PostgresDatabase]:
+    """A database parked at 202607270043 instead of the live head.
+
+    ``postgres_database_url`` has already dropped and recreated ``public``, so
+    this only has to upgrade. It keeps sharing one URL with ``sync_database_url``
+    and ``alembic_runner``: all three resolve to the same physical database.
+    """
+
+    _run_alembic(postgres_database_url, "upgrade", "202607270043")
+    engine = create_async_engine(postgres_database_url)
+    database = PostgresDatabase(
+        engine=engine,
+        sessions=async_sessionmaker(engine, expire_on_commit=False),
+    )
+    try:
+        yield database
+    finally:
+        await engine.dispose()
+
+
+async def _seed_action_run(database: PostgresDatabase) -> SeededActionRun:
     owner_id, workspace_id, project_id, plan_id, version_id, run_id, step_id = (
         uuid.uuid4() for _ in range(7)
     )
-    async with postgres_database.sessions() as session:
+    async with database.sessions() as session:
         session.add(
             User(
                 id=owner_id,
@@ -323,13 +343,25 @@ async def seeded_action_run(postgres_database: PostgresDatabase) -> SeededAction
         )
         await session.commit()
     return SeededActionRun(
-        database=postgres_database,
+        database=database,
         owner_id=owner_id,
         workspace_id=workspace_id,
         project_id=project_id,
         run_id=run_id,
         step_id=step_id,
     )
+
+
+@pytest_asyncio.fixture()
+async def seeded_action_run(postgres_database: PostgresDatabase) -> SeededActionRun:
+    return await _seed_action_run(postgres_database)
+
+
+@pytest_asyncio.fixture()
+async def seeded_action_run_at_043(
+    postgres_database_at_043: PostgresDatabase,
+) -> SeededActionRun:
+    return await _seed_action_run(postgres_database_at_043)
 
 
 @pytest_asyncio.fixture()

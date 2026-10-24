@@ -121,6 +121,6 @@ def test_guard_check_only_accepts_exact_authorized_target_without_connecting() -
 def test_guard_is_pinned_to_revision_043_and_dedicated_suite() -> None:
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert "^202607270043 \\(head\\)$" in source
-    assert "expected exactly one Alembic head at 202607270043" in source
+    assert "^202610210057 \\(head\\)$" in source
+    assert "expected exactly one Alembic head at 202610210057" in source
     assert "pytest tests/postgres_workflow_action -q" in source

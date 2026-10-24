@@ -98,11 +98,11 @@ fi
 cd "$repository_root/apps/api"
 heads_output="$(uv run alembic heads)"
 head_count="$(printf '%s\n' "$heads_output" | awk 'NF { count += 1 } END { print count + 0 }')"
-if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202607170034 \(head\)$'; then
-  printf '%s\n' "error: expected exactly one Alembic head at 202607170034" >&2
+if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610210057 \(head\)$'; then
+  printf '%s\n' "error: expected exactly one Alembic head at 202610210057" >&2
   exit 1
 fi
 
-printf '%s\n' "alembic source head check passed: 202607170034"
+printf '%s\n' "alembic source head check passed: 202610210057"
 export DATABASE_URL="$CAPABILITY_GOVERNANCE_TEST_DATABASE_URL"
 uv run pytest tests/postgres_capability_governance -q

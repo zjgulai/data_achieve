@@ -89,11 +89,11 @@ def test_revision_043_upgrade_downgrade_upgrade_lifecycle(
 @pytest.mark.asyncio
 async def test_revision_043_downgrade_refuses_nonzero_retry_evidence(
     alembic_runner: Callable[..., subprocess.CompletedProcess[str]],
-    seeded_action_run: Any,
+    seeded_action_run_at_043: Any,
     sync_database_url: str,
 ) -> None:
-    database = seeded_action_run.database
-    step_id = seeded_action_run.step_id
+    database = seeded_action_run_at_043.database
+    step_id = seeded_action_run_at_043.step_id
     async with database.engine.begin() as connection:
         await connection.execute(
             text("UPDATE step_runs SET retry_generation = 1 WHERE id = :step_id"),
