@@ -41,10 +41,7 @@ tagger 时间为 1792762998 +0800。Task 0 开始前与提交后各断言一次 
 | 提交后 `contentDrift` | `current`，`coveredFiles=1289` |
 | 提交后图规模 | 45,277 nodes / 76,607 edges / 988 clusters / 901 flows |
 
-表格上段是 Task 0 在 `0c11c2b` 上的基线索引（后续任务是它的对照）。
-本提交落地后 HEAD 前进，`status` 会先变 `stale`（只因 commit 变化），
-再次 `analyze --index-only` 即恢复 `up-to-date`。图增量 +11 nodes / +11 edges
-来自本文与计划两份新文档，`coveredFiles` 1288 → 1289。
+表格上段是在 commit 仍为 `0c11c2b` 时建立的工作树索引，但索引已包含未提交的 S0 plan 文件；它不是纯 Git tree 快照。证据文件当时尚不存在。提交后新增证据文档的 File + 10 个 Section 节点，使图规模 +11 nodes / +11 edges，`coveredFiles` 1288 → 1289。
 提交后的确切 HEAD 与最终索引状态记在 Task 0 报告里，本文不复述，
 避免「文档内容 → 提交哈希 → 文档内容」的循环。
 
@@ -91,6 +88,9 @@ S0 各任务只要求不新增错误，不要求清零。
 | `call-overload` | 2 |
 | `return-value` | 1 |
 | `list-item` | 1 |
+| `attr-defined` | 1 |
+| `import-not-found` | 1 |
+| `assignment` | 1 |
 
 错误最集中的文件：
 
@@ -101,6 +101,15 @@ S0 各任务只要求不新增错误，不要求清零。
 | `services/tiktok_tools.py` | 15 |
 | `repositories/tiktok_content.py` | 11 |
 | `repositories/tiktok_commerce.py` | 7 |
+
+## 3.1 tracked mypy signature baselines
+
+| 范围 | 唯一签名 | 文件 | SHA-256 |
+|---|---:|---|---|
+| `mypy src` | 62 | `configs/quality/mypy-src-signatures.txt` | `db46d230ee55ed8d1a553ad477196d34da031412c30df83551be2a21ba149f46` |
+| `mypy src tests` | 498 | `configs/quality/mypy-src-tests-signatures.txt` | `718ca2523cb7e85583b4ba90ec974e11d47114a1e0275ebe6cfedd9ea3a98827` |
+
+两份文件由 Task 0 原始输出规范化生成，后续不得重新取基线；允许签名减少，不允许新增。
 
 ## 4. unit 基线
 
@@ -113,7 +122,7 @@ S0 各任务只要求不新增错误，不要求清零。
 | error | 0 |
 | 完整输出 | `/tmp/s0-unit-baseline.txt` |
 
-计划正文提到的 `2495` 只在把 2 个 skip 当 pass 时成立。**实测是 2493 passed + 2 skipped。**
+C0 既有证据曾记录生成物存在时 `2495 passed`；S0 计划没有固定 2495，而是要求冻结当前 clean-worktree 的真实 passed/skip。**实测是 2493 passed + 2 skipped。**
 
 两个 skip 都与生成物缺失有关，不是缺陷：
 
@@ -258,4 +267,4 @@ len(open().read())    → 10883
   实际该 worktree 初始没有 `.gitnexus/`，必须先 bootstrap。
   已按运行时要求先 `bunx gitnexus@latest analyze --index-only`，
   再用生成的 runner 重建，最终状态与计划 Expected 一致。
-- 计划正文提到 unit `2495`；实测 `2493 passed + 2 skipped`，以实测为准，不调整计划成数值。
+- C0 既有证据的 `2495 passed` 来自生成物存在时两条 skip 转 pass；S0 计划未固定该数。clean-worktree 实测 `2493 passed + 2 skipped`，以实测为准。

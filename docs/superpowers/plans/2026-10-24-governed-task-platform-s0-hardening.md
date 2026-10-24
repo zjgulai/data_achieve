@@ -15,7 +15,7 @@
 - 不修改 Alembic migration、SQLAlchemy model、`configs/*.lock.json`、`apps/scraper-console/**`、Dockerfile、compose、`tool_catalog/projection.py`。`SCHEMA_HEAD` 必须保持 `202610210057`，catalog digest 必须保持 `35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c`。
 - 只修确认的 Critical/Important 缺陷及其直接测试、证据、CI 门禁。不得顺手移植 main 的 provider cancellation、record deep-link、enrichment quota 或错误码全量改名。
 - 全局 token 没有项目身份时保持既有行为；项目密钥必须 fail-closed，跨项目和跨工作区不得读、写或计量他项目数据。
-- MCP 工具总数保持 39。`create_report`、`discover`、`inspect` 是相对 C0 基座的三个新增工具；不得删除或改名。
+- MCP 工具总数保持 39。`create_report`、`discover`、`inspect` 是相对整合比较基座 `f0560ca` 的三个净新增工具；它们在 S0 起点 `0c11c2b` 已存在。不得删除或改名。
 - `get_playbook` 和 `list_capabilities` 恢复旧字段时采用加法兼容。旧字段至少保留一个迁移周期；本计划不删除新结构化字段。
 - 修改函数、类或方法前必须运行 GitNexus upstream impact。`UNKNOWN` 必须用文本搜索确认。HIGH/CRITICAL 必须先记录风险。每个提交前运行 `detect-changes --scope all`；`partial` 或 `truncated` 不是 clean。
 - 每个行为修复必须有真实 RED。characterization test 必须在计划中明确标为“当前即应通过”，不得伪称 RED。
@@ -39,6 +39,9 @@
 | `scripts/verify-*-migration.sh` | 只更新“当前 Alembic 单头断言”为 `202610210057`；历史 upgrade/downgrade revision 保持原值。 |
 | `apps/api/tests/unit/test_*_postgres_guard.py` | 同步当前单头断言。 |
 | `apps/api/tests/unit/test_migration_head_pins.py` | 新增统一单头 pin 守卫，防止脚本再次陈旧。 |
+| `scripts/check_mypy_baseline.py` | 归一化 mypy 输出并拒绝新增诊断签名；允许存量债务减少。 |
+| `configs/quality/mypy-src-signatures.txt` | Task 0 冻结的 `mypy src` 62 个唯一签名。 |
+| `configs/quality/mypy-src-tests-signatures.txt` | Task 0 冻结的 `mypy src tests` 498 个唯一签名，供 CI non-regression。 |
 | `docs/ops/pg0-baseline-c0-2026-10-22.md` | 修正工具增量、兼容性变化、GitNexus compare、CI 风险、Ruff 和 Console build-arg 事实。 |
 | `docs/ops/pg0-ruff-cleanup-2026-10-22.md` | 修正 Ruff 负控使用项目配置和 100 列阈值。 |
 | `docs/ops/pg0-s0-hardening-2026-10-24.md` | S0 执行证据、门禁和标签前事实。 |
@@ -50,6 +53,8 @@
 **Files:**
 - Create: `docs/superpowers/plans/2026-10-24-governed-task-platform-s0-hardening.md`
 - Create: `docs/ops/pg0-s0-hardening-2026-10-24.md`
+- Create: `configs/quality/mypy-src-signatures.txt`
+- Create: `configs/quality/mypy-src-tests-signatures.txt`
 
 **Interfaces:**
 - Consumes: C0 `0c11c2b`、本地 `pg0-baseline-v1`、C0 最终审查发现。
@@ -74,6 +79,9 @@ Expected: 全部退出码 0。
 cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
 uv sync --locked --dev
 cd /Users/lute/Project/data_scrapy-c0-s0
+if [ ! -f .gitnexus/run.cjs ]; then
+  bunx gitnexus@latest analyze --index-only
+fi
 node .gitnexus/run.cjs analyze --index-only
 node .gitnexus/run.cjs status --json > /tmp/s0-gitnexus-status.json
 ```
@@ -93,7 +101,16 @@ grep -q '^Found 123 errors in 28 files' /tmp/s0-mypy-baseline.txt
 .venv/bin/python -m pytest tests/unit -q > /tmp/s0-unit-baseline.txt
 ```
 
-Expected: mypy 基线 123 errors/28 files；unit 不得有 failed/error。记录实际 passed/skip 数，不把 ignored `generated/` 存在导致的 skip 转 pass 误写成固定数量。
+Expected: `mypy src` 基线 123 errors/28 files；unit 不得有 failed/error。记录实际 passed/skip 数，不把 ignored `generated/` 存在导致的 skip 转 pass 误写成固定数量。
+
+另运行 `.venv/bin/python -m mypy src tests > /tmp/s0-mypy-src-tests-baseline.txt 2>&1`，预期 `Found 1200 errors in 117 files (checked 689 source files)`。规范化两份输出：删除 summary/note，只保留 `: error:` 行，把 `:line[:column]:` 归一化为 `:LINE:`，去重排序后写入：
+
+```text
+configs/quality/mypy-src-signatures.txt              # 62 行；SHA-256 db46d230...
+configs/quality/mypy-src-tests-signatures.txt        # 498 行；SHA-256 718ca252...
+```
+
+两份文件是 Task 0 冻结基线；Task 1-10 不得重新生成或放宽。后续门禁只允许当前签名集合是基线子集，不允许新增。
 
 - [ ] **Step 4: 冻结确认缺陷的 RED**
 
@@ -120,7 +137,7 @@ get_playbook("tiktok")：没有 markdown 字段。
 ```bash
 cd /Users/lute/Project/data_scrapy-c0-s0
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add docs/superpowers/plans/2026-10-24-governed-task-platform-s0-hardening.md docs/ops/pg0-s0-hardening-2026-10-24.md
+git add docs/superpowers/plans/2026-10-24-governed-task-platform-s0-hardening.md docs/ops/pg0-s0-hardening-2026-10-24.md configs/quality/mypy-src-signatures.txt configs/quality/mypy-src-tests-signatures.txt
 git commit -m "docs(plan): add S0 hardening slice"
 ```
 
@@ -590,9 +607,11 @@ Expected: rss=0、web=63、regulatory=1，失败。
 
 - [ ] **Step 4: 最小实现**
 
-保留 `package = await get_platform_package(platform_id)`。按 `package.endpoints` 遍历。按当前 platform 建 `descriptor` lookup；有 descriptor 时将 `_public_endpoint_payload(descriptor)` 与 endpoint 的旧字段合并；无 descriptor 时使用 `_public_endpoint_payload(endpoint)` 并补 `tool_id=endpoint.endpoint_type`。
+保留 `package = await get_platform_package(platform_id)`。按 `package.endpoints` 遍历。按当前 platform 建 `descriptor` lookup；有 descriptor 时先生成 `_public_endpoint_payload(descriptor)`，再覆盖 endpoint 的旧字段；无 descriptor 时使用 `_public_endpoint_payload(endpoint)` 并补 `tool_id=endpoint.endpoint_type`。
 
-旧字段必须保持顶层，不放到 nested `legacy`，因为旧 caller 直接读顶层字段。新字段仍保留。`status` filter 对 `endpoint.status` 生效。
+**合并优先级是绑定契约：`LEGACY_KEYS` 中 endpoint 值必须覆盖 descriptor 值。** `web/generic_web` 的 `description`、`is_alias_view` 和 `regulatory/public_feed` 的 `label` 都必须来自平台 endpoint 行，不得被 canonical descriptor 覆盖。
+
+旧字段必须保持顶层，不放到 nested `legacy`。新字段仍保留。`status` filter 对 `endpoint.status` 生效。测试使用 `LEGACY_KEYS <= set(row)` 的子集语义；fallback 行允许额外 `tool_id`。新增已知冲突行断言，确认 endpoint 旧值胜出。
 
 不改 `tool_catalog/projection.py`，不改变 digest。
 
@@ -730,6 +749,8 @@ R2d Workflow Planner/Lineage PostgreSQL jobs 的 current-head guard pin 陈旧�
 
 记录 Critical/Important 修复、测试、mypy non-regression、catalog/schema 不变、v1 immutable、未 push、未生产操作。安全写入并验证字节。
 
+同时纠正 Task 0 点时证据：计划从未固定 `2495`；Task 0 建索引时工作树已含未提交 plan，因此 45,266 不是纯 `0c11c2b` Git tree；mypy 123 行错误码分布补齐 `attr-defined`、`import-not-found`、`assignment` 各 1；Task 0 的 15-symbol detect 数是点时输出，不作为耐久总数。
+
 - [ ] **Step 6: 提交**
 
 ```bash
@@ -754,10 +775,14 @@ git commit -m "docs(ops): correct C0 compatibility and release evidence"
 - Modify: `apps/api/tests/unit/test_workflow_action_postgres_guard.py`
 - Modify: `apps/api/tests/unit/test_workflow_execution_postgres_guard.py`
 - Modify: `apps/api/tests/unit/test_workflow_executor_postgres_guard.py`
+- Modify: `apps/api/tests/unit/test_workflow_lineage_postgres_guard.py`
 - Create: `apps/api/tests/unit/test_migration_head_pins.py`
+- Create: `apps/api/tests/unit/test_mypy_baseline_guard.py`
+- Create: `scripts/check_mypy_baseline.py`
+- Delete: `scripts/verify-workflow-planner-phase2-migration.sh.bak`
 
 **Interfaces:**
-- Produces: 无 PostgreSQL 的 jobs 只运行 unit；migration guard 的“当前头”统一为 `202610210057`；历史迁移路径 revision 不变。
+- Produces: 无 PostgreSQL 的 jobs 只运行 unit；API mypy 使用 tracked signature baseline 做 non-regression；migration guard 的“当前头”统一为 `202610210057`；历史迁移路径 revision 不变。
 
 - [ ] **Step 1: impact**
 
@@ -771,14 +796,15 @@ git commit -m "docs(ops): correct C0 compatibility and release evidence"
 API Check file integrity: working-directory = .
 API Pytest: uv run pytest tests/unit
 API guard: ...check_pytest_baseline.py --path tests/unit
+API Mypy: ...check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
 Platform Skill And MCP Gate: 不包含 tests/integration/test_platform_package_routes.py，或该 job 配置 PostgreSQL service + DATABASE_URL。首选移除 integration 文件，因该 job 无 DB。
 ```
 
 - [ ] **Step 3: 写 head pin RED**
 
-新增 `test_migration_head_pins.py`：解析 `uv run alembic heads` 的唯一 head `202610210057`；检查六个脚本的“expected exactly one Alembic head at ...”和 `grep -Eq '^... \(head\)$' 使用该值。
+新增 `test_migration_head_pins.py`：解析 `uv run alembic heads` 的唯一 head `202610210057`；检查六个 `.sh` 脚本的 current-head error/success/grep 断言使用该值；断言仓库不再跟踪 `verify-*.sh.bak`。
 
-只检查当前头 guard，不检查脚本内部历史 upgrade/downgrade revision。
+只检查 current-head guard，不检查脚本内部历史 upgrade/downgrade revision。新增 `test_mypy_baseline_guard.py`，覆盖 normalization、允许 removed signatures、拒绝 added signatures、非 0/1 mypy exit 失败。
 
 - [ ] **Step 4: 运行 RED**
 
@@ -789,7 +815,9 @@ cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
   tests/unit/test_workflow_action_postgres_guard.py \
   tests/unit/test_workflow_execution_postgres_guard.py \
   tests/unit/test_workflow_executor_postgres_guard.py \
-  tests/unit/test_migration_head_pins.py -q
+  tests/unit/test_workflow_lineage_postgres_guard.py \
+  tests/unit/test_migration_head_pins.py \
+  tests/unit/test_mypy_baseline_guard.py -q
 ```
 
 Expected: stale pin 和 CI assertions 失败。
@@ -803,6 +831,9 @@ Expected: stale pin 和 CI assertions 失败。
   working-directory: .
   run: python3 scripts/check_file_integrity.py
 ...
+- name: Mypy baseline (non-regression)
+  run: uv run python ../../scripts/check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
+...
 - name: Pytest
   run: uv run pytest tests/unit
 - name: Pytest regression guard (unit scope)
@@ -813,7 +844,7 @@ platform-packages job 从测试列表删除 `tests/integration/test_platform_pac
 
 六个脚本只替换 `alembic heads` 校验和对应 success/error message 的 expected head 为 `202610210057`。不要替换历史 `alembic upgrade/downgrade` revision、authorization packet revision 或 dedicated suite 内部断言。
 
-四个 guard tests 更新当前 head 字符串。`test_workflow_executor_postgres_guard.py` 的 authorization revision `202607280044` 保持不变；只改 `test_guard_is_pinned...` 对脚本 current-head 行的断言和测试名称。
+五个 guard tests 更新 current-head 字符串。`test_workflow_lineage_postgres_guard.py` 的 fake `uv` 返回值改为 `202610210057 (head)`；它的历史 `alembic upgrade/downgrade 202607160033/202607170034` 与 cleanup assertions 保持不变。`test_workflow_executor_postgres_guard.py` 的 authorization revision `202607280044` 也保持不变。删除 tracked 的陈旧 `.bak`。
 
 - [ ] **Step 6: GREEN**
 
@@ -823,7 +854,9 @@ platform-packages job 从测试列表删除 `tests/integration/test_platform_pac
   tests/unit/test_workflow_action_postgres_guard.py \
   tests/unit/test_workflow_execution_postgres_guard.py \
   tests/unit/test_workflow_executor_postgres_guard.py \
-  tests/unit/test_migration_head_pins.py -q
+  tests/unit/test_workflow_lineage_postgres_guard.py \
+  tests/unit/test_migration_head_pins.py \
+  tests/unit/test_mypy_baseline_guard.py -q
 cd /Users/lute/Project/data_scrapy-c0-s0
 python3 scripts/check_file_integrity.py
 ```
@@ -834,7 +867,7 @@ python3 scripts/check_file_integrity.py
 
 ```bash
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add .github/workflows/ci.yml scripts/verify-*-migration.sh apps/api/tests/unit/test_*postgres_guard.py apps/api/tests/unit/test_migration_head_pins.py
+git add .github/workflows/ci.yml scripts/check_mypy_baseline.py scripts/verify-*-migration.sh scripts/verify-workflow-planner-phase2-migration.sh.bak configs/quality/mypy-src-signatures.txt configs/quality/mypy-src-tests-signatures.txt apps/api/tests/unit/test_*postgres_guard.py apps/api/tests/unit/test_migration_head_pins.py apps/api/tests/unit/test_mypy_baseline_guard.py
 git commit -m "ci: unblock api gates and refresh current head pins"
 ```
 
@@ -875,7 +908,7 @@ set -e
 test "$MYPY_RC" -eq 1
 ```
 
-将 mypy 与 `/tmp/s0-mypy-baseline.txt` 去 summary/note、归一化 line/column 后比较 unique signatures；new=0。若 edited files 新增诊断，停止。
+运行 `python ../../scripts/check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-signatures.txt --path src`，并使用 full baseline 对 `src tests` 再跑一次；两者 new=0。允许诊断减少，不允许 Task 1-9 的错误被重新取基线洗掉。
 
 - [ ] **Step 3: contracts and invariants**
 
@@ -941,14 +974,15 @@ git commit -m "docs(ops): record S0 hardening verification"
 ```bash
 cd /Users/lute/Project/data_scrapy-c0-s0
 test -z "$(git tag -l pg0-baseline-v2)"
-BASELINE_COMMIT=$(git rev-parse HEAD^)
+BASELINE_COMMIT=$(cat /tmp/s0-reviewed-code-baseline.txt)
+test "$(git diff --name-only "$BASELINE_COMMIT"..HEAD)" = "docs/ops/pg0-s0-hardening-2026-10-24.md"
 git tag -a pg0-baseline-v2 "$BASELINE_COMMIT" \
   -m "PG0 baseline v2: S0 hardening; tenant isolation and MCP compatibility fixed; schema 202610210057; v1 preserved"
 test "$(git rev-parse pg0-baseline-v2^{commit})" = "$BASELINE_COMMIT"
 test "$(git rev-parse pg0-baseline-v1)" = "48aaccfa5a3689f23f7517cfb88b59c2533805ab"
 ```
 
-标签只在本地，不 push。若证据 commit 不是最后一个 doc-only commit，停止并重新确定 code baseline；不得猜 `HEAD^`。
+标签只在本地，不 push。最终 review 通过后、写 evidence 前，把 reviewed HEAD 写入 `/tmp/s0-reviewed-code-baseline.txt`。证据提交后用 diff 断言它到当前 HEAD 只有 `docs/ops/pg0-s0-hardening-2026-10-24.md`；不得用 `HEAD^` 猜标签目标。
 
 - [ ] **Step 10: 最终状态**
 
