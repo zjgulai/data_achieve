@@ -309,6 +309,8 @@ async def structured_playbook(platform_id: str) -> dict[str, object]:
         "steps": _numbered_lines(sections.get("执行步骤", "")),
         "acceptance": _bullet_lines(sections.get("验收", "")),
         "risk_boundaries": _bullet_lines(sections.get("风险边界", "")),
+        "markdown": markdown,
+        "deprecated_fields": ["markdown"],
     }
 
 

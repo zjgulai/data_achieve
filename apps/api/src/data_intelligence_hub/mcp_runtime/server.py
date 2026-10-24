@@ -244,7 +244,7 @@ async def describe_capability(
     """
     async with governed_tool(context, "describe_capability", endpoint_type=endpoint_type):
         payload = await describe_capability_public(endpoint_type)
-        # 旧调用方读 ``endpoint_type``。保留同值别名，不改变契约本身。
+        # ``endpoint_type`` 是与 ``tool_id`` 同值的兼容别名。
         payload["endpoint_type"] = payload["tool_id"]
         return payload
 

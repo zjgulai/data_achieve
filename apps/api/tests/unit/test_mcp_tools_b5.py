@@ -36,7 +36,10 @@ from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.report_artifact import ReportArtifact
 from data_intelligence_hub.models.run import Run, RunStep
 from data_intelligence_hub.models.task import TaskRun
-from data_intelligence_hub.platform_packages.service import get_platform_package_catalog
+from data_intelligence_hub.platform_packages.service import (
+    get_platform_package_catalog,
+    get_platform_playbook,
+)
 from data_intelligence_hub.tool_catalog.public import PublicTool, to_public_tool
 
 TEMPLATE_ID = "t1_voc"
@@ -562,7 +565,9 @@ async def test_refactored_catalog_tools_return_structured_contract(
     assert structured["steps"]
     assert structured["acceptance"]
     assert structured["risk_boundaries"]
-    assert "markdown" not in structured
+    expected_markdown = await get_platform_playbook("tiktok")
+    assert structured["markdown"] == expected_markdown
+    assert structured["deprecated_fields"] == ["markdown"]
 
 
 @pytest.mark.anyio
