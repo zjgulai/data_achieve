@@ -484,3 +484,146 @@ def test_redact_stays_linear_on_many_kv_pairs() -> None:
     elapsed = time.perf_counter() - started
     assert elapsed < 1.0, f"2 万组 key=value 脱敏耗时 {elapsed:.2f}s"
 
+
+# ---------------------------------------------------------------------------
+# 安全补丁：单花括号值 / 超长值 / 超长键 / 分隔符洪泛
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "token={S3cr3tVal}",
+        "password={hunter2}",
+        "api_key={abc123}",
+        "client_secret={S3cr3tVal}",
+        '{"error": "token={S3cr3tVal}"}',
+    ],
+)
+def test_single_brace_values_are_redacted(payload: str) -> None:
+    """单花括号值是上游真实形态（`token={...}`），不能因为收窄模板分支而漏掉。"""
+    assert "S3cr3tVal" not in replies.fit_text(payload)
+    assert "hunter2" not in replies.fit_text(payload)
+    assert "abc123" not in replies.fit_text(payload)
+
+
+@pytest.mark.parametrize(
+    "payload", ["token={{SECRET_A}}", "api_key={{SECRET_B}}", "x token={{SECRET_C}} y"]
+)
+def test_double_brace_templates_still_redacted(payload: str) -> None:
+    """恢复单花括号的同时，双花括号模板必须仍然整值抹掉。"""
+    rendered = replies.fit_text(payload)
+    assert "SECRET_" not in rendered
+    assert replies.REDACTED in rendered
+
+
+@pytest.mark.parametrize("size", [5000, 20_000])
+def test_long_bare_secret_value_is_fully_redacted(size: int) -> None:
+    """超长值必须整体抹掉：只抹前 4096 字符会把尾部明文留在回复里。"""
+    value = "A" * size
+    out = replies._redact(f"token={value}")
+    assert out == f"token={replies.REDACTED}"
+    assert "A" not in out
+    assert "A" not in replies.fit_text(f"token={value}")
+
+
+def test_long_jwt_like_value_is_fully_redacted() -> None:
+    jwt = "eyJhbGciOiJIUzI1NiJ9." + "x" * 5000 + ".sig"
+    out = replies._redact(f"token={jwt}")
+    assert "x" * 100 not in out
+    assert "eyJhbGciOiJIUzI1NiJ9" not in out
+
+
+def test_long_bare_secret_absent_from_failure_card() -> None:
+    pending = _pending({"query": "AI"})
+    secret = "A" * 5000
+    card = cards.failure_card(pending, f"upstream rejected: token={secret}")
+    serialized = json.dumps(card, ensure_ascii=False)
+    assert "A" * 100 not in serialized
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "s" * 70 + "_token",
+        "s" * 70 + "_secret",
+        "a" * 200 + "_password",
+        "client_" + "a" * 100 + "_secret",
+    ],
+)
+def test_over_bound_secret_key_still_redacts_its_value(key: str) -> None:
+    """键名超过 64 字符时不能退化成"没有键"：旧正则干脆整条匹配不上。
+
+    键名带凭据后缀且有分隔边界，就仍是凭据键，值必须抹。
+    """
+    assert replies._is_secret_key(key) is True
+    out = replies._redact(f"{key}=S3cr3tVal")
+    assert "S3cr3tVal" not in out
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "a" * 80 + "_api_key",
+        "x" * 100 + "_access_token",
+        "c" * 70 + "_client_secret",
+    ],
+)
+def test_over_bound_quoted_json_key_still_redacts(key: str) -> None:
+    """压缩 JSON 里的超长键：旧正则因键名截断根本匹配不到，值原样输出。"""
+    payload = '{"' + key + '":"S3cr3tVal","region":"us"}'
+    out = replies._redact(payload)
+    assert "S3cr3tVal" not in out
+    assert '"region":"us"' in out
+
+
+@pytest.mark.parametrize("key", ["s" * 70 + "token", "a" * 200 + "password"])
+def test_no_boundary_long_key_is_not_treated_as_secret(key: str) -> None:
+    """没有分隔边界的长键仍按普通键处理（与 `monkey` 同一策略），不是漏抹。"""
+    assert replies._is_secret_key(key) is False
+    assert replies._redact(f"{key}=S3cr3tVal") == f"{key}=S3cr3tVal"
+
+
+@pytest.mark.parametrize("length", [1000, 4000, 10_000])
+def test_separator_flood_does_not_recurse(length: int) -> None:
+    """分隔符洪泛不能走进 Python 递归：~500 个分隔符就会 RecursionError。"""
+    payload = "note" + "=" * length + "x"
+    out = replies._redact(payload)
+    assert isinstance(out, str)
+
+
+def test_mixed_separator_flood_does_not_recurse() -> None:
+    """`a=a=a=...` 形态每层都留一个分隔符，旧写法必然打爆递归栈。"""
+    out = replies._redact(("a" + "=") * 600)
+    assert isinstance(out, str)
+
+
+def test_one_megabyte_flood_is_handled_quickly() -> None:
+    import time
+
+    payload = ("a=" * 500_000)[:1_000_000]
+    started = time.perf_counter()
+    replies._redact(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"1MB 分隔符洪泛耗时 {elapsed:.2f}s"
+
+
+def test_deep_colon_nesting_does_not_recurse() -> None:
+    """深度 1000 的 `{"a":` 嵌套：旧写法按分隔符递归，必然炸栈。"""
+    payload = '{"a":' * 1000 + '"token=S3cr3tVal"'
+    out = replies._redact(payload)
+    assert "SECRET_t2xyzx5r" not in out
+    assert replies.REDACTED in out
+
+
+def test_single_brace_template_inside_deep_nesting() -> None:
+    payload = '{"a":' * 200 + "{'token': {S3cr3tVal}}" + "}" * 200
+    assert "S3cr3tVal" not in replies._redact(payload)
+
+
+def test_null_byte_payload_still_redacts():
+    payload = "token=\x00S3cr3tVal\x00"
+    out = replies._redact(payload)
+    assert "S3cr3tVal" not in out
+
+

@@ -27,27 +27,23 @@ _TRUNCATION_SUFFIX = "\n…（内容过长，已截断）"
 REDACTED = "[redacted]"
 _REDACTED = REDACTED
 _BEARER_PATTERN = re.compile(r"(?i)bearer\s+\S+")
-# 文本形态的密钥键值对：先按「键 + 分隔符 + 值」粗匹配，再由 `_redact_kv`
-# 按 `_is_secret_key` 决定抹不抹值。粗匹配不做键名白名单，否则
-# `refresh_token=...` 这种复合键根本选不中（`\b` 在 `_t` 处没有边界）。
+# 文本形态的密钥键值对由一个确定性扫描器处理（见 `_redact_kv_text`），
+# 不再用「键 + 分隔符 + 值」的正则加值递归——那条路有三个已知缺陷：
 #
-# 值必须尽量短，否则非密钥的外层键会把内层密钥整段吞成「值」：
-# - `{"error":{"api_key":"..."}}` 压缩 JSON：花括号分支只认 `{{模板}}`，
-#   单层 `{...}` 不匹配，正则引擎才能继续走到内层 `api_key`；
-# - 裸值在 `{`/`}`/引号/`?`/`&` 处断开，URL 里的 `?token=` 才能另起一轮；
-# - 引号值里若还藏着 `key=value`（`{"error": "token=..."}`），
-#   `_redact_kv` 会递归再扫一遍值。
+# 1. 递归深度与分隔符数量成正比：`a=` 重复 500 次就 RecursionError。
+# 2. 值限长会让超长密钥被截断成"前 4096 字符已抹、尾部明文留下"。
+# 3. 键名限长会让超长键退化成普通键，凭据值原样输出。
 #
-# 键名限长 + 原子组：不定长键名在缺少分隔符的长串上会在每个起点回退整段，
-# 200k 字符要跑数分钟（O(n²)）。键名实际不超过 64 字符，限长后是线性。
-_MAX_KEY_CHARS = 64
-_MAX_VALUE_CHARS = 4096
-_SECRET_KV_PATTERN = re.compile(
-    rf"(?i)(?P<quote>[\"']?)(?P<key>(?>[A-Za-z0-9_.\-]{{1,{_MAX_KEY_CHARS}}}))(?P=quote)"
-    rf"(?P<sep>\s*[=:]\s*)"
-    rf"(?P<value>\"[^\"]*\"|'[^']*'|\{{\{{[^{{}}\s,;]*\}}\}}"
-    rf"|[^\s,;{{}}\"'?&]{{1,{_MAX_VALUE_CHARS}}})"
+# 扫描器从左到右单遍推进，键名与值都不限长，天然线性且无递归。
+_KV_KEY_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
 )
+_KV_QUOTES = frozenset("\"'")
+# 裸值在此处终止：与旧正则保持一致的边界，外加单/双花括号。
+# 花括号不放宽成"任意单层 JSON"，否则 `{"error":{"api_key":"..."}}` 会被
+# 外层键吞掉。
+_KV_BARE_STOP = frozenset(" \t\r\n,;{}\"'?&")
+
 
 # 结构脱敏用的键名集合：整键命中即把值换成 REDACTED（不保留原值形态）。
 # 只放「装的就是凭据」的键。`auth` 这类容器键不放：它常装非敏感字段，
@@ -133,37 +129,118 @@ def _has_secret_suffix(raw_key: str) -> bool:
 
 def _redacted_value(original: str) -> str:
     """替换文本保持原值的引号外形，让脱敏后的 JSON 仍可解析。"""
-    quoted = len(original) >= 2 and original[0] in "\"'" and original[-1] == original[0]
+    quoted = len(original) >= 2 and original[0] in _KV_QUOTES and original[-1] == original[0]
     if quoted:
         return f"{original[0]}{REDACTED}{original[0]}"
     return REDACTED
 
 
-def _redact_kv(match: re.Match[str]) -> str:
-    """按键名裁决：密钥键整值抹掉，非密钥键只把值里的嵌套密钥再抹一遍。
+def _scan_key(text: str, start: int) -> tuple[str, int, bool] | None:
+    """读 `[quote]key[quote]`，返回 (键名, 键后位置, 是否带引号)；读不到返回 None。
 
-    非密钥键不能原样返回：`{"error": "token=..."}` 里整段引号值被外层键吃掉，
-    内层 `token=` 就再也不会被单独匹配到。递归作用在**原值**上（引号与分隔符
-    都在），所以 `{"api_key":"...","region":"us"}` 的 `region` 值仍保留引号。
-    值每层严格变短，递归必然收敛。
-
-    抹掉的只是值不是结构：原值带引号时替换文本也带同款引号，
-    脱敏后的压缩 JSON 仍是合法 JSON。
+    键名不限长：限长会让 `xxxx..._token` 这类长键丢掉凭据后缀，
+    值就再也不被抹。限长换来的线性时间由调用方的跳跃式推进保证。
     """
-    key = match.group("key")
-    quote = match.group("quote")
-    value = match.group("value")
-    if _is_secret_key(key):
-        return f"{quote}{key}{quote}{match.group('sep')}{_redacted_value(value)}"
-    nested = _redact(value)
-    if nested == value:
-        return match.group(0)
-    return f"{quote}{key}{quote}{match.group('sep')}{nested}"
+    index = start
+    quote = ""
+    if index < len(text) and text[index] in _KV_QUOTES:
+        quote = text[index]
+        index += 1
+    key_start = index
+    while index < len(text) and text[index] in _KV_KEY_CHARS:
+        index += 1
+    if index == key_start:
+        return None
+    key = text[key_start:index]
+    if quote:
+        if index < len(text) and text[index] == quote:
+            index += 1
+        else:
+            # 引号没闭合：这是「引号值里藏 KV」（`"token=..."`），
+            # 不能把引号当键的开头吃掉，退一格让下一轮从键名开始。
+            return None
+    return key, index, bool(quote)
+
+
+def _skip_spaces(text: str, index: int) -> int:
+    while index < len(text) and text[index].isspace():
+        index += 1
+    return index
+
+
+def _scan_separator(text: str, start: int) -> int | None:
+    """读 `\\s*[=:]\\s*`，返回分隔符之后的位置；不是分隔符返回 None。"""
+    index = _skip_spaces(text, start)
+    if index >= len(text) or text[index] not in "=:":
+        return None
+    return _skip_spaces(text, index + 1)
+
+
+def _scan_value(text: str, start: int) -> int:
+    """返回值结束位置（不含）。
+
+    值不限长：截断会让超长密钥只抹前 4096 字符、尾部明文留在回复里。
+    """
+    if start >= len(text):
+        return start
+    head = text[start]
+    if head in _KV_QUOTES:
+        close = text.find(head, start + 1)
+        return len(text) if close < 0 else close + 1
+    if head == "{":
+        if text.startswith("{{", start):
+            close = text.find("}}", start + 2)
+            return len(text) if close < 0 else close + 2
+        close = text.find("}", start + 1)
+        return len(text) if close < 0 else close + 1
+    index = start
+    while index < len(text) and text[index] not in _KV_BARE_STOP:
+        index += 1
+    return index
+
+
+def _redact_kv_text(text: str) -> str:
+    """单遍扫描脱敏 `key=value` / `key: value`，无递归。
+
+    非密钥键只输出 `键 + 分隔符` 就继续扫值：值里的密钥（压缩 JSON、
+    引号值里的 KV）会在同一遍里被后续步骤取到，不需要回扫值。
+    因此递归深度与分隔符数量无关，分隔符洪泛不会打爆栈。
+
+    只有密钥键才扫描并消费值。非密钥键若也扫值，`a=a=a=...` 这种
+    「分隔符不是值终止符」的输入会在每个起点重扫整条尾巴（O(n²)）。
+    """
+    pieces: list[str] = []
+    index = 0
+    length = len(text)
+    while index < length:
+        parsed = _scan_key(text, index)
+        if parsed is None:
+            pieces.append(text[index])
+            index += 1
+            continue
+        key, after_key, _ = parsed
+        after_sep = _scan_separator(text, after_key)
+        if after_sep is None:
+            # 键名之后没有分隔符：键内部任何起点都会以同样方式失败，
+            # 直接跳过整段键名，避免长串上的 O(n²) 重扫。
+            pieces.append(text[index:after_key])
+            index = after_key
+            continue
+        if not _is_secret_key(key):
+            # 非密钥键：只吐 `键 + 分隔符`，值留给下一轮（不消费、不递归）。
+            pieces.append(text[index:after_sep])
+            index = after_sep
+            continue
+        value_end = _scan_value(text, after_sep)
+        pieces.append(text[index:after_sep])
+        pieces.append(_redacted_value(text[after_sep:value_end]))
+        index = max(value_end, after_sep)
+    return "".join(pieces)
 
 
 def _redact(text: str) -> str:
     redacted = _BEARER_PATTERN.sub(f"Bearer {REDACTED}", text)
-    return _SECRET_KV_PATTERN.sub(_redact_kv, redacted)
+    return _redact_kv_text(redacted)
 
 
 def _canonical_key(key: Any) -> str:
