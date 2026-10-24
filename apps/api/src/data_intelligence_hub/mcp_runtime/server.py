@@ -183,32 +183,47 @@ async def list_capabilities(
     """列出某个平台的工具目录投影。"""
     async with governed_tool(context, "list_capabilities"):
         try:
-            await get_platform_package(platform_id)
+            package = await get_platform_package(platform_id)
         except PlatformPackageNotFoundError as exc:
             raise ValueError("platform_package_not_found") from exc
         catalog = await load_catalog()
+        # 行以平台包 endpoint 为准。目录按 canonical_tool_id 全局去重，
+        # 跨平台重名 endpoint（如 rss 与 regulatory 都有 ``public_feed``）
+        # 的 descriptor 只会出现一次；若按 ``tool.platform == platform_id``
+        # 过滤目录，rss 会拿到 0 行。descriptor 只作新字段的来源。
+        descriptors = {
+            tool.tool_id: tool
+            for tool in catalog.tools
+            if tool.platform == platform_id
+        }
         normalized = query.casefold().strip() if query else None
         capabilities: list[dict[str, object]] = []
-        for tool in catalog.tools:
-            if tool.platform != platform_id:
-                continue
-            if status is not None and tool.availability_view.catalog_status != status:
+        for endpoint in package.endpoints:
+            if status is not None and endpoint.status != status:
                 continue
             if normalized is not None and normalized not in (
-                f"{tool.tool_id} {tool.label} {tool.description}".casefold()
+                f"{endpoint.endpoint_type} {endpoint.label} {endpoint.description}".casefold()
             ):
                 continue
-            item = tool.model_dump(mode="json")
-            # 旧调用方读 ``endpoint_type``。保留同值别名。
-            item["endpoint_type"] = tool.tool_id
+            descriptor = descriptors.get(endpoint.endpoint_type)
+            if descriptor is not None:
+                item = _public_endpoint_payload(descriptor)
+                # 旧调用方读旧 18-key 顶层字段。endpoint 行值覆盖 descriptor
+                # 值：canonical descriptor 只保留首个 endpoint 的 label、
+                # description 与 is_alias_view（如 web/generic_web 的 Forbes
+                # Listicle 描述、regulatory/public_feed 的 FDA label）。
+                item.update(endpoint.model_dump(mode="json"))
+                item.pop("policy_block_reason", None)
+            else:
+                item = _public_endpoint_payload(endpoint)
+                # 无 descriptor 的 endpoint 保留新契约的 tool_id 别名。
+                item["tool_id"] = endpoint.endpoint_type
             capabilities.append(item)
         return {
             "catalog_digest": catalog.catalog_digest,
             "contract_version": catalog.contract_version,
             "platform_id": platform_id,
-            "capabilities": [
-                _public_endpoint_payload(item) for item in capabilities
-            ],
+            "capabilities": capabilities,
         }
 
 

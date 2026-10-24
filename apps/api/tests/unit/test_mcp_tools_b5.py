@@ -36,6 +36,7 @@ from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.report_artifact import ReportArtifact
 from data_intelligence_hub.models.run import Run, RunStep
 from data_intelligence_hub.models.task import TaskRun
+from data_intelligence_hub.platform_packages.service import get_platform_package_catalog
 from data_intelligence_hub.tool_catalog.public import PublicTool, to_public_tool
 
 TEMPLATE_ID = "t1_voc"
@@ -1439,3 +1440,206 @@ async def test_create_report_rejects_empty_run_ledger(
 
     assert "report_run_not_in_contract" in str(exc_info.value)
     assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 6: list_capabilities 每平台行语义与旧字段
+# ---------------------------------------------------------------------------
+
+# 冻结的旧 18-key 行字段集合。旧调用方直接读顶层这些键。
+LEGACY_KEYS = {
+    "capability_id",
+    "canonical_capability_id",
+    "content_type",
+    "cost_hint",
+    "description",
+    "endpoint_type",
+    "is_alias_view",
+    "label",
+    "method",
+    "notes",
+    "optional_params",
+    "param_fields",
+    "platform",
+    "provider",
+    "provider_group",
+    "provider_label",
+    "required_params",
+    "status",
+}
+
+
+async def _call_list_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    **arguments: object,
+) -> dict[str, object]:
+    """带治理上下文调用 list_capabilities，返回结构化负载。"""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    monkeypatch.setattr(
+        capability_service,
+        "async_session_factory",
+        async_sessionmaker(engine, expire_on_commit=False),
+    )
+    monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
+    try:
+        async with Client(mcp_server) as client:
+            result = await client.call_tool("list_capabilities", arguments)
+    finally:
+        await engine.dispose()
+    assert result.structured_content is not None
+    return result.structured_content
+
+
+@pytest.mark.parametrize(
+    ("platform_id", "count"),
+    [
+        ("rss", 19),
+        ("web", 69),
+        ("regulatory", 4),
+        ("tiktok", 39),
+    ],
+)
+@pytest.mark.anyio
+async def test_list_capabilities_platform_row_counts(
+    monkeypatch: pytest.MonkeyPatch,
+    platform_id: str,
+    count: int,
+) -> None:
+    """行数以平台包 endpoint 为准，不受目录按 canonical 去重影响。
+
+    Task 0 冻结基线：rss=19、web=69、regulatory=4、tiktok=39。
+    回归形态：rss 的 19 个 endpoint 全叫 ``public_feed``，descriptor 被
+    regulatory 抢占后 rss 返回 0 行；web 63、regulatory 1。
+    """
+    body = await _call_list_capabilities(monkeypatch, platform_id=platform_id)
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    assert len(capabilities) == count, (
+        f"{platform_id} 行数 {len(capabilities)} != {count}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("platform_id", "count"),
+    [
+        ("rss", 9),
+        ("web", 2),
+        ("pypi", 1),
+    ],
+)
+@pytest.mark.anyio
+async def test_list_capabilities_status_disabled_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+    platform_id: str,
+    count: int,
+) -> None:
+    """status 过滤对 endpoint.status 生效（verified/disabled/pending 词汇）。"""
+    body = await _call_list_capabilities(
+        monkeypatch,
+        platform_id=platform_id,
+        status="disabled",
+    )
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    assert len(capabilities) == count, (
+        f"{platform_id} disabled 行数 {len(capabilities)} != {count}"
+    )
+    for row in capabilities:
+        assert row["status"] == "disabled"
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_legacy_keys_are_subset_of_every_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """旧 18-key 在每个平台的每行都以顶层键存在。"""
+    catalog = await get_platform_package_catalog()
+    for package in catalog.packages:
+        if package.endpoint_count == 0:
+            continue
+        body = await _call_list_capabilities(
+            monkeypatch,
+            platform_id=package.platform_id,
+        )
+        capabilities = body["capabilities"]
+        assert isinstance(capabilities, list)
+        assert capabilities, (
+            f"{package.platform_id} endpoint_count={package.endpoint_count} 但返回空列表"
+        )
+        for row in capabilities:
+            missing = LEGACY_KEYS - set(row)
+            assert not missing, (
+                f"{package.platform_id} 行缺旧字段: {sorted(missing)}"
+            )
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_web_generic_web_endpoint_values_win(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """web/generic_web 的 description 与 is_alias_view 必须来自平台 endpoint 行。
+
+    目录里 ``generic_web`` 的 descriptor 只有第一行（公开网页快照）的值；
+    后 6 个 Forbes/Wirecutter 等 endpoint 有各自的 description 与
+    ``is_alias_view=True``。canonical 去重后这些值必须仍然按行生效。
+    """
+    body = await _call_list_capabilities(monkeypatch, platform_id="web")
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    rows = [row for row in capabilities if row["endpoint_type"] == "generic_web"]
+    assert len(rows) == 7
+    forbes = next(row for row in rows if "Forbes" in str(row["label"]))
+    assert forbes["is_alias_view"] is True
+    assert "Forbes" in str(forbes["description"])
+    snapshot = next(row for row in rows if row["is_alias_view"] is False)
+    assert snapshot["label"] == "公开网页快照"
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_regulatory_public_feed_label_from_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """regulatory/public_feed 的 label 必须来自本平台 endpoint（FDA），非 rss 抢占。
+
+    rss 的 19 个 endpoint 也叫 ``public_feed``。若行由 canonical descriptor
+    驱动，rss 会拿到 FDA 的 label 或直接丢行。
+    """
+    reg_body = await _call_list_capabilities(monkeypatch, platform_id="regulatory")
+    reg_rows = reg_body["capabilities"]
+    assert isinstance(reg_rows, list)
+    assert len(reg_rows) == 4
+    feed = next(row for row in reg_rows if row["endpoint_type"] == "public_feed")
+    assert feed["label"] == "FDA Food Safety Recalls RSS"
+
+    rss_body = await _call_list_capabilities(monkeypatch, platform_id="rss")
+    rss_rows = rss_body["capabilities"]
+    assert isinstance(rss_rows, list)
+    assert len(rss_rows) == 19
+    labels = {str(row["label"]) for row in rss_rows}
+    assert "FDA Food Safety Recalls RSS" not in labels
+    assert "Forbes Innovation RSS" in labels
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_new_fields_survive_on_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """新结构化字段（tool_id、availability_view）保留在行上。
+
+    旧字段是加法兼容：只增不删。既有契约测试依赖 tiktok 行含
+    ``tool_id`` 与 ``availability_view``。
+    """
+    body = await _call_list_capabilities(monkeypatch, platform_id="tiktok")
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    assert capabilities
+    for row in capabilities:
+        assert "tool_id" in row
+        assert "availability_view" in row
+        assert set(row) >= LEGACY_KEYS
