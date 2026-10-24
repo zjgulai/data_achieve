@@ -22,7 +22,10 @@ from .cards import (
     cancelled_card,
     expired_card,
     failure_card,
+    internal_error_card,
     processing_card,
+    replaced_card,
+    retryable_preflight_card,
     success_card,
 )
 from .config import get_shushuo_config
@@ -312,6 +315,26 @@ def _extract_text(message: dict[str, Any]) -> str:
 _TOAST_OK_CONFIRM = {"toast": {"type": "info", "content": "正在处理确认…"}}
 _TOAST_OK_CANCEL = {"toast": {"type": "info", "content": "正在取消…"}}
 
+# 回调时间戳窗口。签名覆盖 timestamp+nonce+body，重放一份旧请求的签名仍然有效；
+# 只有时间窗口能把「合法签名的旧请求」挡在动作执行之前。
+CALLBACK_TIMESTAMP_WINDOW_SECONDS = 300
+
+
+def _timestamp_is_fresh(timestamp: str, *, now: float | None = None) -> bool:
+    """时间戳是否为「整数字符串」且在 ±窗口内。
+
+    只接受纯十进制整数秒：`1e9`、`17000000.5`、前后带空格、负数都按畸形拒绝。
+    未来时间同样超出窗口——时钟回拨不能变成永久有效的通行证。
+    """
+    if not timestamp or not timestamp.isascii() or not timestamp.isdigit():
+        return False
+    try:
+        value = int(timestamp)
+    except ValueError:  # pragma: no cover - isdigit 已挡住
+        return False
+    current = time.time() if now is None else now
+    return abs(current - value) <= CALLBACK_TIMESTAMP_WINDOW_SECONDS
+
 
 def _card_toast(status: ProposalLookup, action: str) -> dict[str, Any]:
     if action == "confirm":
@@ -383,6 +406,12 @@ async def shusuo_card_action(
         logger.warning("shusuo_card_action_bad_signature")
         return _json({"code": 403, "msg": "invalid signature"}, 403)
 
+    # 签名通过 ≠ 请求新鲜：旧请求体带着旧签名重放仍然验签成功。
+    # 这一层必须在任何读取 token / 消费 token 的动作之前。
+    if not _timestamp_is_fresh(x_lark_request_timestamp or ""):
+        logger.warning("shusuo_card_action_stale_timestamp")
+        return _json({"code": 403, "msg": "stale timestamp"}, 403)
+
     if "encrypt" in envelope:
         try:
             envelope = decrypt_event(str(envelope["encrypt"]), config.encrypt_key)
@@ -441,12 +470,20 @@ async def shusuo_card_action(
     if not token or not operator_open_id:
         return _json({"code": 400, "msg": "missing token or operator"}, 400)
 
-    # pending 归属校验：token 属于该 operator 才放行（chat_id 允许为空——
-    # 卡片转发后 context 里的 open_chat_id 不可信，归属以 store 记录为准）。
-    status, pending = proposal_store.peek_pending(token, chat_id, operator_open_id)
-    if pending is None and chat_id:
-        # 兼容卡片转发：按空 chat 上下文再查一次，仍以 operator 归属为准。
-        status, pending = proposal_store.peek_pending(token, "", operator_open_id)
+    # pending 归属校验：token 属于该 operator 才放行。
+    #
+    # 卡片转发后 context 里的 open_chat_id 可能缺失：此时没有会话可比，
+    # 归属只能由 open_id 保证，直接按 token + 归属人查。
+    #
+    # 有 chat_id 时先按会话归属查；**只有**结果是 MISSING 才退回按 token 查。
+    # EXPIRED / FORBIDDEN / REPLACED 都是确定结论，再查一次会把它们覆盖成
+    # 第二次查询的结果（历史上就能把「已被替换」变成「没有待确认」）。
+    if chat_id:
+        status, pending = proposal_store.peek_pending(token, chat_id, operator_open_id)
+        if pending is None and status is ProposalLookup.MISSING:
+            status, pending = proposal_store.peek_by_token(token, operator_open_id)
+    else:
+        status, pending = proposal_store.peek_by_token(token, operator_open_id)
     if pending is None:
         if status is ProposalLookup.FORBIDDEN:
             # 他人提案：硬拒绝。双白名单时这一步才是真正的归属防线。
@@ -522,12 +559,19 @@ async def _execute_card_confirm(
     card_message_id: str,
     reserved: proposal_store.PendingProposal | None = None,
 ) -> None:
-    """后台确认：处理中卡 → 强制预检 → 消费 token → 采集 → 结果卡。
+    """后台确认：处理中卡 → 强制预检 → 采集 → 结果卡。
 
-    预检失败不消耗机会：路由层原子预留（consume）的 token 在预检失败时
-    放回 store（restore 原样恢复，同 token 同 TTL 端点），用户可重试或取消；
-    预检通过后 token 已在路由层消费，采集只做一次。update_card 失败只记日志。
+    `reserved` 是路由层原子预留（consume）出来的 pending，生产路径总是传它：
+    token 在调度前就已消费，双击/重放的第二个请求在 peek 处拿到 MISSING，
+    不会排队第二个后台任务。`reserved=None` 只留给直接调用（测试/脚本）。
+
+    预检失败不消耗机会：token 原样放回（同 token、同 TTL 端点），卡片换成
+    「当前无法执行」的重试卡——不是上游失败卡，绝不能让人以为额度已经花掉。
+
+    异常收尾分两段：预检之前抛错可以安全恢复 token（采集肯定没开始）；
+    采集一旦可能开始就绝不恢复，只把卡片刷成安全失败态，防止重复计费。
     """
+    collecting_started = False
     try:
         if reserved is None:
             status, pending = proposal_store.peek_pending(token, chat_id, open_id)
@@ -548,7 +592,7 @@ async def _execute_card_confirm(
         if not preflight.allowed:
             await _safe_update_card(
                 card_message_id,
-                failure_card(pending, replies.preflight_error_text(preflight)),
+                retryable_preflight_card(pending, preflight),
                 "shusuo_card_update_failed",
             )
             if reserved is not None:
@@ -559,15 +603,7 @@ async def _execute_card_confirm(
                 endpoint_type=replies.fit_text(proposal.endpoint_type, limit=120),
             )
             return
-        if reserved is None:
-            status, pending = proposal_store.consume_pending(token, chat_id, open_id)
-            if pending is None:
-                await _safe_update_card(
-                    card_message_id,
-                    _status_card(status),
-                    "shusuo_card_update_failed",
-                )
-                return
+        collecting_started = True
         outcome = await capabilities.collect(
             pending.proposal.endpoint_type, preflight.normalized_params
         )
@@ -584,6 +620,14 @@ async def _execute_card_confirm(
         )
     except Exception as exc:  # noqa: BLE001 - 后台任务必须吞掉异常
         logger.error("shusuo_card_confirm_failed", error_type=type(exc).__name__)
+        # 采集可能已经开始：绝不恢复 token（宁可让用户重发，也不重复计费）。
+        if not collecting_started and reserved is not None:
+            proposal_store.restore_pending(reserved)
+        await _safe_update_card(
+            card_message_id,
+            internal_error_card(),
+            "shusuo_card_update_failed",
+        )
 
 
 async def _execute_card_cancel(
@@ -613,26 +657,5 @@ def _status_card(status: ProposalLookup) -> dict[str, Any]:
     退化为 MISSING，文案同为重新发起。
     """
     if status is ProposalLookup.REPLACED:
-        return _replaced_card()
+        return replaced_card()
     return expired_card()
-
-
-def _replaced_card() -> dict[str, Any]:
-    content = (
-        "该提案已被新提案替换。请在新提案卡片上操作；要继续采集请重新发场景命令。"
-    )
-    return _shell_replaced(content)
-
-
-def _shell_replaced(content: str) -> dict[str, Any]:
-    from .cards import SCHEMA_VERSION, _markdown
-
-    return {
-        "schema": SCHEMA_VERSION,
-        "config": {"update_multi": True},
-        "header": {
-            "title": {"tag": "plain_text", "content": "提案已被替换"},
-            "template": "grey",
-        },
-        "body": {"direction": "vertical", "elements": [_markdown(content)]},
-    }

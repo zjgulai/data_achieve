@@ -638,13 +638,14 @@ async def test_preflight_rejects_unknown_endpoint(monkeypatch) -> None:
 
 
 async def test_preflight_rejects_missing_and_unknown_params(monkeypatch) -> None:
+    """目录级的必填/未知校验走非 TikHub 端点：TikHub 端点由采集器别名组决定。"""
     proposal = shusuo_intents.Proposal(
-        endpoint_type="tikhub_reddit_search",
+        endpoint_type="demo_endpoint",
         params={"unknown": 1},
-        title="Reddit 搜索",
+        title="演示端点",
     )
     endpoint = _endpoint(
-        endpoint_type="tikhub_reddit_search",
+        endpoint_type="demo_endpoint",
         required_params=("query",),
         optional_params=("max_items",),
     )
@@ -668,11 +669,11 @@ async def test_preflight_rejects_missing_and_unknown_params(monkeypatch) -> None
 
 async def test_preflight_missing_required_param_fails_closed(monkeypatch) -> None:
     proposal = shusuo_intents.Proposal(
-        endpoint_type="tikhub_reddit_search",
+        endpoint_type="demo_endpoint",
         params={"query": "  "},
-        title="Reddit 搜索",
+        title="演示端点",
     )
-    endpoint = _endpoint(endpoint_type="tikhub_reddit_search", required_params=("query",))
+    endpoint = _endpoint(endpoint_type="demo_endpoint", required_params=("query",))
     monkeypatch.setattr(
         shusuo_capabilities, "get_capability", AsyncMock(return_value=endpoint)
     )
@@ -725,7 +726,7 @@ async def test_preflight_rejects_out_of_range_quantity(monkeypatch, key: str, va
     )
     result = await shusuo_capabilities.preflight_proposal(proposal)
     assert result.allowed is False
-    assert "数量必须在 1 到 50 之间" in result.errors[0]
+    assert result.errors == (f"参数 {key} 必须在 1 到 50 之间。",)
 
 
 @pytest.mark.parametrize(
@@ -1041,7 +1042,8 @@ def test_intent_unknown_platform_returns_hint() -> None:
 
 def test_intent_rejects_limit_above_50() -> None:
     result = shusuo_intents.build_proposal("搜 reddit AI max_items=51")
-    assert result == "数量必须在 1 到 50 之间。"
+    assert result == shusuo_intents.LIMIT_ERROR
+    assert "max_items" in str(result)
 
 
 def test_intent_rejects_fake_tiktok_domain() -> None:
@@ -1923,7 +1925,7 @@ def _post_encrypted_event(
 ) -> Response:
     encrypted = _encrypt(envelope, encrypt_key)
     body = json.dumps({"encrypt": encrypted})
-    timestamp, nonce = "1700000001", "nonce-group"
+    timestamp, nonce = _fresh_timestamp(), "nonce-group"
     return client.post(
         WEBHOOK_PATH,
         content=body,
@@ -2136,9 +2138,16 @@ def test_empty_event_id_is_processed_twice(monkeypatch) -> None:
 # ---------- 卡片回调 /card-action ----------
 
 
+def _fresh_timestamp() -> str:
+    """回调时间戳必须在 300 秒窗口内：写死的时间戳会随日历过期。"""
+    import time
+
+    return str(int(time.time()))
+
+
 def _signed_card_action(payload: dict[str, Any], encrypt_key: str) -> tuple[str, dict[str, str]]:
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    timestamp = "1700000000"
+    timestamp = _fresh_timestamp()
     nonce = "nonce"
     signature = hashlib.sha256(
         f"{timestamp}{nonce}{encrypt_key}{body}".encode()
@@ -2576,7 +2585,7 @@ async def test_card_action_encrypted_nested_payload_executes(monkeypatch) -> Non
     )
     encrypted = _encrypt(inner, encrypt_key)
     body = json.dumps({"encrypt": encrypted})
-    timestamp, nonce = "1700000001", "nonce-enc"
+    timestamp, nonce = _fresh_timestamp(), "nonce-enc"
     response = client.post(
         CARD_ACTION_PATH,
         content=body,
@@ -2598,7 +2607,7 @@ async def test_card_action_encrypted_nested_header_token_mismatch(monkeypatch) -
     inner = _card_action_payload(token_value="wrong", nested=True)
     encrypted = _encrypt(inner, encrypt_key)
     body = json.dumps({"encrypt": encrypted})
-    timestamp, nonce = "1700000002", "nonce-enc2"
+    timestamp, nonce = _fresh_timestamp(), "nonce-enc2"
     response = client.post(
         CARD_ACTION_PATH,
         content=body,
@@ -2637,7 +2646,7 @@ async def test_card_action_encrypted_payload_is_verified_and_decrypted(monkeypat
     )
     encrypted = _encrypt(inner, encrypt_key)
     body = json.dumps({"encrypt": encrypted})
-    timestamp, nonce = "1700000001", "nonce-enc"
+    timestamp, nonce = _fresh_timestamp(), "nonce-enc"
     response = client.post(
         CARD_ACTION_PATH,
         content=body,
@@ -2697,18 +2706,22 @@ async def _run_card_confirm_background(
         return True
 
     monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    # 生产路径：路由层先原子预留，再把 reserved 传给后台任务。
+    _, reserved = shusuo_proposal_store.consume_pending(token, "chat-1", "ou-1")
+    assert reserved is not None
     await shusuo_router._execute_card_confirm(
         token=token,
         chat_id="chat-1",
         open_id="ou-1",
         card_message_id="om-card-1",
+        reserved=reserved,
     )
     return collect, updates
 
 
 async def test_card_confirm_background_updates_cards_in_order(monkeypatch) -> None:
     """后台确认：处理中卡 → 成功卡；token 先消费；只采集一次。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    _card_action_config(monkeypatch)
     monkeypatch.setattr(
         shusuo_capabilities,
         "preflight_proposal",
@@ -2729,14 +2742,13 @@ async def test_card_confirm_background_updates_cards_in_order(monkeypatch) -> No
     assert "采集完成" in json.dumps(updates[1][1], ensure_ascii=False)
     status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.MISSING
-    assert encrypt_key  # 配置 fixture 已生效
 
 
 async def test_card_confirm_background_preflight_failure_updates_failure_card(
     monkeypatch,
 ) -> None:
     """后台确认预检失败：更新失败卡，token 保留，不采集。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    _card_action_config(monkeypatch)
     collect = AsyncMock()
     monkeypatch.setattr(shusuo_capabilities, "collect", collect)
 
@@ -2759,8 +2771,12 @@ async def test_card_confirm_background_preflight_failure_updates_failure_card(
         return True
 
     monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    # 生产路径：先把 token 原子预留出来，再传给后台任务。
+    _, reserved = shusuo_proposal_store.consume_pending(token, "chat-1", "ou-1")
+    assert reserved is not None
     await shusuo_router._execute_card_confirm(
-        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+        token=token, chat_id="chat-1", open_id="ou-1",
+        card_message_id="om-card-1", reserved=reserved,
     )
     collect.assert_not_awaited()
     # brief 顺序：先处理中卡，再失败卡（预检失败）
@@ -2770,14 +2786,13 @@ async def test_card_confirm_background_preflight_failure_updates_failure_card(
     status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
     assert pending is not None
-    assert encrypt_key
 
 
 async def test_card_confirm_background_collect_failure_updates_failure_card(
     monkeypatch,
 ) -> None:
     """采集失败：失败卡更新；token 已消费，不会恢复。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    _card_action_config(monkeypatch)
     monkeypatch.setattr(
         shusuo_capabilities,
         "preflight_proposal",
@@ -2803,20 +2818,23 @@ async def test_card_confirm_background_collect_failure_updates_failure_card(
         return True
 
     monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    # 生产路径：先把 token 原子预留出来，再传给后台任务。
+    _, reserved = shusuo_proposal_store.consume_pending(token, "chat-1", "ou-1")
+    assert reserved is not None
     await shusuo_router._execute_card_confirm(
-        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+        token=token, chat_id="chat-1", open_id="ou-1",
+        card_message_id="om-card-1", reserved=reserved,
     )
     assert collect.await_count == 1
     assert len(updates) == 2
     assert "采集未返回数据" in json.dumps(updates[1][1], ensure_ascii=False)
     status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.MISSING
-    assert encrypt_key
 
 
 async def test_card_update_failure_only_logs(monkeypatch, caplog) -> None:
     """update_card 抛错：只记日志；不恢复 token、不重复采集、不重试。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    _card_action_config(monkeypatch)
     monkeypatch.setattr(
         shusuo_capabilities,
         "preflight_proposal",
@@ -2842,51 +2860,17 @@ async def test_card_update_failure_only_logs(monkeypatch, caplog) -> None:
         raise RuntimeError("feishu update failed")
 
     monkeypatch.setattr(shusuo_router.lark_client, "update_card", failing_update_card)
+    # 生产路径：先把 token 原子预留出来，再传给后台任务。
+    _, reserved = shusuo_proposal_store.consume_pending(token, "chat-1", "ou-1")
+    assert reserved is not None
     await shusuo_router._execute_card_confirm(
-        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+        token=token, chat_id="chat-1", open_id="ou-1",
+        card_message_id="om-card-1", reserved=reserved,
     )
     assert collect.await_count == 1
     assert len(update_calls) == 2  # 处理中卡 + 成功卡各试一次，失败只吞掉
     status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.MISSING
-    assert encrypt_key
-
-
-async def test_card_confirm_background_replaced_updates_replaced_card(
-    monkeypatch,
-) -> None:
-    """后台确认遇到 REPLACED token：替换文案卡，绝不采集。"""
-    encrypt_key = _card_action_config(monkeypatch)
-    collect = AsyncMock()
-    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
-    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
-    # 新提案替换旧提案 → 旧 token 进 REPLACED 窗口
-    monkeypatch.setattr(
-        shusuo_capabilities,
-        "preflight_proposal",
-        AsyncMock(return_value=_preflight(allowed=True)),
-    )
-    await commands.execute(
-        commands.parse_command("搜 reddit ML"),
-        chat_id="chat-1",
-        open_id="ou-1",
-    )
-    updates: list[tuple[str, dict[str, Any]]] = []
-
-    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
-        updates.append((message_id, card))
-        return True
-
-    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
-    await shusuo_router._execute_card_confirm(
-        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
-    )
-    collect.assert_not_awaited()
-    assert len(updates) == 1
-    body = json.dumps(updates[0][1], ensure_ascii=False)
-    assert "已被新提案替换" in body
-    assert "正在采集" not in body
-    assert encrypt_key
 
 
 async def test_card_confirm_reserve_restored_on_preflight_failure(monkeypatch) -> None:
@@ -2938,12 +2922,11 @@ async def test_card_confirm_reserve_restored_on_preflight_failure(monkeypatch) -
     second = client.post(CARD_ACTION_PATH, content=body, headers=headers)
     assert second.status_code == 200
     assert collect.await_count == 1
-    assert encrypt_key
 
 
 async def test_card_cancel_background_updates_cancelled_card(monkeypatch) -> None:
     """后台取消：token 被取消，卡片更新为取消卡；不采集。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    _card_action_config(monkeypatch)
     collect = AsyncMock()
     monkeypatch.setattr(shusuo_capabilities, "collect", collect)
     token = await _seed_pending_card(monkeypatch, open_id="ou-1")
@@ -2962,4 +2945,3 @@ async def test_card_cancel_background_updates_cancelled_card(monkeypatch) -> Non
     assert "已取消" in json.dumps(updates[0][1], ensure_ascii=False)
     status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.MISSING
-    assert encrypt_key

@@ -151,6 +151,29 @@ def peek_pending(
     return _resolve(token, chat_id, open_id, now=now)
 
 
+def peek_by_token(
+    token: str, open_id: str, *, now: float | None = None
+) -> tuple[ProposalLookup, PendingProposal | None]:
+    """按 token + 归属人查询，不校验 chat_id。
+
+    只用于回调拿不到 chat_id 的形态（卡片转发后 context 可能没有
+    open_chat_id）：此时没有会话可比，归属由 open_id 保证，有效期照旧。
+    chat_id 存在时不得用它——跨会话点击必须走 `peek_pending` 的 FORBIDDEN。
+    """
+    current = _now(now)
+    pending = _PENDING_BY_TOKEN.get(token)
+    if pending is None:
+        if token in _REPLACED_TOKENS:
+            return ProposalLookup.REPLACED, None
+        return ProposalLookup.MISSING, None
+    if pending.open_id != open_id:
+        return ProposalLookup.FORBIDDEN, None
+    if current >= pending.expires_at:
+        _drop(token)
+        return ProposalLookup.EXPIRED, None
+    return ProposalLookup.ACTIVE, pending
+
+
 def consume_pending(
     token: str | None, chat_id: str, open_id: str, *, now: float | None = None
 ) -> tuple[ProposalLookup, PendingProposal | None]:

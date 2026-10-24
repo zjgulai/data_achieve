@@ -14,11 +14,19 @@ from urllib.parse import parse_qs, urlparse
 
 DEFAULT_MAX_ITEMS = 10
 MAX_ITEMS_LIMIT = 50
-LIMIT_ERROR = "数量必须在 1 到 50 之间。"
+LIMIT_ERROR = "参数 max_items 必须在 1 到 50 之间。"
 _COMMENT_PLATFORM_ERROR = (
     "目前只支持 TikTok、Reddit、YouTube 的评论链接。\n"
     "其他平台请先用「能力 评论」查端点，再用「采集 <端点> ...」。"
 )
+
+# 账号画像端点的结果数量参数键（目录已声明，采集器也认）。
+# 不传就等于默认上限，卡片上写 10 条就成了谎报。
+_ACCOUNT_LIMIT_KEYS: dict[str, str] = {
+    "apify_tiktok_media_profile_scraper": "resultsPerPage",
+    "apify_instagram_profile_scraper": "resultsLimit",
+    "apify_twitter_user_scraper": "maxItems",
+}
 
 _PLATFORM_SEARCH: dict[str, tuple[str, str]] = {
     "tiktok": ("tikhub_tiktok_video_search", "TikTok"),
@@ -64,7 +72,7 @@ class Proposal:
 
 
 def _limit(tokens: list[str]) -> tuple[list[str], int] | str:
-    """拆出数量参数；无数量默认 10，非法数量返回固定提示。"""
+    """拆出数量参数；无数量默认 10，非法数量返回带键名的固定提示。"""
     kept: list[str] = []
     limit = DEFAULT_MAX_ITEMS
     for token in tokens:
@@ -216,7 +224,7 @@ def _account_proposal(tokens: list[str]) -> Proposal | str:
     outcome = _limit(tokens)
     if isinstance(outcome, str):
         return outcome
-    tokens, _limit_value = outcome
+    tokens, limit = outcome
     if len(tokens) < 2:
         return "用法：账号 <平台> <handle>。支持 tiktok、instagram、x。"
     platform = tokens[0].casefold()
@@ -224,23 +232,32 @@ def _account_proposal(tokens: list[str]) -> Proposal | str:
     if platform == "tiktok":
         return Proposal(
             endpoint_type="apify_tiktok_media_profile_scraper",
-            params={"profiles": [handle]},
+            params={
+                "profiles": [handle],
+                _ACCOUNT_LIMIT_KEYS["apify_tiktok_media_profile_scraper"]: limit,
+            },
             title=f"TikTok 账号资料：@{handle}",
-            estimated_items=1,
+            estimated_items=limit,
         )
     if platform in {"instagram", "ig"}:
         return Proposal(
             endpoint_type="apify_instagram_profile_scraper",
-            params={"usernames": [handle]},
+            params={
+                "usernames": [handle],
+                _ACCOUNT_LIMIT_KEYS["apify_instagram_profile_scraper"]: limit,
+            },
             title=f"Instagram 账号资料：@{handle}",
-            estimated_items=1,
+            estimated_items=limit,
         )
     if platform in {"x", "twitter", "推特"}:
         return Proposal(
             endpoint_type="apify_twitter_user_scraper",
-            params={"twitterHandles": [handle]},
+            params={
+                "twitterHandles": [handle],
+                _ACCOUNT_LIMIT_KEYS["apify_twitter_user_scraper"]: limit,
+            },
             title=f"X 账号资料：@{handle}",
-            estimated_items=1,
+            estimated_items=limit,
         )
     return "账号画像目前支持 tiktok、instagram、x。其他平台请用「能力 账号」查端点。"
 

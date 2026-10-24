@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import uuid
 from collections import Counter
@@ -29,6 +30,7 @@ from data_intelligence_hub.platform_packages.status import EndpointAvailability
 from data_intelligence_hub.repositories.workspaces import get_demo_workspace
 from data_intelligence_hub.services.raw_record_service import get_raw_records
 
+from .collector_params import ParamContract, contract_for
 from .config import get_shushuo_config
 from .intents import Proposal
 
@@ -67,7 +69,6 @@ _MAX_LIST_LINES = 30
 _QUANTITY_PARAM_KEYS = frozenset({"max_items", "maxItems", "num_results", "commentsPerPost"})
 _QUANTITY_MIN = 1
 _QUANTITY_MAX = 50
-_QUANTITY_ERROR = "数量必须在 1 到 50 之间。"
 
 # 任何端点都允许传的键：数量通用键 + 执行元数据（quick-collect 采集开关）。
 # num_results / commentsPerPost 等其余数量键必须由端点 optional_params 声明。
@@ -75,9 +76,10 @@ _UNIVERSAL_PARAM_KEYS = frozenset(
     {"max_items", "maxItems", "max_total_charge_usd", "run_timeout_seconds"}
 )
 
-# cost_hint 只有这些泛化措辞时视为"费用未知"。
-_UNKNOWN_COST_PHRASES = ("按量", "按上游", "费用未知")
-_UNKNOWN_COST_WARNING = "费用未知，按上游实际计费。"
+UNKNOWN_COST_NOTICE = "费用未知，按上游实际计费"
+UNKNOWN_COST_WARNING = "费用未知，按上游实际计费。"
+# 只有出现具体金额才算已知费用：`$0.001/条`、`~$0.001/条`、`$0.5+`、`0.001 美元`。
+_COST_AMOUNT_PATTERN = re.compile(r"[$¥€£]\s?\d|\d+(?:\.\d+)?\s*(?:美元|USD|usd)", re.IGNORECASE)
 _POLICY_BLOCK_TEXT = "当前受安全策略限制，无法执行该端点。"
 
 
@@ -369,21 +371,46 @@ def _resolve_availability(
 
 
 def _cost_notice_and_warnings(cost_hint: str | None) -> tuple[str, tuple[str, ...]]:
-    """cost_hint 为空或只有泛化措辞时视为费用未知；具体金额则转成费用提示。"""
+    """只有带具体金额的 cost_hint 才算已知费用。
+
+    `按事件计费`、`按结果计费`、`按量`、`按上游` 和任何没有金额的自由文本
+    都是"费用未知"：用户看不到钱数，就只能按未知处理。
+    """
     normalized = (cost_hint or "").strip()
-    if not normalized:
-        return "费用未知，按上游实际计费", (_UNKNOWN_COST_WARNING,)
-    if any(phrase in normalized for phrase in _UNKNOWN_COST_PHRASES):
-        return "费用未知，按上游实际计费", (_UNKNOWN_COST_WARNING,)
+    if not normalized or not _COST_AMOUNT_PATTERN.search(normalized):
+        return UNKNOWN_COST_NOTICE, (UNKNOWN_COST_WARNING,)
     return f"费用约 {normalized}", ()
 
 
-def _validate_params(endpoint: PackageEndpoint, params: dict[str, Any]) -> tuple[
-    dict[str, Any], tuple[str, ...]
-]:
-    """校验参数并原样归一化；不改键名，保留采集器期望的键。"""
+def _quantity_error(key: str) -> str:
+    return f"参数 {key} 必须在 {_QUANTITY_MIN} 到 {_QUANTITY_MAX} 之间。"
+
+
+def _missing_group_error(group: tuple[str, ...]) -> str:
+    if len(group) == 1:
+        return f"缺少必填参数：{group[0]}"
+    return f"缺少必填参数：{' 或 '.join(group)}"
+
+
+def _validate_params(
+    endpoint: PackageEndpoint, params: dict[str, Any]
+) -> tuple[dict[str, Any], tuple[str, ...]]:
+    """按「目录 + 采集器」合成契约校验，并原样归一化（不改键名）。
+
+    采集器文档里的别名（`query` 之于 reddit/x/youtube 搜索）与配置键
+    （`order` 之于 B 站搜索）都放行；任意键仍然拒绝。
+    """
+    contract = contract_for(
+        endpoint.endpoint_type, endpoint.required_params, endpoint.optional_params
+    )
+    return _validate_with_contract(contract, params)
+
+
+def _validate_with_contract(
+    contract: ParamContract, params: dict[str, Any]
+) -> tuple[dict[str, Any], tuple[str, ...]]:
     errors: list[str] = []
-    allowed = set(endpoint.required_params) | set(endpoint.optional_params) | _UNIVERSAL_PARAM_KEYS
+    allowed = set(contract.accepted) | _UNIVERSAL_PARAM_KEYS
     normalized: dict[str, Any] = {}
 
     for key, value in params.items():
@@ -392,21 +419,30 @@ def _validate_params(endpoint: PackageEndpoint, params: dict[str, Any]) -> tuple
             continue
         if key in _QUANTITY_PARAM_KEYS:
             if isinstance(value, bool) or not isinstance(value, int):
-                errors.append(_QUANTITY_ERROR)
+                errors.append(_quantity_error(key))
                 continue
             if not _QUANTITY_MIN <= value <= _QUANTITY_MAX:
-                errors.append(_QUANTITY_ERROR)
+                errors.append(_quantity_error(key))
                 continue
         normalized[key] = value
 
-    for required in endpoint.required_params:
-        value = params.get(required)
-        if value is None or (isinstance(value, str) and not value.strip()):
-            errors.append(f"缺少必填参数：{required}")
-            if required not in normalized:
-                normalized[required] = value
+    for group in contract.required_groups:
+        if any(_has_value(params.get(key)) for key in group):
+            continue
+        errors.append(_missing_group_error(group))
+        # 缺参回填：保留首个候选键的占位，方便调用方看懂缺的是哪一组。
+        if group[0] not in normalized:
+            normalized[group[0]] = params.get(group[0])
 
     return normalized, tuple(errors)
+
+
+def _has_value(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    return True
 
 
 async def preflight_proposal(

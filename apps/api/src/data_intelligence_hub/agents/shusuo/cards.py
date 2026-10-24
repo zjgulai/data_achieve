@@ -7,20 +7,23 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from .capabilities import CollectOutcome, PreflightResult
 from .proposal_store import PENDING_TTL_SECONDS, PendingProposal
 from .replies import (
     MAX_TITLE_CHARS,
+    _cost_line,
     _fit,
     _format_cost,
     _format_duration,
     _redact,
     _render_previews,
     fit_text,
+    preflight_error_text,
+    redact_structure,
     run_detail_url,
+    structured_text,
 )
 
 SCHEMA_VERSION = "2.0"
@@ -28,14 +31,14 @@ MAX_PARAM_LINES = 8
 MAX_PARAM_VALUE_CHARS = 120
 MAX_FOOTER_CHARS = 200
 MAX_NOTE_CHARS = 300
+MAX_ERROR_CHARS = 800
 
 _EXPIRY_LINE = f"{PENDING_TTL_SECONDS // 60} 分钟内有效"
-_UNKNOWN_COST_TEXT = "费用未知，按上游实际计费"
 
 
 def _card_title(title: str) -> str:
     """动态标题（可能含用户关键词）：先脱敏再截断，密钥片段绝不进卡。"""
-    return _fit(_redact(title), MAX_TITLE_CHARS)
+    return _fit(structured_text(title), MAX_TITLE_CHARS)
 
 
 def _card_text(value: str, limit: int) -> str:
@@ -44,7 +47,7 @@ def _card_text(value: str, limit: int) -> str:
     标题、说明等动态文本来自用户输入，上游（replies/fit_text）不保证
     已经脱敏；卡片构造函数自己再过一次，密钥不落卡。
     """
-    return _fit(_redact(value), limit)
+    return _fit(structured_text(value), limit)
 
 
 def _shell(
@@ -82,25 +85,20 @@ def _action_row(
 
 
 def _summary_value(value: Any) -> str:
-    """标量直出；容器压成单行 JSON。只用于摘要展示，不进按钮 value。"""
-    if value is None or isinstance(value, (bool, int, float)):
-        return str(value)
-    if isinstance(value, str):
-        return value
-    try:
-        return json.dumps(value, ensure_ascii=False)
-    except (TypeError, ValueError):
-        return str(value)
+    """标量直出；容器按结构脱敏后压成单行 JSON。只用于摘要展示，不进按钮 value。"""
+    return structured_text(value)
 
 
 def _param_summary(params: dict[str, Any]) -> str:
     """白名单摘要：每行 key=value，最多 MAX_PARAM_LINES 行。
 
-    先拼完整行再脱敏：键值对规则需要 key=value 上下文才命中，
-    对裸值脱敏会漏掉无键名形态的密钥。
+    值和键都过 `structured_text`：嵌套 dict/list 会先按结构抹掉密钥再渲染，
+    避免 `str(dict)` 的形态绕过文本正则。整行再过一次 `_redact` 兜底
+    无键名的裸 Bearer 之类。
     """
     lines: list[str] = []
-    for key, value in params.items():
+    safe_params = redact_structure(params)
+    for key, value in safe_params.items():
         line = _redact(
             f"- {_fit(str(key), MAX_PARAM_VALUE_CHARS)}"
             f"={_fit(_summary_value(value), MAX_PARAM_VALUE_CHARS)}"
@@ -109,13 +107,6 @@ def _param_summary(params: dict[str, Any]) -> str:
         if len(lines) >= MAX_PARAM_LINES:
             break
     return "\n".join(lines)
-
-
-def _cost_line(preflight: PreflightResult) -> str:
-    notice = preflight.cost_notice or _UNKNOWN_COST_TEXT
-    if "费用未知" in notice:
-        return f"⚠️ {_UNKNOWN_COST_TEXT}"
-    return f"费用：{notice}"
 
 
 def _footer(pending: PendingProposal) -> str:
@@ -133,7 +124,7 @@ def _proposal_summary(
         "参数：",
         _param_summary(params),
         f"预计记录数：{proposal.estimated_items}",
-        _cost_line(preflight),
+        _cost_line(preflight.cost_notice),
         _EXPIRY_LINE,
     ]
     if proposal.note:
@@ -189,6 +180,48 @@ def success_card(
 def failure_card(pending: PendingProposal, message: str) -> dict[str, Any]:
     content = fit_text(f"**采集未返回数据**\n原因：{message}")
     return _shell("采集未返回数据", "red", [_markdown(content)])
+
+
+def retryable_preflight_card(
+    pending: PendingProposal, preflight: PreflightResult
+) -> dict[str, Any]:
+    """预检失败卡：条件挡执行，token 仍有效，给「重试」与「取消」。
+
+    这不是上游失败：绝不能复用 failure_card 的「采集未返回数据」文案，
+    否则用户会以为额度已经花掉。
+    """
+    reasons = preflight_error_text(preflight)
+    content = fit_text(
+        "**当前状态或配置不允许执行**\n\n"
+        f"{reasons}\n\n"
+        "提案仍然有效，条件恢复后可以重试。",
+        limit=MAX_ERROR_CHARS,
+    )
+    elements = [
+        _markdown(content),
+        *_action_row(
+            _callback_button("重试", "primary_filled", "confirm", pending.token),
+            _callback_button("取消", "danger", "cancel", pending.token),
+        ),
+        _markdown(_footer(pending)),
+    ]
+    return _shell("当前无法执行", "orange", elements)
+
+
+def internal_error_card() -> dict[str, Any]:
+    """后台未捕获异常的安全落卡。
+
+    绝不能留在「正在采集」：那一屏会让用户以为还在跑，也就不会重发。
+    文案不带异常类名、堆栈或内部字段。
+    """
+    content = "服务内部错误，本次未执行，请重新发起提案"
+    return _shell("服务内部错误", "red", [_markdown(content)])
+
+
+def replaced_card() -> dict[str, Any]:
+    """旧 token 被新提案替换：请到新卡片操作。"""
+    content = "该提案已被新提案替换。请在新提案卡片上操作；要继续采集请重新发场景命令。"
+    return _shell("提案已被替换", "grey", [_markdown(content)])
 
 
 def cancelled_card(pending: PendingProposal) -> dict[str, Any]:
