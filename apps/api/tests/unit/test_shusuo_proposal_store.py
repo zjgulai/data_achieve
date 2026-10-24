@@ -154,3 +154,46 @@ def test_capacity_evicts_oldest_proposal() -> None:
     assert status is proposal_store.ProposalLookup.MISSING
     status, _ = proposal_store.peek_pending("no-such-token", "chat-1", "ou-1", now=2)
     assert status is proposal_store.ProposalLookup.MISSING
+
+
+def test_restore_pending_puts_back_consumed_proposal() -> None:
+    """原子预留回滚：consume 后 restore，同 token、同内容、TTL 端点不变。"""
+    proposal_store.clear_all()
+    pending = proposal_store.replace_pending("chat-1", "ou-1", _proposal(), now=100)
+    consumed_status, consumed = proposal_store.consume_pending(
+        pending.token, "chat-1", "ou-1", now=110
+    )
+    assert consumed is not None
+    status, _ = proposal_store.peek_pending(pending.token, "chat-1", "ou-1", now=111)
+    assert status is proposal_store.ProposalLookup.MISSING
+
+    proposal_store.restore_pending(consumed, now=112)
+    status, restored = proposal_store.peek_pending(
+        pending.token, "chat-1", "ou-1", now=113
+    )
+    assert status is proposal_store.ProposalLookup.ACTIVE
+    assert restored is not None
+    assert restored.token == pending.token
+    assert restored.proposal == pending.proposal
+    # TTL 端点不变：created_at=100，expires_at=400，399 秒时仍 ACTIVE
+    status, _ = proposal_store.peek_pending(pending.token, "chat-1", "ou-1", now=399)
+    assert status is proposal_store.ProposalLookup.ACTIVE
+    status, _ = proposal_store.peek_pending(pending.token, "chat-1", "ou-1", now=401)
+    assert status is proposal_store.ProposalLookup.EXPIRED
+
+
+def test_restore_pending_skips_when_newer_proposal_exists() -> None:
+    """预留期间用户发了新提案：restore 让位，不覆盖新提案。"""
+    proposal_store.clear_all()
+    pending = proposal_store.replace_pending("chat-1", "ou-1", _proposal(), now=100)
+    _, consumed = proposal_store.consume_pending(pending.token, "chat-1", "ou-1", now=110)
+    newer = proposal_store.replace_pending("chat-1", "ou-1", _proposal(), now=120)
+    assert consumed is not None
+    proposal_store.restore_pending(consumed, now=121)
+
+    status, active = proposal_store.peek_pending(newer.token, "chat-1", "ou-1", now=122)
+    assert status is proposal_store.ProposalLookup.ACTIVE
+    assert active is not None
+    assert active.token == newer.token
+    status, _ = proposal_store.peek_pending(pending.token, "chat-1", "ou-1", now=122)
+    assert status is proposal_store.ProposalLookup.MISSING

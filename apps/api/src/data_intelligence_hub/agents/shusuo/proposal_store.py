@@ -168,6 +168,23 @@ def cancel_pending(
     return status
 
 
+def restore_pending(pending: PendingProposal, *, now: float | None = None) -> None:
+    """把原子预留（consume）出来的提案原样放回：同 token、同 TTL 端点。
+
+    用于「预留后后台预检失败」的回滚——不是重新发提案，token/内容不变，
+    仅当该上下文没有更新的活跃提案时才放回（避免覆盖用户的新提案）。
+    `now` 仅为与其他 API 的签名一致性保留：恢复不重置时间戳。
+    """
+    del now  # 恢复不重算 TTL；保留参数是为了调用侧书写一致
+    context = (pending.chat_id, pending.open_id)
+    active_token = _ACTIVE_TOKEN_BY_CONTEXT.get(context)
+    if active_token is not None and active_token != pending.token:
+        return
+    _REPLACED_TOKENS.pop(pending.token, None)
+    _PENDING_BY_TOKEN[pending.token] = pending
+    _ACTIVE_TOKEN_BY_CONTEXT[context] = pending.token
+
+
 def attach_message_ids(
     token: str, *, message_id: str | None = None, card_message_id: str | None = None
 ) -> None:

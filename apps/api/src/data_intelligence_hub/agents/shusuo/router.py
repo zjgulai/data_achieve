@@ -323,6 +323,32 @@ def _card_toast(status: ProposalLookup, action: str) -> dict[str, Any]:
     return {"toast": {"type": "info", "content": replies.pending_status_text(status)}}
 
 
+def _parse_card_callback(
+    envelope: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """拆出 (header, event)。
+
+    权威形态（schema 2.0 HTTP 推送，加密解开后相同）：
+      {"header": {"token", "app_id", ...}, "event": {"operator", "action", "context"}}
+    旧扁平形态（token/app_id/operator/action/context 在顶层）仅作向后兼容
+    回退：header 用顶层凭证合成，event 就是整个 envelope。正常推送不受影响。
+    """
+    header = envelope.get("header")
+    event = envelope.get("event")
+    if isinstance(header, dict) or isinstance(event, dict):
+        return (
+            header if isinstance(header, dict) else {},
+            event if isinstance(event, dict) else {},
+        )
+    flat_keys = ("token", "app_id", "operator", "action", "context")
+    if any(key in envelope for key in flat_keys):
+        synthetic_header = {
+            key: envelope[key] for key in ("token", "app_id") if key in envelope
+        }
+        return synthetic_header, envelope
+    return {}, {}
+
+
 @router.post("/card-action")
 async def shusuo_card_action(
     request: Request,
@@ -373,20 +399,22 @@ async def shusuo_card_action(
     if envelope.get("type") == "url_verification":
         return _json({"challenge": envelope.get("challenge", "")})
 
-    # 回调必须配置 Verification Token 且匹配（fail-closed）。
+    header, event = _parse_card_callback(envelope)
+
+    # 回调必须配置 Verification Token 且匹配（fail-closed）。凭证在 header 层。
     if not config.verification_token:
         logger.error("shusuo_card_action_token_not_configured")
         return _json({"code": 403, "msg": "verification token is not configured"}, 403)
-    if str(envelope.get("token", "")) != config.verification_token:
+    if str(header.get("token", "")) != config.verification_token:
         logger.warning("shusuo_card_action_token_mismatch")
         return _json({"code": 403, "msg": "invalid verification token"}, 403)
 
-    callback_app_id = str(envelope.get("app_id", ""))
+    callback_app_id = str(header.get("app_id", ""))
     if config.app_id and callback_app_id and callback_app_id != config.app_id:
         logger.warning("shusuo_card_action_other_app")
         return _json({"code": 403, "msg": "unexpected app"}, 403)
 
-    action_value = envelope.get("action")
+    action_value = event.get("action")
     action_value = action_value.get("value") if isinstance(action_value, dict) else None
     action_value = action_value if isinstance(action_value, dict) else {}
     action = str(action_value.get("action", ""))
@@ -395,7 +423,7 @@ async def shusuo_card_action(
         return _json({"code": 400, "msg": "unknown action"}, 400)
 
     # 回调白名单：空 = 拒绝（与 webhook 的"未配置即放行"不同，这里 fail-closed）。
-    operator = envelope.get("operator")
+    operator = event.get("operator")
     operator = operator if isinstance(operator, dict) else {}
     operator_open_id = str(operator.get("open_id", ""))
     if not config.allowed_open_ids:
@@ -406,7 +434,7 @@ async def shusuo_card_action(
         return _json({"code": 403, "msg": "operator not allowed"}, 403)
 
     token = str(action_value.get("token", ""))
-    context = envelope.get("context")
+    context = event.get("context")
     context = context if isinstance(context, dict) else {}
     chat_id = str(context.get("open_chat_id", ""))
     card_message_id = str(context.get("open_message_id", ""))
@@ -420,6 +448,13 @@ async def shusuo_card_action(
         # 兼容卡片转发：按空 chat 上下文再查一次，仍以 operator 归属为准。
         status, pending = proposal_store.peek_pending(token, "", operator_open_id)
     if pending is None:
+        if status is ProposalLookup.FORBIDDEN:
+            # 他人提案：硬拒绝。双白名单时这一步才是真正的归属防线。
+            logger.warning(
+                "shusuo_card_action_forbidden",
+                action=action,
+            )
+            return _json({"code": 403, "msg": "not proposal owner"}, 403)
         logger.info(
             "shusuo_card_action_not_pending",
             action=action,
@@ -428,12 +463,29 @@ async def shusuo_card_action(
         return _json(_card_toast(status, action))
 
     if action == "confirm":
+        # 原子预留：调度前先消费 token，双击/重放的第二次请求在 peek 处
+        # 就拿到 MISSING，不会排队第二个后台任务（关闭 M1 竞态）。
+        # 消费后采集仍只在后台预检通过、再次原子消费成功后发生——
+        # 预检失败会把 token 放回去（restore 不等于重新采集），用户可重试。
+        consumed_status, reserved = proposal_store.consume_pending(
+            token, pending.chat_id, pending.open_id
+        )
+        if reserved is None:
+            logger.info(
+                "shusuo_card_action_reserve_lost",
+                action=action,
+                lookup=consumed_status.value
+                if isinstance(consumed_status, ProposalLookup)
+                else "unknown",
+            )
+            return _json(_card_toast(consumed_status, action))
         background_tasks.add_task(
             _execute_card_confirm,
             token=token,
-            chat_id=pending.chat_id,
-            open_id=pending.open_id,
-            card_message_id=card_message_id or pending.card_message_id or "",
+            chat_id=reserved.chat_id,
+            open_id=reserved.open_id,
+            card_message_id=card_message_id or reserved.card_message_id or "",
+            reserved=reserved,
         )
         return _json(_card_toast(ProposalLookup.ACTIVE, action))
     background_tasks.add_task(
@@ -463,17 +515,31 @@ async def _safe_update_card(
 
 
 async def _execute_card_confirm(
-    *, token: str, chat_id: str, open_id: str, card_message_id: str
+    *,
+    token: str,
+    chat_id: str,
+    open_id: str,
+    card_message_id: str,
+    reserved: proposal_store.PendingProposal | None = None,
 ) -> None:
     """后台确认：处理中卡 → 强制预检 → 消费 token → 采集 → 结果卡。
 
-    预检失败不消费 token；消费之后采集只做一次；update_card 失败只记日志。
+    预检失败不消耗机会：路由层原子预留（consume）的 token 在预检失败时
+    放回 store（restore 原样恢复，同 token 同 TTL 端点），用户可重试或取消；
+    预检通过后 token 已在路由层消费，采集只做一次。update_card 失败只记日志。
     """
     try:
-        status, pending = proposal_store.peek_pending(token, chat_id, open_id)
-        if pending is None:
-            await _safe_update_card(card_message_id, expired_card(), "shusuo_card_update_failed")
-            return
+        if reserved is None:
+            status, pending = proposal_store.peek_pending(token, chat_id, open_id)
+            if pending is None:
+                await _safe_update_card(
+                    card_message_id,
+                    _status_card(status),
+                    "shusuo_card_update_failed",
+                )
+                return
+        else:
+            pending = reserved
         proposal = pending.proposal
         await _safe_update_card(
             card_message_id, processing_card(pending), "shusuo_card_update_failed"
@@ -485,17 +551,23 @@ async def _execute_card_confirm(
                 failure_card(pending, replies.preflight_error_text(preflight)),
                 "shusuo_card_update_failed",
             )
+            if reserved is not None:
+                # 预检失败放回 token（原子预留的回滚）；不采集、不重试。
+                proposal_store.restore_pending(reserved)
             logger.info(
                 "shusuo_card_confirm_preflight_blocked",
                 endpoint_type=replies.fit_text(proposal.endpoint_type, limit=120),
             )
             return
-        status, pending = proposal_store.consume_pending(token, chat_id, open_id)
-        if pending is None:
-            await _safe_update_card(
-                card_message_id, expired_card(), "shusuo_card_update_failed"
-            )
-            return
+        if reserved is None:
+            status, pending = proposal_store.consume_pending(token, chat_id, open_id)
+            if pending is None:
+                await _safe_update_card(
+                    card_message_id,
+                    _status_card(status),
+                    "shusuo_card_update_failed",
+                )
+                return
         outcome = await capabilities.collect(
             pending.proposal.endpoint_type, preflight.normalized_params
         )
@@ -524,10 +596,43 @@ async def _execute_card_cancel(
         if status is ProposalLookup.ACTIVE and pending is not None:
             card = cancelled_card(pending)
         else:
-            card = expired_card()
+            card = _status_card(status)
         await _safe_update_card(
             card_message_id, card, "shusuo_card_update_failed"
         )
         logger.info("shusuo_card_cancelled", lookup=status.value)
     except Exception as exc:  # noqa: BLE001 - 后台任务必须吞掉异常
         logger.error("shusuo_card_cancel_failed", error_type=type(exc).__name__)
+
+
+def _status_card(status: ProposalLookup) -> dict[str, Any]:
+    """非 ACTIVE 状态的落卡：过期/替换/丢失分别给准确文案。
+
+    REPLACED 用 expired 卡形（同为 grey「请重新发起」语义），但正文
+    区分「已被新提案替换」；store 的 REPLACED 查询窗口（300s）过后
+    退化为 MISSING，文案同为重新发起。
+    """
+    if status is ProposalLookup.REPLACED:
+        return _replaced_card()
+    return expired_card()
+
+
+def _replaced_card() -> dict[str, Any]:
+    content = (
+        "该提案已被新提案替换。请在新提案卡片上操作；要继续采集请重新发场景命令。"
+    )
+    return _shell_replaced(content)
+
+
+def _shell_replaced(content: str) -> dict[str, Any]:
+    from .cards import SCHEMA_VERSION, _markdown
+
+    return {
+        "schema": SCHEMA_VERSION,
+        "config": {"update_multi": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": "提案已被替换"},
+            "template": "grey",
+        },
+        "body": {"direction": "vertical", "elements": [_markdown(content)]},
+    }

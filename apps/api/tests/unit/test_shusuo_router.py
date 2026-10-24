@@ -2158,18 +2158,34 @@ def _card_action_payload(
     message_id: str = "om-card-1",
     app_id: str | None = "app-x",
     token_value: str | None = "vt-card",
+    nested: bool = True,
 ) -> dict[str, Any]:
-    action_value: dict[str, Any] = {"action": action, "token": token}
-    payload: dict[str, Any] = {
-        "type": "card.action.trigger",
+    """真实飞书 schema 2.0 HTTP 回调形态：header/event 双层嵌套。
+
+    header.token / header.app_id 是推送层凭证；event.operator / event.action /
+    event.context 是业务载荷。encrypted 回调解密后同样是这个结构。
+    nested=False 生成旧扁平形态，仅用于向后兼容回退分支的测试。
+    """
+    event: dict[str, Any] = {
         "operator": {"open_id": operator},
-        "action": {"value": action_value},
+        "action": {"value": {"action": action, "token": token}},
         "context": {"open_message_id": message_id, "open_chat_id": chat_id},
     }
+    header: dict[str, Any] = {}
     if app_id is not None:
-        payload["app_id"] = app_id
+        header["app_id"] = app_id
     if token_value is not None:
-        payload["token"] = token_value
+        header["token"] = token_value
+    if nested:
+        payload: dict[str, Any] = {
+            "schema": "2.0",
+            "header": header,
+            "event": event,
+        }
+        return payload
+    payload = dict(event)
+    payload.update(header)
+    payload["type"] = "card.action.trigger"
     return payload
 
 
@@ -2269,8 +2285,12 @@ def test_card_action_rejects_unknown_action(monkeypatch) -> None:
 
 
 async def test_card_action_rejects_non_owner(monkeypatch) -> None:
-    """pending owner ou-1，操作人 ou-2：403，且 token 不被消费。"""
-    encrypt_key = _card_action_config(monkeypatch)
+    """pending owner ou-1，操作人 ou-2（也在白名单）：403，且 token 不被消费。
+
+    两人都在白名单时，归属校验（FORBIDDEN）才是唯一防线——
+    这条测试锁定 H1：归属违规必须 403，不是 200 状态 toast。
+    """
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
     collect = AsyncMock()
     monkeypatch.setattr(shusuo_capabilities, "collect", collect)
     token = await _seed_pending_card(monkeypatch, open_id="ou-1")
@@ -2285,6 +2305,24 @@ async def test_card_action_rejects_non_owner(monkeypatch) -> None:
     status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
     assert pending is not None
+
+
+async def test_card_action_non_owner_cancel_also_forbidden(monkeypatch) -> None:
+    """归属违规对 cancel 同样 403：不能替别人取消提案。"""
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="cancel", token=token, operator="ou-2", chat_id="chat-1"
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+    collect.assert_not_awaited()
+    status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
 
 
 async def test_card_action_rejects_empty_allowlist(monkeypatch) -> None:
@@ -2430,6 +2468,146 @@ def test_card_action_challenge_echo_only(monkeypatch) -> None:
     response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
     assert response.status_code == 200
     assert response.json() == {"challenge": "card-challenge"}
+
+
+async def test_card_action_nested_shape_extracts_fields(monkeypatch) -> None:
+    """真实推送形态（header/event 嵌套）：字段从 event 里取，路径全链路可通。"""
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(True, "采集完成", endpoint_type="e")
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI", "max_items": 5},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1", nested=True
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    assert response.json().get("toast")
+    assert collect.await_count == 1
+
+
+def test_card_action_nested_header_token_mismatch_rejected(monkeypatch) -> None:
+    """嵌套 header.token 错误：403（不是从顶层读凭证的旧路径）。"""
+    encrypt_key = _card_action_config(monkeypatch, verification_token="right")
+    client = TestClient(app)
+    payload = _card_action_payload(token_value="wrong", nested=True)
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+
+
+def test_card_action_nested_header_app_id_mismatch_rejected(monkeypatch) -> None:
+    """嵌套 header.app_id 错误：403。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    client = TestClient(app)
+    payload = _card_action_payload(app_id="app-other", nested=True)
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 403
+
+
+async def test_card_action_flat_shape_still_accepted(monkeypatch) -> None:
+    """旧扁平形态向后兼容回退：顶层凭证/载荷可解析（不作为主要契约）。"""
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(True, "采集完成", endpoint_type="e")
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI", "max_items": 5},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1", nested=False
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    response = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert response.status_code == 200
+    assert collect.await_count == 1
+
+
+async def test_card_action_encrypted_nested_payload_executes(monkeypatch) -> None:
+    """加密回调解密后也是 header/event 嵌套：凭证在 header，载荷在 event。"""
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(True, "采集完成", endpoint_type="e")
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(
+            return_value=shusuo_capabilities.PreflightResult(
+                allowed=True,
+                availability="verified",
+                normalized_params={"keyword": "AI", "max_items": 5},
+            )
+        ),
+    )
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    client = TestClient(app)
+    inner = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1", nested=True
+    )
+    encrypted = _encrypt(inner, encrypt_key)
+    body = json.dumps({"encrypt": encrypted})
+    timestamp, nonce = "1700000001", "nonce-enc"
+    response = client.post(
+        CARD_ACTION_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": _sign(timestamp, nonce, encrypt_key, body),
+            "X-Lark-Request-Timestamp": timestamp,
+            "X-Lark-Request-Nonce": nonce,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json().get("toast")
+    assert collect.await_count == 1
+
+
+async def test_card_action_encrypted_nested_header_token_mismatch(monkeypatch) -> None:
+    encrypt_key = _card_action_config(monkeypatch, verification_token="right")
+    client = TestClient(app)
+    inner = _card_action_payload(token_value="wrong", nested=True)
+    encrypted = _encrypt(inner, encrypt_key)
+    body = json.dumps({"encrypt": encrypted})
+    timestamp, nonce = "1700000002", "nonce-enc2"
+    response = client.post(
+        CARD_ACTION_PATH,
+        content=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Lark-Signature": _sign(timestamp, nonce, encrypt_key, body),
+            "X-Lark-Request-Timestamp": timestamp,
+            "X-Lark-Request-Nonce": nonce,
+        },
+    )
+    assert response.status_code == 403
 
 
 async def test_card_action_encrypted_payload_is_verified_and_decrypted(monkeypatch) -> None:
@@ -2669,6 +2847,95 @@ async def test_card_update_failure_only_logs(monkeypatch, caplog) -> None:
     assert len(update_calls) == 2  # 处理中卡 + 成功卡各试一次，失败只吞掉
     status, _ = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
     assert status is shusuo_proposal_store.ProposalLookup.MISSING
+    assert encrypt_key
+
+
+async def test_card_confirm_background_replaced_updates_replaced_card(
+    monkeypatch,
+) -> None:
+    """后台确认遇到 REPLACED token：替换文案卡，绝不采集。"""
+    encrypt_key = _card_action_config(monkeypatch)
+    collect = AsyncMock()
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    # 新提案替换旧提案 → 旧 token 进 REPLACED 窗口
+    monkeypatch.setattr(
+        shusuo_capabilities,
+        "preflight_proposal",
+        AsyncMock(return_value=_preflight(allowed=True)),
+    )
+    await commands.execute(
+        commands.parse_command("搜 reddit ML"),
+        chat_id="chat-1",
+        open_id="ou-1",
+    )
+    updates: list[tuple[str, dict[str, Any]]] = []
+
+    async def fake_update_card(message_id: str, card: dict[str, Any]) -> bool:
+        updates.append((message_id, card))
+        return True
+
+    monkeypatch.setattr(shusuo_router.lark_client, "update_card", fake_update_card)
+    await shusuo_router._execute_card_confirm(
+        token=token, chat_id="chat-1", open_id="ou-1", card_message_id="om-card-1"
+    )
+    collect.assert_not_awaited()
+    assert len(updates) == 1
+    body = json.dumps(updates[0][1], ensure_ascii=False)
+    assert "已被新提案替换" in body
+    assert "正在采集" not in body
+    assert encrypt_key
+
+
+async def test_card_confirm_reserve_restored_on_preflight_failure(monkeypatch) -> None:
+    """M1 原子预留回滚：路由层预留 → 后台预检失败 → token 放回可重试。
+
+    全链路：HTTP 回调 → 原子 consume → 后台 force preflight 失败 →
+    restore → 再来一次回调仍能走到采集（token 恢复）。
+    """
+    encrypt_key = _card_action_config(monkeypatch, allowed="ou-1,ou-2")
+    collect = AsyncMock(
+        return_value=shusuo_capabilities.CollectOutcome(True, "采集完成", endpoint_type="e")
+    )
+    monkeypatch.setattr(shusuo_capabilities, "collect", collect)
+    preflight_calls: list[bool] = []
+
+    async def fake_preflight(proposal, *, force_status: bool = False):
+        preflight_calls.append(force_status)
+        if len(preflight_calls) == 1:
+            # 第一次后台确认：seed 的意图预检走另一个 mock，不进本列表；
+            # 强制刷新后策略拒绝 → 触发原子预留回滚
+            assert force_status is True
+            return shusuo_capabilities.PreflightResult(
+                allowed=False,
+                availability="config-gated",
+                normalized_params=dict(proposal.params),
+                errors=("当前受安全策略限制，无法执行该端点。",),
+            )
+        return shusuo_capabilities.PreflightResult(
+            allowed=True,
+            availability="verified",
+            normalized_params=dict(proposal.params),
+        )
+
+    token = await _seed_pending_card(monkeypatch, open_id="ou-1")
+    monkeypatch.setattr(shusuo_capabilities, "preflight_proposal", fake_preflight)
+    client = TestClient(app)
+    payload = _card_action_payload(
+        action="confirm", token=token, operator="ou-1", chat_id="chat-1", nested=True
+    )
+    body, headers = _signed_card_action(payload, encrypt_key)
+    first = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert first.status_code == 200
+    collect.assert_not_awaited()
+    # 预检失败回滚：token 回到 ACTIVE（原子预留被恢复）
+    status, pending = shusuo_proposal_store.peek_pending(token, "chat-1", "ou-1")
+    assert status is shusuo_proposal_store.ProposalLookup.ACTIVE
+    assert pending is not None
+    # 第二次点击：预检放行，采集恰好一次
+    second = client.post(CARD_ACTION_PATH, content=body, headers=headers)
+    assert second.status_code == 200
+    assert collect.await_count == 1
     assert encrypt_key
 
 
