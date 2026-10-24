@@ -33,6 +33,18 @@ class ProjectApiKeyResponse(BaseModel):
     revoked_at: datetime | None
 
 
+class ProjectApiKeyPatchRequest(BaseModel):
+    """PATCH 请求。两个字段均可选，但至少要给一项。
+
+    白名单规则与签发一致：必须非空，且工具名必须已在注册表登记。
+    额度范围与签发一致：1–100000。
+    两者都缺省时没有可执行的更新，由处理器显式返回 400。
+    """
+
+    tool_allowlist: list[str] | None = None
+    daily_collect_quota: int | None = Field(default=None, ge=1, le=100000)
+
+
 class IssuedProjectApiKeyResponse(ProjectApiKeyResponse):
     """签发响应。明文只在这一次出现。"""
 
