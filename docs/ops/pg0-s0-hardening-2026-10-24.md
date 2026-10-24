@@ -104,12 +104,20 @@ S0 各任务只要求不新增错误，不要求清零。
 
 ## 3.1 tracked mypy signature baselines
 
-| 范围 | 唯一签名 | 文件 | SHA-256 |
-|---|---:|---|---|
-| `mypy src` | 62 | `configs/quality/mypy-src-signatures.txt` | `db46d230ee55ed8d1a553ad477196d34da031412c30df83551be2a21ba149f46` |
-| `mypy src tests` | 498 | `configs/quality/mypy-src-tests-signatures.txt` | `718ca2523cb7e85583b4ba90ec974e11d47114a1e0275ebe6cfedd9ea3a98827` |
+| 范围 | 签名数 | 实例数 | 文件 | SHA-256 |
+|---|---:|---:|---|---|
+| `mypy src` | 62 | 123 | `configs/quality/mypy-src-signatures.txt` | `4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e` |
+| `mypy src tests` | 498 | 1200 | `configs/quality/mypy-src-tests-signatures.txt` | `9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4` |
 
-两份文件由 Task 0 原始输出规范化生成，后续不得重新取基线；允许签名减少，不允许新增。
+表头应为「范围 / 签名数 / 实例数 / 文件 / SHA-256」。`mypy src` 来自 Task 0 原始输出；`mypy src tests` 在 Task 0 fix round 1 以同一代码 HEAD 重新运行。fix round 2 迁移为 multiset v1：每行 `<count>\t<signature>`。后续不得重新取基线；允许计数减少，不允许新签名或任一签名计数增加。
+
+### 3.2 Task 0 计划修订
+
+Task 0 独立审查后，S0 计划在 `1711ac9` 与后续 fix round 2 中补齐：第五个 lineage guard、endpoint 旧字段优先级、mypy multiset CI gate、四个 dedicated suite current-head 断言、两个 PostgreSQL CI job 的 disposable rehearsal、bootstrap 和 v2 reviewed-SHA 标签门禁。业务代码尚未修改。
+
+### 3.3 Task 0 fix round 2：CI 可执行性
+
+Task 0 第二轮复审发现 old mypy step 未替换、unique-set 会漏计数增加、dedicated suites 的 current-head 断言仍陈旧、且计划没有运行 PostgreSQL CI jobs。计划已改为 multiset helper、四 suite current-head 同步、六 guard disposable rehearsal；两份 baseline 已迁移为 multiset v1。业务代码仍未修改，v1 标签不变。
 
 ## 4. unit 基线
 

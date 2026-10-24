@@ -40,8 +40,8 @@
 | `apps/api/tests/unit/test_*_postgres_guard.py` | 同步当前单头断言。 |
 | `apps/api/tests/unit/test_migration_head_pins.py` | 新增统一单头 pin 守卫，防止脚本再次陈旧。 |
 | `scripts/check_mypy_baseline.py` | 归一化 mypy 输出并拒绝新增诊断签名；允许存量债务减少。 |
-| `configs/quality/mypy-src-signatures.txt` | Task 0 冻结的 `mypy src` 62 个唯一签名。 |
-| `configs/quality/mypy-src-tests-signatures.txt` | Task 0 冻结的 `mypy src tests` 498 个唯一签名，供 CI non-regression。 |
+| `configs/quality/mypy-src-signatures.txt` | Task 0 冻结的 `mypy src` multiset：62 个签名、123 个实例。 |
+| `configs/quality/mypy-src-tests-signatures.txt` | Task 0 冻结的 `mypy src tests` multiset：498 个签名、1200 个实例，供 CI non-regression。 |
 | `docs/ops/pg0-baseline-c0-2026-10-22.md` | 修正工具增量、兼容性变化、GitNexus compare、CI 风险、Ruff 和 Console build-arg 事实。 |
 | `docs/ops/pg0-ruff-cleanup-2026-10-22.md` | 修正 Ruff 负控使用项目配置和 100 列阈值。 |
 | `docs/ops/pg0-s0-hardening-2026-10-24.md` | S0 执行证据、门禁和标签前事实。 |
@@ -106,11 +106,11 @@ Expected: `mypy src` 基线 123 errors/28 files；unit 不得有 failed/error。
 另运行 `.venv/bin/python -m mypy src tests > /tmp/s0-mypy-src-tests-baseline.txt 2>&1`，预期 `Found 1200 errors in 117 files (checked 689 source files)`。规范化两份输出：删除 summary/note，只保留 `: error:` 行，把 `:line[:column]:` 归一化为 `:LINE:`，去重排序后写入：
 
 ```text
-configs/quality/mypy-src-signatures.txt              # 62 行；SHA-256 db46d230...
-configs/quality/mypy-src-tests-signatures.txt        # 498 行；SHA-256 718ca252...
+configs/quality/mypy-src-signatures.txt              # multiset v1；62 行/123 实例；SHA-256 47001690...
+configs/quality/mypy-src-tests-signatures.txt        # multiset v1；498 行/1200 实例；SHA-256 9df7ee3e...
 ```
 
-两份文件是 Task 0 冻结基线；Task 1-10 不得重新生成或放宽。后续门禁只允许当前签名集合是基线子集，不允许新增。
+两份文件是 Task 0 冻结基线；Task 1-10 不得重新生成或放宽。后续门禁按每个签名的实例计数比较：允许减少；新签名或任一签名计数增加都失败。
 
 - [ ] **Step 4: 冻结确认缺陷的 RED**
 
@@ -761,52 +761,122 @@ git commit -m "docs(ops): correct C0 compatibility and release evidence"
 
 ---
 
-### Task 9: 修复 CI 测试范围与当前 Alembic head guard
+### Task 9: 修复 CI、mypy multiset 与 current-head guards
 
-**Files:**
+### Files
+
 - Modify: `.github/workflows/ci.yml`
-- Modify: `scripts/verify-capability-governance-migration.sh`
-- Modify: `scripts/verify-workflow-action-migration.sh`
-- Modify: `scripts/verify-workflow-execution-migration.sh`
-- Modify: `scripts/verify-workflow-executor-migration.sh`
-- Modify: `scripts/verify-workflow-lineage-migration.sh`
-- Modify: `scripts/verify-workflow-planner-phase2-migration.sh`
-- Modify: `apps/api/tests/unit/test_capability_governance_postgres_guard.py`
-- Modify: `apps/api/tests/unit/test_workflow_action_postgres_guard.py`
-- Modify: `apps/api/tests/unit/test_workflow_execution_postgres_guard.py`
-- Modify: `apps/api/tests/unit/test_workflow_executor_postgres_guard.py`
-- Modify: `apps/api/tests/unit/test_workflow_lineage_postgres_guard.py`
-- Create: `apps/api/tests/unit/test_migration_head_pins.py`
-- Create: `apps/api/tests/unit/test_mypy_baseline_guard.py`
-- Create: `scripts/check_mypy_baseline.py`
-- Delete: `scripts/verify-workflow-planner-phase2-migration.sh.bak`
+- Modify: `scripts/verify-capability-governance-migration.sh`, `scripts/verify-workflow-action-migration.sh`, `scripts/verify-workflow-execution-migration.sh`, `scripts/verify-workflow-executor-migration.sh`, `scripts/verify-workflow-lineage-migration.sh`, `scripts/verify-workflow-planner-phase2-migration.sh`
+- Modify: `apps/api/tests/unit/test_capability_governance_postgres_guard.py`, `test_workflow_action_postgres_guard.py`, `test_workflow_execution_postgres_guard.py`, `test_workflow_executor_postgres_guard.py`, `test_workflow_lineage_postgres_guard.py`
+- Modify: `apps/api/tests/postgres/test_workflow_plan_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_migration.py`, `apps/api/tests/postgres_capability_governance/test_migration.py`, `apps/api/tests/postgres_workflow_execution/test_migration.py`
+- Create: `scripts/check_mypy_baseline.py`, `apps/api/tests/unit/test_mypy_baseline_guard.py`, `apps/api/tests/unit/test_migration_head_pins.py`, `apps/api/tests/unit/test_ci_gate_contract.py`
+- Delete (git rm): `scripts/verify-workflow-planner-phase2-migration.sh.bak`
 
-**Interfaces:**
-- Produces: 无 PostgreSQL 的 jobs 只运行 unit；API mypy 使用 tracked signature baseline 做 non-regression；migration guard 的“当前头”统一为 `202610210057`；历史迁移路径 revision 不变。
+### Interfaces
 
-- [ ] **Step 1: impact**
-
-对六个脚本 File 运行 impact。UNKNOWN 用文本搜索确认 workflow 和 unit tests。不得使用全局替换 revision。
-
-- [ ] **Step 2: 写 CI RED 测试**
-
-新增/扩展 unit tests 读取 `.github/workflows/ci.yml`，断言：
-
-```text
-API Check file integrity: working-directory = .
-API Pytest: uv run pytest tests/unit
-API guard: ...check_pytest_baseline.py --path tests/unit
-API Mypy: ...check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
-Platform Skill And MCP Gate: 不包含 tests/integration/test_platform_package_routes.py，或该 job 配置 PostgreSQL service + DATABASE_URL。首选移除 integration 文件，因该 job 无 DB。
+```python
+# scripts/check_mypy_baseline.py
+CURRENT_HEAD = "202610210057"          # read-only constant used by tests, not by the helper
+def normalize_diagnostics(stderr_stdout: str) -> Counter[str]   # raises UnparsableLine
+def compare(baseline: Counter[str], current: Counter[str]) -> tuple[list[tuple[str,int,int]], list[tuple[str,int,int]]]
+    # returns (regressions, decreases); regressions = new signature or current_count > baseline_count
+def main(argv: list[str] | None = None) -> int                  # 0 ok, 1 regression, 2 invalid
 ```
 
-- [ ] **Step 3: 写 head pin RED**
+CLI (exact):
 
-新增 `test_migration_head_pins.py`：解析 `uv run alembic heads` 的唯一 head `202610210057`；检查六个 `.sh` 脚本的 current-head error/success/grep 断言使用该值；断言仓库不再跟踪 `verify-*.sh.bak`。
+```
+python scripts/check_mypy_baseline.py --baseline PATH --path TARGET [--path TARGET ...]
+                                     [--api-dir DIR] [--python EXE]
+```
 
-只检查 current-head guard，不检查脚本内部历史 upgrade/downgrade revision。新增 `test_mypy_baseline_guard.py`，覆盖 normalization、允许 removed signatures、拒绝 added signatures、非 0/1 mypy exit 失败。
+- `--baseline` required, single. Relative paths resolve against the **caller's** cwd at startup.
+- `--path` repeatable, required, forwarded verbatim to mypy as positional targets.
+- `--api-dir` default `<repo>/apps/api`, where `<repo> = Path(__file__).resolve().parents[1]`.
+- `--python` default `sys.executable`.
+- No `--update` / no baseline write path anywhere. The helper must be incapable of re-baselining.
+- Exit codes: `0` clean; `1` regression (any count increase or new signature); `2` invalid (missing/unparsable baseline, unparsable mypy line, mypy exit not in {0, 1}). Exit 2 must never be reported as success.
 
-- [ ] **Step 4: 运行 RED**
+### Baseline file format (multiset v1)
+
+```
+<count>\t<normalized-signature>\n
+```
+
+- One record per line, `count` = positive decimal integer, single TAB separator, signature is everything after the first TAB.
+- Signature = `<repo-relative-path>:LINE: error: <message>` where `<message>` keeps its trailing ` [error-code]`. Line **and column** are collapsed to the literal `LINE`; `note:` lines and the `Found N errors ...` summary are dropped.
+- Sorted by signature in UTF-8 byte order; LF only; exactly one trailing LF; no header, no blank lines, no comments; ASCII only.
+- Duplicate signature lines are invalid (exit 2). Parsing is order-insensitive (Counter), sorting exists only for byte stability and reviewability.
+
+### mypy invocation (cwd-independent)
+
+```
+[python, "-m", "mypy", *paths, "--no-incremental", "--no-pretty", "--show-error-codes", "--no-error-summary"]
+cwd=<api_dir resolved absolute>
+```
+
+`cwd` is fixed to `--api-dir`, never inherited from the caller, so `mypy_path = "src"` and `apps/api/pyproject.toml` always resolve. Only exit codes 0 and 1 are accepted; stderr and stdout are combined and parsed; any line containing `" error: "` that does not match `^(?P<path>[^:\n]+):(?P<line>\d+):(?: (?P<col>\d+):)? error: (?P<msg>.*)$` aborts with exit 2 (fail closed, no silent dropping).
+
+### Steps
+
+**Step 1: impact**
+
+```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
+node .gitnexus/run.cjs impact check_mypy_baseline --direction upstream --repo .
+for f in scripts/verify-capability-governance-migration.sh scripts/verify-workflow-action-migration.sh \
+         scripts/verify-workflow-execution-migration.sh scripts/verify-workflow-executor-migration.sh \
+         scripts/verify-workflow-lineage-migration.sh scripts/verify-workflow-planner-phase2-migration.sh; do
+  node .gitnexus/run.cjs impact "$(basename "$f")" --direction upstream --repo . --file "$f"
+done
+```
+
+Expected: LOW/UNKNOWN. UNKNOWN is confirmed by text search over `.github/workflows/ci.yml` and `apps/api/tests/unit/*postgres_guard.py`. No global revision replacement.
+
+**Step 2: RED — CI contract test**
+
+Write `apps/api/tests/unit/test_ci_gate_contract.py` (plain-text assertions on `Path(__file__).parents[4] / ".github/workflows/ci.yml"`, same style as `test_ci_no_unscoped_real_e2e.py`; do not add a YAML dependency). Assertions:
+
+```text
+api job: "Check file integrity" step has working-directory: .
+api job: pytest step is "uv run pytest tests/unit"
+api job: guard step is "...check_pytest_baseline.py --path tests/unit"
+api job: step "Mypy (non-regression)" runs "...check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests"
+api job: "uv run mypy" appears in no step, and no step name is exactly "Mypy"
+platform-packages job: test list contains none of tests/integration/**; specifically not tests/integration/test_platform_package_routes.py
+```
+
+**Step 3: RED — head pins**
+
+`test_migration_head_pins.py` computes the head with `subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=API_ROOT, capture_output=True, text=True)` (no `DATABASE_URL`), asserts exactly one non-empty line, and pins the expected value `202610210057` in the test itself (a change of head must edit this test — that is the point). Then it asserts every current-head occurrence:
+
+```text
+scripts/*.sh: grep -Eq '^<HEAD> \(head\)$'
+scripts/*.sh: "expected exactly one Alembic head at <HEAD>"
+scripts/*.sh: "alembic head check passed: <HEAD>"  (allow the optional "source " infix)
+verify-workflow-lineage-migration.sh cleanup only: 'uv run alembic upgrade <HEAD>' and revision != "<HEAD>" and "cleanup passed: head <HEAD>"
+four dedicated suites: 'heads == ["<HEAD> (head)"]' and the companion revision assertion immediately after it
+no tracked path matching scripts/*.bak (git ls-files) and no such file on disk
+```
+
+Explicitly out of scope for this test (must stay untouched): `202607160033`, `202607170034`, `202607270043`, `202607280044` where used as `alembic upgrade/downgrade` targets, `downgrade refused:` message strings, `revision-202607280044` in the executor authorization tuple and its tests, `module.revision`/`down_revision` in the `test_*_migration_source.py` family.
+
+**Step 4: RED — helper tests**
+
+`test_mypy_baseline_guard.py` with a fake interpreter shim (a small executable written to `tmp_path`, passed via `--python`) that records `os.getcwd()` and emits a canned diagnostic block. Cases:
+
+```text
+1 normalization: line:col collapse; "note:" and "Found ... errors" dropped; two identical diagnostics -> count 2
+2 decrease allowed: baseline count 3, current 2 -> exit 0, printed as decreased
+3 count increase on an existing signature (2 -> 3) -> exit 1   (the gap-2 regression)
+4 brand-new signature -> exit 1
+5 signature entirely absent -> exit 0
+6 mypy exit 2 (usage error) -> helper exits 2, never 0
+7 cwd independence: invoke from repo root with --api-dir <tmp>/apps/api; shim records cwd == that absolute path
+8 malformed baseline (duplicate signature, count 0, missing TAB) -> exit 2
+```
+
+**Step 5: RED — run the suites and the two CI jobs**
 
 ```bash
 cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
@@ -817,38 +887,129 @@ cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
   tests/unit/test_workflow_executor_postgres_guard.py \
   tests/unit/test_workflow_lineage_postgres_guard.py \
   tests/unit/test_migration_head_pins.py \
-  tests/unit/test_mypy_baseline_guard.py -q
+  tests/unit/test_mypy_baseline_guard.py \
+  tests/unit/test_ci_gate_contract.py -q
 ```
 
-Expected: stale pin 和 CI assertions 失败。
+Expected: failures in the five guard tests (stale head), the two new tests, and the CI contract test.
 
-- [ ] **Step 5: 最小实现**
+**Step 6: RED — rehearse the two red CI PostgreSQL jobs locally (disposable postgres:15)**
 
-`.github/workflows/ci.yml`：
-
-```yaml
-- name: Check file integrity
-  working-directory: .
-  run: python3 scripts/check_file_integrity.py
-...
-- name: Mypy baseline (non-regression)
-  run: uv run python ../../scripts/check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
-...
-- name: Pytest
-  run: uv run pytest tests/unit
-- name: Pytest regression guard (unit scope)
-  run: uv run python ../../scripts/check_pytest_baseline.py --path tests/unit
-```
-
-platform-packages job 从测试列表删除 `tests/integration/test_platform_package_routes.py`；该 integration 已由有 DB 的本地门禁覆盖，CI 无 DB 时不运行。
-
-六个脚本只替换 `alembic heads` 校验和对应 success/error message 的 expected head 为 `202610210057`。不要替换历史 `alembic upgrade/downgrade` revision、authorization packet revision 或 dedicated suite 内部断言。
-
-五个 guard tests 更新 current-head 字符串。`test_workflow_lineage_postgres_guard.py` 的 fake `uv` 返回值改为 `202610210057 (head)`；它的历史 `alembic upgrade/downgrade 202607160033/202607170034` 与 cleanup assertions 保持不变。`test_workflow_executor_postgres_guard.py` 的 authorization revision `202607280044` 也保持不变。删除 tracked 的陈旧 `.bak`。
-
-- [ ] **Step 6: GREEN**
+Run this block verbatim; it mirrors the CI service containers (`POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, CI database names, CI healthcheck) but binds loopback-only on non-production ports. It never touches 5432, the `data-intel` compose DB, or any shared database.
 
 ```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
+set -u
+docker rm -f s0-ci-rehearsal-planner-pg s0-ci-rehearsal-lineage-pg >/dev/null 2>&1 || true
+
+docker run -d --name s0-ci-rehearsal-planner-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=data_scrapy_workflow_plan_phase2_test \
+  -p 127.0.0.1:55451:5432 postgres:15
+docker run -d --name s0-ci-rehearsal-lineage-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=data_scrapy_ci_workflow_lineage_test \
+  -p 127.0.0.1:55452:5432 postgres:15
+
+for i in $(seq 1 60); do
+  docker exec s0-ci-rehearsal-planner-pg pg_isready -U postgres -d data_scrapy_workflow_plan_phase2_test >/dev/null 2>&1 \
+   && docker exec s0-ci-rehearsal-lineage-pg pg_isready -U postgres -d data_scrapy_ci_workflow_lineage_test >/dev/null 2>&1 \
+   && break; sleep 1
+done
+```
+
+Job A (mirrors `workflow-planner-postgres`, CI lines 179-183):
+
+```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
+TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55451/data_scrapy_workflow_plan_phase2_test' \
+ALLOW_DESTRUCTIVE_MIGRATION_TEST=true \
+bash scripts/verify-workflow-planner-phase2-migration.sh
+echo "planner_rc=$?"
+```
+
+Job B (mirrors `workflow-lineage-postgres`, CI lines 226-231):
+
+```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
+WORKFLOW_LINEAGE_POSTGRES_TEST_AUTHORIZED=true \
+WORKFLOW_LINEAGE_TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55452/data_scrapy_ci_workflow_lineage_test' \
+WORKFLOW_LINEAGE_AUTHORIZED_TARGET='127.0.0.1:55452/data_scrapy_ci_workflow_lineage_test' \
+bash scripts/verify-workflow-lineage-migration.sh
+echo "lineage_rc=$?"
+```
+
+Expected RED: both exit `1` at the source-head guard before pytest runs —
+`error: expected exactly one Alembic head at 202607160033` and
+`error: expected exactly one Alembic head at 202607170034`.
+
+Cleanup (always, even on RED):
+
+```bash
+docker rm -f s0-ci-rehearsal-planner-pg s0-ci-rehearsal-lineage-pg >/dev/null 2>&1 || true
+docker ps -a --filter name=s0-ci-rehearsal --format '{{.Names}}'   # expect empty
+lsof -nP -iTCP:55451 -sTCP:LISTEN; lsof -nP -iTCP:55452 -sTCP:LISTEN  # expect empty
+```
+
+**Step 7: minimal implementation**
+
+`.github/workflows/ci.yml`:
+
+```yaml
+  api:
+    steps:
+      - name: Check file integrity
+        working-directory: .            # job default is apps/api; the script lives at repo root
+        run: python3 scripts/check_file_integrity.py
+      ...
+      - name: Mypy (non-regression)     # replaces "uv run mypy src tests"; there is no second mypy step
+        run: uv run python ../../scripts/check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
+      - name: Pytest
+        run: uv run pytest tests/unit
+      - name: Pytest regression guard (unit scope)
+        run: uv run python ../../scripts/check_pytest_baseline.py --path tests/unit
+```
+
+`platform-packages` job: delete the `tests/integration/test_platform_package_routes.py` line from the `Run package and MCP tests` list (job has no DB; the file needs 5432). Leave that job's `Check file integrity` step without `working-directory` — it already resolves at repo root.
+
+Six scripts — current-head only:
+
+| script | occurrences to change → `202610210057` |
+|---|---|
+| `verify-capability-governance-migration.sh` | 101, 102, 106 |
+| `verify-workflow-action-migration.sh` | 107, 108, 111 |
+| `verify-workflow-execution-migration.sh` | 116, 117, 120 |
+| `verify-workflow-executor-migration.sh` | 138, 139, 143 **and** `REVISION` at line 39 (it feeds the authorization tuple; leaving it would split head from the tuple label) |
+| `verify-workflow-lineage-migration.sh` | 116, 117, 121 **and** cleanup 144, 185, 214 |
+| `verify-workflow-planner-phase2-migration.sh` | 98, 99, 103 |
+
+Do not touch any historical `upgrade`/`downgrade` target or `downgrade refused:` string in these scripts.
+
+Guard tests: five current-head assertions move to `202610210057`. `test_workflow_lineage_postgres_guard.py` fake-uv line 188 becomes `printf '%s\n' "202610210057 (head)"`; lines 196 and 260 keep `202607170034`. `test_workflow_executor_postgres_guard.py`: rename `test_guard_is_pinned_to_revision_044_without_runner_commands` → `..._to_current_head_...`, update lines 174-175, and update `SAFE_AUTHORIZATION`/the unsafe-override replacement at line 30/141 to `revision-202610210057` (consistent with the script's `REVISION`).
+
+Four dedicated suites — change only the head pair:
+
+- `tests/postgres/test_workflow_plan_migration.py:474-475` → `["202610210057 (head)"]` / `"202610210057"`
+- `tests/postgres_workflow_lineage/test_migration.py:290-291` → same; rename `test_source_has_one_head_at_034` → `test_source_has_one_head_at_current_head`
+- `tests/postgres_capability_governance/test_migration.py:537-538` → same
+- `tests/postgres_workflow_execution/test_migration.py:329-330` → same
+
+Historical literals in those files (lines 298-346, 385-388, 488-516, 573-600, 362-372) stay.
+
+Known second-order breakage to fix in the same pass (triage rule below): `tests/postgres_workflow_lineage/test_migration.py::test_downgrade_refuses_persisted_v2_lineage` (line ~388) and `tests/postgres_workflow_lineage/test_materialization.py::test_downgrade_refuses_nonempty_materialization_ledger` (line ~308) start from the head-upgraded fixture. At head 057 the downgrade command is a single transaction (`alembic/env.py` does not set `transaction_per_migration`), so it now rolls back to `202610210057` instead of parking at `202607170034`. Repair by bringing the fixture DB to 034 first — keep every existing literal:
+
+```python
+_reset_public_schema(postgres_database_url)
+_run_alembic(postgres_database_url, "upgrade", "202607170034")
+# then the existing seed + downgrade-to-202607160032 / 202607160033 assertions, unchanged
+```
+
+Triage rule for anything further the rehearsal surfaces: a failure caused by "the DB/fixture is now at a different head" is fixed by pinning the test's *start* revision explicitly; a failure caused by new behavior in revisions 035-057 is out of S0 scope and must be recorded as a blocked defect, never papered over by editing the assertion to the new value. `git rm scripts/verify-workflow-planner-phase2-migration.sh.bak`.
+
+**Step 8: GREEN**
+
+```bash
+cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
 .venv/bin/python -m pytest \
   tests/unit/test_capability_governance_postgres_guard.py \
   tests/unit/test_workflow_action_postgres_guard.py \
@@ -856,20 +1017,42 @@ platform-packages job 从测试列表删除 `tests/integration/test_platform_pac
   tests/unit/test_workflow_executor_postgres_guard.py \
   tests/unit/test_workflow_lineage_postgres_guard.py \
   tests/unit/test_migration_head_pins.py \
-  tests/unit/test_mypy_baseline_guard.py -q
-cd /Users/lute/Project/data_scrapy-c0-s0
-python3 scripts/check_file_integrity.py
+  tests/unit/test_mypy_baseline_guard.py \
+  tests/unit/test_ci_gate_contract.py -q
+.venv/bin/python ../../scripts/check_mypy_baseline.py \
+  --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
+.venv/bin/python ../../scripts/check_mypy_baseline.py \
+  --baseline ../../configs/quality/mypy-src-signatures.txt --path src
+cd /Users/lute/Project/data_scrapy-c0-s0 && python3 scripts/check_file_integrity.py
 ```
 
-再用 YAML/文本聚焦检查 workflow 命令，不触发远端 CI。
+Expected: unit set green; both helper runs exit 0 with a summary line (`current=1200 baseline=1200 decreased=0` / `current=123 baseline=123 decreased=0`); integrity `file integrity OK (N files)`.
 
-- [ ] **Step 7: 提交**
+Then re-run Step 6 (both jobs) and expect exit 0:
+
+- Job A: `alembic head check passed: 202610210057` then `tests/postgres` fully green, including the renamed head test and the two downgrade-refusal tests.
+- Job B: `alembic source head check passed: 202610210057`, `tests/postgres_workflow_lineage` green, then `authorized workflow lineage database cleanup passed: head 202610210057, zero rows`.
+
+This rehearsal *is* the CI evidence: the branch is never pushed, so record it as `local rehearsal of workflow-planner-postgres / workflow-lineage-postgres; no remote CI run` in the evidence file.
+
+**Step 9: commit**
 
 ```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add .github/workflows/ci.yml scripts/check_mypy_baseline.py scripts/verify-*-migration.sh scripts/verify-workflow-planner-phase2-migration.sh.bak configs/quality/mypy-src-signatures.txt configs/quality/mypy-src-tests-signatures.txt apps/api/tests/unit/test_*postgres_guard.py apps/api/tests/unit/test_migration_head_pins.py apps/api/tests/unit/test_mypy_baseline_guard.py
-git commit -m "ci: unblock api gates and refresh current head pins"
+git rm --cached scripts/verify-workflow-planner-phase2-migration.sh.bak && rm -f scripts/verify-workflow-planner-phase2-migration.sh.bak
+git add .github/workflows/ci.yml scripts/check_mypy_baseline.py scripts/verify-*-migration.sh \
+  apps/api/tests/unit/test_*postgres_guard.py apps/api/tests/unit/test_migration_head_pins.py \
+  apps/api/tests/unit/test_mypy_baseline_guard.py apps/api/tests/unit/test_ci_gate_contract.py \
+  apps/api/tests/postgres/test_workflow_plan_migration.py \
+  apps/api/tests/postgres_workflow_lineage/test_migration.py \
+  apps/api/tests/postgres_workflow_lineage/test_materialization.py \
+  apps/api/tests/postgres_capability_governance/test_migration.py \
+  apps/api/tests/postgres_workflow_execution/test_migration.py
+git commit -m "ci: replace mypy gate with multiset baseline and refresh current head pins"
 ```
+
+Note the deliberate difference from the old plan: the `.bak` is removed from the index, never added. `configs/quality/*.txt` are **not** in this commit — they were migrated in the Task 0 fix commit. Scope check before commit: `git diff --cached --name-only | grep -E '^(apps/api/src|apps/api/alembic|configs/[^q]|apps/scraper-console|docker)'` must be empty.
 
 ---
 
@@ -901,14 +1084,58 @@ cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
 ```bash
 .venv/bin/python -m pytest tests/unit -q
 .venv/bin/ruff check . --no-cache
-set +e
-.venv/bin/python -m mypy src > /tmp/s0-mypy-final.txt 2>&1
-MYPY_RC=$?
-set -e
-test "$MYPY_RC" -eq 1
+.venv/bin/python ../../scripts/check_mypy_baseline.py \
+  --baseline ../../configs/quality/mypy-src-signatures.txt --path src
+.venv/bin/python ../../scripts/check_mypy_baseline.py \
+  --baseline ../../configs/quality/mypy-src-tests-signatures.txt --path src --path tests
+.venv/bin/python ../../scripts/check_pytest_baseline.py --path tests/unit
+cd /Users/lute/Project/data_scrapy-c0-s0
+python3 scripts/check_file_integrity.py
 ```
 
-运行 `python ../../scripts/check_mypy_baseline.py --baseline ../../configs/quality/mypy-src-signatures.txt --path src`，并使用 full baseline 对 `src tests` 再跑一次；两者 new=0。允许诊断减少，不允许 Task 1-9 的错误被重新取基线洗掉。
+Expected: unit green；ruff clean；两份 mypy multiset 不得出现新签名或计数增加，允许 decreased；pytest guard `OK: 0 failed。`；integrity green。helper 必须固定 cwd 到 `apps/api`，从 repo root 或 `apps/api` 调用结果一致。
+
+- [ ] **Step 2a: 六个 PostgreSQL guard 的 disposable rehearsal**
+
+安全边界：容器前缀 `s0-gate-`，只绑定 `127.0.0.1`，不得用 5432、不得使用 compose DB、不得使用 named volume 或 `--network host`。每个容器必须在同一 shell invocation 的 trap 中删除。
+
+| gate | container | port | user/password | database |
+|---|---|---:|---|---|
+| planner | `s0-gate-planner-pg` | 55451 | postgres/postgres | `data_scrapy_workflow_plan_phase2_test` |
+| lineage | `s0-gate-lineage-pg` | 55452 | postgres/postgres | `data_scrapy_ci_workflow_lineage_test` |
+| capability-governance | `s0-gate-cg-pg` | 55453 | postgres/postgres | `s0_capability_governance_test` |
+| workflow-execution | `s0-gate-exec-pg` | 55454 | postgres/postgres | `s0_workflow_execution_test` |
+| workflow-executor | `s0-gate-executor-pg` | 55455 | `s0_executor` / trust | `s0_workflow_executor_test` |
+| workflow-action | `s0-gate-action-pg` | 55443 | `phase_e_test` / trust | `uix09_phase_e_20260728_workflow_execution_test` |
+
+```bash
+cd /Users/lute/Project/data_scrapy-c0-s0
+# postgres/postgres containers: planner, lineage, cg, exec
+# trust containers: executor, action
+# wait with docker exec <name> pg_isready -U <user> -d <db>, max 60s
+
+TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55451/data_scrapy_workflow_plan_phase2_test' ALLOW_DESTRUCTIVE_MIGRATION_TEST=true bash scripts/verify-workflow-planner-phase2-migration.sh
+
+WORKFLOW_LINEAGE_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_LINEAGE_TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55452/data_scrapy_ci_workflow_lineage_test' WORKFLOW_LINEAGE_AUTHORIZED_TARGET='127.0.0.1:55452/data_scrapy_ci_workflow_lineage_test' bash scripts/verify-workflow-lineage-migration.sh
+
+CAPABILITY_GOVERNANCE_POSTGRES_TEST_AUTHORIZED=true CAPABILITY_GOVERNANCE_TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55453/s0_capability_governance_test' bash scripts/verify-capability-governance-migration.sh
+
+WORKFLOW_EXECUTION_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_EXECUTION_TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55454/s0_workflow_execution_test' WORKFLOW_EXECUTION_AUTHORIZED_TARGET='127.0.0.1:55454/s0_workflow_execution_test' bash scripts/verify-workflow-execution-migration.sh
+
+WORKFLOW_EXECUTOR_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_EXECUTOR_RUNTIME_AUTHORIZED=true WORKFLOW_EXECUTOR_TEST_DATABASE_URL='postgresql+asyncpg://s0_executor@127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_AUTHORIZED_TARGET='127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_RUNNER_ID='s0-gate-runner' WORKFLOW_EXECUTOR_POSTGRES_IMAGE='postgres:15' WORKFLOW_EXECUTOR_CLEANUP_CONTRACT='destroy_exact_runner_and_prove_port_closed' WORKFLOW_EXECUTOR_AUTHORIZATION='authorize-workflow-executor-postgres-candidate:127.0.0.1:55455/s0_workflow_executor_test:revision-202610210057:runner-s0-gate-runner:image-postgres:15:cleanup-destroy_exact_runner_and_prove_port_closed' bash scripts/verify-workflow-executor-migration.sh
+
+WORKFLOW_ACTION_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_ACTION_TEST_DATABASE_URL='postgresql+asyncpg://phase_e_test@127.0.0.1:55443/uix09_phase_e_20260728_workflow_execution_test' WORKFLOW_ACTION_AUTHORIZED_TARGET='127.0.0.1:55443/uix09_phase_e_20260728_workflow_execution_test' bash scripts/verify-workflow-action-migration.sh
+```
+
+每个脚本必须打印 current-head `202610210057` 通过并执行对应 dedicated suite。任何无法执行的 gate 记为 BLOCKED。结束后：
+
+```bash
+docker rm -f s0-gate-planner-pg s0-gate-lineage-pg s0-gate-cg-pg   s0-gate-exec-pg s0-gate-executor-pg s0-gate-action-pg >/dev/null 2>&1 || true
+test -z "$(docker ps -a --filter name=s0-gate --format '{{.Names}}')"
+for port in 55443 55451 55452 55453 55454 55455; do
+  test -z "$(lsof -nP -iTCP:$port -sTCP:LISTEN)"
+done
+```
 
 - [ ] **Step 3: contracts and invariants**
 
@@ -919,6 +1146,10 @@ uv run python ../../scripts/test_platform_packages.py
 cd /Users/lute/Project/data_scrapy-c0-s0
 test "$(git rev-parse pg0-baseline-v1)" = "48aaccfa5a3689f23f7517cfb88b59c2533805ab"
 test "$(git rev-parse pg0-baseline-v1^{commit})" = "e227070054914f9cbef8cb5d508e5f4aa73d8dcb"
+test "$(git ls-files 'scripts/*.bak')" = ""
+test -z "$(find scripts -name '*.bak' -print -quit)"
+test "$(shasum -a 256 configs/quality/mypy-src-signatures.txt | cut -d' ' -f1)" = "4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e"
+test "$(shasum -a 256 configs/quality/mypy-src-tests-signatures.txt | cut -d' ' -f1)" = "9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4"
 ```
 
 Expected: head 057；catalog/lock/digest 不变；v1 不变。
@@ -957,9 +1188,11 @@ node .gitnexus/run.cjs detect-changes --scope compare --base-ref 0c11c2b --repo 
 
 范围 `0c11c2b..HEAD`，至少三视角：tenant isolation、compat/contracts、CI/evidence。所有 Critical/Important 必须关闭。只记录存量 residual risks。
 
+CI/evidence reviewer 必须确认：workflow 中不存在阻塞式 `uv run mypy`；API mypy 使用 multiset helper；API pytest/guard 只跑 unit；platform-packages 不含 integration 路径；六个 PostgreSQL guard 本地 rehearsal 全绿；四个 dedicated suite current-head 断言为 057；历史 upgrade/downgrade revision 未被全局替换。
+
 - [ ] **Step 8: 追加并提交最终证据**
 
-记录命令、计数、hash、tag immutability、compare、review verdict。安全写入。
+记录命令、计数、hash、tag immutability、compare、review verdict。安全写入。另记录：两份 mypy multiset 的 baseline/current/decreased；API 与 platform-packages CI contract；六个 PostgreSQL guard rehearsal 的容器名、端口、exit 和 cleanup；`.bak` 删除；`ci_evidence=local-rehearsal-only`（分支未 push，无远端 CI run）。
 
 ```bash
 node .gitnexus/run.cjs detect-changes --scope all --repo .
@@ -1000,5 +1233,5 @@ Expected: 工作树 clean；v1 不变；v2 指向审查通过的 S0 code baselin
 - Spec coverage：覆盖 3 个越权工具、report hash、inspect 泄漏、list_capabilities 行语义、get_playbook alias、证据和 CI 门禁、v1/v2 标签策略。
 - Placeholder scan：无 TBD/TODO/“类似 Task N”或未定义接口。
 - Type consistency：`stop_run(project_id=None)`、`verify_artifact(run_ids=None, evidence_ids=None)`、`inspect` key set、list_capabilities 旧字段、playbook markdown alias 在各任务一致。
-- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本只改 current-head guard，不改历史 revision。
+- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本与四个 dedicated suite 只改 current-head 断言；历史 upgrade/downgrade revision 不变。
 - Safety：所有 production/tag/remote 操作均禁止；v1 immutable；v2 只在最终 review 后本地创建。
