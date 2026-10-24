@@ -30,15 +30,23 @@ _BEARER_PATTERN = re.compile(r"(?i)bearer\s+\S+")
 # 文本形态的密钥键值对：先按「键 + 分隔符 + 值」粗匹配，再由 `_redact_kv`
 # 按 `_is_secret_key` 决定抹不抹值。粗匹配不做键名白名单，否则
 # `refresh_token=...` 这种复合键根本选不中（`\b` 在 `_t` 处没有边界）。
-# 裸值在 `{`/`}`/引号/`?`/`&` 处断开：
-# - `{"error": {"api_key": "..."}}` 不能在前一个非密钥键上把真密钥整段吞掉；
-# - `https://host/x?token=...` 要让 `?token=` 之后另起一轮匹配，否则
-#   `https` 作为键会把整个 URL 当值吞掉，URL 里的密钥就漏了。
-# `{{secret}}` 这类模板值单独一条分支。
+#
+# 值必须尽量短，否则非密钥的外层键会把内层密钥整段吞成「值」：
+# - `{"error":{"api_key":"..."}}` 压缩 JSON：花括号分支只认 `{{模板}}`，
+#   单层 `{...}` 不匹配，正则引擎才能继续走到内层 `api_key`；
+# - 裸值在 `{`/`}`/引号/`?`/`&` 处断开，URL 里的 `?token=` 才能另起一轮；
+# - 引号值里若还藏着 `key=value`（`{"error": "token=..."}`），
+#   `_redact_kv` 会递归再扫一遍值。
+#
+# 键名限长 + 原子组：不定长键名在缺少分隔符的长串上会在每个起点回退整段，
+# 200k 字符要跑数分钟（O(n²)）。键名实际不超过 64 字符，限长后是线性。
+_MAX_KEY_CHARS = 64
+_MAX_VALUE_CHARS = 4096
 _SECRET_KV_PATTERN = re.compile(
-    r"(?i)(?P<quote>[\"']?)(?P<key>[A-Za-z0-9_.\-]+)(?P=quote)"
-    r"(?P<sep>\s*[=:]\s*)"
-    r"(?P<value>\"[^\"]*\"|'[^']*'|\{+[^{}\s,;]*\}+|[^\s,;{}\"'?&]+)"
+    rf"(?i)(?P<quote>[\"']?)(?P<key>(?>[A-Za-z0-9_.\-]{{1,{_MAX_KEY_CHARS}}}))(?P=quote)"
+    rf"(?P<sep>\s*[=:]\s*)"
+    rf"(?P<value>\"[^\"]*\"|'[^']*'|\{{\{{[^{{}}\s,;]*\}}\}}"
+    rf"|[^\s,;{{}}\"'?&]{{1,{_MAX_VALUE_CHARS}}})"
 )
 
 # 结构脱敏用的键名集合：整键命中即把值换成 REDACTED（不保留原值形态）。
@@ -123,12 +131,34 @@ def _has_secret_suffix(raw_key: str) -> bool:
     return False
 
 
+def _redacted_value(original: str) -> str:
+    """替换文本保持原值的引号外形，让脱敏后的 JSON 仍可解析。"""
+    quoted = len(original) >= 2 and original[0] in "\"'" and original[-1] == original[0]
+    if quoted:
+        return f"{original[0]}{REDACTED}{original[0]}"
+    return REDACTED
+
+
 def _redact_kv(match: re.Match[str]) -> str:
+    """按键名裁决：密钥键整值抹掉，非密钥键只把值里的嵌套密钥再抹一遍。
+
+    非密钥键不能原样返回：`{"error": "token=..."}` 里整段引号值被外层键吃掉，
+    内层 `token=` 就再也不会被单独匹配到。递归作用在**原值**上（引号与分隔符
+    都在），所以 `{"api_key":"...","region":"us"}` 的 `region` 值仍保留引号。
+    值每层严格变短，递归必然收敛。
+
+    抹掉的只是值不是结构：原值带引号时替换文本也带同款引号，
+    脱敏后的压缩 JSON 仍是合法 JSON。
+    """
     key = match.group("key")
-    if not _is_secret_key(key):
-        return match.group(0)
     quote = match.group("quote")
-    return f"{quote}{key}{quote}{match.group('sep')}{REDACTED}"
+    value = match.group("value")
+    if _is_secret_key(key):
+        return f"{quote}{key}{quote}{match.group('sep')}{_redacted_value(value)}"
+    nested = _redact(value)
+    if nested == value:
+        return match.group(0)
+    return f"{quote}{key}{quote}{match.group('sep')}{nested}"
 
 
 def _redact(text: str) -> str:

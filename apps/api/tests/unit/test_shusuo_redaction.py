@@ -398,3 +398,89 @@ def test_secret_in_url_keeps_non_secret_query_params() -> None:
     assert "page=2" in rendered
     assert "SECRET_5x26hodm" not in rendered
 
+
+# ---------------------------------------------------------------------------
+# 压缩 JSON：外层非密钥键不能把内层密钥整段吞成「值」
+# ---------------------------------------------------------------------------
+
+# 上游返回的 minified JSON 常整个塞进 error_message / 说明文本。
+# 花括号分支若匹配任意单层 JSON，`{"error": {...}}` 会被外层键当成值吞掉，
+# 内层的 api_key / password / token 就再也不会被单独匹配到。
+MINIFIED_SECRETS = (
+    '{"error":{"api_key":"sekr1t"}}',
+    '{"a":{"password":"sekr1t"}}',
+    'data={"token":"sekr1t"}',
+    '{"error": "token=sekr1t"}',
+    '{"error":"refresh_token=sekr1t"}',
+    '{"outer":{"inner":{"client_secret":"sekr1t"}}}',
+)
+
+
+@pytest.mark.parametrize("payload", MINIFIED_SECRETS)
+def test_minified_json_secrets_are_redacted_in_text(payload: str) -> None:
+    assert "sekr1t" not in replies.fit_text(payload)
+
+
+@pytest.mark.parametrize("payload", MINIFIED_SECRETS)
+def test_minified_json_secrets_are_redacted_in_failure_card(payload: str) -> None:
+    """失败卡是错误文本的真实落点：上游 JSON 原样进卡片也必须脱敏。"""
+    pending = _pending({"query": "AI"})
+    card = cards.failure_card(pending, payload)
+    assert "sekr1t" not in json.dumps(card, ensure_ascii=False)
+
+
+def test_minified_json_keeps_non_secret_payload() -> None:
+    """脱敏不等于清空：非密钥字段仍要能看清。"""
+    rendered = replies.fit_text('{"error":{"api_key":"sekr1t","region":"us"}}')
+    assert "sekr1t" not in rendered
+    assert "region" in rendered
+    assert "us" in rendered
+
+
+def test_minified_json_stays_valid_json_after_redaction() -> None:
+    """抹掉的是值不是结构：脱敏后必须仍是可解析 JSON，引号不能被吃掉。"""
+    rendered = replies.fit_text('{"error":{"api_key":"sekr1t","region":"us"}}')
+    parsed = json.loads(rendered)
+    assert parsed == {"error": {"api_key": replies.REDACTED, "region": "us"}}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    ["token={{SECRET_A}}", "api_key={{SECRET_B}}", "看这里 token={{SECRET_C}} 结束"],
+)
+def test_template_placeholder_still_redacted_after_brace_narrowing(payload: str) -> None:
+    """收窄花括号分支后，`{{...}}` 模板值的脱敏必须原样保留。"""
+    rendered = replies.fit_text(payload)
+    assert "SECRET_" not in rendered
+    assert replies.REDACTED in rendered
+
+
+def test_structural_redaction_unchanged_for_minified_json() -> None:
+    """结构路径不依赖正则：minified JSON 解析成 dict 后整键抹掉。"""
+    redacted = replies.redact_structure({"error": {"api_key": "sekr1t", "region": "us"}})
+    assert redacted == {"error": {"api_key": replies.REDACTED, "region": "us"}}
+
+
+def test_redact_stays_linear_on_long_token_free_text() -> None:
+    """用户文本可以很长：键名匹配不能在每个起点回退整段，否则 O(n²)。
+
+    8000 字符的裸字母串在旧写法下要约 0.66 秒，20 万字符就会卡住请求线程。
+    """
+    import time
+
+    payload = "x" * 200_000
+    started = time.perf_counter()
+    replies.fit_text(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 1.0, f"200k 字符脱敏耗时 {elapsed:.2f}s，键名正则出现回溯"
+
+
+def test_redact_stays_linear_on_many_kv_pairs() -> None:
+    import time
+
+    payload = " ".join(f"k{i}=v{i}" for i in range(20_000))
+    started = time.perf_counter()
+    replies.fit_text(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 1.0, f"2 万组 key=value 脱敏耗时 {elapsed:.2f}s"
+
