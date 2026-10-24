@@ -6,13 +6,12 @@
 from __future__ import annotations
 
 import uuid
-from types import SimpleNamespace
 
 import pytest
 from mcp.client import Client
 
 from data_intelligence_hub.mcp_runtime import server as server_module
-from data_intelligence_hub.mcp_runtime import tool_policy
+from data_intelligence_hub.mcp_runtime.access_control import assert_tool_allowed
 from data_intelligence_hub.mcp_runtime.server import mcp_server
 from data_intelligence_hub.services.quick_collect_service import QuickCollectResponse
 
@@ -169,41 +168,14 @@ async def test_web_fetch_exa_passes_urls_and_options(recorder: _CollectRecorder)
 
 def test_tool_allowed_layers() -> None:
     # N1 显式白名单：空白名单拒绝全部工具（语义翻转，默认放行已废除）。
-    assert tool_policy.tool_allowed("deep_research", []) is False
-    assert tool_policy.tool_allowed("web_search", []) is False
-    assert tool_policy.tool_allowed("list_platforms", []) is False
+    assert assert_tool_allowed("deep_research", []) is False
+    assert assert_tool_allowed("web_search", []) is False
+    assert assert_tool_allowed("list_platforms", []) is False
     # 白名单非空时按白名单收窄。
-    assert tool_policy.tool_allowed("deep_research", ["deep_research"]) is True
-    assert tool_policy.tool_allowed("deep_research", ["web_search"]) is False
-    assert tool_policy.tool_allowed("web_search", ["web_search"]) is True
-    assert tool_policy.tool_allowed("web_search", ["answer"]) is False
-
-
-async def test_enforce_tool_policy_uses_key_allowlist(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    identity = SimpleNamespace(key_id=uuid.uuid4())
-
-    async def fake_find_by_id(session: object, key_id: uuid.UUID) -> object:
-        return SimpleNamespace(revoked_at=None, tool_allowlist=["web_search"])
-
-    monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: identity)
-    monkeypatch.setattr(tool_policy, "find_by_id", fake_find_by_id)
-
-    # 便宜工具在白名单内：放行。
-    await tool_policy.enforce_tool_policy(None, "web_search")  # type: ignore[arg-type]
-
-    with pytest.raises(ValueError) as exc:
-        await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]
-    assert str(exc.value) == "tool_not_allowed"
-
-
-async def test_enforce_tool_policy_skips_global_token(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: None)
-    # 全局 token：不设限，也不查库。
-    await tool_policy.enforce_tool_policy(None, "deep_research")  # type: ignore[arg-type]
+    assert assert_tool_allowed("deep_research", ["deep_research"]) is True
+    assert assert_tool_allowed("deep_research", ["web_search"]) is False
+    assert assert_tool_allowed("web_search", ["web_search"]) is True
+    assert assert_tool_allowed("web_search", ["answer"]) is False
 
 
 def test_project_key_cannot_switch_project() -> None:

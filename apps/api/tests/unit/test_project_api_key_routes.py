@@ -300,35 +300,6 @@ async def test_daily_quota_is_atomic_and_resets_next_day(
         assert row.quota_used == 1
 
 
-@pytest.mark.asyncio
-async def test_enforce_quota_rejects_when_exhausted(
-    session_factory: async_sessionmaker[AsyncSession],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from types import SimpleNamespace
-
-    from data_intelligence_hub.mcp_runtime import tool_policy
-
-    async with session_factory() as seed_session:
-        record = await create_key(
-            seed_session,
-            project_id=_ids()["project"],
-            workspace_id=_ids()["workspace"],
-            label="enforce",
-            key_prefix="dih_enf",
-            key_hash="b" * 64,
-            created_by_user_id=_ids()["owner"],
-            tool_allowlist=["web_search"],
-            daily_collect_quota=1,
-        )
-        await seed_session.commit()
-        key_id = record.id
-
-    identity = SimpleNamespace(key_id=key_id)
-    monkeypatch.setattr(tool_policy, "project_api_key_context", lambda context: identity)
-    monkeypatch.setattr(tool_policy, "async_session_factory", session_factory)
-
-    await tool_policy.enforce_quota(None)  # type: ignore[arg-type]
-    with pytest.raises(ValueError) as exc:
-        await tool_policy.enforce_quota(None)  # type: ignore[arg-type]
-    assert str(exc.value) == "quota_exceeded"
+# 旧 tool_policy.enforce_quota 耗尽硬拦测试已随模块删除（N1 Task 3 接线）。
+# 等价覆盖在 tests/unit/test_mcp_tiktok_access.py::test_per_call_quota_exhaustion_rejects，
+# 走 governed_mcp_tool 的端到端路径。
