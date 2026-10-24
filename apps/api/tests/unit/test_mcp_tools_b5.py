@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -35,6 +36,7 @@ from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.report_artifact import ReportArtifact
 from data_intelligence_hub.models.run import Run, RunStep
 from data_intelligence_hub.models.task import TaskRun
+from data_intelligence_hub.tool_catalog.public import PublicTool, to_public_tool
 
 TEMPLATE_ID = "t1_voc"
 
@@ -426,6 +428,91 @@ async def test_inspect_rejects_unknown_tool(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
     with pytest.raises(ValueError, match="tool_not_found"):
         await discovery_tools.inspect_tool("missing_tool")
+
+
+# 治理字段与其原文。inspect 对外只发布 public projection，这些一律不得出现。
+_INSPECT_FORBIDDEN_WORDS: tuple[str, ...] = (
+    "authorization",
+    "reachability",
+    "block_reason",
+    "policy_block_reason",
+    "collection_policy_denied",
+    "demo_workspace",
+    "执行入口当前不校验身份",
+)
+
+
+def _serialized_contains(value: object, needle: str) -> bool:
+    """把值序列化成文本后搜子串。None 与标量也能安全过。"""
+    text = json.dumps(value, ensure_ascii=False, default=repr)
+    return needle in text
+
+
+@pytest.mark.anyio
+async def test_inspect_uses_public_projection_without_governance_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """inspect 必须走 public projection，不泄漏 authorization 与 reachability。
+
+    PublicTool 刻意剥掉治理字段：``authorization`` 记录执行入口的鉴权缺口，
+    ``reachability.block_reason`` 带策略拒绝原文。把两者发到 MCP 面
+    等于对外公告自身弱点。本断言递归扫描整个返回值。
+    """
+    monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
+    async with Client(mcp_server) as client:
+        result = await client.call_tool(
+            "inspect",
+            {"tool_id": "tikhub_tiktok_video_search"},
+        )
+
+    assert result.structured_content is not None
+    body = result.structured_content
+    for word in _INSPECT_FORBIDDEN_WORDS:
+        assert not _serialized_contains(body, word), f"泄漏治理词: {word}"
+
+    expected = set(PublicTool.model_fields) | {"input_schema", "output_schema", "method"}
+    assert set(body) == expected
+    assert "availability" in body
+    assert "availability_view" not in body
+
+    # 投影后的可用性视图不再含 block_reason，执行可达性由布尔回答。
+    availability = body["availability"]
+    assert "block_reason" not in availability
+    assert body["execution_kind"]
+    assert isinstance(body["executable_now"], bool)
+    assert isinstance(body["permanently_blocked"], bool)
+
+
+@pytest.mark.anyio
+async def test_inspect_public_projection_clean_across_full_catalog() -> None:
+    """全部工具经 public projection 投影后均不得含治理词。
+
+    逐工具把 ``to_public_tool`` 结果序列化后搜子串。一个泄漏都不允许。
+    """
+    catalog = await discovery_tools.load_catalog()
+    assert catalog.tools, "目录为空，扫描无意义"
+    for tool in catalog.tools:
+        payload = to_public_tool(tool).model_dump(mode="json")
+        for word in _INSPECT_FORBIDDEN_WORDS:
+            assert not _serialized_contains(payload, word), (
+                f"{tool.tool_id} 泄漏治理词: {word}"
+            )
+
+
+@pytest.mark.anyio
+async def test_inspect_permanently_blocked_tool_reports_booleans_only() -> None:
+    """策略拒绝的工具只给布尔信号，不给原文。
+
+    ``aliens_eye_advanced`` 被 collection policy 无条件拒绝。
+    投影后 execution_kind 为 unsupported，无输出家族，也不得残留原文。
+    """
+    body = await discovery_tools.inspect_tool("aliens_eye_advanced")
+    assert body["execution_kind"] == "unsupported"
+    assert body["permanently_blocked"] is True
+    assert body["executable_now"] is False
+    assert body["output_schema"] is None
+    for word in _INSPECT_FORBIDDEN_WORDS:
+        assert not _serialized_contains(body, word), f"泄漏治理词: {word}"
 
 
 @pytest.mark.anyio

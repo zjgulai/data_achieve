@@ -27,6 +27,7 @@ from data_intelligence_hub.tool_catalog.models import (
     ToolParameter,
 )
 from data_intelligence_hub.tool_catalog.projection import build_tool_catalog
+from data_intelligence_hub.tool_catalog.public import to_public_tool
 
 DEFAULT_DISCOVER_LIMIT = 10
 MAX_DISCOVER_LIMIT = 50
@@ -207,14 +208,18 @@ async def inspect_tool(tool_id: str) -> dict[str, object]:
     """返回一个工具的完整契约。
 
     内容含输入 schema、输出 schema、成本、风险与可用性。
+    治理字段（authorization、reachability 原文）走 public projection 剥离，
+    与 REST 面的 ``to_public_tool`` 同一份投影。
     未命中时抛 ``tool_not_found``。
     """
     catalog = await load_catalog()
     for tool in catalog.tools:
         if tool.tool_id == tool_id:
-            payload: dict[str, Any] = tool.model_dump(mode="json")
+            public = to_public_tool(tool)
+            payload: dict[str, Any] = public.model_dump(mode="json")
             payload["input_schema"] = _input_schema(tool)
             payload["output_schema"] = _output_schema(tool.tool_id)
+            payload["method"] = tool.method
             return payload
     raise ValueError("tool_not_found")
 
