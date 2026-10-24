@@ -36,10 +36,11 @@
 | 契约表名 | `claims`、`claim_evidence`、`report_artifacts` 已登记 |
 | Claim 五态 | `confirmed · directional · hypothesis · evidence_gap · blocked` 已登记 |
 | 新增 REST 路径 | 无（相对 `b02a3a5`） |
-| 新 MCP 工具 | `get_run`、`list_records`、`create_report`、`stop`、`balance`；仅内部工具 |
+| 新 MCP 工具 | 勘误（2026-10-25）：相对 f0560ca 集成后净增 MCP 工具为 `create_report`、`discover`、`inspect`；36 → 39。`get_run`/`list_records`/`stop`/`balance` 在 f0560ca 已存在（`8e2c6ba`、`a8602ed` 引入，均早于基座），不是新增工具；原行误把四个既有工具列为新增并漏列 `discover`、`inspect` |
 | spec 删除差异 | 仅对 spec 路径检查时 `HEAD..B5` 显示 D；B5 无该路径（`cat-file` 128）；B5 历史没有修改该路径；后续只用标准三方合并，保留 HEAD 的已批准 spec blob，合并后验证 blob；禁止整树 checkout、`-X theirs` 与 squash |
 | `git diff --check` | 通过 |
 | MERGE_READY | yes |
+MCP 兼容窗口（S0 `0c11c2b..cdc7d23` 修复，2026-10-25 补记）：`get_playbook` 恢复 `markdown` 别名并附 `deprecated_fields: ["markdown"]` 标记；`list_capabilities` 恢复每平台 endpoint 行与 18 个旧字段（rss 19 / web 69 / regulatory 4 行恢复，工具目录 digest 不变）；`inspect` 改用与 REST 面同一份 public projection——响应形状变化（`availability_view` 改名 `availability`，`reachability` 折叠为 `execution_kind`/`executable_now`/`permanently_blocked` 三个布尔，已在 `08edb0b` commit body 披露）；`create_report` 是新 surface，无 legacy shape。S0 未增删任何 MCP 工具（`0c11c2b` 与 `cdc7d23` 均为 39 个 `@_tool`）。
 
 ## 3. B5 合并与 spec 保留
 
@@ -151,7 +152,7 @@ C14 必须逐条覆盖以下四个判据：
 | API 镜像 | `data_achieve_scrapy_api:c0-29309f5`；context `apps/api`；默认 `INSTALL_PLAYWRIGHT=false`、`INSTALL_OSINT=false`，未传 build args |
 | API 镜像 ID | `sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8` |
 | API RepoDigests | data_achieve_scrapy_api@sha256:fb5dbafd3ee8356de42c8b923c8092d47231aa1d3d56601e47bf3edbae1585d8（本地 build 自指，无 registry 推送来源） |
-| Console 镜像 | `data_achieve_scrapy_console:c0-29309f5`；context 仓库根；未传 `NEXT_PUBLIC_API_URL`，镜像内嵌 Dockerfile 默认的生产 B API `https://scrapy.lute-tlz-dddd.top`；生产 compose 默认以 `SCRAPY_PUBLIC_URL` 覆盖为生产 A `https://scrapy.luteos.com` |
+| Console 镜像 | `data_achieve_scrapy_console:c0-29309f5`；context 仓库根；未传 `NEXT_PUBLIC_API_URL`，镜像内嵌 Dockerfile 默认的生产 B API `https://scrapy.lute-tlz-dddd.top`；勘误（2026-10-25）：`SCRAPY_PUBLIC_URL` 是 compose build arg（console `build.args`，`configs/deploy/scrapy/docker-compose.yml:200`），仅在重新构建时经 `next build` 内联注入生产 A `https://scrapy.luteos.com`，不是运行时 override，不改变已构建镜像（原「默认以 SCRAPY_PUBLIC_URL 覆盖」措辞有误导） |
 | Console 镜像 ID | `sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8` |
 | Console RepoDigests | data_achieve_scrapy_console@sha256:4621204d83bd1bdb217a5a556ab4e75817ad0be68cae596355766475af6703e8（本地 build 自指，无 registry 推送来源） |
 | 镜像架构 | 两镜像均 `arm64` / `linux`；本地 Colima（aarch64）产物 |
@@ -276,14 +277,18 @@ TAG_ON_CODE_BASELINE
 | 编号 | 风险 | 状态 | 关闭条件 |
 |---|---|---|---|
 | R1 | `C14_HANDOFF_REQUIRED`：`/workbench`、`/reports`、`/capabilities` 的浏览器验收未执行；`apps/scraper-console/e2e/routes.spec.ts` 的 14 条 `PAGE_ROUTES` 不含这三个路由 | 未关闭 | C14 按第 6 节四个判据执行 |
-| R2 | CI `API Quality Gate` 存量红：该 job（`ubuntu-latest`，无 PostgreSQL 服务）仍运行默认全量 `uv run pytest` 与 `check_pytest_baseline.py`，而后者默认路径为 `tests/unit` + `tests/integration` | 未关闭 | 本轮各项均为本地绿；不得据此宣称 CI 全绿 |
+| R2a | CI `API Quality Gate` 的 file integrity step 工作目录错误：step 继承 job 默认 `working-directory: apps/api`，而脚本在仓库根（`scripts/check_file_integrity.py`），`python3 scripts/check_file_integrity.py` 返回 exit 2 | 未关闭（main-lineage） | 修正该 step 的 `working-directory` 或脚本路径 |
+| R2b | CI API job 无 PostgreSQL 服务却运行 full `uv run pytest` 与默认 guard（`check_pytest_baseline.py` 默认路径为 `tests/unit` + `tests/integration`，无 DB 时 integration 必败） | 未关闭（main-lineage） | job 增加服务容器或显式限定测试路径 |
+| R2c | CI `Platform Skill And MCP Gate` 无 PostgreSQL 服务却包含 integration route test（`tests/integration/test_platform_package_routes.py`） | 未关闭（main-lineage） | 移出 integration 用例或提供 DB |
+| R2d | Workflow Planner/Lineage PostgreSQL jobs 的 current-head guard pin 陈旧：六个 `scripts/verify-*-migration.sh` 仍 pin `202607160033`/`202607170034`/`202607270043`/`202607280044`，仓库 Alembic head 为 `202610210057` | 未关闭（main-lineage） | 同步六个脚本的 head pin（S0 Task 9 范围） |
 | R3 | integration `386 passed` 的一次性数据库 `c0-pg15` 已删除，当前只有 `--collect-only`（2992）可重放。Task 8 曾在无数据库时运行 integration，得到 385 passed / 1 failed；该命令违反「无数据库时不得运行 integration」的计划口径，只作为环境诊断记录，不属于门禁或基线结果 | 未关闭 | 需要可重放载体时按 `127.0.0.1:55432` 重建 `c0-pg15` |
 | R4 | 回归守卫线程警告可能为 10 处（`test_demo_data` 3 + `test_tikhub_param_contract` 7），第 5 节只写了 3 处；另有 passlib `crypt` DeprecationWarning（unit / integration 各 1 处） | 未证实 | 本轮单独运行这两个文件（75 passed）未复现 `Event loop is closed`，10 处仍属「可能」；判据不受影响 |
 | R5 | Next 16.3 `middleware` → `proxy` 存量迁移风险；来源 `apps/scraper-console/src/middleware.ts`（`2c1ad41`，pre-existing，本次未改） | 未关闭 | 迁移决策待定；当前不影响 build（退出码 0） |
-| R6 | 本地镜像仅 `linux/arm64`（Colima aarch64），不是生产 amd64；Console 镜像已在构建期内嵌生产 B API `https://scrapy.lute-tlz-dddd.top`。生产 compose 的 `SCRAPY_PUBLIC_URL` 只在重新构建时作为 build arg 生成生产 A `https://scrapy.luteos.com` 镜像，不能在运行时覆盖已有 B 镜像；两镜像均未 push | 未关闭 | 生产发布须另行 amd64 构建（buildx `--platform linux/amd64`），显式传入生产目标 API，并走批准流程 |
+| R6 | 本地镜像仅 `linux/arm64`（Colima aarch64），不是生产 amd64；Console 镜像已在构建期内嵌生产 B API `https://scrapy.lute-tlz-dddd.top`。`SCRAPY_PUBLIC_URL` 是 compose build arg（`configs/deploy/scrapy/docker-compose.yml` console `build.args` L200、web L168），由 `next build` 内联为 `NEXT_PUBLIC_*`，只在重新构建时注入，不是运行时 override——修改该变量不影响已构建镜像，须重建镜像生效；两镜像均未 push | 未关闭 | 生产发布须另行 amd64 构建（buildx `--platform linux/amd64`），显式传入生产目标 API，并走批准流程 |
 | R7 | API 镜像存量嵌套 `__pycache__` / `.pyc`：`apps/api/.dockerignore` 的裸 `__pycache__` 规则不覆盖嵌套目录；镜像内 `/app` 下实测 28 个 `__pycache__` 目录、467 个 `.pyc` 文件 | 未关闭 | 改为 `**/__pycache__`、`**/*.pyc` 后重建 |
 | R8 | `task-7-report.md` L49 把构建基座 `29309f5d4941018fa7ead876c2e0c62b1cf5ac2f` 裸称「事实提交」 | 已归类 | 语义应称「构建基座」；`29309f5` 是镜像构建所基于的提交，其后 `5f639bb`（冻结事实）与 `e227070`（补充构建边界）才是事实证据提交 |
 | R9 | `vectorSearch` 能力 `unavailable`（`exactScanLimit` 10000） | 记录 | 语义检索退回精确扫描；不影响图与全文检索门禁 |
+CI 结论口径（2026-10-25 勘误，替代原单条 R2）：以上 R2a–R2d 均为 main-lineage 观察；S0 分支 `fix/s0-c0-hardening` 从未 push，无分支 CI 证据，本地绿不据以宣称 CI 全绿。
 
 ### 8.7 未执行项
 

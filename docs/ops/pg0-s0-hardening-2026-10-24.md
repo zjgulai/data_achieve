@@ -405,3 +405,69 @@ len(open().read())    → 10883
   已按运行时要求先 `bunx gitnexus@latest analyze --index-only`，
   再用生成的 runner 重建，最终状态与计划 Expected 一致。
 - C0 既有证据的 `2495 passed` 来自生成物存在时两条 skip 转 pass；S0 计划未固定该数。clean-worktree 实测 `2493 passed + 2 skipped`，以实测为准。
+
+## 9. Task 8：C0/R0 证据修正与 MCP 兼容窗口（2026-10-25）
+
+本节只修正与补记文档陈述，不改任何代码。对应提交：`docs(ops): correct C0 compatibility and release evidence`。
+
+### 9.1 Task 1-7 修复清单（均已落地并独立审查）
+
+| 任务 | Commit | 修复内容 | 审查结论（一行） |
+|---|---|---|---|
+| Task 1 | `24b4fb5` | `stop_run` 增加 `project_id` 服务层过滤：跨项目 stop 返回 `run_not_found`，foreign run 保持 running | 独立审查 Approved；RED TypeError → GREEN 6 passed |
+| Task 2 | `b2d9db8` | `stop`/`balance` 工具体解析调用方 project_id 并下传过滤；错误词汇 `project_mismatch`/`project_id_invalid` 未改 | 独立审查 Approved（独立 RED 复现；balance 直用 `_parse_project_id` 不包裹，经审查者验证正确）；26 passed |
+| Task 3 | `9900dd5` | `deep_research_check` 改服务层 project 过滤并统一 `run_id_invalid`；workspace 预检被替换 | 独立审查 Approved；`research.py` 未动且兼容；49 passed |
+| Task 4 | `08edb0b` | `inspect` 改走 `to_public_tool` 公共投影，治理字段（authorization 全文、`reachability.block_reason`）不再出 MCP 面 | 独立审查 Approved（独立 284 工具重扫 0 禁词）；46 passed |
+| Task 5 | `e243440` | `build_artifact`/`verify_artifact` 共用 `_resolve_input_ids`（显式 ids > 合同 > run_id 兜底），空 ledger 产物不再误报 | 独立审查 Approved；篡改路径完整；旧四参调用兼容；66 passed |
+| Task 6 | `53854bc` | `list_capabilities` 恢复每平台 endpoint 行与 18 个旧字段（rss 19 / web 69 / regulatory 4） | 独立审查 Approved（独立行数复算）；LEGACY_KEYS 冲突断言钉住；catalog digest 不变 |
+| Task 7 | `cdc7d23` | `get_playbook` 恢复 `markdown` 别名并附 `deprecated_fields: ["markdown"]` | 独立审查 Approved（值等价断言，非 presence-only）；50 passed |
+
+各任务 mypy 均为 123/28 非回归（multiset 基线未重取）。
+
+### 9.2 MCP 兼容窗口（消费方可见变化）
+
+- `get_playbook`（`cdc7d23`）：恢复 `markdown` 键，值与渲染文本等值；新增 `deprecated_fields: ["markdown"]`。纯恢复，无移除。
+- `list_capabilities`（`53854bc`）：恢复每平台 endpoint 行与 18 个旧字段；descriptor 新字段保留。行为恢复，digest 不变。
+- `inspect`（`08edb0b`）：**响应形状变化**——`availability_view` 改名 `availability`；`reachability` 不再展开，折叠为
+  `execution_kind`/`executable_now`/`permanently_blocked` 三个布尔（`is_alias_view`/`canonical_tool_id`/`executable`
+  等投影字段保留）；已在 `08edb0b` commit body 披露。是去治理字段修复的伴随形状变化，不是纯兼容恢复。
+- `create_report`：新 surface，无 legacy shape，无兼容窗口。
+- S0 未增删任何 MCP 工具：`0c11c2b` 与 `cdc7d23` 均为 39 个 `@_tool`，集合相同。
+
+### 9.3 工具增量事实核对（C0 证据第 2 节勘误依据）
+
+- `f0560ca`（集成基座）36 个 `@_tool`；`get_run`/`list_records`/`stop`/`balance` 已存在
+  （`8e2c6ba`、`a8602ed` 引入，均为 `f0560ca` 祖先）。
+- 净增（`f0560ca..S0`）：`create_report`、`discover`、`inspect`（随 B5 合并 `94d95b2` 进入 C0）；36 → 39。
+- C0 证据第 2 节原「新 MCP 工具」行误把四个既有工具列为新增并漏列 `discover`、`inspect`，已勘误。
+
+### 9.4 分支 compare（真实命令与结果）
+
+命令：`node .gitnexus/run.cjs detect-changes --scope compare --base-ref 0c11c2b --repo .`
+结果：变更 11 个文件、97 个符号、受影响流程 0、风险等级 low。输出无 partial/truncated 注记
+（按「结果不完整」「列表已截断」检查无匹配）；符号列表仅展示前 15 个（尾注「… 以及另外 82 个」为展示层截断
+——计数与 risk 完整，列表不完整）。base 为本切片起点 `0c11c2b`；分支未 push，无分支 CI 证据。
+
+### 9.5 Task 0 点时证据勘误（汇总）
+
+1. 计划从未固定 `2495`：`2495 passed` 只是 C0 在生成物存在时的观测（两条 skip 转 pass）；
+   S0 基线为 clean-worktree 实测 `2493 passed, 2 skipped`（§4、§8 已记）。
+2. `45,266` nodes 不是纯 `0c11c2b` Git tree 索引：Task 0 建索引时工作树已含未提交的 S0 plan 文件（§2 已记）。
+3. mypy 123 行错误码分布已含 `attr-defined`、`import-not-found`、`assignment` 各 1；全表合计 123（§3），
+   与 `/tmp/s0-mypy-baseline.txt` 逐码复核一致。
+4. Task 0 的「2 个文件、15 个符号」detect 数是点时输出（当时工作树状态），不作为耐久总数；
+   索引纳入未提交文档后同口径重跑为 25 个符号。
+
+### 9.6 Task 8 时点复核（2026-10-25）
+
+| 项 | 值 |
+|---|---|
+| mypy src @ `cdc7d23` | exit 1，`Found 123 errors in 28 files (checked 412 source files)`；multiset 基线 SHA 仍为 `47001690…` / `9df7ee3e…` |
+| 触及面 unit @ `cdc7d23` | `test_mcp_run_service.py` + `test_mcp_tools_b5.py` + `test_report_artifacts.py`：83 passed, 1 warning |
+| catalog lock SHA-256 | `tool-catalog.lock.json` `1e99add6…`；`platform-packages.lock.json` `59f5976d…`（与 §6 一致） |
+| Alembic | `0c11c2b..cdc7d23` 对 `apps/api/alembic` 零 diff；`SCHEMA_HEAD` 维持 `202610210057` |
+| v1 tag | object `48aaccfa5a3689f23f7517cfb88b59c2533805ab` / commit `e227070054914f9cbef8cb5d508e5f4aa73d8dcb`，提交前后各断言一次 |
+| push / 生产 | 分支未 push、未建标签、未操作生产、未跑生产 compose |
+
+CI 风险拆分（R2a/R2b/R2c/R2d）与 Console build-arg 口径修正记入 `docs/ops/pg0-baseline-c0-2026-10-22.md`
+（§2、§7、§8.6）；Ruff 748 条目构成与负控阈值口径修正记入 `docs/ops/pg0-ruff-cleanup-2026-10-22.md`。

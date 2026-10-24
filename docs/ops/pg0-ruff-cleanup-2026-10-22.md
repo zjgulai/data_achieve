@@ -69,8 +69,8 @@ Task 1 = 13（8323a41、45a98f5）；Task 2 = 3（0599c75）；Task 3 = 64（3b4
 ### Ruff（apps/api 口径）
 
 - 命令：`.venv/bin/ruff check . --no-cache`（apps/api 内）。exit 0，stderr 0 字节，stdout 恰为 `All checks passed!`（sha256 82b3e6a6…f18）。E501=0 的准确范围是 apps/api，不是仓库根所有 Python。
-- 实扫文件数：`.venv/bin/ruff check . --no-cache --show-files` 列出 748 个文件（>0）。
-- 负控：在 /tmp 副本追加超长注释行后，`ruff check --select E501` exit 1，并报告 `E501 Line too long (122 > 88)`。防假 GREEN 成立。
+- 实扫文件数：`.venv/bin/ruff check . --no-cache --show-files` 列出 748 个条目 = 747 个 `.py` + `apps/api/pyproject.toml`（不是 748 个 .py）。行数阈值口径：E501 阈值来自 `apps/api/pyproject.toml` 的 `line-length = 100`，不是 ruff 默认 88。
+- 负控：在 /tmp 副本追加超长注释行后，`ruff check --select E501` exit 1，并报告 `E501 Line too long (122 > 88)`；防假 GREEN 成立。阈值口径勘误（2026-10-25）：该负控当时未带 `--config apps/api/pyproject.toml`，`88` 是 ruff 默认 line-length，不是项目阈值；正确阈值为 `apps/api/pyproject.toml` 的 `line-length = 100`，正确负控命令为 `ruff check /tmp/probe.py --select E501 --config apps/api/pyproject.toml --no-cache`，应报告 `> 100`（复测实例：新探针 121 字符行，带 `--config` 报告 `(121 > 100)`，不带报告 `(121 > 88)`）。apps/api 全量扫描自动使用项目配置，140 条基线计数（E501=124）不受此影响。
 - 执行口径修正：Task 3–5 brief 的 `wc -l` 会把 Ruff 汇总行（`Found N errors.`）计入而 +1；实际以 `grep -c E501` 为准（Task 3 = 64、Task 4 = 41、Task 5 = 19，均与 brief 计划数一致）。
 
 ### mypy
