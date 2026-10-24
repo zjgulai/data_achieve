@@ -768,7 +768,8 @@ git commit -m "docs(ops): correct C0 compatibility and release evidence"
 - Modify: `.github/workflows/ci.yml`
 - Modify: `scripts/verify-capability-governance-migration.sh`, `scripts/verify-workflow-action-migration.sh`, `scripts/verify-workflow-execution-migration.sh`, `scripts/verify-workflow-executor-migration.sh`, `scripts/verify-workflow-lineage-migration.sh`, `scripts/verify-workflow-planner-phase2-migration.sh`
 - Modify: `apps/api/tests/unit/test_capability_governance_postgres_guard.py`, `test_workflow_action_postgres_guard.py`, `test_workflow_execution_postgres_guard.py`, `test_workflow_executor_postgres_guard.py`, `test_workflow_lineage_postgres_guard.py`
-- Modify: `apps/api/tests/postgres/test_workflow_plan_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_migration.py`, `apps/api/tests/postgres_capability_governance/test_migration.py`, `apps/api/tests/postgres_workflow_execution/test_migration.py`
+- Modify: `apps/api/tests/postgres/test_workflow_plan_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_materialization.py`, `apps/api/tests/postgres_capability_governance/test_migration.py`, `apps/api/tests/postgres_workflow_execution/test_migration.py`
+- Modify: `apps/api/tests/postgres_workflow_lineage/conftest.py` — extract `_seed_lineage_graph` and add the `_at_034` fixtures (Step 7)
 - Create: `scripts/check_mypy_baseline.py`, `apps/api/tests/unit/test_mypy_baseline_guard.py`, `apps/api/tests/unit/test_migration_head_pins.py`, `apps/api/tests/unit/test_ci_gate_contract.py`
 - Delete (git rm): `scripts/verify-workflow-planner-phase2-migration.sh.bak`
 
@@ -1008,8 +1009,8 @@ Six scripts — current-head only:
 | script | occurrences to change → `202610210057` |
 |---|---|
 | `verify-capability-governance-migration.sh` | 101, 102, 106 |
-| `verify-workflow-action-migration.sh` | 107, 108, 111 |
-| `verify-workflow-execution-migration.sh` | 116, 117, 120 |
+| `verify-workflow-action-migration.sh` | 106, 107, 111 |
+| `verify-workflow-execution-migration.sh` | 115, 116, 120 |
 | `verify-workflow-executor-migration.sh` | 138, 139, 143 only. **`REVISION` at line 39 stays `202607280044`** — it builds the `revision-<REVISION>` component of the authorization tuple, which `conftest.py:32` hardcodes; the head pin is the live head, the `revision-` component is a fixed candidate label. Do not couple them. |
 | `verify-workflow-lineage-migration.sh` | 116, 117, 121 **and** cleanup 144, 185, 214 |
 | `verify-workflow-planner-phase2-migration.sh` | 98, 99, 103 |
@@ -1032,13 +1033,58 @@ Four dedicated suites — change only the head pair:
 
 Historical literals in those files (lines 298-346, 385-388, 488-516, 573-600, 362-372) stay.
 
-Known second-order breakage to fix in the same pass (triage rule below): `tests/postgres_workflow_lineage/test_migration.py::test_downgrade_refuses_persisted_v2_lineage` (line ~388) and `tests/postgres_workflow_lineage/test_materialization.py::test_downgrade_refuses_nonempty_materialization_ledger` (line ~308) start from the head-upgraded fixture. At head 057 the downgrade command is a single transaction (`alembic/env.py` does not set `transaction_per_migration`), so it now rolls back to `202610210057` instead of parking at `202607170034`. Repair by bringing the fixture DB to 034 first — keep every existing literal:
+Known second-order breakage to fix in the same pass (triage rule below): `tests/postgres_workflow_lineage/test_migration.py::test_downgrade_refuses_persisted_v2_lineage` (defined at `:350`, asserts at `:388`) and `tests/postgres_workflow_lineage/test_materialization.py::test_downgrade_refuses_nonempty_materialization_ledger` (defined at `:276`, asserts at `:308`) start from the head-upgraded fixture. At head 057 the downgrade command is a single transaction (`alembic/env.py` does not set `transaction_per_migration`), so it now rolls back to `202610210057` instead of parking at `202607170034`. Repair by bringing those two tests up on a database already at 034 — keep every existing literal and assertion.
+
+The repair must be a **fixture**, not inline test-body code. `seeded_lineage_graph` (`conftest.py:144-296`) resolves before the test body runs, and `postgres_database_url` (`:128-132`) has already reset the schema and upgraded to head; a reset inside the body would wipe the seed, and the subsequent `raw_records` insert would violate `fk_raw_records_workflow_run_tenant` (created by `202607160033_workflow_raw_dataset_lineage.py:57-65`). Leave `guarded_database_url`, `postgres_database_url`, `postgres_engine` and `seeded_lineage_graph` behaving as they do today — the rest of the suite, including `test_head_exposes_materialization_constraints_and_tenant_fks` (`test_materialization.py:164-166`), needs them at head.
+
+Edit `apps/api/tests/postgres_workflow_lineage/conftest.py` in four steps:
+
+**(a) Extract the seed body.** Move the whole body of `seeded_lineage_graph` (`:144-296`) into a module-level `_seed_lineage_graph(engine: Engine) -> LineageSeed` that takes the engine as a parameter, and reduce the fixture to a call:
 
 ```python
-_reset_public_schema(postgres_database_url)
-_run_alembic(postgres_database_url, "upgrade", "202607170034")
-# then the existing seed + downgrade-to-202607160032 / 202607160033 assertions, unchanged
+def _seed_lineage_graph(engine: Engine) -> LineageSeed:
+    seed = LineageSeed(*(uuid.uuid4() for _ in range(9)))
+    # ... existing body verbatim, with postgres_engine renamed to engine ...
+    return seed
+
+
+@pytest.fixture()
+def seeded_lineage_graph(postgres_engine: Engine) -> LineageSeed:
+    return _seed_lineage_graph(postgres_engine)
 ```
+
+**(b) Add the at-034 database fixtures** beside `postgres_database_url` (`:128-141`), reusing the module-level `reset_public_schema` (`:113-120`) and `run_alembic` (`:100-110`) helpers that already live in this conftest:
+
+```python
+@pytest.fixture()
+def postgres_database_at_034(guarded_database_url: str) -> str:
+    reset_public_schema(guarded_database_url)
+    run_alembic(guarded_database_url, "upgrade", "202607170034")
+    return guarded_database_url
+
+
+@pytest.fixture()
+def postgres_engine_at_034(postgres_database_at_034: str) -> Iterator[Engine]:
+    engine = create_engine(sync_database_url(postgres_database_at_034))
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+```
+
+**(c) Add the seeded variant** that seeds onto the 034 engine through the shared helper:
+
+```python
+@pytest.fixture()
+def seeded_lineage_graph_at_034(postgres_engine_at_034: Engine) -> LineageSeed:
+    return _seed_lineage_graph(postgres_engine_at_034)
+```
+
+**(d) Switch exactly two tests** — `test_downgrade_refuses_persisted_v2_lineage` and `test_downgrade_refuses_nonempty_materialization_ledger` — to the three new fixtures. In their signatures replace `postgres_database_url`, `postgres_engine` and `seeded_lineage_graph` with `postgres_database_at_034`, `postgres_engine_at_034` and `seeded_lineage_graph_at_034`; change nothing inside their bodies. Every other test in `postgres_workflow_lineage/` keeps the current-head fixtures.
+
+Schema viability: every column the two tests write comes from revisions at or before 034 — `raw_records.workflow_run_id` / `workflow_step_run_id` / `workflow_lineage_contract_version` and `dataset_versions.lineage_contract_version` / `source_workflow_run_id` / `source_workflow_step_run_ids` / `source_raw_record_ids` from `202607160033`, the fixture and actor/browser/LLM columns of `workflow_runs` and `step_runs` from `202606110029`, and `workflow_lineage_materialization_requests` itself from `202607170034`. So the seed and the ledger insert are valid at 034.
+
+Do **not** add `_reset_public_schema` or `_run_alembic` to `test_materialization.py`: that module defines neither (`test_migration.py` keeps its own private copies at `:53-77`), and neither is a fixture. The shared helpers are the conftest ones named above.
 
 Triage rule for anything further the rehearsal surfaces: a failure caused by "the DB/fixture is now at a different head" is fixed by pinning the test's *start* revision explicitly; a failure caused by new behavior in revisions 035-057 is out of S0 scope and must be recorded as a blocked defect, never papered over by editing the assertion to the new value. `git rm scripts/verify-workflow-planner-phase2-migration.sh.bak`.
 
@@ -1082,6 +1128,7 @@ git add .github/workflows/ci.yml scripts/check_mypy_baseline.py scripts/verify-*
   apps/api/tests/unit/test_mypy_baseline_guard.py apps/api/tests/unit/test_ci_gate_contract.py \
   apps/api/tests/postgres/test_workflow_plan_migration.py \
   apps/api/tests/postgres_workflow_lineage/test_migration.py \
+  apps/api/tests/postgres_workflow_lineage/conftest.py \
   apps/api/tests/postgres_workflow_lineage/test_materialization.py \
   apps/api/tests/postgres_capability_governance/test_migration.py \
   apps/api/tests/postgres_workflow_execution/test_migration.py
@@ -1323,5 +1370,5 @@ Expected: 工作树 clean；v1 不变；v2 指向审查通过的 S0 code baselin
 - Spec coverage：覆盖 3 个越权工具、report hash、inspect 泄漏、list_capabilities 行语义、get_playbook alias、证据和 CI 门禁、v1/v2 标签策略。
 - Placeholder scan：无 TBD/TODO/“类似 Task N”或未定义接口。
 - Type consistency：`stop_run(project_id=None)`、`verify_artifact(run_ids=None, evidence_ids=None)`、`inspect` key set、list_capabilities 旧字段、playbook markdown alias 在各任务一致。
-- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本与四个 dedicated suite 只改 current-head 断言；历史 upgrade/downgrade revision 不变。
+- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本只改 current-head 断言；四个 dedicated suite 也只改 current-head 断言（`postgres/test_workflow_plan_migration.py:474-475`、`postgres_workflow_lineage/test_migration.py:290-291`、`postgres_capability_governance/test_migration.py:537-538`、`postgres_workflow_execution/test_migration.py:329-330`）；`postgres_workflow_lineage/` 额外新增 `postgres_database_at_034`、`postgres_engine_at_034`、`seeded_lineage_graph_at_034` 三个 fixture，只把两个 downgrade-refusal 测试的**起始 revision**钉到 034，不放宽也不改写它们的期望值；历史 upgrade/downgrade revision 全部不变。
 - Safety：所有 production/tag/remote 操作均禁止；v1 immutable；v2 只在最终 review 后本地创建。

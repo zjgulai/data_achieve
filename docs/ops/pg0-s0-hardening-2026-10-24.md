@@ -135,6 +135,56 @@ Task 0 第二轮复审发现 old mypy step 未替换、unique-set 会漏计数�
 
 本轮是**执行计划修订**：`HEAD` 只增加了计划、本文和两份 baseline 文件的文档级改动，没有任何代码行为变化，所以仍不构成 v2 基线。
 
+### 3.5 Task 0 fix round 4：PostgreSQL rehearsal 可执行化
+
+第四轮复审（against HEAD `811bdbc`）逐条复核了 round 3 的四项收口与 minor 项，并确认它们都成立：
+fake-uv shim 三处（`188`/`196`/`260`）确实必须同移；executor 的 `REVISION` 与 `conftest.py:32` 的耦合确实存在；
+Task 10 Step 2a 的粘贴块逐行满足六个 gate 的契约；mypy helper 的输出可达；六个显式脚本范围正确。
+它同时指出两个新缺陷会让「照计划机械执行」直接失败。**本轮仍然只改计划文本与本文**：不改业务代码、
+tests、scripts、CI、tag 或 Docker 配置，也不跑任何 PostgreSQL container rehearsal。
+
+修正项：
+
+1. **Task 9 lineage 的二阶修复不可执行（Important）。** 旧文本给的片段是
+   `_reset_public_schema(postgres_database_url)` 加 `_run_alembic(postgres_database_url, "upgrade", "202607170034")`，
+   然后「再接既有 seed」。两处都会断：`test_materialization.py` 里根本不存在这两个 helper
+   （`grep` 为 0，该文件在 `:291-300` 内联了裸 `subprocess.run`）；而 seed 是 fixture，
+   `seeded_lineage_graph`（`conftest.py:144`）在测试体之前就已解析，`postgres_database_url`（`:128-132`）
+   也已经把 schema reset 并 upgrade 到 head——把 reset 写进测试体等于先抹掉 seed，
+   随后的 `raw_records` 插入会撞 `fk_raw_records_workflow_run_tenant`（`202607160033`，`:57-65`）。
+   现在改成可执行的 fixture 方案，并写清四步：从 `seeded_lineage_graph` 抽出模块级
+   `_seed_lineage_graph(engine: Engine) -> LineageSeed`，原 fixture 退化为一次调用；新增
+   `postgres_database_at_034(guarded_database_url)`（复用 conftest 已有的 `reset_public_schema`（`:113-120`）
+   与 `run_alembic`（`:100-110`），reset 后 `upgrade 202607170034`）；新增 `postgres_engine_at_034`；
+   新增 `seeded_lineage_graph_at_034`（调用共享 helper）。只有
+   `test_downgrade_refuses_persisted_v2_lineage`（`test_migration.py:350`）与
+   `test_downgrade_refuses_nonempty_materialization_ledger`（`test_materialization.py:276`）改用这三个
+   at_034 fixture，其余测试保持 current-head fixture。计划同时明确禁止把 `_reset_public_schema` /
+   `_run_alembic` 写进 `test_materialization.py`。
+2. **Task 9 两个脚本的行号错位（Important）。** `verify-workflow-action-migration.sh` 的 head 字面量实际在
+   `106`（head 检查）/ `107`（错误信息）/ `111`（通过信息），计划原写 `107, 108, 111`——`108` 是 `exit 1`，
+   且真正的 head 检查 `106` 被漏掉。`verify-workflow-execution-migration.sh` 实际是 `115, 116, 120`，
+   原写 `116, 117, 120`。两行均已改正，并逐个 grep 复核过。
+
+同步项：Task 9 的 `Files` 与 `git add` 清单都加上
+`apps/api/tests/postgres_workflow_lineage/conftest.py`（fixture 实际落在这个文件）；
+Self-Review 的 Scope consistency 一句改写为明确点名四个 dedicated suite 的 current-head 断言位置，
+并说明 lineage 额外新增三个 at_034 fixture 只钉**起始 revision**、不改期望值、历史 migration 字面量保持原样。
+
+本轮复核依据：`grep -n` 逐条比对 `verify-workflow-action-migration.sh`（`106/107/111`）、
+`verify-workflow-execution-migration.sh`（`115/116/120`）、`conftest.py` 的 helper 与 fixture 区间
+（`100-110`、`113-120`、`128-141`、`144-296`）、两个目标测试的 `def` 与断言行（`350`/`388`、`276`/`308`）；
+并逐个 migration 文件确认 at_034 方案引用的每一列都出自 034 及更早的 revision
+（`raw_records` 与 `dataset_versions` 的 lineage 列来自 `202607160033`，`workflow_runs`/`step_runs`
+的 fixture 与 actor/browser/LLM 列来自 `202606110029`，ledger 表本身来自 `202607170034`），
+所以 seed 与 ledger 插入在 034 上成立。
+
+不变项：两份 mypy multiset baseline 未重取、未改写，SHA 仍为
+`4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e`（62 签名 / 123 实例）与
+`9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4`（498 / 1200）。
+`pg0-baseline-v1` tag object `48aaccfa…` / commit `e2270700…` 未变，`pg0-baseline-v2` 仍不存在。
+本轮仍是**执行计划修订**，无任何代码行为变化，因此不构成 v2 基线。
+
 ## 4. unit 基线
 
 命令：`cd apps/api && .venv/bin/python -m pytest tests/unit -q`
