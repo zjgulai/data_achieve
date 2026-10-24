@@ -29,7 +29,7 @@ from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.repositories.project_api_keys import create_key
 from data_intelligence_hub.services.quick_collect_service import QuickCollectResponse
-from data_intelligence_hub.services.tiktok_tools import ToolResult
+from data_intelligence_hub.services.tiktok_tools import ToolResult, run_tiktok_tool
 
 pytestmark = pytest.mark.anyio
 
@@ -214,7 +214,7 @@ async def test_tiktok_tool_allows_bound_project(
 ) -> None:
     calls: list[tuple[str, uuid.UUID, dict[str, object]]] = []
 
-    async def fake_run_tiktok(tool_name, project_id, params):
+    async def fake_run_tiktok(tool_name, project_id, params, *, workspace_id=None):
         calls.append((tool_name, project_id, params))
         return ToolResult(
             tool_id=tool_name, status="success", records=[{"id": "1"}], records_count=1
@@ -275,6 +275,112 @@ async def test_web_search_uses_key_workspace_and_metadata(
     assert tool_call is not None
     assert tool_call["key_id"] == str(project_key.identity.key_id)
     assert tool_call["project_id"] == str(project_key.identity.project_id)
+
+
+# ── TikTok workspace 透传：collect_capability 层断言 ─────────────────────
+
+
+async def test_tiktok_passes_key_workspace_to_collect_capability(
+    project_key: _Key, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """server 边界捕获 run_tiktok_tool 的 workspace_id kwarg。"""
+    calls: list[dict[str, object]] = []
+
+    async def fake_run_tiktok(tool_name, project_id, params, *, workspace_id=None):
+        calls.append({"tool": tool_name, "project_id": project_id, "workspace_id": workspace_id})
+        return ToolResult(
+            tool_id=tool_name, status="success", records=[{"id": "1"}], records_count=1
+        )
+
+    monkeypatch.setattr(server_module, "run_tiktok_tool", fake_run_tiktok)
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        result = await client.call_tool(
+            "tiktok_video_search",
+            {"project_id": str(project_key.identity.project_id), "query": "q"},
+        )
+
+    assert result.is_error is False
+    assert calls == [
+        {
+            "tool": "tiktok_video_search",
+            "project_id": project_key.identity.project_id,
+            "workspace_id": project_key.identity.workspace_id,
+        }
+    ]
+
+
+async def test_tiktok_real_chain_passes_workspace_to_collect_capability(
+    project_key: _Key, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """真实 run_tiktok_tool → _collect → collect_capability 链路。
+
+    项目密钥绑定非 demo 工作区：collect_capability 收到的 workspace_id
+    必须是密钥工作区。修复前此处收到 None（demo 回退），业务层会以
+    QuickCollectUnknownProjectError 失败。
+    """
+    from data_intelligence_hub.mcp_runtime import collect_service
+    from data_intelligence_hub.services import tiktok_tools
+
+    captured: list[dict[str, object]] = []
+
+    async def fake_collect_capability(
+        endpoint_type, project_id, params, *, workspace_id=None, tool_call=None
+    ):
+        captured.append(
+            {
+                "endpoint_type": endpoint_type,
+                "project_id": project_id,
+                "workspace_id": workspace_id,
+            }
+        )
+        return _recorder_response()
+
+    monkeypatch.setattr(collect_service, "collect_capability", fake_collect_capability)
+    # _fetch_records 会查库取原始记录；sqlite 里没有 demo workspace，返回空即可。
+    monkeypatch.setattr(tiktok_tools, "collect_session_factory", project_key.factory)
+    result = await run_tiktok_tool(
+        "tiktok_video_search",
+        project_key.identity.project_id,
+        {"query": "q", "limit": 10},
+        workspace_id=project_key.identity.workspace_id,
+    )
+
+    # sqlite 里没有原始记录，status 是 empty；本用例断言的是 workspace 透传。
+    assert result.status in {"success", "empty"}
+    assert captured == [
+        {
+            "endpoint_type": "tikhub_tiktok_search_web",
+            "project_id": project_key.identity.project_id,
+            "workspace_id": project_key.identity.workspace_id,
+        }
+    ]
+
+
+async def test_tiktok_without_workspace_keeps_demo_fallback(
+    project_key: _Key, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """HTTP/CDO 路径不设置 workspace：ContextVar 默认 None，行为不变。"""
+    from data_intelligence_hub.mcp_runtime import collect_service
+    from data_intelligence_hub.services import tiktok_tools
+
+    captured: list[dict[str, object]] = []
+
+    async def fake_collect_capability(
+        endpoint_type, project_id, params, *, workspace_id=None, tool_call=None
+    ):
+        captured.append({"workspace_id": workspace_id})
+        return _recorder_response()
+
+    monkeypatch.setattr(collect_service, "collect_capability", fake_collect_capability)
+    monkeypatch.setattr(tiktok_tools, "collect_session_factory", project_key.factory)
+    result = await run_tiktok_tool(
+        "tiktok_video_search",
+        project_key.identity.project_id,
+        {"query": "q"},
+    )
+
+    assert result.status in {"success", "empty"}
+    assert captured == [{"workspace_id": None}]
 
 
 # ── 白名单：显式白名单外的工具拒绝 ───────────────────────────────────────

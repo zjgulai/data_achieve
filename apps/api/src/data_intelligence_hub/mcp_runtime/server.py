@@ -839,6 +839,7 @@ async def tiktok_trend_rank(
             "tiktok_trend_rank",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"country_code": country_code, "period": period, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -873,6 +874,7 @@ async def tiktok_hashtag_videos(
                 "challenge_id": challenge_id,
                 "limit": limit,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -900,6 +902,7 @@ async def tiktok_video_search(
             "tiktok_video_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -927,6 +930,7 @@ async def tiktok_video_detail(
             "tiktok_video_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_id": video_id, "video_url": video_url},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -961,6 +965,7 @@ async def tiktok_video_comments(
                 "limit": limit,
                 "include_replies": include_replies,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -997,6 +1002,7 @@ async def tiktok_creator_profile(
                 "video_limit": video_limit,
                 "include_fans": include_fans,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1024,6 +1030,7 @@ async def tiktok_creator_search(
             "tiktok_creator_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1051,6 +1058,7 @@ async def tiktok_transcript(
             "tiktok_transcript",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_urls": video_urls, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1079,6 +1087,7 @@ async def tiktok_product_search(
             "tiktok_product_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "region": region, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1111,6 +1120,7 @@ async def tiktok_product_detail(
                 "product_url": product_url,
                 "region": region,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1139,6 +1149,7 @@ async def tiktok_product_reviews(
             "tiktok_product_reviews",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"product_id": product_id, "region": region, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1166,6 +1177,7 @@ async def tiktok_creator_commerce(
             "tiktok_creator_commerce",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"handle": handle, "region": region},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1192,6 +1204,7 @@ async def tiktok_video_products(
             "tiktok_video_products",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_id": video_id},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1219,6 +1232,7 @@ async def tiktok_creator_showcase(
             "tiktok_creator_showcase",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"offset": offset, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1247,6 +1261,7 @@ async def tiktok_ads_top(
             "tiktok_ads_top",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "period": period, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1273,6 +1288,7 @@ async def tiktok_ads_detail(
             "tiktok_ads_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"ad_id": ad_id},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
