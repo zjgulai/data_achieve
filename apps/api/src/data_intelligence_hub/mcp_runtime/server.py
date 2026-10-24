@@ -42,7 +42,6 @@ from data_intelligence_hub.mcp_runtime.tools.discovery import (
 from data_intelligence_hub.mcp_runtime.tools.reports import (
     create_report as create_report_artifact,
 )
-from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -692,15 +691,13 @@ async def deep_research_check(
 ) -> dict[str, object]:
     """Return one research run's status, steps and records."""
     async with governed_tool(context, "deep_research_check"):
-        parsed = uuid.UUID(run_id)
-        identity = project_api_key_context(context)
-        if identity is not None:
-            async with async_session_factory() as session:
-                run = await session.get(Run, parsed)
-            if run is None or run.workspace_id != identity.workspace_id:
-                raise ValueError("run_not_found")
-        detail = await get_run_detail(parsed)
-        records = await list_run_records(parsed, limit=20)
+        try:
+            parsed = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise ValueError("run_id_invalid") from exc
+        scope = project_filter(context)
+        detail = await get_run_detail(parsed, project_id=scope)
+        records = await list_run_records(parsed, limit=20, project_id=scope)
         return {"run": detail, "records": records}
 
 

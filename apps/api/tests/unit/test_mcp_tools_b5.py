@@ -1122,3 +1122,193 @@ async def test_identity_seem_reads_project_context_via_runtime(
     context = SimpleNamespace(headers={})
     assert server_module.project_filter(context) == identity.project_id
     assert server_module.project_identity(context) is identity
+
+
+@pytest.mark.anyio
+async def test_deep_research_check_is_scoped_to_calling_project(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥不能读同工作区其他项目的运行。
+
+    旧实现只比对 workspace_id，同工作区跨项目的 run 会整体泄漏。
+    修复后跨项目按 ``run_not_found`` 处理，错误文本不得含对方
+    project_id 或对方 run_id。
+    """
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    foreign_run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    other_project_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=foreign_run_id,
+            workspace_id=workspace_id,
+            project_id=other_project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=project_id,
+            workspace_id=workspace_id,
+            allowlist=("deep_research_check",),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+
+        # 服务层语义：跨项目按未找到处理。
+        with pytest.raises(ValueError, match="run_not_found"):
+            await run_service.get_run_detail(foreign_run_id, project_id=project_id)
+        with pytest.raises(ValueError, match="run_not_found"):
+            await run_service.list_run_records(foreign_run_id, project_id=project_id)
+
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            other_run = await client.call_tool(
+                "deep_research_check",
+                {"run_id": str(foreign_run_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert other_run.is_error is True
+    error_text = _error_text(other_run)
+    assert str(other_project_id) not in error_text
+    assert str(foreign_run_id) not in error_text
+
+
+@pytest.mark.anyio
+async def test_deep_research_check_rejects_run_in_other_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """跨工作区的运行同样 fail-closed：按未找到处理。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    foreign_run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=foreign_run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=project_id,
+            workspace_id=workspace_id,
+            allowlist=("deep_research_check",),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool(
+                "deep_research_check",
+                {"run_id": str(foreign_run_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is True
+
+
+@pytest.mark.anyio
+async def test_deep_research_check_allows_own_project_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """项目密钥可以读自己项目的运行与记录。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    own_run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=own_run_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        identity = _identity(
+            project_id=project_id,
+            workspace_id=workspace_id,
+            allowlist=("deep_research_check",),
+        )
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool(
+                "deep_research_check",
+                {"run_id": str(own_run_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is False
+    assert result.structured_content is not None
+    body = result.structured_content
+    assert body["run"]["run_id"] == str(own_run_id)
+    assert body["run"]["status"] == "completed"
+    assert body["records"]["records_total"] == 2
+    assert body["records"]["items"]
+
+
+@pytest.mark.anyio
+async def test_global_token_keeps_deep_research_check_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """全局 token（identity=None）不受项目过滤，行为不变。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
+        async with Client(mcp_server) as client:
+            result = await client.call_tool(
+                "deep_research_check",
+                {"run_id": str(run_id)},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert result.structured_content["run"]["run_id"] == str(run_id)
+
+
+@pytest.mark.anyio
+async def test_deep_research_check_rejects_bad_run_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """坏 run_id 返回 ``run_id_invalid``，与 get_run/list_records 一致。
+
+    SDK 会把工具体 ValueError 包成 UnexpectedToolError，客户端只看到
+    is_error；错误码用工具体直调断言。不得暴露 Python 的 badly
+    formed hexadecimal 文本。
+    """
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    identity = _identity(allowlist=("deep_research_check",))
+    try:
+        monkeypatch.setattr(run_service, "async_session_factory", factory)
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
+        context = SimpleNamespace(headers={})
+        with pytest.raises(ValueError, match="run_id_invalid"):
+            await server_module.deep_research_check(context, "not-a-uuid")
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool(
+                "deep_research_check",
+                {"run_id": "not-a-uuid"},
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is True
+    error_text = _error_text(result)
+    assert "badly formed" not in error_text
+    assert "hexadecimal" not in error_text
