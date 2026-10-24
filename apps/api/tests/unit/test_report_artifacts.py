@@ -443,6 +443,133 @@ def test_data_sha256_changes_when_one_id_changes() -> None:
     assert data_sha256([run_a, run_b], [uuid.uuid4()]) != baseline
 
 
+def _empty_ledger_payload() -> dict[str, Any]:
+    """run_ledger 为空的合同。schema 允许空账本。"""
+    payload = _contract_payload()
+    payload["run_ledger"] = []
+    return payload
+
+
+def test_build_and_verify_agree_when_contract_ledger_is_empty() -> None:
+    """空 run_ledger 的合同造出的产物必须能被复核。
+
+    build 在合同没有 run_ledger 时用 ``run_id`` 补输入集合。
+    verify 此前只会从合同重取，看到空集合就报 data_sha256 不一致。
+    合法的产物因此永远无法通过复核。本用例是缺陷回归。
+    """
+    contract = ReportContract.model_validate(_empty_ledger_payload())
+    artifact, final_report, final_sop = _build(contract)
+
+    assert verify_artifact(artifact, contract, final_report, final_sop) == []
+
+
+def test_verify_accepts_matching_explicit_input_ids() -> None:
+    """verify 显式传入与 build 相同的 id 集合时必须通过。
+
+    build 接受 run_ids/evidence_ids 覆盖参数。verify 此前没有
+    对应参数，覆盖集合造出的产物只能报不一致。"""
+    extra_run = uuid.uuid4()
+    payload = _contract_payload()
+    contract = ReportContract.model_validate(payload)
+    artifact, final_report, final_sop = _build(contract)
+    built = build_artifact(
+        workspace_id=WORKSPACE_ID,
+        project_id=PROJECT_ID,
+        run_id=RUN_ID,
+        template_id="t1_voc",
+        contract=contract,
+        report_html=final_report,
+        sop_html=final_sop,
+        run_ids=[RUN_ID, extra_run],
+        evidence_ids=[EVIDENCE_ID],
+    )
+
+    assert verify_artifact(
+        built,
+        contract,
+        final_report,
+        final_sop,
+        run_ids=[RUN_ID, extra_run],
+        evidence_ids=[EVIDENCE_ID],
+    ) == []
+    # 不传显式集合时仍按合同取 id，覆盖产物必须报不一致。
+    mismatches = verify_artifact(built, contract, final_report, final_sop)
+    assert _codes(mismatches) == ["data_sha256"]
+
+
+def test_verify_does_not_invent_ids() -> None:
+    """verify 不得凭空发明 id。
+
+    run_id=None 的覆盖产物记录的是空输入集合。verify 不传显式
+    集合时按合同取 id，合同里有一个 run，因此必须报不一致。
+    verify 不能拿 ``artifact.run_id`` 之外的东西去凑集合。
+    """
+    payload = _contract_payload()
+    contract = ReportContract.model_validate(payload)
+    artifact, final_report, final_sop = _build(contract)
+    built = build_artifact(
+        workspace_id=WORKSPACE_ID,
+        project_id=PROJECT_ID,
+        run_id=None,
+        template_id="t1_voc",
+        contract=contract,
+        report_html=final_report,
+        sop_html=final_sop,
+        run_ids=[],
+        evidence_ids=[],
+    )
+
+    mismatches = verify_artifact(built, contract, final_report, final_sop)
+
+    assert _codes(mismatches) == ["data_sha256"]
+
+
+@pytest.mark.anyio
+async def test_empty_ledger_survives_repository_round_trip() -> None:
+    """空账本产物落库再读出，复核仍通过。
+
+    ``run_id`` 是持久化可空列。读出的行带 ``artifact.run_id``，
+    verify 的 fallback 在落库后依然可用。
+    """
+    observed: dict[str, object] = {}
+
+    async def scenario(session: AsyncSession) -> None:
+        workspace, project = await _seed_workspace(session, slug="artifact-empty")
+        contract = ReportContract.model_validate(_empty_ledger_payload())
+        artifact, final_report, final_sop = _build(contract)
+        record = await create_artifact(
+            session,
+            workspace_id=workspace.id,
+            project_id=project.id,
+            run_id=RUN_ID,
+            report_id=REPORT_ID,
+            template_id="t1_voc",
+            contract_json=artifact.contract_json,
+            contract_sha256=artifact.contract_sha256,
+            data_sha256=artifact.data_sha256,
+            report_html_sha256=artifact.report_html_sha256,
+            sop_html_sha256=artifact.sop_html_sha256,
+            combined_sha256=artifact.combined_sha256,
+            report_html=final_report,
+            sop_html=final_sop,
+        )
+        loaded = await get_artifact(
+            session,
+            workspace_id=workspace.id,
+            artifact_id=record.id,
+        )
+        assert loaded is not None
+        observed["run_id"] = loaded.run_id
+        observed["mismatches"] = verify_artifact(
+            loaded, contract, final_report, final_sop
+        )
+
+    await _with_session(scenario)
+
+    assert observed["run_id"] == RUN_ID
+    assert observed["mismatches"] == []
+
+
 def test_repository_never_commits() -> None:
     """仓储层不得调用 commit。"""
     source = (REPOSITORIES / "report_artifacts.py").read_text(encoding="utf-8")

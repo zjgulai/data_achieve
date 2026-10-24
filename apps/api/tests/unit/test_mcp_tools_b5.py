@@ -1399,3 +1399,43 @@ async def test_deep_research_check_rejects_bad_run_id(
     error_text = _error_text(result)
     assert "badly formed" not in error_text
     assert "hexadecimal" not in error_text
+
+
+@pytest.mark.anyio
+async def test_create_report_rejects_empty_run_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """空账本合同不能通过 MCP 面的 run 归属 guard（行为固化）。
+
+    ``create_report`` 要求合同的 ``run_ledger`` 覆盖本次运行。
+    合同 ``run_ledger=[]`` 时没有 run 可归属，必须先在
+    ``report_run_not_in_contract`` 处失败，且不落任何产物行。
+    """
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        monkeypatch.setattr(runtime, "project_api_key_context", lambda context: None)
+        contract = _contract_payload(
+            run_id=run_id,
+            task_id=uuid.uuid4(),
+            evidence_id=uuid.uuid4(),
+        )
+        contract["run_ledger"] = []
+        contract["evidences"] = []
+        with pytest.raises(ValueError, match="report_run_not_in_contract") as exc_info:
+            await report_tools.create_report(run_id, TEMPLATE_ID, contract)
+        async with factory() as session:
+            count = await session.scalar(select(func.count()).select_from(ReportArtifact))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert "report_run_not_in_contract" in str(exc_info.value)
+    assert count == 0

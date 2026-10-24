@@ -190,6 +190,34 @@ def _as_text(html: str | bytes) -> str:
     return html.decode("utf-8") if isinstance(html, bytes) else html
 
 
+def _resolve_input_ids(
+    contract: ContractInput,
+    *,
+    run_id: uuid.UUID | str | None,
+    run_ids: Iterable[uuid.UUID | str] | None = None,
+    evidence_ids: Iterable[uuid.UUID | str] | None = None,
+) -> tuple[Iterable[uuid.UUID | str], Iterable[uuid.UUID | str]]:
+    """解析本次报告的输入 id 集合。build 与 verify 共用本入口。
+
+    显式传入的集合优先。未传时从合同读取；合同的 ``run_ledger``
+    为空时回退到 ``run_id``（verify 用记录行的 ``artifact.run_id``）。
+    合同账本非空时不做回退，行为与只认合同的老路径一致。
+
+    两条被否决的替代方案：
+
+    1. 把输入 id 集合持久化成新列。需要数据库迁移，
+       SCHEMA_HEAD 冻结在 202610210057，本批不动表结构。
+    2. 拒绝空 ``run_ledger``。schema 允许 ``evidences`` 与
+       ``run_ledger`` 为空；一刀切拒绝会把可渲染的合同变成失败。
+    """
+    contract_run_ids, contract_evidence_ids = contract_input_ids(contract)
+    if run_ids is None:
+        run_ids = contract_run_ids or ([run_id] if run_id is not None else [])
+    if evidence_ids is None:
+        evidence_ids = contract_evidence_ids
+    return run_ids, evidence_ids
+
+
 def build_artifact(
     *,
     workspace_id: uuid.UUID,
@@ -207,17 +235,18 @@ def build_artifact(
     """组装一行报告产物。本函数不写库、不写文件。
 
     两个页面分别求渲染哈希。组合哈希由两个页面哈希拼接后再求 sha256。
-    未显式传入 id 集合时，从合同读取。合同没有 run_ledger 时，
-    使用 ``run_id`` 作为唯一输入 run。
+    输入 id 集合走 :func:`_resolve_input_ids`：显式集合优先，
+    否则从合同读取，合同没有 run_ledger 时用 ``run_id`` 补。
 
     ``report_html`` 与 ``sop_html`` 传入最终 HTML。
     最终 HTML 的哈希位置已填好哈希值。
     """
-    contract_run_ids, contract_evidence_ids = contract_input_ids(contract)
-    if run_ids is None:
-        run_ids = contract_run_ids or ([run_id] if run_id is not None else [])
-    if evidence_ids is None:
-        evidence_ids = contract_evidence_ids
+    resolved_run_ids, resolved_evidence_ids = _resolve_input_ids(
+        contract,
+        run_id=run_id,
+        run_ids=run_ids,
+        evidence_ids=evidence_ids,
+    )
     report_digest = render_sha256(report_html)
     sop_digest = render_sha256(sop_html)
     return ReportArtifact(
@@ -229,7 +258,7 @@ def build_artifact(
         version=version,
         contract_json=contract_payload(contract),
         contract_sha256=contract_sha256(contract),
-        data_sha256=data_sha256(run_ids, evidence_ids),
+        data_sha256=data_sha256(resolved_run_ids, resolved_evidence_ids),
         report_html_sha256=report_digest,
         sop_html_sha256=sop_digest,
         combined_sha256=combined_sha256(report_digest, sop_digest),
@@ -243,11 +272,17 @@ def verify_artifact(
     contract: ContractInput,
     report_html: str | bytes,
     sop_html: str | bytes,
+    *,
+    run_ids: Iterable[uuid.UUID | str] | None = None,
+    evidence_ids: Iterable[uuid.UUID | str] | None = None,
 ) -> list[str]:
     """重算五个哈希并比对。
 
     返回不一致项的中文说明。全部一致时返回空列表。
-    数据哈希从合同重新取 id 集合。复核只需要合同与两页 HTML。
+    数据哈希的 id 集合与 build 走同一入口
+    :func:`_resolve_input_ids`：显式集合优先，否则从合同读取，
+    合同没有 run_ledger 时回退到记录行的 ``artifact.run_id``。
+    旧的四参数位置调用完全兼容。
 
     组合哈希只用记录里的两个页面哈希复算。
     所以只改一页 HTML 时，只有该页的渲染哈希报错。
@@ -255,8 +290,13 @@ def verify_artifact(
     mismatches: list[str] = []
     if artifact.contract_sha256 != contract_sha256(contract):
         mismatches.append("contract_sha256 不一致：合同内容与记录不符")
-    run_ids, evidence_ids = contract_input_ids(contract)
-    if artifact.data_sha256 != data_sha256(run_ids, evidence_ids):
+    resolved_run_ids, resolved_evidence_ids = _resolve_input_ids(
+        contract,
+        run_id=artifact.run_id,
+        run_ids=run_ids,
+        evidence_ids=evidence_ids,
+    )
+    if artifact.data_sha256 != data_sha256(resolved_run_ids, resolved_evidence_ids):
         mismatches.append("data_sha256 不一致：输入 run 或证据集合与记录不符")
     # 先把最终 HTML 的哈希值还原成占位符，再重算。
     canonical_report = strip_hash_placeholders(_as_text(report_html))
