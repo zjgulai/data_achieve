@@ -768,8 +768,9 @@ git commit -m "docs(ops): correct C0 compatibility and release evidence"
 - Modify: `.github/workflows/ci.yml`
 - Modify: `scripts/verify-capability-governance-migration.sh`, `scripts/verify-workflow-action-migration.sh`, `scripts/verify-workflow-execution-migration.sh`, `scripts/verify-workflow-executor-migration.sh`, `scripts/verify-workflow-lineage-migration.sh`, `scripts/verify-workflow-planner-phase2-migration.sh`
 - Modify: `apps/api/tests/unit/test_capability_governance_postgres_guard.py`, `test_workflow_action_postgres_guard.py`, `test_workflow_execution_postgres_guard.py`, `test_workflow_executor_postgres_guard.py`, `test_workflow_lineage_postgres_guard.py`
-- Modify: `apps/api/tests/postgres/test_workflow_plan_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_materialization.py`, `apps/api/tests/postgres_capability_governance/test_migration.py`, `apps/api/tests/postgres_workflow_execution/test_migration.py`
+- Modify: `apps/api/tests/postgres/test_workflow_plan_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_migration.py`, `apps/api/tests/postgres_workflow_lineage/test_materialization.py`, `apps/api/tests/postgres_capability_governance/test_migration.py`, `apps/api/tests/postgres_workflow_execution/test_migration.py`, `apps/api/tests/postgres_workflow_action/test_migration.py`
 - Modify: `apps/api/tests/postgres_workflow_lineage/conftest.py` — extract `_seed_lineage_graph` and add the `_at_034` fixtures (Step 7)
+- Modify: `apps/api/tests/postgres_workflow_action/conftest.py` — extract `_seed_action_run` and add `postgres_database_at_043` / `seeded_action_run_at_043` (Step 7)
 - Create: `scripts/check_mypy_baseline.py`, `apps/api/tests/unit/test_mypy_baseline_guard.py`, `apps/api/tests/unit/test_migration_head_pins.py`, `apps/api/tests/unit/test_ci_gate_contract.py`
 - Delete (git rm): `scripts/verify-workflow-planner-phase2-migration.sh.bak`
 
@@ -1080,11 +1081,98 @@ def seeded_lineage_graph_at_034(postgres_engine_at_034: Engine) -> LineageSeed:
     return _seed_lineage_graph(postgres_engine_at_034)
 ```
 
-**(d) Switch exactly two tests** — `test_downgrade_refuses_persisted_v2_lineage` and `test_downgrade_refuses_nonempty_materialization_ledger` — to the three new fixtures. In their signatures replace `postgres_database_url`, `postgres_engine` and `seeded_lineage_graph` with `postgres_database_at_034`, `postgres_engine_at_034` and `seeded_lineage_graph_at_034`; change nothing inside their bodies. Every other test in `postgres_workflow_lineage/` keeps the current-head fixtures.
+**(d) Switch exactly two tests** — `test_downgrade_refuses_persisted_v2_lineage` and `test_downgrade_refuses_nonempty_materialization_ledger` — to the three new fixtures. Rename identifiers only inside those two test bodies; do not change any literal, message string or assertion value.
+
+Signatures, both files: replace the parameter names `postgres_database_url`, `postgres_engine` and `seeded_lineage_graph` with `postgres_database_at_034`, `postgres_engine_at_034` and `seeded_lineage_graph_at_034`.
+
+`tests/postgres_workflow_lineage/test_migration.py` (`:350-392`) — every remaining reference in the body follows the parameter:
+
+- `:355` `seed = seeded_lineage_graph` → `seed = seeded_lineage_graph_at_034`
+- `:356` `with postgres_engine.begin() as connection:` → `with postgres_engine_at_034.begin() as connection:`
+- `:379` `postgres_database_url,` (the `_run_alembic` downgrade target) → `postgres_database_at_034,`
+- `:388` `assert _revision(postgres_database_url) == "202607170034"` → `assert _revision(postgres_database_at_034) == "202607170034"` — the identifier moves, the `"202607170034"` literal stays
+- `:390` `postgres_database_url,` (first argument of `_columns`) → `postgres_database_at_034,`
+
+`tests/postgres_workflow_lineage/test_materialization.py` (`:276-308`) — this test builds its own subprocess rather than using a helper, so the URL appears three times:
+
+- `:281` `seed = seeded_lineage_graph` → `seed = seeded_lineage_graph_at_034`
+- `:282` `with postgres_engine.begin() as connection:` → `with postgres_engine_at_034.begin() as connection:`
+- `:292` `environment["DATABASE_URL"] = postgres_database_url` → `environment["DATABASE_URL"] = postgres_database_at_034` — this is what makes the hand-rolled `alembic downgrade` hit the 034 database
+- `:306` `with postgres_engine.connect() as connection:` → `with postgres_engine_at_034.connect() as connection:`
+
+Unchanged in both bodies: the `INSERT` / `_insert_materialized_assets` / `_insert_ledger` calls, the `"202607160032"` / `"202607160033"` downgrade targets, both `downgrade refused:` message strings, and both `"202607170034"` revision assertions. `alembic_runner` and `sync_database_url` are not among these tests' fixtures — `test_materialization.py` calls `subprocess.run` directly — so nothing else is rewired. Every other test in `postgres_workflow_lineage/` keeps the current-head fixtures.
 
 Schema viability: every column the two tests write comes from revisions at or before 034 — `raw_records.workflow_run_id` / `workflow_step_run_id` / `workflow_lineage_contract_version` and `dataset_versions.lineage_contract_version` / `source_workflow_run_id` / `source_workflow_step_run_ids` / `source_raw_record_ids` from `202607160033`, the fixture and actor/browser/LLM columns of `workflow_runs` and `step_runs` from `202606110029`, and `workflow_lineage_materialization_requests` itself from `202607170034`. So the seed and the ledger insert are valid at 034.
 
 Do **not** add `_reset_public_schema` or `_run_alembic` to `test_materialization.py`: that module defines neither (`test_migration.py` keeps its own private copies at `:53-77`), and neither is a fixture. The shared helpers are the conftest ones named above.
+
+Known second-order breakage of the same class in the action suite: `tests/postgres_workflow_action/test_migration.py::test_revision_043_downgrade_refuses_nonzero_retry_evidence` (`:90-109`) runs `alembic_runner("downgrade", "202607230042")` from the head 057 database and asserts both the refusal message and `_revision(sync_database_url) == "202607270043"` (`:109`). At head the downgrade has to walk 057 → 044 before it reaches 043, and because `alembic/env.py` runs the whole upgrade/downgrade in one transaction, the 043 refusal rolls back to 057 — so `:109` can never see `202607270043`. Note that 044's own downgrade also raises (`workflow_executor_evidence_present_downgrade_refused`) only when its tables hold rows, so the failure here is the rollback target, not a competing refusal. Repair by starting that one test at 043; keep its literals and assertions.
+
+Edit `apps/api/tests/postgres_workflow_action/conftest.py` in three steps:
+
+**(a) Extract the seed body.** Move the whole body of `seeded_action_run` (`:183-332`) into a module-level async `_seed_action_run(database: PostgresDatabase) -> SeededActionRun` that takes the database as a parameter, and reduce the fixture to a call:
+
+```python
+async def _seed_action_run(database: PostgresDatabase) -> SeededActionRun:
+    owner_id, workspace_id, project_id, plan_id, version_id, run_id, step_id = (
+        uuid.uuid4() for _ in range(7)
+    )
+    # ... existing body verbatim, with postgres_database renamed to database ...
+    return SeededActionRun(
+        database=database,
+        owner_id=owner_id,
+        workspace_id=workspace_id,
+        project_id=project_id,
+        run_id=run_id,
+        step_id=step_id,
+    )
+
+
+@pytest_asyncio.fixture()
+async def seeded_action_run(postgres_database: PostgresDatabase) -> SeededActionRun:
+    return await _seed_action_run(postgres_database)
+```
+
+**(b) Add the at-043 database fixture** beside `postgres_database` (`:169-180`), reusing the conftest's own `_run_alembic` (`:134-144`). It takes `postgres_database_url` so it shares one URL with `sync_database_url` and `alembic_runner` — all three fixtures resolve to the same physical database and the same connection string:
+
+```python
+@pytest_asyncio.fixture()
+async def postgres_database_at_043(postgres_database_url: str) -> AsyncIterator[PostgresDatabase]:
+    _run_alembic(postgres_database_url, "upgrade", "202607270043")
+    engine = create_async_engine(postgres_database_url)
+    database = PostgresDatabase(
+        engine=engine,
+        sessions=async_sessionmaker(engine, expire_on_commit=False),
+    )
+    try:
+        yield database
+    finally:
+        await engine.dispose()
+```
+
+No extra reset: `postgres_database_url` (`:147-151`) has already dropped and recreated `public`.
+
+**(c) Add the seeded variant** that seeds onto the 043 database through the shared helper:
+
+```python
+@pytest_asyncio.fixture()
+async def seeded_action_run_at_043(
+    postgres_database_at_043: PostgresDatabase,
+) -> SeededActionRun:
+    return await _seed_action_run(postgres_database_at_043)
+```
+
+**(d) Switch exactly one test** — `test_revision_043_downgrade_refuses_nonzero_retry_evidence` — to the new fixture. Rename identifiers only; do not change any literal or assertion.
+
+- `:92` parameter `seeded_action_run: Any,` → `seeded_action_run_at_043: Any,`
+- `:95` `database = seeded_action_run.database` → `database = seeded_action_run_at_043.database`
+- `:96` `step_id = seeded_action_run.step_id` → `step_id = seeded_action_run_at_043.step_id`
+
+Unchanged: the `UPDATE step_runs SET retry_generation = 1 ...` statement, `alembic_runner("downgrade", "202607230042")`, the `"202607270043 downgrade refused: Workflow action evidence exists"` string, and `assert _revision(sync_database_url) == "202607270043"`. `alembic_runner` and `sync_database_url` stay parameterised by the same `postgres_database_url`, so no other fixture changes.
+
+Schema viability: everything `_seed_action_run` writes exists at 043 — `users`, `workspaces` and `projects` are created by `202606110002`, `workflow_plans` and `workflow_versions` by `202606110027`, `workflow_runs` and `step_runs` by `202606110029`, the `workflow_runs` `status_reason_code` / `impact_code` / `missing_fields` / `recovery_action_codes` columns by `202607230038`, and `step_runs.retry_generation` by `202607270043` itself. Revisions 044-057 add no column to any of those seven tables — they only `create_table`, plus column work on `task_runs`, `runs` and `project_api_keys` — so seeding at 043 is valid and the `UPDATE step_runs SET retry_generation = 1` statement targets a column that exists.
+
+Every other test in `postgres_workflow_action/` — `test_revision_043_upgrade_downgrade_upgrade_lifecycle`, `test_constraints.py`, `test_action_service.py` — keeps the current-head fixtures.
 
 Triage rule for anything further the rehearsal surfaces: a failure caused by "the DB/fixture is now at a different head" is fixed by pinning the test's *start* revision explicitly; a failure caused by new behavior in revisions 035-057 is out of S0 scope and must be recorded as a blocked defect, never papered over by editing the assertion to the new value. `git rm scripts/verify-workflow-planner-phase2-migration.sh.bak`.
 
@@ -1130,6 +1218,8 @@ git add .github/workflows/ci.yml scripts/check_mypy_baseline.py scripts/verify-*
   apps/api/tests/postgres_workflow_lineage/test_migration.py \
   apps/api/tests/postgres_workflow_lineage/conftest.py \
   apps/api/tests/postgres_workflow_lineage/test_materialization.py \
+  apps/api/tests/postgres_workflow_action/conftest.py \
+  apps/api/tests/postgres_workflow_action/test_migration.py \
   apps/api/tests/postgres_capability_governance/test_migration.py \
   apps/api/tests/postgres_workflow_execution/test_migration.py
 git commit -m "ci: replace mypy gate with multiset baseline and refresh current head pins"
@@ -1370,5 +1460,5 @@ Expected: 工作树 clean；v1 不变；v2 指向审查通过的 S0 code baselin
 - Spec coverage：覆盖 3 个越权工具、report hash、inspect 泄漏、list_capabilities 行语义、get_playbook alias、证据和 CI 门禁、v1/v2 标签策略。
 - Placeholder scan：无 TBD/TODO/“类似 Task N”或未定义接口。
 - Type consistency：`stop_run(project_id=None)`、`verify_artifact(run_ids=None, evidence_ids=None)`、`inspect` key set、list_capabilities 旧字段、playbook markdown alias 在各任务一致。
-- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本只改 current-head 断言；四个 dedicated suite 也只改 current-head 断言（`postgres/test_workflow_plan_migration.py:474-475`、`postgres_workflow_lineage/test_migration.py:290-291`、`postgres_capability_governance/test_migration.py:537-538`、`postgres_workflow_execution/test_migration.py:329-330`）；`postgres_workflow_lineage/` 额外新增 `postgres_database_at_034`、`postgres_engine_at_034`、`seeded_lineage_graph_at_034` 三个 fixture，只把两个 downgrade-refusal 测试的**起始 revision**钉到 034，不放宽也不改写它们的期望值；历史 upgrade/downgrade revision 全部不变。
+- Scope consistency：无 migration/model/catalog projection/Console/Docker 改动；CI 脚本只改 current-head 断言；四个 dedicated suite 也只改 current-head 断言（`postgres/test_workflow_plan_migration.py:474-475`、`postgres_workflow_lineage/test_migration.py:290-291`、`postgres_capability_governance/test_migration.py:537-538`、`postgres_workflow_execution/test_migration.py:329-330`）；`postgres_workflow_lineage/` 额外新增 `postgres_database_at_034`、`postgres_engine_at_034`、`seeded_lineage_graph_at_034` 三个 fixture，只把两个 downgrade-refusal 测试的**起始 revision**钉到 034，不放宽也不改写它们的期望值；`postgres_workflow_action/` 额外新增 `postgres_database_at_043`、`seeded_action_run_at_043` 与共享 `_seed_action_run`，只把 `test_revision_043_downgrade_refuses_nonzero_retry_evidence` 的**起始 revision** 钉到 043，期望值与 `"202607270043"` 断言保持原样，其余 action tests 仍用 current-head fixtures；历史 upgrade/downgrade revision 全部不变。
 - Safety：所有 production/tag/remote 操作均禁止；v1 immutable；v2 只在最终 review 后本地创建。

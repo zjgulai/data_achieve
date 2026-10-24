@@ -185,6 +185,69 @@ Self-Review 的 Scope consistency 一句改写为明确点名四个 dedicated su
 `pg0-baseline-v1` tag object `48aaccfa…` / commit `e2270700…` 未变，`pg0-baseline-v2` 仍不存在。
 本轮仍是**执行计划修订**，无任何代码行为变化，因此不构成 v2 基线。
 
+### 3.6 Task 0 fix round 5：fixture 起始 revision 落地
+
+第五轮复审（against HEAD `de01a1a`）确认 round 4 的两项修复成立，但指出「切换 fixture 后测试体
+仍引用旧局部名」会让照计划执行的人写出一份 NameError 的测试。本轮只改计划与本文：不改业务代码、
+tests、scripts、CI、tag 或 Docker 配置，不跑 PostgreSQL，不建容器。
+
+修正项：
+
+1. **Lineage at_034：body identifier 一并改名。** 计划原来在把三个 fixture 换进两个测试后仍写
+   「body 内什么都不改」，这是自相矛盾的：`test_migration.py:355` 的 `seed = seeded_lineage_graph`、
+   `:356` 的 `with postgres_engine.begin()`、`:379` 的 `_run_alembic` 第一个实参、`:388` 的
+   `_revision(...)` 实参、`:390` 的 `_columns(...)` 第一个实参，以及
+   `test_materialization.py:281`、`:282`、`:292`、`:306` 全部仍指向旧参数名。现在逐行列出改名：
+   `test_migration.py` 用 `seeded_lineage_graph_at_034`、`postgres_engine_at_034`、
+   `postgres_database_at_034`；`test_materialization.py` 的 seed、database engine、environment
+   `DATABASE_URL` 与 revision 断言四处同样换成 at_034 名。只改 identifier，`"202607160032"` /
+   `"202607160033"` 降级目标、两条 `downgrade refused:` 文本与两处 `"202607170034"` 断言字面量
+   全部不动。矛盾句已删除。
+2. **Workflow Action at_043：新增起始 fixture。** `postgres_workflow_action/test_migration.py:90-109`
+   的 `test_revision_043_downgrade_refuses_nonzero_retry_evidence` 从 head 057 库发起
+   `downgrade 202607230042`，而 `alembic/env.py` 不设 `transaction_per_migration`，整个 downgrade
+   是一笔事务，043 的拒绝会把库回滚到 057，`:109` 永远看不到 `202607270043`。计划改为在
+   `apps/api/tests/postgres_workflow_action/conftest.py` 抽共享 helper：模块级 async
+   `_seed_action_run(database: PostgresDatabase) -> SeededActionRun`，现有 `seeded_action_run`
+   退化为一次 `await` 调用；新增 async `postgres_database_at_043(postgres_database_url)`，先
+   `_run_alembic(..., "upgrade", "202607270043")` 再 `create_async_engine` + sessions，退出时
+   `engine.dispose()`；新增 `seeded_action_run_at_043(postgres_database_at_043)` 调共享 helper。
+   只把该测试的参数换成 `seeded_action_run_at_043`，并把 body 的
+   `database = seeded_action_run_at_043.database`、`step_id = seeded_action_run_at_043.step_id`
+   同步改名。`alembic_runner` / `sync_database_url` 仍由同一个 `postgres_database_url` 派生，
+   其余 action tests 保持 current-head fixtures。
+3. **Task 9 清单补 `workflow_action/conftest.py`。** `Files` 与 `git add` 都加上
+   `apps/api/tests/postgres_workflow_action/conftest.py`，并把
+   `apps/api/tests/postgres_workflow_action/test_migration.py` 列进 `Files` 与被修改 suite 清单。
+4. **Scope consistency 补 action 起始 fixture。** Self-Review 明确 `postgres_workflow_action/`
+   新增 `postgres_database_at_043`、`seeded_action_run_at_043` 与共享 `_seed_action_run`，
+   只钉一个测试的**起始 revision**，期望值与 `"202607270043"` 断言原样保留。
+
+本轮复核依据：逐行读 `apps/api/tests/postgres_workflow_action/conftest.py`
+（`_run_alembic` `:134-144`、`postgres_database_url` `:147-151`、`postgres_database` `:169-180`、
+`seeded_action_run` `:183-332`、`SeededActionRun` `:58-65`）、
+`apps/api/tests/postgres_workflow_action/test_migration.py`（`def` `:90`、赋值 `:95-96`、断言 `:109`）、
+`apps/api/tests/postgres_workflow_lineage/test_migration.py:350-392` 与
+`apps/api/tests/postgres_workflow_lineage/test_materialization.py:276-308`；
+并确认 043 库上 seed 合法：`users`/`workspaces`/`projects` 出自 `202606110002`，
+`workflow_plans`/`workflow_versions` 出自 `202606110027`，`workflow_runs`/`step_runs` 出自
+`202606110029`，`workflow_runs` 的 status/impact/`missing_fields`/`recovery_action_codes` 出自
+`202607230038`，`step_runs.retry_generation` 出自 `202607270043` 本身；044-057 对上述七张表
+没有任何加列。
+
+文本门禁（计划文件）：`_seed_action_run`、`postgres_database_at_043`、`seeded_action_run_at_043`
+与 `apps/api/tests/postgres_workflow_action/conftest.py` 均出现在 `Files` 与 `git add` 两处；
+lineage 两个测试的 body 改名逐行列出；`change nothing inside` 出现 0 次。此前门禁未退化：
+executor `revision-202607280044` 三处、lineage fake-uv 057 三处、六条 `docker run -d --name
+s0-gate`、`trap cleanup EXIT INT TERM`、mypy helper 精确输出串与两组 `current=`/`baseline=`/
+`decreased=` 计数都仍在；`revision-202610210057` 仍为 0 次。代码围栏 168 个，开闭配对。
+
+不变项：§3.1 两份 mypy multiset baseline、§4 unit 基线、§5 七项 RED、§6 不变项的事实
+**未修改**。SHA 仍为 `4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e`
+（62 签名 / 123 实例）与 `9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4`
+（498 / 1200）。`pg0-baseline-v1` tag object `48aaccfa…` / commit `e2270700…` 未变，
+`pg0-baseline-v2` 仍不存在。
+
 ## 4. unit 基线
 
 命令：`cd apps/api && .venv/bin/python -m pytest tests/unit -q`
