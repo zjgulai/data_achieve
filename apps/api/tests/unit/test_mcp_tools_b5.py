@@ -18,9 +18,11 @@ import json
 import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from mcp.client import Client
+from mcp.server.mcpserver import Context
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -1212,9 +1214,9 @@ async def test_identity_seem_reads_project_context_via_runtime(
     """
     identity = _identity(allowlist=("stop", "balance"))
     monkeypatch.setattr(runtime, "project_api_key_context", lambda context: identity)
-    context = SimpleNamespace(headers={})
-    assert server_module.project_filter(context) == identity.project_id
-    assert server_module.project_identity(context) is identity
+    context = cast(Context[dict[str, Any]], SimpleNamespace(headers={}))
+    assert runtime.project_filter(context) == identity.project_id
+    assert runtime.project_identity(context) is identity
 
 
 @pytest.mark.anyio
@@ -1498,7 +1500,7 @@ async def _call_list_capabilities(
     finally:
         await engine.dispose()
     assert result.structured_content is not None
-    return result.structured_content
+    return cast(dict[str, object], result.structured_content)
 
 
 @pytest.mark.parametrize(
