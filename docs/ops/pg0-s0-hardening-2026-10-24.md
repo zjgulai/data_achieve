@@ -119,6 +119,22 @@ Task 0 独立审查后，S0 计划在 `1711ac9` 与后续 fix round 2 中补齐�
 
 Task 0 第二轮复审发现 old mypy step 未替换、unique-set 会漏计数增加、dedicated suites 的 current-head 断言仍陈旧、且计划没有运行 PostgreSQL CI jobs。计划已改为 multiset helper、四 suite current-head 同步、六 guard disposable rehearsal；两份 baseline 已迁移为 multiset v1。业务代码仍未修改，v1 标签不变。
 
+### 3.4 Task 0 fix round 3：执行计划阻塞项收口
+
+第三轮复审（fresh verification against HEAD `04ed2ee`）确认 CI 契约、multiset 格式与 helper 语义、`.bak` 删除、v2 reviewed-SHA 标签门禁均可用，但计划里仍有四条会直接卡死执行的缺陷。**本轮只改计划文本，不改任何业务代码、CI、scripts、tests、tag 或 Docker 配置，也不执行任何 PostgreSQL container rehearsal。**
+
+修正项：
+
+1. **Task 9 lineage 的 034 自相矛盾。** 计划把 lineage 脚本 cleanup 的 `upgrade` 改成 `202610210057`，却让 guard test 的 fake-uv 仍只认 `run alembic upgrade 202607170034`。假 uv 的 dispatch 落到 `*) exit 91`，cleanup 返回 91 而不是保留 pytest 退出码，`test_guard_cleanup_runs_after_success_or_failure_and_preserves_exit_status` 的 `(0,0,0)` 用例必失败。现在明确：fake-uv 的 `alembic heads` 回复（188）、cleanup dispatch arm（196）、`commands[2:4]` 断言（260）三处一起改成 057；真实 postgres lineage suite 里的历史 `upgrade`/`downgrade` 034 目标保持不动。计划新增「两种 034」小节把两者分开，并给出各自的理由。
+2. **Executor 的 candidate authorization revision 不能拆。** `scripts/verify-workflow-executor-migration.sh:39` 的 `REVISION = "202607280044"` 生成授权元组的 `revision-<REVISION>` 段，而 `apps/api/tests/postgres_workflow_executor/conftest.py:32` 把同一个值写死，不匹配就直接 `pytest.UsageError`，连不上库。原计划把脚本 `REVISION`、guard test `SAFE_AUTHORIZATION` 和 `WORKFLOW_EXECUTOR_AUTHORIZATION` 一起推到 057，等于让 `workflow-executor` gate 不可能通过。现在：脚本只改 138/139/143 三处 head pin，`REVISION` 留在 `202607280044`；guard unit test 的 head 断言改 057，`SAFE_AUTHORIZATION`（30）与 unsafe-override 替换（141）保持 `revision-202607280044`；Task 10 的 `WORKFLOW_EXECUTOR_AUTHORIZATION` 用 `revision-202607280044`。计划明确写「head pin 是活的 head，`revision-` 段是固定的 candidate label，两者不耦合」。
+3. **Task 10 Step 2a 原来不可执行。** 旧文本用三行注释代替 `docker run`，缺镜像、缺 executor/action 的 `POSTGRES_HOST_AUTH_METHOD=trust`（这两个脚本拒收带密码的 URL）、缺 cg/exec/executor/action 的 `POSTGRES_DB`，且清理是后续另一个无 `trap` 的代码块——中途失败会留下容器。现在整段是一个可直接粘贴执行的 shell block：`set -euo pipefail`、`cleanup` 函数、`trap cleanup EXIT INT TERM`、开跑前先删同名旧容器、六个 `docker run`（`postgres:15`，loopback 55443 / 55451-55455）、`wait_pg` 最多 60 秒、六条 env guard 命令、结尾 `cleanup` + `trap -`、最后断言容器与端口都空。并写明任何 gate 未绿即整块非零退出，不得把部分 gate `BLOCKED` 当可交付。
+4. **mypy helper 的成功输出没定义。** `Interfaces` 只规定了 exit code，Task 9/10 的 Expected 却断言 `current=1200 baseline=1200 decreased=0`，实现者写别的格式既合规又失败。现在 `Interfaces` 新增 `### Output (exact, stdout)`，固定成功行为 `OK: mypy baseline non-regression current=<current_total> baseline=<baseline_total> decreased=<decreased_total>`，回归前缀 `REGRESSION:`、非法输入前缀 `INVALID:`；Task 9 与 Task 10 的 Expected 使用同一字符串。
+5. **head-pin test 的脚本范围改用显式清单。** 原写 `scripts/*.sh`，但目录里有 27 个 shell 脚本，只有六个带 `expected exactly one Alembic head`；按 glob 实现会在 `verify-mvp.sh` 与 `verify-browser-production-metadata-gate.sh` 上失败。现在逐个列出六个脚本路径。
+
+不变项：两份 mypy multiset baseline 未重取、未改写。SHA 仍为 `4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e`（62 签名 / 123 实例）与 `9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4`（498 / 1200）；本轮复核仍为按签名 UTF-8 字节序排序、无重复签名、count 全为正、单个结尾 LF、无 CR、无 NUL、纯 ASCII。§3.1 的基线与 §4 的 unit 基线事实**未修改**。`pg0-baseline-v1` tag object `48aaccfa…` / commit `e2270700…` 未变，`pg0-baseline-v2` 仍不存在。
+
+本轮是**执行计划修订**：`HEAD` 只增加了计划、本文和两份 baseline 文件的文档级改动，没有任何代码行为变化，所以仍不构成 v2 基线。
+
 ## 4. unit 基线
 
 命令：`cd apps/api && .venv/bin/python -m pytest tests/unit -q`

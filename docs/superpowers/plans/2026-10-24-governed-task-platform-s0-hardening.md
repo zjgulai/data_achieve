@@ -797,6 +797,20 @@ python scripts/check_mypy_baseline.py --baseline PATH --path TARGET [--path TARG
 - No `--update` / no baseline write path anywhere. The helper must be incapable of re-baselining.
 - Exit codes: `0` clean; `1` regression (any count increase or new signature); `2` invalid (missing/unparsable baseline, unparsable mypy line, mypy exit not in {0, 1}). Exit 2 must never be reported as success.
 
+### Output (exact, stdout)
+
+Success prints exactly one line:
+
+```
+OK: mypy baseline non-regression current=<current_total> baseline=<baseline_total> decreased=<decreased_total>
+```
+
+- `baseline_total` / `current_total` are **instance** totals (the sum of every count), not signature counts. For the two tracked baselines they are `1200` (`--path src --path tests`) and `123` (`--path src`).
+- `decreased_total` is the summed drop over signatures whose count went down.
+- Regression (exit 1) keeps the same three fields and replaces the `OK:` prefix with `REGRESSION:`, then prints one `  <signature> baseline=<n> current=<m>` line per regression.
+- Invalid input (exit 2) replaces the prefix with `INVALID:` and prints the reason.
+- stdout carries only these lines; nothing else. Diagnostics go to stderr.
+
 ### Baseline file format (multiset v1)
 
 ```
@@ -851,15 +865,32 @@ platform-packages job: test list contains none of tests/integration/**; specific
 `test_migration_head_pins.py` computes the head with `subprocess.run([sys.executable, "-m", "alembic", "heads"], cwd=API_ROOT, capture_output=True, text=True)` (no `DATABASE_URL`), asserts exactly one non-empty line, and pins the expected value `202610210057` in the test itself (a change of head must edit this test — that is the point). Then it asserts every current-head occurrence:
 
 ```text
-scripts/*.sh: grep -Eq '^<HEAD> \(head\)$'
-scripts/*.sh: "expected exactly one Alembic head at <HEAD>"
-scripts/*.sh: "alembic head check passed: <HEAD>"  (allow the optional "source " infix)
-verify-workflow-lineage-migration.sh cleanup only: 'uv run alembic upgrade <HEAD>' and revision != "<HEAD>" and "cleanup passed: head <HEAD>"
-four dedicated suites: 'heads == ["<HEAD> (head)"]' and the companion revision assertion immediately after it
+# the six verify scripts, named explicitly -- never the scripts/*.sh glob
+scripts/verify-capability-governance-migration.sh
+scripts/verify-workflow-action-migration.sh
+scripts/verify-workflow-execution-migration.sh
+scripts/verify-workflow-executor-migration.sh
+scripts/verify-workflow-lineage-migration.sh
+scripts/verify-workflow-planner-phase2-migration.sh
+
+# in each of those six files
+grep -Eq '^<HEAD> \(head\)$'
+"expected exactly one Alembic head at <HEAD>"
+"alembic head check passed: <HEAD>"            (allow the optional "source " infix)
+
+# verify-workflow-lineage-migration.sh cleanup only
+'uv run alembic upgrade <HEAD>' and revision != "<HEAD>" and "cleanup passed: head <HEAD>"
+
+# four dedicated suites
+'heads == ["<HEAD> (head)"]' and the companion revision assertion immediately after it
+
+# tracked backup files
 no tracked path matching scripts/*.bak (git ls-files) and no such file on disk
 ```
 
-Explicitly out of scope for this test (must stay untouched): `202607160033`, `202607170034`, `202607270043`, `202607280044` where used as `alembic upgrade/downgrade` targets, `downgrade refused:` message strings, `revision-202607280044` in the executor authorization tuple and its tests, `module.revision`/`down_revision` in the `test_*_migration_source.py` family.
+The glob is deliberately not used: `scripts/` holds 27 shell scripts, and only these six carry an `expected exactly one Alembic head` pin. `verify-mvp.sh` and `verify-browser-production-metadata-gate.sh` do not, so a glob-based assertion would fail on them.
+
+Explicitly out of scope for this test (must stay untouched): `202607160033`, `202607170034`, `202607270043`, `202607280044` where used as `alembic upgrade/downgrade` targets, `downgrade refused:` message strings, `module.revision`/`down_revision` in the `test_*_migration_source.py` family, and the executor candidate label `202607280044` in exactly two places that must stay in lockstep — `scripts/verify-workflow-executor-migration.sh` `REVISION` (line 39) and `apps/api/tests/postgres_workflow_executor/conftest.py` `REVISION` (line 32), together with every `revision-202607280044` string derived from them.
 
 **Step 4: RED — helper tests**
 
@@ -979,13 +1010,18 @@ Six scripts — current-head only:
 | `verify-capability-governance-migration.sh` | 101, 102, 106 |
 | `verify-workflow-action-migration.sh` | 107, 108, 111 |
 | `verify-workflow-execution-migration.sh` | 116, 117, 120 |
-| `verify-workflow-executor-migration.sh` | 138, 139, 143 **and** `REVISION` at line 39 (it feeds the authorization tuple; leaving it would split head from the tuple label) |
+| `verify-workflow-executor-migration.sh` | 138, 139, 143 only. **`REVISION` at line 39 stays `202607280044`** — it builds the `revision-<REVISION>` component of the authorization tuple, which `conftest.py:32` hardcodes; the head pin is the live head, the `revision-` component is a fixed candidate label. Do not couple them. |
 | `verify-workflow-lineage-migration.sh` | 116, 117, 121 **and** cleanup 144, 185, 214 |
 | `verify-workflow-planner-phase2-migration.sh` | 98, 99, 103 |
 
 Do not touch any historical `upgrade`/`downgrade` target or `downgrade refused:` string in these scripts.
 
-Guard tests: five current-head assertions move to `202610210057`. `test_workflow_lineage_postgres_guard.py` fake-uv line 188 becomes `printf '%s\n' "202610210057 (head)"`; lines 196 and 260 keep `202607170034`. `test_workflow_executor_postgres_guard.py`: rename `test_guard_is_pinned_to_revision_044_without_runner_commands` → `..._to_current_head_...`, update lines 174-175, and update `SAFE_AUTHORIZATION`/the unsafe-override replacement at line 30/141 to `revision-202610210057` (consistent with the script's `REVISION`).
+#### Two different kinds of `202607170034` — do not conflate them
+
+- **Fake-uv shim inside `apps/api/tests/unit/test_workflow_lineage_postgres_guard.py` (lines 188, 196, 260) — all three move to `202610210057`.** The shim stands in for the real `uv`, so its canned `alembic heads` reply and its cleanup dispatch arm must answer the commands the script actually issues. After the lineage script's cleanup is repinned to 057, a shim still answering `run alembic upgrade 202607170034` falls through to `*) exit 91`, cleanup returns 91 instead of preserving the pytest status, and `test_guard_cleanup_runs_after_success_or_failure_and_preserves_exit_status` fails its `(0,0,0)` case.
+- **Real database suite `apps/api/tests/postgres_workflow_lineage/` — historical `upgrade`/`downgrade` 034 targets stay.** Those tests pin their own start revision (`_run_alembic(..., "upgrade", "202607170034")`) and then assert `_revision(...) == "202607170034"` after a refused downgrade; the literal is the fixture's contract, not the live head. Only the head pair at `test_migration.py:290-291` moves to 057.
+
+Guard tests: five current-head assertions move to `202610210057`. `test_workflow_lineage_postgres_guard.py`: the fake-uv `alembic heads` reply at line 188 becomes `printf '%s\n' "202610210057 (head)"`, the cleanup dispatch arm at line 196 becomes `"run alembic upgrade 202610210057")`, and the `commands[2:4]` assertion at line 260 becomes `"run alembic upgrade 202610210057",`. All three move together — see the shim/suite distinction above. `test_workflow_executor_postgres_guard.py`: rename `test_guard_is_pinned_to_revision_044_without_runner_commands` → `..._to_current_head_...`, update the two head assertions at lines 174-175 to `202610210057`, and **leave `SAFE_AUTHORIZATION` (line 30) and the unsafe-override replacement (line 141) at `revision-202607280044`**. The authorization tuple is a candidate label shared with `conftest.py`, not a head pin; changing it makes the gate unsatisfiable, because the fixture rejects any tuple that disagrees with its own `REVISION` and raises `pytest.UsageError("authorization does not match the exact candidate tuple")` before connecting.
 
 Four dedicated suites — change only the head pair:
 
@@ -1026,7 +1062,7 @@ cd /Users/lute/Project/data_scrapy-c0-s0/apps/api
 cd /Users/lute/Project/data_scrapy-c0-s0 && python3 scripts/check_file_integrity.py
 ```
 
-Expected: unit set green; both helper runs exit 0 with a summary line (`current=1200 baseline=1200 decreased=0` / `current=123 baseline=123 decreased=0`); integrity `file integrity OK (N files)`.
+Expected: unit set green; both helper runs exit 0 and print exactly `OK: mypy baseline non-regression current=1200 baseline=1200 decreased=0` and `OK: mypy baseline non-regression current=123 baseline=123 decreased=0`; integrity `file integrity OK (N files)`.
 
 Then re-run Step 6 (both jobs) and expect exit 0:
 
@@ -1093,11 +1129,11 @@ cd /Users/lute/Project/data_scrapy-c0-s0
 python3 scripts/check_file_integrity.py
 ```
 
-Expected: unit green；ruff clean；两份 mypy multiset 不得出现新签名或计数增加，允许 decreased；pytest guard `OK: 0 failed。`；integrity green。helper 必须固定 cwd 到 `apps/api`，从 repo root 或 `apps/api` 调用结果一致。
+Expected: unit green；ruff clean；两份 mypy multiset 各打印一行且前缀为 `OK:`（`current=1200 baseline=1200 decreased=0` 与 `current=123 baseline=123 decreased=0`）；任何新签名或计数增加打印 `REGRESSION:` 并 exit 1，任何无法解析的输入打印 `INVALID:` 并 exit 2，两者都算失败；pytest guard `OK: 0 failed。`；integrity green。helper 必须固定 cwd 到 `apps/api`，从 repo root 或 `apps/api` 调用结果一致。
 
 - [ ] **Step 2a: 六个 PostgreSQL guard 的 disposable rehearsal**
 
-安全边界：容器前缀 `s0-gate-`，只绑定 `127.0.0.1`，不得用 5432、不得使用 compose DB、不得使用 named volume 或 `--network host`。每个容器必须在同一 shell invocation 的 trap 中删除。
+安全边界：容器前缀 `s0-gate-`，只绑定 `127.0.0.1`，不得用 5432、不得使用 compose DB、不得使用 named volume 或 `--network host`。以下整段是**一个** shell invocation：`trap` 在块内注册，任何一步失败（含某个 gate 返回非零）都会删掉六个容器。
 
 | gate | container | port | user/password | database |
 |---|---|---:|---|---|
@@ -1108,11 +1144,64 @@ Expected: unit green；ruff clean；两份 mypy multiset 不得出现新签名�
 | workflow-executor | `s0-gate-executor-pg` | 55455 | `s0_executor` / trust | `s0_workflow_executor_test` |
 | workflow-action | `s0-gate-action-pg` | 55443 | `phase_e_test` / trust | `uix09_phase_e_20260728_workflow_execution_test` |
 
+每个数据库名都满足对应脚本的后缀校验（`_workflow_plan_phase2_test`、`_workflow_lineage_test`、`_capability_governance_test`、`_workflow_execution_test`、`_workflow_executor_test`，action 脚本比对精确名）。executor 与 action 两个脚本拒绝带密码的 URL，所以那两个容器必须用 `POSTGRES_HOST_AUTH_METHOD=trust`。
+
 ```bash
 cd /Users/lute/Project/data_scrapy-c0-s0
-# postgres/postgres containers: planner, lineage, cg, exec
-# trust containers: executor, action
-# wait with docker exec <name> pg_isready -U <user> -d <db>, max 60s
+set -euo pipefail
+
+cleanup() {
+  docker rm -f s0-gate-planner-pg s0-gate-lineage-pg s0-gate-cg-pg \
+              s0-gate-exec-pg s0-gate-executor-pg s0-gate-action-pg >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+# remove same-name leftovers before starting
+cleanup
+
+docker run -d --name s0-gate-planner-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=data_scrapy_workflow_plan_phase2_test \
+  -p 127.0.0.1:55451:5432 postgres:15
+docker run -d --name s0-gate-lineage-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=data_scrapy_ci_workflow_lineage_test \
+  -p 127.0.0.1:55452:5432 postgres:15
+docker run -d --name s0-gate-cg-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=s0_capability_governance_test \
+  -p 127.0.0.1:55453:5432 postgres:15
+docker run -d --name s0-gate-exec-pg \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=s0_workflow_execution_test \
+  -p 127.0.0.1:55454:5432 postgres:15
+docker run -d --name s0-gate-executor-pg \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=s0_executor \
+  -e POSTGRES_DB=s0_workflow_executor_test \
+  -p 127.0.0.1:55455:5432 postgres:15
+docker run -d --name s0-gate-action-pg \
+  -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=phase_e_test \
+  -e POSTGRES_DB=uix09_phase_e_20260728_workflow_execution_test \
+  -p 127.0.0.1:55443:5432 postgres:15
+
+wait_pg() {
+  name="$1"; user="$2"; db="$3"
+  for _ in $(seq 1 60); do
+    if docker exec "$name" pg_isready -U "$user" -d "$db" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  printf '%s\n' "error: $name did not accept connections within 60s" >&2
+  return 1
+}
+
+wait_pg s0-gate-planner-pg  postgres    data_scrapy_workflow_plan_phase2_test
+wait_pg s0-gate-lineage-pg  postgres    data_scrapy_ci_workflow_lineage_test
+wait_pg s0-gate-cg-pg       postgres    s0_capability_governance_test
+wait_pg s0-gate-exec-pg     postgres    s0_workflow_execution_test
+wait_pg s0-gate-executor-pg s0_executor s0_workflow_executor_test
+wait_pg s0-gate-action-pg   phase_e_test uix09_phase_e_20260728_workflow_execution_test
 
 TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55451/data_scrapy_workflow_plan_phase2_test' ALLOW_DESTRUCTIVE_MIGRATION_TEST=true bash scripts/verify-workflow-planner-phase2-migration.sh
 
@@ -1122,20 +1211,21 @@ CAPABILITY_GOVERNANCE_POSTGRES_TEST_AUTHORIZED=true CAPABILITY_GOVERNANCE_TEST_D
 
 WORKFLOW_EXECUTION_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_EXECUTION_TEST_DATABASE_URL='postgresql+asyncpg://postgres:postgres@127.0.0.1:55454/s0_workflow_execution_test' WORKFLOW_EXECUTION_AUTHORIZED_TARGET='127.0.0.1:55454/s0_workflow_execution_test' bash scripts/verify-workflow-execution-migration.sh
 
-WORKFLOW_EXECUTOR_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_EXECUTOR_RUNTIME_AUTHORIZED=true WORKFLOW_EXECUTOR_TEST_DATABASE_URL='postgresql+asyncpg://s0_executor@127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_AUTHORIZED_TARGET='127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_RUNNER_ID='s0-gate-runner' WORKFLOW_EXECUTOR_POSTGRES_IMAGE='postgres:15' WORKFLOW_EXECUTOR_CLEANUP_CONTRACT='destroy_exact_runner_and_prove_port_closed' WORKFLOW_EXECUTOR_AUTHORIZATION='authorize-workflow-executor-postgres-candidate:127.0.0.1:55455/s0_workflow_executor_test:revision-202610210057:runner-s0-gate-runner:image-postgres:15:cleanup-destroy_exact_runner_and_prove_port_closed' bash scripts/verify-workflow-executor-migration.sh
+WORKFLOW_EXECUTOR_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_EXECUTOR_RUNTIME_AUTHORIZED=true WORKFLOW_EXECUTOR_TEST_DATABASE_URL='postgresql+asyncpg://s0_executor@127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_AUTHORIZED_TARGET='127.0.0.1:55455/s0_workflow_executor_test' WORKFLOW_EXECUTOR_RUNNER_ID='s0-gate-runner' WORKFLOW_EXECUTOR_POSTGRES_IMAGE='postgres:15' WORKFLOW_EXECUTOR_CLEANUP_CONTRACT='destroy_exact_runner_and_prove_port_closed' WORKFLOW_EXECUTOR_AUTHORIZATION='authorize-workflow-executor-postgres-candidate:127.0.0.1:55455/s0_workflow_executor_test:revision-202607280044:runner-s0-gate-runner:image-postgres:15:cleanup-destroy_exact_runner_and_prove_port_closed' bash scripts/verify-workflow-executor-migration.sh
 
 WORKFLOW_ACTION_POSTGRES_TEST_AUTHORIZED=true WORKFLOW_ACTION_TEST_DATABASE_URL='postgresql+asyncpg://phase_e_test@127.0.0.1:55443/uix09_phase_e_20260728_workflow_execution_test' WORKFLOW_ACTION_AUTHORIZED_TARGET='127.0.0.1:55443/uix09_phase_e_20260728_workflow_execution_test' bash scripts/verify-workflow-action-migration.sh
-```
 
-每个脚本必须打印 current-head `202610210057` 通过并执行对应 dedicated suite。任何无法执行的 gate 记为 BLOCKED。结束后：
+cleanup
+trap - EXIT INT TERM
 
-```bash
-docker rm -f s0-gate-planner-pg s0-gate-lineage-pg s0-gate-cg-pg   s0-gate-exec-pg s0-gate-executor-pg s0-gate-action-pg >/dev/null 2>&1 || true
-test -z "$(docker ps -a --filter name=s0-gate --format '{{.Names}}')"
+test -z "$(docker ps -a --filter name=s0-gate --format '{{.Names}}' || true)"
 for port in 55443 55451 55452 55453 55454 55455; do
-  test -z "$(lsof -nP -iTCP:$port -sTCP:LISTEN)"
+  test -z "$(lsof -nP -iTCP:"$port" -sTCP:LISTEN || true)"
 done
+printf '%s\n' "all six gates green; containers and ports released"
 ```
+
+任何一个 gate 未跑到 current-head 通过并执行完对应 dedicated suite，就是该 gate 失败：整块以非零退出（`trap` 仍会清理），把失败 gate 记为 `BLOCKED`，并且**不得**继续 Step 3 之后到 Step 9 建 v2 标签的任何步骤。不得把四个 gate 绿、两个 `BLOCKED` 当成切片可交付。
 
 - [ ] **Step 3: contracts and invariants**
 
