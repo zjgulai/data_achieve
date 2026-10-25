@@ -11,6 +11,8 @@ from mcp_types import ToolAnnotations
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.mcp_runtime.access_control import (
     AccessDecision,
+    assert_endpoint_allowed,
+    assert_endpoints_allowed,
     governed_mcp_tool,
     resolve_bound_project,
 )
@@ -47,7 +49,7 @@ from data_intelligence_hub.services.answer_service import (
     workspace_answer as run_workspace_answer,
 )
 from data_intelligence_hub.services.research_service import start_research
-from data_intelligence_hub.services.tiktok_tools import run_tiktok_tool
+from data_intelligence_hub.services.tiktok_tools import TOOL_ENDPOINTS, run_tiktok_tool
 
 
 def _parse_project_id(value: str) -> uuid.UUID:
@@ -265,6 +267,9 @@ async def collect(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        # 端点级白名单：配置了才生效，全局 token 不受限。挂在能力校验之前，
+        # 未授权端点连存在性都不探测。
+        assert_endpoint_allowed(decision.identity, endpoint_type)
         try:
             endpoint = await get_capability(endpoint_type)
         except CapabilityNotFoundError as exc:
@@ -356,6 +361,7 @@ async def web_search(
         endpoint_type = _SEARCH_ENDPOINTS.get(search_type)
         if endpoint_type is None:
             raise ValueError("search_type_invalid")
+        assert_endpoint_allowed(decision.identity, endpoint_type)
         params: dict[str, object] = {
             "query": query,
             "num_results": num_results,
@@ -399,6 +405,7 @@ async def web_fetch(
         endpoint_type = _FETCH_ENDPOINTS.get(provider)
         if endpoint_type is None:
             raise ValueError("provider_not_supported")
+        assert_endpoint_allowed(decision.identity, endpoint_type)
         if not urls:
             raise ValueError("urls_required")
         if provider == "jina":
@@ -437,6 +444,7 @@ async def answer(
             params["output_schema"] = output_schema
         if text:
             params["text"] = True
+        assert_endpoint_allowed(decision.identity, "exa_answer")
         return await _run_tool(decision, "answer", "exa_answer", project_id, params)
 
 
@@ -472,6 +480,7 @@ async def deep_research(
             params["system_prompt"] = system_prompt
         if include_domains:
             params["include_domains"] = include_domains
+        assert_endpoint_allowed(decision.identity, "exa_deep_research")
         return await _run_tool(decision, "deep_research", "exa_deep_research", project_id, params)
 
 
@@ -509,6 +518,7 @@ async def create_monitor(
     async with governed_mcp_tool(
         context, "create_monitor", project_id=project_id, is_collect=True
     ) as decision:
+        assert_endpoint_allowed(decision.identity, endpoint_type)
         workspace = await _monitor_workspace(context)
         bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
@@ -637,6 +647,7 @@ async def deep_research_start(
     async with governed_mcp_tool(
         context, "deep_research_start", project_id=project_id, is_collect=True
     ) as decision:
+        assert_endpoint_allowed(decision.identity, "exa_agent_research")
         workspace = await _monitor_workspace(context)
         bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
@@ -708,6 +719,8 @@ async def enrich_list(
     async with governed_mcp_tool(
         context, "enrich_list", project_id=project_id, is_collect=True
     ) as decision:
+        # 富集每行都走 Exa 搜索；端点名是采集器内部的 exa_search_auto。
+        assert_endpoint_allowed(decision.identity, "exa_search_auto")
         workspace = await _monitor_workspace(context)
         bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
@@ -883,6 +896,7 @@ async def tiktok_trend_rank(
     async with governed_mcp_tool(
         context, "tiktok_trend_rank", project_id=project_id, is_collect=True
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_trend_rank"])
         result = await run_tiktok_tool(
             "tiktok_trend_rank",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -913,6 +927,7 @@ async def tiktok_hashtag_videos(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_hashtag_videos"])
         result = await run_tiktok_tool(
             "tiktok_hashtag_videos",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -946,6 +961,7 @@ async def tiktok_video_search(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_video_search"])
         result = await run_tiktok_tool(
             "tiktok_video_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -974,6 +990,7 @@ async def tiktok_video_detail(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_video_detail"])
         result = await run_tiktok_tool(
             "tiktok_video_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1004,6 +1021,7 @@ async def tiktok_video_comments(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_video_comments"])
         result = await run_tiktok_tool(
             "tiktok_video_comments",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1040,6 +1058,7 @@ async def tiktok_creator_profile(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_creator_profile"])
         result = await run_tiktok_tool(
             "tiktok_creator_profile",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1074,6 +1093,7 @@ async def tiktok_creator_search(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_creator_search"])
         result = await run_tiktok_tool(
             "tiktok_creator_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1102,6 +1122,7 @@ async def tiktok_transcript(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_transcript"])
         result = await run_tiktok_tool(
             "tiktok_transcript",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1131,6 +1152,7 @@ async def tiktok_product_search(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_product_search"])
         result = await run_tiktok_tool(
             "tiktok_product_search",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1160,6 +1182,7 @@ async def tiktok_product_detail(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_product_detail"])
         result = await run_tiktok_tool(
             "tiktok_product_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1193,6 +1216,7 @@ async def tiktok_product_reviews(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_product_reviews"])
         result = await run_tiktok_tool(
             "tiktok_product_reviews",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1221,6 +1245,7 @@ async def tiktok_creator_commerce(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_creator_commerce"])
         result = await run_tiktok_tool(
             "tiktok_creator_commerce",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1248,6 +1273,7 @@ async def tiktok_video_products(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_video_products"])
         result = await run_tiktok_tool(
             "tiktok_video_products",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1276,6 +1302,7 @@ async def tiktok_creator_showcase(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_creator_showcase"])
         result = await run_tiktok_tool(
             "tiktok_creator_showcase",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1305,6 +1332,7 @@ async def tiktok_ads_top(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_ads_top"])
         result = await run_tiktok_tool(
             "tiktok_ads_top",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),
@@ -1332,6 +1360,7 @@ async def tiktok_ads_detail(
         project_id=project_id,
         is_collect=True,
     ) as decision:
+        assert_endpoints_allowed(decision.identity, TOOL_ENDPOINTS["tiktok_ads_detail"])
         result = await run_tiktok_tool(
             "tiktok_ads_detail",
             resolve_bound_project(decision.identity, _parse_project_id(project_id)),

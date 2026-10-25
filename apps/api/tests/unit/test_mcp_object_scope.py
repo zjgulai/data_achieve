@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -26,6 +26,7 @@ from mcp.client import Client
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.mcp_runtime import access_control, run_service
 from data_intelligence_hub.mcp_runtime import server as server_module
 from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
@@ -564,6 +565,197 @@ def test_object_scoped_tools_pass_identity_project_id() -> None:
         assert "project_id=_identity_project_id(identity)" in source or (
             "project_id=project_id" in source
         ), name
+
+
+# ── 端点级白名单（SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS）──────────────────
+
+
+@pytest.fixture()
+def endpoint_allowlist(monkeypatch: pytest.MonkeyPatch) -> Callable[[set[str] | None], None]:
+    """替换 get_settings，把端点白名单设成给定集合（None = 未配置）。"""
+
+    def apply(allowed: set[str] | None) -> None:
+        base = get_settings()
+        patched = base.model_copy(update={"mcp_collect_allowed_endpoints": allowed})
+        monkeypatch.setattr(access_control, "get_settings", lambda: patched)
+
+    return apply
+
+
+async def test_collect_rejects_endpoint_outside_allowlist(
+    bound_key: _Scope,
+    endpoint_allowlist: Callable[[set[str] | None], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """配置白名单后，密钥调 collect 打未授权端点 → tool_not_allowed。"""
+    endpoint_allowlist({"exa_search_lite"})
+    captured: list[object] = []
+
+    async def fake_collect(*args, **kwargs):
+        captured.append(args)
+        raise AssertionError("should not execute")
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    with pytest.raises(ValueError, match="tool_not_allowed"):
+        await server_module.collect(
+            _stub_context(),
+            "exa_deep_research",
+            str(bound_key.project_a),
+            {"query": "q"},
+        )
+    assert captured == []
+
+
+async def test_collect_allows_endpoint_inside_allowlist(
+    bound_key: _Scope,
+    endpoint_allowlist: Callable[[set[str] | None], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    endpoint_allowlist({"exa_search_lite"})
+    captured: list[dict[str, object]] = []
+
+    async def fake_collect(endpoint_type, project_id, params, **kwargs):
+        captured.append({"endpoint_type": endpoint_type})
+        raise AssertionError("stop here: gate passed, capability layer mocked out")
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    with pytest.raises(AssertionError, match="stop here"):
+        await server_module.collect(
+            _stub_context(),
+            "exa_search_lite",
+            str(bound_key.project_a),
+            {"query": "q"},
+        )
+    assert captured == [{"endpoint_type": "exa_search_lite"}]
+
+
+async def test_default_allowlist_is_no_restriction(
+    bound_key: _Scope,
+    endpoint_allowlist: Callable[[set[str] | None], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """未配置 → 允许全部端点，行为与改造前一致。"""
+    endpoint_allowlist(None)
+    captured: list[dict[str, object]] = []
+
+    async def fake_collect(endpoint_type, project_id, params, **kwargs):
+        captured.append({"endpoint_type": endpoint_type})
+        raise AssertionError("stop here: gate passed")
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    with pytest.raises(AssertionError, match="stop here"):
+        await server_module.collect(
+            _stub_context(),
+            "exa_deep_research",
+            str(bound_key.project_a),
+            {"query": "q"},
+        )
+    assert captured == [{"endpoint_type": "exa_deep_research"}]
+
+
+async def test_global_token_ignores_endpoint_allowlist(
+    global_token: _Scope,
+    endpoint_allowlist: Callable[[set[str] | None], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    endpoint_allowlist({"exa_search_lite"})
+    captured: list[dict[str, object]] = []
+
+    async def fake_collect(endpoint_type, project_id, params, **kwargs):
+        captured.append({"endpoint_type": endpoint_type})
+        raise AssertionError("stop here: gate skipped for global token")
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    with pytest.raises(AssertionError, match="stop here"):
+        await server_module.collect(
+            _stub_context(),
+            "exa_deep_research",
+            str(global_token.project_a),
+            {"query": "q"},
+        )
+    assert captured == [{"endpoint_type": "exa_deep_research"}]
+
+
+async def test_tiktok_tool_rejects_endpoint_outside_allowlist(
+    bound_key: _Scope,
+    endpoint_allowlist: Callable[[set[str] | None], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TikTok 工具按 TOOL_ENDPOINTS 判：必需端点不在白名单即拒绝。"""
+    endpoint_allowlist({"tikhub_tiktok_search_web"})
+    calls: list[object] = []
+
+    async def fake_tiktok(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("should not execute")
+
+    monkeypatch.setattr(server_module, "run_tiktok_tool", fake_tiktok)
+
+    # tiktok_trend_rank 需要 tikhub_tiktok_ads_trends，不在白名单里。
+    with pytest.raises(ValueError, match="tool_not_allowed"):
+        await server_module.tiktok_trend_rank(_stub_context(), str(bound_key.project_a))
+    assert calls == []
+
+
+async def test_tiktok_allowlist_covers_every_declared_endpoint() -> None:
+    """TOOL_ENDPOINTS 必须覆盖全部 16 个 TikTok 工具，且端点真实存在。"""
+    from data_intelligence_hub.platform_packages.service import get_capability
+    from data_intelligence_hub.services.tiktok_tools import TOOL_ENDPOINTS, TOOL_HANDLERS
+
+    assert set(TOOL_ENDPOINTS) == set(TOOL_HANDLERS)
+    for endpoints in TOOL_ENDPOINTS.values():
+        assert endpoints
+    for endpoints in TOOL_ENDPOINTS.values():
+        for endpoint in endpoints:
+            await get_capability(endpoint)
+
+
+def test_every_provider_calling_tool_is_endpoint_gated() -> None:
+    """结构性守卫：所有会打 provider 的 MCP 工具都必须在 server.py 里判端点。
+
+    判据用注册表的 ``consumes_quota != "none"``：扣额度等价于会产生外部调用。
+    唯一例外是 ``workspace_answer``——它登记为 per_call，但实现只查本地
+    raw_records，不调 provider，端点白名单对它没有意义。
+
+    防新执行工具接线时漏掉端点级白名单（本次 F4 的缺口正是这样来的）。
+    """
+    import ast
+    import pathlib
+
+    from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
+
+    local_only = {"workspace_answer"}
+    source = pathlib.Path(server_module.__file__).read_text(encoding="utf-8")
+    gated: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        tool = None
+        for call in ast.walk(node):
+            if not isinstance(call, ast.Call):
+                continue
+            name = getattr(call.func, "id", None) or getattr(call.func, "attr", None)
+            if name == "governed_mcp_tool" and len(call.args) >= 2:
+                if isinstance(call.args[1], ast.Constant):
+                    tool = call.args[1].value
+        if tool is None:
+            continue
+        text = ast.get_source_segment(source, node) or ""
+        if "assert_endpoint_allowed(" in text or "assert_endpoints_allowed(" in text:
+            gated.add(tool)
+
+    expected = {
+        name
+        for name, policy in TOOL_POLICIES.items()
+        if policy.consumes_quota != "none"
+    } - local_only
+    assert {"collect", "web_search", "web_fetch", "answer", "deep_research"} <= expected
+    assert {"create_monitor", "enrich_list", "deep_research_start"} <= expected
+    assert expected == gated, sorted(expected ^ gated)
 
 
 def _stub_context():

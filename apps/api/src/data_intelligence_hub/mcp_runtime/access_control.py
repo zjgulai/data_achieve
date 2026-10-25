@@ -9,15 +9,17 @@ governed_mcp_tool 把白名单、项目绑定、对象归属、额度扣减与�
 
 from __future__ import annotations
 
+import hmac
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 import structlog
 from mcp.server.mcpserver import Context
 
+from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import async_session_factory
 from data_intelligence_hub.mcp_runtime.auth import (
     ProjectApiKeyContext,
@@ -46,6 +48,76 @@ def resolve_bound_project(
     if identity is not None and parsed != identity.project_id:
         raise ValueError("project_not_found")
     return parsed
+
+
+def assert_endpoint_allowed(
+    identity: ProjectApiKeyContext | None,
+    endpoint_type: str,
+) -> None:
+    """执行型工具的端点级白名单。
+
+    只有配置了 ``SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS`` 才生效；未配置时
+    允许全部端点（保持现行为）。全局 token 不受限。目的：仅授权 collect
+    的密钥不能借通用工具打贵端点（如 exa_deep_research）。
+    """
+    if identity is None:
+        return
+    allowed = get_settings().mcp_collect_allowed_endpoints
+    if allowed is None:
+        return
+    if endpoint_type not in allowed:
+        raise ValueError("tool_not_allowed")
+
+
+def assert_endpoints_allowed(
+    identity: ProjectApiKeyContext | None,
+    endpoint_types: Iterable[str],
+) -> None:
+    """多端点工具：工具可能触及的每个端点都必须被允许。
+
+    宁可拒绝也不做部分执行：一次调用可能先打主端点再打兜底端点，
+    只允许其中一半会让结果取决于运行时分支。
+    """
+    for endpoint_type in endpoint_types:
+        assert_endpoint_allowed(identity, endpoint_type)
+
+
+def is_global_token(context: Context) -> bool:
+    """请求是否携带已配置的全局 token。
+
+    只与 ``accepted_mcp_tokens`` 比对，不看明文前缀：判定口径必须与
+    BearerTokenMiddleware 完全一致，否则两层会各放各的。
+    """
+    headers = context.headers or {}
+    authorization = headers.get("authorization", "")
+    if not authorization.startswith("Bearer "):
+        return False
+    return any(
+        hmac.compare_digest(authorization, f"Bearer {token}")
+        for token in get_settings().accepted_mcp_tokens
+    )
+
+
+def assert_anonymous_rejected_in_production(context: Context) -> None:
+    """生产环境拒绝既无项目密钥、又无全局 token 的匿名调用。
+
+    判据与 ``BearerTokenMiddleware`` 同源：Bearer 头命中 ``accepted_mcp_tokens``
+    即全局 token；否则 ``project_api_key_context`` 命中的是项目密钥。两者都没有
+    就是匿名。
+
+    中间件在生产已经 401（auth.py），这一层是把「工具入口仍然 fail-open」
+    的结构性缺口补上：即使将来中间件被绕过、或被单独挂载，工具入口也不会
+    按全局超级权限执行匿名请求。
+
+    本地 dev/demo 行为不变：``app_env != "production"`` 直接返回。
+    """
+    if get_settings().app_env != "production":
+        return
+    if project_api_key_context(context) is not None:
+        return
+    if is_global_token(context):
+        return
+    raise ValueError("project_key_not_found")
 
 
 @dataclass(frozen=True, slots=True)

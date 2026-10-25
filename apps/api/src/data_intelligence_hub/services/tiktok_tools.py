@@ -938,6 +938,44 @@ TOOL_HANDLERS = {
     "tiktok_ads_detail": tiktok_ads_detail,
 }
 
+# 每个工具可能触及的端点。MCP 端点级白名单
+# （SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS）按它判定。
+# 含兜底端点：只允许其中一半会让结果取决于运行时分支。
+TOOL_ENDPOINTS: dict[str, tuple[str, ...]] = {
+    "tiktok_trend_rank": ("tikhub_tiktok_ads_trends",),
+    "tiktok_hashtag_videos": (
+        "tikhub_tiktok_tag_posts_web",
+        "tikhub_tiktok_hashtag_posts",
+        "tikhub_tiktok_search_web",
+    ),
+    "tiktok_video_search": ("tikhub_tiktok_search_web",),
+    "tiktok_video_detail": ("tikhub_tiktok_video_detail", "apify_tiktok_scraper"),
+    "tiktok_video_comments": (
+        "tikhub_tiktok_comments_app",
+        "tikhub_tiktok_comment_replies_app",
+    ),
+    "tiktok_creator_profile": (
+        "tikhub_tiktok_sec_uid",
+        "tikhub_tiktok_user_profile_web",
+        "tikhub_tiktok_user_posts_web",
+        "tikhub_tiktok_user_fans_web",
+        "apify_tiktok_media_profile_scraper",
+    ),
+    "tiktok_creator_search": ("tikhub_tiktok_search_web",),
+    "tiktok_transcript": ("apify_tiktok_transcript_extractor",),
+    "tiktok_product_search": (
+        "apify_tiktok_shop_search_scraper",
+        "tikhub_tiktok_shop_search_v2",
+    ),
+    "tiktok_product_detail": ("apify_tiktok_shop_product_detail",),
+    "tiktok_product_reviews": ("tikhub_tiktok_shop_reviews_v2",),
+    "tiktok_creator_commerce": ("apify_tiktok_shop_creators",),
+    "tiktok_video_products": ("tikhub_tiktok_video_products",),
+    "tiktok_creator_showcase": ("tikhub_tiktok_creator_showcase",),
+    "tiktok_ads_top": ("tikhub_tiktok_top_ads",),
+    "tiktok_ads_detail": ("tikhub_tiktok_ads_detail",),
+}
+
 
 async def run_tiktok_tool(
     tool_id: str,

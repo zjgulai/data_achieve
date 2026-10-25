@@ -71,6 +71,14 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias="SCRAPY_MCP_DAILY_COLLECTS",
     )
+    # collect 与 16 个 TikTok 执行工具的端点级白名单。
+    # 默认 None = 允许全部端点（保持现行为，A/B 零变化）。
+    # 非空时只允许列出的 endpoint_type，其余返回 tool_not_allowed。
+    # 全局 token 不受限：它是运维超级权限。
+    mcp_collect_allowed_endpoints: frozenset[str] | None = Field(
+        default=None,
+        validation_alias="SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS",
+    )
 
     dataset_export_dir: str = "tmp/dataset-exports"
 
@@ -109,6 +117,25 @@ class Settings(BaseSettings):
     def parse_string_list(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @field_validator("mcp_collect_allowed_endpoints", mode="before")
+    @classmethod
+    def _parse_endpoint_allowlist(cls, value: object) -> object:
+        """逗号分隔字符串 → frozenset。空白或空串视为未配置（None）。
+
+        未配置必须与「配了但为空」区分：前者允许全部端点，
+        后者若返回空集合会让所有 collect 调用都失败。
+        """
+        if value is None:
+            return None
+        if isinstance(value, str):
+            items = [item.strip() for item in value.split(",")]
+            endpoints = frozenset(item for item in items if item)
+            return endpoints or None
+        if isinstance(value, frozenset | set | list | tuple):
+            endpoints = frozenset(str(item).strip() for item in value if str(item).strip())
+            return endpoints or None
         return value
 
     @field_validator("mcp_token", mode="before")
