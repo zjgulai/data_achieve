@@ -41,7 +41,10 @@ while IFS= read -r line; do
     "branch "*)    wt_branch="${line#branch refs/heads/}"
                    [ "$wt_path" = "$ROOT" ] && continue
 
-                   # 1) 位置是否在允许范围内
+                   # subagent 的临时工作树由工具自动创建与回收，不纳入本规范。
+                   case "$wt_path" in "$ROOT/.claude/worktrees/"*) continue ;; esac
+
+                   # 1) 位置是否在允许范围内。
                    case "$wt_path" in
                      "$ALLOWED_PREFIX"*|"$ROOT"|/private/tmp/*) ;;
                      *) outside+=("$wt_path ($wt_branch)"); hard_violations=1 ;;
@@ -79,14 +82,14 @@ fi
 
 if [ ${#redundant[@]} -gt 0 ]; then
   warn ""
-  warn "⚠ 补丁已全部在 $MAIN_BRANCH、可安全删除的分支："
+  warn "⚠ 补丁已全部在 ${MAIN_BRANCH}、可安全删除的分支："
   printf '   %s\n' "${redundant[@]}"
   warn "   删除方式：git worktree remove <路径> && git branch -d <分支>"
 fi
 
 if [ ${#outside[@]} -gt 0 ]; then
   warn ""
-  warn "✗ 工作树不在 $ALLOWED_PREFIX 之下："
+  warn "✗ 工作树不在 ${ALLOWED_PREFIX} 之下："
   printf '   %s\n' "${outside[@]}"
   warn "   处置：git worktree move <旧路径> \"$ALLOWED_PREFIX<短名>\""
 fi

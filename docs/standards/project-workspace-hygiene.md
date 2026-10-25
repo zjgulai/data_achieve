@@ -104,6 +104,7 @@ bash scripts/check_workspace_hygiene.sh --quiet   # 只报异常
 2. 删除 19 条完全合并的分支，包括 `rescue/`、`deploy/`、`peer-`、`tmp/`、`wip/outbound-` 等历史遗留。
 3. 删除 `feat/pg0-baseline-c0` 与 `feat/pg0-ruff-cleanup`：两者都是 `fix/s0-c0-hardening` 的祖先，工作已包含在内。
 4. 合并 `feat/sp41-catalog-guard` 修复 main 的 CI：`ci.yml` 引用了 `scripts/check_catalog_locks.py`，而该脚本原本只在特性分支上，`platform-packages` job 必定失败。
+5. 把 5 个保留的工作树用 `git worktree move` 迁入 `.worktrees/`。迁移后 `/Users/lute/Project/` 下不再有 `data_scrapy-*` 平级目录。
 
 保留的 5 条分支与理由：
 
@@ -120,5 +121,6 @@ bash scripts/check_workspace_hygiene.sh --quiet   # 只报异常
 
 ## 8. 后续动作
 
-1. 把上述 5 个工作树迁入 `.worktrees/`（`git worktree move`，不改分支）。
-2. 稳定后把巡检脚本接入 CI，`--quiet` 模式作为非阻断报告。
+1. 把巡检脚本接入 CI，`--quiet` 模式作为非阻断报告。稳定后再转为阻断。
+2. 两条存档分支 `codex/social-api-private-matrix-20260708` 与 `wip/snapshot-20261020` 确认无保留价值后可删。
+3. 每次合并分支后跑一次巡检，避免再次堆积。
