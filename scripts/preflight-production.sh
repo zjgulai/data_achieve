@@ -10,7 +10,10 @@ APP_DIR="${SCRAPY_PROD_APP_DIR:-/opt/data-achieve-scrapy/app}"
 ENV_FILE="${SCRAPY_PROD_ENV_FILE:-/opt/data-achieve-scrapy/.env.production}"
 PUBLIC_URL="${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}"
 EXPECTED_EDGE_IP="${SCRAPY_EXPECTED_EDGE_IP:-172.20.0.16}"
-EXPECTED_SCHEMA="${SCRAPY_EXPECTED_SCHEMA:-202610220056}"
+# N1 起期望 schema 是 057（monitors.project_key_id）。发布顺序必须是
+# 备份 → 迁移 → 发布；在迁移应用之前跑本脚本会按设计 FAIL，这是门禁语义，
+# 不是脚本缺陷。需要提前跑就用 SCRAPY_EXPECTED_SCHEMA 显式覆盖。
+EXPECTED_SCHEMA="${SCRAPY_EXPECTED_SCHEMA:-202610220057}"
 EXPECTED_TOOLS="${SCRAPY_EXPECTED_TIKTOK_TOOLS:-16}"
 FAIL=0
 

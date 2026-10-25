@@ -5,6 +5,8 @@ description: 生产 A（43.163.92.244）的发布重启手册。涵盖前置检�
 
 # 生产重启手册（生产 A）
 
+> 2026-10-25 N1：schema 期望 057（`monitors.project_key_id`）。发布顺序必须是备份 → 迁移 → 发布；迁移应用前跑前置检查会按设计 FAIL。
+
 ## 结论
 
 1. 只发布生产 A：`ubuntu@43.163.92.244`。
@@ -90,7 +92,7 @@ bash scripts/check-edge-fixed-ip.sh
 | 公网 `/api/health` | 200 |
 | edge 固定 IP | `172.20.0.16` |
 | API 容器 | healthy |
-| schema | `202610220056` |
+| schema | `202610220057` |
 | vault key | 44 字符 |
 | TikTok 工具 | 16 个 |
 
@@ -294,7 +296,7 @@ docker exec data_achieve_scrapy_api python -c \
 
 | 项目 | 期望值 |
 | --- | --- |
-| `schema_revision` | `202610220056` |
+| `schema_revision` | `202610220057` |
 | vault key 长度 | `44` |
 | TikTok 工具数 | `16` |
 
@@ -313,7 +315,7 @@ COMPOSE_FILE=/opt/data-achieve-scrapy/app/configs/deploy/scrapy/docker-compose.y
 出现以下任一情况时，停止发布并回滚：
 
 1. 公网 `/api/health` 非 200。
-2. schema 不是 `202610220056`。
+2. schema 不是 `202610220057`。
 3. `api` 或 `console` 不健康。
 4. edge 不在 `172.20.0.16`。
 5. 网关重载失败。
