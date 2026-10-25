@@ -955,6 +955,26 @@ async def test_global_token_still_limited_by_process_collect_budget(
     assert len(calls) == 2
 
 
+# ── 幂等重放扣 0：N2 前置条件登记（F8，无行为改动）──────────────────────
+
+
+def test_no_idempotency_replay_surface_in_n1() -> None:
+    """N1 的 MCP 工具面没有幂等重放面，「重放扣 0」随 N2 的 start_collect 落地。
+
+    这条测试是活文档兼守卫：一旦有人给 MCP 工具引入幂等键，
+    或把 TaskRun 幂等路径接到 MCP 上，这里必须同时补上「重放扣 0」的实现。
+    """
+    import inspect
+
+    import data_intelligence_hub.mcp_runtime.server as server_mod
+
+    source = inspect.getsource(server_mod)
+    assert "idempotency_key" not in source, (
+        "MCP server 开始接幂等键：必须在 governed_mcp_tool 里实现"
+        "「命中已有运行则不扣额度」，并把本条测试改成断言该行为"
+    )
+
+
 def _stub_context():
     """最小 MCP Context 替身：只提供 request_context.request.scope。"""
     from types import SimpleNamespace

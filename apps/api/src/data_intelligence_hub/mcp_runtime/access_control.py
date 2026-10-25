@@ -192,6 +192,16 @@ async def governed_mcp_tool(
                 raise ValueError("tool_not_allowed")
             # 4. 额度：per_call 在进入时扣；per_row_worker 由 worker 扣；
             #    per_scheduled_run 由调度执行扣。
+            #
+            #    spec §3.2.4 的原话是「扣额度（执行型且非重放）」。N1 没有幂等键，
+            #    所以「重放扣 0」在本批没有可实现的场景：
+            #    - collect / Exa / TikTok / monitor 的 MCP 路径都不传
+            #      idempotency_key_hash，不存在同键重放；
+            #    - 唯一的重放面是 task_runs 的 uq_task_runs_task_idempotency，
+            #      但它只对带幂等键的 HTTP 路径生效。
+            #    N2 引入 start_collect 时，幂等键与「重放扣 0」必须一并落地：
+            #    先按幂等键查已有 run，命中则直接返回且不调 consume_daily_quota。
+            #    在那之前，进入即扣是这个入口的正确语义。
             if policy.consumes_quota == "per_call":
                 async with async_session_factory() as session:
                     allowed = await consume_daily_quota(session, identity.key_id)
