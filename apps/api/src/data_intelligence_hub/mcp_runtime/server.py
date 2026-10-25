@@ -59,15 +59,6 @@ def _parse_project_id(value: str) -> uuid.UUID:
         raise ValueError("project_id_invalid") from exc
 
 
-def _assert_bound_project(
-    identity: ProjectApiKeyContext | None,
-    project_id: uuid.UUID,
-) -> uuid.UUID:
-    if identity is not None and project_id != identity.project_id:
-        raise ValueError("project_not_found")
-    return project_id
-
-
 # 供测试与密钥页枚举执行类 TikTok 工具；事实源是 tool_registry。
 _TIKTOK_TOOL_NAMES: tuple[str, ...] = TIKTOK_EXECUTE_TOOLS
 

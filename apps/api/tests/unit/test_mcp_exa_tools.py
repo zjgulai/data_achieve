@@ -179,8 +179,13 @@ def test_tool_allowed_layers() -> None:
 
 
 def test_project_key_cannot_switch_project() -> None:
+    """项目绑定校验的唯一实现是 resolve_bound_project。
+
+    曾经 server.py 里有一份同义的 _assert_bound_project，src 零调用、
+    只有本测试引用；已删，测试改为直接打真实实现。
+    """
+    from data_intelligence_hub.mcp_runtime.access_control import resolve_bound_project
     from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
-    from data_intelligence_hub.mcp_runtime.server import _assert_bound_project
 
     bound_project = uuid.uuid4()
     identity = ProjectApiKeyContext(
@@ -190,11 +195,11 @@ def test_project_key_cannot_switch_project() -> None:
         key_prefix="dih_test",
         label="test",
     )
-    assert _assert_bound_project(identity, bound_project) == bound_project
+    assert resolve_bound_project(identity, bound_project) == bound_project
     with pytest.raises(ValueError, match="project_not_found"):
-        _assert_bound_project(identity, uuid.uuid4())
+        resolve_bound_project(identity, uuid.uuid4())
     other = uuid.uuid4()
-    assert _assert_bound_project(None, other) == other
+    assert resolve_bound_project(None, other) == other
 
 
 # ── create_monitor 落库归属：密钥身份写 project_key_id，全局 token 留空 ──────
