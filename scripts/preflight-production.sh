@@ -1,35 +1,48 @@
 #!/usr/bin/env bash
 # Read-only preflight for Production A (43.163.92.244).
 # It never deploys, restarts, writes, or changes production state.
-set -uo pipefail
+set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOST="${SCRAPY_PROD_HOST:-ubuntu@43.163.92.244}"
-KEY="${SCRAPY_PROD_KEY:-$ROOT_DIR/../data_scrapy/zhoujian_pachong.pem}"
+KEY="${SCRAPY_PROD_KEY:-}"
 APP_DIR="${SCRAPY_PROD_APP_DIR:-/opt/data-achieve-scrapy/app}"
-ENV_FILE="${SCRAPY_PROD_ENV_FILE:-/opt/data-achieve-scrapy/.env.production}"
 PUBLIC_URL="${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}"
-EXPECTED_EDGE_IP="${SCRAPY_EXPECTED_EDGE_IP:-172.20.0.16}"
-# N1 起期望 schema 是 057（monitors.project_key_id）。发布顺序必须是
-# 备份 → 迁移 → 发布；在迁移应用之前跑本脚本会按设计 FAIL，这是门禁语义，
-# 不是脚本缺陷。需要提前跑就用 SCRAPY_EXPECTED_SCHEMA 显式覆盖。
-EXPECTED_SCHEMA="${SCRAPY_EXPECTED_SCHEMA:-202610220057}"
-EXPECTED_TOOLS="${SCRAPY_EXPECTED_TIKTOK_TOOLS:-16}"
+EDGE_FIXED_IP="${SCRAPY_EDGE_FIXED_IP:-172.20.0.16}"
+REMOTE_OUTPUT="/tmp/scrapy_preflight_remote.txt"
+REMOTE_ERROR="/tmp/scrapy_preflight_remote.err"
 FAIL=0
 
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1"; FAIL=1; }
 warn() { printf 'WARN  %s\n' "$1"; }
 
+remote_value() {
+  local key="$1"
+  local line
+
+  while IFS= read -r line; do
+    if [[ "$line" == "$key "* ]]; then
+      printf '%s\n' "${line#"$key "}"
+      return 0
+    fi
+  done < "$REMOTE_OUTPUT"
+  return 1
+}
+
+health_is_current() {
+  python3 -c 'import json, sys; data=json.load(sys.stdin); revision=data.get("schema_revision"); head=data.get("schema_head"); schema_matches=isinstance(revision, str) and bool(revision) and isinstance(head, str) and bool(head) and revision == head; ok=data.get("status") == "ok" and data.get("database") == "connected" and data.get("schema") == "current" and schema_matches; raise SystemExit(0 if ok else 1)'
+}
+
 echo "== Local =="
-cd "$ROOT_DIR" || exit 1
+cd "$ROOT_DIR"
 if [[ -z "$(git status --porcelain)" ]]; then
   pass "worktree clean"
 else
   warn "worktree has uncommitted changes"
 fi
 git fetch origin main --quiet 2>/dev/null || warn "git fetch failed"
-BEHIND="$(git rev-list --count HEAD..origin/main 2>/dev/null || echo unknown)"
+BEHIND="$(git rev-list --count HEAD..origin/main 2>/dev/null || printf 'unknown\n')"
 if [[ "$BEHIND" == "0" ]]; then
   pass "local branch contains origin/main"
 else
@@ -37,55 +50,70 @@ else
 fi
 
 echo "== Public =="
-HEALTH="$(curl -sS -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/health" || echo 000)"
-[[ "$HEALTH" == "200" ]] && pass "public health 200" || fail "public health $HEALTH"
-AUTH="$(curl -sS -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/tiktok/tools" || echo 000)"
-[[ "$AUTH" == "401" ]] && pass "TikTok tools require authentication" || fail "TikTok tools auth status $AUTH (expected 401)"
+PUBLIC_HEALTH="$(curl --connect-timeout 5 --max-time 15 -fsS "$PUBLIC_URL/api/health" 2>/dev/null || true)"
+if [[ -n "$PUBLIC_HEALTH" ]] && printf '%s' "$PUBLIC_HEALTH" | health_is_current 2>/dev/null; then
+  pass "public health and schema are current"
+else
+  fail "public health or schema is unhealthy"
+fi
+AUTH="$(curl --connect-timeout 5 --max-time 15 -fsS -o /dev/null -w '%{http_code}' "$PUBLIC_URL/api/tiktok/tools" 2>/dev/null || true)"
+[[ "$AUTH" == "401" ]] && pass "TikTok tools require authentication" || fail "TikTok tools auth status ${AUTH:-unreachable} (expected 401)"
 
 echo "== Remote =="
-ssh -i "$KEY" -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "
+if [[ -z "$KEY" || ! -f "$KEY" ]]; then
+  fail "production SSH key missing"
+else
+  if ! ssh -i "$KEY" \
+    -o BatchMode=yes \
+    -o ConnectTimeout=10 \
+    -o StrictHostKeyChecking=no \
+    "$HOST" "
 cd '$APP_DIR' || exit 1
-echo -n 'HEAD '
+printf 'HEAD '
 git rev-parse --short HEAD
-echo -n 'STATUS '
-if [ -z \"\$(git status --porcelain)\" ]; then echo clean; else echo dirty; fi
-echo -n 'EDGE '
-docker inspect data_achieve_scrapy_edge --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}'
-echo -n 'API '
-docker ps --filter name=data_achieve_scrapy_api --format '{{.Status}}'
-echo -n 'VAULT_KEY_LEN '
+printf 'EDGE_IP '
+docker inspect -f '{{with index .NetworkSettings.Networks \"lighthouse_ai_video_net\"}}{{.IPAddress}}{{end}}' data_achieve_scrapy_edge
+printf 'API_HEALTH '
+docker inspect -f '{{.State.Health.Status}}' data_achieve_scrapy_api
+printf 'VAULT_KEY_LEN '
 docker exec data_achieve_scrapy_api python -c 'import os; print(len(os.environ.get(\"PLATFORM_CREDENTIAL_MASTER_KEY\",\"\")))'
-echo -n 'TOOL_COUNT '
+printf 'TIKTOK_TOOL_COUNT '
 docker exec data_achieve_scrapy_api python -c 'from data_intelligence_hub.services.tiktok_tools import TOOL_SPECS; print(len(TOOL_SPECS))'
-echo -n 'SCHEMA '
-docker exec data_achieve_scrapy_api python -c 'import urllib.request; print(urllib.request.urlopen(\"http://127.0.0.1:8000/api/health\", timeout=3).read().decode())'
-" > /tmp/scrapy_preflight_remote.txt 2>&1
+" > "$REMOTE_OUTPUT" 2> "$REMOTE_ERROR"; then
+    fail "remote command failed"
+  fi
 
-grep -q '^HEAD ' /tmp/scrapy_preflight_remote.txt && pass "remote reachable" || fail "remote unreachable"
-if grep -q "EDGE .*$EXPECTED_EDGE_IP" /tmp/scrapy_preflight_remote.txt; then
-  pass "edge fixed IP $EXPECTED_EDGE_IP"
-else
-  fail "edge fixed IP missing $EXPECTED_EDGE_IP (see /tmp/scrapy_preflight_remote.txt)"
-fi
-if grep -q '^API Up .*healthy' /tmp/scrapy_preflight_remote.txt; then
-  pass "API healthy"
-else
-  fail "API not healthy"
-fi
-if grep -q '^VAULT_KEY_LEN 44' /tmp/scrapy_preflight_remote.txt; then
-  pass "vault key is a valid 44-char Fernet key"
-else
-  fail "vault key missing or invalid (expected 44 chars)"
-fi
-if grep -q "^TOOL_COUNT $EXPECTED_TOOLS$" /tmp/scrapy_preflight_remote.txt; then
-  pass "TikTok tools = $EXPECTED_TOOLS"
-else
-  fail "TikTok tool count mismatch"
-fi
-if grep -q "\"schema_revision\":\"$EXPECTED_SCHEMA\"" /tmp/scrapy_preflight_remote.txt; then
-  pass "schema revision $EXPECTED_SCHEMA"
-else
-  fail "schema revision mismatch (expected $EXPECTED_SCHEMA)"
+  REMOTE_HEAD="$(remote_value HEAD || true)"
+  EDGE_IP="$(remote_value EDGE_IP || true)"
+  API_HEALTH="$(remote_value API_HEALTH || true)"
+  VAULT_KEY_LEN="$(remote_value VAULT_KEY_LEN || true)"
+  TIKTOK_TOOL_COUNT="$(remote_value TIKTOK_TOOL_COUNT || true)"
+
+  if [[ "$REMOTE_HEAD" =~ ^[0-9a-f]{7,}$ ]]; then
+    pass "remote HEAD is a valid commit ID"
+  else
+    fail "remote HEAD is invalid"
+  fi
+  if [[ "$EDGE_IP" == "$EDGE_FIXED_IP" ]]; then
+    pass "edge fixed IP $EDGE_FIXED_IP"
+  else
+    fail "edge fixed IP mismatch (expected $EDGE_FIXED_IP)"
+  fi
+  if [[ "$API_HEALTH" == "healthy" ]]; then
+    pass "API container is healthy"
+  else
+    fail "API container is unhealthy"
+  fi
+  if [[ "$VAULT_KEY_LEN" == "44" ]]; then
+    pass "vault key is a valid 44-char Fernet key"
+  else
+    fail "vault key missing or invalid (expected length 44)"
+  fi
+  if [[ "$TIKTOK_TOOL_COUNT" == "16" ]]; then
+    pass "TikTok tools = 16"
+  else
+    fail "TikTok tool count mismatch (expected 16)"
+  fi
 fi
 
 echo "== Result =="

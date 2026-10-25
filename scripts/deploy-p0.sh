@@ -6,6 +6,11 @@
 #   1. 发布模式（默认）：拉源码，构建并替换 api 与 console。
 #   2. 批准模式（--grants-file）：只更新外访域名批准，不构建镜像。
 #
+# 发布模式的准入顺序：目标策略 → 本地检查 → 生产 A 只读 preflight →
+# 远端同步检查 → 发布。任何一步失败都不进入下一步。
+# 生产 B 的 preflight 尚未接入，因此 b 与 both 的代码发布一律拒绝；
+# 批准模式不受此限制。
+#
 # 不重建 web、db 与共享网关。构建后用新镜像执行 alembic upgrade head；
 # 迁移失败会中止发布，旧容器继续服务。重建 api/console 后必须重启 edge，
 # 否则 edge 缓存旧容器 IP，公网 502。替换完容器还会尝试重载共享网关
@@ -49,9 +54,12 @@ usage() {
 
 选项：
   --host <a|b|both>     选择生产目标。
+                        a：支持代码发布。
+                        b、both：B 门禁完成前拒绝代码发布。批准模式仍可使用。
   --grants-file <路径>  只更新外访域名批准。文件内容为 JSON 数组。
                         此模式不构建镜像，只替换 api 容器并重启 edge。
   --dry-run             只打印将要执行的命令，不做任何改动。
+                        代码发布模式仍执行只读 preflight。
   -h, --help            显示本帮助。
 
 环境变量：
@@ -212,6 +220,21 @@ for g in json.loads(sys.argv[1]):
 PY
 }
 
+# ---------- 目标策略 ----------
+
+# 代码发布的目标准入。生产 B 的 preflight 尚未接入，因此拒绝 b 与 both。
+# 必须在 preflight_local 与密钥查找之前调用：目标不支持时不应触碰本地状态。
+# 批准模式不经过这里。
+require_supported_deploy_target() {
+  case "$HOST" in
+    a) return 0 ;;
+    b|both)
+      die "生产 B 的 preflight 尚未接入。请使用 --host a，或先完成 B 门禁。"
+      ;;
+    *) die "host 只能是 a、b 或 both" ;;
+  esac
+}
+
 # ---------- 本地检查 ----------
 
 preflight_local() {
@@ -241,6 +264,20 @@ preflight_local() {
     echo "== 批准文件 =="
     load_grants
   fi
+}
+
+# 生产 A 的只读 preflight。任何一项检查失败即中止，不进入发布。
+# 检查逻辑在 scripts/preflight-production.sh，本函数只传目标信息。
+# preflight 脚本自身以退出码表达结论，这里不再解析输出。
+preflight_production_a() {
+  echo
+  echo "== 生产 A 只读 preflight =="
+  SCRAPY_PROD_KEY="$A_KEY" \
+  SCRAPY_PROD_HOST="$A_SSH" \
+  SCRAPY_PUBLIC_URL="$A_URL" \
+    bash "$ROOT_DIR/scripts/preflight-production.sh" \
+    || die "生产 A preflight 未通过，停止发布"
+  echo "preflight 总体 PASS"
 }
 
 # 远端分支必须已指向本地 HEAD。逐个分支校验。
@@ -680,10 +717,9 @@ print(len(rows), keyed, blocked)
 
 # ---------- 主流程 ----------
 
-preflight_local
-
+# 批准模式先判断：它不动代码，因此不经过目标策略与生产 preflight。
 if [[ -n "$GRANTS_FILE" ]]; then
-  # 批准模式不动代码，跳过远端同步检查。
+  preflight_local
   if [[ "$HOST" == "a" || "$HOST" == "both" ]]; then
     apply_grants_one A "$A_KEY" "$A_SSH" "$A_URL"
   fi
@@ -695,16 +731,19 @@ if [[ -n "$GRANTS_FILE" ]]; then
   exit 0
 fi
 
+# 代码发布：目标策略在本地检查与密钥查找之前，失败时不触碰任何本地状态。
+require_supported_deploy_target
+
+preflight_local
+preflight_production_a
 check_remote_branches
 
-if [[ "$HOST" == "a" || "$HOST" == "both" ]]; then
+if [[ "$HOST" == "a" ]]; then
   deploy_one A "$A_KEY" "$A_SSH" "$A_BRANCH" "$A_URL"
-  verify_public "$A_URL"
-fi
-
-if [[ "$HOST" == "b" || "$HOST" == "both" ]]; then
-  deploy_one B "$B_KEY" "$B_SSH" "$B_BRANCH" "$B_URL"
-  verify_public "$B_URL"
+  # dry-run 只打印命令，没有真实发布产物，公网验收没有意义。
+  if [[ "$DRY_RUN" != "1" ]]; then
+    verify_public "$A_URL"
+  fi
 fi
 
 echo

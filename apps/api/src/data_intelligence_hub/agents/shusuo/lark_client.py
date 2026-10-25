@@ -114,6 +114,22 @@ async def reply_text(message_id: str, text: str) -> str:
     return str(data.get("message_id", ""))
 
 
+async def reply_card(message_id: str, card: dict[str, Any]) -> str:
+    """以交互卡片回复一条消息。返回新消息 ID。
+
+    失败抛 LarkAPIError/httpx 异常，由调用方降级为文本回复。
+    """
+    data = await _request(
+        "POST",
+        f"/im/v1/messages/{message_id}/reply",
+        payload={
+            "msg_type": "interactive",
+            "content": json.dumps(card, ensure_ascii=False),
+        },
+    )
+    return str(data.get("message_id", ""))
+
+
 async def send_text(receive_id: str, text: str, *, receive_id_type: str = "chat_id") -> str:
     data = await _request(
         "POST",
