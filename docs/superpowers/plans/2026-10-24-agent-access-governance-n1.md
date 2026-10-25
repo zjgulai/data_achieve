@@ -798,6 +798,12 @@ git commit -m "feat(keys): 项目密钥 PATCH 原地更新与 MCP 策略只读�
 
 ### Task 5: 监控额度归属与定时扣减
 
+> **执行修订（2026-10-25，用户裁决）**：本分支迁移头是 `202610220056`，C3 的 059 依赖的
+> 202610220058（C2）与 202610210057（B5）均不在本分支，照 C3 原文创建 059 会断链。
+> 经裁决改为自建 `202610220057_monitors_project_key.py`（`down_revision="202610220056"`）；
+> C0/C2 变更请求（058 重挂到 057 之后）已登记 ledger。下方 Files/Step 3 中所有
+> 「202610220059」按此替换理解，实际实现以 `.superpowers/sdd/.../task-5-brief.md` 为准。
+
 **Files:**
 - Modify: `apps/api/alembic/versions/202610220059_project_keys_credentials_scope.py`（按 C3 Task 2 的文件，在其 upgrade 中追加 `monitors.project_key_id`；该文件由 C3 拥有，本任务在 C3 合并前由本计划以 C3 计划原文创建）
 - Modify: `apps/api/src/data_intelligence_hub/models/monitor.py`
