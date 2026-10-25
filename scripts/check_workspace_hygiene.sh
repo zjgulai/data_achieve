@@ -74,6 +74,15 @@ say "=== 工作区卫生报告 ==="
 say "主仓：$ROOT"
 say "工作树总数：$(git worktree list | wc -l | tr -d ' ')"
 
+# 仓库内的 hook 不会随 clone 自动生效，这里主动提醒。
+hooks_path="$(git config --get core.hooksPath 2>/dev/null || true)"
+if [ "$hooks_path" != ".githooks" ]; then
+  warn ""
+  warn "⚠ 仓库 hook 未启用（core.hooksPath=${hooks_path:-未设置}）。"
+  warn "   影响：提交前的文件完整性检查、合并后的工作区巡检都不会运行。"
+  warn "   修复：git config core.hooksPath .githooks"
+fi
+
 if [ "$QUIET" -eq 0 ]; then
   say ""
   say "── 仍持有未发布工作的分支"
