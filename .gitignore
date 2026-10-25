@@ -64,6 +64,9 @@ docs/playbooks/platforms/
 .gitnexus/
 data_scrapy-apify-docs/
 
+# 并行工作树统一放在主仓内，见 docs/standards/project-workspace-hygiene.md
+.worktrees/
+
 # Large generated files
 *.html
 !apps/scraper-console/public/**/*.html
