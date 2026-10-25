@@ -91,7 +91,9 @@ bash scripts/check_workspace_hygiene.sh --quiet   # 只报异常
 
 退出码 1 只在「位置不合规」或「有未提交改动」时出现，其余是建议。
 
-节奏：每次合并分支后跑一次；每周固定跑一次全量。
+`.claude/worktrees/` 下的 subagent 临时工作树由工具自动回收，脚本不纳入统计。
+
+节奏：`.githooks/post-merge` 每次合并后自动跑一次 `--quiet`；每周再跑一次全量。
 
 ## 7. 2026-10-25 首次执行记录
 
@@ -116,11 +118,27 @@ bash scripts/check_workspace_hygiene.sh --quiet   # 只报异常
 | `feat/b5-workbench` | 10 | 洞察工作台 B5 |
 | `feat/b4-report-contract` | 4 | 报告渲染器 |
 
-另保留两条无工作树的存档分支：`codex/social-api-private-matrix-20260708`、`wip/snapshot-20261020`。
-如需彻底收敛，确认后可删。
+6. 删除两条存档分支，留档备查：
+
+   | 分支 | 删除前 HEAD | 日期 | 说明 |
+   | --- | --- | --- | --- |
+   | `codex/social-api-private-matrix-20260708` | `b2e264a` | 2026-10-09 | 旧 TikTok CDO agent，已被后续实现取代 |
+   | `wip/snapshot-20261020` | `d17a76e` | 2026-10-20 | 同步前的整仓快照，无独立价值 |
+
+   两者各只有 1 个相对 main 的真实新增提交，需要时可用
+   `git show <sha>` 或 `git reflog` 找回。
 
 ## 8. 后续动作
 
-1. 把巡检脚本接入 CI，`--quiet` 模式作为非阻断报告。稳定后再转为阻断。
-2. 两条存档分支 `codex/social-api-private-matrix-20260708` 与 `wip/snapshot-20261020` 确认无保留价值后可删。
-3. 每次合并分支后跑一次巡检，避免再次堆积。
+1. 巡检脚本不接入 CI。GitHub Actions 的 checkout 只有单个工作树，巡检必然全绿，
+   那样的绿灯证明不了任何事。工作树堆积只发生在本地。
+2. 改为本地拦截：`.githooks/post-merge` 在每次合并后自动跑一次 `--quiet` 巡检，
+   只在有问题时输出，且永远不阻断合并。
+3. 仓库内的 hook 不会自动生效，需要每台机器执行一次：
+
+   ```bash
+   git config core.hooksPath .githooks
+   ```
+
+   该配置之前一直缺失，导致 `.githooks/pre-commit` 的文件完整性检查也从未运行。
+4. 每次合并分支后跑一次巡检，避免再次堆积。

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# 合并后提示工作区卫生问题。只提示，不阻断，永远返回 0。
+#
+# 为什么不在 CI 里做：GitHub Actions 的 checkout 只有一个工作树，
+# 巡检必然全绿，那样的绿灯证明不了任何事。工作树与分支堆积只发生在本地，
+# 所以拦在本地合并之后才有意义。
+#
+# 启用：git config core.hooksPath .githooks
+#
+set -uo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+CHECK="$ROOT_DIR/scripts/check_workspace_hygiene.sh"
+[ -x "$CHECK" ] || exit 0
+
+# --quiet 只在有问题时输出：可删分支、位置违规、未提交改动。
+bash "$CHECK" --quiet || true
+exit 0
