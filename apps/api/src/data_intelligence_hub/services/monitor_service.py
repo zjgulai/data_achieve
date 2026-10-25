@@ -47,6 +47,7 @@ async def create_monitor(
     endpoint_type: str,
     params: dict[str, Any],
     interval_hours: int,
+    project_key_id: uuid.UUID | None = None,
 ) -> Monitor:
     normalized_name = name.strip()
     if not normalized_name:
@@ -72,6 +73,7 @@ async def create_monitor(
         params=params,
         interval_hours=interval_hours,
         status="enabled",
+        project_key_id=project_key_id,
     )
     session.add(monitor)
     await session.flush()

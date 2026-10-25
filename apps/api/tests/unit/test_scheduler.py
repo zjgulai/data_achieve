@@ -15,6 +15,7 @@ from data_intelligence_hub.models import (
     CollectionTask,
     Notification,
     Project,
+    ProjectApiKey,
     Report,
     ReportAuditEvent,
     ReportSubscription,
@@ -27,6 +28,7 @@ from data_intelligence_hub.models import (
     Workspace,
     WorkspaceMember,
 )
+from data_intelligence_hub.models.monitor import Monitor
 from data_intelligence_hub.scheduler.cron import (
     UnsupportedCronExpression,
     cron_interval,
@@ -532,6 +534,118 @@ async def test_scheduler_tick_skips_when_another_owner_holds_lease() -> None:
     assert len(leases) == 1
     assert len(runs) == 1
     assert [tick.status for tick in ticks] == ["completed", "skipped_locked"]
+
+
+@pytest.mark.asyncio
+async def test_scheduler_skips_monitor_run_when_quota_exhausted() -> None:
+    session_factory, monitor_id = await _create_monitor_scenario(exhaust_quota=True)
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.started == 0  # 调度不启动真实执行
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+    assert len(runs) == 1
+    assert runs[0].status == "failed"
+    assert "quota_exceeded" in (runs[0].error_message or "")
+    # 通知已发出
+    async with session_factory() as session:
+        notes = list((await session.execute(select(Notification))).scalars().all())
+    quota_notes = [n for n in notes if n.notification_type == "monitor_quota_exhausted"]
+    assert len(quota_notes) == 1
+    assert quota_notes[0].reference_id == monitor_id
+
+
+@pytest.mark.asyncio
+async def test_scheduler_runs_monitor_with_available_quota() -> None:
+    # 同上构造，但 quota_used 保持 0；tick 后断言：
+    # result.started == 1；TaskRun status == "success"（manual_json 立即成功）；
+    # key.quota_used == 1（扣减生效）。
+    session_factory, monitor_id = await _create_monitor_scenario(exhaust_quota=False)
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.started == 1
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+        key = (await session.execute(select(ProjectApiKey))).scalar_one()
+        monitor = await session.get(Monitor, monitor_id)
+    assert len(runs) == 1
+    assert runs[0].status == "success"
+    assert key.quota_used == 1
+    assert monitor is not None
+    assert monitor.project_key_id == key.id
+
+
+async def _create_monitor_scenario(
+    *, exhaust_quota: bool
+) -> tuple[async_sessionmaker[AsyncSession], uuid.UUID]:
+    """建一条监控任务 + 一把日额度为 1 的项目密钥。
+
+    manual_json 采集器需要的 entity_type/json_data 在 source.config 里，
+    _collector_config 会把 source.config 与 task.config 合并，
+    因此 task.config 整体替换为 {"monitor_id", "endpoint_type"} 不影响执行。
+    """
+    session_factory = await _create_session_factory()
+    async with session_factory() as session:
+        task = await _create_collection_task(
+            session,
+            schedule_cron="* * * * *",
+            task_config={"monitor_id": "pending", "endpoint_type": "manual_json"},
+        )
+        user = (await session.execute(select(User))).scalars().first()
+        assert user is not None
+        key = ProjectApiKey(
+            project_id=task.project_id,
+            workspace_id=task.workspace_id,
+            label="sched",
+            key_prefix="dih_test",
+            key_hash=uuid.uuid4().hex * 2,
+            created_by_user_id=user.id,
+            tool_allowlist=["collect"],
+            daily_collect_quota=1,
+        )
+        session.add(key)
+        await session.flush()
+        monitor = Monitor(
+            workspace_id=task.workspace_id,
+            project_id=task.project_id,
+            name="m",
+            endpoint_type="manual_json",
+            params={},
+            interval_hours=1,
+            status="enabled",
+            task_id=task.id,
+            project_key_id=key.id,
+        )
+        session.add(monitor)
+        await session.flush()
+        # 把 task.config["monitor_id"] 指向真实 monitor.id。
+        task.config = {"monitor_id": str(monitor.id), "endpoint_type": "manual_json"}
+        await session.commit()
+        monitor_id = monitor.id
+
+    if exhaust_quota:
+        # 用尽当日额度。quota_date 必须同时拨到今天：
+        # consume_daily_quota 的 WHERE 对 quota_date IS NULL 走跨日归零分支，
+        # 只改 quota_used 拦不住。
+        async with session_factory() as session:
+            key_row = (await session.execute(select(ProjectApiKey))).scalar_one()
+            key_row.quota_date = datetime.now(UTC).date()
+            key_row.quota_used = key_row.daily_collect_quota
+            await session.commit()
+
+    return session_factory, monitor_id
 
 
 async def _create_session_factory() -> async_sessionmaker[AsyncSession]:

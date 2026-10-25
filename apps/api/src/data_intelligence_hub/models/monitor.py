@@ -33,6 +33,10 @@ class Monitor(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(20), default="enabled", nullable=False)
     # 执行任务的 id。暂停监控时同步暂停它。
     task_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("collection_tasks.id"))
+    # 创建该监控的项目密钥。调度器按它扣日额度；全局 token 创建的监控为空。
+    project_key_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project_api_keys.id")
+    )
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_new_count: Mapped[int | None] = mapped_column(Integer)
 

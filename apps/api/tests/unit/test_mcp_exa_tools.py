@@ -195,3 +195,208 @@ def test_project_key_cannot_switch_project() -> None:
         _assert_bound_project(identity, uuid.uuid4())
     other = uuid.uuid4()
     assert _assert_bound_project(None, other) == other
+
+
+# ── create_monitor 落库归属：密钥身份写 project_key_id，全局 token 留空 ──────
+
+
+async def test_create_monitor_stores_creating_key_id(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """项目密钥身份调 MCP create_monitor 后，monitor.project_key_id == identity.key_id。"""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from data_intelligence_hub.mcp_runtime import access_control
+    from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
+    from data_intelligence_hub.models import Base, Project, User
+    from data_intelligence_hub.models import Monitor as MonitorModel
+    from data_intelligence_hub.models.project_api_key import ProjectApiKey
+    from data_intelligence_hub.models.workspace import Workspace
+    from data_intelligence_hub.repositories.project_api_keys import create_key
+
+    identity = ProjectApiKeyContext(
+        key_id=uuid.uuid4(),
+        workspace_id=uuid.uuid4(),
+        project_id=uuid.uuid4(),
+        key_prefix="dih_n1",
+        label="n1",
+    )
+
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path / 'monitor_key.sqlite3'}",
+        poolclass=NullPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with factory() as session:
+        now = datetime.now(UTC)
+        user_id = uuid.uuid4()
+        user = User(
+            id=user_id,
+            email="monitor-key@example.com",
+            password_hash="x",
+            name="Owner",
+            status="active",
+            created_at=now,
+            updated_at=now,
+        )
+        workspace = Workspace(
+            id=identity.workspace_id,
+            name="Key WS",
+            slug=f"key-ws-{identity.workspace_id}",
+            owner_id=user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        project = Project(
+            id=identity.project_id,
+            workspace_id=identity.workspace_id,
+            name="Key Project",
+            description=None,
+            domain="mixed",
+            status="active",
+            owner_id=user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add_all([user, workspace, project])
+        await session.flush()
+        record = await create_key(
+            session,
+            project_id=identity.project_id,
+            workspace_id=identity.workspace_id,
+            label="n1",
+            key_prefix=identity.key_prefix,
+            key_hash="b" * 64,
+            created_by_user_id=user_id,
+            tool_allowlist=["create_monitor", "list_monitors"],
+            daily_collect_quota=10,
+        )
+        await session.commit()
+    # identity.key_id 必须等于库里的行 id，find_by_id 才能命中。
+    object.__setattr__(identity, "key_id", record.id)
+
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: identity)
+    # server.py 直接引用了 auth.project_api_key_context；_monitor_workspace 读的是
+    # server 命名空间里的名字，必须同时打补丁。
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: identity)
+    monkeypatch.setattr(access_control, "async_session_factory", factory)
+    monkeypatch.setattr(server_module, "async_session_factory", factory)
+
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        result = await client.call_tool(
+            "create_monitor",
+            {
+                "project_id": str(identity.project_id),
+                "name": "keyed",
+                "endpoint_type": "exa_search_lite",
+                "params": {"query": "q"},
+                "interval_hours": 1,
+            },
+        )
+
+    assert result.is_error is False
+    async with factory() as session:
+        monitor = (
+            await session.execute(select(MonitorModel))
+        ).scalars().one()
+        key = (await session.execute(select(ProjectApiKey))).scalar_one()
+    assert monitor.project_key_id == identity.key_id == key.id
+    await engine.dispose()
+
+
+async def test_create_monitor_global_token_leaves_key_id_null(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """全局 token 身份（无密钥上下文）时 project_key_id 落 NULL。"""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from data_intelligence_hub.models import Base, Project, User
+    from data_intelligence_hub.models import Monitor as MonitorModel
+    from data_intelligence_hub.models.workspace import Workspace
+
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path / 'monitor_global.sqlite3'}",
+        poolclass=NullPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with factory() as session:
+        now = datetime.now(UTC)
+        user_id = uuid.uuid4()
+        user = User(
+            id=user_id,
+            email="global@example.com",
+            password_hash="x",
+            name="Owner",
+            status="active",
+            created_at=now,
+            updated_at=now,
+        )
+        workspace = Workspace(
+            id=uuid.uuid4(),
+            name="Global WS",
+            slug="data-achieve-demo",
+            owner_id=user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        project = Project(
+            workspace_id=workspace.id,
+            name="Global Project",
+            description=None,
+            domain="mixed",
+            status="active",
+            owner_id=user_id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add_all([user, workspace, project])
+        await session.commit()
+
+    # 全局 token：不注入密钥身份。_monitor_workspace 走 demo workspace 分支。
+    # demo workspace 由 slug 命中，上一步已建。
+    async with factory() as session:
+        demo = (
+            await session.execute(
+                select(Workspace).where(Workspace.slug == "data-achieve-demo")
+            )
+        ).scalar_one()
+        project_row = (await session.execute(select(Project))).scalar_one()
+    assert demo is not None
+
+    # collect_capability 不被打到（create_monitor 不采集），
+    # 但 _monitor_workspace 的 async_session_factory 来自 server 模块命名空间。
+    monkeypatch.setattr(server_module, "async_session_factory", factory)
+
+    async with Client(mcp_server, raise_exceptions=False) as client:
+        result = await client.call_tool(
+            "create_monitor",
+            {
+                "project_id": str(project_row.id),
+                "name": "unkeyed",
+                "endpoint_type": "exa_search_lite",
+                "params": {"query": "q"},
+                "interval_hours": 1,
+            },
+        )
+
+    assert result.is_error is False
+    async with factory() as session:
+        monitor = (
+            await session.execute(select(MonitorModel))
+        ).scalars().one()
+    assert monitor.project_key_id is None
+    await engine.dispose()

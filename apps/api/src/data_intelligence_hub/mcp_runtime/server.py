@@ -507,6 +507,10 @@ async def create_monitor(
                 endpoint_type=endpoint_type,
                 params=params or {},
                 interval_hours=interval_hours,
+                # 密钥身份记进监控归属；调度器按它扣日额度。全局 token 为 None。
+                project_key_id=(
+                    decision.identity.key_id if decision.identity else None
+                ),
             )
         return _monitor_payload(monitor)
 

@@ -121,6 +121,44 @@ async def test_create_monitor_builds_task_and_cron(
 
 
 @pytest.mark.asyncio
+async def test_monitor_stores_creating_key_id(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        workspace = await _workspace(session)
+        key_id = uuid.uuid4()
+        monitor = await create_monitor(
+            session,
+            workspace=workspace,
+            project_id=_ids()["project"],
+            name="keyed",
+            endpoint_type="exa_search_lite",
+            params={"query": "q"},
+            interval_hours=1,
+            project_key_id=key_id,
+        )
+    assert monitor.project_key_id == key_id
+
+
+@pytest.mark.asyncio
+async def test_monitor_defaults_to_null_key_id(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    async with session_factory() as session:
+        workspace = await _workspace(session)
+        monitor = await create_monitor(
+            session,
+            workspace=workspace,
+            project_id=_ids()["project"],
+            name="unkeyed",
+            endpoint_type="exa_search_lite",
+            params={"query": "q"},
+            interval_hours=1,
+        )
+    assert monitor.project_key_id is None
+
+
+@pytest.mark.asyncio
 async def test_process_monitor_run_emits_signal_for_new_urls(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
