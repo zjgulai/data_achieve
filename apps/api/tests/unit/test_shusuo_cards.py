@@ -249,10 +249,13 @@ def test_success_card_keeps_secret_out_of_previews() -> None:
 
 def test_failure_card_shows_message_without_buttons() -> None:
     pending = _pending(_proposal())
-    card = cards.failure_card(pending, "原因：token=abc 已脱敏")
+    # 说明文字放在敏感键值之前。裸值后的普通散文无法与密钥值可靠区分，
+    # 脱敏器按 fail-closed 口径把它视为值的一部分。
+    card = cards.failure_card(pending, "原因：已脱敏 token=abc")
     text = _card_text(card)
     assert "采集未返回数据" in text
     assert "已脱敏" in text
+    assert "abc" not in text
     assert _buttons(card) == []
 
 
