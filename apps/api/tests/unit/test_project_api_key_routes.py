@@ -332,6 +332,48 @@ async def test_patch_updates_allowlist_and_quota(
 
 
 @pytest.mark.asyncio
+async def test_issue_rejects_unknown_tool(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """签发与 PATCH 对齐：未登记的工具名在签发时就被拒。"""
+    async with session_factory() as session:
+        context = await _context(session, _ids()["owner"], _ids()["workspace"])
+        with pytest.raises(HTTPException) as exc:
+            await issue_project_api_key(
+                _ids()["project"],
+                IssueProjectApiKeyRequest(
+                    label="bad", tool_allowlist=["not_a_tool"], daily_collect_quota=5
+                ),
+                session,
+                context,
+            )
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "unknown_tool_in_allowlist"
+
+
+@pytest.mark.asyncio
+async def test_issue_accepts_every_registered_tool(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """注册表里的任何工具名都能签发（校验只拒未登记的，不擅自收窄）。"""
+    from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
+
+    async with session_factory() as session:
+        context = await _context(session, _ids()["owner"], _ids()["workspace"])
+        issued = await issue_project_api_key(
+            _ids()["project"],
+            IssueProjectApiKeyRequest(
+                label="all",
+                tool_allowlist=sorted(TOOL_POLICIES),
+                daily_collect_quota=5,
+            ),
+            session,
+            context,
+        )
+    assert sorted(issued.tool_allowlist) == sorted(TOOL_POLICIES)
+
+
+@pytest.mark.asyncio
 async def test_patch_rejects_unknown_tool(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:

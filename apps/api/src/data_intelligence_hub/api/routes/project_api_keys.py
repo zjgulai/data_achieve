@@ -66,7 +66,24 @@ async def issue_project_api_key(
     session: SessionDep,
     context: AuthenticatedContextDep,
 ) -> IssuedProjectApiKeyResponse:
+    """签发一把项目密钥。
+
+    白名单规则与 PATCH 一致：工具名必须已在注册表登记，且不允许为空。
+    schema 的 min_length 已挡住空列表，这里再挡一道，两条路径共用同一组
+    错误码，客户端不必按接口分别处理。
+    """
     await _project_or_404(session, context, project_id)
+    unknown = [t for t in payload.tool_allowlist if t not in TOOL_POLICIES]
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="unknown_tool_in_allowlist",
+        )
+    if not payload.tool_allowlist:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="project_api_key_allowlist_required",
+        )
     try:
         issued = await issue_key(
             session,
@@ -131,7 +148,7 @@ async def patch_project_api_key(
 
     仅所有者（工作区所有者或项目所有者）可改；key 必须同时命中
     workspace+project 复合归属。白名单规则与签发一致：工具名必须
-    已在注册表登记，且不允许清空。两者都缺省时显式拒绝。
+    已在注册表登记，且不允许为空。两者都缺省时显式拒绝。
     """
     await _project_or_404(session, context, project_id)
     record = await session.get(ProjectApiKey, key_id)
