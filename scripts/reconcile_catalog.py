@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # ─── How to run ───
 # cd apps/api && uv run python ../../scripts/reconcile_catalog.py
-# cd apps/api && uv run python ../../scripts/reconcile_catalog.py --update-lock
 #
 # 对账四套目录数字，输出结构化摘要。
 #
-# 三套数字长期不一致是已知问题：
-#   - collector 声明（99）与注册实现（86）不同
-#   - endpoint 映射（290）与 generated 生成物（286/258）不同
-#   - 生产 API 返回的计数又是另一套
+# 单位说明：source_entry_count 是视图条目数（312）。
+# unique_endpoint_count 是唯一端点数（284）。
+# endpoint_mappings 也是唯一端点数（284）。
+# 两者不能混用。
 #
 # 本脚本只读地算差集与计数，供 CI 与人工复核使用。
-# --update-lock 会写入 configs/tool-catalog.lock.json，只在契约有意变更时用。
+# 锁文件请用 scripts/test_tool_catalog.py --update-lock 更新。
+# 平台包锁请用 scripts/generate_platform_packages.py --update-lock 更新。
 
 from __future__ import annotations
 
@@ -30,11 +30,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Reconcile catalog counts")
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--json", action="store_true", help="只输出 JSON")
-    parser.add_argument(
-        "--update-lock",
-        action="store_true",
-        help="写入 configs/tool-catalog.lock.json",
-    )
     return parser.parse_args()
 
 
@@ -62,6 +57,9 @@ def build_summary(root: Path) -> dict[str, object]:
         "collector_definitions": len(COLLECTOR_CATALOG),
         "collector_registered": len(COLLECTOR_REGISTRY),
         "collector_declared_without_impl": sorted(declared_types - set(COLLECTOR_REGISTRY)),
+        "collector_registered_without_declaration": sorted(
+            set(COLLECTOR_REGISTRY) - declared_types
+        ),
         "endpoint_mappings": len(mapping),
         "apify_defaults": len(apify_defaults),
         "apify_mapped": len(apify_mapped),
@@ -90,6 +88,7 @@ def build_summary(root: Path) -> dict[str, object]:
         generated = json.loads(generated_path.read_text(encoding="utf-8"))
         summary["generated"] = {
             "source_entry_count": generated.get("source_entry_count"),
+            "capability_count": generated.get("capability_count"),
             "unique_endpoint_count": generated.get("unique_endpoint_count"),
             "platform_count": generated.get("platform_count"),
             "catalog_digest": generated.get("catalog_digest"),
@@ -131,15 +130,21 @@ def check_invariants(summary: dict[str, object]) -> list[str]:
         problems.append(f"策略组合计 {total} 与去重后 {summary['policy_classified_total']} 不符")
 
     generated = summary.get("generated")
-    if (
-        isinstance(generated, dict)
-        and generated.get("source_entry_count") != summary["endpoint_mappings"]
-    ):
-        problems.append(
-            "generated 条目数 "
-            f"{generated.get('source_entry_count')} "
-            f"与端点映射 {summary['endpoint_mappings']} 不一致；生成物可能过期"
-        )
+    if isinstance(generated, dict):
+        # 生成物的唯一端点数与端点映射同单位，必须相等。
+        # 不要拿 source_entry_count（视图条目）与 endpoint_mappings 比较。
+        if generated.get("unique_endpoint_count") != summary["endpoint_mappings"]:
+            problems.append(
+                "generated 唯一端点数 "
+                f"{generated.get('unique_endpoint_count')} "
+                f"与端点映射 {summary['endpoint_mappings']} 不一致；生成物可能过期"
+            )
+        if generated.get("capability_count") != generated.get("source_entry_count"):
+            problems.append(
+                "generated capability_count "
+                f"{generated.get('capability_count')} "
+                f"与 source_entry_count {generated.get('source_entry_count')} 不一致"
+            )
     return problems
 
 
@@ -177,17 +182,6 @@ def main() -> int:
         else:
             print("\nOK: 全部不变量通过。")
 
-    if args.update_lock:
-        # 锁文件只有 `scripts/test_tool_catalog.py --update-lock` 一个写入方。
-        # 本脚本不写它：两者口径不同。
-        #   本脚本读生成的 platform-packages.json，可能落后于工作树；
-        #   锁文件记录运行期目录，由 test_tool_catalog 从源码实时构建。
-        # 之前这里也写锁文件，写出的数字与校验方读取的数字对不上，
-        # 导致「更新锁文件之后仍然 tool_lock_mismatch」。已移除写入路径。
-        print(
-            "\n提示：锁文件请用 scripts/test_tool_catalog.py --update-lock 更新。"
-            "本脚本只做对账，不写锁文件。"
-        )
 
     return 1 if problems else 0
 

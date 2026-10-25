@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 from data_intelligence_hub.platform_packages.models import (
@@ -32,6 +33,52 @@ def _display_name(platform_id: str) -> str:
         "regulatory": "监管公告",
     }
     return aliases.get(platform_id, platform_id.replace("_", " ").title())
+
+
+# 环境派生字段不参与目录内容摘要，也不参与跨环境比对。
+# policy_block_reason 与 verified_count 由运行时策略派生（COLLECTION_NETWORK_MODE
+# 与域名批准），同一份源码在不同环境取值不同。若把它们计入，
+# CI 锁文件比对、生成的 SKILL.md 标识与发布版本号都会随环境漂移。
+# 注意：pydantic 的 exclude 不会用扁平集合递归到嵌套模型，
+# 端点的 policy_block_reason 必须用 {"__all__": ...} 形式排除。
+# 详见 docs/standards/collection-outbound-safety.md 与 tool-catalog 契约。
+CATALOG_DIGEST_EXCLUDE: dict[str, Any] = {
+    "verified_count": True,
+    "endpoints": {"__all__": {"policy_block_reason"}},
+}
+CATALOG_CONTENT_EXCLUDE: dict[str, Any] = {
+    "packages": {"__all__": CATALOG_DIGEST_EXCLUDE},
+}
+
+
+def catalog_digest_payload(
+    packages: Iterable[PlatformPackage],
+) -> list[dict[str, Any]]:
+    """返回纳入 digest 的目录内容投影。
+
+    只保留跨环境稳定的字段。摘要不随运行策略变化。
+    """
+    return [
+        package.model_dump(mode="json", exclude=CATALOG_DIGEST_EXCLUDE)
+        for package in packages
+    ]
+
+
+def compute_catalog_digest(packages: Iterable[PlatformPackage]) -> str:
+    """计算目录内容摘要。同一份源码在任何环境得到同一 sha256。"""
+    payload = catalog_digest_payload(packages)
+    return hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()
+    ).hexdigest()
+
+
+def catalog_content_projection(catalog: PlatformPackageCatalog) -> dict[str, Any]:
+    """返回跨环境稳定的完整目录投影。
+
+    生成物比对与测试必须用它，不要复制排除清单。
+    剔除的字段由运行时策略派生：verified_count 与 policy_block_reason。
+    """
+    return catalog.model_dump(mode="json", exclude=CATALOG_CONTENT_EXCLUDE)
 
 
 def build_platform_package_catalog(
@@ -85,23 +132,8 @@ def build_platform_package_catalog(
         _build_package(platform_id, endpoints, notes_by_platform.get(platform_id))
         for platform_id, endpoints in sorted(by_platform.items())
     )
-    # 摘要标识「目录内容」，不是运行环境状态。
-    # policy_block_reason 与 verified_count 由运行时策略派生（COLLECTION_NETWORK_MODE
-    # 与域名批准），同一份源码在不同环境会得到不同摘要。若把它们计入，
-    # CI 锁文件比对、生成的 SKILL.md 标识与发布版本号都会随环境漂移。
-    # 注意：pydantic 的 exclude 不会用扁平集合递归到嵌套模型，
-    # 端点的 policy_block_reason 必须用 {"__all__": ...} 形式排除。
-    # 详见 docs/standards/collection-outbound-safety.md 与 tool-catalog 契约。
-    digest_exclude: dict[str, Any] = {
-        "verified_count": True,
-        "endpoints": {"__all__": {"policy_block_reason"}},
-    }
-    digest_payload = [
-        package.model_dump(mode="json", exclude=digest_exclude) for package in packages
-    ]
-    digest = hashlib.sha256(
-        json.dumps(digest_payload, ensure_ascii=False, sort_keys=True).encode()
-    ).hexdigest()
+    # 摘要标识「目录内容」，不是运行环境状态。排除清单见模块级常量。
+    digest = compute_catalog_digest(packages)
     return PlatformPackageCatalog(
         schema_version="platform-packages.v1",
         catalog_digest=digest,

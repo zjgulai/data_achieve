@@ -11,6 +11,7 @@ REST（GET /api/tool-catalog）、MCP（list_capabilities）、脚本
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -115,25 +116,31 @@ async def test_mcp_list_capabilities_returns_digest() -> None:
 # ---------------------------------------------------------------------------
 
 def test_script_digest_matches_service() -> None:
-    """reconcile_catalog.py --json 输出的摘要格式必须合法。"""
+    """reconcile_catalog.py 读到的生成物 digest 必须等于服务层。
 
+    生成物不在版本控制里。缺少生成物时直接失败，不 skip。
+    CI 必须先运行：
+      cd apps/api && uv run python ../../scripts/generate_platform_packages.py
+    """
     result = subprocess.run(
         [sys.executable, str(ROOT / "scripts/reconcile_catalog.py"), "--json"],
         capture_output=True,
         text=True,
         cwd=ROOT,
     )
-    assert result.returncode in (0, 1), result.stderr
+    assert result.returncode == 0, result.stderr + result.stdout
     payload = json.loads(result.stdout)
     generated = payload["summary"].get("generated")
-    if generated is None:
-        # `generated/` 在 .gitignore 里，全新 checkout 没有它。
-        # 生成物的新鲜度由 reconcile_catalog.py 的违规输出回答。
-        pytest.skip("generated/platform-packages.json 不存在（未纳入版本控制）")
+    assert generated is not None, (
+        "generated/platform-packages.json 不存在。"
+        "先在 apps/api 下运行 uv run python ../../scripts/generate_platform_packages.py"
+    )
+    assert payload["problems"] == []
     script_digest = generated.get("catalog_digest")
-    # 脚本读的是 generated/ 的生成物，会比工作树落后。
-    # 本测试只校验格式；一致性测试在 test_catalog_reconciliation 覆盖。
     assert isinstance(script_digest, str) and len(script_digest) == 64, (
         "脚本输出的 catalog_digest 格式非法"
     )
-    # 摘要说明：脚本与运行时不一定相同（生成物可能过期），但格式必须合法。
+    ref = asyncio.run(_reference_digest())
+    assert script_digest == ref, (
+        f"脚本 digest={script_digest!r} 与服务层 {ref!r} 不一致"
+    )
