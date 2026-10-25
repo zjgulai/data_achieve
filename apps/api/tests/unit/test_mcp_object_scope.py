@@ -442,6 +442,130 @@ async def test_workspace_answer_global_token_may_pick_project(
     assert captured == [{"project_id": global_token.project_a}]
 
 
+# ── 策略三字段参与运行时判定 ─────────────────────────────────────────────
+
+
+async def test_requires_project_guard_blocks_global_token_without_project(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """全局 token + bound_project 工具 + 未给 project_id → project_not_found。
+
+    ``web_search`` 的 project_id 是必填参数，正常调用不会走到这里；本用例
+    直接调 ``governed_mcp_tool``，把守卫本身当成被测对象（结构性防线）。
+    """
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    with pytest.raises(ValueError, match="project_not_found"):
+        async with access_control.governed_mcp_tool(_stub_context(), "web_search"):
+            pytest.fail("守卫必须在进入工具体之前生效")
+
+
+async def test_requires_project_guard_allows_global_token_with_project(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """全局 token 给出 project_id 时照旧放行（运维超级权限不回归）。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    async with access_control.governed_mcp_tool(
+        _stub_context(), "web_search", project_id=str(scope.project_a)
+    ) as decision:
+        assert decision.identity_type == "global_operator"
+
+
+async def test_requires_project_guard_skips_workspace_scope(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """scope=workspace 的工具（workspace_answer）不要求 project_id。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    async with access_control.governed_mcp_tool(
+        _stub_context(), "workspace_answer"
+    ) as decision:
+        assert decision.identity_type == "global_operator"
+
+
+async def test_requires_project_guard_skips_operator_scope(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """scope=operator 的工具（stop）不要求 project_id。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    async with access_control.governed_mcp_tool(_stub_context(), "stop") as decision:
+        assert decision.identity_type == "global_operator"
+
+
+async def test_control_tool_audit_carries_access_mode(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """stop 的审计事件带 access_mode=control，且不改变行为。"""
+    from structlog.testing import capture_logs
+
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    with capture_logs() as logs:
+        async with access_control.governed_mcp_tool(_stub_context(), "stop"):
+            pass
+
+    ok_events = [entry for entry in logs if entry["event"] == "mcp_tool_access_ok"]
+    assert len(ok_events) == 1
+    assert ok_events[0]["access_mode"] == "control"
+    assert ok_events[0]["tool"] == "stop"
+
+
+def test_bound_project_tools_pass_project_id_to_governance() -> None:
+    """结构性守卫：requires_project+bound_project 的工具必须在 server.py 传 project_id。
+
+    遍历 TOOL_POLICIES 与 server.py 的 AST，防新工具漏接项目绑定。
+    """
+    import ast
+    import pathlib
+
+    from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
+
+    source = pathlib.Path(server_module.__file__).read_text(encoding="utf-8")
+    calls: dict[str, set[str]] = {}
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = getattr(func, "id", None) or getattr(func, "attr", None)
+        if name != "governed_mcp_tool":
+            continue
+        if len(node.args) < 2 or not isinstance(node.args[1], ast.Constant):
+            continue
+        tool = node.args[1].value
+        calls.setdefault(tool, set()).update(
+            keyword.arg for keyword in node.keywords if keyword.arg
+        )
+
+    expected = {
+        name
+        for name, policy in TOOL_POLICIES.items()
+        if policy.requires_project and policy.project_scope == "bound_project"
+    }
+    # 清单非空且覆盖 collect / Exa Pack / TikTok / monitor / enrichment。
+    assert {"collect", "web_search", "tiktok_video_search", "create_monitor"} <= expected
+    for name in sorted(expected):
+        assert name in calls, f"{name} 未调用 governed_mcp_tool"
+        assert "project_id" in calls[name], f"{name} 未向 governed_mcp_tool 传 project_id"
+
+
+def test_object_scoped_tools_pass_identity_project_id() -> None:
+    """对象归属工具必须按密钥身份传 project_id（F1 的接线清单）。"""
+    import inspect
+
+    for name in server_module._BOUND_PROJECT_OBJECT_TOOLS:
+        source = inspect.getsource(getattr(server_module, name))
+        assert "project_id=_identity_project_id(identity)" in source or (
+            "project_id=project_id" in source
+        ), name
+
+
 def _stub_context():
     """最小 MCP Context 替身：只提供 request_context.request.scope。"""
     from types import SimpleNamespace

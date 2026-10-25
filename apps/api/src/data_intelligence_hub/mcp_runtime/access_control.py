@@ -76,7 +76,23 @@ async def governed_mcp_tool(
     elif project_id is not None:
         _ = project_id if isinstance(project_id, uuid.UUID) else uuid.UUID(str(project_id))
 
-    # 2. 对象归属：传入 object_project_id 时必须与绑定项目一致。
+    # 2. requires_project 的结构性守卫。
+    #    只针对全局 token（identity is None）且 project_scope=bound_project 的工具：
+    #    这类工具必须拿到一个项目，否则无从做归属判定。给出 project_id 时放行，
+    #    保留全局 token 的运维超级权限（spec §2.3）；scope=workspace 与 operator
+    #    的工具不受这条约束（workspace_answer 在全工作区上工作，stop 按对象归属）。
+    #    当前工具面里所有 bound_project 且 requires_project 的工具都把 project_id
+    #    声明为必填参数，所以生产不会命中这条守卫；它挡住的是未来把 project_id
+    #    改成可选的新工具。
+    if (
+        identity is None
+        and policy.requires_project
+        and policy.project_scope == "bound_project"
+        and project_id is None
+    ):
+        raise ValueError("project_not_found")
+
+    # 3. 对象归属：传入 object_project_id 时必须与绑定项目一致。
     if identity is not None and object_project_id is not None:
         expected = identity.project_id
         if object_project_id != expected:
@@ -103,6 +119,12 @@ async def governed_mcp_tool(
                 quota_consumed = True
 
         started = time.perf_counter()
+        # access_mode 只进审计字段，不参与判定：control 类工具（stop）单独可筛。
+        audit_fields: dict[str, object] = {
+            "tool": tool_name,
+            "identity_type": "global_operator" if identity is None else "project_key",
+            "access_mode": policy.access_mode,
+        }
         try:
             yield AccessDecision(
                 identity_type="global_operator" if identity is None else "project_key",
@@ -113,8 +135,7 @@ async def governed_mcp_tool(
         except Exception as exc:
             logger.info(
                 "mcp_tool_access_failed",
-                tool=tool_name,
-                identity_type="global_operator" if identity is None else "project_key",
+                **audit_fields,
                 error_type=type(exc).__name__,
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
             )
@@ -122,8 +143,7 @@ async def governed_mcp_tool(
         else:
             logger.info(
                 "mcp_tool_access_ok",
-                tool=tool_name,
-                identity_type="global_operator" if identity is None else "project_key",
+                **audit_fields,
                 quota_consumed=quota_consumed,
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),
             )
