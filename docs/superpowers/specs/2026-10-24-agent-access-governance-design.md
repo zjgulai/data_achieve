@@ -283,11 +283,12 @@ status != disabled
 | 同键不同请求 | `idempotency_conflict` |
 | 幂等键超窗 | `idempotency_key_expired` |
 | run 不属于当前项目 | `run_not_found` |
+| 密钥已撤销 / 生产环境匿名调用 | `project_key_not_found`（N1 新增，C1 未登记） |
 | governed_mcp_tool 显式传 `object_project_id` 且归属不符 | `object_not_found`（当前实现未用；保留为结构防线） |
 
 与 C1 registry 的关系：`tool_not_allowed`、`quota_exceeded`、`idempotency_conflict` 已登记；`idempotency_key_required` 已由 C1 登记。`idempotency_key_invalid`、`idempotency_key_expired`、`capability_not_available`、`capability_stale` 需在实施前向 C1 提交登记变更请求；未登记前不得上线返回。
 
-`object_not_found` 未向 C1 登记，激活前必须登记；N1 修复用已登记的 `run_not_found` / `enrichment_job_not_found` / `project_not_found`。
+`object_not_found` 与 `enrichment_job_not_found` 均**未**向 C1 登记，与其它待登记错误码同批列为「激活前须向 C1 提交登记」；`project_key_not_found` （N1 新增的密钥失效/匿名拒绝码）同样未登记，一并列入。N1 当前实际返回、且 C1 已登记的是 `run_not_found`、`project_not_found`、`tool_not_allowed`、`quota_exceeded`。
 
 ## 7. 测试矩阵
 
