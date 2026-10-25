@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import capabilities, intents, llm
+from . import capabilities, cards, intents, llm, proposal_store, replies
 
 HELP_TEXT = """数说 · 全域外部数据助手
 
@@ -69,10 +69,21 @@ class Command:
 class Reply:
     text: str
     ack: str | None = None
+    card: dict[str, Any] | None = None
+    pending_token: str | None = None
 
 
 def clean_text(text: str) -> str:
     return _MENTION_PATTERN.sub("", text).strip()
+
+
+def _collect_reply_text(outcome: capabilities.CollectOutcome) -> str:
+    """采集结果统一走回复模板；text 兜底时同样过 fit_text。"""
+    if outcome.ok:
+        text = replies.collect_success_text(outcome)
+    else:
+        text = replies.collect_failure_text(outcome)
+    return text or replies.fit_text(outcome.text)
 
 
 def _coerce(value: str) -> Any:
@@ -120,9 +131,9 @@ def parse_command(text: str) -> Command:
     if head in {h.casefold() for h in _STATUS_HINTS}:
         return Command("status")
     if head in {h.casefold() for h in _CONFIRM_HINTS}:
-        return Command("confirm")
+        return Command("confirm", rest[0] if rest else "")
     if head in {h.casefold() for h in _CANCEL_HINTS}:
-        return Command("cancel")
+        return Command("cancel", rest[0] if rest else "")
     if head in {h.casefold() for h in _PLATFORM_HINTS}:
         return Command("platforms", " ".join(rest).strip())
     if head in {h.casefold() for h in _CAPABILITY_HINTS}:
@@ -145,53 +156,119 @@ def parse_command(text: str) -> Command:
     return Command("unknown", cleaned)
 
 
-async def execute(command: Command, context_key: str = "") -> Reply:
+def _fit(text: str) -> str:
+    return replies.fit_text(text)
+
+
+def _intent_reply(
+    pending: proposal_store.PendingProposal, preflight: capabilities.PreflightResult
+) -> Reply:
+    """提案确认卡；文本兜底自带 token 短码，卡片失败时不丢确认入口。"""
+    text_lines = [replies.proposal_text(pending, preflight), f"提案短码：{pending.token}"]
+    return Reply(
+        text=_fit("\n".join(text_lines)),
+        card=cards.proposal_card(pending, preflight),
+        pending_token=pending.token,
+    )
+
+
+async def _confirm_reply(
+    token: str | None, chat_id: str, open_id: str
+) -> Reply:
+    """确认：peek → force preflight → consume → collect。
+
+    预检失败不消费 token，用户可以修正后重试或取消。
+    """
+    status, pending = proposal_store.peek_pending(token, chat_id, open_id)
+    if pending is None:
+        return Reply(_fit(replies.pending_status_text(status)))
+    proposal = pending.proposal
+    preflight = await capabilities.preflight_proposal(proposal, force_status=True)
+    if not preflight.allowed:
+        return Reply(_fit(replies.preflight_error_text(preflight)))
+    status, pending = proposal_store.consume_pending(token, chat_id, open_id)
+    if pending is None:
+        return Reply(_fit(replies.pending_status_text(status)))
+    outcome = await capabilities.collect(
+        proposal.endpoint_type, preflight.normalized_params
+    )
+    return Reply(
+        _fit(_collect_reply_text(outcome)),
+        ack=_fit(f"正在采集 {proposal.endpoint_type}，请稍候…"),
+    )
+
+
+async def execute(
+    command: Command,
+    *,
+    chat_id: str = "",
+    open_id: str = "",
+    message_id: str = "",
+) -> Reply:
     if command.name == "help":
-        return Reply(HELP_TEXT)
+        return Reply(_fit(HELP_TEXT))
     if command.name == "status":
-        return Reply(await capabilities.overview_text())
+        return Reply(_fit(await capabilities.overview_text()))
     if command.name == "platforms":
-        return Reply(await capabilities.platforms_text(command.argument))
+        return Reply(_fit(await capabilities.platforms_text(command.argument)))
     if command.name == "capabilities":
-        return Reply(await capabilities.capabilities_text(command.argument))
+        return Reply(_fit(await capabilities.capabilities_text(command.argument)))
     if command.name == "describe":
         if not command.argument:
-            return Reply("用法：详情 <端点名>")
-        return Reply(await capabilities.describe_text(command.argument))
+            return Reply(_fit("用法：详情 <端点名>"))
+        return Reply(_fit(await capabilities.describe_text(command.argument)))
     if command.name == "result":
         if not command.argument:
-            return Reply("用法：结果 <run_id>")
-        return Reply(await capabilities.run_records_text(command.argument))
+            return Reply(_fit("用法：结果 <run_id>"))
+        return Reply(_fit(await capabilities.run_records_text(command.argument)))
     if command.name == "collect_error":
-        return Reply(f"命令格式有误：{command.argument}\n\n{HELP_TEXT}")
+        return Reply(_fit(f"命令格式有误：{command.argument}\n\n{HELP_TEXT}"))
     if command.name == "collect":
-        outcome = await capabilities.collect(command.argument, command.params)
-        return Reply(outcome.text, ack=f"正在采集 {command.argument}，请稍候…")
+        proposal = intents.Proposal(
+            endpoint_type=command.argument,
+            params=dict(command.params),
+            title=f"显式采集：{command.argument}",
+        )
+        preflight = await capabilities.preflight_proposal(proposal, force_status=True)
+        if not preflight.allowed:
+            return Reply(_fit(replies.preflight_error_text(preflight)))
+        outcome = await capabilities.collect(
+            proposal.endpoint_type, preflight.normalized_params
+        )
+        return Reply(
+            _fit(_collect_reply_text(outcome)),
+            ack=_fit(f"正在采集 {command.argument}，请稍候…"),
+        )
     if command.name == "intent":
-        proposal = intents.build_proposal(command.argument)
-        if isinstance(proposal, str):
-            return Reply(proposal)
-        intents.set_pending(context_key, proposal)
-        return Reply(intents.proposal_reply(proposal))
+        built = intents.build_proposal(command.argument)
+        if isinstance(built, str):
+            return Reply(_fit(built))
+        preflight = await capabilities.preflight_proposal(built)
+        if not preflight.allowed:
+            return Reply(_fit(replies.preflight_error_text(preflight)))
+        pending = proposal_store.replace_pending(chat_id, open_id, built)
+        return _intent_reply(pending, preflight)
     if command.name == "confirm":
-        proposal = intents.take_pending(context_key)
-        if proposal is None:
-            return Reply("没有待确认的操作。请先发一个场景命令，例如「搜 reddit AI」。")
-        outcome = await capabilities.collect(proposal.endpoint_type, proposal.params)
-        return Reply(outcome.text, ack=f"正在采集 {proposal.endpoint_type}，请稍候…")
+        return await _confirm_reply(command.argument or None, chat_id, open_id)
     if command.name == "cancel":
-        intents.clear_pending(context_key)
-        return Reply("已取消待确认的操作。")
+        status = proposal_store.cancel_pending(
+            command.argument or None, chat_id, open_id
+        )
+        if status is proposal_store.ProposalLookup.ACTIVE:
+            return Reply(_fit("已取消待确认的操作。"))
+        return Reply(_fit(replies.pending_status_text(status)))
     if command.name == "unknown":
         answer = await llm.answer_question(command.argument)
         if answer:
-            return Reply(answer)
+            return Reply(_fit(answer))
         return Reply(
-            "我没有识别这条指令。可以试试：\n"
-            "- 帮助\n"
-            "- 平台 / 能力 <关键词>\n"
-            "- 搜 reddit AI\n"
-            "- 采集 <端点> key=value\n\n"
-            + HELP_TEXT
+            _fit(
+                "我没有识别这条指令。可以试试：\n"
+                "- 帮助\n"
+                "- 平台 / 能力 <关键词>\n"
+                "- 搜 reddit AI\n"
+                "- 采集 <端点> key=value\n\n"
+                + HELP_TEXT
+            )
         )
-    return Reply(HELP_TEXT)
+    return Reply(_fit(HELP_TEXT))

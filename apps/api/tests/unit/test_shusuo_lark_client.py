@@ -132,3 +132,16 @@ async def test_get_bot_open_id_propagates_http_error(
         await lark_client.get_bot_open_id()
 
     assert exc_info.value is expected_error
+
+
+@pytest.mark.asyncio
+async def test_reply_card_propagates_lark_api_error(monkeypatch) -> None:
+    """卡片请求失败抛结构化错误，由调用方降级文本。"""
+
+    async def fail_request(*args: object, **kwargs: object) -> dict[str, object]:
+        raise lark_client.LarkAPIError(99991672, "card send denied")
+
+    monkeypatch.setattr(lark_client, "_request", fail_request)
+
+    with pytest.raises(lark_client.LarkAPIError):
+        await lark_client.reply_card("om-source", {"schema": "2.0"})
