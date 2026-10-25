@@ -591,9 +591,18 @@ async def workspace_answer(
     limit: int = 5,
 ) -> dict[str, object]:
     """Answer strictly from workspace records. Use answer for external web evidence."""
-    async with governed_mcp_tool(context, "workspace_answer"):
+    async with governed_mcp_tool(
+        context, "workspace_answer", project_id=project_id or None
+    ) as decision:
         workspace = await _monitor_workspace(context)
+        # 项目密钥：绑定项目即最终过滤值；显式指定别的项目一律拒绝，
+        # 与其他工具的 resolve_bound_project 行为一致。全局 token 保持现行为
+        # （可选 project_id，不给则全工作区）。
         parsed = _parse_project_id(project_id) if project_id else None
+        if parsed is not None:
+            resolve_bound_project(decision.identity, parsed)
+        else:
+            parsed = _identity_project_id(decision.identity)
         async with async_session_factory() as session:
             if parsed is not None:
                 project = await get_project(session, workspace.id, parsed)

@@ -33,10 +33,12 @@ from data_intelligence_hub.mcp_runtime.server import mcp_server
 from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.enrichment import EnrichmentJob
+from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.models.run import Run
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.workspaces import get_workspace_by_id
 from data_intelligence_hub.services import enrichment_service
 
 pytestmark = pytest.mark.anyio
@@ -105,6 +107,16 @@ async def scope(tmp_path) -> AsyncIterator[_Scope]:
                 daily_collect_quota=10,
             )
         )
+        session.add(
+            Project(
+                id=project_a,
+                workspace_id=workspace_id,
+                name="scope-a",
+                domain="ecommerce",
+                status="active",
+                owner_id=owner_id,
+            )
+        )
         # run 与 enrichment job 都属于项目 A，工作区与密钥相同。
         session.add(
             Run(
@@ -171,13 +183,22 @@ def bound_key(scope: _Scope, monkeypatch: pytest.MonkeyPatch) -> _Scope:
 
 @pytest.fixture()
 def global_token(scope: _Scope, monkeypatch: pytest.MonkeyPatch) -> _Scope:
-    """全局 token：identity 为 None。"""
+    """全局 token：identity 为 None。
+
+    ``_monitor_workspace`` 在全局 token 路径回退 demo workspace；这里把
+    demo 解析指到 scope 工作区，测试断言才落在同一租户上。
+    """
     monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
     monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
     monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
     monkeypatch.setattr(server_module, "async_session_factory", scope.factory)
     monkeypatch.setattr(run_service, "async_session_factory", scope.factory)
     monkeypatch.setattr(enrichment_service, "_session_factory", scope.factory)
+
+    async def demo_workspace(session) -> object:
+        return await get_workspace_by_id(session, scope.workspace_id)
+
+    monkeypatch.setattr(server_module, "get_demo_workspace", demo_workspace)
     return scope
 
 
@@ -342,6 +363,83 @@ async def test_object_project_id_accepts_match(bound_key: _Scope) -> None:
         object_project_id=bound_key.project_a,
     ) as decision:
         assert decision.identity_type == "project_key"
+
+
+# ── workspace_answer 的项目级过滤 ────────────────────────────────────────
+
+
+async def test_workspace_answer_rejects_foreign_project(
+    bound_key: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """密钥身份显式传项目 B（≠ 绑定 A）→ project_not_found，不查库返回。"""
+    captured: list[dict[str, object]] = []
+
+    async def fake_answer(session, *, workspace_id, project_id, query, limit=5):
+        captured.append({"project_id": project_id})
+        return {"answer": "should not run"}
+
+    monkeypatch.setattr(server_module, "run_workspace_answer", fake_answer)
+
+    with pytest.raises(ValueError, match="project_not_found"):
+        await server_module.workspace_answer(
+            _stub_context(), "q", project_id=str(bound_key.project_b)
+        )
+    assert captured == []
+
+
+async def test_workspace_answer_filters_by_bound_project(
+    bound_key: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """不传 project_id → 以绑定项目 A 过滤。"""
+    captured: list[dict[str, object]] = []
+
+    async def fake_answer(session, *, workspace_id, project_id, query, limit=5):
+        captured.append({"workspace_id": workspace_id, "project_id": project_id})
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(server_module, "run_workspace_answer", fake_answer)
+
+    result = await server_module.workspace_answer(_stub_context(), "q")
+
+    assert result == {"answer": "ok"}
+    assert captured == [
+        {"workspace_id": bound_key.workspace_id, "project_id": bound_key.project_a}
+    ]
+
+
+async def test_workspace_answer_global_token_spans_workspace(
+    global_token: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """全局 token 不传 project_id → 全工作区（project_id 为 None），回归锁定。"""
+    captured: list[dict[str, object]] = []
+
+    async def fake_answer(session, *, workspace_id, project_id, query, limit=5):
+        captured.append({"workspace_id": workspace_id, "project_id": project_id})
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(server_module, "run_workspace_answer", fake_answer)
+
+    await server_module.workspace_answer(_stub_context(), "q")
+
+    assert captured == [{"workspace_id": global_token.workspace_id, "project_id": None}]
+
+
+async def test_workspace_answer_global_token_may_pick_project(
+    global_token: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: list[dict[str, object]] = []
+
+    async def fake_answer(session, *, workspace_id, project_id, query, limit=5):
+        captured.append({"project_id": project_id})
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(server_module, "run_workspace_answer", fake_answer)
+
+    await server_module.workspace_answer(
+        _stub_context(), "q", project_id=str(global_token.project_a)
+    )
+
+    assert captured == [{"project_id": global_token.project_a}]
 
 
 def _stub_context():
