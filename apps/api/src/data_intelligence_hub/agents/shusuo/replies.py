@@ -180,6 +180,12 @@ def _scan_value(text: str, start: int) -> int:
     """返回值结束位置（不含）。
 
     值不限长：截断会让超长密钥只抹前 4096 字符、尾部明文留在回复里。
+
+    裸值终止条件必须与分隔符扫描一致地认 Unicode 空白：`_scan_separator`
+    用 `isspace()`，这里若只认 ASCII 的 `" \\t\\r\\n"`，
+    `token=abc<NBSP>password: hunter2` 会把 NBSP 之后整段当值吞掉，
+    `password` 就再也匹配不到，明文留在回复里。
+    NBSP / 全角空格 / NEL / U+2028 等在真实上游 JSON 与日志里都很常见。
     """
     if start >= len(text):
         return start
@@ -194,7 +200,10 @@ def _scan_value(text: str, start: int) -> int:
         close = text.find("}", start + 1)
         return len(text) if close < 0 else close + 1
     index = start
-    while index < len(text) and text[index] not in _KV_BARE_STOP:
+    while index < len(text):
+        char = text[index]
+        if char in _KV_BARE_STOP or char.isspace():
+            break
         index += 1
     return index
 

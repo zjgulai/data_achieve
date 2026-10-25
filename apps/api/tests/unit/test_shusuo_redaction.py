@@ -627,3 +627,81 @@ def test_null_byte_payload_still_redacts():
     assert "S3cr3tVal" not in out
 
 
+# ---------------------------------------------------------------------------
+# Unicode 空白：分隔符扫描认 `isspace()`，裸值终止符也必须认
+# ---------------------------------------------------------------------------
+
+# 这些字符 str.isspace() 为真，但都不在 ASCII 的 " \t\r\n" 里。
+# 上游 JSON / 日志里常见 NBSP、全角空格、NEL 等。
+UNICODE_SPACES = (
+    ("nbsp_u00a0", " "),
+    ("ideographic_u3000", "　"),
+    ("vertical_tab_u000b", "\u000b"),
+    ("form_feed_u000c", "\u000c"),
+    ("nel_u0085", "\u0085"),
+    ("line_separator_u2028", " "),
+    ("narrow_nbsp_u202f", " "),
+)
+
+
+@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
+def test_unicode_space_terminates_bare_value(label: str, space: str) -> None:
+    """裸值必须在任何 Unicode 空白处停下，否则后面的 KV 整段被吞掉。"""
+    assert space.isspace(), f"{label} 不是空白字符，测试前提失效"
+    payload = f"token=abc{space}password: hunter2"
+    out = replies.fit_text(payload)
+    assert "hunter2" not in out
+    assert "abc" not in out
+
+
+@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
+def test_unicode_space_keeps_surrounding_text(label: str, space: str) -> None:
+    """只抹值，不动结构：空白与普通词必须原样保留。"""
+    payload = f"note=hello{space}token=S3cr3tVal"
+    out = replies.fit_text(payload)
+    assert "SECRET_t2xyzx5r" not in out
+    assert "hello" in out
+
+
+@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
+def test_unicode_space_secrets_absent_from_failure_card(label: str, space: str) -> None:
+    """失败卡是错误文本的真实落点：两个密钥都不能出现在卡片 JSON 里。"""
+    pending = _pending({"query": "AI"})
+    message = f"upstream 400: token=abc{space}password: hunter2"
+    card = cards.failure_card(pending, message)
+    serialized = json.dumps(card, ensure_ascii=False)
+    assert "hunter2" not in serialized
+    assert "token=[redacted]" in serialized
+
+
+@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
+def test_unicode_space_structured_text_path(label: str, space: str) -> None:
+    """`structured_text` 是卡片与记录预览的共用渲染路径。"""
+    rendered = replies.structured_text(f"token=abc{space}password: hunter2")
+    assert "hunter2" not in rendered
+    assert "token=[redacted]" in rendered
+
+
+def test_ascii_separator_behaviour_unchanged() -> None:
+    """ASCII 路径不能因为改空白判定而变：空格 / Tab / 换行都要照旧。"""
+    for separator in (" ", "\t", "\n", "\r\n", "\x0b", "\x0c"):
+        out = replies.fit_text(f"token=abc{separator}password: hunter2")
+        assert "hunter2" not in out
+        assert "abc" not in out
+
+
+def test_braces_still_work_with_unicode_spaces() -> None:
+    payload = "token={S3cr3tVal} password={{SECRET_B}}　note=ok"
+    out = replies.fit_text(payload)
+    assert "S3cr3tVal" not in out
+    assert "SECRET_B" not in out
+    assert "note=ok" in out
+
+
+def test_long_value_with_unicode_space_is_fully_redacted() -> None:
+    payload = "token=" + "A" * 5000 + " note=ok"
+    out = replies.fit_text(payload)
+    assert "A" not in out
+    assert "note=ok" in out
+
+
