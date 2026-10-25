@@ -33,6 +33,9 @@ from data_intelligence_hub.api.routes.enrichment import router as enrichment_rou
 from data_intelligence_hub.api.routes.entities import router as entities_router
 from data_intelligence_hub.api.routes.health import router as health_router
 from data_intelligence_hub.api.routes.intelligence import router as intelligence_router
+from data_intelligence_hub.api.routes.mcp_tool_policies import (
+    router as mcp_tool_policies_router,
+)
 from data_intelligence_hub.api.routes.monitors import router as monitors_router
 from data_intelligence_hub.api.routes.notifications import router as notifications_router
 from data_intelligence_hub.api.routes.platform_credentials import (
@@ -225,6 +228,7 @@ def create_app() -> FastAPI:
     app.include_router(alert_events_router, prefix="/api/alert-events")
     app.include_router(notifications_router, prefix="/api/notifications")
     app.include_router(platform_credentials_router, prefix="/api/settings")
+    app.include_router(mcp_tool_policies_router, prefix="/api/settings")
     app.include_router(platform_packages_router, prefix="/api/platform-packages")
     app.include_router(monitors_router, prefix="/api/monitors")
     app.include_router(webhooks_router, prefix="/api/webhooks")

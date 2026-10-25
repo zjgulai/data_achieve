@@ -46,22 +46,14 @@ export function revokeProjectApiKey(
   });
 }
 
-/** 可授权的 MCP 工具名。与 mcp_runtime/server.py 的工具一致。 */
-export const MCP_TOOL_OPTIONS = [
-  "web_search",
-  "web_fetch",
-  "answer",
-  "deep_research",
-  "deep_research_start",
-  "deep_research_check",
-  "workspace_answer",
-  "create_monitor",
-  "list_monitors",
-  "enrich_list",
-  "enrichment_check",
-  "collect",
-  "get_run",
-  "list_records",
-  "stop",
-  "balance",
-] as const;
+/** 原地更新密钥的白名单与日额度。至少要给一项，否则后端 400。 */
+export function patchProjectApiKey(
+  projectId: string,
+  keyId: string,
+  payload: { tool_allowlist?: string[]; daily_collect_quota?: number }
+): Promise<ProjectApiKey> {
+  return apiFetch<ProjectApiKey>(
+    `/api/projects/${projectId}/api-keys/${keyId}`,
+    { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}

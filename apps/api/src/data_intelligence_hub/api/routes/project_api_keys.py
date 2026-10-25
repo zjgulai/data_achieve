@@ -14,6 +14,9 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from data_intelligence_hub.api.deps import AuthenticatedContextDep, SessionDep
+from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
+from data_intelligence_hub.models.project import Project
+from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.repositories.project_api_keys import (
     list_keys,
     revoke_key,
@@ -22,6 +25,7 @@ from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.schemas.project_api_key import (
     IssuedProjectApiKeyResponse,
     IssueProjectApiKeyRequest,
+    ProjectApiKeyPatchRequest,
     ProjectApiKeyResponse,
 )
 from data_intelligence_hub.services.project_api_keys import issue_key
@@ -33,7 +37,7 @@ async def _project_or_404(
     session: SessionDep,
     context: AuthenticatedContextDep,
     project_id: uuid.UUID,
-):
+) -> Project:
     project = await get_project(session, context.workspace.id, project_id)
     if project is None:
         raise HTTPException(
@@ -110,6 +114,60 @@ async def list_project_api_keys(
         project_id=project_id,
     )
     return [ProjectApiKeyResponse.model_validate(row) for row in rows]
+
+
+@router.patch(
+    "/{project_id}/api-keys/{key_id}",
+    response_model=ProjectApiKeyResponse,
+)
+async def patch_project_api_key(
+    project_id: uuid.UUID,
+    key_id: uuid.UUID,
+    payload: ProjectApiKeyPatchRequest,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+) -> ProjectApiKeyResponse:
+    """原地更新密钥的白名单与日额度。
+
+    仅所有者（工作区所有者或项目所有者）可改；key 必须同时命中
+    workspace+project 复合归属。白名单规则与签发一致：工具名必须
+    已在注册表登记，且不允许清空。两者都缺省时显式拒绝。
+    """
+    await _project_or_404(session, context, project_id)
+    record = await session.get(ProjectApiKey, key_id)
+    if (
+        record is None
+        or record.workspace_id != context.workspace.id
+        or record.project_id != project_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="project_api_key_not_found",
+        )
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="no_fields_to_update",
+        )
+    if "tool_allowlist" in updates:
+        unknown = [t for t in updates["tool_allowlist"] if t not in TOOL_POLICIES]
+        if unknown:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="unknown_tool_in_allowlist",
+            )
+        if not updates["tool_allowlist"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="project_api_key_allowlist_required",
+            )
+        record.tool_allowlist = updates["tool_allowlist"]
+    if "daily_collect_quota" in updates:
+        record.daily_collect_quota = updates["daily_collect_quota"]
+    await session.commit()
+    await session.refresh(record)
+    return ProjectApiKeyResponse.model_validate(record)
 
 
 @router.delete(

@@ -9,6 +9,11 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp_types import ToolAnnotations
 
 from data_intelligence_hub.core.database import async_session_factory
+from data_intelligence_hub.mcp_runtime.access_control import (
+    AccessDecision,
+    governed_mcp_tool,
+    resolve_bound_project,
+)
 from data_intelligence_hub.mcp_runtime.auth import (
     ProjectApiKeyContext,
     project_api_key_context,
@@ -23,11 +28,7 @@ from data_intelligence_hub.mcp_runtime.run_service import (
     list_run_records,
     stop_run,
 )
-from data_intelligence_hub.mcp_runtime.runtime import governed_tool
-from data_intelligence_hub.mcp_runtime.tool_policy import (
-    enforce_quota,
-    enforce_tool_policy,
-)
+from data_intelligence_hub.mcp_runtime.tool_registry import TIKTOK_EXECUTE_TOOLS
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
@@ -65,9 +66,8 @@ def _assert_bound_project(
     return project_id
 
 
-def _bound_project_id(context: Context, value: str) -> uuid.UUID:
-    """项目密钥只能操作它绑定的 project_id；全局 token 不受此限制。"""
-    return _assert_bound_project(project_api_key_context(context), _parse_project_id(value))
+# 供测试与密钥页枚举执行类 TikTok 工具；事实源是 tool_registry。
+_TIKTOK_TOOL_NAMES: tuple[str, ...] = TIKTOK_EXECUTE_TOOLS
 
 
 mcp_server = MCPServer(
@@ -77,6 +77,7 @@ mcp_server = MCPServer(
         "Collect only non-disabled endpoints with an explicit project_id."
     ),
 )
+
 
 def _public_endpoint_payload(endpoint: object) -> dict[str, object]:
     """去掉策略拒绝原文。它是内部治理信息。"""
@@ -137,7 +138,7 @@ MCP_TRANSPORT_SECURITY = TransportSecuritySettings(
     idempotent=False,
 )
 async def list_platforms(context: Context, query: str | None = None) -> dict[str, object]:
-    async with governed_tool(context, "list_platforms"):
+    async with governed_mcp_tool(context, "list_platforms"):
         catalog = await get_platform_package_catalog()
         normalized = query.casefold().strip() if query else None
         packages = [
@@ -174,7 +175,7 @@ async def list_capabilities(
     query: str | None = None,
     status: str | None = None,
 ) -> dict[str, object]:
-    async with governed_tool(context, "list_capabilities"):
+    async with governed_mcp_tool(context, "list_capabilities"):
         try:
             package = await get_platform_package(platform_id)
         except PlatformPackageNotFoundError as exc:
@@ -194,9 +195,7 @@ async def list_capabilities(
         return {
             "catalog_digest": catalog.catalog_digest,
             "platform_id": platform_id,
-            "capabilities": [
-                _public_endpoint_payload(item) for item in capabilities
-            ],
+            "capabilities": [_public_endpoint_payload(item) for item in capabilities],
         }
 
 
@@ -211,7 +210,7 @@ async def describe_capability(
     context: Context,
     endpoint_type: str,
 ) -> dict[str, object]:
-    async with governed_tool(context, "describe_capability", endpoint_type=endpoint_type):
+    async with governed_mcp_tool(context, "describe_capability"):
         return await describe_capability_public(endpoint_type)
 
 
@@ -223,7 +222,7 @@ async def describe_capability(
     idempotent=False,
 )
 async def get_playbook(context: Context, platform_id: str) -> dict[str, str]:
-    async with governed_tool(context, "get_playbook"):
+    async with governed_mcp_tool(context, "get_playbook"):
         try:
             markdown = await get_platform_playbook(platform_id)
         except PlatformPackageNotFoundError as exc:
@@ -244,29 +243,31 @@ async def collect(
     project_id: str,
     params: dict[str, object],
 ) -> dict[str, object]:
-    async with governed_tool(
+    async with governed_mcp_tool(
         context,
         "collect",
-        endpoint_type=endpoint_type,
+        project_id=project_id,
         is_collect=True,
-    ):
+    ) as decision:
         try:
             endpoint = await get_capability(endpoint_type)
         except CapabilityNotFoundError as exc:
             raise ValueError("capability_not_found") from exc
         if endpoint.status == "disabled":
             raise ValueError("capability_disabled")
-        try:
-            parsed_project_id = uuid.UUID(project_id)
-        except ValueError as exc:
-            raise ValueError("project_id_invalid") from exc
-        result = await collect_capability(endpoint_type, parsed_project_id, params)
+        bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
+        result = await collect_capability(
+            endpoint_type,
+            bound_pid,
+            params,
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
+        )
         return result.model_dump(mode="json")
 
 
 # ── Exa MCP Pack ──────────────────────────────────────────────────────────
 # 通用命名的搜索/抓取/问答/研究工具。默认路由 Exa；web_fetch 支持 jina。
-# 项目密钥调用按 tool_allowlist 判定，见 mcp_runtime/tool_policy.py。
+# 项目密钥调用按 tool_allowlist 判定，见 mcp_runtime/access_control.py。
 
 _SEARCH_ENDPOINTS = {
     "lite": "exa_search_lite",
@@ -281,33 +282,26 @@ _SEARCH_ENDPOINTS = {
 _FETCH_ENDPOINTS = {"exa": "exa_contents", "jina": "jina_page_content"}
 
 
-def _workspace_binding(context: Context) -> uuid.UUID | None:
-    identity = project_api_key_context(context)
-    return identity.workspace_id if identity is not None else None
-
-
 async def _run_tool(
-    context: Context,
+    decision: AccessDecision,
     tool_name: str,
     endpoint_type: str,
     project_id: str,
     params: dict[str, object],
 ) -> dict[str, object]:
-    await enforce_tool_policy(context, tool_name)
-    await enforce_quota(context)
+    identity = decision.identity
     result = await collect_capability(
         endpoint_type,
-        _bound_project_id(context, project_id),
+        resolve_bound_project(identity, _parse_project_id(project_id)),
         params,
-        workspace_id=_workspace_binding(context),
-        tool_call=_tool_call_metadata(context, tool_name),
+        workspace_id=(identity.workspace_id if identity is not None else None),
+        tool_call=_tool_call_metadata(identity, tool_name),
     )
     return result.model_dump(mode="json")
 
 
-def _tool_call_metadata(context: Context, tool_name: str) -> dict[str, object]:
+def _tool_call_metadata(identity: ProjectApiKeyContext | None, tool_name: str) -> dict[str, object]:
     """运行配置里的调用来源。项目密钥记 key_id，便于按密钥审计与对账。"""
-    identity = project_api_key_context(context)
     metadata: dict[str, object] = {"origin": "mcp", "tool": tool_name}
     if identity is not None:
         metadata["key_id"] = str(identity.key_id)
@@ -338,7 +332,9 @@ async def web_search(
     provider: str = "exa",
 ) -> dict[str, object]:
     """Search the web and persist results. Default provider: exa."""
-    async with governed_tool(context, "web_search", is_collect=True):
+    async with governed_mcp_tool(
+        context, "web_search", project_id=project_id, is_collect=True
+    ) as decision:
         if provider != "exa":
             raise ValueError("provider_not_supported")
         endpoint_type = _SEARCH_ENDPOINTS.get(search_type)
@@ -361,7 +357,7 @@ async def web_search(
             params["end_published_date"] = end_published_date
         if objective is not None:
             params["objective"] = objective
-        return await _run_tool(context, "web_search", endpoint_type, project_id, params)
+        return await _run_tool(decision, "web_search", endpoint_type, project_id, params)
 
 
 @_tool(
@@ -381,7 +377,9 @@ async def web_fetch(
     provider: str = "exa",
 ) -> dict[str, object]:
     """Fetch page content for up to 100 URLs. Default provider: exa; jina takes one URL."""
-    async with governed_tool(context, "web_fetch", is_collect=True):
+    async with governed_mcp_tool(
+        context, "web_fetch", project_id=project_id, is_collect=True
+    ) as decision:
         endpoint_type = _FETCH_ENDPOINTS.get(provider)
         if endpoint_type is None:
             raise ValueError("provider_not_supported")
@@ -397,7 +395,7 @@ async def web_fetch(
                 params["max_age_hours"] = max_age_hours
             if summary_query is not None:
                 params["summary_query"] = summary_query
-        return await _run_tool(context, "web_fetch", endpoint_type, project_id, params)
+        return await _run_tool(decision, "web_fetch", endpoint_type, project_id, params)
 
 
 @_tool(
@@ -415,13 +413,15 @@ async def answer(
     text: bool = False,
 ) -> dict[str, object]:
     """Answer a question with citations from the public web."""
-    async with governed_tool(context, "answer", is_collect=True):
+    async with governed_mcp_tool(
+        context, "answer", project_id=project_id, is_collect=True
+    ) as decision:
         params: dict[str, object] = {"query": query}
         if output_schema is not None:
             params["output_schema"] = output_schema
         if text:
             params["text"] = True
-        return await _run_tool(context, "answer", "exa_answer", project_id, params)
+        return await _run_tool(decision, "answer", "exa_answer", project_id, params)
 
 
 @_tool(
@@ -442,7 +442,9 @@ async def deep_research(
     contents_mode: str = "highlights",
 ) -> dict[str, object]:
     """Multi-step deep research. Expensive tool; project keys need it in their allowlist."""
-    async with governed_tool(context, "deep_research", is_collect=True):
+    async with governed_mcp_tool(
+        context, "deep_research", project_id=project_id, is_collect=True
+    ) as decision:
         params: dict[str, object] = {
             "query": query,
             "num_results": num_results,
@@ -454,9 +456,7 @@ async def deep_research(
             params["system_prompt"] = system_prompt
         if include_domains:
             params["include_domains"] = include_domains
-        return await _run_tool(
-            context, "deep_research", "exa_deep_research", project_id, params
-        )
+        return await _run_tool(decision, "deep_research", "exa_deep_research", project_id, params)
 
 
 # ── Monitors ──────────────────────────────────────────────────────────────
@@ -490,22 +490,27 @@ async def create_monitor(
     interval_hours: int = 24,
 ) -> dict[str, object]:
     """Create a search monitor. New results become signals and notifications."""
-    async with governed_tool(context, "create_monitor", is_collect=True):
-        await enforce_tool_policy(context, "create_monitor")
+    async with governed_mcp_tool(
+        context, "create_monitor", project_id=project_id, is_collect=True
+    ) as decision:
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _bound_project_id(context, project_id)
+        bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
-            project = await get_project(session, workspace.id, parsed_project_id)
+            project = await get_project(session, workspace.id, bound_pid)
             if project is None:
                 raise ValueError("project_not_found")
             monitor = await monitor_service.create_monitor(
                 session,
                 workspace=workspace,
-                project_id=parsed_project_id,
+                project_id=bound_pid,
                 name=name,
                 endpoint_type=endpoint_type,
                 params=params or {},
                 interval_hours=interval_hours,
+                # 密钥身份记进监控归属；调度器按它扣日额度。全局 token 为 None。
+                project_key_id=(
+                    decision.identity.key_id if decision.identity else None
+                ),
             )
         return _monitor_payload(monitor)
 
@@ -522,9 +527,17 @@ async def list_monitors(
     project_id: str | None = None,
 ) -> dict[str, object]:
     """List monitors. Optionally filter by project."""
-    async with governed_tool(context, "list_monitors"):
+    async with governed_mcp_tool(
+        context,
+        "list_monitors",
+        project_id=project_id,
+    ) as decision:
         workspace = await _monitor_workspace(context)
-        parsed = _parse_project_id(project_id) if project_id else None
+        parsed = (
+            resolve_bound_project(decision.identity, _parse_project_id(project_id))
+            if project_id
+            else None
+        )
         async with async_session_factory() as session:
             monitors = await monitor_service.list_monitors(
                 session, workspace_id=workspace.id, project_id=parsed
@@ -562,7 +575,7 @@ async def workspace_answer(
     limit: int = 5,
 ) -> dict[str, object]:
     """Answer strictly from workspace records. Use answer for external web evidence."""
-    async with governed_tool(context, "workspace_answer"):
+    async with governed_mcp_tool(context, "workspace_answer"):
         workspace = await _monitor_workspace(context)
         parsed = _parse_project_id(project_id) if project_id else None
         async with async_session_factory() as session:
@@ -596,19 +609,19 @@ async def deep_research_start(
     timeout_seconds: int = 600,
 ) -> dict[str, object]:
     """Queue an Exa Agent research run. Expensive; keys need it in their allowlist."""
-    async with governed_tool(context, "deep_research_start", is_collect=True):
-        await enforce_tool_policy(context, "deep_research_start")
-        await enforce_quota(context)
+    async with governed_mcp_tool(
+        context, "deep_research_start", project_id=project_id, is_collect=True
+    ) as decision:
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _bound_project_id(context, project_id)
+        bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
-            project = await get_project(session, workspace.id, parsed_project_id)
+            project = await get_project(session, workspace.id, bound_pid)
             if project is None:
                 raise ValueError("project_not_found")
             run_id = await start_research(
                 session,
                 workspace=workspace,
-                project_id=parsed_project_id,
+                project_id=bound_pid,
                 query=query,
                 effort=effort,
                 output_schema=output_schema,
@@ -631,7 +644,7 @@ async def deep_research_check(
     run_id: str,
 ) -> dict[str, object]:
     """Return one research run's status, steps and records."""
-    async with governed_tool(context, "deep_research_check"):
+    async with governed_mcp_tool(context, "deep_research_check"):
         parsed = uuid.UUID(run_id)
         identity = project_api_key_context(context)
         workspace_id = identity.workspace_id if identity is not None else None
@@ -663,19 +676,20 @@ async def enrich_list(
     output_schema: dict[str, object],
 ) -> dict[str, object]:
     """Enrich rows one by one. Non-PII fields only; up to 100 rows."""
-    async with governed_tool(context, "enrich_list", is_collect=True):
-        await enforce_tool_policy(context, "enrich_list")
+    async with governed_mcp_tool(
+        context, "enrich_list", project_id=project_id, is_collect=True
+    ) as decision:
         workspace = await _monitor_workspace(context)
-        parsed_project_id = _bound_project_id(context, project_id)
+        bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
         async with async_session_factory() as session:
-            project = await get_project(session, workspace.id, parsed_project_id)
+            project = await get_project(session, workspace.id, bound_pid)
             if project is None:
                 raise ValueError("project_not_found")
             identity = project_api_key_context(context)
             job = await enrichment_service.start_enrichment(
                 session,
                 workspace=workspace,
-                project_id=parsed_project_id,
+                project_id=bound_pid,
                 name=name,
                 query_template=query_template,
                 items=items,
@@ -701,7 +715,7 @@ async def enrichment_check(
     job_id: str,
 ) -> dict[str, object]:
     """Return one enrichment job with its rows."""
-    async with governed_tool(context, "enrichment_check"):
+    async with governed_mcp_tool(context, "enrichment_check"):
         workspace = await _monitor_workspace(context)
         parsed = uuid.UUID(job_id)
         async with async_session_factory() as session:
@@ -736,7 +750,7 @@ async def enrichment_check(
 )
 async def get_run(context: Context, run_id: str) -> dict[str, object]:
     """Return one run with its status, outcome, cost and steps."""
-    async with governed_tool(context, "get_run"):
+    async with governed_mcp_tool(context, "get_run"):
         try:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
@@ -760,7 +774,7 @@ async def list_records(
     cursor: str | None = None,
 ) -> dict[str, object]:
     """List raw records for one run. Page with limit and cursor."""
-    async with governed_tool(context, "list_records"):
+    async with governed_mcp_tool(context, "list_records"):
         try:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
@@ -784,7 +798,7 @@ async def list_records(
 )
 async def stop(context: Context, run_id: str) -> dict[str, object]:
     """Cancel a queued or running run."""
-    async with governed_tool(context, "stop"):
+    async with governed_mcp_tool(context, "stop"):
         try:
             parsed = uuid.UUID(run_id)
         except ValueError as exc:
@@ -803,9 +817,9 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
 )
 async def balance(context: Context, project_id: str) -> dict[str, object]:
     """Report project spend and remaining authorized budget."""
-    async with governed_tool(context, "balance"):
-        parsed = _bound_project_id(context, project_id)
-        return await get_project_balance(parsed)
+    async with governed_mcp_tool(context, "balance", project_id=project_id) as decision:
+        bound_pid = resolve_bound_project(decision.identity, _parse_project_id(project_id))
+        return await get_project_balance(bound_pid)
 
 
 @_tool(
@@ -822,11 +836,14 @@ async def tiktok_trend_rank(
     period: int = 7,
     limit: int = 50,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_trend_rank", is_collect=True):
+    async with governed_mcp_tool(
+        context, "tiktok_trend_rank", project_id=project_id, is_collect=True
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_trend_rank",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"country_code": country_code, "period": period, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -846,16 +863,22 @@ async def tiktok_hashtag_videos(
     challenge_id: str | None = None,
     limit: int = 50,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_hashtag_videos", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_hashtag_videos",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_hashtag_videos",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {
                 "hashtag": hashtag,
                 "ch_id": ch_id,
                 "challenge_id": challenge_id,
                 "limit": limit,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -873,11 +896,17 @@ async def tiktok_video_search(
     query: str,
     limit: int = 50,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_video_search", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_video_search",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_video_search",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -895,11 +924,17 @@ async def tiktok_video_detail(
     video_id: str | None = None,
     video_url: str | None = None,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_video_detail", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_video_detail",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_video_detail",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_id": video_id, "video_url": video_url},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -919,16 +954,22 @@ async def tiktok_video_comments(
     limit: int = 100,
     include_replies: bool = True,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_video_comments", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_video_comments",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_video_comments",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {
                 "video_id": video_id,
                 "video_url": video_url,
                 "limit": limit,
                 "include_replies": include_replies,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -949,10 +990,15 @@ async def tiktok_creator_profile(
     video_limit: int = 20,
     include_fans: bool = False,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_creator_profile", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_creator_profile",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_creator_profile",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {
                 "handle": handle,
                 "sec_uid": sec_uid,
@@ -960,6 +1006,7 @@ async def tiktok_creator_profile(
                 "video_limit": video_limit,
                 "include_fans": include_fans,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -977,11 +1024,17 @@ async def tiktok_creator_search(
     query: str,
     limit: int = 50,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_creator_search", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_creator_search",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_creator_search",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -999,11 +1052,17 @@ async def tiktok_transcript(
     video_urls: list[str],
     limit: int = 20,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_transcript", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_transcript",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_transcript",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_urls": video_urls, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1022,11 +1081,17 @@ async def tiktok_product_search(
     region: str = "US",
     limit: int = 20,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_product_search", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_product_search",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_product_search",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "region": region, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1045,15 +1110,21 @@ async def tiktok_product_detail(
     product_url: str | None = None,
     region: str = "US",
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_product_detail", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_product_detail",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_product_detail",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {
                 "product_id": product_id,
                 "product_url": product_url,
                 "region": region,
             },
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1072,11 +1143,17 @@ async def tiktok_product_reviews(
     region: str = "US",
     limit: int = 20,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_product_reviews", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_product_reviews",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_product_reviews",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"product_id": product_id, "region": region, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1094,11 +1171,17 @@ async def tiktok_creator_commerce(
     handle: str,
     region: str = "US",
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_creator_commerce", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_creator_commerce",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_creator_commerce",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"handle": handle, "region": region},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1115,11 +1198,17 @@ async def tiktok_video_products(
     project_id: str,
     video_id: str,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_video_products", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_video_products",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_video_products",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"video_id": video_id},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1137,11 +1226,17 @@ async def tiktok_creator_showcase(
     offset: int = 0,
     limit: int = 20,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_creator_showcase", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_creator_showcase",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_creator_showcase",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"offset": offset, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1160,11 +1255,17 @@ async def tiktok_ads_top(
     period: int = 7,
     limit: int = 20,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_ads_top", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_ads_top",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_ads_top",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"query": query, "period": period, "limit": limit},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 
@@ -1181,11 +1282,17 @@ async def tiktok_ads_detail(
     project_id: str,
     ad_id: str,
 ) -> dict[str, object]:
-    async with governed_tool(context, "tiktok_ads_detail", is_collect=True):
+    async with governed_mcp_tool(
+        context,
+        "tiktok_ads_detail",
+        project_id=project_id,
+        is_collect=True,
+    ) as decision:
         result = await run_tiktok_tool(
             "tiktok_ads_detail",
-            _parse_project_id(project_id),
+            resolve_bound_project(decision.identity, _parse_project_id(project_id)),
             {"ad_id": ad_id},
+            workspace_id=(decision.identity.workspace_id if decision.identity else None),
         )
         return result.as_dict()
 

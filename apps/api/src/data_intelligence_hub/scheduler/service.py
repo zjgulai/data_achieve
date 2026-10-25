@@ -13,10 +13,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
+from data_intelligence_hub.models.monitor import Monitor
+from data_intelligence_hub.models.notification import Notification
 from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.project_api_keys import consume_daily_quota
 from data_intelligence_hub.repositories.reports import list_due_report_subscriptions
 from data_intelligence_hub.repositories.scheduler import create_scheduler_tick
 from data_intelligence_hub.scheduler.cron import UnsupportedCronExpression, is_schedule_due
@@ -180,6 +183,18 @@ class CollectionScheduler:
                         continue
 
                     due += 1
+                    # 监控任务的额度门：config["monitor_id"] 定位监控，
+                    # monitor.project_key_id 指向创建密钥时才扣日额度。
+                    # 扣减失败（当日额度用尽/密钥已撤销）不启动真实执行，
+                    # 改落一条 failed TaskRun 并给工作区所有者发通知。
+                    quota_exceeded = await _consume_monitor_quota(
+                        session, task, current_time
+                    )
+                    if quota_exceeded is not None:
+                        session.add(quota_exceeded)
+                        task.last_run_at = current_time
+                        await session.commit()
+                        continue
                     self._running_task_ids.add(task.id)
                     try:
                         await execute_collection_task(
@@ -278,6 +293,69 @@ class CollectionScheduler:
             except Exception:
                 logger.exception("collection_scheduler_tick_failed")
             await asyncio.sleep(self._poll_interval_seconds)
+
+
+async def _consume_monitor_quota(
+    session: AsyncSession,
+    task: CollectionTask,
+    now: datetime,
+) -> TaskRun | None:
+    """监控任务按归属密钥扣一次日额度。
+
+    返回 None 表示放行：非监控任务、monitor_id 解析失败、监控不存在、
+    监控没有归属密钥、或额度扣减成功。返回 failed TaskRun 表示额度门拦下，
+    调用方把它落库、更新 last_run_at 并跳过执行。扣减在独立事务先行提交，
+    与随后执行（或失败落库）解耦：额度占用不因执行回滚而退回。
+    """
+    monitor_id_raw = (task.config or {}).get("monitor_id")
+    if not monitor_id_raw:
+        return None
+    try:
+        monitor_id = uuid.UUID(str(monitor_id_raw))
+    except ValueError:
+        return None
+    monitor = await session.get(Monitor, monitor_id)
+    if monitor is None or monitor.project_key_id is None:
+        return None
+
+    allowed = await consume_daily_quota(session, monitor.project_key_id)
+    # 额度占用先行提交：执行阶段有自己的 commit/rollback，不能带走扣减。
+    await session.commit()
+    if allowed:
+        return None
+
+    logger.warning(
+        "monitor_quota_exhausted",
+        task_id=str(task.id),
+        monitor_id=str(monitor_id),
+        project_key_id=str(monitor.project_key_id),
+    )
+    workspace = await session.get(Workspace, task.workspace_id)
+    if workspace is not None:
+        session.add(
+            Notification(
+                user_id=workspace.owner_id,
+                title=f"监控「{monitor.name}」当日额度已用尽",
+                body="该监控由项目密钥创建，密钥当日采集额度已用尽，本次未执行。",
+                notification_type="monitor_quota_exhausted",
+                reference_type="monitor",
+                reference_id=monitor.id,
+                is_read=False,
+            )
+        )
+    return TaskRun(
+        task_id=task.id,
+        workspace_id=task.workspace_id,
+        status="failed",
+        started_at=now,
+        finished_at=now,
+        records_count=0,
+        entities_count=0,
+        error_message="quota_exceeded: monitor_daily_quota",
+        error_traceback=None,
+        logs=[],
+        created_at=now,
+    )
 
 
 async def _list_scheduled_tasks(

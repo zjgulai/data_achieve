@@ -133,6 +133,13 @@ _CURRENT_TOOL_CALL: ContextVar[dict[str, Any] | None] = ContextVar(
     "tiktok_current_tool_call", default=None
 )
 
+# MCP 项目密钥路径的 workspace 绑定。run_tiktok_tool 进体时设置，
+# _collect 读取后透传给 collect_capability；None 时保持 demo workspace
+# 回退（HTTP 路由与 CDO agent 路径不设置，行为与改造前一致）。
+_CURRENT_WORKSPACE_ID: ContextVar[uuid.UUID | None] = ContextVar(
+    "tiktok_current_workspace_id", default=None
+)
+
 
 def _summarize_params(params: dict[str, Any]) -> dict[str, Any]:
     summary: dict[str, Any] = {}
@@ -210,9 +217,7 @@ def _number(value: Any) -> float | None:
     text = str(value).strip()
     multiplier = 1
     if text and text[-1].upper() in {"K", "M", "B"}:
-        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
-            text[-1].upper()
-        ]
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[text[-1].upper()]
         text = text[:-1]
     match = re.search(r"[-+]?\d[\d,]*\.?\d*", text)
     if match is None:
@@ -231,9 +236,7 @@ def _money_field(value: Any) -> float | None:
     text = str(value).replace(",", "")
     multiplier = 1
     if text and text[-1].upper() in {"K", "M", "B"}:
-        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[
-            text[-1].upper()
-        ]
+        multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[text[-1].upper()]
         text = text[:-1]
     match = re.search(r"[-+]?\d[\d,]*\.?\d*", text)
     if match is None:
@@ -271,12 +274,8 @@ def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
                 str(raw.get("original_price") or "").split(" - ")[0]
             ),
             "currency": "USD" if "$" in prices else raw.get("currency"),
-            "sale_count": _number(
-                raw.get("total_sale_cnt") or raw.get("sale_cnt")
-            ),
-            "sale_count_30d": _number(
-                raw.get("total_sale_30d_cnt") or raw.get("sale_30d_cnt")
-            ),
+            "sale_count": _number(raw.get("total_sale_cnt") or raw.get("sale_cnt")),
+            "sale_count_30d": _number(raw.get("total_sale_30d_cnt") or raw.get("sale_30d_cnt")),
             "gmv_amount_30d": _money_field(
                 raw.get("total_sale_gmv_30d_amt") or raw.get("gmv_30d_amt")
             ),
@@ -287,13 +286,9 @@ def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
             "description": raw.get("product_desc"),
             "category_path": raw.get("categories"),
             "seller_id": seller.get("seller_id") or seller.get("id"),
-            "shop_name": seller.get("shop_name")
-            or seller.get("seller_name")
-            or seller.get("name"),
+            "shop_name": seller.get("shop_name") or seller.get("seller_name") or seller.get("name"),
             "shop_id": seller.get("shop_id"),
-            "product_url": raw.get("product_url")
-            or raw.get("seo_url")
-            or raw.get("url"),
+            "product_url": raw.get("product_url") or raw.get("seo_url") or raw.get("url"),
             "image_urls": [raw["cover_url"]]
             if isinstance(raw.get("cover_url"), str)
             else raw.get("image_urls"),
@@ -302,9 +297,7 @@ def _canonicalize_product(record: dict[str, Any]) -> dict[str, Any]:
             "free_shipping": bool(raw.get("is_free_shipping"))
             if raw.get("is_free_shipping") is not None
             else None,
-            "is_hot": bool(raw.get("is_hot"))
-            if raw.get("is_hot") is not None
-            else None,
+            "is_hot": bool(raw.get("is_hot")) if raw.get("is_hot") is not None else None,
         }
     )
     return out
@@ -318,35 +311,17 @@ def _canonicalize_commerce_profile(record: dict[str, Any]) -> dict[str, Any]:
     stats = stats if isinstance(stats, dict) else {}
     gmv = stats.get("gmv") if isinstance(stats.get("gmv"), dict) else {}
     gpm = stats.get("gpm") if isinstance(stats.get("gpm"), dict) else {}
-    followers = (
-        stats.get("followers") if isinstance(stats.get("followers"), dict) else {}
-    )
-    avg_views = (
-        stats.get("avgViews") if isinstance(stats.get("avgViews"), dict) else {}
-    )
-    avg_likes = (
-        stats.get("avgLikes") if isinstance(stats.get("avgLikes"), dict) else {}
-    )
-    avg_comments = (
-        stats.get("avgComments") if isinstance(stats.get("avgComments"), dict) else {}
-    )
-    avg_shares = (
-        stats.get("avgShares") if isinstance(stats.get("avgShares"), dict) else {}
-    )
+    followers = stats.get("followers") if isinstance(stats.get("followers"), dict) else {}
+    avg_views = stats.get("avgViews") if isinstance(stats.get("avgViews"), dict) else {}
+    avg_likes = stats.get("avgLikes") if isinstance(stats.get("avgLikes"), dict) else {}
+    avg_comments = stats.get("avgComments") if isinstance(stats.get("avgComments"), dict) else {}
+    avg_shares = stats.get("avgShares") if isinstance(stats.get("avgShares"), dict) else {}
     engagement = (
-        stats.get("engagementRate")
-        if isinstance(stats.get("engagementRate"), dict)
-        else {}
+        stats.get("engagementRate") if isinstance(stats.get("engagementRate"), dict) else {}
     )
-    commission = (
-        stats.get("avgCommission")
-        if isinstance(stats.get("avgCommission"), dict)
-        else {}
-    )
+    commission = stats.get("avgCommission") if isinstance(stats.get("avgCommission"), dict) else {}
     frequency = (
-        stats.get("contentFrequency")
-        if isinstance(stats.get("contentFrequency"), dict)
-        else {}
+        stats.get("contentFrequency") if isinstance(stats.get("contentFrequency"), dict) else {}
     )
     out = dict(record)
     out.update(
@@ -363,9 +338,7 @@ def _canonicalize_commerce_profile(record: dict[str, Any]) -> dict[str, Any]:
             "units_sold": _number(stats.get("unitsSold")),
             "gpm_amount": _money_field(gpm.get("amount")),
             "avg_commission_rate": _number(commission.get("value")),
-            "brand_collaboration_count": _number(
-                stats.get("totalBrandCollaborations")
-            ),
+            "brand_collaboration_count": _number(stats.get("totalBrandCollaborations")),
             "promoted_product_count": _number(stats.get("promotedProducts")),
             "avg_views": _number(avg_views.get("video")),
             "avg_likes": _number(avg_likes.get("video")),
@@ -375,9 +348,7 @@ def _canonicalize_commerce_profile(record: dict[str, Any]) -> dict[str, Any]:
             "content_frequency": _number(frequency.get("videos")),
             "post_rate": _number(stats.get("postRate")),
             "rating": _number(stats.get("rating")),
-            "promotion_performance_score": _number(
-                stats.get("promotionPerformanceScore")
-            ),
+            "promotion_performance_score": _number(stats.get("promotionPerformanceScore")),
             "top_brands": stats.get("topBrands"),
             "category_list": stats.get("categoryList"),
             "audience_json": followers.get("topDemographics"),
@@ -450,10 +421,15 @@ async def _collect(
 
     context = _CURRENT_TOOL_CALL.get()
     tool_call = {**context, "role": role} if context else None
+    workspace_id = _CURRENT_WORKSPACE_ID.get()
     token = CREATOR_COOKIE_OVERRIDE.set(creator_cookie or "")
     try:
         response = await collect_capability(
-            endpoint_type, project_id, params, tool_call=tool_call
+            endpoint_type,
+            project_id,
+            params,
+            workspace_id=workspace_id,
+            tool_call=tool_call,
         )
     except Exception as exc:
         return [], {
@@ -487,9 +463,7 @@ def _result(
     metadata: dict[str, Any] | None = None,
 ) -> ToolResult:
     errors = [
-        str(run["error"])
-        for run in runs
-        if run.get("error") and not run.get("superseded_by")
+        str(run["error"]) for run in runs if run.get("error") and not run.get("superseded_by")
     ]
     if records:
         status = "partial_success" if errors else "success"
@@ -524,9 +498,7 @@ def _limit(params: dict[str, Any], default: int = 50, maximum: int = 100) -> int
     return max(1, min(parsed, maximum))
 
 
-async def tiktok_trend_rank(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_trend_rank(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     limit = _limit(params)
     country_code = str(params.get("country_code") or "US")
     period = int(params.get("period") or 7)
@@ -539,9 +511,7 @@ async def tiktok_trend_rank(
     return _result("tiktok_trend_rank", records, [run])
 
 
-async def tiktok_hashtag_videos(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_hashtag_videos(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     limit = _limit(params)
     challenge_id = params.get("challenge_id")
     ch_id = params.get("ch_id")
@@ -578,9 +548,7 @@ async def tiktok_hashtag_videos(
     return _result("tiktok_hashtag_videos", records, [run], metadata=metadata)
 
 
-async def tiktok_video_search(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_video_search(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     query = _require_text(params, "query")
     limit = _limit(params)
     records, run = await _collect(
@@ -604,9 +572,7 @@ def _video_id(params: dict[str, Any]) -> str | None:
     return None
 
 
-async def tiktok_video_detail(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_video_detail(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     video_id = _video_id(params)
     if not video_id:
         return ToolResult(
@@ -633,9 +599,7 @@ async def tiktok_video_detail(
     return _result("tiktok_video_detail", records, [run])
 
 
-async def tiktok_video_comments(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_video_comments(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     video_id = _video_id(params) or _require_text(params, "video_id")
     limit = _limit(params, default=100)
     records, run = await _collect(
@@ -667,9 +631,7 @@ async def tiktok_video_comments(
     return _result("tiktok_video_comments", records, runs)
 
 
-async def tiktok_creator_profile(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_creator_profile(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     handle = str(params.get("handle") or "").strip().lstrip("@")
     sec_uid = str(params.get("sec_uid") or "").strip()
     if not handle and not sec_uid:
@@ -701,9 +663,7 @@ async def tiktok_creator_profile(
         1,
     )
     runs = [profile_run]
-    video_limit = _limit(
-        {"limit": params.get("video_limit", 20)}, default=20
-    )
+    video_limit = _limit({"limit": params.get("video_limit", 20)}, default=20)
     if params.get("include_videos", True) and sec_uid:
         videos, video_run = await _collect(
             project_id,
@@ -714,9 +674,7 @@ async def tiktok_creator_profile(
         runs.append(video_run)
         records.extend(videos)
     if params.get("include_fans") and sec_uid:
-        fan_limit = _limit(
-            {"limit": params.get("fan_limit", 50)}, default=50
-        )
+        fan_limit = _limit({"limit": params.get("fan_limit", 50)}, default=50)
         fans, fan_run = await _collect(
             project_id,
             "tikhub_tiktok_user_fans_web",
@@ -743,9 +701,7 @@ async def tiktok_creator_profile(
     return _result("tiktok_creator_profile", records, runs, metadata=metadata)
 
 
-async def tiktok_creator_search(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_creator_search(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     query = _require_text(params, "query")
     limit = _limit(params)
     records, run = await _collect(
@@ -772,9 +728,7 @@ async def tiktok_creator_search(
     )
 
 
-async def tiktok_transcript(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_transcript(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     video_urls = params.get("video_urls")
     if not isinstance(video_urls, list) or not video_urls:
         return ToolResult(
@@ -792,9 +746,7 @@ async def tiktok_transcript(
     return _result("tiktok_transcript", records, [run])
 
 
-async def tiktok_product_search(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_product_search(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     query = _require_text(params, "query")
     region = str(params.get("region") or "US").upper()
     limit = _limit(params, default=20)
@@ -823,9 +775,7 @@ async def tiktok_product_search(
     return _result("tiktok_product_search", records, runs)
 
 
-async def tiktok_product_detail(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_product_detail(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     product_id = str(params.get("product_id") or "").strip()
     product_url = str(params.get("product_url") or "").strip()
     region = str(params.get("region") or "US").upper()
@@ -846,9 +796,7 @@ async def tiktok_product_detail(
     return _result("tiktok_product_detail", records, [run])
 
 
-async def tiktok_product_reviews(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_product_reviews(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     product_id = _require_text(params, "product_id")
     region = str(params.get("region") or "US").upper()
     limit = _limit(params, default=20)
@@ -865,9 +813,7 @@ async def tiktok_product_reviews(
     return _result("tiktok_product_reviews", records, [run])
 
 
-async def tiktok_creator_commerce(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_creator_commerce(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     handle = _require_text(params, "handle").lstrip("@")
     region = str(params.get("region") or "US").upper()
     records, run = await _collect(
@@ -907,9 +853,7 @@ async def _resolve_creator_cookie(project_id: uuid.UUID) -> str | None:
     return values.get("creator_cookie") or None
 
 
-async def tiktok_video_products(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_video_products(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     video_id = _require_text(params, "video_id")
     cookie = await _resolve_creator_cookie(project_id)
     if not cookie:
@@ -928,9 +872,7 @@ async def tiktok_video_products(
     return _result("tiktok_video_products", records, [run])
 
 
-async def tiktok_creator_showcase(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_creator_showcase(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     cookie = await _resolve_creator_cookie(project_id)
     if not cookie:
         return ToolResult(
@@ -949,9 +891,7 @@ async def tiktok_creator_showcase(
     return _result("tiktok_creator_showcase", records, [run])
 
 
-async def tiktok_ads_top(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_ads_top(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     query = str(params.get("query") or "").strip()
     limit = _limit(params, default=20)
     records, run = await _collect(
@@ -968,9 +908,7 @@ async def tiktok_ads_top(
     return _result("tiktok_ads_top", records, [run])
 
 
-async def tiktok_ads_detail(
-    project_id: uuid.UUID, params: dict[str, Any]
-) -> ToolResult:
+async def tiktok_ads_detail(project_id: uuid.UUID, params: dict[str, Any]) -> ToolResult:
     ad_id = _require_text(params, "ad_id")
     records, run = await _collect(
         project_id,
@@ -1005,6 +943,8 @@ async def run_tiktok_tool(
     tool_id: str,
     project_id: uuid.UUID,
     params: dict[str, Any],
+    *,
+    workspace_id: uuid.UUID | None = None,
 ) -> ToolResult:
     handler = TOOL_HANDLERS.get(tool_id)
     if handler is None:
@@ -1019,6 +959,7 @@ async def run_tiktok_tool(
             "params": _summarize_params(params),
         }
     )
+    workspace_token = _CURRENT_WORKSPACE_ID.set(workspace_id)
     try:
         return await handler(project_id, params)
     except ValueError as exc:
@@ -1030,3 +971,4 @@ async def run_tiktok_tool(
         )
     finally:
         _CURRENT_TOOL_CALL.reset(token)
+        _CURRENT_WORKSPACE_ID.reset(workspace_token)
