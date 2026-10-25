@@ -98,6 +98,10 @@ bash scripts/check-edge-fixed-ip.sh
 
 脚本默认连接 `ubuntu@43.163.92.244`。默认密钥为 `../data_scrapy/zhoujian_pachong.pem`。可用 `SCRAPY_PROD_HOST` 与 `SCRAPY_PROD_KEY` 覆盖。
 
+运行 `scripts/deploy-p0.sh --host a` 时，发布脚本会先自动运行 `scripts/preflight-production.sh`。该预检位于代码拉取、镜像构建、数据库迁移和容器替换之前。预检失败时，发布脚本立即以非零状态退出，不执行构建或迁移。
+
+代码发布暂不支持 `--host b` 和 `--host both`。在生产 B 的 preflight 门禁建立前，这两个目标会立即被拒绝。拒绝发生在本地检查、密钥查找和远端连接之前。
+
 ### 3. 记录现场
 
 登录生产 A：
@@ -206,15 +210,28 @@ edge 的 nginx 在启动时解析 `api` 与 `console`。替换容器后必须重
 scripts/deploy-p0.sh --host a
 ```
 
-该脚本执行以下动作：
+该脚本按以下顺序执行：
 
-1. 拉取 `main`。
-2. 构建 `api` 与 `console`。
-3. 应用迁移。
-4. 运行 `up -d --no-deps api console`。
-5. 运行 `restart edge`。
-6. 等待容器健康。
-7. 重载共享网关。
+1. 拒绝 `--host b` 和 `--host both` 的代码发布。该检查先于本地检查、密钥查找和远端连接。
+2. 执行目标门禁和本地检查。
+3. 运行生产 A 的 `scripts/preflight-production.sh`。
+4. 检查远端分支。
+5. 拉取 `main`。
+6. 构建 `api` 与 `console`。
+7. 应用迁移。
+8. 运行 `up -d --no-deps api console`。
+9. 运行 `restart edge`。
+10. 等待容器健康。
+11. 重载共享网关。
+12. 执行发布后 `verify_public`。
+
+预检失败时，脚本立即以非零状态退出。失败发生在代码拉取、镜像构建、数据库迁移和容器替换之前。
+
+其他运行模式：
+
+- `--grants-file` 是 grants 模式。该模式跳过代码发布 preflight，但仍会替换 API 并重启 edge。
+- `--dry-run` 仍连接生产环境，并执行只读检查。这些检查包括目标门禁、本地检查、生产 A preflight 和远端分支检查。该模式不执行发布后 `verify_public`。
+- 抢修必须使用专用 runbook。脚本不提供 `--skip-preflight`，也不提供环境变量绕过方式。
 
 注意：脚本重启 edge，并尝试重载网关。网关重载失败时，脚本只告警。操作者必须停止并通知。不得用重建 edge 的方式绕过网关失败。
 
