@@ -551,14 +551,49 @@ async def test_scheduler_skips_monitor_run_when_quota_exhausted() -> None:
     async with session_factory() as session:
         runs = list((await session.execute(select(TaskRun))).scalars().all())
     assert len(runs) == 1
-    assert runs[0].status == "failed"
-    assert "quota_exceeded" in (runs[0].error_message or "")
+    # 额度门是配置侧闸门，不是执行失败。
+    assert runs[0].status == "config_gated"
+    assert runs[0].error_message == "quota_exceeded: monitor_daily_quota"
     # 通知已发出
     async with session_factory() as session:
         notes = list((await session.execute(select(Notification))).scalars().all())
     quota_notes = [n for n in notes if n.notification_type == "monitor_quota_exhausted"]
     assert len(quota_notes) == 1
     assert quota_notes[0].reference_id == monitor_id
+    assert "额度" in quota_notes[0].title
+
+
+@pytest.mark.asyncio
+async def test_scheduler_reports_revoked_monitor_key() -> None:
+    """密钥已撤销：同样落 config_gated，但文案指向撤销而不是额度。"""
+    session_factory, monitor_id = await _create_monitor_scenario(exhaust_quota=False)
+
+    async with session_factory() as session:
+        key_row = (await session.execute(select(ProjectApiKey))).scalar_one()
+        key_row.revoked_at = datetime.now(UTC)
+        await session.commit()
+
+    scheduler = CollectionScheduler(
+        session_factory=session_factory,
+        poll_interval_seconds=60,
+        clock=lambda: datetime.now(UTC),
+    )
+    result = await scheduler.tick()
+
+    assert result.started == 0
+    async with session_factory() as session:
+        runs = list((await session.execute(select(TaskRun))).scalars().all())
+    assert len(runs) == 1
+    assert runs[0].status == "config_gated"
+    assert runs[0].error_message == "quota_exceeded: monitor_key_revoked"
+
+    async with session_factory() as session:
+        notes = list((await session.execute(select(Notification))).scalars().all())
+    quota_notes = [n for n in notes if n.notification_type == "monitor_quota_exhausted"]
+    assert len(quota_notes) == 1
+    assert quota_notes[0].reference_id == monitor_id
+    assert "撤销" in quota_notes[0].title
+    assert "撤销" in quota_notes[0].body
 
 
 @pytest.mark.asyncio
