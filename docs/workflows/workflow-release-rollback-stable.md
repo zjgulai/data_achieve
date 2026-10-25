@@ -73,7 +73,7 @@ pnpm --dir apps/scraper-console build
 
 ### 生产 preflight
 
-发布前必须依次执行以下两层门禁。两层门禁的检查范围不同，必须全部通过，不是二选一。
+发布前必须完成以下两层门禁。两层门禁的检查范围不同，互为补充，不可相互替代。
 
 #### 1. 本地编排门禁
 
@@ -107,7 +107,9 @@ bash scripts/deploy-preflight-scrapy.sh \
   --base-url https://scrapy.luteos.com
 ```
 
-`scripts/deploy-preflight-scrapy.sh` 检查生产主机内部端口、环境变量和基础配置。该门禁不能替代本地编排门禁，本地编排门禁也不能替代该门禁。
+`scripts/deploy-preflight-scrapy.sh` 检查生产主机环境变量（数据库、JWT、Cookie 安全性）、Compose 配置有效性与 Docker 网络（`lighthouse_ai_video_net`）连接。
+
+`deploy-p0.sh` 脚本在本地自动执行本地编排门禁 `scripts/preflight-production.sh`；在执行手工步骤、登录主机巡检或重要发布准备时，操作人员仍须在主机执行 `scripts/deploy-preflight-scrapy.sh`，两者互为补充，不可相互替代。
 
 ## 备份
 

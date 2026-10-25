@@ -90,7 +90,7 @@ bash scripts/check-edge-fixed-ip.sh
 | 公网 `/api/health` | 200 |
 | edge 固定 IP | `172.20.0.16` |
 | API 容器 | healthy |
-| schema | `202610220056` |
+| schema 自洽性 | `status=ok`、`database=connected`、`schema=current`、`schema_revision == schema_head` |
 | vault key | 44 字符 |
 | TikTok 工具 | 16 个 |
 
@@ -98,7 +98,7 @@ bash scripts/check-edge-fixed-ip.sh
 
 脚本默认连接 `ubuntu@43.163.92.244`。默认密钥为 `../data_scrapy/zhoujian_pachong.pem`。可用 `SCRAPY_PROD_HOST` 与 `SCRAPY_PROD_KEY` 覆盖。
 
-运行 `scripts/deploy-p0.sh --host a` 时，发布脚本会先自动运行 `scripts/preflight-production.sh`。该预检位于代码拉取、镜像构建、数据库迁移和容器替换之前。预检失败时，发布脚本立即以非零状态退出，不执行构建或迁移。
+`scripts/deploy-p0.sh --host a` 自动调用本地编排门禁 `scripts/preflight-production.sh`。该预检位于代码拉取、镜像构建、数据库迁移和容器替换之前。预检失败时，发布脚本立即以非零状态退出，不执行构建或迁移。若进行登录主机的手工变更与巡检，操作人员还必须按「发布与回滚清单」执行主机内部门禁 `scripts/deploy-preflight-scrapy.sh`。
 
 代码发布暂不支持 `--host b` 和 `--host both`。在生产 B 的 preflight 门禁建立前，这两个目标会立即被拒绝。拒绝发生在本地检查、密钥查找和远端连接之前。
 
@@ -311,7 +311,7 @@ docker exec data_achieve_scrapy_api python -c \
 
 | 项目 | 期望值 |
 | --- | --- |
-| `schema_revision` | `202610220056` |
+| schema 自洽性 | `status=ok`、`database=connected`、`schema=current`、`schema_revision == schema_head` |
 | vault key 长度 | `44` |
 | TikTok 工具数 | `16` |
 
@@ -330,7 +330,7 @@ COMPOSE_FILE=/opt/data-achieve-scrapy/app/configs/deploy/scrapy/docker-compose.y
 出现以下任一情况时，停止发布并回滚：
 
 1. 公网 `/api/health` 非 200。
-2. schema 不是 `202610220056`。
+2. schema 不是 `current`，或 `schema_revision` 不等于 `schema_head`。
 3. `api` 或 `console` 不健康。
 4. edge 不在 `172.20.0.16`。
 5. 网关重载失败。
