@@ -5,7 +5,9 @@
   "scripts": {
     "dev:web": "corepack pnpm --dir apps/web dev",
     "lint:web": "corepack pnpm --dir apps/web lint",
-    "test:web": "corepack pnpm --dir apps/web test"
+    "test:web": "corepack pnpm --dir apps/web test",
+    "test:console:e2e": "pnpm --dir apps/scraper-console test:e2e",
+    "test:console:e2e:ui": "pnpm --dir apps/scraper-console exec playwright test --ui"
   },
   "pnpm": {
     "overrides": {

@@ -23,6 +23,8 @@ const PAGE_ROUTES = [
   "/tasks",
   "/runs",
   "/dashboard",
+  "/monitors",
+  "/usage",
   "/settings/credentials",
   "/settings/providers",
   "/settings/members",
