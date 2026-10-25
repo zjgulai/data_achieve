@@ -138,6 +138,8 @@ async def governed_mcp_tool(
     is_collect: bool = False,
 ) -> AsyncIterator[AccessDecision]:
     policy = get_policy(tool_name)
+    # 0. 生产 fail-closed：匿名请求不得按全局超级权限执行。
+    assert_anonymous_rejected_in_production(context)
     identity = project_api_key_context(context)
 
     # 1. 解析项目：项目密钥强制绑定；全局 token 解析给定值。

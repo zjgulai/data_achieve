@@ -739,9 +739,12 @@ def test_every_provider_calling_tool_is_endpoint_gated() -> None:
             if not isinstance(call, ast.Call):
                 continue
             name = getattr(call.func, "id", None) or getattr(call.func, "attr", None)
-            if name == "governed_mcp_tool" and len(call.args) >= 2:
-                if isinstance(call.args[1], ast.Constant):
-                    tool = call.args[1].value
+            if (
+                name == "governed_mcp_tool"
+                and len(call.args) >= 2
+                and isinstance(call.args[1], ast.Constant)
+            ):
+                tool = call.args[1].value
         if tool is None:
             continue
         text = ast.get_source_segment(source, node) or ""
@@ -756,6 +759,113 @@ def test_every_provider_calling_tool_is_endpoint_gated() -> None:
     assert {"collect", "web_search", "web_fetch", "answer", "deep_research"} <= expected
     assert {"create_monitor", "enrich_list", "deep_research_start"} <= expected
     assert expected == gated, sorted(expected ^ gated)
+
+
+# ── 生产环境的匿名 fail-closed ───────────────────────────────────────────
+
+
+def _settings_patch(monkeypatch: pytest.MonkeyPatch, **overrides: object) -> None:
+    """把 get_settings 换成带覆盖值的实例（access_control 独占）。"""
+    base = get_settings()
+    patched = base.model_copy(update=overrides)
+    monkeypatch.setattr(access_control, "get_settings", lambda: patched)
+
+
+def _stub_context_with_headers(headers: dict[str, str]):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        headers=headers,
+        request_context=SimpleNamespace(
+            request=SimpleNamespace(scope={"state": {}}),
+        ),
+    )
+
+
+async def test_production_anonymous_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """production + 无凭据 → project_key_not_found（工具入口 fail-closed）。"""
+    from pydantic import SecretStr
+
+    _settings_patch(
+        monkeypatch,
+        app_env="production",
+        mcp_token=SecretStr("global-token"),
+        mcp_tokens={},
+    )
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+
+    with pytest.raises(ValueError, match="project_key_not_found"):
+        async with access_control.governed_mcp_tool(_stub_context(), "list_platforms"):
+            pytest.fail("匿名请求必须在进入工具体之前被拒")
+
+
+async def test_production_global_token_is_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """production + 全局 token → 放行，身份仍是 global_operator。"""
+    from pydantic import SecretStr
+
+    _settings_patch(
+        monkeypatch,
+        app_env="production",
+        mcp_token=SecretStr("global-token"),
+        mcp_tokens={},
+    )
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+
+    async with access_control.governed_mcp_tool(
+        _stub_context_with_headers({"authorization": "Bearer global-token"}),
+        "list_platforms",
+    ) as decision:
+        assert decision.identity_type == "global_operator"
+
+
+async def test_production_wrong_global_token_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """production + 错误的 Bearer → 仍按匿名拒绝，不按全局超级权限执行。"""
+    from pydantic import SecretStr
+
+    _settings_patch(
+        monkeypatch,
+        app_env="production",
+        mcp_token=SecretStr("global-token"),
+        mcp_tokens={},
+    )
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+
+    with pytest.raises(ValueError, match="project_key_not_found"):
+        async with access_control.governed_mcp_tool(
+            _stub_context_with_headers({"authorization": "Bearer wrong"}),
+            "list_platforms",
+        ):
+            pytest.fail("错误的 Bearer 不得进入工具体")
+
+
+async def test_production_project_key_is_allowed(
+    scope: _Scope, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """production + 项目密钥 → 放行（这条刀只砍匿名）。"""
+    identity = scope.identity
+    _settings_patch(monkeypatch, app_env="production", mcp_token=None, mcp_tokens={})
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: identity)
+    monkeypatch.setattr(access_control, "async_session_factory", scope.factory)
+
+    async with access_control.governed_mcp_tool(_stub_context(), "list_platforms") as decision:
+        assert decision.identity_type == "project_key"
+
+
+async def test_development_anonymous_keeps_current_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """dev + 无凭据 → 现行为（放行），本地联调不被这刀砍挂。"""
+    _settings_patch(monkeypatch, app_env="development", mcp_token=None, mcp_tokens={})
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+
+    async with access_control.governed_mcp_tool(_stub_context(), "list_platforms") as decision:
+        assert decision.identity_type == "global_operator"
 
 
 def _stub_context():
