@@ -41,6 +41,7 @@ from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 from data_intelligence_hub.repositories.workspaces import get_workspace_by_id
 from data_intelligence_hub.services import enrichment_service
+from data_intelligence_hub.services.quick_collect_service import QuickCollectResponse
 
 pytestmark = pytest.mark.anyio
 
@@ -866,6 +867,92 @@ async def test_development_anonymous_keeps_current_behavior(
 
     async with access_control.governed_mcp_tool(_stub_context(), "list_platforms") as decision:
         assert decision.identity_type == "global_operator"
+
+
+# ── 进程内 daily_collects 只治理全局 token ───────────────────────────────
+
+
+@pytest.fixture()
+def governance_limit_2(monkeypatch: pytest.MonkeyPatch) -> None:
+    """把进程内日采集上限压到 2，并清掉 lru_cache 的全局实例。"""
+    from data_intelligence_hub.mcp_runtime import runtime as runtime_module
+
+    base = get_settings()
+    patched = base.model_copy(update={"mcp_daily_collects": 2})
+    monkeypatch.setattr(runtime_module, "get_settings", lambda: patched)
+    runtime_module.get_mcp_governance.cache_clear()
+    yield
+    runtime_module.get_mcp_governance.cache_clear()
+
+
+async def test_project_key_not_limited_by_process_collect_budget(
+    bound_key: _Scope,
+    governance_limit_2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """密钥身份高频 collect 不受进程内 500/日 限制（真实边界是 DB 额度）。"""
+    calls: list[str] = []
+
+    async def fake_collect(endpoint_type, project_id, params, **kwargs):
+        calls.append(endpoint_type)
+        return QuickCollectResponse(
+            task_run_id=uuid.uuid4(),
+            task_id=uuid.uuid4(),
+            source_id=uuid.uuid4(),
+            status="success",
+            records_count=1,
+            error_message=None,
+        )
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    # 5 次远超进程内上限 2；每次都被放行。
+    for _ in range(5):
+        await server_module.collect(
+            _stub_context(),
+            "exa_search_lite",
+            str(bound_key.project_a),
+            {"query": "q"},
+        )
+    assert calls == ["exa_search_lite"] * 5
+
+
+async def test_global_token_still_limited_by_process_collect_budget(
+    global_token: _Scope,
+    governance_limit_2: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """全局 token 仍受进程内日采集上限拦（运维路径的治理不回归）。"""
+    calls: list[str] = []
+
+    async def fake_collect(endpoint_type, project_id, params, **kwargs):
+        calls.append(endpoint_type)
+        return QuickCollectResponse(
+            task_run_id=uuid.uuid4(),
+            task_id=uuid.uuid4(),
+            source_id=uuid.uuid4(),
+            status="success",
+            records_count=1,
+            error_message=None,
+        )
+
+    monkeypatch.setattr(server_module, "collect_capability", fake_collect)
+
+    for _ in range(2):
+        await server_module.collect(
+            _stub_context(),
+            "exa_search_lite",
+            str(global_token.project_a),
+            {"query": "q"},
+        )
+    with pytest.raises(ValueError, match="mcp_daily_collect_budget_exceeded"):
+        await server_module.collect(
+            _stub_context(),
+            "exa_search_lite",
+            str(global_token.project_a),
+            {"query": "q"},
+        )
+    assert len(calls) == 2
 
 
 def _stub_context():

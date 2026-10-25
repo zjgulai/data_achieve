@@ -172,7 +172,15 @@ async def governed_mcp_tool(
         if object_project_id != expected:
             raise ValueError("object_not_found")
 
-    async with governed_tool(context, tool_name, is_collect=is_collect):
+    async with governed_tool(
+        context,
+        tool_name,
+        # 进程内 daily_collects 只治理全局 token（spec §3.4）。
+        # 项目密钥的真实边界是 DB 的 daily_collect_quota（consume_daily_quota）；
+        # 两套计数叠加会让项目密钥先撞上进程内的 500/日，额度配置形同虚设。
+        # 副作用：governance snapshot 的 collect_count 不再包含项目密钥调用。
+        is_collect=is_collect and identity is None,
+    ):
         quota_consumed = False
         if identity is not None:
             # 3. 白名单。
