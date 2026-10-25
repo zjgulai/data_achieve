@@ -73,6 +73,30 @@ pnpm --dir apps/scraper-console build
 
 ### 生产 preflight
 
+发布前必须完成以下两层门禁。两层门禁的检查范围不同，互为补充，不可相互替代。
+
+#### 1. 本地编排门禁
+
+在本地仓库运行：
+
+```bash
+bash scripts/preflight-production.sh
+```
+
+`scripts/deploy-p0.sh --host a` 会自动调用该脚本。脚本检查以下项目：
+
+- 公网 health 结果自洽。
+- API 容器为 `healthy`。
+- edge 固定 IP 为 `172.20.0.16`。
+- vault key 长度为 `44`。
+- TikTok 工具数为 `16`。
+
+任一检查失败时，门禁阻断代码发布。阻断发生在代码拉取、构建、迁移和容器替换之前。
+
+#### 2. 生产主机内部门禁
+
+登录生产主机后，在主机内部运行：
+
 ```bash
 ssh -i zhoujian_pachong.pem ubuntu@43.163.92.244
 cd /opt/data-achieve-scrapy/app
@@ -82,6 +106,10 @@ bash scripts/deploy-preflight-scrapy.sh \
   --compose-file configs/deploy/scrapy/docker-compose.yml \
   --base-url https://scrapy.luteos.com
 ```
+
+`scripts/deploy-preflight-scrapy.sh` 检查生产主机环境变量（数据库、JWT、Cookie 安全性）、Compose 配置有效性与 Docker 网络（`lighthouse_ai_video_net`）连接。
+
+`deploy-p0.sh` 脚本在本地自动执行本地编排门禁 `scripts/preflight-production.sh`；在执行手工步骤、登录主机巡检或重要发布准备时，操作人员仍须在主机执行 `scripts/deploy-preflight-scrapy.sh`，两者互为补充，不可相互替代。
 
 ## 备份
 
