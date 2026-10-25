@@ -34,6 +34,7 @@ from data_intelligence_hub.mcp_runtime.server import mcp_server
 from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
 from data_intelligence_hub.models import Base
 from data_intelligence_hub.models.enrichment import EnrichmentJob
+from data_intelligence_hub.models.monitor import Monitor
 from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.models.run import Run
@@ -56,6 +57,8 @@ class _Scope:
     project_b: uuid.UUID
     run_id: uuid.UUID
     job_id: uuid.UUID
+    monitor_a: uuid.UUID
+    monitor_b: uuid.UUID
     identity: ProjectApiKeyContext
 
 
@@ -76,6 +79,8 @@ async def scope(tmp_path) -> AsyncIterator[_Scope]:
     now = datetime.now(UTC)
     run_id = uuid.uuid4()
     job_id = uuid.uuid4()
+    monitor_a = uuid.uuid4()
+    monitor_b = uuid.uuid4()
     key_id = uuid.uuid4()
 
     async with factory() as session:
@@ -117,6 +122,42 @@ async def scope(tmp_path) -> AsyncIterator[_Scope]:
                 domain="ecommerce",
                 status="active",
                 owner_id=owner_id,
+            )
+        )
+        session.add(
+            Project(
+                id=project_b,
+                workspace_id=workspace_id,
+                name="scope-b",
+                domain="ecommerce",
+                status="active",
+                owner_id=owner_id,
+            )
+        )
+        # 同工作区、两个项目各一条监控：密钥只绑定 A，不能列出 B 的监控。
+        session.add(
+            Monitor(
+                id=monitor_a,
+                workspace_id=workspace_id,
+                project_id=project_a,
+                name="monitor-a",
+                endpoint_type="exa_search_lite",
+                params={},
+                interval_hours=24,
+                status="enabled",
+                project_key_id=key_id,
+            )
+        )
+        session.add(
+            Monitor(
+                id=monitor_b,
+                workspace_id=workspace_id,
+                project_id=project_b,
+                name="monitor-b",
+                endpoint_type="exa_search_lite",
+                params={},
+                interval_hours=24,
+                status="enabled",
             )
         )
         # run 与 enrichment job 都属于项目 A，工作区与密钥相同。
@@ -165,6 +206,8 @@ async def scope(tmp_path) -> AsyncIterator[_Scope]:
         project_b=project_b,
         run_id=run_id,
         job_id=job_id,
+        monitor_a=monitor_a,
+        monitor_b=monitor_b,
         identity=identity,
     )
     await engine.dispose()
@@ -558,14 +601,39 @@ def test_bound_project_tools_pass_project_id_to_governance() -> None:
 
 
 def test_object_scoped_tools_pass_identity_project_id() -> None:
-    """对象归属工具必须按密钥身份传 project_id（F1 的接线清单）。"""
-    import inspect
+    """对象归属工具必须按密钥身份传 project_id（F1 的接线清单）。
 
-    for name in server_module._BOUND_PROJECT_OBJECT_TOOLS:
-        source = inspect.getsource(getattr(server_module, name))
-        assert "project_id=_identity_project_id(identity)" in source or (
-            "project_id=project_id" in source
-        ), name
+    清单不再由常量自证：从 server.py 的 AST 派生「体内调用了
+    ``_identity_project_id`` 的工具」集合，再与
+    ``_IDENTITY_PROJECT_FILTER_TOOLS`` 做双向等值断言。漏登记、或只接线不
+    登记，都会失败。派生时排除辅助函数自身。
+    """
+    import ast
+    import inspect
+    import pathlib
+
+    source = pathlib.Path(server_module.__file__).read_text(encoding="utf-8")
+    derived: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        if node.name.startswith("_"):
+            continue  # 辅助函数本身不算工具
+        text = ast.get_source_segment(source, node) or ""
+        if "_identity_project_id(" in text:
+            derived.add(node.name)
+
+    declared = set(server_module._IDENTITY_PROJECT_FILTER_TOOLS)
+    assert derived == declared, sorted(derived ^ declared)
+    assert {"get_run", "list_records", "stop", "list_monitors"} <= declared
+    assert "workspace_answer" in declared
+
+    # 每个对象工具都必须把派生值真的交给被调用的服务函数：接受「先赋给局部
+    # 变量再传」与「内联传参」两种写法，但不接受只算不用。
+    for name in sorted(server_module._BOUND_PROJECT_OBJECT_TOOLS):
+        text = inspect.getsource(getattr(server_module, name))
+        assert "_identity_project_id(" in text, name
+        assert "project_id=" in text, name
 
 
 # ── 端点级白名单（SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS）──────────────────
@@ -973,6 +1041,44 @@ def test_no_idempotency_replay_surface_in_n1() -> None:
         "MCP server 开始接幂等键：必须在 governed_mcp_tool 里实现"
         "「命中已有运行则不扣额度」，并把本条测试改成断言该行为"
     )
+
+
+# ── list_monitors 的项目隔离 ─────────────────────────────────────────────
+
+
+async def test_list_monitors_without_project_id_returns_only_bound_project(
+    bound_key: _Scope,
+) -> None:
+    """密钥身份不传 project_id：只返回绑定项目 A 的监控，不得列出 B 的。
+
+    这是 R2 审查的 Critical 1：过滤值原本是 None，等于全工作区可见。
+    """
+    result = await server_module.list_monitors(_stub_context())
+
+    monitors = result["monitors"]
+    assert monitors is not None
+    ids = {item["id"] for item in monitors}
+    assert ids == {str(bound_key.monitor_a)}
+    assert str(bound_key.monitor_b) not in ids
+    assert all(item["project_id"] == str(bound_key.project_a) for item in monitors)
+
+
+async def test_list_monitors_rejects_foreign_project_id(bound_key: _Scope) -> None:
+    """显式传 B（≠ 绑定 A）→ project_not_found。"""
+    with pytest.raises(ValueError, match="project_not_found"):
+        await server_module.list_monitors(
+            _stub_context(), project_id=str(bound_key.project_b)
+        )
+
+
+async def test_list_monitors_global_token_spans_workspace(global_token: _Scope) -> None:
+    """全局 token 不传 project_id：全工作区可见（运维超级权限不回归）。"""
+    result = await server_module.list_monitors(_stub_context())
+
+    monitors = result["monitors"]
+    assert monitors is not None
+    ids = {item["id"] for item in monitors}
+    assert ids == {str(global_token.monitor_a), str(global_token.monitor_b)}
 
 
 def _stub_context():

@@ -71,15 +71,29 @@ def _assert_bound_project(
 # 供测试与密钥页枚举执行类 TikTok 工具；事实源是 tool_registry。
 _TIKTOK_TOOL_NAMES: tuple[str, ...] = TIKTOK_EXECUTE_TOOLS
 
-# 对象归属按项目过滤的只读/控制工具。
-# 这些工具没有 project_id 入参，绑定值直接取自密钥身份。
-# 全局 token 路径 identity 为 None，只按 workspace 过滤（保持运维超级权限）。
+# 对象归属按项目过滤的只读/控制工具：密钥身份不传 project_id 时，
+# 绑定项目即过滤值。全局 token 路径 identity 为 None，只按 workspace 过滤
+# （保持运维超级权限）。
+#
+# 维护义务：新增「按对象 id 单个查询、且 project_id 可选或不存在」的
+# workspace/bound_project 只读工具时，必须加进这张表并在体内用
+# _identity_project_id 派生过滤值。test_mcp_object_scope.py 会从 server.py
+# 的 AST 派生同一集合（凡体内调用 _identity_project_id 的工具）做双向等值
+# 断言，漏加或只接线不登记都会失败。
 _BOUND_PROJECT_OBJECT_TOOLS: tuple[str, ...] = (
     "get_run",
     "list_records",
     "stop",
     "deep_research_check",
     "enrichment_check",
+    "list_monitors",
+)
+
+# 同样是「不传 project_id 就用绑定项目过滤」，但它是执行型（扣额度）、
+# 且 project_id 是显式入参，因此不进上面那张只读表。
+_IDENTITY_PROJECT_FILTER_TOOLS: tuple[str, ...] = (
+    *_BOUND_PROJECT_OBJECT_TOOLS,
+    "workspace_answer",
 )
 
 
@@ -559,10 +573,12 @@ async def list_monitors(
         project_id=project_id,
     ) as decision:
         workspace = await _monitor_workspace(context)
+        # 不传 project_id 时也必须按绑定项目过滤：否则密钥身份能列出同工作区
+        # 其他项目的监控（跨项目泄露）。全局 token 保持不设项目上限。
         parsed = (
             resolve_bound_project(decision.identity, _parse_project_id(project_id))
             if project_id
-            else None
+            else _identity_project_id(decision.identity)
         )
         async with async_session_factory() as session:
             monitors = await monitor_service.list_monitors(
