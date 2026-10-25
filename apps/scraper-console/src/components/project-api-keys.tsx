@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Loader2 } from "lucide-react";
+import { KeyRound, Loader2, RefreshCw } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import {
   fetchMcpToolPolicies,
@@ -43,23 +43,33 @@ const PRESET_BUTTONS: ReadonlyArray<{ key: string; label: string }> = [
   { key: "all", label: "全部" },
 ];
 
+type KeyFormValues = {
+  label: string;
+  tool_allowlist: string[];
+  daily_collect_quota: number;
+};
+
 type KeyFormProps = {
   readonly policies: McpToolPolicies;
   readonly busy: boolean;
   /** 编辑态预填的密钥；签发态为 null。 */
   readonly editing: ProjectApiKey | null;
-  readonly onSubmit: (values: {
-    tool_allowlist: string[];
-    daily_collect_quota: number;
-  }) => void;
+  readonly onSubmit: (values: KeyFormValues) => void;
   readonly onCancel?: () => void;
 };
 
 /** 签发与编辑共用的表单：工具复选框从策略注册表渲染，预设并集进勾选集合。 */
 function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) {
-  const [allowlist, setAllowlist] = useState<string[]>(
-    editing ? [...editing.tool_allowlist] : ["web_search", "web_fetch"]
-  );
+  const [label, setLabel] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
+  const [allowlist, setAllowlist] = useState<string[]>(() => {
+    if (editing) {
+      // 注册表可能已下架部分工具：预填取交集，PATCH 才能通过校验。
+      const known = new Set(policies.tools.map((tool) => tool.name));
+      return editing.tool_allowlist.filter((name) => known.has(name));
+    }
+    return ["web_search", "web_fetch"];
+  });
   const [quota, setQuota] = useState<number>(
     editing ? editing.daily_collect_quota : 50
   );
@@ -70,6 +80,11 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
     list.push(tool);
     toolsByMode.set(tool.access_mode, list);
   }
+  // 未来注册表扩出未知 access_mode 时兜底成「其他」组，避免静默吞工具。
+  const knownModes = new Set(ACCESS_MODE_GROUPS.map((group) => group.mode));
+  const otherTools = policies.tools.filter(
+    (tool) => !knownModes.has(tool.access_mode)
+  );
   const knownPresets = PRESET_BUTTONS.filter((preset) =>
     Object.prototype.hasOwnProperty.call(policies.presets, preset.key)
   );
@@ -88,19 +103,77 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
     setAllowlist((current) => Array.from(new Set([...current, ...members])));
   }
 
+  function renderToolGroup(title: string, tools: McpToolPolicies["tools"]) {
+    if (tools.length === 0) return null;
+    return (
+      <div key={title} className="mt-2">
+        <p className="text-[11px] text-[var(--text-tertiary)]">
+          {title}（{tools.length}）
+        </p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          {tools.map((tool) => (
+            <label
+              key={tool.name}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)]"
+            >
+              <input
+                type="checkbox"
+                checked={allowlist.includes(tool.name)}
+                onChange={() => toggleTool(tool.name)}
+              />
+              {tool.name}
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (allowlist.length === 0) return;
-        onSubmit({ tool_allowlist: allowlist, daily_collect_quota: quota });
+        const missing: string[] = [];
+        if (!editing && !label.trim()) missing.push("标签必填");
+        if (allowlist.length === 0) missing.push("允许工具至少选一个");
+        if (missing.length > 0) {
+          setFormError(`${missing.join("，")}。`);
+          return;
+        }
+        setFormError(null);
+        onSubmit({
+          label: label.trim(),
+          tool_allowlist: allowlist,
+          daily_collect_quota: quota,
+        });
       }}
       className="mt-3 grid gap-3"
     >
+      {formError && (
+        <p role="alert" className="rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--state-danger)]">
+          {formError}
+        </p>
+      )}
+
       {editing && (
         <p className="text-xs text-[var(--text-secondary)]">
           正在编辑密钥「{editing.label}」。标签不可修改。
         </p>
+      )}
+
+      {!editing && (
+        <div>
+          <label className="block text-xs font-medium text-[var(--text-secondary)]" htmlFor="key-label">
+            标签
+          </label>
+          <input
+            id="key-label"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="例如：外部 agent"
+            className="mt-1.5 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 text-sm outline-none focus:border-[var(--action-primary)]"
+          />
+        </div>
       )}
 
       <fieldset>
@@ -126,32 +199,10 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
         <legend className="text-xs font-medium text-[var(--text-secondary)]">
           允许工具（至少选一个）
         </legend>
-        {ACCESS_MODE_GROUPS.map((group) => {
-          const tools = toolsByMode.get(group.mode) ?? [];
-          if (tools.length === 0) return null;
-          return (
-            <div key={group.mode} className="mt-2">
-              <p className="text-[11px] text-[var(--text-tertiary)]">
-                {group.title}（{tools.length}）
-              </p>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {tools.map((tool) => (
-                  <label
-                    key={tool.name}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-xs text-[var(--text-secondary)]"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={allowlist.includes(tool.name)}
-                      onChange={() => toggleTool(tool.name)}
-                    />
-                    {tool.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {ACCESS_MODE_GROUPS.map((group) =>
+          renderToolGroup(group.title, toolsByMode.get(group.mode) ?? [])
+        )}
+        {renderToolGroup("其他", otherTools)}
       </fieldset>
 
       <div>
@@ -167,7 +218,11 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
           min={1}
           max={100000}
           value={quota}
-          onChange={(event) => setQuota(Number(event.target.value))}
+          onChange={(event) => {
+            const next = Number(event.target.value);
+            // 清空或非法输入不改状态，防止额度意外变成 0。
+            if (Number.isFinite(next) && next >= 1) setQuota(next);
+          }}
           className="mt-1.5 w-32 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 text-sm outline-none focus:border-[var(--action-primary)]"
         />
       </div>
@@ -175,7 +230,7 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
       <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={busy || allowlist.length === 0}
+          disabled={busy}
           className="w-fit rounded-lg bg-[var(--action-primary)] px-3 py-2 text-xs font-semibold text-[var(--text-inverse)] disabled:opacity-60"
         >
           {editing
@@ -203,7 +258,6 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
 
 export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
   const queryClient = useQueryClient();
-  const [label, setLabel] = useState("");
   const [issued, setIssued] = useState<IssuedProjectApiKey | null>(null);
   const [editingKey, setEditingKey] = useState<ProjectApiKey | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -230,18 +284,14 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
   });
 
   const issue = useMutation({
-    mutationFn: (values: {
-      tool_allowlist: string[];
-      daily_collect_quota: number;
-    }) =>
+    mutationFn: (values: KeyFormValues) =>
       issueProjectApiKey(projectId, {
-        label: label.trim(),
+        label: values.label,
         tool_allowlist: values.tool_allowlist,
         daily_collect_quota: values.daily_collect_quota,
       }),
     onSuccess: async (key) => {
       setIssued(key);
-      setLabel("");
       setEditingKey(null);
       setActionError(null);
       await queryClient.invalidateQueries({
@@ -314,9 +364,7 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
   const busy = issue.isPending || update.isPending || revoke.isPending;
   const policies = policiesQuery.data ?? null;
   // 编辑态仍显示活跃密钥行（keyQuery 里有 active），表单预填编辑密钥。
-  const showIssueForm = !active && !keysQuery.isLoading;
   const showEditForm = active !== null && editingKey?.id === active.id;
-  const formReady = policies !== null;
 
   return (
     <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6">
@@ -354,11 +402,24 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
         <p className="mt-3 text-xs text-[var(--text-tertiary)]">
           只有工作区所有者或项目所有者可以管理密钥。
         </p>
-      ) : keysQuery.error || policiesQuery.error ? (
+      ) : keysQuery.error ? (
         <p className="mt-3 text-xs text-[var(--state-danger)]">
-          加载失败：
-          {((keysQuery.error ?? policiesQuery.error) as Error).message}
+          密钥列表加载失败：{(keysQuery.error as Error).message}
         </p>
+      ) : policiesQuery.error ? (
+        <div className="mt-3 rounded-lg bg-[var(--danger-soft)] px-3 py-2 text-xs text-[var(--state-danger)]">
+          <p>
+            策略加载失败：{(policiesQuery.error as Error).message}
+          </p>
+          <button
+            type="button"
+            onClick={() => policiesQuery.refetch()}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+          >
+            <RefreshCw size={14} />
+            重试
+          </button>
+        </div>
       ) : active ? (
         <div className="mt-3">
           <div className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-3 py-2">
@@ -399,7 +460,7 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
               </div>
             </div>
           </div>
-          {showEditForm && formReady && (
+          {showEditForm && policies && editingKey && (
             <KeyForm
               key={editingKey.id}
               policies={policies}
@@ -412,19 +473,13 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
             />
           )}
         </div>
-      ) : showIssueForm ? (
-        formReady ? (
-          <KeyForm
-            policies={policies}
-            busy={busy}
-            editing={null}
-            onSubmit={(values) => issue.mutate(values)}
-          />
-        ) : (
-          <p className="mt-3 text-xs text-[var(--text-tertiary)]">
-            工具策略加载中…
-          </p>
-        )
+      ) : policies ? (
+        <KeyForm
+          policies={policies}
+          busy={busy}
+          editing={null}
+          onSubmit={(values) => issue.mutate(values)}
+        />
       ) : null}
     </section>
   );
