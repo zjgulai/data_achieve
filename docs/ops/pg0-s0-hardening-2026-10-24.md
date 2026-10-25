@@ -471,3 +471,222 @@ len(open().read())    → 10883
 
 CI 风险拆分（R2a/R2b/R2c/R2d）与 Console build-arg 口径修正记入 `docs/ops/pg0-baseline-c0-2026-10-22.md`
 （§2、§7、§8.6）；Ruff 748 条目构成与负控阈值口径修正记入 `docs/ops/pg0-ruff-cleanup-2026-10-22.md`。
+
+## 10. Task 10 最终证据（2026-10-25）
+
+本节是 S0 切片的最终证据段。它汇总 brief Step 1-10 的实测结果，不新增任何代码改动。
+reviewed 代码基线为 `cecdf449328fd27664761e740078bcba5e55f0a8`（`/tmp/s0-reviewed-code-baseline.txt`），
+本节所在提交是它之后的唯一文档提交。
+
+| 项 | 值 |
+|---|---|
+| reviewed code baseline | `cecdf449328fd27664761e740078bcba5e55f0a8` |
+| branch | `fix/s0-c0-hardening`（无 upstream，未 push） |
+| 切片范围 | `0c11c2b..cecdf44`，38 文件，+4461 / −229 |
+| 终审 verdict | **READY_WITH_DOCUMENTED_RISKS** |
+| `ci_evidence` | `local-rehearsal-only`（分支未 push，无远端 CI run；全部结论为本地实测） |
+
+### 10.1 全部门禁计数（current HEAD `cecdf44`）
+
+| gate | 命令 | 结果 | exit |
+|---|---|---|---|
+| focused suite（Step 1） | 七个文件的 pytest | `106 passed, 1 warning in 13.68s` | 0 |
+| unit 全量 | `.venv/bin/python -m pytest tests/unit -q` | `2557 passed, 1 warning in 73.68s` | 0 |
+| ruff | `.venv/bin/ruff check . --no-cache` | `All checks passed!` | 0 |
+| mypy（src）multiset | `check_mypy_baseline.py --baseline …/mypy-src-signatures.txt --path src` | `OK: mypy baseline non-regression current=123 baseline=123 decreased=0` | 0 |
+| mypy（src+tests）multiset | `check_mypy_baseline.py --baseline …/mypy-src-tests-signatures.txt --path src --path tests` | `OK: mypy baseline non-regression current=1200 baseline=1200 decreased=0` | 0 |
+| pytest guard | `check_pytest_baseline.py --path tests/unit` | `2557 passed` 后 `OK: 0 failed。` | 0 |
+| file integrity | `python3 scripts/check_file_integrity.py`（repo root） | `file integrity OK (1373 files)` | 0 |
+| alembic heads | `.venv/bin/python -m alembic heads` | `202610210057 (head)` | 0 |
+| tool catalog 契约 | `scripts/test_tool_catalog.py` | `failures: []`，`executable_count=226`，digest `35ead4d9…` | 0 |
+| platform packages 契约 | `scripts/test_platform_packages.py` | 70 平台 / 312 capabilities / 284 unique endpoints / 119 notes，`failures: []` | 0 |
+
+两份 mypy multiset 均无 `REGRESSION:` 行、无 `INVALID:` 行，`decreased=0`。
+§3.1 与 §4 的基线事实（62 签名 / 123 实例；498 签名 / 1200 实例）未重取、未改写，
+SHA 仍为 `4700169095b3f12445559069b42f37fdf25e1a8e8332dd3449e24a396a16576e` 与
+`9df7ee3e41ddc0352e65f01a7306654a4ca2cda0c570a20b9d4bddb68e736cf4`。
+
+`2557 passed` 与 §4 的 `2493 passed + 2 skipped` 不冲突：后者是 Task 0 clean-worktree 无生成物时的基线，
+前者是 `generated/platform-packages.json` 与 `docs/playbooks/platforms/` 已生成后两条 skip 转 pass 的结果
+（+2）再加上 S0 新增测试（+62）。两者都是真实观测，口径不同。
+
+### 10.2 六个 PostgreSQL guard 复演
+
+本地 disposable rehearsal 两轮：实现轮（`s0-gate-` 前缀）与独立审查轮（`s0-rv-` 前缀）。
+两轮都是 `127.0.0.1` 专用端口、无 named volume、无 `--network host`、未用 5432、未用 compose DB，
+`trap cleanup EXIT INT TERM` 收尾。
+
+| gate | container（实现 / 审查） | port | user | database | 实现 exit | 审查 exit | suite |
+|---|---|---:|---|---|---:|---:|---|
+| planner | `s0-gate-planner-pg` / `s0-rv-planner` | 55451 | postgres | `data_scrapy_workflow_plan_phase2_test` | 0 | 0 | 49 passed |
+| lineage | `s0-gate-lineage-pg` / `s0-rv-lineage` | 55452 | postgres | `data_scrapy_ci_workflow_lineage_test` | 0 | 0 | 14 passed |
+| capability-governance | `s0-gate-cg-pg` / `s0-rv-cg` | 55453 | postgres | `s0_capability_governance_test` | 0 | 0 | 19 passed |
+| workflow-execution | `s0-gate-exec-pg` / `s0-rv-exec` | 55454 | postgres | `s0_workflow_execution_test` | **1** | **1** | 13 passed / 1 failed |
+| workflow-executor | `s0-gate-executor-pg` / `s0-rv-executor` | 55455 | `s0_executor`（trust） | `s0_workflow_executor_test` | 0 | 0 | 8 passed |
+| workflow-action | `s0-gate-action-pg` / `s0-rv-action` | 55443 | `phase_e_test`（trust） | `uix09_phase_e_20260728_workflow_execution_test` | 0 | 0 | 7 passed |
+
+六个脚本都打印了 current-head 通过行（`alembic head check passed: 202610210057`；
+lineage 收尾另有 `authorized workflow lineage database cleanup passed: head 202610210057, zero rows`）。
+清理后断言：`docker ps -a --filter name=s0-gate` 与 `--filter name=s0-rv` 计数均为 0，
+55443 / 55451 / 55452 / 55453 / 55454 / 55455 六个端口均无 LISTEN，无残留 volume。
+
+**workflow-execution 的 1 个失败是 pre-existing，不是本切片回归。** 三条独立证据：
+
+1. `apps/api/tests/postgres_workflow_execution/test_constraints.py` 最后一次改动是 `b339f45`（2026-08-16），
+   `git diff 0c11c2b..HEAD` 对它为空。
+2. 该文件第 47、60 行仍断言旧名 `ck_workflow_runs_completed_snapshot` / `ck_step_runs_completed_snapshot`；
+   实际名由 `202607230038_workflow_run_state_semantics.py` 第 64、86 行改为 `ck_*_state_snapshot`，
+   `ck_step_runs_retry_generation` 由 `202607270043_workflow_run_actions.py:88` 新增。
+3. 断言原文陈旧，数据库侧符合 head schema；审查者独立复演得到同一失败。
+
+按纪律未修改断言、未标绿，已在 `progress.md` 登记为 blocked defect，归后续切片。
+该 gate 不是 CI job。
+
+### 10.3 探针矩阵
+
+**Tenant probes（Step 4，实现轮 12/12 PASS；独立终审轮 26/26 PASS）。**
+方法：内存 SQLite（`sqlite+aiosqlite://` + `StaticPool` + `create_all`）、in-process MCP client、
+`run_service.async_session_factory` 打补丁、身份经 `runtime.project_api_key_context` 注入。
+四组：same-workspace sibling、cross-workspace、global-token、错误文本 foreign-id 泄漏。
+
+| 工具 | same-ws sibling foreign | cross-ws foreign | own | global token |
+|---|---|---|---|---|
+| `deep_research_check` | `run_not_found`，文本无 foreign project/run id | `run_not_found` | 正常 | 行为不变 |
+| `stop` | `run_not_found`，foreign run 保持 `running` | `run_not_found`，状态未变 | `cancelled=True` | 行为不变 |
+| `balance` | `project_mismatch`，文本无 foreign project id | `project_mismatch` | 正常 | 行为不变（`accrued_usd=1.250000`） |
+| `get_run` / `list_records`（回归） | is_error | is_error | 正常 | 行为不变 |
+
+拒绝语义落在服务层：`run_service.stop_run`、`get_run_detail`、`list_run_records` 都用
+`run is None or (project_id is not None and run.project_id != project_id)`；
+`Run.project_id` 是 `nullable=False`，比较不会因空值放行。
+MCP 传输层把 `ValueError` 包装成 `Error executing tool <name>`，错误码在工具体直调时可见；
+两条路径的文本都不含 foreign id。
+
+**Step 5 兼容性扫描（12/12 PASS，独立终审复核一致）。**
+
+| 检查 | 期望 | 实测 |
+|---|---|---|
+| 目录规模 | 284 | 284 |
+| `inspect` 禁词扫描（284 工具逐个） | 0 泄漏 | 0（`inspect_tool` 与 `to_public_tool` 双路径） |
+| `describe_capability` 禁词扫描（284 工具） | 0 泄漏 | 0（`describe_capability_public` → `to_public_tool`） |
+| endpoint_count>0 ⇒ `list_capabilities` 非空（70 平台） | 无空行平台 | 无 |
+| rss / web / regulatory / tiktok 行数 | 19 / 69 / 4 / 39 | 19 / 69 / 4 / 39 |
+| `get_playbook.markdown` == REST renderer（70 平台） | 全等 | `mismatch=[]` |
+| `deprecated_fields` | `["markdown"]` | 70 平台一致 |
+| MCP tool count | 39 | 39（`@_tool` 计数 39） |
+
+禁词集合含 `authorization`、`reachability`、`block_reason`、`policy_block_reason`、
+`collection_policy_denied`、`demo_workspace`、`执行入口当前不校验身份`。
+
+### 10.4 CI / evidence 契约复核
+
+| 要求 | 实测 |
+|---|---|
+| workflow 不存在阻塞式 `uv run mypy` | `grep -rn "uv run mypy" .github/` 计数 0；`mypy` 只出现在 `check_mypy_baseline.py` 那一行 |
+| API mypy 用 multiset helper | `Mypy (non-regression)` step 调 `check_mypy_baseline.py --path src --path tests`，本地双基线均 `OK:` 且 exit 0 |
+| API pytest/guard 只跑 unit | `uv run pytest tests/unit`；guard `--path tests/unit`；`OK: 0 failed。` |
+| `api` job integrity step 从 repo root 跑 | step 显式 `working-directory: .`（`7930c8c`），由 `test_ci_gate_contract.py` 固定 |
+| platform-packages job 无 integration 路径 | job 块内 `tests/integration/` 出现 0 次（原 `test_platform_package_routes.py` 行已删） |
+| 四个 dedicated suite current-head 断言 057 | `postgres/test_workflow_plan_migration.py:474-475`、`postgres_workflow_lineage/test_migration.py:293-294`、`postgres_capability_governance/test_migration.py:537-538`、`postgres_workflow_execution/test_migration.py:329-330` |
+| 历史 revision 未被全局替换 | lineage `upgrade 202607160033` / `202607170034`、`downgrade 202607160033`、action `202607270043`、executor `REVISION = "202607280044"`（`scripts/verify-workflow-executor-migration.sh:39` 与 `tests/postgres_workflow_executor/conftest.py:32`）全部保留 |
+| `.bak` 删除 | `scripts/verify-workflow-planner-phase2-migration.sh.bak` 在 `0c11c2b..cecdf44` 中为 `D`；`git ls-files 'scripts/*.bak'` 与 `find scripts -name '*.bak'` 均为空 |
+
+`api` job 只挂 `src+tests` 合并基线，不单独挂 `src` 基线。已核对合并基线是 `src` 基线的超集：
+62 个 `src` 签名全部出现在 498 签名基线里，且 count 都不低于 `src` 基线。所以只挂合并基线不丢覆盖。
+
+### 10.5 扫描与 compare
+
+`git status --porcelain` 在全部步骤前后均为空。`0c11c2b..cecdf44` 变更 38 文件。
+本分支的 37 个仍存在的变更文件全部 `native stat == os.stat`（delta 0，逐文件比对）。
+
+`detect-changes --scope all` 有两种观测，都是真实结果：
+
+- 本提交之前（clean worktree，本文尚未修改）：返回「未检测到变更」。
+- 本提交的自检时点（本文已修改、尚未 commit）：只报 1 个文件，变更符号是本文的 `Section` 节点
+  （`PG0 S0 Hardening Evidence` 等），受影响流程落在 882-897 区间，风险 critical。
+  该数字随本文内容长度浮动（每次写入后重跑会变），但形态恒定：唯一变更文件是本文，
+  唯一变更符号是本文的 Section 节点，流程数与下文 compare 的 897 同源，都是空 id 碰撞伪影。
+
+两种情形都没有 `partial`、没有 `truncated`（用 `partial` / `truncated` / 「结果不完整」/「列表已截断」
+四种标记各 grep 一次，命中 0）。提交后工作树恢复 clean，该命令重新返回「未检测到变更」。
+
+`detect-changes --scope compare --base-ref 0c11c2b` 在两种索引状态下给出不同结果：
+
+| 索引状态 | 变更文件 | 变更符号 | 受影响流程 | 风险 |
+|---|---:|---:|---:|---|
+| 重建前（`cecdf44` 之前 3 个 commit 的增量索引） | 38 | 109 | 0 | low |
+| 重建后（`analyze --index-only` 于 `cecdf44`） | 38 | 36 | **897** | **critical** |
+
+重建后的 897 是**图模型的空 id 碰撞，不是代码影响面**。证据：
+
+1. 897 条流程的 changed step 标签全部是文档 Section 名（`9.3 工具增量事实核对（C0 证据第 2 节勘误依据）`、
+   `PG0 C0 基线整合证据`），没有一条是代码符号。
+2. `Section` 节点在索引里 id 为空：`MATCH (n:Section) WHERE n.filePath = 'docs/ops/pg0-baseline-c0-2026-10-22.md'`
+   返回 17 个节点，`size(n.id)` 全为 0。
+3. 全库 `MATCH (n) WHERE n.id = ''` 命中 891 个 `Section` 与 8674 个 `Function`。
+4. `detect-changes` 用 `WHERE n.id IN $ids` 查流程（`local-backend.js` 的 process 查询）。
+   空 id 一旦进入 id 集合，`IN` 会匹配所有空 id 节点，把它们所在流程全部算成受影响。
+   实测：`MATCH (n)-[r:CodeRelation {type:'STEP_IN_PROCESS'}]->(p:Process) WHERE n.id IN ['']`
+   返回 897 条流程，与本次报告的 897 完全一致。
+5. 反向验证：本次真正改动的五个代码符号
+   （`stop_run`、`list_capabilities`、`deep_research_check`、`inspect_tool`、`verify_artifact`）
+   在 `STEP_IN_PROCESS` 上的流程数为 0 —— 它们不在任何已枚举流程里。
+
+结论：重建后 compare 的 897 / critical 是 `IN ['']` 的全匹配伪影；重建前的 low / 0 反映的是
+「改动符号不在已枚举流程内」这一真实事实（§2 已记流程枚举本身被预算截断）。
+两种结果都不能读作「897 个流程受这次改动影响」。风险等级以重建前结果为准，并附本条说明。
+
+### 10.6 终审 verdict
+
+独立终审（非实现者），范围 `0c11c2b..cecdf44`，三轴：tenant isolation、compat/contracts、CI/evidence。
+
+- Tenant isolation 轴：26/26 PASS，拒绝语义在服务层，`Run.project_id` 非空。
+- Compat / contracts 轴：284 工具脱敏 0 泄漏；`list_capabilities` 行数全等；`get_playbook` 70 平台等值；
+  digest `35ead4d9…` 未变；alembic head 057。
+- CI / evidence 轴：四项契约正确；六 guard 独立复演与台账逐一相同；blocked defect 未被擅改。
+
+**Verdict: READY_WITH_DOCUMENTED_RISKS。** 所有 Critical / Important 已关闭，只余记录性风险：
+
+| 编号 | 类型 | 内容 | 归属 |
+|---|---|---|---|
+| DR1 | 本切片引入 | `list_capabilities` 的 rss 19 行只有 19 键，其余 293 行 32 键；rss 行缺 `availability_view`/`cost`/`risk_class`/`run_mode`/`contract_version`/`executable`/`parameters`。根因是 rss 的 endpoint 全叫 `public_feed`，canonical descriptor 归给 `regulatory`，`descriptors.get()` 未命中走 `_public_endpoint_payload` 分支。与 §9.2「descriptor 新字段保留」的陈述对 rss 不成立。测试只钉 tiktok 与旧键子集，故未捕获 | 后续切片 |
+| DR2 | 存量 | `list_monitors`（不带 `project_id` 时按工作区）、`enrichment_check`、`workspace_answer` 仍只看工作区，同工作区兄弟项目可见。本分支对 `monitor_service.py`、`enrichment_service.py`、`routes/runs.py` 零 diff | 需单列切片 |
+| DR3 | 存量 | integration 套件已不在任何 CI job：33 文件 / 386 测试零覆盖，只有本地给 `DATABASE_URL` 才能跑。`test_platform_package_routes.py` 在无数据库时 1 failed / 1 passed（`Errno 61` 连 5432） | C0 文档 R2b/R2c/R3 已记 |
+| DR4 | 存量 | `check_mypy_baseline.py` 在解释器缺 mypy 时 fail-open：mypy 退出 1 被当合法，解析出零诊断，打印 `current=0 … decreased=123` 并 exit 0。CI 用 `uv sync --locked --dev`（含 mypy）故当前有效；建议把 `current=0 且 baseline>0` 改判 `INVALID:` | 后续切片 |
+| DR5 | 环境 | `+4096` 尾洞仍在本机写入路径复现，未污染任何提交内容（见 §10.7） | 环境事项 |
+
+### 10.7 `+4096` 尾洞环境事项汇总
+
+本机写入路径仍会出现「inode `st_size` 比可读字节多 4096」。本节汇总全部实测：
+
+| 位置 | 命中数 | 追踪状态 | 内容是否受损 |
+|---|---:|---|---|
+| `generated/platform-skills/**` | 210（.md） | gitignored（`.gitignore:59` `generated/`） | 生成物，无 git blob 可比 |
+| `docs/playbooks/platforms/**` | 70（.md） | gitignored（`.gitignore:60`） | 生成物，无 git blob 可比 |
+| `docs/playbooks/【坑点库】DIH-平台采集坑点汇总.md` | 1 | **tracked** | 未受损：`git hash-object` = `git rev-parse HEAD:…` = `02c477a98da4e7d611c536f65272fe4175b525fe`，`0c11c2b..cecdf44` 对它零 diff |
+| `.superpowers/sdd/…-s0-hardening/`（主仓） | 17 | gitignored（`.gitignore:64`） | 未跟踪文档 |
+| `.superpowers/sdd/` 其它切片（主仓） | 34 | gitignored | 未跟踪文档 |
+| 本切片 38 个变更文件 | 0 | tracked | delta 0（逐文件比对） |
+| 本文（追加前 35095 字节） | 0 | tracked | `native = os.stat = read = 35095`，NUL 0，UTF-8 可解码 |
+
+扫描口径：对 worktree 内全部 `.md` / `.txt` 文件逐个用 `/usr/bin/stat -f %z` 与 Python `os.stat().st_size` 比对，
+共 423 个文件，281 个命中，差值全部为 `+4096`。
+
+**纪律**：写脚本内的自检不足以判定文件完好。落盘后必须用**独立进程**比对原生 `stat` 与 `os.stat`；
+两者不等即为尾洞。命中时用「可读字节（`open().read()` 的长度）+ 同目录 tmp + `fsync` + `os.replace`」重建，
+再用独立进程复验四方一致（native `stat` / `os.stat` / `read` / `sha256`）。
+本文按此协议写入并复核。
+
+### 10.8 受保护对象与标签不变性
+
+| 对象 | 值 | 状态 |
+|---|---|---|
+| `pg0-baseline-v1` tag object | `48aaccfa5a3689f23f7517cfb88b59c2533805ab` | 未变 |
+| `pg0-baseline-v1^{commit}` | `e227070054914f9cbef8cb5d508e5f4aa73d8dcb` | 未变 |
+| `pg0-baseline-v1` type | `tag`（annotated） | 未变 |
+| 两份 mypy 基线 sha256 | `47001690…` / `9df7ee3e…` | 未变 |
+| `scripts/*.bak` | tracked 空、磁盘空 | 已删 |
+| push / PR / 生产 / 5432 / compose DB | 未操作 | — |
+
+`pg0-baseline-v2` 在本节写入时仍不存在；它只在本提交之后按 Step 9 创建，
+目标为 reviewed 代码基线 `cecdf44`，且只存在于本地。
