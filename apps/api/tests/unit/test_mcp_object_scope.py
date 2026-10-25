@@ -603,10 +603,13 @@ def test_bound_project_tools_pass_project_id_to_governance() -> None:
 def test_object_scoped_tools_pass_identity_project_id() -> None:
     """对象归属工具必须按密钥身份传 project_id（F1 的接线清单）。
 
-    清单不再由常量自证：从 server.py 的 AST 派生「体内调用了
-    ``_identity_project_id`` 的工具」集合，再与
-    ``_IDENTITY_PROJECT_FILTER_TOOLS`` 做双向等值断言。漏登记、或只接线不
-    登记，都会失败。派生时排除辅助函数自身。
+    三源交叉核对，任何一源漂移都会失败：
+    1. AST 派生：体内调用了 ``_identity_project_id`` 的工具；
+    2. 注册表谓词：``project_scope == "workspace"`` 且 ``consumes_quota == "none"``；
+    3. 常量 ``_IDENTITY_PROJECT_FILTER_TOOLS`` / ``_BOUND_PROJECT_OBJECT_TOOLS``。
+
+    只有 1 与 3 对齐时，常量本身漏登记仍可能被「代码与常量一致」掩盖；
+    2 独立于代码文本，补上这个洞。
     """
     import ast
     import inspect
@@ -627,6 +630,23 @@ def test_object_scoped_tools_pass_identity_project_id() -> None:
     assert derived == declared, sorted(derived ^ declared)
     assert {"get_run", "list_records", "stop", "list_monitors"} <= declared
     assert "workspace_answer" in declared
+
+    # 第二个事实源：注册表谓词。若只有 AST 那一刀，常量本身写错（漏登记）
+    # 仍可能被「代码与常量一致」掩盖；注册表推导独立于代码文本。
+    # 谓词恰等于只读对象工具集：workspace scope + 不扣额度。
+    # 豁免集为空——workspace_answer 是 declared−predicate 的唯一成员，
+    # 但它不在 _BOUND_PROJECT_OBJECT_TOOLS 里，因此不冲突。
+    workspace_reads = {
+        name
+        for name, policy in TOOL_POLICIES.items()
+        if policy.project_scope == "workspace" and policy.consumes_quota == "none"
+    }
+    bounded = set(server_module._BOUND_PROJECT_OBJECT_TOOLS)
+    assert workspace_reads == bounded, sorted(workspace_reads ^ bounded)
+    # declared 必须恰好是 predicate 加上显式豁免的 workspace_answer。
+    assert declared == workspace_reads | {"workspace_answer"}, sorted(
+        declared ^ (workspace_reads | {"workspace_answer"})
+    )
 
     # 每个对象工具都必须把派生值真的交给被调用的服务函数：接受「先赋给局部
     # 变量再传」与「内联传参」两种写法，但不接受只算不用。
