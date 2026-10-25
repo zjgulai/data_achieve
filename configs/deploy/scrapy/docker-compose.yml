@@ -125,6 +125,9 @@ services:
       SCRAPY_MCP_RATE_PER_MINUTE: ${SCRAPY_MCP_RATE_PER_MINUTE:-120}
       SCRAPY_MCP_CONCURRENT_CALLS: ${SCRAPY_MCP_CONCURRENT_CALLS:-8}
       SCRAPY_MCP_DAILY_COLLECTS: ${SCRAPY_MCP_DAILY_COLLECTS:-500}
+      # MCP collect 与执行工具的端点级白名单（逗号分隔 endpoint_type）。
+      # 留空 = 不限制（保持旧行为）。见 docs/ops/production-restart.md。
+      SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS: ${SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS:-}
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
       TOR_PROXY_URL: ${TOR_PROXY_URL:-socks5h://tor:9050}

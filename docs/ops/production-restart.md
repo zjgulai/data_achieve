@@ -182,6 +182,27 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" run --rm --no-deps api alem
 
 迁移失败时停止。旧容器继续服务。
 
+### 3.1 可选：配置 MCP 端点白名单与其它环境变量
+
+N1 起 `collect` 与全部执行型工具支持端点级白名单。默认不限制；需要限制时，
+在 `.env.production` 里加一行（逗号分隔 `endpoint_type`）：
+
+```bash
+SCRAPY_MCP_COLLECT_ALLOWED_ENDPOINTS=exa_search_lite,exa_answer,exa_contents
+```
+
+写进 `.env.production` 之后，**必须确认该键已出现在 compose 的 `environment`
+列表**。compose 只用 `environment` 显式枚举，不读 `env_file`；变量没进列表
+就到不了容器，改了 `.env.production` 也没有任何效果。这是本项目已知陷阱
+（安装 provider 密钥时踩过同一个坑）。当前两个编排文件都已声明该键：
+
+- `configs/deploy/scrapy/docker-compose.yml`（生产 A）
+- `configs/deploy/scrapy-new/docker-compose.yml`（生产 B）
+
+留空或整行不写等价于“不限制”。改完必须重新 `up -d api`，容器不会自动读取
+新的 `.env.production`。两台生产各有自己的 `.env.production`，A 配了不影响 B，
+发布 B 时要单独配。
+
 ### 4. 替换容器
 
 ```bash
