@@ -628,80 +628,445 @@ def test_null_byte_payload_still_redacts():
 
 
 # ---------------------------------------------------------------------------
-# Unicode 空白：分隔符扫描认 `isspace()`，裸值终止符也必须认
+# Unicode 空白：只在「空白之后确实开始下一个密钥键值对」时终止裸值
 # ---------------------------------------------------------------------------
+#
+# 空白既可能是值的**分界线**（`token=abc password: hunter2`），也可能是值的
+# **内部字符**（`password: hunter<NBSP>2tail`、中文短语、PEM 正文）。
+# 见到空白一律终止会留下尾部明文；一律不终止会把后面的密钥整段吞掉。
+#
+# 判据只有一条：空白之后是否开始下一个**密钥**键值对。键名解析、分隔符扫描
+# 与密钥判定（含复合后缀、驼峰）全部复用主扫描器那一套，不另立规则。
+# 只认密钥键、不认任意键是刻意的：PEM 正文里的 base64 填充行
+# （`Q2x5ZDEyMzQ1Njc4OTA=`）与 `Proc-Type:` 都长得像普通键值对，放宽成
+# "任意键 + 分隔符"会把私钥尾部整段留在回复里。代价是非密钥键（`note=ok`）
+# 会被一起抹掉——宁可多抹，不留明文。
 
-# 这些字符 str.isspace() 为真，但都不在 ASCII 的 " \t\r\n" 里。
-# 上游 JSON / 日志里常见 NBSP、全角空格、NEL 等。
-UNICODE_SPACES = (
-    ("nbsp_u00a0", " "),
-    ("ideographic_u3000", "　"),
-    ("vertical_tab_u000b", "\u000b"),
-    ("form_feed_u000c", "\u000c"),
-    ("nel_u0085", "\u0085"),
-    ("line_separator_u2028", " "),
-    ("narrow_nbsp_u202f", " "),
+# 程序化枚举 `str.isspace()` 为真的全部码位（CPython 3.12 是 29 个）。
+# 不用字面量：NBSP / U+3000 / U+202F 在编辑器与终端里和普通空格长得一样，
+# 手写的字面量一旦被归一化，测试就会在"看起来相同、实际不同"的输入上空转。
+UNICODE_SPACE_CODEPOINTS: tuple[int, ...] = tuple(
+    codepoint for codepoint in range(0x110000) if chr(codepoint).isspace()
+)
+UNICODE_SPACES: tuple[str, ...] = tuple(chr(cp) for cp in UNICODE_SPACE_CODEPOINTS)
+SPACE_IDS: list[str] = [f"U+{cp:04X}" for cp in UNICODE_SPACE_CODEPOINTS]
+
+# 行分隔类空白：PEM 正文与多行日志用它分行。
+LINE_BREAK_CODEPOINTS: tuple[int, ...] = (0x0A, 0x0B, 0x0C, 0x0D, 0x85, 0x2028, 0x2029)
+LINE_BREAKS: tuple[str, ...] = tuple(chr(cp) for cp in LINE_BREAK_CODEPOINTS)
+LINE_BREAK_IDS: list[str] = [f"U+{cp:04X}" for cp in LINE_BREAK_CODEPOINTS]
+
+ASCII_SPACE = chr(0x20)
+NBSP = chr(0x00A0)
+IDEOGRAPHIC_SPACE = chr(0x3000)
+LINE_SEPARATOR = chr(0x2028)
+NEL = chr(0x0085)
+
+PEM_BODY_LINES = (
+    "MIIEowIBAAKCAQEA7bq8xyzS3cr3tq0p4fragment",
+    "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789ab",
+    "Q2x5ZDEyMzQ1Njc4OTA=",
+)
+PEM_FRAGMENTS = (
+    "MIIEow",
+    "S3cr3tq0p4",
+    "AbCdEfGh",
+    "Q2x5ZDEy",
+    "BEGIN",
+    "END",
 )
 
-
-@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
-def test_unicode_space_terminates_bare_value(label: str, space: str) -> None:
-    """裸值必须在任何 Unicode 空白处停下，否则后面的 KV 整段被吞掉。"""
-    assert space.isspace(), f"{label} 不是空白字符，测试前提失效"
-    payload = f"token=abc{space}password: hunter2"
-    out = replies.fit_text(payload)
-    assert "hunter2" not in out
-    assert "abc" not in out
+_FIVE_DASHES = "-" * 5
+_PEM_LABEL = "RSA " + "PRIVATE KEY"
+PEM_ARMOR_BEGIN = f"{_FIVE_DASHES}BEGIN {_PEM_LABEL}{_FIVE_DASHES}"
+PEM_ARMOR_END = f"{_FIVE_DASHES}END {_PEM_LABEL}{_FIVE_DASHES}"
 
 
-@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
-def test_unicode_space_keeps_surrounding_text(label: str, space: str) -> None:
-    """只抹值，不动结构：空白与普通词必须原样保留。"""
-    payload = f"note=hello{space}token=S3cr3tVal"
-    out = replies.fit_text(payload)
-    assert "SECRET_t2xyzx5r" not in out
-    assert "hello" in out
+def _pem_block(separator: str) -> str:
+    """未加密 PEM：头部 + 三行正文 + 尾部，行间用给定分隔符连接。
+
+    头部与尾部由片段拼出，源码里不出现连续 PEM 标记；正文带一行 `=` 填充的
+    base64（`Q2x5ZDEyMzQ1Njc4OTA=`），它的形状与 `key=value` 完全一样。
+    """
+    return separator.join((PEM_ARMOR_BEGIN, *PEM_BODY_LINES, PEM_ARMOR_END))
 
 
-@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
-def test_unicode_space_secrets_absent_from_failure_card(label: str, space: str) -> None:
-    """失败卡是错误文本的真实落点：两个密钥都不能出现在卡片 JSON 里。"""
+def _assert_no_pem_fragments(rendered: str) -> None:
+    for fragment in PEM_FRAGMENTS:
+        assert fragment not in rendered, f"私钥片段泄漏: {fragment}"
+
+
+def test_unicode_space_table_is_generated_and_complete() -> None:
+    """表必须是程序化枚举出来的，且覆盖全部 29 个 `str.isspace()` 码位。"""
+    assert len(UNICODE_SPACES) == 29
+    assert len(set(UNICODE_SPACES)) == 29
+    assert all(space.isspace() for space in UNICODE_SPACES)
+    # ASCII 的四个必须在表里。
+    assert {"\t", "\n", "\r", ASCII_SPACE} <= set(UNICODE_SPACES)
+    # 零宽字符不是 `isspace()`，不能混进来当空白。
+    assert chr(0x200B) not in UNICODE_SPACES
+    assert chr(0xFEFF) not in UNICODE_SPACES
+
+
+def test_line_break_table_is_a_subset_of_unicode_spaces() -> None:
+    """行分隔表必须是空白表的子集，并覆盖 PEM / 日志常用的换行。"""
+    assert set(LINE_BREAKS) <= set(UNICODE_SPACES)
+    assert {"\n", "\r", NEL, LINE_SEPARATOR, chr(0x2029)} <= set(LINE_BREAKS)
+
+
+# --- 分界形态：空白后是 `password:`，值在此结束，两个密钥都抹 -------------
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_delimiter_unicode_space_redacts_both_values(space: str) -> None:
+    """空白后面是 `password:`——确实是下一个密钥键值对，两个值都抹。"""
+    out = replies.fit_text(f"token=abc{space}password: hunter2")
+    assert out == f"token={replies.REDACTED}{space}password: {replies.REDACTED}"
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["password", "api_key", "access_token", "client_secret", "Authorization", "refreshToken"],
+)
+def test_delimiter_detection_reuses_secret_key_policy(key: str) -> None:
+    """终止判定复用扫描器的密钥键策略：复合键、驼峰键都算。"""
+    out = replies.fit_text(f"token=abc{NBSP}{key}=S3cr3tVal")
+    assert "S3cr3tVal" not in out
+    assert key in out
+
+
+# --- 内部形态：空白属于值本身，整段抹掉，不留尾巴 -------------------------
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_unicode_space_keeps_secret_whole(space: str) -> None:
+    """空白后面是 `2tail`——没有分隔符，不是键值对：整段抹掉。"""
+    assert replies.fit_text(f"password: hunter{space}2tail") == (
+        f"password: {replies.REDACTED}"
+    )
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_unicode_space_in_cjk_secret(space: str) -> None:
+    """中文值内部的空白（`我的<NBSP>密码`）：后面的汉字不是键，整值抹掉。"""
+    assert replies.fit_text(f"password: 我的{space}密码") == f"password: {replies.REDACTED}"
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_access_token_fragment_after_unicode_space_is_redacted(space: str) -> None:
+    """`access_token: abc123<WS>2tail789`：尾部片段不能留在回复里。"""
+    assert replies.fit_text(f"access_token: abc123{space}2tail789") == (
+        f"access_token: {replies.REDACTED}"
+    )
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_several_whitespace_runs_inside_one_secret(space: str) -> None:
+    """一个值里多处空白：每处都判一次，全都不终止才算同一个值。"""
+    assert replies.fit_text(f"token=abc{space}def{space}ghi") == f"token={replies.REDACTED}"
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_equals_and_colons_are_not_pairs(space: str) -> None:
+    """值里出现 `=` / `:` 但不构成键值对（`===def`）时仍属同一个值。"""
+    assert replies.fit_text(f"token=abc{space}===def") == f"token={replies.REDACTED}"
+
+
+@pytest.mark.parametrize("nonsecret", ["region", "page", "note", "monkey", "keyboard"])
+def test_non_secret_pair_after_value_is_swallowed_with_the_value(nonsecret: str) -> None:
+    """非密钥键不是终止点：它随同被抹，属于刻意的 fail-closed 取舍。
+
+    不能因为 `region=us` 长得像键值对就把 `token=` 的值截短——一旦截短，
+    后面真正的密钥（`<空白>api_key=...`）会落进上一条"值"里被整段吞掉，
+    再也扫不到。宁可多抹一段可见文本，也不留明文。
+    """
+    out = replies.fit_text(f"token=abc{NBSP}{nonsecret}=ordinary")
+    assert out == f"token={replies.REDACTED}"
+
+
+# --- PEM：整个密钥块是一个值 ---------------------------------------------
+
+
+@pytest.mark.parametrize("separator", LINE_BREAKS, ids=LINE_BREAK_IDS)
+def test_private_key_armored_block_redacted_whole(separator: str) -> None:
+    """PEM 的行分隔符在值内部：整块一次抹掉，头部、正文、尾部都不留。"""
+    out = replies.fit_text(f"private_key: {_pem_block(separator)}")
+    assert out == f"private_key: {replies.REDACTED}"
+
+
+@pytest.mark.parametrize("separator", LINE_BREAKS, ids=LINE_BREAK_IDS)
+def test_private_key_block_followed_by_another_secret(separator: str) -> None:
+    """PEM 块之后还有密钥键值对：块内整抹，后面的密钥单独抹、键名保留。"""
+    out = replies.fit_text(
+        f"private_key={_pem_block(separator)}{separator}api_key=S3cr3tVal"
+    )
+    _assert_no_pem_fragments(out)
+    assert "S3cr3tVal" not in out
+    assert out == f"private_key={replies.REDACTED}{separator}api_key={replies.REDACTED}"
+
+
+@pytest.mark.parametrize("separator", LINE_BREAKS, ids=LINE_BREAK_IDS)
+def test_padded_base64_line_does_not_terminate_the_value(separator: str) -> None:
+    """base64 填充行 `Q2x5ZDEyMzQ1Njc4OTA=` 形如 `key=value`，但不是密钥键。
+
+    若把"任意键 + 分隔符"当终止点，私钥正文会从这一行起整段留在回复里。
+    """
+    padded_line = PEM_BODY_LINES[-1]
+    assert padded_line.endswith("=")
+    block = separator.join(
+        (PEM_ARMOR_BEGIN, PEM_BODY_LINES[0], padded_line, PEM_ARMOR_END)
+    )
+    out = replies.fit_text(f"private_key: {block}")
+    assert out == f"private_key: {replies.REDACTED}"
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_pem_metadata_lines_are_not_treated_as_next_pairs(space: str) -> None:
+    """旧式 PEM 的 `Proc-Type:` / `DEK-Info:` 是值内容，不是下一个密钥参数。"""
+    assert replies._starts_secret_pair(f"{space}Proc-Type: 4ENCRYPTED", 0) is False
+    assert replies._starts_secret_pair(f"{space}DEK-Info: AES-256-CBC", 0) is False
+    assert replies._starts_secret_pair(f"{space}MIIEowIBAA: x", 0) is False
+
+
+def test_unterminated_armor_is_redacted_to_end_of_text() -> None:
+    """头部在、尾部被日志截断：仍然整段抹掉（fail-closed）。"""
+    payload = f"private_key: {PEM_ARMOR_BEGIN}\n" + "\n".join(PEM_BODY_LINES)
+    assert replies.fit_text(payload) == f"private_key: {replies.REDACTED}"
+
+
+def test_armored_value_inside_structured_payload() -> None:
+    """卡片里的私钥参数：结构脱敏按父键整值抹掉，非敏感字段保留。"""
+    rendered = replies.structured_text(
+        {"private_key": _pem_block("\n"), "region": "us"}
+    )
+    _assert_no_pem_fragments(rendered)
+    assert "region" in rendered
+    assert "us" in rendered
+
+
+# --- 白盒：终止点位置与谓词 -----------------------------------------------
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_scan_value_ends_before_a_secret_pair_only(space: str) -> None:
+    """终止点是空白段起点（不是空白之后），且只在后面是密钥键值对时终止。"""
+    # 内部空白：整段都算值。
+    internal = f"hunter{space}2tail"
+    assert replies._scan_value(internal, 0) == len(internal)
+
+    # 后面是密钥键值对：在空白段起点结束，空白与键名都留给下一轮。
+    next_pair = f"hunter{space}password: x"
+    assert replies._scan_value(next_pair, 0) == len("hunter")
+
+    # 后面是键名但没有分隔符：不是键值对，整段仍是值。
+    no_separator = f"hunter{space}definitely"
+    assert replies._scan_value(no_separator, 0) == len(no_separator)
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_starts_secret_pair_predicate(space: str) -> None:
+    """谓词本身：密钥键 + 分隔符才算，其余都不算。"""
+    assert replies._starts_secret_pair(f"{space}password: x", 0) is True
+    assert replies._starts_secret_pair(f"{space}api_key=x", 0) is True
+    assert replies._starts_secret_pair(f'{space}"client_secret": "x"', 0) is True
+    assert replies._starts_secret_pair(f"{space}refreshToken=x", 0) is True
+    assert replies._starts_secret_pair(f"{space}region: us", 0) is False
+    assert replies._starts_secret_pair(f"{space}2tail", 0) is False
+    assert replies._starts_secret_pair(space, 0) is False
+    assert replies._starts_secret_pair(f"{space}密码: x", 0) is False
+    # 非空白起点不是这个谓词的输入，必须判 False。
+    assert replies._starts_secret_pair("password: x", 0) is False
+
+
+# --- 用户可见路径 ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_unicode_space_via_structured_text(space: str) -> None:
+    """`structured_text` 是卡片与记录预览的共用渲染路径。"""
+    assert replies.structured_text(f"password: hunter{space}2tail") == (
+        f"password: {replies.REDACTED}"
+    )
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_unicode_space_via_failure_card(space: str) -> None:
+    """失败卡是错误文本的真实落点：内部空白的密钥尾部不能进卡片 JSON。"""
     pending = _pending({"query": "AI"})
-    message = f"upstream 400: token=abc{space}password: hunter2"
-    card = cards.failure_card(pending, message)
+    card = cards.failure_card(pending, f"upstream 400: password: hunter{space}2tail")
+    serialized = json.dumps(card, ensure_ascii=False)
+    assert "hunter" not in serialized
+    assert "2tail" not in serialized
+    assert "password" in serialized
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_delimiter_unicode_space_secrets_absent_from_failure_card(space: str) -> None:
+    """分界形态在失败卡上仍要抹两个值、留键名。"""
+    pending = _pending({"query": "AI"})
+    card = cards.failure_card(pending, f"upstream 400: token=abc{space}password: hunter2")
     serialized = json.dumps(card, ensure_ascii=False)
     assert "hunter2" not in serialized
-    assert "token=[redacted]" in serialized
+    assert "abc" not in serialized
+    assert "password" in serialized
 
 
-@pytest.mark.parametrize(("label", "space"), UNICODE_SPACES, ids=[s[0] for s in UNICODE_SPACES])
-def test_unicode_space_structured_text_path(label: str, space: str) -> None:
-    """`structured_text` 是卡片与记录预览的共用渲染路径。"""
-    rendered = replies.structured_text(f"token=abc{space}password: hunter2")
-    assert "hunter2" not in rendered
-    assert "token=[redacted]" in rendered
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_internal_unicode_space_via_record_preview(space: str) -> None:
+    """记录预览的标题走 `_record_preview`，密钥尾部同样不能出现。"""
+    preview = replies._record_preview(
+        {"content": {"title": f"标题 password: hunter{space}2tail"}}
+    )
+    assert preview is not None
+    assert "hunter" not in preview.title
+    assert "2tail" not in preview.title
 
 
-def test_ascii_separator_behaviour_unchanged() -> None:
-    """ASCII 路径不能因为改空白判定而变：空格 / Tab / 换行都要照旧。"""
-    for separator in (" ", "\t", "\n", "\r\n", "\x0b", "\x0c"):
-        out = replies.fit_text(f"token=abc{separator}password: hunter2")
-        assert "hunter2" not in out
-        assert "abc" not in out
+# --- 形状保持：花括号 / 引号 / 压缩 JSON / 超长输入 ------------------------
 
 
-def test_braces_still_work_with_unicode_spaces() -> None:
-    payload = "token={S3cr3tVal} password={{SECRET_B}}　note=ok"
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_brace_values_survive_unicode_space_boundary_rule(space: str) -> None:
+    """单花括号与双花括号模板走各自分支，不受裸值空白规则影响。"""
+    payload = f"token={{S3cr3tVal}}{space}password={{{{SECRET_B}}}}{space}note=ok"
     out = replies.fit_text(payload)
     assert "S3cr3tVal" not in out
     assert "SECRET_B" not in out
     assert "note=ok" in out
 
 
-def test_long_value_with_unicode_space_is_fully_redacted() -> None:
-    payload = "token=" + "A" * 5000 + " note=ok"
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_quoted_value_with_internal_unicode_space(space: str) -> None:
+    """引号值按闭合引号定位：内部空白不影响，脱敏后仍是合法 JSON。"""
+    payload = f'{{"error":{{"api_key":"sek{space}r1t"}}}}'
+    out = replies.fit_text(payload)
+    assert "sek" not in out
+    assert "r1t" not in out
+    assert json.loads(out) == {"error": {"api_key": replies.REDACTED}}
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_minified_json_guarded_by_unicode_space(space: str) -> None:
+    """压缩 JSON 里的密钥在空白规则下仍要被取到。"""
+    payload = f'{{"error":{{"token=sekr1t{space}password=sekr1t"}}}}'
+    out = replies.fit_text(payload)
+    assert "sekr1t" not in out
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_5k_value_with_internal_unicode_space_fully_redacted(space: str) -> None:
+    """5k 值内部带空白：整值抹掉，不是"抹到空白为止"。"""
+    value = "A" * 2500 + space + "B" * 2500
+    assert replies._redact(f"token={value}") == f"token={replies.REDACTED}"
+    assert replies.fit_text(f"token={value}") == f"token={replies.REDACTED}"
+
+
+@pytest.mark.parametrize("space", UNICODE_SPACES, ids=SPACE_IDS)
+def test_long_key_with_internal_unicode_space_value(space: str) -> None:
+    """超长键与内部空白组合：键名与值都不限长，值必须整段抹掉。"""
+    key = "s" * 70 + "_token"
+    value = "x" * 2500 + space + "y" * 2500
+    out = replies.fit_text(f"{key}={value}")
+    assert "x" not in out
+    assert "y" not in out
+    assert out == f"{key}={replies.REDACTED}"
+
+
+def test_ascii_separator_behaviour_unchanged() -> None:
+    """ASCII 路径不能因为改边界判定而变：密钥键值对仍要被分开。"""
+    for separator in (" ", "\t", "\n", "\r\n", "\x0b", "\x0c"):
+        out = replies.fit_text(f"token=abc{separator}password: hunter2")
+        assert out == f"token={replies.REDACTED}{separator}password: {replies.REDACTED}"
+
+
+def test_5k_value_then_secret_pair_keeps_the_pair() -> None:
+    """超长值之后紧跟密钥键值对：值整抹，后面的密钥单独抹，键名保留。"""
+    payload = f"token={'A' * 5000}{NBSP}api_key={{S3cr3tVal}}"
     out = replies.fit_text(payload)
     assert "A" not in out
-    assert "note=ok" in out
+    assert "S3cr3tVal" not in out
+    assert out == f"token={replies.REDACTED}{NBSP}api_key={replies.REDACTED}"
 
 
+def test_non_secret_key_value_stays_visible() -> None:
+    """非密钥键本身不消费值：`note=hello` 的普通词照旧可见。"""
+    out = replies.fit_text(f"note=hello{IDEOGRAPHIC_SPACE}token=S3cr3tVal")
+    assert "hello" in out
+    assert "SECRET_t2xyzx5r" not in out
+
+
+def test_trailing_whitespace_at_end_of_value_is_consumed() -> None:
+    """值末尾的空白段属于该值：整段被抹，不留孤立空白。"""
+    assert replies.fit_text(f"token=abc{IDEOGRAPHIC_SPACE * 3}") == (
+        f"token={replies.REDACTED}"
+    )
+
+
+# --- 性能与线性 -----------------------------------------------------------
+
+
+def test_one_megabyte_whitespace_separated_value_is_linear() -> None:
+    """1MB「值 + 空白」重复形态：每个空白做一次键预读，总代价必须线性。"""
+    import time
+
+    payload = "token=" + ("secretvalue " * 90_000)[:1_000_000]
+    started = time.perf_counter()
+    out = replies._redact(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"1MB 空白密集值耗时 {elapsed:.2f}s"
+    assert "secretvalue" not in out
+
+
+def test_one_megabyte_single_whitespace_run_is_linear() -> None:
+    """1MB 单段空白：空白段整段跳过，不能逐字符回到起点重扫。"""
+    import time
+
+    payload = f"token=abc{IDEOGRAPHIC_SPACE * 1_000_000}"
+    started = time.perf_counter()
+    out = replies._redact(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"1MB 单段空白耗时 {elapsed:.2f}s"
+    assert out == f"token={replies.REDACTED}"
+
+
+def test_one_megabyte_keylike_runs_between_whitespace_are_linear() -> None:
+    """空白之间是长键形状的串：每次预读只看一段，不能回扫整条尾巴。"""
+    import time
+
+    payload = "token=" + ("a" * 200 + LINE_SEPARATOR) * 6000
+    assert len(payload) > 1_000_000
+    started = time.perf_counter()
+    out = replies._redact(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"1MB 长键形状串耗时 {elapsed:.2f}s"
+    assert "a" * 100 not in out
+
+
+def test_one_megabyte_alternating_whitespace_runs_are_linear() -> None:
+    """长键串与长空白段交替：预读不得把后续空白段重复扫多遍。"""
+    import time
+
+    unit = "a" * 100 + IDEOGRAPHIC_SPACE * 100
+    payload = "token=" + unit * 5000
+    assert len(payload) > 1_000_000
+    started = time.perf_counter()
+    replies._redact(payload)
+    elapsed = time.perf_counter() - started
+    assert elapsed < 5.0, f"1MB 交替形态耗时 {elapsed:.2f}s"
+
+
+def test_whitespace_heavy_value_does_not_recurse() -> None:
+    """空白密集输入不能走进 Python 递归：调用栈深度与空白段数无关。"""
+    payload = "token=" + ("hunter " * 4000)
+    out = replies._redact(payload)
+    assert isinstance(out, str)
+    assert "hunter" not in out
+
+
+def test_scan_value_uses_no_recursion_or_regex() -> None:
+    """实现约束：预读只用 `_scan_key` / `_scan_separator`，不递归、不用正则。"""
+    import inspect
+
+    source = inspect.getsource(replies._scan_value)
+    assert "re." not in source
+    assert "_scan_value" not in source.split('"""')[-1]

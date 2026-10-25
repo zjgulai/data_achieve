@@ -42,7 +42,10 @@ _KV_QUOTES = frozenset("\"'")
 # 裸值在此处终止：与旧正则保持一致的边界，外加单/双花括号。
 # 花括号不放宽成"任意单层 JSON"，否则 `{"error":{"api_key":"..."}}` 会被
 # 外层键吞掉。
-_KV_BARE_STOP = frozenset(" \t\r\n,;{}\"'?&")
+# 注意这里**不含**空白：空白既可能是值的分界线，也可能是值内部的字符
+# （`password: hunter<NBSP>2tail`、中文短语、PEM 正文），由
+# `_starts_secret_pair` 逐个判断，不能在这一层一刀切。
+_KV_BARE_STOP = frozenset(",;{}\"'?&")
 
 
 # 结构脱敏用的键名集合：整键命中即把值换成 REDACTED（不保留原值形态）。
@@ -176,34 +179,66 @@ def _scan_separator(text: str, start: int) -> int | None:
     return _skip_spaces(text, index + 1)
 
 
+def _starts_secret_pair(text: str, start: int) -> bool:
+    """`start` 处是空白段时，判断空白之后是否开始下一个**密钥**键值对。
+
+    只在空白段起点调用：起点不是空白一律 False（它不可能是"空白之后"）。
+    键名解析、分隔符扫描与密钥判定全部复用主扫描器那一套，不另立规则。
+    """
+    if start >= len(text) or not text[start].isspace():
+        return False
+    parsed = _scan_key(text, _skip_spaces(text, start))
+    if parsed is None:
+        return False
+    key, after_key, _ = parsed
+    if not _is_secret_key(key):
+        return False
+    return _scan_separator(text, after_key) is not None
+
+
 def _scan_value(text: str, start: int) -> int:
     """返回值结束位置（不含）。
 
     值不限长：截断会让超长密钥只抹前 4096 字符、尾部明文留在回复里。
 
-    裸值终止条件必须与分隔符扫描一致地认 Unicode 空白：`_scan_separator`
-    用 `isspace()`，这里若只认 ASCII 的 `" \\t\\r\\n"`，
-    `token=abc<NBSP>password: hunter2` 会把 NBSP 之后整段当值吞掉，
-    `password` 就再也匹配不到，明文留在回复里。
-    NBSP / 全角空格 / NEL / U+2028 等在真实上游 JSON 与日志里都很常见。
+    空白是唯一需要判断的边界。它既可能是值的分界线
+    （`token=abc<WS>password: hunter2`），也可能是值的内部字符
+    （`password: hunter<NBSP>2tail`、中文短语、PEM 正文）。见到空白一律
+    终止会把 `hunter` 之后整段明文留在回复里；一律不终止又会把后面的密钥
+    整段吞进值里。所以只在「空白之后确实开始下一个密钥键值对」时终止，
+    终止点是空白段起点，空白本身留给下一轮输出。
+
+    只认密钥键、不认任意键是刻意的：PEM 正文里的 `Proc-Type:` / `DEK-Info:`
+    以及 base64 行都长得像键值对，放宽成"任意键"会把私钥尾部整段留在回复里。
+    代价是非密钥键（`note=ok`）会被一起抹掉——宁可多抹，不留明文。
+
+    线性：每段空白被 `_skip_spaces` 走过常数次，预读只看空白之后的一段，
+    不回到起点重扫整条尾巴；无递归。
     """
-    if start >= len(text):
+    length = len(text)
+    if start >= length:
         return start
     head = text[start]
     if head in _KV_QUOTES:
         close = text.find(head, start + 1)
-        return len(text) if close < 0 else close + 1
+        return length if close < 0 else close + 1
     if head == "{":
         if text.startswith("{{", start):
             close = text.find("}}", start + 2)
-            return len(text) if close < 0 else close + 2
+            return length if close < 0 else close + 2
         close = text.find("}", start + 1)
-        return len(text) if close < 0 else close + 1
+        return length if close < 0 else close + 1
     index = start
-    while index < len(text):
+    while index < length:
         char = text[index]
-        if char in _KV_BARE_STOP or char.isspace():
+        if char in _KV_BARE_STOP:
             break
+        if char.isspace():
+            if _starts_secret_pair(text, index):
+                break
+            # 空白属于值内部：整段跳过，不要逐字符回到这里重扫。
+            index = _skip_spaces(text, index)
+            continue
         index += 1
     return index
 
