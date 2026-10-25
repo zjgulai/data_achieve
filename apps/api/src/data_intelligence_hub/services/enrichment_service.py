@@ -107,10 +107,21 @@ async def list_jobs(
 
 
 async def get_job(
-    session: AsyncSession, workspace_id: uuid.UUID, job_id: uuid.UUID
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    job_id: uuid.UUID,
+    *,
+    project_id: uuid.UUID | None = None,
 ) -> EnrichmentJob | None:
+    """按工作区取一条富集任务。
+
+    ``project_id`` 给出时同时限定项目归属：跨项目与跨工作区都返回 None，
+    调用方统一报 ``enrichment_job_not_found``，不区分「不存在」与「不属于」。
+    """
     job = await session.get(EnrichmentJob, job_id)
     if job is None or job.workspace_id != workspace_id:
+        return None
+    if project_id is not None and job.project_id != project_id:
         return None
     return job
 

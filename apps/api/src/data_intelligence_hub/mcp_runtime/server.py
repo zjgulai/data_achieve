@@ -69,6 +69,22 @@ def _assert_bound_project(
 # 供测试与密钥页枚举执行类 TikTok 工具；事实源是 tool_registry。
 _TIKTOK_TOOL_NAMES: tuple[str, ...] = TIKTOK_EXECUTE_TOOLS
 
+# 对象归属按项目过滤的只读/控制工具。
+# 这些工具没有 project_id 入参，绑定值直接取自密钥身份。
+# 全局 token 路径 identity 为 None，只按 workspace 过滤（保持运维超级权限）。
+_BOUND_PROJECT_OBJECT_TOOLS: tuple[str, ...] = (
+    "get_run",
+    "list_records",
+    "stop",
+    "deep_research_check",
+    "enrichment_check",
+)
+
+
+def _identity_project_id(identity: ProjectApiKeyContext | None) -> uuid.UUID | None:
+    """对象归属过滤用的项目 id。全局 token 返回 None（不设项目上限）。"""
+    return identity.project_id if identity is not None else None
+
 
 mcp_server = MCPServer(
     "Data Intelligence Hub",
@@ -648,11 +664,15 @@ async def deep_research_check(
         parsed = uuid.UUID(run_id)
         identity = project_api_key_context(context)
         workspace_id = identity.workspace_id if identity is not None else None
-        detail = await get_run_detail(parsed, workspace_id=workspace_id)
+        project_id = _identity_project_id(identity)
+        detail = await get_run_detail(
+            parsed, workspace_id=workspace_id, project_id=project_id
+        )
         records = await list_run_records(
             parsed,
             limit=20,
             workspace_id=workspace_id,
+            project_id=project_id,
         )
         for item in records.get("items", []):
             if isinstance(item, dict) and item.get("id"):
@@ -718,8 +738,14 @@ async def enrichment_check(
     async with governed_mcp_tool(context, "enrichment_check"):
         workspace = await _monitor_workspace(context)
         parsed = uuid.UUID(job_id)
+        identity = project_api_key_context(context)
         async with async_session_factory() as session:
-            job = await enrichment_service.get_job(session, workspace.id, parsed)
+            job = await enrichment_service.get_job(
+                session,
+                workspace.id,
+                parsed,
+                project_id=_identity_project_id(identity),
+            )
             if job is None:
                 raise ValueError("enrichment_job_not_found")
             rows = await enrichment_service.get_rows(session, job.id)
@@ -757,7 +783,11 @@ async def get_run(context: Context, run_id: str) -> dict[str, object]:
             raise ValueError("run_id_invalid") from exc
         identity = project_api_key_context(context)
         workspace_id = identity.workspace_id if identity is not None else None
-        return await get_run_detail(parsed, workspace_id=workspace_id)
+        return await get_run_detail(
+            parsed,
+            workspace_id=workspace_id,
+            project_id=_identity_project_id(identity),
+        )
 
 
 @_tool(
@@ -786,6 +816,7 @@ async def list_records(
             limit=limit,
             cursor=cursor,
             workspace_id=workspace_id,
+            project_id=_identity_project_id(identity),
         )
 
 
@@ -805,7 +836,11 @@ async def stop(context: Context, run_id: str) -> dict[str, object]:
             raise ValueError("run_id_invalid") from exc
         identity = project_api_key_context(context)
         workspace_id = identity.workspace_id if identity is not None else None
-        return await stop_run(parsed, workspace_id=workspace_id)
+        return await stop_run(
+            parsed,
+            workspace_id=workspace_id,
+            project_id=_identity_project_id(identity),
+        )
 
 
 @_tool(

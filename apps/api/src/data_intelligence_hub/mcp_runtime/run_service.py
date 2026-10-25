@@ -26,17 +26,32 @@ RECORDS_PREVIEW_LIMIT = 20
 RECORDS_MAX_LIMIT = 100
 
 
+def _run_out_of_scope(
+    run: Run,
+    workspace_id: uuid.UUID | None,
+    project_id: uuid.UUID | None,
+) -> bool:
+    """判断运行是否在调用方可见范围之外。
+
+    ``workspace_id`` 与 ``project_id`` 都是可选上限：给 None 表示该维度不设限
+    （全局 token 路径）。两个维度同时给出时都要满足。跨项目与跨工作区
+    返回同一个 not-found，不区分「不存在」与「不属于」，防探测。
+    """
+    if workspace_id is not None and run.workspace_id != workspace_id:
+        return True
+    return project_id is not None and run.project_id != project_id
+
+
 async def get_run_detail(
     run_id: uuid.UUID,
     *,
     workspace_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    """返回一次运行的平铺摘要与步骤。项目密钥路径按 workspace 隔离。"""
+    """返回一次运行的平铺摘要与步骤。项目密钥路径按 workspace 与项目隔离。"""
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None or (
-            workspace_id is not None and run.workspace_id != workspace_id
-        ):
+        if run is None or _run_out_of_scope(run, workspace_id, project_id):
             raise ValueError("run_not_found")
         steps = await runs_repository.list_steps(session, run_id=run_id)
         payload = RunResponse.model_validate(run).model_dump(mode="json")
@@ -66,11 +81,13 @@ async def list_run_records(
     limit: int = RECORDS_PREVIEW_LIMIT,
     cursor: str | None = None,
     workspace_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """按运行分页返回原始记录。
 
     ``limit`` 限制在 1..100。``cursor`` 是上一页返回的偏移量字符串。
     先按 run_id 找到 task_runs，再按 task_run_id 查 raw_records。
+    ``workspace_id`` 与 ``project_id`` 是归属上限，规则见 ``_run_out_of_scope``。
     """
     if limit < 1:
         raise ValueError("limit_invalid")
@@ -87,9 +104,7 @@ async def list_run_records(
 
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None or (
-            workspace_id is not None and run.workspace_id != workspace_id
-        ):
+        if run is None or _run_out_of_scope(run, workspace_id, project_id):
             raise ValueError("run_not_found")
         task_run_ids = list(
             (
@@ -133,13 +148,12 @@ async def stop_run(
     run_id: uuid.UUID,
     *,
     workspace_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    """取消一次运行。项目密钥路径必须传 workspace_id 做租户隔离。"""
+    """取消一次运行。项目密钥路径必须传 workspace_id 与 project_id 做租户隔离。"""
     async with async_session_factory() as session:
         run = await session.get(Run, run_id)
-        if run is None or (
-            workspace_id is not None and run.workspace_id != workspace_id
-        ):
+        if run is None or _run_out_of_scope(run, workspace_id, project_id):
             raise ValueError("run_not_found")
         resolved_workspace_id = run.workspace_id
         previous_status = run.status
