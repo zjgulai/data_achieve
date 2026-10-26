@@ -2438,7 +2438,7 @@ git commit -m "docs(contract): register C2-C3 identity audit keys and credential
 - Consumes: `tables` 数组与 `phases` 数组。
 - Produces: `claims` 扩展、`claim_evidence` 扩展、`evidences` 扩展。
 - Produces: `data_gaps`、`market_assessments` 新表、`dataset_versions` 扩展。
-- Produces: 契约正文的 C8 实现决定。C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者，并在迁移 `064` 创建这两张已登记的表；C5 的迁移 `061` 不创建它们。任务包模板只存在于代码注册表，C8 不建 `task_templates` 表，C1 不登记该表。
+- Produces: 契约正文的 C8 实现决定。C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者，并在迁移 `066` 创建这两张已登记的表；C5 的迁移 `063` 不创建它们。任务包模板只存在于代码注册表，C8 不建 `task_templates` 表，C1 不登记该表。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -2759,14 +2759,14 @@ Expected: FAIL。缺 `claims`。
 
 - [ ] **Step 3A: 在契约正文写入 C8 实现决定**
 
-在契约 §1 的表清单后插入以下小节。C8 的 `test_c8_contract_gate.py` 逐项断言这些原文；缺任一项，C8 不得创建迁移 064。
+在契约 §1 的表清单后插入以下小节。C8 的 `test_c8_contract_gate.py` 逐项断言这些原文；缺任一项，C8 不得创建迁移 066。
 
 ````markdown
 ### C8 实现决定：数据集质量与任务包模板
 
 - 任务包模板的事实源是代码注册表 `apps/api/src/data_intelligence_hub/services/workbench_templates.py`。C8 不创建 `task_templates` 表。
 - C8 不创建第二套 claims、claim_evidence、report_artifacts 或 report_contract。
-- C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者。C5 的迁移 061 不创建这两张表；C8 在迁移 064 创建已登记的 `market_assessments` 与 `data_gaps`。
+- C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者。C5 的迁移 063 不创建这两张表；C8 在迁移 066 创建已登记的 `market_assessments` 与 `data_gaps`。
 ````
 
 - [ ] **Step 4: 重新生成 registry**
@@ -3095,7 +3095,7 @@ git commit -m "docs(contract): register C9-C10 report lifecycle and delivery col
 
 **Interfaces:**
 - Consumes: `tables` 数组。
-- Produces: `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs`、`retention_tombstones`。这四张 C11 表的列、约束与索引与 C11 计划的迁移 `067` 完全同名，不得出现 `target_type`、`target_id`、`authority` 或 `uq_legal_holds_active_target`。
+- Produces: `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs`、`retention_tombstones`。这四张 C11 表的列、约束与索引与 C11 计划的迁移 `069` 完全同名，不得出现 `target_type`、`target_id`、`authority` 或 `uq_legal_holds_active_target`。
 - Produces: `deletion_requests`、`deletion_tombstones`、`deletion_subprocessor_receipts`、`deletion_proofs`、`deletion_replay_runs`、`deletion_replay_items`、`dsr_cases`、`privacy_audit_events`。
 - Produces: `deferred` 中的 `mcp_customer_request_leases` 条目；不登记租约表。
 
@@ -9030,7 +9030,7 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 - `report_artifacts.delivery_status` 与 `report_artifacts.status` 是两套枚举：前者 `pending/delivered/superseded`，后者 `draft/published/superseded`。
 - 审计动作只有一份注册表 `audit_actions`（`audit-actions.v1`），`audit_events` 是唯一审计表；`report_reviewer_assignments.expires_at` 非空与 `reviewer_assignment_expired` 在 Task 5、Task 8、Task 11 三处一致；不得新增客户 `reviewer` 角色。
 - `authorizations` 的唯一键是 `(run_id, gate_id)` 部分唯一索引 `uq_authorizations_run_gate`，不是 `run_id` 单列唯一。
-- C11 的 `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs`、`retention_tombstones` 与迁移 067 使用同一组列名、约束名与索引名；`uq_legal_holds_active_target`、`target_type`、`target_id`、`authority` 不得出现。
+- C11 的 `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs`、`retention_tombstones` 与迁移 069 使用同一组列名、约束名与索引名；`uq_legal_holds_active_target`、`target_type`、`target_id`、`authority` 不得出现。
 - MFA 不在 PG0：无 `mfa_required`、无 `require_recent_mfa`。
 - `workbench_tasks.seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency` 只登记一次，列名与 C4 迁移 `202610220060` 一致；不新增 `request_hash` 第二摘要列，不新增第二个 C4 迁移。
 - `workbench.tasks.create` 的 `idempotency` 对象必须同时满足 `idempotent: true` 且 `conflict_error` 在路径 `error_codes` 中；checker 拒绝任一不满足。
@@ -9063,8 +9063,8 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 | 交付状态枚举错复用 C9 | P0 | `report_artifacts.delivery_status` 改为 `pending/delivered/superseded`；`ck_report_artifacts_delivery_status` 与 `ck_report_artifacts_delivery_fields` 登记到 registry 与正文。 | Task 5 Step 1/3、Task 7、§3.7 |
 | C9 发布约束未登记 | P0 | 登记 `ck_report_artifacts_status`、`uq_report_artifacts_current_published`（部分唯一，`status = 'published'`）与发布幂等部分唯一索引。 | Task 5 Step 1/3、§3.7 |
 | 审核 metadata 缺 `reviewer_role` | P0 | `report_audit_events.metadata_json` 的 notes 登记 `reviewer_role` 与 `reviewed_*` 五个摘要键；正文同步。 | Task 5 Step 1/3、§3.7 |
-| C8 表所有权不清 | P0 | 增加“C8 实现决定”：C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者，在迁移 `064` 创建；不建 `task_templates` 表。 | Task 4 Interfaces、Step 3A、§6A |
-| C11 三表约束与计划冲突 | P0 | `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs` 按 C11 迁移 067 对齐列、约束与索引；删除 `uq_legal_holds_active_target` 与 `target_type/target_id/authority`。 | Task 6 Step 1/3 |
+| C8 表所有权不清 | P0 | 增加“C8 实现决定”：C8 是 `market_assessments` 与 `data_gaps` 的唯一创建者，在迁移 `066` 创建；不建 `task_templates` 表。 | Task 4 Interfaces、Step 3A、§6A |
+| C11 三表约束与计划冲突 | P0 | `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs` 按 C11 迁移 069 对齐列、约束与索引；删除 `uq_legal_holds_active_target` 与 `target_type/target_id/authority`。 | Task 6 Step 1/3 |
 | `authorizations` 唯一键错误 | P0 | 改为 `(run_id, gate_id)` 部分唯一 `uq_authorizations_run_gate`，条件 `run_id IS NOT NULL`；index schema 增加可选 `where`。 | Task 1 schema、Task 2 Step 1/3 |
 | 幽灵表复发风险 | P0 | `mcp_customer_request_leases` 保持只在 `deferred`，不出现在 `tables`/`phases[].objects`；`tool_prices` 只以正式 C5 表出现；C8 不建 `task_templates`。 | Global、Task 2、Task 4、Task 6、Task 11 |
 | C9/C10 新字段未覆盖 registry 测试与正文 | P0 | 扩展 Task 5 交付列/约束断言与 Task 7 枚举断言；§3.7 同步交付列、交付约束与审核 metadata。 | Task 5、Task 7、§3.7 |
@@ -9073,7 +9073,7 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 | C4 种子商品/价格带/验收联系人规则缺失 | P0 | `seed_products` 3–10 项、`target_price_band` 原币边界规则、`acceptance_contact_id` owner/admin 与空值回落 owner 写入 registry notes、正文、`CreateTaskInput` 与 PRD；`acceptance_contact_not_member` 含义改为非 owner/admin。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
 | 发布与浏览器边界未声明 | P0 | Global Constraints 写明本切片不直接部署、A/B 发布由 PG0 发布批次执行、C14 只做只读验收、浏览器交接无。 | Global Constraints |
 | C2 消费者契约缺口 | P0 | 登记 `report_reviewer_assignments.expires_at`（非空）、`reviewer_assignment_expired`（403）、审阅者读/审核路径错误码、版本化审计动作注册表 `audit-actions.v1`（68 动作）与 `audit_action_unregistered`（500）；不新增第二张审计表，不新增客户 `reviewer` 角色。 | Global、Task 1、Task 5、Task 8、Task 11、Task 14 |
-| C6/C8/C9/C10 修复前置未登记 | P0 | 登记 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`（迁移 062）；登记 `runs.cancel`、`RunCancellationResult` 接缝与 `invalid_request`/`idempotency_conflict`/`state_conflict`；登记 `TaskTemplate.capability_allowlist`、`template_capability_ids()` 与 `template_registry_digest()` 代码画像；登记 `report_artifacts.delivery_class`、`acceptance_deadline`、`quick_draft_of_artifact_id`（迁移 066）；登记验收三种事件、四条路径与 `metadata_json` 幂等语义；登记唯一 `export_policy.v1` 扫描画像与 `delivery_pii_detected`；C1 不新增迁移。 | Global、Task 1、Task 2、Task 5、Task 8、Task 14A |
+| C6/C8/C9/C10 修复前置未登记 | P0 | 登记 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`（迁移 064）；登记 `runs.cancel`、`RunCancellationResult` 接缝与 `invalid_request`/`idempotency_conflict`/`state_conflict`；登记 `TaskTemplate.capability_allowlist`、`template_capability_ids()` 与 `template_registry_digest()` 代码画像；登记 `report_artifacts.delivery_class`、`acceptance_deadline`、`quick_draft_of_artifact_id`（迁移 068）；登记验收三种事件、四条路径与 `metadata_json` 幂等语义；登记唯一 `export_policy.v1` 扫描画像与 `delivery_pii_detected`；C1 不新增迁移。 | Global、Task 1、Task 2、Task 5、Task 8、Task 14A |
 
 验证命令（在 `/Users/lute/Project/data_scrapy-gov-c1` 执行，确认字段已登记）：
 
@@ -9082,7 +9082,7 @@ cd /Users/lute/Project/data_scrapy-gov-c1
 rg -n "delivered_at|delivered_by|supersedes_delivery_id|ck_report_artifacts_delivery_status|ck_report_artifacts_delivery_fields" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "ck_report_artifacts_status|uq_report_artifacts_current_published|reviewer_role|pending.*delivered.*superseded" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "uq_authorizations_run_gate|uq_workspace_pseudonym_salts_workspace_id|ck_legal_holds_release_fields|ck_retention_cleanup_runs_status" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
-rg -n "task_templates|唯一创建者|迁移 064" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
+rg -n "task_templates|唯一创建者|迁移 066" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n '"name": "tool_prices"|uq_tool_prices_tool_currency_version|ix_tool_prices_tool_effective|table:tool_prices' docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "requested_by_user_id|requested_at|released_by_user_id|released_at|release_reason|finished_at" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "seed_products|target_price_band|idempotency_key_hash|uq_workbench_tasks_workspace_idempotency" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
