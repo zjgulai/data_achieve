@@ -813,3 +813,117 @@ def test_dataset_versions_has_quality_and_hash_columns() -> None:
         "license_class",
         "quality_status",
     } <= columns
+
+
+def test_registry_contains_report_lifecycle_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {"report_artifacts", "report_audit_events"} <= names
+
+
+def test_report_artifacts_has_publication_and_delivery_columns() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_artifacts")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "status",
+        "created_by",
+        "published_at",
+        "published_by",
+        "supersedes_id",
+        "superseded_at",
+        "delivery_status",
+        "delivery_class",
+        "manifest_json",
+        "manifest_sha256",
+        "manifest_sidecar_sha256",
+        "public_contract_json",
+        "acceptance_snapshot_json",
+        "acceptance_deadline",
+        "delivered_at",
+        "delivered_by",
+        "supersedes_delivery_id",
+        "quick_draft_of_artifact_id",
+        "publish_idempotency_key_hash",
+    } <= columns
+    assert {
+        "ck_report_artifacts_status",
+        "uq_report_artifacts_current_published",
+        "ck_report_artifacts_delivery_status",
+        "ck_report_artifacts_delivery_class",
+        "ck_report_artifacts_delivery_fields",
+        "uq_report_artifacts_publish_idempotency",
+    } <= set(table["constraints"])
+    index_predicates = {index["name"]: index.get("where") for index in table["indexes"]}
+    assert index_predicates["uq_report_artifacts_current_published"] == ("status = 'published'")
+    assert index_predicates["uq_report_artifacts_publish_idempotency"] == (
+        "publish_idempotency_key_hash IS NOT NULL"
+    )
+
+
+def test_report_audit_events_has_artifact_id() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_audit_events")
+    columns = {column["name"] for column in table["columns"]}
+    assert {"artifact_id", "report_id", "metadata_json"} <= columns
+    metadata = next(column for column in table["columns"] if column["name"] == "metadata_json")
+    assert "reviewer_role" in metadata["notes"]
+    assert "reviewed_claim_digest" in metadata["notes"]
+    assert "reviewer_assignment_id" in metadata["notes"]
+
+
+def test_internal_reviewer_assignment_is_registered() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "report_reviewer_assignments")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "id",
+        "workspace_id",
+        "project_id",
+        "report_id",
+        "artifact_id",
+        "reviewer_user_id",
+        "assignment_scope",
+        "status",
+        "assigned_by",
+        "assigned_at",
+        "expires_at",
+        "revoked_at",
+    } <= columns
+    expires_at = next(column for column in table["columns"] if column["name"] == "expires_at")
+    assert expires_at["nullable"] is False
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["report_reviewer_assignments.assignment_scope"] == [
+        "report_read",
+        "report_review",
+    ]
+    assert enums["report_reviewer_assignments.status"] == ["active", "revoked"]
+    assert "reviewer" not in enums["workspace_members.role"]
+
+
+def test_owner_admin_inline_approval_actions_are_registered() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "workbench_approval_actions")
+    columns = {column["name"] for column in table["columns"]}
+    assert {
+        "id",
+        "workspace_id",
+        "project_id",
+        "task_id",
+        "action_type",
+        "requester_user_id",
+        "approver_user_id",
+        "status",
+        "payload_json",
+        "idempotency_key_hash",
+        "created_at",
+        "expires_at",
+        "decided_at",
+    } <= columns
+    assert "ck_workbench_approval_actions_self_approval" in table["constraints"]
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["workbench_approval_actions.action_type"] == [
+        "budget_overage",
+        "package_addon",
+        "project_key_change",
+    ]

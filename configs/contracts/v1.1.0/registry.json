@@ -3095,6 +3095,533 @@
           "enum": "market_quality_status"
         }
       ]
+    },
+    {
+      "name": "report_artifacts",
+      "module": "M07",
+      "status": "extend",
+      "phase": "C9",
+      "purpose": "不可变报告合同、发布生命周期与交付封存",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C9"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C9",
+          "enum": "report_artifacts.status"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9",
+          "references": "users.id"
+        },
+        {
+          "name": "published_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9"
+        },
+        {
+          "name": "published_by",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9",
+          "references": "users.id"
+        },
+        {
+          "name": "supersedes_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9",
+          "references": "report_artifacts.id"
+        },
+        {
+          "name": "superseded_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9"
+        },
+        {
+          "name": "delivery_status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C10",
+          "enum": "report_artifacts.delivery_status",
+          "default": "pending"
+        },
+        {
+          "name": "delivery_class",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C10",
+          "enum": "report_artifacts.delivery_class",
+          "default": "formal",
+          "notes": "formal 为 24 小时正式交付；quick_draft 为 Quick 2 小时方向稿。只在迁移 202610220068 创建"
+        },
+        {
+          "name": "manifest_json",
+          "type": "json",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "manifest_sha256",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "manifest_sidecar_sha256",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "public_contract_json",
+          "type": "json",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "acceptance_snapshot_json",
+          "type": "json",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "acceptance_deadline",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10",
+          "notes": "第 5 个工作日 23:59:59 UTC；formal delivered 必须非空；quick_draft 必须为空。只在迁移 202610220068 创建"
+        },
+        {
+          "name": "delivered_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        },
+        {
+          "name": "delivered_by",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10",
+          "references": "users.id"
+        },
+        {
+          "name": "supersedes_delivery_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10",
+          "references": "report_artifacts.id"
+        },
+        {
+          "name": "quick_draft_of_artifact_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10",
+          "references": "report_artifacts.id",
+          "notes": "quick_draft delivered 必须非空，指向正式交付产物。只在迁移 202610220068 创建"
+        },
+        {
+          "name": "publish_idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C10"
+        }
+      ],
+      "constraints": [
+        "uq_report_artifacts_publish_idempotency",
+        "ck_report_artifacts_status",
+        "uq_report_artifacts_current_published",
+        "ck_report_artifacts_delivery_status",
+        "ck_report_artifacts_delivery_class",
+        "ck_report_artifacts_delivery_fields"
+      ],
+      "indexes": [
+        {
+          "name": "ix_report_artifacts_report_status",
+          "columns": [
+            "report_id",
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "uq_report_artifacts_current_published",
+          "columns": [
+            "report_id"
+          ],
+          "unique": true,
+          "where": "status = 'published'"
+        },
+        {
+          "name": "uq_report_artifacts_publish_idempotency",
+          "columns": [
+            "workspace_id",
+            "publish_idempotency_key_hash"
+          ],
+          "unique": true,
+          "where": "publish_idempotency_key_hash IS NOT NULL"
+        },
+        {
+          "name": "ix_report_artifacts_delivery_status",
+          "columns": [
+            "delivery_status"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "report_audit_events",
+      "module": "M07",
+      "status": "extend",
+      "phase": "C9",
+      "purpose": "报告审核、发布、交付与验收事件；只追加",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C9"
+        },
+        {
+          "name": "artifact_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9",
+          "references": "report_artifacts.id"
+        },
+        {
+          "name": "report_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C9",
+          "references": "reports.id"
+        },
+        {
+          "name": "event_type",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C9",
+          "enum": "report_audit_events.event_type"
+        },
+        {
+          "name": "metadata_json",
+          "type": "text",
+          "nullable": true,
+          "status": "existing",
+          "phase": "C9",
+          "notes": "审核事件必须带 reviewer_role=internal_reviewer、reviewer_assignment_id、review_scope、contract_sha256 与 reviewed_contract_sha256、reviewed_data_sha256、reviewed_report_html_sha256、reviewed_sop_html_sha256、reviewed_claim_digest"
+        }
+      ],
+      "constraints": [
+        "ck_report_audit_events_target"
+      ]
+    },
+    {
+      "name": "report_reviewer_assignments",
+      "module": "M07",
+      "status": "new",
+      "phase": "C9",
+      "purpose": "内部审核人主体与受限读/审核范围；不是客户工作区角色",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C9",
+          "references": "projects.id"
+        },
+        {
+          "name": "report_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "references": "reports.id"
+        },
+        {
+          "name": "artifact_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C9",
+          "references": "report_artifacts.id"
+        },
+        {
+          "name": "reviewer_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "references": "users.id"
+        },
+        {
+          "name": "assignment_scope",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "enum": "report_reviewer_assignments.assignment_scope",
+          "default": "report_review"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "enum": "report_reviewer_assignments.status",
+          "default": "active"
+        },
+        {
+          "name": "assigned_by",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "references": "users.id"
+        },
+        {
+          "name": "assigned_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9"
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C9",
+          "notes": "到期后读与审核路径返回 403 reviewer_assignment_expired；不得为空"
+        },
+        {
+          "name": "revoked_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C9"
+        }
+      ],
+      "constraints": [
+        "ck_report_reviewer_assignments_scope",
+        "ck_report_reviewer_assignments_status"
+      ],
+      "indexes": [
+        {
+          "name": "uq_report_reviewer_assignments_active",
+          "columns": [
+            "report_id",
+            "reviewer_user_id"
+          ],
+          "unique": true,
+          "where": "status = 'active'"
+        },
+        {
+          "name": "ix_report_reviewer_assignments_reviewer_status",
+          "columns": [
+            "reviewer_user_id",
+            "status"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "workbench_approval_actions",
+      "module": "M10",
+      "status": "new",
+      "phase": "C5",
+      "purpose": "owner/admin 对预算超支、加购与项目密钥变更的内联批准动作；无独立收件箱",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "references": "projects.id"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "references": "workbench_tasks.id"
+        },
+        {
+          "name": "action_type",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "enum": "workbench_approval_actions.action_type"
+        },
+        {
+          "name": "requester_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "users.id"
+        },
+        {
+          "name": "approver_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "references": "users.id"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "enum": "workbench_approval_actions.status",
+          "default": "pending"
+        },
+        {
+          "name": "payload_json",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "decided_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        }
+      ],
+      "constraints": [
+        "ck_workbench_approval_actions_action_type",
+        "ck_workbench_approval_actions_status",
+        "ck_workbench_approval_actions_self_approval"
+      ],
+      "indexes": [
+        {
+          "name": "uq_workbench_approval_actions_idempotency",
+          "columns": [
+            "workspace_id",
+            "idempotency_key_hash"
+          ],
+          "unique": true,
+          "where": "idempotency_key_hash IS NOT NULL"
+        },
+        {
+          "name": "ix_workbench_approval_actions_task_status",
+          "columns": [
+            "task_id",
+            "status"
+          ],
+          "unique": false
+        }
+      ]
     }
   ],
   "enums": [
@@ -3115,6 +3642,48 @@
         "partial"
       ],
       "source": "契约 v1 §2.1"
+    },
+    {
+      "name": "workspace_members.role",
+      "values": [
+        "owner",
+        "admin",
+        "member"
+      ],
+      "status": "extended",
+      "phase": "C2",
+      "source": "设计 §7.1"
+    },
+    {
+      "name": "report_reviewer_assignments.assignment_scope",
+      "values": [
+        "report_read",
+        "report_review"
+      ],
+      "status": "new",
+      "phase": "C9",
+      "source": "C1 §3.10 内部审核人受限范围"
+    },
+    {
+      "name": "report_reviewer_assignments.status",
+      "values": [
+        "active",
+        "revoked"
+      ],
+      "status": "new",
+      "phase": "C9",
+      "source": "C1 §3.10 内部审核人指派状态"
+    },
+    {
+      "name": "workbench_approval_actions.action_type",
+      "values": [
+        "budget_overage",
+        "package_addon",
+        "project_key_change"
+      ],
+      "status": "new",
+      "phase": "C5",
+      "source": "C1 §3.11 内联批准动作"
     }
   ],
   "paths": [
