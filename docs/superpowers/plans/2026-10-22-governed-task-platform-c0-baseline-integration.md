@@ -24,8 +24,7 @@
 - 056/057 只允许在一次性数据库验证。不得对生产 A、生产 B 或任何共享数据库执行 upgrade 或 downgrade。
 - `run_ledger_entries` 只追加。`settle` 为正数实际成本，`release` 为负数修正。本计划不修改账本代码或数据。
 - 本计划不手工修改业务代码、测试代码、迁移代码、前端代码。代码变更只来自 B5 合并。
-- 后端 unit 基线是 `2492 passed, 2 skipped`。后端 integration 基线是带 `DATABASE_URL` 时 `386 passed`。前端基线是 `220 passed`。
-- **R0 Ruff 清理前置。** C0 Task 5 Step 2 在 B5 合入后实测 `ruff check .` 有 140 个继承错误。用户已决定先执行独立 R0 清理切片 `docs/superpowers/plans/2026-10-22-governed-task-platform-r0-ruff-cleanup.md`。R0 从 C0 `8a68069` 创建，清理完成、双阶段审查并合回 C0 后，Task 5 从 Step 2 重新运行 Ruff；通过后从 Step 3 继续。R0 不新增迁移、不改变产品行为。
+- 后端 unit 基线是 `2493 passed, 2 skipped`。后端 integration 基线是带 `DATABASE_URL` 时 `386 passed`。前端基线是 `220 passed`。
 - 有效测试命令中的任何 `failed` 或 `error` 都是门禁失败。没有 `DATABASE_URL` 时只运行 `tests/unit`；不得运行 `tests/integration` 或全量 `pytest`，避免 PostgreSQL 连接错误伪装成代码失败。
 - 目录基线是 `catalog_digest=35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c`、`tool_count=284`、`canonical_tool_count=284`、`executable_count=226`。
 - 平台包基线是 `platform_count=70`、`capability_count=312`、`unique_endpoint_count=284`。
@@ -1152,7 +1151,7 @@ cd /Users/lute/Project/data_scrapy-c0/apps/api
 uv run mypy src tests
 ```
 
-Expected: 最后一行以 `Success: no issues found in` 开头。
+Expected: 命令仍可返回存量错误。与 C0 起点 `8a68069790d9d7c905505892be2968d90f394629` 的输出比较：去除 `summary` 和 `note` 并归一化行列号后，唯一诊断签名集合必须相同。基线为 498 个唯一诊断签名；新增必须为 0，移除必须为 0。原始错误数可因 AST 等价换行把同一诊断拆到多行而变化，但必须记录差值和归因。
 
 - [ ] **Step 4: 运行后端 unit 测试**
 
@@ -1166,7 +1165,7 @@ uv run pytest tests/unit -q
 Expected: 最后一行包含：
 
 ```text
-2492 passed, 2 skipped
+2493 passed, 2 skipped
 ```
 
 任何 `failed` 或 `error` 都停止。数量不同也停止，记录差异，不要修改证据表来匹配。
@@ -1203,7 +1202,7 @@ uv run pytest tests/unit -q
 Expected: 最后一行包含：
 
 ```text
-2492 passed, 2 skipped
+2493 passed, 2 skipped
 ```
 
 任何 `failed` 或 `error` 都停止。本步骤不设置不可达 `DATABASE_URL`，也不运行 `tests/integration`。集成测试只在 Step 5 的一次性 PostgreSQL 上运行。
@@ -1312,10 +1311,10 @@ cd /Users/lute/Project/data_scrapy-c0
   printf '%s\n' '|---|---|'
   printf '%s\n' '| `uv sync --locked --dev` | 通过 |'
   printf '%s\n' '| Ruff | All checks passed! |'
-  printf '%s\n' '| Mypy | Success: no issues found |'
-  printf '%s\n' '| `pytest tests/unit` | 2492 passed, 2 skipped |'
+  printf '%s\n' '| Mypy | 基线非回归；498 个唯一诊断签名；新增 0，移除 0；命令仍返回存量错误 |'
+  printf '%s\n' '| `pytest tests/unit` | 2493 passed, 2 skipped |'
   printf '%s\n' '| `pytest tests/integration`（`DATABASE_URL`） | 386 passed |'
-  printf '%s\n' '| 无数据库 unit 探针 | 2492 passed, 2 skipped；不运行 `tests/integration`，避免 PostgreSQL 连接错误误判 |'
+  printf '%s\n' '| 无数据库 unit 探针 | 2493 passed, 2 skipped；不运行 `tests/integration`，避免 PostgreSQL 连接错误误判 |'
   printf '%s\n' '| `check_pytest_baseline.py --path tests/unit` | OK: 0 failed。 |'
   printf '%s\n' '| `alembic heads` | `202610210057 (head)` |'
   printf '%s\n' '| 工具目录 | passed；284/284/226；`35ead4d917a7ce71835edbd7ee0eaefe85db47c0faf992a1c606144cd7b4493c` |'
@@ -1866,7 +1865,7 @@ TAG_ON_CODE_BASELINE
 | B4 祖先事实写反 | P0 | B4 已是 B5 祖先。Task 2 改为断言 `b4_in_b5=0` 与 `B4_052_053_ABSENT_IN_B5`；Task 3/8 改为 `b4_ancestor=0`；合并信息改为“B4 已含于 B5 历史”。 | Global、Task 2 Step 4、Task 3 Step 7/12、Task 8 Step 8、证据表、Self-Review |
 | 缺浏览器验收 | P1 | 新增 Task 6 Step 6：登记 `/workbench`、`/reports`、`/capabilities` 的 C14 Playwright 交接，四个判据与风险记录；不改 e2e 文件。 | Task 6 Step 6、证据第 6 节 |
 | JWT 固定假值易误读 | P2 | `SCRAPY_JWT_SECRET=x`。 | Task 7 Step 2 |
-| 无数据库探针误判 | P1 | 删除不可达 `DATABASE_URL` 的全量 `pytest`；改为只运行 `tests/unit`，并断言 2492 passed、2 skipped。 | Task 5 Step 6、证据第 5 节、Self-Review |
+| 无数据库探针误判 | P1 | 删除不可达 `DATABASE_URL` 的全量 `pytest`；改为只运行 `tests/unit`，并断言 2493 passed、2 skipped。 | Task 5 Step 6、证据第 5 节、Self-Review |
 | 主工作树脏索引无法原地切换 | P0 | Task 1 不再 `git switch` 主工作树；从 `f0560ca` 创建隔离 worktree `/Users/lute/Project/data_scrapy-c0`，复制本计划后提交；全部 C0 命令改在该 worktree 执行。 | Global、File Structure、Task 1、审查摘要 |
 | B4/B5 迁移与提交数断言不准 | P0 | 用精确文件名 `202610210052_claims.py` 与 `202610210053_report_artifacts.py`；补列 B5 主线同号文件；B4→B5 提交数改为 34。 | Task 2 Step 4、审查摘要 |
 | B5 spec 保留 | 保持 | 原样保留：Task 2 记录删除差异，Task 3 断言 blob `052c602` 与 `NO_SPEC_DELETE`。 | Task 2/3 |

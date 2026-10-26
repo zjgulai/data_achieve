@@ -78,6 +78,8 @@ TOOL_POLICIES: dict[str, McpToolPolicy] = {
     "list_capabilities": _p("list_capabilities", access_mode="read", preset_groups=_DISCOVERY),
     "describe_capability": _p("describe_capability", access_mode="read", preset_groups=_DISCOVERY),
     "get_playbook": _p("get_playbook", access_mode="read", preset_groups=_DISCOVERY),
+    "discover": _p("discover", access_mode="read", preset_groups=_DISCOVERY),
+    "inspect": _p("inspect", access_mode="read", preset_groups=_DISCOVERY),
     # ── Run 查询（只读；按 workspace/project 过滤）─────────────────
     "get_run": _p(
         "get_run", access_mode="read", project_scope="workspace", preset_groups=_DISCOVERY
@@ -170,6 +172,16 @@ TOOL_POLICIES: dict[str, McpToolPolicy] = {
         requires_project=True,
         project_scope="bound_project",
         consumes_quota="per_call",
+        run_mode="sync",
+        preset_groups=("search_research", "all"),
+    ),
+    # 报告产物来自本次运行的数据，不再触发外部采集，因此不扣额度。
+    "create_report": _p(
+        "create_report",
+        access_mode="execute",
+        requires_project=True,
+        project_scope="bound_project",
+        consumes_quota="none",
         run_mode="sync",
         preset_groups=("search_research", "all"),
     ),

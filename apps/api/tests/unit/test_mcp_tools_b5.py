@@ -1,0 +1,1047 @@
+"""B5：MCP 工具面。
+
+覆盖六件事：
+
+1. 工具数量快照。新增或删除工具必须更新快照。
+2. 五个新工具各有用例。
+3. 三个改造工具返回结构化契约。
+4. 白名单外的工具返回 ``tool_not_allowed``。
+5. 项目额度超额返回明确错误码。
+6. 跨项目读运行与记录按未找到处理。无项目身份时行为不变。
+
+本文件只用内存 SQLite。它不连接真实 Postgres。
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import UTC, datetime
+from typing import cast
+
+import pytest
+from mcp.client import Client
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+import data_intelligence_hub.mcp_runtime.server as server_module
+from data_intelligence_hub.mcp_runtime import (
+    access_control,
+    capability_service,
+)
+from data_intelligence_hub.mcp_runtime.auth import ProjectApiKeyContext
+from data_intelligence_hub.mcp_runtime.server import mcp_server
+from data_intelligence_hub.mcp_runtime.tool_registry import TOOL_POLICIES
+from data_intelligence_hub.mcp_runtime.tools import discovery as discovery_tools
+from data_intelligence_hub.mcp_runtime.tools import reports as report_tools
+from data_intelligence_hub.models import Base
+from data_intelligence_hub.models.project_api_key import ProjectApiKey
+from data_intelligence_hub.models.raw_record import RawRecord
+from data_intelligence_hub.models.report_artifact import ReportArtifact
+from data_intelligence_hub.models.run import Run, RunStep
+from data_intelligence_hub.models.task import TaskRun
+from data_intelligence_hub.platform_packages.service import (
+    get_platform_package_catalog,
+    get_platform_playbook,
+)
+from data_intelligence_hub.tool_catalog.public import PublicTool, to_public_tool
+
+TEMPLATE_ID = "t1_voc"
+
+EXPECTED_TOOLS = (
+    "answer",
+    "balance",
+    "collect",
+    "create_monitor",
+    "create_report",
+    "deep_research",
+    "deep_research_check",
+    "deep_research_start",
+    "describe_capability",
+    "discover",
+    "enrich_list",
+    "enrichment_check",
+    "get_playbook",
+    "get_run",
+    "inspect",
+    "list_capabilities",
+    "list_monitors",
+    "list_platforms",
+    "list_records",
+    "stop",
+    "tiktok_ads_detail",
+    "tiktok_ads_top",
+    "tiktok_creator_commerce",
+    "tiktok_creator_profile",
+    "tiktok_creator_search",
+    "tiktok_creator_showcase",
+    "tiktok_hashtag_videos",
+    "tiktok_product_detail",
+    "tiktok_product_reviews",
+    "tiktok_product_search",
+    "tiktok_transcript",
+    "tiktok_trend_rank",
+    "tiktok_video_comments",
+    "tiktok_video_detail",
+    "tiktok_video_products",
+    "tiktok_video_search",
+    "web_fetch",
+    "web_search",
+    "workspace_answer",
+)
+
+
+def _make_factory() -> tuple[async_sessionmaker[AsyncSession], object]:
+    """建一个内存 SQLite 会话工厂。返回工厂与引擎。"""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    return async_sessionmaker(engine, expire_on_commit=False), engine
+
+
+async def _create_schema(engine: object) -> None:
+    async with engine.begin() as connection:  # type: ignore[attr-defined]
+        await connection.run_sync(Base.metadata.create_all)
+
+
+def _identity(
+    *,
+    project_id: uuid.UUID | None = None,
+    workspace_id: uuid.UUID | None = None,
+    allowlist: tuple[str, ...] = (
+        "collect",
+        "create_report",
+        "describe_capability",
+        "discover",
+        "get_playbook",
+        "get_run",
+        "inspect",
+        "list_capabilities",
+        "list_platforms",
+        "list_records",
+    ),
+    quota: int = 100,
+) -> ProjectApiKeyContext:
+    """构造一个项目密钥身份。它不含明文。"""
+    return ProjectApiKeyContext(
+        key_id=uuid.uuid4(),
+        workspace_id=workspace_id or uuid.uuid4(),
+        project_id=project_id or uuid.uuid4(),
+        key_prefix="dih_test",
+        label="test",
+    )
+
+
+async def _seed_project_key(
+    factory: async_sessionmaker[AsyncSession],
+    identity: ProjectApiKeyContext,
+) -> None:
+    """为项目密钥身份插入对应的 DB 行。
+
+    ``governed_mcp_tool`` 会回查 ``tool_allowlist`` 与 ``revoked_at``，
+    只给内存身份不够。白名单给全量工具，避免与本文件的能力断言耦合。
+    """
+    async with factory() as session:
+        session.add(
+            ProjectApiKey(
+                id=identity.key_id,
+                project_id=identity.project_id,
+                workspace_id=identity.workspace_id,
+                label=identity.label,
+                key_prefix=identity.key_prefix,
+                key_hash="c" * 64,
+                created_by_user_id=uuid.uuid4(),
+                tool_allowlist=list(TOOL_POLICIES),
+                daily_collect_quota=1000,
+            )
+        )
+        await session.commit()
+
+
+async def _seed_run(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    run_id: uuid.UUID,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+    records: int = 2,
+    execution_mode: str = "live",
+) -> uuid.UUID:
+    """写入一次运行、一个步骤、一组记录。返回 task_run_id。"""
+    now = datetime.now(UTC)
+    task_run_id = uuid.uuid4()
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                status="completed",
+                outcome="success",
+                execution_mode=execution_mode,
+                trigger="api",
+                records_count=records,
+                started_at=now,
+                finished_at=now,
+            )
+        )
+        session.add(
+            TaskRun(
+                id=task_run_id,
+                task_id=uuid.uuid4(),
+                workspace_id=workspace_id,
+                status="success",
+                records_count=records,
+                logs=[],
+                created_at=now,
+                run_id=run_id,
+            )
+        )
+        session.add(
+            RunStep(
+                run_id=run_id,
+                step_index=0,
+                endpoint_type="tikhub_tiktok_video_search",
+                collector_type="tikhub_social",
+                task_run_id=task_run_id,
+                status="success",
+                outcome="success",
+                records_count=records,
+            )
+        )
+        for index in range(records):
+            session.add(
+                RawRecord(
+                    id=uuid.uuid4(),
+                    workspace_id=workspace_id,
+                    project_id=project_id,
+                    source_id=uuid.uuid4(),
+                    task_run_id=task_run_id,
+                    record_type="tiktok_video",
+                    content={"index": index},
+                    content_hash=f"hash-{uuid.uuid4().hex}",
+                    collected_at=now,
+                    created_at=now,
+                )
+            )
+        await session.commit()
+    return task_run_id
+
+
+async def _seed_running(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    run_id: uuid.UUID,
+    workspace_id: uuid.UUID,
+    project_id: uuid.UUID,
+) -> None:
+    """写入一次可取消的 running 运行（无步骤与记录）。"""
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=workspace_id,
+                project_id=project_id,
+                status="running",
+                execution_mode="live",
+                trigger="api",
+                records_count=0,
+                created_at=datetime.now(UTC),
+            )
+        )
+        await session.commit()
+
+
+def _contract_payload(
+    *,
+    run_id: uuid.UUID,
+    task_id: uuid.UUID,
+    evidence_id: uuid.UUID,
+) -> dict[str, object]:
+    """一份最小但完整的报告合同。"""
+    return {
+        "schema_version": "1.0.0",
+        "template_id": TEMPLATE_ID,
+        "generated_at": "2026-10-21T08:00:00+00:00",
+        "identity": {
+            "task_id": str(task_id),
+            "brand": "Example",
+            "category": "baby_bottle",
+            "markets": ["US"],
+            "window": {
+                "start": "2026-01-01",
+                "end": "2026-03-01",
+                "days": 60,
+            },
+        },
+        "decision": {
+            "decision_question": "是否进入该市场？",
+            "answer": "先验证需求。",
+            "protect": [],
+            "resolve": [],
+            "prove": [],
+        },
+        "gates": [],
+        "coverage": {"cells": []},
+        "metrics": [],
+        "claims": [],
+        "evidences": [
+            {
+                "evidence_id": str(evidence_id),
+                "claim_id": "c-1",
+                "role": "support",
+                "source_tool_id": "tikhub_tiktok_video_search",
+                "captured_at": "2026-02-01T00:00:00+00:00",
+                "market": "US",
+                "locale": "en-US",
+                "evidence_grade": "L3_live_single",
+            }
+        ],
+        "run_ledger": [
+            {
+                "run_id": str(run_id),
+                "tool_id": "tikhub_tiktok_video_search",
+                "endpoint_type": "tikhub_tiktok_video_search",
+                "unit": "request",
+                "quantity": 1,
+                "unit_price": "0.010000",
+                "total_cost_usd": "0.010000",
+                "evidence_grade": "L3_live_single",
+                "started_at": "2026-02-01T00:00:00+00:00",
+                "finished_at": "2026-02-01T00:00:05+00:00",
+                "outcome": "success",
+            }
+        ],
+        "limits": ["不能推断长期复购。"],
+        "unknowns": ["缺少线下渠道数据。"],
+        "artifact": {
+            "report_html_sha256": "a" * 64,
+            "sop_html_sha256": "b" * 64,
+            "contract_sha256": "c" * 64,
+        },
+    }
+
+
+def _error_text(result: object) -> str:
+    """把工具错误结果拼成文本，便于断言错误码。"""
+    content = getattr(result, "content", ())
+    return " ".join(str(item) for item in content)
+
+
+async def _seed_balance(
+    factory: async_sessionmaker[AsyncSession],
+) -> uuid.UUID:
+    """写入一次运行、一条授权、一条账本行。返回 project_id。
+
+    形状与 test_mcp_run_service.py 的 ``_seed_balance`` 一致：
+    accrued 1.25，授权上限 10。
+    """
+    from decimal import Decimal
+
+    from data_intelligence_hub.models.authorization import Authorization
+    from data_intelligence_hub.models.run_ledger import RunLedgerEntry
+
+    now = datetime.now(UTC)
+    project_id = uuid.uuid4()
+    run_id = uuid.uuid4()
+    async with factory() as session:
+        session.add(
+            Run(
+                id=run_id,
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                status="completed",
+                execution_mode="live",
+                trigger="api",
+                records_count=1,
+                created_at=now,
+            )
+        )
+        session.add(
+            Authorization(
+                workspace_id=uuid.uuid4(),
+                project_id=project_id,
+                gate_id="G-Plan",
+                gate_status="pass",
+                scope={},
+                max_cost_usd=Decimal("10"),
+                approver=uuid.uuid4(),
+                granted_at=now,
+                expires_at=now.replace(year=now.year + 1),
+            )
+        )
+        session.add(
+            RunLedgerEntry(
+                run_id=run_id,
+                entry_kind="accrued",
+                amount_usd=Decimal("1.25"),
+                balance_after_usd=Decimal("8.75"),
+                idempotency_key=f"b5-balance-{run_id.hex}",
+                created_at=now,
+            )
+        )
+        await session.commit()
+    return project_id
+
+
+@pytest.mark.anyio
+async def test_tool_count_snapshot() -> None:
+    """工具清单是快照。新增或删除工具必须更新本断言。
+
+    PRD 5.7 的「18 个」写于 TikTok R1 之前。
+    R1 增加了 8 个 TikTok 工具，B3 增加了 get_run 与 list_records。
+    B5 新增 discover、inspect、create_report。main 合入 13 个 Exa 与
+    监控、研究、富集工具。实际总数是 39。
+    """
+    tools = await mcp_server.list_tools()
+    names = tuple(sorted(tool.name for tool in tools))
+    assert names == EXPECTED_TOOLS
+    assert len(names) == 39
+
+
+@pytest.mark.anyio
+async def test_discover_returns_reasoned_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """discover 必须返回带理由的候选。理由来自实际命中字段。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    async with Client(mcp_server) as client:
+        result = await client.call_tool(
+            "discover",
+            {"query": "tiktok video search", "limit": 5},
+        )
+
+    assert result.structured_content is not None
+    candidates = result.structured_content["candidates"]
+    assert candidates
+    assert len(candidates) <= 5
+    scores = [item["score"] for item in candidates]
+    assert scores == sorted(scores, reverse=True)
+    for item in candidates:
+        assert set(item) == {"tool_id", "label", "reason", "score"}
+        assert item["score"] > 0
+        assert "命中" in item["reason"]
+        assert any(field in item["reason"] for field in ("label", "platform", "description"))
+
+
+@pytest.mark.anyio
+async def test_discover_rejects_empty_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    """空查询按参数错误返回，不返回全目录。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    with pytest.raises(ValueError, match="query_required"):
+        await discovery_tools.discover("   ")
+
+
+@pytest.mark.anyio
+async def test_inspect_returns_full_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    """inspect 必须返回输入 schema、输出字段、成本与风险。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    async with Client(mcp_server) as client:
+        result = await client.call_tool(
+            "inspect",
+            {"tool_id": "tikhub_tiktok_video_search"},
+        )
+
+    assert result.structured_content is not None
+    body = result.structured_content
+    assert body["tool_id"] == "tikhub_tiktok_video_search"
+    assert body["input_schema"]["type"] == "object"
+    assert "properties" in body["input_schema"]
+    assert body["output_schema"]["fields"]
+    assert "cost" in body
+    assert body["risk_class"]
+
+
+@pytest.mark.anyio
+async def test_inspect_rejects_unknown_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    """未知工具标识返回 tool_not_found。"""
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    with pytest.raises(ValueError, match="tool_not_found"):
+        await discovery_tools.inspect_tool("missing_tool")
+
+
+# 治理字段与其原文。inspect 对外只发布 public projection，这些一律不得出现。
+_INSPECT_FORBIDDEN_WORDS: tuple[str, ...] = (
+    "authorization",
+    "reachability",
+    "block_reason",
+    "policy_block_reason",
+    "collection_policy_denied",
+    "demo_workspace",
+    "执行入口当前不校验身份",
+)
+
+
+def _serialized_contains(value: object, needle: str) -> bool:
+    """把值序列化成文本后搜子串。None 与标量也能安全过。"""
+    text = json.dumps(value, ensure_ascii=False, default=repr)
+    return needle in text
+
+
+@pytest.mark.anyio
+async def test_inspect_uses_public_projection_without_governance_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """inspect 必须走 public projection，不泄漏 authorization 与 reachability。
+
+    PublicTool 刻意剥掉治理字段：``authorization`` 记录执行入口的鉴权缺口，
+    ``reachability.block_reason`` 带策略拒绝原文。把两者发到 MCP 面
+    等于对外公告自身弱点。本断言递归扫描整个返回值。
+    """
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    async with Client(mcp_server) as client:
+        result = await client.call_tool(
+            "inspect",
+            {"tool_id": "tikhub_tiktok_video_search"},
+        )
+
+    assert result.structured_content is not None
+    body = result.structured_content
+    for word in _INSPECT_FORBIDDEN_WORDS:
+        assert not _serialized_contains(body, word), f"泄漏治理词: {word}"
+
+    expected = set(PublicTool.model_fields) | {"input_schema", "output_schema", "method"}
+    assert set(body) == expected
+    assert "availability" in body
+    assert "availability_view" not in body
+
+    # 投影后的可用性视图不再含 block_reason，执行可达性由布尔回答。
+    availability = body["availability"]
+    assert "block_reason" not in availability
+    assert body["execution_kind"]
+    assert isinstance(body["executable_now"], bool)
+    assert isinstance(body["permanently_blocked"], bool)
+
+
+@pytest.mark.anyio
+async def test_inspect_public_projection_clean_across_full_catalog() -> None:
+    """全部工具经 public projection 投影后均不得含治理词。
+
+    逐工具把 ``to_public_tool`` 结果序列化后搜子串。一个泄漏都不允许。
+    """
+    catalog = await discovery_tools.load_catalog()
+    assert catalog.tools, "目录为空，扫描无意义"
+    for tool in catalog.tools:
+        payload = to_public_tool(tool).model_dump(mode="json")
+        for word in _INSPECT_FORBIDDEN_WORDS:
+            assert not _serialized_contains(payload, word), (
+                f"{tool.tool_id} 泄漏治理词: {word}"
+            )
+
+
+@pytest.mark.anyio
+async def test_inspect_permanently_blocked_tool_reports_booleans_only() -> None:
+    """策略拒绝的工具只给布尔信号，不给原文。
+
+    ``aliens_eye_advanced`` 被 collection policy 无条件拒绝。
+    投影后 execution_kind 为 unsupported，无输出家族，也不得残留原文。
+    """
+    body = await discovery_tools.inspect_tool("aliens_eye_advanced")
+    assert body["execution_kind"] == "unsupported"
+    assert body["permanently_blocked"] is True
+    assert body["executable_now"] is False
+    assert body["output_schema"] is None
+    for word in _INSPECT_FORBIDDEN_WORDS:
+        assert not _serialized_contains(body, word), f"泄漏治理词: {word}"
+
+
+@pytest.mark.anyio
+async def test_refactored_catalog_tools_return_structured_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """list_capabilities、describe_capability 与 get_playbook 返回结构化数据。"""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    monkeypatch.setattr(
+        capability_service,
+        "async_session_factory",
+        async_sessionmaker(engine, expire_on_commit=False),
+    )
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    try:
+        async with Client(mcp_server) as client:
+            listing = await client.call_tool("list_capabilities", {"platform_id": "tiktok"})
+            described = await client.call_tool(
+                "describe_capability",
+                {"endpoint_type": "tikhub_tiktok_video_search"},
+            )
+            playbook = await client.call_tool("get_playbook", {"platform_id": "tiktok"})
+    finally:
+        await engine.dispose()
+
+    assert listing.structured_content is not None
+    capabilities = listing.structured_content["capabilities"]
+    assert capabilities
+    # 行结构以 main 的 N1 口径为准：capability_id 是稳定标识。
+    # 分支另加的 tool_id / availability_view 未进入 main，且无消费方。
+    assert all("capability_id" in item for item in capabilities)
+
+    assert described.structured_content is not None
+    assert described.structured_content["input_schema"]["type"] == "object"
+    # main 的公开投影用 tool_id 标识能力，不再返回 endpoint_type。
+    assert described.structured_content["tool_id"] == "tikhub_tiktok_video_search"
+
+    assert playbook.structured_content is not None
+    structured = playbook.structured_content
+    assert structured["platform_id"] == "tiktok"
+    assert structured["capabilities"]
+    assert structured["steps"]
+    assert structured["acceptance"]
+    assert structured["risk_boundaries"]
+    expected_markdown = await get_platform_playbook("tiktok")
+    assert structured["markdown"] == expected_markdown
+    assert structured["deprecated_fields"] == ["markdown"]
+
+
+@pytest.mark.anyio
+async def test_create_report_requires_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """缺少合同时明确报错，不生成假合同与假产物。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+        monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+        with pytest.raises(ValueError, match="report_contract_incomplete") as exc_info:
+            await report_tools.create_report(run_id, TEMPLATE_ID)
+        async with factory() as session:
+            count = await session.scalar(select(func.count()).select_from(ReportArtifact))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    message = str(exc_info.value)
+    assert "identity" in message
+    assert "decision" in message
+    assert count == 0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("template_id", ["t3_selection", "t4_creator"])
+async def test_create_report_rejects_unregistered_template(template_id: str) -> None:
+    """T3 与 T4 属于 B6。未登记模板必须返回明确错误。"""
+    with pytest.raises(ValueError, match="template_not_registered"):
+        await report_tools.create_report(uuid.uuid4(), template_id, None)
+
+
+@pytest.mark.anyio
+async def test_create_report_rejects_l4_contract_for_a_fixture_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """夹具运行的合同等级不得高于 L2。create_report 不得绕过构建器。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+            execution_mode="fixture",
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+        monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+        contract = _contract_payload(
+            run_id=run_id,
+            task_id=uuid.uuid4(),
+            evidence_id=uuid.uuid4(),
+        )
+        contract["evidences"][0]["evidence_grade"] = "L4_authorized_live"
+        contract["run_ledger"][0]["evidence_grade"] = "L4_authorized_live"
+        with pytest.raises(ValueError, match="report_contract_invalid") as exc_info:
+            await report_tools.create_report(run_id, TEMPLATE_ID, contract)
+        async with factory() as session:
+            count = await session.scalar(select(func.count()).select_from(ReportArtifact))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert "L2" in str(exc_info.value)
+    assert count == 0
+
+
+@pytest.mark.anyio
+async def test_create_report_rejects_confirmed_claim_at_l3(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """create_report 必须执行 claim 状态上限，不得只做结构校验。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    evidence_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        identity = _identity(project_id=project_id, workspace_id=workspace_id)
+        monkeypatch.setattr(access_control, "project_api_key_context", lambda context: identity)
+        monkeypatch.setattr(server_module, "project_api_key_context", lambda context: identity)
+        contract = _contract_payload(
+            run_id=run_id,
+            task_id=uuid.uuid4(),
+            evidence_id=evidence_id,
+        )
+        contract["claims"] = [
+            {
+                "claim_id": "c-1",
+                "text": "防胀气卖点出现频率高。",
+                "claim_status": "confirmed",
+                "evidence_grade": "L3_live_single",
+                "scope": {
+                    "market": "US",
+                    "window": {
+                        "start": "2026-01-01",
+                        "end": "2026-03-01",
+                        "days": 60,
+                    },
+                    "sample_n": 80,
+                },
+                "counterevidence_text": "未发现反证",
+                "owner": str(uuid.uuid4()),
+                "evidence_ids": [str(evidence_id)],
+            }
+        ]
+        contract["evidences"].append(
+            {
+                "evidence_id": str(uuid.uuid4()),
+                "claim_id": "c-1",
+                "role": "gap",
+                "source_tool_id": "tikhub_tiktok_video_search",
+                "captured_at": "2026-02-02T00:00:00+00:00",
+                "market": "US",
+                "locale": "en-US",
+                "evidence_grade": "L3_live_single",
+            }
+        )
+        with pytest.raises(ValueError, match="report_contract_invalid") as exc_info:
+            await report_tools.create_report(run_id, TEMPLATE_ID, contract)
+        async with factory() as session:
+            count = await session.scalar(select(func.count()).select_from(ReportArtifact))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert "claim_status" in str(exc_info.value)
+    assert count == 0
+
+
+@pytest.mark.anyio
+async def test_create_report_builds_artifact_from_contract(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """完整合同能生成两页产物与五个哈希。"""
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    task_id = uuid.uuid4()
+    evidence_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        identity = _identity(project_id=project_id, workspace_id=workspace_id)
+        monkeypatch.setattr(access_control, "project_api_key_context", lambda context: identity)
+        monkeypatch.setattr(server_module, "project_api_key_context", lambda context: identity)
+        monkeypatch.setattr(access_control, "async_session_factory", factory)
+        await _seed_project_key(factory, identity)
+        contract = _contract_payload(
+            run_id=run_id,
+            task_id=task_id,
+            evidence_id=evidence_id,
+        )
+        async with Client(mcp_server, raise_exceptions=False) as client:
+            result = await client.call_tool(
+                "create_report",
+                {
+                    "project_id": str(project_id),
+                    "run_id": str(run_id),
+                    "template_id": TEMPLATE_ID,
+                    "contract": contract,
+                },
+            )
+        async with factory() as session:
+            artifacts = list(
+                (await session.scalars(select(ReportArtifact))).all()
+            )
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert result.is_error is False
+    assert result.structured_content is not None
+    body = result.structured_content
+    assert body["artifact_id"]
+    assert body["verification"] == []
+    assert body["artifact"]["contract_sha256"]
+    assert body["artifact"]["report_html_sha256"]
+    assert body["artifact"]["sop_html_sha256"]
+    assert body["artifact"]["combined_sha256"]
+    assert body["report_html"]
+    assert body["sop_html"]
+    # 页脚必须写真实合同哈希，不得沿用调用方给的值。
+    assert body["artifact"]["contract_sha256"] in body["report_html"]
+    assert "c" * 64 not in body["report_html"]
+    assert len(artifacts) == 1
+    assert artifacts[0].run_id == run_id
+    assert artifacts[0].project_id == project_id
+
+
+@pytest.mark.anyio
+async def test_create_report_rejects_empty_run_ledger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """空账本合同不能通过 MCP 面的 run 归属 guard（行为固化）。
+
+    ``create_report`` 要求合同的 ``run_ledger`` 覆盖本次运行。
+    合同 ``run_ledger=[]`` 时没有 run 可归属，必须先在
+    ``report_run_not_in_contract`` 处失败，且不落任何产物行。
+    """
+    factory, engine = _make_factory()
+    await _create_schema(engine)
+    run_id = uuid.uuid4()
+    try:
+        await _seed_run(
+            factory,
+            run_id=run_id,
+            workspace_id=uuid.uuid4(),
+            project_id=uuid.uuid4(),
+        )
+        monkeypatch.setattr(report_tools, "async_session_factory", factory)
+        monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+        monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+        contract = _contract_payload(
+            run_id=run_id,
+            task_id=uuid.uuid4(),
+            evidence_id=uuid.uuid4(),
+        )
+        contract["run_ledger"] = []
+        contract["evidences"] = []
+        with pytest.raises(ValueError, match="report_run_not_in_contract") as exc_info:
+            await report_tools.create_report(run_id, TEMPLATE_ID, contract)
+        async with factory() as session:
+            count = await session.scalar(select(func.count()).select_from(ReportArtifact))
+    finally:
+        await engine.dispose()  # type: ignore[attr-defined]
+
+    assert "report_run_not_in_contract" in str(exc_info.value)
+    assert count == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 6: list_capabilities 每平台行语义与旧字段
+# ---------------------------------------------------------------------------
+
+# 冻结的旧 18-key 行字段集合。旧调用方直接读顶层这些键。
+LEGACY_KEYS = {
+    "capability_id",
+    "canonical_capability_id",
+    "content_type",
+    "cost_hint",
+    "description",
+    "endpoint_type",
+    "is_alias_view",
+    "label",
+    "method",
+    "notes",
+    "optional_params",
+    "param_fields",
+    "platform",
+    "provider",
+    "provider_group",
+    "provider_label",
+    "required_params",
+    "status",
+}
+
+
+async def _call_list_capabilities(
+    monkeypatch: pytest.MonkeyPatch,
+    **arguments: object,
+) -> dict[str, object]:
+    """带治理上下文调用 list_capabilities，返回结构化负载。"""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    monkeypatch.setattr(
+        capability_service,
+        "async_session_factory",
+        async_sessionmaker(engine, expire_on_commit=False),
+    )
+    monkeypatch.setattr(access_control, "project_api_key_context", lambda context: None)
+    monkeypatch.setattr(server_module, "project_api_key_context", lambda context: None)
+    try:
+        async with Client(mcp_server) as client:
+            result = await client.call_tool("list_capabilities", arguments)
+    finally:
+        await engine.dispose()
+    assert result.structured_content is not None
+    return cast(dict[str, object], result.structured_content)
+
+
+@pytest.mark.parametrize(
+    ("platform_id", "count"),
+    [
+        ("rss", 19),
+        ("web", 69),
+        ("regulatory", 4),
+        ("tiktok", 39),
+    ],
+)
+@pytest.mark.anyio
+async def test_list_capabilities_platform_row_counts(
+    monkeypatch: pytest.MonkeyPatch,
+    platform_id: str,
+    count: int,
+) -> None:
+    """行数以平台包 endpoint 为准，不受目录按 canonical 去重影响。
+
+    Task 0 冻结基线：rss=19、web=69、regulatory=4、tiktok=39。
+    回归形态：rss 的 19 个 endpoint 全叫 ``public_feed``，descriptor 被
+    regulatory 抢占后 rss 返回 0 行；web 63、regulatory 1。
+    """
+    body = await _call_list_capabilities(monkeypatch, platform_id=platform_id)
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    assert len(capabilities) == count, (
+        f"{platform_id} 行数 {len(capabilities)} != {count}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("platform_id", "count"),
+    [
+        ("rss", 9),
+        ("web", 2),
+        ("pypi", 1),
+    ],
+)
+@pytest.mark.anyio
+async def test_list_capabilities_status_disabled_baseline(
+    monkeypatch: pytest.MonkeyPatch,
+    platform_id: str,
+    count: int,
+) -> None:
+    """status 过滤对 endpoint.status 生效（verified/disabled/pending 词汇）。"""
+    body = await _call_list_capabilities(
+        monkeypatch,
+        platform_id=platform_id,
+        status="disabled",
+    )
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    assert len(capabilities) == count, (
+        f"{platform_id} disabled 行数 {len(capabilities)} != {count}"
+    )
+    for row in capabilities:
+        assert row["status"] == "disabled"
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_legacy_keys_are_subset_of_every_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """旧 18-key 在每个平台的每行都以顶层键存在。"""
+    catalog = await get_platform_package_catalog()
+    for package in catalog.packages:
+        if package.endpoint_count == 0:
+            continue
+        body = await _call_list_capabilities(
+            monkeypatch,
+            platform_id=package.platform_id,
+        )
+        capabilities = body["capabilities"]
+        assert isinstance(capabilities, list)
+        assert capabilities, (
+            f"{package.platform_id} endpoint_count={package.endpoint_count} 但返回空列表"
+        )
+        for row in capabilities:
+            missing = LEGACY_KEYS - set(row)
+            assert not missing, (
+                f"{package.platform_id} 行缺旧字段: {sorted(missing)}"
+            )
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_web_generic_web_endpoint_values_win(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """web/generic_web 的 description 与 is_alias_view 必须来自平台 endpoint 行。
+
+    目录里 ``generic_web`` 的 descriptor 只有第一行（公开网页快照）的值；
+    后 6 个 Forbes/Wirecutter 等 endpoint 有各自的 description 与
+    ``is_alias_view=True``。canonical 去重后这些值必须仍然按行生效。
+    """
+    body = await _call_list_capabilities(monkeypatch, platform_id="web")
+    capabilities = body["capabilities"]
+    assert isinstance(capabilities, list)
+    rows = [row for row in capabilities if row["endpoint_type"] == "generic_web"]
+    assert len(rows) == 7
+    forbes = next(row for row in rows if "Forbes" in str(row["label"]))
+    assert forbes["is_alias_view"] is True
+    assert "Forbes" in str(forbes["description"])
+    snapshot = next(row for row in rows if row["is_alias_view"] is False)
+    assert snapshot["label"] == "公开网页快照"
+
+
+@pytest.mark.anyio
+async def test_list_capabilities_regulatory_public_feed_label_from_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """regulatory/public_feed 的 label 必须来自本平台 endpoint（FDA），非 rss 抢占。
+
+    rss 的 19 个 endpoint 也叫 ``public_feed``。若行由 canonical descriptor
+    驱动，rss 会拿到 FDA 的 label 或直接丢行。
+    """
+    reg_body = await _call_list_capabilities(monkeypatch, platform_id="regulatory")
+    reg_rows = reg_body["capabilities"]
+    assert isinstance(reg_rows, list)
+    assert len(reg_rows) == 4
+    feed = next(row for row in reg_rows if row["endpoint_type"] == "public_feed")
+    assert feed["label"] == "FDA Food Safety Recalls RSS"
+
+    rss_body = await _call_list_capabilities(monkeypatch, platform_id="rss")
+    rss_rows = rss_body["capabilities"]
+    assert isinstance(rss_rows, list)
+    assert len(rss_rows) == 19
+    labels = {str(row["label"]) for row in rss_rows}
+    assert "FDA Food Safety Recalls RSS" not in labels
+    assert "Forbes Innovation RSS" in labels
+
+

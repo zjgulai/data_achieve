@@ -19,6 +19,9 @@ EXPECTED_TOOLS = {
     "list_capabilities",
     "describe_capability",
     "get_playbook",
+    "discover",
+    "inspect",
+    "create_report",
     "collect",
     "web_search",
     "web_fetch",
@@ -54,8 +57,8 @@ EXPECTED_TOOLS = {
 }
 
 
-def test_registry_covers_exactly_36_tools() -> None:
-    assert len(TOOL_POLICIES) == 36
+def test_registry_covers_exactly_39_tools() -> None:
+    assert len(TOOL_POLICIES) == 39
     assert set(TOOL_POLICIES) == EXPECTED_TOOLS
 
 

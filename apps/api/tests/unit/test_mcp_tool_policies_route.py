@@ -51,7 +51,7 @@ async def test_returns_registry_summary(client: AsyncClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["registry_version"] == REGISTRY_VERSION == "n1.v1"
-    assert body["tool_count"] == len(TOOL_POLICIES) == 36
+    assert body["tool_count"] == len(TOOL_POLICIES) == 39
     assert set(body["presets"].keys()) == set(PRESETS.keys())
     for name, members in PRESETS.items():
         assert sorted(body["presets"][name]) == sorted(members)

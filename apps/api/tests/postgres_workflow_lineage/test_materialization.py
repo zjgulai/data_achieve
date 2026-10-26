@@ -274,12 +274,12 @@ def test_transaction_failure_rolls_back_all_materialized_assets(
 
 
 def test_downgrade_refuses_nonempty_materialization_ledger(
-    postgres_database_url: str,
-    postgres_engine: Engine,
-    seeded_lineage_graph: LineageSeed,
+    postgres_database_at_034: str,
+    postgres_engine_at_034: Engine,
+    seeded_lineage_graph_at_034: LineageSeed,
 ) -> None:
-    seed = seeded_lineage_graph
-    with postgres_engine.begin() as connection:
+    seed = seeded_lineage_graph_at_034
+    with postgres_engine_at_034.begin() as connection:
         _, version_id = _insert_materialized_assets(connection, seed)
         _insert_ledger(
             connection,
@@ -289,7 +289,7 @@ def test_downgrade_refuses_nonempty_materialization_ledger(
         )
 
     environment = os.environ.copy()
-    environment["DATABASE_URL"] = postgres_database_url
+    environment["DATABASE_URL"] = postgres_database_at_034
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "downgrade", "202607160033"],
         cwd=API_ROOT,
@@ -303,7 +303,7 @@ def test_downgrade_refuses_nonempty_materialization_ledger(
         "202607170034 downgrade refused: workflow lineage materialization data exists"
         in result.stdout + result.stderr
     )
-    with postgres_engine.connect() as connection:
+    with postgres_engine_at_034.connect() as connection:
         revision = connection.scalar(text("SELECT version_num FROM alembic_version"))
     assert revision == "202607170034"
 

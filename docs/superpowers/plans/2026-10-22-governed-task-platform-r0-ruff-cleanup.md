@@ -21,7 +21,7 @@
 - 每个任务改既有符号前运行 GitNexus impact。`UNKNOWN` 用 `rg` 查调用方；HIGH/CRITICAL 写入报告。
 - 每次提交前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。`partial`/`truncated` 不得为 true。
 - 不删除、skip、xfail 或放宽任何测试。测试输出出现 warning 或 error 时记录。
-- 最终必须通过：`uv run ruff check .`、`uv run mypy src tests`、`pytest tests/unit -q`、带 `c0-pg15` 的 `pytest tests/integration -q`、工具目录与平台包契约测试。
+- 最终必须通过：`uv run ruff check .`、`pytest tests/unit -q`、带 `c0-pg15` 的 `pytest tests/integration -q`、工具目录与平台包契约测试。`uv run mypy src tests` 采用 C0 起点基线非回归门禁：不新增归一化后的唯一诊断签名；仅因 AST 等价换行造成的同一诊断跨行重复计数不阻塞。该口径由用户于 2026-10-23 裁决。
 - 不推送、不打标签。R0 不自行合并到 C0；合并由 C0 控制器在 R0 最终审查通过后执行。
 
 ## Frozen Ruff Baseline
@@ -202,7 +202,7 @@ Expected: B905×2、E402×1。
 - [ ] **Step 3: 实现**
 
 - Read both zip producers. Add `strict=True` only if both input lists are constructed from the same source and tests require equal lengths; otherwise add `strict=False` to preserve truncation.
-- `pkg_registry2_collector.py` sets environment/module state before the late import. Keep the order and add the narrow `# noqa: E402` to that import with a preceding comment explaining the initialization dependency. Do not move unrelated imports.
+- `pkg_registry2_collector.py` 的 late import 不依赖环境或模块初始化。把 `.base` import block 移到 `_NoRedirectClient` 之前的正常 import 区，不使用 `# noqa: E402`，也不移动其他 import。
 
 - [ ] **Step 4: GREEN**
 
@@ -237,7 +237,7 @@ Impact `collector_specs`/catalog construction and collector route catalog symbol
 
 ```bash
 uv run ruff check src/data_intelligence_hub/services/collector_catalog.py src/data_intelligence_hub/api/routes/collectors.py --select E501 --output-format concise | tee /tmp/r0-task3-red.txt
-test "$(wc -l < /tmp/r0-task3-red.txt | tr -d ' ')" -eq 64
+test "$(grep -c E501 /tmp/r0-task3-red.txt)" -eq 64
 ```
 
 - [ ] **Step 2: 冻结输出**
@@ -285,7 +285,7 @@ git commit -m "style(catalog): wrap collector metadata"
 
 ```bash
 uv run ruff check src/data_intelligence_hub/collectors/pkg_community_collector.py src/data_intelligence_hub/collectors/pkg_registry2_collector.py src/data_intelligence_hub/collectors/package_registry_collector.py src/data_intelligence_hub/collectors/aliens_eye_collector.py src/data_intelligence_hub/collectors/hackernews_collector.py src/data_intelligence_hub/collectors/robin_collector.py --select E501 --output-format concise | tee /tmp/r0-task4-red.txt
-test "$(wc -l < /tmp/r0-task4-red.txt | tr -d ' ')" -eq 41
+test "$(grep -c E501 /tmp/r0-task4-red.txt)" -eq 41
 ```
 
 - [ ] **Step 2: 实现**
@@ -325,7 +325,7 @@ git commit -m "style(collectors): wrap package collector code"
 
 ```bash
 uv run ruff check src/data_intelligence_hub/collectors/tikhub_social.py tests/unit/test_tikhub_social_collector.py src/data_intelligence_hub/collectors/base.py src/data_intelligence_hub/platform_packages/renderers.py --select E501 --output-format concise | tee /tmp/r0-task5-red.txt
-test "$(wc -l < /tmp/r0-task5-red.txt | tr -d ' ')" -eq 19
+test "$(grep -c E501 /tmp/r0-task5-red.txt)" -eq 19
 ```
 
 - [ ] **Step 2: 实现**
@@ -366,6 +366,8 @@ uv run ruff check .
 uv run mypy src tests
 ```
 
+mypy 判定：与 C0 起点 `8a68069790d9d7c905505892be2968d90f394629` 运行同一命令；去除 `summary` 和 `note` 并归一化行列号后，唯一诊断签名集合必须相同。原始错误数可因 AST 等价换行把同一诊断拆到两行而变化，但必须记录并证明无新增诊断签名。
+
 - [ ] **Step 2: unit/integration**
 
 ```bash
@@ -373,7 +375,7 @@ uv run pytest tests/unit -q
 DATABASE_URL='postgresql+asyncpg://c0:c0@127.0.0.1:55432/c0_migrations' uv run pytest tests/integration -q
 ```
 
-Expected: `2492 passed, 2 skipped`; `386 passed`.
+Expected: `2493 passed, 2 skipped`; `386 passed`.
 
 - [ ] **Step 3: contracts**
 
@@ -420,7 +422,7 @@ Then append C0 evidence with R0 commit range and `All checks passed!`, run GitNe
 
 1. Keep `c0-pg15` running.
 2. Rerun C0 Task 5 Step 2 Ruff once in the merged C0 worktree.
-3. Resume at Task 5 Step 3 (`mypy src tests`) and continue unchanged.
+3. Resume at Task 5 Step 3 (`mypy src tests`) with the amended baseline non-regression gate; use the amended unit baseline `2493 passed, 2 skipped` for Steps 4 and 6.
 4. R0 adds no migration; C0 head remains `202610210057`.
 
 ## Self-Review

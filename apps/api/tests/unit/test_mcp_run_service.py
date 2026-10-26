@@ -95,15 +95,20 @@ async def _seed(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
     return run_id
 
 
-async def _seed_running(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
+async def _seed_running(
+    factory: async_sessionmaker[AsyncSession],
+    *,
+    workspace_id: uuid.UUID | None = None,
+    project_id: uuid.UUID | None = None,
+) -> uuid.UUID:
     now = datetime.now(UTC)
     run_id = uuid.uuid4()
     async with factory() as session:
         session.add(
             Run(
                 id=run_id,
-                workspace_id=uuid.uuid4(),
-                project_id=uuid.uuid4(),
+                workspace_id=workspace_id or uuid.uuid4(),
+                project_id=project_id or uuid.uuid4(),
                 status="running",
                 execution_mode="live",
                 trigger="api",
@@ -113,6 +118,15 @@ async def _seed_running(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
         )
         await session.commit()
     return run_id
+
+
+async def _run_status(
+    factory: async_sessionmaker[AsyncSession],
+    run_id: uuid.UUID,
+) -> str | None:
+    async with factory() as session:
+        run = await session.get(Run, run_id)
+        return None if run is None else run.status
 
 
 async def _seed_balance(factory: async_sessionmaker[AsyncSession]) -> uuid.UUID:
@@ -230,6 +244,27 @@ def test_stop_run_cancels_once(
     second = asyncio.run(run_service.stop_run(run_id))
     assert second["cancelled"] is False
     assert second["status"] == "cancelled"
+
+
+def test_stop_run_is_project_scoped(
+    factory: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    sibling_project_id = uuid.uuid4()
+    run_id = asyncio.run(
+        _seed_running(factory, workspace_id=workspace_id, project_id=project_id)
+    )
+    monkeypatch.setattr(run_service, "async_session_factory", factory)
+
+    with pytest.raises(ValueError, match="run_not_found"):
+        asyncio.run(run_service.stop_run(run_id, project_id=sibling_project_id))
+    row_status = asyncio.run(_run_status(factory, run_id))
+    assert row_status == "running"
+
+    result = asyncio.run(run_service.stop_run(run_id, project_id=project_id))
+    assert result["cancelled"] is True
 
 
 def test_project_balance_sums_ledger_and_budget(

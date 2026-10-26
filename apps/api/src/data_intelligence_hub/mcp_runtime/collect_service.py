@@ -31,9 +31,9 @@ async def collect_capability(
 ) -> QuickCollectResponse:
     """执行一次采集。
 
-    workspace_id 为 None 时回退 demo workspace：全局 token 路径没有
-    workspace 绑定，与改造前行为一致。项目密钥路径必须传它，
-    否则记录会落到 demo 工作区。
+    传入 ``workspace_id`` 时使用该工作区。它属于项目密钥身份。
+    不传时回退 demo workspace，保持全局 token 的既有行为。
+    传入但查不到时返回 ``workspace_not_found``，不静默回退。
     """
     body = QuickCollectRequest(
         project_id=project_id,
@@ -45,5 +45,7 @@ async def collect_capability(
         workspace = None
         if workspace_id is not None:
             workspace = await get_workspace_by_id(session, workspace_id)
+            if workspace is None:
+                raise ValueError("workspace_not_found")
         outcome = await run_quick_collect(session, body, workspace=workspace)
         return to_response(outcome)

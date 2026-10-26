@@ -5,12 +5,12 @@ import json
 from pathlib import Path
 
 from data_intelligence_hub.api.routes.collectors import get_collector_catalog
-from data_intelligence_hub.platform_packages.notes import (
-    SECRET_VALUE_RE,
-    _PRIVATE_KEY_RE,
-)
 from data_intelligence_hub.platform_packages.builder import build_platform_package_catalog
 from data_intelligence_hub.platform_packages.generator import generate_platform_packages
+from data_intelligence_hub.platform_packages.notes import (
+    _PRIVATE_KEY_RE,
+    SECRET_VALUE_RE,
+)
 
 
 def test_generator_writes_complete_safe_packages(tmp_path: Path) -> None:

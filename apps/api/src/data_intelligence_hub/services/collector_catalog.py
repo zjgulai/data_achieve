@@ -218,7 +218,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="bilibili_video_search",
         name="B站视频搜索",
         description="按关键词搜索 B站视频内容。",
-        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="bilibili_video_info",
@@ -479,7 +482,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="aliens_eye_advanced",
         name="Aliens Eye 高级扫描",
         description="带用户名变体（前缀/后缀）的全量平台扫描，可指定平台范围。",
-        config_schema={"required": ["username"], "properties": {"username": "string", "sites": "string"}},
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "sites": "string"},
+        },
     ),
     CollectorDefinition(
         type="aliens_eye_correlate",
@@ -491,7 +497,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="aliens_eye_recurse",
         name="Aliens Eye 递归扩展",
         description="递归追踪 Bio 中发现的其他用户名并继续扫描。",
-        config_schema={"required": ["username"], "properties": {"username": "string", "depth": "integer"}},
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "depth": "integer"},
+        },
     ),
     CollectorDefinition(
         type="aliens_eye_domain",
@@ -515,25 +524,37 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="robin_darkweb_search",
         name="Robin 暗网关键词搜索",
         description="通过 Tor 在 8 个暗网搜索引擎搜索关键词，返回 .onion 结果。",
-        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_results": "integer"}},
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "max_results": "integer"},
+        },
     ),
     CollectorDefinition(
         type="robin_darkweb_username",
         name="Robin 暗网用户名搜索",
         description="在暗网搜索用户名相关的泄露信息和市场记录。",
-        config_schema={"required": ["username"], "properties": {"username": "string", "max_results": "integer"}},
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "max_results": "integer"},
+        },
     ),
     CollectorDefinition(
         type="robin_darkweb_email",
         name="Robin 暗网邮箱泄露检测",
         description="在暗网搜索邮箱是否出现在泄露数据库或凭证列表中。",
-        config_schema={"required": ["email"], "properties": {"email": "string", "max_results": "integer"}},
+        config_schema={
+            "required": ["email"],
+            "properties": {"email": "string", "max_results": "integer"},
+        },
     ),
     CollectorDefinition(
         type="browser_use_task",
         name="Browser Use AI 任务采集",
         description="用自然语言描述采集任务，AI 控制浏览器自动完成采集。",
-        config_schema={"required": ["task"], "properties": {"task": "string", "url": "string", "max_steps": "integer"}},
+        config_schema={
+            "required": ["task"],
+            "properties": {"task": "string", "url": "string", "max_steps": "integer"},
+        },
     ),
     CollectorDefinition(
         type="hackernews_front_page",
@@ -545,13 +566,19 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="hackernews_search",
         name="Hacker News 搜索",
         description="通过 Algolia 搜索 Hacker News 历史帖子。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="hackernews_user",
         name="Hacker News 用户提交",
         description="抓取指定 HN 用户的提交记录。",
-        config_schema={"required": ["username"], "properties": {"username": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["username"],
+            "properties": {"username": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="npm_package",
@@ -563,7 +590,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="npm_search",
         name="npm 包搜索",
         description="按关键词搜索 npm 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="pypi_package",
@@ -575,7 +605,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="pypi_search",
         name="PyPI 包搜索",
         description="通过 PyPI RSS 搜索 Python 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="crates_package",
@@ -587,7 +620,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="crates_search",
         name="crates.io Rust 包搜索",
         description="按关键词搜索 crates.io 上的 Rust 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="rubygems_package",
@@ -599,31 +635,42 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="rubygems_search",
         name="RubyGems 包搜索",
         description="按关键词搜索 RubyGems 上的 Ruby gem。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="go_package",
         name="pkg.go.dev Go 包信息",
-        description="从 pkg.go.dev 获取 Go 包的文档和元数据。package 为完整 import path（如 github.com/gin-gonic/gin）。",
+        description="从 pkg.go.dev 获取 Go 包的文档和元数据"
+        "。package 为完整 import path（如 github.com/gin-gonic/gin）。",
         config_schema={"required": ["package"], "properties": {"package": "string"}},
     ),
     CollectorDefinition(
         type="go_search",
         name="pkg.go.dev Go 包搜索",
         description="在 pkg.go.dev 搜索 Go 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="packagist_package",
         name="Packagist PHP 包信息",
-        description="从 Packagist 获取 PHP composer 包的详细元数据，包括版本、下载量、依赖等。package 格式为 vendor/name（如 laravel/framework）。",
+        description="从 Packagist 获取 PHP composer 包的详细元数据，包括版本"
+        "、下载量、依赖等。package 格式为 vendor/name（如 laravel/framework）。",
         config_schema={"required": ["package"], "properties": {"package": "string"}},
     ),
     CollectorDefinition(
         type="packagist_search",
         name="Packagist PHP 包搜索",
         description="按关键词搜索 Packagist 上的 PHP composer 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="nuget_package",
@@ -635,7 +682,10 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="nuget_search",
         name="NuGet .NET 包搜索",
         description="按关键词搜索 NuGet 上的 .NET 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="pubdev_package",
@@ -647,13 +697,19 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="pubdev_search",
         name="pub.dev Dart/Flutter 包搜索",
         description="按关键词搜索 pub.dev 上的 Dart/Flutter 包。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "max_items": "integer"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "max_items": "integer"},
+        },
     ),
     CollectorDefinition(
         type="apify_1688_product_search",
         name="1688 商品搜索",
         description="按关键词搜索 1688.com 批发商品，返回价格梯度、MOQ、供应商信息。",
-        config_schema={"required": ["keyword"], "properties": {"keyword": "string", "max_items_per_url": "integer"}},
+        config_schema={
+            "required": ["keyword"],
+            "properties": {"keyword": "string", "max_items_per_url": "integer"},
+        },
     ),
     CollectorDefinition(
         type="apify_1688_product_detail",
@@ -665,13 +721,19 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="apify_1688_advanced",
         name="1688 高级采集（含图片反查/到岸成本）",
         description="支持关键词搜索、以图搜货（图片 URL 反查）和到岸成本估算。",
-        config_schema={"required": ["type", "queries"], "properties": {"type": "string", "queries": "array", "shippingCountry": "string"}},
+        config_schema={
+            "required": ["type", "queries"],
+            "properties": {"type": "string", "queries": "array", "shippingCountry": "string"},
+        },
     ),
     CollectorDefinition(
         type="apify_alibaba_product_search",
         name="阿里巴巴国际站商品搜索（含规格/证书）",
         description="采集 Alibaba.com 商品，支持规格书、CE/RoHS 认证信息、包装尺寸/重量。",
-        config_schema={"required": ["startUrls"], "properties": {"startUrls": "array", "maxItems": "integer"}},
+        config_schema={
+            "required": ["startUrls"],
+            "properties": {"startUrls": "array", "maxItems": "integer"},
+        },
     ),
     CollectorDefinition(
         type="apify_alibaba_product_detail",
@@ -683,19 +745,29 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         type="apify_amazon_bestsellers",
         name="Amazon BSR 最佳卖家榜",
         description="抓取 Amazon 分类 Best Sellers / New Releases 榜单，返回排名、价格、评分。",
-        config_schema={"required": ["categoryUrls"], "properties": {"categoryUrls": "array", "maxResults": "integer"}},
+        config_schema={
+            "required": ["categoryUrls"],
+            "properties": {"categoryUrls": "array", "maxResults": "integer"},
+        },
     ),
     CollectorDefinition(
         type="apify_amazon_competitor_research",
         name="Amazon 竞品批量研究（BSR/FBA/卖家数）",
-        description="按 ASIN 批量研究 Amazon 竞品，返回 BSR、FBA 状态、卖家数量，替代 Jungle Scout。",
-        config_schema={"required": ["asins"], "properties": {"asins": "array", "marketplace": "string"}},
+        description="按 ASIN 批量研究 Amazon 竞品"
+        "，返回 BSR、FBA 状态、卖家数量，替代 Jungle Scout。",
+        config_schema={
+            "required": ["asins"],
+            "properties": {"asins": "array", "marketplace": "string"},
+        },
     ),
     CollectorDefinition(
         type="apify_amazon_bsr_tracker",
         name="Amazon BSR 时序追踪（多站点）",
         description="追踪指定 ASIN 在多 Amazon 站点的 BSR 变化，适合日度定时任务，替代 Keepa。",
-        config_schema={"required": ["asins"], "properties": {"asins": "array", "marketplaces": "array"}},
+        config_schema={
+            "required": ["asins"],
+            "properties": {"asins": "array", "marketplaces": "array"},
+        },
     ),
     CollectorDefinition(
         type="apify_amazon_price_tracker",
@@ -706,44 +778,85 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
     CollectorDefinition(
         type="apify_aliexpress_product_search_v2",
         name="AliExpress 商品搜索（多货币/多国运费）",
-        description="高质量 AliExpress 采集，支持 30+ 货币、40+ 收货国运费，适合 Dropshipping 利润估算。",
-        config_schema={"required": ["queries"], "properties": {"queries": "array", "shipTo": "string", "currency": "string"}},
+        description="高质量 AliExpress 采集，支持 30+ 货币"
+        "、40+ 收货国运费，适合 Dropshipping 利润估算。",
+        config_schema={
+            "required": ["queries"],
+            "properties": {"queries": "array", "shipTo": "string", "currency": "string"},
+        },
     ),
     CollectorDefinition(
         type="apify_shopify_products_monitor",
         name="Shopify 独立站实时价格/库存监控",
         description="实时监控 Shopify 独立站全品类价格和库存，适合竞品价格追踪。",
-        config_schema={"required": ["url"], "properties": {"url": "string", "maxProducts": "integer"}},
+        config_schema={
+            "required": ["url"],
+            "properties": {"url": "string", "maxProducts": "integer"},
+        },
     ),
     CollectorDefinition(
         type="apify_shopify_full_catalog",
         name="Shopify 独立站全品类 SKU 采集",
         description="通过 /products.json 高效采集 Shopify 独立站全品类商品和变体。",
-        config_schema={"required": ["startUrls"], "properties": {"startUrls": "array", "maxProducts": "integer"}},
+        config_schema={
+            "required": ["startUrls"],
+            "properties": {"startUrls": "array", "maxProducts": "integer"},
+        },
     ),
     CollectorDefinition(
         type="exa_search",
         name="Exa 神经语义搜索",
-        description="Exa AI 语义搜索引擎，支持 auto/fast/instant/deep/deep-reasoning 模式及 company/people/publication/news 专项索引。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "search_type": "string", "category": "string", "num_results": "integer", "contents_mode": "string", "output_schema": "object"}},
+        description="Exa AI 语义搜索引擎，支持 auto/fast/instant/deep/deep-"
+        "reasoning 模式及 company/people/publication/news 专项索引。",
+        config_schema={
+            "required": ["query"],
+            "properties": {
+                "query": "string",
+                "search_type": "string",
+                "category": "string",
+                "num_results": "integer",
+                "contents_mode": "string",
+                "output_schema": "object",
+            },
+        },
     ),
     CollectorDefinition(
         type="exa_find_similar",
         name="Exa 相似 URL 发现",
         description="输入种子 URL，在向量空间中找语义最近邻页面，用于竞品发现和内容推荐。",
-        config_schema={"required": ["url"], "properties": {"url": "string", "num_results": "integer", "exclude_source_domain": "boolean", "contents_mode": "string"}},
+        config_schema={
+            "required": ["url"],
+            "properties": {
+                "url": "string",
+                "num_results": "integer",
+                "exclude_source_domain": "boolean",
+                "contents_mode": "string",
+            },
+        },
     ),
     CollectorDefinition(
         type="exa_contents",
         name="Exa URL 内容提取",
-        description="输入已知 URL 列表，提取 highlights/text/summary 多模式结构化内容，支持子页面递归。",
-        config_schema={"required": ["urls"], "properties": {"urls": "array", "contents_mode": "string", "max_age_hours": "integer", "subpages": "integer"}},
+        description="输入已知 URL 列表"
+        "，提取 highlights/text/summary 多模式结构化内容，支持子页面递归。",
+        config_schema={
+            "required": ["urls"],
+            "properties": {
+                "urls": "array",
+                "contents_mode": "string",
+                "max_age_hours": "integer",
+                "subpages": "integer",
+            },
+        },
     ),
     CollectorDefinition(
         type="exa_answer",
         name="Exa 带引用问答",
         description="输入自然语言问题，返回综合答案 + 信源引用（标题/URL/日期/作者）。",
-        config_schema={"required": ["query"], "properties": {"query": "string", "output_schema": "object", "text": "boolean"}},
+        config_schema={
+            "required": ["query"],
+            "properties": {"query": "string", "output_schema": "object", "text": "boolean"},
+        },
     ),
     CollectorDefinition(
         type="exa_agent",
@@ -768,14 +881,28 @@ COLLECTOR_CATALOG: tuple[CollectorDefinition, ...] = (
         description="给示例样本自动学习网页结构并批量提取同类字段，适合无固定模板的页面。",
         config_schema={
             "required": ["url", "wanted_list"],
-            "properties": {"url": "string", "wanted_list": "array", "mode": "string", "save_rules": "boolean", "rules_path": "string"},
+            "properties": {
+                "url": "string",
+                "wanted_list": "array",
+                "mode": "string",
+                "save_rules": "boolean",
+                "rules_path": "string",
+            },
         },
     ),
     CollectorDefinition(
         type="bestblogs_articles",
         name="BestBlogs AI 精选文章",
         description="BestBlogs 平台聚合的 AI/技术精选文章、评分与摘要。",
-        config_schema={"required": [], "properties": {"category": "string", "lang": "string", "min_score": "integer", "limit": "integer"}},
+        config_schema={
+            "required": [],
+            "properties": {
+                "category": "string",
+                "lang": "string",
+                "min_score": "integer",
+                "limit": "integer",
+            },
+        },
     ),
     CollectorDefinition(
         type="blackbird_email_osint",
@@ -882,7 +1009,8 @@ def validate_collector_config(collector_type: str, config: dict[str, Any]) -> di
         "sherlock", "maigret",
         "twscrape_search", "twscrape_user_tweets", "twscrape_trends",
         "anydoc_file_to_markdown",
-        "bilibili_video_search", "bilibili_video_info", "bilibili_user_videos", "bilibili_video_comments",
+        "bilibili_video_search", "bilibili_video_info",
+        "bilibili_user_videos", "bilibili_video_comments",
         "weibo_keyword_search", "weibo_user_posts", "weibo_trending_topics",
         "zhihu_question_answers", "zhihu_keyword_search", "zhihu_hot_list",
         "baidu_search", "bing_search", "duckduckgo_search",

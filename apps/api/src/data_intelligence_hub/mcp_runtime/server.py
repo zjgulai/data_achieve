@@ -31,13 +31,19 @@ from data_intelligence_hub.mcp_runtime.run_service import (
     stop_run,
 )
 from data_intelligence_hub.mcp_runtime.tool_registry import TIKTOK_EXECUTE_TOOLS
+from data_intelligence_hub.mcp_runtime.tools.discovery import (
+    discover as discover_tools,
+)
+from data_intelligence_hub.mcp_runtime.tools.discovery import inspect_tool, structured_playbook
+from data_intelligence_hub.mcp_runtime.tools.reports import (
+    create_report as create_report_artifact,
+)
 from data_intelligence_hub.platform_packages.service import (
     CapabilityNotFoundError,
     PlatformPackageNotFoundError,
     get_capability,
     get_platform_package,
     get_platform_package_catalog,
-    get_platform_playbook,
 )
 from data_intelligence_hub.repositories.projects import get_project
 from data_intelligence_hub.repositories.workspaces import (
@@ -238,19 +244,93 @@ async def describe_capability(
 
 
 @_tool(
-    description="Return the platform playbook in Markdown.",
+    description="Return the platform playbook as structured data.",
     read_only=True,
     open_world=False,
     destructive=False,
     idempotent=False,
 )
-async def get_playbook(context: Context, platform_id: str) -> dict[str, str]:
+async def get_playbook(context: Context, platform_id: str) -> dict[str, object]:
+    """返回结构化 playbook，含能力、坑点、步骤、验收与风险边界。
+
+    同时保留 ``markdown`` 字段，兼容只读纯文本的旧调用方。
+    策略拒绝原文不入返回值，与 ``/api/tools`` 的口径一致。
+    """
     async with governed_mcp_tool(context, "get_playbook"):
         try:
-            markdown = await get_platform_playbook(platform_id)
+            playbook = await structured_playbook(platform_id)
         except PlatformPackageNotFoundError as exc:
             raise ValueError("platform_package_not_found") from exc
-        return {"platform_id": platform_id, "markdown": markdown}
+        capabilities = playbook.get("capabilities")
+        if isinstance(capabilities, list):
+            for capability in capabilities:
+                if isinstance(capability, dict):
+                    capability.pop("policy_block_reason", None)
+        return playbook
+
+
+@_tool(
+    description="Search the tool catalog in natural language and return scored candidates.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
+async def discover(
+    context: Context,
+    query: str,
+    limit: int = 10,
+) -> dict[str, object]:
+    """按自然语言检索工具，返回带命中理由的候选。"""
+    async with governed_mcp_tool(context, "discover"):
+        return await discover_tools(query, limit)
+
+
+@_tool(
+    description="Return one tool contract: input and output schemas, cost and risk.",
+    read_only=True,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
+async def inspect(context: Context, tool_id: str) -> dict[str, object]:
+    """返回完整工具契约，含输入 schema、输出字段、成本与风险。"""
+    async with governed_mcp_tool(context, "inspect"):
+        return await inspect_tool(tool_id)
+
+
+@_tool(
+    description="Build a report and SOP artifact from a complete contract.",
+    read_only=False,
+    open_world=False,
+    destructive=False,
+    idempotent=False,
+)
+async def create_report(
+    context: Context,
+    project_id: str,
+    run_id: str,
+    template_id: str,
+    contract: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """用完整合同生成报告与 SOP 产物。
+
+    运行数据填不满合同。缺少合同组时明确报错，不编造字段。
+    项目密钥只能为绑定项目的运行生成产物。
+    """
+    async with governed_mcp_tool(context, "create_report", project_id=project_id) as decision:
+        identity = decision.identity
+        try:
+            parsed_run_id = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise ValueError("run_id_invalid") from exc
+        return await create_report_artifact(
+            parsed_run_id,
+            template_id,
+            contract,
+            project_id=resolve_bound_project(identity, _parse_project_id(project_id)),
+            workspace_id=(identity.workspace_id if identity is not None else None),
+        )
 
 
 @_tool(

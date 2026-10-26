@@ -885,7 +885,9 @@ def _extract_items(data: dict[str, Any], platform: str) -> list[dict[str, Any]]:
         if isinstance(inner, list):
             return inner
         if isinstance(inner, dict):
-            for key in ("aweme_list", "item_list", "items", "video_list", "result_list", "followers"):
+            for key in (
+                "aweme_list", "item_list", "items", "video_list", "result_list", "followers"
+            ):
                 candidate = inner.get(key)
                 if isinstance(candidate, list) and candidate:
                     return candidate
@@ -1408,7 +1410,11 @@ def _normalize_tiktok_live(
     lives = item.get("lives") if isinstance(item.get("lives"), dict) else {}
     owner = lives.get("author") if isinstance(lives.get("author"), dict) else {}
     if not owner:
-        owner = anchor.get("owner_user_info") if isinstance(anchor.get("owner_user_info"), dict) else {}
+        owner = (
+            anchor.get("owner_user_info")
+            if isinstance(anchor.get("owner_user_info"), dict)
+            else {}
+        )
     if not owner:
         # fetch_live_room_info → 单个直播间对象，主播在 item["owner"]
         owner = item.get("owner") if isinstance(item.get("owner"), dict) else {}
@@ -2527,12 +2533,22 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
             url = f"https://www.linkedin.com/in/{url}/"
         return {"url": url}
     if endpoint_type == "tikhub_linkedin_company_profile":
-        url = config.get("url") or config.get("company_username") or config.get("company_name") or ""
+        url = (
+            config.get("url")
+            or config.get("company_username")
+            or config.get("company_name")
+            or ""
+        )
         if url and not url.startswith("http"):
             url = f"https://www.linkedin.com/company/{url}/"
         return {"url": url}
     if endpoint_type == "tikhub_linkedin_company_posts":
-        url = config.get("url") or config.get("company_username") or config.get("company_name") or ""
+        url = (
+            config.get("url")
+            or config.get("company_username")
+            or config.get("company_name")
+            or ""
+        )
         if url and not url.startswith("http"):
             url = f"https://www.linkedin.com/company/{url}/"
         return {"url": url}
@@ -2584,7 +2600,11 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_tiktok_creator_insights":
         return {"keyword": config.get("keyword") or config.get("unique_id") or ""}
     if endpoint_type == "tikhub_tiktok_creator_insights_trend":
-        return {"query_id_str": config.get("query_id_str") or config.get("keyword") or "7555720035176562699"}
+        return {
+            "query_id_str": config.get("query_id_str")
+            or config.get("keyword")
+            or "7555720035176562699"
+        }
     if endpoint_type == "tikhub_tiktok_creator_account_health":
         return {}
     if endpoint_type == "tikhub_tiktok_live_search":
@@ -2601,14 +2621,22 @@ def _build_params(config: dict[str, Any], max_items: int) -> dict[str, Any]:
     if endpoint_type == "tikhub_x_trending":
         return {}
     if endpoint_type == "tikhub_tiktok_user_followers":
-        return {"sec_user_id": config.get("sec_user_id") or config.get("unique_id") or "", "count": max_items}
+        return {
+            "sec_user_id": config.get("sec_user_id") or config.get("unique_id") or "",
+            "count": max_items,
+        }
     if endpoint_type == "tikhub_instagram_user_followers":
         return {"user_id": config.get("user_id") or "", "count": max_items}
     if endpoint_type == "tikhub_x_user_followers":
         screen_name = config.get("username") or config.get("screen_name") or ""
         return {"screen_name": screen_name}
     if endpoint_type == "tikhub_instagram_post_comments":
-        code_or_url = config.get("code_or_url") or config.get("shortcode") or config.get("post_id") or ""
+        code_or_url = (
+            config.get("code_or_url")
+            or config.get("shortcode")
+            or config.get("post_id")
+            or ""
+        )
         return {"code_or_url": code_or_url}
     if endpoint_type == "tikhub_youtube_video_comments":
         return {"video_id": config.get("video_id") or ""}
@@ -2763,7 +2791,13 @@ class TikHubSocialCollector(BaseCollector):
             raise CollectorError(
                 f"tikhub_endpoint_type_unknown: {endpoint_type!r}. "
                 "Supported: "
-                f"{sorted(TIKHUB_ENDPOINT_MAP | TIKHUB_CONTENT_ENDPOINT_MAP | TIKHUB_COMMERCE_ENDPOINT_MAP)}"
+                f"{
+                    sorted(
+                        TIKHUB_ENDPOINT_MAP
+                        | TIKHUB_CONTENT_ENDPOINT_MAP
+                        | TIKHUB_COMMERCE_ENDPOINT_MAP
+                    )
+                }"
             )
         missing = _missing_required_params(self.config, endpoint_type)
         if missing:

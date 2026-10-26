@@ -278,17 +278,20 @@ def _legacy_snapshot(
     return raw, dataset
 
 
-def test_source_has_one_head_at_034(postgres_database_url: str) -> None:
+def test_source_has_one_head_at_current_head(postgres_database_url: str) -> None:
     parsed = urlsplit(str(postgres_database_url))
     assert parsed.password is not None
-    assert parsed.password not in repr(postgres_database_url)
+    # Check the userinfo position only: the password "postgres" is also a prefix
+    # of the "postgresql+asyncpg" scheme, so a whole-repr substring test fails
+    # on a correctly masked URL.
+    assert f":{parsed.password}@" not in repr(postgres_database_url)
     heads = [
         line
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202607170034 (head)"]
-    assert _revision(postgres_database_url) == "202607170034"
+    assert heads == ["202610220059 (head)"]
+    assert _revision(postgres_database_url) == "202610220059"
 
 
 def test_033_to_034_to_033_to_034_preserves_legacy_assets(
@@ -348,12 +351,12 @@ def test_032_to_033_to_032_to_033_preserves_legacy_assets(
 
 
 def test_downgrade_refuses_persisted_v2_lineage(
-    postgres_database_url: str,
-    postgres_engine: Engine,
-    seeded_lineage_graph: LineageSeed,
+    postgres_database_at_034: str,
+    postgres_engine_at_034: Engine,
+    seeded_lineage_graph_at_034: LineageSeed,
 ) -> None:
-    seed = seeded_lineage_graph
-    with postgres_engine.begin() as connection:
+    seed = seeded_lineage_graph_at_034
+    with postgres_engine_at_034.begin() as connection:
         connection.execute(
             text(
                 "INSERT INTO raw_records "
@@ -376,7 +379,7 @@ def test_downgrade_refuses_persisted_v2_lineage(
         )
 
     result = _run_alembic(
-        postgres_database_url,
+        postgres_database_at_034,
         "downgrade",
         "202607160032",
         check=False,
@@ -385,8 +388,8 @@ def test_downgrade_refuses_persisted_v2_lineage(
     assert "202607160033 downgrade refused: V2 workflow lineage data exists" in (
         result.stdout + result.stderr
     )
-    assert _revision(postgres_database_url) == "202607170034"
+    assert _revision(postgres_database_at_034) == "202607170034"
     assert _columns(
-        postgres_database_url,
+        postgres_database_at_034,
         "workflow_lineage_materialization_requests",
     )
