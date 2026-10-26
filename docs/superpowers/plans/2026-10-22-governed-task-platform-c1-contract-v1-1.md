@@ -24,14 +24,14 @@
 - **owner/admin 批准动作内联在任务工作台。** 预算超支、加购与项目密钥变更使用 `workbench_approval_actions` 表，绑定 `task_id`，由 owner/admin 在任务工作台内联批准或拒绝。请求人不得自批（数据库 CHECK 与服务层双重校验）。不建独立收件箱页面或独立 inbox 路径；C14 只消费这些内联动作。
 - **C9/C10/C11 公开错误码先登记。** 至少登记 `report_quality_not_ready`、`delivery_not_publishable`、`delivery_input_invalid`、`publish_forbidden`、`idempotency_key_required`、`dataset_export_internal_isolated_source`，以及 C9 路由实际返回的 `report_contract_not_published`、`report_contract_hash_mismatch`、`report_contract_invalid`、`report_artifact_not_draft`、`report_artifact_incomplete`、`report_artifact_integrity_failed`、`report_review_required`、`report_publish_gate_blocked`、`report_revision_target_invalid`、`reviewer_assignment_required`、`reviewer_self_review_forbidden`、`reviewer_assignment_invalid`、`reviewer_assignment_expired`、`report_forbidden_language`。C9/C10/C11 不得返回未登记的错误码。
 - **审计动作注册表只有一个。** 契约正文 `### 2.10 审计动作注册表` 与附录 A 的 `audit_actions` 对象是唯一权威，版本 `audit-actions.v1`。每个动作只有一个写入 owner；`services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。未登记动作抛 `audit_action_unregistered`（500），形状非法抛 `audit_action_invalid`。下游切片只调用 `append_audit_event`，不得自造动作名，不得建第二张审计表；`run.created` 只能经 C4 `services/run_creation.create_run_with_audit` 接缝写入，C6 旧入口收敛调用该接缝。`audit_events` 仍是唯一审计表；内部审阅者不是客户角色。
-- **C6/C8/C9/C10 修复前置先登记。** C6 取消幂等只使用 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`，全部落在迁移 `202610220062`；C8 模板能力白名单只存在代码注册表 `TaskTemplate.capability_allowlist`，不建表；C9 Quick 2 小时方向稿复用报告合同 1.1 与 `report_artifacts` 生命周期，不新增客户工具、不重复计费、证据上限 L3、不出现 `confirmed`、不启动验收；C10 验收只追加 `report_audit_events`，幂等键哈希与 payload 摘要只写 `metadata_json`，manifest 与交付文件不可变，相关列只落在迁移 `202610220066`；C9/C10 PII 发布失败只复用 C11 的 `export_policy.v1` 与 `scan_export_policy()`/`scan_export_value()`。C1 不新增迁移，不新增取消表、验收表、模板能力表或第二套 PII 规则。
+- **C6/C8/C9/C10 修复前置先登记。** C6 取消幂等只使用 `runs.cancel_idempotency_key_hash`、`runs.cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`，全部落在迁移 `202610220064`；C8 模板能力白名单只存在代码注册表 `TaskTemplate.capability_allowlist`，不建表；C9 Quick 2 小时方向稿复用报告合同 1.1 与 `report_artifacts` 生命周期，不新增客户工具、不重复计费、证据上限 L3、不出现 `confirmed`、不启动验收；C10 验收只追加 `report_audit_events`，幂等键哈希与 payload 摘要只写 `metadata_json`，manifest 与交付文件不可变，相关列只落在迁移 `202610220068`；C9/C10 PII 发布失败只复用 C11 的 `export_policy.v1` 与 `scan_export_policy()`/`scan_export_value()`。C1 不新增迁移，不新增取消表、验收表、模板能力表或第二套 PII 规则。
 - **唯一禁用语言画像。** C1 只登记一个 `forbidden_language_profile`：`profile_id` 固定 `dih-descriptive-language-v1`，`profile_version` 固定 `1.0.0`，`source` 只写已批准设计 §5.7。画像只禁止因果表述（导致、驱动、提升、降低、造成、证明及精确英文对应词）与销量、市场份额、转化率、营收预测；允许描述性相关、共同出现和描述性差异。C9 发布前必须消费该画像；C10 可以复用同一画像，但 C1、C9、C10 都不得定义第二份术语表或第二个画像。命中时 C9 返回 `report_forbidden_language`；C10 返回 `delivery_input_invalid` 并附同一 `profile_id`。不得为画像增加任何阈值、计数或评分规则。
 - **页面路由只有一份事实源。** 契约 §5 的 11 条页面路由（10 条启用、1 条禁用）与 4 条一级导航是唯一事实源。附录 A 的 `page_routes` 与 `primary_nav` 是 §5 的机器投影；C14 的 `contract-routes.test.ts` 必须解析 §5 的两个 `text` 代码块并与 `CONTRACT_ROUTES` 逐条比较，`PRIMARY_NAVIGATION` 测试必须解析 §5 的一级导航表并与 4 条导航逐条比较。C14 不得在代码或测试里维护第二份路由或导航清单。页面路由不是 API 路径：不得写入 `paths`，不得以 `/api/` 开头。动态段名固定为 `/capabilities/[toolId]`、`/reports/[artifactId]`、`/workbench/[taskId]`，公开分享固定为 `/reports/public/[id]` 且禁用；不得用 `[id]` 代替前三个段名。
 - 任务包包型与市场角色持久化：`workbench_tasks.package_type` 只有 `quick`、`standard`；`primary_market` 与 `comparison_markets` 是市场角色事实源。`runs` 只登记 `market_code`；不得登记 `runs.market_role` 或 `runs.package_type`，角色由任务单派生（主市场为 `primary`，对比市场为 `compare`）。Quick 最多 1 个对比市场，Standard 最多 3 个；不得新增其他产品阈值。
 - **C4 任务单创建契约必须完整登记。** `workbench_tasks` 还必须有 `seed_products`（JSON，非空，默认空数组）、`target_price_band`（JSON，可空）与 `idempotency_key_hash`（`string(64)`，可空），以及工作区级部分唯一索引 `uq_workbench_tasks_workspace_idempotency (workspace_id, idempotency_key_hash) WHERE idempotency_key_hash IS NOT NULL`。`seed_products` 非空时必须有 3–10 项公开链接或平台 ID。`target_price_band` 使用市场原币，至少一个边界，`min_amount <= max_amount`，金额非负，币种三个大写字母。`acceptance_contact_id` 可空；空值回落到任务 `owner_id`，非空必须是同工作区 `owner` 或 `admin`，`member` 返回 422 `acceptance_contact_not_member`。
 - **任务单创建幂等语义必须先登记。** `workbench.tasks.create` 必须登记 `idempotent: true`、`Idempotency-Key` 请求头与 `idempotency_conflict` 错误码。头缺失或空值返回 422 `invalid_request`；`idempotency_key_hash = sha256("workbench-task-create.v1:{key}")`；同一工作区、同一键、同一请求摘要返回已有任务（200，响应头 `Idempotent-Replay: true`）；同一键不同摘要返回 409 `idempotency_conflict`。请求摘要由服务层对规范化请求字段计算，并从已持久化任务行重建；不新增第二个摘要列。
 - **初始计划版本接缝先登记。** `workflow_versions.workbench_task_id` 用复合外键指向 `workbench_tasks(workspace_id, project_id, id)`；`workflow_versions.plan_payload["execution_steps"]` 是 C4 版本创建时生成的不可变步骤快照。C4 的 `create_initial_workflow_version_for_task(session, *, workspace_id, project_id, created_by_user_id, workbench_task_id, idempotency_key)` 只调用既有 workflow planner 创建并批准首个版本；已有版本时复用。C1 只登记该接缝，不实现 planner。
-- **C4 新增对象只落在迁移 `202610220060`。** `workbench_tasks` 的上述列与索引、`workflow_versions.workbench_task_id`、`runs.market_code` 与 `uq_runs_workflow_version_market` 全部由 C4 的唯一迁移 `202610220060_workbench_task_submission.py` 创建（`down_revision = "202610220059"`）。C1 不新增迁移，不新增第二份摘要表，不新增第二个 C4 迁移号。
+- **C4 新增对象只落在迁移 `202610220062`。** `workbench_tasks` 的上述列与索引、`workflow_versions.workbench_task_id`、`runs.market_code` 与 `uq_runs_workflow_version_market` 全部由 C4 的唯一迁移 `202610220062_workbench_task_submission.py` 创建（`down_revision = "202610220061"`）。C1 不新增迁移，不新增第二份摘要表，不新增第二个 C4 迁移号。
 - `run_ledger_entries` 只有八列：`id`、`run_id`、`step_id`、`entry_kind`、`amount_usd`、`balance_after_usd`、`idempotency_key`、`created_at`。不得增删列。
 - `entry_kind` 只有六值：`estimate`、`reserve`、`accrued`、`settle`、`release`、`block`。
 - `settle` 必须是正数实际成本。`release` 必须是负数修正。`estimate`、`reserve`、`accrued`、`block` 不计入实际成本。
@@ -1362,7 +1362,7 @@ Commit only after `detect-changes` returns without `partial: true` or `truncated
 - Consumes: `extract_registry_block`、`validate_registry`、CLI `build`、CLI `check`。
 - Produces: 契约附录 A 的 `contract-registry` 块。
 - Produces: `workbench_tasks`（含 `package_type`、`primary_market`、`comparison_markets`、`acceptance_contact_id`、`max_cost_usd`、`max_pages`、`max_records`、`seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`）、`workflow_versions.workbench_task_id`、`workflow_versions.plan_payload.execution_steps`、`runs.market_code`、`authorizations.run_id`、`run_steps` 扩展列、`run_step_attempts`、`tool_prices`、`quota_accounts`、`tool_calls`。
-- Produces: C4 这些对象的唯一归属迁移是 `202610220060`（`down_revision = "202610220059"`）。C1 只登记，不新增迁移；不得把 `seed_products`、`target_price_band`、`idempotency_key_hash` 或 `uq_workbench_tasks_workspace_idempotency` 拆到第二个迁移。
+- Produces: C4 这些对象的唯一归属迁移是 `202610220062`（`down_revision = "202610220061"`）。C1 只登记，不新增迁移；不得把 `seed_products`、`target_price_band`、`idempotency_key_hash` 或 `uq_workbench_tasks_workspace_idempotency` 拆到第二个迁移。
 - Produces: 13 个 phase 条目。
 - Produces: `tool_prices` 的完整列、约束与索引；`deferred` 数组登记 `mcp_customer_request_leases`、`report_shares` 与两个公开分享路径。
 - Produces: registry 骨架中的 seed enum、seed path、8 个 MCP 工具占位条目、seed error、2 个 schema ref、3 个 document。
@@ -1950,8 +1950,8 @@ Modify `docs/design/【契约冻结】v1-表名-枚举-接口.md`:
       {"name": "project_id", "type": "uuid", "nullable": false, "status": "existing", "phase": "C4"},
       {"name": "workflow_version_id", "type": "uuid", "nullable": true, "status": "existing", "phase": "C4"},
       {"name": "idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "existing", "phase": "C4"},
-      {"name": "cancel_idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消幂等摘要 sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220062 创建；不得复用创建幂等列 idempotency_key_hash"},
-      {"name": "cancel_reason_code", "type": "string(80)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消原因码；与 cancel_idempotency_key_hash 同事务写入；只在迁移 202610220062 创建"},
+      {"name": "cancel_idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消幂等摘要 sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220064 创建；不得复用创建幂等列 idempotency_key_hash"},
+      {"name": "cancel_reason_code", "type": "string(80)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消原因码；与 cancel_idempotency_key_hash 同事务写入；只在迁移 202610220064 创建"},
       {"name": "market_code", "type": "string(2)", "nullable": true, "status": "extend", "phase": "C4", "enum": "market_code", "notes": "非空时必须是两个大写字母；逐市场一行 run。market_role 不落列：等于任务 primary_market 时为 primary，否则为 compare"}
     ],
     "constraints": ["ck_runs_market_code"],
@@ -2958,17 +2958,17 @@ Expected: FAIL。缺 `report_artifacts`。
       {"name": "supersedes_id", "type": "uuid", "nullable": true, "status": "extend", "phase": "C9", "references": "report_artifacts.id"},
       {"name": "superseded_at", "type": "datetime", "nullable": true, "status": "extend", "phase": "C9"},
       {"name": "delivery_status", "type": "string(20)", "nullable": false, "status": "extend", "phase": "C10", "enum": "report_artifacts.delivery_status", "default": "pending"},
-      {"name": "delivery_class", "type": "string(20)", "nullable": false, "status": "extend", "phase": "C10", "enum": "report_artifacts.delivery_class", "default": "formal", "notes": "formal 为 24 小时正式交付；quick_draft 为 Quick 2 小时方向稿。只在迁移 202610220066 创建"},
+      {"name": "delivery_class", "type": "string(20)", "nullable": false, "status": "extend", "phase": "C10", "enum": "report_artifacts.delivery_class", "default": "formal", "notes": "formal 为 24 小时正式交付；quick_draft 为 Quick 2 小时方向稿。只在迁移 202610220068 创建"},
       {"name": "manifest_json", "type": "json", "nullable": true, "status": "extend", "phase": "C10"},
       {"name": "manifest_sha256", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C10"},
       {"name": "manifest_sidecar_sha256", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C10"},
       {"name": "public_contract_json", "type": "json", "nullable": true, "status": "extend", "phase": "C10"},
       {"name": "acceptance_snapshot_json", "type": "json", "nullable": true, "status": "extend", "phase": "C10"},
-      {"name": "acceptance_deadline", "type": "datetime", "nullable": true, "status": "extend", "phase": "C10", "notes": "第 5 个工作日 23:59:59 UTC；formal delivered 必须非空；quick_draft 必须为空。只在迁移 202610220066 创建"},
+      {"name": "acceptance_deadline", "type": "datetime", "nullable": true, "status": "extend", "phase": "C10", "notes": "第 5 个工作日 23:59:59 UTC；formal delivered 必须非空；quick_draft 必须为空。只在迁移 202610220068 创建"},
       {"name": "delivered_at", "type": "datetime", "nullable": true, "status": "extend", "phase": "C10"},
       {"name": "delivered_by", "type": "uuid", "nullable": true, "status": "extend", "phase": "C10", "references": "users.id"},
       {"name": "supersedes_delivery_id", "type": "uuid", "nullable": true, "status": "extend", "phase": "C10", "references": "report_artifacts.id"},
-      {"name": "quick_draft_of_artifact_id", "type": "uuid", "nullable": true, "status": "extend", "phase": "C10", "references": "report_artifacts.id", "notes": "quick_draft delivered 必须非空，指向正式交付产物。只在迁移 202610220066 创建"},
+      {"name": "quick_draft_of_artifact_id", "type": "uuid", "nullable": true, "status": "extend", "phase": "C10", "references": "report_artifacts.id", "notes": "quick_draft delivered 必须非空，指向正式交付产物。只在迁移 202610220068 创建"},
       {"name": "publish_idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C10"}
     ],
     "constraints": ["uq_report_artifacts_publish_idempotency", "ck_report_artifacts_status", "uq_report_artifacts_current_published", "ck_report_artifacts_delivery_status", "ck_report_artifacts_delivery_class", "ck_report_artifacts_delivery_fields"],
@@ -6082,7 +6082,7 @@ Expected: FAIL。正文还没有 C2-C14 账本和完整对象表。
 
 迁移号是全局串行资源。同一波次只允许一个切片持有下一号迁移。
 
-C1 不新增迁移。C4 新增的 `workbench_tasks` 列与索引、`workflow_versions.workbench_task_id`、`runs.market_code` 与 `uq_runs_workflow_version_market` 全部落在唯一迁移 `202610220060`，不得拆到第二个 C4 迁移。`workflow_versions.plan_payload` 是既有列，C4 只在该列写入 `execution_steps` 不可变快照，不新增列。
+C1 不新增迁移。C4 新增的 `workbench_tasks` 列与索引、`workflow_versions.workbench_task_id`、`runs.market_code` 与 `uq_runs_workflow_version_market` 全部落在唯一迁移 `202610220062`，不得拆到第二个 C4 迁移。`workflow_versions.plan_payload` 是既有列，C4 只在该列写入 `execution_steps` 不可变快照，不新增列。
 ````
 
 - [ ] **Step 4: 在 §6 后增加 C2-C14 对象账本**
@@ -6487,7 +6487,7 @@ WHERE idempotency_key_hash IS NOT NULL
 
 `create_initial_workflow_version_for_task(session, *, workspace_id, project_id, created_by_user_id, workbench_task_id, idempotency_key) -> uuid.UUID` 是 C4 唯一的初始计划版本接缝。它只调用既有 workflow planner 的 `build_workflow_plan_result`、`create_workflow_plan`、`transition_workflow_plan_status`；已有版本时复用，不建第二个版本。计划必须是 `approved` 且 `current_version_id` 指向该版本，`submit_workbench_task` 才接受。客户 `create_task` 与 `collect` 都只调用该接缝，C13 不生成计划。
 
-C4 的这些列、约束与索引全部由唯一迁移 `202610220060_workbench_task_submission.py` 创建，`down_revision = "202610220059"`。C1 只登记，不新增迁移号。
+C4 的这些列、约束与索引全部由唯一迁移 `202610220062_workbench_task_submission.py` 创建，`down_revision = "202610220061"`。C1 只登记，不新增迁移号。
 
 ### 3.8 Claim 治理枚举
 
@@ -7584,7 +7584,7 @@ git commit -m "feat(contract): add document completeness checker"
 - Produces: `check_acceptance_event_sequence(events, *, deadline, now) -> list[str]`。
 - Produces: CLI `check-repairs --registry <path>`。
 - Produces: 契约正文 §2.13-§2.17 与附录 A 的修复前置对象。
-- Boundary: C1 不新增迁移。C6 取消幂等列只在 `202610220062`；C9 报告生命周期只在 `202610220065`；C10 交付类别与验收字段只在 `202610220066`。不得新增取消表、验收表、模板能力表或第二套 PII 规则。
+- Boundary: C1 不新增迁移。C6 取消幂等列只在 `202610220064`；C9 报告生命周期只在 `202610220067`；C10 交付类别与验收字段只在 `202610220068`。不得新增取消表、验收表、模板能力表或第二套 PII 规则。
 
 - [ ] **Step 0: 复核最新下游计划的前置原文**
 
@@ -7995,7 +7995,7 @@ Create `configs/contracts/v1.1.0/template_capability_profile.schema.json`:
 ````markdown
 ### 2.13 取消幂等与 run 生命周期审计
 
-`runs` 新增两列，只在 C6 的迁移 `202610220062` 创建：
+`runs` 新增两列，只在 C6 的迁移 `202610220064` 创建：
 
 - `cancel_idempotency_key_hash string(64) null`
 - `cancel_reason_code string(80) null`
@@ -8181,8 +8181,8 @@ C9/C10 不得新增 PII 扫描实现、第二套正则、第二个扫描画像�
 
 ```json
 [
-  {"name": "cancel_idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C6", "notes": "sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220062 创建；不得复用创建幂等列"},
-  {"name": "cancel_reason_code", "type": "string(80)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消原因码；只在迁移 202610220062 创建"}
+  {"name": "cancel_idempotency_key_hash", "type": "string(64)", "nullable": true, "status": "extend", "phase": "C6", "notes": "sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220064 创建；不得复用创建幂等列"},
+  {"name": "cancel_reason_code", "type": "string(80)", "nullable": true, "status": "extend", "phase": "C6", "notes": "取消原因码；只在迁移 202610220064 创建"}
 ]
 ```
 
@@ -9032,7 +9032,7 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 - `authorizations` 的唯一键是 `(run_id, gate_id)` 部分唯一索引 `uq_authorizations_run_gate`，不是 `run_id` 单列唯一。
 - C11 的 `workspace_pseudonym_salts`、`legal_holds`、`retention_cleanup_runs`、`retention_tombstones` 与迁移 069 使用同一组列名、约束名与索引名；`uq_legal_holds_active_target`、`target_type`、`target_id`、`authority` 不得出现。
 - MFA 不在 PG0：无 `mfa_required`、无 `require_recent_mfa`。
-- `workbench_tasks.seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency` 只登记一次，列名与 C4 迁移 `202610220060` 一致；不新增 `request_hash` 第二摘要列，不新增第二个 C4 迁移。
+- `workbench_tasks.seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency` 只登记一次，列名与 C4 迁移 `202610220062` 一致；不新增 `request_hash` 第二摘要列，不新增第二个 C4 迁移。
 - `workbench.tasks.create` 的 `idempotency` 对象必须同时满足 `idempotent: true` 且 `conflict_error` 在路径 `error_codes` 中；checker 拒绝任一不满足。
 - 页面路由只有契约 §5 一份：附录 A 的 `page_routes` 与 `primary_nav` 是机器投影，`paths` 只存 API 路径；`[toolId]`、`[artifactId]`、`[taskId]`、`[id]` 段名在 §5、`page_routes` 与 C14 `CONTRACT_ROUTES` 三处一致。C14 不维护第二份清单。
 - `CreateTaskInput` 的 `compare_markets` 只映射到 `comparison_markets`；`seed_products` 与 `target_price_band` 原样映射；`budget.*` 展开为同名列；不得出现第二套字段名。
@@ -9069,7 +9069,7 @@ git commit -m "docs(contract): finalize v1.1 registry and review evidence"
 | 幽灵表复发风险 | P0 | `mcp_customer_request_leases` 保持只在 `deferred`，不出现在 `tables`/`phases[].objects`；`tool_prices` 只以正式 C5 表出现；C8 不建 `task_templates`。 | Global、Task 2、Task 4、Task 6、Task 11 |
 | C9/C10 新字段未覆盖 registry 测试与正文 | P0 | 扩展 Task 5 交付列/约束断言与 Task 7 枚举断言；§3.7 同步交付列、交付约束与审核 metadata。 | Task 5、Task 7、§3.7 |
 | 包型与市场角色持久化缺失 | P0 | `workbench_tasks` 登记 `package_type`、`primary_market`、`comparison_markets`、`acceptance_contact_id`（owner/admin）、`max_cost_usd/max_pages/max_records`、`seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`；`runs` 只保留 `market_code`，不登记 `market_role`/`package_type`；Quick 最多 1 个对比市场，Standard 最多 3 个。 | Task 2、Task 7、Task 8、Task 11 |
-| C4 创建幂等与初始版本接缝未登记 | P0 | 登记 `workbench.tasks.create` 的 `Idempotency-Key` 必填、`Idempotent-Replay`、409 `idempotency_conflict` 与 `idempotency_key_hash` 部分唯一索引；登记 `workflow_versions.workbench_task_id` 复合外键、`plan_payload.execution_steps` 不可变快照与 `create_initial_workflow_version_for_task` 接缝；全部对象归入迁移 `202610220060`，C1 不新增迁移。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
+| C4 创建幂等与初始版本接缝未登记 | P0 | 登记 `workbench.tasks.create` 的 `Idempotency-Key` 必填、`Idempotent-Replay`、409 `idempotency_conflict` 与 `idempotency_key_hash` 部分唯一索引；登记 `workflow_versions.workbench_task_id` 复合外键、`plan_payload.execution_steps` 不可变快照与 `create_initial_workflow_version_for_task` 接缝；全部对象归入迁移 `202610220062`，C1 不新增迁移。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
 | C4 种子商品/价格带/验收联系人规则缺失 | P0 | `seed_products` 3–10 项、`target_price_band` 原币边界规则、`acceptance_contact_id` owner/admin 与空值回落 owner 写入 registry notes、正文、`CreateTaskInput` 与 PRD；`acceptance_contact_not_member` 含义改为非 owner/admin。 | Task 2、Task 8、Task 9、Task 11、Task 12 |
 | 发布与浏览器边界未声明 | P0 | Global Constraints 写明本切片不直接部署、A/B 发布由 PG0 发布批次执行、C14 只做只读验收、浏览器交接无。 | Global Constraints |
 | C2 消费者契约缺口 | P0 | 登记 `report_reviewer_assignments.expires_at`（非空）、`reviewer_assignment_expired`（403）、审阅者读/审核路径错误码、版本化审计动作注册表 `audit-actions.v1`（68 动作）与 `audit_action_unregistered`（500）；不新增第二张审计表，不新增客户 `reviewer` 角色。 | Global、Task 1、Task 5、Task 8、Task 11、Task 14 |
@@ -9088,7 +9088,7 @@ rg -n "requested_by_user_id|requested_at|released_by_user_id|released_at|release
 rg -n "seed_products|target_price_band|idempotency_key_hash|uq_workbench_tasks_workspace_idempotency" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "Idempotency-Key|Idempotent-Replay|idempotency_conflict|conflict_error" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "create_initial_workflow_version_for_task|workbench_task_id|plan_payload|execution_steps" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
-rg -n "202610220060|202610220059" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
+rg -n "202610220062|202610220061" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "reviewer_assignment_expired|audit-actions\\.v1|audit_action_unregistered|审计动作注册表" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n '"name": "report_reviewer_assignments"|"name": "expires_at"|"audit_actions"' docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
 rg -n "cancel_idempotency_key_hash|cancel_reason_code|uq_runs_workspace_cancel_idempotency|runs.cancel" docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md
