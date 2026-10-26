@@ -374,3 +374,36 @@ def test_validate_registry_rejects_wrong_mcp_tool_count() -> None:
     payload["mcp"]["tools"] = payload["mcp"]["tools"][:7]
     errors = module.validate_registry(payload, schema)
     assert any("mcp" in error and "tools" in error for error in errors)
+
+
+def test_validate_registry_rejects_audit_action_name_over_max_length() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["audit_actions"]["actions"][0]["name"] = "a" * 81
+    errors = module.validate_registry(payload, schema)
+    assert any("maxLength" in error for error in errors), errors
+
+
+def test_validate_registry_rejects_primary_nav_order_out_of_range() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["primary_nav"][0]["order"] = 9
+    errors = module.validate_registry(payload, schema)
+    assert any("maximum" in error for error in errors), errors
+
+
+def test_validate_registry_rejects_error_code_http_status_out_of_range() -> None:
+    module = load_module()
+    schema = json.loads(
+        (PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json").read_text(encoding="utf-8")
+    )
+    payload = minimal_registry()
+    payload["error_codes"][0]["http_status"] = 99999
+    errors = module.validate_registry(payload, schema)
+    assert any("maximum" in error for error in errors), errors

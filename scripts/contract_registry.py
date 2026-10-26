@@ -102,12 +102,20 @@ def _validate_value(
     if isinstance(value, str):
         if "minLength" in schema and len(value) < int(schema["minLength"]):
             errors.append(f"{path}:minLength")
+        if "maxLength" in schema and len(value) > int(schema["maxLength"]):
+            errors.append(f"{path}:maxLength")
         pattern = schema.get("pattern")
         # JSON Schema ``pattern`` is an unanchored regular expression: it
         # matches when the pattern occurs anywhere in the string. Use
         # ``re.search`` and let schemas anchor with ``^`` / ``$`` themselves.
         if pattern is not None and re.search(str(pattern), value) is None:
             errors.append(f"{path}:pattern")
+    is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+    if is_number:
+        if "minimum" in schema and value < schema["minimum"]:
+            errors.append(f"{path}:minimum")
+        if "maximum" in schema and value > schema["maximum"]:
+            errors.append(f"{path}:maximum")
     if isinstance(value, list):
         if "minItems" in schema and len(value) < int(schema["minItems"]):
             errors.append(f"{path}:minItems")
