@@ -1968,6 +1968,416 @@
           "unique": false
         }
       ]
+    },
+    {
+      "name": "workspace_members",
+      "module": "M01",
+      "status": "extend",
+      "phase": "C2",
+      "purpose": "工作区成员与唯一授权角色",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C2"
+        },
+        {
+          "name": "role",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C2",
+          "enum": "workspace_members.role"
+        }
+      ],
+      "constraints": [
+        "ck_workspace_members_role"
+      ]
+    },
+    {
+      "name": "project_members",
+      "module": "M01",
+      "status": "new",
+      "phase": "C2",
+      "purpose": "项目成员 ACL；只表达 member 的项目可见性",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "references": "projects.id"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "references": "users.id"
+        },
+        {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "references": "users.id"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        }
+      ],
+      "constraints": [
+        "uq_project_members_workspace_project_user",
+        "fk_project_members_project_tenant"
+      ],
+      "indexes": [
+        {
+          "name": "ix_project_members_workspace_user",
+          "columns": [
+            "workspace_id",
+            "user_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "audit_events",
+      "module": "M08",
+      "status": "new",
+      "phase": "C2",
+      "purpose": "追加式统一审计事件；按工作区哈希链",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C2",
+          "references": "projects.id"
+        },
+        {
+          "name": "sequence_number",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C2",
+          "references": "users.id"
+        },
+        {
+          "name": "actor_type",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "enum": "audit_events.actor_type"
+        },
+        {
+          "name": "action",
+          "type": "string(80)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "resource_type",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "resource_id",
+          "type": "string(120)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "request_id",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "result",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2",
+          "enum": "audit_events.result"
+        },
+        {
+          "name": "details",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "prev_hash",
+          "type": "string(64)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "event_hash",
+          "type": "string(64)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "occurred_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C2"
+        }
+      ],
+      "constraints": [
+        "uq_audit_events_workspace_sequence",
+        "uq_audit_events_workspace_hash",
+        "fk_audit_events_project_tenant"
+      ],
+      "indexes": [
+        {
+          "name": "ix_audit_events_workspace_occurred",
+          "columns": [
+            "workspace_id",
+            "occurred_at"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_audit_events_workspace_action",
+          "columns": [
+            "workspace_id",
+            "action"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "project_api_keys",
+      "module": "M09",
+      "status": "extend",
+      "phase": "C3",
+      "purpose": "项目级客户 MCP 密钥",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C3"
+        },
+        {
+          "name": "tool_allowlist",
+          "type": "json",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C3",
+          "notes": "现有 MCP 工具名白名单；C13 的 enforcement 事实源"
+        },
+        {
+          "name": "capability_allowlist",
+          "type": "json",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C3",
+          "notes": "稳定 tool_catalog.tool_id 数组；C3 存储、展示、审计并通过 ProjectApiKeyIdentity/allows_capability 暴露；C13 执行客户 MCP enforcement"
+        },
+        {
+          "name": "daily_budget_usd",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C3",
+          "enum": "project_api_keys.status"
+        },
+        {
+          "name": "rotation_group_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3"
+        },
+        {
+          "name": "superseded_by_key_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3",
+          "references": "project_api_keys.id"
+        },
+        {
+          "name": "last_rotated_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3"
+        },
+        {
+          "name": "expires_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3"
+        }
+      ],
+      "constraints": [
+        "fk_project_api_keys_workspace_project_projects",
+        "uq_project_api_keys_active_project"
+      ]
+    },
+    {
+      "name": "platform_credential_bundles",
+      "module": "M03",
+      "status": "extend",
+      "phase": "C3",
+      "purpose": "项目级凭据与 creator cookie 元数据",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C3"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C3",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3",
+          "references": "projects.id"
+        },
+        {
+          "name": "provider_id",
+          "type": "string(120)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C3"
+        },
+        {
+          "name": "creator_cookie_metadata",
+          "type": "json",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C3"
+        }
+      ],
+      "constraints": [
+        "uq_platform_credential_bundles_workspace_provider",
+        "uq_platform_credential_bundles_project_provider",
+        "fk_platform_credential_bundles_workspace_project_projects"
+      ],
+      "indexes": [
+        {
+          "name": "uq_platform_credential_bundles_workspace_provider",
+          "columns": [
+            "workspace_id",
+            "provider_id"
+          ],
+          "unique": true
+        },
+        {
+          "name": "uq_platform_credential_bundles_project_provider",
+          "columns": [
+            "workspace_id",
+            "project_id",
+            "provider_id"
+          ],
+          "unique": true
+        }
+      ]
     }
   ],
   "enums": [

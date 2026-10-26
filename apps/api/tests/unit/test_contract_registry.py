@@ -633,3 +633,59 @@ def test_run_steps_has_c6_extension_columns() -> None:
         "unique": True,
         "where": "task_run_id IS NOT NULL",
     } in table["indexes"]
+
+
+def test_registry_contains_identity_audit_key_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workspace_members",
+        "project_members",
+        "audit_events",
+        "project_api_keys",
+        "platform_credential_bundles",
+    } <= names
+
+
+def test_audit_events_has_sequence_and_hash_chain() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "audit_events")["columns"]}
+    assert {"sequence_number", "prev_hash", "event_hash", "actor_type", "result"} <= columns
+
+
+def test_project_api_keys_matches_c3_rotation_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "project_api_keys")["columns"]}
+    assert {
+        "tool_allowlist",
+        "capability_allowlist",
+        "daily_budget_usd",
+        "status",
+        "rotation_group_id",
+        "superseded_by_key_id",
+        "last_rotated_at",
+        "expires_at",
+    } <= columns
+
+
+def test_c3_constraints_are_registered() -> None:
+    registry = load_contract_registry()
+    project_key_constraints = set(_table(registry, "project_api_keys").get("constraints", []))
+    credential_constraints = set(
+        _table(registry, "platform_credential_bundles").get("constraints", [])
+    )
+    assert "fk_project_api_keys_workspace_project_projects" in project_key_constraints
+    assert "uq_project_api_keys_active_project" in project_key_constraints
+    assert {
+        "uq_platform_credential_bundles_workspace_provider",
+        "uq_platform_credential_bundles_project_provider",
+        "fk_platform_credential_bundles_workspace_project_projects",
+    } <= credential_constraints
+
+
+def test_platform_credentials_has_project_scope() -> None:
+    registry = load_contract_registry()
+    columns = {
+        column["name"] for column in _table(registry, "platform_credential_bundles")["columns"]
+    }
+    assert {"project_id", "creator_cookie_metadata"} <= columns
