@@ -689,3 +689,127 @@ def test_platform_credentials_has_project_scope() -> None:
         column["name"] for column in _table(registry, "platform_credential_bundles")["columns"]
     }
     assert {"project_id", "creator_cookie_metadata"} <= columns
+
+
+def test_registry_contains_claim_quality_dataset_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "claims",
+        "claim_evidence",
+        "evidences",
+        "data_gaps",
+        "market_assessments",
+        "dataset_versions",
+    } <= names
+    assert "task_templates" not in names
+
+
+def test_claims_has_review_and_risk_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "claims")["columns"]}
+    assert {
+        "text_en",
+        "scope_window_start",
+        "scope_window_end",
+        "risk_flags",
+        "review_status",
+        "reviewed_by",
+        "reviewed_payload_sha256",
+        "second_reviewed_by",
+        "content_version",
+        "independent_source_count",
+        "blocked_reason",
+        "review_history",
+    } <= columns
+
+
+def test_claim_tables_register_c7_constraint_guards() -> None:
+    registry = load_contract_registry()
+    claims = set(_table(registry, "claims")["constraints"])
+    assert {
+        "ck_claims_evidence_grade_min",
+        "ck_claims_state_grade_ceiling",
+        "ck_claims_review_status",
+        "ck_claims_review_coherence",
+        "ck_claims_confirmed_review",
+        "ck_claims_content_version",
+        "ck_claims_reviewed_version",
+        "ck_claims_independent_count",
+        "ck_claims_scope_window",
+        "ck_claims_scope_days",
+        "ck_claims_scope_sample",
+        "ck_claims_blocked_reason",
+        "ck_claims_blocked_state",
+        "ck_claims_second_review_pair",
+        "ck_claims_reviewer_differ",
+        "ck_claims_state",
+        "ck_claims_evidence_grade",
+        "ck_claims_confidence_range",
+        "fk_claims_workspace_id_workspaces",
+        "fk_claims_project_id_projects",
+        "fk_claims_run_id_runs",
+        "fk_claims_owner_users",
+        "fk_claims_reviewed_by_users",
+        "fk_claims_second_reviewed_by_users",
+    } <= claims
+    assert {
+        "ck_claim_evidence_role",
+        "ck_claim_evidence_evidence_grade",
+        "ck_claim_evidence_source_cluster_basis",
+        "ck_claim_evidence_independent_cluster",
+        "fk_claim_evidence_claim_id_claims",
+        "fk_claim_evidence_evidence_id_evidences",
+    } <= set(_table(registry, "claim_evidence")["constraints"])
+    assert {
+        "ck_evidences_evidence_grade",
+        "ck_evidences_source_cluster_basis",
+        "ck_evidences_source_cluster_coherence",
+        "ck_evidences_workspace_project_pair",
+        "fk_evidences_intelligence_id_intelligence_items",
+        "fk_evidences_signal_id_signals",
+        "fk_evidences_entity_id_entities",
+        "fk_evidences_raw_record_id_raw_records",
+        "fk_evidences_workspace_id_workspaces",
+        "fk_evidences_project_id_projects",
+    } <= set(_table(registry, "evidences")["constraints"])
+
+
+def test_data_gaps_and_market_assessments_match_c8() -> None:
+    registry = load_contract_registry()
+    gap_columns = {column["name"] for column in _table(registry, "data_gaps")["columns"]}
+    assessment_columns = {
+        column["name"] for column in _table(registry, "market_assessments")["columns"]
+    }
+    assert {
+        "market",
+        "data_domain",
+        "reason_code",
+        "severity",
+        "step_id",
+        "resolved_at",
+    } <= gap_columns
+    assert {
+        "task_id",
+        "market",
+        "market_role",
+        "quality_status",
+        "conclusion_standard",
+        "conclusion_quick",
+        "evidence_grade",
+        "core_domain_coverage",
+        "gap_ids",
+    } <= assessment_columns
+
+
+def test_dataset_versions_has_quality_and_hash_columns() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "dataset_versions")["columns"]}
+    assert {
+        "task_id",
+        "market",
+        "schema_hash",
+        "content_sha256",
+        "license_class",
+        "quality_status",
+    } <= columns

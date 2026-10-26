@@ -2378,6 +2378,723 @@
           "unique": true
         }
       ]
+    },
+    {
+      "name": "claims",
+      "module": "M05",
+      "status": "extend",
+      "phase": "C7",
+      "purpose": "可复核结论；审核、风险与独立来源",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C7"
+        },
+        {
+          "name": "text_en",
+          "type": "text",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "scope_window_start",
+          "type": "date",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "scope_window_end",
+          "type": "date",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "risk_flags",
+          "type": "json",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "review_status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "claim_review_status"
+        },
+        {
+          "name": "reviewed_by",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "references": "users.id"
+        },
+        {
+          "name": "reviewed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "reviewed_content_version",
+          "type": "integer",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "reviewed_payload_sha256",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "reviewed_profile",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "second_reviewed_by",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "references": "users.id"
+        },
+        {
+          "name": "second_reviewed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "review_note",
+          "type": "text",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "content_version",
+          "type": "integer",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "independent_source_count",
+          "type": "integer",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "blocked_reason",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "claims.blocked_reason"
+        },
+        {
+          "name": "review_history",
+          "type": "json",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7"
+        }
+      ],
+      "constraints": [
+        "ck_claims_state",
+        "ck_claims_evidence_grade",
+        "ck_claims_confidence_range",
+        "ck_claims_evidence_grade_min",
+        "ck_claims_state_grade_ceiling",
+        "ck_claims_review_status",
+        "ck_claims_review_coherence",
+        "ck_claims_confirmed_review",
+        "ck_claims_content_version",
+        "ck_claims_reviewed_version",
+        "ck_claims_independent_count",
+        "ck_claims_scope_window",
+        "ck_claims_scope_days",
+        "ck_claims_scope_sample",
+        "ck_claims_blocked_reason",
+        "ck_claims_blocked_state",
+        "ck_claims_second_review_pair",
+        "ck_claims_reviewer_differ",
+        "fk_claims_workspace_id_workspaces",
+        "fk_claims_project_id_projects",
+        "fk_claims_run_id_runs",
+        "fk_claims_owner_users",
+        "fk_claims_reviewed_by_users",
+        "fk_claims_second_reviewed_by_users"
+      ]
+    },
+    {
+      "name": "claim_evidence",
+      "module": "M05",
+      "status": "extend",
+      "phase": "C7",
+      "purpose": "Claim 与 Evidence 多对多；独立来源快照",
+      "primary_key": [
+        "claim_id",
+        "evidence_id"
+      ],
+      "columns": [
+        {
+          "name": "claim_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C7",
+          "references": "claims.id"
+        },
+        {
+          "name": "evidence_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C7",
+          "references": "evidences.id"
+        },
+        {
+          "name": "role",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C7",
+          "enum": "claim_evidence.role"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "source_cluster_key",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "source_cluster_basis",
+          "type": "string(20)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "source_cluster_basis"
+        },
+        {
+          "name": "independent",
+          "type": "boolean",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C7"
+        }
+      ],
+      "constraints": [
+        "ck_claim_evidence_role",
+        "ck_claim_evidence_evidence_grade",
+        "ck_claim_evidence_source_cluster_basis",
+        "ck_claim_evidence_independent_cluster",
+        "fk_claim_evidence_claim_id_claims",
+        "fk_claim_evidence_evidence_id_evidences"
+      ]
+    },
+    {
+      "name": "evidences",
+      "module": "M05",
+      "status": "extend",
+      "phase": "C7",
+      "purpose": "证据记录；intelligence_id 改为可空",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C7"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "references": "projects.id"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "market",
+          "type": "string(10)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "locale",
+          "type": "string(16)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "source_tool_id",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "provider_id",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "captured_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "source_cluster_key",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "source_cluster_basis",
+          "type": "string(20)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7"
+        },
+        {
+          "name": "intelligence_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "references": "intelligence_items.id"
+        }
+      ],
+      "constraints": [
+        "ck_evidences_evidence_grade",
+        "ck_evidences_source_cluster_basis",
+        "ck_evidences_source_cluster_coherence",
+        "ck_evidences_workspace_project_pair",
+        "fk_evidences_intelligence_id_intelligence_items",
+        "fk_evidences_signal_id_signals",
+        "fk_evidences_entity_id_entities",
+        "fk_evidences_raw_record_id_raw_records",
+        "fk_evidences_workspace_id_workspaces",
+        "fk_evidences_project_id_projects"
+      ]
+    },
+    {
+      "name": "data_gaps",
+      "module": "M05",
+      "status": "new",
+      "phase": "C8",
+      "purpose": "结构化数据缺口；逐市场逐数据域",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "projects.id"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "workbench_tasks.id"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8",
+          "references": "runs.id"
+        },
+        {
+          "name": "step_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8",
+          "references": "run_steps.id"
+        },
+        {
+          "name": "market",
+          "type": "string(2)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "data_domain",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "enum": "data_domains"
+        },
+        {
+          "name": "reason_code",
+          "type": "string(80)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "actual_value",
+          "type": "json",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "threshold_value",
+          "type": "json",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "impact",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "customer_text_zh",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "customer_text_en",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "remediation",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "severity",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "enum": "data_gaps.severity"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "enum": "data_gaps.status"
+        },
+        {
+          "name": "resolved_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_data_gaps_task_market_domain",
+          "columns": [
+            "task_id",
+            "market",
+            "data_domain"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "market_assessments",
+      "module": "M05",
+      "status": "new",
+      "phase": "C8",
+      "purpose": "逐市场质量评估与结论门禁",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "projects.id"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "references": "workbench_tasks.id"
+        },
+        {
+          "name": "market",
+          "type": "string(2)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "market_role",
+          "type": "string(10)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "enum": "market_assessments.market_role"
+        },
+        {
+          "name": "quality_status",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8",
+          "enum": "market_quality_status"
+        },
+        {
+          "name": "conclusion_standard",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8",
+          "enum": "market_assessments.conclusion_standard"
+        },
+        {
+          "name": "conclusion_quick",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8",
+          "enum": "market_assessments.conclusion_quick"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C8",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "core_domain_coverage",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "sample_counts",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "thresholds",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "gap_ids",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "details_json",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        },
+        {
+          "name": "computed_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C8"
+        }
+      ],
+      "constraints": [
+        "uq_market_assessments_task_market"
+      ]
+    },
+    {
+      "name": "dataset_versions",
+      "module": "M12",
+      "status": "extend",
+      "phase": "C8",
+      "purpose": "交付数据集版本；绑定任务包与质量",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C8"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8",
+          "references": "workbench_tasks.id"
+        },
+        {
+          "name": "market",
+          "type": "string(2)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8"
+        },
+        {
+          "name": "schema_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8"
+        },
+        {
+          "name": "content_sha256",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8"
+        },
+        {
+          "name": "license_class",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8"
+        },
+        {
+          "name": "quality_status",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C8",
+          "enum": "market_quality_status"
+        }
+      ]
     }
   ],
   "enums": [
