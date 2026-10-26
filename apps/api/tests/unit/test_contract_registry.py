@@ -1195,3 +1195,264 @@ def test_deletion_status_has_nine_values() -> None:
         "rejected",
         "cancelled",
     ]
+
+
+def test_customer_mcp_has_exactly_eight_named_tools() -> None:
+    registry = load_contract_registry()
+    assert registry["mcp"]["endpoint"] == "/mcp/customer"
+    names = [tool["name"] for tool in registry["mcp"]["tools"]]
+    assert names == [
+        "discover_capabilities",
+        "estimate_task",
+        "create_task",
+        "get_task",
+        "cancel_task",
+        "get_delivery_manifest",
+        "get_evidence",
+        "collect",
+    ]
+
+
+def test_customer_mcp_forbids_endpoint_level_tools() -> None:
+    registry = load_contract_registry()
+    forbidden = set(registry["mcp"]["forbidden_tools"])
+    assert {"collect_endpoint", "raw_provider_call", "tiktok_creator_cookie"} <= forbidden
+
+
+def test_customer_mcp_path_is_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/mcp/customer") in paths
+    assert ("GET", "/mcp/customer") in paths
+
+
+def test_c2_c3_c4_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {item["path"] for item in registry["paths"]}
+    assert {
+        "/api/projects/{project_id}/members",
+        "/api/projects/{project_id}/members/{user_id}",
+        "/api/workspaces/current/members/{user_id}",
+        "/api/audit-events",
+        "/api/audit-events/verify",
+        "/api/projects/{project_id}/keys",
+        "/api/projects/{project_id}/keys/{key_id}/rotate",
+        "/api/workbench/tasks",
+        "/api/runs",
+    } <= paths
+    audit_actions = registry["audit_actions"]
+    assert audit_actions["version"] == "audit-actions.v1"
+    actions = {item["name"] for item in audit_actions["actions"]}
+    assert {
+        "auth.login.succeeded",
+        "auth.login.failed",
+        "auth.logout.succeeded",
+        "task.created",
+        "task.cancelled",
+        "task.retried",
+        "budget.price.changed",
+        "budget.limit.changed",
+        "budget.blocked",
+        "claim.review.submitted",
+        "claim.review.approved",
+        "claim.review.rejected",
+        "claim.review.overridden",
+        "claim.blocked",
+        "claim.unblocked",
+        "config.switch.changed",
+        "delivery.published",
+        "delivery.projection.viewed",
+        "privacy.projection.applied",
+        "reviewer.access.granted",
+        "reviewer.access.denied",
+        "reviewer.assignment.created",
+        "reviewer.assignment.revoked",
+    } <= actions
+    assert len(actions) == len(audit_actions["actions"])
+
+
+def test_report_and_privacy_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {item["path"] for item in registry["paths"]}
+    assert {
+        "/api/reports/{report_id}/contract",
+        "/api/reports/{report_id}/publish",
+        "/api/reports/{artifact_id}/delivery",
+        "/api/privacy/deletion-requests",
+        "/api/privacy/dsr-cases",
+        "/api/privacy/audit-events",
+    } <= paths
+
+
+def test_report_lifecycle_paths_and_internal_reviewer_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/reports/drafts") in paths
+    assert ("POST", "/api/reports/{report_id}/reviewers") in paths
+    assert ("DELETE", "/api/reports/{report_id}/reviewers/{user_id}") in paths
+    reviews = next(
+        item for item in registry["paths"] if item["id"] == "reports.reviews.create"
+    )
+    assert reviews["audience"] == "internal"
+    assert reviews["auth"] == "internal"
+    assert {
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_invalid",
+        "state_conflict",
+    } <= set(reviews["error_codes"])
+    by_id = {item["id"]: item for item in registry["paths"]}
+    for path_id in (
+        "reports.contract",
+        "reports.artifact",
+        "reports.sop",
+        "reports.revisions",
+    ):
+        assert {
+            "reviewer_assignment_required",
+            "reviewer_assignment_expired",
+        } <= set(by_id[path_id]["error_codes"])
+    for path_id in ("reports.reviewers.assign", "reports.reviewers.revoke"):
+        assert "reviewer_assignment_expired" in by_id[path_id]["error_codes"]
+
+
+def test_inline_approval_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/workbench/tasks/{task_id}/approvals") in paths
+    assert (
+        "POST",
+        "/api/workbench/tasks/{task_id}/approvals/{approval_id}",
+    ) in paths
+    decide = next(
+        item
+        for item in registry["paths"]
+        if item["id"] == "workbench.tasks.approvals.decide"
+    )
+    assert "approval_self_approval_forbidden" in decide["error_codes"]
+
+
+def test_report_lifecycle_error_codes_are_registered() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    assert {
+        "report_quality_not_ready",
+        "delivery_not_publishable",
+        "delivery_input_invalid",
+        "publish_forbidden",
+        "idempotency_key_required",
+        "dataset_export_internal_isolated_source",
+        "report_contract_not_published",
+        "report_contract_hash_mismatch",
+        "report_contract_invalid",
+        "report_artifact_not_draft",
+        "report_artifact_incomplete",
+        "report_artifact_integrity_failed",
+        "report_review_required",
+        "report_publish_gate_blocked",
+        "report_revision_target_invalid",
+        "reviewer_assignment_required",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_invalid",
+        "reviewer_assignment_expired",
+        "audit_action_unregistered",
+        "report_forbidden_language",
+    } <= codes
+    publish = next(
+        item for item in registry["paths"] if item["id"] == "delivery.publish"
+    )
+    assert {
+        "publish_forbidden",
+        "delivery_not_publishable",
+        "delivery_input_invalid",
+        "idempotency_key_required",
+        "gate_failed",
+    } <= set(publish["error_codes"])
+    export = next(
+        item for item in registry["paths"] if item["id"] == "datasets.export.create"
+    )
+    assert "dataset_export_internal_isolated_source" in export["error_codes"]
+
+
+def test_report_shares_is_deferred() -> None:
+    registry = load_contract_registry()
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    tables = {table["name"] for table in registry["tables"]}
+    assert ("table", "report_shares") in deferred
+    assert ("path", "reports.share") in deferred
+    assert ("path", "reports.public.access") in deferred
+    assert "report_shares" not in tables
+    paths = {item["path"] for item in registry["paths"]}
+    assert "/api/reports/{report_id}/share" not in paths
+    assert "/api/reports/public/{token}" not in paths
+
+
+def test_design_failure_codes_are_registered() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    assert {
+        "tool_not_allowed",
+        "quota_exceeded",
+        "approval_required",
+        "tool_not_executable",
+        "tool_not_priced",
+        "market_unsupported",
+        "cookie_not_accepted",
+        "project_access_forbidden",
+        "workspace_owner_required",
+        "workspace_role_invalid",
+        "workspace_last_owner_required",
+        "task_locked",
+        "workflow_version_already_submitted",
+        "taxonomy_unavailable",
+        "idempotency_conflict",
+        "quota_account_missing",
+        "package_type_invalid",
+        "comparison_markets_exceeded",
+        "acceptance_contact_not_member",
+        "budget_invalid",
+    } <= codes
+    assert "mfa_required" not in codes
+
+
+def test_c4_c5_c6_paths_are_registered() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("PATCH", "/api/workbench/tasks/{task_id}") in paths
+    assert ("GET", "/api/workbench/tasks/{task_id}/gates") in paths
+    assert ("GET", "/api/quota") in paths
+    assert ("GET", "/api/quota/projects/{project_id}") in paths
+    create = next(
+        item for item in registry["paths"] if item["id"] == "workbench.tasks.create"
+    )
+    assert create["idempotent"] is True
+    assert create["idempotency"] == {
+        "header": "Idempotency-Key",
+        "required": True,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict",
+    }
+    assert "idempotency_conflict" in create["error_codes"]
+    assert "invalid_request" in create["error_codes"]
+
+
+def test_delivery_publish_path_does_not_shadow_report_publish() -> None:
+    registry = load_contract_registry()
+    paths = {(item["method"], item["path"]) for item in registry["paths"]}
+    assert ("POST", "/api/reports/{report_id}/publish") in paths
+    assert ("POST", "/api/reports/{artifact_id}/delivery/publish") in paths
+    assert ("POST", "/api/reports/{artifact_id}/publish") not in paths
+
+
+def test_every_path_error_code_exists() -> None:
+    registry = load_contract_registry()
+    codes = {item["code"] for item in registry["error_codes"]}
+    missing = {
+        code
+        for path in registry["paths"]
+        for code in path["error_codes"]
+        if code not in codes
+    }
+    assert missing == set()

@@ -5738,6 +5738,1094 @@
       "error_codes": [
         "authentication_required"
       ]
+    },
+    {
+      "id": "projects.members.list",
+      "method": "GET",
+      "path": "/api/projects/{project_id}/members",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_access_forbidden",
+        "project_not_found"
+      ]
+    },
+    {
+      "id": "projects.members.grant",
+      "method": "POST",
+      "path": "/api/projects/{project_id}/members",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_management_forbidden",
+        "project_member_exists",
+        "project_not_found"
+      ]
+    },
+    {
+      "id": "projects.members.revoke",
+      "method": "DELETE",
+      "path": "/api/projects/{project_id}/members/{user_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_management_forbidden",
+        "project_member_not_found",
+        "project_not_found"
+      ]
+    },
+    {
+      "id": "workspaces.members.role",
+      "method": "PATCH",
+      "path": "/api/workspaces/current/members/{user_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "workspace_last_owner_required",
+        "workspace_owner_immovable",
+        "workspace_role_forbidden"
+      ]
+    },
+    {
+      "id": "audit.events.list",
+      "method": "GET",
+      "path": "/api/audit-events",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "workspace_role_forbidden"
+      ]
+    },
+    {
+      "id": "audit.events.verify",
+      "method": "GET",
+      "path": "/api/audit-events/verify",
+      "audience": "session",
+      "status": "new",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "workspace_role_forbidden"
+      ]
+    },
+    {
+      "id": "project_keys.create",
+      "method": "POST",
+      "path": "/api/projects/{project_id}/keys",
+      "audience": "session",
+      "status": "new",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "project_key_management_forbidden",
+        "project_api_key_active_exists",
+        "invalid_request"
+      ]
+    },
+    {
+      "id": "project_keys.list",
+      "method": "GET",
+      "path": "/api/projects/{project_id}/keys",
+      "audience": "session",
+      "status": "new",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "project_key_management_forbidden"
+      ]
+    },
+    {
+      "id": "project_keys.rotate",
+      "method": "POST",
+      "path": "/api/projects/{project_id}/keys/{key_id}/rotate",
+      "audience": "session",
+      "status": "new",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "project_key_management_forbidden",
+        "project_api_key_not_found",
+        "state_conflict",
+        "invalid_request"
+      ]
+    },
+    {
+      "id": "project_keys.revoke",
+      "method": "DELETE",
+      "path": "/api/projects/{project_id}/keys/{key_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "project_key_management_forbidden",
+        "project_api_key_not_found"
+      ]
+    },
+    {
+      "id": "credentials.list",
+      "method": "GET",
+      "path": "/api/settings/platform-credentials",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "project_access_forbidden",
+        "connector_not_found"
+      ]
+    },
+    {
+      "id": "credentials.update",
+      "method": "PUT",
+      "path": "/api/settings/platform-credentials/{platform}",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "workspace_role_forbidden",
+        "project_not_found",
+        "project_access_forbidden",
+        "project_management_forbidden",
+        "connector_not_found",
+        "credential_invalid",
+        "vault_write_disabled"
+      ]
+    },
+    {
+      "id": "credentials.delete",
+      "method": "DELETE",
+      "path": "/api/settings/platform-credentials/{platform}",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C3",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "workspace_role_forbidden",
+        "project_not_found",
+        "project_access_forbidden",
+        "project_management_forbidden",
+        "connector_not_found",
+        "vault_write_disabled"
+      ]
+    },
+    {
+      "id": "workbench.tasks.create",
+      "method": "POST",
+      "path": "/api/workbench/tasks",
+      "audience": "session",
+      "status": "new",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": true,
+      "idempotency": {
+        "header": "Idempotency-Key",
+        "required": true,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict"
+      },
+      "error_codes": [
+        "authentication_required",
+        "invalid_request",
+        "market_unsupported",
+        "workbench_disabled",
+        "package_type_invalid",
+        "comparison_markets_exceeded",
+        "acceptance_contact_not_member",
+        "budget_invalid",
+        "idempotency_conflict"
+      ]
+    },
+    {
+      "id": "workbench.tasks.list",
+      "method": "GET",
+      "path": "/api/workbench/tasks",
+      "audience": "session",
+      "status": "new",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_access_forbidden",
+        "workbench_disabled"
+      ]
+    },
+    {
+      "id": "workbench.tasks.detail",
+      "method": "GET",
+      "path": "/api/workbench/tasks/{task_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "task_not_found",
+        "workbench_disabled"
+      ]
+    },
+    {
+      "id": "runs.create",
+      "method": "POST",
+      "path": "/api/runs",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "approval_required",
+        "idempotency_conflict",
+        "market_unsupported",
+        "workbench_disabled",
+        "task_markets_invalid",
+        "workflow_version_not_found",
+        "workflow_version_not_linked",
+        "plan_not_approved",
+        "plan_version_not_current",
+        "idempotency_state_inconsistent",
+        "execution_steps_missing",
+        "execution_step_unresolved",
+        "collection_task_invalid"
+      ]
+    },
+    {
+      "id": "runs.cancel",
+      "method": "POST",
+      "path": "/api/runs/{run_id}/cancel",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C6",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "run_not_found",
+        "state_conflict",
+        "invalid_request",
+        "idempotency_conflict"
+      ]
+    },
+    {
+      "id": "workbench.tasks.update",
+      "method": "PATCH",
+      "path": "/api/workbench/tasks/{task_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "invalid_request",
+        "task_locked",
+        "task_not_found",
+        "workflow_version_already_submitted",
+        "workbench_disabled",
+        "task_markets_invalid",
+        "package_type_invalid",
+        "comparison_markets_exceeded",
+        "acceptance_contact_not_member",
+        "budget_invalid"
+      ]
+    },
+    {
+      "id": "workbench.tasks.gates",
+      "method": "GET",
+      "path": "/api/workbench/tasks/{task_id}/gates",
+      "audience": "session",
+      "status": "new",
+      "phase": "C4",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "task_not_found",
+        "workbench_disabled"
+      ]
+    },
+    {
+      "id": "workbench.tasks.approvals.create",
+      "method": "POST",
+      "path": "/api/workbench/tasks/{task_id}/approvals",
+      "audience": "session",
+      "status": "new",
+      "phase": "C5",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "task_not_found",
+        "workspace_role_forbidden",
+        "approval_state_conflict",
+        "invalid_request"
+      ]
+    },
+    {
+      "id": "workbench.tasks.approvals.decide",
+      "method": "POST",
+      "path": "/api/workbench/tasks/{task_id}/approvals/{approval_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C5",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "workspace_role_forbidden",
+        "approval_not_found",
+        "approval_self_approval_forbidden",
+        "approval_state_conflict"
+      ]
+    },
+    {
+      "id": "quota.summary",
+      "method": "GET",
+      "path": "/api/quota",
+      "audience": "session",
+      "status": "new",
+      "phase": "C5",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "quota_account_missing"
+      ]
+    },
+    {
+      "id": "quota.project",
+      "method": "GET",
+      "path": "/api/quota/projects/{project_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C5",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_not_found",
+        "quota_account_missing"
+      ]
+    },
+    {
+      "id": "claims.list",
+      "method": "GET",
+      "path": "/api/claims",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C7",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "permission_denied"
+      ]
+    },
+    {
+      "id": "claims.detail",
+      "method": "GET",
+      "path": "/api/claims/{claim_id}",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C7",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "claim_not_found"
+      ]
+    },
+    {
+      "id": "reports.contract",
+      "method": "GET",
+      "path": "/api/reports/{report_id}/contract",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "report_artifact_not_found",
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired"
+      ]
+    },
+    {
+      "id": "reports.artifact",
+      "method": "GET",
+      "path": "/api/reports/{report_id}/artifact",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "report_artifact_not_found",
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired"
+      ]
+    },
+    {
+      "id": "reports.sop",
+      "method": "GET",
+      "path": "/api/reports/{report_id}/sop",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "report_not_published",
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired"
+      ]
+    },
+    {
+      "id": "reports.revisions",
+      "method": "GET",
+      "path": "/api/reports/{report_id}/revisions",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "report_artifact_not_found",
+        "reviewer_assignment_required",
+        "reviewer_assignment_expired"
+      ]
+    },
+    {
+      "id": "reports.drafts.create",
+      "method": "POST",
+      "path": "/api/reports/drafts",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_access_forbidden",
+        "report_quality_not_ready",
+        "report_contract_invalid",
+        "state_conflict"
+      ]
+    },
+    {
+      "id": "reports.reviewers.assign",
+      "method": "POST",
+      "path": "/api/reports/{report_id}/reviewers",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "report_artifact_not_found",
+        "reviewer_assignment_invalid",
+        "reviewer_assignment_expired",
+        "state_conflict"
+      ]
+    },
+    {
+      "id": "reports.reviewers.revoke",
+      "method": "DELETE",
+      "path": "/api/reports/{report_id}/reviewers/{user_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "reviewer_assignment_invalid",
+        "reviewer_assignment_expired"
+      ]
+    },
+    {
+      "id": "reports.reviews.create",
+      "method": "POST",
+      "path": "/api/reports/{report_id}/reviews",
+      "audience": "internal",
+      "status": "new",
+      "phase": "C9",
+      "auth": "internal",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "report_review_required",
+        "reviewer_assignment_required",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_invalid",
+        "reviewer_assignment_expired",
+        "state_conflict"
+      ]
+    },
+    {
+      "id": "reports.publish",
+      "method": "POST",
+      "path": "/api/reports/{report_id}/publish",
+      "audience": "session",
+      "status": "new",
+      "phase": "C9",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "report_publish_forbidden",
+        "report_review_required",
+        "report_publish_gate_blocked",
+        "report_forbidden_language",
+        "state_conflict"
+      ]
+    },
+    {
+      "id": "delivery.publish",
+      "method": "POST",
+      "path": "/api/reports/{artifact_id}/delivery/publish",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "publish_forbidden",
+        "reviewer_assignment_required",
+        "reviewer_self_review_forbidden",
+        "reviewer_assignment_expired",
+        "delivery_not_found",
+        "delivery_not_publishable",
+        "delivery_input_invalid",
+        "delivery_pii_detected",
+        "idempotency_key_required",
+        "idempotency_conflict",
+        "gate_failed",
+        "delivery_integrity_error"
+      ]
+    },
+    {
+      "id": "delivery.manifest",
+      "method": "GET",
+      "path": "/api/reports/{artifact_id}/delivery/manifest",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "delivery_not_found",
+        "delivery_not_published",
+        "delivery_integrity_error"
+      ]
+    },
+    {
+      "id": "delivery.download",
+      "method": "GET",
+      "path": "/api/reports/{artifact_id}/delivery",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "delivery_integrity_error",
+        "delivery_pii_detected",
+        "delivery_not_found",
+        "delivery_not_published"
+      ]
+    },
+    {
+      "id": "delivery.quick_draft.create",
+      "method": "POST",
+      "path": "/api/reports/{artifact_id}/delivery/quick-draft",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": true,
+      "idempotency": {
+        "header": "Idempotency-Key",
+        "required": true,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict"
+      },
+      "error_codes": [
+        "authentication_required",
+        "publish_forbidden",
+        "delivery_not_found",
+        "quick_draft_not_allowed",
+        "quick_draft_claim_invalid",
+        "delivery_pii_detected",
+        "delivery_input_invalid",
+        "idempotency_key_required",
+        "idempotency_conflict",
+        "gate_failed",
+        "delivery_integrity_error"
+      ]
+    },
+    {
+      "id": "delivery.quick_draft.read",
+      "method": "GET",
+      "path": "/api/reports/{artifact_id}/delivery/quick-draft",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "delivery_not_found",
+        "delivery_not_published"
+      ]
+    },
+    {
+      "id": "delivery.quick_draft.task_read",
+      "method": "GET",
+      "path": "/api/tasks/{task_id}/delivery/quick-draft",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "task_not_found",
+        "delivery_not_found"
+      ]
+    },
+    {
+      "id": "delivery.acceptance.accept",
+      "method": "POST",
+      "path": "/api/reports/{artifact_id}/delivery/acceptance/accept",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": true,
+      "idempotency": {
+        "header": "Idempotency-Key",
+        "required": true,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict"
+      },
+      "error_codes": [
+        "authentication_required",
+        "publish_forbidden",
+        "delivery_not_found",
+        "delivery_not_published",
+        "acceptance_not_applicable",
+        "acceptance_window_open",
+        "acceptance_already_closed",
+        "idempotency_key_required",
+        "idempotency_conflict"
+      ]
+    },
+    {
+      "id": "delivery.acceptance.dispute",
+      "method": "POST",
+      "path": "/api/reports/{artifact_id}/delivery/acceptance/dispute",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": true,
+      "idempotency": {
+        "header": "Idempotency-Key",
+        "required": true,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict"
+      },
+      "error_codes": [
+        "authentication_required",
+        "publish_forbidden",
+        "delivery_not_found",
+        "delivery_not_published",
+        "acceptance_not_applicable",
+        "acceptance_window_open",
+        "acceptance_already_closed",
+        "acceptance_reference_invalid",
+        "idempotency_key_required",
+        "idempotency_conflict"
+      ]
+    },
+    {
+      "id": "delivery.acceptance.deemed_accept",
+      "method": "POST",
+      "path": "/api/reports/{artifact_id}/delivery/acceptance/deemed-accepted",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": true,
+      "idempotency": {
+        "header": "Idempotency-Key",
+        "required": true,
+        "replay_status": 200,
+        "replay_header": "Idempotent-Replay",
+        "conflict_error": "idempotency_conflict"
+      },
+      "error_codes": [
+        "authentication_required",
+        "publish_forbidden",
+        "delivery_not_found",
+        "delivery_not_published",
+        "acceptance_not_applicable",
+        "acceptance_window_open",
+        "acceptance_already_closed",
+        "idempotency_key_required",
+        "idempotency_conflict"
+      ]
+    },
+    {
+      "id": "delivery.acceptance.read",
+      "method": "GET",
+      "path": "/api/reports/{artifact_id}/delivery/acceptance",
+      "audience": "session",
+      "status": "new",
+      "phase": "C10",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "delivery_not_found",
+        "delivery_not_published",
+        "acceptance_not_applicable"
+      ]
+    },
+    {
+      "id": "datasets.export.create",
+      "method": "POST",
+      "path": "/api/automation/product-dataset-exports",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C11",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "project_access_forbidden",
+        "dataset_export_internal_isolated_source"
+      ]
+    },
+    {
+      "id": "privacy.deletion.create",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.list",
+      "method": "GET",
+      "path": "/api/privacy/deletion-requests",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required"
+      ]
+    },
+    {
+      "id": "privacy.deletion.detail",
+      "method": "GET",
+      "path": "/api/privacy/deletion-requests/{request_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found"
+      ]
+    },
+    {
+      "id": "privacy.deletion.approve",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/approve",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.confirm",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/confirm",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.execute",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/execute",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "legal_hold_active",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.proof",
+      "method": "GET",
+      "path": "/api/privacy/deletion-requests/{request_id}/proof",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "deletion_proof_not_ready",
+        "deletion_request_not_found"
+      ]
+    },
+    {
+      "id": "privacy.deletion.resend",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/resend-confirmation",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.cancel",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/cancel",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.retry",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/retry",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.reevaluate",
+      "method": "POST",
+      "path": "/api/privacy/deletion-requests/{request_id}/reevaluate",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": true,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found",
+        "deletion_state_conflict"
+      ]
+    },
+    {
+      "id": "privacy.deletion.receipts",
+      "method": "GET",
+      "path": "/api/privacy/deletion-requests/{request_id}/subprocessor-receipts",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "deletion_request_not_found"
+      ]
+    },
+    {
+      "id": "privacy.legal_holds.list",
+      "method": "GET",
+      "path": "/api/privacy/legal-holds",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required"
+      ]
+    },
+    {
+      "id": "privacy.dsr.list",
+      "method": "GET",
+      "path": "/api/privacy/dsr-cases",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required"
+      ]
+    },
+    {
+      "id": "privacy.dsr.detail",
+      "method": "GET",
+      "path": "/api/privacy/dsr-cases/{case_id}",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "dsr_case_not_found"
+      ]
+    },
+    {
+      "id": "privacy.audit.list",
+      "method": "GET",
+      "path": "/api/privacy/audit-events",
+      "audience": "session",
+      "status": "new",
+      "phase": "C12",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required"
+      ]
+    },
+    {
+      "id": "mcp.customer.post",
+      "method": "POST",
+      "path": "/mcp/customer",
+      "audience": "customer_key",
+      "status": "new",
+      "phase": "C13",
+      "auth": "bearer",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_key_invalid",
+        "project_key_revoked",
+        "tool_not_allowed",
+        "quota_exceeded",
+        "rate_limited"
+      ]
+    },
+    {
+      "id": "mcp.customer.get",
+      "method": "GET",
+      "path": "/mcp/customer",
+      "audience": "customer_key",
+      "status": "new",
+      "phase": "C13",
+      "auth": "bearer",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required",
+        "project_key_invalid",
+        "project_key_revoked"
+      ]
     }
   ],
   "page_routes": [
@@ -6030,12 +7118,868 @@
   },
   "error_codes": [
     {
+      "code": "authentication_required",
+      "kind": "error",
+      "http_status": 401,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "缺少有效会话或密钥"
+    },
+    {
+      "code": "project_key_invalid",
+      "kind": "error",
+      "http_status": 401,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "项目密钥不存在或格式错误"
+    },
+    {
+      "code": "project_key_revoked",
+      "kind": "error",
+      "http_status": 401,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "项目密钥已撤销或过期"
+    },
+    {
+      "code": "permission_denied",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "角色不足或跨项目访问"
+    },
+    {
+      "code": "workspace_role_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "工作区角色不允许该动作"
+    },
+    {
+      "code": "workspace_owner_required",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "该动作只允许工作区 owner"
+    },
+    {
+      "code": "workspace_role_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "角色值不在 owner/admin/member 中"
+    },
+    {
+      "code": "workspace_membership_required",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "不是工作区成员"
+    },
+    {
+      "code": "workspace_member_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "工作区成员不存在"
+    },
+    {
+      "code": "workspace_member_exists",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "工作区成员已存在"
+    },
+    {
+      "code": "workspace_last_owner_required",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "工作区必须保留至少一名 owner"
+    },
+    {
+      "code": "workspace_owner_immovable",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "owner_id 用户不得降级或移除"
+    },
+    {
+      "code": "project_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "项目不存在"
+    },
+    {
+      "code": "project_access_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "无权访问该项目"
+    },
+    {
+      "code": "project_management_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "无权管理该项目"
+    },
+    {
+      "code": "project_member_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "项目成员不存在"
+    },
+    {
+      "code": "project_member_exists",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "项目成员已存在"
+    },
+    {
+      "code": "request_validation_failed",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "请求字段校验失败"
+    },
+    {
+      "code": "internal_error",
+      "kind": "error",
+      "http_status": 500,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "未分类内部错误"
+    },
+    {
+      "code": "audit_action_unregistered",
+      "kind": "error",
+      "http_status": 500,
+      "retryable": false,
+      "phase": "C2",
+      "meaning": "审计动作不在 audit-actions.v1 注册表；append_audit_event 拒绝写入"
+    },
+    {
+      "code": "project_key_management_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "无权管理项目密钥"
+    },
+    {
+      "code": "project_api_key_active_exists",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "项目已有有效密钥"
+    },
+    {
+      "code": "project_api_key_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "项目密钥不存在"
+    },
+    {
+      "code": "connector_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "连接器或凭据不存在"
+    },
+    {
+      "code": "credential_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "凭据格式或内容无效"
+    },
+    {
+      "code": "vault_write_disabled",
+      "kind": "error",
+      "http_status": 503,
+      "retryable": false,
+      "phase": "C3",
+      "meaning": "凭据写入被开关关闭"
+    },
+    {
       "code": "tool_not_allowed",
       "kind": "error",
       "http_status": 403,
       "retryable": false,
       "phase": "C13",
       "meaning": "工具不在项目密钥白名单内"
+    },
+    {
+      "code": "capability_not_allowed",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "能力不在 project_api_keys.capability_allowlist 或不在 TaskTemplate.capability_allowlist 内；不披露具体失败的白名单"
+    },
+    {
+      "code": "cookie_not_accepted",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "客户链不接受 Cookie"
+    },
+    {
+      "code": "quota_exceeded",
+      "kind": "error",
+      "http_status": 429,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "日额度或项目额度耗尽"
+    },
+    {
+      "code": "rate_limited",
+      "kind": "error",
+      "http_status": 429,
+      "retryable": true,
+      "phase": "C13",
+      "meaning": "速率或并发超限"
+    },
+    {
+      "code": "approval_required",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "超出预授权，需要 owner 或 admin 批准"
+    },
+    {
+      "code": "tool_not_executable",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "工具不可执行"
+    },
+    {
+      "code": "tool_not_priced",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "工具没有价格，不报价不执行"
+    },
+    {
+      "code": "market_unsupported",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "市场不在正式支持目录"
+    },
+    {
+      "code": "invalid_request",
+      "kind": "error",
+      "http_status": 400,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "参数不合法"
+    },
+    {
+      "code": "idempotency_conflict",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "同一幂等键对应不同参数"
+    },
+    {
+      "code": "state_conflict",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "当前状态不允许该动作"
+    },
+    {
+      "code": "task_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "任务不存在或无权访问"
+    },
+    {
+      "code": "run_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C6",
+      "meaning": "run 不存在或无权访问"
+    },
+    {
+      "code": "task_locked",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "任务已提交，不能再改七槽位"
+    },
+    {
+      "code": "workflow_version_already_submitted",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "该计划版本已提交过任务"
+    },
+    {
+      "code": "taxonomy_unavailable",
+      "kind": "error",
+      "http_status": 503,
+      "retryable": true,
+      "phase": "C4",
+      "meaning": "品类目录缺失或不可读"
+    },
+    {
+      "code": "workbench_disabled",
+      "kind": "error",
+      "http_status": 503,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "工作台任务开关关闭"
+    },
+    {
+      "code": "task_markets_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "市场列表为空、重复或含未支持市场"
+    },
+    {
+      "code": "package_type_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "包型不是 quick 或 standard"
+    },
+    {
+      "code": "comparison_markets_exceeded",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "对比市场数量超过档位上限：Quick 最多 1 个，Standard 最多 3 个"
+    },
+    {
+      "code": "acceptance_contact_not_member",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "验收联系人不是当前工作区 owner 或 admin（member 或无成员关系）"
+    },
+    {
+      "code": "budget_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "max_cost_usd、max_pages 或 max_records 为负或格式不合法"
+    },
+    {
+      "code": "workflow_version_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "计划版本不存在或无权访问"
+    },
+    {
+      "code": "workflow_version_not_linked",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "计划版本未关联任务单"
+    },
+    {
+      "code": "plan_not_approved",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "计划版本尚未批准"
+    },
+    {
+      "code": "plan_version_not_current",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "计划版本不是当前版本"
+    },
+    {
+      "code": "idempotency_state_inconsistent",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "幂等键命中但关联状态不一致"
+    },
+    {
+      "code": "execution_steps_missing",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "计划缺少 execution_steps 快照"
+    },
+    {
+      "code": "execution_step_unresolved",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "execution_steps 中的 task_id 无法解析"
+    },
+    {
+      "code": "collection_task_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C4",
+      "meaning": "collection_tasks 行缺失、跨项目或不合法"
+    },
+    {
+      "code": "quota_account_missing",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "项目没有额度账户"
+    },
+    {
+      "code": "approval_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "内联批准动作不存在或无权访问"
+    },
+    {
+      "code": "approval_self_approval_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "请求人不得批准自己的预算超支、加购或密钥变更"
+    },
+    {
+      "code": "approval_state_conflict",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C5",
+      "meaning": "批准动作已决定或已过期"
+    },
+    {
+      "code": "claim_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "Claim 不存在或无权访问"
+    },
+    {
+      "code": "claim_blocked_reason_required",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "blocked 状态必须给出原因"
+    },
+    {
+      "code": "claim_scope_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "Claim scope 不合法"
+    },
+    {
+      "code": "claim_grade_below_minimum",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "证据等级低于 Claim 最低要求"
+    },
+    {
+      "code": "claim_grade_exceeds_evidence",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "Claim 状态超过证据等级上限"
+    },
+    {
+      "code": "claim_confirmation_requires_review",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C7",
+      "meaning": "confirmed 必须通过审核"
+    },
+    {
+      "code": "report_quality_not_ready",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "C8 市场质量尚未就绪，不能创建报告草稿"
+    },
+    {
+      "code": "report_contract_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告合同结构或语义校验失败"
+    },
+    {
+      "code": "report_contract_not_published",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告合同尚未发布"
+    },
+    {
+      "code": "report_contract_hash_mismatch",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "调用方合同哈希与记录不一致"
+    },
+    {
+      "code": "report_artifact_not_draft",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告产物不是草稿"
+    },
+    {
+      "code": "report_artifact_incomplete",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告产物缺少 HTML 或 SOP"
+    },
+    {
+      "code": "report_artifact_integrity_failed",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告产物哈希复核失败"
+    },
+    {
+      "code": "report_publish_gate_blocked",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "G-Publish 门禁不是 pass"
+    },
+    {
+      "code": "report_revision_target_invalid",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "取代目标不是同报告的可发布版本"
+    },
+    {
+      "code": "reviewer_assignment_required",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "内部审核人没有 active assignment"
+    },
+    {
+      "code": "reviewer_assignment_expired",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "内部审核人的 active assignment 已到 expires_at"
+    },
+    {
+      "code": "reviewer_self_review_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "客户 owner/admin 不得自审，创建人不得自审"
+    },
+    {
+      "code": "reviewer_assignment_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "审核人指派范围、主体或状态不合法"
+    },
+    {
+      "code": "report_artifact_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告产物不存在"
+    },
+    {
+      "code": "report_review_required",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "发布前缺少审核签字"
+    },
+    {
+      "code": "report_publish_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "无权发布该报告"
+    },
+    {
+      "code": "report_forbidden_language",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告文本命中唯一 forbidden-language profile 的因果或预测表述"
+    },
+    {
+      "code": "report_not_published",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C9",
+      "meaning": "报告尚未发布"
+    },
+    {
+      "code": "delivery_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "交付物不存在"
+    },
+    {
+      "code": "delivery_not_published",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "交付物尚未发布"
+    },
+    {
+      "code": "delivery_integrity_error",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "manifest 或文件哈希不一致"
+    },
+    {
+      "code": "gate_failed",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "G-Claim 或 G-Publish 未通过"
+    },
+    {
+      "code": "publish_forbidden",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "只有工作区 owner/admin 可以发布交付包"
+    },
+    {
+      "code": "delivery_not_publishable",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "C9 产物未发布或交付状态不允许发布"
+    },
+    {
+      "code": "delivery_input_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "数据集版本、幂等键或交付输入不合法"
+    },
+    {
+      "code": "idempotency_key_required",
+      "kind": "error",
+      "http_status": 400,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "交付发布、Quick 2 小时方向稿或验收动作缺少 Idempotency-Key 请求头"
+    },
+    {
+      "code": "delivery_pii_detected",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "PII 扫描命中，交付发布或下载被阻断；只记录 kind 与 field_path，不记录原始值"
+    },
+    {
+      "code": "quick_draft_not_allowed",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "任务包型不是 quick，不能创建 Quick 2 小时方向稿"
+    },
+    {
+      "code": "quick_draft_claim_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "Quick 稿 Claim 出现 confirmed、Standard 四态或高于 L3 的证据"
+    },
+    {
+      "code": "acceptance_window_open",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "验收窗口仍开放，不能写 deemed_accepted"
+    },
+    {
+      "code": "acceptance_already_closed",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "已有终态验收事件，不能再次验收"
+    },
+    {
+      "code": "acceptance_reference_invalid",
+      "kind": "error",
+      "http_status": 422,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "争议引用未命中 manifest 文件、Claim、证据或条目"
+    },
+    {
+      "code": "acceptance_not_applicable",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C10",
+      "meaning": "Quick 2 小时方向稿不启动验收"
+    },
+    {
+      "code": "dataset_export_internal_isolated_source",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C11",
+      "meaning": "数据集含内部隔离来源，禁止客户导出"
+    },
+    {
+      "code": "manifest_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "交付 manifest 不存在"
+    },
+    {
+      "code": "evidence_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "证据不存在"
+    },
+    {
+      "code": "deletion_request_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C12",
+      "meaning": "删除请求不存在"
+    },
+    {
+      "code": "legal_hold_active",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C12",
+      "meaning": "法律保留阻止删除"
+    },
+    {
+      "code": "deletion_state_conflict",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C12",
+      "meaning": "删除状态不允许该动作"
+    },
+    {
+      "code": "deletion_proof_not_ready",
+      "kind": "error",
+      "http_status": 409,
+      "retryable": false,
+      "phase": "C12",
+      "meaning": "删除证明尚未生成"
+    },
+    {
+      "code": "dsr_case_not_found",
+      "kind": "error",
+      "http_status": 404,
+      "retryable": false,
+      "phase": "C12",
+      "meaning": "DSR 案件不存在"
     }
   ],
   "schemas": [
