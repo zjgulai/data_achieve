@@ -75,8 +75,15 @@ say "主仓：$ROOT"
 say "工作树总数：$(git worktree list | wc -l | tr -d ' ')"
 
 # 仓库内的 hook 不会随 clone 自动生效，这里主动提醒。
+# 相对值 ".githooks" 与绝对值 "<root>/.githooks" 都要认；git 会把前者
+# 存成后者的情况存在，只比较原样字符串会误报。
 hooks_path="$(git config --get core.hooksPath 2>/dev/null || true)"
-if [ "$hooks_path" != ".githooks" ]; then
+case "$hooks_path" in
+  "")       resolved_hooks="" ;;
+  /*)       resolved_hooks="$hooks_path" ;;
+  *)        resolved_hooks="$ROOT/$hooks_path" ;;
+esac
+if [ "$resolved_hooks" != "$ROOT/.githooks" ]; then
   warn ""
   warn "⚠ 仓库 hook 未启用（core.hooksPath=${hooks_path:-未设置}）。"
   warn "   影响：提交前的文件完整性检查、合并后的工作区巡检都不会运行。"
