@@ -12,10 +12,10 @@
 
 - 产品阶段只写 `PG0`、`PG1`。不得写成 `P0`、`P1`。
 - 当前基线：C0 标签 `pg0-baseline-v1` 已存在，C1 分支 `feat/gov-c1` 已完成，C2 分支 `feat/gov-c2` 已完成。C3 从 `feat/gov-c2` 创建独立 worktree：`git worktree add ../data_scrapy-gov-c3 -b feat/gov-c3 feat/gov-c2`。不得从 `f0560ca`、`main` 或 `pg0-baseline-v1` 直接开工。
-- 开工断言：`git merge-base --is-ancestor feat/gov-c2 HEAD` 退出码 0；`uv run alembic heads` 只有 `202610220058 (head)`；`configs/contracts/v1.1.0/registry.json` 存在且 checker 通过。
+- 开工断言：`git merge-base --is-ancestor feat/gov-c2 HEAD` 退出码 0；`uv run alembic heads` 只有 `202610220060 (head)`；`configs/contracts/v1.1.0/registry.json` 存在且 checker 通过。
 - 契约所有权：`docs/design/【契约冻结】v1-表名-枚举-接口.md` 与 `configs/contracts/v1.1.0/*` 只读。C1 已登记 C3 的列、约束、部分唯一索引、路径与错误码。C3 不得修改契约或 registry；守卫测试只读校验，失败时停止并交回 C1。
 - 控制台所有权：`apps/scraper-console/src/**` 与 `apps/scraper-console/e2e/**` 归 C14。C3 只提供 `/keys` 与 `/connectors` 的浏览器交接清单，不改页面、不改测试、不改路由表。
-- C3 只允许一个迁移：`202610220059_project_keys_credentials_scope.py`，`down_revision = "202610220058"`。不得新增第二个迁移。
+- C3 只允许一个迁移：`202610220061_project_keys_credentials_scope.py`，`down_revision = "202610220060"`。不得新增第二个迁移。
 - 回滚点：关闭 `vault_write_enabled` 停止凭据写入；轮换任一步失败由路由回滚整事务；迁移 059 只在一次性库执行 `downgrade -1`，生产回滚用备份恢复或新迁移。
 - 发布门禁：本切片不直接部署。生产 A/B 由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读验收；先备份，A 先 canary，B 只在目标授权、备份与迁移门禁通过后发布；两套环境共用 `configs/deploy/scrapy/docker-compose.yml`。任一步失败记 `BLOCKED`。
 - C2 提供以下接缝，本计划只调用，不复制实现：
@@ -43,7 +43,7 @@
 | 文件 | 动作 | 责任 |
 |---|---|---|
 | `apps/api/tests/unit/test_contract_freeze_c3.py` | Create | 只读契约与 C2 依赖守卫。 |
-| `apps/api/alembic/versions/202610220059_project_keys_credentials_scope.py` | Create | 唯一迁移：密钥列、复合 FK、凭据项目作用域、部分唯一索引。 |
+| `apps/api/alembic/versions/202610220061_project_keys_credentials_scope.py` | Create | 唯一迁移：密钥列、复合 FK、凭据项目作用域、部分唯一索引。 |
 | `apps/api/src/data_intelligence_hub/models/project_api_key.py` | Modify | 密钥新列、复合 FK、自引用轮换列。 |
 | `apps/api/src/data_intelligence_hub/models/platform_credential.py` | Modify | `project_id`、`creator_cookie_metadata`、部分唯一索引、复合 FK。 |
 | `apps/api/src/data_intelligence_hub/repositories/project_api_keys.py` | Modify | capability 列、锁定查询、撤销状态、`last_used_at` 节流更新。 |
@@ -102,11 +102,11 @@ Expected:
 ```text
 feat/gov-c3
 c2_ancestor=0
-202610220058 (head)
+202610220060 (head)
 C1_REGISTRY_PRESENT
 ```
 
-`feat/gov-c3` 已存在时停止，先审查旧分支。Alembic head 不是 `202610220058` 或 registry 缺失时停止，先完成 C0/C1/C2。
+`feat/gov-c3` 已存在时停止，先审查旧分支。Alembic head 不是 `202610220060` 或 registry 缺失时停止，先完成 C0/C1/C2。
 
 - [ ] **Step 2: 写只读契约与依赖守卫测试**
 
@@ -195,7 +195,7 @@ def test_c2_migration_precedes_c3() -> None:
     config = Config(str(PROJECT_ROOT / "apps/api/alembic.ini"))
     config.set_main_option("script_location", str(PROJECT_ROOT / "apps/api/alembic"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_revision("202610220058") is not None
+    assert script.get_revision("202610220060") is not None
     heads = script.get_heads()
     assert len(heads) == 1
     ancestors: set[str] = set()
@@ -205,7 +205,7 @@ def test_c2_migration_precedes_c3() -> None:
         revision = script.get_revision(current)
         down = getattr(revision, "down_revision", None)
         current = down if isinstance(down, str) else None
-    assert "202610220058" in ancestors
+    assert "202610220060" in ancestors
 ```
 
 - [ ] **Step 3: 运行守卫测试**
@@ -254,16 +254,16 @@ Expected: `detect-changes` 不含 `partial: true` 或 `truncated: true`；提交
 ### Task 2: 迁移 059 与模型复合约束
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220059_project_keys_credentials_scope.py`
+- Create: `apps/api/alembic/versions/202610220061_project_keys_credentials_scope.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/project_api_key.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/platform_credential.py`
 - Test: `apps/api/tests/unit/test_c3_migration_source.py`
 
 **Interfaces:**
-- Consumes: `projects` 的 `uq_projects_workspace_id (workspace_id, id)`；C2 revision `202610220058`。
+- Consumes: `projects` 的 `uq_projects_workspace_id (workspace_id, id)`；C2 revision `202610220060`。
 - Produces: `ProjectApiKey.capability_allowlist`、`daily_budget_usd`、`status`、`rotation_group_id`、`superseded_by_key_id`、`last_rotated_at`、`expires_at`。
 - Produces: `PlatformCredentialBundle.project_id`、`creator_cookie_metadata`。
-- Produces: Alembic revision `202610220059`，`down_revision = "202610220058"`。
+- Produces: Alembic revision `202610220061`，`down_revision = "202610220060"`。
 
 - [ ] **Step 0: 编辑前运行 GitNexus impact**
 
@@ -304,7 +304,7 @@ from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = API_ROOT / "alembic/versions/202610220059_project_keys_credentials_scope.py"
+MIGRATION_PATH = API_ROOT / "alembic/versions/202610220061_project_keys_credentials_scope.py"
 
 
 def _load() -> ModuleType:
@@ -317,8 +317,8 @@ def _load() -> ModuleType:
 
 def test_revision_059_is_linear_after_c2() -> None:
     module = _load()
-    assert module.revision == "202610220059"
-    assert module.down_revision == "202610220058"
+    assert module.revision == "202610220061"
+    assert module.down_revision == "202610220060"
 
     config = Config(str(API_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(API_ROOT / "alembic"))
@@ -658,13 +658,13 @@ class PlatformCredentialBundle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 - [ ] **Step 5: 写迁移 059**
 
-Create `apps/api/alembic/versions/202610220059_project_keys_credentials_scope.py`:
+Create `apps/api/alembic/versions/202610220061_project_keys_credentials_scope.py`:
 
 ```python
 """Project key governance and project-scoped credentials.
 
-Revision ID: 202610220059
-Revises: 202610220058
+Revision ID: 202610220061
+Revises: 202610220060
 Create Date: 2026-10-22
 
 This revision is source-only. It must not be applied to a real database without
@@ -684,8 +684,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220059"
-down_revision: str | None = "202610220058"
+revision: str = "202610220061"
+down_revision: str | None = "202610220060"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -892,14 +892,14 @@ cd /Users/lute/Project/data_scrapy-gov-c3/apps/api
 ./.venv/bin/python -m alembic heads
 ```
 
-Expected: 只有一行 `202610220059 (head)`。本步不执行 `upgrade`。
+Expected: 只有一行 `202610220061 (head)`。本步不执行 `upgrade`。
 
 - [ ] **Step 8: Commit**
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c3
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220059_project_keys_credentials_scope.py \
+git add apps/api/alembic/versions/202610220061_project_keys_credentials_scope.py \
   apps/api/src/data_intelligence_hub/models/project_api_key.py \
   apps/api/src/data_intelligence_hub/models/platform_credential.py \
   apps/api/tests/unit/test_c3_migration_source.py
@@ -3918,7 +3918,7 @@ Expected: 工作树干净；12 个 commit 对应本计划 12 个 task。若仍�
 
 1. **先备份**：备份目标数据库与 compose 使用的持久卷，记录备份路径与 SHA-256。
 2. **A 环境 canary**：先发布 A，运行冒烟与本计划 API 验收；失败时回滚 A，B 不发布。
-3. **B 环境门禁**：B 只在用户对生产 B 给出明确目标授权，且 PG0 发布负责人完成备份校验和迁移门禁后发布。C14 只读记录授权与发布窗口，不授予目标权限；迁移门禁指 `alembic heads` 只有 `202610220059 (head)`、迁移在一次性库演练通过、备份可恢复。
+3. **B 环境门禁**：B 只在用户对生产 B 给出明确目标授权，且 PG0 发布负责人完成备份校验和迁移门禁后发布。C14 只读记录授权与发布窗口，不授予目标权限；迁移门禁指 `alembic heads` 只有 `202610220061 (head)`、迁移在一次性库演练通过、备份可恢复。
 4. **失败记 `BLOCKED`**：记录失败步骤、证据路径与决策人；不得跳过门禁继续发布。
 
 C3 不改 compose，不部署，不执行生产迁移。部署证据由 PG0 发布批次收集；C14 收集只读验收证据。

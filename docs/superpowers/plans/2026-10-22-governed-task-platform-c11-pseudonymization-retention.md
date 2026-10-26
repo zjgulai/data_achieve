@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 为受治理任务平台建立工作区级稳定伪名、导出 PII 遮蔽、只读 PII 扫描（C9/C10 唯一扫描器）、来源 URL 去追踪参数、六类保留期、法律保留只读/写入服务和可 dry-run 的保留清理，并只新增一个迁移 `202610220067`。C11 只做伪名、遮蔽、保留与法律保留 dry-run；删除请求和 DSR 归 C12。
+**Goal:** 为受治理任务平台建立工作区级稳定伪名、导出 PII 遮蔽、只读 PII 扫描（C9/C10 唯一扫描器）、来源 URL 去追踪参数、六类保留期、法律保留只读/写入服务和可 dry-run 的保留清理，并只新增一个迁移 `202610220069`。C11 只做伪名、遮蔽、保留与法律保留 dry-run；删除请求和 DSR 归 C12。
 
 **Architecture:** 新增独立的服务边界：`pseudonymization` 管盐与 HMAC 伪名，`export_policy` 管导出字段策略与只读 PII 扫描（C9/C10 的唯一扫描器），`governed_dataset_export` 是客户导出唯一接缝并替换 `automation_service` 的旧导出路由。保留清理由 `retention_policy`、`legal_hold_service`、`retention_service` 与运维 CLI 组成；所有保留期清理删除先写 `retention_tombstones`，`legal_hold` 在候选筛选阶段阻断，`dry_run` 默认不写库。C12 的删除请求只写 `deletion_tombstones`，两个服务不得互相调用。客户导出四个路径与服务都先过 C2 项目 ACL；导出允许/拒绝、法律保留建立/释放与保留清理执行都写 C2 统一审计表。
 
@@ -21,7 +21,7 @@
 - 保留策略不建表；TTL 是代码常量。迁移只创建 C1 登记的四个 C11 对象，并替换两个既有审计触发器函数；不给任何既有表加列。若后续需要保留元数据列，只允许加在已存在的表，并先在 C1 登记。
 - 安全审计 24 个月清理只允许专用数据库角色 `dih_retention_cleaner` 执行。迁移 067 必须替换 C2 `audit_events` 的 `reject_audit_event_mutation()` 与 C9 `report_audit_events` 的 `report_audit_events_append_only_fn()`：只允许该角色删除已过期行（`audit_events.occurred_at` 或 `report_audit_events.created_at` 早于 `now() - interval '730 days'`）；`UPDATE` 与普通应用角色的 `DELETE` 仍抛出异常。触发器替换、角色权限与普通应用拒绝行为必须有 PostgreSQL 测试。
 - C2 链头导出与 `/api/audit-events/verify` 按可用段校验。C11 删除链首后不要求重建前缀；首个留存事件的 `prev_hash` 写入 `anchor_prev_hash`，更早的每日链头由 O0 的 WORM 证据保存。
-- 只允许一个迁移：`revision = "202610220067"`，`down_revision = "202610220066"`。执行前 `alembic heads` 必须只有 `202610220066`。
+- 只允许一个迁移：`revision = "202610220069"`，`down_revision = "202610220068"`。执行前 `alembic heads` 必须只有 `202610220068`。
 - 不修改 `apps/api/src/data_intelligence_hub/services/automation_service.py`。该文件是冻结大文件；旧导出函数保留给内部隔离链，客户路由改走新接缝。
 - 不做删除请求 / DSR 流程，不建 DSR 表，不实现删除审批 UI。
 - C14 独占控制台与 Playwright。C11 只提供浏览器交接单，不修改 `apps/scraper-console/**`，不新增 HTTP 端点。
@@ -42,7 +42,7 @@
 | 文件 | 责任 |
 |---|---|
 | `docs/design/【契约冻结】v1-表名-枚举-接口.md` | 只读校验 C1 v1.1 的四个 C11 对象、枚举、TTL 与导出规则；C11 不修改 |
-| `apps/api/alembic/versions/202610220067_pseudonymization_retention.py` | 唯一迁移：C1 登记的四个 C11 对象与索引；替换 C2/C9 审计 append-only 触发器函数并授予专用角色权限 |
+| `apps/api/alembic/versions/202610220069_pseudonymization_retention.py` | 唯一迁移：C1 登记的四个 C11 对象与索引；替换 C2/C9 审计 append-only 触发器函数并授予专用角色权限 |
 | `apps/api/src/data_intelligence_hub/models/retention.py` | 四个 SQLAlchemy 模型与保留枚举常量 |
 | `apps/api/src/data_intelligence_hub/models/__init__.py` | 导出新模型 |
 | `apps/api/src/data_intelligence_hub/services/pseudonymization.py` | 工作区盐、HMAC 伪名、无日志承诺 |
@@ -127,7 +127,7 @@ git status --short
 cd apps/api && uv run alembic heads
 ```
 
-Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c11`；工作区干净或只有本计划文件；Alembic 只有一行 `202610220066 (head)`。不是单 head 时停止，C1–C10 尚未落地；不得把本迁移改号或接到 `202610210055`。后续 Run/Commit 块必须在该 worktree 内执行。
+Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c11`；工作区干净或只有本计划文件；Alembic 只有一行 `202610220068 (head)`。不是单 head 时停止，C1–C10 尚未落地；不得把本迁移改号或接到 `202610210055`。后续 Run/Commit 块必须在该 worktree 内执行。
 
 ---
 
@@ -218,7 +218,7 @@ def test_contract_has_c11_objects_and_ttl() -> None:
         "security_access_audit",
         "backup",
         "retention_ttl",
-        "202610220067",
+        "202610220069",
     ):
         assert token in text, token
     assert "原始响应 | 30 天" in text
@@ -273,7 +273,7 @@ Expected: `detect-changes` 不是 `partial: true`，不是 `truncated: true`。
 ### Task 2: 迁移 067 与保留模型
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220067_pseudonymization_retention.py`
+- Create: `apps/api/alembic/versions/202610220069_pseudonymization_retention.py`
 - Create: `apps/api/src/data_intelligence_hub/models/retention.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/__init__.py`
 - Test: `apps/api/tests/unit/test_pseudonymization_retention_migration_source.py`
@@ -298,7 +298,7 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c11/apps/api
 uv run alembic heads
 ```
-Expected: 只有一行 `202610220066 (head)`。
+Expected: 只有一行 `202610220068 (head)`。
 If not, stop. C1–C10 尚未落地。不得把本迁移改号或接到 `202610210055`。
 
 - [ ] **Step 1: 写迁移源测试（先失败）**
@@ -317,7 +317,7 @@ MIGRATION_PATH = (
     Path(__file__).parents[2]
     / "alembic"
     / "versions"
-    / "202610220067_pseudonymization_retention.py"
+    / "202610220069_pseudonymization_retention.py"
 )
 
 
@@ -364,8 +364,8 @@ def _constraint_names(args: tuple[object, ...]) -> set[str]:
 
 def test_migration_is_single_revision_after_066() -> None:
     module = _load_migration()
-    assert module.revision == "202610220067"
-    assert module.down_revision == "202610220066"
+    assert module.revision == "202610220069"
+    assert module.down_revision == "202610220068"
 
 
 def test_upgrade_creates_four_c11_tables_and_constraints() -> None:
@@ -503,12 +503,12 @@ Expected: FAIL。`MIGRATION_PATH.is_file()` 为假。
 
 - [ ] **Step 3: 写迁移 067**
 
-Create `apps/api/alembic/versions/202610220067_pseudonymization_retention.py`:
+Create `apps/api/alembic/versions/202610220069_pseudonymization_retention.py`:
 ```python
 """Create workspace pseudonym salts, legal holds and retention bookkeeping.
 
-Revision ID: 202610220067
-Revises: 202610220066
+Revision ID: 202610220069
+Revises: 202610220068
 Create Date: 2026-10-22
 
 说明：
@@ -533,8 +533,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220067"
-down_revision: str | None = "202610220066"
+revision: str = "202610220069"
+down_revision: str | None = "202610220068"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -1495,7 +1495,7 @@ uv run alembic upgrade head
 uv run alembic downgrade -1
 uv run alembic upgrade head
 ```
-Expected: `heads` 只有 `202610220067 (head)`；upgrade、downgrade、upgrade 全部成功。`upgrade head` 需要迁移执行者具备 `CREATEROLE`，或 DBA 已创建 `dih_retention_cleaner` 并授予迁移执行者 `ADMIN OPTION`；迁移执行者还必须是 C2 `audit_events` 与 C9 `report_audit_events` 的属主，或对这两张表有 `GRANT OPTION`。
+Expected: `heads` 只有 `202610220069 (head)`；upgrade、downgrade、upgrade 全部成功。`upgrade head` 需要迁移执行者具备 `CREATEROLE`，或 DBA 已创建 `dih_retention_cleaner` 并授予迁移执行者 `ADMIN OPTION`；迁移执行者还必须是 C2 `audit_events` 与 C9 `report_audit_events` 的属主，或对这两张表有 `GRANT OPTION`。
 
 - [ ] **Step 11: 提交**
 
@@ -1503,7 +1503,7 @@ Run:
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c11
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220067_pseudonymization_retention.py apps/api/src/data_intelligence_hub/models/retention.py apps/api/src/data_intelligence_hub/models/__init__.py apps/api/tests/unit/test_pseudonymization_retention_migration_source.py apps/api/tests/unit/test_retention_models.py apps/api/tests/postgres/test_audit_retention_cleaner.py
+git add apps/api/alembic/versions/202610220069_pseudonymization_retention.py apps/api/src/data_intelligence_hub/models/retention.py apps/api/src/data_intelligence_hub/models/__init__.py apps/api/tests/unit/test_pseudonymization_retention_migration_source.py apps/api/tests/unit/test_retention_models.py apps/api/tests/postgres/test_audit_retention_cleaner.py
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git commit -m "feat(retention): 迁移 067 与伪名盐、法律保留、清理账本模型"
 ```
@@ -6904,7 +6904,7 @@ uv run pytest tests/unit/test_pseudonymization.py tests/unit/test_tiktok_ingesti
 rg -n "workspace_pseudonym_salts|uq_workspace_pseudonym_salts_workspace_id|dih_retention_cleaner|interval '730 days'" \
   src/data_intelligence_hub/services/pseudonymization.py \
   src/data_intelligence_hub/services/tiktok_content_ingestion.py \
-  alembic/versions/202610220067_pseudonymization_retention.py
+  alembic/versions/202610220069_pseudonymization_retention.py
 ```
 Expected: 伪名测试通过；盐表仍是一工作区一行，伪名同工作区稳定、跨工作区不可关联；067 仍包含 `dih_retention_cleaner` 与 730 天删除例外；普通应用 `UPDATE` / `DELETE` 仍拒绝。C12 的 068 只能保留该例外并新增自己的角色例外。
 
@@ -6950,7 +6950,7 @@ uv run alembic upgrade head
 uv run alembic downgrade -1
 uv run alembic upgrade head
 ```
-Expected: 只有一个 head `202610220067 (head)`；round-trip 成功。禁止在两套生产上直接试验 downgrade。
+Expected: 只有一个 head `202610220069 (head)`；round-trip 成功。禁止在两套生产上直接试验 downgrade。
 
 ### PostgreSQL 审计触发器
 
@@ -6977,9 +6977,9 @@ C11 是代码、迁移与测试切片，不部署。生产发布只有一个 own
 PG0 发布负责人的执行顺序：
 
 1. A 先备份 PostgreSQL，并确认迁移执行者具备 `CREATEROLE`，或 DBA 已创建 `dih_retention_cleaner` 并授予迁移执行者 `ADMIN OPTION`。
-2. A 应用迁移 067。迁移必须保持单 head `202610220067`。
+2. A 应用迁移 067。迁移必须保持单 head `202610220069`。
 3. PG0 发布负责人在 A 的受控会话执行 `SELECT current_user, pg_has_role(current_user, 'dih_retention_cleaner', 'MEMBER');`，结果必须包含 `dih_retention_cleaner` 的成员关系。该检查只允许 PG0 发布负责人执行。
-4. A 健康检查必须 `status=ok`，`schema_revision=schema_head=202610220067`。
+4. A 健康检查必须 `status=ok`，`schema_revision=schema_head=202610220069`。
 5. B 的 `202610190045` 目标授权与备份门禁未通过时，不升级 B。记录 `BLOCKED`，不阻断 A。B 通过门禁后，由同一 PG0 发布负责人应用 067，再报告自己的 schema head。
 6. 不要求 A 与 B 同批迁移，不因 B 落后延长 A 的发布窗口。
 
@@ -6994,7 +6994,7 @@ curl -fsSL https://scrapy.lute-tlz-dddd.top/api/health \
   | jq '{status, schema_revision, schema_head}'
 ```
 
-Expected: A 返回 `status=ok` 与 `schema_revision=schema_head=202610220067`；B 在解锁前返回旧 head 或 `BLOCKED` 记录。C14 不修改任何环境变量、compose 文件、数据库行或功能开关。
+Expected: A 返回 `status=ok` 与 `schema_revision=schema_head=202610220069`；B 在解锁前返回旧 head 或 `BLOCKED` 记录。C14 不修改任何环境变量、compose 文件、数据库行或功能开关。
 
 浏览器验收由 C14 执行，范围限于 `/settings` 的只读展示与下方交接单。C14 不执行迁移、不写法律保留、不运行清理命令。
 

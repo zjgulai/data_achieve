@@ -11,8 +11,8 @@
 ## Global Constraints
 
 - **开关与回滚。** 本切片不新增布尔开关，入口受 `GOVERNED_TASK_PLATFORM_ENABLED` 控制；回滚点是迁移 `065` 的 `downgrade` 与发布前数据库备份，生产回滚用备份恢复或新迁移，不手改 `alembic_version`。
-- **前置分支不可分叉。** 执行前必须从 C8 前置分支 `feat/gov-c8` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c9 -b feat/gov-c9 feat/gov-c8`。`git merge-base --is-ancestor feat/gov-c8 HEAD` 必须成功，Alembic head 必须是 `202610220064`。不得在 `feat/b5-workbench` 或 `main` 上直接开发，也不得在 worktree 内合并 C1–C8。不得复制或重写 `schemas/report_contract.py`、`schemas/report_contract.schema.json`、`services/report_builder.py`、`services/report_renderers.py`、`services/report_templates.py`、`services/report_artifacts.py`。claim 基线是 B5 的 `claims` 与 `claim_evidence`，不另建主张表或第二套枚举。
-- **C7/C8 是前置。** C7 提供 claim 与 evidence；C8 提供质量、缺口与门禁事实。C4/C5/C6 的事实已通过 `feat/gov-c8` 分支进入基线。C9 只消费装配完成的 `report_contract`，不直接查询 claim/evidence 表，不重新计算证据等级。前置迁移 058–064 必须已存在，C9 的迁移固定为 `202610220065`，`down_revision` 固定为 `202610220064`。
+- **前置分支不可分叉。** 执行前必须从 C8 前置分支 `feat/gov-c8` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c9 -b feat/gov-c9 feat/gov-c8`。`git merge-base --is-ancestor feat/gov-c8 HEAD` 必须成功，Alembic head 必须是 `202610220066`。不得在 `feat/b5-workbench` 或 `main` 上直接开发，也不得在 worktree 内合并 C1–C8。不得复制或重写 `schemas/report_contract.py`、`schemas/report_contract.schema.json`、`services/report_builder.py`、`services/report_renderers.py`、`services/report_templates.py`、`services/report_artifacts.py`。claim 基线是 B5 的 `claims` 与 `claim_evidence`，不另建主张表或第二套枚举。
+- **C7/C8 是前置。** C7 提供 claim 与 evidence；C8 提供质量、缺口与门禁事实。C4/C5/C6 的事实已通过 `feat/gov-c8` 分支进入基线。C9 只消费装配完成的 `report_contract`，不直接查询 claim/evidence 表，不重新计算证据等级。前置迁移 058–064 必须已存在，C9 的迁移固定为 `202610220067`，`down_revision` 固定为 `202610220066`。
 - **canonical profile 由 C1 冻结。** C1 必须在 `schemas/report_contract.py` 导出 `CANONICAL_PROFILE_ID: Final[str] = "dih-canonical-json-v1"` 与 `SCHEMA_VERSION: Final[str] = "1.1.0"`。`dih-canonical-json-v1` 绑定 B5 现有 `canonical_json_bytes` 的近似 RFC 8785 行为；严格 RFC 8785 升级延期，未来若实施必须使用不同 ID `dih-canonical-json-rfc8785-v1`，不得改变 v1 的字节输出。C9 只 import 这两个常量与 `canonical_json_bytes`，不另写哈希实现，也不定义本地 profile。
 - **契约只读。** C1 的 `configs/contracts/v1.1.0/registry.json` 是唯一机器契约，`docs/design/【契约冻结】v1-表名-枚举-接口.md` 是唯一权威。C9 只读 C1 已登记的 `ck_report_artifacts_status`、`uq_report_artifacts_current_published`、`report_reviewer_assignments`、`reviewer_role`、`reviewer_assignment_required`、`reviewer_self_review_forbidden`、`report_quality_not_ready`、`report_forbidden_language`、`dih-descriptive-language-v1` 与报告合同 1.1 schema；不修改契约文档、不修改 registry、不追加实现决定。Task 1 缺任一登记项时停止并返回 C1 补充登记。契约文档与 `registry.json` 不在本切片的修改清单和提交范围内。未登记的表名、列名、路径、错误码不得实现。
 - **报告构建前质量门禁。** C9 不计算质量、不写 `market_assessments` / `data_gaps`。`assemble_report_contract_v1_1` 与 `create_draft_artifact` 在写入 `report_artifacts` 前，若 `run_id` 非空，必须调用 C8 的 `services.market_quality.ensure_market_quality(session, run_id=run_id, task_id=contract["task_id"])`。顶层 `task_id` 是唯一权威；`identity.task_id` 只是 B5 兼容镜像，必须与顶层相等，C9 不读它做业务判断。质量不可用（run 未 completed、workbench task 缺失、市场不属于任务单）时抛 `ReportQualityNotReadyError`，对外错误码 `report_quality_not_ready`。`run_id` 为空的历史/手工报告跳过该门禁，质量字段保持 null；`run.workflow_version_id` 为空的 legacy run 同样跳过，报告质量字段保持 null，不得伪造成有质量。C9 不 import C8 的 `compute_market_assessment`，不重新计算阈值、样本数或独立来源。
@@ -61,7 +61,7 @@
 | `apps/api/src/data_intelligence_hub/services/report_publication.py` | 草稿、审核、发布、修订、读取完整性 |
 | `apps/api/src/data_intelligence_hub/services/report_contract_v1_1.py` | 1.1 装配器、C7 Claim / C8 结论映射、Quick 方向稿、占位组、不可变版本推进 |
 | `apps/api/src/data_intelligence_hub/services/report_reviewers.py` | 内部审核人指派与自审拒绝 |
-| `apps/api/alembic/versions/202610220065_report_publication.py` | 065 模型缺口、部分唯一索引、不可变与只追加触发器 |
+| `apps/api/alembic/versions/202610220067_report_publication.py` | 065 模型缺口、部分唯一索引、不可变与只追加触发器 |
 | `apps/api/tests/unit/test_report_contract_v1_1.py` | 装配器、C7 Claim 映射、C8 结论语义、三档质量、占位与版本推进测试 |
 | `apps/api/tests/unit/test_report_quick_directional.py` | Quick 2 小时方向稿、L3 上限、24 小时正式版取代与不重复收费测试 |
 | `apps/api/tests/unit/test_report_reviewers.py` | 内部审核人 active assignment 与自审拒绝测试 |
@@ -135,16 +135,16 @@ Expected: `C7_TASK_SCOPE_OK`、`C8_CONCLUSION_OK` 与 `export_policy.v1 PiiHit T
 Run:
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c9
-ls apps/api/alembic/versions/202610220058_*.py
-ls apps/api/alembic/versions/202610220059_*.py
 ls apps/api/alembic/versions/202610220060_*.py
 ls apps/api/alembic/versions/202610220061_*.py
 ls apps/api/alembic/versions/202610220062_*.py
 ls apps/api/alembic/versions/202610220063_*.py
 ls apps/api/alembic/versions/202610220064_*.py
+ls apps/api/alembic/versions/202610220065_*.py
+ls apps/api/alembic/versions/202610220066_*.py
 cd apps/api && uv run alembic heads
 ```
-Expected: 七个文件全部存在；`alembic heads` 只有一行 `202610220064 (head)`。缺一个或 head 不是 064 时停止执行，先补 C1–C8。
+Expected: 七个文件全部存在；`alembic heads` 只有一行 `202610220066 (head)`。缺一个或 head 不是 064 时停止执行，先补 C1–C8。
 
 - [ ] **Step 4: 记录 GitNexus 基线**
 
@@ -415,7 +415,7 @@ Expected: `detect-changes` 无 `partial` 或 `truncated`；提交成功。
 - Modify: `apps/api/src/data_intelligence_hub/repositories/workspaces.py`
 - Create: `apps/api/src/data_intelligence_hub/models/report_reviewer_assignment.py`
 - Create: `apps/api/src/data_intelligence_hub/repositories/report_reviewers.py`
-- Create: `apps/api/alembic/versions/202610220065_report_publication.py`
+- Create: `apps/api/alembic/versions/202610220067_report_publication.py`
 - Modify: `apps/api/tests/unit/test_report_publication_migration.py`
 - Create: `apps/api/tests/unit/test_report_reviewers.py`
 - Create: `apps/api/tests/postgres/test_report_publication_constraints.py`
@@ -433,14 +433,14 @@ import runpy
 from data_intelligence_hub.models.report import ReportAuditEvent
 from data_intelligence_hub.models.report_artifact import ReportArtifact
 
-MIGRATION = API_ROOT / "alembic/versions/202610220065_report_publication.py"
+MIGRATION = API_ROOT / "alembic/versions/202610220067_report_publication.py"
 
 
 def test_revision_chain_points_to_c8() -> None:
     module = runpy.run_path(str(MIGRATION))
 
-    assert module["revision"] == "202610220065"
-    assert module["down_revision"] == "202610220064"
+    assert module["revision"] == "202610220067"
+    assert module["down_revision"] == "202610220066"
 
 
 def test_migration_adds_publication_columns_and_triggers() -> None:
@@ -704,12 +704,12 @@ async def revoke_reviewer_assignment(
 
 - [ ] **Step 4: 写迁移**
 
-Create `apps/api/alembic/versions/202610220065_report_publication.py`:
+Create `apps/api/alembic/versions/202610220067_report_publication.py`:
 ```python
 """Report publication lifecycle.
 
-Revision ID: 202610220065
-Revises: 202610220064
+Revision ID: 202610220067
+Revises: 202610220066
 Create Date: 2026-10-22
 
 本迁移只补模型缺口，不改 B5 的五个哈希列与两个 HTML 列。
@@ -732,8 +732,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220065"
-down_revision: str | None = "202610220064"
+revision: str = "202610220067"
+down_revision: str | None = "202610220066"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -1386,7 +1386,7 @@ cd /Users/lute/Project/data_scrapy-gov-c9
 node .gitnexus/run.cjs impact "ReportArtifact" --direction upstream --repo .
 node .gitnexus/run.cjs impact "ReportAuditEvent" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220065_report_publication.py \
+git add apps/api/alembic/versions/202610220067_report_publication.py \
   apps/api/src/data_intelligence_hub/models/report_artifact.py \
   apps/api/src/data_intelligence_hub/models/report.py \
   apps/api/src/data_intelligence_hub/repositories/report_artifacts.py \
@@ -7462,7 +7462,7 @@ uv run ruff check .
 uv run mypy src
 uv run alembic heads
 ```
-Expected: 全部 `passed`；ruff 无输出；mypy `Success`；Alembic 只有一行 `202610220065 (head)`。
+Expected: 全部 `passed`；ruff 无输出；mypy `Success`；Alembic 只有一行 `202610220067 (head)`。
 
 - [ ] **Step 2: 确认 C14 交接边界**
 
@@ -7504,7 +7504,7 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c9
 git status --short
 git add \
-  apps/api/alembic/versions/202610220065_report_publication.py \
+  apps/api/alembic/versions/202610220067_report_publication.py \
   apps/api/src/data_intelligence_hub/models/report_artifact.py \
   apps/api/src/data_intelligence_hub/models/report.py \
   apps/api/src/data_intelligence_hub/repositories/report_artifacts.py \
@@ -7547,7 +7547,7 @@ Expected: 提交成功，工作区干净。
 | 修订 supersedes | Task 4 `supersedes_id` 与 `superseded` 转换、Task 6 revisions 端点 |
 | HTML/SOP 纯渲染 | Task 4 `render_contract_pages` 纯函数、Task 6 SOP 只读已存 HTML 并复核哈希 |
 | 人工审核事件 | Task 4 `record_review` 写 `report_review_approved` 与 `reviewed_*` metadata、Task 6 reviews 端点、Task 3 只追加触发器 |
-| 一个迁移 065 | Task 3 `202610220065_report_publication.py` |
+| 一个迁移 065 | Task 3 `202610220067_report_publication.py` |
 | 不建 `modules/reports` | Global Constraints 与 Task 8 检查 |
 | 不做 manifest bundle | Global Constraints 与 Task 8 检查 |
 | 报告构建前质量门禁 | Task 4A `assemble_report_contract_v1_1` 与 Task 4 `create_draft_artifact` 在写产物前调用 C8 `ensure_market_quality`；失败抛 `ReportQualityNotReadyError`（`report_quality_not_ready`） |

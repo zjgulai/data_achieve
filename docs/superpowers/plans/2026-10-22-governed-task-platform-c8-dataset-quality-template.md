@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - **开关与回滚。** 本切片不新增布尔开关，入口受 `GOVERNED_TASK_PLATFORM_ENABLED` 控制；回滚点是迁移 `064` 的 `downgrade` 与发布前数据库备份，生产回滚用备份恢复或新迁移，不手改 `alembic_version`。
-- 基线分支必须从前置切片 C7 的前置分支 `feat/gov-c7` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c8 -b feat/gov-c8 feat/gov-c7`。该分支已包含 C0–C7 与 C1 契约，Alembic head 必须是 `202610220063`。禁止从 `main`、`feat/b5-workbench` 或 `feat/tool-catalog-catalog` 直接建 C8，也不得在 worktree 内合并 C1–C7。
+- 基线分支必须从前置切片 C7 的前置分支 `feat/gov-c7` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c8 -b feat/gov-c8 feat/gov-c7`。该分支已包含 C0–C7 与 C1 契约，Alembic head 必须是 `202610220065`。禁止从 `main`、`feat/b5-workbench` 或 `feat/tool-catalog-catalog` 直接建 C8，也不得在 worktree 内合并 C1–C7。
 - B5 的 `models/claim.py`、`models/intelligence.py` 的 `Evidence`、`schemas/report_contract.py`、`services/report_builder.py`、`services/report_templates.py`、`models/report_artifact.py` 是报告与 Claim 的唯一基线。C8 不新建 `claims_v2`、`report_contract_v2`、`report_artifacts_v2`，也不复制这些模型。
 - B5 的 `schemas/report_contract.py` 的 `canonical_json_bytes` 明确写着“RFC 8785 的近似，不是完整实现”。C1 冻结 `CANONICAL_PROFILE_ID = "dih-canonical-json-v1"` 作为唯一 v1 profile，绑定该近似实现；严格 RFC 8785 升级延期，未来若实施必须使用不同 ID `dih-canonical-json-rfc8785-v1`，不得改变 v1 的字节输出。C8 直接 import C1 的 `canonical_json_bytes`，不实现第二套 canonicalizer，也不得声明 v1 是完整 RFC 8785。
 - **契约只读。** C1 的 `configs/contracts/v1.1.0/registry.json` 是唯一机器契约，`docs/design/【契约冻结】v1-表名-枚举-接口.md` 是唯一权威。C8 只读这两份 C1 产物做门禁，不修改契约文档、不修改 registry、不追加“C8 实现决定”，也不新增未登记对象、枚举值或 API 路径。Task 1 缺任一登记项时停止并返回 C1 补充登记。契约文档与 `registry.json` 不在本切片的修改清单和提交范围内。
@@ -20,7 +20,7 @@
   - C6 提供 `runs`、`run_steps`、`run_step_attempts` 与 `run.completed` 审计事件。C8 依赖 C6；C6 不依赖 C8。
   - C7 提供 `services/source_clusters.py` 与 `evidences.source_cluster_key`。C8 通过 `KeyClaimBinding` 入参消费 Claim，不查询第二套 Claim 表。
   - C5 的预算与账本不在 C8 范围；C5 是 C6/C7 的上游。
-- 迁移只有一个：`apps/api/alembic/versions/202610220064_dataset_quality.py`。`revision = "202610220064"`，`down_revision = "202610220063"`。它扩展 `dataset_versions`，并创建 `market_assessments` 与 `data_gaps`。它不创建 `report_templates`、`delivery_manifests`。C5 的迁移 061 不创建这两张质量表，所以由 C8 在 064 创建，解决总索引 §1.1 第 7 条的阻塞。
+- 迁移只有一个：`apps/api/alembic/versions/202610220066_dataset_quality.py`。`revision = "202610220066"`，`down_revision = "202610220065"`。它扩展 `dataset_versions`，并创建 `market_assessments` 与 `data_gaps`。它不创建 `report_templates`、`delivery_manifests`。C5 的迁移 061 不创建这两张质量表，所以由 C8 在 064 创建，解决总索引 §1.1 第 7 条的阻塞。
 - C4/C6 创建正式数据集版本时必须写 `task_id` 与 `market`。C8 的三个 legacy 保存路径保持这两个列为 null，`/assets` 显示“未评分”，不伪造 `not_qualified`。
 - 质量门槛固定为：核心域 3/3；商品 Quick ≥20、Standard ≥100；评论 Quick ≥300、Standard ≥2,000；达人内容 Quick ≥50、Standard ≥200；核心字段完整率 ≥80%；重复率 <2%；来源 URL 覆盖率 100%；关键 Claim 证据绑定率 100%；关键判断独立来源 ≥2。前四项按市场分别计算，不按整包合计。
 - `missing` 不得写成数值 0。数据域没有合格记录时，`sample_counts` 写 JSON `null`，`data_gaps.actual_value` 写 JSON `null`。
@@ -61,7 +61,7 @@ cd /Users/lute/Project/data_scrapy-gov-c8/apps/api
 uv run alembic heads
 ```
 
-Expected: `202610220063 (head)`。不是这个值就停止，先合入 C1-C7 的迁移。
+Expected: `202610220065 (head)`。不是这个值就停止，先合入 C1-C7 的迁移。
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c8
@@ -186,7 +186,7 @@ graph LR
 | `apps/api/src/data_intelligence_hub/models/dataset.py` | Modify | 追加 `task_id`、`market`、`schema_hash`、`content_sha256`、`license_class`、`quality_status`。 |
 | `apps/api/src/data_intelligence_hub/models/market_assessment.py` | Create | `market_assessments` 模型。 |
 | `apps/api/src/data_intelligence_hub/models/data_gap.py` | Create | `data_gaps` 模型。 |
-| `apps/api/alembic/versions/202610220064_dataset_quality.py` | Create | 唯一迁移。扩展 `dataset_versions`，创建 `market_assessments` 与 `data_gaps`。 |
+| `apps/api/alembic/versions/202610220066_dataset_quality.py` | Create | 唯一迁移。扩展 `dataset_versions`，创建 `market_assessments` 与 `data_gaps`。 |
 | `apps/api/src/data_intelligence_hub/schemas/automation.py` | Modify | 数据集版本响应增加哈希/质量字段；版本预览增加评估与缺口。 |
 | `apps/api/src/data_intelligence_hub/services/automation_service.py` | Modify | 三个保存函数写入哈希；版本预览返回质量评估与缺口。 |
 | `apps/api/tests/unit/test_c8_contract_gate.py` | Create | C1 registry 只读门禁。 |
@@ -214,7 +214,7 @@ graph LR
 | 4 | Task 2、Task 3 | `DatasetContentDigest`、`compute_dataset_content_digest` |
 | 5 | `evidence_thresholds`、`evidence_grade`、工具目录稳定 `tool_id` | `PackageTier`、`PackageTierThreshold`、`QualityGateThresholds`、`PACKAGE_TIER_THRESHOLDS`、`package_threshold_for`、`TaskTemplate`、`TaskTemplate.capability_allowlist`、`get_task_template`、`list_task_templates`、`template_capability_ids`、`template_registry_digest` |
 | 6 | Task 3、Task 5 | `QualityRecord`、`DomainEvidence`、`KeyClaimBinding`、`MarketQualityInput`、`DataGapDraft`、`MarketAssessmentDraft`、`compute_market_assessment`、`allowed_conclusions`、`SkuCandidate`、`ConclusionInputs`、`ConclusionDecision`、`validate_conclusion` |
-| 7 | C4 `workbench_tasks`、C6 `runs`/`run_steps`、`DatasetVersion` | 迁移 `202610220064`、`market_assessments`/`data_gaps` 模型列 |
+| 7 | C4 `workbench_tasks`、C6 `runs`/`run_steps`、`DatasetVersion` | 迁移 `202610220066`、`market_assessments`/`data_gaps` 模型列 |
 | 8 | Task 6、Task 7、C8 模型、C2 `require_project_access`/`append_audit_event` | `get_market_assessment`、`list_data_gaps`、`set_data_gap_status`、`upsert_market_assessment`、`sync_dataset_quality_status`、`list_dataset_versions_for_task_market`、API 响应字段、路由 ACL |
 | 9 | Task 6、Task 8、C6 `run.completed`、C4 `workbench_tasks`、C7 Claim、C2 审计 | `evaluate_and_persist_market_quality`、`ensure_market_quality`、`consume_completed_runs`、`consume_run_completed_events`、`handle_run_completed_event`、`load_report_quality_sections`、backfill CLI、审计事件 |
 | 10 | Task 4 | 三个保存函数的 `content_sha256`/`schema_hash` |
@@ -3123,7 +3123,7 @@ git commit -m "feat(dataset): compute market quality scorecards and gaps"
 ### Task 7: 迁移 064 与 `dataset_versions` 扩展
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220064_dataset_quality.py`
+- Create: `apps/api/alembic/versions/202610220066_dataset_quality.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/dataset.py`
 - Create: `apps/api/tests/postgres_c8_dataset_quality/conftest.py`
 - Create: `apps/api/tests/postgres_c8_dataset_quality/test_migration_064.py`
@@ -3228,7 +3228,7 @@ from sqlalchemy import create_engine, inspect
 
 API_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = (
-    API_ROOT / "alembic/versions/202610220064_dataset_quality.py"
+    API_ROOT / "alembic/versions/202610220066_dataset_quality.py"
 )
 DATASET_COLUMNS = {
     "task_id",
@@ -3269,8 +3269,8 @@ def run_alembic(database_url: str, command: str, revision: str) -> None:
 
 def test_revision_chain_is_frozen() -> None:
     module = load_module()
-    assert module.revision == "202610220064"
-    assert module.down_revision == "202610220063"
+    assert module.revision == "202610220066"
+    assert module.down_revision == "202610220065"
 
 
 def test_migration_adds_and_removes_dataset_columns(
@@ -3287,7 +3287,7 @@ def test_migration_adds_and_removes_dataset_columns(
         assert inspector.has_table("data_gaps") is True
         assert inspector.has_table("market_assessments") is True
 
-        run_alembic(postgres_database_url, "downgrade", "202610220063")
+        run_alembic(postgres_database_url, "downgrade", "202610220065")
         downgraded_inspector = inspect(engine)
         downgraded = {
             column["name"]
@@ -3323,13 +3323,13 @@ Expected: FAIL，`FileNotFoundError` 或 `ModuleNotFoundError`，因为迁移文
 
 - [ ] **Step 3: 写迁移**
 
-Create `apps/api/alembic/versions/202610220064_dataset_quality.py`:
+Create `apps/api/alembic/versions/202610220066_dataset_quality.py`:
 
 ```python
 """Add dataset content hashes and quality projection.
 
-Revision ID: 202610220064
-Revises: 202610220063
+Revision ID: 202610220066
+Revises: 202610220065
 Create Date: 2026-10-22
 
 本迁移扩展 ``dataset_versions``，并创建 ``market_assessments`` 与 ``data_gaps``。
@@ -3345,8 +3345,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220064"
-down_revision: str | None = "202610220063"
+revision: str = "202610220066"
+down_revision: str | None = "202610220065"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -3813,7 +3813,7 @@ cd /Users/lute/Project/data_scrapy-gov-c8/apps/api
 uv run alembic heads
 ```
 
-Expected: `202610220064 (head)`。
+Expected: `202610220066 (head)`。
 
 Run the guarded PostgreSQL test:
 
@@ -3862,7 +3862,7 @@ git add apps/api/src/data_intelligence_hub/models/dataset.py \
   apps/api/src/data_intelligence_hub/models/data_gap.py \
   apps/api/src/data_intelligence_hub/models/market_assessment.py \
   apps/api/src/data_intelligence_hub/models/__init__.py \
-  apps/api/alembic/versions/202610220064_dataset_quality.py \
+  apps/api/alembic/versions/202610220066_dataset_quality.py \
   apps/api/tests/postgres_c8_dataset_quality
 git commit -m "feat(dataset): migrate dataset version hashes and quality projection"
 ```
@@ -7628,7 +7628,7 @@ uv run ruff check \
   src/data_intelligence_hub/services/automation_service.py \
   src/data_intelligence_hub/api/routes/automation.py \
   src/data_intelligence_hub/schemas/automation.py \
-  alembic/versions/202610220064_dataset_quality.py \
+  alembic/versions/202610220066_dataset_quality.py \
   tests/unit/test_c8_contract_gate.py \
   tests/unit/test_dataset_canonical_profile.py \
   tests/unit/test_c8_source_cluster_gate.py \
@@ -7669,7 +7669,7 @@ cd /Users/lute/Project/data_scrapy-gov-c8/apps/api
 uv run alembic heads
 ```
 
-Expected: `202610220064 (head)`，只有一个 head。
+Expected: `202610220066 (head)`，只有一个 head。
 
 Run the guarded PostgreSQL migration test:
 
@@ -7737,7 +7737,7 @@ Expected: 输出包含全部改动符号与受影响流程。不得出现 `parti
 - [ ] 首期只有 `tiktok_shop_maternal_newborn` 一个任务包模板。
 - [ ] Quick/Standard 阈值只在 `evidence_thresholds.py` 定义。
 - [ ] 任务包模板只在代码注册表，不建 DB 表。
-- [ ] 迁移只有 `202610220064`。
+- [ ] 迁移只有 `202610220066`。
 - [ ] `missing` 与 `blocked` 的样本数、实际值都是 JSON null。
 - [ ] 独立来源按来源簇与内容哈希折叠。
 - [ ] 资产、数据集、市场记分卡与缺口读写都调用 C2 `require_project_access`；同工作区 member 跨项目 403，跨工作区 404，member 列表只返回授权项目；`test_c8_project_acl.py` 覆盖。

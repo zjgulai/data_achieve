@@ -11,13 +11,13 @@
 ## Global Constraints
 
 - **契约与 registry 由 C1 独占。** C12 只读 `docs/design/【契约冻结】v1-表名-枚举-接口.md` 与 `configs/contracts/v1.1.0/registry.json`。C12 不修改契约、不升级版本、不追加登记、不手改 registry。开工守卫测试逐项断言 C1 已登记 C12 的八张表、枚举、`/api/privacy/*` 路径和五个错误码。缺任一项时停止 C12，把缺口交回 C1。
-- **依赖 C3、C4、C8、C10、C11。** C3 提供 `project_api_keys.status`、复合外键和密钥撤销语义。C4 提供 `workbench_tasks` 与 `models/workbench.py` 的 `WorkbenchTask`。C8 提供 `data_gaps`、`market_assessments` 与对应模型。C10 提供 `services/delivery/store.py` 的 `DeliveryStore`。C11 提供迁移 `202610220067`、法律保留表、`services/legal_hold_service.py` 的 `list_active_legal_holds` 与 `hold_applies`。C12 只读取、删除或脱敏这些行，不重建、不改写表结构与业务规则。
+- **依赖 C3、C4、C8、C10、C11。** C3 提供 `project_api_keys.status`、复合外键和密钥撤销语义。C4 提供 `workbench_tasks` 与 `models/workbench.py` 的 `WorkbenchTask`。C8 提供 `data_gaps`、`market_assessments` 与对应模型。C10 提供 `services/delivery/store.py` 的 `DeliveryStore`。C11 提供迁移 `202610220069`、法律保留表、`services/legal_hold_service.py` 的 `list_active_legal_holds` 与 `hold_applies`。C12 只读取、删除或脱敏这些行，不重建、不改写表结构与业务规则。
 - **分享首期延期。** C12 不建 `report_shares` 表，不导入分享服务，不调用分享撤销。删除执行时只追加一条 no-op 审计事件 `deletion_share_revocation_deferred`。删除证明中的 `report_shares` 计数固定为 `0`。
 - **`deletion_share_revocation_deferred` 不是新契约枚举。** 它是 `privacy_audit_events` 的事件数据，写在既有 `event_type` 字符串列中；C1 registry 不新增该事件枚举，C12 也不新增错误码或路径。C12 只在 `privacy_audit_events.event_type` 写入该字符串，测试断言事件行存在且 `report_shares` 计数为 `0`。
 - **法律保留写入归 C11。** C12 不提供法律保留写接口，不写法律保留表，不注册法律保留命令行。C12 只在确认、执行和重新评估时只读检查 active 保留。
 - **删除授权。** 删除操作使用 owner/admin 人类会话，并校验项目 ACL、二次确认和审计。owner 和 admin 可发起。admin 的申请必须由 owner 批准。确认和执行只允许 owner。项目目标还必须通过 C2 `require_project_access(..., manage=True)` 的项目 ACL。二次确认使用 15 分钟一次性 token 和 `DELETE <目标名>` 文本。Agent、项目密钥、服务账号和客户 MCP 不能发起、批准、确认或执行。
 - **不新增额外认证依赖。** C12 不导入额外认证依赖，不挂路由依赖，不定义相关错误码，不写相关文案。C1 已把该事项延期为 PG0 之后。
-- **只引入一个迁移。** 迁移文件是 `apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py`。`down_revision = "202610220067"`。迁移前唯一 head 必须是 `202610220067`。不得创建第二个 head。不得改 067 及更早迁移。068 不得创建法律保留表。
+- **只引入一个迁移。** 迁移文件是 `apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py`。`down_revision = "202610220069"`。迁移前唯一 head 必须是 `202610220069`。不得创建第二个 head。不得改 067 及更早迁移。068 不得创建法律保留表。
 - **功能开关不新增错误码。** 唯一开关是 `PRIVACY_DELETION_ENABLED`，默认 `false`。关闭时写接口返回 404 `deletion_request_not_found`，读取接口仍可用。不新增未登记的错误码。回滚点是关闭开关并回退应用版本，保留 068 已建的表；生产不执行 downgrade 068。
 - **审计只追加。** `privacy_audit_events` 普通应用角色不能 UPDATE 或 DELETE。24 个月清理只允许专用数据库角色 `dih_privacy_audit_cleaner` 按完整流失批删除。不得逐行删除活跃流。
 - **C9 不可变触发器有删除与脱敏例外，C11 保留期例外必须保留。** C9 的 `report_artifacts` 与 `report_audit_events` 有不可变触发器。068 必须替换这两个触发器函数，除专用角色外保留原有 UPDATE 限制，只增加专用角色 `dih_deletion_executor` 的例外：`report_artifacts` 允许 DELETE，`report_audit_events` 允许 UPDATE 与 DELETE。`report_audit_events` 的函数还必须保留 C11 的 067 定义：`dih_retention_cleaner` 只能 DELETE `OLD.created_at < now() - interval '730 days'` 的行。普通角色仍被拒绝。执行器用 `SET LOCAL ROLE` 进入 `dih_deletion_executor`。应用角色可以是该 `NOLOGIN` 角色的成员，成员关系只用于在受控事务内执行 `SET LOCAL ROLE`；应用角色在常态角色下没有这两张表的直接 UPDATE 或 DELETE 授权。`report_audit_events` 原地脱敏 `metadata_json` 与 `artifact_id`，保留事件类型、状态流转与时间等最小审计元数据。
@@ -47,7 +47,7 @@ uv run alembic heads
 ```text
 git merge-base 退出码 0。
 GitNexus status 不是 behind；如 behind，先 analyze。
-alembic heads 只输出 202610220067 (head)。
+alembic heads 只输出 202610220069 (head)。
 ```
 
 GitNexus 影响面门禁：
@@ -118,7 +118,7 @@ C3 的密钥撤销字段固定为 `revoked_at` 与 `status`。C12 直接更新 `
 
 | 路径 | 责任 |
 |---|---|
-| `apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py` | C12 唯一迁移：八张表、索引、约束、审计只追加触发器。 |
+| `apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py` | C12 唯一迁移：八张表、索引、约束、审计只追加触发器。 |
 | `apps/api/src/data_intelligence_hub/models/privacy_deletion.py` | 删除请求、墓碑、回执、证明、重放、DSR、隐私审计模型。 |
 | `apps/api/src/data_intelligence_hub/services/privacy_audit.py` | 追加式隐私审计链。 |
 | `apps/api/src/data_intelligence_hub/services/deletion_service.py` | 删除请求状态机、二次确认、法律保留只读检查。 |
@@ -260,7 +260,7 @@ git status --short
 cd apps/api && uv run alembic heads
 ```
 
-Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c12`；工作区干净或只有未跟踪的本计划文件；Alembic 只有一行 `202610220067 (head)`。不是单 head 时停止，C1–C11 尚未落地；不得把本迁移改号或接到 `202610210055`。后续 Run/Commit 块必须在该 worktree 内执行。
+Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c12`；工作区干净或只有未跟踪的本计划文件；Alembic 只有一行 `202610220069 (head)`。不是单 head 时停止，C1–C11 尚未落地；不得把本迁移改号或接到 `202610210055`。后续 Run/Commit 块必须在该 worktree 内执行。
 
 ---
 
@@ -269,7 +269,7 @@ Expected: 输出 `/Users/lute/Project/data_scrapy-gov-c12`；工作区干净或�
 **Files:**
 - Create: `apps/api/tests/unit/test_c12_contract_registration.py`
 - Create: `apps/api/src/data_intelligence_hub/models/privacy_deletion.py`
-- Create: `apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py`
+- Create: `apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/__init__.py`
 - Test: `apps/api/tests/unit/test_privacy_models.py`
 - Test: `apps/api/tests/postgres/test_deletion_dsr_migration.py`
@@ -1039,7 +1039,7 @@ def test_privacy_audit_events_are_append_only(postgres_database_url: str) -> Non
 def test_report_triggers_preserve_retention_and_deletion_exceptions(
     postgres_database_url: str,
 ) -> None:
-    _alembic(postgres_database_url, "downgrade", "202610220067")
+    _alembic(postgres_database_url, "downgrade", "202610220069")
     _alembic(postgres_database_url, "upgrade", "head")
 
     engine = create_engine(_sync_url(postgres_database_url))
@@ -1366,17 +1366,17 @@ Expected: FAIL。迁移 068 尚不存在，或隐私表、append-only 触发器�
 
 - [ ] **Step 9: 写迁移 068**
 
-Create `apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py`。文件头：
+Create `apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py`。文件头：
 
 ```python
 """Create privacy deletion, DSR and privacy audit tables.
 
-Revision ID: 202610220068
-Revises: 202610220067
+Revision ID: 202610220070
+Revises: 202610220069
 Create Date: 2026-10-22
 
 This migration does not create legal holds.
-C11 migration 202610220067 owns the legal_holds table.
+C11 migration 202610220069 owns the legal_holds table.
 """
 
 from __future__ import annotations
@@ -1387,8 +1387,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220068"
-down_revision: str | None = "202610220067"
+revision: str = "202610220070"
+down_revision: str | None = "202610220069"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -1915,7 +1915,7 @@ cd /Users/lute/Project/data_scrapy-gov-c12/apps/api
 uv run alembic heads
 ```
 
-Expected: 只输出 `202610220068 (head)`。
+Expected: 只输出 `202610220070 (head)`。
 
 
 - [ ] **Step 13: 提交**
@@ -1931,7 +1931,7 @@ Expected: 无输出。出现输出时停止，撤销对契约或 registry 的修
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git add apps/api/src/data_intelligence_hub/models/privacy_deletion.py \
   apps/api/src/data_intelligence_hub/models/__init__.py \
-  apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py \
+  apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py \
   apps/api/tests/unit/test_c12_contract_registration.py \
   apps/api/tests/unit/test_privacy_models.py \
   apps/api/tests/postgres/test_deletion_dsr_migration.py
@@ -5492,7 +5492,7 @@ async def execute_deletion_request(
         receipts=receipts,
         preserved=preserved,
         audit_head_digest=audit_head or request.tombstone_digest,
-        schema_revision="202610220068",
+        schema_revision="202610220070",
         completed_at=completed_at,
     )
     request.status = DeletionRequestStatus.COMPLETED.value
@@ -7771,7 +7771,7 @@ ruff: All checks passed!
 mypy: Success: no issues found
 pytest: 0 failed
 check_pytest_baseline: PASS
-alembic heads: 202610220068 (head)
+alembic heads: 202610220070 (head)
 ```
 
 - [ ] **Step 2: 迁移升降级验证**
@@ -7826,7 +7826,7 @@ Expected: 至少 10 行命中，包含 delete 与 scrub 两类处理。
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c12
 rg -n 'dih_deletion_executor' \
-  apps/api/alembic/versions/202610220068_privacy_deletion_dsr.py \
+  apps/api/alembic/versions/202610220070_privacy_deletion_dsr.py \
   apps/api/src/data_intelligence_hub/services/deletion_executor.py
 ```
 

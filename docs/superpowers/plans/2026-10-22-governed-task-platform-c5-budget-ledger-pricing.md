@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- 隔离 worktree：`/Users/lute/Project/data_scrapy-gov-c5`。C5 从 `feat/gov-c4` 创建 `feat/gov-c5`。主工作树 `/Users/lute/Project/data_scrapy` 只用于创建 worktree 和复制本计划。C0 的起始提交 `f0560ca` 不是 C5 的开工 HEAD。执行 C5 前必须已合入 C0、C1、C2、C3、C4，且 `alembic heads` 只有 `202610220060`。
+- 隔离 worktree：`/Users/lute/Project/data_scrapy-gov-c5`。C5 从 `feat/gov-c4` 创建 `feat/gov-c5`。主工作树 `/Users/lute/Project/data_scrapy` 只用于创建 worktree 和复制本计划。C0 的起始提交 `f0560ca` 不是 C5 的开工 HEAD。执行 C5 前必须已合入 C0、C1、C2、C3、C4，且 `alembic heads` 只有 `202610220062`。
 - **C1 独占 registry。** C5 只消费 C1 登记的 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions`、`authorizations.run_id`、`run_ledger_entries` 与错误码；不修改契约文档或机器 registry。C1 必须在 `tables` 与 `phases[].objects` 正式登记 `tool_prices`，并移除旧的延期登记。C1 必须登记 `(run_id, gate_id)` 部分唯一约束 `uq_authorizations_run_gate`（`WHERE run_id IS NOT NULL`）、`tool_calls.step_id`、`workbench_approval_actions` 的 13 列/3 个 CHECK/2 个索引、quota 路径、批准路径与 `tool_not_priced` / `quota_exceeded` / `approval_required` / `quota_account_missing` / `approval_not_found` / `approval_self_approval_forbidden` / `approval_state_conflict`。
 - **消费 C4 订单预算与执行限额。** `workbench_tasks.max_cost_usd` 是订单总预算；`max_pages` 与 `max_records` 是执行限额。C5 不新建订单预算表，不复制 C4 字段。`create_order_run_authorizations` 读取同一任务单的全部逐市场 run，把订单预算拆成 per-market `G-Cost` 授权：每行金额量化到 6 位小数，所有行（含 blocked G-Plan 市场）金额之和必须精确等于订单上限；主市场行取得十进制余数。`max_cost_usd` 为空时每行金额为 `0.000000`，不读取任何默认上限；enforce 模式必须阻断（`approval_required`），shadow 模式只记账并写 block。不得用 `default_run_authorization_max_cost_usd` 或任何硬编码值补足。
 - **Run 限额。** `services/run_limits.py` 提供 `RunLimits` 与 `resolve_run_limits`。`max_pages` / `max_records` 来自 C4 `workbench_tasks`；`None` 表示不限制，`0` 表示零容忍。C6 与 collector 必须在每次翻页前检查页数、每页入库后检查记录数，超限立即抛 `RunLimitExceededError`（`max_pages_exceeded` / `max_records_exceeded`）并停止，不得继续请求下一页或把剩余记录写入。
@@ -19,7 +19,7 @@
 - **统一 C2 审计。** 价格变更、额度/订单上限变更、批准/拒绝、预算阻断与释放只调用 `services.audit_log.append_audit_event` 写唯一 `audit_events` 表；动作名只用 C1 `audit-actions.v1` 的 `budget.price.changed`、`budget.limit.changed`、`budget.blocked`、`budget.released`。批准写 `budget.limit.changed` 且 `result="success"`，拒绝写同一动作且 `result="denied"`，`details.decision` 区分。额度变更只允许经 `set_project_quota_limit`，不得直接调用 `update_quota_limits` 绕过审计。不得自造 `budget.approval.*` 等未登记动作，不得建第二张审计表。
 - **PG0 严格模式。** `BUDGET_ENFORCEMENT_ENABLED=true` 与 `STRICT_PRICE_ENABLED=true` 是 PG0 发布门槛。PG0 之前只允许 shadow（两者 `false`）；PG0 发布批次必须把两者置 `true` 后才可验收。生产备份、`alembic upgrade`、`seed_tool_prices`、compose/env 变更、重启与流量切换只属于总索引 §8.4 的 PG0 发布批次；C14 只做只读健康检查与浏览器验收，不执行任何写操作。
 - **唯一价格事实源（正式表方案）。** 本计划采用正式 `tool_prices` 表；旧的延期/仅 fixture 方案作废。`tool_prices` 是唯一价格事实源；C5 建表、ORM、仓储、迁移与种子脚本。运行时只允许 `services/pricing.py` 经 `repositories/tool_prices.py` 从 `tool_prices` 读取价格。`apps/api/src/data_intelligence_hub/tool_catalog/fixtures/price_book_v1.json` 只允许被 `repositories/tool_prices.py` 的种子函数（由 `scripts/seed_tool_prices.py` 调用）和测试种子读取，用于向 `tool_prices` 写入种子，不得作为运行时价格源。禁止第二价格源：不得在运行时回退 fixture、不得硬编码第二份价格表、不得从其他配置读取价格。
-- 迁移编号：C0 从 `202610210055` 合入 B5 的 `202610210056`、`202610210057`；C1 不新增迁移；C2 增加 `202610220058`；C3 增加 `202610220059`；C4 增加 `202610220060`；C5 只新增 `202610220061`，`down_revision=202610220060`。C5 不得再使用 `202610210056`/`202610210057` 作为自己的 revision。
+- 迁移编号：C0 从 `202610210055` 合入 B5 的 `202610210056`、`202610210057`；C1 不新增迁移；C2 增加 `202610220060`；C3 增加 `202610220061`；C4 增加 `202610220062`；C5 只新增 `202610220063`，`down_revision=202610220062`。C5 不得再使用 `202610210056`/`202610210057` 作为自己的 revision。
 - `run_ledger_entries` 只有八列：`id`、`run_id`、`step_id`、`entry_kind`、`amount_usd`、`balance_after_usd`、`idempotency_key`、`created_at`。不得增删列。
 - `entry_kind` 只有六值：`estimate`、`reserve`、`accrued`、`settle`、`release`、`block`。不得改写为 `entry_type` 或 `phase`。
 - `settle` 金额必须是正数。`release` 金额必须是负数。`estimate`、`reserve`、`accrued`、`block` 金额不得为负数。
@@ -46,7 +46,7 @@
 | 项 | C5 |
 |---|---|
 | 切片 | `tool_prices` 唯一价格源与价格锁、quota 账户、tool_calls、按订单拆分 run 多 gate 授权、run limits、内联批准动作、账本、预算服务、quota 端点、C2 审计接入；不部署 |
-| 迁移 | 只新增 `202610220061_budget_ledger_pricing.py`，`down_revision=202610220060`；建 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions`，加 `authorizations.run_id` 与 `uq_authorizations_run_gate` 部分唯一索引（`WHERE run_id IS NOT NULL`），回填 quota 与授权。`tool_prices` 种子由独立脚本写入 |
+| 迁移 | 只新增 `202610220063_budget_ledger_pricing.py`，`down_revision=202610220062`；建 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions`，加 `authorizations.run_id` 与 `uq_authorizations_run_gate` 部分唯一索引（`WHERE run_id IS NOT NULL`），回填 quota 与授权。`tool_prices` 种子由独立脚本写入 |
 | 开关 | PG0 之前只允许 `BUDGET_ENFORCEMENT_ENABLED=false`（shadow）与 `STRICT_PRICE_ENABLED=false`；PG0 发布批次必须把两者置 `true` |
 | 回滚点 | PG0 批次先置两个开关 `false` → 回退代码 → 061 downgrade（`tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions` 无新数据时）→ 恢复备份；重新升级后必须重跑 `seed_tool_prices` |
 | 外部依赖 | C1 registry（含 `tool_prices`、`workbench_approval_actions`、批准路径与审计动作）、C2 `require_project_access` 与 `append_audit_event`、C4 任务单预算/限额与 blocked G-Plan、C6 执行器/collector 接线、PG0 发布批次、C14 只读验收 |
@@ -58,9 +58,9 @@ C5 依赖以下已交付接口。执行前逐项验证。任一项不满足时�
 ```text
 C0: 工作树 preflight、B5 合入、迁移 202610210056/202610210057、测试基线。
 C1: 契约 v1.1 必须已正式登记 C5 的表、列、枚举、错误码；tool_prices 在 tables 与 phases[].objects 中，且无延期登记。
-C2: owner/admin/member、项目 ACL、统一审计、迁移 202610220058。
-C3: 项目密钥与凭据治理、迁移 202610220059。
-C4: workbench_tasks（含 max_cost_usd/max_pages/max_records、primary_market/comparison_markets、status）、逐市场 run 提交、迁移 202610220060。
+C2: owner/admin/member、项目 ACL、统一审计、迁移 202610220060。
+C3: 项目密钥与凭据治理、迁移 202610220061。
+C4: workbench_tasks（含 max_cost_usd/max_pages/max_records、primary_market/comparison_markets、status）、逐市场 run 提交、迁移 202610220062。
 ```
 
 C5 消耗的现有接口：
@@ -215,10 +215,10 @@ Expected:
 feat/gov-c5
 c4_ancestor=0
 (empty git status)
-202610220060 (head)
+202610220062 (head)
 ```
 
-`f0560ca` 只是 C0 的起始提交，不是 C5 的开工 HEAD。C5 必须从 `feat/gov-c4` 创建。`c4_ancestor` 非 0、当前分支不是 `feat/gov-c5`、或 `alembic heads` 不是单行 `202610220060 (head)` 时停止。
+`f0560ca` 只是 C0 的起始提交，不是 C5 的开工 HEAD。C5 必须从 `feat/gov-c4` 创建。`c4_ancestor` 非 0、当前分支不是 `feat/gov-c5`、或 `alembic heads` 不是单行 `202610220062 (head)` 时停止。
 
 - [ ] **Step 2: Verify the contract entries**
 
@@ -301,7 +301,7 @@ record_entry: risk UNKNOWN, 0 callers resolved; text search shows only tests/uni
 | `apps/api/src/data_intelligence_hub/api/routes/quota.py` | `GET /api/quota`、`GET /api/quota/projects/{project_id}`；两个读端点都走 `require_project_access`。 |
 | `apps/api/src/data_intelligence_hub/schemas/quota.py` | quota 响应 schema：limit、reserved、used、remaining、period。 |
 | `apps/api/src/data_intelligence_hub/scripts/price_coverage_report.py` | 盘点生产 tool catalog `tool_id` 与 `tool_prices` 快照的差集；输出 JSON。 |
-| `apps/api/alembic/versions/202610220061_budget_ledger_pricing.py` | 唯一迁移。建 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions`，加 `authorizations.run_id` 与 `uq_authorizations_run_gate`，加金额符号约束，回填 quota 与零预算授权。不写入价格种子。 |
+| `apps/api/alembic/versions/202610220063_budget_ledger_pricing.py` | 唯一迁移。建 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions`，加 `authorizations.run_id` 与 `uq_authorizations_run_gate`，加金额符号约束，回填 quota 与零预算授权。不写入价格种子。 |
 | `apps/api/tests/unit/price_test_support.py` | 价格测试的 SQLite 会话与 `tool_prices` 种子。 |
 | `apps/api/tests/unit/budget_test_support.py` | 预算测试种子与内存 SQLite 会话；复用 `tool_prices` 种子。 |
 | `apps/api/tests/unit/test_tool_prices.py` | `tool_prices` ORM、仓储、种子幂等与裁剪。 |
@@ -6782,11 +6782,11 @@ git commit -m "feat(budget): add atomic estimate reserve settle release block"
 ### Task 7: 唯一迁移 061
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220061_budget_ledger_pricing.py`
+- Create: `apps/api/alembic/versions/202610220063_budget_ledger_pricing.py`
 - Test: `apps/api/tests/unit/test_budget_migration_source.py`
 
 **Interfaces:**
-- Consumes: C4 的迁移 `202610220060`。
+- Consumes: C4 的迁移 `202610220062`。
 - Produces: 表 `tool_prices`（C1 的 13 列、5 个约束、2 个索引）、`quota_accounts`、`tool_calls`、`workbench_approval_actions`（C1 的 13 列、3 个 CHECK、2 个索引）；列 `authorizations.run_id`；部分唯一索引 `uq_authorizations_run_gate`（`WHERE run_id IS NOT NULL`）；约束 `ck_run_ledger_entries_amount_sign_by_kind`；存量 quota 账户与 run 授权回填（blocked G-Plan 绑定，不创建 pass 行；其余 run 建 `0.000000` 零预算行）。迁移只建空的 `tool_prices`，价格种子由 `scripts/seed_tool_prices.py` 写入。
 
 - [ ] **Step 1: Run impact**
@@ -6818,7 +6818,7 @@ from types import ModuleType
 
 API_ROOT = Path(__file__).resolve().parents[2]
 MIGRATION_PATH = (
-    API_ROOT / "alembic/versions/202610220061_budget_ledger_pricing.py"
+    API_ROOT / "alembic/versions/202610220063_budget_ledger_pricing.py"
 )
 
 
@@ -6835,8 +6835,8 @@ def _load_migration() -> ModuleType:
 
 def test_migration_follows_c4_revision() -> None:
     module = _load_migration()
-    assert module.revision == "202610220061"
-    assert module.down_revision == "202610220060"
+    assert module.revision == "202610220063"
+    assert module.down_revision == "202610220062"
 
 
 def test_migration_creates_tool_prices_table() -> None:
@@ -6956,7 +6956,7 @@ def test_migration_leaves_a_single_head() -> None:
     )
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     assert len(lines) == 1
-    assert lines[0].startswith("202610220061")
+    assert lines[0].startswith("202610220063")
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
@@ -6972,13 +6972,13 @@ Expected: `FileNotFoundError` 或 `ModuleNotFoundError`，因为迁移文件不�
 
 - [ ] **Step 4: Implement the migration**
 
-Create `apps/api/alembic/versions/202610220061_budget_ledger_pricing.py`:
+Create `apps/api/alembic/versions/202610220063_budget_ledger_pricing.py`:
 
 ```python
 """Create tool_prices, quota_accounts, tool_calls, workbench_approval_actions and per-run authorization binding.
 
-Revision ID: 202610220061
-Revises: 202610220060
+Revision ID: 202610220063
+Revises: 202610220062
 Create Date: 2026-10-22
 
 This revision is source-only. It must not be applied to a real database without
@@ -7009,8 +7009,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220061"
-down_revision: str | None = "202610220060"
+revision: str = "202610220063"
+down_revision: str | None = "202610220062"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -7553,14 +7553,14 @@ Expected:
 
 ```text
 10 passed
-202610220061 (head)
+202610220063 (head)
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c5
-git add apps/api/alembic/versions/202610220061_budget_ledger_pricing.py \
+git add apps/api/alembic/versions/202610220063_budget_ledger_pricing.py \
   apps/api/tests/unit/test_budget_migration_source.py
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 git commit -m "feat(budget): add migration 061 with tool prices and run authorization"
@@ -8830,7 +8830,7 @@ uv run alembic heads
 Expected:
 
 ```text
-202610220061 (head)
+202610220063 (head)
 ```
 
 `alembic branches` 必须为空：
@@ -8875,7 +8875,7 @@ cd /Users/lute/Project/data_scrapy-gov-c5
 node .gitnexus/run.cjs detect-changes --scope all --repo .
 ```
 
-Expected: 输出包含 `models/tool_price.py`、`models/workbench_approval.py`、`repositories/tool_prices.py`、`repositories/workbench_approvals.py`、`scripts/seed_tool_prices.py`、`services/pricing.py`、`services/budget_service.py`、`services/run_authorizations.py`、`services/run_limits.py`、`services/workbench_approvals.py`、`repositories/quota_accounts.py`、`repositories/tool_calls.py`、`alembic/versions/202610220061_budget_ledger_pricing.py`。`partial` 与 `truncated` 必须为 false。任一为 true 时重跑；重跑仍为 true 时停止提交。
+Expected: 输出包含 `models/tool_price.py`、`models/workbench_approval.py`、`repositories/tool_prices.py`、`repositories/workbench_approvals.py`、`scripts/seed_tool_prices.py`、`services/pricing.py`、`services/budget_service.py`、`services/run_authorizations.py`、`services/run_limits.py`、`services/workbench_approvals.py`、`repositories/quota_accounts.py`、`repositories/tool_calls.py`、`alembic/versions/202610220063_budget_ledger_pricing.py`。`partial` 与 `truncated` 必须为 false。任一为 true 时重跑；重跑仍为 true 时停止提交。
 
 - [ ] **Step 8: 交 PG0 发布批次执行生产门禁，C14 只读验收（C5 不部署）
 
@@ -8887,7 +8887,7 @@ Expected: 输出包含 `models/tool_price.py`、`models/workbench_approval.py`�
 - 两个会话用同一账本 `idempotency_key` 写 `settle`，只落一行。
 - 一个 run 的两个 attempt（一失败一成功）结算后，`quota_accounts.used_usd` 等于两条 `task_runs.total_cost_usd` 之和；`run_ledger_entries` 的 `settle` 合计等于同一金额。
 - `mark_result_unknown` 与 `cancel_reservation` 后，`reserved_usd` 归零。
-- 空库迁移循环：PostgreSQL 16 空库 `upgrade 202610220061` → `downgrade 202610220060` → `upgrade 202610220061`，三次退出码 0，`alembic heads` 单行。
+- 空库迁移循环：PostgreSQL 16 空库 `upgrade 202610220063` → `downgrade 202610220062` → `upgrade 202610220063`，三次退出码 0，`alembic heads` 单行。
 - 空表启动门禁：升级后、种子前启动 API 必须失败并报 `price_book_empty`；运行种子后启动成功。
 
 **2. 生产 A（PG0 发布批次执行）**
@@ -8897,11 +8897,11 @@ Expected: 输出包含 `models/tool_price.py`、`models/workbench_approval.py`�
 - Test: `apps/api/tests/unit/test_budget_deploy_facts.py`
 - 环境文件 `/opt/data-achieve-scrapy/.env.production`。
 - 先备份 `pg_dump`、`.env.production`、镜像 ID 与 `HEAD`。
-- 迁移前确认 schema head 是 `202610220060`；不是时停止。
+- 迁移前确认 schema head 是 `202610220062`；不是时停止。
 - `alembic upgrade head` 后运行 `python -m data_intelligence_hub.scripts.seed_tool_prices`，再启动 API。
 - 种子后核对：`SELECT count(*) FROM tool_prices WHERE effective_to IS NULL;` 必须等于 `price_book_v1.json` 的 entries 数（当前 227）；`SELECT DISTINCT price_book_version FROM tool_prices WHERE effective_to IS NULL;` 只能有一行 `price_book.v1`。
 - 启动日志必须包含 `price_book_locked`，指纹非空，`entries` 等于当前有效 `tool_prices` 行数（当前 227）。
-- 健康检查 `schema_revision=schema_head=202610220061`。
+- 健康检查 `schema_revision=schema_head=202610220063`。
 - 不重建 edge；只允许 `up -d --no-deps api console` 或 `restart edge`。
 
 **3. 生产 B（PG0 发布批次执行）**
@@ -8909,9 +8909,9 @@ Expected: 输出包含 `models/tool_price.py`、`models/workbench_approval.py`�
 - 主机 `ubuntu@101.34.52.232`。
 - Compose `configs/deploy/scrapy/docker-compose.yml`（静态映射由 C5 代码提交；A/B 共用；不修改 `configs/deploy/scrapy-new/**`）。
 - 分支 `deploy/tiktok-cdo-codex`；拉取失败时按仓库运维手册重试，不得改写 `.env.production`。
-- 必须取得 B 的目标授权与备份；迁移前确认 schema head 是 `202610220060`。
+- 必须取得 B 的目标授权与备份；迁移前确认 schema head 是 `202610220062`。
 - 迁移后运行同一 `seed_tool_prices`，核对 227 行与单一 `price_book_version`，再启动 API。
-- 健康检查 `schema_revision=schema_head=202610220061`。
+- 健康检查 `schema_revision=schema_head=202610220063`。
 
 **4. 浏览器 `/settings` 与任务工作台内联批准验收（只读）**
 
@@ -8941,7 +8941,7 @@ STRICT_PRICE_ENABLED: ${STRICT_PRICE_ENABLED:-false}
 **6. 回滚**
 
 - 先设 `BUDGET_ENFORCEMENT_ENABLED=false` 与 `STRICT_PRICE_ENABLED=false`，再回退镜像。
-- `202610220061` 的 downgrade 只在 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions` 无新业务数据时执行；有数据时保留表。
+- `202610220063` 的 downgrade 只在 `tool_prices`、`quota_accounts`、`tool_calls`、`workbench_approval_actions` 无新业务数据时执行；有数据时保留表。
 - downgrade 会删除 `tool_prices`；重新升级后必须重跑 `seed_tool_prices` 恢复价格，不得手工写价格 SQL。
 - 不删除或改写 `run_ledger_entries` 历史行。
 

@@ -22,7 +22,7 @@
 - 错误信封是附加字段，不替换既有 `detail`。所有 HTTP 错误响应同时包含 `detail` 和 `error`；既有控制台与测试读取 `detail` 的行为保持不变。
 - 错误信封字段固定为 `error.code`、`error.message`、`error.request_id`、`error.details`。请求 ID 来自 `X-Request-ID`，缺失时生成 32 位小写十六进制。
 - 不实现 MFA、TOTP、WebAuthn、SSO、SCIM。不创建 `user_sessions` 表。C2 不建 `audit_chain_anchors`、`deletion_requests`、`dsr_requests` 或 `workspace_pseudonym_salts`。`report_reviewer_assignments` 由 C9 迁移 065 创建，C2 只读；C2 不得在 058 中创建或修改该表。
-- 只允许一个迁移：`202610220058_identity_acl_audit.py`，`down_revision = "202610210057"`。执行前 B5 的 056/057 必须已落地，`alembic heads` 必须只有一行 `202610220058`。
+- 只允许一个迁移：`202610220060_identity_acl_audit.py`，`down_revision = "202610220059"`。开工前 `alembic heads` 必须只有一行 `202610220059`（B5 的 claims 与 report_artifacts 已分别落到 058/059）；C2 落地后 head 变为 `202610220060`。
 - 事务提交权在 service，repository 只 `flush`。见 ADR-007 D4。审计行与业务写操作在同一个 service 事务内提交。
 - 不修改既有 `run_ledger_entries` 八列与六种 `entry_kind`。不修改 `settle` 正数、`release` 负数规则。
 - 不新增契约外的表、列、枚举值或路径。C2 只实现 C1 已登记的对象；Task 1 是只读守卫，不修改契约。发现缺失时停止，先把缺口交回 C1。C2 不建新表：本计划只允许 Task 2 的 `project_members` 与 `audit_events`；Task 7 的链头导出只读既有表，不新增表；内部审阅者接缝只读 C9 的 `report_reviewer_assignments`，不建表、不加列。
@@ -30,9 +30,9 @@
 - C4-C12 的每个项目级路由与服务必须调用 `api/authz.require_project_access`（或带审计包装 `require_project_access_audited`）。C2 不在本计划修改它们的文件；C2 只交付消费者契约、交接文档与逐切片 403/404 测试判据。项目级写操作必须 `manage=True`，读操作 `manage=False`。
 - 改既有符号前必须运行 `node .gitnexus/run.cjs impact "<symbol>" --direction upstream --repo .`。空调用集是 `UNKNOWN`，必须再用文本搜索确认。
 - 提交前必须运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。`partial: true` 或 `truncated: true` 不算通过，必须重跑。
-- C0 已完成：`pg0-baseline-v1` 标签存在，B5 已合入，Alembic head 是 `202610210057`。C1 已完成：`feat/gov-c1` 分支存在，`configs/contracts/v1.1.0/registry.json` 可生成且 checker 通过。C2 从 `feat/gov-c1` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c2 -b feat/gov-c2 feat/gov-c1`。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 1 Step 0 的 worktree 创建、只读预检与复制本计划；Step 0 之后所有 Run/Commit 命令都在 `/Users/lute/Project/data_scrapy-gov-c2` 执行。不得从 `f0560ca`、`main` 或 `pg0-baseline-v1` 直接开工。
+- C0 已完成：`pg0-baseline-v1` 标签存在，B5 已合入，Alembic head 是 `202610220059`。C1 已完成：`feat/gov-c1` 分支存在，`configs/contracts/v1.1.0/registry.json` 可生成且 checker 通过。C2 从 `feat/gov-c1` 创建独立 worktree：`git worktree add /Users/lute/Project/data_scrapy-gov-c2 -b feat/gov-c2 feat/gov-c1`。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 1 Step 0 的 worktree 创建、只读预检与复制本计划；Step 0 之后所有 Run/Commit 命令都在 `/Users/lute/Project/data_scrapy-gov-c2` 执行。不得从 `f0560ca`、`main` 或 `pg0-baseline-v1` 直接开工。
 - C1 前置登记（并行修复中的 C1 计划必须先包含，否则 C2 停止并交回缺口）：`report_reviewer_assignments.expires_at`（`datetime`，非空）、`report_reviewer_assignments.assignment_scope` 值 `report_read` / `report_review`、错误码 `reviewer_assignment_expired`（403）、错误码 `reviewer_assignment_required`（403）、错误码 `reviewer_assignment_invalid`（422）、路径 `POST /api/reports/{report_id}/reviewers` 与 `DELETE /api/reports/{report_id}/reviewers/{user_id}`、以及“审计动作注册表”小节列出 `AUDIT_ACTIONS` 全部动作名。已登记的名称不得改名。C2 不修改 C1 契约；缺失时 Task 1 输出 `C2_CONTRACT_GAP` 并停止。
-- 开工断言：`git rev-parse --verify feat/gov-c1^{commit}` 成功；`git merge-base --is-ancestor feat/gov-c1 HEAD` 退出码 0；`uv run alembic heads` 只有 `202610210057 (head)`；`configs/contracts/v1.1.0/registry.json` 存在；registry 中 `report_reviewer_assignments` 的列含 `expires_at`；契约文档含 `reviewer_assignment_expired` 与“审计动作注册表”。任一不成立就停止，先完成 C0 与 C1。
+- 开工断言：`git rev-parse --verify feat/gov-c1^{commit}` 成功；`git merge-base --is-ancestor feat/gov-c1 HEAD` 退出码 0；`uv run alembic heads` 只有 `202610220059 (head)`；`configs/contracts/v1.1.0/registry.json` 存在；registry 中 `report_reviewer_assignments` 的列含 `expires_at`；契约文档含 `reviewer_assignment_expired` 与“审计动作注册表”。任一不成立就停止，先完成 C0 与 C1。
 - 契约所有权：`docs/design/【契约冻结】v1-表名-枚举-接口.md` 与 `configs/contracts/v1.1.0/*` 只读。C1 已登记 `project_members`、`audit_events`、`workspace_members.role`、C2 路径、错误信封与错误码，并登记内部审阅者表 `report_reviewer_assignments`、审阅者路径、`reviewer_assignment_required` / `reviewer_assignment_invalid` / `reviewer_assignment_expired` 与审计动作注册表。C2 不得修改契约或 registry；守卫测试只读校验，失败时停止并交回 C1。
 - 控制台所有权：`apps/scraper-console/src/**` 与 `apps/scraper-console/e2e/**` 归 C14。C2 只提供浏览器交接清单，不改页面、不改测试、不改路由表。C2 的 API 与测试必须能独立通过。
 - 所有提交前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。`partial: true` 或 `truncated: true` 不算通过。
@@ -304,7 +304,7 @@ C1 必须新增的登记（缺失时 Task 1 停止并输出 `C2_CONTRACT_GAP`）
 | 文件 | 动作 | 责任 |
 |---|---|---|
 | `apps/api/tests/unit/test_contract_freeze_c2.py` | Create | 只读契约守卫：C2 对象必须已出现在 C1 契约与 registry。 |
-| `apps/api/alembic/versions/202610220058_identity_acl_audit.py` | Create | 唯一迁移：建表、回填 owner 成员、角色约束、审计只追加触发器。 |
+| `apps/api/alembic/versions/202610220060_identity_acl_audit.py` | Create | 唯一迁移：建表、回填 owner 成员、角色约束、审计只追加触发器。 |
 | `apps/api/src/data_intelligence_hub/models/project_member.py` | Create | `ProjectMember` 模型。 |
 | `apps/api/src/data_intelligence_hub/models/audit_event.py` | Create | `AuditEvent` 模型与常量。 |
 | `apps/api/src/data_intelligence_hub/models/workspace.py` | Modify | `WorkspaceMember.role` 约束与注释。 |
@@ -414,11 +414,11 @@ Expected:
 feat/gov-c2
 c1_ancestor=0
 C2_API_VENV_READY
-202610210057 (head)
+202610220059 (head)
 C1_REGISTRY_PRESENT
 ```
 
-`feat/gov-c2` 分支或 `/Users/lute/Project/data_scrapy-gov-c2` 路径已存在时停止，先审查旧分支或旧 worktree，不得复用。`uv sync` 非 0 时停止。Alembic head 不是 `202610210057` 或 registry 缺失时停止，先完成 C0/C1。主工作树只作为计划复制源，复制后不再写入。
+`feat/gov-c2` 分支或 `/Users/lute/Project/data_scrapy-gov-c2` 路径已存在时停止，先审查旧分支或旧 worktree，不得复用。`uv sync` 非 0 时停止。Alembic head 不是 `202610220059` 或 registry 缺失时停止，先完成 C0/C1。主工作树只作为计划复制源，复制后不再写入。
 
 - [ ] **Step 1: 写只读契约守卫测试**
 
@@ -616,7 +616,7 @@ Expected: 提交成功，`git status --porcelain -uno` 空输出。
 ### Task 2: 迁移 058 与两个新模型
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220058_identity_acl_audit.py`
+- Create: `apps/api/alembic/versions/202610220060_identity_acl_audit.py`
 - Create: `apps/api/src/data_intelligence_hub/models/project_member.py`
 - Create: `apps/api/src/data_intelligence_hub/models/audit_event.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/workspace.py:46-57`
@@ -628,7 +628,7 @@ Expected: 提交成功，`git status --porcelain -uno` 空输出。
 - Produces: `ProjectMember` 模型，字段 `workspace_id`、`project_id`、`user_id`、`created_by_user_id`、`created_at`。
 - Produces: `AuditEvent` 模型，字段 `workspace_id`、`project_id`、`sequence_number`、`actor_user_id`、`actor_type`、`action`、`resource_type`、`resource_id`、`request_id`、`result`、`details`、`prev_hash`、`event_hash`、`occurred_at`、`created_at`。
 - Produces: `AUDIT_GENESIS_HASH = "0" * 64`。
-- Produces: Alembic revision `202610220058`，`down_revision = "202610210057"`。
+- Produces: Alembic revision `202610220060`，`down_revision = "202610220059"`。
 
 - [ ] **Step 1: 预检 B5 与 worktree**
 
@@ -646,7 +646,7 @@ node .gitnexus/run.cjs status
 node .gitnexus/run.cjs impact "WorkspaceMember" --direction upstream --repo .
 ```
 
-Expected: `git tag -l pg0-baseline-v1` 有一行；`git branch --show-current` 是 `feat/gov-c2`；当前分支已包含 C0 与 C1；`git status --porcelain` 为空（计划 Markdown 除外）；`git worktree list` 不再列出 4 个 `/private/tmp/dih-*`；`alembic heads` 只有一行 `202610210057`；impact 输出列出 `WorkspaceMember` 的调用方与风险。标签或 C1 契约不存在时停止 C2，先执行 C0/C1；不得把 058 接到 055。
+Expected: `git tag -l pg0-baseline-v1` 有一行；`git branch --show-current` 是 `feat/gov-c2`；当前分支已包含 C0 与 C1；`git status --porcelain` 为空（计划 Markdown 除外）；`git worktree list` 不再列出 4 个 `/private/tmp/dih-*`；`alembic heads` 只有一行 `202610220059`；impact 输出列出 `WorkspaceMember` 的调用方与风险。标签或 C1 契约不存在时停止 C2，先执行 C0/C1；不得把 058 接到 055。
 
 - [ ] **Step 2: 写失败的迁移与模型测试**
 
@@ -664,7 +664,7 @@ from sqlalchemy import CheckConstraint, Constraint, ForeignKeyConstraint
 from data_intelligence_hub.models import Base
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = API_ROOT / "alembic/versions/202610220058_identity_acl_audit.py"
+MIGRATION_PATH = API_ROOT / "alembic/versions/202610220060_identity_acl_audit.py"
 
 
 class RecordingOp:
@@ -698,8 +698,8 @@ def _load_migration() -> MigrationModule:
 
 def test_revision_058_is_linear_after_b5() -> None:
     module = _load_migration()
-    assert module.revision == "202610220058"
-    assert module.down_revision == "202610210057"
+    assert module.revision == "202610220060"
+    assert module.down_revision == "202610220059"
 
 
 def test_revision_058_creates_the_two_tables_and_backfills_owner() -> None:
@@ -986,13 +986,13 @@ from data_intelligence_hub.models.project_member import ProjectMember
 
 - [ ] **Step 8: 写迁移 058**
 
-Create `apps/api/alembic/versions/202610220058_identity_acl_audit.py`:
+Create `apps/api/alembic/versions/202610220060_identity_acl_audit.py`:
 
 ```python
 """Identity roles, project ACL, and append-only audit.
 
-Revision ID: 202610220058
-Revises: 202610210057
+Revision ID: 202610220060
+Revises: 202610220059
 Create Date: 2026-10-22
 
 说明：
@@ -1012,8 +1012,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220058"
-down_revision: str | None = "202610210057"
+revision: str = "202610220060"
+down_revision: str | None = "202610220059"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -1237,7 +1237,7 @@ uv run pytest tests/unit/test_c2_migration_source.py -v
 uv run alembic heads
 ```
 
-Expected: `4 passed`；`alembic heads` 输出只有 `202610220058 (head)`。若本机没有 PostgreSQL，`uv run alembic upgrade head` 留到本计划末尾的 C2 验收门禁执行。
+Expected: `4 passed`；`alembic heads` 输出只有 `202610220060 (head)`。若本机没有 PostgreSQL，`uv run alembic upgrade head` 留到本计划末尾的 C2 验收门禁执行。
 
 - [ ] **Step 10: GitNexus impact 与 commit**
 
@@ -1245,7 +1245,7 @@ Expected: `4 passed`；`alembic heads` 输出只有 `202610220058 (head)`。若�
 cd /Users/lute/Project/data_scrapy-gov-c2
 node .gitnexus/run.cjs impact "WorkspaceMember" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220058_identity_acl_audit.py \
+git add apps/api/alembic/versions/202610220060_identity_acl_audit.py \
   apps/api/src/data_intelligence_hub/models/project_member.py \
   apps/api/src/data_intelligence_hub/models/audit_event.py \
   apps/api/src/data_intelligence_hub/models/workspace.py \
@@ -7285,7 +7285,7 @@ cd /Users/lute/Project/data_scrapy-gov-c2/apps/api
 uv run alembic heads
 ```
 
-Expected: 只有 `202610220058 (head)`。
+Expected: 只有 `202610220060 (head)`。
 
 - [ ] **迁移在空 PostgreSQL 15 上升级**
 
@@ -7606,7 +7606,7 @@ Expected: API 停止；数据库删除。不得删除审计行，不得临时禁
 
 1. **先备份**：备份目标数据库与 compose 使用的持久卷，记录备份路径与 SHA-256。
 2. **A 环境 canary**：先发布 A，运行冒烟与本计划 API 验收；失败时回滚 A，B 不发布。
-3. **B 环境门禁**：B 只在用户对生产 B 给出明确目标授权，且 PG0 发布负责人完成备份校验和迁移门禁后发布。C14 只读记录授权与发布窗口，不授予目标权限；迁移门禁指 `alembic heads` 只有 `202610220058 (head)`、迁移在一次性库演练通过、备份可恢复。
+3. **B 环境门禁**：B 只在用户对生产 B 给出明确目标授权，且 PG0 发布负责人完成备份校验和迁移门禁后发布。C14 只读记录授权与发布窗口，不授予目标权限；迁移门禁指 `alembic heads` 只有 `202610220060 (head)`、迁移在一次性库演练通过、备份可恢复。
 4. **失败记 `BLOCKED`**：记录失败步骤、证据路径与决策人；不得跳过门禁继续发布。
 
 C2 只修改共享 compose 的 `api.environment` 映射（默认关闭），不部署、不执行生产迁移、不写 `.env.production`、不重启容器。部署证据由 PG0 发布批次收集；C14 收集只读验收证据。

@@ -5673,13 +5673,13 @@ git commit -m "test(console): add read-only p0 acceptance script"
 - Create: `scripts/verify-pg0-switches.sh`
 
 **Interfaces:**
-- Consumes: `P0_EMAIL`、`P0_PASSWORD`、SSH key `DDDD.pem`；容器内 `Settings`；`SCRAPY_EXPECTED_SCHEMA`（PG0 发布批次提供的最终 head `202610220068`）。
-- Produces: 只读 canary/preflight 退出码；A 的 `schema revision 202610220068` 证据；四个 PG0 开关的只读证据行。
+- Consumes: `P0_EMAIL`、`P0_PASSWORD`、SSH key `DDDD.pem`；容器内 `Settings`；`SCRAPY_EXPECTED_SCHEMA`（PG0 发布批次提供的最终 head `202610220070`）。
+- Produces: 只读 canary/preflight 退出码；A 的 `schema revision 202610220070` 证据；四个 PG0 开关的只读证据行。
 - 前置：PG0 发布批次已完成 A/B 备份、迁移、compose/env 变更、部署、重启与四个开关翻转。C14 只在发布后读取证据；不执行上述任何动作。MFA 仍延期，不在 canary 里要求 MFA。
 
 - [ ] **Step 0b: 写生产 A 只读 schema preflight 包装**
 
-`scripts/preflight-production.sh` 已支持 `SCRAPY_EXPECTED_SCHEMA`，默认值属于 PG0 发布批次，C14 不修改该脚本、不把默认值改成 C6 的 `202610220062`。新增参数化包装，只允许最终 head `202610220068`，缺少环境变量时 fail-closed：
+`scripts/preflight-production.sh` 已支持 `SCRAPY_EXPECTED_SCHEMA`，默认值属于 PG0 发布批次，C14 不修改该脚本、不把默认值改成 C6 的 `202610220064`。新增参数化包装，只允许最终 head `202610220070`，缺少环境变量时 fail-closed：
 
 `scripts/preflight-production-a.sh`：
 
@@ -5691,7 +5691,7 @@ set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXPECTED="${SCRAPY_EXPECTED_SCHEMA:-}"
-FINAL_HEAD="202610220068"
+FINAL_HEAD="202610220070"
 
 if [[ "${1:-}" == "--dry-run" ]]; then
   echo "SCRAPY_EXPECTED_SCHEMA=${EXPECTED:-<required>}"
@@ -5712,7 +5712,7 @@ fi
 exec bash "$ROOT_DIR/scripts/preflight-production.sh"
 ```
 
-包装脚本只读；它继承 `SCRAPY_EXPECTED_SCHEMA` 并委托 `scripts/preflight-production.sh` 做 SSH/HTTP 只读检查。C14 不写 `.env.production`、不执行迁移、不重启容器。PG0 发布批次负责在发布证据里提供 `SCRAPY_EXPECTED_SCHEMA=202610220068`。
+包装脚本只读；它继承 `SCRAPY_EXPECTED_SCHEMA` 并委托 `scripts/preflight-production.sh` 做 SSH/HTTP 只读检查。C14 不写 `.env.production`、不执行迁移、不重启容器。PG0 发布批次负责在发布证据里提供 `SCRAPY_EXPECTED_SCHEMA=202610220070`。
 
 - [ ] **Step 1: 写 A canary**
 
@@ -5914,14 +5914,14 @@ Expected: `canary_health_ok`，随后 p0 验收全部 PASS。没有账号时记�
 
 - [ ] **Step 4b: 跑 A schema preflight（只读）**
 
-`SCRAPY_EXPECTED_SCHEMA` 由 PG0 发布批次提供，值为最终 head `202610220068`。C14 不硬编码 C6 的 `202610220062`，也不修改 `scripts/preflight-production.sh`。
+`SCRAPY_EXPECTED_SCHEMA` 由 PG0 发布批次提供，值为最终 head `202610220070`。C14 不硬编码 C6 的 `202610220064`，也不修改 `scripts/preflight-production.sh`。
 
 Run:
 ```bash
-: "${SCRAPY_EXPECTED_SCHEMA:?PG0 release batch must export 202610220068}"
+: "${SCRAPY_EXPECTED_SCHEMA:?PG0 release batch must export 202610220070}"
 bash scripts/preflight-production-a.sh
 ```
-Expected: `PASS  schema revision 202610220068`。任一检查失败时记录 `BLOCKED` 并返回 PG0 发布批次；C14 不部署、不迁移、不重启。
+Expected: `PASS  schema revision 202610220070`。任一检查失败时记录 `BLOCKED` 并返回 PG0 发布批次；C14 不部署、不迁移、不重启。
 
 - [ ] **Step 5: 跑 B preflight（只读）**
 
@@ -6018,10 +6018,10 @@ P0_EMAIL='<账号>' P0_PASSWORD='<密码>' bash scripts/canary-console-productio
 
 ## 生产 A schema preflight
 
-只读。`SCRAPY_EXPECTED_SCHEMA` 由 PG0 发布批次提供，固定为最终 head `202610220068`；C14 不修改 `scripts/preflight-production.sh` 的默认值，也不传 C6 的 `202610220062`。
+只读。`SCRAPY_EXPECTED_SCHEMA` 由 PG0 发布批次提供，固定为最终 head `202610220070`；C14 不修改 `scripts/preflight-production.sh` 的默认值，也不传 C6 的 `202610220064`。
 
 ```bash
-SCRAPY_EXPECTED_SCHEMA=202610220068 bash scripts/preflight-production-a.sh
+SCRAPY_EXPECTED_SCHEMA=202610220070 bash scripts/preflight-production-a.sh
 ```
 
 ## 生产 B preflight
@@ -6055,7 +6055,7 @@ PG0_SWITCH_HOST='ubuntu@101.34.52.232' PG0_SWITCH_KEY="$PWD/DDDD.pem" \
 | Playwright | `pnpm -C apps/scraper-console exec playwright test` |  |  |
 | p0 验收 | `bash scripts/p0_acceptance.sh` |  |  |
 | A canary | `bash scripts/canary-console-production.sh` |  |  |
-| A schema preflight | `SCRAPY_EXPECTED_SCHEMA=202610220068 bash scripts/preflight-production-a.sh` |  |  |
+| A schema preflight | `SCRAPY_EXPECTED_SCHEMA=202610220070 bash scripts/preflight-production-a.sh` |  |  |
 | B preflight | `bash scripts/preflight-production-b.sh` |  |  |
 | PG0 开关 A | `bash scripts/verify-pg0-switches.sh` |  |  |
 | PG0 开关 B | `PG0_SWITCH_HOST='ubuntu@101.34.52.232' PG0_SWITCH_KEY=DDDD.pem bash scripts/verify-pg0-switches.sh` |  |  |
@@ -6181,7 +6181,7 @@ git commit -m "docs(console): record c14 acceptance runbook and evidence"
 | 截图 | Task 11 | 9 张 PNG 与 manifest |
 | `p0_acceptance.sh` | Task 13 | PASS/FAIL 输出与退出码 |
 | 生产 A canary | Task 14 | `canary-console-production.sh` |
-| 生产 A schema preflight | Task 14 | `preflight-production-a.sh`；`SCRAPY_EXPECTED_SCHEMA=202610220068` 由 PG0 发布批次提供，断言 `schema revision 202610220068` |
+| 生产 A schema preflight | Task 14 | `preflight-production-a.sh`；`SCRAPY_EXPECTED_SCHEMA=202610220070` 由 PG0 发布批次提供，断言 `schema revision 202610220070` |
 | 生产 B preflight | Task 14 | `preflight-production-b.sh` |
 | PG0 开关只读证据 | Task 14 | `verify-pg0-switches.sh` 四项均为 true；C14 不翻转 |
 | 无迁移 | 全部 | `git diff` 边界检查 |
@@ -6213,7 +6213,7 @@ git commit -m "docs(console): record c14 acceptance runbook and evidence"
 - [ ] 种子审计只调用 C2 `append_audit_event`，使用已登记动作 `project.created`；不手写 `AuditEvent`，不缺少 `sequence_number`/`prev_hash`/`event_hash`；`test_e2e_seed_db.py` 在 SQLite 与 PostgreSQL 上都验证哈希链与重复 seed 幂等。
 - [ ] CI Postgres service 的 `POSTGRES_PASSWORD` 与 `DATABASE_URL` 密码一致；`verify-console-ci-gates.py` 解析两处并比较，不依赖单一片段字符串。
 - [ ] `WORKBENCH_TASKS_ENABLED=true` 与绝对路径 `WORKBENCH_TAXONOMY_PATH` 只出现在本地/CI E2E；生产 A/B 只由 PG0 发布批次设置，C14 只读。
-- [ ] 生产 A schema preflight 通过 `SCRAPY_EXPECTED_SCHEMA` 读取 PG0 提供的最终 head `202610220068`；不硬编码 C6 的 `202610220062`，不修改 `scripts/preflight-production.sh`。
+- [ ] 生产 A schema preflight 通过 `SCRAPY_EXPECTED_SCHEMA` 读取 PG0 提供的最终 head `202610220070`；不硬编码 C6 的 `202610220064`，不修改 `scripts/preflight-production.sh`。
 - [ ] 公开分享无页面、无入口、无分享 API 调用。
 - [ ] 没有迁移、没有新 API 路由、没有 MCP 工具改动。
 - [ ] 所有代码步骤都有实际代码，且占位符扫描通过。

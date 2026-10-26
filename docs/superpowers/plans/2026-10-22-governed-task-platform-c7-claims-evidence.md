@@ -12,7 +12,7 @@
 
 - **隔离 worktree。** 执行分支是 `feat/gov-c7`，只在 `/Users/lute/Project/data_scrapy-gov-c7` 中创建和执行。主工作树 `/Users/lute/Project/data_scrapy` 只做只读预检和本计划的复制源。不得在主工作树切换分支、暂存、提交或运行测试。Task 0 Step 0 给出完整命令；后续所有 Run/Commit 命令使用 worktree 路径。
 - **开关与回滚。** 本切片不新增布尔开关，入口受 `GOVERNED_TASK_PLATFORM_ENABLED` 控制；回滚点是迁移 `063` 的 `downgrade` 与发布前数据库备份，生产回滚用备份恢复或新迁移，不手改 `alembic_version`。
-- **基线固定。** 实现分支必须从前置切片 C6 的前置分支 `feat/gov-c6` 创建独立 worktree：`cd /Users/lute/Project/data_scrapy && git worktree prune && git worktree add /Users/lute/Project/data_scrapy-gov-c7 -b feat/gov-c7 feat/gov-c6`。创建后执行 `cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv sync --locked --dev`。该分支已包含 C0–C6 与 C1 契约，Alembic head 必须是 `202610220062`。不得在 `feat/b5-workbench` 或 `main` 上直接开发，也不得在 worktree 内合并 C1–C6。B5 只是报告与 claim 的实现基线，不再作为分支起点。不得另建第二套 claims/evidence 模型、仓储或服务；不得复制 `modules/evidence`。
+- **基线固定。** 实现分支必须从前置切片 C6 的前置分支 `feat/gov-c6` 创建独立 worktree：`cd /Users/lute/Project/data_scrapy && git worktree prune && git worktree add /Users/lute/Project/data_scrapy-gov-c7 -b feat/gov-c7 feat/gov-c6`。创建后执行 `cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv sync --locked --dev`。该分支已包含 C0–C6 与 C1 契约，Alembic head 必须是 `202610220064`。不得在 `feat/b5-workbench` 或 `main` 上直接开发，也不得在 worktree 内合并 C1–C6。B5 只是报告与 claim 的实现基线，不再作为分支起点。不得另建第二套 claims/evidence 模型、仓储或服务；不得复制 `modules/evidence`。
 - **C4/C5/C6 前置。** C4 的运行与步骤、C5 的证据写入、C6 的合同装配必须已包含在 `feat/gov-c6` 分支中。C7 只消费以下已冻结接口：`runs.id`、`runs.evidence_grade`、`run_evidence_grades`、`evidences` 行、`report_contract` 的 `SCHEMA_VERSION` 与 `CANONICAL_PROFILE_ID`。缺任一接口时，Task 0 直接失败，不进入编码。
 - **契约只读。** C1 已把 C7 需要的全部新列、枚举与约束名登记到 `docs/design/【契约冻结】v1-表名-枚举-接口.md` 与 `configs/contracts/v1.1.0/registry.json`。C7 只读 registry 做守卫，不修改契约文档、不修改 registry、不追加实现决定。Task 1 缺任一登记项时停止并返回 C1 补充登记；C7 不落地未登记对象。契约文档与 `registry.json` 不在本切片的修改清单和提交范围内。冻结表名、主键、`claims.state` 五值、`run_ledger_entries` 八列与六种 `entry_kind` 不得修改。
 - **Canonical profile 只能由 C1 冻结。** B5 `canonical_json_bytes` 的 docstring 明确写着“RFC 8785 的近似，不是完整实现”。C1 必须导出 `CANONICAL_PROFILE_ID = "dih-canonical-json-v1"`，并把 `SCHEMA_VERSION` 升级到 `1.1.0`；`claims[].text_en`、`risk_flags`、`review_status`、`independent_source_count`、`blocked_reason`、嵌套 `scope`、`owner` 必须进入 1.1.0 合同。`dih-canonical-json-v1` 绑定 B5 现有 `canonical_json_bytes` 的近似 RFC 8785 行为；严格 RFC 8785 升级延期，未来若实施必须使用不同 ID `dih-canonical-json-rfc8785-v1`，不得改变 v1 的字节输出。C7 只从 `schemas.report_contract` import `CANONICAL_PROFILE_ID`、`SCHEMA_VERSION` 与 `canonical_json_bytes`，不定义本地副本；所有审核签名调用 C1 的 `canonical_json_bytes`。C7 把 profile ID 存进 `claims.reviewed_profile`，验证时不一致即拒绝发布。
@@ -37,10 +37,10 @@
 |---|---|---|
 | 前置分支 | `feat/gov-c6`（C6 完成） | C7 worktree 起点；必须含 C0–C6 与 C1 契约 |
 | B5 现有迁移头 | `202610210057` | 056 claims、057 report_artifacts |
-| C7 迁移 | `202610220063` | 本计划唯一迁移 |
-| C7 迁移的 `down_revision` | `202610220062` | C6 的迁移头 |
+| C7 迁移 | `202610220065` | 本计划唯一迁移 |
+| C7 迁移的 `down_revision` | `202610220064` | C6 的迁移头 |
 | 现有 claim 测试 | `apps/api/tests/unit/test_claims.py` 21 passed | 基线回归 |
-| 现有升级链 | `alembic heads` → `202610220062 (head)` | 前置分支上必须只有一行 |
+| 现有升级链 | `alembic heads` → `202610220064 (head)` | 前置分支上必须只有一行 |
 | 内部审核指派 | `report_reviewer_assignments` 表与 `assignment_scope`（`report_read`/`report_review`） | C1 登记，C2 迁移与实现；C7 只读 service |
 | 统一审计 | C2 `services.audit_log.append_audit_event()` 与 `audit_events` 表 | Claim 审核/覆盖/阻断同一事务追加 |
 | 项目 ACL | C2 `api.authz.require_project_access()` | Claim/evidence 只读 API 唯一授权接缝 |
@@ -59,7 +59,7 @@ C7 不新建表。所有新列都挂在 B5 已冻结的三张表上：
 
 | 文件 | 职责 |
 |---|---|
-| `apps/api/alembic/versions/202610220063_claim_evidence_completeness.py` | 唯一迁移：补列、CHECK、索引、可空性、workspace/project 回填 |
+| `apps/api/alembic/versions/202610220065_claim_evidence_completeness.py` | 唯一迁移：补列、CHECK、索引、可空性、workspace/project 回填 |
 | `apps/api/src/data_intelligence_hub/tool_catalog/markets.py` | 11 个正式市场的唯一常量 |
 | `apps/api/src/data_intelligence_hub/services/source_clusters.py` | 原始记录簇纯函数：URL 规范化、簇键推导、独立性分配 |
 | `apps/api/src/data_intelligence_hub/services/claim_semantics.py` | C9 消费的语义证据纯函数：`do_not_enter`、`confirmed`、Quick 规则 |
@@ -259,7 +259,7 @@ Expected: 第一行 `1.1.0`；第二行 `dih-canonical-json-v1`；输出 `C1_REG
 cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv run alembic heads
 ```
 
-Expected: `202610220062 (head)`，只有一行。失败时停止，先完成 C6。
+Expected: `202610220064 (head)`，只有一行。失败时停止，先完成 C6。
 
 - [ ] **Step 3b: 确认 C2 内部审核、统一审计与项目 ACL 接口**
 
@@ -1385,13 +1385,13 @@ git commit -m "feat(claims): 冻结证据等级下限与状态上限"
 - Modify: `apps/api/src/data_intelligence_hub/models/claim.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/intelligence.py`
 - Modify: `apps/api/src/data_intelligence_hub/schemas/intelligence.py:191-230`
-- Create: `apps/api/alembic/versions/202610220063_claim_evidence_completeness.py`
+- Create: `apps/api/alembic/versions/202610220065_claim_evidence_completeness.py`
 - Test: `apps/api/tests/unit/test_claim_evidence_schema.py`
 - Test: `apps/api/tests/postgres/test_claim_evidence_migration.py`
 
 **Interfaces:**
 - Consumes: 契约 v1.1 的列名、枚举、约束名。
-- Produces: `Claim`、`ClaimEvidence`、`Evidence` 新列与 CHECK；迁移 `202610220063`。
+- Produces: `Claim`、`ClaimEvidence`、`Evidence` 新列与 CHECK；迁移 `202610220065`。
 
 - [ ] **Step 1: 写失败的 schema/迁移测试**
 
@@ -1411,7 +1411,7 @@ from data_intelligence_hub.models.claim import Claim, ClaimEvidence
 from data_intelligence_hub.models.intelligence import Evidence
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = API_ROOT / "alembic/versions/202610220063_claim_evidence_completeness.py"
+MIGRATION_PATH = API_ROOT / "alembic/versions/202610220065_claim_evidence_completeness.py"
 
 CLAIM_COLUMNS = {
     "text_en",
@@ -1521,8 +1521,8 @@ def _load_migration() -> ModuleType:
 
 def test_migration_revision_and_source_only() -> None:
     module = _load_migration()
-    assert module.revision == "202610220063"
-    assert module.down_revision == "202610220062"
+    assert module.revision == "202610220065"
+    assert module.down_revision == "202610220064"
     assert "This revision is source-only." in (module.__doc__ or "")
 
 
@@ -1568,7 +1568,7 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c7/apps/api && uv run pytest tests/unit/test_claim_evidence_schema.py -q
 ```
 
-Expected: FAIL，`FileNotFoundError: 202610220063_claim_evidence_completeness.py`；模型缺新列。
+Expected: FAIL，`FileNotFoundError: 202610220065_claim_evidence_completeness.py`；模型缺新列。
 
 - [ ] **Step 3: 修改模型**
 
@@ -1873,13 +1873,13 @@ from sqlalchemy.sql.elements import conv
 
 - [ ] **Step 4: 写迁移 063**
 
-创建 `apps/api/alembic/versions/202610220063_claim_evidence_completeness.py`：
+创建 `apps/api/alembic/versions/202610220065_claim_evidence_completeness.py`：
 
 ```python
 """Complete claims, claim_evidence and evidences for governed claim delivery.
 
-Revision ID: 202610220063
-Revises: 202610220062
+Revision ID: 202610220065
+Revises: 202610220064
 Create Date: 2026-10-22
 
 This revision is source-only. It must not be applied to a real database without
@@ -1904,8 +1904,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220063"
-down_revision: str | None = "202610220062"
+revision: str = "202610220065"
+down_revision: str | None = "202610220064"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -2232,8 +2232,8 @@ async def _columns(engine: AsyncEngine, table: str) -> set[str]:
 @pytest.mark.asyncio
 async def test_062_to_063_and_back() -> None:
     url = _database_url()
-    _alembic(url, "upgrade", "202610220062")
-    _alembic(url, "upgrade", "202610220063")
+    _alembic(url, "upgrade", "202610220064")
+    _alembic(url, "upgrade", "202610220065")
     engine = create_async_engine(url)
     try:
         claim_columns = await _columns(engine, "claims")
@@ -2242,7 +2242,7 @@ async def test_062_to_063_and_back() -> None:
         evidence_columns = await _columns(engine, "evidences")
         for name in ("workspace_id", "source_cluster_key", "source_cluster_basis"):
             assert name in evidence_columns
-        _alembic(url, "downgrade", "202610220062")
+        _alembic(url, "downgrade", "202610220064")
         assert "text_en" not in await _columns(engine, "claims")
         _alembic(url, "upgrade", "head")
     finally:
@@ -2261,7 +2261,7 @@ def test_single_head_is_063() -> None:
         text=True,
     )
     assert result.stdout.count("(head)") == 1
-    assert "202610220063" in result.stdout
+    assert "202610220065" in result.stdout
 ```
 
 Run:
@@ -2292,7 +2292,7 @@ node .gitnexus/run.cjs impact "Claim" --direction upstream --repo .
 node .gitnexus/run.cjs impact "ClaimEvidence" --direction upstream --repo .
 node .gitnexus/run.cjs impact "Evidence" --direction upstream --repo .
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220063_claim_evidence_completeness.py apps/api/src/data_intelligence_hub/models/claim.py apps/api/src/data_intelligence_hub/models/intelligence.py apps/api/src/data_intelligence_hub/schemas/intelligence.py apps/api/tests/unit/test_claim_evidence_schema.py apps/api/tests/postgres/test_claim_evidence_migration.py
+git add apps/api/alembic/versions/202610220065_claim_evidence_completeness.py apps/api/src/data_intelligence_hub/models/claim.py apps/api/src/data_intelligence_hub/models/intelligence.py apps/api/src/data_intelligence_hub/schemas/intelligence.py apps/api/tests/unit/test_claim_evidence_schema.py apps/api/tests/postgres/test_claim_evidence_migration.py
 git commit -m "feat(claims): 主张与证据治理字段及迁移 063"
 ```
 
@@ -6933,7 +6933,7 @@ Expected:
 
 - Ruff：`All checks passed!`
 - mypy：`Success: no issues found`
-- Alembic：`202610220063 (head)`（只有一行）
+- Alembic：`202610220065 (head)`（只有一行）
 
 - [ ] **Step 4: GitNexus 全量变更检查**
 
@@ -7017,7 +7017,7 @@ issues = validate_claim_semantics(
 
 - [ ] C1 registry 为 v1.1，登记 C7 需要的全部新列、枚举、约束名、`report_reviewer_assignments` 与 `assignment_scope`、Claim 错误码及 `claims.list`/`claims.detail` 的 ACL 错误码；C7 未修改契约文档或 registry；Task 1 缺项时停止并返回 C1。
 - [ ] C1 导出 `CANONICAL_PROFILE_ID`，`SCHEMA_VERSION == "1.1.0"`，`canonical_json_bytes` 是唯一规范化入口。
-- [ ] 迁移只有 `202610220063_claim_evidence_completeness.py`，`down_revision='202610220062'`，`alembic heads` 单头 `202610220063`。
+- [ ] 迁移只有 `202610220065_claim_evidence_completeness.py`，`down_revision='202610220064'`，`alembic heads` 单头 `202610220065`。
 - [ ] PostgreSQL 迁移测试 `062→063→062→head` 通过，且 `alembic heads` 只有一行。
 - [ ] `claims`、`claim_evidence`、`evidences` 新列与 CHECK 名和模型逐字一致。
 - [ ] L0/L1 创建 Claim 被拒；L2→hypothesis、L3→directional、L4→confirmed 上限生效。

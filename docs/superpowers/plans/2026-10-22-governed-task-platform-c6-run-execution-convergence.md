@@ -12,9 +12,9 @@
 
 - **契约优先。** `docs/design/【契约冻结】v1-表名-枚举-接口.md` 是机器契约。本文与契约冲突时，以契约冻结为准。
 - **隔离 worktree。** 执行分支是 `feat/gov-c6`，从 `feat/gov-c5` 创建，只在 `/Users/lute/Project/data_scrapy-gov-c6` 中创建和执行。主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 Step 0 的 `git worktree prune`、前驱断言与 `cp` 只读源；不得在主工作树切换分支、暂存、提交或运行测试。Task 0 Step 0 给出完整命令；后续所有 Run/Commit 命令的根目录是 `/Users/lute/Project/data_scrapy-gov-c6`，包括 `apps/api` 子路径。
-- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C1 还必须登记本片段的取消幂等列与统一审计动作（见下两条）。C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C4 还必须提供 `services/run_creation.create_run_with_audit` 作为 `run.created` 的唯一写入口；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call`、预算服务与 `services/run_limits.py`。C6 开始时 Alembic head 必须是 `202610220061`。任一前置缺失时停止，不得另造并行结构。
-- **基线。** 本文编写时 HEAD 是 `f0560ca`，Alembic head 是 `202610210055`。C0/C1/C2 合入后，C6 开始时 Alembic head 必须是 `202610220061`。C6 只新增一个迁移 `202610220062`；C6 结束时 head 是 `202610220062`，但这不是平台最终 head。master plan 的后续切片继续追加 `202610220063`–`202610220068`，平台最终 head 是 `202610220068`。生产 preflight 的期望 schema 由 `SCRAPY_EXPECTED_SCHEMA` 提供，PG0 发布批次按 master plan 的最终迁移 `202610220068` 设置；C6 与 C14 都不得把 `202610220062` 写死为生产期望值。
-- **C1 取消幂等登记前置。** 本文件不修改 C1。C6 Task 1 开始前，C1 必须在 `runs` 注册表中登记 `cancel_idempotency_key_hash`（`string(64)`，可空，`status: extend`，`phase: C6`）、`cancel_reason_code`（`string(80)`，可空，`status: extend`，`phase: C6`）与部分唯一索引 `uq_runs_workspace_cancel_idempotency (workspace_id, cancel_idempotency_key_hash) WHERE cancel_idempotency_key_hash IS NOT NULL`；并在路径注册表登记 `runs.cancel`（`POST /api/runs/{run_id}/cancel`，`idempotent: true`，请求字段 `idempotency_key`、`reason_code`，错误码 `idempotency_conflict`）。C1 已登记的 `runs.idempotency_key_hash` 与 `uq_runs_workspace_idempotency` 是创建幂等，不得复用为取消幂等。缺失时停止；不得把取消幂等落到内存缓存、流程变量或第二张表。这两列与索引由 `202610220062` 落库，不新增第二个迁移。
+- **前置计划。** C0、C1、C2 是任务文本列出的契约前置；master plan 还要求 C4、C5 先合入。C1 必须登记 `run_steps.attempt_no` 等扩展列、`run_step_attempts` 的精确列/约束/索引与 attempt 状态；C1 还必须登记本片段的取消幂等列与统一审计动作（见下两条）。C4 必须在版本创建时把执行步骤写入 `workflow_versions.plan_payload["execution_steps"]` 并创建/校验 `collection_tasks`（形状见 Task 3）；C4 还必须提供 `services/run_creation.create_run_with_audit` 作为 `run.created` 的唯一写入口；C5 提供 `RunBudget`、`start_tool_call` / `complete_tool_call`、预算服务与 `services/run_limits.py`。C6 开始时 Alembic head 必须是 `202610220063`。任一前置缺失时停止，不得另造并行结构。
+- **基线。** 本文编写时 HEAD 是 `f0560ca`，Alembic head 是 `202610210055`。C0/C1/C2 合入后，C6 开始时 Alembic head 必须是 `202610220063`。C6 只新增一个迁移 `202610220064`；C6 结束时 head 是 `202610220064`，但这不是平台最终 head。master plan 的后续切片继续追加 `202610220065`–`202610220070`，平台最终 head 是 `202610220070`。生产 preflight 的期望 schema 由 `SCRAPY_EXPECTED_SCHEMA` 提供，PG0 发布批次按 master plan 的最终迁移 `202610220070` 设置；C6 与 C14 都不得把 `202610220064` 写死为生产期望值。
+- **C1 取消幂等登记前置。** 本文件不修改 C1。C6 Task 1 开始前，C1 必须在 `runs` 注册表中登记 `cancel_idempotency_key_hash`（`string(64)`，可空，`status: extend`，`phase: C6`）、`cancel_reason_code`（`string(80)`，可空，`status: extend`，`phase: C6`）与部分唯一索引 `uq_runs_workspace_cancel_idempotency (workspace_id, cancel_idempotency_key_hash) WHERE cancel_idempotency_key_hash IS NOT NULL`；并在路径注册表登记 `runs.cancel`（`POST /api/runs/{run_id}/cancel`，`idempotent: true`，请求字段 `idempotency_key`、`reason_code`，错误码 `idempotency_conflict`）。C1 已登记的 `runs.idempotency_key_hash` 与 `uq_runs_workspace_idempotency` 是创建幂等，不得复用为取消幂等。缺失时停止；不得把取消幂等落到内存缓存、流程变量或第二张表。这两列与索引由 `202610220064` 落库，不新增第二个迁移。
 - **C1 审计动作登记前置。** C1 现有 `audit_actions` 只登记了 `run.cancelled` 与 `run.completed`（owner 都是 C6）。C6 Task 1 开始前，C1 必须在 `audit_actions.actions` 登记 `run.created`（owner C4）与 `run.cancel_requested`、`run.retry_scheduled`、`run.retry_exhausted`、`run.failed`（owner 都是 C6）五个动作；`run.created` 只由 C4 接缝写，C6 不直接写；C2 的 `services.audit_log.AUDIT_ACTIONS` 必须与注册表逐字一致。缺失时停止，不得用 `task.retried` 代替，也不得自造未登记动作名。
 - **执行真相。** `runs` 是运行状态唯一事实源。`run_steps` 是步骤执行唯一事实源。`task_runs` 是单次 collector 调用唯一事实源。其他表只能保存投影。
 - **1─1 约束。** 一个逻辑 step 只有一行 `run_steps`，并只关联一条最终 `task_runs`。每次 attempt 新建一行 `run_step_attempts` 和一行独立 `task_runs`。`run_steps.attempt_no` 记录最终 attempt 号。绝不按 attempt 写 `run_steps`。
@@ -26,7 +26,7 @@
 - **质量链解耦。** C6 不 import `services.dataset_quality`、`services.market_quality` 或任何 C8 模块，不调用 `evaluate_and_persist_market_quality` / `ensure_market_quality`，不写 `market_assessments` / `data_gaps`。run 的全部 step 进入终态且 `runs.status='completed'` 后，C6 通过 C2 的 `services.audit_log.append_audit_event` 在同一事务追加一条 `action='run.completed'` 审计事件：`resource_type='run'`、`resource_id=str(run.id)`、`actor_type='system'`、`result='success'`。`details` 只含 `run_id`、`collection_task_id`、`workflow_version_id`、`market_code`、`run_status`、`outcome`、`records_count`、`finished_at`、`step_indexes`。`failed` 与 `cancelled` 不发 `run.completed`，分别发 `run.failed` 与 `run.cancelled`。质量评估接口 `evaluate_and_persist_market_quality(session, run_id, task_id, market_code, package_type)` 由 C8 计划定义；C8 的消费者从 `run.completed` 解析 `run_id` 并调用它。重复事件由 C8 的 `uq_market_assessments_task_market` 与 scorecard hash 幂等吸收；C6 不做质量幂等。
 - **取消。** 取消只写 `runs.status=cancelled`、`finished_at`、`cancel_idempotency_key_hash`、`cancel_reason_code`，并清空 `lease_expires_at`。取消不删除 step、attempt、task_run 或账本。执行器不得把终态写回已取消的 run。取消幂等按上面“取消幂等”条目执行；重复取消不再调用 C5 的预算释放。
 - **租约。** 领取、续期、释放都按 `worker_id` 围栏。执行器在每次 step 与每次 attempt 前检查租约。租约丢失时抛 `RunLeaseLostError`，worker 回滚未提交写入。
-- **迁移单 head。** 每个迁移任务后运行 `uv run alembic heads`，输出必须只有一行。C6 的本地退出 head 是 `202610220062`。后续切片再追加 `202610220063`–`202610220068`；平台最终 head 是 master plan 的 `202610220068`，PG0 发布批次用它作为生产验收目标。C6 的 `uv run alembic heads` 断言只证明本切片没有被分叉，不证明生产最终 schema。
+- **迁移单 head。** 每个迁移任务后运行 `uv run alembic heads`，输出必须只有一行。C6 的本地退出 head 是 `202610220064`。后续切片再追加 `202610220065`–`202610220070`；平台最终 head 是 master plan 的 `202610220070`，PG0 发布批次用它作为生产验收目标。C6 的 `uv run alembic heads` 断言只证明本切片没有被分叉，不证明生产最终 schema。
 - **GitNexus 强制。** 编辑任何函数、类或方法前，先运行 `node .gitnexus/run.cjs impact "<symbol>" --direction upstream --repo .`。报告调用方、流程和 `risk`。`risk` 为 HIGH 或 CRITICAL 时先告警并停下。`risk` 为 UNKNOWN 时不得当作安全，必须用文本搜索确认调用方。
 - **提交前图分析。** 每个 commit 前运行 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。输出含 `partial: true` 或 `truncated: true` 时不算通过，必须重跑。最终交接再运行 `detect-changes --scope compare --base-ref main --repo .`。
 - **TDD。** 每个代码任务先写失败测试，运行并确认失败，再写最小实现，运行并确认通过，最后提交。
@@ -37,8 +37,8 @@
 - **失败 attempt 成本。** 每个 attempt 都有自己的 `task_runs`。`RunBudget.settle` 必须汇总该 run 全部 attempt 的 `task_runs.total_cost_usd`，`run_steps` 只保存最终投影。不得只结算最终 step。
 - **C5 run limits 消费。** C6 在每次 attempt 前调用 C5 `services.run_limits.resolve_run_limits(session, run_id=run.id)`，把 `RunLimits.max_pages` / `max_records` 原样传给 collector；`None` 表示不限制，`0` 表示零容忍。每次翻页前检查页数，每页入库后检查记录数，超限立即抛 C5 `RunLimitExceededError`（`max_pages_exceeded` / `max_records_exceeded`），停止请求下一页且不写剩余记录。C6 不复制限额解析逻辑、不新建限额表、不修改 `services/run_limits.py`；该消费不新增迁移，仍在 062 内完成。
 - **Blocked gate。** 执行前检查 `authorizations` 是否存在 `gate_status='blocked'` 的 `G-Plan`；存在时 run 保持 `queued`，不领取、不执行、不写 `failed`。
-- **开关与回滚点。** `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false`。C6 本切片不打开开关；PG0 发布批次在 C6 通过后打开 `RUN_WORKER_ENABLED`，在 C14 只读验收后打开 `RUN_EXECUTION_CONVERGENCE_ENABLED`，并由 PG0 重启 api。C14 只读验证 `/api/health`，不改 `.env.production`、不重启容器。回滚由 PG0 发布批次执行：先关两个开关并重启 api，再回退镜像；`202610220062` downgrade 只在 `run_step_attempts` 为空时执行。
-- **生产 A/B 门禁。** 本切片不直接部署：C6 不改生产、不应用迁移、不重启容器、不切换开关。生产备份、迁移应用、A/B 发布、容器重启与开关切换只由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读健康检查、canary、preflight 与浏览器验收。PG0 发布批次必须先备份，再按 A、B 顺序应用迁移，并保持 A 的 edge 固定 IP 不被重建。生产 B 使用 `configs/deploy/scrapy/docker-compose.yml`，与 A 共用；不修改 `configs/deploy/scrapy-new/**`。全量完成后生产期望 head 是 `202610220068`，`scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取该值；C6 的本地产物仍是 062。
+- **开关与回滚点。** `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false`。C6 本切片不打开开关；PG0 发布批次在 C6 通过后打开 `RUN_WORKER_ENABLED`，在 C14 只读验收后打开 `RUN_EXECUTION_CONVERGENCE_ENABLED`，并由 PG0 重启 api。C14 只读验证 `/api/health`，不改 `.env.production`、不重启容器。回滚由 PG0 发布批次执行：先关两个开关并重启 api，再回退镜像；`202610220064` downgrade 只在 `run_step_attempts` 为空时执行。
+- **生产 A/B 门禁。** 本切片不直接部署：C6 不改生产、不应用迁移、不重启容器、不切换开关。生产备份、迁移应用、A/B 发布、容器重启与开关切换只由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读健康检查、canary、preflight 与浏览器验收。PG0 发布批次必须先备份，再按 A、B 顺序应用迁移，并保持 A 的 edge 固定 IP 不被重建。生产 B 使用 `configs/deploy/scrapy/docker-compose.yml`，与 A 共用；不修改 `configs/deploy/scrapy-new/**`。全量完成后生产期望 head 是 `202610220070`，`scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取该值；C6 的本地产物仍是 062。
 - **不做。** 不做客户 MCP 八个工具。不做报告合同、报告渲染、交付包。不做 UI。不做价格簿、预算 reserve、退款。不做新 attempt HTTP 路由。
 - **提交粒度。** 每个任务至少一个 commit。提交消息使用 `feat(run):`、`fix(run):`、`test(run):`、`docs(run):` 前缀。
 
@@ -47,10 +47,10 @@
 | 项 | C6 |
 |---|---|
 | 切片 | 多步骤 run、attempt、瞬态重试、取消幂等、租约、统一审计、旧 quick/scheduler/run-now 收敛 |
-| 迁移 | 只新增 `202610220062_run_step_attempts.py`，`down_revision=202610220061`；建 `run_step_attempts`、扩 `run_steps` 列、加 `run_steps.task_run_id` 部分唯一索引、加 `runs` 取消幂等列与 `uq_runs_workspace_cancel_idempotency` |
+| 迁移 | 只新增 `202610220064_run_step_attempts.py`，`down_revision=202610220063`；建 `run_step_attempts`、扩 `run_steps` 列、加 `run_steps.task_run_id` 部分唯一索引、加 `runs` 取消幂等列与 `uq_runs_workspace_cancel_idempotency` |
 | 开关 | `RUN_EXECUTION_CONVERGENCE_ENABLED` 默认 `false`；`RUN_WORKER_ENABLED` 默认 `false` |
 | 回滚点 | 两个开关置 false → 回退代码 → 062 downgrade（attempt 表为空时）→ 恢复备份。取消幂等列随 062 回退；回退后旧代码不读这些列 |
-| 部署 | 本切片不直接部署；迁移应用、A/B 发布与开关切换由 PG0 发布批次执行；C14 只做只读健康、canary、preflight 与浏览器验收。生产期望 schema 由 master/final `202610220068` 与 `SCRAPY_EXPECTED_SCHEMA` 决定，不是 C6 的 062 |
+| 部署 | 本切片不直接部署；迁移应用、A/B 发布与开关切换由 PG0 发布批次执行；C14 只做只读健康、canary、preflight 与浏览器验收。生产期望 schema 由 master/final `202610220070` 与 `SCRAPY_EXPECTED_SCHEMA` 决定，不是 C6 的 062 |
 | 外部依赖 | C1 attempt 契约、C1 取消幂等列与审计动作登记、C4 `execution_steps` 与 `services/run_creation.create_run_with_audit`、C5 `RunBudget` / `run_limits`、PG0 发布批次与 C14 只读验收；下游 C8 消费 `run.completed`，C6 不回依赖 C8 |
 
 ## Non-Goals
@@ -61,8 +61,8 @@
 - 不新增 attempt 查询路由。C14 若需要浏览器逐 attempt 视图，先升级冻结契约并新增路径。
 - 不验证 Postgres 并发。C6 在隔离 PostgreSQL 上执行；C14 只读复核结果。
 - 不修改 C5 的 `services/run_budget.py` 或 `services/run_limits.py`；C6 只导入并消费，不复制 `RunBudget` 或限额解析。
-- 不新增 `202610220062` 之外的迁移；取消幂等列与索引属于该迁移。
-- 不把 C6 本地 head `202610220062` 当作生产最终 schema；最终 head 是 `202610220068`。
+- 不新增 `202610220064` 之外的迁移；取消幂等列与索引属于该迁移。
+- 不把 C6 本地 head `202610220064` 当作生产最终 schema；最终 head 是 `202610220070`。
 - 不把 fixture 的 `workflow_runs` 接入生产执行。
 - 不计算市场质量、不写 `market_assessments` / `data_gaps`、不提供质量 backfill；这些属于 C8。
 - 不新建第二张审计表，不自造未登记审计动作名。
@@ -72,7 +72,7 @@
 
 | 文件 | 动作 | 责任 |
 |---|---|---|
-| `apps/api/alembic/versions/202610220062_run_step_attempts.py` | Create | 唯一迁移。创建 `run_step_attempts`，扩展 `run_steps` 与 `runs` 的取消幂等列。 |
+| `apps/api/alembic/versions/202610220064_run_step_attempts.py` | Create | 唯一迁移。创建 `run_step_attempts`，扩展 `run_steps` 与 `runs` 的取消幂等列。 |
 | `apps/api/src/data_intelligence_hub/models/run.py` | Modify | 扩展 `RunStep` 的 attempt、依赖与工具列；扩展 `Run` 的取消幂等列。 |
 | `apps/api/src/data_intelligence_hub/models/run_attempt.py` | Create | `RunStepAttempt` 与状态枚举。 |
 | `apps/api/src/data_intelligence_hub/models/__init__.py` | Modify | 导出新模型。 |
@@ -202,7 +202,7 @@ Expected: `root=ok`；`c4_run_creation_seam=present`；`main_tree_commands_after
 ### Task 1: 迁移 062、`run_step_attempts` 模型与取消幂等列
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220062_run_step_attempts.py`
+- Create: `apps/api/alembic/versions/202610220064_run_step_attempts.py`
 - Create: `apps/api/src/data_intelligence_hub/models/run_attempt.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/run.py`（`RunStep` 扩展列、`Run` 取消幂等列）
 - Modify: `apps/api/src/data_intelligence_hub/models/__init__.py`
@@ -232,9 +232,9 @@ node .gitnexus/run.cjs impact "RunStep" --direction upstream --repo .
 
 Expected:
 - HEAD 在 `f0560ca` 之后。
-- `uv run alembic heads` 只有一行 `202610220061 (head)`。
+- `uv run alembic heads` 只有一行 `202610220063 (head)`。
 - 第一条 `rg` 在 C1 契约中找到 `run_steps.attempt_no`。找不到时停止，先回 C1 登记。
-- 第二条 `rg` 在 master plan 的迁移表找到 `202610220062` 的 `run_step_attempts`。找不到时停止。
+- 第二条 `rg` 在 master plan 的迁移表找到 `202610220064` 的 `run_step_attempts`。找不到时停止。
 - 第三条 `rg` 在 C4 计划找到 `execution_steps` 的写入约定。找不到时停止，先回 C4 补计划执行步骤。
 - 第四条 `rg` 在 C1 registry 找到 `uq_run_steps_task_run_id`。找不到时停止，先回 C1 登记。
 - 第五条 `rg` 在 C1 registry 找到 `cancel_idempotency_key_hash`、`cancel_reason_code` 与 `uq_runs_workspace_cancel_idempotency`。找不到时停止，先回 C1 按“C1 取消幂等登记前置”登记。
@@ -254,13 +254,13 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION = API_ROOT / "alembic/versions/202610220062_run_step_attempts.py"
+MIGRATION = API_ROOT / "alembic/versions/202610220064_run_step_attempts.py"
 
 
 def test_migration_revision_chain() -> None:
     text = MIGRATION.read_text(encoding="utf-8")
-    assert 'revision: str = "202610220062"' in text
-    assert 'down_revision: str | None = "202610220061"' in text
+    assert 'revision: str = "202610220064"' in text
+    assert 'down_revision: str | None = "202610220063"' in text
 
 
 def test_migration_creates_attempt_table() -> None:
@@ -366,7 +366,7 @@ def test_alembic_has_single_head_062() -> None:
     config = Config(str(API_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(API_ROOT / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == ["202610220062"]
+    assert script.get_heads() == ["202610220064"]
 ```
 
 - [ ] **Step 3: 运行测试并确认失败**
@@ -537,8 +537,8 @@ __all__ = ["RunStepAttempt", "RunStepAttemptStatus"]
 ```python
 """Create run_step_attempts.
 
-Revision ID: 202610220062
-Revises: 202610220061
+Revision ID: 202610220064
+Revises: 202610220063
 Create Date: 2026-10-22
 
 说明：
@@ -558,8 +558,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220062"
-down_revision: str | None = "202610220061"
+revision: str = "202610220064"
+down_revision: str | None = "202610220063"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -698,14 +698,14 @@ uv run pytest tests/unit/test_run_step_attempt_migration.py -q
 uv run alembic heads
 ```
 
-Expected: 7 passed。`alembic heads` 只有一行 `202610220062 (head)`。
+Expected: 7 passed。`alembic heads` 只有一行 `202610220064 (head)`。
 
 - [ ] **Step 7: 图分析与提交**
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c6
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220062_run_step_attempts.py \
+git add apps/api/alembic/versions/202610220064_run_step_attempts.py \
   apps/api/src/data_intelligence_hub/models/run.py \
   apps/api/src/data_intelligence_hub/models/__init__.py \
   apps/api/tests/unit/test_run_step_attempt_migration.py
@@ -6339,8 +6339,8 @@ def test_health_response_exposes_worker_switch() -> None:
         status="ok",
         database="connected",
         schema="current",
-        schema_revision="202610220062",
-        schema_head="202610220062",
+        schema_revision="202610220064",
+        schema_head="202610220064",
         scheduler_enabled=False,
         run_worker_enabled=True,
         run_execution_convergence_enabled=False,
@@ -6359,8 +6359,8 @@ async def test_health_route_reports_worker_switch(monkeypatch) -> None:
     async def current():
         return SimpleNamespace(
             status="current",
-            current_revision="202610220062",
-            head_revision="202610220062",
+            current_revision="202610220064",
+            head_revision="202610220064",
         )
 
     monkeypatch.setattr(health_module, "check_database", connected)
@@ -6642,7 +6642,7 @@ Expected:
 - pytest 0 failed。
 - ruff 无错误。
 - mypy 无错误。
-- `alembic heads` 只有一行 `202610220062 (head)`。这是 C6 的本地退出 head；平台最终 head 由 master plan 的后续切片推进到 `202610220068`，生产验收不以此处的 062 为准。
+- `alembic heads` 只有一行 `202610220064 (head)`。这是 C6 的本地退出 head；平台最终 head 由 master plan 的后续切片推进到 `202610220070`，生产验收不以此处的 062 为准。
 
 - [ ] **Step 3: 运行 GitNexus 全量比对**
 
@@ -6756,15 +6756,15 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" restart edge
 ```
 
 - 不得重建 edge。不得运行不带服务名的 `docker compose up -d`。
-- 验证 `/api/health` 的 `schema_revision` 与 `schema_head` 都是 master plan 的最终迁移 `202610220068`。C6 只保证自己的 062 迁移在链上；生产最终值取 master/final 链，不得写死 C6 的 062。
-- `scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取期望 schema。PG0 发布批次必须在发布前把该环境变量设为 master/final 的 `202610220068`，再只读运行脚本；C6 与 C14 都不修改脚本默认值，也不把 `202610220062` 写入 preflight。
+- 验证 `/api/health` 的 `schema_revision` 与 `schema_head` 都是 master plan 的最终迁移 `202610220070`。C6 只保证自己的 062 迁移在链上；生产最终值取 master/final 链，不得写死 C6 的 062。
+- `scripts/preflight-production.sh` 通过 `SCRAPY_EXPECTED_SCHEMA` 读取期望 schema。PG0 发布批次必须在发布前把该环境变量设为 master/final 的 `202610220070`，再只读运行脚本；C6 与 C14 都不修改脚本默认值，也不把 `202610220064` 写入 preflight。
 
 生产 B：
 - 主机 `ubuntu@101.34.52.232`。
 - 域名 `https://scrapy.lute-tlz-dddd.top`。
 - Compose `configs/deploy/scrapy/docker-compose.yml`（与 A 共用；不修改 `configs/deploy/scrapy-new/**`）。
 - 先取得 B 的目标授权与备份，再应用同一迁移，再替换 `api console`。
-- 验证 `/api/health` 的 schema 是 master/final 的 `202610220068`；`run_worker_enabled` 在 PG0 发布批次显式打开前必须是 `false`。
+- 验证 `/api/health` 的 schema 是 master/final 的 `202610220070`；`run_worker_enabled` 在 PG0 发布批次显式打开前必须是 `false`。
 
 顺序：A 备份 → A 迁移 → A 代码 → B 备份 → B 迁移 → B 代码。任一环境迁移失败时停止，不回滚另一套。以上命令只由 PG0 发布批次执行；C14 在发布后只读检查 `/api/health`、canary 与公网响应。
 
@@ -6778,10 +6778,10 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" restart edge
 
 **4A. 空库迁移循环**
 
-- 这是 C6 切片级迁移循环，不是平台最终 head 验收：PostgreSQL 15 空库执行 `alembic upgrade 202610220062` → `alembic downgrade 202610220061` → `alembic upgrade 202610220062`；三次退出码 0。
-- 循环后 `alembic heads` 只有一行 `202610220062`。
+- 这是 C6 切片级迁移循环，不是平台最终 head 验收：PostgreSQL 15 空库执行 `alembic upgrade 202610220064` → `alembic downgrade 202610220063` → `alembic upgrade 202610220064`；三次退出码 0。
+- 循环后 `alembic heads` 只有一行 `202610220064`。
 - 空库验证证明 `run_step_attempts`、`run_steps` 扩展列、`runs` 取消幂等列与 `uq_run_steps_task_run_id` / `uq_runs_workspace_cancel_idempotency` 可重复升降。
-- PG0 发布批次在完整链（含 `202610220063`–`202610220068`）上再执行一次空库升级到 `202610220068`，作为生产目标版本的证据。
+- PG0 发布批次在完整链（含 `202610220065`–`202610220070`）上再执行一次空库升级到 `202610220070`，作为生产目标版本的证据。
 
 **5. 浏览器 `/runs` 查看（C14 只读）**
 
@@ -6795,9 +6795,9 @@ docker compose --env-file "$ENVF" -f "$COMPOSE_FILE" restart edge
 
 - 由 PG0 发布批次先设 `SCRAPY_RUN_WORKER_ENABLED=false` 与 `SCRAPY_RUN_EXECUTION_CONVERGENCE_ENABLED=false`，重启 api，停止新领取并恢复旧 quick/run-now 路径。
 - 代码回滚到上一镜像。
-- `202610220062` 的 downgrade 只在 `run_step_attempts` 为空时执行。有 attempt 数据时保留表；旧代码不读该表，也不读 `runs` 取消幂等列。
+- `202610220064` 的 downgrade 只在 `run_step_attempts` 为空时执行。有 attempt 数据时保留表；旧代码不读该表，也不读 `runs` 取消幂等列。
 - 不修改已发布报告、账本或已终态 run。C14 只读复核回滚后的健康与公网响应。
 
 - [ ] **Step 6: 记录结果**
 
-PG0 发布批次记录发布事实：commit、两套 schema（`202610220068`）、worker/convergence/scheduler 开关、迁移与备份路径、`SCRAPY_EXPECTED_SCHEMA` 值、回滚命令。C14 在只读验收记录中写明：健康与 canary 结果、Postgres 并发报告复核（含取消幂等）、空库迁移循环证据复核、浏览器 `/runs` 结果、旧入口扫描结果。C6 不写生产报告文件。
+PG0 发布批次记录发布事实：commit、两套 schema（`202610220070`）、worker/convergence/scheduler 开关、迁移与备份路径、`SCRAPY_EXPECTED_SCHEMA` 值、回滚命令。C14 在只读验收记录中写明：健康与 canary 结果、Postgres 并发报告复核（含取消幂等）、空库迁移循环证据复核、浏览器 `/runs` 结果、旧入口扫描结果。C6 不写生产报告文件。

@@ -31,12 +31,12 @@
 - **审计化 run 创建接缝。** C4 新建 `apps/api/src/data_intelligence_hub/services/run_creation.py`，提供 `create_run_with_audit(...)`：在同一业务事务内调用 `repositories.runs.create_run` 并调用 C2 `services.audit_log.append_audit_event(action='run.created', resource_type='run', resource_id=str(run.id), actor_type='system', result='success')`。C4 提交服务只调用该接缝；后续 C6 旧入口收敛也复用该接缝。C4/C6 新增的 run 创建路径不得直接调用 `runs_repository.create_run`；旧 `POST /api/runs` 非 workbench 路径的既有直连由 C6 Task 10 用同一接缝收敛。`run.created` 只在新行插入时写，幂等重放不写。C4 不 import C6 `run_service`、`run_audit` 或任何 C6 模块，因此不依赖未来切片。
 - 复用现有部分唯一索引 `uq_runs_workspace_idempotency`，不新建幂等记录表。旧索引 `uq_task_runs_task_idempotency` 与 `uq_runs_workspace_idempotency` 都必须保留。新增部分唯一索引 `uq_runs_workflow_version_market`：`(workflow_version_id, market_code) WHERE workflow_version_id IS NOT NULL AND market_code IS NOT NULL`。
 - **执行步骤只在版本创建时生成。** `workflow_versions.plan_payload["execution_steps"]` 是不可变快照；批准、提交、重试都不改写。每项必须含 `step_index`、`task_id`、`endpoint_type`、`collector_type`、`depends_on`；`task_id` 必须指向同工作区同项目的 `collection_tasks` 行。C4 在版本创建事务内创建或校验这些行。
-- 迁移只能有一个 head。C4 增加且只增加一个迁移：`202610220060`，`down_revision = "202610220059"`。
-- 当前基线 HEAD 是 `f0560ca`，Alembic 当前 head 是 `202610210055`。C0/C1/C2 是前置；C4 从 `feat/gov-c3` 创建 `/Users/lute/Project/data_scrapy-gov-c4` 后，开工前 Alembic head 必须是 `202610220059`。此后所有 Run/Commit 命令的根目录是 `/Users/lute/Project/data_scrapy-gov-c4`，包括 `apps/api` 子路径；主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 Step 0 的 `git worktree prune`、前驱断言与 `cp` 源。
+- 迁移只能有一个 head。C4 增加且只增加一个迁移：`202610220062`，`down_revision = "202610220061"`。
+- 当前基线 HEAD 是 `f0560ca`，Alembic 当前 head 是 `202610210055`。C0/C1/C2 是前置；C4 从 `feat/gov-c3` 创建 `/Users/lute/Project/data_scrapy-gov-c4` 后，开工前 Alembic head 必须是 `202610220061`。此后所有 Run/Commit 命令的根目录是 `/Users/lute/Project/data_scrapy-gov-c4`，包括 `apps/api` 子路径；主工作树 `/Users/lute/Project/data_scrapy` 只用于 Task 0 Step 0 的 `git worktree prune`、前驱断言与 `cp` 源。
 - 不做预算账本。`run_ledger_entries` 八列与六种 `entry_kind` 不得改变；C4 不写任何账本行。
 - 不做多步骤执行、不创建 `run_steps`、不调用 collector、不调用 provider。
 - 不做 `/workbench` 前端页面。浏览器最小验收交接给 C14；C4 只交 API、服务签名、测试与验收清单。
-- **开关与回滚点。** `WORKBENCH_TASKS_ENABLED` 默认 `false`。关闭时 workbench 路由与 `POST /api/runs` 的 workbench 模式返回 503 `workbench_disabled`，非 workbench 的旧 `POST /api/runs` 行为不变。回滚先关开关，再回退代码；迁移 `202610220060` 的 downgrade 只在 `workbench_tasks`、`workflow_versions.workbench_task_id`、`runs.market_code` 无新数据时执行。
+- **开关与回滚点。** `WORKBENCH_TASKS_ENABLED` 默认 `false`。关闭时 workbench 路由与 `POST /api/runs` 的 workbench 模式返回 503 `workbench_disabled`，非 workbench 的旧 `POST /api/runs` 行为不变。回滚先关开关，再回退代码；迁移 `202610220062` 的 downgrade 只在 `workbench_tasks`、`workflow_versions.workbench_task_id`、`runs.market_code` 无新数据时执行。
 - 每次编辑函数、类或方法前必须跑 `node .gitnexus/run.cjs impact "<symbol>" --direction upstream --repo .`。`risk: UNKNOWN` 按未解决处理，必须用文本搜索确认。HIGH/CRITICAL 必须在提交说明里报告，不得用 `riskSharedAxes` 豁免。
 - 每次提交前必须跑 `node .gitnexus/run.cjs detect-changes --scope all --repo .`。`partial: true` 或 `truncated: true` 不是干净检查；必须重跑。
 - 测试驱动：先写失败测试，再写最小实现，再跑通过。每个任务结束提交一次；每个 commit 前重跑 detect-changes。
@@ -48,7 +48,7 @@
 | 项 | C4 |
 |---|---|
 | 切片 | 任务单七槽位、创建幂等、版本关联、初始版本接缝、执行步骤固化、逐市场幂等提交 |
-| 迁移 | 只新增 `202610220060_workbench_task_submission.py`，`down_revision=202610220059` |
+| 迁移 | 只新增 `202610220062_workbench_task_submission.py`，`down_revision=202610220061` |
 | 开关 | `WORKBENCH_TASKS_ENABLED`，默认 `false`；只由 PG0 发布批次切换 |
 | 回滚点 | 关开关 → 回退代码 → 迁移 downgrade（无新数据时）→ 恢复备份 |
 | 外部依赖 | C1 registry、C2 `get_workspace_role`、C5 绑定 blocked G-Plan、C6 执行步骤解析、PG0 发布批次、C14 只读验收；taxonomy 由 C4 自持 |
@@ -77,7 +77,7 @@ C1 已冻结以下 C4 消费的机器契约。Task 0 必须逐项核对；缺一
 
 | 文件 | 责任 |
 |---|---|
-| `apps/api/alembic/versions/202610220060_workbench_task_submission.py` | 唯一迁移：`workbench_tasks`（含 `seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`）、`workflow_versions.workbench_task_id`、`runs.market_code`、`uq_runs_workflow_version_market`；保留旧索引 |
+| `apps/api/alembic/versions/202610220062_workbench_task_submission.py` | 唯一迁移：`workbench_tasks`（含 `seed_products`、`target_price_band`、`idempotency_key_hash` 与 `uq_workbench_tasks_workspace_idempotency`）、`workflow_versions.workbench_task_id`、`runs.market_code`、`uq_runs_workflow_version_market`；保留旧索引 |
 | `apps/api/src/data_intelligence_hub/models/workbench.py` | `WorkbenchTask` ORM；七槽位列、`package_type`、`primary_market`、`comparison_markets`、`acceptance_contact_id`、`seed_products`、`target_price_band`、`idempotency_key_hash`、预算列与状态 CHECK |
 | `apps/api/src/data_intelligence_hub/models/workflow_plan.py` | `WorkflowVersion.workbench_task_id` 复合外键与索引 |
 | `apps/api/src/data_intelligence_hub/models/run.py` | `Run.market_code` 列、CHECK 与索引 |
@@ -219,10 +219,10 @@ cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
 Expected:
 
 ```text
-202610220059 (head)
+202610220061 (head)
 ```
 
-若输出多行或不是 `202610220059`，停止。不要为了让 C4 迁移接上而修改 C0/C1/C2 的 revision。
+若输出多行或不是 `202610220061`，停止。不要为了让 C4 迁移接上而修改 C0/C1/C2 的 revision。
 
 - [ ] **Step 3: 核对 C1 契约条目**
 
@@ -279,7 +279,7 @@ Expected: 与“GitNexus Baseline”表一致；`create_run` 仍是 ambiguous �
 在提交说明或任务执行记录里写：
 
 ```text
-C4 preflight: HEAD=<sha> alembic_head=202610220059 workbench_tasks_enabled=false
+C4 preflight: HEAD=<sha> alembic_head=202610220061 workbench_tasks_enabled=false
 GitNexus: Run=MEDIUM/16, WorkflowVersion=MEDIUM/21, create_workflow_plan=LOW/1,
 create_workflow_version=LOW/1, transition_workflow_plan_status=LOW/1,
 create_run(repo)=LOW/5, create_run(route)=UNKNOWN/0-confirmed-by-grep
@@ -298,7 +298,7 @@ C1 contract: workbench_tasks (package_type/primary_market/comparison_markets/
 ### Task 1: 迁移 060 与 ORM 模型
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220060_workbench_task_submission.py`
+- Create: `apps/api/alembic/versions/202610220062_workbench_task_submission.py`
 - Create: `apps/api/src/data_intelligence_hub/models/workbench.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/workflow_plan.py:135-224`
 - Modify: `apps/api/src/data_intelligence_hub/models/run.py:81-145`
@@ -307,7 +307,7 @@ C1 contract: workbench_tasks (package_type/primary_market/comparison_markets/
 
 **Interfaces:**
 - Consumes: `Base`、`UUIDPrimaryKeyMixin`、`TimestampMixin`、现有 `workflow_versions` 与 `runs` 表。
-- Produces: `WorkbenchTask`、`WorkbenchTask.status`、`WorkflowVersion.workbench_task_id`、`Run.market_code`、迁移 revision `202610220060`。
+- Produces: `WorkbenchTask`、`WorkbenchTask.status`、`WorkflowVersion.workbench_task_id`、`Run.market_code`、迁移 revision `202610220062`。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -346,7 +346,7 @@ from data_intelligence_hub.models.workbench import WorkbenchTask
 from data_intelligence_hub.models.workflow_plan import WorkflowVersion
 
 API_ROOT = Path(__file__).resolve().parents[2]
-MIGRATION_PATH = API_ROOT / "alembic/versions/202610220060_workbench_task_submission.py"
+MIGRATION_PATH = API_ROOT / "alembic/versions/202610220062_workbench_task_submission.py"
 
 
 def _table(model: type[Base]) -> Table:
@@ -527,13 +527,13 @@ def test_one_market_has_at_most_one_run_per_workflow_version() -> None:
 
 def test_migration_is_the_single_head_and_follows_059() -> None:
     module = _load_migration()
-    assert module.revision == "202610220060"
-    assert module.down_revision == "202610220059"
+    assert module.revision == "202610220062"
+    assert module.down_revision == "202610220061"
 
     config = Config(str(API_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(API_ROOT / "alembic"))
     script = ScriptDirectory.from_config(config)
-    assert script.get_heads() == ["202610220060"]
+    assert script.get_heads() == ["202610220062"]
 
     source = MIGRATION_PATH.read_text(encoding="utf-8")
     assert "This revision is source-only." in source
@@ -576,17 +576,17 @@ cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
 .venv/bin/python -m pytest tests/unit/test_workbench_task_models.py -v
 ```
 
-Expected: FAIL。至少出现 `ModuleNotFoundError: No module named 'data_intelligence_hub.models.workbench'` 与 `FileNotFoundError` 指向 `202610220060_workbench_task_submission.py`。
+Expected: FAIL。至少出现 `ModuleNotFoundError: No module named 'data_intelligence_hub.models.workbench'` 与 `FileNotFoundError` 指向 `202610220062_workbench_task_submission.py`。
 
 - [ ] **Step 3: 写迁移**
 
-Create `apps/api/alembic/versions/202610220060_workbench_task_submission.py`:
+Create `apps/api/alembic/versions/202610220062_workbench_task_submission.py`:
 
 ```python
 """Create workbench task submission schema and reuse the existing run index.
 
-Revision ID: 202610220060
-Revises: 202610220059
+Revision ID: 202610220062
+Revises: 202610220061
 Create Date: 2026-10-22
 
 This revision is source-only. It must not be applied to a real database without
@@ -613,8 +613,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220060"
-down_revision: str | None = "202610220059"
+revision: str = "202610220062"
+down_revision: str | None = "202610220061"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -1081,7 +1081,7 @@ cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
 ```
 
 Expected:
-- `202610220060 (head)`
+- `202610220062 (head)`
 - `All checks passed!`
 - `Success: no issues found in 1 source file`
 
@@ -1100,7 +1100,7 @@ Commit:
 
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c4
-git add apps/api/alembic/versions/202610220060_workbench_task_submission.py \
+git add apps/api/alembic/versions/202610220062_workbench_task_submission.py \
   apps/api/src/data_intelligence_hub/models/workbench.py \
   apps/api/src/data_intelligence_hub/models/workflow_plan.py \
   apps/api/src/data_intelligence_hub/models/run.py \
@@ -7881,16 +7881,16 @@ Run:
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c4/apps/api
 .venv/bin/alembic heads
-grep -n "revision: str\|down_revision" alembic/versions/202610220060_workbench_task_submission.py
-grep -n "uq_runs_workspace_idempotency\|uq_task_runs_task_idempotency" alembic/versions/202610220060_workbench_task_submission.py
+grep -n "revision: str\|down_revision" alembic/versions/202610220062_workbench_task_submission.py
+grep -n "uq_runs_workspace_idempotency\|uq_task_runs_task_idempotency" alembic/versions/202610220062_workbench_task_submission.py
 ```
 
 Expected:
 
 ```text
-202610220060 (head)
-revision: str = "202610220060"
-down_revision: str | None = "202610220059"
+202610220062 (head)
+revision: str = "202610220062"
+down_revision: str | None = "202610220061"
 ```
 
 并且 060 中没有 `drop_index` 旧幂等索引。
@@ -7951,7 +7951,7 @@ C4 合并后，发布必须与 C5/C6 同批，并且只由 PG0 发布批次执�
 
 **PG0 发布批次必须新增的 PostgreSQL 16 证据（C4/C14 不执行）：**
 
-1. 空库迁移循环：在 PostgreSQL 15 空库执行 `alembic upgrade 202610220060`，再 `alembic downgrade 202610220059`，再 `alembic upgrade 202610220060`；三次退出码为 0，`alembic heads` 单行。
+1. 空库迁移循环：在 PostgreSQL 15 空库执行 `alembic upgrade 202610220062`，再 `alembic downgrade 202610220061`，再 `alembic upgrade 202610220062`；三次退出码为 0，`alembic heads` 单行。
 2. 双 key 并发 run：两个独立会话/连接同时用不同 `Idempotency-Key` 提交同一 `(workflow_version_id, market_code)`；只有一个成功，另一个收到 `workflow_version_already_submitted` 或 409，数据库只有一行 run。
 3. 任务创建幂等：同一工作区同一 `Idempotency-Key` 与同一请求并发创建两次，只落一行 `workbench_tasks`；同键不同摘要返回 409 `idempotency_conflict`。
 4. blocked 授权：C4 创建的 `G-Plan/blocked` 行在 C5 迁移后有 `run_id`，且该 run 没有 `G-Cost/pass`；PG0 用 SQL 断言。
@@ -7982,7 +7982,7 @@ git rev-parse --short HEAD
 cd apps/api && .venv/bin/alembic heads
 ```
 
-Expected: 工作区干净；HEAD 是合并提交；`alembic heads` 只有 `202610220060 (head)`。
+Expected: 工作区干净；HEAD 是合并提交；`alembic heads` 只有 `202610220062 (head)`。
 
 **生产 A（`https://scrapy.luteos.com`）：**
 
@@ -7998,7 +7998,7 @@ docker compose --env-file /opt/data-achieve-scrapy/.env.production \
 
 Expected:
 - 迁移前有数据库备份文件，路径记录在 PG0 发布记录里。
-- `alembic upgrade head` 成功，schema head 为 `202610220060`。
+- `alembic upgrade head` 成功，schema head 为 `202610220062`。
 - `curl -fsS https://scrapy.luteos.com/api/health` 返回 200。
 - 不重建 edge。只用 `docker compose ... up -d --no-deps api console` 或 `restart edge`。
 - 以上全部由 PG0 批次执行；C14 只读复核 health 与页面。
@@ -8017,7 +8017,7 @@ docker compose --env-file /opt/data-achieve-scrapy/.env.production \
 ```
 
 Expected:
-- B 的迁移链必须先到 `202610220059`，再升 `202610220060`。若 B 仍停在 `202607280044`，停止；先完成 B 的迁移补齐与备份授权。
+- B 的迁移链必须先到 `202610220061`，再升 `202610220062`。若 B 仍停在 `202607280044`，停止；先完成 B 的迁移补齐与备份授权。
 - `curl -fsS https://scrapy.lute-tlz-dddd.top/api/health` 返回 200。
 - A/B 健康检查都通过后，才允许把 C4 标记为已发布。
 
@@ -8038,7 +8038,7 @@ C4 verification
 - pytest integration: <count> passed, 0 failed
 - ruff: All checks passed
 - mypy: Success: no issues found
-- alembic heads: 202610220060 (head)
+- alembic heads: 202610220062 (head)
 - GitNexus detect-changes: partial=false truncated=false
 - Run risk: <level>; WorkflowVersion risk: <level>
 - task create: Idempotency-Key required; same digest replays, changed digest 409 idempotency_conflict
@@ -8081,7 +8081,7 @@ C4 verification
 | 开关与回滚 | Global Constraints；Task 5 路由开关；Task 8 PG0 交接 |
 | 市场 blocked gate/gap 不写 `runs.status` | Task 4（`authorizations.gate_status='blocked'` + `scope.gap`；run 仍 `queued`）；Task 6 集成测试 |
 | 旧索引迁移 | Task 1 迁移测试；060 不 drop `uq_runs_workspace_idempotency` 与 `uq_task_runs_task_idempotency` |
-| 一个迁移 060 | Task 1；`down_revision=202610220059`；单 head 测试 |
+| 一个迁移 060 | Task 1；`down_revision=202610220061`；单 head 测试 |
 | 不做预算账本 | Global Constraints；Task 4/6 断言 `run_ledger_entries` 为 0 |
 | 不做多步骤执行 | Global Constraints；C4 不创建 `run_steps` / `task_runs` |
 | API 路由、服务签名、测试 | Task 5/6/7 的 Files/Interfaces/代码 |
@@ -8123,4 +8123,4 @@ Plan complete and saved to `docs/superpowers/plans/2026-10-22-governed-task-plat
 1. **Subagent-Driven（推荐）**：每个 Task 派一个 fresh subagent，任务之间做两阶段 review；适合 C4 这种跨迁移、模型、服务、路由的改动。
 2. **Inline Execution**：在当前会话用 executing-plans 批量执行，在 Task 1、Task 3B、Task 3C、Task 4、Task 6、Task 8 设检查点。
 
-执行前必须确认 C0/C1/C2 已落地、Alembic head 是 `202610220059`、C1 契约包含本计划 Contract Addendum 的全部条目。
+执行前必须确认 C0/C1/C2 已落地、Alembic head 是 `202610220061`、C1 契约包含本计划 Contract Addendum 的全部条目。

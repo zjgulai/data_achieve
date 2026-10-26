@@ -12,12 +12,12 @@
 
 ### 0.1 事实基线
 
-- 执行 worktree：`/Users/lute/Project/data_scrapy-gov-c10`。从前置切片 C9 的分支 `feat/gov-c9` 创建：`git worktree add /Users/lute/Project/data_scrapy-gov-c10 -b feat/gov-c10 feat/gov-c9`。该分支已包含 C0–C9 与 C1 契约，schema head 必须是 `202610220065`。不得在 worktree 内合并 C1–C9。B5 只是报告/Claim 的实现基线，不再作为分支起点。创建后运行 `git merge-base --is-ancestor feat/gov-c9 HEAD`，退出码必须为 0。
+- 执行 worktree：`/Users/lute/Project/data_scrapy-gov-c10`。从前置切片 C9 的分支 `feat/gov-c9` 创建：`git worktree add /Users/lute/Project/data_scrapy-gov-c10 -b feat/gov-c10 feat/gov-c9`。该分支已包含 C0–C9 与 C1 契约，schema head 必须是 `202610220067`。不得在 worktree 内合并 C1–C9。B5 只是报告/Claim 的实现基线，不再作为分支起点。创建后运行 `git merge-base --is-ancestor feat/gov-c9 HEAD`，退出码必须为 0。
 - B5 已有 `report_artifacts`（迁移 057）、`claims`/`claim_evidence`（迁移 056）、`report_audit_events`（迁移 009）、`canonical_json_bytes`、`contract_sha256`、`verify_artifact`。C10 只消费这些，不复制。
 - C7 提供 Claim 与反证事实；C8 提供质量、缺口与质量门禁事实；C9 提供报告合同、两页 HTML、五哈希、发布字段与审核签字事件。C10 不实现 Claim 编辑、报告渲染、审核或报告发布工作流。
 - C9 的审核签字以追加事件 `report_review_approved` 写入 `report_audit_events`，必须带 `artifact_id` 与 C9 的 0.4/7.4 定义的 metadata 键。C10 只读该事件，不写签字。
 - 公开分享延期。C10 只做项目内鉴权下载，不做匿名分享。
-- C10 只新增一个迁移 `202610220066`。C2–C9 已占用 `058`–`065`；只有 C2 的 `058` 保留 `20261021` 前缀，`063`–`066` 统一使用 `20261022` 前缀。`202610220066` 只有在 C1 完成第 0.4 节登记、C9 的 065 合入后才允许创建。
+- C10 只新增一个迁移 `202610220068`。C2–C9 已占用 `058`–`065`；只有 C2 的 `058` 保留 `20261021` 前缀，`063`–`066` 统一使用 `20261022` 前缀。`202610220068` 只有在 C1 完成第 0.4 节登记、C9 的 065 合入后才允许创建。
 
 ### 0.2 决策 D-C10-01：公开分享按契约延期
 
@@ -191,7 +191,7 @@ Quick 2 小时稿不审核、不触发验收、不生成 Standard 四态、不�
 正式 24 小时交付仍必须通过 G-Publish 的审核签字校验。
 ```
 
-迁移编号也由 C1 冻结：C2=`202610220058`，C3=`202610220059`，…，C9=`202610220065`，C10=`202610220066`。
+迁移编号也由 C1 冻结：C2=`202610220060`，C3=`202610220061`，…，C9=`202610220067`，C10=`202610220068`。
 
 #### 0.4.1 C11 导出 PII 扫描前置（必须由 C11 提供）
 
@@ -339,9 +339,9 @@ C10 不实现第二套授权，也不实现第二张审计表。
 
 - **开关与回滚。** 本切片不新增布尔开关，入口受 `GOVERNED_TASK_PLATFORM_ENABLED` 控制；回滚点是迁移 `066` 的 `downgrade` 与发布前数据库备份，生产回滚用备份恢复或新迁移，不手改 `alembic_version`。
 - **统一发布门禁。** 本切片不直接部署。生产 A/B 由总索引 §8.4 的 PG0 发布批次执行；C14 只做只读验收；先备份，A 先 canary，B 只在目标授权、备份与迁移门禁通过后发布；两套环境共用 `configs/deploy/scrapy/docker-compose.yml`。C10 不修改该 compose；任一步失败记 `BLOCKED`。
-- 基线：前置分支 `feat/gov-c9`，schema head `202610220065`。不重写报告/Claim 事实源。
+- 基线：前置分支 `feat/gov-c9`，schema head `202610220067`。不重写报告/Claim 事实源。
 - 契约优先：C1 必须先完成第 0.4 节登记；C10 的预检测试失败时停止，不改测试绕过。
-- 迁移：只有 `apps/api/alembic/versions/202610220066_delivery_manifest_publish.py` 一个。`down_revision = "202610220065"`。
+- 迁移：只有 `apps/api/alembic/versions/202610220068_delivery_manifest_publish.py` 一个。`down_revision = "202610220067"`。
 - Canonical profile：`dih-canonical-json-v1`，实现只调用 `schemas.report_contract.canonical_json_bytes`。不复制序列化器。
 - 哈希：SHA-256，64 位小写十六进制。文件哈希对精确字节计算；manifest 哈希对 canonical bytes 计算。
 - Sidecar 格式：`<manifest_sha256>  delivery_manifest.json\n`，UTF-8/ASCII 单行。
@@ -372,7 +372,7 @@ C10 不实现第二套授权，也不实现第二张审计表。
 
 | 文件 | 动作 | 责任 |
 |---|---|---|
-| `apps/api/alembic/versions/202610220066_delivery_manifest_publish.py` | 新建 | 唯一迁移：交付列、交付约束与索引；不扩展 `report_audit_events`。 |
+| `apps/api/alembic/versions/202610220068_delivery_manifest_publish.py` | 新建 | 唯一迁移：交付列、交付约束与索引；不扩展 `report_audit_events`。 |
 | `apps/api/src/data_intelligence_hub/models/report_artifact.py` | 修改 | 只加 `delivery_*` 与封存字段；`status`/`published_*` 由 C9 拥有。 |
 | `apps/api/src/data_intelligence_hub/repositories/delivery.py` | 新建 | 交付专用只读/追加查询；事务提交权在 service。 |
 | `apps/api/src/data_intelligence_hub/services/delivery/__init__.py` | 新建 | 导出跨任务接口。 |
@@ -694,7 +694,7 @@ def quick_draft_files(
 - Copy: `docs/superpowers/plans/2026-10-22-governed-task-platform-c10-delivery-manifest-publish.md`
 
 **Interfaces:**
-- Consumes: `feat/gov-c9`、迁移 head `202610220065`、C1 registry。
+- Consumes: `feat/gov-c9`、迁移 head `202610220067`、C1 registry。
 - Produces: `feat/gov-c10` 与后续任务唯一命令根 `/Users/lute/Project/data_scrapy-gov-c10`。
 
 - [ ] **Step 0: 创建 worktree 并安装依赖**
@@ -716,7 +716,7 @@ uv run --directory apps/api alembic heads
 git status --short
 ```
 
-Expected: branch/worktree creation succeeds; output contains `C9_BRANCH_BASE_OK`; Alembic shows only `202610220065 (head)`; status contains only the copied C10 plan. Existing branch/path means stop and inspect; do not delete or reuse blindly.
+Expected: branch/worktree creation succeeds; output contains `C9_BRANCH_BASE_OK`; Alembic shows only `202610220067 (head)`; status contains only the copied C10 plan. Existing branch/path means stop and inspect; do not delete or reuse blindly.
 
 ---
 
@@ -4836,7 +4836,7 @@ git commit -m "feat(delivery): add atomic bundle store and tamper verification"
 ### Task 8: 迁移 066、模型与交付仓储
 
 **Files:**
-- Create: `apps/api/alembic/versions/202610220066_delivery_manifest_publish.py`
+- Create: `apps/api/alembic/versions/202610220068_delivery_manifest_publish.py`
 - Modify: `apps/api/src/data_intelligence_hub/models/report_artifact.py`
 - Create: `apps/api/src/data_intelligence_hub/repositories/delivery.py`
 - Test: `apps/api/tests/unit/test_delivery_migration.py`
@@ -4867,7 +4867,7 @@ from data_intelligence_hub.models.report_artifact import ReportArtifact
 
 MIGRATION = (
     Path(__file__).resolve().parents[2]
-    / "alembic/versions/202610220066_delivery_manifest_publish.py"
+    / "alembic/versions/202610220068_delivery_manifest_publish.py"
 )
 
 DELIVERY_COLUMNS = {
@@ -4906,8 +4906,8 @@ async def migration_session() -> AsyncSession:
 
 def test_migration_066_is_single_head_after_065() -> None:
     text = MIGRATION.read_text(encoding="utf-8")
-    assert 'revision: str = "202610220066"' in text
-    assert 'down_revision: str | None = "202610220065"' in text
+    assert 'revision: str = "202610220068"' in text
+    assert 'down_revision: str | None = "202610220067"' in text
     assert '"delivery_status"' in text
     assert '"delivered_at"' in text
     assert '"artifact_id"' not in text
@@ -5020,11 +5020,11 @@ publish_idempotency_key_hash: Mapped[str | None] = mapped_column(String(64))
 - [ ] **Step 4: 写迁移 066**
 
 ```python
-# apps/api/alembic/versions/202610220066_delivery_manifest_publish.py
+# apps/api/alembic/versions/202610220068_delivery_manifest_publish.py
 """Add delivery publication fields only. Audit artifact scoping is C9 065.
 
-Revision ID: 202610220066
-Revises: 202610220065
+Revision ID: 202610220068
+Revises: 202610220067
 Create Date: 2026-10-22
 
 This revision is source-only. It must not be applied to a real database without
@@ -5039,8 +5039,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "202610220066"
-down_revision: str | None = "202610220065"
+revision: str = "202610220068"
+down_revision: str | None = "202610220067"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -5297,8 +5297,8 @@ async def _columns(engine: AsyncEngine, table: str) -> set[str]:
 @pytest.mark.asyncio
 async def test_065_to_066_and_back() -> None:
     url = _database_url()
-    _alembic(url, "upgrade", "202610220065")
-    _alembic(url, "upgrade", "202610220066")
+    _alembic(url, "upgrade", "202610220067")
+    _alembic(url, "upgrade", "202610220068")
     engine = create_async_engine(url)
     try:
         artifact_columns = await _columns(engine, "report_artifacts")
@@ -5306,7 +5306,7 @@ async def test_065_to_066_and_back() -> None:
         assert C9_COLUMNS <= artifact_columns
         event_columns = await _columns(engine, "report_audit_events")
         assert "artifact_id" in event_columns
-        _alembic(url, "downgrade", "202610220065")
+        _alembic(url, "downgrade", "202610220067")
         downgraded = await _columns(engine, "report_artifacts")
         assert DELIVERY_COLUMNS.isdisjoint(downgraded)
         assert C9_COLUMNS <= downgraded
@@ -5327,7 +5327,7 @@ def test_single_head_is_066() -> None:
         text=True,
     )
     assert result.stdout.count("(head)") == 1
-    assert "202610220066" in result.stdout
+    assert "202610220068" in result.stdout
 ```
 
 Run:
@@ -5612,7 +5612,7 @@ Expected: 全部通过。`ReportAuditEvent` 的 GitNexus 风险是 MEDIUM；这�
 Run:
 
 ```bash
-cd /Users/lute/Project/data_scrapy-gov-c10/apps/api && uv run ruff check alembic/versions/202610220066_delivery_manifest_publish.py src/data_intelligence_hub/models/report_artifact.py src/data_intelligence_hub/repositories/delivery.py tests/unit/test_delivery_migration.py
+cd /Users/lute/Project/data_scrapy-gov-c10/apps/api && uv run ruff check alembic/versions/202610220068_delivery_manifest_publish.py src/data_intelligence_hub/models/report_artifact.py src/data_intelligence_hub/repositories/delivery.py tests/unit/test_delivery_migration.py
 cd /Users/lute/Project/data_scrapy-gov-c10/apps/api && uv run mypy src/data_intelligence_hub/models/report_artifact.py src/data_intelligence_hub/repositories/delivery.py
 ```
 
@@ -5621,7 +5621,7 @@ Expected: `All checks passed!` 与 `Success: no issues found`。
 ```bash
 cd /Users/lute/Project/data_scrapy-gov-c10
 node .gitnexus/run.cjs detect-changes --scope all --repo .
-git add apps/api/alembic/versions/202610220066_delivery_manifest_publish.py \
+git add apps/api/alembic/versions/202610220068_delivery_manifest_publish.py \
   apps/api/src/data_intelligence_hub/models/report_artifact.py \
   apps/api/src/data_intelligence_hub/repositories/delivery.py \
   apps/api/tests/unit/test_delivery_migration.py \
@@ -8989,7 +8989,7 @@ DELIVERY_EXPORT_DIR: ${SCRAPY_DELIVERY_EXPORT_DIR:-/app/exports/deliveries}
 
 ## 前置
 
-- schema head 必须是 `202610220066`。
+- schema head 必须是 `202610220068`。
 - 报告产物必须已由 C9 发布（`report_artifacts.status = 'published'`），并已有 C9 的 `report_review_approved` 事件。
 - 数据集版本必须是同一项目的 `saved` 版本。
 
@@ -9155,7 +9155,7 @@ Run:
 cd /Users/lute/Project/data_scrapy-gov-c10/apps/api && uv run alembic heads
 ```
 
-Expected: `202610220066 (head)`，且只有一个 head。
+Expected: `202610220068 (head)`，且只有一个 head。
 
 - [ ] **Step 9: 静态检查**
 
@@ -9168,7 +9168,7 @@ cd /Users/lute/Project/data_scrapy-gov-c10/apps/api && uv run ruff check \
   src/data_intelligence_hub/schemas/delivery.py \
   src/data_intelligence_hub/api/routes/delivery.py \
   src/data_intelligence_hub/models/report_artifact.py \
-  alembic/versions/202610220066_delivery_manifest_publish.py \
+  alembic/versions/202610220068_delivery_manifest_publish.py \
   tests/unit/test_delivery_*.py \
   tests/postgres/test_delivery_migration.py \
   tests/unit/test_c10_contract_registration.py
@@ -9214,7 +9214,7 @@ git commit -m "chore(delivery): add export directory config and runbook"
 
 1. **先备份**：备份目标数据库与 `DELIVERY_EXPORT_DIR` 所在持久卷，记录备份路径与 SHA-256。
 2. **A 环境 canary**：先发布 A，运行冒烟与交付验收；失败时回滚 A，B 不发布。
-3. **B 环境门禁**：B 只在目标授权、备份校验和迁移门禁全部通过后发布。目标授权指用户已确认 B 的发布目标与发布窗口；迁移门禁指 `alembic heads` 只有 `202610220066 (head)`、迁移 065→066→065 在一次性库演练通过、备份可恢复。
+3. **B 环境门禁**：B 只在目标授权、备份校验和迁移门禁全部通过后发布。目标授权指用户已确认 B 的发布目标与发布窗口；迁移门禁指 `alembic heads` 只有 `202610220068 (head)`、迁移 065→066→065 在一次性库演练通过、备份可恢复。
 4. **失败记 `BLOCKED`**：记录失败步骤、证据路径与决策人；不得跳过门禁继续发布。
 
 **PG0 发布批次交接**：`configs/deploy/scrapy/docker-compose.yml` 由 PG0 发布批次修改，加入 `DELIVERY_EXPORT_DIR: ${SCRAPY_DELIVERY_EXPORT_DIR:-/app/exports/deliveries}`。C10 不提交该文件；`docs/operations/delivery-publish.md` 与 `apps/api/.env.example` 是交接输入。部署证据由 PG0 发布批次收集；C14 收集只读验收证据。
