@@ -5036,6 +5036,147 @@
       "source": "契约 v1 §2.1"
     },
     {
+      "name": "runs.outcome",
+      "values": [
+        "success",
+        "empty",
+        "config_gated",
+        "failed"
+      ],
+      "status": "frozen",
+      "phase": "C6",
+      "banned_values": [
+        "partial"
+      ],
+      "source": "契约 v1 §2.3"
+    },
+    {
+      "name": "run_steps.status",
+      "values": [
+        "pending",
+        "running",
+        "success",
+        "empty",
+        "config_gated",
+        "failed",
+        "skipped"
+      ],
+      "status": "frozen",
+      "phase": "C6",
+      "source": "契约 v1 §2.2"
+    },
+    {
+      "name": "health_status",
+      "values": [
+        "healthy",
+        "stable",
+        "degraded",
+        "outage",
+        "unknown"
+      ],
+      "status": "frozen",
+      "phase": "C2",
+      "source": "契约 v1 §2.4"
+    },
+    {
+      "name": "evidence_grade",
+      "values": [
+        "L0_unverified",
+        "L1_contract",
+        "L2_fixture_local",
+        "L3_live_single",
+        "L4_authorized_live"
+      ],
+      "status": "frozen",
+      "phase": "C7",
+      "source": "契约 v1 §2.5"
+    },
+    {
+      "name": "claims.state",
+      "values": [
+        "confirmed",
+        "directional",
+        "hypothesis",
+        "evidence_gap",
+        "blocked"
+      ],
+      "status": "frozen",
+      "phase": "C7",
+      "source": "契约 v1 §2.6"
+    },
+    {
+      "name": "gate_status",
+      "values": [
+        "pending",
+        "pass",
+        "fail",
+        "blocked",
+        "expired"
+      ],
+      "status": "frozen",
+      "phase": "C4",
+      "source": "契约 v1 §2.7"
+    },
+    {
+      "name": "gate_id",
+      "values": [
+        "G-Plan",
+        "G-Cost",
+        "G-Evidence",
+        "G-Claim",
+        "G-Publish"
+      ],
+      "status": "frozen",
+      "phase": "C4",
+      "source": "契约 v1 §2.8"
+    },
+    {
+      "name": "entry_kind",
+      "values": [
+        "estimate",
+        "reserve",
+        "accrued",
+        "settle",
+        "release",
+        "block"
+      ],
+      "status": "frozen",
+      "phase": "C5",
+      "source": "契约 v1 §2.7.1",
+      "rule": "settle must be positive; release must be negative"
+    },
+    {
+      "name": "tool_prices.confidence",
+      "values": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ],
+      "status": "new",
+      "phase": "C5",
+      "source": "C5 定价（price_book_v1.json 字段）"
+    },
+    {
+      "name": "market_code",
+      "values": [
+        "US",
+        "GB",
+        "DE",
+        "FR",
+        "IT",
+        "ES",
+        "IE",
+        "NL",
+        "BE",
+        "AT",
+        "PL"
+      ],
+      "status": "new",
+      "phase": "C4",
+      "source": "设计 §2.4"
+    },
+    {
       "name": "workspace_members.role",
       "values": [
         "owner",
@@ -5045,6 +5186,305 @@
       "status": "extended",
       "phase": "C2",
       "source": "设计 §7.1"
+    },
+    {
+      "name": "audit_events.actor_type",
+      "values": [
+        "user",
+        "system",
+        "project_key"
+      ],
+      "status": "new",
+      "phase": "C2",
+      "source": "C2 契约 §2.9"
+    },
+    {
+      "name": "audit_events.result",
+      "values": [
+        "success",
+        "denied",
+        "failed"
+      ],
+      "status": "new",
+      "phase": "C2",
+      "source": "C2 契约 §2.9"
+    },
+    {
+      "name": "project_api_keys.status",
+      "values": [
+        "active",
+        "rotating",
+        "revoked",
+        "expired"
+      ],
+      "status": "new",
+      "phase": "C3",
+      "source": "设计 §7.2"
+    },
+    {
+      "name": "workbench_tasks.status",
+      "values": [
+        "draft",
+        "submitted",
+        "cancelled"
+      ],
+      "status": "new",
+      "phase": "C4",
+      "source": "C4 契约"
+    },
+    {
+      "name": "workbench_tasks.package_type",
+      "values": [
+        "quick",
+        "standard"
+      ],
+      "status": "new",
+      "phase": "C4",
+      "source": "设计 §4.2"
+    },
+    {
+      "name": "workbench_tasks.task_type",
+      "values": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5"
+      ],
+      "status": "new",
+      "phase": "C4",
+      "source": "PRD §8"
+    },
+    {
+      "name": "run_step_attempts.status",
+      "values": [
+        "running",
+        "success",
+        "empty",
+        "config_gated",
+        "failed"
+      ],
+      "status": "new",
+      "phase": "C6",
+      "source": "C6 契约"
+    },
+    {
+      "name": "claim_review_status",
+      "values": [
+        "draft",
+        "pending",
+        "approved",
+        "rejected",
+        "stale"
+      ],
+      "status": "new",
+      "phase": "C7",
+      "source": "C7 契约 §2.6.1"
+    },
+    {
+      "name": "claim_risk_flags",
+      "values": [
+        "medical",
+        "health",
+        "safety",
+        "legal",
+        "recall",
+        "children",
+        "causal_language",
+        "single_source",
+        "price_comparison"
+      ],
+      "status": "new",
+      "phase": "C7",
+      "source": "C7 契约 §2.6.2"
+    },
+    {
+      "name": "claims.blocked_reason",
+      "values": [
+        "rights",
+        "permission",
+        "configuration",
+        "gate",
+        "upstream"
+      ],
+      "status": "new",
+      "phase": "C7",
+      "source": "C7 契约 §2.6.3"
+    },
+    {
+      "name": "claim_evidence.role",
+      "values": [
+        "support",
+        "counter",
+        "context",
+        "gap"
+      ],
+      "status": "frozen",
+      "phase": "C7",
+      "source": "契约 v1 §1.1"
+    },
+    {
+      "name": "source_cluster_basis",
+      "values": [
+        "explicit",
+        "content_hash",
+        "platform_item",
+        "url",
+        "unresolved"
+      ],
+      "status": "new",
+      "phase": "C7",
+      "source": "C7 契约"
+    },
+    {
+      "name": "data_domains",
+      "values": [
+        "products",
+        "reviews",
+        "creator_content",
+        "ads",
+        "trends"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §3.3"
+    },
+    {
+      "name": "domain_status",
+      "values": [
+        "pass",
+        "partial",
+        "missing",
+        "blocked"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "market_quality_status",
+      "values": [
+        "qualified",
+        "qualified_with_gap",
+        "not_qualified"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "data_gaps.severity",
+      "values": [
+        "info",
+        "warning",
+        "blocking",
+        "critical"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "data_gaps.status",
+      "values": [
+        "open",
+        "mitigated",
+        "accepted",
+        "closed"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "market_assessments.market_role",
+      "values": [
+        "primary",
+        "compare"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §2.4"
+    },
+    {
+      "name": "market_assessments.conclusion_standard",
+      "values": [
+        "enter",
+        "conditional_enter",
+        "do_not_enter",
+        "insufficient_evidence"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "market_assessments.conclusion_quick",
+      "values": [
+        "worth_validating",
+        "deprioritize",
+        "key_risk",
+        "evidence_gap",
+        "recommend_standard_scope"
+      ],
+      "status": "new",
+      "phase": "C8",
+      "source": "设计 §5.2"
+    },
+    {
+      "name": "report_artifacts.status",
+      "values": [
+        "draft",
+        "published",
+        "superseded"
+      ],
+      "status": "new",
+      "phase": "C9",
+      "source": "C9 契约 §2.7.2"
+    },
+    {
+      "name": "report_artifacts.delivery_status",
+      "values": [
+        "pending",
+        "delivered",
+        "superseded"
+      ],
+      "status": "new",
+      "phase": "C10",
+      "source": "C10 契约 §2.9"
+    },
+    {
+      "name": "report_audit_events.event_type",
+      "values": [
+        "report_draft_created",
+        "report_review_approved",
+        "report_review_rejected",
+        "report_published",
+        "report_superseded",
+        "gate_evaluated",
+        "delivery_published",
+        "delivery_downloaded",
+        "delivery_tamper_detected",
+        "delivery_pii_detected",
+        "acceptance_snapshot_appended",
+        "delivery_superseded",
+        "acceptance_accepted",
+        "acceptance_disputed",
+        "acceptance_deemed_accepted"
+      ],
+      "status": "extended",
+      "phase": "C9",
+      "source": "C9 契约 §2.7.3 与 C10 契约 §2.10/§2.16"
+    },
+    {
+      "name": "report_artifacts.delivery_class",
+      "values": [
+        "formal",
+        "quick_draft"
+      ],
+      "status": "new",
+      "phase": "C10",
+      "source": "C10 契约 §2.9"
     },
     {
       "name": "report_reviewer_assignments.assignment_scope",
@@ -5076,6 +5516,213 @@
       "status": "new",
       "phase": "C5",
       "source": "C1 §3.11 内联批准动作"
+    },
+    {
+      "name": "workbench_approval_actions.status",
+      "values": [
+        "pending",
+        "approved",
+        "rejected",
+        "expired"
+      ],
+      "status": "new",
+      "phase": "C5",
+      "source": "C1 §3.11 内联批准状态"
+    },
+    {
+      "name": "workspace_pseudonym_salts.salt_version",
+      "values": [
+        "v1"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "legal_holds.status",
+      "values": [
+        "active",
+        "released"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "data_class",
+      "values": [
+        "raw_response",
+        "normalized_dataset",
+        "report_delivery",
+        "run_log",
+        "security_access_audit",
+        "backup"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "retention_cleanup_runs.mode",
+      "values": [
+        "dry_run",
+        "execute"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "retention_cleanup_runs.status",
+      "values": [
+        "completed",
+        "blocked",
+        "failed"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "retention_tombstones.reason",
+      "values": [
+        "retention_ttl"
+      ],
+      "status": "new",
+      "phase": "C11",
+      "source": "C11 契约 §2.9"
+    },
+    {
+      "name": "deletion_requests.target_type",
+      "values": [
+        "project",
+        "workspace"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "deletion_requests.requested_by_role",
+      "values": [
+        "owner",
+        "admin"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "deletion_requests.status",
+      "values": [
+        "pending_owner_approval",
+        "pending_confirmation",
+        "ready",
+        "blocked_legal_hold",
+        "executing",
+        "completed",
+        "failed",
+        "rejected",
+        "cancelled"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "deletion_subprocessor_receipts.status",
+      "values": [
+        "pending",
+        "requested",
+        "acknowledged",
+        "not_applicable"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "dsr_cases.request_type",
+      "values": [
+        "access",
+        "rectification",
+        "restriction",
+        "deletion"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "dsr_cases.status",
+      "values": [
+        "received",
+        "verifying",
+        "in_progress",
+        "completed",
+        "rejected",
+        "closed"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "dsr_cases.responsibility",
+      "values": [
+        "controller",
+        "processor",
+        "undetermined"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "deletion_replay_runs.status",
+      "values": [
+        "pending",
+        "running",
+        "completed",
+        "failed"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "deletion_replay_items.status",
+      "values": [
+        "replayed",
+        "skipped_absent",
+        "failed"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "privacy_audit_events.stream_type",
+      "values": [
+        "deletion_request",
+        "legal_hold",
+        "dsr_case",
+        "deletion_replay"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
+    },
+    {
+      "name": "privacy_audit_events.actor_kind",
+      "values": [
+        "user",
+        "operator",
+        "system"
+      ],
+      "status": "new",
+      "phase": "C12",
+      "source": "C12 契约 §2.9"
     }
   ],
   "paths": [

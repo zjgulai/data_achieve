@@ -1085,3 +1085,113 @@ def test_customer_lease_is_deferred() -> None:
     registry = load_contract_registry()
     deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
     assert ("table", "mcp_customer_request_leases") in deferred
+
+
+def test_every_column_enum_reference_resolves() -> None:
+    registry = load_contract_registry()
+    enum_names = {item["name"] for item in registry["enums"]}
+    missing = {
+        column["enum"]
+        for table in registry["tables"]
+        for column in table["columns"]
+        if "enum" in column and column["enum"] not in enum_names
+    }
+    assert missing == set()
+
+
+def test_entry_kind_values_and_sign_rule() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "entry_kind")
+    assert item["values"] == [
+        "estimate",
+        "reserve",
+        "accrued",
+        "settle",
+        "release",
+        "block",
+    ]
+    assert item["rule"] == "settle must be positive; release must be negative"
+
+
+def test_run_status_bans_held_degraded_partial() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "runs.status")
+    assert item["values"] == ["queued", "running", "completed", "failed", "cancelled"]
+    assert set(item["banned_values"]) == {"held", "degraded", "partial"}
+
+
+def test_market_code_has_eleven_formal_markets() -> None:
+    registry = load_contract_registry()
+    item = next(enum for enum in registry["enums"] if enum["name"] == "market_code")
+    assert item["values"] == [
+        "US",
+        "GB",
+        "DE",
+        "FR",
+        "IT",
+        "ES",
+        "IE",
+        "NL",
+        "BE",
+        "AT",
+        "PL",
+    ]
+
+
+def test_claim_review_and_report_status_values() -> None:
+    registry = load_contract_registry()
+    review = next(
+        enum for enum in registry["enums"] if enum["name"] == "claim_review_status"
+    )
+    report = next(
+        enum for enum in registry["enums"] if enum["name"] == "report_artifacts.status"
+    )
+    delivery = next(
+        enum
+        for enum in registry["enums"]
+        if enum["name"] == "report_artifacts.delivery_status"
+    )
+    assert review["values"] == ["draft", "pending", "approved", "rejected", "stale"]
+    assert report["values"] == ["draft", "published", "superseded"]
+    assert delivery["values"] == ["pending", "delivered", "superseded"]
+    assert delivery["values"] != report["values"]
+
+
+def test_internal_reviewer_and_inline_approval_enums() -> None:
+    registry = load_contract_registry()
+    enums = {item["name"]: item["values"] for item in registry["enums"]}
+    assert enums["report_reviewer_assignments.assignment_scope"] == [
+        "report_read",
+        "report_review",
+    ]
+    assert enums["report_reviewer_assignments.status"] == ["active", "revoked"]
+    assert enums["workbench_approval_actions.action_type"] == [
+        "budget_overage",
+        "package_addon",
+        "project_key_change",
+    ]
+    assert enums["workbench_approval_actions.status"] == [
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+    ]
+    assert enums["workspace_members.role"] == ["owner", "admin", "member"]
+
+
+def test_deletion_status_has_nine_values() -> None:
+    registry = load_contract_registry()
+    item = next(
+        enum for enum in registry["enums"] if enum["name"] == "deletion_requests.status"
+    )
+    assert item["values"] == [
+        "pending_owner_approval",
+        "pending_confirmation",
+        "ready",
+        "blocked_legal_hold",
+        "executing",
+        "completed",
+        "failed",
+        "rejected",
+        "cancelled",
+    ]
