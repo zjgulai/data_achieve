@@ -1,0 +1,2378 @@
+{
+  "registry_version": "contract-registry.v1",
+  "contract_version": "v1.1",
+  "status": "frozen",
+  "source_document": "docs/design/【契约冻结】v1-表名-枚举-接口.md",
+  "source_section": "附录 A 机器登记块",
+  "generated_at": "2026-10-22",
+  "canonical_profile": {
+    "profile_id": "dih-canonical-json-v1",
+    "encoding": "UTF-8",
+    "json_rules": "RFC 8785",
+    "digest_algorithm": "sha256",
+    "digest_encoding": "lowercase-hex",
+    "excluded_top_level_keys": [
+      "generated_at",
+      "artifact"
+    ],
+    "timestamp_format": "RFC3339-UTC-Z",
+    "number_rules": "finite-only; integers exact; no negative zero",
+    "unicode_rules": "preserve scalar values; no Unicode normalization",
+    "null_policy": "required nulls are emitted; optional absent keys are omitted",
+    "line_endings": "LF",
+    "trailing_newline": "file-only; excluded from digest",
+    "known_deviations": [
+      "1e-07 formatting",
+      "-0.0",
+      "code-point key ordering"
+    ],
+    "forbidden_language": {
+      "profile_id": "dih-descriptive-language-v1",
+      "profile_version": "1.0.0",
+      "source": "docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md#5.7",
+      "causal_terms_zh": [
+        "导致",
+        "驱动",
+        "提升",
+        "降低",
+        "造成",
+        "证明"
+      ],
+      "causal_terms_en": [
+        "cause",
+        "causes",
+        "caused",
+        "drive",
+        "drives",
+        "driven",
+        "improve",
+        "improves",
+        "increase",
+        "increases",
+        "decrease",
+        "decreases",
+        "reduce",
+        "reduces",
+        "lead to",
+        "leads to",
+        "prove",
+        "proves"
+      ],
+      "prediction_terms_zh": [
+        "预测",
+        "预计",
+        "将会"
+      ],
+      "prediction_terms_en": [
+        "predict",
+        "predicts",
+        "forecast",
+        "forecasts",
+        "projection",
+        "projections"
+      ],
+      "prediction_objects_zh": [
+        "销量",
+        "市场份额",
+        "转化率",
+        "营收"
+      ],
+      "prediction_objects_en": [
+        "sales",
+        "market share",
+        "conversion rate",
+        "revenue"
+      ],
+      "allowed_relations_zh": [
+        "共同出现",
+        "相关",
+        "描述性差异"
+      ],
+      "allowed_relations_en": [
+        "co-occurrence",
+        "correlation",
+        "descriptive difference"
+      ]
+    },
+    "pii_scan": {
+      "profile_id": "export_policy.v1",
+      "owner": "C11",
+      "module": "apps/api/src/data_intelligence_hub/services/export_policy.py",
+      "scanner": "scan_export_policy",
+      "value_scanner": "scan_export_value",
+      "finding_type": "PiiHit",
+      "finding_codes": [
+        "contact",
+        "profile_link",
+        "avatar",
+        "tracking"
+      ],
+      "c9_error": "report_publish_gate_blocked",
+      "c10_error": "delivery_pii_detected",
+      "shared_by": [
+        "C9",
+        "C10"
+      ],
+      "no_second_ruleset": true
+    }
+  },
+  "capability_profiles": [
+    {
+      "profile_id": "dih-template-capability-v1",
+      "profile_version": "1.0.0",
+      "registry_source": "apps/api/src/data_intelligence_hub/services/workbench_templates.py",
+      "schema_path": "configs/contracts/v1.1.0/template_capability_profile.schema.json",
+      "entrypoint": "template_capability_ids",
+      "digest_function": "template_registry_digest",
+      "digest_profile": "dih-canonical-json-v1",
+      "digest_algorithm": "sha256",
+      "digest_includes": [
+        "template_id",
+        "version",
+        "markets",
+        "package_tiers",
+        "capability_allowlist",
+        "thresholds"
+      ],
+      "empty_allowlist_policy": "deny_all",
+      "unknown_template": "KeyError",
+      "storage": "code_registry_not_table",
+      "excluded_capability_ids": [
+        "tikhub_tiktok_video_products",
+        "tikhub_tiktok_creator_showcase"
+      ]
+    }
+  ],
+  "audit_actions": {
+    "version": "audit-actions.v1",
+    "actions": [
+      {
+        "name": "auth.login.succeeded",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "auth.login.failed",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "auth.logout.succeeded",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "workspace.member.added",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "workspace.member.role_changed",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "workspace.member.removed",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.created",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.updated",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.archived",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.member.added",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.member.removed",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.access.denied",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project.management.denied",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "reviewer.access.granted",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "reviewer.access.denied",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "config.switch.changed",
+        "owner": "C2",
+        "status": "new",
+        "phase": "C2"
+      },
+      {
+        "name": "project_api_key.issued",
+        "owner": "C3",
+        "status": "new",
+        "phase": "C3"
+      },
+      {
+        "name": "project_api_key.rotated",
+        "owner": "C3",
+        "status": "new",
+        "phase": "C3"
+      },
+      {
+        "name": "project_api_key.revoked",
+        "owner": "C3",
+        "status": "new",
+        "phase": "C3"
+      },
+      {
+        "name": "platform_credential.updated",
+        "owner": "C3",
+        "status": "new",
+        "phase": "C3"
+      },
+      {
+        "name": "platform_credential.removed",
+        "owner": "C3",
+        "status": "new",
+        "phase": "C3"
+      },
+      {
+        "name": "task.created",
+        "owner": "C4",
+        "status": "new",
+        "phase": "C4"
+      },
+      {
+        "name": "task.cancelled",
+        "owner": "C4",
+        "status": "new",
+        "phase": "C4"
+      },
+      {
+        "name": "budget.price.changed",
+        "owner": "C5",
+        "status": "new",
+        "phase": "C5"
+      },
+      {
+        "name": "budget.limit.changed",
+        "owner": "C5",
+        "status": "new",
+        "phase": "C5"
+      },
+      {
+        "name": "budget.blocked",
+        "owner": "C5",
+        "status": "new",
+        "phase": "C5"
+      },
+      {
+        "name": "budget.released",
+        "owner": "C5",
+        "status": "new",
+        "phase": "C5"
+      },
+      {
+        "name": "task.retried",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.created",
+        "owner": "C4",
+        "status": "new",
+        "phase": "C4"
+      },
+      {
+        "name": "run.cancel_requested",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.cancelled",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.retry_scheduled",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.retry_exhausted",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.completed",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "run.failed",
+        "owner": "C6",
+        "status": "new",
+        "phase": "C6"
+      },
+      {
+        "name": "claim.review.submitted",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.review.approved",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.review.rejected",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.review.overridden",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.blocked",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.unblocked",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "claim.revised",
+        "owner": "C7",
+        "status": "new",
+        "phase": "C7"
+      },
+      {
+        "name": "dataset.quality.evaluated",
+        "owner": "C8",
+        "status": "new",
+        "phase": "C8"
+      },
+      {
+        "name": "quality.assessment.computed",
+        "owner": "C8",
+        "status": "new",
+        "phase": "C8"
+      },
+      {
+        "name": "quality.gap.resolved",
+        "owner": "C8",
+        "status": "new",
+        "phase": "C8"
+      },
+      {
+        "name": "quality.template.changed",
+        "owner": "C8",
+        "status": "new",
+        "phase": "C8"
+      },
+      {
+        "name": "report.review.approved",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "report.review.rejected",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "report.published",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "report.superseded",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "reviewer.assignment.created",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "reviewer.assignment.revoked",
+        "owner": "C9",
+        "status": "new",
+        "phase": "C9"
+      },
+      {
+        "name": "delivery.published",
+        "owner": "C10",
+        "status": "new",
+        "phase": "C10"
+      },
+      {
+        "name": "delivery.downloaded",
+        "owner": "C10",
+        "status": "new",
+        "phase": "C10"
+      },
+      {
+        "name": "delivery.projection.viewed",
+        "owner": "C10",
+        "status": "new",
+        "phase": "C10"
+      },
+      {
+        "name": "delivery.tamper_detected",
+        "owner": "C10",
+        "status": "new",
+        "phase": "C10"
+      },
+      {
+        "name": "delivery.superseded",
+        "owner": "C10",
+        "status": "new",
+        "phase": "C10"
+      },
+      {
+        "name": "privacy.projection.applied",
+        "owner": "C11",
+        "status": "new",
+        "phase": "C11"
+      },
+      {
+        "name": "dataset.export.created",
+        "owner": "C11",
+        "status": "new",
+        "phase": "C11"
+      },
+      {
+        "name": "retention.cleanup.executed",
+        "owner": "C11",
+        "status": "new",
+        "phase": "C11"
+      },
+      {
+        "name": "legal_hold.created",
+        "owner": "C11",
+        "status": "new",
+        "phase": "C11"
+      },
+      {
+        "name": "legal_hold.released",
+        "owner": "C11",
+        "status": "new",
+        "phase": "C11"
+      },
+      {
+        "name": "privacy.deletion.requested",
+        "owner": "C12",
+        "status": "new",
+        "phase": "C12"
+      },
+      {
+        "name": "privacy.deletion.executed",
+        "owner": "C12",
+        "status": "new",
+        "phase": "C12"
+      },
+      {
+        "name": "privacy.dsr.received",
+        "owner": "C12",
+        "status": "new",
+        "phase": "C12"
+      },
+      {
+        "name": "mcp.tool_call.started",
+        "owner": "C13",
+        "status": "new",
+        "phase": "C13"
+      },
+      {
+        "name": "mcp.tool_call.finished",
+        "owner": "C13",
+        "status": "new",
+        "phase": "C13"
+      },
+      {
+        "name": "mcp.tool_call.denied",
+        "owner": "C13",
+        "status": "new",
+        "phase": "C13"
+      }
+    ]
+  },
+  "phases": [
+    {
+      "id": "C2",
+      "name": "身份、项目 ACL 与统一审计",
+      "scope": "工作区角色、项目成员、追加式审计、请求 ID",
+      "objects": []
+    },
+    {
+      "id": "C3",
+      "name": "项目密钥与项目级凭据",
+      "scope": "密钥状态、轮换、能力白名单、项目级凭据、Cookie 元数据",
+      "objects": []
+    },
+    {
+      "id": "C4",
+      "name": "任务单提交、计划关联与幂等",
+      "scope": "七槽位任务单、计划版本关联、逐市场 run 幂等",
+      "objects": []
+    },
+    {
+      "id": "C5",
+      "name": "预算、账本与定价",
+      "scope": "单价、额度账户、调用记录、按 run 授权、账本符号",
+      "objects": []
+    },
+    {
+      "id": "C6",
+      "name": "Run 执行收敛、尝试与取消",
+      "scope": "逻辑 step、attempt、重试、取消、租约",
+      "objects": []
+    },
+    {
+      "id": "C7",
+      "name": "证据、Claim 与独立来源",
+      "scope": "Claim 治理字段、审核、风险、独立来源、证据扩展",
+      "objects": []
+    },
+    {
+      "id": "C8",
+      "name": "数据集质量、缺口与首期模板",
+      "scope": "数据集哈希、逐市场质量、结构化 gap、首期模板",
+      "objects": []
+    },
+    {
+      "id": "C9",
+      "name": "不可变报告合同与产物发布",
+      "scope": "报告生命周期、审核签字、发布、取代",
+      "objects": []
+    },
+    {
+      "id": "C10",
+      "name": "交付 Manifest、bundle、验收与分享",
+      "scope": "manifest、sidecar、公开投影、验收快照、篡改检测",
+      "objects": []
+    },
+    {
+      "id": "C11",
+      "name": "工作区伪名化、导出遮蔽与保留",
+      "scope": "伪名盐、法律保留、保留清理、保留墓碑、TTL",
+      "objects": []
+    },
+    {
+      "id": "C12",
+      "name": "删除请求、墓碑、删除证明与 DSR",
+      "scope": "删除状态机、重放、证明、DSR、隐私审计",
+      "objects": []
+    },
+    {
+      "id": "C13",
+      "name": "客户 MCP /mcp/customer 八工具",
+      "scope": "客户入口、八工具、能力白名单、速率并发租约",
+      "objects": []
+    },
+    {
+      "id": "C14",
+      "name": "控制台 11 路由、CI 与验收门禁",
+      "scope": "页面路由、CI、Playwright、PG0 验收",
+      "objects": []
+    }
+  ],
+  "tables": [
+    {
+      "name": "tool_catalog",
+      "module": "M02",
+      "status": "existing",
+      "phase": "C2",
+      "purpose": "内部工具目录与工具合同",
+      "primary_key": [
+        "tool_id"
+      ],
+      "columns": [
+        {
+          "name": "tool_id",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C2"
+        }
+      ]
+    },
+    {
+      "name": "workbench_tasks",
+      "module": "M10",
+      "status": "new",
+      "phase": "C4",
+      "purpose": "七槽位任务单与包型/市场角色；保存种子商品、目标价格带与创建幂等摘要；不记录执行状态",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "references": "projects.id"
+        },
+        {
+          "name": "created_by_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "references": "users.id"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "references": "users.id"
+        },
+        {
+          "name": "brand",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "category",
+          "type": "string(80)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "competitors",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "package_type",
+          "type": "string(10)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "enum": "workbench_tasks.package_type"
+        },
+        {
+          "name": "primary_market",
+          "type": "string(2)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "enum": "market_code",
+          "notes": "市场角色事实源；等于该市场 run 的 primary"
+        },
+        {
+          "name": "comparison_markets",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "notes": "市场角色事实源；元素为正式市场码，最多数量由 package_type 决定"
+        },
+        {
+          "name": "markets",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "notes": "七槽位投影；服务层写入 [primary_market] + comparison_markets，不单独接收"
+        },
+        {
+          "name": "locale_by_market",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "window_start",
+          "type": "date",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "window_end",
+          "type": "date",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "decision_question",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "does_not_answer",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "acceptance_contact_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4",
+          "references": "workspace_members.user_id",
+          "notes": "复合外键指向 workspace_members(workspace_id, user_id)；空值表示任务 owner；非空必须是同工作区 owner 或 admin，member 返回 acceptance_contact_not_member"
+        },
+        {
+          "name": "max_cost_usd",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "max_pages",
+          "type": "integer",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "max_records",
+          "type": "integer",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "seed_products",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "notes": "默认空数组；非空时必须有 3–10 项公开链接或平台 ID"
+        },
+        {
+          "name": "target_price_band",
+          "type": "json",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4",
+          "notes": "市场原币价格带；至少一个边界，min_amount <= max_amount，金额非负，币种三个大写字母"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4",
+          "notes": "创建幂等摘要 sha256(\"workbench-task-create.v1:{key}\")；工作区级部分唯一索引保证同一键只建一单"
+        },
+        {
+          "name": "task_type",
+          "type": "string(10)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4",
+          "enum": "workbench_tasks.task_type"
+        },
+        {
+          "name": "task_type_confidence",
+          "type": "numeric(4,3)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4",
+          "enum": "workbench_tasks.status"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C4"
+        }
+      ],
+      "constraints": [
+        "uq_workbench_tasks_tenant_id",
+        "fk_workbench_tasks_project_tenant",
+        "fk_workbench_tasks_owner_member",
+        "fk_workbench_tasks_created_by_user_id_users",
+        "fk_workbench_tasks_acceptance_contact_member",
+        "ck_workbench_tasks_status",
+        "ck_workbench_tasks_window_order",
+        "ck_workbench_tasks_task_type",
+        "ck_workbench_tasks_task_type_confidence",
+        "ck_workbench_tasks_package_type",
+        "ck_workbench_tasks_primary_market",
+        "ck_workbench_tasks_budget_nonnegative"
+      ],
+      "indexes": [
+        {
+          "name": "uq_workbench_tasks_workspace_idempotency",
+          "columns": [
+            "workspace_id",
+            "idempotency_key_hash"
+          ],
+          "unique": true,
+          "where": "idempotency_key_hash IS NOT NULL"
+        },
+        {
+          "name": "ix_workbench_tasks_workspace_project_status",
+          "columns": [
+            "workspace_id",
+            "project_id",
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_workbench_tasks_owner",
+          "columns": [
+            "workspace_id",
+            "owner_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "workflow_versions",
+      "module": "M10",
+      "status": "extend",
+      "phase": "C4",
+      "purpose": "不可变计划版本；关联任务单",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "plan_payload",
+          "type": "json",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4",
+          "notes": "execution_steps 是 C4 版本创建时写入的不可变步骤快照；批准、提交、重试都不改写"
+        },
+        {
+          "name": "workbench_task_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C4",
+          "references": "workbench_tasks.id",
+          "notes": "复合外键指向 workbench_tasks(workspace_id, project_id, id)；版本创建时把 execution_steps 写入 plan_payload，批准、提交、重试都不改写"
+        }
+      ],
+      "constraints": [
+        "fk_workflow_versions_workbench_task_tenant"
+      ],
+      "indexes": [
+        {
+          "name": "ix_workflow_versions_workbench_task",
+          "columns": [
+            "workspace_id",
+            "workbench_task_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "runs",
+      "module": "M10",
+      "status": "extend",
+      "phase": "C4",
+      "purpose": "一次执行运行；逐市场提交；market_role 由 workbench_tasks 派生，不落列",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "workflow_version_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "existing",
+          "phase": "C4"
+        },
+        {
+          "name": "cancel_idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6",
+          "notes": "取消幂等摘要 sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220062 创建；不得复用创建幂等列 idempotency_key_hash"
+        },
+        {
+          "name": "cancel_reason_code",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6",
+          "notes": "取消原因码；与 cancel_idempotency_key_hash 同事务写入；只在迁移 202610220062 创建"
+        },
+        {
+          "name": "market_code",
+          "type": "string(2)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C4",
+          "enum": "market_code",
+          "notes": "非空时必须是两个大写字母；逐市场一行 run。market_role 不落列：等于任务 primary_market 时为 primary，否则为 compare"
+        }
+      ],
+      "constraints": [
+        "ck_runs_market_code"
+      ],
+      "indexes": [
+        {
+          "name": "uq_runs_workspace_idempotency",
+          "columns": [
+            "workspace_id",
+            "idempotency_key_hash"
+          ],
+          "unique": true,
+          "where": "idempotency_key_hash IS NOT NULL"
+        },
+        {
+          "name": "uq_runs_workspace_cancel_idempotency",
+          "columns": [
+            "workspace_id",
+            "cancel_idempotency_key_hash"
+          ],
+          "unique": true,
+          "where": "cancel_idempotency_key_hash IS NOT NULL"
+        },
+        {
+          "name": "uq_runs_workflow_version_market",
+          "columns": [
+            "workflow_version_id",
+            "market_code"
+          ],
+          "unique": true,
+          "where": "workflow_version_id IS NOT NULL AND market_code IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "name": "authorizations",
+      "module": "M08",
+      "status": "extend",
+      "phase": "C5",
+      "purpose": "人工授权与按 run 预算绑定",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5",
+          "references": "runs.id"
+        },
+        {
+          "name": "gate_id",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5",
+          "enum": "gate_id"
+        }
+      ],
+      "constraints": [
+        "uq_authorizations_run_gate"
+      ],
+      "indexes": [
+        {
+          "name": "uq_authorizations_run_gate",
+          "columns": [
+            "run_id",
+            "gate_id"
+          ],
+          "unique": true,
+          "where": "run_id IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "name": "run_ledger_entries",
+      "module": "M08",
+      "status": "extend",
+      "phase": "C5",
+      "purpose": "追加式运行成本账本；八列冻结",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5",
+          "references": "runs.id"
+        },
+        {
+          "name": "step_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "existing",
+          "phase": "C5",
+          "references": "run_steps.id"
+        },
+        {
+          "name": "entry_kind",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5",
+          "enum": "entry_kind"
+        },
+        {
+          "name": "amount_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "balance_after_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "string(160)",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        }
+      ],
+      "constraints": [
+        "ck_run_ledger_entries_amount_sign_by_kind"
+      ]
+    },
+    {
+      "name": "task_runs",
+      "module": "M04",
+      "status": "extend",
+      "phase": "C5",
+      "purpose": "一次采集执行的记录；写回剩余额度",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C5"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5",
+          "references": "projects.id"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5",
+          "references": "runs.id"
+        },
+        {
+          "name": "step_index",
+          "type": "integer",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "unit",
+          "type": "string(20)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(12,3)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "total_cost_usd",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "remaining_budget",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "provider",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "provider_run_id",
+          "type": "string(120)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "endpoint_type",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C7",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "schema_version",
+          "type": "string(20)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C5"
+        }
+      ]
+    },
+    {
+      "name": "run_steps",
+      "module": "M10",
+      "status": "extend",
+      "phase": "C6",
+      "purpose": "逻辑执行步骤；attempt 号与依赖只保留最终值",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "existing",
+          "phase": "C6"
+        },
+        {
+          "name": "task_run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "existing",
+          "phase": "C6",
+          "references": "task_runs.id"
+        },
+        {
+          "name": "attempt_no",
+          "type": "integer",
+          "nullable": false,
+          "status": "extend",
+          "phase": "C6",
+          "default": 1,
+          "notes": "最终 attempt 号；非空，默认 1"
+        },
+        {
+          "name": "depends_on",
+          "type": "json",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6"
+        },
+        {
+          "name": "tool_id",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6"
+        },
+        {
+          "name": "provider_run_id",
+          "type": "string(120)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "stage",
+          "type": "string(10)",
+          "nullable": true,
+          "status": "extend",
+          "phase": "C6"
+        }
+      ],
+      "constraints": [
+        "ck_run_steps_attempt_no_positive"
+      ],
+      "indexes": [
+        {
+          "name": "uq_run_steps_task_run_id",
+          "columns": [
+            "task_run_id"
+          ],
+          "unique": true,
+          "where": "task_run_id IS NOT NULL"
+        }
+      ]
+    },
+    {
+      "name": "run_step_attempts",
+      "module": "M10",
+      "status": "new",
+      "phase": "C6",
+      "purpose": "每次 step attempt 一行；逻辑 step 仍只有一行 run_steps",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6",
+          "references": "runs.id"
+        },
+        {
+          "name": "step_index",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "attempt_number",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6",
+          "enum": "run_step_attempts.status"
+        },
+        {
+          "name": "task_run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C6",
+          "references": "task_runs.id"
+        },
+        {
+          "name": "error_reason_code",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C6"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C6"
+        }
+      ],
+      "constraints": [
+        "uq_run_step_attempts_run_step_attempt",
+        "uq_run_step_attempts_task_run_id",
+        "ck_run_step_attempts_attempt_number_positive",
+        "ck_run_step_attempts_status",
+        "fk_run_step_attempts_run_id_runs",
+        "fk_run_step_attempts_task_run_id_task_runs"
+      ],
+      "indexes": [
+        {
+          "name": "ix_run_step_attempts_run_step",
+          "columns": [
+            "run_id",
+            "step_index"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "tool_prices",
+      "module": "M08",
+      "status": "new",
+      "phase": "C5",
+      "purpose": "工具单价快照；按 tool_id、币种与价格簿版本登记",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "tool_id",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "tool_catalog.tool_id"
+        },
+        {
+          "name": "currency",
+          "type": "string(3)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "default": "USD"
+        },
+        {
+          "name": "price_book_version",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "notes": "为空表示未定价"
+        },
+        {
+          "name": "unit",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "quantity_basis",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "confidence",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "enum": "tool_prices.confidence"
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "effective_from",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "effective_to",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        }
+      ],
+      "constraints": [
+        "uq_tool_prices_tool_currency_version",
+        "ck_tool_prices_unit_price_nonnegative",
+        "ck_tool_prices_confidence",
+        "ck_tool_prices_effective_window",
+        "fk_tool_prices_tool_id_tool_catalog"
+      ],
+      "indexes": [
+        {
+          "name": "uq_tool_prices_tool_currency_version",
+          "columns": [
+            "tool_id",
+            "currency",
+            "price_book_version"
+          ],
+          "unique": true
+        },
+        {
+          "name": "ix_tool_prices_tool_effective",
+          "columns": [
+            "tool_id",
+            "effective_from"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "quota_accounts",
+      "module": "M08",
+      "status": "new",
+      "phase": "C5",
+      "purpose": "项目额度账户；预算检查与预留的锁点",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "projects.id"
+        },
+        {
+          "name": "period_start",
+          "type": "date",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "period_end",
+          "type": "date",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "currency",
+          "type": "string(3)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "daily_limit_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "monthly_limit_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "used_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "reserved_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "remaining_usd",
+          "type": "numeric(12,6)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "version",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        }
+      ],
+      "constraints": [
+        "uq_quota_accounts_project_period"
+      ]
+    },
+    {
+      "name": "tool_calls",
+      "module": "M08",
+      "status": "new",
+      "phase": "C5",
+      "purpose": "单次工具调用回执；成本与幂等",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "projects.id"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "references": "runs.id"
+        },
+        {
+          "name": "step_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5",
+          "references": "run_steps.id"
+        },
+        {
+          "name": "tool_id",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "references": "tool_catalog.tool_id"
+        },
+        {
+          "name": "contract_version",
+          "type": "string(50)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "idempotency_key_hash",
+          "type": "string(64)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "request_hash",
+          "type": "string(64)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "backend_ref_type",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "backend_ref_id",
+          "type": "string(120)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "outcome",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5",
+          "enum": "runs.outcome"
+        },
+        {
+          "name": "error_code",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(12,3)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "unit",
+          "type": "string(20)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "total_cost_usd",
+          "type": "numeric(12,6)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "evidence_grade",
+          "type": "string(30)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C7",
+          "enum": "evidence_grade"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C5"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C5"
+        }
+      ],
+      "constraints": [
+        "uq_tool_calls_workspace_idempotency"
+      ],
+      "indexes": [
+        {
+          "name": "ix_tool_calls_run_step",
+          "columns": [
+            "run_id",
+            "step_id"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_tool_calls_tool_started",
+          "columns": [
+            "tool_id",
+            "started_at"
+          ],
+          "unique": false
+        }
+      ]
+    }
+  ],
+  "enums": [
+    {
+      "name": "runs.status",
+      "values": [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ],
+      "status": "frozen",
+      "phase": "C6",
+      "banned_values": [
+        "held",
+        "degraded",
+        "partial"
+      ],
+      "source": "契约 v1 §2.1"
+    }
+  ],
+  "paths": [
+    {
+      "id": "tools.list",
+      "method": "GET",
+      "path": "/api/tools",
+      "audience": "session",
+      "status": "existing",
+      "phase": "C2",
+      "auth": "session",
+      "idempotent": false,
+      "error_codes": [
+        "authentication_required"
+      ]
+    }
+  ],
+  "page_routes": [
+    {
+      "id": "home",
+      "path": "/",
+      "area": "public",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "capabilities",
+      "path": "/capabilities",
+      "area": "public",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "capabilities.detail",
+      "path": "/capabilities/[toolId]",
+      "area": "public",
+      "enabled": true,
+      "kind": "dynamic",
+      "dynamic_segment": "toolId",
+      "phase": "C14"
+    },
+    {
+      "id": "reports.public.detail",
+      "path": "/reports/public/[id]",
+      "area": "public",
+      "enabled": false,
+      "kind": "dynamic",
+      "dynamic_segment": "id",
+      "phase": "C14"
+    },
+    {
+      "id": "docs",
+      "path": "/docs",
+      "area": "public",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "workbench",
+      "path": "/workbench",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "workbench.detail",
+      "path": "/workbench/[taskId]",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "dynamic",
+      "dynamic_segment": "taskId",
+      "phase": "C14"
+    },
+    {
+      "id": "reports",
+      "path": "/reports",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "reports.detail",
+      "path": "/reports/[artifactId]",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "dynamic",
+      "dynamic_segment": "artifactId",
+      "phase": "C14"
+    },
+    {
+      "id": "connectors",
+      "path": "/connectors",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    },
+    {
+      "id": "settings",
+      "path": "/settings",
+      "area": "authorized",
+      "enabled": true,
+      "kind": "static",
+      "phase": "C14"
+    }
+  ],
+  "primary_nav": [
+    {
+      "id": "workbench",
+      "label": "工作台",
+      "path": "/workbench",
+      "order": 1,
+      "phase": "C14"
+    },
+    {
+      "id": "reports",
+      "label": "报告",
+      "path": "/reports",
+      "order": 2,
+      "phase": "C14"
+    },
+    {
+      "id": "connectors",
+      "label": "连接器",
+      "path": "/connectors",
+      "order": 3,
+      "phase": "C14"
+    },
+    {
+      "id": "settings",
+      "label": "设置",
+      "path": "/settings",
+      "order": 4,
+      "phase": "C14"
+    }
+  ],
+  "mcp": {
+    "endpoint": "/mcp/customer",
+    "transport": "streamable-http",
+    "tools_version": "customer-mcp.v1",
+    "schema_file": "configs/contracts/v1.1.0/customer_mcp.schema.json",
+    "tools": [
+      {
+        "name": "discover_capabilities",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": true,
+        "input_ref": "customer_mcp.schema.json#/$defs/DiscoverCapabilitiesInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/DiscoverCapabilitiesOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited"
+        ]
+      },
+      {
+        "name": "estimate_task",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": true,
+        "input_ref": "customer_mcp.schema.json#/$defs/EstimateTaskInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/EstimateTaskOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "market_unsupported",
+          "tool_not_priced",
+          "package_type_invalid",
+          "comparison_markets_exceeded",
+          "budget_invalid"
+        ]
+      },
+      {
+        "name": "create_task",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": false,
+        "input_ref": "customer_mcp.schema.json#/$defs/CreateTaskInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/CreateTaskOutput",
+        "error_codes": [
+          "authentication_required",
+          "invalid_request",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "approval_required",
+          "market_unsupported",
+          "idempotency_conflict",
+          "package_type_invalid",
+          "comparison_markets_exceeded",
+          "acceptance_contact_not_member",
+          "budget_invalid"
+        ]
+      },
+      {
+        "name": "get_task",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": true,
+        "input_ref": "customer_mcp.schema.json#/$defs/GetTaskInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/GetTaskOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "task_not_found"
+        ]
+      },
+      {
+        "name": "cancel_task",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": false,
+        "input_ref": "customer_mcp.schema.json#/$defs/CancelTaskInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/CancelTaskOutput",
+        "error_codes": [
+          "authentication_required",
+          "invalid_request",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "task_not_found",
+          "state_conflict",
+          "idempotency_conflict"
+        ]
+      },
+      {
+        "name": "get_delivery_manifest",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": true,
+        "input_ref": "customer_mcp.schema.json#/$defs/GetDeliveryManifestInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/GetDeliveryManifestOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "task_not_found",
+          "manifest_not_found"
+        ]
+      },
+      {
+        "name": "get_evidence",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": true,
+        "input_ref": "customer_mcp.schema.json#/$defs/GetEvidenceInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/GetEvidenceOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "claim_not_found",
+          "evidence_not_found"
+        ]
+      },
+      {
+        "name": "collect",
+        "status": "new",
+        "phase": "C13",
+        "audience": "customer",
+        "read_only": false,
+        "input_ref": "customer_mcp.schema.json#/$defs/CollectInput",
+        "output_ref": "customer_mcp.schema.json#/$defs/CollectOutput",
+        "error_codes": [
+          "authentication_required",
+          "tool_not_allowed",
+          "quota_exceeded",
+          "rate_limited",
+          "approval_required",
+          "tool_not_executable",
+          "tool_not_priced",
+          "market_unsupported",
+          "capability_not_allowed",
+          "cookie_not_accepted",
+          "package_type_invalid",
+          "comparison_markets_exceeded"
+        ]
+      }
+    ],
+    "forbidden_tools": [
+      "collect_endpoint",
+      "tiktok_creator_cookie",
+      "raw_provider_call",
+      "admin_query"
+    ]
+  },
+  "error_codes": [
+    {
+      "code": "tool_not_allowed",
+      "kind": "error",
+      "http_status": 403,
+      "retryable": false,
+      "phase": "C13",
+      "meaning": "工具不在项目密钥白名单内"
+    }
+  ],
+  "schemas": [
+    {
+      "id": "registry",
+      "path": "configs/contracts/v1.1.0/registry.schema.json",
+      "kind": "registry",
+      "profile": "dih-canonical-json-v1",
+      "digest_algorithm": "sha256"
+    },
+    {
+      "id": "registry_copy",
+      "path": "configs/contracts/v1.1.0/registry.schema.json",
+      "kind": "registry",
+      "profile": "dih-canonical-json-v1",
+      "digest_algorithm": "sha256"
+    }
+  ],
+  "documents": [
+    {
+      "path": "docs/design/【契约冻结】v1-表名-枚举-接口.md",
+      "role": "authority",
+      "version": "v1.1",
+      "must_contain": [
+        "附录 A 机器登记块"
+      ]
+    },
+    {
+      "path": "docs/product/【PRD】母婴出海数据洞察Agent工作台.md",
+      "role": "derived",
+      "version": "v1.1",
+      "must_contain": [
+        "discover_capabilities"
+      ]
+    },
+    {
+      "path": "docs/product/【Playbook】母婴出海洞察交付.md",
+      "role": "derived",
+      "version": "v1.1",
+      "must_contain": [
+        "comparable_with_caveats"
+      ]
+    }
+  ],
+  "deferred": [
+    {
+      "kind": "table",
+      "name": "mcp_customer_request_leases",
+      "phase": "C13",
+      "owner": "C13",
+      "reason": "C13 不新增迁移与表；租约按现有配置实现"
+    },
+    {
+      "kind": "table",
+      "name": "report_shares",
+      "phase": "C10",
+      "owner": "C10",
+      "reason": "首期延期；C10 只提供项目内鉴权下载"
+    },
+    {
+      "kind": "path",
+      "name": "reports.share",
+      "phase": "C10",
+      "owner": "C10",
+      "reason": "公开分享延期；不得登记 POST /api/reports/{report_id}/share"
+    },
+    {
+      "kind": "path",
+      "name": "reports.public.access",
+      "phase": "C10",
+      "owner": "C10",
+      "reason": "公开分享延期；不得登记 GET /api/reports/public/{token}"
+    }
+  ]
+}

@@ -41,8 +41,7 @@ def minimal_registry() -> dict:
                 "profile_id": "dih-descriptive-language-v1",
                 "profile_version": "1.0.0",
                 "source": (
-                    "docs/superpowers/specs/"
-                    "2026-10-21-tikhub-governed-task-platform-design.md#5.7"
+                    "docs/superpowers/specs/2026-10-21-tikhub-governed-task-platform-design.md#5.7"
                 ),
                 "causal_terms_zh": ["导致", "驱动", "提升", "降低", "造成", "证明"],
                 "causal_terms_en": [
@@ -407,3 +406,230 @@ def test_validate_registry_rejects_error_code_http_status_out_of_range() -> None
     payload["error_codes"][0]["http_status"] = 99999
     errors = module.validate_registry(payload, schema)
     assert any("maximum" in error for error in errors), errors
+
+
+CONTRACT_PATH = PROJECT_ROOT / "docs/design/【契约冻结】v1-表名-枚举-接口.md"
+SCHEMA_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.schema.json"
+REGISTRY_PATH = PROJECT_ROOT / "configs/contracts/v1.1.0/registry.json"
+
+
+def load_contract_registry() -> dict:
+    module = load_module()
+    return module.extract_registry_block(CONTRACT_PATH.read_text(encoding="utf-8"))
+
+
+def _table(registry: dict, name: str) -> dict:
+    return next(item for item in registry["tables"] if item["name"] == name)
+
+
+def test_registry_contains_execution_and_budget_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workbench_tasks",
+        "workflow_versions",
+        "runs",
+        "run_steps",
+        "authorizations",
+        "task_runs",
+        "run_step_attempts",
+        "tool_prices",
+        "quota_accounts",
+        "tool_calls",
+    } <= names
+
+
+def test_tool_prices_matches_c5_pricing_contract() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "tool_prices")
+    assert {column["name"] for column in table["columns"]} == {
+        "id",
+        "tool_id",
+        "currency",
+        "price_book_version",
+        "unit_price",
+        "unit",
+        "quantity_basis",
+        "confidence",
+        "source",
+        "effective_from",
+        "effective_to",
+        "created_at",
+        "updated_at",
+    }
+    assert {
+        "uq_tool_prices_tool_currency_version",
+        "ck_tool_prices_unit_price_nonnegative",
+        "ck_tool_prices_confidence",
+        "ck_tool_prices_effective_window",
+        "fk_tool_prices_tool_id_tool_catalog",
+    } <= set(table["constraints"])
+    indexes = {index["name"]: index for index in table["indexes"]}
+    assert indexes["uq_tool_prices_tool_currency_version"]["columns"] == [
+        "tool_id",
+        "currency",
+        "price_book_version",
+    ]
+    assert indexes["uq_tool_prices_tool_currency_version"]["unique"] is True
+    assert indexes["ix_tool_prices_tool_effective"]["columns"] == [
+        "tool_id",
+        "effective_from",
+    ]
+
+
+def test_deferred_customer_lease_is_not_registered_as_table() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    assert ("table", "mcp_customer_request_leases") in deferred
+    assert ("table", "report_shares") in deferred
+    assert "mcp_customer_request_leases" not in names
+    assert "report_shares" not in names
+    assert ("table", "tool_prices") not in deferred
+
+
+def test_workbench_tasks_matches_c4_seven_slots() -> None:
+    registry = load_contract_registry()
+    columns = {column["name"] for column in _table(registry, "workbench_tasks")["columns"]}
+    assert {
+        "workspace_id",
+        "project_id",
+        "created_by_user_id",
+        "owner_id",
+        "brand",
+        "category",
+        "competitors",
+        "markets",
+        "locale_by_market",
+        "window_start",
+        "window_end",
+        "decision_question",
+        "does_not_answer",
+        "task_type",
+        "task_type_confidence",
+        "status",
+    } <= columns
+
+
+def test_workbench_tasks_persist_package_type_and_market_roles() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "workbench_tasks")
+    columns = {column["name"]: column for column in table["columns"]}
+    assert {
+        "package_type",
+        "primary_market",
+        "comparison_markets",
+        "acceptance_contact_id",
+        "max_cost_usd",
+        "max_pages",
+        "max_records",
+        "seed_products",
+        "target_price_band",
+        "idempotency_key_hash",
+    } <= set(columns)
+    assert columns["package_type"]["enum"] == "workbench_tasks.package_type"
+    assert columns["primary_market"]["enum"] == "market_code"
+    assert columns["comparison_markets"]["type"] == "json"
+    assert columns["seed_products"]["type"] == "json"
+    assert columns["seed_products"]["nullable"] is False
+    assert columns["target_price_band"]["type"] == "json"
+    assert columns["target_price_band"]["nullable"] is True
+    assert columns["idempotency_key_hash"]["type"] == "string(64)"
+    assert columns["idempotency_key_hash"]["nullable"] is True
+    assert "owner" in columns["acceptance_contact_id"]["notes"]
+    assert "admin" in columns["acceptance_contact_id"]["notes"]
+    assert {
+        "ck_workbench_tasks_package_type",
+        "ck_workbench_tasks_primary_market",
+        "ck_workbench_tasks_budget_nonnegative",
+        "fk_workbench_tasks_acceptance_contact_member",
+    } <= set(table["constraints"])
+    indexes = {index["name"]: index for index in table["indexes"]}
+    assert indexes["uq_workbench_tasks_workspace_idempotency"] == {
+        "name": "uq_workbench_tasks_workspace_idempotency",
+        "columns": ["workspace_id", "idempotency_key_hash"],
+        "unique": True,
+        "where": "idempotency_key_hash IS NOT NULL",
+    }
+    versions = {
+        column["name"]: column for column in _table(registry, "workflow_versions")["columns"]
+    }
+    assert "plan_payload" in versions
+    assert "execution_steps" in versions["plan_payload"]["notes"]
+    assert "不可变" in versions["plan_payload"]["notes"]
+    assert versions["workbench_task_id"]["nullable"] is True
+    version_table = _table(registry, "workflow_versions")
+    assert "fk_workflow_versions_workbench_task_tenant" in version_table["constraints"]
+
+
+def test_runs_uses_market_code_and_authorization_binds_run_id() -> None:
+    registry = load_contract_registry()
+    run_columns = {column["name"] for column in _table(registry, "runs")["columns"]}
+    authorization = _table(registry, "authorizations")
+    authorization_columns = {column["name"] for column in authorization["columns"]}
+    assert "market_code" in run_columns
+    assert "market_role" not in run_columns
+    assert "package_type" not in run_columns
+    assert "run_id" in authorization_columns
+    assert "gate_id" in authorization_columns
+    assert "uq_authorizations_run_gate" in authorization["constraints"]
+    assert {
+        "name": "uq_authorizations_run_gate",
+        "columns": ["run_id", "gate_id"],
+        "unique": True,
+        "where": "run_id IS NOT NULL",
+    } in authorization["indexes"]
+
+
+def test_run_step_attempts_matches_c6_columns() -> None:
+    registry = load_contract_registry()
+    attempt = _table(registry, "run_step_attempts")
+    assert {column["name"] for column in attempt["columns"]} == {
+        "id",
+        "run_id",
+        "step_index",
+        "attempt_number",
+        "status",
+        "task_run_id",
+        "error_reason_code",
+        "error_message",
+        "started_at",
+        "finished_at",
+        "created_at",
+    }
+    assert {
+        "uq_run_step_attempts_run_step_attempt",
+        "uq_run_step_attempts_task_run_id",
+        "ck_run_step_attempts_attempt_number_positive",
+        "ck_run_step_attempts_status",
+        "fk_run_step_attempts_run_id_runs",
+        "fk_run_step_attempts_task_run_id_task_runs",
+    } <= set(attempt["constraints"])
+    assert {
+        "name": "ix_run_step_attempts_run_step",
+        "columns": ["run_id", "step_index"],
+        "unique": False,
+    } in attempt["indexes"]
+
+
+def test_run_steps_has_c6_extension_columns() -> None:
+    registry = load_contract_registry()
+    table = _table(registry, "run_steps")
+    columns = {column["name"]: column for column in table["columns"]}
+    assert {
+        "attempt_no",
+        "depends_on",
+        "tool_id",
+        "provider_run_id",
+        "idempotency_key_hash",
+        "evidence_grade",
+        "stage",
+    } <= set(columns)
+    assert columns["attempt_no"]["nullable"] is False
+    assert columns["attempt_no"]["default"] == 1
+    assert {
+        "name": "uq_run_steps_task_run_id",
+        "columns": ["task_run_id"],
+        "unique": True,
+        "where": "task_run_id IS NOT NULL",
+    } in table["indexes"]
