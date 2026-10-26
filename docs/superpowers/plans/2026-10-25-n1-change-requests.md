@@ -98,6 +98,23 @@ down_revision = ("202610220057", "202610210057")
 
 **两个方案都成立，取舍是数据可读性 vs 改动面。N1 不替 C0 选。**
 
+### 已裁决并执行：方案 A（2026-10-26）
+
+合入 S0 报告链时执行了方案 A。当前单链为：
+
+```text
+… → 202610220057(monitors.project_key_id)
+   → 202610220058(claims)
+   → 202610220059(report_artifacts)   ← 当前 head
+```
+
+同步更新了 22 处引用点：两个迁移文件的 `revision` / `down_revision`、报告产物
+服务、`test_claims`、`test_report_artifacts`、`test_migration_head_pins`、
+六个 `verify-*-migration.sh` 与 `check_mypy_baseline.py`。
+
+**后续迁移必须从 060 起编号。** C2 原计划的 058、C3 原计划的 059 顺延为
+060 与 061，两者尚未实现，只在计划文档里登记。
+
 ## 4. 本批已做的事
 
 - 只建 `202610220057_monitors_project_key.py`；没有改 B5 的文件，也没有
