@@ -1043,7 +1043,7 @@
           "nullable": true,
           "status": "extend",
           "phase": "C6",
-          "notes": "取消幂等摘要 sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220062 创建；不得复用创建幂等列 idempotency_key_hash"
+          "notes": "取消幂等摘要 sha256(\"run-cancel.v1:{idempotency_key}\")；只在迁移 202610220064 创建；不得复用创建幂等列 idempotency_key_hash"
         },
         {
           "name": "cancel_reason_code",
@@ -1051,7 +1051,7 @@
           "nullable": true,
           "status": "extend",
           "phase": "C6",
-          "notes": "取消原因码；与 cancel_idempotency_key_hash 同事务写入；只在迁移 202610220062 创建"
+          "notes": "取消原因码；与 cancel_idempotency_key_hash 同事务写入；只在迁移 202610220064 创建"
         },
         {
           "name": "market_code",
