@@ -331,12 +331,12 @@ async def _consume_monitor_quota(
     # consume_daily_quota 返回 False 有两种原因：当日额度已满，或密钥已撤销
     # （UPDATE 的 WHERE 同时要求 revoked_at IS NULL）。两者的处置不同，
     # 必须分开告知，否则运维会去加额度而不是处理撤销。
-    key_revoked = await session.scalar(
+    revoked_at = await session.scalar(
         select(ProjectApiKey.revoked_at)
         .where(ProjectApiKey.id == monitor.project_key_id)
         .limit(1)
     )
-    key_revoked = key_revoked is not None
+    key_revoked = revoked_at is not None
 
     logger.warning(
         "monitor_quota_exhausted",
