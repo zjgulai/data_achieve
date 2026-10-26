@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from data_intelligence_hub.collectors.outbound_policy import is_policy_failure
 from data_intelligence_hub.models.monitor import Monitor
 from data_intelligence_hub.models.notification import Notification
+from data_intelligence_hub.models.project_api_key import ProjectApiKey
 from data_intelligence_hub.models.scheduler import SchedulerLease, SchedulerTick
 from data_intelligence_hub.models.source import Source
 from data_intelligence_hub.models.task import CollectionTask, TaskRun
@@ -186,7 +187,7 @@ class CollectionScheduler:
                     # 监控任务的额度门：config["monitor_id"] 定位监控，
                     # monitor.project_key_id 指向创建密钥时才扣日额度。
                     # 扣减失败（当日额度用尽/密钥已撤销）不启动真实执行，
-                    # 改落一条 failed TaskRun 并给工作区所有者发通知。
+                    # 改落一条 config_gated TaskRun 并给工作区所有者发通知。
                     quota_exceeded = await _consume_monitor_quota(
                         session, task, current_time
                     )
@@ -303,9 +304,12 @@ async def _consume_monitor_quota(
     """监控任务按归属密钥扣一次日额度。
 
     返回 None 表示放行：非监控任务、monitor_id 解析失败、监控不存在、
-    监控没有归属密钥、或额度扣减成功。返回 failed TaskRun 表示额度门拦下，
-    调用方把它落库、更新 last_run_at 并跳过执行。扣减在独立事务先行提交，
-    与随后执行（或失败落库）解耦：额度占用不因执行回滚而退回。
+    监控没有归属密钥、或额度扣减成功。返回 config_gated TaskRun 表示额度门
+    拦下，调用方把它落库、更新 last_run_at 并跳过执行。扣减在独立事务先行
+    提交，与随后执行（或失败落库）解耦：额度占用不因执行回滚而退回。
+
+    扣减失败要区分「额度已满」与「密钥已撤销」：``consume_daily_quota``
+    的 UPDATE 同时要求 ``revoked_at IS NULL``，两种原因都返回 False。
     """
     monitor_id_raw = (task.config or {}).get("monitor_id")
     if not monitor_id_raw:
@@ -324,19 +328,41 @@ async def _consume_monitor_quota(
     if allowed:
         return None
 
+    # consume_daily_quota 返回 False 有两种原因：当日额度已满，或密钥已撤销
+    # （UPDATE 的 WHERE 同时要求 revoked_at IS NULL）。两者的处置不同，
+    # 必须分开告知，否则运维会去加额度而不是处理撤销。
+    key_revoked = await session.scalar(
+        select(ProjectApiKey.revoked_at)
+        .where(ProjectApiKey.id == monitor.project_key_id)
+        .limit(1)
+    )
+    key_revoked = key_revoked is not None
+
     logger.warning(
         "monitor_quota_exhausted",
         task_id=str(task.id),
         monitor_id=str(monitor_id),
         project_key_id=str(monitor.project_key_id),
+        key_revoked=key_revoked,
     )
     workspace = await session.get(Workspace, task.workspace_id)
     if workspace is not None:
+        if key_revoked:
+            title = f"监控「{monitor.name}」已停止：密钥被撤销"
+            body = (
+                "该监控由项目密钥创建，密钥已被撤销，监控已停止执行；"
+                "请到密钥页处理。"
+            )
+            error_message = "quota_exceeded: monitor_key_revoked"
+        else:
+            title = f"监控「{monitor.name}」当日额度已用尽"
+            body = "该监控由项目密钥创建，密钥当日采集额度已用尽，本次未执行。"
+            error_message = "quota_exceeded: monitor_daily_quota"
         session.add(
             Notification(
                 user_id=workspace.owner_id,
-                title=f"监控「{monitor.name}」当日额度已用尽",
-                body="该监控由项目密钥创建，密钥当日采集额度已用尽，本次未执行。",
+                title=title,
+                body=body,
                 notification_type="monitor_quota_exhausted",
                 reference_type="monitor",
                 reference_id=monitor.id,
@@ -346,12 +372,15 @@ async def _consume_monitor_quota(
     return TaskRun(
         task_id=task.id,
         workspace_id=task.workspace_id,
-        status="failed",
+        # config_gated 而不是 failed：额度门与撤销都是配置侧闸门，不是执行失败。
+        # 记 failed 会让重试预算与失败率统计把「额度不足」当成采集器故障。
+        # task.failure_count 相应不动（它不是失败）。
+        status="config_gated",
         started_at=now,
         finished_at=now,
         records_count=0,
         entities_count=0,
-        error_message="quota_exceeded: monitor_daily_quota",
+        error_message=error_message,
         error_traceback=None,
         logs=[],
         created_at=now,

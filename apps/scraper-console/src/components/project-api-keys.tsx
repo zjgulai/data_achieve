@@ -47,7 +47,16 @@ type KeyFormValues = {
   label: string;
   tool_allowlist: string[];
   daily_collect_quota: number;
+  /** 本次提交相对打开编辑时的快照，各字段是否被操作者改过。 */
+  changed: { tool_allowlist: boolean; daily_collect_quota: boolean };
 };
+
+/** 白名单按集合比较：顺序不同不算改动，重复项也无意义。 */
+function sameToolSet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const left = new Set(a);
+  return b.every((item) => left.has(item));
+}
 
 type KeyFormProps = {
   readonly policies: McpToolPolicies;
@@ -73,6 +82,9 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
   const [quota, setQuota] = useState<number>(
     editing ? editing.daily_collect_quota : 50
   );
+  // 打开表单时的快照。签发态没有快照，change 两个字段都为 true，提交时不会
+  // 触发并发覆盖确认。
+  const snapshot = editing;
 
   const toolsByMode = new Map<string, typeof policies.tools>();
   for (const tool of policies.tools) {
@@ -145,6 +157,13 @@ function KeyForm({ policies, busy, editing, onSubmit, onCancel }: KeyFormProps) 
           label: label.trim(),
           tool_allowlist: allowlist,
           daily_collect_quota: quota,
+          changed: {
+            tool_allowlist:
+              snapshot === null ||
+              !sameToolSet(allowlist, snapshot.tool_allowlist),
+            daily_collect_quota:
+              snapshot === null || quota !== snapshot.daily_collect_quota,
+          },
         });
       }}
       className="mt-3 grid gap-3"
@@ -308,14 +327,44 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
   });
 
   const update = useMutation({
-    mutationFn: (input: {
-      keyId: string;
-      values: { tool_allowlist: string[]; daily_collect_quota: number };
-    }) =>
-      patchProjectApiKey(projectId, input.keyId, {
+    mutationFn: async (input: { keyId: string; snapshot: ProjectApiKey; values: KeyFormValues }) => {
+      // PATCH 是整列覆盖，没有版本列可用（版本列/ETag 归 C14/C3 合同升级）。
+      // 先用 GET 取最新行，和打开编辑时的快照比：
+      // 只有在「别人改过的字段」恰好是「本次没改的字段」时才需要确认——
+      // 若本次也改了同一字段，操作者本来就要覆盖它，不必再问一次。
+      const latest =
+        (await fetchProjectApiKeys(projectId)).find((key) => key.id === input.keyId) ??
+        null;
+      if (latest === null) {
+        throw new ApiError(404, "project_api_key_not_found");
+      }
+      const conflicts: string[] = [];
+      const allowlistDrifted = !sameToolSet(
+        latest.tool_allowlist,
+        input.snapshot.tool_allowlist
+      );
+      if (allowlistDrifted && !input.values.changed.tool_allowlist) {
+        conflicts.push("允许工具");
+      }
+      if (
+        latest.daily_collect_quota !== input.snapshot.daily_collect_quota &&
+        !input.values.changed.daily_collect_quota
+      ) {
+        conflicts.push("每日采集额度");
+      }
+      if (conflicts.length > 0) {
+        const confirmed = window.confirm(
+          `密钥已被他人修改（${conflicts.join("、")}）。继续保存会覆盖对方的改动。覆盖还是取消？`
+        );
+        if (!confirmed) {
+          throw new Error("__cancelled__");
+        }
+      }
+      return patchProjectApiKey(projectId, input.keyId, {
         tool_allowlist: input.values.tool_allowlist,
         daily_collect_quota: input.values.daily_collect_quota,
-      }),
+      });
+    },
     onSuccess: async () => {
       setEditingKey(null);
       setActionError(null);
@@ -324,6 +373,16 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
       });
     },
     onError: (err) => {
+      if (err instanceof Error && err.message === "__cancelled__") {
+        // 操作者选择取消：保持表单打开，不清空已填内容。
+        setActionError(
+          "已取消保存：密钥已被他人修改。刷新页面查看最新值后再改。"
+        );
+        void queryClient.invalidateQueries({
+          queryKey: ["project-api-keys", projectId],
+        });
+        return;
+      }
       if (err instanceof ApiError) {
         if (err.status === 400 && err.message === "unknown_tool_in_allowlist") {
           setActionError(
@@ -468,7 +527,11 @@ export function ProjectApiKeys({ projectId }: { readonly projectId: string }) {
               editing={editingKey}
               onCancel={() => setEditingKey(null)}
               onSubmit={(values) =>
-                update.mutate({ keyId: editingKey.id, values })
+                update.mutate({
+                  keyId: editingKey.id,
+                  snapshot: editingKey,
+                  values,
+                })
               }
             />
           )}

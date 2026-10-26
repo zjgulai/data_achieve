@@ -271,20 +271,37 @@ status != disabled
 
 ## 6. 稳定错误码
 
-| 场景 | 错误码 |
-|---|---|
-| 工具未授权 | `tool_not_allowed` |
-| 项目不匹配/对象不属于项目 | 对应稳定 `*_not_found` |
-| 日额度用尽 | `quota_exceeded` |
-| 能力不可执行 | `capability_not_available` |
-| 能力证据过期 | `capability_stale` |
-| 项目密钥未传幂等键 | `idempotency_key_required` |
-| 幂等键长度错误 | `idempotency_key_invalid` |
-| 同键不同请求 | `idempotency_conflict` |
-| 幂等键超窗 | `idempotency_key_expired` |
-| run 不属于当前项目 | `run_not_found` |
+| 场景 | 错误码 | C1 登记 |
+|---|---|---|
+| 工具未授权 | `tool_not_allowed` | 已登记 |
+| 项目不存在 / 不属于当前项目 | `project_not_found` | 已登记 |
+| run 不属于当前项目 | `run_not_found` | 已登记 |
+| 日额度用尽 | `quota_exceeded` | 已登记 |
+| 同键不同请求 | `idempotency_conflict` | 已登记 |
+| 项目密钥未传幂等键 | `idempotency_key_required` | 已登记 |
+| 密钥已撤销 / 生产环境匿名调用 | `project_key_not_found` | **未登记**（N1 已在返回） |
+| enrichment job 不属于当前项目 | `enrichment_job_not_found` | **未登记**（N1 已在返回） |
+| governed_mcp_tool 显式传 `object_project_id` 且归属不符 | `object_not_found` | **未登记**（当前实现未用；保留为结构防线） |
+| 能力不可执行 | `capability_not_available` | **未登记**（N3） |
+| 能力证据过期 | `capability_stale` | **未登记**（N3） |
+| 幂等键长度错误 | `idempotency_key_invalid` | **未登记**（N2） |
+| 幂等键超窗 | `idempotency_key_expired` | **未登记**（N2） |
 
-与 C1 registry 的关系：`tool_not_allowed`、`quota_exceeded`、`idempotency_conflict` 已登记；`idempotency_key_required` 已由 C1 登记。`idempotency_key_invalid`、`idempotency_key_expired`、`capability_not_available`、`capability_stale` 需在实施前向 C1 提交登记变更请求；未登记前不得上线返回。
+「对象不属于当前项目」一律用对应的稳定 `*_not_found`，不区分「不存在」与
+「不属于你」，防探测。已登记的实现是 `project_not_found` / `run_not_found`；
+`enrichment_job_not_found` 已在用但未登记（见下）。
+
+上表最后一列是登记状态。核对基准是
+`docs/superpowers/plans/2026-10-22-governed-task-platform-c1-contract-v1-1.md`
+的 error registry，按 `"code": "<name>"` 逐条 grep 得到。
+
+「未登记」分两种，处置不同：
+
+1. **已在返回**（`project_key_not_found`、`enrichment_job_not_found`）：发布 N1 前
+   必须补齐 C1 登记，否则违反「未登记前不得上线返回」。这是 N1 的发布前置条件，
+   不是可以顺延的文档债。
+2. **尚未实施**（`object_not_found`、`capability_*`、`idempotency_key_*`）：随各自批次
+   （N1 结构防线 / N2 / N3）实施前登记即可。
 
 ## 7. 测试矩阵
 
