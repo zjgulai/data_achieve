@@ -3622,6 +3622,1398 @@
           "unique": false
         }
       ]
+    },
+    {
+      "name": "workspace_pseudonym_salts",
+      "module": "M05",
+      "status": "new",
+      "phase": "C11",
+      "purpose": "工作区级伪名盐；一工作区一行",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "salt_version",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "workspace_pseudonym_salts.salt_version",
+          "default": "v1"
+        },
+        {
+          "name": "salt_b64",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        }
+      ],
+      "constraints": [
+        "uq_workspace_pseudonym_salts_workspace_id",
+        "ck_workspace_pseudonym_salts_salt_version",
+        "fk_workspace_pseudonym_salts_workspace_id_workspaces"
+      ]
+    },
+    {
+      "name": "legal_holds",
+      "module": "M08",
+      "status": "new",
+      "phase": "C11",
+      "purpose": "法律保留；按工作区、项目与数据类阻止清理",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11",
+          "references": "projects.id"
+        },
+        {
+          "name": "data_class",
+          "type": "string(40)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11",
+          "enum": "data_class"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "legal_holds.status",
+          "default": "active"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "requested_by_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "references": "users.id"
+        },
+        {
+          "name": "requested_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "released_by_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11",
+          "references": "users.id"
+        },
+        {
+          "name": "released_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "release_reason",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        }
+      ],
+      "constraints": [
+        "ck_legal_holds_status",
+        "ck_legal_holds_data_class",
+        "ck_legal_holds_release_fields",
+        "fk_legal_holds_workspace_id_workspaces",
+        "fk_legal_holds_project_id_projects",
+        "fk_legal_holds_requested_by_user_id_users",
+        "fk_legal_holds_released_by_user_id_users"
+      ],
+      "indexes": [
+        {
+          "name": "ix_legal_holds_workspace_status",
+          "columns": [
+            "workspace_id",
+            "status"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_legal_holds_scope",
+          "columns": [
+            "workspace_id",
+            "project_id",
+            "data_class"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "retention_cleanup_runs",
+      "module": "M08",
+      "status": "new",
+      "phase": "C11",
+      "purpose": "保留清理运行；只记录 execute",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "mode",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "retention_cleanup_runs.mode"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "retention_cleanup_runs.status"
+        },
+        {
+          "name": "policy_version",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "requested_by_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11",
+          "references": "users.id"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "cutoffs",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "counts",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "samples",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "blocked",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        }
+      ],
+      "constraints": [
+        "ck_retention_cleanup_runs_mode",
+        "ck_retention_cleanup_runs_status",
+        "fk_retention_cleanup_runs_requested_by_user_id_users"
+      ],
+      "indexes": [
+        {
+          "name": "ix_retention_cleanup_runs_created_at",
+          "columns": [
+            "created_at"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "retention_tombstones",
+      "module": "M08",
+      "status": "new",
+      "phase": "C11",
+      "purpose": "保留清理墓碑；逐被删除主体",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C11",
+          "references": "projects.id"
+        },
+        {
+          "name": "data_class",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "data_class"
+        },
+        {
+          "name": "subject_type",
+          "type": "string(80)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "subject_id",
+          "type": "string(120)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "cleanup_run_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "references": "retention_cleanup_runs.id"
+        },
+        {
+          "name": "deleted_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        },
+        {
+          "name": "reason",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11",
+          "enum": "retention_tombstones.reason",
+          "default": "retention_ttl"
+        },
+        {
+          "name": "metadata_json",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C11"
+        }
+      ],
+      "constraints": [
+        "uq_retention_tombstones_subject",
+        "ck_retention_tombstones_data_class",
+        "ck_retention_tombstones_reason",
+        "fk_retention_tombstones_workspace_id_workspaces",
+        "fk_retention_tombstones_project_id_projects",
+        "fk_retention_tombstones_cleanup_run_id_retention_cleanup_runs"
+      ],
+      "indexes": [
+        {
+          "name": "ix_retention_tombstones_workspace_class",
+          "columns": [
+            "workspace_id",
+            "data_class"
+          ],
+          "unique": false
+        },
+        {
+          "name": "ix_retention_tombstones_cleanup_run",
+          "columns": [
+            "cleanup_run_id"
+          ],
+          "unique": false
+        }
+      ]
+    },
+    {
+      "name": "deletion_requests",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "删除请求与二次确认状态机",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "projects.id"
+        },
+        {
+          "name": "target_type",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_requests.target_type"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "target_name_snapshot",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "requested_by_user_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "users.id"
+        },
+        {
+          "name": "requested_by_role",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_requests.requested_by_role"
+        },
+        {
+          "name": "status",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_requests.status"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "confirmation_token_hash",
+          "type": "string(64)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "confirmation_expires_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "approved_by_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "users.id"
+        },
+        {
+          "name": "approved_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "confirmed_by_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "users.id"
+        },
+        {
+          "name": "confirmed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "decided_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "rejection_reason",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "execution_started_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "completed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "failed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "failure_code",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "failure_detail",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "tombstone_digest",
+          "type": "string(71)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "ck_deletion_requests_target_type",
+        "ck_deletion_requests_requested_by_role",
+        "ck_deletion_requests_status",
+        "ck_deletion_requests_target_scope",
+        "fk_deletion_requests_workspace_id_workspaces",
+        "fk_deletion_requests_project_id_projects",
+        "fk_deletion_requests_requested_by_user_id_users",
+        "fk_deletion_requests_approved_by_user_id_users",
+        "fk_deletion_requests_confirmed_by_user_id_users"
+      ],
+      "indexes": [
+        {
+          "name": "uq_deletion_requests_active_target",
+          "columns": [
+            "workspace_id",
+            "target_type",
+            "target_id"
+          ],
+          "unique": true,
+          "where": "status IN ('pending_owner_approval', 'pending_confirmation', 'ready', 'blocked_legal_hold', 'executing')"
+        }
+      ]
+    },
+    {
+      "name": "deletion_tombstones",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "删除墓碑；逐对象类",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "deletion_request_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "deletion_requests.id"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "projects.id"
+        },
+        {
+          "name": "target_type",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "object_class",
+          "type": "string(60)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "row_count",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "content_digest",
+          "type": "string(71)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "deleted_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "uq_deletion_tombstones_request_class_target",
+        "fk_deletion_tombstones_deletion_request_id_deletion_requests",
+        "fk_deletion_tombstones_workspace_id_workspaces",
+        "fk_deletion_tombstones_project_id_projects"
+      ]
+    },
+    {
+      "name": "deletion_subprocessor_receipts",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "子处理者删除回执",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "deletion_request_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "deletion_requests.id"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "subprocessor_name",
+          "type": "string(120)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "status",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_subprocessor_receipts.status"
+        },
+        {
+          "name": "request_reference",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "receipt_reference",
+          "type": "string(200)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "requested_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "received_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "evidence_note",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "recorded_by_operator",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "uq_deletion_subprocessor_receipts_request_name",
+        "ck_deletion_subprocessor_receipts_status",
+        "fk_deletion_subprocessor_receipts_deletion_request_id_deletion_requests",
+        "fk_deletion_subprocessor_receipts_workspace_id_workspaces"
+      ]
+    },
+    {
+      "name": "deletion_proofs",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "删除证明；一请求一证明",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "deletion_request_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "deletion_requests.id"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "proof_number",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "payload",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "proof_digest",
+          "type": "string(71)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "audit_head_digest",
+          "type": "string(71)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "issued_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "uq_deletion_proofs_request",
+        "uq_deletion_proofs_number",
+        "fk_deletion_proofs_deletion_request_id_deletion_requests",
+        "fk_deletion_proofs_workspace_id_workspaces"
+      ]
+    },
+    {
+      "name": "deletion_replay_runs",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "备份删除重放批次",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "manifest_digest",
+          "type": "string(71)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "source_backup_ref",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_replay_runs.status"
+        },
+        {
+          "name": "matched_count",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "replayed_count",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "failed_count",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "operator_label",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "error_code",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "started_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "finished_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "ck_deletion_replay_runs_status",
+        "fk_deletion_replay_runs_workspace_id_workspaces"
+      ]
+    },
+    {
+      "name": "deletion_replay_items",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "备份删除重放条目",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "deletion_replay_runs.id"
+        },
+        {
+          "name": "target_type",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "status",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "deletion_replay_items.status"
+        },
+        {
+          "name": "detail",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "uq_deletion_replay_items_run_target",
+        "ck_deletion_replay_items_status",
+        "fk_deletion_replay_items_run_id_deletion_replay_runs"
+      ]
+    },
+    {
+      "name": "dsr_cases",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "人工 DSR 案件",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "projects.id"
+        },
+        {
+          "name": "case_number",
+          "type": "string(40)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "request_type",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "dsr_cases.request_type"
+        },
+        {
+          "name": "status",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "dsr_cases.status"
+        },
+        {
+          "name": "responsibility",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "dsr_cases.responsibility"
+        },
+        {
+          "name": "requester_ref",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "verification_method",
+          "type": "string(80)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "verified_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "verification_note",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "received_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "due_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "closed_at",
+          "type": "datetime",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "deletion_request_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "deletion_requests.id"
+        },
+        {
+          "name": "summary",
+          "type": "text",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_by_operator",
+          "type": "string(200)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        }
+      ],
+      "constraints": [
+        "uq_dsr_cases_number",
+        "ck_dsr_cases_request_type",
+        "ck_dsr_cases_status",
+        "ck_dsr_cases_responsibility",
+        "fk_dsr_cases_workspace_id_workspaces",
+        "fk_dsr_cases_project_id_projects",
+        "fk_dsr_cases_deletion_request_id_deletion_requests"
+      ]
+    },
+    {
+      "name": "privacy_audit_events",
+      "module": "M08",
+      "status": "new",
+      "phase": "C12",
+      "purpose": "隐私审计事件；按 stream 哈希链",
+      "primary_key": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "workspace_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "references": "workspaces.id"
+        },
+        {
+          "name": "stream_type",
+          "type": "string(30)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "privacy_audit_events.stream_type"
+        },
+        {
+          "name": "stream_id",
+          "type": "uuid",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "sequence_number",
+          "type": "integer",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "previous_event_digest",
+          "type": "string(71)",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "event_digest",
+          "type": "string(71)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "event_type",
+          "type": "string(100)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "nullable": true,
+          "status": "new",
+          "phase": "C12",
+          "references": "users.id"
+        },
+        {
+          "name": "actor_kind",
+          "type": "string(20)",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "enum": "privacy_audit_events.actor_kind"
+        },
+        {
+          "name": "payload",
+          "type": "json",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "occurred_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12"
+        },
+        {
+          "name": "recorded_at",
+          "type": "datetime",
+          "nullable": false,
+          "status": "new",
+          "phase": "C12",
+          "notes": "创建时间；只追加表，无 updated_at"
+        }
+      ],
+      "constraints": [
+        "uq_privacy_audit_events_stream_sequence",
+        "uq_privacy_audit_events_stream_digest",
+        "ck_privacy_audit_events_sequence",
+        "ck_privacy_audit_events_predecessor",
+        "ck_privacy_audit_events_actor_kind",
+        "fk_privacy_audit_events_workspace_id_workspaces",
+        "fk_privacy_audit_events_actor_user_id_users",
+        "fk_privacy_audit_events_predecessor"
+      ]
     }
   ],
   "enums": [

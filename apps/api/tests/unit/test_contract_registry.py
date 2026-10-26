@@ -927,3 +927,161 @@ def test_owner_admin_inline_approval_actions_are_registered() -> None:
         "package_addon",
         "project_key_change",
     ]
+
+
+def test_registry_contains_privacy_tables() -> None:
+    registry = load_contract_registry()
+    names = {table["name"] for table in registry["tables"]}
+    assert {
+        "workspace_pseudonym_salts",
+        "legal_holds",
+        "retention_cleanup_runs",
+        "retention_tombstones",
+        "deletion_requests",
+        "deletion_tombstones",
+        "deletion_subprocessor_receipts",
+        "deletion_proofs",
+        "deletion_replay_runs",
+        "deletion_replay_items",
+        "dsr_cases",
+        "privacy_audit_events",
+    } <= names
+    assert "mcp_customer_request_leases" not in names
+
+
+def test_c11_privacy_tables_match_c11_plan() -> None:
+    registry = load_contract_registry()
+    salt = _table(registry, "workspace_pseudonym_salts")
+    hold = _table(registry, "legal_holds")
+    cleanup = _table(registry, "retention_cleanup_runs")
+    assert {column["name"] for column in salt["columns"]} == {
+        "id",
+        "workspace_id",
+        "salt_version",
+        "salt_b64",
+        "created_at",
+    }
+    assert {
+        "uq_workspace_pseudonym_salts_workspace_id",
+        "ck_workspace_pseudonym_salts_salt_version",
+        "fk_workspace_pseudonym_salts_workspace_id_workspaces",
+    } <= set(salt["constraints"])
+    assert {column["name"] for column in hold["columns"]} == {
+        "id",
+        "workspace_id",
+        "project_id",
+        "data_class",
+        "status",
+        "reason",
+        "requested_by_user_id",
+        "requested_at",
+        "released_by_user_id",
+        "released_at",
+        "release_reason",
+        "created_at",
+    }
+    assert {
+        "ck_legal_holds_status",
+        "ck_legal_holds_data_class",
+        "ck_legal_holds_release_fields",
+    } <= set(hold["constraints"])
+    assert {index["name"] for index in hold["indexes"]} == {
+        "ix_legal_holds_workspace_status",
+        "ix_legal_holds_scope",
+    }
+    assert {column["name"] for column in cleanup["columns"]} == {
+        "id",
+        "mode",
+        "status",
+        "policy_version",
+        "requested_by_user_id",
+        "started_at",
+        "finished_at",
+        "cutoffs",
+        "counts",
+        "samples",
+        "blocked",
+        "error_message",
+        "created_at",
+    }
+    assert {
+        "ck_retention_cleanup_runs_mode",
+        "ck_retention_cleanup_runs_status",
+    } <= set(cleanup["constraints"])
+    assert {index["name"] for index in cleanup["indexes"]} == {
+        "ix_retention_cleanup_runs_created_at",
+    }
+    request = _table(registry, "deletion_requests")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in request["columns"]}
+    assert {
+        "ck_deletion_requests_target_type",
+        "ck_deletion_requests_requested_by_role",
+        "ck_deletion_requests_status",
+        "ck_deletion_requests_target_scope",
+        "fk_deletion_requests_workspace_id_workspaces",
+        "fk_deletion_requests_project_id_projects",
+        "fk_deletion_requests_requested_by_user_id_users",
+        "fk_deletion_requests_approved_by_user_id_users",
+        "fk_deletion_requests_confirmed_by_user_id_users",
+    } <= set(request["constraints"])
+    assert {
+        "name": "uq_deletion_requests_active_target",
+        "columns": ["workspace_id", "target_type", "target_id"],
+        "unique": True,
+        "where": "status IN ('pending_owner_approval', 'pending_confirmation', 'ready', 'blocked_legal_hold', 'executing')",  # noqa: E501
+    } in request["indexes"]
+    assert {
+        "fk_deletion_tombstones_deletion_request_id_deletion_requests",
+        "fk_deletion_tombstones_workspace_id_workspaces",
+        "fk_deletion_tombstones_project_id_projects",
+    } <= set(_table(registry, "deletion_tombstones")["constraints"])
+    receipt = _table(registry, "deletion_subprocessor_receipts")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in receipt["columns"]}
+    assert {
+        "uq_deletion_subprocessor_receipts_request_name",
+        "ck_deletion_subprocessor_receipts_status",
+        "fk_deletion_subprocessor_receipts_deletion_request_id_deletion_requests",
+        "fk_deletion_subprocessor_receipts_workspace_id_workspaces",
+    } <= set(receipt["constraints"])
+    assert {
+        "uq_deletion_proofs_request",
+        "uq_deletion_proofs_number",
+        "fk_deletion_proofs_deletion_request_id_deletion_requests",
+        "fk_deletion_proofs_workspace_id_workspaces",
+    } <= set(_table(registry, "deletion_proofs")["constraints"])
+    assert {
+        "ck_deletion_replay_runs_status",
+        "fk_deletion_replay_runs_workspace_id_workspaces",
+    } <= set(_table(registry, "deletion_replay_runs")["constraints"])
+    assert {
+        "uq_deletion_replay_items_run_target",
+        "ck_deletion_replay_items_status",
+        "fk_deletion_replay_items_run_id_deletion_replay_runs",
+    } <= set(_table(registry, "deletion_replay_items")["constraints"])
+    dsr = _table(registry, "dsr_cases")
+    assert {"created_at", "updated_at"} <= {column["name"] for column in dsr["columns"]}
+    assert {
+        "uq_dsr_cases_number",
+        "ck_dsr_cases_request_type",
+        "ck_dsr_cases_status",
+        "ck_dsr_cases_responsibility",
+        "fk_dsr_cases_workspace_id_workspaces",
+        "fk_dsr_cases_project_id_projects",
+        "fk_dsr_cases_deletion_request_id_deletion_requests",
+    } <= set(dsr["constraints"])
+    assert {
+        "uq_privacy_audit_events_stream_sequence",
+        "uq_privacy_audit_events_stream_digest",
+        "ck_privacy_audit_events_sequence",
+        "ck_privacy_audit_events_predecessor",
+        "ck_privacy_audit_events_actor_kind",
+        "fk_privacy_audit_events_workspace_id_workspaces",
+        "fk_privacy_audit_events_actor_user_id_users",
+        "fk_privacy_audit_events_predecessor",
+    } <= set(_table(registry, "privacy_audit_events")["constraints"])
+
+
+def test_customer_lease_is_deferred() -> None:
+    registry = load_contract_registry()
+    deferred = {(item["kind"], item["name"]) for item in registry["deferred"]}
+    assert ("table", "mcp_customer_request_leases") in deferred
