@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 import httpx
 
+from ..prompt_loader import load_prompt
 from .config import get_cdo_config
 
 logger = logging.getLogger(__name__)
@@ -36,47 +37,30 @@ class TikTokIntent:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-_SYSTEM_PROMPT = """\
-你是 TikTok 数据采集意图识别引擎。用户用中文或英文发送采集请求，你需要解析出以下字段并以 JSON 返回。
+_AGENT_ID = "tiktok_cdo"
 
-action 枚举值（只能取其一）：
-- search: 搜索/查找视频、内容
-- hashtag: 分析话题/标签，用户提到 # 或"话题"
-- user_posts: 查看某账号/用户的视频列表
-- top_ads: 查看热门广告/爆款广告
-- ads_search: 搜索某类广告
-- creator: 分析 KOL/创作者/网红信息
-- followers: 分析某用户的粉丝
-- live: 搜索/监控直播
-- sentiment: 舆情监控、品牌监控、新闻追踪
 
-JSON 格式（严格输出，不加注释）：
-{
-  "action": "<action>",
-  "keyword": "<关键词，没有则 null>",
-  "username": "<用户名不含@，没有则 null>",
-  "limit": <数字，默认 10，最大 50>,
-  "time_range": "<'24h'|'7d'|'30d'|null>"
-}
+def _system_prompt() -> str | None:
+    """读取意图提示词；文件缺失返回 None。
 
-示例：
-用户："搜索运动鞋相关视频 top5"
-  → {"action":"search","keyword":"运动鞋","username":null,"limit":5,"time_range":null}
-用户："分析 #美妆 话题最近7天"
-  → {"action":"hashtag","keyword":"美妆","username":null,"limit":10,"time_range":"7d"}
-用户："查看 @lilymaymac 的视频"
-  → {"action":"user_posts","keyword":null,"username":"lilymaymac","limit":20,"time_range":null}
-用户："最近爆火的美妆广告"
-  → {"action":"top_ads","keyword":"美妆","username":null,"limit":10,"time_range":null}
-用户："监控小米品牌舆情"
-  → {"action":"sentiment","keyword":"小米","username":null,"limit":20,"time_range":"7d"}
-"""
+    不保留内置副本：提示词文件缺失时宁可走确定性的关键词回退
+    （_fallback_intent），也不要拿一份可能已漂移的旧提示词去调模型。
+    """
+    return load_prompt(_AGENT_ID)
+
 
 
 async def extract_intent(text: str) -> TikTokIntent:
     config = get_cdo_config()
     if not config.deepseek_api_key:
         logger.warning("DEEPSEEK_API_KEY 未配置，使用关键词回退策略")
+        return _fallback_intent(text)
+
+    system_prompt = _system_prompt()
+    if system_prompt is None:
+        # 提示词文件缺失时不调用模型：没有权威提示词的 JSON 契约，
+        # 模型输出不可控，确定性回退比猜测安全。
+        logger.warning("tiktok_cdo_prompt_missing，使用关键词回退策略")
         return _fallback_intent(text)
 
     try:
@@ -87,7 +71,7 @@ async def extract_intent(text: str) -> TikTokIntent:
                 json={
                     "model": config.deepseek_model,
                     "messages": [
-                        {"role": "system", "content": _SYSTEM_PROMPT},
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": text},
                     ],
                     "temperature": 0.0,
