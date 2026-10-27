@@ -51,6 +51,10 @@ jobs:
         working-directory: apps/api
         run: uv run python ../../scripts/check_agent_registry.py --json
 
+      - name: Run agent evals
+        working-directory: apps/api
+        run: uv run python ../../scripts/run_agent_evals.py
+
       - name: Validate platform package contracts
         working-directory: apps/api
         run: uv run python ../../scripts/test_platform_packages.py
