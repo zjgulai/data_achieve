@@ -111,15 +111,18 @@ def test_stale_timestamp_is_rejected(monkeypatch, skew: int) -> None:
 
 @pytest.mark.parametrize("skew", [301, 3600])
 def test_future_timestamp_beyond_window_is_rejected(monkeypatch, skew: int) -> None:
-    """用冻结时钟：真实时钟下 301 秒只有 1 秒余量。
+    """用固定时钟：真实时钟下 301 秒只有 1 秒余量。
 
     全量套件并发时 handler 可能比构造时间戳晚 1 秒以上执行，
     abs(now - (now+301)) 会退成 300 而被判定为新鲜，测试抖动成 200。
+
+    不 monkeypatch router.time：那会让 mypy 报「模块未显式导出 time」。
+    改为直接打补丁到 time 模块的 time 函数，效果相同且不碰模块属性。
     """
-    from data_intelligence_hub.agents.shusuo import router as shusuo_router
+    import time as time_module
 
     frozen = 1_800_000_000.0
-    monkeypatch.setattr(shusuo_router.time, "time", lambda: frozen)
+    monkeypatch.setattr(time_module, "time", lambda: frozen)
 
     encrypt_key = _config(monkeypatch)
     client = TestClient(app)
