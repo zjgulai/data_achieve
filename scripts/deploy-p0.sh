@@ -449,6 +449,32 @@ docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
 
   echo "-- 7/7 重载共享网关"
   reload_gateway "$key" "$ssh_target"
+
+  # 记账：把本次发布落到 docs/ops/releases.jsonl。
+  # 没有这条记录，回滚就没有确定锚点——只能现场 SSH 猜跑的是哪一版。
+  # 记账失败只告警，不把成功的发布判成失败。
+  local host_letter remote_commit
+  case "$tag" in
+    A) host_letter="a" ;;
+    B) host_letter="b" ;;
+    *) host_letter="" ;;
+  esac
+  if [[ -n "$host_letter" && "$DRY_RUN" != "1" ]]; then
+    remote_commit="$(run_remote "$key" "$ssh_target" \
+      "cd $REMOTE_APP && git rev-parse HEAD" 2>/dev/null | tr -d '[:space:]' || true)"
+    if [[ "${#remote_commit}" == "40" ]]; then
+      echo "-- 记账 $host_letter @ ${remote_commit:0:7}"
+      python3 "$ROOT_DIR/scripts/record_release.py" append \
+        --host "$host_letter" \
+        --commit "$remote_commit" \
+        --branch "$branch" \
+        --subject "deploy-p0.sh $tag" \
+        --result success \
+        || echo "  警告：记账失败，请手工补记 scripts/record_release.py append" >&2
+    else
+      echo "  警告：取不到远端提交（'$remote_commit'），请手工补记" >&2
+    fi
+  fi
 }
 
 # 尝试重载共享网关。失败只告警，不中止发布。
