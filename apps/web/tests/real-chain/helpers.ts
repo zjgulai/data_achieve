@@ -261,3 +261,72 @@ export async function waitForApiJson<T>(
   ).toBe(true);
   return (await response.json()) as T;
 }
+
+// ---------- 生产只读冒烟（ADR-008 D7） ----------
+
+/**
+ * 生产只读守卫：装上一个请求拦截器，除登录外只放行 GET。
+ *
+ * 这是 ADR-008 D7 的执行手段，不是文档承诺。生产库只有一个真实用户、
+ * 没有清理账本，也没有 ID 账本，任何写操作都会留在那里无法回收。
+ * 所以把「只读」变成运行时会失败的规则，而不是靠调用方自觉。
+ *
+ * 拦截器装在 page 上，覆盖页面自己发出的全部请求；page.request 默认不经过
+ * page 的 route 拦截，所以调用方也必须走 page.evaluate/fetch 或被测页面，
+ * 不能绕过去用 request context 直接发 POST。
+ */
+export async function installReadOnlyGuard(page: Page): Promise<void> {
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const method = request.method().toUpperCase();
+    // 预检与 OPTIONS 不算写。
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+      await route.continue();
+      return;
+    }
+    const path = new URL(request.url()).pathname;
+    // 登录是唯一允许的非 GET：不登录就没有会话，冒烟无从谈起。
+    // 它只签发一个 Cookie，不写业务实体。
+    if (method === "POST" && path.endsWith("/api/auth/login")) {
+      await route.continue();
+      return;
+    }
+    throw new Error(
+      `只读冒烟禁止 ${method} ${path}。生产写入未获授权（ADR-008 D5/D7）：` +
+        "没有 always() cleanup、没有精确 ID 账本、没有 recount 零校验。",
+    );
+  });
+}
+
+/** 只读冒烟的目标校验：必须显式指向远程，且必须带部署前缀。 */
+export function assertReadonlyTarget(): { baseUrl: string; basePath: string } {
+  if (!BASE_URL) {
+    throw new Error("PLAYWRIGHT_BASE_URL 未设置");
+  }
+  if (!ALLOW_REMOTE) {
+    throw new Error(
+      "只读冒烟必须显式设 PLAYWRIGHT_CHAIN_ALLOW_REMOTE=true。这是防止误连生产的一道闸。",
+    );
+  }
+  // 生产 A 的 web 挂在 /insight。不带前缀会落到 console，断言全部错位。
+  if (!DEPLOY_BASE_PATH) {
+    throw new Error(
+      "只读冒烟必须设 PLAYWRIGHT_BASE_PATH=/insight。生产 A 的 web 挂在子路径下，" +
+        "根路径是 console，不是工作台。",
+    );
+  }
+  return { baseUrl: BASE_URL, basePath: DEPLOY_BASE_PATH };
+}
+
+/** 只读冒烟用的凭据。缺一个就直接失败，不用默认值蒙混。 */
+export function readonlyCredentials(): { email: string; password: string } {
+  const email = process.env.SCRAPY_DEMO_EMAIL;
+  const password = process.env.SCRAPY_DEMO_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      "只读冒烟需要 SCRAPY_DEMO_EMAIL 与 SCRAPY_DEMO_PASSWORD。" +
+        "凭据不落仓库，由执行者当次提供。",
+    );
+  }
+  return { email, password };
+}
