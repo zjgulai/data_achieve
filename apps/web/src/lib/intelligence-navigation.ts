@@ -6,6 +6,12 @@ export type IntelligenceNavigationContext = {
   evidenceId: string | null;
   intelligenceId: string | null;
   projectId: string | null;
+  /**
+   * 业务域筛选。从 `/domain/[domain]` 页的入口进来时由
+   * `readIntelligenceNavigationContext` 从 URL 读出；
+   * 其他构造点可以不传，`navigationQuery` 会跳过空值。
+   */
+  domain?: string | null;
   scope: IntelligenceScope;
   status: string;
   type: string;
@@ -23,6 +29,7 @@ export function readIntelligenceNavigationContext(
     evidenceId: optionalQueryValue(query, "evidence_id"),
     intelligenceId: optionalQueryValue(query, "intelligence_id"),
     projectId: optionalQueryValue(query, "project_id"),
+    domain: optionalQueryValue(query, "domain"),
     scope: query.get("scope") === "training" ? "training" : "all",
     status: optionalQueryValue(query, "status") ?? "",
     type: optionalQueryValue(query, "type") ?? "",
@@ -34,6 +41,7 @@ function navigationQuery(
 ): URLSearchParams {
   const query = new URLSearchParams();
   if (context.projectId) query.set("project_id", context.projectId);
+  if (context.domain) query.set("domain", context.domain);
   if (context.type) query.set("type", context.type);
   if (context.status) query.set("status", context.status);
   if (context.scope === "training") query.set("scope", context.scope);

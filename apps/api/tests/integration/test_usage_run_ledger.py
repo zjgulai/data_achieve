@@ -64,7 +64,7 @@ async def client() -> AsyncIterator[AsyncClient]:
 
 async def _seed(
     client: AsyncClient,
-    runs: list[dict],
+    runs: list[dict[str, object]],
 ) -> tuple[uuid.UUID, list[uuid.UUID]]:
     """建 workspace / project / task，并按 `runs` 插入 TaskRun。
 

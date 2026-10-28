@@ -17,6 +17,7 @@ describe("intelligence navigation context", () => {
       evidenceId: "evidence-a",
       intelligenceId: "intel-a",
       projectId: "project-a",
+      domain: null,
       scope: "training",
       status: "new",
       type: "trend",
@@ -67,5 +68,26 @@ describe("intelligence navigation context", () => {
     expect(
       buildProjectScopedHref("/raw-records?record=raw-a", null),
     ).toBe("/raw-records?record=raw-a");
+  });
+
+  it("carries business domain from a domain page into the intelligence list", () => {
+    // 域页「查看全部」→ /intelligence?domain=ecommerce
+    const context = readIntelligenceNavigationContext("?domain=ecommerce");
+
+    expect(context.domain).toBe("ecommerce");
+    expect(buildIntelligenceListHref(context)).toBe(
+      "/intelligence?domain=ecommerce",
+    );
+    // 详情链接也要留住域，否则从详情返回会丢掉筛选。
+    expect(buildIntelligenceDetailHref("intel-a", context)).toBe(
+      "/intelligence/intel-a?domain=ecommerce&intelligence_id=intel-a",
+    );
+  });
+
+  it("omits domain from the query when it is absent", () => {
+    // 非域入口（例如顶栏直达）不应凭空产生 domain 参数。
+    expect(buildIntelligenceListHref({ ...readIntelligenceNavigationContext("") })).toBe(
+      "/intelligence",
+    );
   });
 });
