@@ -45,6 +45,23 @@ export async function register(payload: Required<AuthPayload>): Promise<AuthSess
   return mapAuthSession(response);
 }
 
+/** 读取当前会话。未登录时后端返回 401，调用方需要处理。 */
+export async function fetchAuthSession(): Promise<AuthSession> {
+  if (mockApiEnabled) {
+    return getMockAuthSession("demo@example.com", "Demo");
+  }
+  const response = await apiFetch<AuthSessionResponse>("/api/auth/me");
+  return mapAuthSession(response);
+}
+
+/** 退出登录。后端清 cookie 并返回 204。 */
+export async function logout(): Promise<void> {
+  if (mockApiEnabled) {
+    return;
+  }
+  await apiFetch<void>("/api/auth/logout", { method: "POST" });
+}
+
 function mapAuthSession(response: AuthSessionResponse): AuthSession {
   return {
     user: response.user,
