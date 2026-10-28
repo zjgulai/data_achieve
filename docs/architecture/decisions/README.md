@@ -18,6 +18,7 @@ description: Data Intelligence Hub 架构决策记录（ADR）索引。列出所
 | [ADR-005](ADR-005-implementation-priority-order.md) | 研发优先级排序（2026-09-03 批次） | 已采纳 | 2026-09-03 |
 | [ADR-006](ADR-006-general-tool-platform-integration.md) | 通用 Agent 工具平台整合（单目录、单调用门、受控适配器） | 提议中 | 2026-10-15 |
 | [ADR-007](ADR-007-baseline-auth-and-transaction.md) | 下一批基线：鉴权、事务与目录执行边界（D1-D7） | 已采纳 | 2026-10-20 |
+| [ADR-008](ADR-008-real-chain-e2e-gate.md) | 真实链路 E2E 门禁（一次性本地真实栈，不写生产） | 已采纳 | 2026-10-28 |
 
 ## ADR 状态说明
 

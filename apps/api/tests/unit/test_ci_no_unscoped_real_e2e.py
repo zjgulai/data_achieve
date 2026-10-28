@@ -132,6 +132,73 @@ def test_guard_reports_all_detected_rules_in_stable_order(tmp_path: Path) -> Non
     assert result.stderr == ""
 
 
+SCOPED_JOB_OK = """\
+  web-real-chain-e2e:
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BASE_URL: "http://127.0.0.1:8090"
+    steps:
+      - name: Bring up disposable stack
+        run: bash scripts/e2e-real-stack.sh up
+      - name: Real chain Playwright
+        run: pnpm -C apps/web exec playwright test -c playwright.real-chain.config.ts
+      - name: Tear down
+        if: always()
+        run: bash scripts/e2e-real-stack.sh down
+"""
+
+
+def test_guard_accepts_scoped_local_real_chain_job(tmp_path: Path) -> None:
+    workflow = SAFE_WORKFLOW + SCOPED_JOB_OK
+
+    result = run_guard(write_workflow(tmp_path, workflow))
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == "ci_real_e2e_boundary_ok"
+
+
+def test_guard_rejects_scoped_job_pointing_at_remote_host(tmp_path: Path) -> None:
+    workflow = SAFE_WORKFLOW + SCOPED_JOB_OK.replace(
+        "http://127.0.0.1:8090", "https://scrapy.luteos.com"
+    )
+
+    result = run_guard(write_workflow(tmp_path, workflow))
+
+    assert result.returncode == 1
+    assert result.stdout.splitlines() == ["ci_boundary_violation:scoped_job_non_loopback_base_url"]
+
+
+def test_guard_rejects_scoped_job_without_down_v(tmp_path: Path) -> None:
+    workflow = SAFE_WORKFLOW + SCOPED_JOB_OK.replace(
+        "bash scripts/e2e-real-stack.sh down", "bash scripts/e2e-real-stack.sh status"
+    )
+
+    result = run_guard(write_workflow(tmp_path, workflow))
+
+    assert result.returncode == 1
+    assert result.stdout.splitlines() == ["ci_boundary_violation:scoped_job_missing_down_v"]
+
+
+def test_guard_rejects_scoped_job_cleanup_outside_always(tmp_path: Path) -> None:
+    workflow = SAFE_WORKFLOW + SCOPED_JOB_OK.replace("        if: always()\n", "")
+
+    result = run_guard(write_workflow(tmp_path, workflow))
+
+    assert result.returncode == 1
+    assert result.stdout.splitlines() == ["ci_boundary_violation:scoped_job_missing_always_cleanup"]
+
+
+def test_guard_rejects_scoped_job_without_base_url(tmp_path: Path) -> None:
+    workflow = SAFE_WORKFLOW + SCOPED_JOB_OK.replace(
+        '      PLAYWRIGHT_BASE_URL: "http://127.0.0.1:8090"\n', ""
+    )
+
+    result = run_guard(write_workflow(tmp_path, workflow))
+
+    assert result.returncode == 1
+    assert result.stdout.splitlines() == ["ci_boundary_violation:scoped_job_missing_base_url"]
+
+
 def test_guard_fails_closed_for_missing_workflow_without_echoing_path(
     tmp_path: Path,
 ) -> None:

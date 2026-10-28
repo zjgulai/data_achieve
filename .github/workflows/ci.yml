@@ -298,6 +298,53 @@ jobs:
       - name: Playwright E2E
         run: pnpm -C apps/web test:e2e
 
+  # 真实链路门禁。见 docs/architecture/decisions/ADR-008-real-chain-e2e-gate.md
+  #
+  # 与上面的 Web Quality Gate 互补而不重叠：那个 gate 在 mock 下验证页面行为，
+  # 这个 gate 验证「登录 → 选业务域 → 真实记录 → 洞察 → 证据 → 报告」这条链
+  # 真的走了服务端。mock 分支在 API 模块里提前 return、不发 HTTP，
+  # 所以只有这里能证明这条链没断。
+  #
+  # 目标固定 loopback：一次性栈在 runner 上起，down -v 清零。
+  # verify-ci-no-unscoped-real-e2e.py 会正向校验这两点，改坏了会红。
+  web-real-chain-e2e:
+    name: Web Real Chain E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm -C apps/web exec playwright install --with-deps chromium
+
+      # 起栈、跑 spec、down -v 全在脚本里；脚本用 trap 保证失败时也清理。
+      - name: Bring up disposable stack and run real chain spec
+        env:
+          PLAYWRIGHT_BASE_URL: "http://127.0.0.1:8090"
+        run: bash scripts/verify-real-chain-e2e.sh
+
+      # 脚本已自带 trap 清理；这一层兜底用于脚本自身被信号杀掉的情况。
+      - name: Tear down disposable stack
+        if: always()
+        run: bash scripts/e2e-real-stack.sh down || true
+
   console-routes-e2e:
     name: Console Route E2E (non-blocking)
     runs-on: ubuntu-latest

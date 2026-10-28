@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Route } from "next";
 
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { DomainRecordsPanel } from "@/components/domain/domain-records-panel";
@@ -139,15 +140,19 @@ function DomainTrainingPanel({ domain }: { domain: DomainKey }) {
         </div>
         <div className="grid gap-2 sm:grid-cols-3 lg:w-[360px]">
           <TrainingLink href="/toolkit" label="工具库" />
-          <TrainingLink href="/signals" label="信号链路" />
-          <TrainingLink href="/reports" label="培训报告" />
+          <TrainingLink href={`/signals?domain=${encodeURIComponent(domain)}`} label="信号链路" />
+          {/* 报告页要靠 ?domain 才知道该看哪个域。不带参数时它默认「全局」，
+              而全局生成的报告 project_id 为空，会被域筛选的 inner join 排除。 */}
+          <TrainingLink href={`/reports?domain=${encodeURIComponent(domain)}`} label="培训报告" />
         </div>
       </div>
     </section>
   );
 }
 
-function TrainingLink({ href, label }: { href: "/toolkit" | "/signals" | "/reports"; label: string }) {
+// href 允许带查询参数：报告与信号页都要靠 ?domain 才知道该看哪个域。
+// 字面量联合挡不住带参数的路由，这里放宽成 Route，由 next/link 做类型校验。
+function TrainingLink({ href, label }: { href: Route; label: string }) {
   return (
     <Link
       className="inline-flex h-10 items-center justify-center rounded-xl border border-[#F1D9A8] bg-white px-3 text-sm font-semibold text-[#8C6824] transition hover:border-[#C96F5C]"

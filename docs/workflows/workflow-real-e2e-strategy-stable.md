@@ -36,6 +36,23 @@ mock build 不能作为 real API/Provider 证据。Revision 034 PostgreSQL gate 
 授权的 disposable target 通过 `13/13`；未来真实验收仍须为 live Provider adapter、目标 Project/Dataset、请求预算、
 RawRecord retention、cleanup/recount 和禁止触碰其他数据库取得单独授权。
 
+## 2026-10-28 补充：门禁改走一次性本地真实栈
+
+[ADR-008](../architecture/decisions/ADR-008-real-chain-e2e-gate.md) 把「锁住真实链路」这件事从生产挪到了本地。
+
+上文的边界仍然成立：**生产写入仍未获批**，`web-real-e2e` 不恢复，`workflow_dispatch` 仍不接收 `base_url`，任何触碰生产数据的执行都要单独授权。
+
+变化在于：真实链路本身现在有了一条可重复、不写生产的验证路径。
+
+- **门禁目标**：一次性本地栈（`data-achieve-e2e`，db + migrate + api + web + edge），`down -v` 即清零。CI 强制跑。
+- **非 mock 证明**：用例必须观察到真实的 `/api/auth/login`、`/api/raw-records?domain=`、`/api/intelligence?domain=`、`/api/intelligence/{id}/evidences`、`/api/reports?domain=` 响应。仅断言页面文本不算通过。
+- **数据种子**：每次运行注册一次性 `e2e-chain-*` 账号，建 `domain=competitor` 项目，以 stars 100→360 跑两次，走真实服务路径。不用 demo 账号，不做手工前置。
+- **生产只读冒烟**：owner 显式授权后可用同一份 spec 的 `@readonly` 用例访问生产 A，必须设 `PLAYWRIGHT_BASE_PATH=/insight`，除 `POST /api/auth/login` 外只发 GET，执行前后计数必须一致。报告段不覆盖——生产没有按域报告，写入未授权。
+
+这条路径的 ticket 台账见 [RC-2026-10-28-real-chain](../tickets/RC-2026-10-28-real-chain.md)。
+
+判据不变：**本地 mock suite 通过不算真实链路证据；真实链路门禁通过也不算生产可用性证据。** 两者回答的是不同的问题。
+
 ## Owner-run 命令模板
 
 本地命令：

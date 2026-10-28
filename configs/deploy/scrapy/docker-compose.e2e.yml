@@ -1,0 +1,170 @@
+# 一次性真实链路 E2E 栈。见 docs/architecture/decisions/ADR-008-real-chain-e2e-gate.md
+#
+# 这条栈的唯一用途是跑 real-chain E2E：浏览器与 API 同源，mock 关闭，
+# 数据全在一次性卷里，down -v 即清零。
+#
+# 与生产编排（docker-compose.yml）刻意分开的三个点：
+#   1. 独立项目名，卷名前缀独立。down -v 不会碰到生产卷。
+#   2. basePath 为空。生产 web 挂在 /insight，门禁跑在根路径——
+#      basePath 是构建期常量，同一份镜像不能两用，所以门禁必须单独构建。
+#   3. AUTH_COOKIE_SECURE=false。本地是 http，Secure Cookie 不会被浏览器保存，
+#      登录会静默失败。
+#
+# 不用 -f 叠加生产编排：叠加会把生产的全部服务（tor、maigret、spiderfoot、
+# proxy_rotator 等）一起拉起来，既慢又要一堆用不到的凭据。
+
+name: data-achieve-e2e
+
+services:
+  db:
+    image: postgres:16
+    container_name: data_achieve_e2e_db
+    environment:
+      POSTGRES_DB: ${E2E_POSTGRES_DB:-e2e_chain}
+      POSTGRES_USER: ${E2E_POSTGRES_USER:-e2e_chain}
+      POSTGRES_PASSWORD: ${E2E_POSTGRES_PASSWORD:?E2E_POSTGRES_PASSWORD is required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+    networks:
+      - e2e_internal
+
+  # 一次性作业：把模式推到 head 后退出。
+  # restart: "no" 是刻意的——迁移失败要让栈脚本看到非零退出码，
+  # 不能被重启策略无限重试掩盖。
+  migrate:
+    image: data_achieve_e2e_api:latest
+    container_name: data_achieve_e2e_migrate
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${E2E_POSTGRES_USER:?E2E_POSTGRES_USER is required}:${E2E_POSTGRES_PASSWORD:?E2E_POSTGRES_PASSWORD is required}@db:5432/${E2E_POSTGRES_DB:?E2E_POSTGRES_DB is required}
+      JWT_SECRET: ${E2E_JWT_SECRET:?E2E_JWT_SECRET is required}
+    networks:
+      - e2e_internal
+    restart: "no"
+
+  api:
+    build:
+      context: ../../../apps/api
+      dockerfile: Dockerfile
+      args:
+        # 关掉 Playwright 与 OSINT：链路种子只用 manual_json（纯 JSON 载荷），
+        # 不开浏览器。打开会让镜像多 ~400MB，构建时间翻倍。
+        INSTALL_PLAYWRIGHT: "false"
+        INSTALL_OSINT: "false"
+        PIP_INDEX_URL: ${E2E_PIP_INDEX_URL:-https://pypi.org/simple}
+        UV_DEFAULT_INDEX: ${E2E_PIP_INDEX_URL:-https://pypi.org/simple}
+    image: data_achieve_e2e_api:latest
+    container_name: data_achieve_e2e_api
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      # APP_ENV=production 关闭 demo 回退。不开的话无 token 请求会落到 demo
+      # workspace，门禁就永远测不到未登录被拒的那一段。
+      APP_ENV: production
+      # 本地 http，Secure Cookie 存不下来。
+      AUTH_COOKIE_SECURE: "false"
+      # 同源访问由 edge 代理，CORS 只是兜底。
+      CORS_ORIGINS: '["http://127.0.0.1:8090","http://localhost:8090"]'
+      DATABASE_URL: postgresql+asyncpg://${E2E_POSTGRES_USER:?E2E_POSTGRES_USER is required}:${E2E_POSTGRES_PASSWORD:?E2E_POSTGRES_PASSWORD is required}@db:5432/${E2E_POSTGRES_DB:?E2E_POSTGRES_DB is required}
+      JWT_SECRET: ${E2E_JWT_SECRET:?E2E_JWT_SECRET is required}
+      DATASET_EXPORT_DIR: /app/exports/datasets
+      LLM_PROVIDER: mock
+      LOG_LEVEL: INFO
+      # 关掉后台任务：门禁只验证同步链路，定时器与 worker 会引入不确定性。
+      SCHEDULER_ENABLED: "false"
+      RUN_WORKER_ENABLED: "false"
+      COLLECTION_NETWORK_MODE: restricted
+      COLLECTION_HTTP_GRANTS: "[]"
+      INTERNAL_API_BASE: http://127.0.0.1:8000
+    volumes:
+      - e2e_export_data:/app/exports
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks:
+      - e2e_internal
+
+  web:
+    build:
+      context: ../../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # 同源：浏览器请求 127.0.0.1:8090/api/...，edge 转给 api:8000。
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8090
+        NEXT_PUBLIC_MOCK_API: "false"
+        # 空值 = 挂在站点根。门禁的 appPath() 在空前缀下退化为恒等。
+        NEXT_PUBLIC_BASE_PATH: ""
+    image: data_achieve_e2e_web:latest
+    container_name: data_achieve_e2e_web
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3000"
+      NEXT_PUBLIC_BASE_PATH: ""
+    healthcheck:
+      # 前缀为空，探针直接探 /tasks。用运行时变量拼路径，与生产探针同源逻辑。
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000'+process.env.NEXT_PUBLIC_BASE_PATH+'/tasks').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks:
+      - e2e_internal
+
+  # 与生产同拓扑：/api 转 api，其余转 web。生产区别只在 web 挂在 /insight。
+  edge:
+    image: nginx:1.27-alpine
+    container_name: data_achieve_e2e_edge
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${E2E_HTTP_PORT:-8090}:8080"
+    volumes:
+      - ./e2e-edge-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/login >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - e2e_internal
+
+volumes:
+  e2e_postgres_data:
+  e2e_export_data:
+
+networks:
+  e2e_internal:
+    name: data_achieve_e2e_internal
+    driver: bridge
