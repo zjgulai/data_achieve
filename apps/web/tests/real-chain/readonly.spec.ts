@@ -1,6 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 import {
+  apiPath,
   appPath,
   assertReadonlyTarget,
   installReadOnlyGuard,
@@ -30,36 +31,33 @@ import {
  *   PLAYWRIGHT_CHAIN_ALLOW_REMOTE=true \
  *   SCRAPY_DEMO_EMAIL=... SCRAPY_DEMO_PASSWORD=... \
  *     pnpm -C apps/web exec playwright test -c playwright.real-chain.config.ts \
- *     --project=desktop --grep "@readonly"
+ *     --project=readonly
+ *
+ * 计数不在 beforeAll/afterAll 里取：Playwright 的 page/context fixture 是
+ * 每个 test 新建的，钩子里拿不到。基线在第一个用例里取，recount 在最后
+ * 一个用例里做，靠 serial 模式保证顺序。
  */
 
 test.describe.configure({ mode: "serial" });
 
-// 冒烟前后的实体计数。只读用例的价值一半在于「读出来了」，
-// 另一半在于「确实什么都没写进去」。
-let beforeCounts: { records: number; intelligence: number } | null = null;
+/** 读 competitor 域的原始记录条数。只发 GET。 */
+async function countCompetitorRecords(page: Page): Promise<number> {
+  const resp = await page.request.get(
+    new URL(apiPath("/api/raw-records?domain=competitor&limit=200"), page.url()).toString(),
+  );
+  expect(resp.status(), "读取原始记录失败").toBeLessThan(300);
+  const list = (await resp.json()) as unknown;
+  return Array.isArray(list) ? list.length : 0;
+}
 
-test.beforeAll(async ({ page }) => {
+// 冒烟基线。第一个用例写入，最后一个用例比对。
+let baselineRecords = -1;
+
+test("A 冒烟 @readonly 生产登录与业务域真实记录", async ({ page }) => {
   assertReadonlyTarget();
   const { email, password } = readonlyCredentials();
 
   // 守卫必须先装，再有任何导航。
-  await installReadOnlyGuard(page);
-  await loginThroughUi(page, email, password);
-
-  const records = await page.request.get(
-    new URL(appPath("/api/raw-records?domain=competitor&limit=200"), page.url()).toString(),
-  );
-  expect(records.status(), "冒烟前读取原始记录失败").toBeLessThan(300);
-  const recordList = (await records.json()) as unknown[];
-  beforeCounts = {
-    records: Array.isArray(recordList) ? recordList.length : 0,
-    intelligence: 0,
-  };
-});
-
-test("A 冒烟 @readonly 生产登录与业务域真实记录", async ({ page }) => {
-  const { email, password } = readonlyCredentials();
   await installReadOnlyGuard(page);
   await loginThroughUi(page, email, password);
   await expect(page).toHaveURL(new RegExp(`${appPath("/dashboard")}$`));
@@ -80,9 +78,13 @@ test("A 冒烟 @readonly 生产登录与业务域真实记录", async ({ page })
   await expect(page.getByTestId("domain-records-panel")).toBeVisible();
   await expect(page.getByTestId("domain-records-list")).toBeVisible();
   await expect(page.getByTestId("domain-records-list").getByRole("link").first()).toBeVisible();
+
+  baselineRecords = await countCompetitorRecords(page);
+  expect(baselineRecords, "基线记录数不应为 0").toBeGreaterThan(0);
 });
 
 test("A 冒烟 @readonly 生产洞察与证据可追溯", async ({ page }) => {
+  assertReadonlyTarget();
   const { email, password } = readonlyCredentials();
   await installReadOnlyGuard(page);
   await loginThroughUi(page, email, password);
@@ -99,10 +101,6 @@ test("A 冒烟 @readonly 生产洞察与证据可追溯", async ({ page }) => {
 
   const items = Array.isArray(payload) ? payload : [];
   expect(items.length, "生产 competitor 域应有真实情报").toBeGreaterThan(0);
-
-  if (beforeCounts) {
-    beforeCounts.intelligence = items.length;
-  }
 
   const first = items[0] as { id: string };
   await page.getByTestId(`intelligence-list-item-${first.id}`).click();
@@ -136,21 +134,19 @@ test("A 冒烟 @readonly 生产报告段跳过并说明原因", async () => {
   );
 });
 
-test.afterAll(async ({ page }) => {
-  if (!beforeCounts) {
-    return;
-  }
-  // recount：读操作不该改变任何东西。数量变了说明守卫漏了某个写路径。
-  const records = await page.request.get(
-    new URL(appPath("/api/raw-records?domain=competitor&limit=200"), page.url()).toString(),
-  );
-  if (records.status() >= 300) {
-    return;
-  }
-  const recordList = (await records.json()) as unknown[];
-  const after = Array.isArray(recordList) ? recordList.length : 0;
+test("A 冒烟 @readonly recount：只读冒烟没有写入", async ({ page }) => {
+  assertReadonlyTarget();
+  const { email, password } = readonlyCredentials();
+  await installReadOnlyGuard(page);
+  await loginThroughUi(page, email, password);
+
+  // 第一个用例没跑成时基线是 -1，此时无法比对。直接失败而不是跳过：
+  // 少了这条校验，冒烟就只剩「读出来了」，不能证明「没写进去」。
+  expect(baselineRecords, "基线未建立，recount 无法比对").toBeGreaterThanOrEqual(0);
+
+  const after = await countCompetitorRecords(page);
   expect(
     after,
-    `冒烟前后原始记录数不一致（${beforeCounts.records} → ${after}）。只读冒烟发生了写入。`,
-  ).toBe(beforeCounts.records);
+    `冒烟前后原始记录数不一致（${baselineRecords} → ${after}）。只读冒烟发生了写入。`,
+  ).toBe(baselineRecords);
 });

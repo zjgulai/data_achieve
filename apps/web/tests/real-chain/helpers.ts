@@ -28,6 +28,28 @@ export function appPath(path: string): string {
 }
 
 /**
+ * API 路径。**故意不加前缀。**
+ *
+ * basePath 只作用于 Next 自己的页面路由与静态资源。生产 edge 把 /api/
+ * 直接转给 api:8000，路径在根上，与 web 挂在哪无关：
+ *
+ *     location /api/ { proxy_pass http://api:8000; }
+ *     location ^~ /insight/ { proxy_pass http://web:3000; }
+ *
+ * 所以 /insight/api/raw-records 在生产上是 404——它会被当成 web 的页面
+ * 请求转给 Next，而 Next 没有这个路由。
+ *
+ * 这个区别在本地栈上不可见（前缀为空，两个函数结果相同），只有连生产
+ * 才会暴露。2026-10-29 首次执行生产只读冒烟时踩到。
+ */
+export function apiPath(path: string): string {
+  if (!path.startsWith("/api/")) {
+    throw new Error(`apiPath 只接受 /api/ 开头的路径，收到：${path}`);
+  }
+  return path;
+}
+
+/**
  * 远程目标守卫。
  *
  * 门禁的价值建立在「不写生产」上。一旦 base URL 指向非本机而调用方没有
@@ -114,12 +136,12 @@ export async function seedChain(
   const { email, password } = newSeedIdentity();
 
   // 注册即建立会话（Set-Cookie）。后续请求由 request context 自动携带。
-  const register = await request.post(appPath("/api/auth/register"), {
+  const register = await request.post(apiPath("/api/auth/register"), {
     data: { email, password, name: "E2E Chain" },
   });
   expect(register.status(), `注册失败：${await register.text()}`).toBe(201);
 
-  const projectResp = await request.post(appPath("/api/projects"), {
+  const projectResp = await request.post(apiPath("/api/projects"), {
     data: {
       name: "E2E 竞品链路",
       description: "真实链路 E2E 种子项目（一次性）",
@@ -129,7 +151,7 @@ export async function seedChain(
   expect(projectResp.status(), `建项目失败：${await projectResp.text()}`).toBe(201);
   const projectId = (await projectResp.json()).id as string;
 
-  const sourceResp = await request.post(appPath("/api/sources"), {
+  const sourceResp = await request.post(apiPath("/api/sources"), {
     data: {
       project_id: projectId,
       name: "E2E GitHub stars",
@@ -144,14 +166,14 @@ export async function seedChain(
   const sourceId = (await sourceResp.json()).id as string;
 
   // enable 才会建出 CollectionTask；直接跑 source 没有入口。
-  const enableResp = await request.post(appPath(`/api/sources/${sourceId}/enable`));
+  const enableResp = await request.post(apiPath(`/api/sources/${sourceId}/enable`));
   expect(enableResp.status(), `启用 source 失败：${await enableResp.text()}`).toBe(200);
   const taskId = (await enableResp.json()).id as string;
 
   await runTask(request, taskId);
 
   // 改动 metrics 再跑一次。信号是「两次快照之间的差」，只有一次采集不会有信号。
-  const patch = await request.patch(appPath(`/api/sources/${sourceId}`), {
+  const patch = await request.patch(apiPath(`/api/sources/${sourceId}`), {
     data: {
       config: {
         entity_type: SEED_ENTITY_TYPE,
@@ -167,12 +189,12 @@ export async function seedChain(
   // Playwright 的 request fixture 每个 test 是独立 context，跨 test 拿不到会话，
   // 所以「种子是否成立」的断言必须留在这里，不能挪到测试体里。
   const recordsResp = await request.get(
-    appPath("/api/raw-records?domain=competitor&limit=50"),
+    apiPath("/api/raw-records?domain=competitor&limit=50"),
   );
   expect(recordsResp.status(), "种子后的原始记录读取失败").toBe(200);
   const records = (await recordsResp.json()) as Array<{ id: string }>;
 
-  const intelResp = await request.get(appPath("/api/intelligence?domain=competitor"));
+  const intelResp = await request.get(apiPath("/api/intelligence?domain=competitor"));
   expect(intelResp.status(), "种子后的情报读取失败").toBe(200);
   const intelRaw = (await intelResp.json()) as
     | Array<{ id: string }>
@@ -202,7 +224,7 @@ export async function seedChain(
 }
 
 async function runTask(request: APIRequestContext, taskId: string): Promise<void> {
-  const run = await request.post(appPath(`/api/tasks/${taskId}/run`));
+  const run = await request.post(apiPath(`/api/tasks/${taskId}/run`));
   expect(run.status(), `采集运行失败：${await run.text()}`).toBe(201);
   const body = await run.json();
   expect(body.status, `采集未成功：${JSON.stringify(body).slice(0, 400)}`).toBe("success");

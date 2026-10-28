@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 import {
+  apiPath,
   appPath,
   assertTargetAllowed,
   loginThroughUi,
@@ -145,7 +146,7 @@ test("A 链路 @report 从域入口生成报告并看到证据引用", async ({ 
   // reload 会让 Playwright 丢掉响应体，读 json 时报
   // "No resource with given identifier found"。
   const listResp = await page.request.get(
-    new URL(appPath("/api/reports?domain=competitor"), page.url()).toString(),
+    new URL(apiPath("/api/reports?domain=competitor"), page.url()).toString(),
   );
   expect(listResp.status(), "域内报告列表接口未返回 2xx").toBeLessThan(300);
   const list = (await listResp.json()) as unknown;
