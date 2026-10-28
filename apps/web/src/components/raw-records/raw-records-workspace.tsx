@@ -79,6 +79,20 @@ const recordTypeTone: Record<
   },
 };
 
+/**
+ * 从 URL 读深链记录 ID。
+ *
+ * 情报页的证据按钮会链接到 `/raw-records?record=<rawRecordId>`。
+ * 在 effect 里读取而不是渲染期读，避免 SSR 与客户端首帧不一致。
+ */
+function readLinkedRecordId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search);
+  return params.get("record")?.trim() || null;
+}
+
 export function RawRecordsWorkspace() {
   const [rawRecords, setRawRecords] = useState<RawRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -96,7 +110,12 @@ export function RawRecordsWorkspace() {
           return;
         }
         setRawRecords(items);
-        setSelectedId(items[0]?.id ?? null);
+        // 情报页的证据按钮会带 ?record=<id>。优先选中那一条；
+        // 它不在当前列表里时（例如列表有分页或按默认筛选），
+        // 保持选中第一条，不做静默替换。
+        const linkedId = readLinkedRecordId();
+        const linked = linkedId ? items.find((item) => item.id === linkedId) : undefined;
+        setSelectedId(linked?.id ?? items[0]?.id ?? null);
       })
       .catch((caught) => {
         if (mounted) {
