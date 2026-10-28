@@ -32,7 +32,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (hasToken && isLoginPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // 必须保留 basePath：NextResponse.redirect 只把 Location 设为传入的
+    // URL，不像 next/link 会自动加前缀。这里用手工拼装。
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+    return NextResponse.redirect(new URL(`${basePath}/dashboard`, request.url));
   }
 
   return NextResponse.next();

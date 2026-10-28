@@ -11,7 +11,8 @@
 # 生产 B 的 preflight 尚未接入，因此 b 与 both 的代码发布一律拒绝；
 # 批准模式不受此限制。
 #
-# 不重建 web、db 与共享网关。构建后用新镜像执行 alembic upgrade head；
+# 发布 api、console 与 web（web 承载 /insight 工作台）。不重建 db 与共享网关。
+# 构建后用新镜像执行 alembic upgrade head；
 # 迁移失败会中止发布，旧容器继续服务。重建 api/console 后必须重启 edge，
 # 否则 edge 缓存旧容器 IP，公网 502。替换完容器还会尝试重载共享网关
 # （scripts/reload-scrapy-gateway.sh）；重载失败只告警，不中止发布。
@@ -384,7 +385,7 @@ deploy_one() {
   # 第 1 步：拉取源码。
   # 生产 B 的 GitHub 拉取常报 GnuTLS recv error -110 / -54 与 too slow。
   # 必须重试，且不能把 fetch 接到管道——管道会吞掉退出码。
-  echo "-- 1/6 拉取源码"
+  echo "-- 1/7 拉取源码"
   local fetch_script
   fetch_script=$(cat <<REMOTE
 set -euo pipefail
@@ -413,17 +414,17 @@ REMOTE
   local compose
   compose="docker compose --env-file $REMOTE_ENV -f $REMOTE_APP/$COMPOSE_REL"
 
-  echo "-- 2/6 校验编排"
+  echo "-- 2/7 校验编排"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose config --quiet
 echo '  编排有效'"
 
   # 第 3 步：构建 api 与 console。只构建这两个。
-  echo "-- 3/6 构建镜像"
+  echo "-- 3/7 构建镜像"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
-$compose build api console"
+$compose build api console web"
 
   # 第 4 步：应用数据库迁移。用新镜像跑 alembic，失败则中止发布，
   # 旧容器仍在运行。迁移只应向前，回滚需人工处理。
@@ -439,13 +440,13 @@ $compose run --rm --no-deps api alembic upgrade head"
   echo "-- 5/7 替换容器并重启 edge"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
-$compose up -d --no-deps api console
+$compose up -d --no-deps api console web
 $compose restart edge
 sleep 3
 docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
 
   echo "-- 6/7 等待健康"
-  wait_healthy "$key" "$ssh_target" "api console"
+  wait_healthy "$key" "$ssh_target" "api console web"
 
   echo "-- 7/7 重载共享网关"
   reload_gateway "$key" "$ssh_target"

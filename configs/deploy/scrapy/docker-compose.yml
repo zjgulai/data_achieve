@@ -170,6 +170,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${SCRAPY_PUBLIC_URL:-https://scrapy.luteos.com}
         NEXT_PUBLIC_MOCK_API: "false"
+        NEXT_PUBLIC_BASE_PATH: ${SCRAPY_WEB_BASE_PATH:-/insight}
         NPM_CONFIG_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
         COREPACK_NPM_REGISTRY: ${SCRAPY_NPM_REGISTRY:-https://registry.npmjs.org/}
     container_name: data_achieve_scrapy_web
@@ -180,13 +181,19 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "3000"
+      # 只给 healthcheck 用：basePath 是构建期常量，运行时再传一遍不改变
+      # 路由行为，只是让探针知道该请求哪个前缀。两处必须同源。
+      NEXT_PUBLIC_BASE_PATH: ${SCRAPY_WEB_BASE_PATH:-/insight}
     expose:
       - "3000"
     healthcheck:
+      # basePath 生效后根路径 /tasks 不再由 Next 提供，探针必须带前缀。
+      # 用运行时环境变量而不是硬编码 /insight：同一份编排在根部署下
+      # （变量为空）仍探 /tasks，与引入 basePath 前完全一致。
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://127.0.0.1:3000/tasks').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+          "node -e \"fetch('http://127.0.0.1:3000'+process.env.NEXT_PUBLIC_BASE_PATH+'/tasks').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
         ]
       interval: 30s
       timeout: 5s

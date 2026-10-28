@@ -28,6 +28,7 @@ import {
   listReportAuditEvents,
   listReportEvidenceReferences,
 } from "@/lib/api/reports";
+import { withBasePath } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 import {
   WorkbenchStatusPill,
@@ -71,10 +72,11 @@ export function ReportDetailPanel({
   const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   const reportUrl = useMemo(() => {
+    const route = withBasePath(`/reports/${report.id}`);
     if (typeof window === "undefined") {
-      return `/reports/${report.id}`;
+      return route;
     }
-    return new URL(`/reports/${report.id}`, window.location.origin).toString();
+    return new URL(route, window.location.origin).toString();
   }, [report.id]);
 
   const loadAuditEvents = useCallback(async () => {

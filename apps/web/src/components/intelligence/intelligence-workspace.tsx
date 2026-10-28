@@ -22,6 +22,7 @@ import {
   submitFeedback,
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
+import { withBasePath } from "@/lib/base-path";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import {
@@ -280,9 +281,12 @@ export function IntelligenceWorkspace() {
       return;
     }
     const nextHref = buildIntelligenceListHref(navigationContext);
+    // buildIntelligenceListHref 返回无前缀路由；window.location.pathname 含
+    // 部署前缀。两边必须先统一到浏览器口径再比较，否则恒不相等，会把地址栏
+    // 改写成丢前缀的路径。
     const currentHref = `${window.location.pathname}${window.location.search}`;
-    if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, "", nextHref);
+    if (withBasePath(nextHref) !== currentHref) {
+      window.history.replaceState(window.history.state, "", withBasePath(nextHref));
     }
   }, [navigationContext, navigationReady, projectSelectionLoading]);
 

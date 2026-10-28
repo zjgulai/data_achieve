@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { withBasePath } from "@/lib/base-path";
 import { cn } from "@/lib/utils";
 import type { ToolkitLecturePlaybook } from "@/types/toolkit";
 
@@ -243,7 +244,9 @@ function PrintStyles() {
 }
 
 function toAbsoluteUrl(href: string) {
-  return new URL(href, window.location.origin).toString();
+  // href 传入的是无前缀路由（同一值也直接喂给 next/link，由 Link 自动加前缀）。
+  // 拼绝对链接时没人替我们加，必须显式补上。
+  return new URL(withBasePath(href), window.location.origin).toString();
 }
 
 async function copyTextToClipboard(value: string) {
