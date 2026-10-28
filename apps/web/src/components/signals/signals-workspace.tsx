@@ -90,11 +90,22 @@ export function SignalsWorkspace() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [signalScope, setSignalScope] = useState<SignalScope>("all");
+  // 当前是否被 ?domain= 收窄。提到 state 是为了在界面上标明范围——
+  // 否则用户看到列表变短会以为信号丢了，而不是被域筛选了。
+  const [domainFilter, setDomainFilter] = useState<string | null>(null);
   const trainingOverview = useTrainingOverview();
 
   useEffect(() => {
     let mounted = true;
-    listSignals()
+    // 域页的「信号链路」带 ?domain= 进来。在 effect 里读而不是渲染期读，
+    // 避免 SSR 与客户端首帧不一致（与 reports-workspace 同做法）。
+    // 不带参数时是全工作区列表，行为与引入前一致。
+    const scopedDomain =
+      typeof window === "undefined"
+        ? null
+        : new URLSearchParams(window.location.search).get("domain")?.trim() || null;
+    setDomainFilter(scopedDomain);
+    listSignals(scopedDomain ? { domain: scopedDomain } : undefined)
       .then((items) => {
         if (!mounted) {
           return;
@@ -269,6 +280,14 @@ export function SignalsWorkspace() {
               <p className="text-xs font-semibold uppercase text-[#B47767]">Signal Queue</p>
               <h2 className="mt-1 text-lg font-semibold text-[#2E201C]">变化信号队列</h2>
               <p className="mt-1 text-sm text-[#7A625A]">按信号类型、严重度和实体 ID 定位待判读变化。</p>
+              {domainFilter ? (
+                <p
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#F1D9A8] bg-[#FFF9E9] px-3 py-1 text-xs font-semibold text-[#8C6824]"
+                  data-testid="signals-domain-scope"
+                >
+                  当前范围：{domainFilter} 域
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-none xl:grid-cols-3">
               <label className="relative block">
@@ -346,8 +365,13 @@ export function SignalsWorkspace() {
               />
             ))}
             {!loading && filteredSignals.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]">
-                没有匹配的信号。
+              <div
+                className="rounded-2xl border border-dashed border-[#E8D4CB] bg-[#FFF8F4] p-8 text-sm text-[#7A625A]"
+                data-testid="signals-empty-state"
+              >
+                {domainFilter
+                  ? `${domainFilter} 域还没有可判读的信号。切换到「全部信号」可查看其他域。`
+                  : "没有匹配的信号。"}
               </div>
             ) : null}
           </div>

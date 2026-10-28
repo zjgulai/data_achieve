@@ -134,6 +134,24 @@ export function ReportsWorkspace() {
       .then((items) => {
         if (mounted) {
           setProjects(items);
+          // 域页进来时预选该域的第一个项目。
+          //
+          // 不预选的话生成项目停在「全局」，而全局报告 project_id 为 NULL，
+          // 域筛选（inner join projects）会静默把它排除——用户点了生成、
+          // 看到「成功」，刷新后报告却不见了。
+          //
+          // 只在 generateProjectId 还是初始值 "all" 时改，不覆盖用户已选。
+          const linkedDomain = new URLSearchParams(window.location.search)
+            .get("domain")
+            ?.trim();
+          if (linkedDomain) {
+            const sameDomain = items.filter(
+              (project) => project.domain === linkedDomain,
+            );
+            setGenerateProjectId((current) =>
+              current === "all" && sameDomain[0] ? sameDomain[0].id : current,
+            );
+          }
         }
       })
       .catch((caught) => {
@@ -595,8 +613,16 @@ export function ReportsWorkspace() {
                     }
                     value={generateProjectId}
                   >
-                    <option value="all">全局</option>
-                    {projects.map((project) => (
+                    {/* 域页只列同域项目并隐藏「全局」：全局报告的
+                        project_id 为 NULL，必定被域筛选排除，列出来只会
+                        引导用户生成一份当场看不见的报告。 */}
+                    {domainFilter ? null : <option value="all">全局</option>}
+                    {(domainFilter
+                      ? projects.filter(
+                          (project) => project.domain === domainFilter,
+                        )
+                      : projects
+                    ).map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>

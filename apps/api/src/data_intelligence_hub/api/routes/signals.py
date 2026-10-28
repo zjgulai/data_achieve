@@ -32,6 +32,7 @@ async def list_signal_items(
     entity_id: Annotated[uuid.UUID | None, Query()] = None,
     type_filter: Annotated[str | None, Query(alias="type")] = None,
     severity: Annotated[str | None, Query()] = None,
+    domain: Annotated[str | None, Query()] = None,
 ) -> list[SignalResponse]:
     signals = await get_signals(
         session,
@@ -40,6 +41,7 @@ async def list_signal_items(
         entity_id=entity_id,
         signal_type=type_filter,
         severity=severity,
+        domain=domain,
     )
     return [SignalResponse.from_model(signal) for signal in signals]
 

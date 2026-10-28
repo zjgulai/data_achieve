@@ -77,18 +77,30 @@ export function DashboardOverview({ domain }: { domain?: string }) {
     setLoading(true);
     setError(null);
     clearProjectFilterApplied();
+    // 域页忽略顶部项目过滤。
+    //
+    // 后端把 domain 与 project_id 用 AND 组合（repositories/dashboard.py:387-390），
+    // 所以在 A 域页选了 X 项目、再进 B 域页时，请求变成
+    // domain=B AND project_id=X，两条件互斥，KPI 全部清零。
+    //
+    // 域记录面板（domain-records-panel.tsx:18-20）早就是这个口径：按域查，
+    // 不叠加 project_id。仪表盘与它保持同一语义，否则同一页面上两块数据
+    // 的口径互相矛盾。
+    const scopedProjectId = domain ? undefined : (selectedProjectId ?? undefined);
     getDashboardOverview({
       domain,
       limit: 10,
-      projectId: selectedProjectId ?? undefined,
+      projectId: scopedProjectId,
     })
       .then((response) => {
         if (!mounted) {
           return;
         }
         setDashboard(response);
-        if (selectedProjectId) {
-          markProjectFilterApplied(selectedProjectId);
+        // 只有真的按项目取数时才标记「已应用项目过滤」。
+        // 域页没传 project_id，标记了会让顶部假报状态。
+        if (scopedProjectId) {
+          markProjectFilterApplied(scopedProjectId);
         }
       })
       .catch((caught) => {
@@ -141,7 +153,11 @@ export function DashboardOverview({ domain }: { domain?: string }) {
   const latestCollectionLabel = dashboard.freshness.latestCollectionAt
     ? formatRelativeTime(dashboard.freshness.latestCollectionAt)
     : "尚无采集记录";
-  const scopeLabel = selectedProject?.name ?? "全部项目";
+  // 域页的范围是「本域全部项目」：它没有把项目过滤发出去，
+  // 显示选中项目名会与真实取数口径不符。
+  const scopeLabel = domain
+    ? "本域全部项目"
+    : (selectedProject?.name ?? "全部项目");
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-5">

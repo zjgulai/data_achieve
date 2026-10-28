@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.entity import EntitySnapshot
+from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.raw_record import RawRecord
 from data_intelligence_hub.models.signal import Signal
 
@@ -17,10 +18,18 @@ async def list_signals(
     entity_id: uuid.UUID | None = None,
     signal_type: str | None = None,
     severity: str | None = None,
+    domain: str | None = None,
 ) -> list[Signal]:
     statement = select(Signal).where(Signal.workspace_id == workspace_id)
     if project_id is not None:
         statement = statement.where(Signal.project_id == project_id)
+    if domain is not None:
+        # signals.project_id 非空，projects.domain 也非空，所以内连接是
+        # 正确语义：没有项目归属的信号不属于任何业务域，按域筛选时不该出现。
+        # 与 reports / raw_records 的域筛选同一写法。
+        statement = statement.join(
+            Project, Project.id == Signal.project_id
+        ).where(Project.domain == domain)
     if entity_id is not None:
         statement = statement.where(Signal.entity_id == entity_id)
     if signal_type is not None:

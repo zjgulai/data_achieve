@@ -62,6 +62,7 @@ async def get_signals(
     entity_id: uuid.UUID | None,
     signal_type: str | None,
     severity: str | None,
+    domain: str | None = None,
 ) -> list[Signal]:
     return await list_signals(
         session,
@@ -70,6 +71,7 @@ async def get_signals(
         entity_id=entity_id,
         signal_type=signal_type,
         severity=severity,
+        domain=domain,
     )
 
 

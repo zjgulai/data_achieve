@@ -6306,3 +6306,102 @@ async def test_star_growth_signal_is_created_from_snapshot_delta(client: AsyncCl
     assert dashboard["freshness"]["generated_at"] is not None
     assert dashboard["freshness"]["latest_collection_at"] == second_run["finished_at"]
     assert dashboard["freshness"]["stale_enabled_tasks"] == 0
+
+
+async def test_signals_can_be_filtered_by_business_domain(client: AsyncClient) -> None:
+    """GET /api/signals?domain= 按业务域收窄。
+
+    域页的「信号链路」链接带 ?domain= 进来。没有这条过滤时，链接与侧边栏
+    「信号中心」落到的页面完全一样，用户看不到任何收窄，也拿不到提示。
+
+    数据链是 signals.project_id -> projects.domain，所以用两个不同域的项目
+    各产生一条信号来验证。
+    """
+    async def produce_star_growth_signal(
+        project_id: str, source_name: str, full_name: str
+    ) -> None:
+        """在一个项目里跑两次 stars 100->260 的采集，产出一条 star_growth 信号。
+
+        stars 跳变必须同时超过 delta>100 与 ratio>2.0 两个阈值，
+        signal_service._detect_star_growth 才会落信号。
+        """
+        source_response = await client.post(
+            "/api/sources",
+            json={
+                "project_id": project_id,
+                "name": source_name,
+                "type": "manual_json",
+                "config": {
+                    "entity_type": "github_repo",
+                    "json_data": {"full_name": full_name, "stars": 100},
+                },
+                "schedule_cron": None,
+            },
+        )
+        assert source_response.status_code == 201
+        source_id = source_response.json()["id"]
+
+        enable_response = await client.post(f"/api/sources/{source_id}/enable")
+        assert enable_response.status_code == 200
+        task_id = enable_response.json()["id"]
+
+        first_run = await client.post(f"/api/tasks/{task_id}/run")
+        assert first_run.status_code == 201
+
+        update_response = await client.patch(
+            f"/api/sources/{source_id}",
+            json={
+                "config": {
+                    "entity_type": "github_repo",
+                    "json_data": {"full_name": full_name, "stars": 260},
+                }
+            },
+        )
+        assert update_response.status_code == 200
+
+        second_run = await client.post(f"/api/tasks/{task_id}/run")
+        assert second_run.status_code == 201
+        assert "signals_detected" in {log["step"] for log in second_run.json()["logs"]}
+
+    # osint 域：register_and_create_project 已建好项目，只需再产出信号。
+    osint_project_id = await register_and_create_project(client)
+    await produce_star_growth_signal(
+        osint_project_id, "osint repo metrics", "example/osint-repo"
+    )
+
+    # competitor 域：同一个工作区里另建项目，用同样方式产出第二条信号。
+    competitor_project_response = await client.post(
+        "/api/projects",
+        json={
+            "name": "Competitor Watch",
+            "description": "Competitor domain signal.",
+            "domain": "competitor",
+        },
+    )
+    assert competitor_project_response.status_code == 201
+    competitor_project_id = competitor_project_response.json()["id"]
+    await produce_star_growth_signal(
+        competitor_project_id, "competitor repo metrics", "rival/repo"
+    )
+
+    all_signals_response = await client.get("/api/signals")
+    assert all_signals_response.status_code == 200
+    all_signals = all_signals_response.json()
+    assert len(all_signals) == 2, "两个域各应有一条信号"
+
+    osint_response = await client.get("/api/signals?domain=osint")
+    assert osint_response.status_code == 200
+    osint_signals = osint_response.json()
+    assert len(osint_signals) == 1
+    assert osint_signals[0]["id"] in {item["id"] for item in all_signals}
+
+    competitor_response = await client.get("/api/signals?domain=competitor")
+    assert competitor_response.status_code == 200
+    competitor_signals = competitor_response.json()
+    assert len(competitor_signals) == 1
+    assert competitor_signals[0]["id"] != osint_signals[0]["id"]
+
+    # 不存在的域返回空，而不是退回全量——退回全量会让用户以为筛选生效了。
+    unknown_response = await client.get("/api/signals?domain=nope")
+    assert unknown_response.status_code == 200
+    assert unknown_response.json() == []

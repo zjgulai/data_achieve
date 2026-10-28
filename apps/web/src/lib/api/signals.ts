@@ -1,5 +1,5 @@
 import { apiFetch, mockApiEnabled } from "@/lib/api/client";
-import { getMockSignalSnapshotCompare, getMockSignals } from "@/lib/api/mock";
+import { getMockProjects, getMockSignalSnapshotCompare, getMockSignals } from "@/lib/api/mock";
 import type { Signal, SignalSnapshotCompare } from "@/types/signal";
 
 type SignalResponse = {
@@ -46,11 +46,26 @@ type SignalSnapshotCompareResponse = {
   metrics_diff: SnapshotMetricDiffResponse[];
 };
 
-export async function listSignals(): Promise<Signal[]> {
+export async function listSignals(filter?: { domain?: string }): Promise<Signal[]> {
   if (mockApiEnabled) {
-    return getMockSignals();
+    const signals = getMockSignals();
+    const domain = filter?.domain;
+    if (!domain) {
+      return signals;
+    }
+    // mock 数据没有域字段，用项目的 domain 映射。取不到映射的信号直接排除，
+    // 与后端「无项目归属的信号不属于任何域」保持同一语义。
+    const domainProjects = new Set(
+      getMockProjects().filter((project) => project.domain === domain).map((project) => project.id),
+    );
+    return signals.filter((signal) => domainProjects.has(signal.projectId));
   }
-  const response = await apiFetch<SignalResponse[]>("/api/signals");
+  const query = new URLSearchParams();
+  if (filter?.domain) {
+    query.set("domain", filter.domain);
+  }
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  const response = await apiFetch<SignalResponse[]>(`/api/signals${suffix}`);
   return response.map(mapSignal);
 }
 

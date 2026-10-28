@@ -101,13 +101,15 @@ describe("shared project selection", () => {
         appliedProjectId: "project-a",
       }),
     ).toBe(true);
+    // 域页不应用项目过滤：后端把 domain 与 project_id 用 AND 组合，
+    // 域页一旦标记「已应用」就会与真实取数口径矛盾，并导致跨域清零。
     expect(
       isProjectFilterApplied({
         pathname: "/domain/social",
         selectedProjectId: "project-a",
         appliedProjectId: "project-a",
       }),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isProjectFilterApplied({
         pathname: "/intelligence",

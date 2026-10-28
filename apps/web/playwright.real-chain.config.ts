@@ -14,8 +14,13 @@ import { defineConfig, devices } from "@playwright/test";
  * 两个 project 的分工是硬边界，不是偏好：
  *   - desktop：门禁。跑 real-chain.spec.ts，连一次性本地栈，CI 必过。
  *   - readonly：owner-run 冒烟。只跑 readonly.spec.ts，连生产 A。
- *     默认被 testIgnore 排除在 desktop 之外，所以 `--project=desktop`
- *     （门禁脚本用的就是这个）永远不会碰生产，也不会因为缺凭据而红。
+ *     desktop 用 testIgnore 排除了它，所以 `--project=desktop`（门禁脚本用的
+ *     就是这个）永远不会碰生产，也不会因为缺凭据而红。
+ *
+ * 注意：**不带 --project 时会两个 project 都跑**（Playwright 的
+ * --project 默认值是 run all projects）。所以任何调用都必须显式指定
+ * --project=desktop 或 --project=readonly，裸跑会把生产冒烟带进来，
+ * 缺凭据时那三条会失败。
  */
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL;

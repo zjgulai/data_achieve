@@ -147,7 +147,15 @@ let generatedRealApiCredentials: RealApiCredentials | null = null;
 const cleanupCompatibleE2eEmail = /^e2e-[^@]+@example\.com$/;
 
 function realApiBaseUrl() {
-  return process.env.PLAYWRIGHT_BASE_URL ?? "https://scrapy.lute-tlz-dddd.top";
+  // 不给默认值。此前这里默认指向生产 B，任何人裸跑真实模式都会把注册与
+  // 业务写入打到那台机器上。缺 URL 时立刻失败，比默默连生产安全。
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL;
+  if (!baseUrl) {
+    throw new Error(
+      "PLAYWRIGHT_BASE_URL 未设置。真实模式不再默认指向任何生产环境。",
+    );
+  }
+  return baseUrl;
 }
 
 function assertCleanupCompatibleE2eEmail(email: string, source: string) {

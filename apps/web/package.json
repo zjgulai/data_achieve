@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:real": "PLAYWRIGHT_BASE_URL=${PLAYWRIGHT_BASE_URL:-https://scrapy.lute-tlz-dddd.top} PLAYWRIGHT_REAL_API=true pnpm exec playwright test",
+    "test:e2e:real": "bash -c '[ -n \"${PLAYWRIGHT_BASE_URL:-}\" ] || { echo \"PLAYWRIGHT_BASE_URL 必须显式设置。该命令不再有默认目标——默认指向某一台生产等于把未授权的写入风险留给下一个人。\" >&2; exit 2; }; PLAYWRIGHT_BASE_PATH=\"${PLAYWRIGHT_BASE_PATH:-/insight}\" PLAYWRIGHT_CHAIN_ALLOW_REMOTE=true pnpm exec playwright test -c playwright.real-chain.config.ts --project=readonly'",
     "test:watch": "vitest",
     "test:e2e:chain": "cd ../.. && bash scripts/verify-real-chain-e2e.sh"
   },

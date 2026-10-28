@@ -75,8 +75,10 @@ export function isProjectFilterApplied({
   appliedProjectId: string | null;
 }): boolean {
   return (
+    // 域页不在列表里：后端把 domain 与 project_id 用 AND 组合，
+    // 域页一旦也应用项目过滤就会跨域清零。dashboard-overview 在域页
+    // 不传 project_id，这里必须同口径，否则顶部状态与真实取数矛盾。
     (pathname === "/dashboard" ||
-      pathname.startsWith("/domain/") ||
       pathname === "/intelligence" ||
       pathname.startsWith("/intelligence/") ||
       pathname === "/automation/planner" ||
