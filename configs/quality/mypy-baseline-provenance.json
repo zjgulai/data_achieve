@@ -1,0 +1,19 @@
+{
+  "schema_version": "mypy-baseline-provenance.v1",
+  "generated_at": "2026-10-28T01:07:25+00:00",
+  "commit": "855d214cbec89e7731f5c9ddeff0b2f109c67820",
+  "python_version": "3.12.13",
+  "paths": [
+    "src",
+    "tests"
+  ],
+  "mypy_flags": [
+    "--no-incremental",
+    "--no-pretty",
+    "--show-error-codes",
+    "--no-error-summary",
+    "--no-color-output"
+  ],
+  "signatures": 459,
+  "diagnostics": 934
+}
