@@ -130,5 +130,5 @@ def test_guard_check_only_accepts_exact_local_disposable_boundary() -> None:
 def test_guard_runs_against_current_alembic_head() -> None:
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert "^202610220059 \\(head\\)$" in source
-    assert "expected exactly one Alembic head at 202610220059" in source
+    assert "^202610280064 \\(head\\)$" in source
+    assert "expected exactly one Alembic head at 202610280064" in source

@@ -71,6 +71,10 @@ def _reset_public_schema(database_url: str) -> None:
     engine = _engine(database_url, autocommit=True)
     try:
         with engine.connect() as connection:
+            # ABI 迁移 060-063 建 meta/raw/abi 三个独立 schema，不在 public 里。
+            # 只删 public 会让它们留存，第二次 upgrade 在建表处报 DuplicateTable。
+            for _abi_schema in ("meta", "raw", "abi"):
+                connection.exec_driver_sql(f"DROP SCHEMA IF EXISTS {_abi_schema} CASCADE")
             connection.exec_driver_sql("DROP SCHEMA IF EXISTS public CASCADE")
             connection.exec_driver_sql("CREATE SCHEMA public")
     finally:
@@ -290,8 +294,8 @@ def test_source_has_one_head_at_current_head(postgres_database_url: str) -> None
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610220059 (head)"]
-    assert _revision(postgres_database_url) == "202610220059"
+    assert heads == ["202610280064 (head)"]
+    assert _revision(postgres_database_url) == "202610280064"
 
 
 def test_033_to_034_to_033_to_034_preserves_legacy_assets(

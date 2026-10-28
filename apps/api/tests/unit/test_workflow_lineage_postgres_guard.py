@@ -185,7 +185,7 @@ def _run_guard_with_fake_uv(
 printf '%s\\n' "$*" >> "$FAKE_UV_LOG"
 case "$*" in
   "run alembic heads")
-    printf '%s\\n' "202610220059 (head)"
+    printf '%s\\n' "202610280064 (head)"
     ;;
   "run pytest tests/postgres_workflow_lineage -q")
     exit "$FAKE_PYTEST_STATUS"
@@ -193,7 +193,7 @@ case "$*" in
   "run python -")
     cat >/dev/null
     ;;
-  "run alembic upgrade 202610220059")
+  "run alembic upgrade 202610280064")
     exit "$FAKE_CLEANUP_STATUS"
     ;;
   *)
@@ -257,7 +257,7 @@ def test_guard_cleanup_runs_after_success_or_failure_and_preserves_exit_status(
     ]
     assert commands[2:4] == [
         "run python -",
-        "run alembic upgrade 202610220059",
+        "run alembic upgrade 202610280064",
     ]
     if cleanup_status == 0:
         assert commands[4:] == ["run python -"]

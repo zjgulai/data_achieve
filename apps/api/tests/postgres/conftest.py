@@ -54,6 +54,10 @@ def postgres_database_url() -> str:
     engine = create_engine(_sync_database_url(database_url), isolation_level="AUTOCOMMIT")
     try:
         with engine.connect() as connection:
+            # ABI 迁移 060-063 建 meta/raw/abi 三个独立 schema，不在 public 里。
+            # 只删 public 会让它们留存，第二次 upgrade 在建表处报 DuplicateTable。
+            for _abi_schema in ("meta", "raw", "abi"):
+                connection.exec_driver_sql(f"DROP SCHEMA IF EXISTS {_abi_schema} CASCADE")
             connection.exec_driver_sql("DROP SCHEMA IF EXISTS public CASCADE")
             connection.exec_driver_sql("CREATE SCHEMA public")
     finally:

@@ -113,12 +113,12 @@ cd "$repository_root/apps/api"
 export DATABASE_URL="$WORKFLOW_LINEAGE_TEST_DATABASE_URL"
 heads_output="$(uv run alembic heads)"
 head_count="$(printf '%s\n' "$heads_output" | awk 'NF { count += 1 } END { print count + 0 }')"
-if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610220059 \(head\)$'; then
-  printf '%s\n' "error: expected exactly one Alembic head at 202610220059" >&2
+if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610280064 \(head\)$'; then
+  printf '%s\n' "error: expected exactly one Alembic head at 202610280064" >&2
   exit 1
 fi
 
-printf '%s\n' "alembic source head check passed: 202610220059"
+printf '%s\n' "alembic source head check passed: 202610280064"
 
 cleanup_authorized_target() {
   uv run python - <<'PY' &&
@@ -141,7 +141,7 @@ async def reset_public_schema() -> None:
 
 asyncio.run(reset_public_schema())
 PY
-  uv run alembic upgrade 202610220059 &&
+  uv run alembic upgrade 202610280064 &&
   uv run python - <<'PY'
 import asyncio
 import os
@@ -182,7 +182,7 @@ async def verify_cleanup() -> None:
             }
     finally:
         await engine.dispose()
-    if revision != "202610220059" or any(counts.values()):
+    if revision != "202610280064" or any(counts.values()):
         raise SystemExit(1)
 
 
@@ -211,7 +211,7 @@ uv run pytest tests/postgres_workflow_lineage -q
 if cleanup_authorized_target; then
   cleanup_complete=true
   trap - EXIT INT TERM
-  printf '%s\n' "authorized workflow lineage database cleanup passed: head 202610220059, zero rows"
+  printf '%s\n' "authorized workflow lineage database cleanup passed: head 202610280064, zero rows"
   exit 0
 fi
 

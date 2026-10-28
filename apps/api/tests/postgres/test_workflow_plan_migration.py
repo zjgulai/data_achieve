@@ -114,6 +114,10 @@ def _reset_public_schema(database_url: str) -> None:
     engine = _database_engine(database_url, autocommit=True)
     try:
         with engine.connect() as connection:
+            # ABI 迁移 060-063 建 meta/raw/abi 三个独立 schema，不在 public 里。
+            # 只删 public 会让它们留存，第二次 upgrade 在建表处报 DuplicateTable。
+            for _abi_schema in ("meta", "raw", "abi"):
+                connection.exec_driver_sql(f"DROP SCHEMA IF EXISTS {_abi_schema} CASCADE")
             connection.exec_driver_sql("DROP SCHEMA IF EXISTS public CASCADE")
             connection.exec_driver_sql("CREATE SCHEMA public")
     finally:
@@ -471,8 +475,8 @@ def test_fresh_database_upgrade_has_single_head_and_phase_two_objects(
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610220059 (head)"]
-    assert _database_revision(postgres_database_url) == "202610220059"
+    assert heads == ["202610280064 (head)"]
+    assert _database_revision(postgres_database_url) == "202610280064"
     _assert_phase_two_objects_present(postgres_database_url)
 
 
