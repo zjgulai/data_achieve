@@ -93,6 +93,11 @@ MAX_ERROR_ROWS_PER_INSERT: Final[int] = 2_000
 UPLOAD_MODES: Final[frozenset[str]] = frozenset({"append", "upsert", "replace"})
 UPLOAD_SOURCE_KINDS: Final[frozenset[str]] = frozenset({"upload", "local_table"})
 UPLOAD_TABLE_PATTERN: Final[re.Pattern[str]] = re.compile(r"^abi_upload_[0-9a-f]{32}$")
+# 物化表建在 raw schema（见 _build_upload_table 的 schema="raw"）。
+# dataset.source_table 必须写成两段式 "raw.abi_upload_<hex>"：
+# 查询侧的 _parse_source_table 只接受 schema.table，单段名会被判
+# source_table_invalid。两者一度不一致，导致 commit 成功但查询 400。
+_UPLOAD_TABLE_SCHEMA: Final[str] = "raw"
 UPLOAD_INTERNAL_PREFIX: Final[str] = "__"
 _UPLOAD_DIR_NAME: Final[str] = "_uploads"
 
@@ -384,7 +389,8 @@ async def create_batch(
         expected_table = f"abi_upload_{dataset.id.hex}"
         if source_table and source_table != expected_table:
             raise AbiUploadValidationError("abi_upload_source_table_invalid")
-        dataset.source_table = expected_table
+        # 带 schema 前缀：表建在 raw，查询侧按 schema.table 解析。
+        dataset.source_table = f"{_UPLOAD_TABLE_SCHEMA}.{expected_table}"
     else:
         if source_table not in LOCAL_TABLE_COLUMNS:
             raise AbiUploadValidationError("abi_upload_source_table_not_allowed")
@@ -761,7 +767,8 @@ def _upload_table_name(dataset: CatalogDataset) -> str:
         source_table
     ):
         raise AbiUploadValidationError("abi_upload_source_table_invalid")
-    dataset.source_table = source_table
+    # 与 create_batch 同口径：落库值必须带 schema 前缀。
+    dataset.source_table = f"{_UPLOAD_TABLE_SCHEMA}.{source_table}"
     return source_table
 
 

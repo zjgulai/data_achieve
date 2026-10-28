@@ -21,7 +21,6 @@ import hmac
 import io
 import json
 import re
-import secrets
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -40,7 +39,6 @@ from data_intelligence_hub.models.abi import (
     DatasetColumn,
     ExportJob,
     FieldPolicy,
-    UploadBatch,
     role_rank,
 )
 from data_intelligence_hub.models.user import User
@@ -911,37 +909,30 @@ async def create_abi_upload(
     if dataset.source_kind != "upload":
         raise AbiServiceError("dataset_not_upload_target", 400)
 
-    token = secrets.token_urlsafe(48)
-    token_hash = hashlib.new("sha256", token.encode()).digest()
-    expires_at = _now() + _UPLOAD_TOKEN_TTL
-    expected_sha256 = (
-        bytes.fromhex(payload.expected_sha256)
-        if payload.expected_sha256 is not None
-        else None
-    )
-    batch = UploadBatch(
-        id=uuid.uuid4(),
+    # 建批次交给 abi_upload.create_batch。
+    #
+    # 这里原来自己拼一个 UploadBatch，漏了两件事：
+    # 1. 不设 storage_path —— append_content 立刻报 abi_upload_storage_path_missing；
+    # 2. 不回填 dataset.source_table —— 即使写入成功，查询也因
+    #    dataset_source_not_ready 报 409。
+    # 两处都是「A 套自己实现、B 套才是完整版」的具体表现。
+    from data_intelligence_hub.services.abi_upload import create_batch
+
+    batch, token = await create_batch(
+        session,
         dataset_id=dataset.id,
         workspace_id=workspace.id,
-        uploaded_by=user.id,
-        filename=_safe_filename(payload.filename),
+        user_id=user.id,
+        filename=payload.filename,
         mode=payload.mode,
-        expected_sha256=expected_sha256,
+        expected_sha256=payload.expected_sha256,
         expected_rows=payload.expected_rows,
-        bytes_total=0,
-        status="pending",
-        upload_token_hash=token_hash,
-        token_expires_at=expires_at,
-        rows_loaded=0,
-        rows_rejected=0,
     )
-    await abi_repo.create_upload_batch(session, batch)
-    await session.commit()
     return AbiUploadCreateResponse(
         batch=AbiUploadBatchResponse.model_validate(batch),
         upload_token=token,
         upload_url="/api/abi/uploads/content",
-        token_expires_at=expires_at,
+        token_expires_at=batch.token_expires_at,
     )
 
 
@@ -1056,12 +1047,25 @@ async def commit_abi_upload(
     if batch.expected_rows is not None and rows != batch.expected_rows:
         raise AbiServiceError("upload_row_count_mismatch", 409)
 
-    batch.actual_rows = rows
-    batch.rows_loaded = rows
-    batch.status = "committed"
-    batch.committed_at = _now()
-    await session.commit()
-    return AbiUploadBatchResponse.model_validate(batch)
+    # 真正的落库交给 abi_upload.commit_batch：它建物理表、逐行校验、
+    # 按 mode 写 append/upsert/replace，并回写 catalog 的 row_count /
+    # version / last_loaded_at。
+    #
+    # 改动前这里只把 batch.status 置成 committed 就返回——上传接口报成功，
+    # 数据一行都没进去，紧接着查询必然 409 (dataset_source_not_ready)。
+    # 这是上传闭环断裂的根因。
+    #
+    # 上面的所有前置校验（权限、状态、路径、sha256、行数）保留：
+    # commit_batch 内部会再查一遍，但那几次查询比让用户传完 200MB 才发现
+    # 权限不够要便宜得多。
+    from data_intelligence_hub.services.abi_upload import commit_batch
+
+    committed = await commit_batch(
+        session,
+        batch_id=batch.id,
+        user_id=user.id,
+    )
+    return AbiUploadBatchResponse.model_validate(committed)
 
 
 def _filters_hmac(payload: dict[str, Any]) -> bytes:
