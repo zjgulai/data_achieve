@@ -117,8 +117,11 @@ async def get_reports(
     session: AsyncSession,
     workspace: Workspace,
     project_id: uuid.UUID | None,
+    domain: str | None = None,
 ) -> list[Report]:
-    return await list_reports(session, workspace.id, project_id=project_id)
+    return await list_reports(
+        session, workspace.id, project_id=project_id, domain=domain
+    )
 
 
 async def get_report_or_raise(

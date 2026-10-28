@@ -1,0 +1,170 @@
+{
+  "schema_version": "agent-eval-cases.v1",
+  "agent": "shusuo",
+  "note": "只含确定性接缝（纯函数、无 IO、无 LLM）。每条 origin 指向真实来源：单测函数名、源码行或提交。改行为时同步更新期望，并用 --update-baseline 记新基线。",
+  "cases": [
+    {
+      "id": "shusuo-001",
+      "target": "shusuo.build_proposal",
+      "input": ["搜 reddit AI max_items=5"],
+      "assert": [
+        { "op": "equals", "path": "endpoint_type", "value": "tikhub_reddit_search" },
+        { "op": "equals", "path": "params.keyword", "value": "AI" },
+        { "op": "equals", "path": "params.max_items", "value": 5 },
+        { "op": "equals", "path": "estimated_items", "value": 5 }
+      ],
+      "origin": "tests/unit/test_shusuo_router.py::test_intent_social_search_with_platform"
+    },
+    {
+      "id": "shusuo-002",
+      "target": "shusuo.build_proposal",
+      "input": ["评论 https://www.youtube.com/watch?v=dQw4w9WgXcQ"],
+      "assert": [
+        { "op": "equals", "path": "endpoint_type", "value": "tikhub_youtube_video_comments" },
+        { "op": "equals", "path": "params.video_id", "value": "dQw4w9WgXcQ" }
+      ],
+      "origin": "tests/unit/test_shusuo_router.py::test_intent_comment_parses_youtube_url"
+    },
+    {
+      "id": "shusuo-003",
+      "target": "shusuo.build_proposal",
+      "input": ["账号 x naval"],
+      "assert": [
+        { "op": "equals", "path": "endpoint_type", "value": "apify_twitter_user_scraper" },
+        { "op": "equals", "path": "params.twitterHandles", "value": ["naval"] }
+      ],
+      "origin": "tests/unit/test_shusuo_cost_and_estimate.py"
+    },
+    {
+      "id": "shusuo-004",
+      "target": "shusuo.build_proposal",
+      "input": ["   "],
+      "assert": [
+        { "op": "equals", "path": ".", "value": "请说明要做什么。发「帮助」查看场景命令。" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/intents.py:140-142（实测）"
+    },
+    {
+      "id": "shusuo-005",
+      "target": "shusuo.build_proposal",
+      "input": ["搜 reddit AI max_items=51"],
+      "assert": [
+        { "op": "equals", "path": ".", "value": "参数 max_items 必须在 1 到 50 之间。" }
+      ],
+      "origin": "tests/unit/test_shusuo_router.py::test_intent_rejects_limit_above_50"
+    },
+    {
+      "id": "shusuo-006",
+      "target": "shusuo.build_proposal",
+      "input": ["搜 REDDIT ai"],
+      "assert": [
+        { "op": "equals", "path": "endpoint_type", "value": "tikhub_reddit_search" },
+        { "op": "equals", "path": "params.keyword", "value": "ai" },
+        { "op": "equals", "path": "params.max_items", "value": 10 }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/intents.py:171（平台名 casefold，实测）"
+    },
+    {
+      "id": "shusuo-007",
+      "target": "shusuo.build_proposal",
+      "input": ["账号 instagram @nike"],
+      "assert": [
+        { "op": "equals", "path": "endpoint_type", "value": "apify_instagram_profile_scraper" },
+        { "op": "equals", "path": "params.usernames", "value": ["nike"] }
+      ],
+      "origin": "tests/unit/test_shusuo_cost_and_estimate.py::test_account_profile_passes_result_limit_param"
+    },
+    {
+      "id": "shusuo-008",
+      "target": "shusuo.parse_command",
+      "input": ["采集 tikhub_reddit_search keyword"],
+      "assert": [
+        { "op": "equals", "path": "name", "value": "collect_error" },
+        { "op": "equals", "path": "argument", "value": "参数要写成 key=value：keyword" }
+      ],
+      "origin": "tests/unit/test_shusuo_router.py::test_parse_command_rejects_malformed_params"
+    },
+    {
+      "id": "shusuo-009",
+      "target": "shusuo.parse_command",
+      "input": [""],
+      "assert": [
+        { "op": "equals", "path": "name", "value": "help" },
+        { "op": "equals", "path": "argument", "value": "" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py:120（空输入→help，实测）"
+    },
+    {
+      "id": "shusuo-010",
+      "target": "shusuo.parse_command",
+      "input": ["帮助"],
+      "assert": [
+        { "op": "equals", "path": "name", "value": "help" }
+      ],
+      "origin": "tests/unit/test_shusuo_help_contract.py"
+    },
+    {
+      "id": "shusuo-011",
+      "target": "shusuo.parse_command",
+      "input": ["搜 reddit AI"],
+      "assert": [
+        { "op": "equals", "path": "name", "value": "intent" },
+        { "op": "equals", "path": "argument", "value": "搜 reddit AI" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py（场景词进 intent 层，实测）"
+    },
+    {
+      "id": "shusuo-012",
+      "target": "shusuo.parse_command",
+      "input": ["zzz"],
+      "assert": [
+        { "op": "equals", "path": "name", "value": "unknown" },
+        { "op": "equals", "path": "argument", "value": "zzz" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py（无法识别→unknown，实测）"
+    },
+    {
+      "id": "shusuo-013",
+      "target": "shusuo.parse_params",
+      "input": [["a=1", "b=true", "c=1.5"]],
+      "assert": [
+        { "op": "equals", "path": "a", "value": 1 },
+        { "op": "equals", "path": "b", "value": true },
+        { "op": "equals", "path": "c", "value": 1.5 }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py:107（类型推断，实测）"
+    },
+    {
+      "id": "shusuo-014",
+      "target": "shusuo.parse_params",
+      "input": [["bad"]],
+      "expect_error": "参数要写成 key=value：bad",
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py（畸形参数必须拒绝，实测）"
+    },
+    {
+      "id": "shusuo-015",
+      "target": "shusuo.parse_params",
+      "input": [["=x"]],
+      "expect_error": "参数名不能为空",
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py（空键名必须拒绝，实测）"
+    },
+    {
+      "id": "shusuo-016",
+      "target": "shusuo.clean_text",
+      "input": ["@_user_1 搜 reddit"],
+      "assert": [
+        { "op": "equals", "path": ".", "value": "搜 reddit" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py:76（飞书 @ 占位符清理）"
+    },
+    {
+      "id": "shusuo-017",
+      "target": "shusuo.clean_text",
+      "input": ["hi @_all"],
+      "assert": [
+        { "op": "equals", "path": ".", "value": "hi" }
+      ],
+      "origin": "src/data_intelligence_hub/agents/shusuo/commands.py:76（@_all 清理）"
+    }
+  ]
+}

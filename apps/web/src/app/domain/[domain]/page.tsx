@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { DomainRecordsPanel } from "@/components/domain/domain-records-panel";
 import { AppShell } from "@/components/layout/app-shell";
 
 const domainCopy = {
@@ -99,6 +100,7 @@ export default async function DomainPage({
       signals={copy.signals}
     >
       <DomainTrainingPanel domain={domain} />
+      <DomainRecordsPanel domain={domain} />
       <DashboardOverview domain={domain} />
     </AppShell>
   );

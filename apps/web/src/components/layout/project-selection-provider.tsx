@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { listProjects } from "@/lib/api/projects";
+import { stripBasePath } from "@/lib/base-path";
 import {
   isProjectFilterApplied,
   projectSelectionRelativeUrl,
@@ -59,7 +60,9 @@ function eventProjectId(event: Event): string | null {
 }
 
 function replaceProjectSelectionUrl(projectId: string | null): void {
-  if (resolveRouteScopedProjectId(window.location.pathname)) {
+  // window.location.pathname 含部署前缀（如 /insight），而路由匹配用的是
+  // 无前缀口径（usePathname 已由 Next 去掉前缀）。必须先换算再匹配。
+  if (resolveRouteScopedProjectId(stripBasePath(window.location.pathname))) {
     return;
   }
   const nextUrl = projectSelectionRelativeUrl(window.location.href, projectId);
@@ -158,7 +161,9 @@ export function ProjectSelectionProvider({
   useEffect(() => {
     let cancelled = false;
     const preference = readSelectedProjectPreference();
-    const urlProjectId = resolveRouteScopedProjectId(window.location.pathname)
+    const urlProjectId = resolveRouteScopedProjectId(
+      stripBasePath(window.location.pathname),
+    )
       ? null
       : readProjectIdFromSearch(window.location.search);
     requestedProjectIdRef.current = urlProjectId ?? preference.value;

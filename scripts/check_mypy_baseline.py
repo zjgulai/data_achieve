@@ -9,12 +9,20 @@
 #   - 现有签名计数上升，或出现基线里没有的签名，都是回归，退出码 1。
 #   - 计数下降是允许的（decreased），退出码仍为 0。基线只会变松，不会变紧。
 #   - 基线缺失/不可解析、mypy 输出不可解析、mypy 退出码不在 {0, 1}，都是无效输入，退出码 2。
+#   - mypy 退出码 1（表示报过错）却解析到 0 条诊断，也是无效输入，退出码 2。
+#   - mypy 输出里出现 ANSI 转义序列，也是无效输入，退出码 2。
 #
 # 这个脚本故意不提供 --update：它必须无法重设基线。
+#
+# 2026-10-28 修 fail-open：此前用 `" error: "` 字面量匹配诊断行，而 mypy 在有颜色时
+# 输出 `\x1b[1m\x1b[31merror:\x1b(B\x1b[m`，转义序列打断了匹配，导致一行都不解析、
+# 报 current=0 并输出 OK。本机 shell 常带 FORCE_COLOR=1，所以在终端里跑守卫永远「通过」。
+# 现在三重防护：命令行加 --no-color-output、子进程环境强制关色、输出里若仍有 ANSI 就判 INVALID。
 
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -32,10 +40,16 @@ DIAGNOSTIC_RE = re.compile(
 )
 BASELINE_RE = re.compile(r"^(?P<count>[0-9]+)\t(?P<signature>.*\S.*)$")
 SUMMARY_PREFIX = "Found "
+# ANSI CSI / SGR 转义序列。出现即说明颜色没关掉，解析结果不可信。
+ANSI_RE = re.compile(r"\x1b\[[0-9;()]*[A-Za-z]")
 
 
 class UnparsableLine(ValueError):
     """A mypy diagnostic line the helper cannot normalize."""
+
+
+class ColorizedOutput(ValueError):
+    """mypy 输出里仍有 ANSI 颜色码，说明关色没生效。"""
 
 
 def normalize_diagnostics(stderr_stdout: str) -> Counter[str]:
@@ -46,7 +60,17 @@ def normalize_diagnostics(stderr_stdout: str) -> Counter[str]:
     ``" error: "`` that does not match the diagnostic grammar raises
     :class:`UnparsableLine` — the helper fails closed instead of silently
     dropping a diagnostic.
+
+    Raises :class:`ColorizedOutput` when ANSI escape sequences are present.
+    颜色码会让 ``" error: "`` 匹配不到真实诊断行，静默把整轮结果算成 0 条；
+    这种情况必须报错，不能当成「没有诊断」。
     """
+
+    if ANSI_RE.search(stderr_stdout):
+        raise ColorizedOutput(
+            "mypy 输出含 ANSI 颜色码；颜色会让诊断行无法解析。"
+            "请确认 --no-color-output 生效、FORCE_COLOR/MYPY_FORCE_COLOR 已置 0。"
+        )
 
     diagnostics: Counter[str] = Counter()
     for raw_line in stderr_stdout.splitlines():
@@ -153,7 +177,16 @@ def main(argv: list[str] | None = None) -> int:
         "--no-pretty",
         "--show-error-codes",
         "--no-error-summary",
+        # 显式关色：mypy 在 FORCE_COLOR=1 或 TTY 时会插颜色码，
+        # 导致诊断行匹配失败、整轮结果被算成 0 条。
+        "--no-color-output",
     ]
+    # 双保险：mypy 读 MYPY_FORCE_COLOR，再回落到 FORCE_COLOR。
+    # 只改命令行参数不够——旧版 mypy 或配置里写死 color_output 时仍会上色。
+    child_env = os.environ.copy()
+    child_env["MYPY_FORCE_COLOR"] = "0"
+    child_env["FORCE_COLOR"] = "0"
+    child_env["NO_COLOR"] = "1"
     try:
         completed = subprocess.run(
             command,
@@ -161,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
             capture_output=True,
             text=True,
             check=False,
+            env=child_env,
         )
     except OSError as exc:
         print(f"INVALID: mypy could not be started: {exc.strerror or exc}")
@@ -172,8 +206,20 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         current = normalize_diagnostics(completed.stdout + completed.stderr)
+    except ColorizedOutput as exc:
+        print(f"INVALID: {exc}")
+        return 2
     except UnparsableLine as exc:
         print(f"INVALID: unparsable mypy diagnostic: {exc}")
+        return 2
+
+    # mypy 退出码 1 表示"报过错"，若一条诊断都没解析出来，就是解析器失效，
+    # 不能当成"没有诊断"。退 0 意味着基线里的签名全部"下降"，会把回归洗成通过。
+    if completed.returncode == 1 and not current:
+        print(
+            "INVALID: mypy exited 1 但解析到 0 条诊断；"
+            "解析器或输出格式已变化，结果不可信"
+        )
         return 2
 
     regressions, decreases = compare(baseline, current)

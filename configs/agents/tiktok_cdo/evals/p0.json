@@ -1,0 +1,386 @@
+{
+  "schema_version": "agent-eval-cases.v1",
+  "agent": "tiktok_cdo",
+  "note": "只含确定性接缝。2026-10-27 修复回退层 6 个缺陷后，已无用例需要 known_bug 豁免。",
+  "cases": [
+    {
+      "id": "tiktok-001",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "搜索 运动鞋"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "search"
+        },
+        {
+          "op": "equals",
+          "path": "keyword",
+          "value": "运动鞋"
+        },
+        {
+          "op": "equals",
+          "path": "limit",
+          "value": 10
+        },
+        {
+          "op": "is_none",
+          "path": "username"
+        }
+      ],
+      "origin": "src/data_intelligence_hub/agents/tiktok_cdo/intent.py:99-134（实测）"
+    },
+    {
+      "id": "tiktok-002",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "分析 #美妆 话题最近7天"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "hashtag"
+        },
+        {
+          "op": "equals",
+          "path": "keyword",
+          "value": "美妆"
+        }
+      ],
+      "origin": "prompts/system.md:26-27；intent.py:106-107（实测）"
+    },
+    {
+      "id": "tiktok-003",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "@alice"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "user_posts"
+        },
+        {
+          "op": "equals",
+          "path": "username",
+          "value": "alice"
+        },
+        {
+          "op": "is_none",
+          "path": "keyword"
+        }
+      ],
+      "origin": "intent.py:116-132（实测）"
+    },
+    {
+      "id": "tiktok-004",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "搜索运动鞋相关视频 top5"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "search"
+        },
+        {
+          "op": "is_not_none",
+          "path": "keyword"
+        }
+      ],
+      "note": "已修复（2026-10-27）。回退层按空格切词，keyword 得「运动鞋相关视频」而非「运动鞋」（中文不分词，属已知限制）；limit 已能解析 top5。断言不收窄到精确 keyword，避免把分词能力误当回归信号。",
+      "origin": "intent.py:126-134（实测 keyword=运动鞋相关视频, limit=10）vs prompts/system.md:24-25"
+    },
+    {
+      "id": "tiktok-005",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "search skincare top5"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "search"
+        }
+      ],
+      "note": "已修复（2026-10-27）。英文指令词现在会被跳过（skip_words 扩充），keyword 得 'skincare'。",
+      "origin": "intent.py:126-133（skip_words 只含中文，实测 keyword='search'）"
+    },
+    {
+      "id": "tiktok-006",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "hello @"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "raw_text",
+          "value": "hello @"
+        }
+      ],
+      "note": "已修复（2026-10-27）。'@' 在末尾不再抛 IndexError：改用正则抓用户名，空 handle 视为无 handle。",
+      "origin": "intent.py:121-124（实测 IndexError）"
+    },
+    {
+      "id": "tiktok-007",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "搜索 olive oil"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "search"
+        }
+      ],
+      "note": "已修复（2026-10-27）。英文关键词改按词边界+可选复数匹配，'olive' 不再命中 'live'。",
+      "origin": "intent.py:108-109（实测 '搜索 olive oil' → live）"
+    },
+    {
+      "id": "tiktok-008",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        ""
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "unknown"
+        }
+      ],
+      "note": "已修复（2026-10-27）。空/全空白输入直接判 unknown，不再当搜索意图。",
+      "origin": "intent.py:99-134（实测空串 → search）"
+    },
+    {
+      "id": "tiktok-009",
+      "target": "tiktok_cdo.fallback_intent",
+      "input": [
+        "find @alice's followers"
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "action",
+          "value": "followers"
+        },
+        {
+          "op": "equals",
+          "path": "username",
+          "value": "alice"
+        }
+      ],
+      "note": "已修复（2026-10-27）。用户名正则遇到撇号即止，得 'alice'；所有格残片 \"'s\" 不再混进关键词。",
+      "origin": "intent.py:121-132（实测）"
+    },
+    {
+      "id": "tiktok-010",
+      "target": "tiktok_cdo.build_tool_call",
+      "input": [
+        {
+          "action": "search",
+          "keyword": "x",
+          "limit": 5
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0",
+          "value": "tiktok_video_search"
+        },
+        {
+          "op": "equals",
+          "path": "1.query",
+          "value": "x"
+        },
+        {
+          "op": "equals",
+          "path": "1.limit",
+          "value": 5
+        }
+      ],
+      "origin": "tests/unit/test_tiktok_cdo_tool_migration.py::test_build_tool_call_for_content_actions（实测）"
+    },
+    {
+      "id": "tiktok-011",
+      "target": "tiktok_cdo.build_tool_call",
+      "input": [
+        {
+          "action": "user_posts",
+          "username": "@alice",
+          "limit": 3
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0",
+          "value": "tiktok_creator_profile"
+        },
+        {
+          "op": "equals",
+          "path": "1.handle",
+          "value": "alice"
+        },
+        {
+          "op": "equals",
+          "path": "1.include_videos",
+          "value": true
+        },
+        {
+          "op": "equals",
+          "path": "1.video_limit",
+          "value": 3
+        }
+      ],
+      "origin": "tests/unit/test_tiktok_cdo_tool_migration.py（@ 前缀要剥掉，实测）"
+    },
+    {
+      "id": "tiktok-012",
+      "target": "tiktok_cdo.build_tool_call",
+      "input": [
+        {
+          "action": "hashtag",
+          "keyword": "美妆"
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0",
+          "value": "tiktok_hashtag_videos"
+        },
+        {
+          "op": "equals",
+          "path": "1.hashtag",
+          "value": "美妆"
+        }
+      ],
+      "origin": "tests/unit/test_tiktok_cdo_tool_migration.py（实测）"
+    },
+    {
+      "id": "tiktok-013",
+      "target": "tiktok_cdo.build_tool_call",
+      "input": [
+        {
+          "action": "creator",
+          "keyword": "x"
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0",
+          "value": "tiktok_creator_profile"
+        },
+        {
+          "op": "equals",
+          "path": "1.include_videos",
+          "value": false
+        }
+      ],
+      "origin": "src/data_intelligence_hub/agents/tiktok_cdo/tool_router.py（实测）"
+    },
+    {
+      "id": "tiktok-014",
+      "target": "tiktok_cdo.build_tool_call",
+      "input": [
+        {
+          "action": "ads_search",
+          "keyword": "美妆",
+          "limit": 10
+        }
+      ],
+      "assert": [
+        {
+          "op": "is_none",
+          "path": "."
+        }
+      ],
+      "origin": "tool_router.py:19-25（工具层不覆盖广告类，返回 None 由调用方回退，实测）"
+    },
+    {
+      "id": "tiktok-015",
+      "target": "tiktok_cdo.build_collect_params",
+      "input": [
+        {
+          "action": "search",
+          "keyword": "x",
+          "limit": 5
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0.0",
+          "value": "tikhub_tiktok_video_search"
+        },
+        {
+          "op": "equals",
+          "path": "0.1.keyword",
+          "value": "x"
+        },
+        {
+          "op": "equals",
+          "path": "0.1.max_items",
+          "value": 5
+        }
+      ],
+      "origin": "src/data_intelligence_hub/agents/tiktok_cdo/endpoint_router.py（实测）"
+    },
+    {
+      "id": "tiktok-016",
+      "target": "tiktok_cdo.build_collect_params",
+      "input": [
+        {
+          "action": "ads_search",
+          "keyword": "美妆",
+          "limit": 10
+        }
+      ],
+      "assert": [
+        {
+          "op": "equals",
+          "path": "0.0",
+          "value": "tikhub_tiktok_top_ads"
+        },
+        {
+          "op": "equals",
+          "path": "0.1.period",
+          "value": 7
+        }
+      ],
+      "origin": "endpoint_router.py + docs/architecture/【技术方案】TikTok采集能力R1 §C4（实测含 top_ads）"
+    },
+    {
+      "id": "tiktok-017",
+      "target": "tiktok_cdo.system_prompt",
+      "assert": [
+        {
+          "op": "is_not_none",
+          "path": "."
+        },
+        {
+          "op": "contains",
+          "path": ".",
+          "value": "action"
+        },
+        {
+          "op": "not_contains",
+          "path": ".",
+          "value": "{{"
+        }
+      ],
+      "origin": "configs/agents/registry.json（tiktok_cdo prompt sha256=467ce525…）；tests/unit/test_agent_prompts.py"
+    }
+  ]
+}

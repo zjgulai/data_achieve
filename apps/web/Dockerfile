@@ -29,8 +29,12 @@ RUN corepack enable
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=https://scrapy.lute-tlz-dddd.top
 ARG NEXT_PUBLIC_MOCK_API=false
+# 部署子路径。生产挂在 https://scrapy.luteos.com/insight，构建期写成常量；
+# 空值表示挂在站点根，行为与引入前一致。
+ARG NEXT_PUBLIC_BASE_PATH=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_MOCK_API=$NEXT_PUBLIC_MOCK_API
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules

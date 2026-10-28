@@ -4,6 +4,7 @@ FastAPI 路由：TikTok CDO 飞书机器人 webhook。
 端点：
   POST /api/agents/tiktok-cdo/webhook       ← 飞书事件推送
   POST /api/agents/tiktok-cdo/webhook/callback ← 卡片按钮回调
+  GET  /api/agents/tiktok-cdo/health        ← 配置自检（不返回密钥）
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Header, Request, Response
 
+from ..prompt_loader import prompt_sha256
 from .card_builder import error_card, placeholder_card, result_card
 from .cleaner import clean_and_analyze
 from .config import get_cdo_config
@@ -27,6 +29,32 @@ from .lark_client import send_card, update_card
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/health")
+async def tiktok_cdo_health() -> dict[str, Any]:
+    """配置自检。只回报"是否就绪"，不回传任何密钥值。
+
+    巡检脚本已在探测本路径（参见 .claude/scheduled_tasks.json），
+    此前缺失会让每日探测稳定 404。
+    """
+    config = get_cdo_config()
+    return {
+        "agent_id": "tiktok_cdo",
+        "lark_app_id": config.lark_app_id,
+        "ready": bool(
+            config.lark_app_id
+            and config.lark_app_secret
+            and config.deepseek_api_key
+        ),
+        "deepseek_configured": bool(config.deepseek_api_key),
+        "deepseek_model": config.deepseek_model,
+        "exa_configured": bool(config.exa_api_key),
+        "tool_routing": config.tool_routing,
+        "tool_actions": list(config.tool_actions),
+        "prompt_sha256": prompt_sha256("tiktok_cdo"),
+        "bitable_configured": bool(config.bitable_app_token and config.bitable_table_id),
+    }
 
 
 # ── webhook 主入口 ─────────────────────────────────────────────────────────────

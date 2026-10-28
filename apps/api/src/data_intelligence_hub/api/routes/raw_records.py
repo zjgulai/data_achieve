@@ -21,14 +21,24 @@ async def list_raw_record_items(
     workspace: WorkspaceDep,
     source_id: Annotated[uuid.UUID | None, Query()] = None,
     task_run_id: Annotated[uuid.UUID | None, Query()] = None,
+    project_id: Annotated[uuid.UUID | None, Query()] = None,
+    domain: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[RawRecordResponse]:
+    """列原始记录。
+
+    ``domain`` 让业务域页能展示「该域采集到的真实记录」：
+    记录经 ``project_id -> projects.domain`` 关联到业务域。
+    不传时行为不变，仍是全域混合列表。
+    """
     raw_records = await get_raw_records(
         session,
         workspace,
         source_id=source_id,
         task_run_id=task_run_id,
+        project_id=project_id,
+        domain=domain,
         limit=limit,
         offset=offset,
     )

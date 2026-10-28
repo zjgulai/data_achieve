@@ -86,3 +86,17 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = ["jose.*", "passlib.*"]
 ignore_missing_imports = true
+
+# 测试目录不强制函数注解。
+#
+# 理由：strict 下 no-untyped-def 在 tests 里累计 610 条，src 只有 5 条。
+# 逐个给测试函数补注解不产生实际收益——测试的价值在断言，不在签名；
+# 而 610 条噪音会把真正的回归淹掉（2026-10-28 实测全量 1544 条诊断）。
+# src 仍保持 strict，所以生产代码的类型强度不受影响。
+#
+# 只放宽这一条，其余错误码（arg-type、call-overload、attr-defined 等）在
+# tests 里仍然计入基线。
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false

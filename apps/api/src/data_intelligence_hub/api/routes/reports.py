@@ -61,8 +61,16 @@ async def list_report_items(
     session: SessionDep,
     context: Annotated[AuthContext, Depends(get_auth_context)],
     project_id: Annotated[uuid.UUID | None, Query()] = None,
+    domain: Annotated[str | None, Query()] = None,
 ) -> list[ReportResponse]:
-    reports = await get_reports(session, context.workspace, project_id=project_id)
+    """列报告。``domain`` 让业务域页只看到该域项目的报告。
+
+    报告经 ``project_id -> projects.domain`` 归属业务域；
+    ``project_id`` 为空的域级/工作区级报告没有域归属，按域筛选时不出现。
+    """
+    reports = await get_reports(
+        session, context.workspace, project_id=project_id, domain=domain
+    )
     return [ReportResponse.from_model(report) for report in reports]
 
 

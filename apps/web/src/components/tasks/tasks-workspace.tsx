@@ -110,8 +110,17 @@ export function TasksWorkspace() {
         if (mounted) {
           setTasks(items);
           setSchedulerOverview(scheduler);
+          // URL 深链优先：情报页的证据按钮会带 ?task=<taskId>（或旧的 ?run=<runId>）。
+          // 没有深链时才回退到「失败最多的任务」这个既有默认。
+          const linkedId = readLinkedTaskId();
+          const linked = linkedId
+            ? items.find((item) => item.id === linkedId)
+            : undefined;
           setSelectedTaskId(
-            items.find((item) => item.failureCount >= 10)?.id ?? items[0]?.id ?? null,
+            linked?.id ??
+              items.find((item) => item.failureCount >= 10)?.id ??
+              items[0]?.id ??
+              null,
           );
         }
       })
@@ -1600,6 +1609,23 @@ function buildIngestionTimeline(tasks: CollectionTask[]) {
       success: task.latestRunRecordsCount ?? 0,
       time: formatTime(task.latestRunFinishedAt ?? task.lastRunAt),
     }));
+}
+
+/**
+ * 从 URL 读深链任务 ID。
+ *
+ * 情报页的证据按钮会链接到 `/tasks?task=<taskId>`；历史链接用的是
+ * `?run=<runId>`，但本页没有按 runId 反查 task 的接口，所以遇到
+ * `?run=` 时只当作「没有深链」处理，回退到既有默认选中。
+ *
+ * 在 effect 里调用而不是渲染期读取，避免 SSR 与客户端首帧不一致。
+ */
+function readLinkedTaskId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const params = new URLSearchParams(window.location.search);
+  return params.get("task")?.trim() || null;
 }
 
 function moveSelection(

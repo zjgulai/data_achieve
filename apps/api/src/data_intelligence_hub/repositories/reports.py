@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
+from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.report import (
     Report,
     ReportAuditEvent,
@@ -40,10 +41,21 @@ async def list_reports(
     session: AsyncSession,
     workspace_id: uuid.UUID,
     project_id: uuid.UUID | None = None,
+    domain: str | None = None,
 ) -> list[Report]:
+    """列报告，可按项目或业务域收窄。
+
+    ``domain`` 走 ``reports.project_id -> projects.domain`` 内连接：
+    ``Report.project_id`` 可空（域级或工作区级报告），这类报告没有
+    业务域归属，按域筛选时不该出现。
+    """
     statement = select(Report).where(Report.workspace_id == workspace_id)
     if project_id is not None:
         statement = statement.where(Report.project_id == project_id)
+    if domain is not None:
+        statement = statement.join(
+            Project, Project.id == Report.project_id
+        ).where(Project.domain == domain)
     statement = statement.order_by(Report.created_at.desc())
     result = await session.execute(statement)
     return list(result.scalars().all())

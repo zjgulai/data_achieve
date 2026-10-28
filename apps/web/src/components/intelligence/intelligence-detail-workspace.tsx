@@ -22,6 +22,7 @@ import {
   submitFeedback,
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
+import { withBasePath } from "@/lib/base-path";
 import { getSignalSnapshotCompare } from "@/lib/api/signals";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import {
@@ -176,9 +177,11 @@ export function IntelligenceDetailWorkspace({ intelligenceId }: { intelligenceId
       return;
     }
     const nextHref = buildIntelligenceDetailHref(intelligenceId, detailNavigationContext);
+    // 同列表页：buildIntelligenceDetailHref 无前缀，地址栏有前缀，比较与写回
+    // 都要走浏览器口径。
     const currentHref = `${window.location.pathname}${window.location.search}`;
-    if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, "", nextHref);
+    if (withBasePath(nextHref) !== currentHref) {
+      window.history.replaceState(window.history.state, "", withBasePath(nextHref));
     }
   }, [detailNavigationContext, intelligenceId, navigationReady, projectSelectionLoading]);
 

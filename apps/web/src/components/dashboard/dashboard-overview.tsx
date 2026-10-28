@@ -332,7 +332,11 @@ export function DashboardOverview({ domain }: { domain?: string }) {
           action={
             <Link
               className="text-xs font-semibold text-[var(--action-primary)]"
-              href="/intelligence"
+              href={
+                (domain
+                  ? `/intelligence?domain=${encodeURIComponent(domain)}`
+                  : "/intelligence") as Route
+              }
             >
               查看全部
             </Link>

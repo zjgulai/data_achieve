@@ -1,0 +1,84 @@
+{
+  "schema_version": "agent-registry.v1",
+  "updated": "2026-10-27",
+  "note": "产品内 Agent 的唯一台账。新增 Agent 必须在此登记，scripts/check_agent_registry.py 会校验 entry/health 路由、env 键与提示词指纹。",
+  "agents": [
+    {
+      "id": "shusuo",
+      "display": "数说飞书机器人",
+      "owner": "lute",
+      "status": "live",
+      "module": "data_intelligence_hub.agents.shusuo",
+      "entry": {
+        "method": "POST",
+        "path": "/api/agents/shusuo/webhook"
+      },
+      "health": {
+        "method": "GET",
+        "path": "/api/agents/shusuo/health"
+      },
+      "prompt": {
+        "file": "apps/api/src/data_intelligence_hub/agents/shusuo/prompts/system.md",
+        "sha256": "fcef5e2e076081c20c544540948d595954aacd5e4a3fc057e057dbb1a53181a8"
+      },
+      "env_keys": [
+        "LARK_SHUSUO_APP_ID",
+        "LARK_SHUSUO_APP_SECRET",
+        "LARK_SHUSUO_VERIFICATION_TOKEN",
+        "LARK_SHUSUO_ENCRYPT_KEY",
+        "SHUSUO_DEFAULT_PROJECT_ID",
+        "SHUSUO_CONSOLE_BASE_URL",
+        "SHUSUO_ALLOWED_OPEN_IDS",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_BASE_URL",
+        "DEEPSEEK_MODEL"
+      ],
+      "readiness_env": ["LARK_SHUSUO_APP_ID", "LARK_SHUSUO_APP_SECRET"],
+      "capabilities": ["能力查询", "采集提案", "卡片确认"],
+      "notes": "确定性命令层 + DeepSeek 自由问答；自由文本不执行采集。提案 token 300 秒过期、单次消费。"
+    },
+    {
+      "id": "tiktok_cdo",
+      "display": "TikTok CDO 飞书机器人",
+      "owner": "lute",
+      "status": "live",
+      "module": "data_intelligence_hub.agents.tiktok_cdo",
+      "entry": {
+        "method": "POST",
+        "path": "/api/agents/tiktok-cdo/webhook"
+      },
+      "health": {
+        "method": "GET",
+        "path": "/api/agents/tiktok-cdo/health"
+      },
+      "prompt": {
+        "file": "apps/api/src/data_intelligence_hub/agents/tiktok_cdo/prompts/system.md",
+        "sha256": "467ce525809cac3ae68ed7272102e4638a811de3e6175f77308ae14aab5fa267"
+      },
+      "env_keys": [
+        "LARK_CDO_APP_ID",
+        "LARK_CDO_APP_SECRET",
+        "LARK_CDO_VERIFICATION_TOKEN",
+        "LARK_CDO_ENCRYPT_KEY",
+        "LARK_CDO_PROJECT_ID",
+        "LARK_CDO_TOOL_ROUTING",
+        "LARK_CDO_TOOL_ACTIONS",
+        "LARK_CDO_TOOL_TIMEOUT_SECONDS",
+        "LARK_CDO_BITABLE_APP_TOKEN",
+        "LARK_CDO_BITABLE_TABLE_ID",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_BASE_URL",
+        "DEEPSEEK_MODEL",
+        "EXA_API_KEY",
+        "INTERNAL_API_BASE"
+      ],
+      "readiness_env": [
+        "LARK_CDO_APP_ID",
+        "LARK_CDO_APP_SECRET",
+        "DEEPSEEK_API_KEY"
+      ],
+      "capabilities": ["意图识别", "TikTok 采集", "卡片回调", "回填多维表格"],
+      "notes": "提示词文件缺失时走确定性关键词回退，不调用模型。route 用连字符，与 id 的下划线不同名。"
+    }
+  ]
+}

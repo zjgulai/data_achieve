@@ -40,12 +40,16 @@ async def get_raw_records(
     task_run_id: uuid.UUID | None,
     limit: int,
     offset: int,
+    project_id: uuid.UUID | None = None,
+    domain: str | None = None,
 ) -> list[RawRecord]:
     return await list_raw_records(
         session,
         workspace.id,
         source_id=source_id,
         task_run_id=task_run_id,
+        project_id=project_id,
+        domain=domain,
         limit=limit,
         offset=offset,
     )

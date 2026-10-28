@@ -118,10 +118,10 @@ test("governance reviewer publishes twice and appends rollback Revision", async 
 
   if (mobile) {
     await page.getByRole("button", { name: "打开导航" }).click();
-    await expect(page.getByTestId("mobile-primary-nav-link")).toHaveCount(6);
+    await expect(page.getByTestId("mobile-primary-nav-link")).toHaveCount(7);
     await page.keyboard.press("Escape");
   } else {
-    await expect(page.getByTestId("primary-nav-link")).toHaveCount(6);
+    await expect(page.getByTestId("primary-nav-link")).toHaveCount(7);
   }
   await page.goto("/api-market");
   await expect(

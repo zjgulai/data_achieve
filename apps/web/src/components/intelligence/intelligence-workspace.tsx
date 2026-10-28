@@ -22,6 +22,7 @@ import {
   submitFeedback,
   updateIntelligenceStatus,
 } from "@/lib/api/intelligence";
+import { withBasePath } from "@/lib/base-path";
 import { buildAuditFacts, type AuditFact } from "@/lib/audit-display";
 import { getToolkitOverview } from "@/lib/api/toolkit";
 import {
@@ -82,6 +83,11 @@ export function IntelligenceWorkspace() {
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  /**
+   * 业务域筛选。从 `/domain/[domain]` 进来时由 URL 带过来。
+   * 它和 projectId 不是一回事：域是跨项目的分类，项目是数据归属。
+   */
+  const [domainFilter, setDomainFilter] = useState("");
   const [intelligenceScope, setIntelligenceScope] = useState<IntelligenceScope>("all");
   const [loading, setLoading] = useState(true);
   const [evidenceLoading, setEvidenceLoading] = useState(false);
@@ -102,6 +108,7 @@ export function IntelligenceWorkspace() {
       const context = readIntelligenceNavigationContext(window.location.search);
       setTypeFilter(context.type);
       setStatusFilter(context.status);
+      setDomainFilter(context.domain ?? "");
       setIntelligenceScope(context.scope);
       setSelectedId(context.intelligenceId);
       setSelectedEvidenceId(context.evidenceId);
@@ -123,6 +130,7 @@ export function IntelligenceWorkspace() {
     clearProjectFilterApplied();
     listIntelligence({
       projectId: selectedProjectId ?? undefined,
+      domain: domainFilter || undefined,
       type: typeFilter || undefined,
       status: statusFilter || undefined,
       sort: "final_score",
@@ -157,6 +165,7 @@ export function IntelligenceWorkspace() {
     };
   }, [
     clearProjectFilterApplied,
+    domainFilter,
     markProjectFilterApplied,
     navigationReady,
     projectSelectionLoading,
@@ -272,9 +281,12 @@ export function IntelligenceWorkspace() {
       return;
     }
     const nextHref = buildIntelligenceListHref(navigationContext);
+    // buildIntelligenceListHref 返回无前缀路由；window.location.pathname 含
+    // 部署前缀。两边必须先统一到浏览器口径再比较，否则恒不相等，会把地址栏
+    // 改写成丢前缀的路径。
     const currentHref = `${window.location.pathname}${window.location.search}`;
-    if (nextHref !== currentHref) {
-      window.history.replaceState(window.history.state, "", nextHref);
+    if (withBasePath(nextHref) !== currentHref) {
+      window.history.replaceState(window.history.state, "", withBasePath(nextHref));
     }
   }, [navigationContext, navigationReady, projectSelectionLoading]);
 

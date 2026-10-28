@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
-import { fetchUsageSummary } from "@/lib/api/usage";
+import {
+  fetchUsageRuns,
+  fetchUsageSummary,
+  type CostSource,
+  type UsageRunItem,
+} from "@/lib/api/usage";
 import { Loader2 } from "lucide-react";
 
 function money(value: string): string {
@@ -12,11 +17,41 @@ function money(value: string): string {
   return `$${amount.toFixed(4)}`;
 }
 
+/** 成本来源的展示文案。unknown 必须显式写出来，不能显示成 $0。 */
+function costCell(item: UsageRunItem): string {
+  if (item.cost_source === "unknown") return "未知";
+  return money(item.cost_usd);
+}
+
+const COST_SOURCE_LABEL: Record<CostSource, string> = {
+  actual: "实测",
+  estimated: "估算",
+  unknown: "未知",
+};
+
+/** 时间只显示到分钟，账本要的是先后而不是精确时刻。 */
+function shortTime(value: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export default function UsagePage() {
   const [days, setDays] = useState(30);
   const { data, isLoading, error } = useQuery({
     queryKey: ["usage", days],
     queryFn: () => fetchUsageSummary(days),
+  });
+  // 账本与汇总并行取。账本回答「每次值不值」，汇总回答「一共多少」。
+  const ledger = useQuery({
+    queryKey: ["usage-runs", days],
+    queryFn: () => fetchUsageRuns(days, { limit: 200 }),
   });
 
   return (
@@ -61,8 +96,50 @@ export default function UsagePage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <Stat label="运行次数" value={String(data.totals.runs)} />
             <Stat label="记录数" value={String(data.totals.records)} />
-            <Stat label="估算成本" value={money(data.totals.cost_usd)} />
+            <Stat label="已知成本" value={money(data.totals.cost_usd)} />
           </div>
+
+          <section
+            className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5"
+            data-testid="usage-run-ledger"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                逐次运行（最近 200 次）
+              </h2>
+              {ledger.data && ledger.data.totals.unknown_cost_runs > 0 && (
+                <span
+                  className="text-xs text-[var(--state-warning)]"
+                  data-testid="usage-unknown-cost-notice"
+                >
+                  {ledger.data.totals.unknown_cost_runs} 次运行成本未知（价格簿无该端点），未计入总额
+                </span>
+              )}
+            </div>
+            {ledger.isLoading ? (
+              <p className="mt-3 text-xs text-[var(--text-tertiary)]">加载中…</p>
+            ) : ledger.error ? (
+              <p className="mt-3 text-xs text-[var(--state-danger)]">
+                账本加载失败：{(ledger.error as Error).message}
+              </p>
+            ) : !ledger.data || ledger.data.items.length === 0 ? (
+              <p className="mt-3 text-xs text-[var(--text-tertiary)]">该时间范围内没有运行</p>
+            ) : (
+              <Table
+                headers={["时间", "提供方", "端点", "状态", "记录", "耗时", "成本", "来源"]}
+                rows={ledger.data.items.map((item) => [
+                  shortTime(item.created_at),
+                  item.provider ?? "—",
+                  item.endpoint_type ?? "—",
+                  item.status,
+                  String(item.records_count),
+                  item.duration_ms === null ? "—" : `${item.duration_ms} ms`,
+                  costCell(item),
+                  COST_SOURCE_LABEL[item.cost_source],
+                ])}
+              />
+            )}
+          </section>
 
           <section className="rounded-[var(--radius-3)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5">
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">按提供方</h2>

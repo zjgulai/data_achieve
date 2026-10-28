@@ -20,11 +20,31 @@ type RawRecordResponse = {
   created_at: string;
 };
 
-export async function listRawRecords(): Promise<RawRecord[]> {
+/** 列表筛选。全部可选，不传时行为与之前一致（全域混合列表）。 */
+export type RawRecordFilter = {
+  domain?: string;
+  projectId?: string;
+  taskRunId?: string;
+  limit?: number;
+};
+
+export async function listRawRecords(
+  filter?: RawRecordFilter,
+): Promise<RawRecord[]> {
   if (mockApiEnabled) {
-    return getMockRawRecords();
+    const items = getMockRawRecords();
+    // mock 数据没有域字段，按 projectId 过滤是能做到的最接近的近似。
+    return filter?.projectId
+      ? items.filter((item) => item.projectId === filter.projectId)
+      : items;
   }
-  const response = await apiFetch<RawRecordResponse[]>("/api/raw-records");
+  const params = new URLSearchParams();
+  if (filter?.domain) params.set("domain", filter.domain);
+  if (filter?.projectId) params.set("project_id", filter.projectId);
+  if (filter?.taskRunId) params.set("task_run_id", filter.taskRunId);
+  if (filter?.limit) params.set("limit", String(filter.limit));
+  const suffix = params.size > 0 ? `?${params.toString()}` : "";
+  const response = await apiFetch<RawRecordResponse[]>(`/api/raw-records${suffix}`);
   return response.map(mapRawRecord);
 }
 
