@@ -22,6 +22,10 @@ import { postQuickCollect, type QuickCollectResponse } from "@/lib/api/quick-col
 import { fetchProjects } from "@/lib/api/projects";
 import { ApiError } from "@/lib/api/client";
 import { isSuccessfulRunStatus } from "@/lib/run-status";
+import {
+  parseRunReceipt,
+  recordPreviewEntries,
+} from "@/lib/quick-collect-receipt";
 import { useFocusTrap } from "@/components/ui/use-focus-trap";
 
 /* ── 输入框样式。与既有控件一致。 ── */
@@ -32,9 +36,15 @@ const TEXTAREA_CLASS =
   "w-full rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 font-mono text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-1)]";
 
 /* ── 结果卡 ── */
+
 function RunResult({ result }: { result: QuickCollectResponse }) {
   const router = useRouter();
   const ok = isSuccessfulRunStatus(result.status);
+
+  // 三块证据都可以缺：失败运行没有记录，端点可能无结构化输出，
+  // 价格簿也可能没有该端点价格。解析在 lib 里做，这里只负责渲染。
+  const receipt = parseRunReceipt(result);
+
   return (
     <div
       className={`mt-4 rounded-[var(--radius-3)] border p-4 ${
@@ -42,6 +52,7 @@ function RunResult({ result }: { result: QuickCollectResponse }) {
           ? "border-[var(--state-success)] bg-[var(--success-soft)]"
           : "border-[var(--state-danger)] bg-[var(--danger-soft)]"
       }`}
+      data-testid="quick-collect-run-result"
     >
       <div className="flex items-start gap-3">
         {ok ? (
@@ -57,7 +68,7 @@ function RunResult({ result }: { result: QuickCollectResponse }) {
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
               写入{" "}
               <span className="font-semibold text-[var(--state-success)]">
-                {result.records_count}
+                {receipt.recordsCount}
               </span>{" "}
               条原始记录
             </p>
@@ -66,6 +77,53 @@ function RunResult({ result }: { result: QuickCollectResponse }) {
               {result.error_message ?? "未知错误"}
             </p>
           )}
+
+          {/* 回执证据：耗时与花费。取不到就不显示该项。
+              后端 output 是固定 5 键的信封（records_count / entities_count /
+              records_returned / records_truncated / limit），把它渲染成
+              「输出 N 个字段」永远显示 5，是噪音，故不展示。 */}
+          {(receipt.durationMs !== null || receipt.costUsd !== null) && (
+            <div
+              className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-secondary)]"
+              data-testid="quick-collect-run-receipt"
+            >
+              {receipt.durationMs !== null && (
+                <span data-testid="quick-collect-duration">
+                  耗时 <span className="font-semibold">{receipt.durationMs}</span> ms
+                </span>
+              )}
+              {receipt.costUsd !== null && (
+                <span data-testid="quick-collect-cost">
+                  花费{" "}
+                  <span className="font-semibold">
+                    {receipt.costUsd === 0 ? "0" : `$${receipt.costUsd.toFixed(4)}`}
+                  </span>
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* 记录样本：让用户当场看到拿到了什么，不用跳页。 */}
+          {ok && receipt.sample.length > 0 && (
+            <div className="mt-3" data-testid="quick-collect-record-sample">
+              <p className="text-xs font-semibold text-[var(--text-tertiary)]">
+                记录样本（前 {receipt.sample.length} 条，共 {receipt.recordsCount} 条）
+              </p>
+              <ul className="mt-1 grid gap-1">
+                {receipt.sample.map((record, index) => (
+                  <li
+                    key={index}
+                    className="truncate rounded-[var(--radius-1)] bg-[var(--surface-primary)] px-2 py-1 font-mono text-[11px] text-[var(--text-secondary)]"
+                  >
+                    {recordPreviewEntries(record)
+                      .map(([key, value]) => `${key}=${value}`)
+                      .join("  ")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="mt-3 grid gap-1 text-xs text-[var(--text-tertiary)]">
             <span>
               运行 ID: <code className="font-mono">{result.task_run_id.slice(0, 8)}…</code>
@@ -77,10 +135,10 @@ function RunResult({ result }: { result: QuickCollectResponse }) {
           {ok && (
             <button
               type="button"
-              onClick={() => router.push("/runs")}
+              onClick={() => router.push(`/runs/${result.task_run_id}`)}
               className="mt-3 flex items-center gap-1.5 rounded-[var(--radius-2)] bg-[var(--action-primary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-inverse)] transition-opacity hover:opacity-90"
             >
-              查看运行记录
+              查看本次运行
               <ArrowRight size={12} />
             </button>
           )}
