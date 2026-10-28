@@ -90,6 +90,10 @@ export function ReportsWorkspace() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [reportScope, setReportScope] = useState<ReportScope>("all");
   const [projectFilter, setProjectFilter] = useState("all");
+  // 业务域筛选，从 `/domain/[domain]` 的「培训报告」链接带过来
+  // （?domain=<domain>）。空串表示不按域筛选。在 effect 里读 URL，
+  // 避免 SSR 与客户端首帧不一致。
+  const [domainFilter, setDomainFilter] = useState("");
   const [generateProjectId, setGenerateProjectId] = useState("all");
   const [subscriptionProjectId, setSubscriptionProjectId] = useState("all");
   const [subscriptionTime, setSubscriptionTime] = useState("09:00");
@@ -115,6 +119,16 @@ export function ReportsWorkspace() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
+    // 从 `/domain/[domain]` 的「培训报告」链接读业务域。
+    // 在 effect 里读而非渲染期读，避免 SSR 与客户端首帧不一致。
+    if (typeof window !== "undefined") {
+      const linkedDomain = new URLSearchParams(window.location.search)
+        .get("domain")
+        ?.trim();
+      if (linkedDomain) {
+        setDomainFilter(linkedDomain);
+      }
+    }
     let mounted = true;
     listProjects()
       .then((items) => {
@@ -206,7 +220,10 @@ export function ReportsWorkspace() {
   useEffect(() => {
     let mounted = true;
     setLoadingReports(true);
-    listReports(projectFilter === "all" ? undefined : projectFilter)
+    listReports({
+      projectId: projectFilter === "all" ? undefined : projectFilter,
+      domain: domainFilter || undefined,
+    })
       .then((items) => {
         if (!mounted) {
           return;
@@ -234,7 +251,7 @@ export function ReportsWorkspace() {
     return () => {
       mounted = false;
     };
-  }, [projectFilter]);
+  }, [domainFilter, projectFilter]);
 
   const filteredReports = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -370,9 +387,10 @@ export function ReportsWorkspace() {
       if (expandedRunSubscriptionId === subscriptionId) {
         await refreshSubscriptionRunHistory(subscriptionId);
       }
-      const refreshedReports = await listReports(
-        projectFilter === "all" ? undefined : projectFilter,
-      );
+      const refreshedReports = await listReports({
+        projectId: projectFilter === "all" ? undefined : projectFilter,
+        domain: domainFilter || undefined,
+      });
       setReports(refreshedReports);
       setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
       setSubscriptionNotice("订阅已手动执行");
@@ -427,9 +445,10 @@ export function ReportsWorkspace() {
         current.map((item) => (item.id === retried.id ? retried : item)),
       );
       await refreshSubscriptionRunHistory(subscriptionId);
-      const refreshedReports = await listReports(
-        projectFilter === "all" ? undefined : projectFilter,
-      );
+      const refreshedReports = await listReports({
+        projectId: projectFilter === "all" ? undefined : projectFilter,
+        domain: domainFilter || undefined,
+      });
       setReports(refreshedReports);
       setSelectedId((current) => current ?? refreshedReports[0]?.id ?? null);
       setSubscriptionNotice("订阅已重试");

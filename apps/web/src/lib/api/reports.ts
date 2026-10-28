@@ -99,13 +99,29 @@ type ReportSubscriptionRunResponse = {
   idempotency_key_hash?: string | null;
 };
 
-export async function listReports(projectId?: string): Promise<Report[]> {
+/** 列表筛选。`domain` 让业务域页只看到该域的报告。 */
+export type ReportListFilter = {
+  projectId?: string;
+  domain?: string;
+};
+
+export async function listReports(
+  filter?: string | ReportListFilter,
+): Promise<Report[]> {
+  // 兼容旧调用：此前只接受 projectId 字符串。
+  const resolved: ReportListFilter =
+    typeof filter === "string" ? { projectId: filter } : (filter ?? {});
   if (mockApiEnabled) {
-    return getMockReports().filter((report) => !projectId || report.projectId === projectId);
+    return getMockReports().filter(
+      (report) => !resolved.projectId || report.projectId === resolved.projectId,
+    );
   }
   const query = new URLSearchParams();
-  if (projectId) {
-    query.set("project_id", projectId);
+  if (resolved.projectId) {
+    query.set("project_id", resolved.projectId);
+  }
+  if (resolved.domain) {
+    query.set("domain", resolved.domain);
   }
   const suffix = query.size > 0 ? `?${query.toString()}` : "";
   const response = await apiFetch<ReportResponse[]>(`/api/reports${suffix}`);
