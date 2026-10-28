@@ -179,7 +179,7 @@ test("API Market Discovery replays four offline sources through Candidate and Ev
       const navigationDialog = page.getByRole("dialog", { name: "移动主导航" });
       await expect(
         navigationDialog.getByTestId("mobile-primary-nav-link"),
-      ).toHaveCount(6);
+      ).toHaveCount(7);
       await page.screenshot({
         path: resolve(outputDir, "04-six-entry-navigation-mobile.png"),
       });

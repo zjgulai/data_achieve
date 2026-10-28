@@ -655,7 +655,9 @@ async function openPlannerFromDashboard(
 
   await (mode === "periodic_monitoring" ? periodicLink : batchLink).click();
   await expect(page).toHaveURL(
-    new RegExp(`/automation/planner\\?mode=${mode}$`),
+    (url) =>
+      url.pathname === "/automation/planner" &&
+      url.searchParams.get("mode") === mode,
   );
   await expect(page.locator(`#planner-mode-${mode}`)).toBeChecked();
   const selector = page.getByTestId("global-project-selector");
@@ -1711,7 +1713,11 @@ test.describe("MVP workspace routes", () => {
       await expect(
         page.getByRole("heading", { name: heading, exact: true }),
       ).toBeVisible();
-      await expect(page.getByText("情报总量")).toBeVisible();
+      await expect(
+        page
+          .getByTestId("dashboard-outcome-summary")
+          .getByText("已形成情报", { exact: true }),
+      ).toBeVisible();
       await expectNoVisibleTechnicalNoise(page);
     }
   });
@@ -2321,7 +2327,7 @@ test.describe("workflow planner local mock acceptance", () => {
     });
     await navigateWithPrimaryNavigation(page, "已保存计划");
     await accepted;
-    await expect(page).toHaveURL(/\/automation\/plans$/);
+    await expect(page).toHaveURL((url) => url.pathname === "/automation/plans");
     expect(externalRequests()).toEqual([]);
   });
 
@@ -2553,7 +2559,7 @@ test("capability market switches views and opens evidence detail", async ({
     await route.continue();
   });
 
-  await page.goto("/api-market?view=scenarios&project_id=p1");
+  await page.goto("/api-market?view=scenarios&project_id=project_osint");
   await expect(page.getByRole("heading", { name: "能力市场" })).toBeVisible();
   const scenarioCards = page.getByTestId("capability-scenario");
   await expect(scenarioCards).toHaveCount(8);
@@ -2565,7 +2571,9 @@ test("capability market switches views and opens evidence detail", async ({
   ).toBeVisible();
 
   await page.getByRole("button", { name: "矩阵视图" }).click();
-  await expect(page).toHaveURL(/\/api-market\?(?=.*view=matrix)(?=.*project_id=p1)/);
+  await expect(page).toHaveURL(
+    /\/api-market\?(?=.*view=matrix)(?=.*project_id=project_osint)/,
+  );
 
   const visibleMatrixCells = page.locator(
     '[data-testid="capability-matrix-cell"]:visible',
@@ -2631,7 +2639,9 @@ test("capability market switches views and opens evidence detail", async ({
 
   await page.getByRole("button", { name: "列表视图" }).click();
   await page.getByTestId("capability-filter-platform").selectOption("reddit");
-  await expect(page).toHaveURL(/\/api-market\?(?=.*view=list)(?=.*platform=reddit)(?=.*project_id=p1)/);
+  await expect(page).toHaveURL(
+    /\/api-market\?(?=.*view=list)(?=.*platform=reddit)(?=.*project_id=project_osint)/,
+  );
   await page.reload();
   await expect(page.getByTestId("capability-filter-platform")).toHaveValue("reddit");
   await expect(page.locator('article[data-implementation-id="reddit.praw"]')).toHaveCount(1);
@@ -2689,7 +2699,7 @@ test.describe("mobile layout guard", () => {
   }
 });
 
-test("six-entry navigation is complete on desktop and mobile", async ({
+test("primary navigation is complete on desktop and mobile", async ({
   page,
 }, testInfo) => {
   const mobile = testInfo.project.name === "mobile";
@@ -2724,13 +2734,13 @@ test("six-entry navigation is complete on desktop and mobile", async ({
     await expect(
       page.getByRole("button", { name: "关闭导航遮罩" }),
     ).toHaveAttribute("tabindex", "-1");
-    await expect(drawer.getByTestId("mobile-primary-nav-link")).toHaveCount(6);
+    await expect(drawer.getByTestId("mobile-primary-nav-link")).toHaveCount(7);
     await expect(drawer.getByRole("link", { name: "采集工具库" })).toBeVisible();
     await expect(closeButton).toBeFocused();
 
     await page.keyboard.press("Shift+Tab");
     await expect(
-      drawer.getByRole("link", { name: "能力市场", exact: true }),
+      drawer.getByRole("link", { name: "系统设置", exact: true }),
     ).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(closeButton).toBeFocused();
@@ -2746,7 +2756,7 @@ test("six-entry navigation is complete on desktop and mobile", async ({
     await expect(page).toHaveURL(/\/datasets$/);
   } else {
     const primaryLinks = page.getByTestId("primary-nav-link");
-    await expect(primaryLinks).toHaveCount(6);
+    await expect(primaryLinks).toHaveCount(7);
     await expect(primaryLinks).toHaveText([
       "工作台",
       "监测项目",
@@ -2754,6 +2764,7 @@ test("six-entry navigation is complete on desktop and mobile", async ({
       "数据资产",
       "洞察与交付",
       "能力市场",
+      "系统设置",
     ]);
     await expect(
       page.getByRole("link", { name: "工作台", exact: true }),
