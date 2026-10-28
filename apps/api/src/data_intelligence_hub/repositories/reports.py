@@ -9,13 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.models.alert import AlertEvent, AlertRule
 from data_intelligence_hub.models.intelligence import Evidence, IntelligenceItem
+from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.report import (
     Report,
     ReportAuditEvent,
     ReportSubscription,
     ReportSubscriptionRun,
 )
-from data_intelligence_hub.models.project import Project
 from data_intelligence_hub.models.signal import Signal
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
