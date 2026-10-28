@@ -118,12 +118,12 @@
     "module": "洞察与报告",
     "task_attribute": "方案迭代",
     "solution": "二选一并定稿：ReportGenerateRequest 增加可选 domain（服务端解析该域项目集合），或生成时强制 project_id 且域页默认选中当前域项目。同时明确 GET /api/reports?domain 对 project_id 为 NULL 的历史报告如何归属，避免 inner join 静默丢报告。补 API 与前端测试。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-28",
     "due": "2026-11-02",
-    "actual": "",
+    "actual": "2026-10-29",
     "priority": "P1",
-    "evidence": "schemas/report.py:28-33（无 domain）、reports-workspace.tsx:97 与 :1251-1290、repositories/reports.py:48-58（inner join）、生产 reports 1 条 project_id NULL。"
+    "evidence": "只在前端落地，未改 schema。探查发现全局报告与全局订阅是一等能力：订阅允许 project_id=None，集成测试 test_reports_alerts_notifications.py:843-862 显式覆盖，把 project_id 改必填会同时打断 UI 默认生成与订阅执行。改法：域页进来时预选该域第一个项目（不预选则停在「全局」，报告 project_id 为 NULL，被域筛选 inner join 静默排除）；生成下拉在域页只列同域项目并隐藏「全局」。NULL 归属规则定死：project_id NULL = 工作区级，不属于任何域，?domain 不返回，无 domain 的列表仍返回。"
   },
   {
     "ticket_id": "RC-10",
@@ -132,12 +132,12 @@
     "module": "工作台 Dashboard",
     "task_attribute": "bug",
     "solution": "域页「信号链路」链接带 ?domain=；后端 GET /api/signals 增加 domain 过滤（join projects）或明确只展示域内相关情报；报告链接由 RC-06 一并修复。补 API 或 E2E 断言。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-28",
     "due": "2026-11-03",
-    "actual": "",
+    "actual": "2026-10-29",
     "priority": "P2",
-    "evidence": "domain/[domain]/page.tsx:141-143；lib/api/signals.ts:49-55 无参数；routes/signals.py:27-44 仅 project_id/entity_id/type/severity。"
+    "evidence": "前后端全链补齐。此前域页链接带 ?domain= 但落地页不接：/signals 不读 searchParams、listSignals() 无参数、后端只声明 project_id/entity_id/type/severity，domain 被 FastAPI 静默忽略。四层依次补：repositories/signals.py 加 domain 参数并 inner join projects、signal_service.get_signals 透传、routes/signals.py 声明 domain、前端 listSignals 与 workspace。前端加域范围标签与空态文案。实测：pytest 新增用例断言 osint 只返回 osint、competitor 只返回 competitor、未知域返回空列表而非退回全量。"
   },
   {
     "ticket_id": "RC-11",
@@ -146,12 +146,12 @@
     "module": "CI 与回归守卫",
     "task_attribute": "方案迭代",
     "solution": "在真实写入获批前补齐 always() cleanup、精确 ID 账本与 recount 零校验。同时删除 test:e2e:real 指向生产 B 的默认 URL，改为必须显式提供 base URL 且默认只读，文档标注 owner-run。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-28",
     "due": "2026-11-05",
-    "actual": "",
+    "actual": "2026-10-29",
     "priority": "P2",
-    "evidence": "package.json 的 test:e2e:real 默认指向 https://scrapy.lute-tlz-dddd.top；releases.jsonl 记 B 为 bf7a2815，其 edge 无 /insight 也无 web 路由；策略文档「当前执行边界」要求 always() cleanup 与 recount。"
+    "evidence": "test:e2e:real 去掉生产 B 默认 URL 与 PLAYWRIGHT_REAL_API，改为缺 PLAYWRIGHT_BASE_URL 直接退出 2，跑 real-chain config 的 readonly project（只读冒烟）。同时删掉 main-flows.spec.ts:150 的第二处生产默认——两处入口都要在缺 URL 时立即失败。实测 env -u PLAYWRIGHT_BASE_URL pnpm test:e2e:real 退出 2 且输出无生产域名。顺带修正 playwright.real-chain.config.ts 的错误注释：--project 默认是 run all projects，裸跑会连 readonly 一起跑。"
   },
   {
     "ticket_id": "RC-12",
@@ -160,11 +160,11 @@
     "module": "工作台 Dashboard",
     "task_attribute": "bug",
     "solution": "域页忽略顶部项目过滤（与域记录面板一致），或在进入域页时把项目选择重置为该域项目。补回归测试。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-28",
     "due": "2026-11-05",
-    "actual": "",
+    "actual": "2026-10-29",
     "priority": "P2",
-    "evidence": "dashboard-overview.tsx:80-84 同时向接口传 domain 与 selectedProjectId；repositories/dashboard.py:387-390 用 AND 组合；domain-records-panel.tsx:18-20 的注释明确记录域记录查询不叠加 project_id。"
+    "evidence": "域页仪表盘不再传 project_id。后端把 domain 与 project_id 用 AND 组合（repositories/dashboard.py:387-390），在 A 域页选了 X 项目再进 B 域页会 domain=B AND project_id=X，两条件互斥导致 KPI 清零。改法：domain 存在时不传 projectId、不标记 markProjectFilterApplied、范围标签显示「本域全部项目」。连带修 isProjectFilterApplied 的 /domain/ 分支，并把 tests/unit/project-selection.test.ts 的断言从 true 改为 false。"
   }
 ]

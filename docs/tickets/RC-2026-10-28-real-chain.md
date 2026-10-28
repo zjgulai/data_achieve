@@ -37,10 +37,10 @@ source: human+ai
 | RC-06 | 报告生成、证据引用与站内发送 | P0 | 已完成 | RC-05 |
 | RC-07 | CI scoped job、门禁脚本与 verifier 扩展 | P0 | 已完成 | RC-06 |
 | RC-08 | 生产 A 只读真实数据冒烟（owner-run） | P1 | 已完成 | RC-07 |
-| RC-09 | 报告按业务域生成与筛选口径统一 | P1 | 未开始 | RC-06 |
-| RC-10 | 域页信号与工具库链接补域参数 | P2 | 未开始 | — |
-| RC-11 | 生产写入前的清理账本与 test:e2e:real 收敛 | P2 | 未开始 | RC-08 |
-| RC-12 | 域页仪表盘叠加全局项目过滤导致跨域清零 | P2 | 未开始 | — |
+| RC-09 | 报告按业务域生成与筛选口径统一 | P1 | 已完成 | RC-06 |
+| RC-10 | 域页信号与工具库链接补域参数 | P2 | 已完成 | — |
+| RC-11 | 生产写入前的清理账本与 test:e2e:real 收敛 | P2 | 已完成 | RC-08 |
+| RC-12 | 域页仪表盘叠加全局项目过滤导致跨域清零 | P2 | 已完成 | — |
 
 依赖是硬的：RC-02 到 RC-07 必须按序执行，每一片的验收证据是下一片的前置。RC-09、RC-10、RC-12 可以在任何时间并行，它们修的是产品口径，不阻塞门禁。
 
@@ -120,4 +120,5 @@ SCRAPY_DEMO_EMAIL=... SCRAPY_DEMO_PASSWORD=... \
 
 - 2026-10-28：建立台账。
 - 2026-10-28：RC-01 至 RC-07 完成并实测通过。门禁 `bash scripts/verify-real-chain-e2e.sh` 退出 0，四条用例全绿，零残留容器与卷。
+- 2026-10-29：RC-09 至 RC-12 完成。四条口径修复合并提交 `6d3ba0b`，CI 七项全绿；本地 pytest 3701 passed、vitest 289 passed、真实链路门禁 4 passed。
 - 2026-10-29：RC-08 完成。生产 A 只读冒烟 3 passed + 1 skipped，recount 通过（前后记录数一致）。过程中修掉两个只在生产前缀下才暴露的缺陷：`appPath` 误用于 API 路径（新增 `apiPath`）、`page` fixture 误用于 `beforeAll/afterAll`。RC-09、RC-10、RC-11、RC-12 未开始。
