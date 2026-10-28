@@ -2128,8 +2128,17 @@ test.describe("workflow planner local mock acceptance", () => {
       "batch_research",
     );
     await advanceBatchPlanner(page, "e2e-slow-first");
-    await page.clock.install();
-    await page.clock.pauseAt(Date.now());
+    // 固定基准时间再暂停。
+    //
+    // 原来写 `pauseAt(Date.now())`：Date.now() 取的是 Node 侧真实时间，
+    // 而 clock.install() 之后浏览器虚拟时钟已开始推进，两者一比较就
+    // 被判成"回到过去"（Cannot fast-forward to the past），用例必失败。
+    //
+    // pauseAt 的语义是"向前跳到该时刻并暂停"，所以目标时间必须晚于
+    // 安装时设定的起点。起点 2026-01-01T00:00:00Z，暂停在 +1s。
+    const frozen = new Date("2026-01-01T00:00:00Z");
+    await page.clock.install({ time: frozen });
+    await page.clock.pauseAt(new Date(frozen.getTime() + 1000));
 
     await page.getByTestId("workflow-planner-generate-preview").click();
     await expect(
