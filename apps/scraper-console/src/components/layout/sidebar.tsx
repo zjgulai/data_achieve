@@ -44,6 +44,7 @@ const NAV_ICONS: Record<string, typeof Grid3x3> = {
   "/projects": FolderKanban,
   "/tasks": ListChecks,
   "/assets": Database,
+  "/abi": Database,
   "/connect": Cable,
   "/docs": BookOpen,
   "/dashboard": LayoutDashboard,

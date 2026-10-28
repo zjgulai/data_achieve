@@ -183,6 +183,7 @@ export const PRIMARY_NAVIGATION: readonly NavigationItem[] = [
   { name: "项目", href: "/projects" },
   { name: "任务", href: "/tasks" },
   { name: "资产", href: "/assets" },
+  { name: "ABI 看板", href: "/abi" },
   { name: "接入", href: "/connect" },
   { name: "文档", href: "/docs" },
 ];

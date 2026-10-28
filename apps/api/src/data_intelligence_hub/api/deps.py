@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -10,8 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.core.database import get_session
 from data_intelligence_hub.core.security import decode_access_token
+from data_intelligence_hub.models.abi import AccessGrant, CatalogDataset, role_rank
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories.abi import (
+    get_access_grant,
+    get_dataset_by_slug,
+)
 from data_intelligence_hub.repositories.users import get_user_by_id
 from data_intelligence_hub.repositories.workspaces import (
     get_default_workspace_for_user,
@@ -195,3 +201,67 @@ async def get_authenticated_workspace(context: AuthenticatedContextDep) -> Works
 
 WorkspaceDep = Annotated[Workspace, Depends(get_active_workspace)]
 AuthenticatedWorkspaceDep = Annotated[Workspace, Depends(get_authenticated_workspace)]
+
+
+@dataclass(frozen=True)
+class DatasetAccess:
+    """通过 dataset 授权校验后的上下文。
+
+    ``grant`` 是当前用户在该 dataset 上的授权行。workspace owner 身份
+    不构成 bypass：没有 access_grant 一律 403。
+    """
+
+    dataset: CatalogDataset
+    grant: AccessGrant
+    workspace: Workspace
+    user: User
+
+
+def require_dataset_role(
+    min_role: str,
+) -> Callable[..., Awaitable[DatasetAccess]]:
+    """构造 dataset 级授权依赖。
+
+    按 ``workspace_id + slug`` 查 dataset，再按 ``workspace_id + dataset_id
+    + user_id`` 查 access_grant。角色序 viewer < editor < publisher < admin。
+    admin 只表示该 dataset 的最高角色，不做 workspace 万能 bypass。
+    """
+    minimum = role_rank(min_role)
+    if minimum < 0:
+        raise ValueError(f"unknown ABI role: {min_role}")
+
+    async def dependency(
+        slug: str,
+        session: SessionDep,
+        context: AuthenticatedContextDep,
+    ) -> DatasetAccess:
+        dataset = await get_dataset_by_slug(session, context.workspace.id, slug)
+        if dataset is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="dataset_not_found",
+            )
+        grant = await get_access_grant(
+            session,
+            context.workspace.id,
+            dataset.id,
+            context.user.id,
+        )
+        if grant is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="dataset_forbidden",
+            )
+        if role_rank(grant.role) < minimum:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="insufficient_role",
+            )
+        return DatasetAccess(
+            dataset=dataset,
+            grant=grant,
+            workspace=context.workspace,
+            user=context.user,
+        )
+
+    return dependency

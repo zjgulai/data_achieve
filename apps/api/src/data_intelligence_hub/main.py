@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from data_intelligence_hub.agents.shusuo.router import router as shusuo_router
 from data_intelligence_hub.agents.tiktok_cdo.router import router as tiktok_cdo_router
+from data_intelligence_hub.api.routes.abi import router as abi_router
 from data_intelligence_hub.api.routes.alerts import (
     alert_events_router,
     alert_rules_router,
@@ -197,6 +198,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(health_router, prefix="/api")
     app.include_router(auth_router, prefix="/api/auth")
+    app.include_router(abi_router, prefix="/api/abi")
     app.include_router(workspaces_router, prefix="/api/workspaces")
     app.include_router(dashboard_router, prefix="/api/dashboard")
     app.include_router(collectors_router, prefix="/api/collectors")

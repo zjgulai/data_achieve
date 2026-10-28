@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     )
 
     dataset_export_dir: str = "tmp/dataset-exports"
+    # ABI 导出产物的根目录。容器内固定落在 scrapy_export_data 卷上。
+    # 下载端必须先用 Path.resolve().relative_to(abi_export_dir) 校验越界。
+    abi_export_dir: str = "/app/exports/abi"
+    # ABI 专用的 Fernet 密钥，与 platform_credential_master_key 分离：
+    # 两把 key 共用会让一次泄露同时解开平台凭证与 Apify token。
+    # 默认为空：未配置时托管 token 的解密路径必须保持关闭，不能降级成明文。
+    abi_fernet_key: SecretStr | None = None
 
     scheduler_enabled: bool = False
     scheduler_poll_interval_seconds: float = Field(default=60.0, gt=0)
@@ -146,6 +153,19 @@ class Settings(BaseSettings):
         compose 用 `${SCRAPY_MCP_TOKEN:-}` 注入，未配置时会传空字符串；pydantic 会把
         它当成 SecretStr("")，使 accepted_mcp_tokens 非空，从而对**所有人**返回 401
         且任何 token 都无法通过。这里把空白值归一为 None。
+        """
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("abi_fernet_key", mode="before")
+    @classmethod
+    def _blank_abi_fernet_key_is_unset(cls, value: object) -> object:
+        """`ABI_FERNET_KEY=`（空串）必须视为未配置。
+
+        compose 用 `${ABI_FERNET_KEY:-}` 注入，未配置时会传空字符串。
+        若保留成 SecretStr("")，消费方用 `is not None` 判断会误以为已配置，
+        然后在第一次解密时才报错。这里统一归一为 None，让启动期检查可见。
         """
         if isinstance(value, str) and not value.strip():
             return None

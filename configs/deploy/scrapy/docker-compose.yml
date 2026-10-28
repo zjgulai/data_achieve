@@ -42,6 +42,101 @@ services:
     volumes:
       - scrapy_export_data:/app/exports
 
+  # ABI 迁移一次性作业。与 api 同镜像，跑完 alembic upgrade head 即退出。
+  # restart: "no" 是刻意的：迁移失败要让部署脚本看到非零退出码，
+  # 不能被重启策略无限重试掩盖。user root 与 export-init 同为一次性运维作业。
+  # ABI 三个服务都不监听端口：expose 为空，且绝不声明 ports。
+  abi-migrate:
+    image: data_achieve_scrapy_api:latest
+    container_name: data_achieve_scrapy_abi_migrate
+    # 用 profiles 把它挡在默认 up 之外。
+    # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
+    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # 启用方式：docker compose --profile abi up -d
+    profiles: ["abi"]
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
+    expose: []
+    networks:
+      - scrapy_internal
+    restart: "no"
+    user: root
+
+  # ABI 摄取 worker。常驻进程，02:15（Asia/Shanghai）入队 T-1 scan。
+  #
+  # 环境只给 ABI 自己需要的键：DATABASE_URL、ABI_FERNET_KEY 与 TZ。
+  # JWT_SECRET / PLATFORM_CREDENTIAL_MASTER_KEY / LARK / LLM 一律不继承：
+  # 这个容器不服务 HTTP，拿到它们只会扩大泄露面。
+  #
+  # 资源上限按方案 §4：mem 3g、cpus 2.0、pids 512。导出另起容器，
+  # 避免 02:14 的大导出把 ingest OOM，直接丢掉 T-1 窗口。
+  abi-ingest:
+    image: data_achieve_scrapy_api:latest
+    container_name: data_achieve_scrapy_abi_ingest
+    # 用 profiles 把它挡在默认 up 之外。
+    # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
+    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # 启用方式：docker compose --profile abi up -d
+    profiles: ["abi"]
+    command: ["python", "-m", "data_intelligence_hub.abi.ingest"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
+      ABI_FERNET_KEY: ${ABI_FERNET_KEY:-}
+      TZ: Asia/Shanghai
+    expose: []
+    mem_limit: 3g
+    cpus: 2.0
+    pids_limit: 512
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - scrapy_internal
+
+  # ABI 导出 worker。与 ingest 分开成容器：导出峰值内存独立计量，
+  # 1g 上限把最坏情况限制在导出容器内。只给 DATABASE_URL。
+  # 导出目录挂在 scrapy_export_data 上，必须先等 export-init 完成 chown。
+  # command 用 ingest 模块的 --role export：本阶段只有骨架，导出逻辑见 TODO。
+  abi-export:
+    image: data_achieve_scrapy_api:latest
+    container_name: data_achieve_scrapy_abi_export
+    # 用 profiles 把它挡在默认 up 之外。
+    # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
+    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # 启用方式：docker compose --profile abi up -d
+    profiles: ["abi"]
+    command:
+      ["python", "-m", "data_intelligence_hub.abi.ingest", "--role", "export"]
+    depends_on:
+      db:
+        condition: service_healthy
+      export-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${SCRAPY_POSTGRES_USER:?SCRAPY_POSTGRES_USER is required}:${SCRAPY_POSTGRES_PASSWORD:?SCRAPY_POSTGRES_PASSWORD is required}@db:5432/${SCRAPY_POSTGRES_DB:?SCRAPY_POSTGRES_DB is required}
+    expose: []
+    mem_limit: 1g
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    volumes:
+      - scrapy_export_data:/app/exports
+    networks:
+      - scrapy_internal
+
   api:
     build:
       context: ../../../apps/api

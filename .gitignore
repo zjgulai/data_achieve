@@ -77,3 +77,6 @@ data_scrapy-apify-docs/
 
 # Baidu Cloud sync temp files
 *.baiduyun.uploading.cfg
+
+# ABI 飞书写入临时载荷
+.abi_tmp/
