@@ -45,6 +45,7 @@ def _run(
     paths: tuple[str, ...] = ("src",),
     api_dir: Path | None = None,
     cwd: Path | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], str]:
     baseline_path = tmp_path / "baseline.txt"
     baseline_path.write_text(baseline, encoding="utf-8")
@@ -59,6 +60,8 @@ def _run(
     command += ["--api-dir", str(resolved_api_dir), "--python", str(shim)]
 
     environment = {"SHIM_CWD_LOG": str(cwd_log), "PATH": "/usr/bin:/bin"}
+    if extra_env:
+        environment.update(extra_env)
     result = subprocess.run(
         command,
         cwd=cwd or PROJECT_ROOT,
@@ -234,3 +237,79 @@ def test_missing_baseline_is_invalid(tmp_path: Path) -> None:
 
     assert result.returncode == 2
     assert result.stdout.startswith("INVALID: baseline is unreadable:")
+
+
+# ── fail-open 回归防护（2026-10-28） ────────────────────────────────────────
+# 曾经的缺陷：mypy 输出带 ANSI 颜色码时，`" error: "` 字面量匹配不到诊断行，
+# 整轮结果被算成 0 条，脚本输出 OK、退出码 0。本机 shell 常带 FORCE_COLOR=1，
+# 于是在终端里跑守卫永远「通过」。以下测试锁住三条防线。
+
+
+def test_colorized_output_fails_closed(tmp_path: Path) -> None:
+    """带 ANSI 颜色码的输出必须判 INVALID，绝不能报 OK。"""
+    baseline = f"1\t{NORMALIZED}\n"
+    # \x1b 在 Python 里是真实 ESC 字节，写进 shim 后由 printf 原样输出。
+    shim_body = (
+        "printf '%s\\n' 'src/pkg/mod.py:10: "
+        "\x1b[1m\x1b[31merror:\x1b(B\x1b[m " + MESSAGE + "'\n"
+    )
+
+    result, _ = _run(tmp_path, baseline=baseline, shim_body=shim_body, shim_status=1)
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert result.stdout.startswith("INVALID:")
+    assert "ANSI" in result.stdout
+
+
+def test_exit_one_with_zero_parsed_diagnostics_is_invalid(tmp_path: Path) -> None:
+    """mypy 说报过错（exit 1），却一条都没解析出来，说明解析器失效。"""
+    baseline = f"1\t{NORMALIZED}\n"
+    shim_body = _emit("some unusual output that contains no diagnostics")
+
+    result, _ = _run(tmp_path, baseline=baseline, shim_body=shim_body, shim_status=1)
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert result.stdout.startswith("INVALID:")
+    assert "0 条诊断" in result.stdout
+
+
+def test_child_env_forces_colors_off(tmp_path: Path) -> None:
+    """即使父进程带 FORCE_COLOR=1，传给 mypy 的环境也必须关色。
+
+    shim 的标准输出被子进程捕获、不会进入 helper 的输出，所以写日志文件再读。
+    """
+    baseline = f"1\t{NORMALIZED}\n"
+    env_log = tmp_path / "env.log"
+    shim_body = (
+        '{\n'
+        '  printf "FORCE=%s\\n" "${FORCE_COLOR:-unset}"\n'
+        '  printf "MYPYFORCE=%s\\n" "${MYPY_FORCE_COLOR:-unset}"\n'
+        '  printf "NOCOLOR=%s\\n" "${NO_COLOR:-unset}"\n'
+        f'}} > "{env_log}"\n'
+    ) + _emit(_diagnostic(10))
+
+    result, _ = _run(
+        tmp_path,
+        baseline=baseline,
+        shim_body=shim_body,
+        shim_status=1,
+        extra_env={"FORCE_COLOR": "1"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    captured = env_log.read_text(encoding="utf-8")
+    assert "FORCE=0" in captured
+    assert "MYPYFORCE=0" in captured
+    assert "NOCOLOR=1" in captured
+
+
+def test_no_color_output_flag_is_passed_to_mypy(tmp_path: Path) -> None:
+    """命令行也要显式关色：环境变量在旧版 mypy 上不一定生效。"""
+    baseline = f"1\t{NORMALIZED}\n"
+    args_log = tmp_path / "args.log"
+    shim_body = f'printf "ARGS=%s\\n" "$*" > "{args_log}"\n' + _emit(_diagnostic(10))
+
+    result, _ = _run(tmp_path, baseline=baseline, shim_body=shim_body, shim_status=1)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--no-color-output" in args_log.read_text(encoding="utf-8")
