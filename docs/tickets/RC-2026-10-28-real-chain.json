@@ -104,12 +104,12 @@
     "module": "生产运维",
     "task_attribute": "新需求",
     "solution": "在 real-chain.spec.ts 增加 @readonly 用例：必须显式 PLAYWRIGHT_BASE_URL=https://scrapy.luteos.com、PLAYWRIGHT_BASE_PATH=/insight、PLAYWRIGHT_CHAIN_ALLOW_REMOTE=true 与 owner 账号；拒绝自动注册；监听请求，除 POST /api/auth/login 外只允许 GET；断言 competitor 域记录面板、情报列表与证据详情；报告段 skip 并给出原因；执行前后对比生产 users/projects/records 计数一致。",
-    "status": "未开始",
+    "status": "已完成",
     "registered": "2026-10-28",
     "due": "2026-11-02",
-    "actual": "",
+    "actual": "2026-10-29",
     "priority": "P1",
-    "evidence": "依据生产 A web 在 /insight（docker-compose.yml 与 edge-nginx.conf 的 /insight 段）、E2E 现用根绝对路径 28 处、生产 competitor 13444 条记录与 9 条情报、reports 仅 1 条且 project_id NULL。"
+    "evidence": "生产 A 只读冒烟已执行：3 passed + 1 skipped (6.5s)。通过项=生产登录与业务域真实记录、生产洞察与证据可追溯、recount 未写入；跳过项=报告段（现有 1 条报告 project_id 为 NULL，域筛 inner join 会排除，生成属写入未授权）。约束由运行时代码强制：assertReadonlyTarget 要求 /insight 前缀与 ALLOW_REMOTE；installReadOnlyGuard 拦非 GET（登录除外）；recount 前后 competitor 域记录数一致。过程中修掉两个缺陷：appPath 误用于 API 路径导致 /insight/api/... 404（新增 apiPath）；page fixture 误用于 beforeAll/afterAll。"
   },
   {
     "ticket_id": "RC-09",
