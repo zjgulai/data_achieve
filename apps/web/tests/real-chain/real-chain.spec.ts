@@ -92,15 +92,24 @@ test("A 链路 @insight-evidence 域筛选下的洞察与证据时间线", async
   const listItem = page.getByTestId(`intelligence-list-item-${first.id}`);
   await expect(listItem).toBeVisible();
 
-  // 打开详情，并等证据接口。证据是「洞察可追溯」的唯一凭据，
-  // 没有证据的情报只是文本。
-  await waitForApiJson<unknown>(
+  // 先选中。注意：点列表项只调用 setSelectedId，不会跳详情页，
+  // 因此也不会触发 evidences 请求——别把「选中」当成「打开」。
+  await listItem.click();
+
+  // 真正的跳转是这个链接。evidences 只在详情页加载时请求。
+  const openDetail = page.getByTestId("intelligence-open-detail");
+  await expect(openDetail).toBeVisible();
+
+  // 证据是「洞察可追溯」的唯一凭据，没有证据的情报只是文本。
+  const evidences = await waitForApiJson<unknown>(
     page,
     (url) => url.pathname.includes(`/api/intelligence/${first.id}/evidences`),
     async () => {
-      await listItem.click();
+      await openDetail.click();
     },
   );
+  expect(evidences, "详情页必须返回证据数据").toBeTruthy();
+  expect(Array.isArray(evidences) ? evidences.length : 0).toBeGreaterThan(0);
 });
 
 test("A 链路 @report 从域入口生成报告并看到证据引用", async ({ page }) => {
