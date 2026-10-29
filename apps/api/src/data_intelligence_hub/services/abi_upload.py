@@ -1251,6 +1251,7 @@ async def commit_batch(
     token: str | None = None,
     primary_key_columns: Sequence[str] | None = None,
     user_id: uuid.UUID | None = None,
+    retry: bool = False,
 ) -> UploadBatch:
     """复核文件并装入目标表。
 
@@ -1260,6 +1261,12 @@ async def commit_batch(
     ``token`` 可选：给出时校验一次性 token；不给时按 batch 原上传人
     （或显式 ``user_id``）的 grant 校验。两条路径都要求 editor，
     ``replace`` 还要求 publisher。
+
+    ``retry=True`` 允许从 ``failed`` 起步，并在**行锁内**完成
+    ``failed → uploaded`` 的转换。调用方不得自己改状态：先前 ``retry``
+    在锁外用无条件 ORM UPDATE 翻转状态，两个并发重试能把已 ``committed``
+    的批次打回 ``uploaded``，随后失败清理按 batch id 删掉第一次成功写入
+    的全部行。状态转换必须与取锁在同一事务里，别处无法插进来。
     """
 
     batch = await session.scalar(
@@ -1271,8 +1278,24 @@ async def commit_batch(
         raise AbiUploadNotFound()
     if token is not None:
         _require_token(batch, token)
-    if batch.status != "uploaded":
-        raise AbiUploadStateError("abi_upload_content_not_uploaded")
+
+    # 行锁已持有，这里的读取不会被并发写覆盖。retry 只接受 failed，
+    # 且在锁内改成 uploaded——任何并发重试随后都会读到 uploaded 并被拒。
+    allowed_from = ("failed", "uploaded") if retry else ("uploaded",)
+    if batch.status not in allowed_from:
+        await session.rollback()
+        raise AbiUploadStateError(
+            "abi_upload_not_retryable" if retry else "abi_upload_content_not_uploaded"
+        )
+    if retry and batch.status == "failed":
+        # 清旧错误放在这里而不是调用方：只有确定能继续跑，才该丢掉上一次的
+        # 诊断。调用方抢先删会让 403/校验失败后的批次既没有错误明细、
+        # 也没法再重试。
+        await session.execute(delete(UploadError).where(UploadError.batch_id == batch.id))
+        batch.status = "uploaded"
+        batch.rows_loaded = 0
+        batch.rows_rejected = 0
+        await session.flush()
     if batch.actual_sha256 is None or batch.actual_rows is None:
         raise AbiUploadChecksumError("abi_upload_checksum_missing")
 

@@ -1239,6 +1239,14 @@ function UploadTab() {
       void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
       void queryClient.invalidateQueries({ queryKey: ["abi", "uploads"] });
     },
+    // commit 失败（行全被拒、sha256 不符等）走的是 onError，不是 onSuccess。
+    // 不过这里刷新一次：失败的批次会以 failed 状态出现在历史里，那正是
+    // 用户接下来要看的东西。少了这一步，面板上永远看不到刚失败的那一条。
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ["abi", "uploads"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "datasets"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
+    },
   });
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1254,6 +1262,14 @@ function UploadTab() {
   const batches = batchesQuery.data?.items ?? EMPTY_BATCHES;
   const [inspectBatchId, setInspectBatchId] = useState<string>("");
 
+  // 切换数据集要收起已展开的错误明细：否则会把上一个数据集的错误
+  // 挂在当前数据集的面板下，读起来像是这个数据集的失败原因。
+  const [inspectOwner, setInspectOwner] = useState<string>("");
+  if (inspectOwner !== slug) {
+    setInspectOwner(slug);
+    setInspectBatchId("");
+  }
+
   // 错误明细只在展开某个批次时拉。
   const errorsQuery = useQuery({
     queryKey: ["abi", "upload-errors", inspectBatchId],
@@ -1261,6 +1277,8 @@ function UploadTab() {
     enabled: inspectBatchId !== "",
   });
 
+  // 用 variables 记住正在重试哪一条：isPending 是全局的，只用它会让
+  // 所有 failed 行同时变成「重试中…」并被禁用，用户不知道点的是哪个。
   const retry = useMutation<AbiUploadBatch, Error, string>({
     mutationFn: (batchId) => retryAbiUpload(batchId),
     onSuccess: () => {
@@ -1270,6 +1288,7 @@ function UploadTab() {
       void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
     },
   });
+  const retryingId = retry.isPending ? (retry.variables ?? "") : "";
 
   function refreshBatches() {
     void queryClient.invalidateQueries({ queryKey: ["abi", "uploads", slug] });
@@ -1420,7 +1439,7 @@ function UploadTab() {
                   {formatTime(batch.created_at)}
                 </span>,
                 <span key="a" className="flex flex-wrap gap-2">
-                  {batch.rows_rejected > 0 ? (
+                  {batch.rows_rejected > 0 || batch.status === "failed" ? (
                     <button
                       type="button"
                       onClick={() =>
@@ -1440,7 +1459,7 @@ function UploadTab() {
                       onClick={() => retry.mutate(batch.id)}
                       className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-2 py-1 text-xs font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
                     >
-                      {retry.isPending ? "重试中…" : "重试"}
+                      {retryingId === batch.id ? "重试中…" : "重试"}
                     </button>
                   ) : null}
                 </span>,
@@ -1450,7 +1469,10 @@ function UploadTab() {
         </AsyncSection>
 
         {retry.error ? (
-          <ErrorBlock error={retry.error} title="重试失败" />
+          <ErrorBlock
+            error={retry.error}
+            title={`重试失败（批次 ${(retryingId || retry.variables || "").slice(0, 8)}）`}
+          />
         ) : null}
 
         {inspectBatchId !== "" ? (
@@ -1461,7 +1483,9 @@ function UploadTab() {
             <AsyncSection
               isLoading={errorsQuery.isLoading}
               error={errorsQuery.error}
-              isEmpty={(errorsQuery.data?.items.length ?? 0) === 0}
+              isEmpty={
+                !errorsQuery.isLoading && (errorsQuery.data?.items.length ?? 0) === 0
+              }
               emptyIcon={FileText}
               emptyTitle="没有错误明细"
               emptyHint="这个批次没有记录行级校验错误。"

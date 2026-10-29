@@ -297,7 +297,7 @@ async def list_upload_errors(
     batch_id: uuid.UUID,
     session: SessionDep,
     context: AuthenticatedContextDep,
-    limit: Annotated[int, Query(ge=1, le=500)] = 50,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> AbiUploadErrorListResponse:
     """列出批次的行级校验错误。

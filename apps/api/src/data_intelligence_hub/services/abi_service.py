@@ -1210,16 +1210,31 @@ async def retry_abi_upload(
       ``pending``/``uploaded`` 该走正常的 commit 流程。
     - 文件必须还在，且 sha256 与记录一致。不一致说明落盘内容已被替换，
       这时重跑等于拿未知数据入库。
-    - 权限与 commit 一致：editor 起步，且非上传人需要 admin。
+    - 权限与 commit 一致：``replace`` 模式需要 publisher，其余 editor；
+      非上传人需要 admin。
 
-    重试会先清掉旧的 ``upload_error``：否则新旧错误混在一起，用户看到的
-    是上一次的失败原因，会误判这一次为什么还失败。
+    **本函数不修改任何状态。** ``failed → uploaded`` 的转换由
+    ``commit_batch(retry=True)`` 在行锁内完成。先前这里在锁外用无条件
+    ORM UPDATE 翻转状态并先行提交，有三个后果，都是实测复核确认的：
+
+    1. 两个并发重试可以把已 ``committed`` 的批次打回 ``uploaded``，
+       随后失败清理按 batch id 删掉第一次成功写入的全部行——数据静默消失。
+    2. ``commit_batch`` 入场阶段（权限、建表）抛错时不会走它的
+       ``_mark_failed``，批次永久停在 ``uploaded``：重试拒绝、commit 也拒绝。
+    3. 旧 ``upload_error`` 在确定能继续跑之前就被删掉，403 之后失败原因
+       再也找不回来。
+
+    ``replace`` 模式的权限判定也必须在这里与 ``commit_batch`` 一致：
+    否则 editor 能通过本函数，却在 ``commit_batch`` 里 403。
     """
     batch = await abi_repo.get_upload_batch(session, workspace.id, batch_id)
     if batch is None:
         raise AbiServiceError("upload_batch_not_found", 404)
+
+    # 与 commit_batch 的门槛保持一致：replace 要 publisher。
+    required_role = "publisher" if batch.mode == "replace" else "editor"
     grant = await _require_grant(
-        session, workspace.id, batch.dataset_id, user.id, "editor"
+        session, workspace.id, batch.dataset_id, user.id, required_role
     )
     if batch.uploaded_by != user.id and role_rank(grant.role) < role_rank("admin"):
         raise AbiServiceError("upload_retry_forbidden", 403)
@@ -1236,15 +1251,11 @@ async def retry_abi_upload(
     if batch.actual_sha256 is not None and _sha256_file(path) != batch.actual_sha256:
         raise AbiServiceError("upload_file_corrupted", 409)
 
-    await abi_repo.delete_upload_errors(session, batch.id)
-    batch.status = "uploaded"
-    batch.rows_loaded = 0
-    batch.rows_rejected = 0
-    await session.commit()
-
     from data_intelligence_hub.services.abi_upload import commit_batch
 
-    retried = await commit_batch(session, batch_id=batch.id, user_id=user.id)
+    retried = await commit_batch(
+        session, batch_id=batch.id, user_id=user.id, retry=True
+    )
     return AbiUploadBatchResponse.model_validate(retried)
 
 

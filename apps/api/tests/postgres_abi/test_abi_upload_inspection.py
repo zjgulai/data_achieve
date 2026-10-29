@@ -292,3 +292,123 @@ async def test_retry_is_repeatable_and_refreshes_errors(
         )
     # 清空重写后条数应与第一次相同，而不是累加成两倍。
     assert second_errors.total == first_errors.total
+
+
+async def test_retry_never_touches_a_committed_batch(
+    session_factory, tmp_path, monkeypatch
+) -> None:
+    """已提交的批次不能被重试改回 uploaded。
+
+    这是并发复核抓到的 critical：先前 ``retry`` 在锁外用无条件 ORM UPDATE
+    翻状态，两个并发重试能把 committed 打回 uploaded，随后失败清理按
+    batch id 删掉第一次成功写入的全部行。数据静默消失，而 catalog 的
+    row_count 仍停在旧值。
+
+    状态转换现在只在 ``commit_batch`` 的行锁内发生，且只接受 failed。
+    这条测试从外部固定那个不变量：committed 的批次重试后被拒，且状态、
+    行数一概不变。
+    """
+    user, workspace, dataset = await _setup(session_factory, tmp_path, monkeypatch)
+    created = await _upload(
+        session_factory, workspace, user, dataset, _csv_bytes([["a", "1"], ["b", "2"]])
+    )
+
+    async with session_factory() as session:
+        committed = await abi_service.commit_abi_upload(
+            session, workspace, user, created.batch.id
+        )
+    assert committed.status == "committed"
+    assert committed.rows_loaded == 2
+
+    async with session_factory() as session:
+        with pytest.raises(AbiServiceError) as exc:
+            await abi_service.retry_abi_upload(
+                session, workspace, user, created.batch.id
+            )
+    assert exc.value.detail == "upload_not_retryable"
+
+    async with session_factory() as session:
+        batch = await abi_repo.get_upload_batch(
+            session, workspace.id, created.batch.id
+        )
+    assert batch is not None
+    assert batch.status == "committed", "重试不得改写已提交批次的状态"
+    assert batch.rows_loaded == 2, "计数不得被清零"
+
+
+async def test_retry_denied_keeps_batch_failed_and_errors_intact(
+    session_factory, tmp_path, monkeypatch
+) -> None:
+    """权限不足时重试必须在改任何状态之前拒绝。
+
+    先前 retry 先删 upload_error、把状态改成 uploaded 并提交，再去
+    commit_batch 里做 publisher 复核。于是 replace 模式的批次被降权后
+    重试：返回 403，但批次已停在 uploaded——重试再拒、commit 也拒、
+    同一份文件又因唯一约束无法重新上传，数据集对该文件永久卡死，
+    失败明细也一起没了。
+
+    现在权限判定在前，且状态转换在 commit_batch 行锁内。
+    """
+    user, workspace, dataset = await _setup(session_factory, tmp_path, monkeypatch)
+
+    created = await _upload(
+        session_factory, workspace, user, dataset, _csv_bytes([["a", "not-a-number"]])
+    )
+    async with session_factory() as session:
+        with pytest.raises(AbiServiceError):
+            await abi_service.commit_abi_upload(
+                session, workspace, user, created.batch.id
+            )
+
+    async with session_factory() as session:
+        before = await abi_service.get_abi_upload_errors(
+            session, workspace, user, created.batch.id
+        )
+    assert before.total >= 1
+
+    # 造一个只读成员：他既不是上传人，也没有 admin，重试必须 403。
+    other = User(
+        id=uuid.uuid4(),
+        email=f"viewer-{uuid.uuid4().hex[:8]}@example.com",
+        password_hash="x",
+        name="U5 Viewer",
+        status="active",
+    )
+    async with session_factory() as session:
+        session.add(other)
+        await session.commit()
+
+    from data_intelligence_hub.api.deps import DatasetAccess
+    from data_intelligence_hub.schemas.abi import AbiGrantCreateRequest
+
+    async with session_factory() as session:
+        resolved, grant = await abi_service._resolve_dataset_for_user(
+            session, workspace, user, dataset.slug, "admin"
+        )
+        await abi_service.create_abi_grant(
+            session,
+            DatasetAccess(
+                dataset=resolved, grant=grant, workspace=workspace, user=user
+            ),
+            AbiGrantCreateRequest(user_id=other.id, role="viewer"),
+        )
+
+    async with session_factory() as session:
+        with pytest.raises(AbiServiceError) as exc:
+            await abi_service.retry_abi_upload(
+                session, workspace, other, created.batch.id
+            )
+    assert exc.value.status_code == 403
+
+    async with session_factory() as session:
+        batch = await abi_repo.get_upload_batch(
+            session, workspace.id, created.batch.id
+        )
+    assert batch is not None
+    assert batch.status == "failed", "被拒的重试不得改动状态"
+
+    async with session_factory() as session:
+        after = await abi_service.get_abi_upload_errors(
+            session, workspace, user, created.batch.id
+        )
+    assert after.total == before.total, "被拒的重试不得删掉失败明细"
