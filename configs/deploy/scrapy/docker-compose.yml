@@ -51,7 +51,7 @@ services:
     container_name: data_achieve_scrapy_abi_migrate
     # 用 profiles 把它挡在默认 up 之外。
     # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
-    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # worker 也不该随主发布启动：按需用 --profile abi 拉起。
     # 启用方式：docker compose --profile abi up -d
     profiles: ["abi"]
     command: ["alembic", "upgrade", "head"]
@@ -79,7 +79,7 @@ services:
     container_name: data_achieve_scrapy_abi_ingest
     # 用 profiles 把它挡在默认 up 之外。
     # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
-    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # worker 也不该随主发布启动：按需用 --profile abi 拉起。
     # 启用方式：docker compose --profile abi up -d
     profiles: ["abi"]
     command: ["python", "-m", "data_intelligence_hub.abi.ingest"]
@@ -106,13 +106,14 @@ services:
   # ABI 导出 worker。与 ingest 分开成容器：导出峰值内存独立计量，
   # 1g 上限把最坏情况限制在导出容器内。只给 DATABASE_URL。
   # 导出目录挂在 scrapy_export_data 上，必须先等 export-init 完成 chown。
-  # command 用 ingest 模块的 --role export：本阶段只有骨架，导出逻辑见 TODO。
+  # command 用 ingest 模块的 --role export：该角色每个 tick 领一批 queued
+  # 作业，逐个独立事务执行；遮罩与路径校验在 abi_export.run_job 内。
   abi-export:
     image: data_achieve_scrapy_api:latest
     container_name: data_achieve_scrapy_abi_export
     # 用 profiles 把它挡在默认 up 之外。
     # abi-migrate 是一次性作业，不带服务名的 `up -d` 每次都重跑迁移；
-    # 两个 worker 在闭环完成前也不该随主发布启动。
+    # worker 也不该随主发布启动：按需用 --profile abi 拉起。
     # 启用方式：docker compose --profile abi up -d
     profiles: ["abi"]
     command:

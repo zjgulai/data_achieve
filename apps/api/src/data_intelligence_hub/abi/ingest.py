@@ -1,16 +1,18 @@
 """ABI 摄取/导出常驻 worker 的最小骨架。
 
-本模块只做四件事：
+本模块做四件事：
 
 1. 启动时校验数据库迁移已到 head，未到就退出，由 ``restart: unless-stopped``
    等待下一次；这样 worker 不会在缺表的环境里空转。
 2. 每分钟一个 tick，向 ``meta.worker_heartbeat`` 写心跳。
 3. 摄取角色在 Asia/Shanghai 02:15 为每个启用的 Apify 账号入队一条
    T-1 的 ``scan`` 作业。日期由应用算好后传参，SQL 里不出现 ``current_date``。
-4. 导出角色目前只写心跳，导出循环见函数内 TODO。
+4. 导出角色每个 tick 领一批 queued 作业并执行（``drain_export_queue``），
+   每个作业独立事务。遮罩、CSV 注入前缀、路径越界校验都在
+   ``abi_export.run_job`` 内部完成，这里只负责调度与计数。
 
-刻意不做的事：不实现清单扫描、不拉 item、不做 PII 遮罩、不写导出文件。
-这些属于后续切片，先保证容器能起、心跳可见、调度幂等。
+刻意不做的事：不实现清单扫描、不拉 item。摄取侧仍是骨架——只入队 scan，
+不消费。这些属于后续切片，先保证容器能起、心跳可见、调度幂等。
 
 运行方式：
 
@@ -41,6 +43,8 @@ from data_intelligence_hub.core.database import (
     check_database_schema,
 )
 from data_intelligence_hub.core.logging import configure_logging
+from data_intelligence_hub.repositories import abi as abi_repo
+from data_intelligence_hub.services import abi_export
 
 logger = structlog.get_logger(__name__)
 
@@ -171,6 +175,65 @@ async def run_tick(
         await write_heartbeat(session, worker_id=worker_id, role=f"abi-{role}", note=note)
         await session.commit()
 
+    if role == "export":
+        note = await drain_export_queue(session_factory, worker_id=worker_id)
+        if note:
+            async with session_factory() as session:
+                await write_heartbeat(
+                    session, worker_id=worker_id, role="abi-export", note=note
+                )
+                await session.commit()
+
+
+async def drain_export_queue(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    worker_id: str,
+    batch: int = 5,
+) -> str | None:
+    """领取并执行一批 queued 导出作业，返回给心跳用的摘要。
+
+    每个作业独立事务：一个失败不能拖垮同批其它作业。失败已由
+    ``run_job`` 内部写进 ``export_job.error`` 并置 ``failed``，这里只统计。
+
+    并发安全靠 ``run_job`` 的 ``FOR UPDATE`` + 状态重查：多个 worker 同时
+    领到同一个 id 时，只有一个能把它从 queued 推进到 running，其余得到
+    ``AbiExportNotReady``，按「跳过」处理而不是记成失败。
+    """
+    async with session_factory() as session:
+        job_ids = await abi_repo.claim_queued_export_jobs(session, limit=batch)
+    if not job_ids:
+        return None
+
+    succeeded = 0
+    failed = 0
+    skipped = 0
+    for job_id in job_ids:
+        try:
+            async with session_factory() as session:
+                await abi_export.run_job(session, job_id)
+            succeeded += 1
+        except abi_export.AbiExportNotReady:
+            # 被别的 worker 抢先推进了，不是错误。
+            skipped += 1
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            failed += 1
+            logger.exception(
+                "abi_export_job_failed", job_id=str(job_id), worker_id=worker_id
+            )
+
+    logger.info(
+        "abi_export_drained",
+        worker_id=worker_id,
+        claimed=len(job_ids),
+        succeeded=succeeded,
+        failed=failed,
+        skipped=skipped,
+    )
+    return f"export claimed={len(job_ids)} ok={succeeded} failed={failed} skipped={skipped}"
+
 
 def resolve_worker_id(role: str) -> str:
     """worker 标识。显式 ABI_WORKER_ID 优先，否则用角色 + 主机名。"""
@@ -255,16 +318,7 @@ async def _run(*, role: str, once: bool) -> None:
     if once:
         await run_tick(async_session_factory, worker_id=worker_id, role=role)
         return
-    if role == "export":
-        # TODO(ABI): 导出循环。当前骨架只维持心跳，保证容器可观测。
-        # 后续实现顺序：
-        # 1. 用 FOR UPDATE SKIP LOCKED 领取 abi.export_job 里 status='queued' 的行；
-        # 2. 按 abi.field_policy 做遮罩；pii_class='unknown' 默认拒绝导出；
-        # 3. CSV 处理五种注入前缀：= + - @ \t \r；
-        # 4. 产物写 settings.abi_export_dir，文件名与路径都要做越界校验
-        #    （Path.resolve().relative_to(export_root)）；
-        # 5. 成功/失败都写 meta.audit_log，detail 只存 HMAC 后的 filters。
-        logger.info("abi_export_worker_skeleton", note="export loop not implemented")
+    # 导出角色不需要额外预热：run_tick 每轮会调 drain_export_queue。
     await run_forever(async_session_factory, worker_id=worker_id, role=role)
 
 

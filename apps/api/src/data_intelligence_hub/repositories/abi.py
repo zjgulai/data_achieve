@@ -599,6 +599,39 @@ async def create_export_job(
     return job
 
 
+async def claim_queued_export_jobs(
+    session: AsyncSession,
+    *,
+    limit: int = 5,
+) -> list[uuid.UUID]:
+    """列出待执行的导出作业 id。
+
+    **纯读候选，不抢锁、不改状态。** 并发控制全部交给
+    ``abi_export.run_job``：它在 ``FOR UPDATE`` 下重查 ``status='queued'``，
+    抢输的 worker 会看到 running 并得到 ``AbiExportNotReady``。
+
+    这里刻意不用 ``FOR UPDATE SKIP LOCKED``：那会在本会话持锁，而调用方
+    随后要开新事务跑 run_job，两个事务对同一行的锁会互相等待。
+    也不用「先改 status 抢占」：run_job 见到非 queued 会直接拒绝，
+    等于把自己饿死。
+    """
+    if limit < 1:
+        return []
+    result = await session.execute(
+        select(ExportJob.id)
+        .where(
+            ExportJob.status == "queued",
+            or_(
+                ExportJob.expires_at.is_(None),
+                ExportJob.expires_at > func.now(),
+            ),
+        )
+        .order_by(ExportJob.created_at)
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
 async def get_export_job(
     session: AsyncSession,
     workspace_id: uuid.UUID,
