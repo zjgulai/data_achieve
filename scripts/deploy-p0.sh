@@ -437,16 +437,31 @@ $compose run --rm --no-deps api alembic upgrade head"
   # --no-deps 避免连带重启 db 等依赖。
   # 重启 edge 是必须的：edge 的 nginx 用静态 proxy_pass 主机名，
   # 只在启动时解析一次，容器换 IP 后会一直打旧地址。
+  # abi-export 一并替换：它是异步导出的唯一消费者，必须与 api 同镜像同步。
+  # 此前它挂在 profiles: ["abi"] 下、且本脚本从不带该 profile，生产上
+  # 从来没有 worker 在跑——用户提交导出、审批通过后作业永远停在 queued。
+  # 用 --profile abi 拉起是因为 abi-migrate 也要该 profile，而 up 里点名
+  # 服务只启动被点名的那些，abi-migrate 不会被顺带跑起来。
   echo "-- 5/7 替换容器并重启 edge"
   run_remote "$key" "$ssh_target" "set -euo pipefail
 cd $REMOTE_APP
 $compose up -d --no-deps api console web
+$compose --profile abi up -d --no-deps abi-export
 $compose restart edge
 sleep 3
-docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge"
+docker inspect -f '  edge={{.State.Status}}' data_achieve_scrapy_edge
+docker inspect -f '  abi-export={{.State.Status}}' data_achieve_scrapy_abi_export 2>/dev/null || echo '  abi-export=absent'"
 
   echo "-- 6/7 等待健康"
   wait_healthy "$key" "$ssh_target" "api console web"
+  # abi-export 没有 HEALTHCHECK，只确认进程在跑。
+  run_remote "$key" "$ssh_target" "set -euo pipefail
+state=\$(docker inspect -f '{{.State.Status}}' data_achieve_scrapy_abi_export 2>/dev/null || echo absent)
+if [ \"\$state\" != \"running\" ]; then
+  echo \"  abi-export 未运行：\$state\" >&2
+  exit 1
+fi
+echo '  abi-export=running'"
 
   echo "-- 7/7 重载共享网关"
   reload_gateway "$key" "$ssh_target"
