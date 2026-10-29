@@ -7,8 +7,12 @@
 - ``approve_job`` 完成双人审批；审批人同样必须有 publisher grant。
 - ``run_job`` 流式生成 csv / xlsx / jsonl 文件。xlsx 用 openpyxl 惰性导入，
   只使用 write_only 模式，避免 50 万行全量加载进内存。
-- ``build_download_path`` 校验 ``(job_id, workspace_id, created_by/grant)``、
-  过期时间与 ``Path.resolve().relative_to(export_root)``，越界一律 404。
+- 下载授权在 ``abi_service.get_abi_export_download`` 里做：按 grant 与
+  是否遮罩分级，再校验过期时间与 ``Path.resolve().relative_to(export_root)``，
+  越界一律 404。此模块只提供 ``artifact_path_for`` 做纯路径校验。
+
+  曾经这里还有一个 ``build_download_path``，无任何调用方，且判定比线上
+  路径宽松（任意 grant 即可下载未遮罩导出）。留着就是等人误用，已删除。
 
 CSV 注入处理五种前缀：``=``、``+``、``-``、``@``、制表符、回车符。
 遮罩在服务层执行，不在前端执行。
@@ -37,13 +41,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data_intelligence_hub.core.config import get_settings
 from data_intelligence_hub.models.abi import (
-    AccessGrant,
     CatalogDataset,
     DatasetColumn,
     ExportJob,
 )
+from data_intelligence_hub.repositories import abi as abi_repo
 from data_intelligence_hub.services.abi_query import (
-    AbiAccessDenied,
     AbiQueryPlan,
     AbiServiceError,
     mask_row,
@@ -59,6 +62,11 @@ EXPORT_FORMATS: Final[frozenset[str]] = frozenset({"csv", "xlsx", "jsonl"})
 UNMASKED_REASON_MIN_CHARS: Final[int] = 10
 CSV_INJECTION_PREFIXES: Final[tuple[str, ...]] = ("=", "+", "-", "@", "\t", "\r")
 CSV_FLUSH_BYTES: Final[int] = 64 * 1024
+
+# 单次导出的硬上限。``prepare_query(limit=None)`` 会生成无行数约束的
+# SELECT，导出因此可以拉走整张表——同步创建路径有 ``_EXPORT_MAX_ROWS``
+# 拦着，但执行侧从来没有。worker 捡起任何 job 都会照单全收。
+MAX_EXPORT_ROWS: Final[int] = 50_000
 
 CONTENT_TYPES: Final[dict[str, str]] = {
     "csv": "text/csv; charset=utf-8",
@@ -134,7 +142,8 @@ def _resolve_under(root: Path, candidate: Path) -> Path:
 def artifact_path_for(job: ExportJob, *, export_root_path: Path | None = None) -> Path:
     """校验 job.artifact_path 在导出根内，并返回解析后的绝对路径。
 
-    这是纯路径校验，不做授权。授权由 ``build_download_path`` 负责。
+    这是纯路径校验，不做授权。授权由
+    ``abi_service.get_abi_export_download`` 负责。
     """
 
     if not job.artifact_path:
@@ -571,6 +580,7 @@ async def _iter_masked_rows(
     plan: AbiQueryPlan,
     *,
     mask_pii: bool,
+    max_rows: int | None = None,
 ) -> AsyncGenerator[dict[str, object], None]:
     """按计划流式读取行并按需遮罩。
 
@@ -579,8 +589,16 @@ async def _iter_masked_rows(
     """
 
     result = await session.stream(plan.statement)
+    emitted = 0
     try:
         async for row in result:
+            emitted += 1
+            if max_rows is not None and emitted > max_rows:
+                # 超限就明确失败，不产出部分文件。静默截断的导出看起来完整，
+                # 用户会拿它当全量做判断。``prepare_query`` 的分页上限
+                # （MAX_PAGE_SIZE）远小于导出的行数预算，所以行数控制只能
+                # 在这里做，不能靠 SELECT LIMIT。
+                raise AbiExportValidationError("abi_export_row_limit_exceeded")
             mapping = row._mapping
             raw = {column: mapping[column] for column in plan.columns}
             if mask_pii:
@@ -667,6 +685,30 @@ async def run_job(
         await session.rollback()
         raise
 
+    # 执行侧也要读策略。此前只有创建路径读，worker 捡起 job 后完全不看：
+    # allowed_formats 与 max_rows_masked 在 queued→running 阶段失效，
+    # 任何直接写 ExportJob 的路径都能绕过它们。
+    #
+    # 缺省与表定义一致（require_dual_approval 的 server_default 是 true），
+    # 但这里执行的是格式与行数两条，缺省分别是「不限制」——所以只在
+    # policy 存在时收紧，不凭空造限制。
+    policy = await abi_repo.get_export_policy(session, job.workspace_id, job.dataset_id)
+    if (
+        policy is not None
+        and policy.allowed_formats is not None
+        and job.format not in policy.allowed_formats
+    ):
+        await session.rollback()
+        raise AbiExportValidationError("abi_export_format_not_allowed")
+
+    row_limit = MAX_EXPORT_ROWS
+    if (
+        job.mask_pii
+        and policy is not None
+        and policy.max_rows_masked is not None
+    ):
+        row_limit = min(row_limit, policy.max_rows_masked)
+
     job.status = "running"
     job.started_at = datetime.now(UTC)
     job.error = None
@@ -684,11 +726,30 @@ async def run_job(
             filters=cast("Sequence[object] | None", job.filters),
             order_by=None,
             order_dir="asc",
+            # 行数上限不在这里做：prepare_query 的分页上限是 200，
+            # 而导出预算远大于它。由 _iter_masked_rows 计数并中断。
             limit=None,
         )
+        # 未分类字段不允许明文导出。
+        #
+        # ``unknown`` 的意思是「还没判定」，不是「没有 PII」。遮罩导出对它
+        # 输出 ``***`` 是安全的；但 ``mask_pii=False`` 的导出会把它原样写出。
+        # 同步创建路径有 ``_resolve_selection`` 拦 unknown，worker 路径没有——
+        # 任何直接写 ExportJob 的入口都能绕过。
+        if not job.mask_pii:
+            unknown = sorted(
+                name
+                for name in plan.columns
+                if plan.pii_classes.get(name, "unknown") == "unknown"
+            )
+            if unknown:
+                raise AbiExportValidationError("abi_export_unknown_pii_denied")
+
         artifact_path = _artifact_path(job, filename)
         temp_path = artifact_path.with_name(artifact_path.name + ".tmp")
-        rows = _iter_masked_rows(session, plan, mask_pii=job.mask_pii)
+        rows = _iter_masked_rows(
+            session, plan, mask_pii=job.mask_pii, max_rows=row_limit
+        )
         try:
             if job.format == "csv":
                 rows_total = await _write_csv(
@@ -738,48 +799,6 @@ async def run_job(
 # ---------------------------------------------------------------- 下载
 
 
-async def build_download_path(
-    session: AsyncSession,
-    job_id: uuid.UUID,
-    workspace_id: uuid.UUID,
-    user_id: uuid.UUID,
-) -> Path:
-    """校验下载权限与路径后返回文件绝对路径。
-
-    允许的调用者：作业创建人，或在该数据集上有任意角色 grant 的用户。
-    作业不存在/不在当前 workspace 一律 404；过期返回 410；路径越界 404。
-    """
-
-    job = await session.scalar(
-        select(ExportJob).where(
-            ExportJob.workspace_id == workspace_id,
-            ExportJob.id == job_id,
-        )
-    )
-    if job is None:
-        raise AbiExportNotFound()
-    if job.created_by != user_id:
-        grant_id = await session.scalar(
-            select(AccessGrant.id).where(
-                AccessGrant.dataset_id == job.dataset_id,
-                AccessGrant.workspace_id == workspace_id,
-                AccessGrant.user_id == user_id,
-            )
-        )
-        if grant_id is None:
-            raise AbiAccessDenied("abi_export_download_grant_required")
-    if job.status != "succeeded":
-        raise AbiExportNotReady("abi_export_not_succeeded")
-    now = datetime.now(UTC)
-    if job.expires_at is None or _ensure_aware(job.expires_at) <= now:
-        job.status = "expired"
-        await session.commit()
-        raise AbiExportExpired()
-    path = artifact_path_for(job)
-    await session.commit()
-    return path
-
-
 __all__ = [
     "AbiExportApprovalError",
     "AbiExportError",
@@ -791,7 +810,6 @@ __all__ = [
     "EXPORT_FORMATS",
     "approve_job",
     "artifact_path_for",
-    "build_download_path",
     "create_job",
     "export_root",
     "filters_hmac",

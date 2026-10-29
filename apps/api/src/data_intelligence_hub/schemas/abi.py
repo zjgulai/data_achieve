@@ -356,6 +356,12 @@ class AbiExportJobResponse(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
     expires_at: datetime | None
+    # 审批面板需要这三项才能做出判断：谁批的、为什么（未遮罩导出必须有
+    # >= 10 字理由）、以及导出的是哪几列。
+    approved_by: uuid.UUID | None = None
+    approved_at: datetime | None = None
+    reason: str | None = None
+    columns: list[str] | None = None
 
 
 class AbiExportListResponse(BaseModel):

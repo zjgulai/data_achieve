@@ -272,6 +272,12 @@ export type AbiExportJob = {
   started_at: string | null;
   finished_at: string | null;
   expires_at: string | null;
+  /** 审批人。null 表示还没批（或不需要批）。 */
+  approved_by: string | null;
+  approved_at: string | null;
+  /** 申请人填写的理由。未遮罩导出必填 >= 10 字。 */
+  reason: string | null;
+  columns: string[] | null;
 };
 
 export type AbiExportCreateRequest = {
@@ -511,6 +517,35 @@ function filenameFromDisposition(header: string | null): string | null {
  * 服务端按 (job_id, workspace_id, created_by/grant) 取 job，校验过期时间与
  * ``Path.resolve().relative_to(export_root)``；前端只负责把 bytes 交给浏览器。
  */
+/**
+ * 批准一个等待双人审批的导出。
+ *
+ * 只有未遮罩导出会进入 awaiting_approval；申请人不能批自己的作业，
+ * 服务端会拒。审批人需要 publisher grant。
+ */
+export async function approveAbiExport(jobId: string): Promise<AbiExportJob> {
+  return apiFetch<AbiExportJob>(
+    `/api/abi/exports/${encodeURIComponent(jobId)}/approve`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * 驳回一个等待审批的导出。``rejected`` 是终态，要数据得重新发起。
+ */
+export async function rejectAbiExport(
+  jobId: string,
+  reason?: string | null,
+): Promise<AbiExportJob> {
+  return apiFetch<AbiExportJob>(
+    `/api/abi/exports/${encodeURIComponent(jobId)}/reject`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? null }),
+    },
+  );
+}
+
 export async function downloadAbiExport(job: AbiExportJob): Promise<void> {
   if (job.status !== "succeeded") {
     throw new Error("导出尚未完成");

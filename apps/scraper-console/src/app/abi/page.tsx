@@ -22,6 +22,7 @@ import { ApiError } from "@/lib/api/client";
 import {
   ABI_QUERY_OPS,
   ABI_QUERY_OP_LABELS,
+  approveAbiExport,
   createAbiExport,
   createAbiGrant,
   deleteAbiGrant,
@@ -35,6 +36,7 @@ import {
   listAbiUploadErrors,
   listAbiUploads,
   queryAbiDataset,
+  rejectAbiExport,
   retryAbiUpload,
   uploadAbiBatch,
 } from "@/lib/api/abi";
@@ -1568,6 +1570,34 @@ function ExportTab() {
     onError: (error) => setActionError(describeError(error)),
   });
 
+  // 审批。approve/reject 都用 variables 记住目标作业，让「处理中」只作用于
+  // 被点的那一行——isPending 本身是全局的。
+  const approve = useMutation<AbiExportJob, Error, string>({
+    mutationFn: (jobId) => approveAbiExport(jobId),
+    onSuccess: () => {
+      setActionError(null);
+      void queryClient.invalidateQueries({ queryKey: ["abi", "exports"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
+    },
+    onError: (error) => setActionError(describeError(error)),
+  });
+
+  const reject = useMutation<AbiExportJob, Error, string>({
+    mutationFn: (jobId) => rejectAbiExport(jobId, "控制台驳回"),
+    onSuccess: () => {
+      setActionError(null);
+      void queryClient.invalidateQueries({ queryKey: ["abi", "exports"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
+    },
+    onError: (error) => setActionError(describeError(error)),
+  });
+
+  const pendingJobId = approve.isPending
+    ? (approve.variables ?? "")
+    : reject.isPending
+      ? (reject.variables ?? "")
+      : "";
+
   const maskOffInvalid = !maskPii && reason.trim().length < 10;
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1694,7 +1724,19 @@ function ExportTab() {
               </span>,
               EXPORT_FORMAT_LABELS[job.format] ?? job.format,
               job.mask_pii ? "是" : "否（需 admin）",
-              EXPORT_STATUS_LABELS[job.status] ?? job.status,
+              <span key={`${job.id}-status`} className="grid gap-0.5">
+                <span>{EXPORT_STATUS_LABELS[job.status] ?? job.status}</span>
+                {job.status === "awaiting_approval" && job.reason ? (
+                  <span className="max-w-56 text-[11px] text-[var(--text-tertiary)]">
+                    理由：{job.reason}
+                  </span>
+                ) : null}
+                {job.approved_by ? (
+                  <span className="text-[11px] text-[var(--text-tertiary)]">
+                    已由 {job.approved_by.slice(0, 8)} 批准
+                  </span>
+                ) : null}
+              </span>,
               `${formatNumber(job.rows_total)} / ${formatBytes(job.bytes_total)}`,
               formatTime(job.expires_at),
               <div key={`${job.id}-actions`} className="flex flex-wrap gap-2">
@@ -1708,6 +1750,30 @@ function ExportTab() {
                     <Download size={12} aria-hidden="true" />
                     下载
                   </button>
+                ) : null}
+                {job.status === "awaiting_approval" ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={pendingJobId !== ""}
+                      onClick={() => approve.mutate(job.id)}
+                      className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
+                    >
+                      {pendingJobId === job.id && approve.isPending
+                        ? "批准中…"
+                        : "批准"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pendingJobId !== ""}
+                      onClick={() => reject.mutate(job.id)}
+                      className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                    >
+                      {pendingJobId === job.id && reject.isPending
+                        ? "驳回中…"
+                        : "驳回"}
+                    </button>
+                  </>
                 ) : null}
                 {job.status === "expired" ? (
                   <span className="text-xs text-[var(--text-tertiary)]">已过期（410）</span>

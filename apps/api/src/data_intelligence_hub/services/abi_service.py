@@ -1476,16 +1476,21 @@ async def create_abi_export(
 
 def _export_visible(
     job: ExportJob,
-    user: User,
     grant: AccessGrant | None,
 ) -> bool:
-    """创建人始终可见；有 grant 的用户按导出是否遮罩区分。
+    """按 grant 与导出是否遮罩判定可见性。
 
     遮罩导出对任意角色放行；未遮罩导出只放行 publisher/admin，
     避免 viewer 通过下载拿到未遮罩的 PII。
+
+    **创建人不再自动放行。** 原先 ``job.created_by == user.id`` 直接返回
+    True，于是撤掉某人的 grant 之后，他此前创建的导出仍然可以下载——
+    包括未遮罩的。撤权应当同时切断历史产物的访问，否则「收回权限」
+    只挡住了新请求，挡不住已经发出去的东西。
+
+    这条规则对列表与下载同时生效（两者都走 ``_get_visible_export``），
+    避免出现「列表看不到但能直接按 id 下载」的不一致。
     """
-    if job.created_by == user.id:
-        return True
     if grant is None:
         return False
     if job.mask_pii:
@@ -1505,7 +1510,7 @@ async def _get_visible_export(
     grant = await abi_repo.get_access_grant(
         session, workspace.id, job.dataset_id, user.id
     )
-    if not _export_visible(job, user, grant):
+    if not _export_visible(job, grant):
         raise AbiServiceError("export_not_found", 404)
     return job
 
