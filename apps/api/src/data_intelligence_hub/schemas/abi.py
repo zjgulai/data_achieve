@@ -289,6 +289,34 @@ class AbiUploadCreateResponse(BaseModel):
     token_expires_at: datetime
 
 
+class AbiUploadErrorItem(BaseModel):
+    """一行校验错误。
+
+    只含定位与规则名，不含原始值——``message`` 由服务端生成，不回显用户数据。
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    row_number: int
+    column_name: str | None
+    rule_id: str
+    message: str | None
+
+
+class AbiUploadErrorListResponse(BaseModel):
+    """批次错误明细。``total`` 是错误总数，不受 limit 影响。"""
+
+    items: list[AbiUploadErrorItem]
+    total: int
+
+
+class AbiUploadListResponse(BaseModel):
+    """某 dataset 的上传批次列表，按创建时间倒序。"""
+
+    items: list[AbiUploadBatchResponse]
+    total: int
+
+
 class AbiExportCreateRequest(BaseModel):
     """创建导出任务。"""
 
@@ -361,6 +389,9 @@ __all__ = [
     "AbiQueryRequest",
     "AbiQueryResponse",
     "AbiUploadBatchResponse",
+    "AbiUploadErrorItem",
+    "AbiUploadErrorListResponse",
+    "AbiUploadListResponse",
     "AbiUploadCreateRequest",
     "AbiUploadCreateResponse",
 ]

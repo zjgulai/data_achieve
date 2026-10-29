@@ -39,6 +39,8 @@ from data_intelligence_hub.schemas.abi import (
     AbiUploadBatchResponse,
     AbiUploadCreateRequest,
     AbiUploadCreateResponse,
+    AbiUploadErrorListResponse,
+    AbiUploadListResponse,
 )
 from data_intelligence_hub.services import abi_service
 from data_intelligence_hub.services.abi_service import AbiServiceError
@@ -253,6 +255,85 @@ async def commit_upload(
     """提交上传批次。校验 hash、行数与文件路径。"""
     try:
         return await abi_service.commit_abi_upload(
+            session, context.workspace, context.user, batch_id
+        )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.get(
+    "/datasets/{slug}/uploads",
+    response_model=AbiUploadListResponse,
+)
+async def list_uploads(
+    slug: str,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> AbiUploadListResponse:
+    """列出某 dataset 的上传批次，按创建时间倒序。
+
+    viewer 即可查看：批次历史是可观测性需求，不含行内容。
+    """
+    try:
+        return await abi_service.list_abi_uploads(
+            session,
+            context.workspace,
+            context.user,
+            slug,
+            limit=limit,
+            offset=offset,
+        )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.get(
+    "/uploads/{batch_id}/errors",
+    response_model=AbiUploadErrorListResponse,
+)
+async def list_upload_errors(
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+    limit: Annotated[int, Query(ge=1, le=500)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> AbiUploadErrorListResponse:
+    """列出批次的行级校验错误。
+
+    只给定位（行号、列名、规则名）与不含数据值的说明。批次不存在与
+    跨租户一律 404，不区分——否则状态码差异本身就是存在性泄露。
+    """
+    try:
+        return await abi_service.get_abi_upload_errors(
+            session,
+            context.workspace,
+            context.user,
+            batch_id,
+            limit=limit,
+            offset=offset,
+        )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.post(
+    "/uploads/{batch_id}/retry",
+    response_model=AbiUploadBatchResponse,
+)
+async def retry_upload(
+    batch_id: uuid.UUID,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+) -> AbiUploadBatchResponse:
+    """重跑 failed 批次的 commit。不需要重新上传字节。
+
+    只接受 ``failed``：``committed`` 已成功，``pending``/``uploaded``
+    应走正常 commit。文件必须仍在且 sha256 与记录一致。
+    """
+    try:
+        return await abi_service.retry_abi_upload(
             session, context.workspace, context.user, batch_id
         )
     except AbiServiceError as exc:

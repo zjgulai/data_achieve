@@ -227,6 +227,24 @@ export type AbiUploadCreateResponse = {
   token_expires_at: string;
 };
 
+/** 一行校验错误。只有定位与规则名，服务端不回显用户数据。 */
+export type AbiUploadErrorItem = {
+  row_number: number;
+  column_name: string | null;
+  rule_id: string;
+  message: string | null;
+};
+
+export type AbiUploadErrorListResponse = {
+  items: AbiUploadErrorItem[];
+  total: number;
+};
+
+export type AbiUploadListResponse = {
+  items: AbiUploadBatch[];
+  total: number;
+};
+
 export type AbiExportStatus =
   | "queued"
   | "awaiting_approval"
@@ -382,6 +400,45 @@ export async function uploadAbiContent(
 export async function commitAbiUpload(batchId: string): Promise<AbiUploadBatch> {
   return apiFetch<AbiUploadBatch>(
     `/api/abi/uploads/${encodeURIComponent(batchId)}/commit`,
+    { method: "POST" },
+  );
+}
+
+/** 列出某 dataset 的上传批次，按创建时间倒序。 */
+export async function listAbiUploads(
+  datasetSlug: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<AbiUploadListResponse> {
+  const params = new URLSearchParams();
+  if (options.limit != null) params.set("limit", String(options.limit));
+  if (options.offset != null) params.set("offset", String(options.offset));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch<AbiUploadListResponse>(
+    `/api/abi/datasets/${encodeURIComponent(datasetSlug)}/uploads${suffix}`,
+  );
+}
+
+/** 批次的行级校验错误。total 是总数，不受 limit 影响。 */
+export async function listAbiUploadErrors(
+  batchId: string,
+  options: { limit?: number; offset?: number } = {},
+): Promise<AbiUploadErrorListResponse> {
+  const params = new URLSearchParams();
+  if (options.limit != null) params.set("limit", String(options.limit));
+  if (options.offset != null) params.set("offset", String(options.offset));
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return apiFetch<AbiUploadErrorListResponse>(
+    `/api/abi/uploads/${encodeURIComponent(batchId)}/errors${suffix}`,
+  );
+}
+
+/**
+ * 重跑 failed 批次的 commit。不需要重新上传字节——
+ * 失败发生在 commit 阶段时文件已完整落盘并通过 sha256 校验。
+ */
+export async function retryAbiUpload(batchId: string): Promise<AbiUploadBatch> {
+  return apiFetch<AbiUploadBatch>(
+    `/api/abi/uploads/${encodeURIComponent(batchId)}/retry`,
     { method: "POST" },
   );
 }

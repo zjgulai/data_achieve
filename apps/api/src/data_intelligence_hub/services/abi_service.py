@@ -70,6 +70,9 @@ from data_intelligence_hub.schemas.abi import (
     AbiUploadBatchResponse,
     AbiUploadCreateRequest,
     AbiUploadCreateResponse,
+    AbiUploadErrorItem,
+    AbiUploadErrorListResponse,
+    AbiUploadListResponse,
     PiiClass,
 )
 
@@ -1132,6 +1135,117 @@ async def commit_abi_upload(
         user_id=user.id,
     )
     return AbiUploadBatchResponse.model_validate(committed)
+
+
+async def list_abi_uploads(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    dataset_slug: str,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> AbiUploadListResponse:
+    """列出某 dataset 的上传批次。
+
+    权限是 viewer：看到自己的历史批次是基本可观测性需求，不涉及数据内容。
+    """
+    dataset, _grant = await _resolve_dataset_for_user(
+        session, workspace, user, dataset_slug, "viewer"
+    )
+    rows = await abi_repo.list_upload_batches(
+        session, workspace.id, dataset.id, limit=limit, offset=offset
+    )
+    total = await abi_repo.count_upload_batches(session, workspace.id, dataset.id)
+    return AbiUploadListResponse(
+        items=[AbiUploadBatchResponse.model_validate(row) for row in rows],
+        total=total,
+    )
+
+
+async def get_abi_upload_errors(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    batch_id: uuid.UUID,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> AbiUploadErrorListResponse:
+    """列出一个批次的校验错误。
+
+    批次不存在与跨租户一律 404，不区分——否则 404/403 的差异本身就是
+    「这个 id 存在」的信息泄露。
+    """
+    batch = await abi_repo.get_upload_batch(session, workspace.id, batch_id)
+    if batch is None:
+        raise AbiServiceError("upload_batch_not_found", 404)
+    await _require_grant(session, workspace.id, batch.dataset_id, user.id, "viewer")
+
+    rows = await abi_repo.list_upload_errors(
+        session, workspace.id, batch_id, limit=limit, offset=offset
+    )
+    total = await abi_repo.count_upload_errors(session, workspace.id, batch_id)
+    return AbiUploadErrorListResponse(
+        items=[AbiUploadErrorItem.model_validate(row) for row in rows],
+        total=total,
+    )
+
+
+async def retry_abi_upload(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    batch_id: uuid.UUID,
+) -> AbiUploadBatchResponse:
+    """重跑一个 failed 批次的 commit。
+
+    **不需要重新上传字节。** 失败发生在 commit 阶段时，文件已经完整落盘
+    并通过 sha256 校验；让用户重传 200MB 只是为了重跑一次解析，代价与
+    收益不匹配。
+
+    前置条件逐条收紧：
+
+    - 只允许 ``failed``。其它状态重试没有意义：``committed`` 已经成功，
+      ``pending``/``uploaded`` 该走正常的 commit 流程。
+    - 文件必须还在，且 sha256 与记录一致。不一致说明落盘内容已被替换，
+      这时重跑等于拿未知数据入库。
+    - 权限与 commit 一致：editor 起步，且非上传人需要 admin。
+
+    重试会先清掉旧的 ``upload_error``：否则新旧错误混在一起，用户看到的
+    是上一次的失败原因，会误判这一次为什么还失败。
+    """
+    batch = await abi_repo.get_upload_batch(session, workspace.id, batch_id)
+    if batch is None:
+        raise AbiServiceError("upload_batch_not_found", 404)
+    grant = await _require_grant(
+        session, workspace.id, batch.dataset_id, user.id, "editor"
+    )
+    if batch.uploaded_by != user.id and role_rank(grant.role) < role_rank("admin"):
+        raise AbiServiceError("upload_retry_forbidden", 403)
+    if batch.status != "failed":
+        raise AbiServiceError("upload_not_retryable", 409)
+    if batch.storage_path is None:
+        raise AbiServiceError("upload_file_missing", 409)
+
+    root = _upload_root() / str(batch.id)
+    path = Path(batch.storage_path).resolve()
+    _ensure_under_root(path, root)
+    if not path.is_file():
+        raise AbiServiceError("upload_file_missing", 409)
+    if batch.actual_sha256 is not None and _sha256_file(path) != batch.actual_sha256:
+        raise AbiServiceError("upload_file_corrupted", 409)
+
+    await abi_repo.delete_upload_errors(session, batch.id)
+    batch.status = "uploaded"
+    batch.rows_loaded = 0
+    batch.rows_rejected = 0
+    await session.commit()
+
+    from data_intelligence_hub.services.abi_upload import commit_batch
+
+    retried = await commit_batch(session, batch_id=batch.id, user_id=user.id)
+    return AbiUploadBatchResponse.model_validate(retried)
 
 
 def _filters_hmac(payload: dict[str, Any]) -> bytes:

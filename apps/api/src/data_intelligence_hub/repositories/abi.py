@@ -1002,6 +1002,84 @@ async def list_upload_errors(
     return list(result.scalars().all())
 
 
+async def delete_upload_errors(
+    session: AsyncSession,
+    batch_id: uuid.UUID,
+) -> int:
+    """清掉一个批次的全部错误行。重试前调用，避免新旧原因混在一起。
+
+    不按 workspace 过滤：``batch_id`` 已经由调用方在上层用
+    ``get_upload_batch(workspace_id, ...)`` 校验过归属，这里再 join 一次
+    只会让删除条件更难读。
+    """
+    result = await session.execute(
+        delete(UploadError).where(UploadError.batch_id == batch_id)
+    )
+    return int(result.rowcount or 0)
+
+
+async def count_upload_errors(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    batch_id: uuid.UUID,
+) -> int:
+    """批次错误总数。
+
+    单独计数而不是 ``len(list_upload_errors(...))``：错误可能上千条，
+    分页只取一页时前端仍要知道总数才有意义。
+    """
+    result = await session.execute(
+        select(func.count(UploadError.id))
+        .join(UploadBatch, UploadBatch.id == UploadError.batch_id)
+        .where(
+            UploadBatch.workspace_id == workspace_id,
+            UploadError.batch_id == batch_id,
+        )
+    )
+    return int(result.scalar() or 0)
+
+
+async def list_upload_batches(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[UploadBatch]:
+    """某 dataset 的批次，按创建时间倒序。
+
+    租户隔离靠 ``workspace_id`` 与 ``dataset_id`` 双条件，不依赖调用方
+    先做过校验——批次列表是最容易被拼错的查询点。
+    """
+    _validate_limit_offset(limit, offset)
+    result = await session.execute(
+        select(UploadBatch)
+        .where(
+            UploadBatch.workspace_id == workspace_id,
+            UploadBatch.dataset_id == dataset_id,
+        )
+        .order_by(UploadBatch.created_at.desc(), UploadBatch.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    return list(result.scalars().all())
+
+
+async def count_upload_batches(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID,
+) -> int:
+    result = await session.execute(
+        select(func.count(UploadBatch.id)).where(
+            UploadBatch.workspace_id == workspace_id,
+            UploadBatch.dataset_id == dataset_id,
+        )
+    )
+    return int(result.scalar() or 0)
+
+
 async def update_export_job(
     session: AsyncSession,
     workspace_id: uuid.UUID,
@@ -1133,6 +1211,8 @@ __all__ = [
     "count_dataset_rows",
     "count_datasets_for_user",
     "count_export_jobs",
+    "count_upload_batches",
+    "count_upload_errors",
     "count_pending_uploads",
     "create_access_grant",
     "create_dataset",
@@ -1142,6 +1222,7 @@ __all__ = [
     "decode_dataset_cursor",
     "delete_access_grant",
     "delete_grant",
+    "delete_upload_errors",
     "encode_dataset_cursor",
     "export_status_counts",
     "get_access_grant",
@@ -1163,6 +1244,7 @@ __all__ = [
     "list_field_policies",
     "list_grants",
     "list_physical_columns",
+    "list_upload_batches",
     "list_upload_errors",
     "overview_counts",
     "physical_table_exists",

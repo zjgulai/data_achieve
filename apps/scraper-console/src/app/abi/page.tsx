@@ -32,7 +32,10 @@ import {
   fetchAbiGrants,
   fetchAbiOverview,
   fetchAbiPolicy,
+  listAbiUploadErrors,
+  listAbiUploads,
   queryAbiDataset,
+  retryAbiUpload,
   uploadAbiBatch,
 } from "@/lib/api/abi";
 import type {
@@ -50,6 +53,7 @@ import type {
   AbiRole,
   AbiSourceKind,
   AbiUploadBatch,
+  AbiUploadErrorItem,
   AbiUploadMode,
 } from "@/lib/api/abi";
 
@@ -88,6 +92,9 @@ const PII_LABELS: Record<AbiPiiClass, string> = {
   direct: "直接标识",
   secret: "机密（永不返回）",
 };
+
+const EMPTY_BATCHES: AbiUploadBatch[] = [];
+const EMPTY_ERRORS: AbiUploadErrorItem[] = [];
 
 const UPLOAD_STATUS_LABELS: Record<string, string> = {
   pending: "待上传",
@@ -1230,11 +1237,42 @@ function UploadTab() {
       setFileInputKey((current) => current + 1);
       void queryClient.invalidateQueries({ queryKey: ["abi", "datasets"] });
       void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "uploads"] });
     },
   });
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     setFile(event.target.files?.[0] ?? null);
+  }
+
+  // 批次历史。只有选中数据集时才拉，避免无意义的 404。
+  const batchesQuery = useQuery({
+    queryKey: ["abi", "uploads", slug],
+    queryFn: () => listAbiUploads(slug, { limit: 20 }),
+    enabled: slug !== "",
+  });
+  const batches = batchesQuery.data?.items ?? EMPTY_BATCHES;
+  const [inspectBatchId, setInspectBatchId] = useState<string>("");
+
+  // 错误明细只在展开某个批次时拉。
+  const errorsQuery = useQuery({
+    queryKey: ["abi", "upload-errors", inspectBatchId],
+    queryFn: () => listAbiUploadErrors(inspectBatchId, { limit: 100 }),
+    enabled: inspectBatchId !== "",
+  });
+
+  const retry = useMutation<AbiUploadBatch, Error, string>({
+    mutationFn: (batchId) => retryAbiUpload(batchId),
+    onSuccess: () => {
+      setInspectBatchId("");
+      void queryClient.invalidateQueries({ queryKey: ["abi", "uploads", slug] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "datasets"] });
+      void queryClient.invalidateQueries({ queryKey: ["abi", "overview"] });
+    },
+  });
+
+  function refreshBatches() {
+    void queryClient.invalidateQueries({ queryKey: ["abi", "uploads", slug] });
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1337,6 +1375,118 @@ function UploadTab() {
             ) : null}
           </form>
         </AsyncSection>
+      </Panel>
+
+      <Panel
+        title="批次历史"
+        description="选中数据集后列出最近 20 个批次。失败批次可直接重试，不必重新上传字节。"
+        actions={
+          <RefreshButton
+            onClick={refreshBatches}
+            isFetching={batchesQuery.isFetching}
+          />
+        }
+      >
+        <AsyncSection
+          isLoading={batchesQuery.isLoading}
+          error={batchesQuery.error}
+          isEmpty={slug !== "" && batches.length === 0}
+          emptyIcon={FileText}
+          emptyTitle="还没有上传批次"
+          emptyHint="选择数据集并上传第一份 CSV 后，这里会出现批次记录。"
+          onRetry={refreshBatches}
+        >
+          {slug === "" ? (
+            <p className="text-sm text-[var(--text-tertiary)]">
+              先在上方选择目标数据集。
+            </p>
+          ) : (
+            <Table
+              caption="上传批次历史"
+              headers={["文件", "模式", "状态", "行数", "创建时间", "操作"]}
+              rows={batches.map((batch) => [
+                <span key="f" className="font-medium">
+                  {batch.filename}
+                </span>,
+                batch.mode,
+                <span key="s">
+                  {UPLOAD_STATUS_LABELS[batch.status] ?? batch.status}
+                </span>,
+                <span key="n" className="text-xs">
+                  载入 {formatNumber(batch.rows_loaded)} / 拒绝{" "}
+                  {formatNumber(batch.rows_rejected)}
+                </span>,
+                <span key="t" className="text-xs text-[var(--text-tertiary)]">
+                  {formatTime(batch.created_at)}
+                </span>,
+                <span key="a" className="flex flex-wrap gap-2">
+                  {batch.rows_rejected > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setInspectBatchId((current) =>
+                          current === batch.id ? "" : batch.id,
+                        )
+                      }
+                      className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2 py-1 text-xs hover:bg-[var(--surface-muted)]"
+                    >
+                      {inspectBatchId === batch.id ? "收起错误" : "查看错误"}
+                    </button>
+                  ) : null}
+                  {batch.status === "failed" ? (
+                    <button
+                      type="button"
+                      disabled={retry.isPending}
+                      onClick={() => retry.mutate(batch.id)}
+                      className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-2 py-1 text-xs font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
+                    >
+                      {retry.isPending ? "重试中…" : "重试"}
+                    </button>
+                  ) : null}
+                </span>,
+              ])}
+            />
+          )}
+        </AsyncSection>
+
+        {retry.error ? (
+          <ErrorBlock error={retry.error} title="重试失败" />
+        ) : null}
+
+        {inspectBatchId !== "" ? (
+          <div className="mt-4 grid gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-tertiary)]">
+              行级错误
+            </h3>
+            <AsyncSection
+              isLoading={errorsQuery.isLoading}
+              error={errorsQuery.error}
+              isEmpty={(errorsQuery.data?.items.length ?? 0) === 0}
+              emptyIcon={FileText}
+              emptyTitle="没有错误明细"
+              emptyHint="这个批次没有记录行级校验错误。"
+              onRetry={() => void errorsQuery.refetch()}
+            >
+              <p className="text-xs text-[var(--text-tertiary)]">
+                共 {formatNumber(errorsQuery.data?.total ?? 0)} 条，仅显示前 100 条。
+              </p>
+              <Table
+                caption="上传批次行级错误"
+                headers={["行号", "列", "规则", "说明"]}
+                rows={(errorsQuery.data?.items ?? EMPTY_ERRORS).map(
+                  (item: AbiUploadErrorItem) => [
+                    String(item.row_number),
+                    item.column_name ?? "—",
+                    <code key="r" className="text-xs">
+                      {item.rule_id}
+                    </code>,
+                    item.message ?? "—",
+                  ],
+                )}
+              />
+            </AsyncSection>
+          </div>
+        ) : null}
       </Panel>
     </div>
   );
