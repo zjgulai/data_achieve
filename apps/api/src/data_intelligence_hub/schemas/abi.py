@@ -284,6 +284,12 @@ class AbiExportCreateRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class AbiExportRejectRequest(BaseModel):
+    """驳回一个等待审批的导出。理由可选，但会写进审计。"""
+
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class AbiExportJobResponse(BaseModel):
     """导出任务详情。"""
 

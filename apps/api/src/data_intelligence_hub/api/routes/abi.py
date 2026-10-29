@@ -27,6 +27,7 @@ from data_intelligence_hub.schemas.abi import (
     AbiExportCreateRequest,
     AbiExportJobResponse,
     AbiExportListResponse,
+    AbiExportRejectRequest,
     AbiGrantCreateRequest,
     AbiGrantListResponse,
     AbiGrantResponse,
@@ -304,6 +305,47 @@ async def get_export(
     try:
         return await abi_service.get_abi_export(
             session, context.workspace, context.user, job_id
+        )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.post(
+    "/exports/{job_id}/approve",
+    response_model=AbiExportJobResponse,
+)
+async def approve_export(
+    job_id: uuid.UUID,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+) -> AbiExportJobResponse:
+    """批准一个等待双人审批的导出。
+
+    只有未遮罩导出会进入审批（遮罩导出本身已限制暴露面，没有可批的东西）。
+    申请人不能批自己的作业——单人自批只是自证，不是控制。
+    """
+    try:
+        return await abi_service.approve_abi_export(
+            session, context.workspace, context.user, job_id
+        )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.post(
+    "/exports/{job_id}/reject",
+    response_model=AbiExportJobResponse,
+)
+async def reject_export(
+    job_id: uuid.UUID,
+    payload: AbiExportRejectRequest,
+    session: SessionDep,
+    context: AuthenticatedContextDep,
+) -> AbiExportJobResponse:
+    """驳回一个等待审批的导出。``rejected`` 是终态，要数据得重新发起。"""
+    try:
+        return await abi_service.reject_abi_export(
+            session, context.workspace, context.user, job_id, payload.reason
         )
     except AbiServiceError as exc:
         _raise_http(exc)

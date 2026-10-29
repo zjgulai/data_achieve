@@ -1215,7 +1215,18 @@ async def create_abi_export(
     )
     await abi_repo.create_export_job(session, job)
 
-    if policy is not None and policy.require_dual_approval:
+    # 双人审批只针对「关闭遮罩」的导出。
+    #
+    # approve_job 的契约就是「审批一个关闭遮罩的作业」，对 mask_pii=True
+    # 直接抛 abi_export_approval_not_required。此前这里不看 mask_pii，
+    # 把带遮罩的作业也置成 awaiting_approval——而没有任何人能批准它，
+    # 作业永久卡死。策略要求双人审批时，遮罩导出直接放行：
+    # 遮罩本身已经把暴露面限制了，再要求审批是无解的。
+    if (
+        policy is not None
+        and policy.require_dual_approval
+        and not payload.mask_pii
+    ):
         job.status = "awaiting_approval"
         await session.commit()
         return AbiExportJobResponse.model_validate(job)
@@ -1336,6 +1347,63 @@ async def get_abi_export(
 ) -> AbiExportJobResponse:
     job = await _get_visible_export(session, workspace, user, job_id)
     _ensure_export_not_expired(job)
+    return AbiExportJobResponse.model_validate(job)
+
+
+async def approve_abi_export(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    job_id: uuid.UUID,
+) -> AbiExportJobResponse:
+    """批准一个等待双人审批的导出作业。
+
+    权限、非自批、状态由 ``abi_export.approve_job`` 校验——它写在事务内
+    并带 ``FOR UPDATE``，重复批准与并发批准都不会产生两份产物。
+    这里只补一层可见性：用户看不到的作业不该以「审批」的形式暴露存在。
+    """
+    from data_intelligence_hub.services.abi_export import approve_job
+
+    await _get_visible_export(session, workspace, user, job_id)
+    job = await approve_job(
+        session,
+        job_id=job_id,
+        workspace_id=workspace.id,
+        approver_id=user.id,
+    )
+    return AbiExportJobResponse.model_validate(job)
+
+
+async def reject_abi_export(
+    session: AsyncSession,
+    workspace: Workspace,
+    user: User,
+    job_id: uuid.UUID,
+    reason: str | None = None,
+) -> AbiExportJobResponse:
+    """驳回一个等待审批的导出作业。
+
+    驳回只改状态，不删产物（此时还没有产物）。``rejected`` 是终态：
+    想要数据得重新发起导出，这样审计链上留得下「谁驳了、为什么」。
+    """
+    job = await _get_visible_export(session, workspace, user, job_id)
+    if job.status != "awaiting_approval":
+        raise AbiServiceError("export_not_awaiting_approval", 409)
+    if job.created_by == user.id:
+        # 自批自驳都不算控制：申请人自己驳回没有审计价值，且会掩盖
+        # 「没人处理」这件事。
+        raise AbiServiceError("export_self_review_denied", 403)
+    grant = await abi_repo.get_access_grant(
+        session, workspace.id, job.dataset_id, user.id
+    )
+    if grant is None or role_rank(grant.role) < role_rank("publisher"):
+        raise AbiServiceError("export_reject_requires_publisher", 403)
+
+    job.status = "rejected"
+    job.finished_at = _now()
+    if reason:
+        job.error = reason.strip()[:500]
+    await session.commit()
     return AbiExportJobResponse.model_validate(job)
 
 
