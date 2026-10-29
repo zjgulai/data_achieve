@@ -604,35 +604,57 @@ async def upsert_export_policy(
     require_dual_approval: bool,
     allowed_formats: list[str] | None,
 ) -> ExportPolicy:
-    """建或改一条导出策略。
+    """建或改一条导出策略，原子 upsert。
 
-    数据集级与工作区级（``dataset_id`` 为空）各只有一条。唯一性靠
-    ``(workspace_id, dataset_id)`` 的查询保证——表上没有唯一约束，
-    所以这里先查后改，不依赖 ON CONFLICT。
+    数据集级与工作区级（``dataset_id`` 为空）各只有一条，唯一性由迁移
+    202610290067 的两个部分唯一索引保证：
+
+    - ``uq_export_policy_dataset``：``WHERE dataset_id IS NOT NULL``
+    - ``uq_export_policy_workspace_default``：``WHERE dataset_id IS NULL``
+
+    此前是「先查后改」，两个管理员并发保存会各插一行，读路径取最旧那行、
+    写路径更新另一行，新策略静默失效。现在用 ``ON CONFLICT`` 命中对应的
+    部分索引，并发写也只会留下一行。
+
+    ``dataset_id`` 为 NULL 时必须用 ``index_where`` 指向工作区级那条索引：
+    普通唯一索引把 NULL 视为互不相等，推断不到正确的冲突目标。
     """
-    existing = await session.scalar(
-        select(ExportPolicy).where(
-            ExportPolicy.workspace_id == workspace_id,
-            (
-                ExportPolicy.dataset_id.is_(None)
-                if dataset_id is None
-                else ExportPolicy.dataset_id == dataset_id
-            ),
-        )
-    )
-    if existing is None:
-        existing = ExportPolicy(
+    # 两个部分唯一索引的键不同，冲突目标必须分别指向：
+    # - dataset 级：u UNIQUE (workspace_id, dataset_id) WHERE dataset_id IS NOT NULL
+    # - 工作区级：u UNIQUE (workspace_id)              WHERE dataset_id IS NULL
+    #    工作区级索引不含 dataset_id，把 dataset_id 放进 index_elements 会
+    #    推断不到（InvalidColumnReferenceError: no unique or exclusion
+    #    constraint matching the ON CONFLICT specification）。
+    if dataset_id is None:
+        index_elements: list[Any] = [ExportPolicy.workspace_id]
+        index_where = ExportPolicy.dataset_id.is_(None)
+    else:
+        index_elements = [ExportPolicy.workspace_id, ExportPolicy.dataset_id]
+        index_where = ExportPolicy.dataset_id.isnot(None)
+    statement = (
+        pg_insert(ExportPolicy)
+        .values(
             id=uuid.uuid4(),
             workspace_id=workspace_id,
             dataset_id=dataset_id,
+            max_rows_masked=max_rows_masked,
+            require_dual_approval=require_dual_approval,
+            allowed_formats=allowed_formats,
         )
-        session.add(existing)
-    existing.max_rows_masked = max_rows_masked
-    existing.require_dual_approval = require_dual_approval
-    existing.allowed_formats = allowed_formats
+        .on_conflict_do_update(
+            index_elements=index_elements,
+            index_where=index_where,
+            set_={
+                "max_rows_masked": max_rows_masked,
+                "require_dual_approval": require_dual_approval,
+                "allowed_formats": allowed_formats,
+            },
+        )
+        .returning(ExportPolicy)
+    )
+    result = await session.execute(statement)
     await session.flush()
-    await session.refresh(existing)
-    return existing
+    return result.scalar_one()
 
 
 async def create_export_job(

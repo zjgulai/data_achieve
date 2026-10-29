@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from data_intelligence_hub.models.abi import ExportJob, ExportPolicy
 from data_intelligence_hub.models.user import User
 from data_intelligence_hub.models.workspace import Workspace
+from data_intelligence_hub.repositories import abi as abi_repo
 from data_intelligence_hub.schemas.abi import (
     AbiColumnCreate,
     AbiDatasetCreateRequest,
@@ -445,3 +446,88 @@ async def test_api_created_unmasked_export_succeeds_through_worker(
         "又被当成了单个过滤条件"
     )
     assert ran.rows_total == 2
+
+
+async def test_upsert_export_policy_is_idempotent(
+    session_factory, tmp_path, monkeypatch
+) -> None:
+    """重复保存只留一行，且新值生效。
+
+    表上原本没有 (workspace_id, dataset_id) 唯一约束，upsert 是「先查后改」。
+    两个并发保存会各插一行；读路径取最旧那行、写路径更新另一行，新策略
+    静默失效、导出继续按旧策略放行。迁移 202610290067 补了两个部分唯一
+    索引，upsert 也改为 ON CONFLICT。
+    """
+    from sqlalchemy import func as sa_func
+
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch)
+
+    async with session_factory() as session:
+        await abi_repo.upsert_export_policy(
+            session,
+            workspace.id,
+            dataset.id,
+            max_rows_masked=100,
+            require_dual_approval=True,
+            allowed_formats=["csv"],
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        await abi_repo.upsert_export_policy(
+            session,
+            workspace.id,
+            dataset.id,
+            max_rows_masked=5,
+            require_dual_approval=False,
+            allowed_formats=["csv", "jsonl"],
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        total = await session.scalar(
+            select(sa_func.count(ExportPolicy.id)).where(
+                ExportPolicy.workspace_id == workspace.id,
+                ExportPolicy.dataset_id == dataset.id,
+            )
+        )
+        loaded = await abi_repo.get_export_policy(session, workspace.id, dataset.id)
+
+    assert total == 1, "重复保存必须只留一行"
+    assert loaded is not None
+    assert loaded.max_rows_masked == 5, "后写入的值必须生效，不能被旧行遮住"
+    assert loaded.allowed_formats == ["csv", "jsonl"]
+
+
+async def test_workspace_default_policy_is_also_unique(
+    session_factory, tmp_path, monkeypatch
+) -> None:
+    """dataset_id 为 NULL 的工作区级策略同样只能有一行。
+
+    PostgreSQL 的普通唯一索引把 NULL 视为互不相等，所以那条必须是部分
+    唯一索引（WHERE dataset_id IS NULL），否则页级重复挡不住。
+    """
+    from sqlalchemy import func as sa_func
+
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch)
+
+    for value in (10, 20):
+        async with session_factory() as session:
+            await abi_repo.upsert_export_policy(
+                session,
+                workspace.id,
+                None,
+                max_rows_masked=value,
+                require_dual_approval=True,
+                allowed_formats=None,
+            )
+            await session.commit()
+
+    async with session_factory() as session:
+        total = await session.scalar(
+            select(sa_func.count(ExportPolicy.id)).where(
+                ExportPolicy.workspace_id == workspace.id,
+                ExportPolicy.dataset_id.is_(None),
+            )
+        )
+    assert total == 1
