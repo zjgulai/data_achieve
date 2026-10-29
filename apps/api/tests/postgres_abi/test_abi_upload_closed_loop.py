@@ -37,7 +37,7 @@ from data_intelligence_hub.schemas.abi import (
     AbiQueryRequest,
     AbiUploadCreateRequest,
 )
-from data_intelligence_hub.services import abi_service, abi_upload
+from data_intelligence_hub.services import abi_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -82,6 +82,12 @@ def _csv_bytes(header: list[str], rows: list[list[str]]) -> bytes:
     writer.writerow(header)
     writer.writerows(rows)
     return buffer.getvalue().encode()
+
+
+async def _as_async_iter(chunks: list[bytes]):
+    """把内存里的字节块包成路由层传给 service 的异步流。"""
+    for chunk in chunks:
+        yield chunk
 
 
 async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
@@ -136,12 +142,20 @@ async def test_upload_commit_loads_rows_and_makes_dataset_queryable(
             ),
         )
 
+    # 走 HTTP 路由实际调用的那个函数，而不是 abi_upload.append_content。
+    #
+    # 这两条路径曾经是两份独立的写盘实现：append_content 记 actual_rows，
+    # write_abi_upload_content 不记。commit 的前置检查要求 actual_rows 非空，
+    # 于是经由 HTTP 的每一次上传都在 commit 阶段失败，报的还是误导性的
+    # abi_upload_checksum_missing。这条测试原先直接调 append_content，
+    # 正好绕开了缺陷，so 单测全绿而生产必然失败。
     async with session_factory() as session:
-        await abi_upload.append_content(
+        await abi_service.write_abi_upload_content(
             session,
-            batch_id=created.batch.id,
-            token=created.upload_token,
-            chunks=[payload],
+            workspace,
+            user,
+            created.upload_token,
+            _as_async_iter([payload]),
         )
 
     async with session_factory() as session:

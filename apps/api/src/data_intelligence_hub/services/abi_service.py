@@ -152,14 +152,6 @@ def _export_path(workspace_id: uuid.UUID, job_id: uuid.UUID, filename: str) -> P
     return path
 
 
-def _upload_path(batch_id: uuid.UUID, filename: str) -> Path:
-    """与 services/abi_upload.py 的 ``_uploads/{batch_id}/`` 布局保持一致。"""
-    root = _upload_root()
-    path = (root / str(batch_id) / _safe_filename(filename)).resolve()
-    _ensure_under_root(path, root)
-    return path
-
-
 def _parse_source_table(value: str, *, status_code: int = 400) -> tuple[str, str]:
     parts = value.split(".")
     if len(parts) != 2:
@@ -943,51 +935,37 @@ async def write_abi_upload_content(
     upload_token: str,
     chunks: AsyncIterator[bytes],
 ) -> AbiUploadBatchResponse:
+    """接收上传字节流。
+
+    写盘、sha256、**行数统计**全部交给 ``abi_upload.append_content``。
+    本函数只负责把「按 token 查批次」翻译成它的入参。
+
+    这里原先有一份自己的写盘实现，漏写 ``actual_rows``。commit 的前置检查
+    要求该列非空，于是**每一次走 HTTP 的上传都会在 commit 阶段失败**，
+    报的还是 ``abi_upload_checksum_missing``——名字指向 sha256，真实原因却是
+    行数没记。postgres 闭环测试直接调 ``append_content``，刚好绕开这条路径，
+    所以单测全绿而生产必然失败。
+
+    行为差异（都是收紧，不是放宽）：
+    - 已写过内容的批次不能再写。旧实现放行 ``status='uploaded'``，等于允许
+      静默覆盖已校验的字节。
+    - 只允许原上传人写入。上传 token 本就一次性发给创建者。
+    """
+    from data_intelligence_hub.services.abi_upload import append_content
+
     token_hash = hashlib.new("sha256", upload_token.encode()).digest()
     batch = await abi_repo.get_upload_batch_by_token_hash(session, token_hash)
     if batch is None or batch.workspace_id != workspace.id:
         raise AbiServiceError("upload_batch_not_found", 404)
-    now = _now()
-    if batch.token_expires_at is None or batch.token_expires_at <= now:
-        raise AbiServiceError("upload_token_expired", 410)
-    if batch.status not in ("pending", "uploaded"):
-        raise AbiServiceError("upload_batch_not_open", 409)
-    await _require_grant(session, workspace.id, batch.dataset_id, user.id, "editor")
 
-    path = _upload_path(batch.id, batch.filename)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = path.with_name(f"{path.name}.part")
-    hasher = hashlib.sha256()
-    size = 0
-    try:
-        with temporary_path.open("wb") as handle:
-            async for chunk in chunks:
-                size += len(chunk)
-                if size > _MAX_UPLOAD_BYTES:
-                    raise AbiServiceError("upload_too_large", 413)
-                hasher.update(chunk)
-                handle.write(chunk)
-        digest = hasher.digest()
-        if batch.expected_sha256 is not None and digest != batch.expected_sha256:
-            raise AbiServiceError("upload_sha256_mismatch", 422)
-        temporary_path.replace(path)
-    except BaseException:
-        temporary_path.unlink(missing_ok=True)
-        raise
-
-    batch.actual_sha256 = digest
-    batch.bytes_total = size
-    batch.storage_path = str(path)
-    batch.status = "uploaded"
-    try:
-        await session.commit()
-    except IntegrityError as exc:
-        # (dataset_id, actual_sha256) 唯一：同一内容重复上传时返回 409，
-        # 不把 IntegrityError 变成 500，也不保留孤儿文件。
-        await session.rollback()
-        path.unlink(missing_ok=True)
-        raise AbiServiceError("upload_duplicate_content", 409) from exc
-    return AbiUploadBatchResponse.model_validate(batch)
+    updated = await append_content(
+        session,
+        batch_id=batch.id,
+        token=upload_token,
+        chunks=chunks,
+        user_id=user.id,
+    )
+    return AbiUploadBatchResponse.model_validate(updated)
 
 
 def _sha256_file(path: Path) -> bytes:
