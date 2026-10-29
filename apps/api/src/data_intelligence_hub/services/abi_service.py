@@ -1151,6 +1151,21 @@ async def create_abi_export(
     selection = await _resolve_selection(session, dataset, payload.columns)
     _validate_filter_columns(selection, payload.filters, payload.order_by)
     policy = await abi_repo.get_export_policy(session, workspace.id, dataset.id)
+
+    # 没有策略行时，按「表定义的默认值」行事，而不是当成「无策略、放行」。
+    #
+    # 这两者差别很大：``export_policy.require_dual_approval`` 的
+    # server_default 是 true，说明设计意图就是默认要求双人审批。但本函数
+    # 此前写的是 ``policy is not None and policy.require_dual_approval``，
+    # 而全仓**没有任何代码创建策略行**——于是 policy 恒为 None，双人审批
+    # 整段被跳过，未遮罩导出直接出文件。
+    #
+    # 生产实测确认过：admin 发起 mask_pii=false 的导出，返回 status=succeeded，
+    # 一次都没进 awaiting_approval。这不是配置问题，是代码路径缺失。
+    require_dual_approval = (
+        policy.require_dual_approval if policy is not None else True
+    )
+
     if (
         policy is not None
         and policy.allowed_formats is not None
@@ -1200,11 +1215,7 @@ async def create_abi_export(
     # 把带遮罩的作业也置成 awaiting_approval——而没有任何人能批准它，
     # 作业永久卡死。策略要求双人审批时，遮罩导出直接放行：
     # 遮罩本身已经把暴露面限制了，再要求审批是无解的。
-    if (
-        policy is not None
-        and policy.require_dual_approval
-        and not payload.mask_pii
-    ):
+    if require_dual_approval and not payload.mask_pii:
         job.status = "awaiting_approval"
         await session.commit()
         return AbiExportJobResponse.model_validate(job)
