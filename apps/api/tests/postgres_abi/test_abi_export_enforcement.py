@@ -201,6 +201,16 @@ async def test_run_job_rejects_format_not_allowed_by_policy(
         with pytest.raises(AbiServiceError):
             await abi_export.run_job(session, job.id)
 
+    # 必须写终态。只 rollback 会让作业停在 queued，worker 每 60 秒重领、
+    # 重拒，5 条毒作业就能占满每批 5 个名额，把其它导出全部饿死。
+    async with session_factory() as session:
+        stored = await session.scalar(select(ExportJob).where(ExportJob.id == job.id))
+    assert stored is not None
+    assert stored.status == "failed", "格式被拒必须写终态，不能留在 queued"
+    assert stored.error == "abi_export_format_not_allowed", (
+        "错误码必须可归因，不能塌缩成 abi_export_invalid"
+    )
+
 
 async def test_run_job_enforces_max_rows_masked(
     session_factory, tmp_path, monkeypatch
@@ -236,6 +246,9 @@ async def test_run_job_enforces_max_rows_masked(
     assert stored is not None
     assert stored.status == "failed"
     assert stored.artifact_path is None
+    # AbiServiceError.code 是类属性，构造时只设 detail；具体原因必须写进
+    # error，否则控制台只显示泛化的 abi_export_invalid，无法归因。
+    assert stored.error == "abi_export_row_limit_exceeded"
 
 
 async def test_run_job_denies_unknown_pii_in_unmasked_export(
@@ -330,3 +343,105 @@ async def test_revoked_creator_cannot_download(
             await abi_service.get_abi_export_download(
                 session, workspace, user, job.id
             )
+
+
+def test_stored_filters_accepts_both_shapes() -> None:
+    """两条创建路径写出的 filters 形状不同，run_job 必须都能吃。
+
+    ``abi_service.create_abi_export`` 存 ``{"filters": [...], "order_by": [...]}``；
+    ``abi_export.create_job`` 存裸 list。此前 run_job 把整个 dict 直接递给
+    ``prepare_query``，``normalize_filters`` 会把它当成单个条件、因缺
+    ``column`` 键抛 ``abi_filter_shape_invalid``——结果是 **API 创建的导出
+    经 worker 执行时 100% 失败**，而同步路径掩盖了它。
+    """
+    from data_intelligence_hub.services.abi_export import _stored_filters
+
+    api_shape = {
+        "filters": [{"column": "post_id", "op": "eq", "value": "p-001"}],
+        "order_by": [{"column": "post_id", "direction": "desc"}],
+        "columns": ["post_id"],
+    }
+    filters, order = _stored_filters(api_shape)
+    assert filters == [{"column": "post_id", "op": "eq", "value": "p-001"}]
+    assert order == ["post_id"]
+
+    worker_shape = [{"column": "post_id", "op": "eq", "value": "p-001"}]
+    filters2, order2 = _stored_filters(worker_shape)
+    assert filters2 == worker_shape
+    assert order2 is None
+
+    assert _stored_filters(None) == (None, None)
+    # 空 filters 要还原成空 list，而不是 None 之外的东西。
+    empty, _ = _stored_filters({"filters": [], "order_by": [], "columns": None})
+    assert empty == []
+
+
+async def test_api_created_unmasked_export_succeeds_through_worker(
+    session_factory, tmp_path, monkeypatch
+) -> None:
+    """端到端：API 创建 → 审批 → worker 执行 → 成功。
+
+    这条打的是真实链路。同步路径（create_abi_export 自己渲染）在
+    awaiting_approval 之前就返回了，所以它永远不会暴露 worker 侧的
+    filters 形状问题。
+    """
+    import uuid as _uuid
+
+    from data_intelligence_hub.models.abi import AccessGrant
+    from data_intelligence_hub.schemas.abi import AbiExportCreateRequest
+
+    user, workspace, dataset = await _dataset(session_factory, tmp_path, monkeypatch)
+
+    # 造一个可审批的 publisher（不能自批）。
+    approver = User(
+        id=_uuid.uuid4(),
+        email=f"approver-{_uuid.uuid4().hex[:8]}@example.com",
+        password_hash="x",
+        name="Approver",
+        status="active",
+    )
+    async with session_factory() as session:
+        session.add(approver)
+        await session.flush()
+        session.add(
+            AccessGrant(
+                id=_uuid.uuid4(),
+                dataset_id=dataset.id,
+                workspace_id=workspace.id,
+                user_id=approver.id,
+                role="publisher",
+                granted_by=user.id,
+            )
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        created = await abi_service.create_abi_export(
+            session,
+            workspace,
+            user,
+            AbiExportCreateRequest(
+                dataset_slug=dataset.slug,
+                format="csv",
+                mask_pii=False,
+                reason="回归测试：未遮罩导出必须能经由 worker 真正落盘",
+            ),
+        )
+    assert created.status == "awaiting_approval"
+
+    async with session_factory() as session:
+        await abi_export.approve_job(
+            session,
+            job_id=created.id,
+            workspace_id=workspace.id,
+            approver_id=approver.id,
+        )
+
+    async with session_factory() as session:
+        ran = await abi_export.run_job(session, created.id)
+
+    assert ran.status == "succeeded", (
+        "API 创建的导出经 worker 执行必须成功；失败通常意味着 filters 形状"
+        "又被当成了单个过滤条件"
+    )
+    assert ran.rows_total == 2

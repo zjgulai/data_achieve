@@ -538,6 +538,13 @@ function filenameFromDisposition(header: string | null): string | null {
  * 只有未遮罩导出会进入 awaiting_approval；申请人不能批自己的作业，
  * 服务端会拒。审批人需要 publisher grant。
  */
+export async function approveAbiExport(jobId: string): Promise<AbiExportJob> {
+  return apiFetch<AbiExportJob>(
+    `/api/abi/exports/${encodeURIComponent(jobId)}/approve`,
+    { method: "POST" },
+  );
+}
+
 /** 读 dataset 级导出策略。没有策略行时返回服务端默认值。 */
 export async function fetchAbiExportPolicy(
   datasetSlug: string,
@@ -555,13 +562,6 @@ export async function updateAbiExportPolicy(
   return apiFetch<AbiExportPolicy>(
     `/api/abi/datasets/${encodeURIComponent(datasetSlug)}/export-policy`,
     { method: "PUT", body: JSON.stringify(payload) },
-  );
-}
-
-export async function approveAbiExport(jobId: string): Promise<AbiExportJob> {
-  return apiFetch<AbiExportJob>(
-    `/api/abi/exports/${encodeURIComponent(jobId)}/approve`,
-    { method: "POST" },
   );
 }
 

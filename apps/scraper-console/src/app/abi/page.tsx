@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { fetchAuthSession } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import {
   ABI_QUERY_OPS,
@@ -1541,6 +1542,15 @@ function ExportTab() {
     queryFn: () => fetchAbiExports({ limit: 50 }),
   });
 
+  // 当前用户。审批人不可能是申请人（服务端 abi_export_self_approval_denied），
+  // 所以自己那一行不该出现批准/驳回按钮——点了必然 403，只会制造困惑。
+  const sessionQuery = useQuery({
+    queryKey: ["auth", "session"],
+    queryFn: fetchAuthSession,
+    staleTime: 5 * 60 * 1000,
+  });
+  const currentUserId = sessionQuery.data?.user.id ?? "";
+
   const create = useMutation<AbiExportJob, Error, void>({
     mutationFn: () => {
       if (!slug) throw new Error("未选择数据集");
@@ -1585,8 +1595,12 @@ function ExportTab() {
     onError: (error) => setActionError(describeError(error)),
   });
 
-  const reject = useMutation<AbiExportJob, Error, string>({
-    mutationFn: (jobId) => rejectAbiExport(jobId, "控制台驳回"),
+  const reject = useMutation<
+    AbiExportJob,
+    Error,
+    { jobId: string; reason: string }
+  >({
+    mutationFn: ({ jobId, reason }) => rejectAbiExport(jobId, reason),
     onSuccess: () => {
       setActionError(null);
       void queryClient.invalidateQueries({ queryKey: ["abi", "exports"] });
@@ -1598,7 +1612,7 @@ function ExportTab() {
   const pendingJobId = approve.isPending
     ? (approve.variables ?? "")
     : reject.isPending
-      ? (reject.variables ?? "")
+      ? (reject.variables?.jobId ?? "")
       : "";
 
   const maskOffInvalid = !maskPii && reason.trim().length < 10;
@@ -1729,7 +1743,7 @@ function ExportTab() {
               job.mask_pii ? "是" : "否（需 admin）",
               <span key={`${job.id}-status`} className="grid gap-0.5">
                 <span>{EXPORT_STATUS_LABELS[job.status] ?? job.status}</span>
-                {job.status === "awaiting_approval" && job.reason ? (
+                {job.reason ? (
                   <span className="max-w-56 text-[11px] text-[var(--text-tertiary)]">
                     理由：{job.reason}
                   </span>
@@ -1755,28 +1769,43 @@ function ExportTab() {
                   </button>
                 ) : null}
                 {job.status === "awaiting_approval" ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={pendingJobId !== ""}
-                      onClick={() => approve.mutate(job.id)}
-                      className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
-                    >
-                      {pendingJobId === job.id && approve.isPending
-                        ? "批准中…"
-                        : "批准"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pendingJobId !== ""}
-                      onClick={() => reject.mutate(job.id)}
-                      className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--surface-muted)] disabled:opacity-50"
-                    >
-                      {pendingJobId === job.id && reject.isPending
-                        ? "驳回中…"
-                        : "驳回"}
-                    </button>
-                  </>
+                  job.created_by === currentUserId ? (
+                    <span className="text-xs text-[var(--text-tertiary)]">
+                      等待他人审批
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        disabled={pendingJobId !== ""}
+                        onClick={() => approve.mutate(job.id)}
+                        aria-label={`批准导出 ${job.id.slice(0, 8)}`}
+                        className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-2.5 py-1 text-xs font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
+                      >
+                        {pendingJobId === job.id && approve.isPending
+                          ? "批准中…"
+                          : "批准"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pendingJobId !== ""}
+                        onClick={() => {
+                          const input = window.prompt(
+                            "驳回理由（会写入审计，请写清原因）",
+                            "",
+                          );
+                          if (input === null) return;
+                          reject.mutate({ jobId: job.id, reason: input.trim() });
+                        }}
+                        aria-label={`驳回导出 ${job.id.slice(0, 8)}`}
+                        className="rounded-[var(--radius-2)] border border-[var(--border-subtle)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                      >
+                        {pendingJobId === job.id && reject.isPending
+                          ? "驳回中…"
+                          : "驳回"}
+                      </button>
+                    </>
+                  )
                 ) : null}
                 {job.status === "expired" ? (
                   <span className="text-xs text-[var(--text-tertiary)]">已过期（410）</span>

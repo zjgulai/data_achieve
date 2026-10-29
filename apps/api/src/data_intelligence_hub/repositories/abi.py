@@ -242,16 +242,22 @@ def _visible_export_condition(
     workspace_id: uuid.UUID,
     user_id: uuid.UUID,
 ) -> ColumnElement[bool]:
-    """导出可见性：本人创建，或对 dataset 有 publisher/admin 授权。"""
+    """导出列表可见性：只按 grant 判定，不看 ``created_by``。
+
+    原先这里有一条 ``ExportJob.created_by == user_id`` 的旁路，于是撤掉
+    某人在数据集上的 grant 之后，他此前创建的导出仍出现在列表里——
+    而详情与下载（``_export_visible``）已经改为要求 grant。两者不一致
+    会让列表显示一条点开就 404 的记录。
+
+    未遮罩导出的列表门槛是 publisher；遮罩导出是 viewer。SQL 里无法
+    按行区分，因此这里按最宽（viewer）取，再由详情/下载做精确判定。
+    """
     granted = select(AccessGrant.dataset_id).where(
         AccessGrant.workspace_id == workspace_id,
         AccessGrant.user_id == user_id,
-        AccessGrant.role.in_(("publisher", "admin")),
+        AccessGrant.role.in_(("viewer", "editor", "publisher", "admin")),
     )
-    return or_(
-        ExportJob.created_by == user_id,
-        ExportJob.dataset_id.in_(granted),
-    )
+    return ExportJob.dataset_id.in_(granted)
 
 
 async def get_dataset_by_slug(

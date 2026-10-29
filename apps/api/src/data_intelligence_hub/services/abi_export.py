@@ -626,8 +626,59 @@ async def _mark_failed(
     await session.commit()
 
 
+def _stored_filters(
+    stored: object,
+) -> tuple[list[dict[str, object]] | None, list[str] | None]:
+    """把库里存的 filters 还原成 ``prepare_query`` 认得的两份入参。
+
+    同一张表上有两种形状，是两条创建路径留下的：
+
+    - ``abi_service.create_abi_export`` 存 ``{"filters": [...], "order_by": [...],
+      "columns": [...]}``（审计用，带 order_by）；
+    - ``abi_export.create_job`` 存裸 list。
+
+    ``prepare_query`` 只接受「过滤条件序列」，把整个 dict 递进去会被
+    ``normalize_filters`` 当成单个条件，然后因为没有 ``column`` 键抛
+    ``abi_filter_shape_invalid``。此前 ``run_job`` 就是这么传的，结果是
+    **API 创建的未遮罩导出经 worker 执行时 100% 失败**——同步路径
+    （create_abi_export 自己渲染）掩盖了这个问题，因为它不走这里。
+
+    ``cast`` 只是类型标注，运行时不转换；那份 cast 给了错误的安全感。
+    """
+    if stored is None:
+        return None, None
+    if isinstance(stored, dict):
+        inner = stored.get("filters")
+        filters = list(inner) if isinstance(inner, (list, tuple)) else None
+        raw_order = stored.get("order_by")
+        order_names: list[str] | None = None
+        if isinstance(raw_order, (list, tuple)):
+            names = [
+                item.get("column")
+                for item in raw_order
+                if isinstance(item, dict) and isinstance(item.get("column"), str)
+            ]
+            order_names = names or None
+        return filters, order_names
+    if isinstance(stored, (list, tuple)):
+        return list(stored), None
+    return None, None
+
+
 def _error_code(exc: BaseException) -> str:
+    """取要写进 ``export_job.error`` 的错误码。
+
+    ``AbiServiceError`` 的 ``code`` 是类属性，构造时只设置 ``detail``。
+    因此 ``raise AbiExportValidationError("abi_export_row_limit_exceeded")``
+    的 ``code`` 仍是泛化的 ``abi_export_invalid``——写进库里的 error 会让
+    用户和运维都无法归因（控制台直接渲染这个字段）。
+
+    ``detail`` 是可机读的 snake_case 码时优先用它；否则退回类属性。
+    """
     if isinstance(exc, AbiServiceError):
+        detail = getattr(exc, "detail", "") or ""
+        if detail.isascii() and detail.replace("_", "").isalnum():
+            return detail
         return exc.code
     return "abi_export_failed"
 
@@ -698,7 +749,11 @@ async def run_job(
         and policy.allowed_formats is not None
         and job.format not in policy.allowed_formats
     ):
+        # 必须写终态。只 rollback 会让作业停在 queued，worker 每 60 秒
+        # 重新领取、重新拒绝，永远不前进；5 条这样的作业就能占满每批
+        # 5 个名额，把其它租户的正常导出全部饿死。
         await session.rollback()
+        await _mark_failed(session, job_id, "abi_export_format_not_allowed")
         raise AbiExportValidationError("abi_export_format_not_allowed")
 
     row_limit = MAX_EXPORT_ROWS
@@ -719,12 +774,13 @@ async def run_job(
     temp_path: Path | None = None
     try:
         columns = tuple(job.columns or ())
+        stored_filters, stored_order = _stored_filters(job.filters)
         plan = await prepare_query(
             session,
             dataset,
             columns=columns or None,
-            filters=cast("Sequence[object] | None", job.filters),
-            order_by=None,
+            filters=stored_filters,
+            order_by=stored_order,
             order_dir="asc",
             # 行数上限不在这里做：prepare_query 的分页上限是 200，
             # 而导出预算远大于它。由 _iter_masked_rows 计数并中断。
