@@ -171,8 +171,8 @@ def test_runtime_mode_requires_separate_runtime_authorization() -> None:
 def test_guard_is_pinned_to_current_head_without_runner_commands() -> None:
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert "^202610290065 \\(head\\)$" in source
-    assert "expected exactly one Alembic head at 202610290065" in source
+    assert "^202610290066 \\(head\\)$" in source
+    assert "expected exactly one Alembic head at 202610290066" in source
     assert "pytest tests/postgres_workflow_executor -q" in source
     assert "docker " not in source
     assert "podman " not in source

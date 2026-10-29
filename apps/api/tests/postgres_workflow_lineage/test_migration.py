@@ -294,8 +294,8 @@ def test_source_has_one_head_at_current_head(postgres_database_url: str) -> None
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610290065 (head)"]
-    assert _revision(postgres_database_url) == "202610290065"
+    assert heads == ["202610290066 (head)"]
+    assert _revision(postgres_database_url) == "202610290066"
 
 
 def test_033_to_034_to_033_to_034_preserves_legacy_assets(

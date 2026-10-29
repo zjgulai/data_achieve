@@ -87,8 +87,18 @@ MAX_CURSOR_KEY_CHARS: Final[int] = 4096
 # 角色等级来自模型层，服务层不再维护第二份顺序。
 ROLE_RANK: Final[dict[str, int]] = ABI_ROLE_ORDER
 
-# 这些 PII 等级默认遮罩。quasi 不遮罩，但导出策略仍可按需处理。
-PII_MASKED_CLASSES: Final[frozenset[str]] = frozenset({"unknown", "direct", "secret"})
+# 这些 PII 等级默认遮罩。
+#
+# ``quasi`` 必须在内。此前它被排除，注释理由是「导出策略仍可按需处理」，
+# 但 worker 路径（``mask_row``）只按这个集合判断，没有任何地方真的去
+# 「按需处理」——结果是 ``quasi`` 字段在异步导出里**原样明文输出**，
+# 而在线查询路径却把它遮成「前 2 后 1」。同一个策略、两条路径、两种结果。
+#
+# 后果不只是不一致：``direct``/``secret`` 降级到 ``quasi`` 看似「仍然敏感」，
+# 实际把值从 ``***`` 换成了可读明文，是一次实质降级。
+PII_MASKED_CLASSES: Final[frozenset[str]] = frozenset(
+    {"unknown", "quasi", "direct", "secret"}
+)
 PII_CLASSES: Final[frozenset[str]] = frozenset(
     {"unknown", "none", "quasi", "direct", "secret"}
 )

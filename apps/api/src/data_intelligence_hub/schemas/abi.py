@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 AbiRole = Literal["viewer", "editor", "publisher", "admin"]
 PiiClass = Literal["unknown", "none", "quasi", "direct", "secret"]
+MaskRule = Literal["redact", "null", "hash", "last4", "partial"]
 SourceKind = Literal["apify_platform", "local_table", "upload"]
 UploadMode = Literal["append", "upsert", "replace"]
 ExportFormat = Literal["csv", "xlsx", "jsonl"]
@@ -208,17 +209,33 @@ class AbiDeleteResponse(BaseModel):
 
 
 class AbiPolicyUpdateItem(BaseModel):
-    """写入单个字段的 PII 分类。"""
+    """写入单个字段的 PII 分类。
+
+    ``mask_rule`` 只接受固定枚举。此前是自由文本（max_length=200），
+    拼错一个字母就会在遮罩时退回 ``***``——那是 fail-closed，可以接受；
+    但真正的风险在反方向：``last4`` / ``partial`` 会保留尾部或首尾字符，
+    而规则校验缺失意味着放宽遮罩无需任何审批。
+    """
 
     field_path: str = Field(min_length=1, max_length=200)
     pii_class: PiiClass
-    mask_rule: str | None = Field(default=None, max_length=200)
+    mask_rule: MaskRule | None = None
 
 
 class AbiPolicyUpdateRequest(BaseModel):
-    """全量写入 dataset 的有效策略。未提交的列写成 unknown。"""
+    """写入 dataset 的 PII 策略。
+
+    语义是**按提交项增量更新**，不是全量替换：未提交的列保留原分类。
+
+    此前这里是全量替换，未提交列一律写成 ``unknown``。那有两个后果：
+    只改一个字段会顺手把其余字段的分类清空；而 ``direct → unknown → none``
+    可以分两步把敏感列洗成明文，绕开降级保护。
+
+    ``reason`` 只在降级时必填（>= 10 字），与未遮罩导出的理由要求一致。
+    """
 
     items: list[AbiPolicyUpdateItem] = Field(default_factory=list, max_length=500)
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class AbiPolicyResponse(BaseModel):

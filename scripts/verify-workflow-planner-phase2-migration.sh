@@ -95,10 +95,10 @@ cd "$repository_root/apps/api"
 
 heads_output="$(DATABASE_URL="$TEST_DATABASE_URL" uv run alembic heads)"
 head_count="$(printf '%s\n' "$heads_output" | awk 'NF { count += 1 } END { print count + 0 }')"
-if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610290065 \(head\)$'; then
-  printf '%s\n' "error: expected exactly one Alembic head at 202610290065" >&2
+if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610290066 \(head\)$'; then
+  printf '%s\n' "error: expected exactly one Alembic head at 202610290066" >&2
   exit 1
 fi
 
-printf '%s\n' "alembic head check passed: 202610290065"
+printf '%s\n' "alembic head check passed: 202610290066"
 DATABASE_URL="$TEST_DATABASE_URL" uv run pytest tests/postgres -q

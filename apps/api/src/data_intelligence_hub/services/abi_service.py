@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +61,7 @@ from data_intelligence_hub.schemas.abi import (
     AbiOverviewResponse,
     AbiPolicyItem,
     AbiPolicyResponse,
+    AbiPolicyUpdateItem,
     AbiPolicyUpdateRequest,
     AbiQueryFilter,
     AbiQueryOrder,
@@ -110,6 +111,7 @@ class _Selection:
     all_columns: list[str]
     selected: list[str]
     policies: dict[str, str]
+    mask_rules: dict[str, str | None]
     filterable: frozenset[str]
     sortable: frozenset[str]
     types: dict[str, str]
@@ -117,6 +119,25 @@ class _Selection:
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+# PII 敏感度序。降级判定用它比较前后等级。
+#
+# ``unknown`` 单独处理，不进这个序：它等于「还没判定」，不是「已判定为
+# 某一档」。把 unknown 当最低档会让「首次分类」被误判成降级。
+#
+# ``none`` < ``quasi`` < ``direct`` < ``secret``。
+_PII_RANK: Final[dict[str, int]] = {
+    "none": 0,
+    "quasi": 1,
+    "direct": 2,
+    "secret": 3,
+}
+
+
+def _pii_rank(pii_class: str) -> int:
+    """敏感度等级。未知取值按最高档处理——fail-closed。"""
+    return _PII_RANK.get(pii_class, max(_PII_RANK.values()))
 
 
 def _abi_root() -> Path:
@@ -457,6 +478,7 @@ async def _resolve_selection(
         session, dataset.workspace_id, dataset.id
     )
     policies = {policy.field_path: policy.pii_class for policy in policy_rows}
+    mask_rules = {policy.field_path: policy.mask_rule for policy in policy_rows}
 
     if requested_columns is None:
         selected = [
@@ -505,6 +527,7 @@ async def _resolve_selection(
         all_columns=all_columns,
         selected=selected,
         policies=policies,
+        mask_rules=mask_rules,
         filterable=filterable,
         sortable=sortable,
         types={
@@ -675,14 +698,21 @@ async def _count_rows(
         raise AbiServiceError("query_invalid", 400) from exc
 
 
-def _mask_value(value: Any, pii_class: str) -> Any:
-    if pii_class == "none":
-        return value
-    if value is None:
-        return None
-    if pii_class == "quasi" and isinstance(value, str) and len(value) >= 5:
-        return f"{value[:2]}***{value[-1:]}"
-    return "***"
+def _mask_value(value: Any, pii_class: str, mask_rule: str | None = None) -> Any:
+    """按策略遮罩单个值。
+
+    实现委托给 ``abi_query.mask_value``——查询、同步导出、异步 worker
+    三条路径必须用同一份代码。此前这里是独立的一份，只认 pii_class、
+    不看 mask_rule，于是：
+    - 策略里配了 ``last4`` / ``hash``，在线查询完全无视，仍返回 ``***``；
+    - ``quasi`` 这里遮成「前 2 后 1」，worker 那边因不在
+      ``PII_MASKED_CLASSES`` 而**原样明文输出**。
+
+    同一份策略在两条路径上产出不同结果，用户无法预期自己拿到什么。
+    """
+    from data_intelligence_hub.services.abi_query import mask_value
+
+    return mask_value(value, pii_class, mask_rule)
 
 
 def _json_safe(value: Any) -> Any:
@@ -713,13 +743,15 @@ def _serialize_row(
     policies: dict[str, str],
     *,
     mask_pii: bool,
+    mask_rules: dict[str, str | None] | None = None,
 ) -> dict[str, Any]:
+    rules = mask_rules or {}
     serialized: dict[str, Any] = {}
     for column in columns:
         pii_class = policies.get(column, "unknown")
         value = row.get(column)
         if mask_pii:
-            value = _mask_value(value, pii_class)
+            value = _mask_value(value, pii_class, rules.get(column))
         serialized[column] = _json_safe(value)
     return serialized
 
@@ -751,7 +783,11 @@ async def query_abi_dataset(
         columns=selection.selected,
         rows=[
             _serialize_row(
-                row, selection.selected, selection.policies, mask_pii=True
+                row,
+                selection.selected,
+                selection.policies,
+                mask_pii=True,
+                mask_rules=selection.mask_rules,
             )
             for row in rows
         ],
@@ -851,11 +887,28 @@ async def replace_abi_policy(
     access: DatasetAccess,
     payload: AbiPolicyUpdateRequest,
 ) -> AbiPolicyResponse:
+    """按提交项更新 PII 策略，并拦截降级。
+
+    两条控制，缺一不可：
+
+    1. **增量而非全量。** 未提交的列保留原分类。此前是全量替换、未提交列
+       写成 ``unknown``：只改一个字段会顺手清空其余字段，而
+       ``direct → unknown → none`` 分两步即可把敏感列洗成明文。
+    2. **降级需要 admin + 理由。** 否则 publisher 把 ``secret`` 改成
+       ``none`` 就能拿到明文，完全绕过未遮罩导出的
+       admin 校验 + 双人审批 + 理由三重门禁——而那三条门禁的成本
+       远高于改一行策略。
+
+    ``quasi`` 与 ``direct``/``secret`` 同属敏感侧：worker 遮罩路径
+    （``abi_export.mask_row``）依赖 ``PII_MASKED_CLASSES``，``quasi``
+    此前不在其中，等于明文返回。降级比较必须把它算作敏感。
+    """
+
     columns = await abi_repo.list_dataset_columns(
         session, access.workspace.id, access.dataset.id
     )
     column_names = {column.column_name for column in columns}
-    provided: dict[str, Any] = {}
+    provided: dict[str, AbiPolicyUpdateItem] = {}
     for item in payload.items:
         if item.field_path not in column_names:
             raise AbiServiceError("policy_field_not_column", 400)
@@ -863,28 +916,63 @@ async def replace_abi_policy(
             raise AbiServiceError("duplicate_policy_field", 400)
         provided[item.field_path] = item
 
-    decided_by = f"user:{access.user.id}"
-    rows: list[FieldPolicy] = []
-    for column in columns:
-        provided_item = provided.get(column.column_name)
-        rows.append(
-            FieldPolicy(
-                id=uuid.uuid4(),
-                dataset_id=access.dataset.id,
-                field_path=column.column_name,
-                pii_class=provided_item.pii_class if provided_item is not None else "unknown",
-                mask_rule=provided_item.mask_rule if provided_item is not None else None,
-                decided_by=decided_by,
-            )
-        )
-    await abi_repo.replace_field_policies(
-        session, access.workspace.id, access.dataset.id, rows
+    existing_rows = await abi_repo.list_field_policies(
+        session, access.workspace.id, access.dataset.id
     )
-    access.dataset.pii_scanned = True
+    existing = {row.field_path: row for row in existing_rows}
+
+    is_admin = role_rank(access.grant.role) >= role_rank("admin")
+    reason = (payload.reason or "").strip()
+
+    # 先整体判定，再落库：任何一项被拒都不该留下半套策略。
+    downgrades: list[str] = []
+    for field_path, item in provided.items():
+        current = existing.get(field_path)
+        if current is None or current.pii_class == "unknown":
+            # 首次分类不是降级——unknown 等于「还没判定」，不是「已判定为敏感」。
+            continue
+        if _pii_rank(item.pii_class) < _pii_rank(current.pii_class):
+            downgrades.append(field_path)
+    if downgrades:
+        if not is_admin:
+            raise AbiServiceError("pii_downgrade_requires_admin", 403)
+        if len(reason) < 10:
+            # 与未遮罩导出的理由要求一致：过短的理由没有审计价值。
+            raise AbiServiceError("pii_downgrade_reason_required", 400)
+
+    decided_by = f"user:{access.user.id}"
+    now = _now()
+    for field_path, item in provided.items():
+        current = existing.get(field_path)
+        if current is None:
+            session.add(
+                FieldPolicy(
+                    id=uuid.uuid4(),
+                    dataset_id=access.dataset.id,
+                    field_path=field_path,
+                    pii_class=item.pii_class,
+                    mask_rule=item.mask_rule,
+                    decided_by=decided_by,
+                )
+            )
+            continue
+        current.pii_class = item.pii_class
+        current.mask_rule = item.mask_rule
+        current.decided_by = decided_by
+        current.created_at = now
+
+    await session.flush()
+    rows = await abi_repo.list_field_policies(
+        session, access.workspace.id, access.dataset.id
+    )
+    # 只有真的覆盖到全部列，才算「已扫描」。此前无条件置 True，
+    # 导致 overview 的「待 PII 处理」计数长期失真。
+    covered = {row.field_path for row in rows if row.pii_class != "unknown"}
+    access.dataset.pii_scanned = column_names.issubset(covered)
     await session.commit()
     return AbiPolicyResponse(
         dataset_id=access.dataset.id,
-        pii_scanned=True,
+        pii_scanned=access.dataset.pii_scanned,
         items=[_policy_item(row, is_default=False) for row in rows],
     )
 
@@ -1238,6 +1326,7 @@ async def create_abi_export(
                 selection.selected,
                 selection.policies,
                 mask_pii=payload.mask_pii,
+                mask_rules=selection.mask_rules,
             )
             for row in rows
         ]
