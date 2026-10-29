@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.lute.abi-feishu-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/lute/Project/data_scrapy/scripts/apify_lake/feishu-sync.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/lute/Project/data_scrapy</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/lute</string>
+        <key>LANG</key>
+        <string>zh_CN.UTF-8</string>
+    </dict>
+
+    <!-- 每天 03:10 跑一次，避开 T-1 摄取的 02:15 窗口 -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>10</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/lute/Library/Logs/abi-feishu-sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/lute/Library/Logs/abi-feishu-sync.err.log</string>
+
+    <!-- 定时型任务，不在加载时立刻执行 -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>LowPriorityIO</key>
+    <true/>
+</dict>
+</plist>

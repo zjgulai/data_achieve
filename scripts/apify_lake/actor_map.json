@@ -1,0 +1,773 @@
+{
+ "generated_from": [
+  "/Users/lute/Project/data_scrapy/apps/api/src/data_intelligence_hub/api/routes/collectors.py",
+  "/Users/lute/Project/data_scrapy/apps/api/src/data_intelligence_hub/collectors/endpoint_catalog.py"
+ ],
+ "endpoint_count": 96,
+ "actor_count": 85,
+ "ambiguous_actors": {
+  "clockworks/tiktok-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_scraper",
+    "platform": "tiktok",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_tiktok_media_profile_scraper",
+    "platform": "tiktok",
+    "content_type": "account"
+   }
+  ],
+  "apify/instagram-profile-scraper": [
+   {
+    "endpoint_type": "apify_instagram_profile_scraper",
+    "platform": "instagram",
+    "content_type": "account"
+   },
+   {
+    "endpoint_type": "apify_instagram_media_profile_scraper",
+    "platform": "instagram",
+    "content_type": "account"
+   }
+  ],
+  "streamers/youtube-scraper": [
+   {
+    "endpoint_type": "apify_youtube_scraper",
+    "platform": "youtube",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_youtube_media_channel_scraper",
+    "platform": "youtube",
+    "content_type": "account"
+   }
+  ],
+  "apify/facebook-posts-scraper": [
+   {
+    "endpoint_type": "apify_facebook_posts_scraper",
+    "platform": "facebook",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_facebook_media_page_scraper",
+    "platform": "facebook",
+    "content_type": "account"
+   }
+  ],
+  "apidojo/tweet-scraper": [
+   {
+    "endpoint_type": "apify_x_tweet_scraper",
+    "platform": "x",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_x_media_account_scraper",
+    "platform": "x",
+    "content_type": "account"
+   }
+  ],
+  "apify/google-search-scraper": [
+   {
+    "endpoint_type": "apify_google_search_scraper",
+    "platform": "google",
+    "content_type": "search"
+   },
+   {
+    "endpoint_type": "apify_gemini_search_scraper",
+    "platform": "gemini",
+    "content_type": "ai_answer"
+   },
+   {
+    "endpoint_type": "apify_snapchat_ads_scraper",
+    "platform": "snapchat_ads",
+    "content_type": "ad"
+   },
+   {
+    "endpoint_type": "apify_crunchbase_scraper",
+    "platform": "crunchbase",
+    "content_type": "account"
+   }
+  ],
+  "data_xplorer/google-news-scraper-fast": [
+   {
+    "endpoint_type": "apify_google_news_media_search",
+    "platform": "google_news",
+    "content_type": "news"
+   },
+   {
+    "endpoint_type": "apify_google_news_scraper",
+    "platform": "google_news",
+    "content_type": "news"
+   }
+  ],
+  "dltik/1688-scraper": [
+   {
+    "endpoint_type": "apify_1688_product_search",
+    "platform": "alibaba",
+    "content_type": "product"
+   },
+   {
+    "endpoint_type": "apify_1688_product_detail",
+    "platform": "alibaba",
+    "content_type": "product"
+   },
+   {
+    "endpoint_type": "apify_1688_advanced",
+    "platform": "alibaba",
+    "content_type": "product"
+   }
+  ]
+ },
+ "actors": {
+  "clockworks/tiktok-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_scraper",
+    "platform": "tiktok",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_tiktok_media_profile_scraper",
+    "platform": "tiktok",
+    "content_type": "account"
+   }
+  ],
+  "clockworks/tiktok-comments-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_comments_scraper",
+    "platform": "tiktok",
+    "content_type": "comment"
+   }
+  ],
+  "clockworks/tiktok-shop-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_shop_scraper",
+    "platform": "tiktok_shop",
+    "content_type": "product"
+   }
+  ],
+  "lemur/tiktok-shop-creators": [
+   {
+    "endpoint_type": "apify_tiktok_shop_creators",
+    "platform": "tiktok_shop",
+    "content_type": "account"
+   }
+  ],
+  "apify/instagram-scraper": [
+   {
+    "endpoint_type": "apify_instagram_scraper",
+    "platform": "instagram",
+    "content_type": "post"
+   }
+  ],
+  "apify/instagram-profile-scraper": [
+   {
+    "endpoint_type": "apify_instagram_profile_scraper",
+    "platform": "instagram",
+    "content_type": "account"
+   },
+   {
+    "endpoint_type": "apify_instagram_media_profile_scraper",
+    "platform": "instagram",
+    "content_type": "account"
+   }
+  ],
+  "apify/instagram-post-scraper": [
+   {
+    "endpoint_type": "apify_instagram_post_scraper",
+    "platform": "instagram",
+    "content_type": "post"
+   }
+  ],
+  "apify/instagram-reel-scraper": [
+   {
+    "endpoint_type": "apify_instagram_reel_scraper",
+    "platform": "instagram",
+    "content_type": "post"
+   }
+  ],
+  "apify/instagram-hashtag-scraper": [
+   {
+    "endpoint_type": "apify_instagram_hashtag_scraper",
+    "platform": "instagram",
+    "content_type": "post"
+   }
+  ],
+  "apify/instagram-comment-scraper": [
+   {
+    "endpoint_type": "apify_instagram_comment_scraper",
+    "platform": "instagram",
+    "content_type": "comment"
+   }
+  ],
+  "streamers/youtube-scraper": [
+   {
+    "endpoint_type": "apify_youtube_scraper",
+    "platform": "youtube",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_youtube_media_channel_scraper",
+    "platform": "youtube",
+    "content_type": "account"
+   }
+  ],
+  "streamers/youtube-comments-scraper": [
+   {
+    "endpoint_type": "apify_youtube_comments_scraper",
+    "platform": "youtube",
+    "content_type": "comment"
+   }
+  ],
+  "harshmaur/reddit-scraper": [
+   {
+    "endpoint_type": "apify_reddit_scraper",
+    "platform": "reddit",
+    "content_type": "post"
+   }
+  ],
+  "apify/facebook-posts-scraper": [
+   {
+    "endpoint_type": "apify_facebook_posts_scraper",
+    "platform": "facebook",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_facebook_media_page_scraper",
+    "platform": "facebook",
+    "content_type": "account"
+   }
+  ],
+  "apify/facebook-comments-scraper": [
+   {
+    "endpoint_type": "apify_facebook_comments_scraper",
+    "platform": "facebook",
+    "content_type": "comment"
+   }
+  ],
+  "apify/facebook-groups-scraper": [
+   {
+    "endpoint_type": "apify_facebook_groups_scraper",
+    "platform": "facebook",
+    "content_type": "post"
+   }
+  ],
+  "apify/facebook-pages-scraper": [
+   {
+    "endpoint_type": "apify_facebook_pages_scraper",
+    "platform": "facebook",
+    "content_type": "account"
+   }
+  ],
+  "apify/facebook-search-scraper": [
+   {
+    "endpoint_type": "apify_facebook_search_scraper",
+    "platform": "facebook",
+    "content_type": "account"
+   }
+  ],
+  "harvestapi/linkedin-company-posts": [
+   {
+    "endpoint_type": "apify_linkedin_company_posts_scraper",
+    "platform": "linkedin",
+    "content_type": "post"
+   }
+  ],
+  "freshdata/linkedin-job-scraper": [
+   {
+    "endpoint_type": "apify_linkedin_jobs_scraper",
+    "platform": "linkedin",
+    "content_type": "job"
+   }
+  ],
+  "apimaestro/linkedin-company-employees-scraper-no-cookies": [
+   {
+    "endpoint_type": "apify_linkedin_company_employees_scraper",
+    "platform": "linkedin",
+    "content_type": "account"
+   }
+  ],
+  "khadinakbar/linkedin-company-search-scraper": [
+   {
+    "endpoint_type": "apify_linkedin_company_search_scraper",
+    "platform": "linkedin",
+    "content_type": "account"
+   }
+  ],
+  "harvestapi/linkedin-profile-scraper": [
+   {
+    "endpoint_type": "apify_linkedin_profile_scraper",
+    "platform": "linkedin",
+    "content_type": "account"
+   }
+  ],
+  "apidojo/tweet-scraper": [
+   {
+    "endpoint_type": "apify_x_tweet_scraper",
+    "platform": "x",
+    "content_type": "post"
+   },
+   {
+    "endpoint_type": "apify_x_media_account_scraper",
+    "platform": "x",
+    "content_type": "account"
+   }
+  ],
+  "apidojo/twitter-user-scraper": [
+   {
+    "endpoint_type": "apify_twitter_user_scraper",
+    "platform": "x",
+    "content_type": "account"
+   }
+  ],
+  "apify/threads-profile-api-scraper": [
+   {
+    "endpoint_type": "apify_threads_profile_scraper",
+    "platform": "threads",
+    "content_type": "account"
+   }
+  ],
+  "futurizerush/meta-threads-scraper": [
+   {
+    "endpoint_type": "apify_threads_posts_scraper",
+    "platform": "threads",
+    "content_type": "post"
+   }
+  ],
+  "junglee/amazon-crawler": [
+   {
+    "endpoint_type": "apify_amazon_product_scraper",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "junglee/amazon-reviews-scraper": [
+   {
+    "endpoint_type": "apify_amazon_reviews_scraper",
+    "platform": "amazon",
+    "content_type": "review"
+   }
+  ],
+  "axesso_data/amazon-reviews-scraper": [
+   {
+    "endpoint_type": "apify_amazon_reviews_axesso",
+    "platform": "amazon",
+    "content_type": "review"
+   }
+  ],
+  "web_wanderer/amazon-reviews-extractor": [
+   {
+    "endpoint_type": "apify_amazon_reviews_extractor",
+    "platform": "amazon",
+    "content_type": "review"
+   }
+  ],
+  "junglee/free-amazon-product-scraper": [
+   {
+    "endpoint_type": "apify_amazon_free_product_scraper",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "ecommerce_leads/store-leads-14m-e-commerce-leads": [
+   {
+    "endpoint_type": "apify_shopify_store_leads",
+    "platform": "shopify",
+    "content_type": "account"
+   }
+  ],
+  "e-commerce/walmart-product-detail-scraper": [
+   {
+    "endpoint_type": "apify_walmart_product_scraper",
+    "platform": "walmart",
+    "content_type": "product"
+   }
+  ],
+  "web_wanderer/walmart-reviews-scraper": [
+   {
+    "endpoint_type": "apify_walmart_reviews_scraper",
+    "platform": "walmart",
+    "content_type": "review"
+   }
+  ],
+  "amit123/temu-products-scraper": [
+   {
+    "endpoint_type": "apify_temu_products_scraper",
+    "platform": "temu",
+    "content_type": "product"
+   }
+  ],
+  "shahidirfan/shein-product-scraper": [
+   {
+    "endpoint_type": "apify_shein_product_scraper",
+    "platform": "shein",
+    "content_type": "product"
+   }
+  ],
+  "devcake/aliexpress-products-scraper": [
+   {
+    "endpoint_type": "apify_aliexpress_products_scraper",
+    "platform": "aliexpress",
+    "content_type": "product"
+   }
+  ],
+  "dtrungtin/ebay-items-scraper": [
+   {
+    "endpoint_type": "apify_ebay_product_scraper",
+    "platform": "ebay",
+    "content_type": "product"
+   }
+  ],
+  "caffein.dev/ebay-sold-listings": [
+   {
+    "endpoint_type": "apify_ebay_sold_listings_scraper",
+    "platform": "ebay",
+    "content_type": "product"
+   }
+  ],
+  "automation-lab/etsy-scraper": [
+   {
+    "endpoint_type": "apify_etsy_scraper",
+    "platform": "etsy",
+    "content_type": "product"
+   }
+  ],
+  "clearpath/shopify-store-leads": [
+   {
+    "endpoint_type": "apify_shopify_scraper",
+    "platform": "shopify",
+    "content_type": "product"
+   }
+  ],
+  "apify/google-search-scraper": [
+   {
+    "endpoint_type": "apify_google_search_scraper",
+    "platform": "google",
+    "content_type": "search"
+   },
+   {
+    "endpoint_type": "apify_gemini_search_scraper",
+    "platform": "gemini",
+    "content_type": "ai_answer"
+   },
+   {
+    "endpoint_type": "apify_snapchat_ads_scraper",
+    "platform": "snapchat_ads",
+    "content_type": "ad"
+   },
+   {
+    "endpoint_type": "apify_crunchbase_scraper",
+    "platform": "crunchbase",
+    "content_type": "account"
+   }
+  ],
+  "compass/crawler-google-places": [
+   {
+    "endpoint_type": "apify_google_maps_scraper",
+    "platform": "google_maps",
+    "content_type": "product"
+   }
+  ],
+  "compass/Google-Maps-Reviews-Scraper": [
+   {
+    "endpoint_type": "apify_google_maps_reviews_scraper",
+    "platform": "google_maps",
+    "content_type": "review"
+   }
+  ],
+  "scraperlink/google-search-results-serp-scraper": [
+   {
+    "endpoint_type": "apify_serp_scraperlink",
+    "platform": "google",
+    "content_type": "search_result"
+   }
+  ],
+  "data_xplorer/google-trends-fast-scraper": [
+   {
+    "endpoint_type": "apify_google_trends_scraper",
+    "platform": "google_trends",
+    "content_type": "trend"
+   }
+  ],
+  "data_xplorer/google-news-scraper-fast": [
+   {
+    "endpoint_type": "apify_google_news_media_search",
+    "platform": "google_news",
+    "content_type": "news"
+   },
+   {
+    "endpoint_type": "apify_google_news_scraper",
+    "platform": "google_news",
+    "content_type": "news"
+   }
+  ],
+  "apify/google-ai-overviews-scraper": [
+   {
+    "endpoint_type": "apify_google_ai_overviews_scraper",
+    "platform": "google",
+    "content_type": "ai_answer"
+   }
+  ],
+  "apify/perplexity-search-scraper": [
+   {
+    "endpoint_type": "apify_perplexity_search_scraper",
+    "platform": "perplexity",
+    "content_type": "ai_answer"
+   }
+  ],
+  "apify/chatgpt-search-scraper": [
+   {
+    "endpoint_type": "apify_chatgpt_search_scraper",
+    "platform": "chatgpt",
+    "content_type": "ai_answer"
+   }
+  ],
+  "lexis-solutions/google-ads-scraper": [
+   {
+    "endpoint_type": "apify_google_ads_scraper",
+    "platform": "google_ads",
+    "content_type": "ad"
+   }
+  ],
+  "apify/facebook-ads-scraper": [
+   {
+    "endpoint_type": "apify_facebook_ads_scraper",
+    "platform": "facebook_ads",
+    "content_type": "ad"
+   }
+  ],
+  "curious_coder/facebook-ads-library-scraper": [
+   {
+    "endpoint_type": "apify_facebook_ads_library_scraper",
+    "platform": "facebook_ads",
+    "content_type": "ad"
+   }
+  ],
+  "lexis-solutions/tiktok-ads-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_ads_scraper",
+    "platform": "tiktok_ads",
+    "content_type": "ad"
+   }
+  ],
+  "shahidirfan/Pinterest-Ads-Scraper": [
+   {
+    "endpoint_type": "apify_pinterest_ads_scraper",
+    "platform": "pinterest_ads",
+    "content_type": "ad"
+   }
+  ],
+  "memo23/trustpilot-scraper-ppe": [
+   {
+    "endpoint_type": "apify_trustpilot_reviews_scraper",
+    "platform": "trustpilot",
+    "content_type": "review"
+   }
+  ],
+  "johnvc/apple-app-store-reviews-api": [
+   {
+    "endpoint_type": "apify_appstore_reviews_scraper",
+    "platform": "appstore",
+    "content_type": "review"
+   }
+  ],
+  "neatrat/google-play-store-reviews-scraper": [
+   {
+    "endpoint_type": "apify_google_play_reviews_scraper",
+    "platform": "google_play",
+    "content_type": "review"
+   }
+  ],
+  "maxcopell/tripadvisor-reviews": [
+   {
+    "endpoint_type": "apify_tripadvisor_reviews_scraper",
+    "platform": "tripadvisor",
+    "content_type": "review"
+   }
+  ],
+  "voyager/booking-scraper": [
+   {
+    "endpoint_type": "apify_booking_scraper",
+    "platform": "booking",
+    "content_type": "product"
+   }
+  ],
+  "tri_angle/airbnb-scraper": [
+   {
+    "endpoint_type": "apify_airbnb_scraper",
+    "platform": "airbnb",
+    "content_type": "product"
+   }
+  ],
+  "memo23/glassdoor-scraper-ppr": [
+   {
+    "endpoint_type": "apify_glassdoor_scraper",
+    "platform": "glassdoor",
+    "content_type": "review"
+   }
+  ],
+  "onescales/hacker-news-data": [
+   {
+    "endpoint_type": "apify_hacker_news_scraper",
+    "platform": "hacker_news",
+    "content_type": "post"
+   }
+  ],
+  "fatihtahta/All-In-One-Bluesky-Scraper": [
+   {
+    "endpoint_type": "apify_bluesky_scraper",
+    "platform": "bluesky",
+    "content_type": "post"
+   }
+  ],
+  "misceres/indeed-scraper": [
+   {
+    "endpoint_type": "apify_indeed_jobs_scraper",
+    "platform": "indeed",
+    "content_type": "job"
+   }
+  ],
+  "apify/website-content-crawler": [
+   {
+    "endpoint_type": "apify_website_content_crawler",
+    "platform": "web",
+    "content_type": "web_page"
+   }
+  ],
+  "apify/rag-web-browser": [
+   {
+    "endpoint_type": "apify_rag_web_browser",
+    "platform": "web",
+    "content_type": "web_page"
+   }
+  ],
+  "clockworks/tiktok-transcript-extractor": [
+   {
+    "endpoint_type": "apify_tiktok_transcript_extractor",
+    "platform": "tiktok",
+    "content_type": "post"
+   }
+  ],
+  "johnvc/youtubetranscripts": [
+   {
+    "endpoint_type": "apify_youtube_transcript_scraper",
+    "platform": "youtube",
+    "content_type": "post"
+   }
+  ],
+  "doliz/tiktok-creative-center-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_creative_center",
+    "platform": "tiktok",
+    "content_type": "ad"
+   }
+  ],
+  "curious_coder/similarweb-scraper": [
+   {
+    "endpoint_type": "apify_similarweb_scraper",
+    "platform": "web",
+    "content_type": "web_page"
+   }
+  ],
+  "pratikdani/tiktok-shop-search-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_shop_search_scraper",
+    "platform": "tiktok",
+    "content_type": "product"
+   }
+  ],
+  "pratikdani/tiktok-shop-scraper": [
+   {
+    "endpoint_type": "apify_tiktok_shop_product_detail",
+    "platform": "tiktok_shop",
+    "content_type": "product"
+   }
+  ],
+  "bovi/target-products": [
+   {
+    "endpoint_type": "apify_target_products_scraper",
+    "platform": "target",
+    "content_type": "product"
+   }
+  ],
+  "apify/facebook-marketplace-scraper": [
+   {
+    "endpoint_type": "apify_facebook_marketplace_scraper",
+    "platform": "facebook",
+    "content_type": "product"
+   }
+  ],
+  "dltik/1688-scraper": [
+   {
+    "endpoint_type": "apify_1688_product_search",
+    "platform": "alibaba",
+    "content_type": "product"
+   },
+   {
+    "endpoint_type": "apify_1688_product_detail",
+    "platform": "alibaba",
+    "content_type": "product"
+   },
+   {
+    "endpoint_type": "apify_1688_advanced",
+    "platform": "alibaba",
+    "content_type": "product"
+   }
+  ],
+  "zen-studio/alibaba-scraper": [
+   {
+    "endpoint_type": "apify_alibaba_product_search",
+    "platform": "alibaba",
+    "content_type": "product"
+   }
+  ],
+  "xtracto/alibaba-product-scraper": [
+   {
+    "endpoint_type": "apify_alibaba_product_detail",
+    "platform": "alibaba",
+    "content_type": "product"
+   }
+  ],
+  "junglee/amazon-bestsellers": [
+   {
+    "endpoint_type": "apify_amazon_bestsellers",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "samstorm/amazon-competitor-research-scraper": [
+   {
+    "endpoint_type": "apify_amazon_competitor_research",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "marketplace-scrapers/amazon-bsr-scraper": [
+   {
+    "endpoint_type": "apify_amazon_bsr_tracker",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "ramsford/ecommerce-price-tracker": [
+   {
+    "endpoint_type": "apify_amazon_price_tracker",
+    "platform": "amazon",
+    "content_type": "product"
+   }
+  ],
+  "skystone_labs/aliexpress-product-scraper": [
+   {
+    "endpoint_type": "apify_aliexpress_product_search_v2",
+    "platform": "aliexpress",
+    "content_type": "product"
+   }
+  ],
+  "trovevault/shopify-products-scraper": [
+   {
+    "endpoint_type": "apify_shopify_products_monitor",
+    "platform": "shopify",
+    "content_type": "product"
+   }
+  ]
+ }
+}
