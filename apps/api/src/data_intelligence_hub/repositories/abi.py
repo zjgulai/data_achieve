@@ -589,6 +589,46 @@ async def get_export_policy(
     return result.scalar_one_or_none()
 
 
+async def upsert_export_policy(
+    session: AsyncSession,
+    workspace_id: uuid.UUID,
+    dataset_id: uuid.UUID | None,
+    *,
+    max_rows_masked: int | None,
+    require_dual_approval: bool,
+    allowed_formats: list[str] | None,
+) -> ExportPolicy:
+    """建或改一条导出策略。
+
+    数据集级与工作区级（``dataset_id`` 为空）各只有一条。唯一性靠
+    ``(workspace_id, dataset_id)`` 的查询保证——表上没有唯一约束，
+    所以这里先查后改，不依赖 ON CONFLICT。
+    """
+    existing = await session.scalar(
+        select(ExportPolicy).where(
+            ExportPolicy.workspace_id == workspace_id,
+            (
+                ExportPolicy.dataset_id.is_(None)
+                if dataset_id is None
+                else ExportPolicy.dataset_id == dataset_id
+            ),
+        )
+    )
+    if existing is None:
+        existing = ExportPolicy(
+            id=uuid.uuid4(),
+            workspace_id=workspace_id,
+            dataset_id=dataset_id,
+        )
+        session.add(existing)
+    existing.max_rows_masked = max_rows_masked
+    existing.require_dual_approval = require_dual_approval
+    existing.allowed_formats = allowed_formats
+    await session.flush()
+    await session.refresh(existing)
+    return existing
+
+
 async def create_export_job(
     session: AsyncSession,
     job: ExportJob,
@@ -1231,6 +1271,7 @@ __all__ = [
     "get_dataset_by_slug",
     "get_export_job",
     "get_export_policy",
+    "upsert_export_policy",
     "get_grant",
     "get_schedule_state",
     "get_upload_batch",

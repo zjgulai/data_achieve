@@ -27,6 +27,8 @@ from data_intelligence_hub.schemas.abi import (
     AbiExportCreateRequest,
     AbiExportJobResponse,
     AbiExportListResponse,
+    AbiExportPolicyResponse,
+    AbiExportPolicyUpdateRequest,
     AbiExportRejectRequest,
     AbiGrantCreateRequest,
     AbiGrantListResponse,
@@ -197,7 +199,12 @@ async def put_dataset_policy(
     access: PublisherAccessDep,
     session: SessionDep,
 ) -> AbiPolicyResponse:
-    """全量写入策略。未提交的列显式写成 unknown（仍是拒绝）。"""
+    """按提交项更新 PII 策略。
+
+    未提交的列保留原分类——这是增量语义，不是全量替换。降级
+    （``direct``/``secret``/``quasi`` 往低档走）需要 admin 权限与
+    ``reason``（>= 10 字），否则返回 403 / 400。
+    """
     try:
         return await abi_service.replace_abi_policy(session, access, payload)
     except AbiServiceError as exc:
@@ -355,6 +362,42 @@ async def create_export(
         return await abi_service.create_abi_export(
             session, context.workspace, context.user, payload
         )
+    except AbiServiceError as exc:
+        _raise_http(exc)
+
+
+@router.get(
+    "/datasets/{slug}/export-policy",
+    response_model=AbiExportPolicyResponse,
+)
+async def get_export_policy(
+    access: ViewerAccessDep,
+    session: SessionDep,
+) -> AbiExportPolicyResponse:
+    """读 dataset 级导出策略。
+
+    没有策略行时返回表定义的默认值：``require_dual_approval=True``、
+    格式与行数不额外限制（行数仍受系统上限 5 万约束）。
+    """
+    return await abi_service.get_abi_export_policy(session, access)
+
+
+@router.put(
+    "/datasets/{slug}/export-policy",
+    response_model=AbiExportPolicyResponse,
+)
+async def put_export_policy(
+    payload: AbiExportPolicyUpdateRequest,
+    access: AdminAccessDep,
+    session: SessionDep,
+) -> AbiExportPolicyResponse:
+    """写入 dataset 级导出策略。需要 admin。
+
+    策略直接决定审批要求、可用格式与行数上限，放宽任一条都等于削弱管控，
+    因此门槛与 PII 降级同级。
+    """
+    try:
+        return await abi_service.set_abi_export_policy(session, access, payload)
     except AbiServiceError as exc:
         _raise_http(exc)
 

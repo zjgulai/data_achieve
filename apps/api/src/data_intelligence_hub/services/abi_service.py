@@ -55,6 +55,8 @@ from data_intelligence_hub.schemas.abi import (
     AbiExportCreateRequest,
     AbiExportJobResponse,
     AbiExportListResponse,
+    AbiExportPolicyResponse,
+    AbiExportPolicyUpdateRequest,
     AbiGrantCreateRequest,
     AbiGrantListResponse,
     AbiGrantResponse,
@@ -1259,6 +1261,71 @@ async def retry_abi_upload(
     return AbiUploadBatchResponse.model_validate(retried)
 
 
+async def get_abi_export_policy(
+    session: AsyncSession,
+    access: DatasetAccess,
+) -> AbiExportPolicyResponse:
+    """读 dataset 级导出策略。没有策略行时返回表定义的默认值。"""
+    policy = await abi_repo.get_export_policy(
+        session, access.workspace.id, access.dataset.id
+    )
+    if policy is None:
+        # 与 export_policy 的 server_default 保持一致：默认要求双人审批。
+        # 格式与行数没有默认限制——那是代码里的 MAX_EXPORT_ROWS。
+        return AbiExportPolicyResponse(
+            dataset_id=None,
+            max_rows_masked=None,
+            require_dual_approval=True,
+            allowed_formats=None,
+            is_default=True,
+        )
+    return AbiExportPolicyResponse(
+        dataset_id=policy.dataset_id,
+        max_rows_masked=policy.max_rows_masked,
+        require_dual_approval=policy.require_dual_approval,
+        allowed_formats=list(policy.allowed_formats)
+        if policy.allowed_formats is not None
+        else None,
+        is_default=policy.dataset_id is None,
+    )
+
+
+async def set_abi_export_policy(
+    session: AsyncSession,
+    access: DatasetAccess,
+    payload: AbiExportPolicyUpdateRequest,
+) -> AbiExportPolicyResponse:
+    """写入 dataset 级导出策略。需要 admin。
+
+    策略直接决定「未遮罩导出要不要审批」「能不能导出某种格式」「最多
+    导出多少行」，放宽其中任何一条都等于削弱管控，所以门槛与 PII 降级
+    同级：admin。
+    """
+    if role_rank(access.grant.role) < role_rank("admin"):
+        raise AbiServiceError("export_policy_requires_admin", 403)
+
+    policy = await abi_repo.upsert_export_policy(
+        session,
+        access.workspace.id,
+        access.dataset.id,
+        max_rows_masked=payload.max_rows_masked,
+        require_dual_approval=payload.require_dual_approval,
+        allowed_formats=list(payload.allowed_formats)
+        if payload.allowed_formats is not None
+        else None,
+    )
+    await session.commit()
+    return AbiExportPolicyResponse(
+        dataset_id=policy.dataset_id,
+        max_rows_masked=policy.max_rows_masked,
+        require_dual_approval=policy.require_dual_approval,
+        allowed_formats=list(policy.allowed_formats)
+        if policy.allowed_formats is not None
+        else None,
+        is_default=False,
+    )
+
+
 def _filters_hmac(payload: dict[str, Any]) -> bytes:
     canonical = json.dumps(
         payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str
@@ -1640,6 +1707,7 @@ __all__ = [
     "commit_abi_upload",
     "create_abi_dataset",
     "create_abi_export",
+    "get_abi_export_policy",
     "create_abi_grant",
     "create_abi_upload",
     "delete_abi_grant",
@@ -1653,5 +1721,6 @@ __all__ = [
     "list_abi_grants",
     "query_abi_dataset",
     "replace_abi_policy",
+    "set_abi_export_policy",
     "write_abi_upload_content",
 ]

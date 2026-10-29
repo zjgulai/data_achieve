@@ -29,6 +29,7 @@ import {
   downloadAbiExport,
   fetchAbiDataset,
   fetchAbiDatasets,
+  fetchAbiExportPolicy,
   fetchAbiExports,
   fetchAbiGrants,
   fetchAbiOverview,
@@ -38,6 +39,7 @@ import {
   queryAbiDataset,
   rejectAbiExport,
   retryAbiUpload,
+  updateAbiExportPolicy,
   uploadAbiBatch,
 } from "@/lib/api/abi";
 import type {
@@ -46,6 +48,7 @@ import type {
   AbiDatasetColumn,
   AbiExportFormat,
   AbiExportJob,
+  AbiExportPolicy,
   AbiOverview,
   AbiPiiClass,
   AbiQueryFilter,
@@ -1823,6 +1826,54 @@ function AdminTab() {
     enabled: slug !== "",
   });
 
+  const exportPolicy = useQuery({
+    queryKey: ["abi", "export-policy", slug],
+    queryFn: () => {
+      if (!slug) throw new Error("未选择数据集");
+      return fetchAbiExportPolicy(slug);
+    },
+    enabled: slug !== "",
+  });
+
+  const [maxRows, setMaxRows] = useState("");
+  const [allowedFormats, setAllowedFormats] = useState("");
+  const [requireApproval, setRequireApproval] = useState(true);
+
+  // 策略一加载就同步到表单；用户改过之后仍以服务端返回为准，
+  // 避免切数据集时表单停留在上一个数据集的值。
+  const [policyOwner, setPolicyOwner] = useState("");
+  if (policyOwner !== slug) {
+    setPolicyOwner(slug);
+    const loaded = exportPolicy.data;
+    if (loaded) {
+      setMaxRows(loaded.max_rows_masked == null ? "" : String(loaded.max_rows_masked));
+      setAllowedFormats((loaded.allowed_formats ?? []).join(","));
+      setRequireApproval(loaded.require_dual_approval);
+    }
+  }
+
+  const saveExportPolicy = useMutation<AbiExportPolicy, Error, void>({
+    mutationFn: () => {
+      if (!slug) throw new Error("未选择数据集");
+      const formats = allowedFormats
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+      return updateAbiExportPolicy(slug, {
+        max_rows_masked: maxRows.trim() ? Number(maxRows.trim()) : null,
+        require_dual_approval: requireApproval,
+        allowed_formats: formats.length > 0 ? formats : null,
+      });
+    },
+    onSuccess: () => {
+      setActionError(null);
+      void queryClient.invalidateQueries({
+        queryKey: ["abi", "export-policy", slug],
+      });
+    },
+    onError: (error) => setActionError(describeError(error)),
+  });
+
   const createGrant = useMutation<AbiAccessGrant, Error, void>({
     mutationFn: () => {
       if (!slug || !userId.trim()) throw new Error("缺少数据集或用户 ID");
@@ -1982,6 +2033,77 @@ function AdminTab() {
                   policy.is_default ? "默认 unknown" : "已分类",
                 ])}
               />
+            </AsyncSection>
+          </Panel>
+
+          <Panel
+            title={`导出策略 · ${slug}`}
+            description="未遮罩导出是否要双人审批、允许哪些格式、遮罩导出最多多少行。改这里等于调整管控强度，需要 admin。"
+            actions={
+              <RefreshButton
+                onClick={() => void exportPolicy.refetch()}
+                isFetching={exportPolicy.isFetching}
+              />
+            }
+          >
+            <AsyncSection
+              isLoading={exportPolicy.isLoading}
+              error={exportPolicy.error}
+              isEmpty={false}
+              emptyIcon={ShieldAlert}
+              emptyTitle=""
+              emptyHint=""
+              onRetry={() => void exportPolicy.refetch()}
+            >
+              <p className="mb-3 text-xs text-[var(--text-tertiary)]">
+                {exportPolicy.data?.is_default
+                  ? "当前没有显式策略行：未遮罩导出必须双人审批，格式与行数不额外限制（行数仍受系统上限 5 万约束）。"
+                  : "当前使用数据集级策略。"}
+              </p>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveExportPolicy.mutate();
+                }}
+                className="grid gap-3"
+              >
+                <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  <input
+                    type="checkbox"
+                    checked={requireApproval}
+                    onChange={(event) => setRequireApproval(event.target.checked)}
+                  />
+                  未遮罩导出需要双人审批
+                </label>
+                <div className="flex flex-wrap items-end gap-3">
+                  <label className="grid gap-1 text-xs text-[var(--text-secondary)]">
+                    <span>遮罩导出行数上限（留空表示用系统默认）</span>
+                    <input
+                      inputMode="numeric"
+                      value={maxRows}
+                      onChange={(event) => setMaxRows(event.target.value)}
+                      placeholder="50000"
+                      className="w-40 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <label className="grid gap-1 text-xs text-[var(--text-secondary)]">
+                    <span>允许格式（逗号分隔，留空表示不限制）</span>
+                    <input
+                      value={allowedFormats}
+                      onChange={(event) => setAllowedFormats(event.target.value)}
+                      placeholder="csv,jsonl"
+                      className="w-56 rounded-[var(--radius-2)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] px-3 py-2 text-sm"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={saveExportPolicy.isPending}
+                    className="rounded-[var(--radius-2)] bg-[var(--action-primary)] px-4 py-2 text-sm font-semibold text-[var(--text-inverse)] hover:bg-[var(--action-primary-hover)] disabled:opacity-50"
+                  >
+                    {saveExportPolicy.isPending ? "保存中…" : "保存策略"}
+                  </button>
+                </div>
+              </form>
             </AsyncSection>
           </Panel>
         </>

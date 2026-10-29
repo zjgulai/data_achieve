@@ -246,6 +246,29 @@ class AbiPolicyResponse(BaseModel):
     items: list[AbiPolicyItem]
 
 
+class AbiExportPolicyUpdateRequest(BaseModel):
+    """写入导出策略。三项都可空：``None`` 表示「不限制」。
+
+    ``allowed_formats`` 为空表示不限制格式；``max_rows_masked`` 为空表示
+    只用系统默认上限。``require_dual_approval`` 缺省 true——与表定义的
+    server_default 一致，不要在这里造出更宽松的默认值。
+    """
+
+    max_rows_masked: int | None = Field(default=None, ge=1, le=10_000_000)
+    require_dual_approval: bool = True
+    allowed_formats: list[ExportFormat] | None = Field(default=None, max_length=8)
+
+
+class AbiExportPolicyResponse(BaseModel):
+    """dataset 级导出策略。``is_default=True`` 表示没有显式策略行。"""
+
+    dataset_id: uuid.UUID | None
+    max_rows_masked: int | None
+    require_dual_approval: bool
+    allowed_formats: list[str] | None
+    is_default: bool
+
+
 class AbiUploadCreateRequest(BaseModel):
     """创建上传批次。"""
 
@@ -382,6 +405,8 @@ __all__ = [
     "AbiExportCreateRequest",
     "AbiExportJobResponse",
     "AbiExportListResponse",
+    "AbiExportPolicyResponse",
+    "AbiExportPolicyUpdateRequest",
     "AbiGrantCreateRequest",
     "AbiGrantListResponse",
     "AbiGrantResponse",

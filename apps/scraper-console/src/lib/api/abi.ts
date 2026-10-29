@@ -280,6 +280,21 @@ export type AbiExportJob = {
   columns: string[] | null;
 };
 
+/** dataset 级导出策略。``is_default`` 为真表示还没写过策略行。 */
+export type AbiExportPolicy = {
+  dataset_id: string | null;
+  max_rows_masked: number | null;
+  require_dual_approval: boolean;
+  allowed_formats: string[] | null;
+  is_default: boolean;
+};
+
+export type AbiExportPolicyUpdate = {
+  max_rows_masked: number | null;
+  require_dual_approval: boolean;
+  allowed_formats: string[] | null;
+};
+
 export type AbiExportCreateRequest = {
   dataset_slug: string;
   format: AbiExportFormat;
@@ -523,6 +538,26 @@ function filenameFromDisposition(header: string | null): string | null {
  * 只有未遮罩导出会进入 awaiting_approval；申请人不能批自己的作业，
  * 服务端会拒。审批人需要 publisher grant。
  */
+/** 读 dataset 级导出策略。没有策略行时返回服务端默认值。 */
+export async function fetchAbiExportPolicy(
+  datasetSlug: string,
+): Promise<AbiExportPolicy> {
+  return apiFetch<AbiExportPolicy>(
+    `/api/abi/datasets/${encodeURIComponent(datasetSlug)}/export-policy`,
+  );
+}
+
+/** 写入 dataset 级导出策略。需要 admin。 */
+export async function updateAbiExportPolicy(
+  datasetSlug: string,
+  payload: AbiExportPolicyUpdate,
+): Promise<AbiExportPolicy> {
+  return apiFetch<AbiExportPolicy>(
+    `/api/abi/datasets/${encodeURIComponent(datasetSlug)}/export-policy`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+}
+
 export async function approveAbiExport(jobId: string): Promise<AbiExportJob> {
   return apiFetch<AbiExportJob>(
     `/api/abi/exports/${encodeURIComponent(jobId)}/approve`,
