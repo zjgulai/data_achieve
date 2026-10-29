@@ -562,7 +562,14 @@ class ApifyActorCollector(BaseCollector):
                 if not isinstance(run_id, str) or not run_id:
                     raise CollectorError("apify_run_id_missing: no run ID in response")
 
-                logs.append(collector_log("apify_run_created", f"run_id={run_id}"))
+                run_created_log = collector_log(
+                    "apify_run_created", f"run_id={run_id}"
+                )
+                # 结构化键，供 run_collector_call 提取后落库。
+                # 此前只写在 message 文本里，提取逻辑读的是字典键，
+                # 所以 Apify 这条路径的 provider_run_id 一直是 None。
+                run_created_log["provider_run_id"] = run_id
+                logs.append(run_created_log)
 
                 # 2. Wait for completion
                 run_data = await _wait_for_run(client, run_id, token, timeout=run_timeout)
@@ -593,12 +600,14 @@ class ApifyActorCollector(BaseCollector):
                     return CollectionResult(raw_records=[], logs=logs, errors=errors)
 
                 items = await _fetch_dataset_items(client, dataset_id, max_items, token)
-                logs.append(
-                    collector_log(
-                        "apify_dataset_fetched",
-                        f"dataset_id={dataset_id}, count={len(items)}",
-                    )
+                dataset_fetched_log = collector_log(
+                    "apify_dataset_fetched",
+                    f"dataset_id={dataset_id}, count={len(items)}",
                 )
+                # 同上：run 结束后 item 仍在这个 dataset 里，
+                # 但 run 一旦被清理就再也取不回来。必须落库。
+                dataset_fetched_log["provider_dataset_id"] = dataset_id
+                logs.append(dataset_fetched_log)
 
         except CollectorError as exc:
             errors.append(str(exc))

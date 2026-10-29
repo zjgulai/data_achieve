@@ -9,7 +9,7 @@ API_ROOT = PROJECT_ROOT / "apps" / "api"
 SCRIPTS = PROJECT_ROOT / "scripts"
 
 # Pinned in the test on purpose: a change of head must edit this file.
-CURRENT_HEAD = "202610280064"
+CURRENT_HEAD = "202610290065"
 
 VERIFY_SCRIPTS = (
     "verify-capability-governance-migration.sh",

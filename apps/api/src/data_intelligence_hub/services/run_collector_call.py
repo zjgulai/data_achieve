@@ -187,20 +187,18 @@ class RunCollectorCall:
         task_run.quantity = _as_decimal_or_none(result.quantity)
         task_run.unit_price = _as_decimal_or_none(result.unit_price)
         task_run.total_cost_usd = _as_decimal_or_none(result.total_cost_usd)
-        provider_run_id = next(
-            (
-                str(log.get("provider_run_id"))
-                for log in reversed(logs)
-                if log.get("provider_run_id")
-            ),
-            None,
-        )
-        if provider_run_id:
-            task_run.provider_run_id = provider_run_id
+        provider_run_id = _latest_log_value(logs, "provider_run_id")
+        provider_dataset_id = _latest_log_value(logs, "provider_dataset_id")
+        if provider_run_id or provider_dataset_id:
+            run_values: dict[str, Any] = {}
+            if provider_run_id:
+                task_run.provider_run_id = provider_run_id
+                run_values["provider_run_id"] = provider_run_id
+            if provider_dataset_id:
+                task_run.provider_dataset_id = provider_dataset_id
+                run_values["provider_dataset_id"] = provider_dataset_id
             await self._session.execute(
-                update(Run)
-                .where(Run.id == task_run.run_id)
-                .values(provider_run_id=provider_run_id)
+                update(Run).where(Run.id == task_run.run_id).values(**run_values)
             )
         task_run.logs = [dict(log) for log in logs]
         flag_modified(task_run, "logs")
@@ -246,6 +244,20 @@ def _required_uuid(run: RunRecord, name: str) -> uuid.UUID:
     if not isinstance(value, uuid.UUID):
         raise RuntimeError(f"运行记录缺少字段 {name}")
     return value
+
+
+def _latest_log_value(logs: list[dict[str, Any]], key: str) -> str | None:
+    """从采集日志里取最近一次出现的结构化 provider 标识。
+
+    只看字典键，不解析 message 文本：文本是给人看的，格式随时可改；
+    键是契约。取「最近一次」是因为重试时同一 run 可能产生多条日志，
+    最后一条才对应实际取数的那次调用。
+    """
+    for log in reversed(logs):
+        value = log.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 def _endpoint_type(config: dict[str, Any] | None) -> str | None:

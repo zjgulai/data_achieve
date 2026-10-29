@@ -140,6 +140,11 @@ class Run(UUIDPrimaryKeyMixin, Base):
     worker_id: Mapped[str | None] = mapped_column(String(120))
     # 外部 provider 的运行 ID。用于租约接管后恢复轮询，避免重复付费提交。
     provider_run_id: Mapped[str | None] = mapped_column(String(120))
+    # 外部 provider 的数据集 ID（Apify 的 defaultDatasetId）。
+    # 与 provider_run_id 配对：run 结束后 item 仍在 dataset 里，
+    # 而 run 被清理后就再也取不回来。列名带 provider_ 前缀是因为仓库
+    # 已有 datasets 表，裸 dataset_id 会被读成内部数据集外键。
+    provider_dataset_id: Mapped[str | None] = mapped_column(String(120))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

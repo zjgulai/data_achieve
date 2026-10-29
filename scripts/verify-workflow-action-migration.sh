@@ -103,11 +103,11 @@ fi
 cd "$repository_root/apps/api"
 heads_output="$(uv run alembic heads)"
 head_count="$(printf '%s\n' "$heads_output" | awk 'NF { count += 1 } END { print count + 0 }')"
-if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610280064 \(head\)$'; then
-  printf '%s\n' "error: expected exactly one Alembic head at 202610280064" >&2
+if [ "$head_count" -ne 1 ] || ! printf '%s\n' "$heads_output" | grep -Eq '^202610290065 \(head\)$'; then
+  printf '%s\n' "error: expected exactly one Alembic head at 202610290065" >&2
   exit 1
 fi
 
-printf '%s\n' "alembic source head check passed: 202610280064"
+printf '%s\n' "alembic source head check passed: 202610290065"
 export DATABASE_URL="$WORKFLOW_ACTION_TEST_DATABASE_URL"
 uv run pytest tests/postgres_workflow_action -q

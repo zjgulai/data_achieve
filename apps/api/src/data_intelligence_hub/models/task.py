@@ -98,6 +98,8 @@ class TaskRun(UUIDPrimaryKeyMixin, Base):
     remaining_budget: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     provider: Mapped[str | None] = mapped_column(String(40))
     provider_run_id: Mapped[str | None] = mapped_column(String(120))
+    # 调用级镜像，权威值在 runs.provider_dataset_id。
+    provider_dataset_id: Mapped[str | None] = mapped_column(String(120))
     endpoint_type: Mapped[str | None] = mapped_column(String(80))
     evidence_grade: Mapped[str | None] = mapped_column(String(30))
     schema_version: Mapped[str | None] = mapped_column(String(20))

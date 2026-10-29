@@ -330,8 +330,8 @@ def test_fresh_upgrade_has_single_head_three_empty_tables_and_preserved_head(
         for line in _run_alembic(postgres_database_url, "heads").stdout.splitlines()
         if line.strip()
     ]
-    assert heads == ["202610280064 (head)"]
-    assert _revision(postgres_database_url) == "202610280064"
+    assert heads == ["202610290065 (head)"]
+    assert _revision(postgres_database_url) == "202610290065"
     assert _tables(postgres_database_url) >= {
         *EXECUTION_TABLES,
         "workflow_versions",
